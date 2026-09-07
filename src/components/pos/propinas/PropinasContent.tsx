@@ -13,11 +13,13 @@ import {
   type TipSummary,
 } from '@/components/pos/propinas';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { toast } from 'sonner';
 
 export function PropinasContent({ embedded = false }: { embedded?: boolean }) {
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { branchFilter } = useBranch();
 
   const [tips, setTips] = useState<Tip[]>([]);
   const [summaries, setSummaries] = useState<TipSummary[]>([]);
@@ -36,8 +38,8 @@ export function PropinasContent({ embedded = false }: { embedded?: boolean }) {
     setLoading(true);
     try {
       const [tipsData, summaryData, serversData, statsData] = await Promise.all([
-        PropinasService.getAll(filters),
-        PropinasService.getSummaryByServer(filters),
+        PropinasService.getAll(filters, branchFilter),
+        PropinasService.getSummaryByServer(filters, branchFilter),
         PropinasService.getServers(),
         PropinasService.getDayStats(),
       ]);
@@ -58,7 +60,7 @@ export function PropinasContent({ embedded = false }: { embedded?: boolean }) {
     if (organization?.id) {
       loadData();
     }
-  }, [organization?.id, filters]);
+  }, [organization?.id, filters, branchFilter]);
 
   const handleEdit = (tip: Tip) => {
     setEditingTip(tip);

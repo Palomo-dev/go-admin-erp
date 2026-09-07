@@ -46,6 +46,8 @@ import { countries } from '@/lib/data/countries';
 import { allCities, colombianCities } from '@/lib/data/cities';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import organizationService from '@/lib/services/organizationService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface CheckinDialogProps {
   open: boolean;
@@ -82,6 +84,10 @@ export function CheckinDialog({
   onConfirm,
 }: CheckinDialogProps) {
   const { organization } = useOrganization();
+  // Sucursal: el check-in pertenece a la sucursal de la reserva existente.
+  // El campo se muestra para referencia/confirmación del usuario.
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId ?? null);
 
   // Estados básicos
   const [notes, setNotes] = useState('');
@@ -347,6 +353,13 @@ export function CheckinDialog({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Sucursal (referencia: el check-in se asocia a la sucursal de la reserva) */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           {/* Alerta de Validación de Fechas */}
           {dateWarning.type && (
             <Alert

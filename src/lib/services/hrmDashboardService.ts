@@ -45,9 +45,37 @@ export interface DepartmentSummary {
 
 class HRMDashboardService {
   private organizationId: number;
+  private branchId: number | null;
 
-  constructor(organizationId: number) {
+  constructor(organizationId: number, branchId?: number | null) {
     this.organizationId = organizationId;
+    this.branchId = branchId ?? null;
+  }
+
+  // Obtiene los IDs de employments activos de la organización, filtrados por sucursal.
+  // employments no tiene organization_id, se vincula vía organization_member_id.
+  private async getEmploymentIds(): Promise<string[]> {
+    const memberIds = await this.getMemberIds();
+    if (memberIds.length === 0) return [];
+
+    let query = supabase
+      .from('employments')
+      .select('id')
+      .eq('status', 'active')
+      .in('organization_member_id', memberIds);
+
+    if (this.branchId !== null) {
+      query = query.eq('branch_id', this.branchId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching employment ids:', error);
+      return [];
+    }
+
+    return (data || []).map((e) => e.id as string);
   }
 
   // Obtiene los IDs de organization_members de la organización.
@@ -100,10 +128,14 @@ class HRMDashboardService {
       activeEmployeesQuery = activeEmployeesQuery.eq('organization_member_id', -1);
     }
 
+    if (this.branchId !== null) {
+      activeEmployeesQuery = activeEmployeesQuery.eq('branch_id', this.branchId);
+    }
+
     const { count: activeEmployees } = await activeEmployeesQuery;
 
     // Ausencias hoy (leave_requests activas para hoy)
-    const { count: absencesToday } = await supabase
+    let absencesTodayQuery = supabase
       .from('leave_requests')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', this.organizationId)
@@ -111,19 +143,42 @@ class HRMDashboardService {
       .lte('start_date', today)
       .gte('end_date', today);
 
+    if (this.branchId !== null) {
+      const employmentIds = await this.getEmploymentIds();
+      if (employmentIds.length > 0) {
+        absencesTodayQuery = absencesTodayQuery.in('employment_id', employmentIds);
+      } else {
+        absencesTodayQuery = absencesTodayQuery.eq('employment_id', '00000000-0000-0000-0000-000000000000');
+      }
+    }
+
+    const { count: absencesToday } = await absencesTodayQuery;
+
     // Turnos hoy
-    const { count: shiftsToday } = await supabase
+    let shiftsTodayQuery = supabase
       .from('shift_assignments')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', this.organizationId)
       .eq('work_date', today);
 
+    if (this.branchId !== null) {
+      shiftsTodayQuery = shiftsTodayQuery.eq('branch_id', this.branchId);
+    }
+
+    const { count: shiftsToday } = await shiftsTodayQuery;
+
     // Timesheets pendientes de aprobación
-    const { count: pendingTimesheets } = await supabase
+    let pendingTimesheetsQuery = supabase
       .from('timesheets')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', this.organizationId)
       .eq('status', 'pending');
+
+    if (this.branchId !== null) {
+      pendingTimesheetsQuery = pendingTimesheetsQuery.eq('branch_id', this.branchId);
+    }
+
+    const { count: pendingTimesheets } = await pendingTimesheetsQuery;
 
     // Períodos de nómina en proceso
     const { count: payrollInProcess } = await supabase
@@ -155,11 +210,17 @@ class HRMDashboardService {
     const memberIds = await this.getMemberIds();
 
     // Timesheets por aprobar
-    const { count: pendingTimesheets } = await supabase
+    let pendingTimesheetsAlertQuery = supabase
       .from('timesheets')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', this.organizationId)
       .eq('status', 'pending');
+
+    if (this.branchId !== null) {
+      pendingTimesheetsAlertQuery = pendingTimesheetsAlertQuery.eq('branch_id', this.branchId);
+    }
+
+    const { count: pendingTimesheets } = await pendingTimesheetsAlertQuery;
 
     if (pendingTimesheets && pendingTimesheets > 0) {
       alerts.push({
@@ -173,11 +234,22 @@ class HRMDashboardService {
     }
 
     // Solicitudes de ausencia pendientes
-    const { count: pendingLeaves } = await supabase
+    let pendingLeavesQuery = supabase
       .from('leave_requests')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', this.organizationId)
       .eq('status', 'pending');
+
+    if (this.branchId !== null) {
+      const employmentIds = await this.getEmploymentIds();
+      if (employmentIds.length > 0) {
+        pendingLeavesQuery = pendingLeavesQuery.in('employment_id', employmentIds);
+      } else {
+        pendingLeavesQuery = pendingLeavesQuery.eq('employment_id', '00000000-0000-0000-0000-000000000000');
+      }
+    }
+
+    const { count: pendingLeaves } = await pendingLeavesQuery;
 
     if (pendingLeaves && pendingLeaves > 0) {
       alerts.push({
@@ -195,13 +267,19 @@ class HRMDashboardService {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
-    const { count: unassignedShifts } = await supabase
+    let unassignedShiftsQuery = supabase
       .from('shift_assignments')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', this.organizationId)
       .gte('work_date', today)
       .lte('work_date', tomorrowStr)
       .eq('status', 'unassigned');
+
+    if (this.branchId !== null) {
+      unassignedShiftsQuery = unassignedShiftsQuery.eq('branch_id', this.branchId);
+    }
+
+    const { count: unassignedShifts } = await unassignedShiftsQuery;
 
     if (unassignedShifts && unassignedShifts > 0) {
       alerts.push({
@@ -258,6 +336,10 @@ class HRMDashboardService {
       expiringContractsQuery = expiringContractsQuery.in('organization_member_id', memberIds);
     } else {
       expiringContractsQuery = expiringContractsQuery.eq('organization_member_id', -1);
+    }
+
+    if (this.branchId !== null) {
+      expiringContractsQuery = expiringContractsQuery.eq('branch_id', this.branchId);
     }
 
     const { count: expiringContracts } = await expiringContractsQuery;

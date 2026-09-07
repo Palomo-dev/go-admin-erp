@@ -25,7 +25,8 @@ import { CreditCard, Banknote, Wallet, ArrowLeftRight, Loader2, CheckCircle2, Pl
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatCurrency, cn } from '@/utils/Utils';
 import foliosService, { type FolioItem } from '@/lib/services/foliosService';
-import { obtenerOrganizacionActiva, getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { obtenerOrganizacionActiva, getOrganizationId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { supabase } from '@/lib/supabase/config';
 import { POSService } from '@/lib/services/posService';
 
@@ -71,6 +72,7 @@ export function FolioPaymentDialog({
   taxInfo,
   onPaymentComplete,
 }: FolioPaymentDialogProps) {
+  const { branchFilter, selectedBranchId } = useBranch();
   const [pendingItems, setPendingItems] = useState<FolioItem[]>([]);
   const [totalPending, setTotalPending] = useState(0);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -125,7 +127,7 @@ export function FolioPaymentDialog({
 
       try {
         const org = obtenerOrganizacionActiva();
-        const branchId = getCurrentBranchId();
+        const branchId = branchFilter;
 
         const { data: session } = await supabase
           .from('cash_sessions')
@@ -142,7 +144,7 @@ export function FolioPaymentDialog({
       }
     };
     loadData();
-  }, [open]);
+  }, [open, branchFilter]);
 
   const addPayment = () => {
     setPayments([...payments, { id: crypto.randomUUID(), method: 'cash', amount: remaining }]);
@@ -191,7 +193,7 @@ export function FolioPaymentDialog({
       // 2. Pagar hospedaje (reserva + noches extra + impuestos)
       if (lodgingPortion > 0 && reservationId) {
         let orgId = getOrganizationId();
-        let branchId = getCurrentBranchId();
+        let branchId = selectedBranchId;
 
         // Fallback: obtener organization_id de la reserva si no está en localStorage
         if (!orgId || orgId === 0) {

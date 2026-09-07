@@ -695,7 +695,7 @@ export async function printShipmentGuideWithCut(
     return { method: 'html', enqueued: 0 };
   }
 
-  if (branchId) {
+  if (branchId != null) {
     try {
       const isOnline = await PrintJobsService.isAgentOnline(branchId);
       if (isOnline) {
@@ -739,7 +739,7 @@ export async function printShipmentGuidesWithCut(
     return { method: 'html', enqueued: 0 };
   }
 
-  if (branchId) {
+  if (branchId != null) {
     try {
       const isOnline = await PrintJobsService.isAgentOnline(branchId);
       if (isOnline) {

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { purchaseOrderService, type PurchaseOrder, type PurchaseOrderStats } from '@/lib/services/purchaseOrderService';
 import { describeSkippedItems } from '@/lib/services/stockMovementService';
 
@@ -24,10 +25,12 @@ import {
   OrdenesCompraFilters,
   OrdenesCompraTable
 } from '@/components/inventario/ordenes-compra';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 export default function OrdenesCompraPage() {
   const router = useRouter();
+  const { branchFilter: globalBranchFilter, selectedBranchId } = useBranch();
 
   // Estados
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
@@ -38,11 +41,18 @@ export default function OrdenesCompraPage() {
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Filtros
+  // Filtros — branchFilter se sincroniza con el contexto global
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [supplierFilter, setSupplierFilter] = useState('all');
-  const [branchFilter, setBranchFilter] = useState('all');
+  const [branchFilter, setBranchFilter] = useState<string>(
+    globalBranchFilter != null ? String(globalBranchFilter) : 'all'
+  );
+
+  // Sincronizar filtro local cuando cambia el contexto global de sucursal
+  useEffect(() => {
+    setBranchFilter(globalBranchFilter != null ? String(globalBranchFilter) : 'all');
+  }, [globalBranchFilter, selectedBranchId]);
 
   // Dialog de eliminación
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -60,7 +70,7 @@ export default function OrdenesCompraPage() {
           supplierId: supplierFilter !== 'all' ? parseInt(supplierFilter) : undefined,
           branchId: branchFilter !== 'all' ? parseInt(branchFilter) : undefined
         }),
-        purchaseOrderService.getStats(organizationId),
+        purchaseOrderService.getStats(organizationId, branchFilter !== 'all' ? parseInt(branchFilter) : undefined),
         purchaseOrderService.getSuppliers(organizationId),
         purchaseOrderService.getBranches(organizationId)
       ]);
@@ -194,6 +204,8 @@ export default function OrdenesCompraPage() {
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <OrdenesCompraHeader />
+
+      <BranchBadge />
 
       <OrdenesCompraStats stats={stats} />
 

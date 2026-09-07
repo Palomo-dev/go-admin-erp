@@ -13,9 +13,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchSelect, type SearchSelectOption } from "@/components/ui/search-select";
 import { FiltrosProductos as FiltrosProductosType, Categoria } from './types';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 
 interface FiltrosProductosProps {
   filters: FiltrosProductosType;
@@ -28,6 +30,7 @@ interface FiltrosProductosProps {
 const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersChange }) => {
 
   const { organization } = useOrganization();
+  const { branchFilter, branches } = useBranch();
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [busquedaLocal, setBusquedaLocal] = useState<string>(filters.busqueda);
 
@@ -101,6 +104,12 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersC
     });
   };
 
+  // Opciones de categoría para el SearchSelect (memoizado para no recalcular en cada render)
+  const categoriaOptions: SearchSelectOption[] = React.useMemo(
+    () => categorias.map((c) => ({ value: c.id.toString(), label: c.name })),
+    [categorias]
+  );
+
   const handleEstadoChange = (value: string) => {
     onFiltersChange({ ...filters, estado: value });
   };
@@ -111,6 +120,15 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersC
 
   return (
     <div className="p-3 sm:p-4 rounded-lg border bg-gray-50/80 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700">
+      {/* Badge de sucursal activa */}
+      <div className="mb-3 flex items-center gap-2">
+        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Sucursal:</span>
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${branchFilter === null ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-300'}`}>
+          {branchFilter === null
+            ? 'Todas las sucursales'
+            : (branches.find(b => b.id === branchFilter)?.name ?? `Sucursal #${branchFilter}`)}
+        </span>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Búsqueda */}
         <div className="relative sm:col-span-2 lg:col-span-1">
@@ -124,26 +142,19 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersC
           />
         </div>
         
-        {/* Filtro de categoría */}
+        {/* Filtro de categoría — SearchSelect con buscador integrado */}
         <div>
-          <Select 
-            value={filters.categoria?.toString() || "todos"} 
+          <SearchSelect
+            options={categoriaOptions}
+            value={filters.categoria?.toString() || "todos"}
             onValueChange={handleCategoriaChange}
-          >
-            <SelectTrigger className="text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100">
-              <SelectValue placeholder="Categoría" />
-            </SelectTrigger>
-            <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-              <SelectGroup>
-                <SelectItem value="todos" className="text-sm dark:text-gray-200 dark:focus:bg-gray-800">Todas</SelectItem>
-                {categorias.map((categoria) => (
-                  <SelectItem key={categoria.id} value={categoria.id.toString()} className="text-sm dark:text-gray-200 dark:focus:bg-gray-800">
-                    {categoria.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+            placeholder="Categoría"
+            searchPlaceholder="Buscar categoría..."
+            emptyText="No se encontraron categorías"
+            noneLabel="Todas"
+            noneValue="todos"
+            className="text-sm h-9 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100"
+          />
         </div>
         
         {/* Filtro de estado */}

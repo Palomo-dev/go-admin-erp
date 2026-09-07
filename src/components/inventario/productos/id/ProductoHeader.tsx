@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase/config';
 import { loadProductImages, getPublicUrl, ProductImageType } from '@/lib/supabase/imageUtils';
 
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 
@@ -27,6 +28,7 @@ interface ProductoHeaderProps {
 const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
 
   const { organization } = useOrganization();
+  const { branchFilter, branches } = useBranch();
   const [selectedImage, setSelectedImage] = useState<number>(0);
   const [showAllImages, setShowAllImages] = useState<boolean>(false);
   const [totalStock, setTotalStock] = useState({
@@ -79,13 +81,21 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
         }
         
         // Obtener niveles de stock por sucursal
-        const { data: stock, error: stockError } = await supabase
+        let stockQuery = supabase
           .from('stock_levels')
           .select(`
-            qty_on_hand, 
-            qty_reserved
+            qty_on_hand,
+            qty_reserved,
+            branch_id
           `)
           .in('product_id', productIds);
+
+        // Filtrar por sucursal seleccionada (si no es "Todas")
+        if (branchFilter !== null) {
+          stockQuery = stockQuery.eq('branch_id', branchFilter);
+        }
+
+        const { data: stock, error: stockError } = await stockQuery;
         
         if (stockError) throw stockError;
         
@@ -112,7 +122,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
     };
     
     fetchStockData();
-  }, [organization?.id, producto.id, producto.track_stock]);
+  }, [organization?.id, producto.id, producto.track_stock, branchFilter]);
 
   // Función para renderizar el badge de estado
   const renderEstado = (estado: string) => {
@@ -210,7 +220,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                         target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
                         const placeholder = document.createElement('div');
                         placeholder.className = 'text-gray-400 text-xs';
-                        placeholder.textContent = 'N/A';
+                        placeholder.textContent = 'Sin imagen';
                         target.parentElement?.appendChild(placeholder);
                       }
                     }}
@@ -414,11 +424,19 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                       </span>
                     </div>
                   ) : (
-                    <div className="mt-1 text-2xl font-semibold dark:text-white">
-                      {loadingStock ? 
-                        <Skeleton className="h-6 w-8 mx-auto" />: 
-                        totalStock.total
-                      }
+                    <div className="mt-1">
+                      <div className="text-2xl font-semibold dark:text-white">
+                        {loadingStock ?
+                          <Skeleton className="h-6 w-8 mx-auto" />:
+                          totalStock.total
+                        }
+                      </div>
+                      <span className={`inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${branchFilter === null ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-300'}`}>
+                        {branchFilter === null
+                          ? 'Todas las sucursales'
+                          : (branches.find(b => b.id === branchFilter)?.name ?? `Sucursal #${branchFilter}`)
+                        }
+                      </span>
                     </div>
                   )}
                 </div>

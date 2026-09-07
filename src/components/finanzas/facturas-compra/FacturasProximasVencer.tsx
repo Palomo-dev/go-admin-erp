@@ -16,6 +16,7 @@ import { FacturasCompraService } from './FacturasCompraService';
 import { InvoicePurchase } from './types';
 import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
 import { useRouter, usePathname } from 'next/navigation';
+import { useBranch } from '@/lib/context/BranchContext';
 
 interface FacturasProximasVencerProps {
   diasLimite?: number;
@@ -24,22 +25,23 @@ interface FacturasProximasVencerProps {
 export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVencerProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { branchFilter } = useBranch();
   const [facturas, setFacturas] = useState<InvoicePurchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [mostrarTodas, setMostrarTodas] = useState(false);
 
-  const basePath = pathname.includes('/inventario/') 
-    ? '/app/inventario/facturas-compra' 
+  const basePath = (pathname ?? '').includes('/inventario/')
+    ? '/app/inventario/facturas-compra'
     : '/app/finanzas/facturas-compra';
 
   useEffect(() => {
     cargarFacturasProximasVencer();
-  }, [diasLimite]);
+  }, [diasLimite, branchFilter]);
 
   const cargarFacturasProximasVencer = async () => {
     try {
       setLoading(true);
-      const data = await FacturasCompraService.obtenerFacturasProximasVencer(diasLimite);
+      const data = await FacturasCompraService.obtenerFacturasProximasVencer(diasLimite, branchFilter);
       setFacturas(data);
     } catch (error) {
       console.error('Error cargando facturas próximas a vencer:', error);

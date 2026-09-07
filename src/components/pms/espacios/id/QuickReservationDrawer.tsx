@@ -32,6 +32,7 @@ import RatesService from '@/lib/services/ratesService';
 import spaceServicesService, { type OrgServiceView } from '@/lib/services/spaceServicesService';
 import organizationService from '@/lib/services/organizationService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { CustomerSelector } from '@/components/pos/CustomerSelector';
 import type { Customer as POSCustomer } from '@/components/pos/types';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +51,7 @@ export function QuickReservationDrawer({
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { selectedBranchId } = useBranch();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<POSCustomer | null>(null);
@@ -204,6 +206,15 @@ export function QuickReservationDrawer({
 
     if (!organization) return;
 
+    if (!selectedBranchId) {
+      toast({
+        title: 'Error',
+        description: 'Se requiere una sucursal para crear la reserva',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -213,7 +224,7 @@ export function QuickReservationDrawer({
       const reservationData = {
         customer_id: selectedCustomer.id,
         organization_id: organization.id,
-        branch_id: organization.branch_id,
+        branch_id: selectedBranchId,
         checkin: format(checkin, 'yyyy-MM-dd'),
         checkout: format(checkout, 'yyyy-MM-dd'),
         occupant_count: occupantCount,

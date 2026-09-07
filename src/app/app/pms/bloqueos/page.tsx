@@ -10,6 +10,8 @@ import reservationBlocksService, {
 } from '@/lib/services/reservationBlocksService';
 import SpacesService from '@/lib/services/spacesService';
 import SpaceTypesService from '@/lib/services/spaceTypesService';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +39,8 @@ interface SpaceType {
 
 export default function BloqueosPage() {
   const { toast } = useToast();
+  const { organization } = useOrganization();
+  const { branchFilter, selectedBranchId } = useBranch();
   const [blocks, setBlocks] = useState<ReservationBlock[]>([]);
   const [stats, setStats] = useState<BlockStats>({
     total: 0,
@@ -51,18 +55,20 @@ export default function BloqueosPage() {
   const [selectedBlock, setSelectedBlock] = useState<ReservationBlock | null>(null);
   const [blockToDelete, setBlockToDelete] = useState<ReservationBlock | null>(null);
 
-  // TODO: Obtener de contexto de usuario
-  const organizationId = 2;
-  const branchId = 2;
+  const organizationId = organization?.id;
+  // branchFilter es null cuando "Todas" está seleccionado.
+  // selectedBranchId se usa solo como valor por defecto en el diálogo de creación.
+  const branchId = branchFilter;
 
   const loadData = async () => {
+    if (!organizationId) return;
     try {
       setIsLoading(true);
 
       const [blocksData, statsData, spacesData, typesData] = await Promise.all([
-        reservationBlocksService.getBlocks(organizationId, { branchId }),
-        reservationBlocksService.getStats(organizationId, branchId),
-        SpacesService.getSpaces({ branchId }),
+        reservationBlocksService.getBlocks(organizationId, { branchId: branchId ?? undefined }),
+        reservationBlocksService.getStats(organizationId, branchId ?? undefined),
+        SpacesService.getSpaces({ organizationId, branchId: branchId ?? undefined }),
         SpaceTypesService.getSpaceTypes(organizationId),
       ]);
 
@@ -84,14 +90,22 @@ export default function BloqueosPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [organizationId, branchFilter, selectedBranchId]);
 
   const handleNewBlock = () => {
+    if (branchId == null && selectedBranchId == null) {
+      toast({ title: 'Error', description: 'Se requiere una sucursal para crear un bloqueo', variant: 'destructive' });
+      return;
+    }
     setSelectedBlock(null);
     setShowDialog(true);
   };
 
   const handleEditBlock = (block: ReservationBlock) => {
+    if (branchId == null && selectedBranchId == null) {
+      toast({ title: 'Error', description: 'Se requiere una sucursal para editar un bloqueo', variant: 'destructive' });
+      return;
+    }
     setSelectedBlock(block);
     setShowDialog(true);
   };
@@ -101,7 +115,7 @@ export default function BloqueosPage() {
   };
 
   const confirmDelete = async () => {
-    if (!blockToDelete) return;
+    if (!blockToDelete || !organizationId) return;
 
     try {
       await reservationBlocksService.deleteBlock(blockToDelete.id, organizationId);
@@ -123,6 +137,7 @@ export default function BloqueosPage() {
   };
 
   const handleSaveBlock = async (data: CreateBlockData) => {
+    if (!organizationId) return;
     try {
       if (selectedBlock) {
         await reservationBlocksService.updateBlock(selectedBlock.id, organizationId, data);
@@ -169,7 +184,7 @@ export default function BloqueosPage() {
         spaces={spaces}
         spaceTypes={spaceTypes}
         organizationId={organizationId}
-        branchId={branchId}
+        branchId={branchId ?? selectedBranchId ?? undefined}
         onSave={handleSaveBlock}
       />
 

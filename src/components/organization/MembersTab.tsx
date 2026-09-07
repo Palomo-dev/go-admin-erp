@@ -7,6 +7,7 @@ import BranchAssignmentModal from './BranchAssignmentModal';
 import { MembersSkeleton } from './OrganizationSkeletons';
 import { useTranslations } from 'next-intl';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useBranch } from '@/lib/context/BranchContext';
 
 interface MemberProps {
   id: string;
@@ -20,6 +21,7 @@ interface MemberProps {
   status: string;
   branch_id: string | null;
   branch_name: string;
+  branch_names: string[];
   job_position_name: string;
   created_at: string;
 }
@@ -40,9 +42,15 @@ export default function MembersTab({ orgId }: { orgId: number }) {
   const [nameFilter, setNameFilter] = useState('');
   const [emailFilter, setEmailFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
-  const [branchFilter, setBranchFilter] = useState('');
+  const [localBranchFilter, setLocalBranchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(true); // Por defecto mostramos los filtros
+
+  // Sincronizar con el contexto global de sucursal
+  const { branchFilter: globalBranchFilter, setSelectedBranch } = useBranch();
+  useEffect(() => {
+    setLocalBranchFilter(globalBranchFilter?.toString() || '');
+  }, [globalBranchFilter]);
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -321,14 +329,14 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       const nameMatches = !nameFilter || member.full_name.toLowerCase().includes(nameFilter.toLowerCase());
       const emailMatches = !emailFilter || member.email.toLowerCase().includes(emailFilter.toLowerCase());
       const roleMatches = !roleFilter || member.role === roleFilter;
-      const branchMatches = !branchFilter || member.branch_id === branchFilter;
+      const branchMatches = !localBranchFilter || member.branch_id === localBranchFilter;
       const statusMatches = statusFilter === 'all' || 
         (statusFilter === 'active' && member.status === t('active')) ||
         (statusFilter === 'inactive' && member.status === t('inactive'));
       
       return nameMatches && emailMatches && roleMatches && branchMatches && statusMatches;
     });
-  }, [members, nameFilter, emailFilter, roleFilter, branchFilter, statusFilter]);
+  }, [members, nameFilter, emailFilter, roleFilter, localBranchFilter, statusFilter]);
 
   // Paginación
   const totalPages = Math.ceil(filteredMembers.length / pageSize);
@@ -356,7 +364,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       nameFilter !== '',
       emailFilter !== '',
       roleFilter !== '',
-      branchFilter !== '',
+      localBranchFilter !== '',
       statusFilter !== 'all'
     ].filter(Boolean).length;
     
@@ -383,7 +391,8 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                 setNameFilter('');
                 setEmailFilter('');
                 setRoleFilter('');
-                setBranchFilter('');
+                setLocalBranchFilter('');
+                setSelectedBranch('all');
                 setStatusFilter('all');
               }}
               className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors flex items-center border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/30 dark:border-blue-700"
@@ -497,8 +506,11 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                 </div>
                 <select
                   id="branch-filter"
-                  value={branchFilter}
-                  onChange={(e) => setBranchFilter(e.target.value)}
+                  value={localBranchFilter}
+                  onChange={(e) => {
+                    setLocalBranchFilter(e.target.value);
+                    setSelectedBranch(e.target.value === '' ? 'all' : parseInt(e.target.value));
+                  }}
                   className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400"
                 >
                   <option value="">{t('allBranches')}</option>
@@ -672,7 +684,21 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {member.job_position_name}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                    {member.branch_names && member.branch_names.length > 0 ? (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {member.branch_names.map((name, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100"
+                          >
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 dark:text-gray-500 mb-2 block">{t('noBranch')}</span>
+                    )}
                     <button
                       onClick={() => openBranchAssignmentModal(member.id, member.full_name)}
                       className="inline-flex items-center px-2 py-1 border border-primary text-xs font-medium rounded-md text-primary hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
@@ -681,7 +707,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                       </svg>
-                      {member.branch_name === t('noBranch') ? t('assign') : t('manage')} {t('branches')}
+                      {member.branch_names && member.branch_names.length > 0 ? t('manage') : t('assign')} {t('branches')}
                     </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

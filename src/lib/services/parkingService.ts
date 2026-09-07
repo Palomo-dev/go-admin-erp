@@ -79,6 +79,7 @@ export interface ParkingPass {
 export interface ParkingSession {
   id: string;
   branch_id: number;
+  organization_id: number;
   parking_space_id?: string;
   vehicle_plate: string;
   vehicle_type: string;
@@ -103,13 +104,17 @@ class ParkingService {
   /**
    * Obtener sesiones de parking
    */
-  async getSessions(branchId?: number, organizationId?: number): Promise<ParkingSession[]> {
+  async getSessions(branchId?: number | null, organizationId?: number): Promise<ParkingSession[]> {
     try {
       let query = supabase
         .from('parking_sessions')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(100);
+
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
+      }
 
       if (branchId) {
         query = query.eq('branch_id', branchId);
@@ -149,6 +154,7 @@ class ParkingService {
         .from('parking_sessions')
         .insert({
           ...data,
+          organization_id: organizationId,
           entry_at: new Date().toISOString(),
           status: 'open',
         })
@@ -209,12 +215,16 @@ class ParkingService {
   /**
    * Obtener estadísticas
    */
-  async getStats(branchId?: number, organizationId?: number): Promise<ParkingStats> {
+  async getStats(branchId?: number | null, organizationId?: number): Promise<ParkingStats> {
     try {
       let query = supabase
         .from('parking_sessions')
         .select('*');
-      
+
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
+      }
+
       if (branchId) {
         query = query.eq('branch_id', branchId);
       }

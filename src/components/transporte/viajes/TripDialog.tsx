@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import type { TripWithDetails } from '@/lib/services/tripsService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface Route {
   id: string;
@@ -66,6 +68,10 @@ export function TripDialog({
   onSave,
 }: TripDialogProps) {
   const [loading, setLoading] = useState(false);
+
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
+
   const [formData, setFormData] = useState({
     route_id: '',
     trip_date: '',
@@ -95,6 +101,7 @@ export function TripDialog({
         currency: trip.currency || 'COP',
         notes: trip.notes || '',
       });
+      setBranchId(trip.branch_id ?? null);
     } else {
       const today = new Date().toISOString().split('T')[0];
       setFormData({
@@ -110,8 +117,9 @@ export function TripDialog({
         currency: 'COP',
         notes: '',
       });
+      setBranchId(selectedBranchId);
     }
-  }, [trip, open]);
+  }, [trip, open, selectedBranchId]);
 
   const handleVehicleChange = (vehicleId: string) => {
     setFormData((prev) => ({ ...prev, vehicle_id: vehicleId }));
@@ -140,7 +148,7 @@ export function TripDialog({
         scheduled_arrival: arrivalDateTime,
         vehicle_id: formData.vehicle_id || undefined,
         driver_id: formData.driver_id || undefined,
-        branch_id: formData.branch_id ? parseInt(formData.branch_id) : undefined,
+        branch_id: branchId || undefined,
         total_seats: formData.total_seats,
         available_seats: trip ? undefined : formData.total_seats,
         base_fare: formData.base_fare,
@@ -163,6 +171,13 @@ export function TripDialog({
         </DialogHeader>
 
         <div className="grid gap-2 sm:gap-4 py-4">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           {/* Ruta */}
           <div className="grid gap-2">
             <Label htmlFor="route">Ruta *</Label>
@@ -256,29 +271,6 @@ export function TripDialog({
             </div>
           </div>
 
-          {/* Sucursal */}
-          {branches.length > 0 && (
-            <div className="grid gap-2">
-              <Label htmlFor="branch">Sucursal</Label>
-              <Select
-                value={formData.branch_id || '__none__'}
-                onValueChange={(v) => setFormData((p) => ({ ...p, branch_id: v === '__none__' ? '' : v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar sucursal" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Sin asignar</SelectItem>
-                  {branches.map((b) => (
-                    <SelectItem key={b.id} value={b.id.toString()}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           {/* Capacidad y Tarifa */}
           <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <div className="grid gap-2">
@@ -288,7 +280,7 @@ export function TripDialog({
                 type="number"
                 min={1}
                 value={formData.total_seats}
-                onChange={(e) => setFormData((p) => ({ ...p, total_seats: parseInt(e.target.value) || 0 }))}
+                onChange={(e) => setFormData((p) => ({ ...p, total_seats: parseInt(e.target.value, 10) || 0 }))}
               />
             </div>
             <div className="grid gap-2">

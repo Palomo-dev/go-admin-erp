@@ -19,6 +19,8 @@ import { ItemsFactura } from '@/components/finanzas/facturas-venta/nueva-factura
 import { ImpuestosFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ImpuestosFactura';
 import { FormaPagoSelector } from '@/components/finanzas/facturas-venta/nueva-factura/FormaPagoSelector';
 import type { InvoiceItem } from '@/components/finanzas/facturas-venta/nueva-factura/NuevaFacturaForm';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 import { PageBackHeader } from './PageBackHeader';
 
 interface NuevaCotizacionFormProps {
@@ -55,14 +57,14 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
   const [salespersonId, setSalespersonId] = useState<string>('none');
   const [salespeople, setSalespeople] = useState<{ id: string; name: string }[]>([]);
   const [salespersonSearch, setSalespersonSearch] = useState('');
-  const [branchId, setBranchId] = useState<number | undefined>(undefined);
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   const [opportunities, setOpportunities] = useState<{ id: string; name: string; customer_id?: string | null }[]>([]);
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string>('none');
 
   useEffect(() => {
     if (organizationId) {
       loadSalespeople();
-      loadBranchId();
       loadOpportunities();
     }
   }, [organizationId]);
@@ -99,20 +101,6 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
       }
     } catch (e) {
       console.error('Error loading salespeople:', e);
-    }
-  };
-
-  const loadBranchId = async () => {
-    if (!organizationId) return;
-    try {
-      const { data } = await supabase
-        .from('branches')
-        .select('id')
-        .eq('organization_id', organizationId)
-        .limit(1);
-      if (data && data.length > 0) setBranchId(data[0].id);
-    } catch (e) {
-      console.error('Error loading branch:', e);
     }
   };
 
@@ -336,6 +324,9 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
           <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
             Información General
           </h2>
+          <div className="mb-4">
+            <BranchSelectorField value={branchId} onChange={setBranchId} required />
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-sm font-medium">Cliente</Label>
@@ -446,7 +437,7 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
             items={items}
             onItemsChange={setItems}
             taxIncluded={taxIncluded}
-            branchId={branchId}
+            branchId={branchId ?? undefined}
             serialSelections={serialSelections}
             onSerialSelectionsChange={setSerialSelections}
           />

@@ -115,6 +115,10 @@ export const customerAddressesService = {
   },
 
   async createAddress(organizationId: number, input: CustomerAddressInput) {
+    if (!organizationId || typeof organizationId !== 'number' || Number.isNaN(organizationId)) {
+      throw new Error('Se requiere un organization_id válido para crear la dirección.');
+    }
+
     if (input.is_default) {
       await supabase
         .from('customer_addresses')
@@ -133,7 +137,14 @@ export const customerAddressesService = {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '42501') {
+        throw new Error(
+          'No tienes permisos para crear direcciones en esta organización. Verifica que tu sesión esté activa y que pertenezcas a la organización seleccionada.'
+        );
+      }
+      throw error;
+    }
     return data as CustomerAddress;
   },
 

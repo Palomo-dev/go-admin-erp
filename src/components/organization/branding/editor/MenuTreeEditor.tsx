@@ -21,6 +21,7 @@ import {
   Trash2,
   Tag,
   FolderTree,
+  LinkIcon,
 } from 'lucide-react';
 import { websiteMenuService, AvailableCategory } from '@/lib/services/websiteMenuService';
 import {
@@ -39,6 +40,31 @@ interface MenuTreeEditorProps {
   pendingUpdatesRef?: React.MutableRefObject<Map<string, Record<string, unknown>>>;
   onPendingChanges?: (hasPending: boolean) => void;
 }
+
+// ============================================================
+// PÁGINAS DEL SISTEMA (rutas fijas del sitio público)
+// ============================================================
+// Estas páginas existen como rutas en goadmin-websites pero no como
+// registros en website_pages. Se listan aquí para que el usuario pueda
+// agregarlas al menú creando un registro virtual con show_in_header=true.
+const SYSTEM_PAGES: { slug: string; title: string; icon: string }[] = [
+  { slug: 'consultar-pedido', title: 'Consultar Pedido', icon: 'PackageSearch' },
+  { slug: 'tracking', title: 'Seguimiento de Pedido', icon: 'MapPin' },
+  { slug: 'productos', title: 'Productos', icon: 'ShoppingBag' },
+  { slug: 'categorias', title: 'Categorías', icon: 'LayoutGrid' },
+  { slug: 'ofertas', title: 'Ofertas', icon: 'Tag' },
+  { slug: 'carrito', title: 'Carrito', icon: 'ShoppingCart' },
+  { slug: 'checkout', title: 'Checkout', icon: 'CreditCard' },
+  { slug: 'mi-cuenta', title: 'Mi Cuenta', icon: 'User' },
+  { slug: 'reservas', title: 'Reservas', icon: 'Calendar' },
+  { slug: 'cotizar', title: 'Cotizar', icon: 'FileText' },
+  { slug: 'agendar', title: 'Agendar Cita', icon: 'CalendarClock' },
+  { slug: 'servicios', title: 'Servicios', icon: 'Wrench' },
+  { slug: 'espacios', title: 'Espacios', icon: 'Building' },
+  { slug: 'membresias', title: 'Membresías', icon: 'CardMembership' },
+  { slug: 'pases', title: 'Pases', icon: 'Ticket' },
+  { slug: 'viajes', title: 'Viajes', icon: 'Plane' },
+];
 
 // ============================================================
 // HELPERS DE ÁRBOL (optimistas)
@@ -466,6 +492,7 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showPagePicker, setShowPagePicker] = useState(false);
+  const [showLinkPicker, setShowLinkPicker] = useState(false);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<number>>(new Set());
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(new Set());
   const [availablePages, setAvailablePages] = useState<WebsitePage[]>([]);
@@ -744,6 +771,50 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
     [availablePages, selectedPageIds]
   );
 
+  // Agregar enlace del sistema (página del sistema como consultar-pedido, tracking, etc.)
+  const handleAddSystemLink = useCallback(
+    async (sysPage: { slug: string; title: string; icon: string }) => {
+      setIsSaving(true);
+      try {
+        // Verificar si ya existe una página con ese slug
+        const existing = menuTreeRef.current.find(p => p.slug === sysPage.slug);
+        if (existing) {
+          setShowLinkPicker(false);
+          setIsSaving(false);
+          return;
+        }
+
+        // Crear página virtual en website_pages con show_in_header=true
+        const created = await websitePageBuilderService.createPage({
+          organization_id: organizationId,
+          slug: sysPage.slug,
+          title: sysPage.title,
+          page_type: 'system_link',
+          show_in_header: true,
+          show_in_footer: false,
+          header_order: menuTreeRef.current.length,
+          menu_icon: sysPage.icon,
+        });
+
+        // Agregar al árbol localmente
+        const newItem: WebsitePageWithChildren = {
+          ...created,
+          show_in_header: true,
+          header_order: menuTreeRef.current.length,
+          children: [],
+          level: 0,
+        };
+        setMenuTree(prev => [...prev, newItem]);
+        setShowLinkPicker(false);
+      } catch (err) {
+        console.error('Error agregando enlace del sistema:', err);
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [organizationId]
+  );
+
   const togglePageSelection = (id: string) => {
     setSelectedPageIds(prev => {
       const next = new Set(prev);
@@ -782,7 +853,7 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
           <Button
             size="sm"
             variant="outline"
-            onClick={() => { setShowPagePicker(!showPagePicker); setShowCategoryPicker(false); }}
+            onClick={() => { setShowPagePicker(!showPagePicker); setShowCategoryPicker(false); setShowLinkPicker(false); }}
           >
             <Plus className="h-4 w-4 mr-1" />
             Agregar Página
@@ -790,10 +861,18 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
           <Button
             size="sm"
             variant="outline"
-            onClick={() => { setShowCategoryPicker(!showCategoryPicker); setShowPagePicker(false); }}
+            onClick={() => { setShowCategoryPicker(!showCategoryPicker); setShowPagePicker(false); setShowLinkPicker(false); }}
           >
             <Plus className="h-4 w-4 mr-1" />
             Agregar Categoría
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => { setShowLinkPicker(!showLinkPicker); setShowPagePicker(false); setShowCategoryPicker(false); }}
+          >
+            <LinkIcon className="h-4 w-4 mr-1" />
+            Agregar Enlace
           </Button>
         </div>
       </div>
@@ -840,6 +919,42 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
               onClick={handleAddPagesToMenu}
             >
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : `Agregar ${selectedPageIds.size || ''}`}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {showLinkPicker && (
+        <div className="border border-gray-200 rounded-md p-3 bg-gray-50 space-y-2">
+          <p className="text-xs text-gray-600">
+            Selecciona una página del sistema para agregar al menú:
+          </p>
+          <div className="max-h-60 overflow-y-auto space-y-1">
+            {SYSTEM_PAGES.filter(
+              sys => !menuTreeRef.current.some(p => p.slug === sys.slug)
+            ).map(sysPage => (
+              <button
+                key={sysPage.slug}
+                onClick={() => handleAddSystemLink(sysPage)}
+                disabled={isSaving}
+                className="flex items-center gap-2 p-2 rounded cursor-pointer text-sm hover:bg-white w-full text-left transition-colors"
+              >
+                <LinkIcon className="h-3.5 w-3.5 text-blue-500" />
+                <span className="flex-1 font-medium">{sysPage.title}</span>
+                <span className="text-xs text-gray-400">/{sysPage.slug}</span>
+              </button>
+            ))}
+            {SYSTEM_PAGES.filter(
+              sys => !menuTreeRef.current.some(p => p.slug === sys.slug)
+            ).length === 0 && (
+              <p className="text-xs text-gray-400 py-2">
+                Todas las páginas del sistema ya están en el menú.
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button size="sm" variant="ghost" onClick={() => setShowLinkPicker(false)}>
+              Cancelar
             </Button>
           </div>
         </div>

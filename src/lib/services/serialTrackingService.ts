@@ -154,7 +154,7 @@ export interface SerialStats {
 export interface SerialInput {
   product_id: number;
   organization_id: number;
-  branch_id: number;
+  branch_id: number | null;
   serial: string;
   supplier_id?: number;
   purchase_order_id?: number;
@@ -1099,7 +1099,7 @@ class SerialTrackingService {
         serials.push({
           product_id: productId,
           organization_id: organizationId,
-          branch_id: branchId ?? 0,
+          branch_id: branchId ?? null,
           serial,
           warranty_months: warrantyMonths ?? undefined,
           cost_at_purchase: costAtPurchase ?? 0,

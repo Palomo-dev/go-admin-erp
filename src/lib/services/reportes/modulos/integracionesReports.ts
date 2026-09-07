@@ -22,7 +22,7 @@ export const integracionesReports: ReportDefinition[] = [
     descripcion: 'Conexiones activas, pausadas y errores',
     categoria: 'sistema',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_integraciones_estado', {
         p_organization_id: orgId,
       });
@@ -54,7 +54,7 @@ export const integracionesReports: ReportDefinition[] = [
     descripcion: 'Volumen de eventos, jobs ejecutados y tasa de error',
     categoria: 'sistema',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('integration_events')
         .select('id, event_type, status, created_at')

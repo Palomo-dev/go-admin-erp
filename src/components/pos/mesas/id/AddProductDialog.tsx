@@ -2,14 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -393,33 +386,38 @@ export function AddProductDialog({
     return imageUrl;
   };
 
-  return (
+  useEffect(() => {
+    if (!open) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !showVariantDialog && !variantDialogOpeningRef.current) {
+        handleClose(false);
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [open, showVariantDialog]);
+
+  if (!open || typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent 
-        className="max-w-[100vw] sm:max-w-[95vw] w-full sm:w-[1400px] max-h-[100dvh] sm:max-h-[85vh] h-[100dvh] sm:h-[85vh] p-0 gap-0 overflow-hidden flex flex-col"
-        onInteractOutside={(e) => {
-          // Prevenir cierre cuando el VariantSelectorDialog está abierto o abriéndose
-          if (showVariantDialog || variantDialogOpeningRef.current) {
-            e.preventDefault();
-          }
-        }}
-        onEscapeKeyDown={(e) => {
-          // Prevenir cierre con ESC cuando el VariantSelectorDialog está abierto
-          if (showVariantDialog || variantDialogOpeningRef.current) {
-            e.preventDefault();
-          }
-        }}
-      >
-        <div className="flex flex-col sm:flex-row flex-1 min-h-0">
-          {/* Panel izquierdo - Productos */}
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <DialogHeader className="px-3 sm:px-6 py-3 border-b shrink-0 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <DialogTitle className="text-base sm:text-xl shrink-0">{title}</DialogTitle>
-                {subtitle && (
-                  <p className="text-sm text-gray-500 hidden sm:block">{subtitle}</p>
-                )}
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) handleClose(false); }}>
+      <div className="min-h-screen px-0 sm:px-4 py-0 sm:py-8 flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-[100vw] sm:max-w-[95vw] sm:w-[1400px] h-[100dvh] sm:h-[85vh] max-h-[100dvh] sm:max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col relative animate-in fade-in-0 zoom-in-95 duration-300 dark:bg-gray-800">
+          <div className="flex flex-col sm:flex-row flex-1 min-h-0">
+            {/* Panel izquierdo - Productos */}
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="px-3 sm:px-6 py-3 border-b shrink-0 space-y-3 relative">
+                <button className="absolute top-2 right-2 p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700 z-10" onClick={() => handleClose(false)}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-base sm:text-xl shrink-0 font-semibold text-gray-900 dark:text-gray-50">{title}</h2>
+                  {subtitle && (
+                    <p className="text-sm text-gray-500 hidden sm:block dark:text-gray-400">{subtitle}</p>
+                  )}
                 <div className="relative w-full sm:w-80">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -441,7 +439,7 @@ export function AddProductDialog({
                   orderBy={categoriesDisplay.orderBy}
                 />
               </div>
-            </DialogHeader>
+            </div>
 
             {/* Grid de productos */}
             <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4">
@@ -861,8 +859,9 @@ export function AddProductDialog({
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </div>
 
     {/* Selector de variantes: fuera del Dialog padre para evitar el conflicto de Radix con Dialogs anidados */}
     {selectedParentProduct && (
@@ -885,17 +884,28 @@ export function AddProductDialog({
     )}
 
     {/* Diálogo de detalle de receta vinculada */}
-    <Dialog open={!!recipeView || recipeViewLoading} onOpenChange={(open) => { if (!open) { setRecipeView(null); setRecipeViewLoading(false); } }}>
-      <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto dark:bg-gray-900 dark:border-gray-700">
-        <DialogHeader>
-          <DialogTitle className="dark:text-white flex items-center gap-2">
-            <ChefHat className="h-5 w-5 text-orange-600" />
-            Receta de producción
-          </DialogTitle>
-          <DialogDescription className="dark:text-gray-400">
-            {recipeView?.product?.name ?? recipeView?.name ?? ''}
-          </DialogDescription>
-        </DialogHeader>
+    {(!!recipeView || recipeViewLoading) && (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) { setRecipeView(null); setRecipeViewLoading(false); } }}>
+      <div className="min-h-screen px-1 sm:px-4 py-2 sm:py-8 flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90dvh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300 dark:bg-gray-900 dark:border-gray-700">
+          <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-900 dark:border-gray-700">
+            <div>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <ChefHat className="h-5 w-5 text-orange-600" />
+                Receta de producción
+              </h2>
+              <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">
+                {recipeView?.product?.name ?? recipeView?.name ?? ''}
+              </p>
+            </div>
+            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700" onClick={() => { setRecipeView(null); setRecipeViewLoading(false); }}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="overflow-y-auto max-h-[calc(90dvh-80px)] bg-white dark:bg-gray-900">
+            <div className="p-4 sm:p-6">
 
         {recipeViewLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -991,8 +1001,12 @@ export function AddProductDialog({
             </div>
           </div>
         ) : null}
-      </DialogContent>
-    </Dialog>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    )}
     </>
-  );
+  , document.body);
 }

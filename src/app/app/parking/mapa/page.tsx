@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useOrganization, getCurrentBranchIdWithFallback } from '@/lib/hooks/useOrganization';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useToast } from '@/components/ui/use-toast';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -31,7 +32,7 @@ const initialStats: MapStats = {
 export default function MapaPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
-  const branchId = getCurrentBranchIdWithFallback();
+  const { branchFilter } = useBranch();
 
   const [spaces, setSpaces] = useState<ParkingSpace[]>([]);
   const [zones, setZones] = useState<ParkingZone[]>([]);
@@ -45,14 +46,14 @@ export default function MapaPage() {
 
   // Cargar datos
   const loadData = useCallback(async () => {
-    if (!branchId) return;
+    if (!branchFilter) return;
 
     setIsLoading(true);
     try {
       const [spacesData, zonesData, statsData] = await Promise.all([
-        parkingMapService.getSpaces(branchId),
-        parkingMapService.getZones(branchId),
-        parkingMapService.getMapStats(branchId),
+        parkingMapService.getSpaces(branchFilter),
+        parkingMapService.getZones(branchFilter),
+        parkingMapService.getMapStats(branchFilter),
       ]);
 
       setSpaces(spacesData);
@@ -68,26 +69,26 @@ export default function MapaPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [branchId, toast]);
+  }, [branchFilter, toast]);
 
   useEffect(() => {
-    if (branchId && !orgLoading) {
+    if (branchFilter && !orgLoading) {
       loadData();
     }
-  }, [branchId, orgLoading, loadData]);
+  }, [branchFilter, orgLoading, loadData]);
 
   // Suscripción a cambios en tiempo real
   useEffect(() => {
-    if (!branchId) return;
+    if (!branchFilter) return;
 
     const unsubscribe = parkingMapService.subscribeToChanges(
-      branchId,
+      branchFilter,
       (updatedSpace) => {
         setSpaces((prev) =>
           prev.map((s) => (s.id === updatedSpace.id ? { ...s, ...updatedSpace } : s))
         );
         // Recargar stats cuando cambia un espacio
-        parkingMapService.getMapStats(branchId).then(setStats);
+        parkingMapService.getMapStats(branchFilter).then(setStats);
       },
       () => {
         // Recargar todo cuando cambia una sesión
@@ -98,10 +99,18 @@ export default function MapaPage() {
     return () => {
       unsubscribe();
     };
-  }, [branchId, loadData]);
+  }, [branchFilter, loadData]);
 
   // Handlers
   const handleSpaceClick = (space: ParkingSpace) => {
+    if (!branchFilter) {
+      toast({
+        title: 'Sucursal no seleccionada',
+        description: 'Seleccione una sucursal antes de ver el detalle de un espacio.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setSelectedSpace(space);
     setShowDetailDialog(true);
   };
@@ -199,13 +208,15 @@ export default function MapaPage() {
       )}
 
       {/* Detail Dialog */}
-      <SpaceDetailDialog
-        open={showDetailDialog}
-        onOpenChange={setShowDetailDialog}
-        space={selectedSpace}
-        branchId={branchId}
-        onSuccess={loadData}
-      />
+      {branchFilter && (
+        <SpaceDetailDialog
+          open={showDetailDialog}
+          onOpenChange={setShowDetailDialog}
+          space={selectedSpace}
+          branchId={branchFilter}
+          onSuccess={loadData}
+        />
+      )}
     </div>
   );
 }

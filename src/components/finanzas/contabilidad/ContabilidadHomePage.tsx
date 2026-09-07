@@ -13,6 +13,8 @@ import { ContabilidadService, ContabilidadResumen } from './ContabilidadService'
 import { formatNumber, formatCurrency } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 const MODULES = [
   {
@@ -95,6 +97,7 @@ const MODULES = [
 ];
 
 export function ContabilidadHomePage() {
+  const { branchFilter } = useBranch();
   const [resumen, setResumen] = useState<ContabilidadResumen | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [foliosResumen, setFoliosResumen] = useState({
@@ -107,13 +110,13 @@ export function ContabilidadHomePage() {
 
   useEffect(() => {
     loadResumen();
-  }, []);
+  }, [branchFilter]);
 
   const loadResumen = async () => {
     try {
       setIsLoading(true);
       const [data, foliosData] = await Promise.all([
-        ContabilidadService.obtenerResumen(),
+        ContabilidadService.obtenerResumen(branchFilter),
         loadFoliosResumen(),
       ]);
       setResumen(data);
@@ -222,6 +225,8 @@ export function ContabilidadHomePage() {
           </p>
         </div>
       </div>
+
+      <BranchBadge className="mb-3" />
 
       {/* Resumen */}
       {isLoading ? (

@@ -24,6 +24,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { useBranch } from '@/lib/context/BranchContext';
 
 import { CuentasPorPagarService } from './CuentasPorPagarService';
 import { FiltrosCuentasPorPagar, SupplierOption } from './types';
@@ -44,14 +45,15 @@ export function CuentasPorPagarFiltros({
   const [mostrarFiltrosAvanzados, setMostrarFiltrosAvanzados] = useState(false);
 
   const { toast } = useToast();
+  const { branchFilter } = useBranch();
 
   useEffect(() => {
     cargarProveedores();
-  }, []);
+  }, [branchFilter]);
 
   const cargarProveedores = async () => {
     try {
-      const proveedoresData = await CuentasPorPagarService.obtenerProveedoresConSaldo();
+      const proveedoresData = await CuentasPorPagarService.obtenerProveedoresConSaldo(branchFilter);
       
       const proveedoresOptions: SupplierOption[] = proveedoresData.map(proveedor => ({
         value: proveedor.id.toString(),

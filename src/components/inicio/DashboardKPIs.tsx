@@ -195,6 +195,7 @@ const periodoLabel: Record<PeriodoDashboard, string> = {
   '30d': '30 días',
   '90d': '90 días',
   año: 'Año',
+  personalizado: 'Personalizado',
 };
 
 function generateSparklineData(value: number, deltaPct: number | null, points = 7): number[] {

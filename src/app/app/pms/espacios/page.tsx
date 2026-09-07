@@ -104,7 +104,7 @@ export default function EspaciosPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setCurrentUserId(user.id);
       const [spacesData, typesData, categoriesData, zonesData, orgSvcs] = await Promise.all([
-        SpacesService.getSpaces(branchFilter ? { branchId: branchFilter } : {}),
+        SpacesService.getSpaces({ organizationId: organization.id, branchId: branchFilter ?? undefined }),
         SpacesService.getSpaceTypes(organization.id),
         SpacesService.getSpaceCategories(),
         branchFilter ? SpacesService.getFloorZones(branchFilter) : Promise.resolve([]),

@@ -28,6 +28,7 @@ import type { CashSession } from '@/components/pos/cajas/types';
 import { toast } from 'sonner';
 import { StatsSkeleton, CardListSkeleton, PageHeaderSkeleton, TableSkeleton } from '@/components/common/PageSkeletons';
 import { supabase } from '@/lib/supabase/config';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 export default function CajasPage() {
   const { showExpected } = useBlindCloseMode();
@@ -292,6 +293,8 @@ export default function CajasPage() {
           </Button>
         </div>
       </div>
+
+      <BranchBadge className="mb-1" />
 
       {/* Error */}
       {error && (

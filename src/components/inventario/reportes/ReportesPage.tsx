@@ -52,9 +52,12 @@ import { ReportesPagination, usePagination } from './ReportesPagination';
 import { StockReport, KardexEntry, RotationReport, SupplierPurchaseReport, ReportFilter } from './types';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useBranch, ALL_BRANCHES } from '@/lib/context/BranchContext';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 export function ReportesPage() {
   const { toast } = useToast();
+  const { branchFilter, setSelectedBranch } = useBranch();
   const [activeTab, setActiveTab] = useState('stock');
   const [loading, setLoading] = useState(false);
   
@@ -74,6 +77,11 @@ export function ReportesPage() {
     dateTo: new Date().toISOString().split('T')[0],
   });
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+
+  // Sincronizar el filtro de sucursal local con el contexto global de sucursal
+  useEffect(() => {
+    setFilters(prev => ({ ...prev, branchId: branchFilter ?? undefined }));
+  }, [branchFilter]);
 
   const loadFiltersData = useCallback(async () => {
     try {
@@ -205,6 +213,8 @@ export function ReportesPage() {
         </div>
       </div>
 
+      <BranchBadge />
+
       {/* Filtros generales */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-4">
@@ -236,7 +246,7 @@ export function ReportesPage() {
               <Label className="dark:text-gray-300">Sucursal</Label>
               <Select
                 value={filters.branchId?.toString() || 'all'}
-                onValueChange={(v) => setFilters(prev => ({ ...prev, branchId: v === 'all' ? undefined : parseInt(v) }))}
+                onValueChange={(v) => setSelectedBranch(v === 'all' ? ALL_BRANCHES : parseInt(v))}
               >
                 <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
                   <SelectValue placeholder="Todas" />

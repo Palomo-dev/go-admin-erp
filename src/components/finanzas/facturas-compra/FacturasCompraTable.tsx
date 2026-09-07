@@ -28,6 +28,7 @@ import { formatCurrency, formatDate, cn, parseLocalDate } from '@/utils/Utils';
 import { Pagination } from '@/components/ui/pagination';
 import { RegistrarPagoModal } from './RegistrarPagoModal';
 import { CopyableId } from '@/components/common/CopyableId';
+import { useBranch } from '@/lib/context/BranchContext';
 
 export type { FiltrosFacturasCompra };
 
@@ -38,6 +39,7 @@ interface FacturasCompraTableProps {
 export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { branchFilter } = useBranch();
   const [facturas, setFacturas] = useState<InvoicePurchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,7 +57,7 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
   // Cargar facturas
   useEffect(() => {
     cargarFacturas();
-  }, [filtros, currentPage]);
+  }, [filtros, currentPage, branchFilter]);
 
   const cargarFacturas = async () => {
     try {
@@ -63,7 +65,8 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
       const response = await FacturasCompraService.obtenerFacturas(
         filtros,
         currentPage,
-        pageSize
+        pageSize,
+        branchFilter
       );
       
       setFacturas(response.facturas);

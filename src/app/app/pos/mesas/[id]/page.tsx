@@ -921,6 +921,9 @@ export default function MesaDetallePage() {
     if (!session || !session.sale_id) {
       throw new Error('No hay sesión o venta activa');
     }
+    if (!branch_id) {
+      throw new Error('Se requiere una sucursal para procesar');
+    }
 
     // Solo incluir items NO pagados
     const unpaidItems = (session.sale_items || []).filter(item => !(item as any).paid_at);
@@ -980,7 +983,7 @@ export default function MesaDetallePage() {
     return {
       id: session.sale_id,
       organization_id: session.organization_id,
-      branch_id: branch_id || 0,
+      branch_id: branch_id,
       customer_id: selectedCustomer?.id || undefined,
       status: 'active',
       items,
@@ -1070,6 +1073,9 @@ export default function MesaDetallePage() {
     if (!session || !session.sale_id) {
       throw new Error('No hay sesión o venta activa');
     }
+    if (!branch_id) {
+      throw new Error('Se requiere una sucursal para procesar');
+    }
 
     // Si es división equitativa (sin items asignados), crear un item virtual
     const items = split.items.length > 0 
@@ -1118,7 +1124,7 @@ export default function MesaDetallePage() {
     return {
       id: session.sale_id,
       organization_id: session.organization_id,
-      branch_id: branch_id || 0,
+      branch_id: branch_id,
       customer_id: selectedCustomer?.id,
       customer: selectedCustomer,
       items,

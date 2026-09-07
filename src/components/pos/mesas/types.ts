@@ -54,6 +54,7 @@ export interface MesaFormData {
   capacity: number;
   position_x?: number;
   position_y?: number;
+  branch_id?: number | null;
 }
 
 export interface CombinarMesasData {

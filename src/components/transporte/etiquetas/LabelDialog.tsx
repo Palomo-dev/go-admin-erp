@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Tag, Package } from 'lucide-react';
 import type { LabelWithDetails, LabelCreateInput } from '@/lib/services/labelsService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface Shipment {
   id: string;
@@ -82,6 +84,9 @@ export function LabelDialog({
     barcode_type: 'code128',
   });
 
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
+
   useEffect(() => {
     if (open) {
       if (label) {
@@ -110,7 +115,7 @@ export function LabelDialog({
 
   const handleSubmit = async () => {
     if (!formData.shipment_id) return;
-    await onSave(formData);
+    await onSave({ ...formData, branch_id: branchId || undefined } as LabelCreateInput);
   };
 
   return (
@@ -124,6 +129,13 @@ export function LabelDialog({
         </DialogHeader>
 
         <div className="space-y-3 sm:space-y-4">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           {/* Envío */}
           <div className="space-y-2">
             <Label htmlFor="shipment" className="flex items-center gap-2">

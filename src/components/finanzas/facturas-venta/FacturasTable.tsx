@@ -11,8 +11,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toastError, toastInfo } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, getBranchFilter } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
+import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 import DetalleFactura from './id/DetalleFactura';
 import { PagosFactura } from './PagosFactura';
@@ -102,6 +103,7 @@ const getStatusText = (status: string) => {
 
 export function FacturasTable({ filtros }: FacturasTableProps = {}) {
   const router = useRouter();
+  const { branchFilter } = useBranch();
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -271,7 +273,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
 
         // Ejecutar queries en paralelo para optimizar rendimiento
         const [facturaResult, customersResult, paymentMethodsResult, salesResult] = await Promise.all([
-          // Query 1: Obtener todas las facturas
+          // Query 1: Obtener todas las facturas (filtradas por sucursal si aplica)
           supabase
             .from('invoice_sales')
             .select(`
@@ -294,6 +296,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
               payment_terms
             `)
             .eq('organization_id', organizationId)
+            .eq(branchFilter !== null ? 'branch_id' : 'organization_id', branchFilter !== null ? branchFilter : organizationId)
             .order('issue_date', { ascending: false }),
           
           // Query 2: Obtener todos los clientes de la organización
@@ -401,7 +404,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
     };
 
     cargarFacturas();
-  }, []);
+  }, [branchFilter]);
 
   // Renderizado condicional para el estado de carga
   if (cargando) {

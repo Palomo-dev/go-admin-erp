@@ -55,6 +55,7 @@ import { toast } from '@/components/ui/use-toast';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import { notasCreditoService, NotaCredito } from '@/lib/services/notasCreditoService';
 import { CopyableId } from '@/components/common/CopyableId';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
@@ -219,6 +220,7 @@ export function NotasCreditoPage() {
           </Button>
         </div>
       </div>
+      <BranchBadge className="mb-3" />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

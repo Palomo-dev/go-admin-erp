@@ -8,17 +8,20 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { TicketSearch } from '@/components/pos/devoluciones/TicketSearch';
 import { ReturnForm } from '@/components/pos/devoluciones/ReturnForm';
 import { ReturnsHistory } from '@/components/pos/devoluciones/ReturnsHistory';
 import { SaleForReturn } from '@/components/pos/devoluciones/types';
 import { toast } from 'sonner';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 type ViewState = 'search' | 'process' | 'history';
 
 export default function DevolucionesPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { branchFilter } = useBranch();
   const [activeView, setActiveView] = useState<ViewState>('search');
   const [selectedSale, setSelectedSale] = useState<SaleForReturn | null>(null);
   const [refreshHistoryTrigger, setRefreshHistoryTrigger] = useState(0);
@@ -59,6 +62,8 @@ export default function DevolucionesPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
+        <BranchBadge className="mb-3" />
+
         {/* Header */}
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader className="pb-4">
@@ -148,7 +153,7 @@ export default function DevolucionesPage() {
                         </Badge>
                       )}
                     </div>
-                    <TicketSearch onSaleSelect={handleSaleSelect} />
+                    <TicketSearch onSaleSelect={handleSaleSelect} branchFilter={branchFilter} />
                   </div>
                 </TabsContent>
 
@@ -195,7 +200,7 @@ export default function DevolucionesPage() {
                         Consulta todas las devoluciones procesadas
                       </p>
                     </div>
-                    <ReturnsHistory refreshTrigger={refreshHistoryTrigger} />
+                    <ReturnsHistory refreshTrigger={refreshHistoryTrigger} branchFilter={branchFilter} />
                   </div>
                 </TabsContent>
               </div>

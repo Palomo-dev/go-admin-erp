@@ -25,6 +25,7 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { saldosAFavorService, SaldoAFavor } from './saldosAFavorService';
 import { NuevoSaldoFavorDialog } from './NuevoSaldoFavorDialog';
 import { AplicarSaldoFavorDialog } from './AplicarSaldoFavorDialog';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 const statusMap: Record<string, { label: string; className: string }> = {
   active: { label: 'Activo', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' },
@@ -95,6 +96,8 @@ export function SaldosAFavorPage() {
           Nuevo saldo
         </Button>
       </div>
+
+      <BranchBadge className="mb-3" />
 
       <Card>
         <CardHeader className="pb-2">

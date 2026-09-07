@@ -20,6 +20,8 @@ import RatesService from '@/lib/services/ratesService';
 import SpaceTypesService from '@/lib/services/spaceTypesService';
 import SpaceCategoriesService from '@/lib/services/spaceCategoriesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 import { supabase } from '@/lib/supabase/config';
 
 const STEPS = [
@@ -51,6 +53,8 @@ export function NuevaReservaWizard({
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -302,6 +306,7 @@ export function NuevaReservaWizard({
 
       await ReservationsService.createReservation({
         organization_id: organization.id,
+        branch_id: branchId ?? undefined,
         customer_id: selectedCustomer.id,
         checkin,
         checkout,
@@ -430,6 +435,14 @@ export function NuevaReservaWizard({
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <Card className="p-6 max-w-4xl mx-auto">
+          {/* Selector de sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+            className="mb-6"
+          />
+
           {currentStep === 1 && (
             <StepCustomer
               selectedCustomer={selectedCustomer}

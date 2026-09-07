@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { createPortal } from 'react-dom';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -516,6 +516,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
   // Generar QR de pago según el método seleccionado
   const handleQrPayment = async (methodCode: string) => {
+    if (!cart.branch_id) {
+      toast.error('Se requiere una sucursal para procesar');
+      return;
+    }
     try {
       const reference = `POS-${Date.now()}-${cart.organization_id}`;
       const amount = remaining > 0 ? remaining : cartTotal;
@@ -574,7 +578,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           description: `POS - Venta ${cart.id || ''}`,
           source: 'pos',
           sourceId: cart.id?.toString() || '',
-          branchId: cart.branch_id || 0,
+          branchId: cart.branch_id,
           organizationId: cart.organization_id,
           ...extraBody,
         }),
@@ -788,6 +792,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const handleCheckout = async () => {
     if (!canComplete) return;
 
+    if (!cart.branch_id) {
+      toast.error('Se requiere una sucursal para procesar');
+      return;
+    }
+
     if (hasSerialItems && !serialSelectionsComplete) {
       setShowSerialSelector(true);
       return;
@@ -810,8 +819,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       }
 
       // Validar stock de ingredientes para productos compuestos
-      const branchId = cart.branch_id || 0;
-      if (branchId > 0 && cart.items.length > 0) {
+      const branchId = cart.branch_id;
+      if (branchId && cart.items.length > 0) {
         const stockCheck = await validateCompositeStock(
           cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity })),
           branchId
@@ -980,7 +989,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           await deliveryIntegrationService.createShipmentFromPOSSale({
             saleId: sale.id,
             organizationId: cart.organization_id,
-            branchId: cart.branch_id || 0,
+            branchId: cart.branch_id,
             customerId: cart.customer_id,
             customerName: customerData?.full_name,
             customerPhone: customerData?.phone,
@@ -1368,15 +1377,17 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
   const quickAmountButtons = generateQuickAmounts(cartTotal);
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-3xl lg:max-w-5xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200 p-5 sm:p-8">
+  if (!open || typeof document === 'undefined') return null;
+  return createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+      <div className="min-h-screen px-1 sm:px-4 py-2 sm:py-8 flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[97vh] sm:max-h-[90vh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300 dark:bg-gray-800">
         {showReceipt && completedSale ? (
           /* Vista de recibo - RESPONSIVE */
-          <div className="space-y-3 sm:space-y-4 text-center">
-            <DialogHeader className="sr-only">
-              <DialogTitle>Recibo de venta</DialogTitle>
-            </DialogHeader>
+          <div className="space-y-3 sm:space-y-4 text-center overflow-y-auto max-h-[90vh]">
+            <div className="sr-only">
+              <h2>Recibo de venta</h2>
+            </div>
             <div className="p-4 sm:p-6">
               <div className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 sm:mb-4">
                 <svg viewBox="0 0 52 52" className="h-full w-full text-green-600 dark:text-green-400" fill="none" stroke="currentColor">
@@ -1500,20 +1511,30 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         ) : (
           /* Vista de checkout - RESPONSIVE */
           <>
-            <DialogHeader className="pb-4 sm:pb-6">
-              <DialogTitle className="flex items-center gap-3">
+            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
+              <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 shrink-0">
                   <CreditCard className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <span className="text-lg sm:text-xl font-bold dark:text-white text-gray-900">Procesar Pago</span>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Procesar Pago</h2>
                   <p className="text-sm font-normal text-gray-500 dark:text-gray-400 mt-0.5">
                     {cart.items.length} productos · Total: {formatCurrency(cart.total)}
                   </p>
                 </div>
-              </DialogTitle>
-            </DialogHeader>
+              </div>
+              <button
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700"
+                onClick={() => onOpenChange(false)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
+            <div className="overflow-y-auto max-h-[calc(90vh-80px)] bg-gray-50 dark:bg-gray-900">
+             <div className="p-5 sm:p-8">
             <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-4 lg:space-y-0">
               {/* COLUMNA IZQUIERDA: Resumen + Totales */}
               <div className="space-y-3">
@@ -2178,7 +2199,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
               </div>
             </div>
 
-            <DialogFooter className="flex-col sm:flex-row gap-3 sm:gap-4 pt-5 border-t dark:border-gray-700 border-gray-200">
+             </div>
+            </div>
+            <div className="sticky bottom-0 z-10 bg-white border-t border-gray-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-3 sm:gap-4 dark:bg-gray-800 dark:border-gray-700">
               <Button
                 variant="outline"
                 onClick={() => onOpenChange(false)}
@@ -2202,7 +2225,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                 <CheckCircle className="h-5 w-5 mr-2" />
                 {isProcessing ? 'Procesando...' : canComplete ? `Completar Venta · ${formatCurrency(cartTotal)}` : 'Falta dinero'}
               </Button>
-            </DialogFooter>
+            </div>
           </>
         )}
       <QrPaymentDialog
@@ -2281,7 +2304,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }

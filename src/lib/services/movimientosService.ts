@@ -69,6 +69,7 @@ export interface MovementFormData {
   notes?: string;
   source: 'cash' | 'bank';
   bank_account_id?: number;
+  branch_id?: number | null;
 }
 
 export interface CashSession {
@@ -278,6 +279,7 @@ class MovimientosService {
       .insert({
         organization_id: organizationId,
         cash_session_id: session.id,
+        branch_id: data.branch_id ?? undefined,
         type: mappedType,
         concept: data.concept,
         amount: data.amount,
@@ -317,6 +319,7 @@ class MovimientosService {
       .from('bank_transactions')
       .insert({
         organization_id: organizationId,
+        branch_id: data.branch_id ?? undefined,
         bank_account_id: data.bank_account_id,
         trans_date: new Date().toISOString(),
         description: data.concept,

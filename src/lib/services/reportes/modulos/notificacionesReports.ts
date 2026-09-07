@@ -22,7 +22,7 @@ export const notificacionesReports: ReportDefinition[] = [
     descripcion: 'Volumen de notificaciones por canal y estado',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_notificaciones_enviadas', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
@@ -53,7 +53,7 @@ export const notificacionesReports: ReportDefinition[] = [
     descripcion: 'Apertura y CTR por canal y tipo',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('notifications')
         .select('id, channel, read_at, created_at')
@@ -102,7 +102,7 @@ export const notificacionesReports: ReportDefinition[] = [
     descripcion: 'Notificaciones agrupadas por módulo origen',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('notifications')
         .select('id, payload, created_at')

@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase/config';
+import { useBranch } from '@/lib/context/BranchContext';
 import {
   CalendarFilters as CalendarFiltersType,
   EventSourceType,
@@ -60,6 +61,9 @@ export function CalendarFilters({
 }: CalendarFiltersProps) {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
+
+  // Sincronizar con el contexto global de sucursal
+  const { branchFilter, setSelectedBranch, branches: contextBranches } = useBranch();
 
   useEffect(() => {
     if (!organizationId) return;
@@ -101,6 +105,7 @@ export function CalendarFilters({
   };
 
   const clearFilters = () => {
+    setSelectedBranch('all');
     onFiltersChange({
       branchId: null,
       assignedTo: null,
@@ -114,7 +119,7 @@ export function CalendarFilters({
       {/* Filtro por sucursal */}
       <Select
         value={filters.branchId?.toString() || 'all'}
-        onValueChange={(v) => onFiltersChange({ branchId: v === 'all' ? null : parseInt(v) })}
+        onValueChange={(v) => setSelectedBranch(v === 'all' ? 'all' : parseInt(v))}
       >
         <SelectTrigger className="w-full sm:w-[180px] h-9 bg-white dark:bg-gray-900">
           <Building2 className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
@@ -122,8 +127,8 @@ export function CalendarFilters({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Todas las sucursales</SelectItem>
-          {branches.map((branch) => (
-            <SelectItem key={branch.id} value={branch.id.toString()}>
+          {(contextBranches.length > 0 ? contextBranches : branches).map((branch) => (
+            <SelectItem key={branch.id ?? 0} value={(branch.id ?? 0).toString()}>
               {branch.name}
             </SelectItem>
           ))}

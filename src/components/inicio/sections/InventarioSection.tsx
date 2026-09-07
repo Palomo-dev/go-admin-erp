@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Package } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency } from '@/utils/Utils';
 import { toastError } from '@/components/ui/use-toast';
 import ModuloSection from '../ModuloSection';
@@ -74,6 +75,7 @@ function buildExportData(
 }
 
 export default function InventarioSection() {
+  const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<InventoryKPIs | null>(null);
   const [alerts, setAlerts] = useState<StockAlert[]>([]);
@@ -94,7 +96,7 @@ export default function InventarioSection() {
       setIsLoading(true);
       try {
         const [dashboardData, orgData] = await Promise.all([
-          inventoryDashboardService.getDashboardData(organizationId),
+          inventoryDashboardService.getDashboardData(organizationId, branchFilter),
           supabase
             .from('organizations')
             .select('name, legal_name, tax_id, city, address, phone, email, logo_url')
@@ -135,7 +137,7 @@ export default function InventarioSection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [branchFilter]);
 
   const exportData = useMemo(
     () => buildExportData(kpis, branchSummaries),

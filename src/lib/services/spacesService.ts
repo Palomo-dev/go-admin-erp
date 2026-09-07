@@ -62,12 +62,19 @@ class SpacesService {
   /**
    * Obtener todos los espacios con sus tipos y categorías
    */
-  async getSpaces(filters?: {
+  async getSpaces(filters: {
+    organizationId: number;
     branchId?: number;
     status?: SpaceStatus | 'all';
     floorZone?: string;
-  }) {
+  }): Promise<Space[]> {
+    if (!filters?.organizationId) {
+      throw new Error('organizationId es requerido para getSpaces');
+    }
+
     try {
+      // Filtro de organización incondicional encadenado en la declaración
+      // (evita traer spaces de otras orgs)
       let query = supabase
         .from('spaces')
         .select(`
@@ -77,17 +84,18 @@ class SpacesService {
             category:space_categories!space_types_category_code_fkey (*)
           )
         `)
+        .eq('organization_id', filters.organizationId)
         .order('label', { ascending: true });
 
-      if (filters?.branchId) {
+      if (filters.branchId) {
         query = query.eq('branch_id', filters.branchId);
       }
 
-      if (filters?.status && filters.status !== 'all') {
+      if (filters.status && filters.status !== 'all') {
         query = query.eq('status', filters.status);
       }
 
-      if (filters?.floorZone) {
+      if (filters.floorZone) {
         query = query.eq('floor_zone', filters.floorZone);
       }
 

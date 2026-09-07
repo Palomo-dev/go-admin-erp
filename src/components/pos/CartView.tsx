@@ -397,7 +397,6 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         doc_type: data.customer.identification_type,
         doc_number: data.customer.identification_number,
         address: data.customer.address,
-        city: data.customer.city,
         country: data.customer.country,
         avatar_url: data.customer.avatar_url,
         roles: [],

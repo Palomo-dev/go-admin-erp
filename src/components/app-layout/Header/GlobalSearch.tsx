@@ -36,7 +36,7 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debouncedQuery = useDebounce(query, 200);
+  const debouncedQuery = useDebounce(query, query.trim().length <= 1 ? 400 : 200);
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef<AbortController | null>(null);
   
@@ -51,8 +51,8 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
 
   // Efecto para realizar la búsqueda cuando cambia el query debounceado
   useEffect(() => {
-    // No realizar búsqueda si el query está vacío o tiene menos de 2 caracteres
-    if (!debouncedQuery || debouncedQuery.trim().length < 2) {
+    // No realizar búsqueda si el query está vacío
+    if (!debouncedQuery || debouncedQuery.trim().length < 1) {
       const paginasConTipoCorrecto = PAGINAS_INICIALES.map(page => ({
         ...page,
         type: page.type as SearchResultType
@@ -268,7 +268,7 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
     // quedaría colgado para siempre.
     const valueChanged = value !== query;
     setQuery(value);
-    if (valueChanged && value.trim().length >= 2) {
+    if (valueChanged && value.trim().length >= 1) {
       setIsLoading(true);
     } else if (value.trim() === '') {
       const paginasConTipoCorrecto = PAGINAS_INICIALES.map(page => ({
@@ -399,13 +399,6 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
           <SearchResultGroup 
             heading="Páginas" 
             resultType="page" 
-            results={results} 
-            onSelect={handleSelect} 
-          />
-
-          <SearchResultGroup 
-            heading="Organizaciones" 
-            resultType="organization" 
             results={results} 
             onSelect={handleSelect} 
           />

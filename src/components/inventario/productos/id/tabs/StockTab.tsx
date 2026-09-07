@@ -6,6 +6,7 @@ import {
 
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { supabase } from '@/lib/supabase/config';
 import {
   Plus,
@@ -56,14 +57,10 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
 
   const router = useRouter();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   
   const [loading, setLoading] = useState<boolean>(true);
   const [stockLevels, setStockLevels] = useState<StockLevel[]>([]);
-  const [totalStock, setTotalStock] = useState({
-    total: 0,
-    reserved: 0,
-    available: 0
-  });
   
   useEffect(() => {
     const fetchStockLevels = async () => {
@@ -130,19 +127,6 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
         
         setStockLevels(stockData);
         
-        // Calcular totales
-        const totals = stockData.reduce(
-          (acc, curr) => {
-            return {
-              total: acc.total + curr.qty_on_hand,
-              reserved: acc.reserved + curr.qty_reserved,
-              available: acc.available + (curr.qty_on_hand - curr.qty_reserved)
-            };
-          },
-          { total: 0, reserved: 0, available: 0 }
-        );
-        
-        setTotalStock(totals);
       } catch (error) {
         console.error('Error al cargar datos de stock:', error);
         toast({
@@ -156,8 +140,24 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
     };
     
     fetchStockLevels();
-  }, [organization?.id, producto.id]);
+  }, [organization?.id, producto.id, branchFilter]);
   
+  // Filtrar stockLevels según la sucursal seleccionada en el contexto global
+  // branchFilter null = "Todas las sucursales" (mostrar todas)
+  // branchFilter number = sucursal concreta (mostrar solo esa)
+  const visibleStockLevels = branchFilter !== null
+    ? stockLevels.filter(s => s.branch_id === branchFilter)
+    : stockLevels;
+
+  const visibleTotals = visibleStockLevels.reduce(
+    (acc, curr) => ({
+      total: acc.total + curr.qty_on_hand,
+      reserved: acc.reserved + curr.qty_reserved,
+      available: acc.available + curr.qty_available,
+    }),
+    { total: 0, reserved: 0, available: 0 }
+  );
+
   // Redireccionar a página de ajuste de stock
   const handleAdjustStock = (type: 'entrada' | 'salida', branchId?: number) => {
     const params = new URLSearchParams();
@@ -198,11 +198,11 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
               <CardHeader className="p-4 pb-2">
                 <CardTitle className="text-lg dark:text-white">Stock Total</CardTitle>
                 <CardDescription className="dark:text-gray-400">
-                  En todas las sucursales
+                  {branchFilter !== null ? 'En la sucursal seleccionada' : 'En todas las sucursales'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 pt-0">
-                <p className="text-3xl font-semibold dark:text-white">{totalStock.total}</p>
+                <p className="text-3xl font-semibold dark:text-white">{visibleTotals.total}</p>
               </CardContent>
             </Card>
             
@@ -214,7 +214,7 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 pt-0">
-                <p className="text-3xl font-semibold dark:text-white">{totalStock.reserved}</p>
+                <p className="text-3xl font-semibold dark:text-white">{visibleTotals.reserved}</p>
               </CardContent>
             </Card>
             
@@ -226,7 +226,7 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 pt-0">
-                <p className="text-3xl font-semibold dark:text-white">{totalStock.available}</p>
+                <p className="text-3xl font-semibold dark:text-white">{visibleTotals.available}</p>
               </CardContent>
             </Card>
           </div>
@@ -267,14 +267,14 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
                     <TableCell colSpan={5} className="h-24 text-center">
                       <Skeleton className="h-8 w-8 mx-auto" /></TableCell>
                   </TableRow>
-                ) : stockLevels.length === 0 ? (
+                ) : visibleStockLevels.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center text-gray-500 dark:text-gray-400">
                       No hay sucursales configuradas para mostrar stock
                     </TableCell>
                   </TableRow>
                 ) : (
-                  stockLevels.map((stock) => (
+                  visibleStockLevels.map((stock) => (
                     <TableRow key={stock.branch_id}>
                       <TableCell className="dark:text-gray-200">{stock.branch_name}</TableCell>
                       <TableCell className="text-right dark:text-gray-200">{stock.qty_on_hand}</TableCell>

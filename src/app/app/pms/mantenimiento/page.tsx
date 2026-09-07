@@ -15,11 +15,13 @@ import MaintenanceService, {
 } from '@/lib/services/maintenanceService';
 import SpacesService, { type Space } from '@/lib/services/spacesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export default function MaintenancePage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { branchFilter, selectedBranchId } = useBranch();
 
   // Estado de datos
   const [orders, setOrders] = useState<MaintenanceOrder[]>([]);
@@ -49,18 +51,18 @@ export default function MaintenancePage() {
     if (organization?.id) {
       loadData();
     }
-  }, [organization?.id]);
+  }, [organization?.id, branchFilter]);
 
   const loadData = async () => {
     try {
       setIsLoading(true);
 
-      const branchId = organization?.branch_id;
+      const branchId = branchFilter ?? undefined;
 
       const [ordersData, statsData, spacesData, usersData] = await Promise.all([
         MaintenanceService.getOrders({ branch_id: branchId }),
         MaintenanceService.getStats(branchId),
-        SpacesService.getSpaces({ branchId: organization!.branch_id }),
+        SpacesService.getSpaces({ organizationId: organization!.id, branchId: branchId }),
         MaintenanceService.getAvailableUsers(organization!.id),
       ]);
 
@@ -110,11 +112,19 @@ export default function MaintenancePage() {
 
   // Handlers
   const handleNewOrder = () => {
+    if (!selectedBranchId) {
+      toast({ title: 'Error', description: 'Se requiere una sucursal para crear una orden', variant: 'destructive' });
+      return;
+    }
     setEditingOrder(null);
     setShowOrderDialog(true);
   };
 
   const handleEditOrder = (order: MaintenanceOrder) => {
+    if (!selectedBranchId) {
+      toast({ title: 'Error', description: 'Se requiere una sucursal para editar una orden', variant: 'destructive' });
+      return;
+    }
     setEditingOrder(order);
     setShowOrderDialog(true);
   };
@@ -254,7 +264,7 @@ export default function MaintenancePage() {
         order={editingOrder}
         spaces={spaces}
         users={users}
-        branchId={organization?.branch_id || 0}
+        branchId={selectedBranchId ?? undefined}
         onSave={handleSaveOrder}
       />
     </div>

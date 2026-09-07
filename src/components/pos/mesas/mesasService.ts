@@ -182,10 +182,11 @@ export class MesasService {
    */
   static async crearMesa(mesaData: MesaFormData): Promise<RestaurantTable> {
     const organizationId = getOrganizationId();
-    const branchId = getCurrentBranchId();
+    // Usar branch_id del formulario si viene; si no, fallback al contexto
+    const branchId = mesaData.branch_id ?? getCurrentBranchId();
 
     if (!branchId) {
-      throw new Error('No se pudo obtener el branch_id');
+      throw new Error('Debes seleccionar una sucursal para crear la mesa');
     }
 
     try {

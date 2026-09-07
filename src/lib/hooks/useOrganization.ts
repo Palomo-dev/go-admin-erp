@@ -140,7 +140,9 @@ export function cambiarOrganizacionActiva(
  */
 export function obtenerOrganizacionActiva(): Organizacion {
   if (typeof window === 'undefined') {
-    return { id: 0 }; // SSR — sin acceso a storage
+    // SSR: sin acceso a storage. Retornar id:0 es intencional para no romper SSR.
+    // Los consumidores DEBEN validar que id > 0 antes de usar el resultado.
+    return { id: 0 };
   }
 
   try {
@@ -190,17 +192,21 @@ export function obtenerOrganizacionActiva(): Organizacion {
       }
     }
     
-    // Sin organización guardada — devolver id:0 para que los consumidores lo manejen
+    // Sin organización guardada — devolver id:0 para que los consumidores lo manejen.
+    // NOTA: id:0 es un valor sentinel; los consumidores deben validar id > 0.
     return { id: 0 };
   } catch (error) {
     console.error('Error al recuperar organización:', error);
+    // Error: devolver id:0 como sentinel. Los consumidores deben validar id > 0.
     return { id: 0 };
   }
 }
 
 /**
  * Para uso en componentes: obtiene la organización y proporciona el organization_id
- * Se recomienda usar este método siempre para obtener el ID de organización
+ * Se recomienda usar este método siempre para obtener el ID de organización.
+ * @returns organization_id o 0 si no hay organización activa.
+ *          Los callers DEBEN validar que el resultado sea > 0 antes de usarlo.
  */
 export function getOrganizationId(): number {
   const organizacion = obtenerOrganizacionActiva();
@@ -369,8 +375,10 @@ export async function getUserOrganization(userId: string): Promise<GetOrganizati
           // Asignamos las sucursales
           branches: branches
         },
-        // Usamos la primera sucursal como predeterminada, si existe
-        branch_id: branches && branches.length > 0 ? branches[0].id : null
+        // Preferir la sucursal principal (is_main === true); si no existe, usar la primera.
+        branch_id: branches && branches.length > 0
+          ? (branches.find((b) => b.is_main === true)?.id ?? branches[0].id)
+          : null
       }
     ];
     
@@ -494,15 +502,19 @@ export function getBranchFilter(): number | null {
 }
 
 // Función auxiliar para obtener branch_id con fallback (solo usar cuando se necesite realmente)
-export function getCurrentBranchIdWithFallback(): number {
+// @deprecated Preferir useBranch().selectedBranchId en componentes React.
+// @returns branch_id seleccionado o null si no hay sucursal seleccionada.
+//          Los callers DEBEN validar que el resultado no sea null antes de usarlo.
+export function getCurrentBranchIdWithFallback(): number | null {
   const branchId = getCurrentBranchId();
   if (branchId !== null) {
     return branchId;
   }
-  
-  // Solo usar fallback cuando sea absolutamente necesario
-  console.warn('🏦 Usando branch_id fallback (ID: 999) - considerar si es necesario');
-  return 2; // Sede Principal como último recurso
+
+  // No hay sucursal seleccionada — retornar null en vez de un número mágico.
+  // Los callers deben validar y manejar el caso null explícitamente.
+  console.warn('🏦 getCurrentBranchIdWithFallback: no hay sucursal seleccionada, retornando null. Considerar usar useBranch().selectedBranchId');
+  return null;
 }
 
 // Función para obtener el usuario actual desde Supabase Auth

@@ -99,15 +99,20 @@ export class BancosService {
 
   // ==================== CUENTAS BANCARIAS ====================
 
-  static async obtenerCuentasBancarias(): Promise<BankAccount[]> {
+  static async obtenerCuentasBancarias(branchId?: number | null): Promise<BankAccount[]> {
     const organizationId = this.getOrganizationId();
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('bank_accounts')
         .select('*')
-        .eq('organization_id', organizationId)
-        .order('name');
+        .eq('organization_id', organizationId);
+
+      if (branchId != null) {
+        query = query.eq('branch_id', branchId);
+      }
+
+      const { data, error } = await query.order('name');
 
       if (error) throw error;
 
@@ -545,26 +550,60 @@ export class BancosService {
 
   // ==================== ESTADÍSTICAS ====================
 
-  static async obtenerEstadisticas(): Promise<BankAccountStats> {
+  static async obtenerEstadisticas(branchId?: number | null): Promise<BankAccountStats> {
     const organizationId = this.getOrganizationId();
 
     try {
-      const { data: accounts, error } = await supabase
+      let accountsQuery = supabase
         .from('bank_accounts')
         .select('id, balance, is_active')
         .eq('organization_id', organizationId);
+
+      if (branchId != null) {
+        accountsQuery = accountsQuery.eq('branch_id', branchId);
+      }
+
+      const { data: accounts, error } = await accountsQuery;
 
       if (error) throw error;
 
       const activeAccounts = (accounts || []).filter(a => a.is_active);
       const totalBalance = activeAccounts.reduce((sum, a) => sum + parseFloat(a.balance || 0), 0);
 
-      // Contar conciliaciones pendientes
-      const { count: pendingRec } = await supabase
-        .from('bank_reconciliations')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .in('status', ['draft', 'in_progress']);
+      // Contar conciliaciones pendientes.
+      // Cuando se filtra por sucursal, limitar el conteo a las
+      // reconciliaciones de las cuentas bancarias de esa sucursal (join vía
+      // bank_account_id) para no inflar el número con conciliaciones de
+      // otras sucursales.
+      // Si branchId != null pero no hay cuentas bancarias en esa sucursal,
+      // no puede haber conciliaciones pendientes: retornar 0 directamente
+      // sin ejecutar la query (evita contar conciliaciones de otras sucursales
+      // al no aplicar el filtro bank_account_id).
+      let pendingRec: number | null = 0;
+
+      if (branchId != null && (accounts || []).length === 0) {
+        pendingRec = 0;
+      } else {
+        let pendingRecQuery = supabase
+          .from('bank_reconciliations')
+          .select('id, bank_account_id', { count: 'exact', head: true })
+          .eq('organization_id', organizationId)
+          .in('status', ['draft', 'in_progress']);
+
+        if (branchId != null && (accounts || []).length > 0) {
+          const accountIds = (accounts || []).map(a => a.id);
+          pendingRecQuery = pendingRecQuery.in('bank_account_id', accountIds);
+        }
+
+        const { count: pendingRecCount, error: pendingRecError } = await pendingRecQuery;
+
+        if (pendingRecError) {
+          console.error('Error obteniendo conciliaciones pendientes:', pendingRecError);
+          pendingRec = 0;
+        } else {
+          pendingRec = pendingRecCount;
+        }
+      }
 
       return {
         total_accounts: (accounts || []).length,

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
 // ── Tipos ──────────────────────────────────────────────────────────────
 
@@ -76,6 +76,7 @@ export interface ReservationFilters {
   search?: string;
   source?: ReservationSource;
   restaurant_table_id?: string;
+  branch_id?: number | null;
 }
 
 export interface ReservationStats {
@@ -112,10 +113,6 @@ class ReservasMesasService {
     return getOrganizationId();
   }
 
-  private get branchId() {
-    return getCurrentBranchId();
-  }
-
   /**
    * Obtener reservas con filtros
    */
@@ -131,8 +128,9 @@ class ReservasMesasService {
         .order('reservation_date', { ascending: true })
         .order('reservation_time', { ascending: true });
 
-      if (this.branchId) {
-        query = query.eq('branch_id', this.branchId);
+      // Filtro de sucursal: branch_id viene explícito en los filtros (del BranchContext)
+      if (filters?.branch_id != null) {
+        query = query.eq('branch_id', filters.branch_id);
       }
 
       if (filters?.status && filters.status.length > 0) {
@@ -204,8 +202,11 @@ class ReservasMesasService {
 
   /**
    * Crear nueva reserva
+   * @param branchId Sucursal concreta donde se crea la reserva (obligatorio).
+   *                 No se usa el legacy getCurrentBranchId(); el caller debe
+   *                 pasar el branchFilter del BranchContext.
    */
-  async createReservation(input: CreateReservationInput): Promise<RestaurantReservation> {
+  async createReservation(input: CreateReservationInput, branchId: number): Promise<RestaurantReservation> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -213,7 +214,7 @@ class ReservasMesasService {
         .from('restaurant_reservations')
         .insert({
           organization_id: this.organizationId,
-          branch_id: this.branchId,
+          branch_id: branchId,
           restaurant_table_id: input.restaurant_table_id || null,
           customer_name: input.customer_name,
           customer_phone: input.customer_phone || null,
@@ -382,7 +383,9 @@ class ReservasMesasService {
     date: string,
     time: string,
     partySize: number,
-    excludeReservationId?: string
+    branchId: number,
+    excludeReservationId?: string,
+    durationMinutes: number = 90
   ): Promise<Array<{ id: string; name: string; zone: string | null; capacity: number; state: string }>> {
     try {
       // Obtener todas las mesas del branch
@@ -390,7 +393,7 @@ class ReservasMesasService {
         .from('restaurant_tables')
         .select('id, name, zone, capacity, state')
         .eq('organization_id', this.organizationId)
-        .eq('branch_id', this.branchId!)
+        .eq('branch_id', branchId)
         .gte('capacity', partySize)
         .order('name');
 
@@ -402,6 +405,7 @@ class ReservasMesasService {
         .from('restaurant_reservations')
         .select('restaurant_table_id, reservation_time, duration_minutes')
         .eq('organization_id', this.organizationId)
+        .eq('branch_id', branchId)
         .eq('reservation_date', date)
         .in('status', ['pending', 'confirmed', 'seated'])
         .not('restaurant_table_id', 'is', null);
@@ -419,7 +423,7 @@ class ReservasMesasService {
       reservations?.forEach((r) => {
         const resMinutes = this.timeToMinutes(r.reservation_time);
         const resEnd = resMinutes + (r.duration_minutes || 90);
-        const requestedEnd = requestedMinutes + 90;
+        const requestedEnd = requestedMinutes + durationMinutes;
 
         // Hay overlap si el inicio solicitado está antes del fin de la reserva
         // y el fin solicitado está después del inicio de la reserva
@@ -438,15 +442,16 @@ class ReservasMesasService {
   /**
    * Obtener estadísticas de reservas para un rango de fechas
    */
-  async getStats(dateFrom?: string, dateTo?: string): Promise<ReservationStats> {
+  async getStats(dateFrom?: string, dateTo?: string, branchId?: number | null): Promise<ReservationStats> {
     try {
       let query = supabase
         .from('restaurant_reservations')
         .select('id, status, party_size')
         .eq('organization_id', this.organizationId);
 
-      if (this.branchId) {
-        query = query.eq('branch_id', this.branchId);
+      // Filtro de sucursal: branchId viene explícito por parámetro (del BranchContext)
+      if (branchId != null) {
+        query = query.eq('branch_id', branchId);
       }
 
       if (dateFrom) query = query.gte('reservation_date', dateFrom);

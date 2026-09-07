@@ -17,9 +17,11 @@ import { ConciliacionService, ConciliacionStats } from './ConciliacionService';
 import { BankReconciliation, BankAccount } from '../bancos/BancosService';
 import { formatCurrency } from '@/utils/Utils';
 import { CopyableId } from '@/components/common/CopyableId';
+import { useBranch } from '@/lib/context/BranchContext';
 
 export function ConciliacionPage() {
   const router = useRouter();
+  const { branchFilter } = useBranch();
   const [reconciliations, setReconciliations] = useState<BankReconciliation[]>([]);
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [stats, setStats] = useState<ConciliacionStats | null>(null);
@@ -31,9 +33,9 @@ export function ConciliacionPage() {
   const loadData = useCallback(async () => {
     try {
       const [recsData, accountsData, statsData] = await Promise.all([
-        ConciliacionService.obtenerConciliaciones(),
-        ConciliacionService.obtenerCuentasBancarias(),
-        ConciliacionService.obtenerEstadisticas()
+        ConciliacionService.obtenerConciliaciones({ branchId: branchFilter }),
+        ConciliacionService.obtenerCuentasBancarias(branchFilter),
+        ConciliacionService.obtenerEstadisticas(branchFilter)
       ]);
       setReconciliations(recsData);
       setAccounts(accountsData);
@@ -44,7 +46,7 @@ export function ConciliacionPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [branchFilter]);
 
   useEffect(() => {
     loadData();

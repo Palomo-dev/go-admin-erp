@@ -34,6 +34,7 @@ export interface CrearSaldoInput {
   cashAccount?: string;
   notes?: string;
   expiry?: string | null;
+  branchId?: number | null;
 }
 
 export interface AplicarSaldoInput {
@@ -84,7 +85,7 @@ export const saldosAFavorService = {
   /** Crea un saldo a favor (anticipo) y su asiento contable. */
   async crear(input: CrearSaldoInput): Promise<string> {
     const userId = await getCurrentUserId();
-    const branchId = getCurrentBranchId();
+    const branchId = input.branchId ?? getCurrentBranchId();
     if (!branchId) throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
     const { data, error } = await supabase.rpc('fn_create_customer_credit', {
       p_org: input.organizationId,

@@ -18,7 +18,7 @@ export interface SaleSequence {
 }
 
 export interface SaleSequenceFormData {
-  branch_id: number;
+  branch_id: number | null;
   sequence_type: string;
   prefix: string;
   current_number: number;

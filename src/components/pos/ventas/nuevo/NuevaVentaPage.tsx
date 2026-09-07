@@ -24,7 +24,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { POSService } from '@/lib/services/posService';
 import { Product, Cart, CartItem, CartItemModifier, Customer } from '@/components/pos/types';
@@ -38,6 +39,7 @@ export function NuevaVentaPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { selectedBranchId } = useBranch();
   
   const [cart, setCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,19 +47,22 @@ export function NuevaVentaPage() {
   const [couponCode, setCouponCode] = useState('');
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
-  const isDuplicate = searchParams.get('duplicate') === 'true';
+  const isDuplicate = searchParams?.get('duplicate') === 'true';
 
   useEffect(() => {
     if (organization?.id) {
       initializeCart();
     }
-  }, [organization]);
+  }, [organization, selectedBranchId]);
 
   const initializeCart = async () => {
     setIsLoading(true);
     try {
-      const branchId = getCurrentBranchId() || 2;
-      const newCart = await POSService.createCart(branchId);
+      if (!selectedBranchId) {
+        setIsLoading(false);
+        return;
+      }
+      const newCart = await POSService.createCart(selectedBranchId);
       setCart(newCart);
 
       // Si es duplicar, cargar items del sessionStorage
@@ -192,6 +197,20 @@ export function NuevaVentaPage() {
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-[500px]">
         <PageHeaderSkeleton />
         <CardListSkeleton cards={3} columns="1" />
+      </div>
+    );
+  }
+
+  if (!selectedBranchId) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardContent className="p-6 text-center">
+            <p className="text-gray-600 dark:text-gray-400">
+              Seleccione una sucursal
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }

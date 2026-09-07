@@ -22,7 +22,7 @@ export const operacionesReports: ReportDefinition[] = [
     descripcion: 'Eventos de auditoría y timeline del período',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_operaciones_actividad', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
@@ -52,7 +52,7 @@ export const operacionesReports: ReportDefinition[] = [
     descripcion: 'Logs de auditoría por usuario y módulo',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_operaciones_actividad', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,

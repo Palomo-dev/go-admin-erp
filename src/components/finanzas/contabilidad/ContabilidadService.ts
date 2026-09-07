@@ -54,18 +54,24 @@ export class ContabilidadService {
     return org?.id || 0;
   }
 
-  private static getBranchId(): number {
-    return getCurrentBranchId() || 0;
+  private static getBranchId(): number | null {
+    return getCurrentBranchId();
   }
 
-  static async obtenerResumen(): Promise<ContabilidadResumen> {
+  static async obtenerResumen(branchId?: number | null): Promise<ContabilidadResumen> {
     const organizationId = this.getOrganizationId();
 
+    let asientosQuery = supabase
+      .from('journal_entries')
+      .select('id, posted', { count: 'exact' })
+      .eq('organization_id', organizationId);
+
+    if (branchId != null) {
+      asientosQuery = asientosQuery.eq('branch_id', branchId);
+    }
+
     const [asientosRes, cuentasRes, periodosRes] = await Promise.all([
-      supabase
-        .from('journal_entries')
-        .select('id, posted', { count: 'exact' })
-        .eq('organization_id', organizationId),
+      asientosQuery,
       supabase
         .from('chart_of_accounts')
         .select('account_code', { count: 'exact' })
@@ -174,6 +180,7 @@ export class ContabilidadService {
     fechaFin?: string;
     posted?: boolean;
     source?: string;
+    branchId?: number | null;
   }): Promise<JournalEntry[]> {
     const organizationId = this.getOrganizationId();
 
@@ -183,6 +190,9 @@ export class ContabilidadService {
       .eq('organization_id', organizationId)
       .order('entry_date', { ascending: false });
 
+    if (filtros?.branchId != null) {
+      query = query.eq('branch_id', filtros.branchId);
+    }
     if (filtros?.fechaInicio) {
       query = query.gte('entry_date', filtros.fechaInicio);
     }
@@ -250,9 +260,9 @@ export class ContabilidadService {
     exchange_rate?: number;
     base_currency_code?: string;
     lines: { account_code: string; description?: string; debit: number; credit: number; cost_center_id?: string }[];
-  }): Promise<JournalEntry> {
+  }, branchId?: number | null): Promise<JournalEntry> {
     const organizationId = this.getOrganizationId();
-    const branchId = this.getBranchId();
+    const effectiveBranchId = branchId !== undefined ? branchId : this.getBranchId();
 
     const currencyCode = asiento.currency_code || 'COP';
     const baseCurrency = asiento.base_currency_code || 'COP';
@@ -279,7 +289,7 @@ export class ContabilidadService {
       .from('journal_entries')
       .insert({
         organization_id: organizationId,
-        branch_id: branchId,
+        branch_id: effectiveBranchId,
         entry_date: asiento.entry_date,
         memo: asiento.memo,
         source: asiento.source,

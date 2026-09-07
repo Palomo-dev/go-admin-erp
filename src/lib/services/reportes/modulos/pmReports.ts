@@ -22,7 +22,7 @@ export const pmReports: ReportDefinition[] = [
     descripcion: 'Distribución de tareas por estado y proyecto',
     categoria: 'sistema',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('tasks')
         .select('id, status, project_id, created_at')
@@ -62,7 +62,7 @@ export const pmReports: ReportDefinition[] = [
     descripcion: 'Horas estimadas vs reales, hitos completados',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('projects')
         .select('id, name, status, start_date, end_date')

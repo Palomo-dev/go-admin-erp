@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useToast } from '@/components/ui/use-toast';
 import {
   EspaciosHeader,
@@ -41,6 +42,7 @@ const defaultStats: SpaceStats = {
 
 export default function ParkingEspaciosPage() {
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const { toast } = useToast();
 
   const [branchId, setBranchId] = useState<number | null>(null);
@@ -84,6 +86,11 @@ export default function ParkingEspaciosPage() {
 
     fetchBranch();
   }, [organization?.id]);
+
+  // Sincronizar branch local con el filtro global del BranchContext
+  useEffect(() => {
+    setBranchId(branchFilter);
+  }, [branchFilter]);
 
   const loadZones = useCallback(async () => {
     if (!branchId) return;

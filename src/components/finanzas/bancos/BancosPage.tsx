@@ -11,9 +11,12 @@ import { BancosService, BankAccount, BankAccountStats } from './BancosService';
 import { ArrowRightLeft, Landmark } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 export function BancosPage() {
   const router = useRouter();
+  const { branchFilter } = useBranch();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [stats, setStats] = useState<BankAccountStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,8 +26,8 @@ export function BancosPage() {
   const loadData = useCallback(async () => {
     try {
       const [accountsData, statsData] = await Promise.all([
-        BancosService.obtenerCuentasBancarias(),
-        BancosService.obtenerEstadisticas()
+        BancosService.obtenerCuentasBancarias(branchFilter),
+        BancosService.obtenerEstadisticas(branchFilter)
       ]);
       setAccounts(accountsData);
       setStats(statsData);
@@ -34,7 +37,7 @@ export function BancosPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [branchFilter]);
 
   useEffect(() => {
     loadData();
@@ -61,6 +64,8 @@ export function BancosPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <BancosPageHeader onRefresh={handleRefresh} isRefreshing={isRefreshing} />
+
+      <BranchBadge className="mb-3" />
 
       {/* Estadísticas */}
       <BankStatsCards stats={stats} isLoading={isLoading} />

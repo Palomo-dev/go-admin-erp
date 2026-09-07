@@ -10,7 +10,8 @@ import { Trash2, Edit3, Package } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import type { UnifiedProduct } from '@/components/shared/product-search';
 import { SerialCaptureSection } from '@/components/shared/SerialCaptureSection';
-import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 
 // Tipo para productos seleccionados con cantidades y descuentos
 export interface SelectedProduct extends UnifiedProduct {
@@ -41,7 +42,8 @@ export function SelectedProductsTable({
   onProductDescriptionEdit,
   onProductSerialsChange
 }: SelectedProductsTableProps) {
-  
+  const { selectedBranchId } = useBranch();
+
   const calculateLineTotal = (product: SelectedProduct): number => {
     return (product.quantity * product.unit_cost) - product.discount_amount;
   };
@@ -238,19 +240,23 @@ export function SelectedProductsTable({
               </div>
 
               {/* Captura de seriales si el producto requiere tracking */}
-              {product.track_serial && !isManualItem(product) && onProductSerialsChange && (
-                <SerialCaptureSection
-                  productId={product.id}
-                  productName={product.name}
-                  productSku={product.sku}
-                  organizationId={getOrganizationId()}
-                  branchId={getCurrentBranchId() ?? 0}
-                  quantity={Math.floor(product.quantity)}
-                  serials={product.serials || []}
-                  onSerialsChange={(newSerials) => onProductSerialsChange(index, newSerials)}
-                  compact
-                />
-              )}
+              {product.track_serial && !isManualItem(product) && onProductSerialsChange && (() => {
+                const branchId = selectedBranchId;
+                if (!branchId) return null;
+                return (
+                  <SerialCaptureSection
+                    productId={product.id}
+                    productName={product.name}
+                    productSku={product.sku}
+                    organizationId={getOrganizationId()}
+                    branchId={branchId}
+                    quantity={Math.floor(product.quantity)}
+                    serials={product.serials || []}
+                    onSerialsChange={(newSerials) => onProductSerialsChange(index, newSerials)}
+                    compact
+                  />
+                );
+              })()}
 
               {/* Información adicional */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-2 border-t border-gray-200 dark:border-gray-600">

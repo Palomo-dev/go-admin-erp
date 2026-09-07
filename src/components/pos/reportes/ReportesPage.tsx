@@ -32,9 +32,11 @@ import {
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { ReportesService, SalesReport, ProductReport, PaymentMethodReport, DailySalesData } from './reportesService';
+import { useBranch } from '@/lib/context/BranchContext';
 
 export function ReportesPage() {
   const { toast } = useToast();
+  const { branchFilter, setSelectedBranch: setGlobalBranch } = useBranch();
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -48,6 +50,11 @@ export function ReportesPage() {
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
   const [source, setSource] = useState<'pos' | 'web'>('pos');
+
+  // Sincronizar selectedBranch con branchFilter global
+  useEffect(() => {
+    setSelectedBranch(branchFilter != null ? String(branchFilter) : 'all');
+  }, [branchFilter]);
 
   // Datos
   const [salesSummary, setSalesSummary] = useState<SalesReport | null>(null);
@@ -225,7 +232,7 @@ export function ReportesPage() {
             </div>
             <div>
               <Label className="text-gray-700 dark:text-gray-300">Sucursal</Label>
-              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+              <Select value={selectedBranch} onValueChange={(v) => setGlobalBranch(v === 'all' ? 'all' : parseInt(v))}>
                 <SelectTrigger className="mt-1 dark:bg-gray-900 dark:border-gray-600">
                   <SelectValue placeholder="Todas las sucursales" />
                 </SelectTrigger>

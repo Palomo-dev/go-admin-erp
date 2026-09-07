@@ -44,7 +44,7 @@ export function AssignDialog({
 
   const handleSubmit = async () => {
     if (!selectedEmployee) return;
-    await onAssign(parseInt(selectedEmployee));
+    await onAssign(parseInt(selectedEmployee, 10));
   };
 
   return (

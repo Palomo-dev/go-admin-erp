@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/select';
 import { Loader2, ClipboardList, Truck, Calendar } from 'lucide-react';
 import type { ManifestWithDetails, ManifestCreateInput } from '@/lib/services/manifestsService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface Vehicle {
   id: string;
@@ -78,6 +80,9 @@ export function ManifestDialog({
     notes: undefined,
   });
 
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
+
   useEffect(() => {
     if (open) {
       if (manifest) {
@@ -108,7 +113,7 @@ export function ManifestDialog({
 
   const handleSubmit = async () => {
     if (!formData.manifest_date) return;
-    await onSave(formData);
+    await onSave({ ...formData, branch_id: branchId || undefined } as ManifestCreateInput);
   };
 
   return (
@@ -122,6 +127,13 @@ export function ManifestDialog({
         </DialogHeader>
 
         <div className="space-y-3 sm:space-y-4">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           {/* Fecha y Tipo */}
           <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">

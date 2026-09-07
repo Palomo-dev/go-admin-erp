@@ -26,7 +26,8 @@ import {
 } from 'lucide-react';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchIdWithFallback, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 
 interface ImportarCSVDialogProps {
   isOpen: boolean;
@@ -71,6 +72,7 @@ interface ParsedInvoice {
 }
 
 export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: ImportarCSVDialogProps) {
+  const { selectedBranchId } = useBranch();
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ParsedInvoice[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -167,7 +169,12 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
     setImportProgress(0);
 
     const organizationId = getOrganizationId();
-    const branchId = getCurrentBranchIdWithFallback();
+    const branchId = selectedBranchId;
+    if (!branchId) {
+      toastError('Sin sucursal', 'No hay sucursal seleccionada para asignar las facturas');
+      setIsLoading(false);
+      return;
+    }
     const userId = await getCurrentUserId();
     
     let imported = 0;

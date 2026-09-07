@@ -56,6 +56,7 @@ async function reserveStockForOpportunity(
   if (!orgId) throw new Error('No se pudo obtener el organization_id');
 
   const branchId = getCurrentBranchIdWithFallback();
+  if (!branchId) throw new Error('No se pudo obtener el branch_id: no hay sucursal seleccionada');
 
   // 1. Leer opportunity_products
   const { data: oppProducts, error: productsError } = await supabase
@@ -114,6 +115,7 @@ async function releaseStockForOpportunity(
   opportunityId: string
 ): Promise<ReserveStockResult> {
   const branchId = getCurrentBranchIdWithFallback();
+  if (!branchId) throw new Error('No se pudo obtener el branch_id: no hay sucursal seleccionada');
 
   // 1. Leer opportunity_products
   const { data: oppProducts, error: productsError } = await supabase

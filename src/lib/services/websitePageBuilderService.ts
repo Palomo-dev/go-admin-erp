@@ -3817,13 +3817,13 @@ class WebsitePageBuilderService {
     if (pageType === 'space_detail') {
       const { data, error } = await supabase
         .from('space_types')
-        .select('id, slug, name')
+        .select('id, category_code, name')
         .eq('organization_id', organizationId)
         .order('name', { ascending: true })
         .limit(50);
       if (error || !data) return [];
       return data.map((s: any) => ({
-        id: s.slug,
+        id: s.id,
         label: s.name,
       }));
     }

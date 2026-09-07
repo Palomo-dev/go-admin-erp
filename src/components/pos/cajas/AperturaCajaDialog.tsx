@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Banknote, Lock, Store, UserCircle, Calendar, Globe, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { createPortal } from 'react-dom';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
@@ -109,27 +109,34 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button 
-          size="lg"
-          disabled={disabled}
-          className="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
-        >
-          <Lock className="h-5 w-5 mr-2" />
-          Abrir Caja
-        </Button>
-      </DialogTrigger>
-      
-      <DialogContent className="max-w-md dark:bg-gray-800 bg-white">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2 dark:text-white text-gray-900">
-            <Banknote className="h-5 w-5 text-green-600" />
-            <span>Apertura de Caja</span>
-          </DialogTitle>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <>
+      <Button 
+        size="lg"
+        disabled={disabled}
+        className="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+        onClick={() => setOpen(true)}
+      >
+        <Lock className="h-5 w-5 mr-2" />
+        Abrir Caja
+      </Button>
+      {open && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+          <div className="min-h-screen px-1 sm:px-4 py-2 sm:py-8 flex items-center justify-center">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[97vh] sm:max-h-[90vh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300 dark:bg-gray-800">
+              <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center space-x-2">
+                  <Banknote className="h-5 w-5 text-green-600" />
+                  <span>Apertura de Caja</span>
+                </h2>
+                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700" onClick={() => setOpen(false)}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="overflow-y-auto max-h-[calc(90vh-80px)] bg-gray-50 dark:bg-gray-900">
+                <div className="p-4 sm:p-6">
+                  <form onSubmit={handleSubmit} className="space-y-4">
           {/* Info de sucursal, cajero y fecha */}
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-3">
@@ -305,8 +312,14 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
               )}
             </Button>
           </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 }

@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays } from 'date-fns';
+import { useBranch } from '@/lib/context/BranchContext';
 
 interface BranchOption {
   id: number;
@@ -59,6 +60,10 @@ export default function TurnosPage() {
     employmentId: '',
     status: 'all',
   });
+  const { branchFilter } = useBranch();
+  useEffect(() => {
+    setFilters((prev) => prev.branchId === branchFilter ? prev : { ...prev, branchId: branchFilter });
+  }, [branchFilter]);
 
   // Servicio
   const getService = useCallback(() => {

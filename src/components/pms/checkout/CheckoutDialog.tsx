@@ -1,14 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
@@ -54,7 +47,8 @@ import { formatCurrency, cn } from '@/utils/Utils';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import foliosService, { type FolioItem } from '@/lib/services/foliosService';
 import { TaxSummary } from '@/components/pos/TaxSummary';
-import { obtenerOrganizacionActiva, getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { obtenerOrganizacionActiva, getOrganizationId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { supabase } from '@/lib/supabase/config';
 import { POSService } from '@/lib/services/posService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
@@ -138,12 +132,15 @@ export function CheckoutDialog({
   const [qrExpiresAt, setQrExpiresAt] = useState<string | undefined>();
   const [qrPaymentMethod, setQrPaymentMethod] = useState<string>('');
 
+  const { branchFilter, selectedBranchId } = useBranch();
+
   // Construir un Cart sintético desde la reserva para usar con TaxSummary
   const syntheticCart: Cart | null = React.useMemo(() => {
     if (!reservation) return null;
     try {
       const org = obtenerOrganizacionActiva();
-      const branchId = getCurrentBranchId() || 0;
+      const branchId = selectedBranchId;
+      if (!branchId) return null;
       const now = new Date().toISOString();
       const items: CartItem[] = [];
 
@@ -253,7 +250,7 @@ export function CheckoutDialog({
     } catch {
       return null;
     }
-  }, [reservation, taxIncluded, appliedTaxIds, extraNightsCharge, promoDiscounts]);
+  }, [reservation, taxIncluded, appliedTaxIds, extraNightsCharge, promoDiscounts, selectedBranchId]);
 
   // Validación de fechas
   const [dateWarning, setDateWarning] = useState<{
@@ -441,7 +438,7 @@ export function CheckoutDialog({
     // Validar caja abierta
     try {
       const org = obtenerOrganizacionActiva();
-      const branchId = getCurrentBranchId();
+      const branchId = branchFilter;
       const { data: session } = await supabase
         .from('cash_sessions')
         .select('id')
@@ -459,7 +456,7 @@ export function CheckoutDialog({
     // Inicializar pago vacío (el usuario usa botones rápidos o escribe el monto)
     setPayments([{ id: crypto.randomUUID(), method: 'cash', amount: 0 }]);
     setStep('payment');
-  }, [reservation, updateCheckoutDate]);
+  }, [reservation, updateCheckoutDate, branchFilter]);
 
   const refreshFolioBalance = useCallback(async () => {
     if (!reservation?.folio?.id) return;
@@ -481,7 +478,11 @@ export function CheckoutDialog({
       return;
     }
     const org = obtenerOrganizacionActiva();
-    const branchId = getCurrentBranchId() || 0;
+    const branchId = branchFilter;
+    if (!branchId) {
+      setPromoDiscounts({});
+      return;
+    }
     const folioItems = reservation.folio.items.filter((fi) => fi.product_id && fi.product_id > 0);
     if (folioItems.length === 0) {
       setPromoDiscounts({});
@@ -502,7 +503,7 @@ export function CheckoutDialog({
       console.warn('[PMS Checkout] No se pudieron evaluar promociones:', err);
       setPromoDiscounts({});
     });
-  }, [reservation?.folio?.items]);
+  }, [reservation?.folio?.items, branchFilter]);
 
   // Totales pre-calculados (necesarios antes del early return para los calculados de pago)
   const lodgingTotal = (reservation?.total_estimated || 0) + extraNightsCharge;
@@ -596,7 +597,13 @@ export function CheckoutDialog({
     if (!reservation) return;
     try {
       const org = obtenerOrganizacionActiva();
-      const branchId = getCurrentBranchId() || 0;
+      const branchId = selectedBranchId;
+      if (!branchId) {
+        toast.error('Sucursal no seleccionada', {
+          description: 'Seleccione una sucursal antes de generar el QR de pago.',
+        });
+        return;
+      }
       const folioId = reservation.folio?.id || reservation.id;
       const reference = `PMS-${Date.now()}-${org.id}`;
       const amount = remaining > 0 ? remaining : paymentTotal;
@@ -741,19 +748,35 @@ export function CheckoutDialog({
 
   const hasPendingBalance = folioBalance > 0 || grandTotal > 0;
 
-  return (
+  if (!open || typeof document === 'undefined') return null;
+  return createPortal(
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex flex-wrap items-center gap-2 text-xl">
-            <DoorOpen className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            Check-out - {reservation.code}
-          </DialogTitle>
-          <DialogDescription>
-            Confirme la salida del huésped y revise los detalles del folio
-          </DialogDescription>
-        </DialogHeader>
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+      <div className="min-h-screen px-1 sm:px-4 py-2 sm:py-8 flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[97vh] sm:max-h-[90vh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300 dark:bg-gray-800">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
+          <div>
+            <h2 className="flex flex-wrap items-center gap-2 text-xl font-semibold text-gray-900 dark:text-gray-50">
+              <DoorOpen className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              Check-out - {reservation.code}
+            </h2>
+            <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">
+              Confirme la salida del huésped y revise los detalles del folio
+            </p>
+          </div>
+          <button
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700"
+            onClick={() => onOpenChange(false)}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="overflow-y-auto max-h-[calc(90vh-80px)] bg-gray-50 dark:bg-gray-900">
+         <div className="p-5 sm:p-6">
 
         {step === 'review' && (
         <div className="space-y-4">
@@ -1187,7 +1210,7 @@ export function CheckoutDialog({
 
         {/* Footer según step */}
         {step === 'review' && (
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
@@ -1243,7 +1266,7 @@ export function CheckoutDialog({
                 Pagar y Check-out
               </Button>
             )}
-          </DialogFooter>
+          </div>
         )}
 
         {step === 'payment' && (
@@ -1457,7 +1480,7 @@ export function CheckoutDialog({
               </div>
             )}
 
-            <DialogFooter className="flex gap-2">
+            <div className="flex gap-2">
               <Button
                 variant="outline"
                 onClick={() => setStep('review')}
@@ -1483,7 +1506,7 @@ export function CheckoutDialog({
                   </>
                 )}
               </Button>
-            </DialogFooter>
+            </div>
           </div>
         )}
 
@@ -1529,8 +1552,11 @@ export function CheckoutDialog({
             </Button>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+         </div>
+        </div>
+        </div>
+      </div>
+    </div>
     <QrPaymentDialog
       open={showQrDialog}
       onClose={() => setShowQrDialog(false)}
@@ -1554,6 +1580,7 @@ export function CheckoutDialog({
         }]);
       }}
     />
-    </>
+    </>,
+    document.body
   );
 }

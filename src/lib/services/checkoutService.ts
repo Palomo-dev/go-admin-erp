@@ -76,7 +76,8 @@ class CheckoutService {
   async getDepartures(
     organizationId: number,
     startDate: string,
-    endDate?: string
+    endDate?: string,
+    branchId?: number | null
   ): Promise<CheckoutReservation[]> {
     let query = supabase
       .from('reservations')
@@ -109,6 +110,11 @@ class CheckoutService {
         )
       `)
       .eq('organization_id', organizationId);
+
+    // Filtro de sucursal: null = consolidado organización
+    if (branchId != null) {
+      query = query.eq('branch_id', branchId);
+    }
 
     // Aplicar filtro de fecha
     if (endDate && endDate !== startDate) {
@@ -357,7 +363,8 @@ class CheckoutService {
   async getStats(
     organizationId: number,
     startDate: string,
-    endDate?: string
+    endDate?: string,
+    branchId?: number | null
   ): Promise<CheckoutStats> {
     // Establecer parámetro de sesión para RLS de folios
     await supabase.rpc('set_session_org_id', {
@@ -367,7 +374,13 @@ class CheckoutService {
     let query = supabase
       .from('reservations')
       .select('id, status')
-      .eq('organization_id', organizationId);
+      .eq('organization_id', organizationId)
+      .in('status', ['checked_in', 'checked_out']);
+
+    // Filtro de sucursal: null = consolidado organización
+    if (branchId != null) {
+      query = query.eq('branch_id', branchId);
+    }
 
     // Aplicar filtro de fecha
     if (endDate && endDate !== startDate) {
@@ -382,28 +395,32 @@ class CheckoutService {
 
     const stats = {
       total_departures: data?.length || 0,
-      checked_out: data?.filter((r) => r.status === 'closed').length || 0,
+      checked_out: data?.filter((r) => r.status === 'checked_out').length || 0,
       pending: data?.filter((r) => r.status === 'checked_in').length || 0,
       with_balance: 0,
       rooms_cleaned: 0,
     };
 
-    // Contar reservas con saldo pendiente obteniendo folios individualmente
-    let withBalanceCount = 0;
+    // Contar reservas con saldo pendiente: una sola consulta agregada
+    // (evita N+1 consultas de folios individuales por reserva)
     if (data && data.length > 0) {
-      for (const reservation of data) {
-        const { data: folio } = await supabase
-          .from('folios')
-          .select('balance')
-          .eq('reservation_id', reservation.id)
-          .maybeSingle();
-        
-        if (folio && Number(folio.balance) > 0) {
-          withBalanceCount++;
-        }
-      }
+      const reservationIds = data.map((r) => r.id);
+      const { data: folios, error: folioError } = await supabase
+        .from('folios')
+        .select('reservation_id, balance')
+        .in('reservation_id', reservationIds);
+
+      if (folioError) throw folioError;
+
+      const foliosByReservation = new Map(
+        (folios || []).map((f) => [f.reservation_id, f])
+      );
+
+      stats.with_balance = data.filter((r) => {
+        const folio = foliosByReservation.get(r.id);
+        return folio ? Number(folio.balance) > 0 : false;
+      }).length;
     }
-    stats.with_balance = withBalanceCount;
 
     return stats;
   }

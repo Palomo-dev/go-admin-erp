@@ -39,7 +39,8 @@ class CheckinService {
   async getArrivals(
     organizationId: number,
     startDate: string,
-    endDate?: string
+    endDate?: string,
+    branchId?: number | null
   ): Promise<CheckinReservation[]> {
     let query = supabase
       .from('reservations')
@@ -73,6 +74,11 @@ class CheckinService {
         )
       `)
       .eq('organization_id', organizationId);
+
+    // Filtro de sucursal: null = consolidado organización
+    if (branchId != null) {
+      query = query.eq('branch_id', branchId);
+    }
 
     // Aplicar filtro de fecha
     if (endDate && endDate !== startDate) {
@@ -288,9 +294,10 @@ class CheckinService {
   async getStats(
     organizationId: number,
     startDate: string,
-    endDate?: string
+    endDate?: string,
+    branchId?: number | null
   ): Promise<CheckinStats> {
-    const arrivals = await this.getArrivals(organizationId, startDate, endDate);
+    const arrivals = await this.getArrivals(organizationId, startDate, endDate, branchId);
 
     const total_arrivals = arrivals.length;
     const checked_in = arrivals.filter((r) => r.status === 'checked_in').length;

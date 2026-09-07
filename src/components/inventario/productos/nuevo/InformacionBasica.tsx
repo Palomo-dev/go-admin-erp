@@ -598,7 +598,7 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
         onOpenChange={setShowSupplierDialog}
         title="Nuevo Proveedor"
         description="Crea un proveedor y se seleccionará automáticamente para este producto."
-        maxWidth="max-w-4xl"
+        maxWidth="max-w-7xl"
       >
         <NuevoProveedorForm
           embedded

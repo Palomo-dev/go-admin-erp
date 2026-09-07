@@ -31,6 +31,8 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { HousekeepingTask } from '@/lib/services/housekeepingService';
 import type { Space } from '@/lib/services/spacesService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface TaskDialogProps {
   open: boolean;
@@ -61,6 +63,17 @@ export function TaskDialog({
   const [assignedTo, setAssignedTo] = useState('unassigned');
   const [status, setStatus] = useState<'pending' | 'in_progress' | 'done' | 'cancelled'>('pending');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sucursal: las tareas de limpieza no tienen branch_id propio (la sucursal
+  // se deriva del espacio seleccionado). El campo permite filtrar los espacios
+  // por sucursal dentro del formulario.
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId ?? null);
+
+  // Espacios filtrados por la sucursal seleccionada en el formulario
+  const filteredSpaces = branchId
+    ? spaces.filter((s) => s.branch_id === branchId)
+    : spaces;
 
   useEffect(() => {
     if (task) {
@@ -114,6 +127,13 @@ export function TaskDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Sucursal (filtra los espacios disponibles) */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           {/* Espacio */}
           <div className="space-y-2">
             <Label htmlFor="space">Espacio *</Label>
@@ -122,7 +142,7 @@ export function TaskDialog({
                 <SelectValue placeholder="Seleccionar espacio" />
               </SelectTrigger>
               <SelectContent>
-                {spaces.map((space) => (
+                {filteredSpaces.map((space) => (
                   <SelectItem key={space.id} value={space.id}>
                     {space.label}
                     {space.space_types && ` - ${space.space_types.name}`}

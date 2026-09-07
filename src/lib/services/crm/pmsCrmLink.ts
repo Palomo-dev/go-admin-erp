@@ -88,6 +88,7 @@ async function createReservationFromOpportunity(
   if (!orgId) throw new Error('No se pudo obtener el organization_id');
 
   const branchId = getCurrentBranchIdWithFallback();
+  if (!branchId) throw new Error('No se pudo obtener el branch_id: no hay sucursal seleccionada');
 
   // 1. Leer la oportunidad
   const { data: opportunity, error: oppError } = await supabase

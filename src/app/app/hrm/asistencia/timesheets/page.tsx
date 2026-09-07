@@ -4,6 +4,7 @@ import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/component
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import TimesheetsService from '@/lib/services/timesheetsService';
 import TimesheetConsolidationService from '@/lib/services/timesheetConsolidationService';
 import type { Timesheet, TimesheetFilters, TimesheetStats, TimesheetStatus } from '@/lib/services/timesheetsService';
@@ -46,7 +47,6 @@ export default function TimesheetsPage() {
 
   // Estados
   const [timesheets, setTimesheets] = useState<Timesheet[]>([]);
-  const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<TimesheetStats>({
     total: 0,
@@ -65,7 +65,13 @@ export default function TimesheetsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [branchFilter, setBranchFilter] = useState('all');
+  const [localBranchFilter, setLocalBranchFilter] = useState('all');
+
+  // Sincronizar con el contexto global de sucursal
+  const { branchFilter: globalBranchFilter, setSelectedBranch } = useBranch();
+  useEffect(() => {
+    setLocalBranchFilter(globalBranchFilter?.toString() || 'all');
+  }, [globalBranchFilter]);
 
   // Dialogs
   const [rejectId, setRejectId] = useState<string | null>(null);
@@ -102,18 +108,16 @@ export default function TimesheetsPage() {
       const filters: TimesheetFilters = {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
-        branchId: branchFilter !== 'all' ? parseInt(branchFilter) : undefined,
+        branchId: localBranchFilter !== 'all' ? parseInt(localBranchFilter) : undefined,
         status: statusFilter !== 'all' ? (statusFilter as TimesheetStatus) : undefined,
       };
 
-      const [timesheetsData, branchesData, statsData] = await Promise.all([
+      const [timesheetsData, statsData] = await Promise.all([
         service.getAll(filters),
-        service.getBranches(),
         service.getStats(filters),
       ]);
 
       setTimesheets(timesheetsData);
-      setBranches(branchesData);
       setStats(statsData);
     } catch (error) {
       console.error('Error loading timesheets:', error);
@@ -125,7 +129,7 @@ export default function TimesheetsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [getService, dateFrom, dateTo, statusFilter, branchFilter, toast]);
+  }, [getService, dateFrom, dateTo, statusFilter, localBranchFilter, toast]);
 
   useEffect(() => {
     if (organization?.id && !orgLoading) {
@@ -205,7 +209,8 @@ export default function TimesheetsPage() {
     setDateFrom('');
     setDateTo('');
     setStatusFilter('all');
-    setBranchFilter('all');
+    setLocalBranchFilter('all');
+    setSelectedBranch('all');
   };
 
   // Consolidar timesheets desde marcaciones
@@ -217,7 +222,7 @@ export default function TimesheetsPage() {
       const consolidationService = new TimesheetConsolidationService(organization.id);
       const result = await consolidationService.consolidateDay(
         consolidateDate,
-        branchFilter !== 'all' ? parseInt(branchFilter) : undefined
+        localBranchFilter !== 'all' ? parseInt(localBranchFilter) : undefined
       );
 
       toast({
@@ -396,12 +401,9 @@ export default function TimesheetsPage() {
             dateFrom={dateFrom}
             dateTo={dateTo}
             status={statusFilter}
-            branchId={branchFilter}
-            branches={branches}
             onDateFromChange={setDateFrom}
             onDateToChange={setDateTo}
             onStatusChange={setStatusFilter}
-            onBranchChange={setBranchFilter}
             onClearFilters={handleClearFilters}
           />
         </CardContent>

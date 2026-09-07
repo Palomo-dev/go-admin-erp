@@ -3,7 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Car } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency } from '@/utils/Utils';
 import { toastError } from '@/components/ui/use-toast';
 import ModuloSection from '../ModuloSection';
@@ -84,6 +85,7 @@ export default function ParkingSection() {
   const [sessions, setSessions] = useState<ActiveSession[]>([]);
   const [expiringPasses, setExpiringPasses] = useState<ExpiringPass[]>([]);
   const [orgInfo, setOrgInfo] = useState<ExportOrganizationInfo | null>(null);
+  const { branchFilter } = useBranch();
 
   useEffect(() => {
     const organizationId = getOrganizationId();
@@ -92,21 +94,14 @@ export default function ParkingSection() {
       return;
     }
 
-    const branchId = getCurrentBranchId();
-    if (!branchId) {
-      setIsLoading(false);
-      return;
-    }
-
-    const resolvedBranchId: number = branchId;
     let cancelled = false;
 
     async function loadAll() {
       setIsLoading(true);
       try {
         const [statsData, sessionsData, passesData, orgData] = await Promise.all([
-          parkingDashboardService.getDashboardStats(resolvedBranchId, organizationId),
-          parkingDashboardService.getActiveSessions(resolvedBranchId, 20),
+          parkingDashboardService.getDashboardStats(branchFilter, organizationId),
+          parkingDashboardService.getActiveSessions(branchFilter, 20),
           parkingDashboardService.getExpiringPasses(organizationId, 30),
           supabase
             .from('organizations')
@@ -147,7 +142,7 @@ export default function ParkingSection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [branchFilter]);
 
   const exportData = useMemo(
     () => buildExportData(kpis, sessions),

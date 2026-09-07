@@ -18,6 +18,8 @@ import { ContabilidadService, JournalEntry, ChartAccount } from '../Contabilidad
 import { formatCurrency, formatNumber } from '@/utils/Utils';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CopyableId } from '@/components/common/CopyableId';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 interface JournalLineInput {
   account_code: string;
@@ -29,6 +31,7 @@ interface JournalLineInput {
 export function AsientosPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { branchFilter, selectedBranchId } = useBranch();
   const [asientos, setAsientos] = useState<JournalEntry[]>([]);
   const [cuentas, setCuentas] = useState<ChartAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,13 +55,13 @@ export function AsientosPage() {
     if (searchParams?.get('action') === 'new') {
       setShowDialog(true);
     }
-  }, []);
+  }, [branchFilter]);
 
   const loadData = async () => {
     try {
       setIsLoading(true);
       const [asientosData, cuentasData] = await Promise.all([
-        ContabilidadService.obtenerAsientos(),
+        ContabilidadService.obtenerAsientos({ branchId: branchFilter }),
         ContabilidadService.obtenerPlanCuentas()
       ]);
       setAsientos(asientosData);
@@ -126,6 +129,10 @@ export function AsientosPage() {
 
     try {
       setIsProcessing(true);
+      if (!selectedBranchId) {
+        toast.error('Seleccione una sucursal antes de crear el asiento.');
+        return;
+      }
       await ContabilidadService.crearAsiento({
         entry_date: formData.entry_date,
         memo: formData.memo,
@@ -135,7 +142,7 @@ export function AsientosPage() {
           debit: parseFloat(l.debit) || 0,
           credit: parseFloat(l.credit) || 0
         }))
-      });
+      }, selectedBranchId);
       toast.success('Asiento creado exitosamente');
       setShowDialog(false);
       resetForm();
@@ -230,6 +237,8 @@ export function AsientosPage() {
           Nuevo Asiento
         </Button>
       </div>
+
+      <BranchBadge className="mb-3" />
 
       {/* Resumen */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">

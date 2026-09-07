@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { RestaurantTable, MesaFormData } from './types';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface MesaFormDialogProps {
   open: boolean;
@@ -39,6 +40,7 @@ export function MesaFormDialog({
     name: '',
     zone: '',
     capacity: 4,
+    branch_id: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nuevaZona, setNuevaZona] = useState('');
@@ -53,12 +55,14 @@ export function MesaFormDialog({
         capacity: mesa.capacity,
         position_x: mesa.position_x || undefined,
         position_y: mesa.position_y || undefined,
+        branch_id: mesa.branch_id ?? null,
       });
     } else {
       setFormData({
         name: '',
         zone: 'sin-zona',
         capacity: 4,
+        branch_id: null,
       });
     }
     setNuevaZona('');
@@ -95,6 +99,15 @@ export function MesaFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Sucursal (solo al crear, no al editar) */}
+          {!mesa && (
+            <BranchSelectorField
+              value={formData.branch_id ?? null}
+              onChange={(branchId) => setFormData({ ...formData, branch_id: branchId })}
+              required
+            />
+          )}
+
           {/* Nombre */}
           <div className="space-y-2">
             <Label htmlFor="name">Nombre de Mesa *</Label>

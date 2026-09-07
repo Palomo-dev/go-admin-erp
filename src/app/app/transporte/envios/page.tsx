@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import {
   ShipmentsHeader,
   ShipmentsFilters,
@@ -40,6 +41,7 @@ export default function EnviosPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
+  const { branchFilter, selectedBranchId } = useBranch();
 
   const [shipments, setShipments] = useState<ShipmentWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,8 +101,9 @@ export default function EnviosPage() {
           dateFrom: dateFrom || undefined,
           dateTo: dateTo || undefined,
           search: searchTerm || undefined,
+          branchId: branchFilter,
         }),
-        shipmentsService.getShipmentStats(organizationId),
+        shipmentsService.getShipmentStats(organizationId, branchFilter),
         shipmentsService.getTrips(organizationId),
         shipmentsService.getStops(organizationId),
       ]);
@@ -157,7 +160,7 @@ export default function EnviosPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organizationId, statusFilter, paymentFilter, tripFilter, searchTerm, dateFrom, dateTo, driverFilter, toast]);
+  }, [organizationId, statusFilter, paymentFilter, tripFilter, searchTerm, dateFrom, dateTo, driverFilter, toast, branchFilter]);
 
   useEffect(() => {
     loadData();
@@ -252,7 +255,10 @@ export default function EnviosPage() {
   };
 
   const handlePrintLabel = async (shipment: ShipmentWithDetails) => {
-    const branchId = getCurrentBranchId();
+    if (!selectedBranchId) {
+      toast({ title: 'Error', description: 'Seleccione una sucursal', variant: 'destructive' });
+      return;
+    }
     const result = await printShipmentGuideWithCut(
       shipment,
       {
@@ -264,7 +270,7 @@ export default function EnviosPage() {
           phone: organization.phone,
         } : undefined,
       },
-      branchId || undefined,
+      selectedBranchId,
     );
     if (result.method === 'agent') {
       toast({ title: 'Guia enviada a impresora termica', description: `${result.enqueued} job(s) encolado(s) con corte automatico` });
@@ -331,7 +337,7 @@ export default function EnviosPage() {
   const handleBulkStatusChange = async (status: string) => {
     if (selectedIds.size === 0) return;
     try {
-      const { succeeded, failed } = await shipmentsService.bulkUpdateStatus(Array.from(selectedIds), status);
+      const { succeeded, failed } = await shipmentsService.bulkUpdateStatus(Array.from(selectedIds), status as ShipmentWithDetails['status']);
       toast({
         title: 'Estado actualizado',
         description: `${succeeded} envío(s) actualizado(s)${failed > 0 ? `, ${failed} fallaron` : ''}`,
@@ -381,6 +387,10 @@ export default function EnviosPage() {
 
   const handleBulkPrintLabels = async () => {
     if (selectedIds.size === 0) return;
+    if (!selectedBranchId) {
+      toast({ title: 'Error', description: 'Seleccione una sucursal', variant: 'destructive' });
+      return;
+    }
     toast({ title: 'Imprimir guias', description: `Generando ${selectedIds.size} guia(s)...` });
     const selectedShipments = shipments.filter((s) => selectedIds.has(s.id));
     const orgInfo = organization ? {
@@ -390,10 +400,9 @@ export default function EnviosPage() {
       address: organization.address,
       phone: organization.phone,
     } : undefined;
-    const branchId = getCurrentBranchId();
     const result = await printShipmentGuidesWithCut(
       selectedShipments.map((s) => ({ shipment: s, options: { orgInfo } })),
-      branchId || undefined,
+      selectedBranchId,
     );
     if (result.method === 'agent') {
       toast({ title: 'Guias enviadas a impresora termica', description: `${result.enqueued} job(s) encolado(s) con corte automatico` });

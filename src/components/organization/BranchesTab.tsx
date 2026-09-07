@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Branch, BranchFormData, OpeningHours, DayHours } from '@/types/branch';
+import { Branch, BranchFormData, OpeningHours, DayHours, BRANCH_TYPES } from '@/types/branch';
 import { branchService } from '@/lib/services/branchService';
 import { supabase } from '@/lib/supabase/config';
 import { BranchForm, BranchFormRef } from '@/components/branches/BranchForm';
 import { AssignManagerModal } from '@/components/branches/AssignManagerModal';
+import AssignMembersModal from '@/components/branches/AssignMembersModal';
 import BranchesMap from '@/components/maps/BranchesMap';
 import BranchMapModal from '@/components/maps/BranchMapModal';
 import { getAvatarUrl } from '@/lib/supabase/imageUtils';
@@ -128,6 +129,10 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
   const [selectedBranchForMap, setSelectedBranchForMap] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'map'>('table');
   const [maxBranches, setMaxBranches] = useState<number | null>(null);
+  const [detailBranch, setDetailBranch] = useState<Branch | null>(null);
+  const [branchMembers, setBranchMembers] = useState<any[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [showAssignMembers, setShowAssignMembers] = useState(false);
   // Subdominio y dominio propio de la organización, para construir la URL
   // pública por path en la columna "Sitio Web".
   const [orgSubdomain, setOrgSubdomain] = useState<string>('');
@@ -252,6 +257,38 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
           organization_id: orgId,
         } as Branch);
         message = t('branchCreated');
+
+        // Asignar al usuario creador como miembro de la nueva sucursal
+        if (savedBranch.id) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user?.id) {
+            const { data: member } = await supabase
+              .from('organization_members')
+              .select('id')
+              .eq('user_id', session.user.id)
+              .eq('organization_id', orgId)
+              .maybeSingle();
+
+            if (member?.id) {
+              // Verificar si ya existe para no violar el constraint UNIQUE
+              const { data: existing } = await supabase
+                .from('member_branches')
+                .select('id')
+                .eq('organization_member_id', member.id)
+                .eq('branch_id', savedBranch.id)
+                .maybeSingle();
+
+              if (!existing) {
+                await supabase
+                  .from('member_branches')
+                  .insert({
+                    organization_member_id: member.id,
+                    branch_id: savedBranch.id,
+                  });
+              }
+            }
+          }
+        }
       }
       setSuccessMessage(message);
 
@@ -309,12 +346,50 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
     setShowManagerModal(true);
   };
 
-  const handleManagerAssignmentSuccess = (updatedBranch: Branch) => {
-    setBranches(prev => 
-      prev.map(branch => 
-        branch.id === updatedBranch.id ? updatedBranch : branch
-      )
-    );
+  const handleViewDetail = async (branch: Branch) => {
+    setDetailBranch(branch);
+    setBranchMembers([]);
+    setLoadingMembers(true);
+    try {
+      // Cargar miembros asignados a esta sucursal
+      const { data, error } = await supabase
+        .from('member_branches')
+        .select(`
+          organization_member_id,
+          organization_members (
+            id,
+            user_id,
+            is_super_admin,
+            role_id,
+            profiles ( first_name, last_name, email, avatar_url )
+          )
+        `)
+        .eq('branch_id', branch.id);
+
+      if (error) throw error;
+
+      const members = (data || []).map((item: any) => ({
+        member_id: item.organization_members?.id,
+        user_id: item.organization_members?.user_id,
+        full_name: `${item.organization_members?.profiles?.first_name || ''} ${item.organization_members?.profiles?.last_name || ''}`.trim() || 'Sin nombre',
+        email: item.organization_members?.profiles?.email || 'Sin email',
+        avatar_url: item.organization_members?.profiles?.avatar_url,
+        is_super_admin: item.organization_members?.is_super_admin,
+        role_id: item.organization_members?.role_id,
+      }));
+
+      setBranchMembers(members);
+    } catch (err) {
+      console.error('Error cargando miembros:', err);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  const handleManagerAssignmentSuccess = async (updatedBranch: Branch) => {
+    // Recargar todas las sucursales para tener datos completos (nombre del gerente, etc.)
+    await fetchBranches();
+    window.dispatchEvent(new CustomEvent(BRANCHES_UPDATED_EVENT));
     setSuccessMessage(t('managerAssigned'));
     setTimeout(() => setSuccessMessage(null), 3000);
   };
@@ -781,7 +856,17 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                           </svg>
                           {(branch as any).manager ? t('change') : t('assign')}
                         </button>
-                        <button 
+                        <button
+                          className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-900 dark:focus:ring-blue-400"
+                          onClick={() => handleViewDetail(branch)}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          Ver
+                        </button>
+                        <button
                           className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-900 dark:focus:ring-blue-400"
                           onClick={() => handleEdit(branch)}
                         >
@@ -813,8 +898,8 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
       {/* Modal for create/edit form */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
-          <div className="min-h-screen px-2 sm:px-4 py-4 sm:py-8 flex items-center justify-center">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300 dark:bg-gray-800">
+          <div className="min-h-screen px-1 sm:px-4 py-2 sm:py-8 flex items-center justify-center">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl max-h-[97vh] sm:max-h-[90vh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300 dark:bg-gray-800">
               {/* Header */}
               <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
                 <div>
@@ -925,6 +1010,422 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
         loading={formLoading}
         onConfirm={confirmDeleteBranch}
       />
+
+      {/* Diálogo de detalle de sucursal */}
+      {detailBranch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+          <div className="min-h-screen px-2 sm:px-4 py-4 sm:py-8 flex items-center justify-center">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[95vh] overflow-hidden relative dark:bg-gray-800">
+              {/* Header */}
+              <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-50 truncate">
+                    {detailBranch.name}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">
+                    {detailBranch.branch_code}
+                  </p>
+                </div>
+                <button
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700 flex-shrink-0"
+                  onClick={() => setDetailBranch(null)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Contenido */}
+              <div className="overflow-y-auto max-h-[calc(95vh-80px)] p-4 sm:p-6 space-y-6">
+                {/* Badges de estado */}
+                <div className="flex flex-wrap gap-2">
+                  {detailBranch.is_main && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100">
+                      Principal
+                    </span>
+                  )}
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    detailBranch.is_active
+                      ? 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100'
+                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-100'
+                  }`}>
+                    {detailBranch.is_active ? 'Activa' : 'Inactiva'}
+                  </span>
+                  {detailBranch.is_web_published && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-800/30 dark:text-purple-100">
+                      Web
+                    </span>
+                  )}
+                  {detailBranch.is_web_stock_source && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-800/30 dark:text-indigo-100" title="El sitio web usa el inventario de esta sucursal">
+                      Fuente Web
+                    </span>
+                  )}
+                </div>
+
+                {/* === Información general === */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                    Información general
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Nombre</p>
+                      <p className="text-gray-900 dark:text-gray-100">{detailBranch.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Código de sucursal</p>
+                      <p className="text-gray-900 dark:text-gray-100">{detailBranch.branch_code}</p>
+                    </div>
+                    {detailBranch.tax_identification && (
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">NIT / Identificación fiscal</p>
+                        <p className="text-gray-900 dark:text-gray-100">{detailBranch.tax_identification}</p>
+                      </div>
+                    )}
+                    {detailBranch.branch_type && (
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Tipo de negocio</p>
+                        <p className="text-gray-900 dark:text-gray-100">
+                          {BRANCH_TYPES.find(bt => bt.value === detailBranch.branch_type)?.label || detailBranch.branch_type}
+                        </p>
+                      </div>
+                    )}
+                    {detailBranch.zone && (
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Zona</p>
+                        <p className="text-gray-900 dark:text-gray-100">{detailBranch.zone}</p>
+                      </div>
+                    )}
+                    {detailBranch.capacity != null && (
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Capacidad</p>
+                        <p className="text-gray-900 dark:text-gray-100">{detailBranch.capacity}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* === Ubicación === */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    Ubicación
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    {detailBranch.address && (
+                      <div className="sm:col-span-2">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Dirección</p>
+                        <p className="text-gray-900 dark:text-gray-100">{detailBranch.address}</p>
+                      </div>
+                    )}
+                    {detailBranch.city && (
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Ciudad</p>
+                        <p className="text-gray-900 dark:text-gray-100">{detailBranch.city}</p>
+                      </div>
+                    )}
+                    {detailBranch.state && (
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Departamento / Estado</p>
+                        <p className="text-gray-900 dark:text-gray-100">{detailBranch.state}</p>
+                      </div>
+                    )}
+                    {detailBranch.country && (
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">País</p>
+                        <p className="text-gray-900 dark:text-gray-100">{detailBranch.country}</p>
+                      </div>
+                    )}
+                    {detailBranch.postal_code && (
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Código postal</p>
+                        <p className="text-gray-900 dark:text-gray-100">{detailBranch.postal_code}</p>
+                      </div>
+                    )}
+                    {detailBranch.latitude && detailBranch.longitude && (
+                      <div className="sm:col-span-2">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Coordenadas</p>
+                        <p className="text-gray-900 dark:text-gray-100 font-mono text-xs">
+                          {parseFloat(detailBranch.latitude.toString()).toFixed(6)}, {parseFloat(detailBranch.longitude.toString()).toFixed(6)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* === Contacto === */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                    Contacto
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    {detailBranch.phone && (
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Teléfono</p>
+                        <p className="text-gray-900 dark:text-gray-100">{detailBranch.phone}</p>
+                      </div>
+                    )}
+                    {detailBranch.email && (
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Email</p>
+                        <p className="text-gray-900 dark:text-gray-100 break-words">{detailBranch.email}</p>
+                      </div>
+                    )}
+                    {!detailBranch.phone && !detailBranch.email && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Sin información de contacto</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* === Horarios === */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Horarios
+                  </h3>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                    {formatOpeningHours(detailBranch.opening_hours)}
+                  </p>
+                </div>
+
+                {/* === Identidad Web === */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
+                    Identidad Web
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    {/* Tipo de negocio */}
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Tipo de negocio</p>
+                      <p className="text-gray-900 dark:text-gray-100">
+                        {detailBranch.branch_type
+                          ? (BRANCH_TYPES.find(bt => bt.value === detailBranch.branch_type)?.label || detailBranch.branch_type)
+                          : 'Sin especificar'}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">Determina las secciones del editor de branding.</p>
+                    </div>
+
+                    {/* Estado de publicación */}
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Sitio web publicado</p>
+                      {detailBranch.is_web_published ? (
+                        <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-300">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                          Sí, sitio público activo
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zm-1-4a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" /></svg>
+                          No publicado
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Slug */}
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Slug (URL path)</p>
+                      <p className="text-gray-900 dark:text-gray-100 font-mono text-xs">{detailBranch.slug || '—'}</p>
+                      {detailBranch.slug && <p className="text-xs text-gray-400 mt-0.5">Único por organización.</p>}
+                    </div>
+
+                    {/* Subdominio */}
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Subdominio</p>
+                      <p className="text-gray-900 dark:text-gray-100 font-mono text-xs">
+                        {detailBranch.subdomain ? `${detailBranch.subdomain}.goadmin.io` : '—'}
+                      </p>
+                      {detailBranch.subdomain && <p className="text-xs text-gray-400 mt-0.5">Único global.</p>}
+                    </div>
+
+                    {/* Dominio personalizado */}
+                    <div className="sm:col-span-2">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Dominio personalizado</p>
+                      {detailBranch.custom_domain ? (
+                        <p className="text-gray-900 dark:text-gray-100 font-mono text-xs">{detailBranch.custom_domain}</p>
+                      ) : (
+                        <p className="text-gray-500 dark:text-gray-400 text-xs">Sin dominio propio configurado</p>
+                      )}
+                      {detailBranch.custom_domain && <p className="text-xs text-gray-400 mt-0.5">Requiere configurar DNS (registro A/CNAME).</p>}
+                    </div>
+
+                    {/* URL pública construida */}
+                    {detailBranch.is_web_published && (() => {
+                      const publicUrl = detailBranch.custom_domain
+                        ? `https://${detailBranch.custom_domain}`
+                        : detailBranch.subdomain
+                          ? `https://${detailBranch.subdomain}.goadmin.io`
+                          : detailBranch.slug
+                            ? (orgCustomDomain
+                                ? `https://${orgCustomDomain}/${detailBranch.slug}`
+                                : orgSubdomain
+                                  ? `https://${orgSubdomain}.goadmin.io/${detailBranch.slug}`
+                                  : null)
+                            : null;
+                      return publicUrl ? (
+                        <div className="sm:col-span-2">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">URL pública</p>
+                          <a
+                            href={publicUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 dark:text-blue-400 hover:underline font-mono text-xs break-all inline-flex items-center gap-1"
+                          >
+                            {publicUrl}
+                            <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                          </a>
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {/* Logo web */}
+                    {detailBranch.website_logo_url && (
+                      <div className="sm:col-span-2">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Logo web</p>
+                        <img src={detailBranch.website_logo_url} alt="Logo" className="mt-1 h-12 w-auto rounded" />
+                      </div>
+                    )}
+
+                    {/* Cover web */}
+                    {detailBranch.website_cover_url && (
+                      <div className="sm:col-span-2">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Imagen de portada</p>
+                        <img src={detailBranch.website_cover_url} alt="Cover" className="mt-1 h-24 w-full object-cover rounded" />
+                      </div>
+                    )}
+
+                    {!detailBranch.slug && !detailBranch.subdomain && !detailBranch.custom_domain && !detailBranch.branch_type && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 sm:col-span-2">Sin identidad web configurada</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* === Gerente === */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                    Gerente
+                  </h3>
+                  {(detailBranch as any).manager ? (
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center dark:bg-gray-700">
+                        {(detailBranch as any).manager?.avatar_url ? (
+                          <img
+                            src={getAvatarUrl((detailBranch as any).manager.avatar_url) || ''}
+                            alt=""
+                            className="h-10 w-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <svg className="h-5 w-5 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">
+                          {`${(detailBranch as any).manager?.first_name || ''} ${(detailBranch as any).manager?.last_name || ''}`.trim() || 'Sin nombre'}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {(detailBranch as any).manager?.email}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Sin gerente asignado</p>
+                  )}
+                </div>
+
+                {/* === Miembros asignados === */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                      Miembros asignados ({branchMembers.length})
+                    </h3>
+                    <button
+                      onClick={() => setShowAssignMembers(true)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-300 rounded-md hover:bg-blue-100 dark:text-blue-200 dark:bg-blue-900/30 dark:border-blue-600 dark:hover:bg-blue-800/30"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                      Asignar miembros
+                    </button>
+                  </div>
+                  {loadingMembers ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      Cargando miembros...
+                    </div>
+                  ) : branchMembers.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No hay miembros asignados a esta sucursal</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {branchMembers.map((member) => (
+                        <div
+                          key={member.member_id}
+                          className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg dark:border-gray-700"
+                        >
+                          <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center dark:bg-blue-800/30">
+                            {member.avatar_url ? (
+                              <img
+                                src={getAvatarUrl(member.avatar_url) || ''}
+                                alt=""
+                                className="h-8 w-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-xs font-bold text-blue-700 dark:text-blue-200">
+                                {member.full_name.substring(0, 2).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+                              {member.full_name}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                              {member.email}
+                            </p>
+                          </div>
+                          {member.is_super_admin && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-800/30 dark:text-purple-100">
+                              Admin
+                            </span>
+                          )}
+                          {detailBranch.manager_id === member.user_id && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100">
+                              Gerente
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para asignar miembros a la sucursal desde el detalle */}
+      {detailBranch && (
+        <AssignMembersModal
+          isOpen={showAssignMembers}
+          onClose={() => setShowAssignMembers(false)}
+          branchId={detailBranch.id!}
+          branchName={detailBranch.name}
+          organizationId={orgId}
+          onSuccess={async () => {
+            // Recargar miembros y refrescar la tabla
+            await handleViewDetail(detailBranch);
+            await fetchBranches();
+            window.dispatchEvent(new CustomEvent(BRANCHES_UPDATED_EVENT));
+          }}
+        />
+      )}
     </div>
   );
 };

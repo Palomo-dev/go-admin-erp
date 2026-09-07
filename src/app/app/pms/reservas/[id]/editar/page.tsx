@@ -21,6 +21,7 @@ import ReservationsService, { type Customer } from '@/lib/services/reservationsS
 import SpaceTypesService from '@/lib/services/spaceTypesService';
 import SpaceCategoriesService from '@/lib/services/spaceCategoriesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 
 const STEPS = [
   { id: 1, name: 'Cliente' },
@@ -36,8 +37,9 @@ export default function EditarReservaPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { selectedBranchId } = useBranch();
 
-  const reservationId = params.id as string;
+  const reservationId = params?.id as string;
 
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
@@ -322,7 +324,7 @@ export default function EditarReservaPage() {
         extras,
         notes,
         organizationId: organization.id,
-        branchId: organization.branch_id || null,
+        branchId: selectedBranchId ?? null,
         totalEstimated,
         category: selectedCategory || '',
       });

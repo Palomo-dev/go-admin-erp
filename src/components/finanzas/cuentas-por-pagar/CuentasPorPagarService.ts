@@ -53,6 +53,11 @@ export class CuentasPorPagarService {
         `, { count: 'exact' })
         .eq('organization_id', organizationId);
 
+      // Filtro de sucursal: null = consolidado organización, número = sucursal específica
+      if (filtros.branchId != null) {
+        query = query.eq('branch_id', filtros.branchId);
+      }
+
       // Aplicar filtros
       if (filtros.estado !== 'todos') {
         if (filtros.estado === 'overdue') {
@@ -154,7 +159,7 @@ export class CuentasPorPagarService {
   /**
    * Obtiene resumen de cuentas por pagar
    */
-  static async obtenerResumen(): Promise<AccountsPayableSummary> {
+  static async obtenerResumen(branchId?: number | null): Promise<AccountsPayableSummary> {
     try {
       const organizationId = getOrganizationId();
       if (!organizationId) throw new Error('Organization ID no disponible');
@@ -162,11 +167,17 @@ export class CuentasPorPagarService {
       const hoy = new Date().toISOString();
 
       // Obtener totales
-      const { data: totales, error: totalesError } = await supabase
+      let totalesQuery = supabase
         .from('accounts_payable')
         .select('status, balance, due_date')
         .eq('organization_id', organizationId)
         .gt('balance', 0);
+
+      if (branchId != null) {
+        totalesQuery = totalesQuery.eq('branch_id', branchId);
+      }
+
+      const { data: totales, error: totalesError } = await totalesQuery;
 
       if (totalesError) throw totalesError;
 
@@ -193,23 +204,59 @@ export class CuentasPorPagarService {
         }
       });
 
-      // Obtener conteo de proveedores
-      const { count: suppliers_count } = await supabase
+      // Obtener conteo de proveedores distintos con saldo pendiente.
+      // Usamos select de supplier_id (sin head) y contamos valores
+      // distintos en el cliente, ya que count con head cuenta filas
+      // y un mismo proveedor puede tener varias cuentas por pagar.
+      let suppliersQuery = supabase
         .from('accounts_payable')
-        .select('supplier_id', { count: 'exact', head: true })
+        .select('supplier_id')
         .eq('organization_id', organizationId)
         .gt('balance', 0);
 
+      if (branchId != null) {
+        suppliersQuery = suppliersQuery.eq('branch_id', branchId);
+      }
+
+      const { data: suppliersData, error: suppliersError } = await suppliersQuery;
+
+      if (suppliersError) {
+        console.error('Error obteniendo conteo de proveedores:', suppliersError);
+      }
+
+      const suppliers_count = suppliersData
+        ? new Set(suppliersData.map((row: any) => row.supplier_id).filter(Boolean)).size
+        : 0;
+
       // Obtener próximo vencimiento
-      const { data: proximoVencimiento } = await supabase
+      let proximoQuery = supabase
         .from('accounts_payable')
         .select('balance, due_date')
         .eq('organization_id', organizationId)
         .gt('balance', 0)
         .gte('due_date', hoy)
         .order('due_date', { ascending: true })
-        .limit(1)
-        .single();
+        .limit(1);
+
+      if (branchId != null) {
+        proximoQuery = proximoQuery.eq('branch_id', branchId);
+      }
+
+      const { data: proximoVencimiento, error: proximoError } = await proximoQuery.maybeSingle();
+
+      if (proximoError) {
+        console.error('Error obteniendo próximo vencimiento:', proximoError);
+        return {
+          total_pending,
+          total_overdue,
+          total_partial,
+          total_amount: total_pending + total_overdue + total_partial,
+          suppliers_count: suppliers_count || 0,
+          overdue_count,
+          next_due_amount: 0,
+          next_due_date: undefined
+        };
+      }
 
       return {
         total_pending,
@@ -651,12 +698,12 @@ export class CuentasPorPagarService {
   /**
    * Obtiene proveedores con saldo pendiente
    */
-  static async obtenerProveedoresConSaldo(): Promise<SupplierBase[]> {
+  static async obtenerProveedoresConSaldo(branchId?: number | null): Promise<SupplierBase[]> {
     try {
       const organizationId = getOrganizationId();
       if (!organizationId) throw new Error('Organization ID no disponible');
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('suppliers')
         .select(`
           *,
@@ -667,12 +714,31 @@ export class CuentasPorPagarService {
         .eq('organization_id', organizationId)
         .gt('accounts_payable.balance', 0);
 
+      // Filtro de sucursal: null = consolidado organización, número = sucursal específica
+      if (branchId != null) {
+        query = query.eq('accounts_payable.branch_id', branchId);
+      }
+
+      const { data, error } = await query;
+
       if (error) {
         console.error('Error obteniendo proveedores con saldo:', error);
         throw error;
       }
 
-      return data || [];
+      // Deduplicar por supplier_id: el join con accounts_payable!inner puede
+      // retornar el mismo proveedor múltiples veces (una por cada cuenta por
+      // pagar con saldo pendiente). Usamos un Map para conservar solo la
+      // primera aparición de cada proveedor. La clave es supplier.id que es
+      // de tipo number, por lo que el Map se tipa como Map<number, SupplierBase>.
+      const uniqueSuppliers = new Map<number, SupplierBase>();
+      (data || []).forEach((supplier: any) => {
+        if (!uniqueSuppliers.has(supplier.id)) {
+          uniqueSuppliers.set(supplier.id, supplier);
+        }
+      });
+
+      return Array.from(uniqueSuppliers.values());
     } catch (error) {
       console.error('Error en obtenerProveedoresConSaldo:', error);
       return [];
@@ -815,17 +881,22 @@ export class CuentasPorPagarService {
   }
 
   // Obtener cuentas bancarias de la organización
-  static async obtenerCuentasBancarias(): Promise<any[]> {
+  static async obtenerCuentasBancarias(branchId?: number | null): Promise<any[]> {
     try {
       const organizationId = getOrganizationId();
       if (!organizationId) throw new Error('Organization ID no disponible');
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('bank_accounts')
         .select('id, name, bank_name, account_number, account_type, currency, balance, is_active')
         .eq('organization_id', organizationId)
-        .eq('is_active', true)
-        .order('bank_name', { ascending: true });
+        .eq('is_active', true);
+
+      if (branchId != null) {
+        query = query.eq('branch_id', branchId);
+      }
+
+      const { data, error } = await query.order('bank_name', { ascending: true });
 
       if (error) {
         console.error('Error al obtener cuentas bancarias:', error);

@@ -107,6 +107,7 @@ export interface PromotionFilters {
   promotion_type?: PromotionType;
   dateFrom?: string;
   dateTo?: string;
+  branchId?: number | null;
 }
 
 export const PROMOTION_TYPE_LABELS: Record<PromotionType, string> = {

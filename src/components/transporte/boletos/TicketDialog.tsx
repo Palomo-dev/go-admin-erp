@@ -23,6 +23,8 @@ import {
 import { Loader2, Ticket, Search, MapPin, Bus } from 'lucide-react';
 import { ticketsService, type TicketWithDetails, type TripSeat, type RouteStop, type TripDetails } from '@/lib/services/ticketsService';
 import { cn } from '@/lib/utils';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface Trip {
   id: string;
@@ -84,6 +86,9 @@ export function TicketDialog({
   const [searchingCustomer, setSearchingCustomer] = useState(false);
   const [customerResults, setCustomerResults] = useState<Customer[]>([]);
   const [customerSearch, setCustomerSearch] = useState('');
+
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   
   // Estados para asientos y rutas
   const [tripDetails, setTripDetails] = useState<TripDetails | null>(null);
@@ -265,7 +270,8 @@ export function TicketDialog({
         payment_status: formData.payment_status as TicketWithDetails['payment_status'],
         notes: formData.notes || undefined,
         customer_id: formData.customer_id || undefined,
-      });
+        branch_id: branchId || undefined,
+      } as Partial<TicketWithDetails> & { branch_id?: number });
       onOpenChange(false);
     } catch (error) {
       console.error('Error saving ticket:', error);
@@ -287,6 +293,13 @@ export function TicketDialog({
         </DialogHeader>
 
         <div className="space-y-4 sm:space-y-6">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           {/* Viaje */}
           <div className="space-y-2">
             <Label htmlFor="trip">Viaje *</Label>

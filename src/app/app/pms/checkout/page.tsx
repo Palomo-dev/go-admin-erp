@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Calendar, LogOut } from 'lucide-react';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
@@ -29,6 +30,7 @@ import { ReservationsPagination } from '@/components/pms/reservas';
 export default function CheckoutPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
 
   const [departures, setDepartures] = useState<CheckoutReservation[]>([]);
   const [stats, setStats] = useState<CheckoutStatsType>({
@@ -55,7 +57,7 @@ export default function CheckoutPage() {
     if (organization) {
       loadData();
     }
-  }, [organization, datePreset, customDateRange]);
+  }, [organization, datePreset, customDateRange, branchFilter]);
 
   const loadData = async () => {
     if (!organization) return;
@@ -71,12 +73,14 @@ export default function CheckoutPage() {
         CheckoutService.getDepartures(
           organization.id,
           dateRange.startDate,
-          dateRange.endDate
+          dateRange.endDate,
+          branchFilter
         ),
         CheckoutService.getStats(
           organization.id,
           dateRange.startDate,
-          dateRange.endDate
+          dateRange.endDate,
+          branchFilter
         ),
       ]);
 

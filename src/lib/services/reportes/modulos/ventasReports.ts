@@ -5,6 +5,7 @@
 
 import { supabase } from '@/lib/supabase/config';
 import { getOrgDateRange } from '@/lib/utils/timezone';
+import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -38,7 +39,7 @@ export const ventasReports: ReportDefinition[] = [
     descripcion: 'Totales por método de pago, sesiones, descuentos y propinas del día',
     categoria: 'operativo',
     periodosSugeridos: ['diario'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -47,6 +48,7 @@ export const ventasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
+        p_branch_id: branchId ?? null,
       });
       if (error) throw error;
 
@@ -163,7 +165,7 @@ export const ventasReports: ReportDefinition[] = [
     descripcion: 'Ventas por día, sucursal y vendedor',
     categoria: 'operativo',
     periodosSugeridos: ['diario', 'semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -172,6 +174,7 @@ export const ventasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
+        p_branch_id: branchId ?? null,
       });
       if (error) throw error;
 
@@ -272,7 +275,7 @@ export const ventasReports: ReportDefinition[] = [
     descripcion: 'Heatmap de volumen de ventas por hora del día',
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -281,6 +284,7 @@ export const ventasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
+        p_branch_id: branchId ?? null,
       });
       if (error) throw error;
 
@@ -334,7 +338,7 @@ export const ventasReports: ReportDefinition[] = [
     descripcion: 'Ranking de vendedores por monto y número de ventas',
     categoria: 'comercial',
     periodosSugeridos: ['semanal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -343,6 +347,7 @@ export const ventasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
+        p_branch_id: branchId ?? null,
       });
       if (error) throw error;
 
@@ -419,30 +424,36 @@ export const ventasReports: ReportDefinition[] = [
     descripcion: 'Resumen de devoluciones y descuentos aplicados',
     categoria: 'operativo',
     periodosSugeridos: ['semanal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start: from, end: to } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
 
+      let devolucionesQuery = supabase
+        .from('returns')
+        .select('id, sale_id, total_refund, reason, return_date, branch_id, status, reason_id, return_reasons(name)')
+        .eq('organization_id', orgId)
+        .gte('return_date', from)
+        .lte('return_date', to)
+        .order('return_date', { ascending: false });
+      devolucionesQuery = applyBranchFilter(devolucionesQuery, branchId);
+
+      let ventasQuery = supabase
+        .from('sales')
+        .select('id, sale_date, total, discount_total, tip_amount, branch_id')
+        .eq('organization_id', orgId)
+        .gte('sale_date', from)
+        .lte('sale_date', to)
+        .not('status', 'in', '("cancelled","void")');
+      ventasQuery = applyBranchFilter(ventasQuery, branchId);
+
       const [
         { data: devolucionesData, error: errDev },
         { data: ventasData, error: errVentas },
       ] = await Promise.all([
-        supabase
-          .from('returns')
-          .select('id, sale_id, total_refund, reason, return_date, branch_id, status, reason_id, return_reasons(name)')
-          .eq('organization_id', orgId)
-          .gte('return_date', from)
-          .lte('return_date', to)
-          .order('return_date', { ascending: false }),
-        supabase
-          .from('sales')
-          .select('id, sale_date, total, discount_total, tip_amount, branch_id')
-          .eq('organization_id', orgId)
-          .gte('sale_date', from)
-          .lte('sale_date', to)
-          .not('status', 'in', '("cancelled","void")'),
+        devolucionesQuery,
+        ventasQuery,
       ]);
 
       if (errDev) throw errDev;
@@ -542,18 +553,20 @@ export const ventasReports: ReportDefinition[] = [
     descripcion: 'Pedidos web: estado, tiempo de entrega, conversión',
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await supabase
+      let query = supabase
         .from('web_orders')
         .select('id, order_number, status, source, total, subtotal, delivery_fee, tip_amount, discount_total, delivery_type, payment_method, payment_status, customer_name, customer_email, created_at, confirmed_at, delivered_at, cancelled_at, cancellation_reason')
         .eq('organization_id', orgId)
         .gte('created_at', start)
         .lte('created_at', end)
         .order('created_at', { ascending: false });
+      query = applyBranchFilter(query, branchId);
+      const { data, error } = await query;
 
       if (error) throw error;
 

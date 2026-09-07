@@ -131,6 +131,7 @@ export interface ReturnSearchFilters {
   dateTo?: string;
   status?: string;
   refundMethod?: string;
+  branchId?: number | null;
 }
 
 export interface SaleSearchFilters {
@@ -139,6 +140,7 @@ export interface SaleSearchFilters {
   dateTo?: string;
   status?: string;
   customerId?: string;
+  branchId?: number | null;
   limit?: number;
   page?: number;
 }

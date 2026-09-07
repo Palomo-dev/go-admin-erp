@@ -43,7 +43,9 @@ import {
 } from 'lucide-react';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import type { SerialWithDetails, SerialStats, SerialStatus } from '@/lib/services/serialTrackingService';
-import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch, ALL_BRANCHES } from '@/lib/context/BranchContext';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { formatDate, formatCurrency } from '@/utils/Utils';
 import { CopyableId } from '@/components/common/CopyableId';
 
@@ -64,7 +66,7 @@ export function SerialesPage() {
   const { toast } = useToast();
   const router = useRouter();
   const organizationId = getOrganizationId();
-  const currentBranchId = getCurrentBranchId();
+  const { branchFilter, setSelectedBranch } = useBranch();
 
   const [seriales, setSeriales] = useState<SerialWithDetails[]>([]);
   const [stats, setStats] = useState<SerialStats | null>(null);
@@ -76,6 +78,11 @@ export function SerialesPage() {
   const [filtroEstado, setFiltroEstado] = useState<string>('all');
   const [filtroSucursal, setFiltroSucursal] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Sincronizar el filtro de sucursal local con el contexto global de sucursal
+  useEffect(() => {
+    setFiltroSucursal(branchFilter === null ? 'all' : String(branchFilter));
+  }, [branchFilter]);
 
   const [sucursales, setSucursales] = useState<{ id: number; name: string }[]>([]);
 
@@ -190,6 +197,8 @@ export function SerialesPage() {
         </Button>
       </div>
 
+      <BranchBadge />
+
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         {loading && !stats ? (
@@ -245,7 +254,7 @@ export function SerialesPage() {
             </Select>
             <Select
               value={filtroSucursal}
-              onValueChange={(v) => { setFiltroSucursal(v); setCurrentPage(1); }}
+              onValueChange={(v) => { setSelectedBranch(v === 'all' ? ALL_BRANCHES : parseInt(v)); setCurrentPage(1); }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Sucursal" />

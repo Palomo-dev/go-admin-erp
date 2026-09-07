@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '@/lib/supabase/config'
 import { useOrganization } from '@/lib/hooks/useOrganization'
+import { useBranch } from '@/lib/context/BranchContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Loader2, Save, X } from 'lucide-react'
@@ -98,7 +99,8 @@ interface NuevoProductoFormProps {
 export default function NuevoProductoForm({ onSuccess, onCancel, embedded = false }: NuevoProductoFormProps = {}) {
   const router = useRouter()
   const { toast } = useToast()
-  const { organization, branch_id } = useOrganization()
+  const { organization } = useOrganization()
+  const { selectedBranchId } = useBranch()
   const [isLoading, setIsLoading] = useState(false)
   
   const [formData, setFormData] = useState<ProductFormData>({

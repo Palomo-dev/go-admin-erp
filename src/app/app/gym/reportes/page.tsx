@@ -13,6 +13,7 @@ import {
   DateRange,
 } from '@/components/gym/reportes';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { GymReportStats, GymReportFilters, getGymReportStats } from '@/lib/services/gymService';
 import { supabase } from '@/lib/supabase/config';
 
@@ -23,6 +24,7 @@ interface Branch {
 
 export default function ReportesPage() {
   const { organization } = useOrganization();
+  const { branchFilter: globalBranchFilter } = useBranch();
   const [stats, setStats] = useState<GymReportStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -36,6 +38,11 @@ export default function ReportesPage() {
     return { from, to };
   });
   const [selectedBranch, setSelectedBranch] = useState<number | 'all'>('all');
+
+  // Sincronizar filtro de sede con el BranchContext global
+  useEffect(() => {
+    setSelectedBranch(globalBranchFilter != null ? globalBranchFilter : 'all');
+  }, [globalBranchFilter]);
 
   const loadBranches = async () => {
     if (!organization?.id) return;

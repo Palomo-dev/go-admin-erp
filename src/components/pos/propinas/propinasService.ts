@@ -12,10 +12,10 @@ export class PropinasService {
   /**
    * Obtener todas las propinas
    */
-  static async getAll(filters: TipFilters = {}): Promise<Tip[]> {
+  static async getAll(filters: TipFilters = {}, branchFilter?: number | null): Promise<Tip[]> {
     try {
       const organizationId = getOrganizationId();
-      const branchId = getCurrentBranchId();
+      const branchId = branchFilter !== undefined ? branchFilter : getCurrentBranchId();
       
       let query = supabase
         .from('tips')
@@ -101,9 +101,9 @@ export class PropinasService {
   /**
    * Obtener resumen de propinas por mesero
    */
-  static async getSummaryByServer(filters: TipFilters = {}): Promise<TipSummary[]> {
+  static async getSummaryByServer(filters: TipFilters = {}, branchFilter?: number | null): Promise<TipSummary[]> {
     try {
-      const tips = await this.getAll(filters);
+      const tips = await this.getAll(filters, branchFilter);
       
       const summaryMap: Record<string, TipSummary> = {};
 

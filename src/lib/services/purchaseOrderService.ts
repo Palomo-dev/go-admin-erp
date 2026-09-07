@@ -936,12 +936,18 @@ class PurchaseOrderService {
   /**
    * Obtener estadísticas
    */
-  async getStats(organizationId: number): Promise<PurchaseOrderStats> {
+  async getStats(organizationId: number, branchId?: number): Promise<PurchaseOrderStats> {
     try {
-      const { data } = await supabase
+      let query = supabase
         .from('purchase_orders')
         .select('status, total')
         .eq('organization_id', organizationId);
+
+      if (branchId != null) {
+        query = query.eq('branch_id', branchId);
+      }
+
+      const { data } = await query;
 
       if (!data) {
         return { total: 0, draft: 0, sent: 0, partial: 0, received: 0, cancelled: 0, totalAmount: 0 };

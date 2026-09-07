@@ -22,7 +22,7 @@ export const gymReports: ReportDefinition[] = [
     descripcion: 'Membresías activas, nuevas, churn y MRR',
     categoria: 'comercial',
     periodosSugeridos: ['semanal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('memberships')
         .select('id, status, start_date, end_date, membership_plans(name, price)')
@@ -69,7 +69,7 @@ export const gymReports: ReportDefinition[] = [
     descripcion: 'Eventos de membresías por día (altas, renovaciones, cancelaciones)',
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('membership_events')
         .select('id, membership_id, event_type, created_at')
@@ -109,7 +109,7 @@ export const gymReports: ReportDefinition[] = [
     descripcion: 'Tasa de retención y churn por cohorte',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('memberships')
         .select('id, status, start_date, end_date')

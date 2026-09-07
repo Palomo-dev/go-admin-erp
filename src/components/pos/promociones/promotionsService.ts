@@ -58,6 +58,12 @@ export class PromotionsService {
         query = query.lte('end_date', filters.dateTo);
       }
 
+      // Filtro de sucursal: mostrar promociones globales (branches null/vacío)
+      // y promociones que incluyen la sucursal seleccionada en su array branches
+      if (filters.branchId != null) {
+        query = query.or(`branches.is.null,branches.eq.[],branches.cs.{${filters.branchId}}`);
+      }
+
       const { data, error } = await query;
 
       if (error) {

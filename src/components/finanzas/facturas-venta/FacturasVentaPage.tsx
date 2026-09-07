@@ -6,6 +6,7 @@ import { FacturasTable, FiltrosFacturas } from './FacturasTable';
 import { FacturasFiltros } from './FacturasFiltros';
 import { FacturasProximasVencer } from './FacturasProximasVencer';
 import { Card } from '@/components/ui/card';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 
 // Utilizamos la interfaz FiltrosFacturas importada desde FacturasTable
@@ -26,6 +27,7 @@ export function FacturasVentaPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <PageHeader />
+      <BranchBadge className="mb-3" />
       
       {/* Widget de facturas próximas a vencer */}
       <FacturasProximasVencer diasLimite={15} />

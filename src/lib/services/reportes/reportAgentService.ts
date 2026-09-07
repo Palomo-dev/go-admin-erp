@@ -25,6 +25,7 @@ export interface ReportAgentContext {
   organizationName?: string;
   userName: string;
   userRole: string;
+  branchId?: number | null;
 }
 
 export interface ReportAgentResponse {
@@ -230,7 +231,7 @@ class ReportAgentService {
 
       // Ejecutar reporte
       try {
-        reportData = await ejecutarReporte(block.reportId, context.organizationId, periodo);
+        reportData = await ejecutarReporte(block.reportId, context.organizationId, periodo, context.branchId);
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : 'Error desconocido';
         return {

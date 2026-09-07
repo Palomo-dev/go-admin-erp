@@ -4,6 +4,7 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabase/config';
+import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -22,23 +23,20 @@ export const pmsReports: ReportDefinition[] = [
     descripcion: 'Tasa de ocupación, ADR y RevPAR del período',
     categoria: 'operativo',
     periodosSugeridos: ['semanal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data: orgBranches } = await supabase
-        .from('branches')
-        .select('id')
-        .eq('organization_id', orgId);
-      const branchIds = (orgBranches ?? []).map((b: Record<string, unknown>) => b.id);
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+      // Filtrar spaces por branch_id cuando branchId != null
+      let spacesQuery = supabase.from('spaces').select('id, status').eq('organization_id', orgId);
+      spacesQuery = applyBranchFilter(spacesQuery, branchId);
+      const { data: spaces } = await spacesQuery;
 
-      const { data: spaces } = branchIds.length > 0
-        ? await supabase.from('spaces').select('id, status').in('branch_id', branchIds)
-        : { data: [] };
-
-      const { data: reservations } = await supabase
+      let reservationsQuery = supabase
         .from('reservations')
         .select('id, checkin, checkout, status, total_estimated')
         .eq('organization_id', orgId)
         .gte('checkin', `${periodo.fechaInicio}T00:00:00Z`)
         .lte('checkin', `${periodo.fechaFin}T23:59:59Z`);
+      reservationsQuery = applyBranchFilter(reservationsQuery, branchId);
+      const { data: reservations } = await reservationsQuery;
 
       const totalRooms = spaces?.length ?? 0;
       const activeReservations = (reservations ?? []).filter((r: Record<string, unknown>) => r.status !== 'cancelled');
@@ -75,13 +73,16 @@ export const pmsReports: ReportDefinition[] = [
     descripcion: 'Ingresos por habitaciones, servicios y folios',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data, error } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+      let foliosQuery = supabase
         .from('folios')
         .select('id, balance, status, created_at, reservations!inner(organization_id)')
         .eq('reservations.organization_id', orgId)
         .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
         .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+      // Filtrar folios por branch_id cuando branchId != null
+      foliosQuery = applyBranchFilter(foliosQuery, branchId);
+      const { data, error } = await foliosQuery;
 
       if (error) throw error;
 
@@ -115,16 +116,11 @@ export const pmsReports: ReportDefinition[] = [
     descripcion: 'Tareas de limpieza: pendientes, completadas y tiempos',
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data: orgBranches } = await supabase
-        .from('branches')
-        .select('id')
-        .eq('organization_id', orgId);
-      const branchIds = (orgBranches ?? []).map((b: Record<string, unknown>) => b.id);
-
-      const { data: orgSpaces } = branchIds.length > 0
-        ? await supabase.from('spaces').select('id').in('branch_id', branchIds)
-        : { data: [] };
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+      // Obtener spaceIds de la sucursal (o todas) para filtrar housekeeping_tasks
+      let spacesQuery = supabase.from('spaces').select('id').eq('organization_id', orgId);
+      spacesQuery = applyBranchFilter(spacesQuery, branchId);
+      const { data: orgSpaces } = await spacesQuery;
       const spaceIds = (orgSpaces ?? []).map((s: Record<string, unknown>) => s.id);
 
       const { data, error } = spaceIds.length > 0

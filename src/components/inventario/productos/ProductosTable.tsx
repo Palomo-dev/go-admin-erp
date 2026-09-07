@@ -63,6 +63,8 @@ interface ProductosTableProps {
   onDuplicate: (producto: Producto) => void;
   selectedIds?: number[];
   onSelectionChange?: (ids: number[]) => void;
+  branchFilter?: number | null;
+  branches?: Array<{ id?: number; name: string }>;
 }
 
 // Interfaz para las imágenes de productos (usada en extracción desde datos ya cargados)
@@ -82,7 +84,9 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   onDelete,
   onDuplicate,
   selectedIds = [],
-  onSelectionChange
+  onSelectionChange,
+  branchFilter = null,
+  branches = []
 }) => {
 
   const router = useRouter();
@@ -112,6 +116,10 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
 
   // Estado para almacenar las imágenes principales de los productos
   const [productImages, setProductImages] = useState<Record<string | number, string>>({});
+  // Productos cuya imagen principal falló al cargar (URL rota, 404, etc.)
+  // Permite que el filtro "Sin imagen" sea robusto: un producto con registro
+  // en product_images pero cuya URL no carga se trata como "sin imagen".
+  const [failedImageIds, setFailedImageIds] = useState<Set<string | number>>(new Set());
 
   // Función para alternar ordenamiento al hacer click en un header
   const toggleSort = (field: SortField) => {
@@ -147,10 +155,19 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
     }
 
     // Filtro por imágenes
+    // Un producto se considera "con imagen" solo si tiene una URL de imagen
+    // cargada Y esa imagen no falló al cargar (URL rota, 404, etc.).
     if (filterHasImage === 'with') {
-      result = result.filter(p => productImages[String(p.id)] || (p.product_images && p.product_images.length > 0));
+      result = result.filter(p =>
+        (productImages[String(p.id)] && !failedImageIds.has(p.id)) ||
+        (p.product_images && p.product_images.length > 0 && !failedImageIds.has(p.id))
+      );
     } else if (filterHasImage === 'without') {
-      result = result.filter(p => !productImages[String(p.id)] && !(p.product_images && p.product_images.length > 0));
+      result = result.filter(p =>
+        !productImages[String(p.id)] ||
+        failedImageIds.has(p.id) ||
+        !(p.product_images && p.product_images.length > 0)
+      );
     }
 
     // Filtro por estado
@@ -197,12 +214,12 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
     }
 
     return result;
-  }, [productos, sortField, sortDirection, filterHasImage, filterStatus, productImages, quickSearch]);
+  }, [productos, sortField, sortDirection, filterHasImage, filterStatus, productImages, failedImageIds, quickSearch]);
 
   // Reiniciar a página 1 cuando cambia la lista de productos, filtros u ordenamiento
   useEffect(() => {
     setCurrentPage(1);
-  }, [productos, filterHasImage, filterStatus, sortField, sortDirection, quickSearch]);
+  }, [productos, filterHasImage, filterStatus, sortField, sortDirection, quickSearch, failedImageIds]);
 
   // Cálculo de productos por página (usa processedProductos con filtros y ordenamiento)
   const indexOfLastProduct = currentPage * pageSize;
@@ -256,6 +273,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   useEffect(() => {
     if (!productos?.length) {
       setProductImages({});
+      setFailedImageIds(new Set());
       return;
     }
 
@@ -278,6 +296,8 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
       }
     }
     setProductImages(imageMap);
+    // Resetear el set de imágenes fallidas al cambiar la lista de productos
+    setFailedImageIds(new Set());
   }, [productos]);
   
   // Función para renderizar estado del producto
@@ -598,6 +618,13 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                         alt={producto.name}
                         className="h-full w-full object-cover"
                         onError={(e) => {
+                          // Registrar el producto como "sin imagen efectiva" para el filtro
+                          setFailedImageIds(prev => {
+                            if (prev.has(producto.id)) return prev;
+                            const next = new Set(prev);
+                            next.add(producto.id);
+                            return next;
+                          });
                           // Evitar bucles infinitos verificando si ya intentamos cargar la imagen de respaldo
                           const target = e.target as HTMLImageElement;
                           if (!target.dataset.usedFallback) {
@@ -680,8 +707,59 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                       <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />
                       Sin seguimiento
                     </span>
+                  ) : producto.stock_levels && producto.stock_levels.length > 0 ? (
+                    <div className="flex flex-wrap items-center justify-center gap-1">
+                      {(() => {
+                        const filtered = producto.stock_levels!.filter(sl => branchFilter === null || sl.branch_id === branchFilter);
+                        // Si hay sucursal concreta seleccionada pero no hay stock_levels para esa sucursal,
+                        // mostrar badge con 0 para indicar que no hay stock en esa sucursal
+                        if (branchFilter !== null && filtered.length === 0) {
+                          const branchName = branches.find(b => b.id === branchFilter)?.name || `#${branchFilter}`;
+                          return [
+                            <span
+                              key={branchFilter}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                              title={`${branchName}: 0 unidades`}
+                            >
+                              <span className="truncate max-w-[60px]">{branchName}</span>
+                              <span className="font-bold">0</span>
+                            </span>
+                          ];
+                        }
+                        return filtered.map((sl) => {
+                          const branchName = sl.branches?.name || branches.find(b => b.id === sl.branch_id)?.name || `#${sl.branch_id}`;
+                          const isLow = sl.qty_on_hand <= 0;
+                          const isWarn = sl.qty_on_hand > 0 && sl.qty_on_hand < 5;
+                          return (
+                            <span
+                              key={sl.branch_id}
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${isLow ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : isWarn ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'}`}
+                              title={`${branchName}: ${sl.qty_on_hand} unidades`}
+                            >
+                              <span className="truncate max-w-[60px]">{branchName}</span>
+                              <span className="font-bold">{sl.qty_on_hand}</span>
+                            </span>
+                          );
+                        });
+                      })()}
+                    </div>
+                  ) : branchFilter !== null ? (
+                    // No hay stock_levels cargados pero hay sucursal concreta: mostrar 0 con nombre
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="font-semibold text-red-500">{producto.stock_branch === branchFilter ? (producto.stock ?? 0) : 0}</span>
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[80px]">
+                        {branches.find(b => b.id === branchFilter)?.name || `#${branchFilter}`}
+                      </span>
+                    </div>
                   ) : (
-                    <span className={`font-semibold ${producto.stock !== undefined && producto.stock <= 0 ? 'text-red-500' : 'dark:text-gray-200'}`}>{producto.stock ?? 0}</span>
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className={`font-semibold ${producto.stock !== undefined && producto.stock <= 0 ? 'text-red-500' : 'dark:text-gray-200'}`}>{producto.stock ?? 0}</span>
+                      {producto.stock_branch && (
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[80px]">
+                          {branches.find(b => b.id === producto.stock_branch)?.name || `#${producto.stock_branch}`}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">{renderEstado(producto.status)}</TableCell>

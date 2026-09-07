@@ -23,6 +23,8 @@ import {
 import { Loader2, Route, Navigation, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { TransportRoute, TransportStop, RouteInput, transportRoutesService } from '@/lib/services/transportRoutesService';
 import { googleMapsService } from '@/lib/services/googleMapsService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface RouteDialogProps {
   open: boolean;
@@ -61,6 +63,9 @@ export function RouteDialog({
     currency: 'COP',
     is_active: true,
   });
+
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
 
   useEffect(() => {
     const loadData = async () => {
@@ -161,7 +166,7 @@ export function RouteDialog({
 
     setIsSubmitting(true);
     try {
-      await onSave(formData);
+      await onSave({ ...formData, branch_id: branchId || undefined } as RouteInput);
       onOpenChange(false);
     } catch (error) {
       console.error('Error saving route:', error);
@@ -184,6 +189,13 @@ export function RouteDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           {/* Nombre y Código */}
           <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
@@ -358,7 +370,7 @@ export function RouteDialog({
                 value={formData.estimated_duration_minutes || ''}
                 onChange={(e) => setFormData({ 
                   ...formData, 
-                  estimated_duration_minutes: e.target.value ? parseInt(e.target.value) : undefined 
+                  estimated_duration_minutes: e.target.value ? parseInt(e.target.value, 10) : undefined
                 })}
                 placeholder="480"
               />

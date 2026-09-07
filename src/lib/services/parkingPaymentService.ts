@@ -139,7 +139,8 @@ class ParkingPaymentService {
       status?: 'pending' | 'completed' | 'reversed' | 'all';
       method?: string;
       search?: string;
-    }
+    },
+    branchId?: number | null
   ): Promise<ParkingPayment[]> {
     try {
       let query = supabase
@@ -148,6 +149,10 @@ class ParkingPaymentService {
         .eq('organization_id', organizationId)
         .in('source', ['parking_session', 'parking_pass'])
         .order('created_at', { ascending: false });
+
+      if (branchId != null) {
+        query = query.eq('branch_id', branchId);
+      }
 
       if (filters?.startDate) {
         query = query.gte('created_at', filters.startDate);
@@ -224,7 +229,8 @@ class ParkingPaymentService {
   async getPaymentStats(
     organizationId: number,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
+    branchId?: number | null
   ): Promise<PaymentStats> {
     try {
       let query = supabase
@@ -232,6 +238,10 @@ class ParkingPaymentService {
         .select('*')
         .eq('organization_id', organizationId)
         .in('source', ['parking_session', 'parking_pass']);
+
+      if (branchId != null) {
+        query = query.eq('branch_id', branchId);
+      }
 
       if (startDate) {
         query = query.gte('created_at', startDate);

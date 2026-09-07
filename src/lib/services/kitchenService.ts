@@ -71,6 +71,7 @@ class KitchenService {
     status?: StatusFilter;
     zone?: ZoneFilter;
     organizationId?: number;
+    branchId?: number | null;
   }) {
     try {
       let query = supabase
@@ -110,6 +111,10 @@ class KitchenService {
 
       if (filters?.organizationId) {
         query = query.eq('organization_id', filters.organizationId);
+      }
+
+      if (filters?.branchId != null) {
+        query = query.eq('branch_id', filters.branchId);
       }
 
       if (filters?.status && filters.status !== 'all') {

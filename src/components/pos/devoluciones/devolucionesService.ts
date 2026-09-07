@@ -46,6 +46,7 @@ export class DevolucionesService {
         dateTo,
         status,
         customerId,
+        branchId,
         limit = 20,
         page = 1
       } = filters;
@@ -74,6 +75,11 @@ export class DevolucionesService {
         .eq('organization_id', organizationId)
         .eq('status', 'paid')
         .order('sale_date', { ascending: false });
+
+      // Filtro de sucursal
+      if (branchId != null) {
+        baseQuery = baseQuery.eq('branch_id', branchId);
+      }
 
       // Aplicar filtros básicos
       if (dateFrom) {
@@ -1070,7 +1076,8 @@ export class DevolucionesService {
         dateFrom,
         dateTo,
         status,
-        refundMethod
+        refundMethod,
+        branchId
       } = filters;
 
       // Primero obtener devoluciones básicas
@@ -1079,6 +1086,11 @@ export class DevolucionesService {
         .select('id, organization_id, branch_id, sale_id, user_id, total_refund, reason, return_date, status, return_items, created_at, updated_at')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
+
+      // Filtro de sucursal
+      if (branchId != null) {
+        query = query.eq('branch_id', branchId);
+      }
 
       // Aplicar filtros
       if (dateFrom) {

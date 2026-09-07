@@ -772,7 +772,7 @@ export async function registerDeniedCheckin(
 
 export async function getTodayCheckins(
   organizationId?: number,
-  branchId?: number
+  branchId?: number | null
 ): Promise<MemberCheckin[]> {
   const orgId = organizationId || getOrganizationId();
   const today = new Date();
@@ -805,7 +805,10 @@ export async function getTodayCheckins(
 
 // ==================== ESTADÍSTICAS ====================
 
-export async function getGymStats(organizationId?: number): Promise<GymStats> {
+export async function getGymStats(
+  organizationId?: number,
+  branchId?: number | null
+): Promise<GymStats> {
   const orgId = organizationId || getOrganizationId();
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -836,12 +839,18 @@ export async function getGymStats(organizationId?: number): Promise<GymStats> {
     .lt('end_date', now.toISOString())
     .neq('status', 'cancelled');
 
-  const { data: todayCheckins } = await supabase
+  let todayCheckinsQuery = supabase
     .from('member_checkins')
     .select('id', { count: 'exact' })
     .eq('organization_id', orgId)
     .gte('checkin_at', today.toISOString())
     .is('denied_reason', null);
+
+  if (branchId != null) {
+    todayCheckinsQuery = todayCheckinsQuery.eq('branch_id', branchId);
+  }
+
+  const { data: todayCheckins } = await todayCheckinsQuery;
 
   const { data: todayPayments } = await supabase
     .from('payments')

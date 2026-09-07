@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Users } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency } from '@/utils/Utils';
 import { toastError } from '@/components/ui/use-toast';
 import ModuloSection from '../ModuloSection';
@@ -110,6 +111,7 @@ function buildExportData(
 }
 
 export default function CrmSection() {
+  const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<KPIData | null>(null);
   const [funnel, setFunnel] = useState<FunnelData | null>(null);
@@ -122,7 +124,7 @@ export default function CrmSection() {
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
   const [orgInfo, setOrgInfo] = useState<ExportOrganizationInfo | null>(null);
 
-  const filters = useMemo(() => getDefaultFilters(), []);
+  const filters = useMemo(() => ({ ...getDefaultFilters(), branchId: branchFilter }), [branchFilter]);
 
   useEffect(() => {
     const organizationId = getOrganizationId();
@@ -190,16 +192,17 @@ export default function CrmSection() {
     const organizationId = getOrganizationId();
     if (!organizationId) return;
     try {
+      // Conservar branchId del contexto global al recargar el embudo
       const funnelData = await crmDashboardService.getFunnelData(
         organizationId,
-        pipelineId || undefined,
+        { ...filters, pipelineId },
       );
       setFunnel(funnelData);
     } catch (err) {
       console.error('Error recargando embudo de CRM:', err);
       toastError('Error', 'No se pudo recargar el embudo de ventas');
     }
-  }, []);
+  }, [filters]);
 
   const exportData = useMemo(
     () => buildExportData(kpis, topOpportunities),

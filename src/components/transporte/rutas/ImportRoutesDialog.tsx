@@ -204,7 +204,7 @@ export function ImportRoutesDialog({
           origin_stop_id: originStopId,
           destination_stop_id: destStopId,
           estimated_distance_km: distanceStr ? parseFloat(distanceStr) : undefined,
-          estimated_duration_minutes: durationStr ? parseInt(durationStr) : undefined,
+          estimated_duration_minutes: durationStr ? parseInt(durationStr, 10) : undefined,
           base_fare: fareStr ? parseFloat(fareStr) : undefined,
           base_shipping_fee: shippingStr ? parseFloat(shippingStr) : undefined,
           currency: getValue('currency') || 'COP',

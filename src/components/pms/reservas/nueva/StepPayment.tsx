@@ -19,7 +19,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { TaxSummary } from '@/components/pos/TaxSummary';
-import { getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import type { Cart, CartItem } from '@/components/pos/types';
 import { formatCurrency } from '@/utils/Utils';
 
@@ -88,6 +88,7 @@ export function StepPayment({
   spaceTypeRates,
   organizationId,
 }: StepPaymentProps) {
+  const { selectedBranchId } = useBranch();
   const isValid = paymentMethod !== '';
 
   const handleSetPercentage = (percentage: number) => {
@@ -113,7 +114,8 @@ export function StepPayment({
   const syntheticCart: Cart | null = useMemo(() => {
     if (!organizationId) return null;
     try {
-      const branchId = getCurrentBranchId() || 0;
+      const branchId = selectedBranchId;
+      if (!branchId) return null;
       const now = new Date().toISOString();
       const items: CartItem[] = [];
 
@@ -207,7 +209,7 @@ export function StepPayment({
     } catch {
       return null;
     }
-  }, [organizationId, selectedSpacesData, spaceTypeRates, nights, extras, taxIncluded, appliedTaxIds]);
+  }, [organizationId, selectedSpacesData, spaceTypeRates, nights, extras, taxIncluded, appliedTaxIds, selectedBranchId]);
 
   return (
     <div className="space-y-6">

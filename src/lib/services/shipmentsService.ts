@@ -92,6 +92,7 @@ export interface ShipmentFilters {
   dateFrom?: string;
   dateTo?: string;
   search?: string;
+  branchId?: number | null;
 }
 
 class ShipmentsService {
@@ -105,6 +106,9 @@ class ShipmentsService {
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
 
+    if (filters?.branchId != null) {
+      query = query.eq('branch_id', filters.branchId);
+    }
     if (filters?.status && filters.status !== 'all') {
       query = query.eq('status', filters.status);
     }
@@ -387,9 +391,10 @@ class ShipmentsService {
     };
 
     try {
+      const statusStr = status ?? 'unknown';
       await this.createEvent(id, {
-        event_type: status,
-        description: eventDescriptions[status] || `Estado cambiado a: ${status}`,
+        event_type: statusStr,
+        description: eventDescriptions[statusStr] || `Estado cambiado a: ${statusStr}`,
         organization_id: updated.organization_id,
       });
     } catch (eventError) {
@@ -399,11 +404,15 @@ class ShipmentsService {
     return updated;
   }
 
-  async getShipmentStats(organizationId: number) {
-    const { data, error } = await supabase
+  async getShipmentStats(organizationId: number, branchId?: number | null) {
+    let query = supabase
       .from('shipments')
       .select('status, total_cost, weight_kg, declared_value, created_at, metadata')
       .eq('organization_id', organizationId);
+    if (branchId != null) {
+      query = query.eq('branch_id', branchId);
+    }
+    const { data, error } = await query;
 
     if (error) throw error;
 
@@ -1042,7 +1051,7 @@ class ShipmentsService {
     return { succeeded, failed };
   }
 
-  async bulkUpdateStatus(shipmentIds: string[], status: string) {
+  async bulkUpdateStatus(shipmentIds: string[], status: ShipmentWithDetails['status']) {
     const results = await Promise.allSettled(
       shipmentIds.map((id) => this.updateStatus(id, status))
     );

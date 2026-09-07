@@ -22,7 +22,7 @@ export const transporteReports: ReportDefinition[] = [
     descripcion: 'Volumen de envíos por estado y transportadora',
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('shipments')
         .select('id, status, carrier_id, created_at')
@@ -62,7 +62,7 @@ export const transporteReports: ReportDefinition[] = [
     descripcion: 'Entregas a tiempo, incidentes y eficiencia',
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('shipments')
         .select('id, created_by, status, delivered_at, created_at')
@@ -112,7 +112,7 @@ export const transporteReports: ReportDefinition[] = [
     descripcion: 'Envíos y costos por ruta',
     categoria: 'operativo',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('shipments')
         .select('id, delivery_city, total_cost, created_at')

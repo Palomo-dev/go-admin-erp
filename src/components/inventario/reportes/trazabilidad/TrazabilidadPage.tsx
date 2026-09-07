@@ -34,6 +34,8 @@ import { TrazabilidadService, type TrazabilidadEntry, type FiltrosTrazabilidad }
 import { useToast } from '@/components/ui/use-toast';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useBranch, ALL_BRANCHES } from '@/lib/context/BranchContext';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 const sourceLabels: Record<string, string> = {
   production: 'Producción',
@@ -48,6 +50,7 @@ const sourceLabels: Record<string, string> = {
 
 export function TrazabilidadPage() {
   const { toast } = useToast();
+  const { branchFilter, setSelectedBranch } = useBranch();
   const [data, setData] = useState<TrazabilidadEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [productos, setProductos] = useState<{ id: number; name: string; sku: string }[]>([]);
@@ -66,6 +69,11 @@ export function TrazabilidadPage() {
     fechaDesde: '',
     fechaHasta: '',
   });
+
+  // Sincronizar el filtro de sucursal local con el contexto global de sucursal
+  useEffect(() => {
+    setFiltros(prev => ({ ...prev, branchId: branchFilter === null ? 'todos' : String(branchFilter) }));
+  }, [branchFilter]);
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -182,6 +190,8 @@ export function TrazabilidadPage() {
         </div>
       </div>
 
+      <BranchBadge />
+
       <Card className="p-6 dark:bg-gray-800/50 dark:border-gray-700 bg-white border-gray-200">
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-1">
@@ -239,7 +249,7 @@ export function TrazabilidadPage() {
 
             <div>
               <label className="block text-sm font-medium mb-1 dark:text-gray-300">Sucursal</label>
-              <Select value={filtros.branchId} onValueChange={(v) => handleFiltroChange('branchId', v)}>
+              <Select value={filtros.branchId} onValueChange={(v) => setSelectedBranch(v === 'todos' ? ALL_BRANCHES : parseInt(v))}>
                 <SelectTrigger className="dark:bg-gray-800 dark:border-gray-600 dark:text-white">
                   <SelectValue placeholder="Sucursal" />
                 </SelectTrigger>

@@ -84,7 +84,7 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
   const [editando, setEditando] = useState<SaleSequence | null>(null);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<SaleSequenceFormData>({
-    branch_id: 0,
+    branch_id: null,
     sequence_type: 'sale',
     prefix: '',
     current_number: 0,
@@ -137,9 +137,13 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
   }, [loadData]);
 
   const openModalNuevo = () => {
+    if (!branches.length || !branches[0]?.id) {
+      toast({ title: 'Error', description: 'No hay sucursales disponibles. Cree una sucursal primero.', variant: 'destructive' });
+      return;
+    }
     setEditando(null);
     setFormData({
-      branch_id: branches[0]?.id || 0,
+      branch_id: branches[0].id,
       sequence_type: 'sale',
       prefix: '',
       current_number: 0,

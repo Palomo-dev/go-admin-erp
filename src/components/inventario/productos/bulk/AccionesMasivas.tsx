@@ -44,6 +44,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import {
   bulkUpdatePrices,
   bulkUpdateStock,
@@ -71,7 +72,8 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   onClearSelection,
   onActionComplete,
 }) => {
-  const { organization, branch_id } = useOrganization();
+  const { organization } = useOrganization();
+  const { selectedBranchId } = useBranch();
   const [activeDialog, setActiveDialog] = useState<DialogType>(null);
   const [processing, setProcessing] = useState(false);
 
@@ -110,10 +112,10 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
       ]);
       setBranches(br || []);
       setCategorias(cats || []);
-      if (branch_id) setSelectedBranch(String(branch_id));
+      if (selectedBranchId) setSelectedBranch(String(selectedBranchId));
     };
     load();
-  }, [organization?.id, branch_id]);
+  }, [organization?.id, selectedBranchId]);
 
   const mostrarResultado = (accion: string, exitosos: number, fallidos: number, errores: string[]) => {
     if (fallidos === 0) {

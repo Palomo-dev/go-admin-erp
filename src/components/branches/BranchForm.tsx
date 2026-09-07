@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase/config';
 import { BuyDomainDialog, AddCustomDomainDialog } from '@/components/organization/dominios';
 import { useSession } from '@/lib/hooks/useSession';
 import { ShoppingCart, LinkIcon } from 'lucide-react';
+import ImageUploader from '@/components/common/ImageUploader';
 
 type BranchFormProps = {
   initialData?: Partial<Branch>;
@@ -112,7 +113,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     branch_code: initialData.branch_code || '',
     is_active: hideStatusSection ? true : (initialData.is_active ?? true), // Force true during signup
     is_web_stock_source: hideStatusSection ? true : (initialData.is_web_stock_source ?? false), // La sucursal del signup surte la web
-    // --- Identidad Web (Fase 6) ---
+    // --- Identidad Web ---
     slug: initialData.slug || '',
     subdomain: initialData.subdomain || '',
     custom_domain: initialData.custom_domain || '',
@@ -636,7 +637,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                 ))}
               </select>
               <p className="text-xs text-gray-400 mt-1">
-                Determina las secciones disponibles en el editor de branding (Fase 4).
+                Determina las secciones disponibles en el editor de branding.
               </p>
             </div>
 
@@ -711,70 +712,70 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Dominio personalizado
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   name="custom_domain"
                   value={form.custom_domain || ''}
                   onChange={(e) => handleDomainChange('custom_domain', e.target.value)}
-                  placeholder="tugranhotel.com"
-                  className="input input-bordered flex-1 bg-gray-50 dark:bg-gray-700 dark:text-gray-100"
+                  placeholder="miempresa.com"
+                  className="input input-bordered flex-1 bg-gray-50 dark:bg-gray-700 dark:text-gray-100 min-w-0"
                 />
-                <button
-                  type="button"
-                  onClick={() => setConnectDomainOpen(true)}
-                  className="flex items-center gap-1 px-3 py-2 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-900 whitespace-nowrap"
-                  title="Conectar un dominio que ya compraste"
-                >
-                  <LinkIcon className="h-4 w-4" />
-                  Conectar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBuyDomainOpen(true)}
-                  className="flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors whitespace-nowrap"
-                  title="Comprar un dominio nuevo"
-                >
-                  <ShoppingCart className="h-4 w-4" />
-                  Comprar
-                </button>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setConnectDomainOpen(true)}
+                    className="flex items-center justify-center gap-1 px-3 py-2 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-900 whitespace-nowrap flex-1 sm:flex-none"
+                    title="Conectar un dominio que ya compraste"
+                  >
+                    <LinkIcon className="h-4 w-4 shrink-0" />
+                    Conectar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBuyDomainOpen(true)}
+                    className="flex items-center justify-center gap-1 px-3 py-2 text-xs font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors whitespace-nowrap flex-1 sm:flex-none"
+                    title="Comprar un dominio nuevo"
+                  >
+                    <ShoppingCart className="h-4 w-4 shrink-0" />
+                    Comprar
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-gray-400 mt-1">
                 Único global. Requiere configurar DNS (registro A/CNAME).
               </p>
             </div>
 
-            {/* website_logo_url */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                URL del logo web
-              </label>
-              <input
-                type="url"
-                name="website_logo_url"
-                value={form.website_logo_url || ''}
-                onChange={handleChange}
-                placeholder="https://.../logo-hotel.png"
-                className="input input-bordered w-full bg-gray-50 dark:bg-gray-700 dark:text-gray-100"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Override del logo de la organización para este outlet.
-              </p>
-            </div>
-
-            {/* website_cover_url */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                URL de imagen de portada
-              </label>
-              <input
-                type="url"
-                name="website_cover_url"
-                value={form.website_cover_url || ''}
-                onChange={handleChange}
-                placeholder="https://.../cover-hotel.jpg"
-                className="input input-bordered w-full bg-gray-50 dark:bg-gray-700 dark:text-gray-100"
-              />
+            {/* Logo + Cover en dos columnas */}
+            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <ImageUploader
+                  currentImageUrl={form.website_logo_url}
+                  onImageUploaded={(url) => setForm(prev => ({ ...prev, website_logo_url: url }))}
+                  onImageRemoved={() => setForm(prev => ({ ...prev, website_logo_url: '' }))}
+                  bucket="logos"
+                  folder="branches"
+                  label="Logo del sitio web"
+                  maxSizeMB={2}
+                  acceptedFormats={['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']}
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Reemplaza el logo de la organización para este outlet.
+                </p>
+              </div>
+              <div>
+                <ImageUploader
+                  currentImageUrl={form.website_cover_url}
+                  onImageUploaded={(url) => setForm(prev => ({ ...prev, website_cover_url: url }))}
+                  onImageRemoved={() => setForm(prev => ({ ...prev, website_cover_url: '' }))}
+                  bucket="organization_images"
+                  folder="branches/covers"
+                  label="Imagen de portada"
+                  maxSizeMB={5}
+                  acceptedFormats={['image/jpeg', 'image/png', 'image/webp']}
+                />
+              </div>
             </div>
 
             {/* is_web_published — toggle */}

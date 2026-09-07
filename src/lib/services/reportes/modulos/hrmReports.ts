@@ -22,7 +22,7 @@ export const hrmReports: ReportDefinition[] = [
     descripcion: 'Pagos, deducciones y costos employer del período',
     categoria: 'personas',
     periodosSugeridos: ['quincenal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('payroll_periods')
         .select('id, period_start, period_end, status, total_gross, total_net, total_deductions')
@@ -62,7 +62,7 @@ export const hrmReports: ReportDefinition[] = [
     descripcion: 'Horas trabajadas, ausencias y productividad por departamento',
     categoria: 'personas',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('shift_assignments')
         .select('id, employment_id, work_date, status, actual_start_time, actual_end_time')
@@ -112,7 +112,7 @@ export const hrmReports: ReportDefinition[] = [
     descripcion: 'Comisiones calculadas por vendedor y producto',
     categoria: 'personas',
     periodosSugeridos: ['quincenal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('sales')
         .select('salesperson_id, user_id, commission_rate, commission_type, total, sale_date')

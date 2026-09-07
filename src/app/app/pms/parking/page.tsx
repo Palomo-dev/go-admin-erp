@@ -5,11 +5,13 @@ import { useToast } from '@/components/ui/use-toast';
 import { ParkingHeader, SessionsList, NewEntryDialog, ExitDialog, ParkingSessionDrawer, type EntryData } from '@/components/pms/parking';
 import ParkingService, { type ParkingSession, type ParkingStats } from '@/lib/services/parkingService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export default function ParkingPage() {
   const { toast } = useToast();
-  const { organization, branch_id } = useOrganization();
+  const { organization } = useOrganization();
+  const { branchFilter, selectedBranchId } = useBranch();
 
   const [sessions, setSessions] = useState<ParkingSession[]>([]);
   const [stats, setStats] = useState<ParkingStats>({
@@ -28,21 +30,24 @@ export default function ParkingPage() {
     if (organization) {
       loadData();
     }
-  }, [organization]);
+  }, [organization, branchFilter]);
 
   const loadData = async () => {
     try {
       setIsLoading(true);
-      // Usar branch_id del hook directamente
+      // Usar branchFilter del contexto global, fallback a branch_id de la organización
       const organizationId = organization?.id;
-      
+
       if (!organizationId) {
         throw new Error('No se encontró el ID de la organización');
       }
 
+      // branchFilter: null = Todas (consolidado, no filtrar), número = sucursal específica
+      const effectiveBranchId = branchFilter;
+
       const [sessionsData, statsData] = await Promise.all([
-        ParkingService.getSessions(branch_id || undefined, organizationId),
-        ParkingService.getStats(branch_id || undefined, organizationId),
+        ParkingService.getSessions(effectiveBranchId, organizationId),
+        ParkingService.getStats(effectiveBranchId, organizationId),
       ]);
       setSessions(sessionsData);
       setStats(statsData);
@@ -64,13 +69,18 @@ export default function ParkingPage() {
 
   const handleConfirmEntry = async (data: EntryData) => {
     try {
-      if (!branch_id || !organization?.id) {
-        throw new Error('No se encontró información de la sucursal u organización');
+      // Para mutaciones se requiere una sucursal concreta.
+      // Se usa la sucursal seleccionada dentro del diálogo de entrada.
+      const mutationBranchId = data.branch_id;
+      if (!mutationBranchId || !organization?.id) {
+        throw new Error(
+          'Se requiere una sucursal concreta para registrar una entrada. Selecciona una sucursal específica en el selector.'
+        );
       }
 
       await ParkingService.createEntry(
         {
-          branch_id: branch_id,
+          branch_id: mutationBranchId,
           vehicle_plate: data.vehicle_plate,
           vehicle_type: data.vehicle_type,
           parking_space_id: data.parking_space_id,
@@ -183,7 +193,7 @@ export default function ParkingPage() {
         open={showNewEntryDialog}
         onOpenChange={setShowNewEntryDialog}
         onConfirm={handleConfirmEntry}
-        branchId={branch_id || undefined}
+        branchId={selectedBranchId ?? undefined}
       />
 
       <ExitDialog

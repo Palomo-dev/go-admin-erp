@@ -23,6 +23,8 @@ import {
 import { Loader2 } from 'lucide-react';
 import type { MaintenanceOrder } from '@/lib/services/maintenanceService';
 import type { Space } from '@/lib/services/spacesService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface OrderDialogProps {
   open: boolean;
@@ -30,7 +32,7 @@ interface OrderDialogProps {
   order?: MaintenanceOrder | null;
   spaces: Space[];
   users: Array<{ id: string; email: string; name: string }>;
-  branchId: number;
+  branchId: number | undefined;
   onSave: (data: {
     branch_id: number;
     space_id?: string;
@@ -63,6 +65,17 @@ export function OrderDialog({
   const [materials, setMaterials] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Sucursal: se reutiliza el branchId del prop (página) como valor inicial,
+  // pero se permite al usuario cambiarla dentro del formulario.
+  const { selectedBranchId } = useBranch();
+  const [formBranchId, setFormBranchId] = useState<number | null>(
+    branchId ?? selectedBranchId ?? null
+  );
+
+  useEffect(() => {
+    setFormBranchId(branchId ?? selectedBranchId ?? null);
+  }, [branchId, selectedBranchId]);
+
   useEffect(() => {
     if (order) {
       setSpaceId(order.space_id || 'none');
@@ -87,11 +100,12 @@ export function OrderDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formBranchId) return;
     setIsSubmitting(true);
 
     try {
       await onSave({
-        branch_id: branchId,
+        branch_id: formBranchId,
         space_id: spaceId === 'none' ? undefined : spaceId,
         description,
         priority,
@@ -125,6 +139,13 @@ export function OrderDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={formBranchId}
+            onChange={setFormBranchId}
+            required
+          />
+
           {/* Espacio */}
           <div className="space-y-2">
             <Label htmlFor="space">Espacio</Label>

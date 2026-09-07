@@ -46,6 +46,7 @@ import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSk
 import { MesasFloorMap } from '@/components/pos/mesas/MesasFloorMap';
 import { HistorialMesasDialog } from '@/components/pos/mesas/HistorialMesasDialog';
 import { useBranch } from '@/lib/context/BranchContext';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 import type { TableWithSession, MesaFormData, RestaurantTable } from '@/components/pos/mesas/types';
 
 export default function MesasPage() {
@@ -542,6 +543,8 @@ export default function MesasPage() {
           </Button>
         </div>
       </div>
+
+      <BranchBadge className="mb-3" />
 
       {/* === VISTA MAPA === */}
       {viewMode === 'map' && (

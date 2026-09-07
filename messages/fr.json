@@ -259,6 +259,8 @@
       "errorValidating": "Erreur lors de la validation de l'invitation : {message}",
       "errorAutoSignIn": "Erreur lors de la connexion automatique : {message}. Veuillez contacter l'administrateur.",
       "noSessionHint": "Vous devez ouvrir le lien envoyé à votre e-mail pour accéder. Si vous l'avez déjà ouvert, demandez un renvoi de l'invitation.",
+      "sendingMagicLink": "Envoi du lien d'accès à votre e-mail...",
+      "magicLinkSent": "Nous avons envoyé un lien d'accès à {email}. Ouvrez-le pour continuer avec l'invitation.",
       "errorUnexpected": "Erreur inattendue lors de la connexion. Veuillez contacter l'administrateur.",
       "errorProcessing": "Erreur lors du traitement de l'invitation",
       "goToLogin": "Aller à la connexion",

@@ -63,7 +63,7 @@ export default function BillingTab({ orgId }: BillingTabProps) {
         .from('subscriptions')
         .select('stripe_customer_id')
         .eq('organization_id', orgId)
-        .single();
+        .maybeSingle();
 
       setHasStripeCustomer(!!subscription?.stripe_customer_id);
 

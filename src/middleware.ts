@@ -550,13 +550,15 @@ async function checkOrgAndSubscriptionStatus(request: NextRequest, pathname: str
     }
 
     // Caso 2: Verificar suscripción
+    // Usar maybeSingle() en vez de single() para evitar error 406 cuando
+    // la organización no tiene suscripción registrada todavía.
     const { data: subData, error: subError } = await supabase
       .from('subscriptions')
       .select('status, trial_end, current_period_end, stripe_subscription_id, stripe_customer_id')
       .eq('organization_id', orgId)
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (subError || !subData) {
       return null; // Sin suscripción registrada, permitir (se manejará en client-side)

@@ -189,44 +189,68 @@ export const getOptimizedSession = async () => {
  * Refresca manualmente el token de sesión cuando sea necesario
  * en lugar de depender de la renovación automática
  */
+// Timestamp del último fallo de refresh con token inválido.
+// Si el refresh token es inválido, no reintentar por 60 segundos para evitar
+// bucles infinitos que causan 429 (rate limiting) en Supabase Auth.
+let lastRefreshFailure = 0;
+const REFRESH_FAILURE_COOLDOWN = 60_000; // 60 segundos
+
 export const refreshSessionToken = async () => {
   // Usar un flag para evitar múltiples refrescos simultáneos
   const refreshingKey = 'sb-refreshing-token';
   if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(refreshingKey) === 'true') {
     return { session: cachedSession, error: null };
   }
-  
+
+  // Si el último refresh falló por token inválido hace menos de 60s, no reintentar.
+  // Esto previene el bucle infinito: refresh falla → onAuthStateChange → refresh → ...
+  if (lastRefreshFailure > 0 && Date.now() - lastRefreshFailure < REFRESH_FAILURE_COOLDOWN) {
+    return { session: null, error: 'Refresh token inválido, esperando cooldown' };
+  }
+
   try {
     if (typeof sessionStorage !== 'undefined') {
       sessionStorage.setItem(refreshingKey, 'true');
     }
-    
+
     // Llamar directamente a refreshSession de Supabase
     // Esto usa el refresh_token almacenado, que es válido incluso si el access_token ya expiró
     console.log('🔄 [AUTH] Refrescando sesión con Supabase...');
     const { data, error } = await supabase.auth.refreshSession();
-    
+
     if (data?.session) {
+      // Refresh exitoso — resetear el cooldown de fallos
+      lastRefreshFailure = 0;
+
       // Actualizar caché con la nueva sesión
       cachedSession = data.session;
       lastSessionCheck = Date.now();
-      
+
       // Guardar en localStorage para persistencia entre recargas
       try {
         localStorage.setItem('sb-session-cache', JSON.stringify(data.session));
       } catch (e) {
         console.warn('Error al guardar sesión refrescada en localStorage:', e);
       }
-      
+
       console.log('✅ [AUTH] Sesión refrescada exitosamente, expira:', new Date((data.session.expires_at || 0) * 1000).toLocaleString());
       if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(refreshingKey);
       return { session: data.session, error: null };
     }
-    
+
     // Si el refresh falló, intentar getSession() antes de rendirse
     // El refresh_token puede haberse rotado pero la sesión aún ser válida
     console.warn('⚠️ [AUTH] refreshSession no retornó sesión:', error?.message);
-    
+
+    // Si el error es "Invalid Refresh Token" o "Refresh Token Not Found",
+    // marcar el cooldown para evitar reintentos que causan 429
+    if (error?.message?.includes('Invalid Refresh Token') ||
+        error?.message?.includes('Refresh Token Not Found') ||
+        error?.message?.includes('Too Many Requests')) {
+      lastRefreshFailure = Date.now();
+      console.warn(`⏸️ [AUTH] Refresh token inválido, cooldown de ${REFRESH_FAILURE_COOLDOWN / 1000}s activado`);
+    }
+
     const { data: fallbackData } = await supabase.auth.getSession();
     if (fallbackData?.session) {
       cachedSession = fallbackData.session;
@@ -235,7 +259,7 @@ export const refreshSessionToken = async () => {
       if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(refreshingKey);
       return { session: fallbackData.session, error: null };
     }
-    
+
     // Si tampoco hay sesión via getSession(), limpiar caché
     cachedSession = null;
     lastSessionCheck = 0;
@@ -243,6 +267,7 @@ export const refreshSessionToken = async () => {
     return { session: null, error: error || 'No se pudo refrescar la sesión' };
   } catch (e) {
     console.error('Error al refrescar token:', e);
+    lastRefreshFailure = Date.now();
     if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(refreshingKey);
     return { session: null, error: e };
   }

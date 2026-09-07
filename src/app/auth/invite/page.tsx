@@ -113,9 +113,14 @@ function InviteContent() {
         return;
       }
       
-      // Si no hay sesión, mostrar error con instrucciones
-      console.log('No hay sesión activa. El usuario debe clickear el enlace del email primero.');
-      setError(t('errorAutoSignIn', { message: t('noSessionHint') }));
+      // Si no hay sesión, mostrar el wizard directamente.
+      // El wizard usa un API server-side (admin key) para crear el usuario
+      // y setear la contraseña SIN necesidad de verifyOtp ni email de
+      // verificación. Esto elimina el problema de Gmail prefetch que consume
+      // los tokens antes de que el usuario haga clic.
+      console.log('No hay sesión activa. Mostrando wizard directamente (flujo sin sesión)...');
+      setInviteData(invitationData);
+      setIsLoggedIn(false); // No hay sesión, pero el wizard funciona sin ella
       setIsLoading(false);
       
     } catch (err) {
@@ -178,8 +183,11 @@ function InviteContent() {
     );
   }
   
-  // Solo mostrar el wizard si estamos loggeados y tenemos datos de invitación
-  if (isLoggedIn && inviteData) {
+  // Mostrar el wizard si tenemos datos de invitación válidos.
+  // El wizard funciona CON o SIN sesión: si hay sesión usa el flujo original
+  // (supabase.auth.updateUser), si no hay sesión usa el API server-side
+  // (/api/auth/accept-invitation con admin key).
+  if (inviteData) {
     return (
       <InvitationWizard
         inviteData={inviteData}

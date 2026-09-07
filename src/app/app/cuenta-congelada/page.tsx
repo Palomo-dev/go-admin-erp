@@ -83,7 +83,7 @@ export default function CuentaCongeladaPage() {
               .eq('organization_id', org.id)
               .order('created_at', { ascending: false })
               .limit(1)
-              .single();
+              .maybeSingle();
 
             if (sub) {
               const now = new Date();

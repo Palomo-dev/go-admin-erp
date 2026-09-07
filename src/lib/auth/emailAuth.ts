@@ -206,6 +206,14 @@ async function performLogin(email: string, password: string): Promise<LoginResul
     });
 
     if (error) {
+      // 429 Too Many Requests — Supabase rate limiting
+      if (error.message.includes('Too Many Requests') || error.message.includes('rate limit') || error.status === 429) {
+        return {
+          success: false,
+          error: 'Demasiados intentos. Espera unos minutos antes de volver a intentar.'
+        };
+      }
+
       if (error.message.includes('Invalid login credentials')) {
         return {
           success: false,

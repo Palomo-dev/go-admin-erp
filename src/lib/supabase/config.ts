@@ -30,9 +30,10 @@ const setCookie = (name: string, value: string, maxAge: number = 604800) => {
   const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
   const encodedValue = encodeURIComponent(value);
   
-  // Limpiar chunks anteriores si existían
+  // Limpiar chunks anteriores si existían (incluir Secure para que el borrado funcione)
+  const secureFlag = isProduction ? ';Secure' : '';
   for (let i = 0; i < 20; i++) {
-    document.cookie = `${name}.${i}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${cookieDomain}`;
+    document.cookie = `${name}.${i}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${secureFlag}${cookieDomain}`;
   }
   
   if (encodedValue.length < 3600) {
@@ -72,11 +73,12 @@ const removeCookie = (name: string) => {
   const isAuthCookie = name.includes('-auth-token');
   const isProduction = process.env.NODE_ENV === 'production';
   const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
+  const secureFlag = isProduction ? ';Secure' : '';
   
-  document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${isProduction ? ';Secure' : ''}${cookieDomain}`;
-  // Limpiar chunks .0, .1, .2...
+  document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${secureFlag}${cookieDomain}`;
+  // Limpiar chunks .0, .1, .2... (incluir Secure para que el navegador acepte el borrado)
   for (let i = 0; i < 20; i++) {
-    document.cookie = `${name}.${i}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${cookieDomain}`;
+    document.cookie = `${name}.${i}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${secureFlag}${cookieDomain}`;
   }
 }
 
@@ -177,10 +179,10 @@ export const createSupabaseClient = () => {
             const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
             const encodedValue = encodeURIComponent(value);
             
-            // Limpiar chunks anteriores si existían
-            document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${cookieDomain}`;
+            // Limpiar chunks anteriores si existían (incluir Secure para que el borrado funcione)
+            document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${secureFlag}${cookieDomain}`;
             for (let i = 0; i < 20; i++) {
-              document.cookie = `${key}.${i}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${cookieDomain}`;
+              document.cookie = `${key}.${i}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${secureFlag}${cookieDomain}`;
             }
             
             // Si el valor codificado cabe en una sola cookie (< 3600 bytes), usar cookie simple
@@ -228,12 +230,16 @@ export const createSupabaseClient = () => {
             console.log('💾 [STORAGE] Eliminado de localStorage:', key);
             
             // Eliminar de cookies (cookie simple + chunks)
+            // IMPORTANTE: Si las cookies se setearon con Secure, la eliminación
+            // también debe incluir Secure. Si no, el navegador ignora el borrado
+            // y la cookie persiste → bucle infinito de 403 al leer token inválido.
             const isProduction = process.env.NODE_ENV === 'production';
             const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
-            document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${cookieDomain}`;
+            const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+            document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${secureFlag}${cookieDomain}`;
             // Limpiar chunks .0, .1, .2...
             for (let i = 0; i < 20; i++) {
-              document.cookie = `${key}.${i}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${cookieDomain}`;
+              document.cookie = `${key}.${i}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${secureFlag}${cookieDomain}`;
             }
             console.log('🍪 [STORAGE] Eliminado de cookie (incluyendo chunks):', key);
           }
@@ -345,6 +351,15 @@ export const createSupabaseClient = () => {
                 console.log(`Límite de solicitudes alcanzado, reintentando en ${delay}ms (${retriesLeft} intentos restantes)`);
                 await new Promise(res => setTimeout(res, delay));
                 return attemptFetch(retriesLeft - 1, delay * 2);
+              }
+
+              // Para requests de auth (login, refresh, getUser): si hay 429,
+              // reintentar una vez con backoff mayor (5s). No reintentar más
+              // de 1 vez para no empeorar el rate limiting.
+              if (response.status === 429 && isAuthRequest && retriesLeft === MAX_RETRIES) {
+                console.log(`Auth rate-limited, reintentando en 5000ms (1 intento)`);
+                await new Promise(res => setTimeout(res, 5000));
+                return attemptFetch(retriesLeft - 1, 10000);
               }
 
               // Cachear respuestas GET exitosas en desktop app:

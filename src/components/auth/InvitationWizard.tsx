@@ -156,84 +156,111 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
     setError(null);
 
     try {
-      // 0. Verificar que la sesión sigue activa antes de intentar actualizar la contraseña.
-      // La sesión temporal (creada al abrir el enlace del correo) puede perderse si el
-      // usuario tarda en completar el formulario. Intentamos recuperarla antes de fallar.
+      // Verificar si hay sesión activa
       const { data: sessionCheck } = await supabase.auth.getSession();
-      if (!sessionCheck.session) {
-        console.log('⚠️ Sesión no encontrada, intentando refrescar...');
-        const { data: refreshData } = await supabase.auth.refreshSession();
-        if (!refreshData.session) {
-          throw new Error(
-            'Tu sesión expiró mientras completabas el formulario. Por favor, vuelve a abrir el enlace de invitación desde tu correo electrónico para continuar.'
-          );
-        }
-      }
+      const hasSession = !!sessionCheck.session;
 
-      // 1. Actualizar contraseña SOLO para usuarios nuevos
-      // Los usuarios existentes ya tienen contraseña configurada
-      if (!isExistingUser) {
-        console.log('🔑 Actualizando contraseña del usuario...');
-        const { data: authData, error: authError } = await supabase.auth.updateUser({
-          password: formData.password
+      if (hasSession) {
+        // FLUJO CON SESIÓN (verifyOtp exitoso): usar el flujo original
+        // que usa supabase.auth.updateUser (requiere sesión)
+        console.log('✅ Sesión activa encontrada, usando flujo con sesión');
+
+        // 1. Actualizar contraseña SOLO para usuarios nuevos
+        if (!isExistingUser) {
+          console.log('🔑 Actualizando contraseña del usuario...');
+          const { data: authData, error: authError } = await supabase.auth.updateUser({
+            password: formData.password
+          });
+
+          if (authError) {
+            console.log('Error actualizando contraseña:', authError);
+            if (authError.message?.includes('Auth session missing')) {
+              // La sesión se perdió — usar el flujo sin sesión
+              console.log('Sesión perdida, cayendo a flujo sin sesión...');
+            } else {
+              throw new Error(authError.message);
+            }
+          } else if (!authData.user) {
+            throw new Error('Error al actualizar usuario');
+          } else {
+            console.log('✅ Contraseña actualizada exitosamente');
+          }
+        }
+
+        // 2. Crear perfil + membresía + marcar invitación como usada
+        console.log('📝 Completando registro de invitación...');
+        const { data: acceptResult, error: acceptError } = await supabase.rpc('accept_invitation_atomic', {
+          p_invite_code: inviteData.code,
+          p_first_name: formData.firstName,
+          p_last_name: formData.lastName,
+          p_phone: formData.phoneNumber
         });
 
-        if (authError) {
-          console.log('Error actualizando contraseña:', authError);
-          if (authError.message?.includes('Auth session missing')) {
-            throw new Error(
-              'Tu sesión expiró mientras completabas el formulario. Por favor, vuelve a abrir el enlace de invitación desde tu correo electrónico para continuar.'
-            );
-          }
-          throw new Error(authError.message);
+        if (acceptError) {
+          console.error('❌ Error completando la invitación:', acceptError);
+          throw new Error(acceptError.message || 'No se pudo completar el registro de la invitación.');
         }
 
-        if (!authData.user) {
-          throw new Error('Error al actualizar usuario');
+        console.log('✅ Invitación completada exitosamente:', acceptResult);
+
+        // 3. Cerrar sesión para forzar nuevo login
+        await supabase.auth.signOut();
+
+        // 4. Setear currentOrganizationId DESPUÉS del signOut
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('currentOrganizationId', String(inviteData.organization_id));
+          console.log('📝 currentOrganizationId seteado a:', inviteData.organization_id, '(post-signOut)');
         }
 
-        console.log('✅ Contraseña actualizada exitosamente');
+        // 5. Completar
+        setCurrentStep(3);
+        setTimeout(() => {
+          onComplete();
+        }, 2000);
+
+      } else {
+        // FLUJO SIN SESIÓN (token consumido por Gmail prefetch, o link
+        // copiado/abierto directamente): usar API server-side con admin key
+        // para crear el usuario y setear la contraseña sin necesidad de
+        // verifyOtp. Esto elimina la dependencia del email de verificación.
+        console.log('⚠️ Sin sesión, usando API server-side para aceptar invitación...');
+
+        const res = await fetch('/api/auth/accept-invitation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            inviteCode: inviteData.code,
+            email: inviteData.email,
+            password: formData.password,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            phone: formData.phoneNumber,
+            isExistingUser,
+          }),
+        });
+
+        const result = await res.json();
+
+        if (!res.ok || result.error) {
+          console.error('❌ Error en accept-invitation API:', result.error);
+          throw new Error(result.error || 'No se pudo completar el registro');
+        }
+
+        console.log('✅ Invitación aceptada via API server-side:', result);
+
+        // Setear currentOrganizationId para que tras el login abra la org correcta
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('currentOrganizationId', String(result.organizationId || inviteData.organization_id));
+          localStorage.setItem('currentOrganizationName', result.organizationName || inviteData.organization_name);
+          console.log('📝 currentOrganizationId seteado a:', result.organizationId || inviteData.organization_id);
+        }
+
+        // Completar
+        setCurrentStep(3);
+        setTimeout(() => {
+          onComplete();
+        }, 2000);
       }
-
-      // 3-5. Crear/actualizar perfil, crear/actualizar membresía en la organización
-      // y marcar la invitación como utilizada, todo en UNA SOLA transacción atómica
-      // en el servidor (accept_invitation_atomic). Antes esto eran 4 llamadas
-      // independientes desde el cliente que podían fallar a mitad de camino,
-      // dejando al usuario con perfil creado pero SIN membresía en la organización.
-      console.log('📝 Completando registro de invitación (perfil + membresía + invitación)...');
-      const { data: acceptResult, error: acceptError } = await supabase.rpc('accept_invitation_atomic', {
-        p_invite_code: inviteData.code,
-        p_first_name: formData.firstName,
-        p_last_name: formData.lastName,
-        p_phone: formData.phoneNumber
-      });
-
-      if (acceptError) {
-        console.error('❌ Error completando la invitación:', acceptError);
-        throw new Error(acceptError.message || 'No se pudo completar el registro de la invitación.');
-      }
-
-      console.log('✅ Invitación completada exitosamente:', acceptResult);
-
-      // 4. Cerrar sesión para forzar nuevo login.
-      // IMPORTANTE: signOut() borra currentOrganizationId del localStorage,
-      // así que lo seteamos DESPUÉS del signOut, no antes.
-      await supabase.auth.signOut();
-
-      // 5. Setear currentOrganizationId DESPUÉS del signOut para que tras el
-      // nuevo login, la app abra directamente la organización de la invitación
-      // y no la última que el usuario tenía activa (que podría tener el trial
-      // expirado o ser una org distinta).
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('currentOrganizationId', String(inviteData.organization_id));
-        console.log('📝 currentOrganizationId seteado a:', inviteData.organization_id, '(post-signOut)');
-      }
-
-      // 5. Completar el proceso
-      setCurrentStep(3); // Paso de éxito
-      setTimeout(() => {
-        onComplete();
-      }, 2000);
 
     } catch (err: any) {
       console.error('Error al procesar invitación:', err);

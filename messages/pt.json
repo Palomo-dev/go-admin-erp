@@ -259,6 +259,8 @@
       "errorValidating": "Erro ao validar o convite: {message}",
       "errorAutoSignIn": "Erro ao entrar automaticamente: {message}. Por favor, entre em contato com o administrador.",
       "noSessionHint": "Você deve abrir o link enviado ao seu e-mail para acessar. Se já o abriu, solicite o reenvio do convite.",
+      "sendingMagicLink": "Enviando link de acesso ao seu e-mail...",
+      "magicLinkSent": "Enviamos um link de acesso para {email}. Abra-o para continuar com o convite.",
       "errorUnexpected": "Erro inesperado ao entrar. Por favor, entre em contato com o administrador.",
       "errorProcessing": "Erro ao processar o convite",
       "goToLogin": "Ir para login",

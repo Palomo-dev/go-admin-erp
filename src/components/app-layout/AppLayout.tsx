@@ -741,7 +741,7 @@ export const AppLayout = ({
         .from('subscriptions')
         .select('status')
         .eq('organization_id', orgId)
-        .single();
+        .maybeSingle();
 
       if (data?.status === 'canceled') {
         console.warn('⚠️ Suscripción cancelada — redirigiendo a plan');

@@ -15,12 +15,12 @@ function InviteContent() {
   const searchParams = useSearchParams();
   const t = useTranslations('auth.invite');
   const tc = useTranslations('common');
-  const inviteCode = searchParams.get('invite_code');
+  const inviteCode = searchParams?.get('invite_code');
   console.log('🔍 Invite code obtenido:', inviteCode);
   
   // Debug: Mostrar TODOS los parámetros de la URL
   console.log('🔍 Todos los parámetros de URL:');
-  searchParams.forEach((value, key) => {
+  searchParams?.forEach((value, key) => {
     console.log(`  ${key}: ${value}`);
   });
   console.log('🔍 URL completa:', typeof window !== 'undefined' ? window.location.href : 'SSR');
@@ -55,10 +55,10 @@ function InviteContent() {
     
     // Ignorar errores de Supabase en la URL (son del flujo automático que no usamos)
     // Limpiar la URL de parámetros de error para mejor UX
-    if (typeof window !== 'undefined' && (window.location.hash.includes('error=') || searchParams.get('error'))) {
+    if (typeof window !== 'undefined' && (window.location.hash.includes('error=') || searchParams?.get('error'))) {
       console.log('Limpiando error de la URL');
       console.log('Limpiando error de la URL:', window.location.hash);
-      const cleanUrl = `${window.location.pathname}?code=${inviteCode}`;
+      const cleanUrl = `${window.location.pathname}?invite_code=${inviteCode}`;
       window.history.replaceState({}, '', cleanUrl);
     }
     console.log('Avanzo code:', inviteCode);  
@@ -115,7 +115,7 @@ function InviteContent() {
       
       // Si no hay sesión, mostrar error con instrucciones
       console.log('No hay sesión activa. El usuario debe clickear el enlace del email primero.');
-      setError(t('errorAutoSignIn', { message: 'Debes abrir el enlace enviado a tu correo electrónico para acceder. Si ya lo abriste, solicita un reenvío de la invitación.' }));
+      setError(t('errorAutoSignIn', { message: t('noSessionHint') }));
       setIsLoading(false);
       
     } catch (err) {

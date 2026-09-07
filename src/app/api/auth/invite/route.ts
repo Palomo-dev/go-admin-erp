@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       p_email: normalizedEmail,
     });
 
-    const inviteUrl = `${origin}/auth/invite?invite_code=${invitationCode}`;
+    const inviteUrl = `${origin}/auth/invite?invite_code=${encodeURIComponent(invitationCode)}`;
 
     // Si el usuario ya existe en auth.users, inviteUserByEmail genera un token
     // type=invite que falla en verifyOtp porque el usuario ya está confirmado.
@@ -64,10 +64,11 @@ export async function POST(request: Request) {
       if (otpError) {
         console.error('Error enviando Magic Link:', otpError);
         return NextResponse.json({
-          success: true,
+          success: false,
+          error: otpError.message,
           inviteUrl,
           message: 'No se pudo enviar el email automáticamente. Comparte el link manualmente.',
-        });
+        }, { status: 500 });
       }
 
       console.log('📧 Magic Link email sent to existing user:', normalizedEmail);
@@ -114,7 +115,7 @@ export async function POST(request: Request) {
       }
       return NextResponse.json(
         { error: inviteError.message, inviteUrl },
-        { status: 200 }
+        { status: 400 }
       );
     }
 

@@ -48,12 +48,11 @@ export async function GET(request: NextRequest) {
             return cookieStore.get(key)?.value ?? null;
           },
           setItem: (key: string, value: string) => {
-            // URL-encodear el valor para que sea consistente con el client-side
-            // (config.ts storage setItem usa encodeURIComponent). Sin esto, el
-            // cliente no puede parsear cookies seteadas por el servidor porque
-            // split('=') rompe si el JSON contiene '=' y decodeURIComponent
-            // corrompe '%' literales del JSON raw.
-            pendingCookies.set(key, encodeURIComponent(value));
+            // NO codificar aquí: Next.js ResponseCookies ya hace encodeURIComponent
+            // del valor al serializar el Set-Cookie header. Si codificamos aquí,
+            // el resultado es doble-encoded y el cliente (que hace un solo
+            // decodeURIComponent) no puede parsear el JSON de la sesión.
+            pendingCookies.set(key, value);
           },
           removeItem: (key: string) => {
             pendingCookies.set(key, null);

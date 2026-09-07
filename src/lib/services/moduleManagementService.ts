@@ -116,7 +116,7 @@ export const moduleManagementService = {
     ] = await Promise.all([
       supabaseClient.from('organizations').select('id, name').eq('id', organizationId).single(),
       supabaseClient.rpc('get_current_plan', { org_id: organizationId }),
-      supabaseClient.from('subscriptions').select('metadata').eq('organization_id', organizationId).single(),
+      supabaseClient.from('subscriptions').select('metadata').eq('organization_id', organizationId).maybeSingle(),
       supabaseClient.from('organization_modules')
         .select('module_code, is_active, modules!inner(*)')
         .eq('organization_id', organizationId)
@@ -721,7 +721,7 @@ export const moduleManagementService = {
         .from('subscriptions')
         .select('id')
         .eq('organization_id', organizationId)
-        .single();
+        .maybeSingle();
 
       if (!existingSub) {
         const { data: freePlan } = await supabaseClient

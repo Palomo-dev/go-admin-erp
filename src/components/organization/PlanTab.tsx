@@ -212,7 +212,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
         // Plan actual via RPC
         supabase.rpc('get_current_plan', { org_id: orgId }),
         // Datos de Stripe
-        supabase.from('subscriptions').select('stripe_subscription_id, stripe_customer_id, cancel_at_period_end, canceled_at, metadata, billing_period').eq('organization_id', orgId).single(),
+        supabase.from('subscriptions').select('stripe_subscription_id, stripe_customer_id, cancel_at_period_end, canceled_at, metadata, billing_period').eq('organization_id', orgId).maybeSingle(),
         // Conteo de sucursales (head=true para no traer datos, solo count)
         supabase.from('branches').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('is_active', true),
         // Conteo de miembros

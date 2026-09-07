@@ -68,19 +68,56 @@ export async function GET(request: NextRequest) {
   // Helper: crear redirect con cookies de sesión aplicadas.
   // Sin esto, las cookies seteadas por verifyOtp se pierden al retornar
   // un NextResponse.redirect() que es una respuesta nueva.
+  // Incluye chunking para cookies grandes: el navegador limita cada cookie
+  // a ~4096 bytes. Si la sesión es grande (ej. user_metadata con signup_data),
+  // una sola cookie excede el límite y el navegador la descarta silenciosamente.
+  // El cliente (config.ts) ya lee cookies chunked (name.0, name.1, ...).
   function redirectWithCookies(url: string) {
     const response = NextResponse.redirect(new URL(url, request.url));
+    const cookieOpts = {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+      maxAge: 604800
+    };
     pendingCookies.forEach((value, name) => {
       if (value !== null) {
-        response.cookies.set(name, value, {
-          httpOnly: false,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-          maxAge: 604800
-        });
+        // Limpiar chunks anteriores si existían
+        for (let i = 0; i < 20; i++) {
+          response.cookies.delete(`${name}.${i}`);
+        }
+        // Next.js ResponseCookies hace encodeURIComponent del valor al serializar.
+        // Estimar el tamaño codificado: los chars especiales del JSON ({, }, ", :, ,, space)
+        // se expanden a 3 bytes cada uno. Aproximadamente 1.3x el tamaño raw.
+        const estimatedEncodedSize = Math.ceil(value.length * 1.4);
+        if (estimatedEncodedSize < 3600) {
+          response.cookies.set(name, value, cookieOpts);
+        } else {
+          // Dividir el valor raw en chunks y setear name.0, name.1, etc.
+          // Next.js codificará cada chunk individualmente con encodeURIComponent.
+          // El cliente (config.ts) concatena los chunks raw y luego decodifica.
+          // IMPORTANTE: no dividir una secuencia %XX (aunque aquí el valor es raw
+          // y no tiene %XX, el encodeURIComponent del cliente podría haberlos añadido
+          // si el valor viene de getItem — pero en setItem el valor es raw JSON).
+          const CHUNK_SIZE = 3500;
+          let chunkIndex = 0;
+          let offset = 0;
+          while (offset < value.length) {
+            const end = Math.min(offset + CHUNK_SIZE, value.length);
+            const chunk = value.substring(offset, end);
+            response.cookies.set(`${name}.${chunkIndex}`, chunk, cookieOpts);
+            offset = end;
+            chunkIndex++;
+          }
+          console.log(`🍪 [VERIFY] Cookie chunked: ${name} (${chunkIndex} chunks, ${value.length} bytes raw)`);
+        }
       } else {
         response.cookies.delete(name);
+        // Limpiar chunks también
+        for (let i = 0; i < 20; i++) {
+          response.cookies.delete(`${name}.${i}`);
+        }
       }
     });
     return response;

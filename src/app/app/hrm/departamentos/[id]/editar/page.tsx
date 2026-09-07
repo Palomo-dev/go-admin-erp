@@ -24,7 +24,7 @@ import Link from 'next/link';
 export default function EditarDepartamentoPage() {
   const params = useParams();
   const router = useRouter();
-  const departmentId = params.id as string;
+  const departmentId = params?.id as string;
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
 

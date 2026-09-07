@@ -22,7 +22,7 @@ import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
 export default function InstagramChannelPage() {
   const params = useParams();
-  const channelId = params.id as string;
+  const channelId = params?.id as string;
   const { organization } = useOrganization();
   const { toast } = useToast();
 

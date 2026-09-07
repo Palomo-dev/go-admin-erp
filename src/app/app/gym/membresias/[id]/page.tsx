@@ -47,7 +47,7 @@ export default function MembershipDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const membershipId = Number(params.id);
+  const membershipId = Number(params?.id);
   const { branchFilter } = useBranch();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -124,7 +124,7 @@ export default function MembershipDetailPage() {
         setPayments(paymentsData || []);
       }
 
-      if (searchParams.get('action') === 'renew') {
+      if (searchParams?.get('action') === 'renew') {
         handleRenew();
       }
     } catch (error) {

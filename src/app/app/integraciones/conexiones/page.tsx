@@ -105,8 +105,8 @@ export default function ConexionesPage() {
 
   // Mostrar toasts de resultado del flujo OAuth de Meta (callback redirect)
   useEffect(() => {
-    const metaError = searchParams.get('meta_error');
-    const metaSuccess = searchParams.get('meta_success');
+    const metaError = searchParams?.get('meta_error') ?? null;
+    const metaSuccess = searchParams?.get('meta_success') ?? null;
 
     if (metaError) {
       toast({

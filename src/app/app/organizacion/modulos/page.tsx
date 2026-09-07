@@ -421,21 +421,21 @@ export default function ModulesMarketplacePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 dark:text-white">
               <Crown className="h-5 w-5 text-yellow-500 dark:text-yellow-400" />
-              {(localOrgStatus || organizationStatus)!.plan.name}
+              {(localOrgStatus || organizationStatus)!.plan!.name}
             </CardTitle>
             <CardDescription className="dark:text-gray-400">
-              {t('modules.usage', { total: totalActiveCount, max: (localOrgStatus || organizationStatus)!.plan.max_modules, core: coreCount, additional: additionalActiveCount })}
+              {t('modules.usage', { total: totalActiveCount, max: (localOrgStatus || organizationStatus)!.plan!.max_modules, core: coreCount, additional: additionalActiveCount })}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <Progress 
-                value={(totalActiveCount / (localOrgStatus || organizationStatus)!.plan.max_modules) * 100} 
+                value={(totalActiveCount / (localOrgStatus || organizationStatus)!.plan!.max_modules) * 100}
                 className="h-2"
               />
               <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                 <span>{t('modules.activeModules', { count: totalActiveCount, core: coreCount })}</span>
-                <span>{t('modules.availableAdditional', { count: (localOrgStatus || organizationStatus)!.plan.max_modules - totalActiveCount })}</span>
+                <span>{t('modules.availableAdditional', { count: (localOrgStatus || organizationStatus)!.plan!.max_modules - totalActiveCount })}</span>
               </div>
             </div>
           </CardContent>
@@ -636,7 +636,7 @@ export default function ModulesMarketplacePage() {
       </div>
 
       {/* Upgrade Plan CTA - Solo mostrar si hay módulos que podrían activarse */}
-      {(localOrgStatus || organizationStatus)?.plan && totalActiveCount >= (localOrgStatus || organizationStatus)!.plan.max_modules && paidModules.some(m => !optimisticActiveModules.has(m.code)) && (
+      {(localOrgStatus || organizationStatus)?.plan && totalActiveCount >= (localOrgStatus || organizationStatus)!.plan!.max_modules && paidModules.some(m => !optimisticActiveModules.has(m.code)) && (
         <Card className="border-purple-200 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-300">

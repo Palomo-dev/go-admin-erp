@@ -36,7 +36,7 @@ interface IncidentHeaderProps {
   relatedTrip?: {
     id: string;
     trip_code: string;
-    departure_datetime: string;
+    scheduled_departure: string;
     origin?: string;
     destination?: string;
     status: string;

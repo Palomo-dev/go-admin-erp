@@ -27,7 +27,7 @@ export default function NuevoDepartamentoPage() {
   const { toast } = useToast();
 
   // Obtener parentId de query params si existe
-  const preselectedParentId = searchParams.get('parent');
+  const preselectedParentId = searchParams?.get('parent') ?? null;
 
   // Estados
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);

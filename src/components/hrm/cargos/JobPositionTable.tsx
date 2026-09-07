@@ -49,10 +49,10 @@ export interface JobPositionRow {
 interface JobPositionTableProps {
   positions: JobPositionRow[];
   onView: (id: string) => void;
-  onEdit: (id: string) => void;
-  onDuplicate: (id: string) => void;
-  onToggleActive: (id: string) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onDuplicate?: (id: string) => void;
+  onToggleActive?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 export function JobPositionTable({
@@ -198,22 +198,22 @@ export function JobPositionTable({
                       <Eye className="h-4 w-4 mr-2" />
                       Ver detalles
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onEdit(position.id)}>
+                    <DropdownMenuItem onClick={() => onEdit?.(position.id)}>
                       <Edit className="h-4 w-4 mr-2" />
                       Editar
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onDuplicate(position.id)}>
+                    <DropdownMenuItem onClick={() => onDuplicate?.(position.id)}>
                       <Copy className="h-4 w-4 mr-2" />
                       Duplicar
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => onToggleActive(position.id)}>
+                    <DropdownMenuItem onClick={() => onToggleActive?.(position.id)}>
                       <ToggleLeft className="h-4 w-4 mr-2" />
                       {position.is_active ? 'Desactivar' : 'Activar'}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={() => onDelete(position.id)}
+                      onClick={() => onDelete?.(position.id)}
                       className="text-red-600 dark:text-red-400"
                       disabled={(position.employees_count || 0) > 0}
                     >

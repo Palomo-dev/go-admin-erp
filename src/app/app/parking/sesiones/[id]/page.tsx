@@ -45,7 +45,7 @@ interface ParkingSession {
 export default function SessionDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const sessionId = params.id as string;
+  const sessionId = params?.id as string;
   const { organization } = useOrganization();
   const { toast } = useToast();
   const { branchFilter } = useBranch();

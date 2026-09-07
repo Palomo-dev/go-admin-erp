@@ -180,7 +180,7 @@ export default function ComparacionAsistenciaPage() {
               <Calendar
                 mode="single"
                 selected={selectedDate}
-                onSelect={(date) => date && setSelectedDate(date)}
+                onSelect={(date: Date | undefined) => date && setSelectedDate(date)}
                 locale={es}
               />
             </PopoverContent>

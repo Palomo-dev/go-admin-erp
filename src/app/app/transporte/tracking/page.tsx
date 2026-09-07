@@ -115,8 +115,15 @@ export default function TrackingPage() {
     stop_id?: string;
     external_event_id?: string;
   }) => {
+    if (!organizationId) {
+      toast({ title: 'Error', description: 'Organización no disponible', variant: 'destructive' });
+      return;
+    }
     try {
-      await trackingService.registerEvent(event);
+      await trackingService.registerEvent({
+        ...event,
+        organization_id: organizationId,
+      });
       toast({ title: 'Evento registrado', description: 'El evento se registró correctamente' });
       await loadData();
     } catch (error) {

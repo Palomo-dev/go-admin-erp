@@ -60,6 +60,7 @@ export interface ParkingPass {
   customer_id: string;
   plan_name: string;
   pass_type_id?: string;
+  vehicle_plate?: string;
   start_date: string;
   end_date: string;
   price: number;

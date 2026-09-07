@@ -8,6 +8,7 @@ import {
   getCurrentBranchId,
   invalidateBranchIdCache,
   BRANCH_CHANGED_EVENT,
+  ORGANIZATION_CHANGED_EVENT,
 } from '@/lib/hooks/useOrganization';
 import { getMobileStorage, setMobileStorage } from '@/lib/utils/mobileStorage';
 
@@ -120,6 +121,18 @@ export const BranchProvider = ({ children }: { children: React.ReactNode }) => {
     window.addEventListener(BRANCHES_UPDATED_EVENT, handleBranchesUpdated);
     return () => {
       window.removeEventListener(BRANCHES_UPDATED_EVENT, handleBranchesUpdated);
+    };
+  }, [loadBranches]);
+
+  // Escuchar cambio de organización activa (sin reload completo de página)
+  // Cuando el AppLayout corrige la org o el usuario cambia de org, recargar sucursales
+  useEffect(() => {
+    const handleOrgChanged = () => {
+      loadBranches();
+    };
+    window.addEventListener(ORGANIZATION_CHANGED_EVENT, handleOrgChanged);
+    return () => {
+      window.removeEventListener(ORGANIZATION_CHANGED_EVENT, handleOrgChanged);
     };
   }, [loadBranches]);
 

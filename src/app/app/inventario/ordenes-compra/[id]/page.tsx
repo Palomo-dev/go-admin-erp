@@ -5,7 +5,7 @@ import { OrdenCompraDetalle } from '@/components/inventario/ordenes-compra/detal
 
 export default function OrdenCompraDetallePage() {
   const params = useParams();
-  const orderUuid = params.id as string;
+  const orderUuid = params?.id as string;
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">

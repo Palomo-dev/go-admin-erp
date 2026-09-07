@@ -66,8 +66,8 @@ export default function ConductoresPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const formattedEmployees = employeesData.map((emp: Record<string, unknown>) => ({
         id: emp.id as string,
-        name: `${(emp.organization_members as Record<string, unknown>)?.profiles?.first_name || ''} ${(emp.organization_members as Record<string, unknown>)?.profiles?.last_name || ''}`.trim() || 'Sin nombre',
-        email: ((emp.organization_members as Record<string, unknown>)?.profiles as Record<string, unknown>)?.email as string || '',
+        name: `${((emp.organization_members as Record<string, unknown>)?.profiles as Record<string, unknown> | undefined)?.first_name || ''} ${((emp.organization_members as Record<string, unknown>)?.profiles as Record<string, unknown> | undefined)?.last_name || ''}`.trim() || 'Sin nombre',
+        email: ((emp.organization_members as Record<string, unknown>)?.profiles as Record<string, unknown> | undefined)?.email as string || '',
       }));
       setEmployees(formattedEmployees);
     } catch (error) {
@@ -257,7 +257,7 @@ export default function ConductoresPage() {
         await transportService.createDriver({
           ...driver,
           organization_id: organization.id,
-        });
+        } as Partial<DriverCredential>);
         success++;
       } catch (error) {
         errors.push(`${driver.license_number}: ${String(error)}`);

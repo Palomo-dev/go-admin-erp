@@ -58,7 +58,7 @@ export default function SpaceDetailPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
   
-  const spaceId = params.id as string;
+  const spaceId = params?.id as string;
 
   const [space, setSpace] = useState<Space | null>(null);
   const [spaceTypes, setSpaceTypes] = useState<SpaceType[]>([]);

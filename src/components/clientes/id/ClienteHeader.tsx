@@ -18,7 +18,7 @@ interface ClienteHeaderProps {
     email?: string;
     tags?: string[];
     avatar_url?: string | null;
-    customer_type?: string;
+    customer_type?: string | null;
   };
   onAvatarUpdate?: (newUrl: string) => void;
 }

@@ -76,7 +76,7 @@ const loanTypeLabels: Record<string, string> = {
 export default function PrestamoDetallePage() {
   const params = useParams();
   const router = useRouter();
-  const loanId = params.id as string;
+  const loanId = params?.id as string;
 
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();

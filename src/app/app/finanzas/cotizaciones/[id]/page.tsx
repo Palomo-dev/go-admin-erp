@@ -21,7 +21,7 @@ export default function CotizacionDetallePage() {
         setLoading(true);
         setError(null);
         setNotFound(false);
-        const id = params.id as string;
+        const id = params?.id as string;
         const data = await CotizacionesService.getQuotationById(id);
         if (!data) {
           setNotFound(true);
@@ -36,8 +36,8 @@ export default function CotizacionDetallePage() {
       }
     };
 
-    if (params.id) loadCotizacion();
-  }, [params.id]);
+    if (params?.id) loadCotizacion();
+  }, [params?.id]);
 
   if (loading) {
     return (

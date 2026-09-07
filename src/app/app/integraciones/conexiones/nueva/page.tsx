@@ -93,9 +93,9 @@ export default function NuevaConexionPage() {
   const organizationId = organization?.id;
 
   // Obtener modo, connectionId y providerId de la URL
-  const mode = (searchParams.get('mode') as FormMode) || 'create';
-  const connectionId = searchParams.get('id');
-  const preselectedProviderId = searchParams.get('provider');
+  const mode = (searchParams?.get('mode') as FormMode) || 'create';
+  const connectionId = searchParams?.get('id') ?? null;
+  const preselectedProviderId = searchParams?.get('provider') ?? null;
 
   // Determinar pasos según el modo
   const STEPS = mode === 'create' ? STEPS_CREATE : STEPS_EDIT;

@@ -29,7 +29,7 @@ export default function EventDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const eventId = params.id as string;
+  const eventId = params?.id as string;
   const organizationId = getOrganizationId();
 
   const [loading, setLoading] = useState(true);

@@ -48,7 +48,7 @@ interface BranchOption {
 export default function EditarTurnoPage() {
   const params = useParams();
   const router = useRouter();
-  const shiftId = params.id as string;
+  const shiftId = params?.id as string;
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
 

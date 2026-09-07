@@ -42,7 +42,7 @@ interface Driver {
 
 export default function HorariosPage() {
   const searchParams = useSearchParams();
-  const routeParam = searchParams.get('route');
+  const routeParam = searchParams?.get('route') ?? null;
   const { toast } = useToast();
   const { organization } = useOrganization();
 

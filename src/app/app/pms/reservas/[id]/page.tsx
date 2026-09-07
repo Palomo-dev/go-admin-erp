@@ -32,7 +32,7 @@ export default function ReservationDetailPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
 
-  const reservationId = params.id as string;
+  const reservationId = params?.id as string;
 
   const [reservation, setReservation] = useState<ReservationDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);

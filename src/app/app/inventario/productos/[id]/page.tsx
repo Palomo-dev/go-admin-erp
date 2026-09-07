@@ -20,7 +20,8 @@ import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkel
  * y sus variantes en una sola vista organizada por pestañas
  */
 export default function ProductoDetallePage() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params?.id as string;
   const router = useRouter();
   const [loading, setLoading] = useState<boolean>(true);
   const [producto, setProducto] = useState<any>(null);

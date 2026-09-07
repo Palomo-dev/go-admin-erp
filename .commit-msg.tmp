@@ -1,0 +1,29 @@
+fix: errores TypeScript Next.js 15 + selector branch tras cambio de org + KPIs web org-wide
+
+TypeScript (91 archivos):
+- params?.id con optional chaining en 50+ paginas (Next.js 15 useParams() puede retornar null)
+- searchParams?.get() con optional chaining en 13 paginas (useSearchParams() puede retornar null)
+- 10 paginas vacias sin default export -> agregado export default function Page()
+- Errores de tipos miscelaneos: WidgetStyle.iconStyle, Cliente type, JobPositionTable props
+  opcionales, ParkingPass.vehicle_plate, EntityFilters export, TimelineEvent cast,
+  ShipmentCard null coalescing, transporte tracking organization_id, IncidentDialog
+  scheduled_departure, conductores type cast, modulos non-null assertion
+
+BranchContext (selector invisible tras cambio de org):
+- Agregado ORGANIZATION_CHANGED_EVENT en useOrganization.ts
+- guardarOrganizacionActiva() ahora dispara el evento cuando la org cambia
+- BranchProvider escucha el evento y recarga sucursales sin necesidad de reload manual
+- Fix: el selector de sucursal no aparecia cuando AppLayout corregia la org activa
+  sin hacer window.location.reload()
+
+KPIs web org-wide (fix Compras Web y Conversion Web en 0):
+- inicioService.ts: creada rpcArgsWeb() sin p_branch_id para RPCs web
+- 8 llamadas RPC web (visitas, webOrdersRev, webOrdersAll) ahora usan rpcArgsWeb
+- Las visitas y compras web son org-wide: el sitio web es unico por organizacion
+- Cuando se implemente multi-outlet (PLAN.md F1+) se revisitar este filtro
+- BD: eliminados overloads ambiguos de get_web_orders_*_by_day/hour con p_branch_id
+  que causaban error 42725 (function is not unique) en PostgREST
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

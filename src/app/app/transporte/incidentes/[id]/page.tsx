@@ -29,7 +29,7 @@ export default function IncidentDetailPage() {
   const { organization } = useOrganization();
   const organizationId = organization?.id;
 
-  const incidentId = params.id as string;
+  const incidentId = params?.id as string;
 
   // Estados principales
   const [incident, setIncident] = useState<IncidentWithDetails | null>(null);

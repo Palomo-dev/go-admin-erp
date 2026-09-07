@@ -50,7 +50,7 @@ import {
 export default function PaqueteDetallePage() {
   const params = useParams();
   const router = useRouter();
-  const packageId = params.id as string;
+  const packageId = params?.id as string;
   
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();

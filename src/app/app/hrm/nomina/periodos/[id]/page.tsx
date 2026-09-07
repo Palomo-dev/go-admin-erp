@@ -64,7 +64,7 @@ const frequencyLabels: Record<string, string> = {
 export default function PeriodoDetallePage() {
   const params = useParams();
   const router = useRouter();
-  const periodId = params.id as string;
+  const periodId = params?.id as string;
 
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();

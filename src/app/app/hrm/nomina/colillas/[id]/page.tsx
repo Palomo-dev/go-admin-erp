@@ -67,7 +67,7 @@ const statusLabels: Record<string, string> = {
 export default function ColillaDetallePage() {
   const params = useParams();
   const router = useRouter();
-  const slipId = params.id as string;
+  const slipId = params?.id as string;
 
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();

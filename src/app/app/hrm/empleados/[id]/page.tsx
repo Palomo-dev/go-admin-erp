@@ -66,7 +66,7 @@ import Link from 'next/link';
 export default function EmpleadoDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const employeeId = params.id as string;
+  const employeeId = params?.id as string;
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
 

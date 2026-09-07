@@ -29,7 +29,7 @@ interface SourceWithStats extends KnowledgeSource {
 export default function SourceDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const sourceId = params.id as string;
+  const sourceId = params?.id as string;
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;

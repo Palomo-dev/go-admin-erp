@@ -28,7 +28,7 @@ import {
 
 export default function WebhooksPage() {
   const params = useParams();
-  const connectionId = params.id as string;
+  const connectionId = params?.id as string;
   const { organization } = useOrganization();
   const { toast } = useToast();
 

@@ -383,6 +383,26 @@ export default function CuentaCongeladaPage() {
               </p>
             </div>
 
+            {/* Opciones para cambiar de organización o cerrar sesión */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2 text-center">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                ¿Pertenes a otra organización con suscripción activa?
+              </p>
+              <button
+                onClick={() => router.push('/auth/select-organization')}
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline transition-colors"
+              >
+                Cambiar de organización
+              </button>
+              <br />
+              <button
+                onClick={handleSignOut}
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              >
+                Cerrar sesión
+              </button>
+            </div>
+
             {/* Si tiene customer_id, mostrar opción de actualizar método de pago */}
             {isPaymentFailed && (
               <div className="border-t border-gray-200 dark:border-gray-700 pt-4 text-center">

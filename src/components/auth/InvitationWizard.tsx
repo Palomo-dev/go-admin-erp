@@ -214,8 +214,19 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
 
       console.log('✅ Invitación completada exitosamente:', acceptResult);
 
-      // 4. Cerrar sesión para forzar nuevo login
+      // 4. Cerrar sesión para forzar nuevo login.
+      // IMPORTANTE: signOut() borra currentOrganizationId del localStorage,
+      // así que lo seteamos DESPUÉS del signOut, no antes.
       await supabase.auth.signOut();
+
+      // 5. Setear currentOrganizationId DESPUÉS del signOut para que tras el
+      // nuevo login, la app abra directamente la organización de la invitación
+      // y no la última que el usuario tenía activa (que podría tener el trial
+      // expirado o ser una org distinta).
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('currentOrganizationId', String(inviteData.organization_id));
+        console.log('📝 currentOrganizationId seteado a:', inviteData.organization_id, '(post-signOut)');
+      }
 
       // 5. Completar el proceso
       setCurrentStep(3); // Paso de éxito

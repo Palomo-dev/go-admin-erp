@@ -46,43 +46,49 @@ export async function GET(request: NextRequest) {
   // Incluye chunking para cookies grandes (sesiones con user_metadata extenso
   // pueden exceder el límite de 4096 bytes por cookie). El cliente (config.ts)
   // ya lee cookies chunked (name.0, name.1, ...).
+  // Codificamos nosotros mismos y dividimos el valor YA CODIFICADO, seteando
+  // los Set-Cookie headers directamente para evitar la doble codificación de
+  // Next.js (que expande cada char especial 3x, haciendo que chunks de 3500
+  // raw chars se conviertan en 7000+ bytes codificados, excediendo el límite).
   function redirectWithCookies(url: string) {
     const response = NextResponse.redirect(new URL(url, request.url));
-    const cookieOpts = {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      path: '/',
-      maxAge: 604800
-    };
+    const isProduction = process.env.NODE_ENV === 'production';
+    const flags = `Path=/; Max-Age=604800; SameSite=Lax${isProduction ? '; Secure' : ''}`;
+    const deleteFlags = `Path=/; Max-Age=0; SameSite=Lax${isProduction ? '; Secure' : ''}`;
+
     pendingCookies.forEach((value, name) => {
       if (value !== null) {
-        // Limpiar chunks anteriores si existían
-        for (let i = 0; i < 20; i++) {
-          response.cookies.delete(`${name}.${i}`);
+        // Primero, borrar cookie simple y chunks anteriores
+        response.headers.append('Set-Cookie', `${name}=; ${deleteFlags}`);
+        for (let i = 0; i < 10; i++) {
+          response.headers.append('Set-Cookie', `${name}.${i}=; ${deleteFlags}`);
         }
-        // NO codificar aquí: Next.js ResponseCookies ya hace encodeURIComponent
-        // del valor al serializar el Set-Cookie header.
-        const estimatedEncodedSize = Math.ceil(value.length * 1.4);
-        if (estimatedEncodedSize < 3600) {
-          response.cookies.set(name, value, cookieOpts);
+
+        const encodedValue = encodeURIComponent(value);
+
+        if (encodedValue.length < 3600) {
+          response.headers.append('Set-Cookie', `${name}=${encodedValue}; ${flags}`);
         } else {
           const CHUNK_SIZE = 3500;
           let chunkIndex = 0;
           let offset = 0;
-          while (offset < value.length) {
-            const end = Math.min(offset + CHUNK_SIZE, value.length);
-            const chunk = value.substring(offset, end);
-            response.cookies.set(`${name}.${chunkIndex}`, chunk, cookieOpts);
+          while (offset < encodedValue.length) {
+            let end = Math.min(offset + CHUNK_SIZE, encodedValue.length);
+            if (end < encodedValue.length) {
+              if (encodedValue[end - 2] === '%') end -= 2;
+              else if (encodedValue[end - 1] === '%') end -= 1;
+            }
+            const chunk = encodedValue.substring(offset, end);
+            response.headers.append('Set-Cookie', `${name}.${chunkIndex}=${chunk}; ${flags}`);
             offset = end;
             chunkIndex++;
           }
-          console.log(`🍪 [CALLBACK] Cookie chunked: ${name} (${chunkIndex} chunks, ${value.length} bytes raw)`);
+          console.log(`🍪 [CALLBACK] Cookie chunked: ${name} (${chunkIndex} chunks, ${encodedValue.length} bytes encoded)`);
         }
       } else {
-        response.cookies.delete(name);
-        for (let i = 0; i < 20; i++) {
-          response.cookies.delete(`${name}.${i}`);
+        response.headers.append('Set-Cookie', `${name}=; ${deleteFlags}`);
+        for (let i = 0; i < 10; i++) {
+          response.headers.append('Set-Cookie', `${name}.${i}=; ${deleteFlags}`);
         }
       }
     });

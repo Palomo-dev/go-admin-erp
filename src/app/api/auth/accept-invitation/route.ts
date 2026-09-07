@@ -62,6 +62,8 @@ export async function POST(request: Request) {
     }
 
     // 2. Para usuarios NUEVOS: crear el usuario en auth.users con la contraseña
+    let userId: string | undefined;
+
     if (!isExistingUser) {
       // Verificar si ya existe (puede haber sido creado por un inviteUserByEmail previo)
       const { data: userList } = await admin.auth.admin.listUsers();
@@ -72,6 +74,7 @@ export async function POST(request: Request) {
       if (existingUser) {
         // El usuario ya existe (creado por invitación anterior) — actualizar contraseña
         console.log('Usuario ya existe, actualizando contraseña:', existingUser.id);
+        userId = existingUser.id;
         const { error: updateError } = await admin.auth.admin.updateUserById(
           existingUser.id,
           {
@@ -113,15 +116,17 @@ export async function POST(request: Request) {
             { status: 500 }
           );
         }
-        console.log('✅ Usuario creado:', newUser.user?.id);
+        userId = newUser.user?.id;
+        console.log('✅ Usuario creado:', userId);
       }
     } else {
-      // Usuario existente: actualizar contraseña con admin API
+      // Usuario existente: actualizar metadata con admin API
       const { data: userList } = await admin.auth.admin.listUsers();
       const existingUser = userList?.users?.find(
         (u) => u.email?.toLowerCase() === normalizedEmail
       );
       if (existingUser) {
+        userId = existingUser.id;
         const { error: updateError } = await admin.auth.admin.updateUserById(
           existingUser.id,
           {
@@ -142,7 +147,15 @@ export async function POST(request: Request) {
       }
     }
 
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'No se pudo obtener el ID del usuario' },
+        { status: 500 }
+      );
+    }
+
     // 3. Crear perfil + membresía + marcar invitación como usada (transacción atómica)
+    // Pasar p_user_id porque usamos admin key (auth.uid() retorna NULL con service role)
     const { data: acceptResult, error: acceptError } = await admin.rpc(
       'accept_invitation_atomic',
       {
@@ -150,6 +163,7 @@ export async function POST(request: Request) {
         p_first_name: firstName,
         p_last_name: lastName,
         p_phone: phone,
+        p_user_id: userId,
       }
     );
 

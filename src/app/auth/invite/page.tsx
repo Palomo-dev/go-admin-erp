@@ -192,7 +192,8 @@ function InviteContent() {
       <InvitationWizard
         inviteData={inviteData}
         onComplete={() => {
-          router.push(`/auth/login?message=${encodeURIComponent(t('completedMessage'))}`);
+          // El wizard ya hizo login automático. Ir directo a la app.
+          router.push('/app/inicio');
         }}
       />
     );

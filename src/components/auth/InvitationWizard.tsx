@@ -160,6 +160,20 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
       const { data: sessionCheck } = await supabase.auth.getSession();
       const hasSession = !!sessionCheck.session;
 
+      // Si hay sesión, verificar que el email del usuario logueado coincida
+      // con el email de la invitación. Si no coinciden (ej. super admin
+      // abriendo invitación de otro usuario), usar el flujo sin sesión.
+      if (hasSession && sessionCheck.session?.user?.email) {
+        const loggedInEmail = sessionCheck.session.user.email.toLowerCase().trim();
+        const inviteEmail = (inviteData.email || '').toLowerCase().trim();
+        if (loggedInEmail !== inviteEmail) {
+          console.log('⚠️ Sesión activa pero email no coincide con invitación, usando flujo sin sesión');
+          // Forzar flujo sin sesión
+          await handleSessionlessFlow();
+          return;
+        }
+      }
+
       if (hasSession) {
         // FLUJO CON SESIÓN (verifyOtp exitoso): usar el flujo original
         // que usa supabase.auth.updateUser (requiere sesión)
@@ -220,77 +234,83 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
         // copiado/abierto directamente): usar API server-side con admin key
         // para crear el usuario y setear la contraseña sin necesidad de
         // verifyOtp. Esto elimina la dependencia del email de verificación.
-        console.log('⚠️ Sin sesión, usando API server-side para aceptar invitación...');
-
-        const res = await fetch('/api/auth/accept-invitation', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            inviteCode: inviteData.code,
-            email: inviteData.email,
-            password: formData.password,
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            phone: formData.phoneNumber,
-            isExistingUser,
-          }),
-        });
-
-        // Verificar que la respuesta sea JSON, no HTML (puede pasar si
-        // el middleware redirige o si la ruta no existe en el deploy)
-        const contentType = res.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-          console.error('❌ Respuesta no es JSON:', res.status, contentType);
-          throw new Error('Error del servidor. Intenta recargar la página.');
-        }
-
-        const result = await res.json();
-
-        if (!res.ok || result.error) {
-          console.error('❌ Error en accept-invitation API:', result.error);
-          throw new Error(result.error || 'No se pudo completar el registro');
-        }
-
-        console.log('✅ Invitación aceptada via API server-side:', result);
-
-        // Setear currentOrganizationId para que tras el login abra la org correcta
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('currentOrganizationId', String(result.organizationId || inviteData.organization_id));
-          localStorage.setItem('currentOrganizationName', result.organizationName || inviteData.organization_name);
-          console.log('📝 currentOrganizationId seteado a:', result.organizationId || inviteData.organization_id);
-        }
-
-        // Login automático: el usuario ya tiene contraseña seteada,
-        // no necesita ir manualmente a la página de login
-        console.log('🔐 [INVITE] Haciendo login automático...');
-        try {
-          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-            email: inviteData.email,
-            password: formData.password,
-          });
-          if (loginError || !loginData.session) {
-            console.error('❌ [INVITE] Login automático falló:', loginError);
-            // Fallback: mandar a login manual
-            setCurrentStep(3);
-            setTimeout(() => { onComplete(); }, 2000);
-          } else {
-            console.log('✅ [INVITE] Login automático exitoso:', loginData.user?.email);
-            setCurrentStep(3);
-            setTimeout(() => {
-              onComplete();
-            }, 2000);
-          }
-        } catch (loginErr) {
-          console.error('❌ [INVITE] Error en login automático:', loginErr);
-          setCurrentStep(3);
-          setTimeout(() => { onComplete(); }, 2000);
-        }
+        await handleSessionlessFlow();
       }
 
     } catch (err: any) {
       console.error('Error al procesar invitación:', err);
       setError(err.message || 'Error inesperado al procesar la invitación');
       setIsLoading(false);
+    }
+  };
+
+  // Flujo sin sesión: usa API server-side con admin key para crear/actualizar
+  // el usuario y aceptar la invitación. No depende de auth.uid().
+  const handleSessionlessFlow = async () => {
+    console.log('⚠️ Sin sesión, usando API server-side para aceptar invitación...');
+
+    const res = await fetch('/api/auth/accept-invitation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        inviteCode: inviteData.code,
+        email: inviteData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phoneNumber,
+        isExistingUser,
+      }),
+    });
+
+    // Verificar que la respuesta sea JSON, no HTML (puede pasar si
+    // el middleware redirige o si la ruta no existe en el deploy)
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      console.error('❌ Respuesta no es JSON:', res.status, contentType);
+      throw new Error('Error del servidor. Intenta recargar la página.');
+    }
+
+    const result = await res.json();
+
+    if (!res.ok || result.error) {
+      console.error('❌ Error en accept-invitation API:', result.error);
+      throw new Error(result.error || 'No se pudo completar el registro');
+    }
+
+    console.log('✅ Invitación aceptada via API server-side:', result);
+
+    // Setear currentOrganizationId para que tras el login abra la org correcta
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('currentOrganizationId', String(result.organizationId || inviteData.organization_id));
+      localStorage.setItem('currentOrganizationName', result.organizationName || inviteData.organization_name);
+      console.log('📝 currentOrganizationId seteado a:', result.organizationId || inviteData.organization_id);
+    }
+
+    // Login automático: el usuario ya tiene contraseña seteada,
+    // no necesita ir manualmente a la página de login
+    console.log('🔐 [INVITE] Haciendo login automático...');
+    try {
+      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+        email: inviteData.email,
+        password: formData.password,
+      });
+      if (loginError || !loginData.session) {
+        console.error('❌ [INVITE] Login automático falló:', loginError);
+        // Fallback: mandar a login manual
+        setCurrentStep(3);
+        setTimeout(() => { onComplete(); }, 2000);
+      } else {
+        console.log('✅ [INVITE] Login automático exitoso:', loginData.user?.email);
+        setCurrentStep(3);
+        setTimeout(() => {
+          onComplete();
+        }, 2000);
+      }
+    } catch (loginErr) {
+      console.error('❌ [INVITE] Error en login automático:', loginErr);
+      setCurrentStep(3);
+      setTimeout(() => { onComplete(); }, 2000);
     }
   };
 

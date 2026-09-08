@@ -203,16 +203,13 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
 
         console.log('✅ Invitación completada exitosamente:', acceptResult);
 
-        // 3. Cerrar sesión para forzar nuevo login
-        await supabase.auth.signOut();
-
-        // 4. Setear currentOrganizationId DESPUÉS del signOut
+        // 3. Setear currentOrganizationId (NO cerrar sesión — el usuario ya tiene sesión válida)
         if (typeof window !== 'undefined') {
           localStorage.setItem('currentOrganizationId', String(inviteData.organization_id));
-          console.log('📝 currentOrganizationId seteado a:', inviteData.organization_id, '(post-signOut)');
+          console.log('📝 currentOrganizationId seteado a:', inviteData.organization_id);
         }
 
-        // 5. Completar
+        // 4. Completar
         setCurrentStep(3);
         setTimeout(() => {
           onComplete();
@@ -263,11 +260,31 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
           console.log('📝 currentOrganizationId seteado a:', result.organizationId || inviteData.organization_id);
         }
 
-        // Completar
-        setCurrentStep(3);
-        setTimeout(() => {
-          onComplete();
-        }, 2000);
+        // Login automático: el usuario ya tiene contraseña seteada,
+        // no necesita ir manualmente a la página de login
+        console.log('🔐 [INVITE] Haciendo login automático...');
+        try {
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+            email: inviteData.email,
+            password: formData.password,
+          });
+          if (loginError || !loginData.session) {
+            console.error('❌ [INVITE] Login automático falló:', loginError);
+            // Fallback: mandar a login manual
+            setCurrentStep(3);
+            setTimeout(() => { onComplete(); }, 2000);
+          } else {
+            console.log('✅ [INVITE] Login automático exitoso:', loginData.user?.email);
+            setCurrentStep(3);
+            setTimeout(() => {
+              onComplete();
+            }, 2000);
+          }
+        } catch (loginErr) {
+          console.error('❌ [INVITE] Error en login automático:', loginErr);
+          setCurrentStep(3);
+          setTimeout(() => { onComplete(); }, 2000);
+        }
       }
 
     } catch (err: any) {

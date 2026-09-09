@@ -67,14 +67,21 @@ export class CouponsService {
       if (filters.branchId != null && typeof filters.branchId === 'number') {
         const branchId = filters.branchId;
         const nowIso = new Date().toISOString();
-        const { data: matchingPromos } = await supabase
+        // branches es JSONB: el operador `cs` (@>) necesita JSON (`[117]`),
+        // no array literal de Postgres (`{117}`), que provoca 22P02.
+        const { data: matchingPromos, error: promosError } = await supabase
           .from('promotions')
           .select('id')
           .eq('organization_id', organizationId)
           .eq('is_active', true)
-          .or(`branches.cs.{${branchId}},branches.is.null,branches.eq.[]`)
+          .or(`branches.cs.[${branchId}],branches.is.null,branches.eq.[]`)
           .or(`start_date.is.null,start_date.lte.${nowIso}`)
           .or(`end_date.is.null,end_date.gte.${nowIso}`);
+
+        if (promosError) {
+          console.error('Error filtrando promociones por sucursal:', promosError);
+          throw new Error(`Error al obtener cupones: ${promosError.message}`);
+        }
 
         const promoIds = (matchingPromos || []).map((p: any) => p.id);
         if (promoIds.length > 0) {

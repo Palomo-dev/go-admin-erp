@@ -59,9 +59,12 @@ export class PromotionsService {
       }
 
       // Filtro de sucursal: mostrar promociones globales (branches null/vacío)
-      // y promociones que incluyen la sucursal seleccionada en su array branches
+      // y promociones que incluyen la sucursal seleccionada en su array branches.
+      // OJO: branches es JSONB, no un array de Postgres. El operador `cs` (@>)
+      // debe recibir el valor como JSON (`[117]`), no como array literal
+      // (`{117}`), o Postgres falla con 22P02 "invalid input syntax for type json".
       if (filters.branchId != null) {
-        query = query.or(`branches.is.null,branches.eq.[],branches.cs.{${filters.branchId}}`);
+        query = query.or(`branches.is.null,branches.eq.[],branches.cs.[${filters.branchId}]`);
       }
 
       const { data, error } = await query;

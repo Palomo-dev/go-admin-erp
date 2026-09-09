@@ -6,6 +6,7 @@ import { NotificationItem } from './NotificationItem';
 interface NotificationsListProps {
   notifications: Notification[];
   loading: boolean;
+  userId: string | null;
   onUpdate: () => void;
 }
 
@@ -15,6 +16,7 @@ interface NotificationsListProps {
 export const NotificationsList = ({ 
   notifications, 
   loading, 
+  userId,
   onUpdate 
 }: NotificationsListProps) => {
   
@@ -39,7 +41,8 @@ export const NotificationsList = ({
       {notifications.map(notification => (
         <NotificationItem 
           key={notification.id} 
-          notification={notification} 
+          notification={notification}
+          userId={userId}
           onUpdate={onUpdate}
         />
       ))}

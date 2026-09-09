@@ -40,7 +40,8 @@ interface Notification {
     [key: string]: any;
   };
   status: string;
-  read_at: string | null;
+  read_at: string | null; // Deprecado: usar is_read_by_me
+  is_read_by_me?: boolean; // true si el usuario actual tiene fila en notification_reads
   created_at: string;
 }
 
@@ -143,61 +144,42 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
 
         if (allError) throw allError;
 
-        // 3. Conteos de no leídas
-        const { count: myUnread } = await supabase
-          .from('notifications')
-          .select('id', { count: 'exact', head: true })
-          .eq('organization_id', organizationId)
-          .neq('status', 'deleted')
-          .eq('recipient_user_id', userId)
-          .is('read_at', null);
+        // 3. Conteos de no leídas (per-user via RPC)
+        const { data: myUnreadRpc } = await supabase.rpc('get_unread_notifications_count', {
+          p_organization_id: parseInt(organizationId, 10),
+          p_scope: 'mine',
+          p_exclude_task_types: !isPmActive,
+        });
+        const { data: allUnreadRpc } = await supabase.rpc('get_unread_notifications_count', {
+          p_organization_id: parseInt(organizationId, 10),
+          p_scope: 'all',
+          p_exclude_task_types: !isPmActive,
+        });
 
-        const { count: totalUnread } = await supabase
-          .from('notifications')
-          .select('id', { count: 'exact', head: true })
-          .eq('organization_id', organizationId)
-          .neq('status', 'deleted')
-          .is('read_at', null);
+        const finalMyUnread = (myUnreadRpc as unknown as number) ?? 0;
+        const finalAllUnread = (allUnreadRpc as unknown as number) ?? 0;
 
-        // Si el módulo PM no está activo, restar las notificaciones de tareas
-        // del conteo para que el badge sea consistente con la lista (que las oculta).
-        let myTaskUnread = 0;
-        let allTaskUnread = 0;
-        if (!isPmActive) {
-          const { count: myTaskCount } = await supabase
-            .from('notifications')
-            .select('id', { count: 'exact', head: true })
-            .eq('organization_id', organizationId)
-            .neq('status', 'deleted')
-            .eq('recipient_user_id', userId)
-            .is('read_at', null)
-            .filter(
-              'payload->>type',
-              'in',
-              '("task_assigned","task_completed","task_agent","task_rescheduled","task_reschedule_summary")'
-            );
-          myTaskUnread = myTaskCount ?? 0;
-
-          const { count: allTaskCount } = await supabase
-            .from('notifications')
-            .select('id', { count: 'exact', head: true })
-            .eq('organization_id', organizationId)
-            .neq('status', 'deleted')
-            .is('read_at', null)
-            .filter(
-              'payload->>type',
-              'in',
-              '("task_assigned","task_completed","task_agent","task_rescheduled","task_reschedule_summary")'
-            );
-          allTaskUnread = allTaskCount ?? 0;
+        // 4. Merge is_read_by_me desde notification_reads (per-user)
+        const allNotifIds = [
+          ...(myData || []).map(n => n.id),
+          ...(allData || []).map(n => n.id),
+        ];
+        let readIds = new Set<string>();
+        if (allNotifIds.length > 0) {
+          const { data: readData } = await supabase
+            .from('notification_reads')
+            .select('notification_id')
+            .eq('user_id', userId)
+            .in('notification_id', allNotifIds);
+          readIds = new Set((readData || []).map(r => r.notification_id));
         }
 
-        const finalMyUnread = Math.max(0, (myUnread ?? 0) - myTaskUnread);
-        const finalAllUnread = Math.max(0, (totalUnread ?? 0) - allTaskUnread);
+        const myNotifsWithRead = (myData || []).map(n => ({ ...n, is_read_by_me: readIds.has(n.id) ?? false }) as Notification);
+        const allNotifsWithRead = (allData || []).map(n => ({ ...n, is_read_by_me: readIds.has(n.id) ?? false }) as Notification);
 
         // Actualizar estados
-        setNotifications((myData || []) as Notification[]);
-        setAllNotifications((allData || []) as Notification[]);
+        setNotifications(myNotifsWithRead);
+        setAllNotifications(allNotifsWithRead);
         setMyUnreadCount(finalMyUnread);
         setAllUnreadCount(finalAllUnread);
         setUnreadCount(finalMyUnread);
@@ -267,6 +249,41 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
     };
   }, [organizationId, userId]);
 
+  // ── Suscripción a Realtime para notification_reads (per-user) ──
+  // Reacciona cuando se inserta un read desde otro dispositivo/session.
+  useEffect(() => {
+    if (!organizationId || !userId) return;
+
+    let isActive = true;
+
+    const readsChannel = supabase
+      .channel(`notification-reads-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notification_reads',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          if (!isActive) return;
+          fetchNotificationsRef.current(true);
+        }
+      )
+      .subscribe((status) => {
+        if (!isActive) return;
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[NotificationsMenu] notification_reads Realtime error:', status);
+        }
+      });
+
+    return () => {
+      isActive = false;
+      supabase.removeChannel(readsChannel);
+    };
+  }, [organizationId, userId]);
+
   // Cerrar el menú cuando se hace clic fuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -283,23 +300,21 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
 
   // Abrir panel de detalle
   const handleNotificationClick = async (notification: Notification) => {
-    const now = new Date().toISOString();
-    const wasUnread = !notification.read_at;
+    const wasUnread = !notification.is_read_by_me;
 
-    // Mostrar la notificación con read_at actualizado inmediatamente
-    setSelectedNotification({ ...notification, read_at: notification.read_at || now });
+    // Mostrar la notificación con is_read_by_me actualizado inmediatamente
+    setSelectedNotification({ ...notification, is_read_by_me: true });
 
-    // Marcar como leída en BD y actualizar listas
-    if (wasUnread) {
+    // Marcar como leída en BD (per-user: INSERT en notification_reads) y actualizar listas
+    if (wasUnread && userId) {
       try {
         const { error } = await supabase
-          .from('notifications')
-          .update({ read_at: now })
-          .eq('id', notification.id);
+          .from('notification_reads')
+          .insert({ notification_id: notification.id, user_id: userId });
 
-        if (!error) {
-          setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, read_at: now } : n));
-          setAllNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, read_at: now } : n));
+        if (!error || error.code === '23505') {
+          setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, is_read_by_me: true } : n));
+          setAllNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, is_read_by_me: true } : n));
           setMyUnreadCount(prev => Math.max(0, prev - 1));
           setAllUnreadCount(prev => Math.max(0, prev - 1));
           setUnreadCount(prev => Math.max(0, prev - 1));
@@ -310,23 +325,25 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
     }
   };
 
-  // Marcar notificación como leída
+  // Marcar notificación como leída (per-user: INSERT en notification_reads)
   const markAsRead = async (id: string) => {
+    if (!userId) return;
     try {
-      const now = new Date().toISOString();
-      
       const { error } = await supabase
-        .from('notifications')
-        .update({ read_at: now })
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      // Actualizar estado local
-      setNotifications(notifications.map(n => 
-        n.id === id ? { ...n, read_at: now } : n
+        .from('notification_reads')
+        .insert({ notification_id: id, user_id: userId });
+
+      if (error && error.code !== '23505') throw error;
+
+      // Actualizar estado local en ambas listas
+      setNotifications(notifications.map(n =>
+        n.id === id ? { ...n, is_read_by_me: true } : n
+      ));
+      setAllNotifications(prev => prev.map(n =>
+        n.id === id ? { ...n, is_read_by_me: true } : n
       ));
       setMyUnreadCount(prev => Math.max(0, prev - 1));
+      setAllUnreadCount(prev => Math.max(0, prev - 1));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Error al marcar como leída:', error);
@@ -366,9 +383,9 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
         aria-haspopup="menu"
       >
         <Bell className="h-5 w-5" />
-        {(myUnreadCount > 0 || (isPmActive && taskReminders.length > 0)) && (
+        {(allUnreadCount > 0 || (isPmActive && taskReminders.length > 0)) && (
           <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-            {myUnreadCount + (isPmActive ? taskReminders.length : 0)}
+            {allUnreadCount + (isPmActive ? taskReminders.length : 0)}
           </span>
         )}
       </button>
@@ -383,9 +400,9 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base sm:text-sm font-semibold sm:font-medium text-gray-900 dark:text-gray-100">Notificaciones y Recordatorios</h3>
-              {(myUnreadCount > 0 || (isPmActive && taskReminders.length > 0)) && (
+              {(allUnreadCount > 0 || (isPmActive && taskReminders.length > 0)) && (
                 <span className="text-sm sm:text-xs font-medium text-gray-600 dark:text-gray-400">
-                  {myUnreadCount + (isPmActive ? taskReminders.length : 0)} pendiente{(myUnreadCount + (isPmActive ? taskReminders.length : 0)) !== 1 ? 's' : ''}
+                  {allUnreadCount + (isPmActive ? taskReminders.length : 0)} pendiente{(allUnreadCount + (isPmActive ? taskReminders.length : 0)) !== 1 ? 's' : ''}
                 </span>
               )}
             </div>
@@ -469,30 +486,28 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
                   onClick={async (e) => {
                     e.stopPropagation();
                     try {
-                      const now = new Date().toISOString();
                       if (userId && organizationId) {
-                        let query = supabase
-                          .from('notifications')
-                          .update({ read_at: now })
-                          .eq('organization_id', organizationId)
-                          .neq('status', 'deleted')
-                          .is('read_at', null);
+                        // RPC server-side: INSERT ... SELECT ... ON CONFLICT DO NOTHING
+                        // Atomico, sin limite de 1000 filas de PostgREST, sin race conditions.
+                        // auth.uid() dentro de la funcion es la fuente de usuario (no p_user_id).
+                        const { data: rpcData, error: rpcErr } = await supabase.rpc('mark_all_notifications_as_read', {
+                          p_organization_id: parseInt(organizationId, 10),
+                          p_scope: notifSubTab === 'mine' ? 'mine' : 'all',
+                        });
 
-                        // Si estamos en "Mías", solo marcar las del usuario
-                        if (notifSubTab === 'mine') {
-                          query = query.eq('recipient_user_id', userId);
-                        }
+                        if (rpcErr) throw rpcErr;
 
-                        const { error } = await query;
-                        if (error) throw error;
-                        
+                        const inserted = (rpcData as unknown as number) ?? 0;
+
                         // Actualizar estado local
                         if (notifSubTab === 'mine') {
-                          setNotifications(notifications.map(n => ({ ...n, read_at: now })));
+                          setNotifications(notifications.map(n => ({ ...n, is_read_by_me: true })));
                           setMyUnreadCount(0);
+                          // Decrementar allUnreadCount (badge) por la cantidad insertada
+                          setAllUnreadCount(prev => Math.max(0, prev - inserted));
                         } else {
-                          setAllNotifications(allNotifications.map(n => ({ ...n, read_at: now })));
-                          setNotifications(notifications.map(n => ({ ...n, read_at: now })));
+                          setAllNotifications(allNotifications.map(n => ({ ...n, is_read_by_me: true })));
+                          setNotifications(notifications.map(n => ({ ...n, is_read_by_me: true })));
                           setAllUnreadCount(0);
                           setMyUnreadCount(0);
                         }
@@ -534,7 +549,7 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
                     <div 
                       key={notification.id} 
                       className={`px-4 py-4 sm:py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 cursor-pointer transition-colors ${
-                        !notification.read_at ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                        !notification.is_read_by_me ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                       }`}
                       onClick={() => handleNotificationClick(notification)}
                     >
@@ -555,7 +570,7 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              dismissNotification(notification.id, !notification.read_at);
+                              dismissNotification(notification.id, !notification.is_read_by_me);
                             }}
                             className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-200 dark:hover:text-gray-200 dark:hover:bg-gray-600 transition-colors"
                             aria-label="Descartar notificación"
@@ -572,7 +587,7 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
                       )}
                       <div className="flex items-center justify-between mt-1 pl-6">
                         <span className="text-xs text-gray-400 capitalize">{notification.channel}</span>
-                        {!notification.read_at && (
+                        {!notification.is_read_by_me && (
                           <span className="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
                         )}
                       </div>

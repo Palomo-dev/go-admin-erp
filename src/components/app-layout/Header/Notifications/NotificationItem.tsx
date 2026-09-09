@@ -15,22 +15,23 @@ import { Badge } from '@/components/ui/badge';
 
 interface NotificationItemProps {
   notification: Notification;
+  userId: string | null;
   onUpdate: () => void;
 }
 
 /**
  * Componente que muestra una notificación individual
  */
-export const NotificationItem = ({ notification, onUpdate }: NotificationItemProps) => {
+export const NotificationItem = ({ notification, userId, onUpdate }: NotificationItemProps) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const markAsRead = async (e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation();
     }
-    
-    if (notification.read_at === null) {
-      const success = await NotificationService.markAsRead(notification.id);
+
+    if (!notification.is_read_by_me && userId) {
+      const success = await NotificationService.markAsRead(notification.id, userId);
       if (success) {
         onUpdate();
       }
@@ -46,7 +47,7 @@ export const NotificationItem = ({ notification, onUpdate }: NotificationItemPro
   return (
     <div 
       className={`px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
-        !notification.read_at ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+        !notification.is_read_by_me ? 'bg-blue-50 dark:bg-blue-900/20' : ''
       }`}
       onClick={markAsRead}
     >
@@ -108,7 +109,7 @@ export const NotificationItem = ({ notification, onUpdate }: NotificationItemPro
                   }}
                   className="px-3 py-1 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800/30 rounded"
                 >
-                  {notification.read_at === null ? "Marcar como leída" : "Leída"}
+                  {notification.is_read_by_me === false ? "Marcar como leída" : "Leída"}
                 </button>
               </div>
             </PopoverContent>
@@ -118,7 +119,7 @@ export const NotificationItem = ({ notification, onUpdate }: NotificationItemPro
       <p className="text-xs mt-1 text-gray-600 dark:text-gray-300 line-clamp-2">
         {notification.payload.content}
       </p>
-      {!notification.read_at && (
+      {!notification.is_read_by_me && (
         <div className="mt-1 flex justify-end">
           <span className="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
         </div>

@@ -70,7 +70,7 @@ export function NotificationList({
 
   const handleRowClick = (notif: BandejaNotification) => {
     setSelected(notif);
-    if (!notif.read_at) onMarkRead(notif.id);
+    if (!notif.is_read_by_me) onMarkRead(notif.id);
   };
 
   if (isLoading) {
@@ -101,7 +101,7 @@ export function NotificationList({
     const ChannelIcon = channelIcons[notif.channel] || Bell;
     const st = statusConfig[notif.status] || statusConfig.pending;
     const StatusIcon = st.icon;
-    const isUnread = !notif.read_at;
+    const isUnread = !notif.is_read_by_me;
 
     return (
       <div

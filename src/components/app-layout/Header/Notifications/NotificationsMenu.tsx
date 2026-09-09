@@ -126,6 +126,7 @@ export const NotificationsMenu = ({ organizationId }: NotificationsProps) => {
           <NotificationsList
             notifications={notifications}
             loading={loading}
+            userId={userId}
             onUpdate={fetchNotifications}
           />
           

@@ -35,9 +35,22 @@ export class NotificationService {
       if (error) throw error;
       
       const notifications = data as Notification[];
-      const unreadCount = notifications.filter(n => n.read_at === null).length;
-      
-      return { notifications, unreadCount };
+
+      // Cargar read IDs del usuario desde notification_reads (per-user)
+      const { data: readData } = await supabase
+        .from('notification_reads')
+        .select('notification_id')
+        .eq('user_id', userId);
+
+      const readIds = new Set((readData || []).map(r => r.notification_id));
+      const notificationsWithReadState = notifications.map(n => ({
+        ...n,
+        is_read_by_me: readIds.has(n.id) ?? false,
+      }));
+
+      const unreadCount = notificationsWithReadState.filter(n => !n.is_read_by_me).length;
+
+      return { notifications: notificationsWithReadState, unreadCount };
     } catch (error) {
       console.error('Error al cargar notificaciones:', error);
       return { notifications: [], unreadCount: 0 };
@@ -45,20 +58,22 @@ export class NotificationService {
   }
 
   /**
-   * Marca una notificación como leída
+   * Marca una notificación como leída (per-user: INSERT en notification_reads)
    * @param id ID de la notificación
+   * @param userId ID del usuario actual
    */
-  static async markAsRead(id: string): Promise<boolean> {
+  static async markAsRead(id: string, userId: string): Promise<boolean> {
     try {
-      const now = new Date().toISOString();
-      
       const { error } = await supabase
-        .from('notifications')
-        .update({ read_at: now })
-        .eq('id', id);
-      
-      if (error) throw error;
-      
+        .from('notification_reads')
+        .insert({ notification_id: id, user_id: userId });
+
+      if (error) {
+        // Si ya existe (conflict), no es un error real
+        if (error.code === '23505') return true;
+        throw error;
+      }
+
       return true;
     } catch (error) {
       console.error('Error al marcar como leída:', error);
@@ -67,24 +82,21 @@ export class NotificationService {
   }
 
   /**
-   * Marca todas las notificaciones como leídas
+   * Marca todas las notificaciones como leídas (RPC server-side: atomico)
    * @param organizationId ID de la organización
-   * @param userId ID del usuario
+   * @param userId ID del usuario (no se pasa al RPC; auth.uid() es la fuente)
    */
   static async markAllAsRead(organizationId: string | null, userId: string | null): Promise<boolean> {
     if (!organizationId || !userId) return false;
 
     try {
-      const now = new Date().toISOString();
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read_at: now })
-        .eq('organization_id', organizationId)
-        .eq('recipient_user_id', userId)
-        .is('read_at', null);
-      
+      const { error } = await supabase.rpc('mark_all_notifications_as_read', {
+        p_organization_id: parseInt(organizationId, 10),
+        p_scope: 'mine',
+      });
+
       if (error) throw error;
-      
+
       return true;
     } catch (error) {
       console.error('Error al marcar todas como leídas:', error);

@@ -23,7 +23,8 @@ interface NotificationForSheet {
   channel: string;
   payload: Record<string, any>;
   status: string;
-  read_at: string | null;
+  read_at: string | null; // Deprecado: usar is_read_by_me
+  is_read_by_me?: boolean; // true si el usuario actual tiene fila en notification_reads
   created_at: string;
 }
 
@@ -348,7 +349,7 @@ export function NotificationDetailSheet({ notification, open, onOpenChange, onNa
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <Badge variant="outline" className="text-xs">{typeLabel}</Badge>
                 <Badge variant="secondary" className="text-xs capitalize">{n.channel}</Badge>
-                {n.read_at
+                {n.is_read_by_me
                   ? <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">Leída</span>
                   : <span className="inline-flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />Nueva</span>
                 }

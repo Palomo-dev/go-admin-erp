@@ -112,7 +112,7 @@ export default function BandejaPage() {
   const handleMarkAllRead = async () => {
     if (!organizationId || !userId) return;
 
-    const success = await BandejaService.markAllAsRead(organizationId, userId);
+    const success = await BandejaService.markAllAsRead(organizationId);
     if (success) {
       toast({ title: 'Listo', description: 'Todas las notificaciones marcadas como leídas.' });
       loadData();
@@ -121,23 +121,25 @@ export default function BandejaPage() {
     }
   };
 
-  // Marcar una como leída
+  // Marcar una como leída (per-user: INSERT en notification_reads)
   const handleMarkRead = async (id: string) => {
-    const success = await BandejaService.markAsRead(id);
+    if (!userId) return;
+    const success = await BandejaService.markAsRead(id, userId);
     if (success) {
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n))
+        prev.map((n) => (n.id === id ? { ...n, is_read_by_me: true } : n))
       );
       if (stats) setStats({ ...stats, unread: Math.max(0, stats.unread - 1) });
     }
   };
 
-  // Marcar como no leída
+  // Marcar como no leída (per-user: DELETE en notification_reads)
   const handleMarkUnread = async (id: string) => {
-    const success = await BandejaService.markAsUnread(id);
+    if (!userId) return;
+    const success = await BandejaService.markAsUnread(id, userId);
     if (success) {
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read_at: null } : n))
+        prev.map((n) => (n.id === id ? { ...n, is_read_by_me: false } : n))
       );
       if (stats) setStats({ ...stats, unread: stats.unread + 1 });
     }

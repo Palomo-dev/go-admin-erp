@@ -108,6 +108,18 @@ const blockRefresh = () => {
   console.warn(`🚫 [AUTH] Refresh bloqueado por ${REFRESH_BLOCK_DURATION / 1000}s (token inválido)`);
 };
 
+// Libera el bloqueo anti-bucle. Es imprescindible llamarlo cuando aparece una
+// sesión nueva y válida (login, setSession, callback OAuth): si no, el getItem
+// del storage sigue devolviendo null durante 60s y getSession()/getUser()
+// responden "Auth session missing" aunque el login haya sido correcto.
+const unblockRefresh = (reason: string) => {
+  if (refreshBlocked) {
+    refreshBlocked = false;
+    refreshBlockedAt = 0;
+    console.log(`✅ [AUTH] Bloqueo de refresh liberado (${reason})`);
+  }
+};
+
 // Creación del cliente de Supabase para el navegador
 export const createSupabaseClient = () => {
   // Configuramos las credenciales, usando valores predeterminados si no hay variables de entorno
@@ -199,6 +211,13 @@ export const createSupabaseClient = () => {
         },
         setItem: (key: string, value: string) => {
           if (typeof window !== 'undefined') {
+            // Si se está escribiendo un token de auth nuevo, el bloqueo anti-bucle
+            // quedó obsoleto: liberarlo antes de guardar para que el siguiente
+            // getItem no devuelva null y la sesión recién creada sea visible.
+            if (key.includes('-auth-token')) {
+              unblockRefresh('token nuevo guardado en storage');
+            }
+
             // Guardar en localStorage primero
             localStorage.setItem(key, value);
             console.log('💾 [STORAGE] Guardado en localStorage:', key);
@@ -662,6 +681,9 @@ export const signInWithEmail = async (email: string, password: string) => {
 
   lastLoginAttempt = now;
   lastLoginEmail = email;
+
+  // Un login explícito invalida cualquier bloqueo previo por refresh token muerto.
+  unblockRefresh('inicio de login con email');
 
   const result = await supabase.auth.signInWithPassword({ email, password });
   

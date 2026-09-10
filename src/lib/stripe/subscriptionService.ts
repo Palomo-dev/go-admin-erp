@@ -9,7 +9,7 @@
  * - Cancelar suscripciones
  */
 
-import { stripe } from './server'
+import { requireStripe } from './server'
 import { createClient } from '@supabase/supabase-js'
 import { getEnterprisePricing } from '@/lib/services/pricingService'
 
@@ -112,7 +112,7 @@ export async function createSubscription(
         - ${isYearly ? 'Anual (descuento 2 meses): $' + calculatedPrice + '/año' : 'Total: $' + calculatedPrice + '/mes'}`);
       
       // Crear producto en Stripe
-      const product = await stripe.products.create({
+      const product = await requireStripe().products.create({
         name: `Enterprise ${isYearly ? 'Anual' : 'Mensual'} - Org ${data.organizationId}`,
         description: `${data.enterpriseConfig.modulesCount} módulos, ${data.enterpriseConfig.branchesCount} sucursales, ${data.enterpriseConfig.usersCount} usuarios, ${data.enterpriseConfig.aiCredits || 0} créditos IA`,
         metadata: {
@@ -127,7 +127,7 @@ export async function createSubscription(
       })
       
       // Crear precio
-      const stripePrice = await stripe.prices.create({
+      const stripePrice = await requireStripe().prices.create({
         product: product.id,
         unit_amount: Math.round(calculatedPrice * 100),
         currency: 'usd',
@@ -167,7 +167,7 @@ export async function createSubscription(
       console.log('✅ Usando customer existente del registro:', customerId)
       
       // Actualizar metadata del customer con la organización
-      await stripe.customers.update(customerId, {
+      await requireStripe().customers.update(customerId, {
         metadata: {
           organizationId: data.organizationId.toString(),
           planCode: data.planCode,
@@ -177,7 +177,7 @@ export async function createSubscription(
     } else {
       // Buscar si ya existe un customer con este email
       console.log('🔍 DEBUG createSubscription - Buscando customer existente...');
-      const existingCustomers = await stripe.customers.list({
+      const existingCustomers = await requireStripe().customers.list({
         email: data.customerEmail,
         limit: 1,
       })
@@ -187,7 +187,7 @@ export async function createSubscription(
         console.log('✅ Customer existente encontrado:', customerId)
       } else {
         console.log('🔍 DEBUG createSubscription - Creando nuevo customer...');
-        const customer = await stripe.customers.create({
+        const customer = await requireStripe().customers.create({
           email: data.customerEmail,
           name: data.customerName,
           metadata: {
@@ -230,7 +230,7 @@ export async function createSubscription(
 
     if (data.useTrial) {
       // CON TRIAL: días gratis, no requiere payment method inmediato
-      subscription = await stripe.subscriptions.create({
+      subscription = await requireStripe().subscriptions.create({
         customer: customerId,
         items: [{ price: priceId }],
         trial_period_days: plan.trial_days || 15,
@@ -301,19 +301,19 @@ export async function createSubscription(
       }
 
       // Adjuntar payment method al customer
-      await stripe.paymentMethods.attach(data.paymentMethodId, {
+      await requireStripe().paymentMethods.attach(data.paymentMethodId, {
         customer: customerId,
       })
 
       // Establecer como default payment method
-      await stripe.customers.update(customerId, {
+      await requireStripe().customers.update(customerId, {
         invoice_settings: {
           default_payment_method: data.paymentMethodId,
         },
       })
 
       // Crear suscripción sin trial
-      subscription = await stripe.subscriptions.create({
+      subscription = await requireStripe().subscriptions.create({
         customer: customerId,
         items: [{ price: priceId }],
         default_payment_method: data.paymentMethodId,
@@ -516,12 +516,12 @@ async function saveSubscriptionToDatabase(
  */
 export async function cancelSubscription(subscriptionId: string, immediate: boolean = false) {
   try {
-    const subscription = await stripe.subscriptions.update(subscriptionId, {
+    const subscription = await requireStripe().subscriptions.update(subscriptionId, {
       cancel_at_period_end: !immediate,
     })
 
     if (immediate) {
-      await stripe.subscriptions.cancel(subscriptionId)
+      await requireStripe().subscriptions.cancel(subscriptionId)
     }
 
     console.log('✅ Suscripción cancelada:', subscriptionId)
@@ -548,13 +548,13 @@ export async function updateSubscriptionPaymentMethod(
   paymentMethodId: string
 ) {
   try {
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+    const subscription = await requireStripe().subscriptions.retrieve(subscriptionId)
     
-    await stripe.paymentMethods.attach(paymentMethodId, {
+    await requireStripe().paymentMethods.attach(paymentMethodId, {
       customer: subscription.customer as string,
     })
 
-    await stripe.customers.update(subscription.customer as string, {
+    await requireStripe().customers.update(subscription.customer as string, {
       invoice_settings: {
         default_payment_method: paymentMethodId,
       },
@@ -611,10 +611,10 @@ export async function changeSubscriptionPlan(
     }
 
     // Obtener la suscripción actual
-    const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId)
+    const subscription = await requireStripe().subscriptions.retrieve(stripeSubscriptionId)
     
     // Actualizar la suscripción con el nuevo precio
-    const updatedSubscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+    const updatedSubscription = await requireStripe().subscriptions.update(stripeSubscriptionId, {
       items: [{
         id: subscription.items.data[0].id,
         price: newPriceId,
@@ -662,7 +662,7 @@ export async function createBillingPortalSession(
   returnUrl: string
 ) {
   try {
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await requireStripe().billingPortal.sessions.create({
       customer: customerId,
       return_url: returnUrl,
     })
@@ -685,7 +685,7 @@ export async function createBillingPortalSession(
  */
 export async function getCustomerInvoices(customerId: string, limit: number = 10) {
   try {
-    const invoices = await stripe.invoices.list({
+    const invoices = await requireStripe().invoices.list({
       customer: customerId,
       limit,
     })
@@ -720,7 +720,7 @@ export async function getCustomerInvoices(customerId: string, limit: number = 10
  */
 export async function reactivateSubscription(subscriptionId: string) {
   try {
-    const subscription = await stripe.subscriptions.update(subscriptionId, {
+    const subscription = await requireStripe().subscriptions.update(subscriptionId, {
       cancel_at_period_end: false,
     })
 
@@ -746,7 +746,7 @@ export async function getCustomerPaymentMethods(customerId: string) {
   try {
     console.log('🔍 DEBUG getCustomerPaymentMethods - customerId:', customerId);
     
-    const paymentMethods = await stripe.paymentMethods.list({
+    const paymentMethods = await requireStripe().paymentMethods.list({
       customer: customerId,
       type: 'card',
     })
@@ -780,7 +780,7 @@ export async function getCustomerPaymentMethods(customerId: string) {
  */
 export async function deletePaymentMethod(paymentMethodId: string) {
   try {
-    await stripe.paymentMethods.detach(paymentMethodId)
+    await requireStripe().paymentMethods.detach(paymentMethodId)
     
     return { success: true }
   } catch (error: any) {
@@ -797,7 +797,7 @@ export async function deletePaymentMethod(paymentMethodId: string) {
  */
 export async function createSetupIntent(customerId: string) {
   try {
-    const setupIntent = await stripe.setupIntents.create({
+    const setupIntent = await requireStripe().setupIntents.create({
       customer: customerId,
       payment_method_types: ['card'],
     })

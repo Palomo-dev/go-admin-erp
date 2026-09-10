@@ -26,6 +26,13 @@ function createSupabaseClient() {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!stripe) {
+      return NextResponse.json(
+        { error: 'Stripe no está configurado. Verifica STRIPE_SECRET_KEY.' },
+        { status: 500 }
+      )
+    }
+
     const { sessionId, organizationId } = await request.json();
 
     if (!sessionId) {

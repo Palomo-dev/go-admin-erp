@@ -90,11 +90,9 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
   // Crear rol
   const createRole = useCallback(async (roleData: Omit<Role, 'id' | 'created_at' | 'is_system'>): Promise<Role | null> => {
     try {
-      const newRole = await roleService.createRole({
-        ...roleData,
-        organization_id: organizationId
-      });
-      
+      // La tabla roles es global: no lleva organization_id
+      const newRole = await roleService.createRole(roleData);
+
       toast.success('Rol creado exitosamente');
       await loadRoles(); // Recargar lista
       return newRole;
@@ -104,7 +102,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       console.error('Error creating role:', err);
       return null;
     }
-  }, [organizationId, loadRoles]);
+  }, [loadRoles]);
 
   // Actualizar rol
   const updateRole = useCallback(async (roleId: number, roleData: Partial<Role>): Promise<Role | null> => {

@@ -13,6 +13,15 @@ import StageGateService from '@/lib/services/crm/stageGateService';
  * 4. Requiere rol de admin de organización.
  *
  * Body opcional: { targetStageId?: string, skipGateCheck?: boolean }
+ *
+ * CICLO DE VIDA DEL CLIENTE: el paso `customers.lifecycle_stage` 'lead' →
+ * 'opportunity' NO se escribe aquí. Lo hace el trigger `trg_sync_customer_lifecycle`
+ * sobre el propio UPDATE de `record_type` (migración `crm_customer_lifecycle_ladder`),
+ * que es el único sitio que cubre también a los demás escritores de `record_type`
+ * (`opportunitiesService.updateOpportunity`) y aplica la escalera monotónica —
+ * un cliente que ya es 'customer' nunca baja a 'opportunity'. Esta ruta se limita
+ * a releer el resultado para devolverlo, de modo que el cambio sea observable y
+ * no un efecto silencioso.
  */
 export async function POST(
   request: NextRequest,
@@ -42,7 +51,7 @@ export async function POST(
     // 1. Obtener el lead y verificar que pertenece a la org y es record_type='lead'
     const { data: lead, error: leadError } = await ctx.supabase
       .from('opportunities')
-      .select('id, record_type, stage_id, pipeline_id, organization_id, name')
+      .select('id, record_type, stage_id, pipeline_id, organization_id, name, customer_id')
       .eq('id', leadId)
       .eq('organization_id', ctx.organizationId)
       .maybeSingle();
@@ -96,11 +105,35 @@ export async function POST(
       throw updateError;
     }
 
+    // 4. Releer la etapa de ciclo de vida que dejó el trigger, para devolverla.
+    //    Un fallo aquí no invalida la conversión: se registra y se devuelve null.
+    let customerLifecycleStage: string | null = null;
+    if (lead.customer_id) {
+      const { data: customer, error: customerError } = await ctx.supabase
+        .from('customers')
+        .select('lifecycle_stage')
+        .eq('id', lead.customer_id)
+        .eq('organization_id', ctx.organizationId)
+        .maybeSingle();
+      if (customerError) {
+        console.error(
+          '[CRM Leads Convert] no se pudo releer lifecycle_stage del cliente %s: %s',
+          lead.customer_id,
+          customerError.message
+        );
+      } else {
+        customerLifecycleStage = (customer?.lifecycle_stage as string | null) ?? null;
+      }
+    }
+
     return NextResponse.json(
       {
         success: true,
         data: updated,
         gate: gateResult,
+        customer: lead.customer_id
+          ? { id: lead.customer_id, lifecycle_stage: customerLifecycleStage }
+          : null,
       },
       { status: 200 }
     );

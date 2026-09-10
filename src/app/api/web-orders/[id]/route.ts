@@ -26,10 +26,10 @@ interface UpdateOrderRequest {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const orderId = params.id;
+    const { id: orderId } = await params;
     const supabase = getSupabaseClient();
 
     const { data, error } = await supabase
@@ -72,10 +72,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const orderId = params.id;
+    const { id: orderId } = await params;
     const body: UpdateOrderRequest = await request.json();
 
     const updateData: any = {};
@@ -171,10 +171,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const orderId = params.id;
+    const { id: orderId } = await params;
     const supabase = getSupabaseClient();
 
     // Primero verificar que el pedido existe y su estado permite eliminación

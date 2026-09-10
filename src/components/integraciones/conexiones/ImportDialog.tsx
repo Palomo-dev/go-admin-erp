@@ -123,7 +123,6 @@ export function ImportDialog({
 
   const resetForm = () => {
     setConnectorId('');
-    setFile(null);
     setParsedData([]);
     setResult(null);
     if (fileInputRef.current) {

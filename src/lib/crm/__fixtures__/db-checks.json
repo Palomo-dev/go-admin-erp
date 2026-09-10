@@ -1,0 +1,201 @@
+{
+  "_comment": "Snapshot de los CHECK constraints de Postgres (proyecto jgmgphmzusbluqhuqihj). Generado con MCP execute_sql sobre pg_constraint (ver query abajo). El guardarraíl #9 de src/__tests__/guardrails.test.ts compara estos arrays con src/lib/crm/enums.ts. Regenerar tras cada migración que toque un CHECK.",
+  "generated_at": "2026-09-09T02:37:01.994Z",
+  "query": "SELECT c.conrelid::regclass::text AS table_name, c.conname, pg_get_constraintdef(c.oid) AS def FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace WHERE c.contype = 'c' AND n.nspname = 'public' AND pg_get_constraintdef(c.oid) LIKE '%ANY (ARRAY%' ORDER BY 1,2;",
+  "planned_extras": {
+    "_comment": "Valores presentes en enums.ts pero aún NO en el CHECK de BD (pedidos al agente DB). Vacío desde DB-r2 (noop ya está en outbound_jobs_kind_check)."
+  },
+  "checks": {
+    "activities.activity_type": [
+      "call",
+      "email",
+      "whatsapp",
+      "sms",
+      "meeting",
+      "visit",
+      "note",
+      "system",
+      "ai_call",
+      "task"
+    ],
+    "automation_rules.trigger_type": [
+      "stage_change",
+      "field_change",
+      "schedule",
+      "event",
+      "manual"
+    ],
+    "call_analyses.sentiment": [
+      "positive",
+      "neutral",
+      "negative",
+      "mixed"
+    ],
+    "call_recordings.status": [
+      "processing",
+      "ready",
+      "failed",
+      "deleted"
+    ],
+    "calls.bridge_mode": [
+      "agent_leg",
+      "customer_leg",
+      "full_bridge"
+    ],
+    "calls.direction": [
+      "inbound",
+      "outbound"
+    ],
+    "calls.duration_source": [
+      "provider",
+      "estimated",
+      "manual"
+    ],
+    "calls.mode": [
+      "browser",
+      "bridge",
+      "ai_agent",
+      "manual",
+      "inbound"
+    ],
+    "calls.status": [
+      "dialing",
+      "ringing",
+      "in_progress",
+      "completed",
+      "failed",
+      "busy",
+      "no_answer",
+      "canceled",
+      "voicemail"
+    ],
+    "call_transcripts.status": [
+      "pending",
+      "processing",
+      "completed",
+      "failed"
+    ],
+    "contact_consents.channel": [
+      "email",
+      "whatsapp",
+      "sms",
+      "voice"
+    ],
+    "contact_consents.status": [
+      "opted_in",
+      "opted_out",
+      "unknown"
+    ],
+    "email_messages.status": [
+      "pending",
+      "sent",
+      "delivered",
+      "opened",
+      "clicked",
+      "bounced",
+      "complained",
+      "unsubscribed",
+      "failed"
+    ],
+    "messages.content_type": [
+      "text",
+      "image",
+      "file",
+      "audio",
+      "video",
+      "location",
+      "template"
+    ],
+    "messages.direction": [
+      "inbound",
+      "outbound"
+    ],
+    "messages.role": [
+      "customer",
+      "agent",
+      "ai",
+      "system"
+    ],
+    "mobile_call_bridges.status": [
+      "initiating",
+      "agent_ringing",
+      "agent_answered",
+      "customer_dialing",
+      "in_progress",
+      "completed",
+      "failed",
+      "agent_no_answer",
+      "agent_rejected"
+    ],
+    "outbound_jobs.kind": [
+      "email",
+      "whatsapp",
+      "sms",
+      "ai_call",
+      "sequence_step",
+      "automation",
+      "transcribe",
+      "analyze",
+      "recording_fetch",
+      "recording_cleanup",
+      "campaign_batch",
+      "crm_event",
+      "maintenance",
+      "noop",
+      "time_events"
+    ],
+    "outbound_jobs.status": [
+      "queued",
+      "running",
+      "done",
+      "failed",
+      "dead"
+    ],
+    "sequence_steps.channel": [
+      "email",
+      "whatsapp",
+      "sms",
+      "call",
+      "task",
+      "wait",
+      "condition"
+    ],
+    "tasks.priority": [
+      "low",
+      "med",
+      "high",
+      "critical"
+    ],
+    "tasks.status": [
+      "open",
+      "in_progress",
+      "done",
+      "canceled"
+    ],
+    "voice_agent_calls.status": [
+      "pending",
+      "in_progress",
+      "completed",
+      "failed",
+      "transferred"
+    ],
+    "voice_agents.engine": [
+      "conversation_relay",
+      "elevenlabs_agent",
+      "openai_realtime",
+      "gemini_live"
+    ],
+    "voice_agents.purpose_type": [
+      "qualify_lead",
+      "confirm_demo",
+      "follow_up_proposal",
+      "reactivate_cold",
+      "collect_payment",
+      "nps_survey",
+      "renewal_reminder",
+      "sell_product",
+      "book_meeting",
+      "custom"
+    ]
+  }
+}

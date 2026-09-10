@@ -60,7 +60,7 @@ export function CustomerSearchSelect({
   const [hasInitialLoad, setHasInitialLoad] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const debounceRef = React.useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

@@ -5,14 +5,25 @@ import {
   ReportAgentContext,
 } from '@/lib/services/reportes/reportAgentService';
 import type { PeriodoCierre } from '@/lib/services/reportes/types';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
 export async function POST(request: NextRequest) {
+  // Seguridad (F0, C-A): sesión + org activa; el contexto se fuerza a la org de sesión.
+  let ctx;
+  try {
+    ctx = await getServerOrgContext(request);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+    }
+    throw err;
+  }
+
   try {
     const body = await request.json();
     const {
       message,
       conversationHistory,
-      context,
       periodoActual,
       modulosActivos,
     } = body as {
@@ -22,6 +33,10 @@ export async function POST(request: NextRequest) {
       periodoActual: PeriodoCierre;
       modulosActivos: string[];
     };
+    const context = {
+      ...(body.context as ReportAgentContext),
+      organizationId: ctx.organizationId,
+    } as ReportAgentContext;
 
     if (!message || !context || !periodoActual || !modulosActivos) {
       return NextResponse.json(

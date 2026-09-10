@@ -1,19 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { consumeAICredits } from '@/lib/services/aiCreditsService';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { getServiceClient } from '@/lib/supabase/server-service';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  // Seguridad (F0, C-A): sesión + org activa; se ignora organizationId del body.
+  let ctx;
   try {
-    const { productName, description, organizationId } = await request.json();
+    ctx = await getServerOrgContext(request);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+    }
+    throw err;
+  }
+  const organizationId = ctx.organizationId;
+
+  try {
+    const { productName, description } = await request.json();
 
     console.log('=== Generate Image API ===');
     console.log('Product:', productName);
     console.log('Organization:', organizationId);
 
-    if (!productName || !organizationId) {
+    if (!productName) {
       return NextResponse.json(
-        { error: 'Nombre del producto y organizationId son requeridos' },
+        { error: 'Nombre del producto es requerido' },
         { status: 400 }
       );
     }
@@ -56,7 +70,7 @@ Style: Clean white background, professional e-commerce product photography, high
       quality: 'standard',
     });
 
-    const imageUrl = imageResponse.data[0]?.url;
+    const imageUrl = imageResponse.data?.[0]?.url;
     
     if (!imageUrl) {
       throw new Error('DALL-E no devolvió una imagen');
@@ -72,13 +86,9 @@ Style: Clean white background, professional e-commerce product photography, high
 
     // Intentar subir a Storage (opcional)
     try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      
-      if (supabaseUrl && supabaseServiceKey) {
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
-        
+      if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        const supabase = getServiceClient();
+
         const imageData = await fetch(imageUrl);
         const imageBuffer = await imageData.arrayBuffer();
         

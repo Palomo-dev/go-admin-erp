@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { 
   ChevronsLeft, 
   ChevronsRight, 
@@ -94,12 +95,19 @@ import { useTheme } from 'next-themes';
 import { themeService } from '@/lib/services/themeService';
 import { usePathname, useRouter } from 'next/navigation';
 import { NavItemProps } from './types';
+import { CRM_NAV_ENABLED } from '@/config/crmNav';
 import type { AssistantContext } from '@/lib/services/aiAssistantService';
 
 // Importaciones estándar para evitar ChunkLoadError
 import ModuleLimitNotification from '@/components/notifications/ModuleLimitNotification';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { ModuleProvider } from '@/lib/context/ModuleContext';
+// F3: dock del softphone y aviso de llamada entrante. Se montan AQUI y no en
+// `SoftphoneShell` porque aqui ya se sabe que modulos tiene activos la
+// organizacion (`activeModuleCodes`), sin una consulta extra, y porque
+// `ModuleProvider` vive dentro de este componente.
+const SoftphoneDock = dynamic(() => import('@/components/voice/SoftphoneDock').then((m) => m.SoftphoneDock), { ssr: false });
+const IncomingCallToast = dynamic(() => import('@/components/voice/IncomingCallToast').then((m) => m.IncomingCallToast), { ssr: false });
 import { BranchProvider } from '@/lib/context/BranchContext';
 import { NavigationProgress } from './NavigationProgress';
 import { OfflineIndicator } from './OfflineIndicator';
@@ -124,18 +132,12 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
     name: "CRM",
     href: "/app/crm",
     icon: <Users size={18} />,
-    submenu: [
-      { name: "Clientes", href: "/app/crm/clientes", icon: <Users size={16} /> },
-      { name: "Pipeline", href: "/app/crm/pipeline", icon: <Target size={16} /> },
-      { name: "Oportunidades", href: "/app/crm/oportunidades", icon: <TrendingUp size={16} /> },
-      { name: "Equipo", href: "/app/crm/equipo", icon: <Users size={16} /> },
-      { name: "Pronóstico", href: "/app/crm/pronostico", icon: <BarChart3 size={16} /> },
-      { name: "Actividades", href: "/app/crm/actividades", icon: <Activity size={16} /> },
-      { name: "Segmentos", href: "/app/crm/segmentos", icon: <Tag size={16} /> },
-      { name: "Campañas", href: "/app/crm/campanas", icon: <Megaphone size={16} /> },
-      { name: "Salud Clientes", href: "/app/crm/salud", icon: <HeartPulse size={16} /> },
-      { name: "Identidades", href: "/app/crm/identidades", icon: <User size={16} /> }
-    ]
+    // Única fuente: src/config/crmNav.ts (F0 §5.1)
+    submenu: CRM_NAV_ENABLED.map((item) => ({
+      name: item.name,
+      href: item.href,
+      icon: <item.icon size={16} />,
+    }))
   },
   {
     name: "HRM",
@@ -1166,14 +1168,16 @@ export const AppLayout = ({
           if (member?.organization_id && member?.organizations) {
             const org = member.organizations as any;
             const orgIdStr = org.id.toString();
-            // Persistir en localStorage para futuras cargas
-            localStorage.setItem('currentOrganizationId', orgIdStr);
-            if (org.name) localStorage.setItem('currentOrganizationName', org.name);
+            // Persistir para futuras cargas. guardarOrganizacionActiva escribe
+            // todas las claves y cookies, y ya emite 'organization-changed'.
+            guardarOrganizacionActiva({
+              id: Number(org.id),
+              name: org.name || undefined,
+              subdomain: org.subdomain || undefined,
+            });
             if (org.subdomain) localStorage.setItem('organization', org.subdomain);
             setOrgId(orgIdStr);
             if (org.name) setOrgName(org.name);
-            // Notificar a otros componentes
-            window.dispatchEvent(new CustomEvent('organization-changed'));
           }
         } catch (e) {
           console.error('[AppLayout] Fallback orgId desde sesión falló:', e);
@@ -1511,6 +1515,17 @@ export const AppLayout = ({
         <ModuleLimitNotification 
           organizationId={orgId ? parseInt(orgId) : undefined}
         />
+      )}
+
+      {/* Telefonia: solo si la organizacion tiene el modulo de CRM activo.
+          `activeModuleCodes` es `undefined` mientras carga, y en ese caso no se
+          pinta nada: mostrar el boton flotante y esconderlo despues daria un
+          parpadeo en cada carga de pagina. */}
+      {activeModuleCodes?.includes('crm') && (
+        <>
+          <SoftphoneDock />
+          <IncomingCallToast />
+        </>
       )}
 
       </div>

@@ -77,10 +77,18 @@ export function getVerifyServiceSid(): string {
 }
 
 /**
- * Obtiene la URL base de webhooks.
+ * Obtiene el ORIGIN público de webhooks (`https://app.goadmin.io`), sin path.
+ * F0 (C2 voz / C-8): todas las rutas se construyen como `${origin}/api/voice/...`
+ * o `${origin}/api/integrations/twilio/...`. Si la variable trae un path
+ * (valor legacy), se descarta y se usa solo el origin.
  */
 export function getWebhookBaseUrl(): string {
-  return process.env.TWILIO_WEBHOOK_BASE_URL || 'https://app.goadmin.io/api/integrations/twilio';
+  const raw = process.env.TWILIO_WEBHOOK_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://app.goadmin.io';
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return 'https://app.goadmin.io';
+  }
 }
 
 /**
@@ -98,6 +106,24 @@ export function formatE164(phone: string, defaultCountryCode = '+57'): string {
   }
 
   return `${defaultCountryCode}${cleaned}`;
+}
+
+/**
+ * E.164 REALMENTE marcable: mínimo 10 dígitos en total (código de país +
+ * nacional). `formatE164` es solo un formateador: con él, `'12345'` se convierte
+ * en `'+5712345'` y parece válido (defecto B1). Ningún destino nacional real
+ * tiene 5 dígitos.
+ */
+export const DIALABLE_E164_RE = /^\+[1-9]\d{9,14}$/;
+
+/**
+ * Normaliza a E.164 y devuelve `null` si el resultado no es marcable.
+ * Punto único: `twiml/outbound` y `/api/voice/call` filtran con esto.
+ */
+export function normalizeDialableE164(raw: string | null | undefined, defaultCountryCode = '+57'): string | null {
+  if (!raw) return null;
+  const e164 = formatE164(String(raw).trim(), defaultCountryCode);
+  return DIALABLE_E164_RE.test(e164) ? e164 : null;
 }
 
 /**

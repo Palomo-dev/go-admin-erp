@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/config';
 import { EyeIcon, EyeSlashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { PhoneInput } from '@/components/ui/phone-input';
 import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
+import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 
 interface InvitationWizardProps {
   inviteData: {
@@ -217,10 +218,15 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
 
         console.log('✅ Invitación completada exitosamente:', acceptResult);
 
-        // 3. Setear currentOrganizationId (NO cerrar sesión — el usuario ya tiene sesión válida)
+        // 3. Activar la organización de la invitación (NO cerrar sesión — el
+        // usuario ya tiene sesión válida). guardarOrganizacionActiva escribe
+        // todas las claves y las cookies de organización a la vez.
         if (typeof window !== 'undefined') {
-          localStorage.setItem('currentOrganizationId', String(inviteData.organization_id));
-          console.log('📝 currentOrganizationId seteado a:', inviteData.organization_id);
+          guardarOrganizacionActiva({
+            id: Number(inviteData.organization_id),
+            name: inviteData.organization_name,
+          });
+          console.log('📝 Organización activa seteada a:', inviteData.organization_id);
         }
 
         // 4. Completar
@@ -280,11 +286,13 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
 
     console.log('✅ Invitación aceptada via API server-side:', result);
 
-    // Setear currentOrganizationId para que tras el login abra la org correcta
+    // Activar la organización para que tras el login abra la correcta
     if (typeof window !== 'undefined') {
-      localStorage.setItem('currentOrganizationId', String(result.organizationId || inviteData.organization_id));
-      localStorage.setItem('currentOrganizationName', result.organizationName || inviteData.organization_name);
-      console.log('📝 currentOrganizationId seteado a:', result.organizationId || inviteData.organization_id);
+      guardarOrganizacionActiva({
+        id: Number(result.organizationId || inviteData.organization_id),
+        name: result.organizationName || inviteData.organization_name,
+      });
+      console.log('📝 Organización activa seteada a:', result.organizationId || inviteData.organization_id);
     }
 
     // Login automático: el usuario ya tiene contraseña seteada,

@@ -1,8 +1,12 @@
-'use client';
-
 import React from 'react';
 import { SupportDocumentDetail } from '@/components/finanzas/documentos-soporte/SupportDocumentDetail';
 
-export default function DocumentoSoporteDetallePage({ params }: { params: { id: string } }) {
-  return <SupportDocumentDetail documentId={params.id} />;
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function DocumentoSoporteDetallePage({ params }: PageProps) {
+  const { id } = await params;
+
+  return <SupportDocumentDetail documentId={id} />;
 }

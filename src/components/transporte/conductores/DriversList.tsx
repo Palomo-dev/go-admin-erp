@@ -183,7 +183,7 @@ export function DriversList({
                   <div className="pt-2">
                     <p className="text-xs font-medium mb-1">Certificaciones:</p>
                     <div className="flex flex-wrap gap-1">
-                      {driver.metadata.certifications.map((cert, i) => (
+                      {driver.metadata.certifications.map((cert: string, i: number) => (
                         <Badge key={i} variant="secondary" className="text-xs">
                           {cert}
                         </Badge>

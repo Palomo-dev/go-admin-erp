@@ -1,24 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { getServiceClient } from '@/lib/supabase/server-service';
 import OpenAIService from '@/lib/services/openaiService';
 import { consumeAICredits } from '@/lib/services/aiCreditsService';
+import { canAutoReply } from '@/lib/services/crm/whatsapp/consent';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
+/**
+ * POST /api/chat/ai/auto-response
+ *
+ * Seguridad (F0, C-A): requiere sesión; la organización SIEMPRE sale de
+ * `getServerOrgContext()`. Si el body trae `organizationId`, debe coincidir
+ * con la org activa (si no → 403). El cliente service-role solo se usa tras
+ * verificar membership y siempre filtrando por `ctx.organizationId`.
+ */
 export async function POST(request: NextRequest) {
+  let ctx;
+  try {
+    ctx = await getServerOrgContext(request);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+    }
+    throw err;
+  }
+
   try {
     const body = await request.json();
-    const { conversationId, messageId, organizationId } = body;
+    const { conversationId, messageId } = body;
+    const organizationId = ctx.organizationId;
 
-    if (!conversationId || !organizationId) {
+    if (body.organizationId !== undefined && Number(body.organizationId) !== organizationId) {
+      return NextResponse.json({ error: 'organizationId no coincide con la organización activa' }, { status: 403 });
+    }
+
+    if (!conversationId) {
       return NextResponse.json(
-        { error: 'conversationId y organizationId son requeridos' },
+        { error: 'conversationId es requerido' },
         { status: 400 }
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = getServiceClient();
 
     // Obtener conversación con canal y cliente
     const { data: conversation, error: convError } = await supabase
@@ -59,6 +81,31 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Cumplimiento antes que nada (F16 · F-12): el INSERT en `messages` con
+    // direction='outbound' y role='ai' dispara `trg_channel_dispatch`, así que
+    // el mensaje SALE de verdad hacia Meta. Esta ruta no comprobaba ni el
+    // opt-out del destinatario (Habeas Data, Ley 1581 de 2012) ni la ventana
+    // de 24 h, saltándose los dos controles que sí aplica el envío manual por
+    // `whatsappOutboundService`. Se comprueba ANTES de llamar al proveedor
+    // para no gastar créditos de IA en una respuesta que no puede salir.
+    const gate = await canAutoReply(
+      {
+        orgId: organizationId,
+        conversationId,
+        channelType: conversation.channel?.type ?? null,
+        customerId: conversation.customer?.id ?? conversation.customer_id ?? null,
+      },
+      supabase,
+    );
+    if (!gate.allowed) {
+      console.warn('[auto-response] bloqueada por cumplimiento', {
+        organization_id: organizationId,
+        conversation_id: conversationId,
+        reason: gate.reason,
+      });
+      return NextResponse.json({ success: false, reason: gate.message, code: gate.reason });
+    }
+
     // Obtener configuración de IA de la organización
     const { data: aiSettings } = await supabase
       .from('ai_settings')
@@ -87,10 +134,11 @@ export async function POST(request: NextRequest) {
       .from('messages')
       .select('content, role, direction, created_at')
       .eq('conversation_id', conversationId)
+      .eq('organization_id', organizationId)
       .order('created_at', { ascending: true })
       .limit(20);
 
-    const customerName = conversation.customer?.full_name || 
+    const customerName = conversation.customer?.full_name ||
                          `${conversation.customer?.first_name || ''} ${conversation.customer?.last_name || ''}`.trim() ||
                          'Cliente';
 
@@ -101,36 +149,16 @@ export async function POST(request: NextRequest) {
       customerName,
       customerEmail: conversation.customer?.email,
       channelType: conversation.channel?.type || 'widget',
-      conversationHistory: (messages || []).map((msg: any) => ({
+      conversationHistory: (messages || []).map((msg: { role: string; content: string; created_at: string }) => ({
         role: msg.role as 'customer' | 'agent' | 'ai',
         content: msg.content,
         timestamp: msg.created_at,
       })),
     };
 
-    // Configurar opciones desde ai_settings
-    const options = {
-      model: aiSettings.model,
-      temperature: parseFloat(aiSettings.temperature) || 0.7,
-      maxTokens: aiSettings.max_tokens || 500,
-      organizationConfig: {
-        provider: aiSettings.provider,
-        model: aiSettings.model,
-        temperature: parseFloat(aiSettings.temperature) || 0.7,
-        maxTokens: aiSettings.max_tokens || 500,
-        systemRules: aiSettings.system_rules,
-        tone: aiSettings.tone || 'professional',
-        language: aiSettings.language || 'es',
-        fallbackMessage: aiSettings.fallback_message,
-        confidenceThreshold: parseFloat(aiSettings.confidence_threshold) || 0.7,
-        maxFragmentsContext: aiSettings.max_fragments_context || 5,
-        isActive: aiSettings.is_active,
-      },
-    };
-
     // Generar respuesta con IA
     const response = await openaiService.generateAutoResponse(context);
-    const cost = openaiService.calculateCost(response.usage, response.model);
+    const cost = await openaiService.calculateCost(supabase, response.usage, response.model);
 
     // Insertar mensaje de respuesta de IA
     const { data: aiMessage, error: msgError } = await supabase
@@ -144,7 +172,7 @@ export async function POST(request: NextRequest) {
         content_type: 'text',
         content: response.content,
         is_read: true,
-        metadata: { 
+        metadata: {
           source: 'auto_response',
           model: response.model,
           tokens: response.usage.totalTokens,
@@ -191,7 +219,8 @@ export async function POST(request: NextRequest) {
         last_agent_message_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', conversationId);
+      .eq('id', conversationId)
+      .eq('organization_id', organizationId);
 
     return NextResponse.json({
       success: true,
@@ -200,10 +229,10 @@ export async function POST(request: NextRequest) {
       usage: response.usage,
       cost,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error en auto-response:', error);
     return NextResponse.json(
-      { error: error.message || 'Error interno del servidor' },
+      { error: error instanceof Error ? error.message : 'Error interno del servidor' },
       { status: 500 }
     );
   }

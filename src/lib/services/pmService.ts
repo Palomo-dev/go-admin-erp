@@ -179,7 +179,8 @@ export const pmService = {
     const orgId = getOrganizationId();
     if (!orgId) return { projects: { total: 0, active: 0, completed: 0, onHold: 0 }, goals: { total: 0, active: 0, achieved: 0 }, tasks: { total: 0, open: 0, inProgress: 0, done: 0, overdue: 0 }, milestones: { total: 0, completed: 0, pending: 0 } };
 
-    const safeQuery = async <T>(query: Promise<{ data: T[] | null; error: any }>): Promise<T[]> => {
+    // PostgrestFilterBuilder es thenable, no Promise: PromiseLike lo acepta igual
+    const safeQuery = async <T>(query: PromiseLike<{ data: T[] | null; error: any }>): Promise<T[]> => {
       try { const { data, error } = await query; if (error) { console.warn('PM query error:', error.message); return []; } return data || []; }
       catch { return []; }
     };

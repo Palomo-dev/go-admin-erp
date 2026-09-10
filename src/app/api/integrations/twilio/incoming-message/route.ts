@@ -2,37 +2,42 @@
  * API Route: Webhook — Mensaje entrante de Twilio (SMS/WhatsApp)
  * POST /api/integrations/twilio/incoming-message
  *
- * Twilio envía un POST a esta URL cada vez que un mensaje llega
- * al número de la organización.
+ * Seguridad (F0, C7/C12): firma verificada SIEMPRE con el token de la
+ * (sub)cuenta (AccountSid); TwiML escapado; opt-out (STOP/BAJA/CANCELAR/NO MAS)
+ * gestionado en `handleIncomingMessage` → contact_consents + customers.metadata.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import {
-  validateTwilioSignature,
-  handleIncomingMessage,
-} from '@/lib/services/integrations/twilio';
+import { NextResponse } from 'next/server';
+import { handleIncomingMessage } from '@/lib/services/integrations/twilio';
 import type { TwilioIncomingMessage } from '@/lib/services/integrations/twilio';
+import { verifyTwilioWebhook, WebhookError } from '@/lib/security/webhookSignatures';
 
-export async function POST(request: NextRequest) {
+export const runtime = 'nodejs';
+
+const EMPTY_TWIML = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+export async function POST(request: Request) {
+  let params: Record<string, string>;
   try {
-    const formData = await request.formData();
-    const params: Record<string, string> = {};
-    formData.forEach((value, key) => {
-      params[key] = value.toString();
-    });
-
-    // Validar firma de Twilio (seguridad)
-    const signature = request.headers.get('x-twilio-signature') || '';
-    const url = `${process.env.TWILIO_WEBHOOK_BASE_URL}/incoming-message`;
-
-    if (process.env.NODE_ENV === 'production') {
-      const isValid = validateTwilioSignature(signature, url, params);
-      if (!isValid) {
-        console.warn('[Webhook] Firma de Twilio inválida');
-        return new NextResponse('Forbidden', { status: 403 });
-      }
+    ({ params } = await verifyTwilioWebhook(request));
+  } catch (err) {
+    if (err instanceof WebhookError) {
+      console.warn('[Webhook incoming-message] Rechazado:', err.code);
+      return new NextResponse('Forbidden', { status: err.statusCode });
     }
+    throw err;
+  }
 
+  try {
     const message: TwilioIncomingMessage = {
       MessageSid: params.MessageSid || '',
       AccountSid: params.AccountSid || '',
@@ -46,10 +51,14 @@ export async function POST(request: NextRequest) {
 
     const { response } = await handleIncomingMessage(message);
 
-    // Responder con TwiML
+    if (!response) {
+      return new NextResponse(EMPTY_TWIML, { status: 200, headers: { 'Content-Type': 'text/xml' } });
+    }
+
+    // Responder con TwiML (contenido escapado)
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Message>${response}</Message>
+  <Message>${escapeXml(response)}</Message>
 </Response>`;
 
     return new NextResponse(twiml, {
@@ -58,9 +67,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('[Webhook] Error procesando mensaje entrante:', error);
-    return new NextResponse(
-      '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
-      { status: 200, headers: { 'Content-Type': 'text/xml' } }
-    );
+    return new NextResponse(EMPTY_TWIML, { status: 200, headers: { 'Content-Type': 'text/xml' } });
   }
 }

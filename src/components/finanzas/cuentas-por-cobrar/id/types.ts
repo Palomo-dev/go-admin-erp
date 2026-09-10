@@ -14,6 +14,7 @@ export interface CuentaPorCobrarDetalle {
   updated_at: string;
   // Datos del cliente
   customer_name: string;
+  customer_nit?: string;
   customer_email: string;
   customer_phone: string;
   customer_address: string;

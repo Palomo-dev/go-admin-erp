@@ -186,7 +186,7 @@ export function LoanForm({
               Descripción / Motivo
             </Label>
             <RichTextEditor
-              value={formData.description}
+              value={formData.description ?? ''}
               onChange={(html) => handleChange('description', html)}
               placeholder="Describa el motivo del préstamo"
               minHeight={60}
@@ -335,7 +335,7 @@ export function LoanForm({
               Notas Adicionales
             </Label>
             <RichTextEditor
-              value={formData.notes}
+              value={formData.notes ?? ''}
               onChange={(html) => handleChange('notes', html)}
               placeholder="Notas o comentarios adicionales"
               minHeight={60}

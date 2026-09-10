@@ -228,7 +228,8 @@ class ParkingReportService {
       const zoneData: { [key: string]: { sessions: number; revenue: number; duration: number } } = {};
 
       (sessions || []).forEach((session) => {
-        const zoneId = session.parking_space?.zone_id || 'sin_zona';
+        const space = session.parking_space as unknown as { zone_id: string } | null;
+        const zoneId = space?.zone_id || 'sin_zona';
         if (!zoneData[zoneId]) {
           zoneData[zoneId] = { sessions: 0, revenue: 0, duration: 0 };
         }
@@ -438,7 +439,7 @@ class ParkingReportService {
         s.duration_min || 0,
         s.amount || 0,
         s.status,
-        s.branch?.name || '-',
+        (s.branch as unknown as { name: string } | null)?.name || '-',
       ]);
 
       return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');

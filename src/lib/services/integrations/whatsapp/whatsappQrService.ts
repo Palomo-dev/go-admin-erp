@@ -8,6 +8,7 @@
 // ============================================================
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { defaultCountryOf, findCustomerIdByPhone, getOrgSettings, normalizePhoneDigits } from '@/lib/services/crm/whatsapp/channelService';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseAdmin = SupabaseClient<any, 'public', any>;
@@ -450,11 +451,20 @@ class WhatsAppQrService {
     phone: string,
     name: string
   ): Promise<string> {
+    // Mismo defecto que el webhook de la Cloud API (tester F16 r2 · F-4): la
+    // búsqueda por igualdad exacta contra `customers.phone`, que es texto
+    // libre, no encontraba nunca al cliente ya existente y cada inbound creaba
+    // un DUPLICADO. Se compara el número normalizado, no la cadena.
+    // El identificador que manda el proveedor QR ya viene cualificado: NO se
+    // le completa indicativo (tester F16 r3 · F-4).
+    const digits = normalizePhoneDigits(phone) ?? String(phone).replace(/\D/g, '');
+    const defaultCountry = defaultCountryOf(await getOrgSettings(organizationId, supabase as never));
+
     const { data: identity } = await supabase
       .from('customer_channel_identities')
       .select('customer_id')
       .eq('channel_id', channelId)
-      .eq('identity_value', phone)
+      .eq('identity_value', digits)
       .single();
 
     if (identity) {
@@ -462,24 +472,29 @@ class WhatsAppQrService {
         .from('customer_channel_identities')
         .update({ last_seen_at: new Date().toISOString() })
         .eq('channel_id', channelId)
-        .eq('identity_value', phone);
+        .eq('identity_value', digits);
       return (identity as { customer_id: string }).customer_id;
     }
 
-    const { data: existingCustomer } = await supabase
-      .from('customers')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('phone', phone)
-      .single();
+    const existingId = await findCustomerIdByPhone(organizationId, digits, supabase as never, { defaultCountry });
 
     let customerId: string;
-    if (existingCustomer) {
-      customerId = (existingCustomer as { id: string }).id;
+    if (existingId) {
+      customerId = existingId;
     } else {
+      // Resolver sucursal principal de la organización para asignar branch_id
+      const { data: mainBranch } = await supabase
+        .from('branches')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('is_main', true)
+        .limit(1)
+        .maybeSingle();
+      const branchId = (mainBranch as { id: number } | null)?.id ?? null;
+
       const { data: newCustomer } = await supabase
         .from('customers')
-        .insert({ organization_id: organizationId, first_name: name, phone, metadata: { source: 'whatsapp_qr' } })
+        .insert({ organization_id: organizationId, branch_id: branchId, first_name: name, phone: `+${digits}`, metadata: { source: 'whatsapp_qr' } })
         .select('id')
         .single();
       customerId = (newCustomer as { id: string } | null)?.id || '';
@@ -490,7 +505,7 @@ class WhatsAppQrService {
       customer_id: customerId,
       channel_id: channelId,
       identity_type: 'whatsapp_phone',
-      identity_value: phone,
+      identity_value: digits,
       first_seen_at: new Date().toISOString(),
       last_seen_at: new Date().toISOString(),
     });

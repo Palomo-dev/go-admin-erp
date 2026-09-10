@@ -1,5 +1,12 @@
 # FASE 12 — Referidos y partners
 
+> **Estado V4 (2026-09-08)** — reconciliado en `ANEXO-C-RECONCILIACION-2026-09.md` §4.5; el §1 de este documento está obsoleto.
+> - **Ya existe (BD)**: `partners`, `partner_tiers` (UNIQUE org+name), `partner_deals`, `referral_programs` (UNIQUE org+name; `reward_type!`, `reward_amount!`, `reward_to!`), `referrals` (`referrer_customer_id!`, `referred_name!`, `status d='pending'`, `reward_paid`) — las cinco con 0 filas.
+> - **Ya existe (backend)**: `partnerService.ts` (390 L), `referralsService.ts` (291 L); rutas `partners`, `partners/[id]`, `partners/[id]/deals`, `partners/tiers`, `partners/tiers/[id]`, `referrals`, `referrals/[id]`, `referrals/programs`, `referrals/programs/[id]`.
+> - **Ya existe (UI)**: solo `sections/ReferralsProgramCard.tsx` (351 L) en `CRMConfigPanel.tsx:735`.
+> - **Falta**: páginas `/app/crm/partners` y `/app/crm/referidos` y los 6 componentes de §4.2 (`PartnerList`, `PartnerEditor`, `TierEditor`, `PartnerDealList`, `ReferralList`, `ReferralProgramEditor`); seeds de `partner_tiers` y `referral_programs` (`ANEXO-C` §7.8; verificar antes los CHECK de `reward_type/reward_to`).
+> - **Cuándo**: Ola 5 (`PLAN.md` §7.2). No bloquea nada.
+
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj`
 > Depende de: F2 (pipelines), F11 (clientes satisfechos)
 > Bloquea: — (F13 no depende de F12)

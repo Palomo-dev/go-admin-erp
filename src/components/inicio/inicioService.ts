@@ -579,6 +579,19 @@ export const inicioService = {
       supabase.rpc('get_accounts_receivable_sum', { p_organization_id: organizationId, p_branch_id: branchIdNum }),
     ]);
 
+    // ─── Validación de queries críticas de identidad ─────────────────────────────
+    // Si las queries que identifican a la organización fallan (organizations,
+    // branches, organization_members), NO devolver un dashboard en ceros: propagar
+    // el error para que la página mantenga los datos previos válidos en vez de
+    // pintar ceros silenciosamente (ej. durante un refresh de token de Supabase).
+    const criticalErrors: string[] = [];
+    if (orgRes.error) criticalErrors.push(`organizations: ${orgRes.error.message}`);
+    if (branchesRes.error) criticalErrors.push(`branches: ${branchesRes.error.message}`);
+    if (membersRes.error) criticalErrors.push(`organization_members: ${membersRes.error.message}`);
+    if (criticalErrors.length > 0) {
+      throw new Error(`Dashboard: queries críticas fallaron — ${criticalErrors.join('; ')}`);
+    }
+
     // ─── Procesamiento de resultados RPC ────────────────────────────────────────
     // Las RPC devuelven series agregadas en BD (by_hour: 24 filas, by_day: {fecha, total}[]).
     // Los KPIs totales se calculan sumando las series. Las series se usan directamente.

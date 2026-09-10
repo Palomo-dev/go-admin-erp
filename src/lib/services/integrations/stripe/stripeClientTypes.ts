@@ -89,7 +89,7 @@ export interface RefundResult {
   id: string;
   amount: number;
   currency: string;
-  status: string;
+  status: string | null;
 }
 
 // --- Webhook ---

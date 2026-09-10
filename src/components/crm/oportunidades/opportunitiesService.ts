@@ -9,7 +9,6 @@ import {
   Pipeline,
   Stage,
   Customer,
-  Activity,
   ForecastData,
   OpportunityProduct,
   OpportunityCustomLine,
@@ -18,6 +17,11 @@ import {
   CustomerDetails,
   LossReasonData,
 } from './types';
+import {
+  crmTaskService,
+  normalizeTaskPriority,
+  normalizeTaskStatus,
+} from '@/lib/services/crm/taskService';
 
 class OpportunitiesService {
   private getOrganizationId(): number {
@@ -87,6 +91,48 @@ class OpportunitiesService {
     } catch (err) {
       console.warn('Advertencia en getCustomers');
       return [];
+    }
+  }
+
+  /**
+   * Búsqueda de clientes contra el servidor, para alimentar `CustomerSearchSelect`
+   * cuando la organización tiene más clientes de los que caben en una carga
+   * completa (`getCustomers` se queda en el tope de filas de PostgREST y el
+   * filtrado en memoria no vería al resto).
+   */
+  async searchCustomers(term: string, branchId?: number | null, limit = 20): Promise<Customer[]> {
+    const orgId = this.getOrganizationId();
+    if (!orgId) return [];
+
+    try {
+      let query = supabase
+        .from('customers')
+        .select('id, full_name, email, phone, avatar_url, organization_id')
+        .eq('organization_id', orgId);
+
+      if (branchId != null) {
+        query = query.eq('branch_id', branchId);
+      }
+
+      const cleaned = term.trim();
+      if (cleaned) {
+        // `or` de PostgREST: las comas separan condiciones, así que un término
+        // con coma rompería el filtro. Se escapan coma y paréntesis.
+        const safe = cleaned.replace(/[,()]/g, ' ').trim();
+        if (safe) {
+          query = query.or(
+            `full_name.ilike.%${safe}%,email.ilike.%${safe}%,phone.ilike.%${safe}%`
+          );
+        }
+      }
+
+      const { data, error } = await query.order('full_name').limit(limit);
+
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      // El llamador decide qué enseñar: aquí solo se propaga.
+      throw err instanceof Error ? err : new Error('No se pudieron buscar clientes');
     }
   }
 
@@ -192,18 +238,6 @@ class OpportunitiesService {
         product:products(id, name, sku)
       `)
       .eq('opportunity_id', opportunityId);
-
-    if (error) throw error;
-    return data || [];
-  }
-
-  async getOpportunityActivities(opportunityId: string): Promise<Activity[]> {
-    const { data, error } = await supabase
-      .from('activities')
-      .select('*')
-      .eq('related_id', opportunityId)
-      .eq('related_type', 'opportunity')
-      .order('occurred_at', { ascending: false });
 
     if (error) throw error;
     return data || [];
@@ -568,31 +602,6 @@ class OpportunitiesService {
     return Object.values(groupedData).sort((a, b) => a.period.localeCompare(b.period));
   }
 
-  async createActivity(
-    opportunityId: string,
-    type: Activity['activity_type'],
-    notes: string
-  ): Promise<Activity> {
-    const { data: userData } = await supabase.auth.getUser();
-
-    const { data, error } = await supabase
-      .from('activities')
-      .insert({
-        organization_id: this.getOrganizationId(),
-        activity_type: type,
-        user_id: userData.user?.id || null,
-        notes,
-        related_type: 'opportunity',
-        related_id: opportunityId,
-        occurred_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
   async addProduct(
     opportunityId: string,
     productId: number,
@@ -821,27 +830,20 @@ class OpportunitiesService {
       assigned_to?: string;
     }
   ): Promise<OpportunityTask> {
-    const { data: userData } = await supabase.auth.getUser();
-
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert({
-        organization_id: this.getOrganizationId(),
-        title,
-        description: options?.description || null,
-        due_date: options?.due_date || null,
-        priority: options?.priority || 'medium',
-        assigned_to: options?.assigned_to || null,
-        related_to_id: opportunityId,
-        related_to_type: 'opportunity',
-        created_by: userData.user?.id || null,
-        status: 'open',
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    // Delegado en el servicio único de tareas del CRM: allí viven la
+    // validación y la normalización (antes aquí se escribía `priority:
+    // 'medium'`, valor que rechaza el CHECK `tasks_priority_check`).
+    const created = await crmTaskService.createTask({
+      title,
+      description: options?.description ?? null,
+      due_date: options?.due_date ?? null,
+      priority: options?.priority ?? null,
+      assigned_to: options?.assigned_to ?? null,
+      related_to_type: 'opportunity',
+      related_to_id: opportunityId,
+      type: 'crm',
+    });
+    return created as unknown as OpportunityTask;
   }
 
   async updateTask(taskId: string, updates: Partial<OpportunityTask>): Promise<void> {
@@ -849,14 +851,14 @@ class OpportunitiesService {
     if (updates.title !== undefined) updateData.title = updates.title;
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.due_date !== undefined) updateData.due_date = updates.due_date;
-    if (updates.priority !== undefined) updateData.priority = updates.priority;
     if (updates.assigned_to !== undefined) updateData.assigned_to = updates.assigned_to;
     if (updates.status !== undefined) {
-      updateData.status = updates.status;
-      if (updates.status === 'done' || updates.status === 'completed') {
+      updateData.status = normalizeTaskStatus(updates.status);
+      if (updateData.status === 'done') {
         updateData.completed_at = new Date().toISOString();
       }
     }
+    if (updates.priority !== undefined) updateData.priority = normalizeTaskPriority(updates.priority);
 
     const { error } = await supabase.from('tasks').update(updateData).eq('id', taskId);
     if (error) throw error;
@@ -939,68 +941,6 @@ class OpportunitiesService {
       return null;
     }
     return data;
-  }
-
-  // ============== TIMELINE ==============
-
-  async getOpportunityTimeline(opportunityId: string): Promise<
-    {
-      id: string;
-      type: 'activity' | 'task' | 'note' | 'stage_change';
-      date: string;
-      title: string;
-      description: string | null;
-      metadata?: Record<string, unknown>;
-    }[]
-  > {
-    const [tasks, notes, activities] = await Promise.all([
-      this.getOpportunityTasks(opportunityId),
-      this.getOpportunityNotes(opportunityId),
-      this.getOpportunityActivities(opportunityId),
-    ]);
-
-    const timeline: {
-      id: string;
-      type: 'activity' | 'task' | 'note' | 'stage_change';
-      date: string;
-      title: string;
-      description: string | null;
-      metadata?: Record<string, unknown>;
-    }[] = [];
-
-    activities.forEach((a) => {
-      timeline.push({
-        id: `activity-${a.id}`,
-        type: 'activity',
-        date: a.occurred_at,
-        title: `Actividad: ${a.activity_type}`,
-        description: a.notes,
-      });
-    });
-
-    tasks.forEach((t) => {
-      timeline.push({
-        id: `task-${t.id}`,
-        type: 'task',
-        date: t.created_at,
-        title: `Tarea: ${t.title}`,
-        description: t.description,
-        metadata: { status: t.status, priority: t.priority },
-      });
-    });
-
-    notes.forEach((n) => {
-      timeline.push({
-        id: `note-${n.id}`,
-        type: 'note',
-        date: n.created_at,
-        title: 'Nota',
-        description: n.body,
-      });
-    });
-
-    timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return timeline;
   }
 }
 

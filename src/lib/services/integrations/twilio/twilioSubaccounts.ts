@@ -6,10 +6,16 @@
  * lo que permite aislamiento de recursos y facturación separada.
  */
 
-import { supabase } from '@/lib/supabase/config';
+import { getServiceClient } from '@/lib/supabase/server-service';
 import { getMasterClient } from './twilioConfig';
 import type { TwilioSubaccount, CommSettings } from './twilioTypes';
 import { TwilioConfigError } from './twilioTypes';
+
+/**
+ * SOLO servidor. F0 (C15 voz / C9 msg): antes usaba el cliente browser
+ * (`@/lib/supabase/config`) → `getCommSettings` devolvía null en el servidor.
+ */
+const supabase = () => getServiceClient();
 
 /**
  * Crea una subcuenta Twilio para una organización.
@@ -20,7 +26,7 @@ export async function getOrCreateSubaccount(
   orgName: string
 ): Promise<TwilioSubaccount> {
   // 1. Verificar si ya existe en comm_settings
-  const { data: existing } = await supabase
+  const { data: existing } = await supabase()
     .from('comm_settings')
     .select('twilio_subaccount_sid, twilio_subaccount_auth_token')
     .eq('organization_id', orgId)
@@ -42,7 +48,7 @@ export async function getOrCreateSubaccount(
   });
 
   // 3. Guardar en comm_settings
-  const { error } = await supabase
+  const { error } = await supabase()
     .from('comm_settings')
     .upsert(
       {
@@ -71,7 +77,7 @@ export async function getOrCreateSubaccount(
  * Obtiene la configuración de comunicaciones de una organización.
  */
 export async function getCommSettings(orgId: number): Promise<CommSettings | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabase()
     .from('comm_settings')
     .select('*')
     .eq('organization_id', orgId)
@@ -97,7 +103,7 @@ export async function suspendSubaccount(orgId: number): Promise<void> {
     .accounts(settings.twilio_subaccount_sid)
     .update({ status: 'suspended' });
 
-  await supabase
+  await supabase()
     .from('comm_settings')
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq('organization_id', orgId);
@@ -115,7 +121,7 @@ export async function reactivateSubaccount(orgId: number): Promise<void> {
     .accounts(settings.twilio_subaccount_sid)
     .update({ status: 'active' });
 
-  await supabase
+  await supabase()
     .from('comm_settings')
     .update({ is_active: true, updated_at: new Date().toISOString() })
     .eq('organization_id', orgId);

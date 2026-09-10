@@ -18,10 +18,10 @@ export interface ParkingPassType {
   id: string;
   organization_id: number;
   name: string;
-  description?: string;
+  description?: string | null;
   duration_days: number;
   price: number;
-  max_entries_per_day?: number;
+  max_entries_per_day?: number | null;
   includes_car_wash: boolean;
   includes_valet: boolean;
   allowed_vehicle_types: string[];

@@ -1,294 +1,204 @@
 'use client';
 
 /**
- * CallsTable — Tabla de historial de llamadas.
- * GO Admin ERP — Fase 3 (Telefonía CRM)
- *
- * Fetch a /api/crm/calls con filtros por fecha y dirección.
- * Columnas: fecha, número, dirección, duración, estado, grabación.
- * Usa shadcn/ui Table.
+ * CallsTable — historial de llamadas (FASE-03 §5.2).
+ * GET /api/crm/calls (CallListRow: cliente, oportunidad, usuario, grabaciones).
+ * Columnas: fecha, dirección/modo, contacto, usuario, duración, resultado, estado, grabación.
+ * Filtros: rango, dirección, modo, "mis llamadas", resultado, con grabación, búsqueda.
+ * Fila expandible → CallRowDetail (player + transcripción + análisis, F4).
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import {
-  PhoneIncoming,
-  PhoneOutgoing,
-  RefreshCw,
-  Filter,
-  Calendar,
-  ArrowDownUp,
-} from 'lucide-react';
+import { PhoneOutgoing, RefreshCw, Mic } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { useToast } from '@/components/ui/use-toast';
-import { CallPlayer } from './CallPlayer';
-import type { CallRecord, CallDirection, CallStatus } from '@/lib/services/crm/callManagementService';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { LoadErrorState } from '@/components/common/LoadErrorState';
+import { describeError, logError } from '@/lib/utils/errorMessage';
+import { fetchJson } from '@/lib/utils/fetchJson';
+import { CallRow, MODE_ICONS, STATUS_LABELS } from './CallRow';
+import type { CallListRow } from '@/lib/services/crm/callManagementService';
+import { DISPOSITION_LABELS } from '@/lib/services/crm/callDispositionService';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// La fila (celdas, `data-*`, atajos y detalle) vive en `CallRow.tsx`; se
+// reexporta `STATUS_LABELS` para no romper a quien lo importe desde aquí.
+export { STATUS_LABELS };
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
-  try {
-    const d = new Date(dateStr);
-    return d.toLocaleString('es-CO', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return '—';
-  }
+export interface CallsTableFilters {
+  direction: string;
+  mode: string;
+  outcome: string;
+  mine: boolean;
+  hasRecording: boolean;
+  q: string;
+  fromDate: string;
+  toDate: string;
 }
 
-function formatDuration(seconds: number | null): string {
-  if (seconds === null || seconds === undefined) return '—';
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}m ${String(s).padStart(2, '0')}s`;
-}
-
-const STATUS_VARIANTS: Record<CallStatus, 'secondary' | 'success' | 'destructive' | 'warning' | 'info'> = {
-  queued: 'secondary',
-  ringing: 'warning',
-  'in-progress': 'info',
-  completed: 'success',
-  failed: 'destructive',
-  'no-answer': 'secondary',
-  busy: 'destructive',
-  canceled: 'secondary',
-};
-
-const STATUS_LABELS: Record<CallStatus, string> = {
-  queued: 'En cola',
-  ringing: 'Sonando',
-  'in-progress': 'En curso',
-  completed: 'Completada',
-  failed: 'Fallida',
-  'no-answer': 'Sin respuesta',
-  busy: 'Ocupado',
-  canceled: 'Cancelada',
-};
-
-// ─── Componente ──────────────────────────────────────────────────────────────
+const EMPTY_FILTERS: CallsTableFilters = { direction: '', mode: '', outcome: '', mine: false, hasRecording: false, q: '', fromDate: '', toDate: '' };
 
 interface CallsTableProps {
-  /** Filtros iniciales. */
-  initialFilters?: {
-    direction?: CallDirection;
-    fromDate?: string;
-    toDate?: string;
-  };
-  /** Límite de registros. */
+  initialFilters?: Partial<CallsTableFilters>;
   limit?: number;
+  /** Abre esta llamada expandida (deep link ?call=). */
+  openCallId?: string | null;
+  refreshKey?: number;
 }
 
-export function CallsTable({ initialFilters, limit = 50 }: CallsTableProps) {
-  const { toast } = useToast();
-  const [calls, setCalls] = useState<CallRecord[]>([]);
+export function CallsTable({ initialFilters, limit = 50, openCallId, refreshKey }: CallsTableProps) {
+  const [calls, setCalls] = useState<CallListRow[]>([]);
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    direction: initialFilters?.direction ?? '',
-    fromDate: initialFilters?.fromDate ?? '',
-    toDate: initialFilters?.toDate ?? '',
-  });
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<CallsTableFilters>({ ...EMPTY_FILTERS, ...initialFilters });
+  const [expanded, setExpanded] = useState<string | null>(openCallId ?? null);
 
-  // ─── Fetch llamadas ────────────────────────────────────────────────────────
   const loadCalls = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const params = new URLSearchParams();
       if (filters.direction) params.set('direction', filters.direction);
-      if (filters.fromDate) params.set('from_date', filters.fromDate);
-      if (filters.toDate) params.set('to_date', filters.toDate);
+      if (filters.mode) params.set('mode', filters.mode);
+      if (filters.outcome) params.set('outcome', filters.outcome);
+      if (filters.mine) params.set('user_id', 'me');
+      if (filters.hasRecording) params.set('has_recording', 'true');
+      if (filters.q.trim()) params.set('q', filters.q.trim());
+      if (filters.fromDate) params.set('from_date', `${filters.fromDate}T00:00:00.000Z`);
+      if (filters.toDate) params.set('to_date', `${filters.toDate}T23:59:59.999Z`);
       params.set('limit', String(limit));
-
-      const res = await fetch(`/api/crm/calls?${params.toString()}`);
-      if (!res.ok) throw new Error('Error al cargar llamadas');
-      const data = await res.json();
-
+      const data = await fetchJson<{ data?: CallListRow[]; count?: number }>(`/api/crm/calls?${params.toString()}`);
       setCalls(data.data ?? []);
       setCount(data.count ?? 0);
     } catch (err) {
-      console.error('[CallsTable] Error:', err);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las llamadas',
-        variant: 'destructive',
-      });
+      logError('[CallsTable] cargar llamadas', err);
+      // Sin esto, un fallo de red se veía igual que "aún no hay llamadas".
+      setCalls([]);
+      setCount(0);
+      setLoadError(describeError(err));
     } finally {
       setIsLoading(false);
     }
-  }, [filters, limit, toast]);
+  }, [filters, limit]);
 
   useEffect(() => {
-    loadCalls();
-  }, [loadCalls]);
+    void loadCalls();
+  }, [loadCalls, refreshKey]);
 
-  const handleFilterChange = (key: keyof typeof filters, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  };
+  useEffect(() => {
+    if (openCallId) setExpanded(openCallId);
+  }, [openCallId]);
 
-  const handleClearFilters = () => {
-    setFilters({ direction: '', fromDate: '', toDate: '' });
-  };
+  const set = <K extends keyof CallsTableFilters>(key: K, value: CallsTableFilters[K]) => setFilters((prev) => ({ ...prev, [key]: value }));
+  const hasFilters = JSON.stringify(filters) !== JSON.stringify(EMPTY_FILTERS);
+  const selectClass = 'h-9 rounded-md border border-gray-200 bg-white px-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200';
 
   return (
-    <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+    <Card className="border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">
-          Historial de Llamadas
-          {count > 0 && (
-            <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
-              ({count} {count === 1 ? 'registro' : 'registros'})
-            </span>
-          )}
+          Historial de llamadas
+          {count > 0 && <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">({count})</span>}
         </CardTitle>
-        <Button
-          onClick={loadCalls}
-          variant="outline"
-          size="sm"
-          disabled={isLoading}
-        >
-          <RefreshCw size={14} className={`mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
+        <Button onClick={() => void loadCalls()} variant="outline" size="sm" disabled={isLoading}>
+          <RefreshCw size={14} className={`mr-1.5 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
           Actualizar
         </Button>
       </CardHeader>
 
-      {/* Filtros */}
-      <div className="px-6 pb-4 flex flex-wrap items-end gap-3 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-            <Filter size={12} /> Dirección
-          </label>
-          <select
-            value={filters.direction}
-            onChange={(e) => handleFilterChange('direction', e.target.value)}
-            className="h-9 rounded-md border border-input bg-transparent px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-          >
-            <option value="">Todas</option>
-            <option value="inbound">Entrantes</option>
-            <option value="outbound">Salientes</option>
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-            <Calendar size={12} /> Desde
-          </label>
-          <Input
-            type="date"
-            value={filters.fromDate}
-            onChange={(e) => handleFilterChange('fromDate', e.target.value)}
-            className="w-40"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-            <Calendar size={12} /> Hasta
-          </label>
-          <Input
-            type="date"
-            value={filters.toDate}
-            onChange={(e) => handleFilterChange('toDate', e.target.value)}
-            className="w-40"
-          />
-        </div>
-
-        {(filters.direction || filters.fromDate || filters.toDate) && (
-          <Button
-            onClick={handleClearFilters}
-            variant="ghost"
-            size="sm"
-            className="text-gray-500 dark:text-gray-400"
-          >
+      <div className="flex flex-wrap items-end gap-2 border-b border-gray-200 px-4 pb-3 dark:border-gray-700" role="search" aria-label="Filtros de llamadas">
+        <Input type="search" value={filters.q} onChange={(e) => set('q', e.target.value)} placeholder="Buscar número…" aria-label="Buscar por número" className="h-9 w-40" />
+        <select value={filters.direction} onChange={(e) => set('direction', e.target.value)} className={selectClass} aria-label="Dirección">
+          <option value="">Todas</option>
+          <option value="inbound">Entrantes</option>
+          <option value="outbound">Salientes</option>
+        </select>
+        <select value={filters.mode} onChange={(e) => set('mode', e.target.value)} className={selectClass} aria-label="Modo">
+          <option value="">Todos los modos</option>
+          {Object.entries(MODE_ICONS).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v.label}
+            </option>
+          ))}
+        </select>
+        <select value={filters.outcome} onChange={(e) => set('outcome', e.target.value)} className={selectClass} aria-label="Resultado">
+          <option value="">Todos los resultados</option>
+          {Object.entries(DISPOSITION_LABELS).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </select>
+        <Input type="date" value={filters.fromDate} onChange={(e) => set('fromDate', e.target.value)} aria-label="Desde" className="h-9 w-36" />
+        <Input type="date" value={filters.toDate} onChange={(e) => set('toDate', e.target.value)} aria-label="Hasta" className="h-9 w-36" />
+        <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
+          <input type="checkbox" checked={filters.mine} onChange={(e) => set('mine', e.target.checked)} /> Mis llamadas
+        </label>
+        <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
+          <input type="checkbox" checked={filters.hasRecording} onChange={(e) => set('hasRecording', e.target.checked)} /> Con grabación
+        </label>
+        {hasFilters && (
+          <Button onClick={() => setFilters(EMPTY_FILTERS)} variant="ghost" size="sm" className="text-gray-500 dark:text-gray-400">
             Limpiar
           </Button>
         )}
       </div>
 
-      {/* Tabla */}
-      <CardContent className="p-0">
+      <CardContent className="overflow-x-auto p-0">
         <Table>
           <TableHeader>
             <TableRow className="border-gray-200 dark:border-gray-700">
-              <TableHead className="w-[160px]">Fecha</TableHead>
-              <TableHead>Dirección</TableHead>
-              <TableHead>Número</TableHead>
-              <TableHead className="w-[100px]">Duración</TableHead>
+              <TableHead className="w-8" />
+              <TableHead className="w-[120px]">Fecha</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Contacto</TableHead>
+              <TableHead>Usuario</TableHead>
+              <TableHead className="w-[80px]">Duración</TableHead>
+              <TableHead>Resultado</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead className="w-[80px] text-center">Grabación</TableHead>
+              <TableHead className="w-[70px] text-center">
+                <Mic size={14} className="mx-auto" aria-label="Grabación" />
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              // Skeleton rows
               Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={`skeleton-${i}`}>
-                  {Array.from({ length: 6 }).map((__, j) => (
-                    <TableCell key={`skeleton-${i}-${j}`}>
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                <TableRow key={`sk-${i}`}>
+                  {Array.from({ length: 9 }).map((__, j) => (
+                    <TableCell key={j}>
+                      <div className="h-4 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                     </TableCell>
                   ))}
                 </TableRow>
               ))
+            ) : loadError ? (
+              <TableRow>
+                <TableCell colSpan={9} className="p-4">
+                  <LoadErrorState
+                    title="No se pudieron cargar las llamadas"
+                    message={loadError}
+                    onRetry={() => void loadCalls()}
+                    isRetrying={isLoading}
+                  />
+                </TableCell>
+              </TableRow>
             ) : calls.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-gray-500 dark:text-gray-400">
-                  <PhoneOutgoing size={32} className="mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">No hay llamadas registradas</p>
+                <TableCell colSpan={9} className="py-12 text-center text-gray-500 dark:text-gray-400">
+                  <PhoneOutgoing size={32} className="mx-auto mb-2 opacity-40" aria-hidden="true" />
+                  <p className="text-sm">Aún no hay llamadas. Llama desde el pipeline, la oportunidad o el softphone.</p>
                 </TableCell>
               </TableRow>
             ) : (
               calls.map((call) => (
-                <TableRow key={call.id} className="border-gray-200 dark:border-gray-700">
-                  <TableCell className="text-sm text-gray-600 dark:text-gray-300">
-                    {formatDate(call.started_at ?? call.created_at)}
-                  </TableCell>
-                  <TableCell>
-                    {call.direction === 'inbound' ? (
-                      <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                        <PhoneIncoming size={14} />
-                        <span className="text-xs">Entrante</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
-                        <PhoneOutgoing size={14} />
-                        <span className="text-xs">Saliente</span>
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="font-mono text-sm text-gray-900 dark:text-gray-100">
-                    {call.direction === 'inbound' ? call.from_number : call.to_number}
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-600 dark:text-gray-300 tabular-nums">
-                    {formatDuration(call.duration_seconds)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={STATUS_VARIANTS[call.status]} className="text-[10px]">
-                      {STATUS_LABELS[call.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <CallPlayer
-                      callId={call.id}
-                      recordingEnabled={call.recording_enabled}
-                    />
-                  </TableCell>
-                </TableRow>
+                <CallRow
+                  key={call.id}
+                  call={call}
+                  isOpen={expanded === call.id}
+                  onToggle={() => setExpanded(expanded === call.id ? null : call.id)}
+                />
               ))
             )}
           </TableBody>

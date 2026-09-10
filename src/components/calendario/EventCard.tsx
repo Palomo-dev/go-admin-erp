@@ -19,7 +19,10 @@ export function EventCard({ event, variant = 'compact', onClick }: EventCardProp
   if (variant === 'compact') {
     return (
       <button
-        onClick={() => onClick?.(event)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick?.(event);
+        }}
         className={cn(
           'w-full text-left px-2 py-1 rounded text-xs truncate transition-opacity hover:opacity-80',
           'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1'
@@ -43,7 +46,10 @@ export function EventCard({ event, variant = 'compact', onClick }: EventCardProp
 
   return (
     <div
-      onClick={() => onClick?.(event)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.(event);
+      }}
       className={cn(
         'p-3 rounded-lg cursor-pointer transition-all hover:shadow-md',
         'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'

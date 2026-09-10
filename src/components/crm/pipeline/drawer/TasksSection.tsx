@@ -1,14 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
-import { opportunitiesService } from "@/components/crm/oportunidades/opportunitiesService";
-import { supabase } from "@/lib/supabase/config";
-import { getOrganizationId } from "@/lib/hooks/useOrganization";
-import TaskCreationPanel from "@/components/pm/TaskCreationPanel";
+import { TaskDialog } from "@/components/crm/shared/TaskDialog";
+import {
+  crmTaskService,
+  TASK_PRIORITY_LABELS,
+  TASK_STATUS_LABELS,
+  normalizeTaskPriority,
+  normalizeTaskStatus,
+} from "@/lib/services/crm/taskService";
+import type { PMTask } from "@/lib/services/pmService";
 import {
   CheckSquare,
   Trash2,
@@ -36,13 +41,12 @@ interface TasksSectionProps {
 }
 
 const getTaskStatusColor = (status: string) => {
-  switch (status?.toLowerCase()) {
-    case "completed":
+  switch (normalizeTaskStatus(status)) {
     case "done":
       return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
     case "in_progress":
       return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
-    case "cancelled":
+    case "canceled":
       return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
     default:
       return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
@@ -55,101 +59,81 @@ const formatDate = (dateStr?: string | null) => {
 };
 
 export function TasksSection({ opportunityId, customerId, tasks, onTasksChanged }: TasksSectionProps) {
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [editTask, setEditTask] = useState<TaskItem | null>(null);
-  const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
-  const [users, setUsers] = useState<Array<{ id: string; nombre: string }>>([]);
+  // Un único diálogo para todo: `mode` decide si abre compacto o completo.
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"compact" | "full">("compact");
+  const [editTask, setEditTask] = useState<PMTask | null>(null);
   const [quickTitle, setQuickTitle] = useState("");
   const [quickCreating, setQuickCreating] = useState(false);
 
-  // Cargar proyectos y usuarios para el TaskCreationPanel
-  useEffect(() => {
-    const orgId = getOrganizationId();
-    if (!orgId) return;
-    supabase
-      .from("projects")
-      .select("id, name")
-      .eq("organization_id", orgId)
-      .order("name")
-      .limit(50)
-      .then(({ data }) => setProjects(data || []));
-    supabase
-      .from("organization_members")
-      .select(
-        `user_id, profiles:user_id (first_name, last_name)`
-      )
-      .eq("organization_id", orgId)
-      .eq("is_active", true)
-      .then(({ data }) => {
-        const rows = (data || []) as Array<{
-          user_id: string;
-          profiles: Array<{ first_name?: string; last_name?: string }> | null;
-        }>;
-        setUsers(
-          rows.map((m) => {
-            const p = Array.isArray(m.profiles) ? m.profiles[0] : null;
-            return {
-              id: m.user_id,
-              nombre: `${p?.first_name || ""} ${p?.last_name || ""}`.trim() || "Usuario",
-            };
-          })
-        );
-      });
-  }, []);
-
-  const handleOpenCreate = () => {
+  const openCreate = (mode: "compact" | "full") => {
     setEditTask(null);
-    setPanelOpen(true);
+    setDialogMode(mode);
+    setDialogOpen(true);
   };
 
   const handleOpenEdit = (task: TaskItem) => {
-    // Adaptar al formato PMTask esperado por TaskCreationPanel
-    setEditTask({
-      ...task,
-      // PMTask usa campos ligeramente distintos; el panel es tolerante
-    } as unknown as import("@/lib/services/pmService").PMTask);
-    setPanelOpen(true);
+    setEditTask(task as unknown as PMTask);
+    setDialogMode("full");
+    setDialogOpen(true);
   };
 
-  const handleTaskCreated = () => {
-    setPanelOpen(false);
-    setEditTask(null);
-    onTasksChanged?.();
-  };
-
+  /**
+   * Atajo de una línea: mismo servicio de guardado que el diálogo, así que la
+   * prioridad y el estado se normalizan igual (antes escribía `medium` y el
+   * CHECK `tasks_priority_check` rechazaba la fila).
+   */
   const handleQuickCreate = async () => {
     if (!quickTitle.trim()) return;
     setQuickCreating(true);
     try {
-      await opportunitiesService.createTask(opportunityId, quickTitle);
+      await crmTaskService.createTask({
+        title: quickTitle,
+        related_to_type: "opportunity",
+        related_to_id: opportunityId,
+        customer_id: customerId ?? null,
+        type: "crm",
+      });
       setQuickTitle("");
       onTasksChanged?.();
       toast({ title: "Tarea creada" });
-    } catch {
-      toast({ title: "Error", description: "No se pudo crear la tarea", variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: "No se pudo crear la tarea",
+        description: err instanceof Error ? err.message : "Error desconocido",
+        variant: "destructive",
+      });
     } finally {
       setQuickCreating(false);
     }
   };
 
   const handleToggle = async (taskId: string, currentStatus: string) => {
-    const newStatus = currentStatus === "done" || currentStatus === "completed" ? "open" : "done";
+    const nextStatus = normalizeTaskStatus(currentStatus) === "done" ? "open" : "done";
     try {
-      await opportunitiesService.updateTask(taskId, { status: newStatus });
+      await crmTaskService.setTaskStatus(taskId, nextStatus);
       onTasksChanged?.();
-    } catch {
-      toast({ title: "Error", description: "No se pudo actualizar", variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: "No se pudo actualizar la tarea",
+        description: err instanceof Error ? err.message : "Error desconocido",
+        variant: "destructive",
+      });
     }
   };
 
   const handleDelete = async (taskId: string) => {
     if (!confirm("¿Eliminar esta tarea?")) return;
     try {
-      await opportunitiesService.deleteTask(taskId);
+      await crmTaskService.deleteTask(taskId);
       onTasksChanged?.();
       toast({ title: "Tarea eliminada" });
-    } catch {
-      toast({ title: "Error", description: "No se pudo eliminar", variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: "No se pudo eliminar la tarea",
+        description: err instanceof Error ? err.message : "Error desconocido",
+        variant: "destructive",
+      });
     }
   };
 
@@ -166,10 +150,10 @@ export function TasksSection({ opportunityId, customerId, tasks, onTasksChanged 
             if (e.key === "Enter") handleQuickCreate();
           }}
         />
-        <Button size="sm" onClick={handleQuickCreate} disabled={quickCreating || !quickTitle.trim()} className="h-9 px-3 text-xs shrink-0">
+        <Button size="sm" onClick={handleQuickCreate} disabled={quickCreating || !quickTitle.trim()} className="h-9 px-3 text-xs shrink-0" aria-label="Crear tarea">
           {quickCreating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
         </Button>
-        <Button size="sm" variant="outline" onClick={handleOpenCreate} className="h-9 px-3 text-xs shrink-0">
+        <Button size="sm" variant="outline" onClick={() => openCreate("full")} className="h-9 px-3 text-xs shrink-0">
           <Edit3 className="h-3.5 w-3.5 mr-1" />
           Avanzado
         </Button>
@@ -178,66 +162,73 @@ export function TasksSection({ opportunityId, customerId, tasks, onTasksChanged 
       {/* Lista de tareas */}
       {tasks.length > 0 ? (
         <div className="space-y-2">
-          {tasks.map((task) => (
-            <div
-              key={task.id}
-              className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
-            >
-              <button
-                onClick={() => handleToggle(task.id, task.status)}
-                className="mt-0.5 shrink-0 w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+          {tasks.map((task) => {
+            const status = normalizeTaskStatus(task.status);
+            const priority = normalizeTaskPriority(task.priority);
+            return (
+              <div
+                key={task.id}
+                className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
               >
-                <CheckSquare className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-              </button>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => handleOpenEdit(task)}
-                    className={`text-sm font-medium text-left hover:underline ${
-                      task.status === "done" || task.status === "completed"
-                        ? "line-through text-gray-400"
-                        : "text-gray-900 dark:text-gray-100"
-                    }`}
-                  >
-                    {task.title}
-                  </button>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Badge className={`text-xs ${getTaskStatusColor(task.status)}`}>{task.status}</Badge>
-                    <button onClick={() => handleDelete(task.id)} className="text-gray-400 hover:text-red-500 transition-colors">
-                      <Trash2 className="h-3.5 w-3.5" />
+                <button
+                  onClick={() => handleToggle(task.id, task.status)}
+                  aria-label={status === "done" ? "Reabrir tarea" : "Marcar como completada"}
+                  className="mt-0.5 shrink-0 w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                >
+                  <CheckSquare className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => handleOpenEdit(task)}
+                      className={`text-sm font-medium text-left hover:underline ${
+                        status === "done" ? "line-through text-gray-400" : "text-gray-900 dark:text-gray-100"
+                      }`}
+                    >
+                      {task.title}
                     </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Badge className={`text-xs ${getTaskStatusColor(task.status)}`}>{TASK_STATUS_LABELS[status]}</Badge>
+                      <span className="text-[11px] text-gray-500 dark:text-gray-400">{TASK_PRIORITY_LABELS[priority]}</span>
+                      <button
+                        onClick={() => handleDelete(task.id)}
+                        aria-label="Eliminar tarea"
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
+                  {task.description && <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{task.description}</p>}
+                  {task.due_date && (
+                    <div className="flex items-center gap-1 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      <Calendar className="h-3 w-3" />
+                      Vence: {formatDate(task.due_date)}
+                    </div>
+                  )}
                 </div>
-                {task.description && <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{task.description}</p>}
-                {task.due_date && (
-                  <div className="flex items-center gap-1 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    <Calendar className="h-3 w-3" />
-                    Vence: {formatDate(task.due_date)}
-                  </div>
-                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <p className="text-sm text-gray-500 dark:text-gray-400 italic">No hay tareas asociadas.</p>
       )}
 
-      {/* Panel PM reutilizado */}
-      <TaskCreationPanel
-        isOpen={panelOpen}
-        onClose={() => {
-          setPanelOpen(false);
-          setEditTask(null);
+      {/* Diálogo unificado: compacto o completo, misma lógica de guardado */}
+      <TaskDialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditTask(null);
         }}
-        projects={projects}
-        users={users}
-        existingTasks={tasks.map((t) => ({ id: t.id, title: t.title, status: t.status }))}
-        editTask={editTask as unknown as import("@/lib/services/pmService").PMTask}
-        onTaskCreated={handleTaskCreated}
-        initialCustomerId={customerId}
-        initialRelatedToType={customerId ? "opportunity" : undefined}
-        initialRelatedToId={customerId ? opportunityId : undefined}
+        mode={dialogMode}
+        relatedType="opportunity"
+        relatedId={opportunityId}
+        customerId={customerId}
+        editTask={editTask}
+        siblingTasks={tasks.map((t) => ({ id: t.id, title: t.title, status: t.status }))}
+        onSaved={() => onTasksChanged?.()}
       />
     </div>
   );

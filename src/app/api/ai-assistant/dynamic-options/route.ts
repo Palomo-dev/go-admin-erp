@@ -1,68 +1,82 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { checkRateLimit } from '@/lib/security/rateLimit';
 
-// Usar las mismas credenciales que el resto del proyecto
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbWdwaG16dXNibHVxaHVxaWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwMzQ1MjIsImV4cCI6MjA2MTYxMDUyMn0.yr5TLl2nhevIzNdPnjVkcdn049RB2t2OgqPG0HryVR4';
-
+/**
+ * POST /api/ai-assistant/dynamic-options
+ *
+ * Seguridad (F0, C-D): se eliminó el JWT anon hardcodeado; se usa el cliente
+ * de sesión (`ctx.supabase`, RLS) y la organización activa. El body ya no
+ * decide la organización.
+ */
 export async function POST(request: NextRequest) {
+  let ctx;
   try {
-    const body = await request.json();
-    const organizationId = body.organizationId;
-
-    console.log('=== Dynamic Options API ===');
-    console.log('OrganizationId:', organizationId);
-
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: 'organizationId es requerido' },
-        { status: 400 }
-      );
+    ctx = await getServerOrgContext(request);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
     }
+    throw err;
+  }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+  // Cada llamada lista hasta 300 categorías, 300 proveedores, 100 clientes y
+  // todas las sucursales: sin coste de IA, pero sí de base de datos.
+  const rl = await checkRateLimit(`assistant:options:${ctx.userId}`, { limit: 30, windowMs: 60_000 });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Demasiadas peticiones seguidas.', code: 'RATE_LIMITED' },
+      { status: 429 }
+    );
+  }
 
-    const [categoriesRes, suppliersRes, customersRes] = await Promise.all([
+  try {
+    const organizationId = ctx.organizationId;
+    const supabase = ctx.supabase;
+
+    // `branches` se añade en F0: `stock_levels.branch_id` es NOT NULL, así que
+    // sin sucursal el ajuste de stock no puede ejecutarse.
+    //
+    // Deuda conocida (C12): listar catálogos completos no escala. F2 sustituye
+    // los `<select>` por resolución mediante búsqueda (`buscar_productos`).
+    const [categoriesRes, suppliersRes, customersRes, branchesRes] = await Promise.all([
       supabase
         .from('categories')
         .select('id, name')
         .eq('organization_id', organizationId)
-        .order('name'),
+        .order('name')
+        .limit(300),
       supabase
         .from('suppliers')
         .select('id, name')
         .eq('organization_id', organizationId)
-        .order('name'),
+        .order('name')
+        .limit(300),
       supabase
         .from('customers')
         .select('id, full_name')
         .eq('organization_id', organizationId)
         .order('full_name')
         .limit(100),
+      supabase
+        .from('branches')
+        .select('id, name, is_main')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .order('is_main', { ascending: false })
+        .order('name'),
     ]);
-
-    // Log para debug
-    console.log('Dynamic options loaded:', {
-      organizationId,
-      categories: categoriesRes.data?.length || 0,
-      suppliers: suppliersRes.data?.length || 0,
-      customers: customersRes.data?.length || 0,
-      errors: {
-        categories: categoriesRes.error?.message,
-        suppliers: suppliersRes.error?.message,
-        customers: customersRes.error?.message,
-      }
-    });
 
     return NextResponse.json({
       categories: (categoriesRes.data || []).map(c => ({ value: String(c.id), label: c.name })),
       suppliers: (suppliersRes.data || []).map(s => ({ value: String(s.id), label: s.name })),
       customers: (customersRes.data || []).map(c => ({ value: String(c.id), label: c.full_name })),
+      branches: (branchesRes.data || []).map(b => ({ value: String(b.id), label: b.name })),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error cargando opciones dinámicas:', error);
     return NextResponse.json(
-      { error: error.message || 'Error cargando opciones' },
+      { error: error instanceof Error ? error.message : 'Error cargando opciones' },
       { status: 500 }
     );
   }

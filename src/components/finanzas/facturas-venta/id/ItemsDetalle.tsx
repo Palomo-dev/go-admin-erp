@@ -7,7 +7,7 @@ import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 
 interface Item {
   id: string;
-  product_id: number | null;
+  product_id?: number | null;
   description: string;
   qty: number;
   unit_price: number;

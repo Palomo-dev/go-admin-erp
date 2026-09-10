@@ -6,6 +6,7 @@ import {
   XCircle, 
   Timer, 
   Package, 
+  ChefHat,
   Truck, 
   Printer,
   Receipt,

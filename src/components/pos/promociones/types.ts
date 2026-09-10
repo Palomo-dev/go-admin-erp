@@ -1,6 +1,17 @@
 // Tipos para el módulo de promociones
 
-export type PromotionType = 'percentage' | 'fixed' | 'buy_x_get_y' | 'bundle';
+/**
+ * Los valores DEBEN coincidir con el CHECK `promotions_promotion_type_check`
+ * de la base: ('percentage','fixed_amount','buy_x_get_y','bundle','free_shipping').
+ * Antes aquí decía 'fixed', que Postgres rechaza: por eso crear una promoción
+ * de monto fijo fallaba siempre con violación de constraint.
+ */
+export type PromotionType =
+  | 'percentage'
+  | 'fixed_amount'
+  | 'buy_x_get_y'
+  | 'bundle'
+  | 'free_shipping';
 export type AppliesTo = 'all' | 'products' | 'categories';
 export type RuleType = 'include' | 'exclude';
 
@@ -112,9 +123,10 @@ export interface PromotionFilters {
 
 export const PROMOTION_TYPE_LABELS: Record<PromotionType, string> = {
   percentage: 'Porcentaje',
-  fixed: 'Monto Fijo',
+  fixed_amount: 'Monto Fijo',
   buy_x_get_y: 'Compra X Lleva Y',
-  bundle: 'Bundle'
+  bundle: 'Bundle',
+  free_shipping: 'Envío Gratis'
 };
 
 export const APPLIES_TO_LABELS: Record<AppliesTo, string> = {

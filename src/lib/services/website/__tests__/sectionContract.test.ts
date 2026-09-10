@@ -15,12 +15,12 @@
 jest.mock('@/lib/supabase/config', () => ({
   supabase: {
     from: jest.fn(() => ({
-      select: jest.fn().returnThis(),
-      eq: jest.fn().returnThis(),
-      order: jest.fn().returnThis(),
-      single: jest.fn().returnThis(),
-      maybeSingle: jest.fn().returnThis(),
-      limit: jest.fn().returnThis(),
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      single: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
     })),
   },
   getProjectRef: jest.fn(() => 'test'),

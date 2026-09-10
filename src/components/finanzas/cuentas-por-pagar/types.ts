@@ -75,10 +75,14 @@ export interface Payment {
     name: string;
     requires_reference: boolean;
   };
+  // Se resuelve con una consulta aparte a `profiles`: `payments.created_by`
+  // apunta a auth.users, no a profiles, así que no se puede embeber.
+  // `profiles` no tiene columna `full_name`; son `first_name` + `last_name`.
   created_by_user?: {
     id: string;
     email: string;
-    full_name?: string;
+    first_name?: string;
+    last_name?: string;
   };
 }
 

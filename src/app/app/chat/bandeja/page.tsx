@@ -55,16 +55,8 @@ export default function ChatBandejaPage() {
       loadTags();
       loadData();
 
-      // Polling de despacho de mensajes QR pendientes (Evolution API)
-      const dispatchPending = async () => {
-        try {
-          await fetch('/api/integrations/whatsapp/qr/dispatch-pending', { method: 'POST' });
-        } catch {
-          /* noop */
-        }
-      };
-      dispatchPending();
-      const dispatchInterval = setInterval(dispatchPending, 5000);
+      // F0 (C10): se eliminó el polling a /api/integrations/whatsapp/qr/dispatch-pending
+      // desde el browser; el despacho QR lo hace el job `whatsapp` de la cola (JOBS-0).
 
       // Suscripción realtime para actualizar lista sin spinner
       const channel = supabase
@@ -85,7 +77,6 @@ export default function ChatBandejaPage() {
       
       return () => {
         supabase.removeChannel(channel);
-        clearInterval(dispatchInterval);
       };
     }
   }, [organizationId]);
@@ -331,6 +322,34 @@ export default function ChatBandejaPage() {
         };
       }
       
+      // F16 (C20): los mensajes salientes de WhatsApp NO se insertan a mano.
+      // Van por POST /api/crm/whatsapp/send, que comprueba la ventana de 24 h,
+      // el consentimiento (opt-out), los créditos y crea la activity. Antes se
+      // insertaba directo, así que un agente podía escribir a un cliente que
+      // había pedido la baja o fuera de la ventana (tester r1 · fallo 7).
+      const channelType = channels.find((ch) => ch.id === selectedConversation.channel_id)?.type ?? null;
+      if (channelType === 'whatsapp') {
+        const isMedia = contentType !== 'text';
+        const res = await fetch('/api/crm/whatsapp/send', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: selectedConversation.id,
+            channelId: selectedConversation.channel_id,
+            text: isMedia ? null : messageContent,
+            media: isMedia ? { url: messageContent, mime: file?.type || 'application/octet-stream', filename: file?.name } : null,
+          }),
+        });
+        const json = await res.json().catch(() => ({} as Record<string, unknown>));
+        if (!res.ok) {
+          toast({ title: 'No se pudo enviar', description: String(json.error ?? `Error ${res.status}`), variant: 'destructive' });
+          throw new Error(String(json.error ?? `Error ${res.status}`));
+        }
+        loadDataSilent();
+        return;
+      }
+
       const { error } = await supabase
         .from('messages')
         .insert({

@@ -32,7 +32,7 @@ export function PreviewViewer({ preview, path }: PreviewViewerProps) {
             srcDoc={html ?? ''}
             // El alto es generoso a proposito: el papel es continuo y el
             // contenido crece. El scroll queda dentro del iframe.
-            style={{ width: paper.rollCssPx, height: 620, border: 'none', background: '#fff' }}
+            style={{ width: paper.cssPx, height: 620, border: 'none', background: '#fff' }}
             className="shadow-lg"
           />
         ) : (

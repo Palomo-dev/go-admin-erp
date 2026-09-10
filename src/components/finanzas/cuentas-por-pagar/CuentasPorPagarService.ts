@@ -13,9 +13,54 @@ import {
 } from './types';
 import { SupplierBase, OrganizationPaymentMethod, OrganizationCurrency } from '../facturas-compra/types';
 import { parseLocalDate } from '@/utils/Utils';
+import { logError } from '@/lib/utils/errorMessage';
+
+/** Datos del creador de un pago, resueltos aparte del propio pago. */
+type CreadorPago = { id: string; email: string; first_name?: string; last_name?: string };
 
 export class CuentasPorPagarService {
-  
+
+  /**
+   * Resuelve los perfiles de quienes crearon los pagos.
+   *
+   * `payments.created_by` apunta a `auth.users`, NO a `profiles`
+   * (`payments_new_created_by_fkey`), asi que el embebido
+   * `created_by_user:profiles(...)` que habia aqui devolvia siempre PGRST200
+   * ("Could not find a relationship between 'payments' and 'profiles'") y el
+   * historial de pagos quedaba vacio en silencio. Se resuelve con una segunda
+   * consulta a `profiles` por id, que es la clave primaria compartida.
+   */
+  private static async obtenerCreadoresDePagos(
+    userIds: (string | null | undefined)[]
+  ): Promise<Map<string, CreadorPago>> {
+    const ids = Array.from(new Set(userIds.filter((id): id is string => Boolean(id))));
+    if (ids.length === 0) return new Map();
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, email, first_name, last_name')
+      .in('id', ids);
+
+    if (error) {
+      // No es fatal: el pago se muestra igual, pero el fallo queda registrado
+      // en vez de convertirse en un "Usuario" sin explicacion.
+      logError('[CuentasPorPagar] resolver perfiles de creadores de pago', error);
+      return new Map();
+    }
+
+    return new Map(
+      (data || []).map((p) => [
+        p.id as string,
+        {
+          id: p.id as string,
+          email: (p.email as string) || '',
+          first_name: (p.first_name as string) || undefined,
+          last_name: (p.last_name as string) || undefined,
+        },
+      ])
+    );
+  }
+
   /**
    * Obtiene todas las cuentas por pagar con filtros aplicados
    */
@@ -461,28 +506,28 @@ export class CuentasPorPagarService {
 
       const { data, error } = await supabase
         .from('payments')
-        .select(`
-          *,
-          created_by_user:profiles(
-            id,
-            email,
-            full_name
-          )
-        `)
+        .select('*')
         .eq('organization_id', organizationId)
         .eq('source', 'account_payable')
         .eq('source_id', accountPayableId)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error obteniendo historial de pagos:', error);
+        logError('[CuentasPorPagar] obtener historial de pagos', error);
         throw error;
       }
 
-      return data || [];
+      const pagos = (data || []) as Payment[];
+      const creadores = await this.obtenerCreadoresDePagos(pagos.map((p) => p.created_by));
+      return pagos.map((p) => ({
+        ...p,
+        created_by_user: p.created_by ? creadores.get(p.created_by) : undefined,
+      }));
     } catch (error) {
-      console.error('Error en obtenerHistorialPagos:', error);
-      return [];
+      // Se relanza: antes devolvia [] y la pantalla decia "sin pagos" cuando en
+      // realidad la consulta habia fallado.
+      logError('[CuentasPorPagar] historial de pagos', error);
+      throw error;
     }
   }
 
@@ -524,16 +569,23 @@ export class CuentasPorPagarService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error obteniendo pagos programados:', error);
+        logError('[CuentasPorPagar] obtener pagos programados', error);
         throw error;
       }
 
-      // Como es una consulta simplificada, retornamos los datos tal como vienen
-      // En una implementación real, aquí se harían las consultas adicionales para las relaciones
-      return (data as PaymentWithRelations[]) || [];
+      // El nombre del creador se resuelve aparte: `payments` no tiene relación
+      // con `profiles` (su FK apunta a auth.users), así que no puede embeberse.
+      const pagos = (data || []) as PaymentWithRelations[];
+      const creadores = await this.obtenerCreadoresDePagos(pagos.map((p) => p.created_by));
+      return pagos.map((p) => ({
+        ...p,
+        created_by_user: p.created_by ? creadores.get(p.created_by) : undefined,
+      }));
     } catch (error) {
-      console.error('Error en obtenerPagosProgramados:', error);
-      return [];
+      // Se relanza: los dos llamadores tienen try/catch y avisan al usuario.
+      // Devolver [] hacía pasar un fallo de carga por "no hay pagos pendientes".
+      logError('[CuentasPorPagar] pagos programados', error);
+      throw error;
     }
   }
 

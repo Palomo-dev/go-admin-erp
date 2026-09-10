@@ -23,10 +23,10 @@ import { generateInvoiceNumberWithClient } from '@/lib/utils/invoiceUtils';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const orderId = params.id;
+    const { id: orderId } = await params;
     if (!orderId) {
       return NextResponse.json({ error: 'ID del pedido es requerido' }, { status: 400 });
     }

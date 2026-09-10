@@ -29,11 +29,14 @@ interface ImportCarriersDialogProps {
   onImport: (carriers: Partial<TransportCarrier>[]) => Promise<{ success: number; errors: string[] }>;
 }
 
+type CarrierType = NonNullable<TransportCarrier['carrier_type']>;
+type ServiceType = NonNullable<TransportCarrier['service_type']>;
+
 interface ParsedRow {
   code: string;
   name: string;
-  carrier_type: string;
-  service_type: string;
+  carrier_type: CarrierType;
+  service_type: ServiceType;
   tax_id?: string;
   contact_name?: string;
   contact_phone?: string;
@@ -100,8 +103,11 @@ export function ImportCarriersDialog({
       rows.push({
         code: row.code,
         name: row.name,
-        carrier_type: row.carrier_type || 'own_fleet',
-        service_type: row.service_type || 'cargo',
+        carrier_type: row.carrier_type === 'third_party' ? 'third_party' : 'own_fleet',
+        service_type:
+          row.service_type === 'passenger' || row.service_type === 'both'
+            ? row.service_type
+            : 'cargo',
         tax_id: row.tax_id || undefined,
         contact_name: row.contact_name || undefined,
         contact_phone: row.contact_phone || undefined,

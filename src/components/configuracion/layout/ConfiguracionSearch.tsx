@@ -19,8 +19,7 @@ export function ConfiguracionSearch({ onResults, allModules }: ConfiguracionSear
     return allModules.filter(
       (mod) =>
         mod.title.toLowerCase().includes(lower) ||
-        mod.description.toLowerCase().includes(lower) ||
-        mod.sections.some((s) => s.label.toLowerCase().includes(lower))
+        mod.description.toLowerCase().includes(lower)
     );
   }, [query, allModules]);
 

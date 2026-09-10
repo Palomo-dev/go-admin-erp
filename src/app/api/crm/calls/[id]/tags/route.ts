@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { getCallTagsForCall, tagCall } from '@/lib/services/crm/callTagService';
+import { assertDbEnum, CALL_TAG_SOURCE_VALUES } from '@/lib/services/crm/callAnalysisRules';
 
 /**
  * GET /api/crm/calls/[id]/tags — Lista los tags vinculados a una llamada.
@@ -49,11 +50,23 @@ export async function POST(
       );
     }
 
+    // `call_tag_relations_source_check` = manual|ia: el valor del body pasa por
+    // la comprobación en vez de escribirse suelto (tester r2 nº 5).
+    let source: 'manual' | 'ia';
+    try {
+      source = assertDbEnum(String(body.source ?? 'manual'), CALL_TAG_SOURCE_VALUES, 'call_tag_relations.source');
+    } catch {
+      return NextResponse.json(
+        { success: false, error: `source inválido: usa ${CALL_TAG_SOURCE_VALUES.join(' o ')}` },
+        { status: 400 }
+      );
+    }
+
     const relation = await tagCall(
       ctx.organizationId,
       id,
       body.tagId,
-      body.source ?? 'manual',
+      source,
       ctx.supabase,
       body.confidence
     );

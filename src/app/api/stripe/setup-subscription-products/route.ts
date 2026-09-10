@@ -16,6 +16,13 @@ import { stripe } from '@/lib/stripe/server'
  */
 export async function POST(request: NextRequest) {
   try {
+    if (!stripe) {
+      return NextResponse.json(
+        { error: 'Stripe no está configurado. Verifica STRIPE_SECRET_KEY.' },
+        { status: 500 }
+      )
+    }
+
     const body = await request.json()
     const { planCode } = body
 

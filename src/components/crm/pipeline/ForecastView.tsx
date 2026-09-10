@@ -17,6 +17,8 @@ import WeightedFunnelChart from "./WeightedFunnelChart";
 import { TableSkeleton } from "@/components/common/PageSkeletons";
 import { forecastRealTimeService } from "@/lib/services/forecastRealTimeService";
 import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
+import { LoadErrorState } from "@/components/common/LoadErrorState";
+import { describeError, logError } from "@/lib/utils/errorMessage";
 
 interface ForecastMonth {
   month: string; // formato: YYYY-MM
@@ -48,6 +50,7 @@ interface ForecastViewProps {
 
 const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [forecastData, setForecastData] = useState<ForecastMonth[]>([]);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [baseCurrency, setBaseCurrency] = useState<string>('USD');
@@ -60,6 +63,12 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
   // Obtener el ID de la organización y la moneda base
   useEffect(() => {
     const orgIdNum = getOrganizationIdFromContext();
+    if (!orgIdNum) {
+      // Sin organización nadie apagaba el spinner: la pantalla giraba sin fin.
+      setLoading(false);
+      setLoadError("No hay ninguna organización seleccionada. Vuelve a elegirla desde el selector de organización.");
+      return;
+    }
     if (orgIdNum) {
       setOrganizationId(orgIdNum);
       
@@ -77,7 +86,7 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
           setBaseCurrency(baseCurrency);
           console.log(`Moneda base cargada: ${baseCurrency}`);
         } catch (error) {
-          console.error("Error al cargar la moneda base:", error);
+          logError("[ForecastView] cargar la moneda base", error);
           setBaseCurrency("USD"); // Valor por defecto si hay error
         }
       };
@@ -88,9 +97,13 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
 
   // Función para cargar oportunidades (extraída para poder llamarla desde múltiples lugares)
   const loadOpportunities = async () => {
-    if (!organizationId || !pipelineId) return;
+    if (!organizationId || !pipelineId) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
+    setLoadError(null);
 
     try {
       // Cargar oportunidades con información de etapas para obtener probabilidades
@@ -110,7 +123,9 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
         .order("expected_close_date");
 
       if (error) {
-        console.error("Error al cargar datos para el pronóstico:", error);
+        // Antes se tragaba: la pantalla decía "no hay datos" con la base caída.
+        logError("[ForecastView] cargar oportunidades del pronóstico", error);
+        setLoadError(describeError(error));
         setLoading(false);
         return;
       }
@@ -131,12 +146,14 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
           opportunityCount: processedData.totalCount,
         });
       } catch (processingError) {
-        console.error("Error al procesar y convertir montos:", processingError);
+        logError("[ForecastView] procesar y convertir montos", processingError);
+        setLoadError(describeError(processingError));
       }
 
       setLoading(false);
     } catch (error) {
-      console.error("Error al procesar datos de pronóstico:", error);
+      logError("[ForecastView] procesar datos de pronóstico", error);
+      setLoadError(describeError(error));
       setLoading(false);
     }
   };
@@ -311,6 +328,20 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
     return (
       <div className="p-3 sm:p-4">
         <TableSkeleton columns={6} rows={5} />
+      </div>
+    );
+  }
+
+  // La carga falló: error explícito con reintento, nunca el estado vacío.
+  if (loadError) {
+    return (
+      <div className="p-3 sm:p-4">
+        <LoadErrorState
+          title="No se pudo cargar el pronóstico"
+          message={loadError}
+          onRetry={() => void loadOpportunities()}
+          isRetrying={loading}
+        />
       </div>
     );
   }

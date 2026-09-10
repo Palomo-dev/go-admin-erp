@@ -13,6 +13,7 @@ import { Loader2, Save, X } from 'lucide-react'
 import InformacionBasica from './InformacionBasica'
 import PreciosYCostos from './PreciosYCostos'
 import Inventario from './Inventario'
+import Envio from './Envio'
 import Imagenes from './Imagenes'
 import Variantes from './Variantes'
 import Notas from './Notas'
@@ -47,6 +48,13 @@ interface ProductFormData {
     avg_cost: number
   }>
   
+  // Envío: peso real y dimensiones para cotizar guías con transportadora.
+  // Todos opcionales — un producto sin declarar se cotiza con el valor por defecto.
+  weight_kg: number | null
+  length_cm: number | null
+  width_cm: number | null
+  height_cm: number | null
+
   // Impuestos
   tax_id: string | null
   
@@ -120,6 +128,10 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
     cost: 0,
     track_stock: true,
     stock_inicial: [],
+    weight_kg: null,
+    length_cm: null,
+    width_cm: null,
+    height_cm: null,
     tax_id: null,
     images: [],
     has_variants: false,
@@ -221,7 +233,11 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
           track_serial: formData.track_serial,
           serial_pattern: formData.serial_pattern || null,
           auto_generate_serial: formData.auto_generate_serial,
-          warranty_months: formData.warranty_months ?? null
+          warranty_months: formData.warranty_months ?? null,
+          weight_kg: formData.weight_kg ?? null,
+          length_cm: formData.length_cm ?? null,
+          width_cm: formData.width_cm ?? null,
+          height_cm: formData.height_cm ?? null
         })
         .select('id, uuid')
         .single()
@@ -644,10 +660,20 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
           </CardContent>
         </Card>
 
+        {/* Envío */}
+        <Card className="border-gray-200 dark:border-gray-800">
+          <CardContent className="pt-6">
+            <Envio
+              formData={formData}
+              updateFormData={updateFormData}
+            />
+          </CardContent>
+        </Card>
+
         {/* Imágenes */}
         <Card className="border-gray-200 dark:border-gray-800">
           <CardContent className="pt-6">
-            <Imagenes 
+            <Imagenes
               formData={formData}
               updateFormData={updateFormData}
             />

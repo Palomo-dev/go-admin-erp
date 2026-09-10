@@ -3,6 +3,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import type { SalesRole, SalesTeam, Territory, OrgMember, SalesTeamMember } from './types';
+import { pickEmbedded, profileDisplayName, type EmbeddedProfile } from '@/lib/utils/embeddedProfile';
 
 export function requireOrgId(): number {
   const orgId = getOrganizationId();
@@ -71,15 +72,14 @@ export async function loadTeamsWithMembers(orgId: number) {
     teamList.forEach((t) => (t.members = membersMap.get(t.id) || []));
   }
 
-  const orgMemberList = (
-    membersRes.data || [] as {
-      user_id: string;
-      profiles: { id: string; first_name: string | null; last_name: string | null; email: string | null }[];
-    }[]
-  ).map((m) => {
-    const p = m.profiles?.[0] || null;
-    const full = p ? [p.first_name, p.last_name].filter(Boolean).join(' ') : '';
-    return { id: m.user_id, name: full || p?.email || m.user_id.slice(0, 8), email: p?.email || undefined };
+  // Embebido a-uno: objeto, no array. Leerlo como array dejaba a todos los
+  // miembros con el identificador recortado por nombre.
+  const orgMemberList = ((membersRes.data || []) as {
+    user_id: string;
+    profiles: EmbeddedProfile | EmbeddedProfile[] | null;
+  }[]).map((m) => {
+    const p = pickEmbedded(m.profiles);
+    return { id: m.user_id, name: profileDisplayName(m.profiles), email: p?.email || undefined };
   }) as OrgMember[];
 
   return { teams: teamList, roles: roleList, territories: territoryList, orgMembers: orgMemberList };

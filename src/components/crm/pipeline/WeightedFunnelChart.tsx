@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/utils/Utils';
 import { Filter } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from "@/components/ui/use-toast";
+import { LoadErrorState } from '@/components/common/LoadErrorState';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 import { FunnelChart, Funnel, LabelList, Tooltip, ResponsiveContainer } from 'recharts';
 import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
 
@@ -26,6 +27,7 @@ interface StageData {
 
 const WeightedFunnelChart: React.FC<WeightedFunnelChartProps> = ({ pipelineId, className }) => {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [stageData, setStageData] = useState<StageData[]>([]);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [totalWeightedAmount, setTotalWeightedAmount] = useState(0);
@@ -35,15 +37,22 @@ const WeightedFunnelChart: React.FC<WeightedFunnelChartProps> = ({ pipelineId, c
     const orgId = getOrganizationIdFromContext();
     if (orgId) {
       setOrganizationId(orgId);
+      return;
     }
+    // Sin organización nadie apagaba el spinner y la tarjeta giraba sin fin.
+    setLoading(false);
+    setLoadError('No hay ninguna organización seleccionada.');
   }, []);
 
   // Cargar datos de etapas y oportunidades
-  useEffect(() => {
-    const fetchStageData = async () => {
-      if (!organizationId || !pipelineId) return;
+  const fetchStageData = useCallback(async () => {
+      if (!organizationId || !pipelineId) {
+        setLoading(false);
+        return;
+      }
 
       setLoading(true);
+      setLoadError(null);
       try {
         // Primero obtener todas las etapas del pipeline para preservar el orden
         const { data: stagesData, error: stagesError } = await supabase
@@ -52,14 +61,9 @@ const WeightedFunnelChart: React.FC<WeightedFunnelChartProps> = ({ pipelineId, c
           .eq('pipeline_id', pipelineId)
           .order('position', { ascending: true });
 
-        if (stagesError) {
-          toast({
-            title: "Error",
-            description: "Error al cargar etapas del pipeline",
-            variant: "destructive"
-          });
-          return;
-        }
+        // Antes solo salía un toast y la tarjeta decía «No hay datos»: el
+        // fallo de carga se confundía con un embudo vacío.
+        if (stagesError) throw stagesError;
 
         // Obtener oportunidades asociadas al pipeline
         const { data: opportunitiesData, error: opportunitiesError } = await supabase
@@ -71,14 +75,7 @@ const WeightedFunnelChart: React.FC<WeightedFunnelChartProps> = ({ pipelineId, c
           .eq('organization_id', organizationId)
           .eq('status', 'open');
 
-        if (opportunitiesError) {
-          toast({
-            title: "Error",
-            description: "Error al cargar oportunidades",
-            variant: "destructive"
-          });
-          return;
-        }
+        if (opportunitiesError) throw opportunitiesError;
 
         // Procesar y agregar datos
         const processedData: StageData[] = [];
@@ -114,14 +111,16 @@ const WeightedFunnelChart: React.FC<WeightedFunnelChartProps> = ({ pipelineId, c
         setStageData(processedData);
         setTotalWeightedAmount(totalWeighted);
       } catch (error) {
-        console.error('Error al procesar datos del embudo:', error);
+        logError('[WeightedFunnelChart] cargar el embudo ponderado', error);
+        setLoadError(describeError(error));
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchStageData();
   }, [pipelineId, organizationId]);
+
+  useEffect(() => {
+    void fetchStageData();
+  }, [fetchStageData]);
 
   // Datos para el gráfico de embudo
   const funnelData = stageData.map(stage => ({
@@ -139,6 +138,22 @@ const WeightedFunnelChart: React.FC<WeightedFunnelChartProps> = ({ pipelineId, c
         <CardContent className="p-4 space-y-4 min-h-[250px]">
           <Skeleton className="h-6 w-1/2" />
           <Skeleton className="h-40 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // La carga falló: se explica y se ofrece reintentar.
+  if (loadError) {
+    return (
+      <Card className={className}>
+        <CardContent className="p-4">
+          <LoadErrorState
+            title="No se pudo cargar el embudo ponderado"
+            message={loadError}
+            onRetry={() => void fetchStageData()}
+            isRetrying={loading}
+          />
         </CardContent>
       </Card>
     );

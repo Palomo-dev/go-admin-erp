@@ -205,8 +205,24 @@ export async function tagCall(
     .single();
 
   if (error) {
-    console.warn('[callTagService] tagCall error:', error.message);
-    return null;
+    // Ronda 3 (tester r2 nº 5): antes se devolvía `null` con un `console.warn` y
+    // el llamador (applyAutoTags) no podía distinguir "no había etiqueta" de
+    // "el INSERT violó el CHECK de source". Ahora el motivo real se propaga; el
+    // análisis ya guardado no se pierde porque `persistAnalysis` lo captura y lo
+    // deja en `raw_response.tagging_error`.
+    // El índice `call_tag_relations_call_tag_uidx` (DB, ronda 3) hace que dos
+    // etiquetados concurrentes no dupliquen: el perdedor reutiliza la fila.
+    if (/duplicate key|unique constraint/i.test(error.message)) {
+      const { data: winner } = await supabase
+        .from('call_tag_relations')
+        .select('*')
+        .eq('organization_id', orgId)
+        .eq('call_id', callId)
+        .eq('tag_id', tagId)
+        .maybeSingle();
+      if (winner) return winner as CallTagRelation;
+    }
+    throw new Error(`call_tag_relations insert falló: ${error.message}`);
   }
 
   return relation as CallTagRelation;

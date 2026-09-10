@@ -173,7 +173,7 @@ export function OrderCard({ order, onStatusChange, onEdit, onDelete, onViewPhoto
           <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
             <MapPin className="h-4 w-4 flex-shrink-0" />
             <span>
-              {order.spaces.name}
+              {order.spaces.label}
               {order.spaces.space_types && ` - ${order.spaces.space_types.name}`}
               {order.spaces.floor_zone && ` (${order.spaces.floor_zone})`}
             </span>

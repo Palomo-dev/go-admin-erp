@@ -141,7 +141,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
           toast.error('El porcentaje debe ser entre 1 y 100');
           return false;
         }
-        if (formData.promotion_type === 'fixed' && (!formData.discount_value || formData.discount_value <= 0)) {
+        if (formData.promotion_type === 'fixed_amount' && (!formData.discount_value || formData.discount_value <= 0)) {
           toast.error('El monto de descuento debe ser mayor a 0');
           return false;
         }
@@ -234,7 +234,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   const getPromotionTypeIcon = (type: PromotionType) => {
     switch (type) {
       case 'percentage': return <Percent className="h-5 w-5" />;
-      case 'fixed': return <DollarSign className="h-5 w-5" />;
+      case 'fixed_amount': return <DollarSign className="h-5 w-5" />;
       case 'buy_x_get_y': return <Gift className="h-5 w-5" />;
       case 'bundle': return <Package className="h-5 w-5" />;
     }
@@ -386,7 +386,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
               </div>
 
               {/* Campos según tipo */}
-              {(formData.promotion_type === 'percentage' || formData.promotion_type === 'fixed') && (
+              {(formData.promotion_type === 'percentage' || formData.promotion_type === 'fixed_amount') && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label className="dark:text-gray-200">

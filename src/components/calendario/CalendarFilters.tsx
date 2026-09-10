@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase/config';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 import { useBranch } from '@/lib/context/BranchContext';
 import {
   CalendarFilters as CalendarFiltersType,
@@ -54,6 +55,20 @@ interface Member {
   }[] | null;
 }
 
+/**
+ * Nombre visible de un miembro.
+ *
+ * El embebido `profiles(...)` sobre `organization_members` es a-uno y PostgREST
+ * lo devuelve como objeto; se acepta el array por compatibilidad con datos ya
+ * cacheados. Nunca se muestra el identificador crudo del usuario.
+ */
+function memberName(member: Member): string {
+  const p = Array.isArray(member.profiles) ? member.profiles[0] : member.profiles;
+  if (!p) return 'Miembro sin nombre';
+  const full = `${p.first_name || ''} ${p.last_name || ''}`.trim();
+  return full || 'Miembro sin nombre';
+}
+
 export function CalendarFilters({
   organizationId,
   filters,
@@ -61,6 +76,9 @@ export function CalendarFilters({
 }: CalendarFiltersProps) {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
+  // Sin esto, un fallo de red o de RLS dejaba el desplegable vacío y parecía
+  // que la organización no tuviera miembros.
+  const [membersError, setMembersError] = useState<string | null>(null);
 
   // Sincronizar con el contexto global de sucursal
   const { branchFilter, setSelectedBranch, branches: contextBranches } = useBranch();
@@ -82,8 +100,20 @@ export function CalendarFilters({
           .eq('is_active', true),
       ]);
 
-      if (branchesRes.data) setBranches(branchesRes.data);
-      if (membersRes.data) setMembers(membersRes.data as Member[]);
+      if (branchesRes.error) {
+        logError('[CalendarFilters] cargar sucursales', branchesRes.error);
+      } else if (branchesRes.data) {
+        setBranches(branchesRes.data);
+      }
+
+      if (membersRes.error) {
+        logError('[CalendarFilters] cargar miembros de la organización', membersRes.error);
+        setMembersError(describeError(membersRes.error));
+        setMembers([]);
+      } else {
+        setMembersError(null);
+        setMembers((membersRes.data || []) as Member[]);
+      }
     };
 
     loadData();
@@ -146,13 +176,14 @@ export function CalendarFilters({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Todos</SelectItem>
+          {membersError && (
+            <p role="alert" className="px-2 py-1.5 text-xs text-red-600 dark:text-red-400">
+              No se pudieron cargar los miembros: {membersError}
+            </p>
+          )}
           {members.map((member) => (
             <SelectItem key={member.user_id} value={member.user_id}>
-              {member.profiles
-                ? Array.isArray(member.profiles)
-                  ? `${member.profiles[0]?.first_name || ''} ${member.profiles[0]?.last_name || ''}`.trim() || 'Usuario'
-                  : `${member.profiles.first_name} ${member.profiles.last_name}`
-                : 'Usuario'}
+              {memberName(member)}
             </SelectItem>
           ))}
         </SelectContent>

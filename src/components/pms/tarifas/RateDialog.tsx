@@ -194,7 +194,7 @@ export function RateDialog({
                   <Calendar
                     mode="single"
                     selected={dateFrom}
-                    onSelect={(date) => date && setDateFrom(date)}
+                    onSelect={(date: Date | undefined) => date && setDateFrom(date)}
                     locale={es}
                   />
                 </PopoverContent>
@@ -217,7 +217,7 @@ export function RateDialog({
                   <Calendar
                     mode="single"
                     selected={dateTo}
-                    onSelect={(date) => date && setDateTo(date)}
+                    onSelect={(date: Date | undefined) => date && setDateTo(date)}
                     locale={es}
                     disabled={(date) => date < dateFrom}
                   />

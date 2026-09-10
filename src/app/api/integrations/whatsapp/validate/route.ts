@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   // Validar autenticación y organización
   let ctx;
   try {
-    ctx = await getServerOrgContext();
+    ctx = await getServerOrgContext(request);
   } catch (err) {
     if (err instanceof OrgContextError) {
       return NextResponse.json(
@@ -31,6 +31,20 @@ export async function POST(request: NextRequest) {
       phoneNumberId = phone_number_id;
       accessToken = access_token;
     } else if (channel_id) {
+      // F0 (C11 msg): el canal debe pertenecer a la organización activa
+      const { data: channel } = await ctx.supabase
+        .from('channels')
+        .select('id')
+        .eq('id', channel_id)
+        .eq('organization_id', ctx.organizationId)
+        .maybeSingle();
+      if (!channel) {
+        return NextResponse.json(
+          { error: 'Canal no encontrado o no pertenece a la organización' },
+          { status: 404 }
+        );
+      }
+
       // Modo canal: obtener credenciales guardadas
       const creds = await whatsappCloudService.getCredentialsByChannelId(channel_id);
       if (!creds || !creds.phoneNumberId || !creds.accessToken) {

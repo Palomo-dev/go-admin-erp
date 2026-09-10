@@ -1,22 +1,26 @@
 /**
- * Recording Storage Service — Descarga, subida y gestión de grabaciones de llamadas.
- * GO Admin ERP — Fase 3 (Telefonía CRM)
+ * Recording Storage Service — descarga, subida y gestión de grabaciones.
+ * GO Admin ERP — FASE-03 (Telefonía CRM)
  *
- * Bucket Supabase Storage: `crm-call-recordings` (privado)
- * Path: `org_{organization_id}/{yyyy}/{mm}/{callSid}.mp3`
+ * Bucket Supabase Storage: `crm-call-recordings` (privado, F0).
+ * Path: `org_{organization_id}/{yyyy}/{mm}/{callId}.{ext}` (por callId, no por
+ * RecordingSid; cierra C8: el bucket ya no se deduce del path).
  *
- * Tablas: call_recordings
- * Todas las funciones reciben `supabase` y `organizationId` para garantizar
- * aislamiento por organización (multi-tenant).
+ * - Descarga de Twilio con Basic Auth API Key:Secret de la (sub)cuenta
+ *   (`?RequestedChannels=2` para dual-channel).
+ * - Nunca escribe `updated_at` (trigger de BD, C5); status válido `ready` (C5).
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { updateCallRecording } from './callManagementService';
+import { basicAuthHeader, getVoiceCredentials, type VoiceCredentials } from './voiceContextService';
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
-const BUCKET_NAME = 'crm-call-recordings';
-const DEFAULT_SIGNED_URL_EXPIRY = 3600; // 1 hora en segundos
+export const RECORDINGS_BUCKET = 'crm-call-recordings';
+const BUCKET_NAME = RECORDINGS_BUCKET;
+export const DEFAULT_SIGNED_URL_EXPIRY = 600; // 10 min (§4.1)
+const DOWNLOAD_TIMEOUT_MS = 20_000;
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -31,250 +35,201 @@ export interface DownloadResult {
   sizeBytes: number;
 }
 
-// ─── Funciones internas ──────────────────────────────────────────────────────
+export type DownloadCreds = Pick<VoiceCredentials, 'apiKey' | 'apiSecret' | 'accountSid' | 'authToken'>;
 
-/**
- * Construye el path de almacenamiento en Supabase Storage.
- * Formato: org_{organization_id}/{yyyy}/{mm}/{recordingSid}.mp3
- */
-function buildStoragePath(
-  organizationId: number,
-  recordingSid: string
-): string {
-  const now = new Date();
-  const yyyy = now.getUTCFullYear();
-  const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
-  const safeSid = recordingSid.replace(/[^a-zA-Z0-9_-]/g, '');
-  return `org_${organizationId}/${yyyy}/${mm}/${safeSid}.mp3`;
+// ─── Helpers puros ───────────────────────────────────────────────────────────
+
+/** `org_{orgId}/{yyyy}/{mm}/{callId}.{ext}` (fecha de `at`, UTC). */
+export function buildStoragePath(organizationId: number, callId: string, ext: 'mp3' | 'wav' = 'mp3', at: Date = new Date()): string {
+  const yyyy = at.getUTCFullYear();
+  const mm = String(at.getUTCMonth() + 1).padStart(2, '0');
+  const safeId = String(callId).replace(/[^a-zA-Z0-9_-]/g, '');
+  return `org_${organizationId}/${yyyy}/${mm}/${safeId}.${ext}`;
+}
+
+/** URL de descarga: `RecordingUrl` sin extensión + `.mp3` (+ `?RequestedChannels=2` si dual). */
+export function buildTwilioDownloadUrl(recordingUrl: string, opts: { dual: boolean; ext?: 'mp3' | 'wav' }): string {
+  const base = recordingUrl.replace(/\.(mp3|wav|json)$/i, '');
+  const ext = opts.ext ?? 'mp3';
+  return opts.dual ? `${base}.${ext}?RequestedChannels=2` : `${base}.${ext}`;
+}
+
+export function computeRetentionUntil(days: number, from: Date = new Date()): string {
+  const d = new Date(from.getTime());
+  d.setUTCDate(d.getUTCDate() + Math.max(1, Math.round(days || 90)));
+  return d.toISOString().slice(0, 10);
 }
 
 // ─── Funciones públicas ──────────────────────────────────────────────────────
 
 /**
- * Descarga el audio de una grabación desde Twilio.
- *
- * Twilio sirve las grabaciones con HTTP Basic Auth (AccountSid:AuthToken).
- * Si no hay credenciales configuradas, intenta descarga sin auth (fallback).
- *
- * @param recordingUrl URL completa de la grabación en Twilio
- * @returns Buffer del audio + metadata (content-type, tamaño)
+ * Descarga el audio de una grabación desde Twilio (Basic Auth obligatorio).
+ * Sin `creds` usa las master de env (compatibilidad con transcriptionService).
+ * Lanza `TwilioDownloadError` con `status` HTTP para que el job decida reintento.
  */
-export async function downloadFromTwilio(recordingUrl: string): Promise<DownloadResult> {
-  if (!recordingUrl) {
-    throw new Error('downloadFromTwilio: recordingUrl es requerida');
+export class TwilioDownloadError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'TwilioDownloadError';
+    this.status = status;
   }
-
-  const accountSid = process.env.TWILIO_MASTER_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_MASTER_AUTH_TOKEN;
-
-  const headers: Record<string, string> = {};
-
-  // Twilio requiere HTTP Basic Auth para descargar grabaciones
-  if (accountSid && authToken) {
-    const credentials = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
-    headers['Authorization'] = `Basic ${credentials}`;
-  }
-
-  const response = await fetch(recordingUrl, { headers });
-
-  if (!response.ok) {
-    throw new Error(
-      `downloadFromTwilio: error descargando grabación (${response.status} ${response.statusText})`
-    );
-  }
-
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  const contentType = response.headers.get('content-type') || 'audio/mpeg';
-  const sizeBytes = buffer.length;
-
-  return { buffer, contentType, sizeBytes };
 }
 
-/**
- * Sube un buffer de audio al bucket `crm-call-recordings` en Supabase Storage.
- *
- * @param audioBuffer Buffer del audio a subir
- * @param organizationId ID de la organización (para el path)
- * @param recordingSid SID de la grabación de Twilio (para nombrar el archivo)
- * @param supabase Cliente Supabase (service role para bypass de RLS en storage)
- * @returns Path del archivo en Storage + tamaño en bytes
- */
+export async function downloadFromTwilio(
+  recordingUrl: string,
+  creds?: DownloadCreds | null,
+  opts?: { timeoutMs?: number }
+): Promise<DownloadResult> {
+  if (!recordingUrl) throw new Error('downloadFromTwilio: recordingUrl es requerida');
+
+  const c: DownloadCreds = creds ?? {
+    apiKey: process.env.TWILIO_API_KEY || '',
+    apiSecret: process.env.TWILIO_API_SECRET || '',
+    accountSid: process.env.TWILIO_MASTER_ACCOUNT_SID || process.env.TWILIO_ACCOUNT_SID || '',
+    authToken: process.env.TWILIO_MASTER_AUTH_TOKEN || process.env.TWILIO_AUTH_TOKEN || '',
+  };
+  const auth = basicAuthHeader(c);
+  if (!auth) throw new TwilioDownloadError(401, 'downloadFromTwilio: sin credenciales Basic Auth (API Key o Auth Token)');
+
+  const response = await fetch(recordingUrl, {
+    headers: { Authorization: auth },
+    signal: AbortSignal.timeout(opts?.timeoutMs ?? DOWNLOAD_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw new TwilioDownloadError(response.status, `downloadFromTwilio: ${response.status} ${response.statusText}`);
+  }
+  const buffer = Buffer.from(await response.arrayBuffer());
+  return { buffer, contentType: response.headers.get('content-type') || 'audio/mpeg', sizeBytes: buffer.length };
+}
+
+/** Sube un buffer al bucket privado en `storagePath` (upsert). */
 export async function uploadToSupabase(
   audioBuffer: Buffer,
-  organizationId: number,
-  recordingSid: string,
-  supabase: SupabaseClient
+  storagePath: string,
+  supabase: SupabaseClient,
+  contentType = 'audio/mpeg'
 ): Promise<UploadResult> {
-  const storagePath = buildStoragePath(organizationId, recordingSid);
-
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET_NAME)
-    .upload(storagePath, audioBuffer, {
-      contentType: 'audio/mpeg',
-      upsert: true,
-    });
-
-  if (uploadError) {
-    throw new Error(
-      `uploadToSupabase: error subiendo a Storage (${uploadError.message})`
-    );
-  }
-
-  return {
-    path: storagePath,
-    sizeBytes: audioBuffer.length,
-  };
+  const { error } = await supabase.storage.from(BUCKET_NAME).upload(storagePath, audioBuffer, { contentType, upsert: true });
+  if (error) throw new Error(`uploadToSupabase: error subiendo a Storage (${error.message})`);
+  return { path: storagePath, sizeBytes: audioBuffer.length };
 }
 
-/**
- * Genera una URL firmada para reproducir una grabación desde Supabase Storage.
- *
- * Busca el registro en `call_recordings`, obtiene el `storage_path` y genera
- * una URL firmada con expiración de 1 hora por defecto.
- *
- * @param recordingId UUID del registro en call_recordings
- * @param organizationId ID de la organización
- * @param supabase Cliente Supabase
- * @param expiresIn Segundos de expiración (default: 3600 = 1h)
- * @returns URL firmada o null si no se encuentra la grabación
- */
+/** URL firmada (600 s) de una grabación `ready` de la org. */
 export async function getRecordingUrl(
   recordingId: string,
   organizationId: number,
   supabase: SupabaseClient,
   expiresIn: number = DEFAULT_SIGNED_URL_EXPIRY
 ): Promise<string | null> {
-  // Buscar el registro de grabación
   const { data: recording, error } = await supabase
     .from('call_recordings')
-    .select('storage_path, storage_provider')
+    .select('storage_path, storage_provider, status')
     .eq('id', recordingId)
     .eq('organization_id', organizationId)
     .maybeSingle();
+  if (error || !recording) return null;
+  const rec = recording as { storage_path: string; storage_provider: string; status: string };
+  if (rec.status !== 'ready' || rec.storage_provider !== 'supabase') return null;
 
-  if (error || !recording) {
-    console.error('[recordingStorageService.getRecordingUrl] error:', error?.message || 'grabación no encontrada');
+  const { data, error: signErr } = await supabase.storage.from(BUCKET_NAME).createSignedUrl(rec.storage_path, expiresIn);
+  if (signErr || !data?.signedUrl) {
+    console.error('[recordingStorageService.getRecordingUrl] URL firmada:', signErr?.message);
     return null;
   }
-
-  // Si el storage_provider es 'twilio' (fallback), retornar el storage_path directamente
-  if (recording.storage_provider === 'twilio') {
-    return recording.storage_path;
-  }
-
-  // Generar URL firmada desde Supabase Storage
-  const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-    .from(BUCKET_NAME)
-    .createSignedUrl(recording.storage_path, expiresIn);
-
-  if (signedUrlError || !signedUrlData?.signedUrl) {
-    console.error('[recordingStorageService.getRecordingUrl] error generando URL firmada:', signedUrlError?.message);
-    return null;
-  }
-
-  return signedUrlData.signedUrl;
+  return data.signedUrl;
 }
 
 /**
- * Elimina una grabación de Supabase Storage y marca el registro en BD como deleted.
+ * Borra la grabación de Storage (y de Twilio si se pasa `twilio`) y marca `deleted`.
  *
- * @param recordingId UUID del registro en call_recordings
- * @param organizationId ID de la organización
- * @param supabase Cliente Supabase
+ * Ronda 2 (defecto M4): `deleted` es una afirmación de cumplimiento (§11), así
+ * que SOLO se escribe cuando todos los borrados aplicables han tenido éxito. Un
+ * 404 del proveedor cuenta como "ya no existe". Si algo falla se lanza: el job
+ * `recording_cleanup` lo cuenta en `failed`, la fila sigue `ready` y el lote del
+ * día siguiente lo reintenta.
  */
 export async function deleteRecording(
   recordingId: string,
   organizationId: number,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  twilio?: { recordings: (sid: string) => { remove: () => Promise<unknown> } } | null
 ): Promise<void> {
-  // 1. Obtener el storage_path antes de eliminar
-  const { data: recording, error: fetchError } = await supabase
+  const { data: recording, error } = await supabase
     .from('call_recordings')
-    .select('storage_path, storage_provider')
+    .select('storage_path, storage_provider, provider_recording_sid, status')
     .eq('id', recordingId)
     .eq('organization_id', organizationId)
     .maybeSingle();
+  if (error || !recording) throw new Error('No se encontró la grabación a eliminar');
+  const rec = recording as { storage_path: string; storage_provider: string; provider_recording_sid: string | null; status: string };
 
-  if (fetchError || !recording) {
-    console.error('[recordingStorageService.deleteRecording] error:', fetchError?.message || 'grabación no encontrada');
-    throw new Error('No se encontró la grabación a eliminar');
-  }
-
-  // 2. Eliminar del bucket si está en Supabase Storage
-  if (recording.storage_provider !== 'twilio' && recording.storage_path) {
-    const { error: removeError } = await supabase.storage
-      .from(BUCKET_NAME)
-      .remove([recording.storage_path]);
-
+  const failures: string[] = [];
+  if (rec.storage_provider === 'supabase' && rec.storage_path) {
+    const { error: removeError } = await supabase.storage.from(BUCKET_NAME).remove([rec.storage_path]);
     if (removeError) {
-      console.error('[recordingStorageService.deleteRecording] error eliminando de Storage:', removeError.message);
-      // No lanzamos error aquí: el archivo puede no existir, pero igual marcamos en BD
+      console.warn('[recordingStorageService.deleteRecording] Storage:', removeError.message);
+      failures.push(`storage: ${removeError.message}`);
     }
   }
-
-  // 3. Marcar el registro como deleted en BD
-  await updateCallRecording(
-    recordingId,
-    organizationId,
-    { status: 'deleted' },
-    supabase
-  ).catch((err) => {
-    console.error('[recordingStorageService.deleteRecording] error actualizando BD:', err);
-    throw err;
-  });
+  if (twilio && rec.provider_recording_sid) {
+    try {
+      await twilio.recordings(rec.provider_recording_sid).remove();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/404|not found/i.test(msg)) {
+        console.warn('[recordingStorageService.deleteRecording] Twilio:', msg);
+        failures.push(`twilio: ${msg}`);
+      }
+    }
+  }
+  if (failures.length) {
+    throw new Error(`No se pudo eliminar la grabación ${recordingId} (${failures.join(' · ')}); la fila sigue en 'ready' para reintentar`);
+  }
+  await updateCallRecording(recordingId, organizationId, { status: 'deleted' }, supabase);
 }
 
 /**
- * Descarga el audio de Twilio, lo sube a Supabase Storage y actualiza
- * el registro en call_recordings con el nuevo storage_path.
- *
- * Si falla la descarga o subida, deja storage_path como la URL de Twilio (fallback).
- *
- * @param recordingId UUID del registro en call_recordings
- * @param organizationId ID de la organización
- * @param twilioRecordingUrl URL original de Twilio
- * @param recordingSid SID de la grabación de Twilio
- * @param supabase Cliente Supabase (service role)
- * @returns true si se subió a Supabase, false si quedó con fallback de Twilio
+ * Descarga de Twilio (API Key de la (sub)cuenta) → Storage → `ready`.
+ * Devuelve el resultado; lanza si falla (el job decide el reintento).
  */
-export async function downloadAndUploadRecording(
-  recordingId: string,
-  organizationId: number,
-  twilioRecordingUrl: string,
-  recordingSid: string,
-  supabase: SupabaseClient
-): Promise<boolean> {
+export async function storeRecording(
+  params: {
+    recordingId: string;
+    organizationId: number;
+    callId: string;
+    recordingUrl: string;
+    channels: string | number | null;
+    retentionDays: number;
+    startedAt?: string | null;
+  },
+  supabase: SupabaseClient,
+  creds?: DownloadCreds | null
+): Promise<{ storagePath: string; sizeBytes: number; retentionUntil: string }> {
+  const dual = String(params.channels ?? '1') === '2';
+  const c = creds ?? (await getVoiceCredentials(params.organizationId));
+  let downloaded: DownloadResult;
   try {
-    // 1. Descargar audio desde Twilio
-    const { buffer, sizeBytes } = await downloadFromTwilio(twilioRecordingUrl);
-
-    // 2. Subir a Supabase Storage
-    const { path: storagePath } = await uploadToSupabase(
-      buffer,
-      organizationId,
-      recordingSid || recordingId,
-      supabase
-    );
-
-    // 3. Actualizar call_recordings con el path de Supabase
-    await updateCallRecording(
-      recordingId,
-      organizationId,
-      {
-        storage_path: storagePath,
-        storage_provider: 'supabase',
-        size_bytes: sizeBytes,
-        status: 'ready',
-      },
-      supabase
-    );
-
-    console.log(`[recordingStorageService] Grabación ${recordingId} subida a Supabase: ${storagePath}`);
-    return true;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.warn(`[recordingStorageService] Fallback a Twilio URL para grabación ${recordingId}: ${message}`);
-    return false;
+    downloaded = await downloadFromTwilio(buildTwilioDownloadUrl(params.recordingUrl, { dual }), c);
+  } catch (err) {
+    // 400 = la grabación no es dual; reintentar en mono
+    if (dual && err instanceof TwilioDownloadError && err.status === 400) {
+      downloaded = await downloadFromTwilio(buildTwilioDownloadUrl(params.recordingUrl, { dual: false }), c);
+    } else {
+      throw err;
+    }
   }
+
+  const at = params.startedAt ? new Date(params.startedAt) : new Date();
+  const storagePath = buildStoragePath(params.organizationId, params.callId, 'mp3', Number.isNaN(at.getTime()) ? new Date() : at);
+  const { sizeBytes } = await uploadToSupabase(downloaded.buffer, storagePath, supabase, 'audio/mpeg');
+  const retentionUntil = computeRetentionUntil(params.retentionDays);
+
+  await updateCallRecording(
+    params.recordingId,
+    params.organizationId,
+    { storage_path: storagePath, storage_provider: 'supabase', size_bytes: sizeBytes, status: 'ready', retention_until: retentionUntil },
+    supabase
+  );
+  return { storagePath, sizeBytes, retentionUntil };
 }

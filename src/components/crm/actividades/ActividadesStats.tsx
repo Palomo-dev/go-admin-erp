@@ -1,6 +1,6 @@
 'use client';
 
-import { Phone, Mail, Users, StickyNote, MapPin, MessageCircle } from 'lucide-react';
+import { Phone, Mail, Users, StickyNote, CheckSquare, MessageCircle, CalendarClock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ActivityStats } from './types';
 
@@ -9,19 +9,25 @@ interface ActividadesStatsProps {
   isLoading?: boolean;
 }
 
+/**
+ * Las tarjetas respetan los filtros activos (el servicio calcula los totales
+ * con los mismos filtros, sin el de tipo), así que «Total» es el número de
+ * actividades que hay tras filtrar, no el histórico entero.
+ */
 const statsConfig = [
-  { key: 'total', label: 'Total', icon: Users, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30' },
+  { key: 'total', label: 'Total', icon: CalendarClock, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30' },
   { key: 'calls', label: 'Llamadas', icon: Phone, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30' },
-  { key: 'emails', label: 'Emails', icon: Mail, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30' },
+  { key: 'emails', label: 'Correos', icon: Mail, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30' },
+  { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
   { key: 'meetings', label: 'Reuniones', icon: Users, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30' },
   { key: 'notes', label: 'Notas', icon: StickyNote, color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/30' },
-  { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
+  { key: 'tasks', label: 'Tareas', icon: CheckSquare, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-900/30' },
 ];
 
 export function ActividadesStats({ stats, isLoading }: ActividadesStatsProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-4">
         {statsConfig.map((item) => (
           <Card key={item.key} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardContent className="p-3 sm:p-4">
@@ -38,7 +44,7 @@ export function ActividadesStats({ stats, isLoading }: ActividadesStatsProps) {
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-4">
       {statsConfig.map((item) => {
         const Icon = item.icon;
         const value = stats[item.key as keyof ActivityStats];

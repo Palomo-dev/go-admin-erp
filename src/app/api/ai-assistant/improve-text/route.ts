@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { consumeAICredits } from '@/lib/services/aiCreditsService';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,8 +14,20 @@ function getOpenAIClient(): OpenAI {
 }
 
 export async function POST(request: NextRequest) {
+  // Seguridad (F0, C-A): sesión + org activa; se ignora organizationId del body.
+  let ctx;
   try {
-    const { productName, currentDescription, type, organizationId, spaceType, zone, services } = await request.json();
+    ctx = await getServerOrgContext(request);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+    }
+    throw err;
+  }
+  const organizationId = ctx.organizationId;
+
+  try {
+    const { productName, currentDescription, type, spaceType, zone, services } = await request.json();
 
     if (!productName) {
       return NextResponse.json(
@@ -98,11 +111,9 @@ Responde SOLO con las notas, sin explicaciones adicionales.`;
     const improvedText = response.choices[0]?.message?.content?.trim() || '';
 
     // Descontar créditos de IA (1 crédito por mejora de texto)
-    if (organizationId) {
-      const creditsConsumed = await consumeAICredits(organizationId, 1);
-      if (!creditsConsumed) {
-        console.warn('⚠️ No se pudieron descontar créditos de IA para org:', organizationId);
-      }
+    const creditsConsumed = await consumeAICredits(organizationId, 1);
+    if (!creditsConsumed) {
+      console.warn('⚠️ No se pudieron descontar créditos de IA para org:', organizationId);
     }
 
     return NextResponse.json({ improvedText });

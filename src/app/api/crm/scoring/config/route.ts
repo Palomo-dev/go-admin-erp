@@ -77,7 +77,7 @@ export async function PUT(request: NextRequest) {
       const gocConfig = body as GOCScoringConfig;
 
       // Validar dimensions (4 dimensiones: go_fit, opportunity, capacity, timing)
-      const requiredDims = ['go_fit', 'opportunity', 'capacity', 'timing'];
+      const requiredDims: (keyof GOCScoringConfig['dimensions'])[] = ['go_fit', 'opportunity', 'capacity', 'timing'];
       for (const dimKey of requiredDims) {
         const dim = gocConfig.dimensions[dimKey];
         if (!dim || !dim.label || typeof dim.weight !== 'number') {

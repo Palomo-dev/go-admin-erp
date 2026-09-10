@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Users, User, X, Search, Briefcase, Shield } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 import type { CreateAlertPayload } from './types';
 
 interface CreateAlertDialogProps {
@@ -58,6 +59,7 @@ export function CreateAlertDialog({ open, onOpenChange, onSubmit }: CreateAlertD
   const [targetType, setTargetType] = useState<'all' | 'specific'>('all');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [members, setMembers] = useState<OrgMember[]>([]);
+  const [membersError, setMembersError] = useState<string | null>(null);
   const [filterRole, setFilterRole] = useState('all');
   const [filterJob, setFilterJob] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,24 +69,38 @@ export function CreateAlertDialog({ open, onOpenChange, onSubmit }: CreateAlertD
     if (!open || !organization?.id) return;
     const load = async () => {
       const { supabase } = await import('@/lib/supabase/config');
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('organization_members')
         .select('user_id, role_id, profiles(email, first_name, last_name), roles(name), job_positions(name)')
         .eq('organization_id', organization.id)
         .eq('is_active', true);
 
-      if (data) {
-        setMembers(data.map((m: any) => ({
-          user_id: m.user_id,
-          email: m.profiles?.email || '',
-          name: [m.profiles?.first_name, m.profiles?.last_name].filter(Boolean).join(' ') || m.profiles?.email || 'Sin nombre',
-          role_id: m.role_id,
-          role_name: m.roles?.name || '',
-          job_position_name: m.job_positions?.name || '',
-        })));
+      if (error) {
+        // Antes se ignoraba: la lista salía vacía y el diálogo decía «No se
+        // encontraron miembros» aunque el fallo fuera de red o de permisos.
+        logError('[CreateAlertDialog] cargar miembros de la organización', error);
+        setMembersError(describeError(error));
+        setMembers([]);
+        return;
       }
+
+      setMembersError(null);
+      setMembers((data || []).map((m: any) => {
+        // Los tres embebidos son a-uno (objeto); el array se acepta por si acaso.
+        const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+        const role = Array.isArray(m.roles) ? m.roles[0] : m.roles;
+        const job = Array.isArray(m.job_positions) ? m.job_positions[0] : m.job_positions;
+        return {
+          user_id: m.user_id,
+          email: p?.email || '',
+          name: [p?.first_name, p?.last_name].filter(Boolean).join(' ') || p?.email || 'Sin nombre',
+          role_id: m.role_id,
+          role_name: role?.name || '',
+          job_position_name: job?.name || '',
+        };
+      }));
     };
-    load();
+    void load();
   }, [open, organization?.id]);
 
   // Listas únicas de roles y cargos
@@ -302,7 +318,11 @@ export function CreateAlertDialog({ open, onOpenChange, onSubmit }: CreateAlertD
 
                 {/* Lista de miembros */}
                 <div className="max-h-36 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-100 dark:divide-gray-800">
-                  {filteredMembers.length === 0 ? (
+                  {membersError ? (
+                    <p role="alert" className="p-3 text-center text-xs text-red-600 dark:text-red-400">
+                      No se pudieron cargar los miembros: {membersError}
+                    </p>
+                  ) : filteredMembers.length === 0 ? (
                     <p className="text-xs text-gray-400 dark:text-gray-500 p-3 text-center">No se encontraron miembros</p>
                   ) : (
                     filteredMembers.map((m) => {

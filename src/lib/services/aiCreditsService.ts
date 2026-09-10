@@ -195,63 +195,57 @@ export async function checkAICredits(organizationId: number): Promise<AICheckRes
 }
 
 /**
- * Consume créditos de IA actualizando directamente la tabla ai_settings
+ * Consume créditos de IA de forma ATÓMICA vía RPC `decrement_ai_credits`
+ * (FOR UPDATE en ai_settings). Sustituye el read-modify-write anterior
+ * (C-10, F0 §4.2). Para cobros con costo real en USD usar
+ * `chargeAiCredits` de `crm/aiCostService.ts`.
  */
 export async function consumeAICredits(
-  organizationId: number, 
-  amount: number = 1
+  organizationId: number,
+  amount: number = 1,
+  options?: { actionType?: string; model?: string; userId?: string | null; metadata?: Record<string, unknown> }
 ): Promise<boolean> {
-  console.log('🔥 consumeAICredits called:', { organizationId, amount });
-  
+  const credits = Math.max(0, Math.round(amount));
+  if (credits === 0) return true;
+
   try {
     const supabase = getSupabaseClient();
 
-    const { data: settings, error: getError } = await supabase
-      .from('ai_settings')
-      .select('credits_remaining')
-      .eq('organization_id', organizationId)
-      .single();
+    const { data: decremented, error: rpcError } = await supabase.rpc('decrement_ai_credits', {
+      p_org_id: organizationId,
+      p_cost: credits,
+    });
 
-    if (getError || !settings) {
-      console.error('❌ Error getting AI settings:', getError);
+    if (rpcError) {
+      console.error('❌ decrement_ai_credits error:', rpcError.message);
       return false;
     }
-
-    const currentCredits = settings.credits_remaining || 0;
-    
-    if (currentCredits < amount) {
-      console.warn('⚠️ Insufficient AI credits:', { currentCredits, required: amount });
-      return false;
-    }
-
-    const newCredits = currentCredits - amount;
-    const { error: updateError } = await supabase
-      .from('ai_settings')
-      .update({ 
-        credits_remaining: newCredits,
-        updated_at: new Date().toISOString()
-      })
-      .eq('organization_id', organizationId);
-
-    if (updateError) {
-      console.error('❌ Error updating AI credits:', updateError);
+    if (!decremented) {
+      console.warn('⚠️ Insufficient AI credits:', { organizationId, required: credits });
       return false;
     }
 
     try {
+      const { data: after } = await supabase
+        .from('ai_settings')
+        .select('credits_remaining')
+        .eq('organization_id', organizationId)
+        .maybeSingle();
+      const creditsAfter = after?.credits_remaining ?? null;
       await supabase.from('ai_usage_logs').insert({
         organization_id: organizationId,
-        credits_consumed: amount,
-        credits_before: currentCredits,
-        credits_after: newCredits,
-        model: 'gpt-4o-mini',
-        created_at: new Date().toISOString()
+        user_id: options?.userId ?? null,
+        action_type: options?.actionType ?? 'generic',
+        credits_consumed: credits,
+        credits_before: creditsAfter != null ? creditsAfter + credits : null,
+        credits_after: creditsAfter,
+        model: options?.model ?? 'unknown',
+        metadata: options?.metadata ?? {},
       });
     } catch (logErr) {
       console.warn('⚠️ Failed to log AI usage (non-critical):', logErr);
     }
 
-    console.log('✅ AI credits consumed:', { organizationId, amount, newCredits });
     return true;
   } catch (err) {
     console.error('❌ Exception in consumeAICredits:', err);

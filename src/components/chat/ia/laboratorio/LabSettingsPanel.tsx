@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AI_PROVIDERS, TONE_OPTIONS, LANGUAGE_OPTIONS } from '@/lib/services/aiSettingsService';
+import { useEffect, useState } from 'react';
+import { fetchCatalogoModelos, TONE_OPTIONS, LANGUAGE_OPTIONS, type ModeloIA } from '@/lib/services/aiSettingsService';
 import type { LabSettings, Channel } from '@/lib/services/aiLabService';
 
 interface LabSettingsPanelProps {
@@ -27,8 +28,17 @@ export default function LabSettingsPanel({
   channels,
   onChange
 }: LabSettingsPanelProps) {
-  const selectedProvider = AI_PROVIDERS.find(p => p.value === 'openai');
-  const availableModels = selectedProvider?.models || [];
+  // El catalogo se sirve desde /api/chat/ai/modelos: antes estaba cableado con
+  // modelos obsoletos que ni siquiera coincidian con los que usa el motor.
+  const [availableModels, setAvailableModels] = useState<ModeloIA[]>([]);
+
+  useEffect(() => {
+    let cancelado = false;
+    fetchCatalogoModelos()
+      .then((c) => { if (!cancelado) setAvailableModels(c.modelos); })
+      .catch(() => { if (!cancelado) setAvailableModels([]); });
+    return () => { cancelado = true; };
+  }, []);
 
   const updateSetting = <K extends keyof LabSettings>(key: K, value: LabSettings[K]) => {
     onChange({ ...settings, [key]: value });

@@ -98,7 +98,7 @@ export function PeriodosContablesPage() {
 
     try {
       setIsProcessing(true);
-      const userId = getCurrentUserId();
+      const userId = await getCurrentUserId();
       await PeriodosContablesService.cerrarPeriodo(selectedPeriodo.id, userId || '');
       toast.success('Periodo cerrado exitosamente');
       setShowCloseDialog(false);

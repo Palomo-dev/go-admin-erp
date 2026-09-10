@@ -6,7 +6,7 @@
  * Gestiona créditos, subcuentas y logging automáticamente.
  */
 
-import { supabase } from '@/lib/supabase/config';
+import { getServiceClient } from '@/lib/supabase/server-service';
 import {
   getMasterClient,
   getSubaccountClient,
@@ -14,6 +14,7 @@ import {
   getMasterWhatsAppNumber,
   formatE164,
   formatWhatsApp,
+  getWebhookBaseUrl,
 } from './twilioConfig';
 import { getCommSettings } from './twilioSubaccounts';
 import type {
@@ -23,6 +24,11 @@ import type {
 } from './twilioTypes';
 import { InsufficientCreditsError, TwilioConfigError } from './twilioTypes';
 
+/**
+ * Servicio SOLO servidor (usa credenciales master de Twilio y el cliente
+ * service-role). F0: antes importaba el cliente browser (`@/lib/supabase/config`)
+ * → RLS sin sesión y escrituras descartadas en silencio (C9 msg).
+ */
 class TwilioService {
   /**
    * Envía un mensaje (SMS o WhatsApp) a un destinatario.
@@ -64,7 +70,7 @@ class TwilioService {
         from,
         to: formattedTo,
         ...(mediaUrl && mediaUrl.length > 0 ? { mediaUrl } : {}),
-        statusCallback: `${process.env.TWILIO_WEBHOOK_BASE_URL}/status-callback`,
+        statusCallback: `${getWebhookBaseUrl()}/api/integrations/twilio/status-callback`,
       });
 
       // 6. Registrar en comm_usage_logs
@@ -143,7 +149,7 @@ class TwilioService {
    * Retorna true si hay créditos suficientes (o ilimitados).
    */
   private async deductCredits(orgId: number, channel: string): Promise<boolean> {
-    const { data, error } = await supabase.rpc('deduct_comm_credits', {
+    const { data, error } = await getServiceClient().rpc('deduct_comm_credits', {
       p_org_id: orgId,
       p_channel: channel,
       p_amount: 1,
@@ -169,7 +175,7 @@ class TwilioService {
     module?: string;
     metadata?: Record<string, unknown>;
   }): Promise<void> {
-    const { error } = await supabase.from('comm_usage_logs').insert({
+    const { error } = await getServiceClient().from('comm_usage_logs').insert({
       organization_id: params.orgId,
       channel: params.channel,
       credits_used: 1,

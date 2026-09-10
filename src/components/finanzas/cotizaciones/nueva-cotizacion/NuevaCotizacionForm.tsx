@@ -13,6 +13,7 @@ import { useToast, toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId, obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { formatCurrency } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 import { CotizacionesService, type QuotationItem } from '@/lib/services/cotizacionesService';
 import { ClienteSelector } from '@/components/finanzas/facturas-venta/nueva-factura/ClienteSelector';
 import { ItemsFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ItemsFactura';
@@ -56,6 +57,7 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
   const [termsConditions, setTermsConditions] = useState('');
   const [salespersonId, setSalespersonId] = useState<string>('none');
   const [salespeople, setSalespeople] = useState<{ id: string; name: string }[]>([]);
+  const [salespeopleError, setSalespeopleError] = useState<string | null>(null);
   const [salespersonSearch, setSalespersonSearch] = useState('');
   const { selectedBranchId } = useBranch();
   const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
@@ -85,22 +87,27 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
         `)
         .eq('organization_id', organizationId)
         .eq('is_active', true);
-      if (error) return;
-      if (data) {
-        setSalespeople(
-          data
-            .map((m: any) => {
-              const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-              return {
-                id: m.user_id,
-                name: `${p?.first_name || ''} ${p?.last_name || ''}`.trim() || m.user_id,
-              };
-            })
-            .sort((a, b) => a.name.localeCompare(b.name))
-        );
-      }
+      // Antes era `if (error) return;`: el desplegable se quedaba vacío sin que
+      // nadie supiera que la consulta había fallado.
+      if (error) throw error;
+      setSalespeopleError(null);
+      setSalespeople(
+        (data || [])
+          .map((m: any) => {
+            // Embebido a-uno: objeto. El array se acepta por compatibilidad.
+            const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+            return {
+              id: m.user_id,
+              // Nunca el identificador crudo del usuario.
+              name: `${p?.first_name || ''} ${p?.last_name || ''}`.trim() || 'Vendedor sin nombre',
+            };
+          })
+          .sort((a, b) => a.name.localeCompare(b.name))
+      );
     } catch (e) {
-      console.error('Error loading salespeople:', e);
+      logError('[NuevaCotizacion] cargar vendedores', e);
+      setSalespeopleError(describeError(e));
+      setSalespeople([]);
     }
   };
 
@@ -386,6 +393,11 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
                   </div>
                   <div className="max-h-[200px] overflow-y-auto">
                     <SelectItem value="none">Sin asignar</SelectItem>
+                    {salespeopleError && (
+                      <p role="alert" className="px-2 py-1.5 text-xs text-red-600 dark:text-red-400">
+                        No se pudieron cargar los vendedores: {salespeopleError}
+                      </p>
+                    )}
                     {salespeopleFiltrados.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}

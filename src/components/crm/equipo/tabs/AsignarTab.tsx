@@ -17,6 +17,8 @@ import { formatCurrency } from '@/utils/Utils';
 import Link from 'next/link';
 import { requireOrgId } from '../useEquipoData';
 import type { Opportunity, SalesTeam, OrgMember } from '../types';
+import { pickEmbedded, profileDisplayName, type EmbeddedProfile } from '@/lib/utils/embeddedProfile';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 
 export function AsignarTab() {
   const { toast } = useToast();
@@ -45,15 +47,16 @@ export function AsignarTab() {
       if (oppRes.error) throw oppRes.error;
       setOpportunities((oppRes.data || []) as unknown as Opportunity[]);
       setTeams((teamsRes.data || []) as SalesTeam[]);
-      const orgMemberList = (membersRes.data || [] as { user_id: string; profiles: { id: string; first_name: string | null; last_name: string | null; email: string | null }[] }[]).map((m) => {
-        const p = m.profiles?.[0] || null;
-        const full = p ? [p.first_name, p.last_name].filter(Boolean).join(' ') : '';
-        return { id: m.user_id, name: full || p?.email || m.user_id.slice(0, 8), email: p?.email || undefined };
+      // Embebido a-uno: llega como objeto. Con `profiles[0]` el nombre caia
+      // siempre al identificador del usuario recortado a 8 caracteres.
+      const orgMemberList = ((membersRes.data || []) as { user_id: string; profiles: EmbeddedProfile | EmbeddedProfile[] | null }[]).map((m) => {
+        const p = pickEmbedded(m.profiles);
+        return { id: m.user_id, name: profileDisplayName(m.profiles), email: p?.email || undefined };
       });
       setOrgMembers(orgMemberList);
     } catch (err) {
-      console.error('Error cargando:', err);
-      toast({ title: 'Error', description: 'No se pudieron cargar las oportunidades', variant: 'destructive' });
+      logError('[AsignarTab] cargar oportunidades y equipos', err);
+      toast({ title: 'Error', description: `No se pudieron cargar las oportunidades: ${describeError(err)}`, variant: 'destructive' });
     } finally {
       setLoading(false);
       setIsRefreshing(false);

@@ -28,6 +28,7 @@ import {
   FileText,
   CalendarClock
 } from 'lucide-react';
+import { CRM_MODULE_SUBROUTES } from './crmNav';
 
 export const moduleIcons: Record<string, React.ComponentType<any>> = {
   'organizations': Building2,
@@ -133,11 +134,10 @@ export const moduleSubroutes: Record<string, ModuleSubroute[]> = {
     { name: 'Huéspedes', path: '/app/pms/huespedes', icon: Users },
     { name: 'Parking', path: '/app/pms/parking', icon: Car }
   ],
+  // Única fuente: src/config/crmNav.ts (F0 §5.1)
   'crm': [
     { name: 'CRM', path: '/app/crm', icon: UserCheck },
-    { name: 'Actividades', path: '/app/crm/actividades', icon: Activity },
-    { name: 'Clientes', path: '/app/crm/clientes', icon: Users },
-    { name: 'Pipeline', path: '/app/crm/pipeline', icon: BarChart3 },
+    ...CRM_MODULE_SUBROUTES,
   ],
   'hrm': [
     { name: 'Recursos Humanos', path: '/app/hrm', icon: Users }

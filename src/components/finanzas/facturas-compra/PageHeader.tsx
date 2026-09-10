@@ -13,7 +13,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ onRefresh, isRefreshing }: PageHeaderProps) {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   
   // Detectar si estamos en inventario o finanzas
   const isInventario = pathname.includes('/inventario/');

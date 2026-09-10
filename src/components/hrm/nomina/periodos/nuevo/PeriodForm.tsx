@@ -198,7 +198,7 @@ export function PeriodForm({
               Notas
             </Label>
             <RichTextEditor
-              value={formData.notes}
+              value={formData.notes ?? ''}
               onChange={(html) => handleChange('notes', html)}
               placeholder="Notas adicionales del periodo"
               minHeight={60}

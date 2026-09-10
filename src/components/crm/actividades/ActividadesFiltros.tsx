@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, Calendar, Filter, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Search, Calendar, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -40,9 +39,28 @@ export function ActividadesFiltros({
     filters.date_to ? new Date(filters.date_to) : undefined
   );
 
-  const handleSearchChange = (value: string) => {
-    onFiltersChange({ ...filters, search: value || undefined });
-  };
+  /**
+   * La búsqueda es de servidor: sin retardo, cada tecla lanzaría una consulta
+   * de página más los siete conteos de las tarjetas.
+   */
+  const [searchDraft, setSearchDraft] = useState(filters.search ?? '');
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+
+  // Si el filtro se limpia desde fuera (botón «Quitar filtros»), sigue al padre.
+  useEffect(() => {
+    setSearchDraft(filters.search ?? '');
+  }, [filters.search]);
+
+  useEffect(() => {
+    const current = filtersRef.current.search ?? '';
+    if (searchDraft === current) return;
+    const timer = setTimeout(() => {
+      onFiltersChange({ ...filtersRef.current, search: searchDraft || undefined });
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchDraft]);
 
   const handleTypeChange = (value: string) => {
     onFiltersChange({
@@ -96,8 +114,9 @@ export function ActividadesFiltros({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Buscar en notas..."
-              value={filters.search || ''}
-              onChange={(e) => handleSearchChange(e.target.value)}
+              aria-label="Buscar en notas"
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
               className="pl-10 bg-gray-50 dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700"
             />
           </div>

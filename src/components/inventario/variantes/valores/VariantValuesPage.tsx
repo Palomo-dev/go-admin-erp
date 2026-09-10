@@ -67,7 +67,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export function VariantValuesPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const tipoIdParam = searchParams.get('tipo');
+  const tipoIdParam = searchParams?.get('tipo') ?? null;
 
   const [valores, setValores] = useState<VariantValue[]>([]);
   const [tipos, setTipos] = useState<{ id: number; name: string }[]>([]);

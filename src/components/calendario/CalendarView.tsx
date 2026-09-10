@@ -86,18 +86,26 @@ export function CalendarView({ organizationId, className }: CalendarViewProps) {
     setModalState({
       isOpen: true,
       mode: 'create',
+      // Borrador para prellenar el modal; la organizacion real la resuelve createEvent
       event: {
         id: '',
         title: '',
+        description: null,
         start_at: startDate.toISOString(),
         end_at: endDate.toISOString(),
         all_day: false,
         source_type: 'calendar_event',
-        source_id: null,
+        source_id: '',
         status: 'confirmed',
         color: '#3B82F6',
-        organization_id: organizationId,
-      } as CalendarEvent,
+        organization_id: organizationId ?? 0,
+        branch_id: null,
+        location: null,
+        assigned_to: null,
+        customer_id: null,
+        recurrence_rule: null,
+        metadata: null,
+      },
       defaultDate: startDate,
     });
   }, [organizationId]);
@@ -130,7 +138,7 @@ export function CalendarView({ organizationId, className }: CalendarViewProps) {
           description: 'El evento se ha creado correctamente',
         });
       }
-    } else if (modalState.event) {
+    } else if (modalState.event?.id) {
       const result = await updateEvent(modalState.event.id, eventData);
       if (result.error) {
         toast({

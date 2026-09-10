@@ -371,17 +371,20 @@ class ConversationDetailService {
     }
   }
 
-  async useQuickReply(quickReplyId: string): Promise<void> {
+  async useQuickReply(quickReplyId: string, conversationId?: string): Promise<void> {
     try {
-      const { error } = await supabase.rpc('increment_quick_reply_usage', {
-        reply_id: quickReplyId
+      // La firma real es register_quick_reply_use(p_quick_reply_id, p_conversation_id).
+      // Antes se llamaba a increment_quick_reply_usage con el parámetro `reply_id`,
+      // pero esa función declara `p_quick_reply_id`: la RPC fallaba SIEMPRE y caía a
+      // un fallback inválido (`usage_count: supabase.rpc('usage_count')`), que nunca
+      // pudo funcionar porque asignaba una promesa a una columna entera.
+      const { error } = await supabase.rpc('register_quick_reply_use', {
+        p_quick_reply_id: quickReplyId,
+        p_conversation_id: conversationId ?? null
       });
 
       if (error) {
-        await supabase
-          .from('quick_replies')
-          .update({ usage_count: supabase.rpc('usage_count') })
-          .eq('id', quickReplyId);
+        console.error('Error registrando uso de respuesta rápida:', error.message);
       }
     } catch (error) {
       console.error('Error actualizando uso de respuesta rápida:', error);

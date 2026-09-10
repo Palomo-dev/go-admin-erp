@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     const result = await paypalService.createOrder(
       credentials,
-      { intent: orderParams.intent || 'CAPTURE', ...orderParams },
+      { ...orderParams, intent: orderParams.intent || 'CAPTURE' },
       is_sandbox ?? true
     );
 

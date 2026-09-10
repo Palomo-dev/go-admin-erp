@@ -54,6 +54,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/lib/supabase/config';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 import { CalendarEvent, SOURCE_TYPE_LABELS, SOURCE_TYPE_COLORS, EventStatus } from './types';
 import { RecurrenceSelector, RecurrenceRule, DEFAULT_RECURRENCE, recurrenceToRRule } from './RecurrenceSelector';
 import { EventDetailView } from './EventDetailView';
@@ -131,6 +132,8 @@ export function EventModal({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
+  // Un fallo al cargar miembros dejaba el desplegable vacío sin decir nada.
+  const [membersError, setMembersError] = useState<string | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [exceptions, setExceptions] = useState<CalendarException[]>([]);
@@ -180,15 +183,32 @@ export function EventModal({
           .limit(100),
       ]);
 
-      if (branchesRes.data) setBranches(branchesRes.data);
-      if (membersRes.data) {
-        const mappedMembers = membersRes.data.map((m) => ({
+      if (branchesRes.error) {
+        logError('[EventModal] cargar sucursales', branchesRes.error);
+      } else if (branchesRes.data) {
+        setBranches(branchesRes.data);
+      }
+
+      if (membersRes.error) {
+        logError('[EventModal] cargar miembros de la organización', membersRes.error);
+        setMembersError(describeError(membersRes.error));
+        setMembers([]);
+      } else {
+        setMembersError(null);
+        // El embebido a-uno llega como objeto; se acepta el array por si algún
+        // dato cacheado viniera con la forma antigua.
+        const mappedMembers = (membersRes.data || []).map((m) => ({
           user_id: m.user_id,
           profiles: Array.isArray(m.profiles) ? m.profiles[0] : m.profiles,
         })) as Member[];
         setMembers(mappedMembers);
       }
-      if (customersRes.data) setCustomers(customersRes.data);
+
+      if (customersRes.error) {
+        logError('[EventModal] cargar clientes', customersRes.error);
+      } else if (customersRes.data) {
+        setCustomers(customersRes.data);
+      }
     };
 
     loadSelectData();
@@ -585,7 +605,10 @@ export function EventModal({
 
                 {/* Asignado y Cliente */}
                 <div className="grid grid-cols-2 gap-4">
-                  {members.length > 0 && (
+                  {/* Con error también se muestra el bloque: si se ocultara,
+                      el fallo de carga pasaría por «esta organización no tiene
+                      miembros». */}
+                  {(members.length > 0 || membersError) && (
                     <div className="space-y-2">
                       <Label htmlFor="assigned_to">Asignado a</Label>
                       <Select
@@ -597,9 +620,15 @@ export function EventModal({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Sin asignar</SelectItem>
+                          {membersError && (
+                            <p role="alert" className="px-2 py-1.5 text-xs text-red-600 dark:text-red-400">
+                              No se pudieron cargar los miembros: {membersError}
+                            </p>
+                          )}
                           {members.map((member) => (
                             <SelectItem key={member.user_id} value={member.user_id}>
-                              {member.profiles ? `${member.profiles.first_name} ${member.profiles.last_name}` : member.user_id}
+                              {/* Nunca el identificador crudo: no le dice nada a nadie. */}
+                              {`${member.profiles?.first_name || ''} ${member.profiles?.last_name || ''}`.trim() || 'Miembro sin nombre'}
                             </SelectItem>
                           ))}
                         </SelectContent>

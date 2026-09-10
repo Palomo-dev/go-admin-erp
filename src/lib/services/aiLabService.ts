@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
-import { checkAICredits, estimateCredits, consumeAICredits } from './aiCreditsService';
+// Fase 0.2: el cobro de créditos vive en /api/chat/ai/lab-test (punto de
+// generación). Aquí solo queda la comprobación previa de saldo.
+import { checkAICredits } from './aiCreditsService';
 
 export interface KnowledgeFragment {
   id: string;
@@ -278,10 +280,8 @@ class AILabService {
     const result = await response.json();
     const processingTimeMs = Date.now() - startTime;
 
-    // Consumir créditos basado en tokens usados
-    const totalTokens = result.usage?.totalTokens || 0;
-    const estimatedCredits = estimateCredits(totalTokens);
-    await consumeAICredits(this.organizationId, estimatedCredits);
+    // Fase 0.2: los créditos los cobra /api/chat/ai/lab-test, que es el punto de
+    // generación. Cobrarlos también aquí producía un cargo doble.
 
     const metrics: LabMetrics = {
       totalFragments: fragments.length,
@@ -290,7 +290,7 @@ class AILabService {
       promptTokens: result.usage?.promptTokens || 0,
       completionTokens: result.usage?.completionTokens || 0,
       totalTokens: result.usage?.totalTokens || 0,
-      estimatedCost: this.calculateCost(result.usage, settings.model),
+      estimatedCost: result.costUsd ?? 0,
       confidenceScore: result.confidenceScore || 0.8
     };
 
@@ -328,10 +328,10 @@ class AILabService {
       promptTokens: estimatedTokens,
       completionTokens,
       totalTokens: estimatedTokens + completionTokens,
-      estimatedCost: this.calculateCost(
-        { promptTokens: estimatedTokens, completionTokens },
-        settings.model
-      ),
+      // runLocalTest no llama a ningún modelo: la respuesta es simulada, así que
+      // el costo real es cero. Antes mostraba un costo inventado con la tabla de
+      // precios cableada, lo cual daba una cifra falsa para una respuesta falsa.
+      estimatedCost: 0,
       confidenceScore: fragments.length > 0 ? 0.85 : 0.4
     };
 
@@ -376,26 +376,10 @@ ${fragments.length > 1 ? `También encontré ${fragments.length - 1} fragmento(s
 ¿Hay algo más en lo que pueda ayudarte?`;
   }
 
-  private calculateCost(
-    usage: { promptTokens: number; completionTokens: number } | undefined,
-    model: string
-  ): number {
-    if (!usage) return 0;
-
-    const pricing: Record<string, { input: number; output: number }> = {
-      'gpt-4o': { input: 0.0025, output: 0.01 },
-      'gpt-4o-mini': { input: 0.00015, output: 0.0006 },
-      'gpt-4-turbo': { input: 0.01, output: 0.03 },
-      'gpt-4': { input: 0.03, output: 0.06 },
-      'gpt-3.5-turbo': { input: 0.0005, output: 0.0015 },
-    };
-
-    const modelPricing = pricing[model] || pricing['gpt-4o-mini'];
-    const inputCost = (usage.promptTokens / 1000) * modelPricing.input;
-    const outputCost = (usage.completionTokens / 1000) * modelPricing.output;
-
-    return Math.round((inputCost + outputCost) * 100000) / 100000;
-  }
+  // calculateCost() se elimino: tenia su propia tabla de precios cableada
+  // (gpt-4o, gpt-4-turbo, gpt-3.5-turbo) que caia siempre a gpt-4o-mini para
+  // cualquier modelo desconocido. El costo real ahora lo calcula
+  // /api/chat/ai/lab-test contra provider_pricing y llega en `costUsd`.
 
   async logLabTest(result: LabTestResult, memberId?: number): Promise<void> {
     try {

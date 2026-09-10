@@ -23,7 +23,7 @@ interface DynamicSidebarProps {
 }
 
 const DynamicSidebar = memo(({ organizationId, collapsed = false, onSignOut }: DynamicSidebarProps) => {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const router = useRouter();
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const { 

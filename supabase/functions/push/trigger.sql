@@ -33,14 +33,14 @@ begin
   v_supabase_url := current_setting('app.settings.supabase_url', true);
   v_service_role_key := current_setting('app.settings.service_role_key', true);
 
-  -- Fallback: si los settings de BD no están configurados, usar valores por defecto.
-  -- Esto permite que el push funcione sin ALTER DATABASE (que requiere superuser).
-  -- Los settings de BD siguen siendo preferidos si existen.
+  -- Fallback: si los settings de BD no están configurados, leer de Vault.
+  -- La clave NUNCA va escrita aquí: vive en vault.secrets y se lee con
+  -- private.get_secret (ver migración 20260910041620_secretos_fuera_de_pg_proc).
   if v_supabase_url is null then
     v_supabase_url := 'https://jgmgphmzusbluqhuqihj.supabase.co';
   end if;
   if v_service_role_key is null then
-    v_service_role_key := 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbWdwaG16dXNibHVxaHVxaWhqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NjAzNDUyMiwiZXhwIjoyMDYxNjEwNTIyfQ.GZXSzO5lH_ejDCxVFdlfVC4PjAlWO5lk_pFJ6t_BK3o';
+    v_service_role_key := private.get_secret('service_role_key');
   end if;
 
   -- Caso 1: notificación dirigida a un usuario específico

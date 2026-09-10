@@ -49,17 +49,15 @@ export const selectOrganizationFromPopup = async ({
   sessionStorage.removeItem('currentBranchId');
   invalidateBranchIdCache();
   
-  // Guardar organización usando la función centralizada (guarda en organizacionActiva + sessionStorage)
+  // Guardar organización usando la función centralizada: escribe
+  // organizacionActiva, sessionStorage, las claves legacy y las cookies
+  // `org_id` / `goadmin_org_id`.
   guardarOrganizacionActiva({
     id: organization.id,
     name: organization.name,
     logo_url: organization.logo_url
   });
-  
-  // También mantener compatibilidad con las claves legacy
-  localStorage.setItem('currentOrganizationId', organization.id.toString());
-  localStorage.setItem('currentOrganizationName', organization.name);
-  
+
   console.log('💾 [DEBUG] Organización guardada en localStorage:', {
     currentOrganizationId: localStorage.getItem('currentOrganizationId'),
     currentOrganizationName: localStorage.getItem('currentOrganizationName')
@@ -215,9 +213,13 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
           lastOrgId: profileData.last_org_id
         });
         
-        // Si el perfil tiene una organización, usarla
+        // Si el perfil tiene una organización, usarla. Va por
+        // guardarOrganizacionActiva: escribir solo `currentOrganizationId`
+        // dejaba `organizacionActiva` con la organización de la sesión
+        // anterior (localStorage sobrevive al logout) y la app quedaba con dos
+        // organizaciones distintas activas a la vez.
         if (profileData.last_org_id) {
-          localStorage.setItem('currentOrganizationId', profileData.last_org_id.toString());
+          guardarOrganizacionActiva({ id: Number(profileData.last_org_id) });
           console.log('✅ [DEBUG] Organización del perfil cargada:', profileData.last_org_id);
         }
       } else {

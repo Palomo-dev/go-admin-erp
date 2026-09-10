@@ -1,38 +1,36 @@
 /**
  * API Route: Consultar créditos de comunicación
- * GET /api/integrations/twilio/credits?orgId=X
+ * GET /api/integrations/twilio/credits
+ *
+ * F0: sesión + org activa (`getServerOrgContext`); el `orgId` de la query se
+ * ignora (si viene y no coincide → 403).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { commCreditsService } from '@/lib/services/commCreditsService';
 
 export async function GET(request: NextRequest) {
+  let ctx;
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    ctx = await getServerOrgContext(request);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
     }
+    throw err;
+  }
 
-    const token = authHeader.replace('Bearer ', '');
-    const supabaseAuth = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+  try {
+    const requested = request.nextUrl.searchParams.get('orgId');
+    if (requested && Number(requested) !== ctx.organizationId) {
+      return NextResponse.json({ error: 'orgId no coincide con la organización activa' }, { status: 403 });
     }
-
-    const orgId = request.nextUrl.searchParams.get('orgId');
-    if (!orgId) {
-      return NextResponse.json({ error: 'Falta orgId' }, { status: 400 });
-    }
+    const orgId = ctx.organizationId;
 
     const [credits, usage] = await Promise.all([
-      commCreditsService.getCreditsStatus(Number(orgId)),
-      commCreditsService.getMonthlyUsageSummary(Number(orgId)),
+      commCreditsService.getCreditsStatus(orgId),
+      commCreditsService.getMonthlyUsageSummary(orgId),
     ]);
 
     if (!credits) {

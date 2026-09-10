@@ -17,7 +17,7 @@ const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
  * Nota: Si STRIPE_SECRET_KEY no está configurada, stripe será null
  */
 export const stripe = stripeSecretKey ? new Stripe(stripeSecretKey, {
-  apiVersion: '2024-11-20.acacia', // Versión estable de la API
+  apiVersion: '2025-09-30.clover', // Versión estable de la API
   typescript: true,
   appInfo: {
     name: 'GO Admin ERP',
@@ -25,6 +25,17 @@ export const stripe = stripeSecretKey ? new Stripe(stripeSecretKey, {
     url: 'https://app.goadmin.io',
   },
 }) : null;
+
+/**
+ * Obtener el cliente de Stripe garantizando que esté configurado.
+ * Lanza si falta STRIPE_SECRET_KEY, en vez de fallar con un null opaco.
+ */
+export function requireStripe(): Stripe {
+  if (!stripe) {
+    throw new Error('Stripe no está configurado. Verifica STRIPE_SECRET_KEY.')
+  }
+  return stripe
+}
 
 /**
  * Validar firma del webhook de Stripe
@@ -44,7 +55,7 @@ export function constructWebhookEvent(
   }
 
   try {
-    return stripe.webhooks.constructEvent(payload, signature, webhookSecret)
+    return requireStripe().webhooks.constructEvent(payload, signature, webhookSecret)
   } catch (error) {
     console.error('❌ Error verificando webhook de Stripe:', error)
     throw new Error(`Webhook signature verification failed: ${error}`)

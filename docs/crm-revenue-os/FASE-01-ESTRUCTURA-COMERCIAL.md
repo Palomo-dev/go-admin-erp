@@ -1,5 +1,12 @@
 # FASE 01 — Estructura comercial: ICP, verticales, roles y playbooks
 
+> **Estado V4 (2026-09-08)** — reconciliado en `ANEXO-C-RECONCILIACION-2026-09.md` §4.1; el §1 de este documento está obsoleto.
+> - **Ya existe (BD)**: `sales_roles` (60 filas), `sales_teams` (1), `sales_team_members`, `territories`, `icp_profiles` (UNIQUE org+band), `icp_criteria` y las columnas `verticals.slug/color/sort_order/positioning/metadata` (migraciones `f1_*`). Todas con RLS `org_member_all`.
+> - **Ya existe (backend)**: `icpService.ts` (725 L), `assignmentService.ts` (411 L), `salesStructureService.ts` (506 L; sustituye al `roleService.ts` citado aquí), `verticalsService.ts` (440 L), `scoringService.ts` (696 L); rutas `icp/**` (5), `roles/**` (3), `teams/**` (5), `territories/**` (2), `verticales/**` (3), `scoring/config`.
+> - **Ya existe (UI)**: la configuración vive en `src/components/configuracion/panels/crm/sections/{EstructuraComercialManager (1306 L), ICPManager (793), ScoringConfigurator (340), VerticalsManager (305)}.tsx`, montadas por `CRMConfigPanel.tsx:675-759` (no en `configuracion/crm/*` como dice §4.2); equipo en `/app/crm/equipo` (`equipo/tabs/*`, 15 archivos).
+> - **Falta**: seeds (`verticals` 0 filas, `icp_profiles` 0, `scoring_configs` solo org 134 → `ANEXO-C` §7.2–7.4); `src/__tests__/services/icpService.test.ts`; dividir `EstructuraComercialManager` (>300 L); verificar que `assignmentService` se invoque al crear un lead.
+> - **Cuándo**: no bloquea F3–F9; se cierra en la Ola 5 (`PLAN.md` §7.2) junto con los seeds.
+
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj`
 > Depende de: F0 (registry, tipos canónicos, `getServerOrgContext`)
 > Bloquea: F2 (pipeline usa ICP y scoring de F1)

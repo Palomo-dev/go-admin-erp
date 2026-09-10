@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
   useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { claveOrdenStock } from './stockVisible';
 
 import { 
   Table,
@@ -189,8 +190,8 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
             valB = b.price ?? 0;
             break;
           case 'stock':
-            valA = a.stock ?? -1;
-            valB = b.stock ?? -1;
+            valA = claveOrdenStock(a, branchFilter, sortDirection);
+            valB = claveOrdenStock(b, branchFilter, sortDirection);
             break;
           case 'category':
             valA = a.category?.name?.toLowerCase() || '';
@@ -214,12 +215,24 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
     }
 
     return result;
-  }, [productos, sortField, sortDirection, filterHasImage, filterStatus, productImages, failedImageIds, quickSearch]);
+  }, [productos, sortField, sortDirection, filterHasImage, filterStatus, productImages, failedImageIds, quickSearch, branchFilter]);
 
-  // Reiniciar a página 1 cuando cambia la lista de productos, filtros u ordenamiento
+  // Volver a la página 1 SOLO cuando el usuario cambia filtros u ordenamiento.
   useEffect(() => {
     setCurrentPage(1);
-  }, [productos, filterHasImage, filterStatus, sortField, sortDirection, quickSearch, failedImageIds]);
+  }, [filterHasImage, filterStatus, sortField, sortDirection, quickSearch]);
+
+  // `productos` se reemplaza solo muchas veces: la carga llega por lotes de
+  // 1.000 (cinco veces con un catálogo de 4.368), se recarga entera tras cada
+  // acción masiva, y `failedImageIds` cambia cada vez que una imagen no carga.
+  // Antes todo eso estaba en las dependencias del efecto de arriba, así que
+  // cada una devolvía al usuario a la página 1 en mitad de lo que estuviera
+  // haciendo. Aquí solo se corrige la página si se quedó fuera de rango
+  // (p. ej. al borrar productos la lista encoge), para no dejar la tabla vacía.
+  useEffect(() => {
+    const ultimaPagina = Math.max(1, Math.ceil(processedProductos.length / pageSize));
+    setCurrentPage((actual) => (actual > ultimaPagina ? ultimaPagina : actual));
+  }, [processedProductos.length, pageSize]);
 
   // Cálculo de productos por página (usa processedProductos con filtros y ordenamiento)
   const indexOfLastProduct = currentPage * pageSize;

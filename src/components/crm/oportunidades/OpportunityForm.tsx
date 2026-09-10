@@ -29,6 +29,7 @@ import { ProductSearchDialog, type UnifiedProduct, type SelectedModifier } from 
 import { PipelineSearchSelect } from './PipelineSearchSelect';
 import { SpaceSearchSelect } from './SpaceSearchSelect';
 import { supabase } from '@/lib/supabase/config';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { verticalsService } from '@/lib/services/crm/verticalsService';
 
@@ -99,6 +100,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
   const [commissionRate, setCommissionRate] = useState<number>(Number(opportunity?.commission_rate) || 0);
   const [commissionType, setCommissionType] = useState<'salesperson' | 'intermediation_sale' | 'none'>(opportunity?.commission_type || 'salesperson');
   const [organizationMembers, setOrganizationMembers] = useState<{ id: string; name: string }[]>([]);
+  const [membersError, setMembersError] = useState<string | null>(null);
 
   // Campos nuevos: source, vertical, proximo contacto
   const [source, setSource] = useState<string>(opportunity?.source || '');
@@ -135,19 +137,27 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
       const orgId = getOrganizationId();
       if (!orgId) return;
       try {
-        const { data: members } = await supabase
+        // Supabase no lanza en error de consulta: hay que mirar `error`, o el
+        // catch nunca se ejecuta y la lista queda vacía en silencio.
+        const { data: members, error } = await supabase
           .from('organization_members')
           .select('user_id, profiles(first_name, last_name)')
           .eq('organization_id', orgId);
-        if (members) {
-          const formatted = members.map((m: any) => ({
+        if (error) throw error;
+        setMembersError(null);
+        // El embebido a-uno llega como objeto; el array se acepta por compatibilidad.
+        const formatted = (members || []).map((m: any) => {
+          const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+          return {
             id: m.user_id,
-            name: `${m.profiles?.first_name || ''} ${m.profiles?.last_name || ''}`.trim() || 'Usuario'
-          }));
-          setOrganizationMembers(formatted);
-        }
+            name: `${p?.first_name || ''} ${p?.last_name || ''}`.trim() || 'Miembro sin nombre',
+          };
+        });
+        setOrganizationMembers(formatted);
       } catch (e) {
-        console.warn('Error cargando miembros:', e);
+        logError('[OpportunityForm] cargar miembros de la organización', e);
+        setMembersError(describeError(e));
+        setOrganizationMembers([]);
       }
     };
     loadMembers();
@@ -721,6 +731,11 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                 noneValue="__none__"
                 className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700"
               />
+              {membersError && (
+                <p role="alert" className="mt-1.5 text-xs text-red-600 dark:text-red-400">
+                  No se pudo cargar la lista de comisionistas: {membersError}
+                </p>
+              )}
             </div>
             <div>
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">

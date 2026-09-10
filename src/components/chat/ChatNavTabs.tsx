@@ -64,7 +64,7 @@ const chatTabs: NavTab[] = [
 ];
 
 export function ChatNavTabs() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
 
   const isActive = (tab: NavTab) => {
     if (tab.matchPaths) {

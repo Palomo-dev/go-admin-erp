@@ -57,13 +57,13 @@ export async function GET(request: NextRequest) {
       qrSession.external_qr_id
     ) {
       try {
-        const txStatus = await boldService.getPaymentStatus(
+        const txStatus = await boldService.getPaymentLinkStatus(
           qrSession.integration_connection_id,
           qrSession.external_qr_id
         );
 
         // Si el proveedor indica pago, reflejarlo en la respuesta
-        if (txStatus?.status === 'approved' || txStatus?.status === 'paid') {
+        if (txStatus?.status === 'APPROVED') {
           return NextResponse.json({
             status: 'paid',
             reference,

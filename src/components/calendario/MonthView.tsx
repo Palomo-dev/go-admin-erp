@@ -107,10 +107,7 @@ export function MonthView({ currentDate, events, onEventClick, onDateClick }: Mo
                         key={`${event.id}-${eventIndex}`}
                         event={event}
                         variant="compact"
-                        onClick={(e) => {
-                          e.stopPropagation?.();
-                          onEventClick(event);
-                        }}
+                        onClick={() => onEventClick(event)}
                       />
                     ))}
                     {hasMore && (

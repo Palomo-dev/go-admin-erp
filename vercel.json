@@ -6,6 +6,18 @@
   "regions": ["iad1"],
   "crons": [
     {
+      "path": "/api/crm/jobs/run",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/crm/jobs/run",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/crm/jobs/run",
+      "schedule": "30 8 * * *"
+    },
+    {
       "path": "/api/cron/update-exchange-rates",
       "schedule": "0 2 * * *"
     },

@@ -403,13 +403,13 @@ Saludos cordiales.`;
                     value={paymentData.paymentDate}
                     onChange={(e) => {
                       setPaymentData({ ...paymentData, paymentDate: e.target.value });
-                      if (account.issue_date) {
-                        const fechaEmision = new Date(account.issue_date).toISOString().split('T')[0];
+                      if (account.invoice_date) {
+                        const fechaEmision = new Date(account.invoice_date).toISOString().split('T')[0];
                         setFechaError(e.target.value < fechaEmision);
                       }
                     }}
                     max={new Date().toISOString().split('T')[0]}
-                    min={account.issue_date ? new Date(account.issue_date).toISOString().split('T')[0] : undefined}
+                    min={account.invoice_date ? new Date(account.invoice_date).toISOString().split('T')[0] : undefined}
                     className={`dark:bg-gray-900 dark:border-gray-600 ${fechaError ? 'border-red-500 dark:border-red-500' : ''}`}
                   />
                   {fechaError && (

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { pickEmbedded } from '@/lib/utils/embeddedProfile';
 
 export interface Member {
   id: string;
@@ -69,10 +70,12 @@ export const memberService = {
       throw new Error(error.message);
     }
 
-    // Ordenar en el cliente por first_name del perfil
+    // Ordenar en el cliente por first_name del perfil.
+    // `profiles` es un embebido a-uno (objeto): con `profiles[0]` ambos nombres
+    // salían vacíos y la lista no se ordenaba en absoluto.
     const sorted = (data || []).sort((a: any, b: any) => {
-      const nameA = a.profiles?.[0]?.first_name || '';
-      const nameB = b.profiles?.[0]?.first_name || '';
+      const nameA = pickEmbedded<{ first_name?: string }>(a.profiles)?.first_name || '';
+      const nameB = pickEmbedded<{ first_name?: string }>(b.profiles)?.first_name || '';
       return nameA.localeCompare(nameB);
     });
 

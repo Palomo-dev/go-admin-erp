@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { whatsappQrService } from '@/lib/services/integrations/whatsapp/whatsappQrService';
+import { requireOwnedChannel } from '../_shared';
 
 // POST: Iniciar sesión Baileys (genera QR si no hay creds)
+// F0 (C2 msg): sesión + canal de la org activa.
 export async function POST(request: NextRequest) {
   try {
     const { channel_id } = await request.json();
-    if (!channel_id) {
-      return NextResponse.json({ error: 'channel_id es requerido' }, { status: 400 });
-    }
+    const guard = await requireOwnedChannel(request, channel_id);
+    if ('response' in guard) return guard.response;
+
     const status = await whatsappQrService.startSession(channel_id);
     return NextResponse.json(status);
   } catch (error) {

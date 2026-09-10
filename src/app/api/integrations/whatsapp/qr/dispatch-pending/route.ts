@@ -1,17 +1,28 @@
 import { NextResponse } from 'next/server';
 import { whatsappQrService } from '@/lib/services/integrations/whatsapp/whatsappQrService';
-import { createClient } from '@supabase/supabase-js';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { verifyCronSecret, WebhookError } from '@/lib/security/webhookSignatures';
 
 // POST: Despachar mensajes salientes pendientes de canales QR (Baileys)
 // En desarrollo, la Edge Function en Supabase Cloud no puede alcanzar el
-// microservicio en localhost. Este endpoint hace polling de mensajes
-// marcados con dispatch_pending=true y los envía via el microservicio local.
-export async function POST() {
+// microservicio en localhost. Este endpoint despacha mensajes pendientes
+// via el microservicio local.
+//
+// F0 (C10 msg): exige `Authorization: Bearer CRON_SECRET` (fail-closed) y ya
+// NO se invoca desde el browser (se eliminó el polling de bandeja/WhatsAppQrCard).
+// JOBS-0 lo sustituye por un job `whatsapp` de la cola `outbound_jobs`.
+export async function POST(request: Request) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    verifyCronSecret(request);
+  } catch (err) {
+    if (err instanceof WebhookError) {
+      return NextResponse.json({ error: err.code }, { status: err.statusCode });
+    }
+    throw err;
+  }
+
+  try {
+    const supabase = getServiceClient();
 
     // Buscar mensajes outbound no despachados en canales con sesión QR activa
     // La Edge Function channel-dispatch los marca con dispatched:false cuando

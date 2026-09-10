@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { consumeAICredits } from '@/lib/services/aiCreditsService';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,9 +14,20 @@ function getOpenAIClient(): OpenAI {
 }
 
 export async function POST(request: NextRequest) {
+  // Seguridad (F0, C-A): sesión + org activa; se ignora organizationId del body.
+  let ctx;
+  try {
+    ctx = await getServerOrgContext(request);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+    }
+    throw err;
+  }
+  const organizationId = ctx.organizationId;
+
   try {
     const {
-      organizationId,
       organizationName,
       description,
       city,
@@ -68,11 +80,9 @@ Responde SOLO con las 12 keywords separadas por comas, sin explicaciones.`;
       .filter((k: string) => k.length > 0 && k.length < 60);
 
     // Descontar 1 crédito de IA
-    if (organizationId) {
-      const creditsConsumed = await consumeAICredits(organizationId, 1);
-      if (!creditsConsumed) {
-        console.warn('⚠️ No se pudieron descontar créditos de IA para org:', organizationId);
-      }
+    const creditsConsumed = await consumeAICredits(organizationId, 1);
+    if (!creditsConsumed) {
+      console.warn('⚠️ No se pudieron descontar créditos de IA para org:', organizationId);
     }
 
     return NextResponse.json({ keywords });

@@ -1,24 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import OpenAIService from '@/lib/services/openaiService';
 import { consumeAICredits } from '@/lib/services/aiCreditsService';
 
+/**
+ * POST /api/chat/ai/classify-intent
+ * Seguridad (F0, C-B): org de sesión; `organizationId` del body solo se acepta si coincide.
+ */
 export async function POST(request: NextRequest) {
+  let ctx;
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    ctx = await getServerOrgContext(request);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
     }
+    throw err;
+  }
+
+  try {
+    const supabase = ctx.supabase;
+    const organizationId = ctx.organizationId;
 
     const body = await request.json();
-    const { message, conversationId, organizationId } = body;
+    const { message, conversationId } = body;
 
-    if (!message || !organizationId) {
+    if (body.organizationId !== undefined && Number(body.organizationId) !== organizationId) {
+      return NextResponse.json({ error: 'organizationId no coincide con la organización activa' }, { status: 403 });
+    }
+
+    if (!message) {
       return NextResponse.json(
-        { error: 'message y organizationId son requeridos' },
+        { error: 'message es requerido' },
         { status: 400 }
       );
     }
@@ -54,7 +67,7 @@ export async function POST(request: NextRequest) {
       console.warn('⚠️ No se pudieron descontar créditos de IA para org:', organizationId);
     }
 
-    if (conversationId && organizationId && result.suggestedTags.length > 0) {
+    if (conversationId && result.suggestedTags.length > 0) {
       const { data: existingTags } = await supabase
         .from('conversation_tags')
         .select('id, name')
@@ -88,7 +101,8 @@ export async function POST(request: NextRequest) {
       await supabase
         .from('conversations')
         .update({ priority: result.suggestedPriority, updated_at: new Date().toISOString() })
-        .eq('id', conversationId);
+        .eq('id', conversationId)
+        .eq('organization_id', organizationId);
     }
 
     return NextResponse.json({

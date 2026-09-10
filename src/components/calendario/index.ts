@@ -2,7 +2,8 @@ export * from './types';
 export * from './useCalendar';
 export * from './CalendarView';
 export * from './CalendarHeader';
-export * from './CalendarFilters';
+// Explicito para desambiguar con el tipo CalendarFilters de './types'
+export { CalendarFilters } from './CalendarFilters';
 export * from './MonthView';
 export * from './WeekView';
 export * from './DayView';

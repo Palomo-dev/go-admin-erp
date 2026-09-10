@@ -87,35 +87,15 @@ export function ExitDialog({
       if (!organizationId || !session || !open) return;
 
       try {
-        let ratesData: ParkingRate[] = [];
+        // parking_sessions no guarda space_type_id: las tarifas se buscan por vehicle_type
+        const { data, error } = await supabase
+          .from('parking_rates')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .eq('vehicle_type', session.vehicle_type)
+          .order('price', { ascending: true });
 
-        // Primero intentar buscar por space_type_id si está disponible
-        if (session.space_type_id) {
-          const { data: spaceTypeRates, error: spaceTypeError } = await supabase
-            .from('parking_rates')
-            .select('*')
-            .eq('organization_id', organizationId)
-            .eq('space_type_id', session.space_type_id)
-            .order('price', { ascending: true });
-
-          if (!spaceTypeError && spaceTypeRates && spaceTypeRates.length > 0) {
-            ratesData = spaceTypeRates;
-          }
-        }
-
-        // Si no hay tarifas por space_type_id, buscar por vehicle_type
-        if (ratesData.length === 0) {
-          const { data, error } = await supabase
-            .from('parking_rates')
-            .select('*')
-            .eq('organization_id', organizationId)
-            .eq('vehicle_type', session.vehicle_type)
-            .order('price', { ascending: true });
-
-          if (!error && data) {
-            ratesData = data;
-          }
-        }
+        const ratesData: ParkingRate[] = !error && data ? data : [];
 
         setRates(ratesData);
         

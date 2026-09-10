@@ -1,268 +1,55 @@
+/**
+ * CampanasService (FASE-16): fachada del cliente sobre `/api/crm/campaigns/*`.
+ * Ya no escribe `campaigns.status` directamente (antes "Enviar" era un UPDATE);
+ * lecturas auxiliares (segmentos, pipelines/etapas) por RLS.
+ */
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import {
-  Campaign,
-  CampaignContact,
-  Channel,
-  CreateCampaignInput,
-  UpdateCampaignInput,
-  CampaignStats,
-  CampaignStatus,
-} from './types';
+import { campaignsApi, type CreateCampaignBody } from '@/components/crm/whatsapp/api';
+import type { Campaign } from './types';
 
-class CampanasServiceClass {
-  private getOrgId(): number {
-    return getOrganizationId();
-  }
+export interface SegmentOption { id: string; name: string; customer_count: number }
+export interface StageOption { id: string; name: string; pipeline_id: string; position?: number | null }
+export interface PipelineOption { id: string; name: string; is_default?: boolean | null }
 
-  async getCampaigns(): Promise<Campaign[]> {
-    try {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select(`
-          *,
-          segment:segments(id, name, customer_count)
-        `)
-        .eq('organization_id', this.getOrgId())
-        .order('created_at', { ascending: false });
+export const CampanasService = {
+  getCampaigns: (q: { status?: string; channel?: string; q?: string } = {}) => campaignsApi.list(q).then((r) => r.data),
+  /** Lista + `can_manage` (admin de organización): lanzar/pausar/reanudar/cancelar lo exigen. */
+  getCampaignsWithPermissions: (q: { status?: string; channel?: string; q?: string } = {}) => campaignsApi.list(q),
+  getCampaignById: (id: string) => campaignsApi.get(id).then((r) => r.data).catch(() => null),
+  getCampaignWithPermissions: (id: string) => campaignsApi.get(id).catch(() => null),
+  createCampaign: (input: CreateCampaignBody) => campaignsApi.create(input).then((r) => r.data),
+  updateCampaign: (id: string, input: Partial<CreateCampaignBody>) => campaignsApi.update(id, input).then((r) => r.data),
+  deleteCampaign: (id: string) => campaignsApi.remove(id).then(() => true),
+  duplicateCampaign: async (id: string): Promise<Campaign> => {
+    const c = await campaignsApi.get(id).then((r) => r.data);
+    return campaignsApi.create({ name: `${c.name} (copia)`, channel: c.channel ?? 'whatsapp', channel_id: c.statistics.channel_id ?? null, template_id: c.template_id, content: c.content, audience: c.statistics.audience ?? { source: 'manual', customer_ids: [] }, throttle_mps: c.statistics.throttle_mps, respect_allowed_hours: c.statistics.respect_allowed_hours, default_variables: c.statistics.default_variables, purpose: c.statistics.purpose }).then((r) => r.data);
+  },
+  materialize: campaignsApi.materialize,
+  launch: campaignsApi.launch,
+  pause: campaignsApi.pause,
+  resume: campaignsApi.resume,
+  cancel: campaignsApi.cancel,
+  stats: campaignsApi.stats,
+  contacts: campaignsApi.contacts,
+  csvUrl: campaignsApi.csvUrl,
 
-      if (error) {
-        console.warn('Error obteniendo campañas:', error.message);
-        return [];
-      }
+  async getStats(): Promise<{ total: number; draft: number; scheduled: number; sending: number; sent: number; paused: number }> {
+    const list = await campaignsApi.list().then((r) => r.data);
+    const n = (s: string) => list.filter((c) => c.effective_status === s).length;
+    return { total: list.length, draft: n('draft'), scheduled: n('scheduled'), sending: n('sending'), sent: n('sent'), paused: n('paused') };
+  },
 
-      return data || [];
-    } catch (error) {
-      console.warn('Error en getCampaigns');
-      return [];
-    }
-  }
-
-  async getCampaignById(id: string): Promise<Campaign | null> {
-    try {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select(`
-          *,
-          segment:segments(id, name, customer_count)
-        `)
-        .eq('id', id)
-        .eq('organization_id', this.getOrgId())
-        .single();
-
-      if (error) {
-        console.warn('Error obteniendo campaña:', error.message);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.warn('Error en getCampaignById');
-      return null;
-    }
-  }
-
-  async createCampaign(input: CreateCampaignInput): Promise<Campaign | null> {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-
-      const { data, error } = await supabase
-        .from('campaigns')
-        .insert({
-          organization_id: this.getOrgId(),
-          name: input.name,
-          channel: input.channel || null,
-          segment_id: input.segment_id || null,
-          content: input.content || null,
-          scheduled_at: input.scheduled_at || null,
-          status: 'draft',
-          statistics: { total: 0, sent: 0, delivered: 0, opened: 0, clicked: 0, replied: 0, bounced: 0, failed: 0 },
-          created_by: userData?.user?.id || null,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creando campaña:', error.message);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error en createCampaign');
-      return null;
-    }
-  }
-
-  async updateCampaign(id: string, input: UpdateCampaignInput): Promise<Campaign | null> {
-    try {
-      const updateData: Record<string, any> = {
-        updated_at: new Date().toISOString(),
-      };
-
-      if (input.name !== undefined) updateData.name = input.name;
-      if (input.channel !== undefined) updateData.channel = input.channel;
-      if (input.segment_id !== undefined) updateData.segment_id = input.segment_id;
-      if (input.content !== undefined) updateData.content = input.content;
-      if (input.scheduled_at !== undefined) updateData.scheduled_at = input.scheduled_at;
-      if (input.status !== undefined) updateData.status = input.status;
-
-      const { data, error } = await supabase
-        .from('campaigns')
-        .update(updateData)
-        .eq('id', id)
-        .eq('organization_id', this.getOrgId())
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error actualizando campaña:', error.message);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error en updateCampaign');
-      return null;
-    }
-  }
-
-  async deleteCampaign(id: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('campaigns')
-        .delete()
-        .eq('id', id)
-        .eq('organization_id', this.getOrgId());
-
-      if (error) {
-        console.error('Error eliminando campaña:', error.message);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error en deleteCampaign');
-      return false;
-    }
-  }
-
-  async duplicateCampaign(id: string): Promise<Campaign | null> {
-    try {
-      const original = await this.getCampaignById(id);
-      if (!original) return null;
-
-      return await this.createCampaign({
-        name: `${original.name} (copia)`,
-        channel: original.channel || undefined,
-        segment_id: original.segment_id || undefined,
-        content: original.content || undefined,
-      });
-    } catch (error) {
-      console.error('Error en duplicateCampaign');
-      return null;
-    }
-  }
-
-  async getStats(): Promise<CampaignStats> {
-    try {
-      const campaigns = await this.getCampaigns();
-      
-      return {
-        total: campaigns.length,
-        draft: campaigns.filter(c => c.status === 'draft').length,
-        scheduled: campaigns.filter(c => c.status === 'scheduled').length,
-        sending: campaigns.filter(c => c.status === 'sending').length,
-        sent: campaigns.filter(c => c.status === 'sent').length,
-      };
-    } catch (error) {
-      console.warn('Error en getStats');
-      return { total: 0, draft: 0, scheduled: 0, sending: 0, sent: 0 };
-    }
-  }
-
-  async getCampaignContacts(campaignId: string): Promise<CampaignContact[]> {
-    try {
-      const { data, error } = await supabase
-        .from('campaign_contacts')
-        .select(`
-          *,
-          customer:customers(id, full_name, email, phone)
-        `)
-        .eq('campaign_id', campaignId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.warn('Error obteniendo contactos:', error.message);
-        return [];
-      }
-
-      return data || [];
-    } catch (error) {
-      console.warn('Error en getCampaignContacts');
-      return [];
-    }
-  }
-
-  async getChannels(): Promise<Channel[]> {
-    try {
-      const { data, error } = await supabase
-        .from('channels')
-        .select('id, organization_id, type, name, status')
-        .eq('organization_id', this.getOrgId())
-        .eq('status', 'active');
-
-      if (error) {
-        console.warn('Error obteniendo canales:', error.message);
-        return [];
-      }
-
-      return data || [];
-    } catch (error) {
-      console.warn('Error en getChannels');
-      return [];
-    }
-  }
-
-  async getSegments(): Promise<{ id: string; name: string; customer_count: number }[]> {
-    try {
-      const { data, error } = await supabase
-        .from('segments')
-        .select('id, name, customer_count')
-        .eq('organization_id', this.getOrgId())
-        .order('name');
-
-      if (error) {
-        console.warn('Error obteniendo segmentos:', error.message);
-        return [];
-      }
-
-      return data || [];
-    } catch (error) {
-      console.warn('Error en getSegments');
-      return [];
-    }
-  }
-
-  async updateCampaignStatus(id: string, status: CampaignStatus): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('campaigns')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .eq('organization_id', this.getOrgId());
-
-      if (error) {
-        console.error('Error actualizando estado:', error.message);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error en updateCampaignStatus');
-      return false;
-    }
-  }
-}
-
-export const CampanasService = new CampanasServiceClass();
+  async getSegments(): Promise<SegmentOption[]> {
+    const { data } = await supabase.from('segments').select('id, name, customer_count').eq('organization_id', getOrganizationId()).order('name');
+    return (data ?? []) as SegmentOption[];
+  },
+  async getPipelines(): Promise<PipelineOption[]> {
+    const { data } = await supabase.from('pipelines').select('id, name, is_default').eq('organization_id', getOrganizationId()).order('name');
+    return (data ?? []) as PipelineOption[];
+  },
+  async getStages(pipelineId: string): Promise<StageOption[]> {
+    const { data } = await supabase.from('stages').select('id, name, pipeline_id, position').eq('pipeline_id', pipelineId).order('position');
+    return (data ?? []) as StageOption[];
+  },
+};

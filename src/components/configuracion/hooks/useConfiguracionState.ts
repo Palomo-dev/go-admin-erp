@@ -16,7 +16,7 @@ export function useConfiguracionState(): UseConfiguracionStateReturn {
   const pathname = usePathname();
 
   const moduleId = useMemo(() => {
-    const param = searchParams.get('modulo');
+    const param = searchParams?.get('modulo') ?? null;
     if (param && getConfigModule(param)) return param;
     const firstCore = CONFIG_MODULES.find((m) => m.isCore);
     return firstCore?.id ?? CONFIG_MODULES[0]?.id ?? 'general';
@@ -26,7 +26,7 @@ export function useConfiguracionState(): UseConfiguracionStateReturn {
 
   const setModule = useCallback(
     (newModuleId: string) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParams?.toString() ?? '');
       params.set('modulo', newModuleId);
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },

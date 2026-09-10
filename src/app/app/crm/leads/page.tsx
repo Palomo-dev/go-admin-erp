@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { LoadErrorState } from '@/components/common/LoadErrorState';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 import {
   Dialog,
   DialogContent,
@@ -26,10 +28,12 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { useBranch } from '@/lib/context/BranchContext';
+import { NewLeadDialog } from '@/components/crm/leads/NewLeadDialog';
 import {
   RefreshCw,
   Loader2,
   Search,
+  Plus,
   ArrowUpRight,
   Flame,
   TrendingUp,
@@ -124,12 +128,15 @@ export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [customers, setCustomers] = useState<Record<string, CustomerRef>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
   const [convertTarget, setConvertTarget] = useState<Lead | null>(null);
   const [isConverting, setIsConverting] = useState(false);
 
   const loadLeads = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch('/api/crm/leads', { cache: 'no-store' });
       const json = await res.json();
@@ -147,7 +154,10 @@ export default function LeadsPage() {
           .select('id, full_name')
           .in('id', customerIds);
         if (branchFilter != null) custQuery = custQuery.eq('branch_id', branchFilter);
-        const { data: custData } = await custQuery;
+        const { data: custData, error: custError } = await custQuery;
+        // No es fatal: los leads se muestran igual, pero el fallo se registra
+        // en vez de dejar la columna «Cliente» vacía sin explicación.
+        if (custError) logError('[LeadsPage] resolver nombres de cliente', custError);
         if (custData) {
           const map: Record<string, CustomerRef> = {};
           custData.forEach((c) => {
@@ -157,12 +167,8 @@ export default function LeadsPage() {
         }
       }
     } catch (err) {
-      console.error('Error cargando leads:', err);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los leads',
-        variant: 'destructive',
-      });
+      logError('[LeadsPage] cargar leads', err);
+      setLoadError(describeError(err));
     } finally {
       setIsLoading(false);
     }
@@ -200,17 +206,27 @@ export default function LeadsPage() {
 
       const data = await response.json();
 
-      // Si el gate falló (soft-gate), mostrar advertencia pero la conversión ya se hizo
-      if (data.gateResult && !data.gateResult.ok) {
+      // La ruta devuelve el gate en `gate` (antes se leía `gateResult`, que no
+      // existe en la respuesta: la advertencia del soft-gate nunca se mostraba).
+      const gate = data.gate;
+      // El trigger `trg_sync_customer_lifecycle` sube la etapa del cliente a
+      // 'opportunity'; la ruta la relee y la devuelve para poder confirmarlo.
+      const lifecycle = data.customer?.lifecycle_stage as string | undefined;
+      const lifecycleNote =
+        lifecycle === 'opportunity'
+          ? ' El cliente pasó a etapa «oportunidad».'
+          : '';
+
+      if (gate && !gate.ok) {
         toast({
           title: 'Lead convertido (con advertencias)',
-          description: `"${convertTarget.name}" ahora es un deal. Faltan: ${data.gateResult.missing?.map((m: any) => m.label).join(', ') || 'criterios'}`,
+          description: `"${convertTarget.name}" ahora es un deal. Faltan: ${gate.missing?.map((m: any) => m.label).join(', ') || 'criterios'}.${lifecycleNote}`,
           variant: 'default',
         });
       } else {
         toast({
           title: 'Lead convertido',
-          description: `"${convertTarget.name}" ahora es un deal`,
+          description: `"${convertTarget.name}" ahora es un deal.${lifecycleNote}`,
         });
       }
 
@@ -240,20 +256,30 @@ export default function LeadsPage() {
             {leads.length} lead{leads.length !== 1 ? 's' : ''} sin convertir a deal
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={loadLeads}
-          disabled={isLoading}
-          className="h-8"
-        >
-          {isLoading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <RefreshCw className="h-3.5 w-3.5" />
-          )}
-          Actualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadLeads}
+            disabled={isLoading}
+            className="h-8"
+          >
+            {isLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+            Actualizar
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setIsNewLeadOpen(true)}
+            className="h-8 bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Nuevo lead
+          </Button>
+        </div>
       </div>
 
       {/* Buscador */}
@@ -275,6 +301,15 @@ export default function LeadsPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : loadError ? (
+          <div className="p-4">
+            <LoadErrorState
+              title="No se pudieron cargar los leads"
+              message={loadError}
+              onRetry={() => void loadLeads()}
+              isRetrying={isLoading}
+            />
+          </div>
         ) : filteredLeads.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
@@ -283,6 +318,16 @@ export default function LeadsPage() {
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {search ? 'No se encontraron leads con ese filtro.' : 'No hay leads registrados.'}
             </p>
+            {!search && (
+              <Button
+                size="sm"
+                onClick={() => setIsNewLeadOpen(true)}
+                className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Crear el primer lead
+              </Button>
+            )}
           </div>
         ) : (
           <Table>
@@ -355,6 +400,14 @@ export default function LeadsPage() {
           </Table>
         )}
       </Card>
+
+      {/* Alta manual de lead */}
+      <NewLeadDialog
+        open={isNewLeadOpen}
+        onOpenChange={setIsNewLeadOpen}
+        branchId={branchFilter}
+        onCreated={loadLeads}
+      />
 
       {/* Dialog de confirmación: Convertir a deal */}
       <Dialog open={!!convertTarget} onOpenChange={(open) => !open && setConvertTarget(null)}>

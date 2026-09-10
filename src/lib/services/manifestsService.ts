@@ -738,6 +738,18 @@ class ManifestsService {
   /**
    * Crea un evento de transporte
    */
+  /** Resuelve la organizacion a partir del envio, para eventos que no la reciben. */
+  private async getShipmentOrganizationId(shipmentId: string): Promise<number> {
+    const { data, error } = await supabase
+      .from('shipments')
+      .select('organization_id')
+      .eq('id', shipmentId)
+      .single();
+
+    if (error) throw error;
+    return data.organization_id as number;
+  }
+
   async createTransportEvent(data: {
     organization_id: number;
     reference_type: 'manifest' | 'shipment' | 'trip';
@@ -843,6 +855,7 @@ class ManifestsService {
 
     // Crear evento
     await this.createTransportEvent({
+      organization_id: await this.getShipmentOrganizationId(shipmentId),
       reference_type: 'shipment',
       reference_id: shipmentId,
       event_type: 'delivered',
@@ -895,6 +908,7 @@ class ManifestsService {
 
     // Crear evento
     await this.createTransportEvent({
+      organization_id: await this.getShipmentOrganizationId(shipmentId),
       reference_type: 'shipment',
       reference_id: shipmentId,
       event_type: 'delivery_failed',

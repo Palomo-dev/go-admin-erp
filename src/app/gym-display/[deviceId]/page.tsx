@@ -35,7 +35,7 @@ interface CheckinResult {
 }
 
 export default function GymDisplayPage() {
-  const params = useParams();
+  const params = useParams() ?? {};
   const deviceId = params.deviceId as string;
 
   const [device, setDevice] = useState<GymAccessDevice | null>(null);

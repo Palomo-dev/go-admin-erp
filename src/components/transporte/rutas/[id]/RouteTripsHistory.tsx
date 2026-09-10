@@ -29,7 +29,8 @@ export function RouteTripsHistory({ routeId }: RouteTripsHistoryProps) {
       setIsLoading(true);
       try {
         const data = await transportRoutesService.getTripsByRoute(routeId, 10);
-        setTrips(data);
+        // supabase-js tipa vehicles/driver_credentials como arreglo aunque sean a-uno
+        setTrips(data as unknown as Trip[]);
       } catch (error) {
         console.error('Error loading trips:', error);
       } finally {

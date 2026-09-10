@@ -9,6 +9,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { boldService, type BoldWebhookEvent } from '@/lib/services/integrations/bold';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
+/** Bold puede enviar campos fuera del contrato tipado; leerlos sin romper el tipo. */
+function asRecord(value: unknown): Record<string, unknown> {
+  return (value ?? {}) as Record<string, unknown>;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Leer payload crudo (para verificacion de firma)
@@ -24,8 +29,8 @@ export async function POST(request: NextRequest) {
     const url = new URL(request.url);
     const connectionId =
       url.searchParams.get('connectionId') ??
-      (event as Record<string, unknown>).connection_id as string | undefined ??
-      (event.data as Record<string, unknown> | undefined)?.connection_id as
+      asRecord(event).connection_id as string | undefined ??
+      asRecord(event.data).connection_id as
         | string
         | undefined;
 
@@ -85,9 +90,9 @@ export async function POST(request: NextRequest) {
       .insert({
         connection_id: connectionId,
         provider_code: 'bold',
-        event_type: event.event_type ?? event.type ?? 'webhook',
+        event_type: (asRecord(event).event_type as string | undefined) ?? event.type ?? 'webhook',
         external_id:
-          (event.data as Record<string, unknown> | undefined)?.id as
+          asRecord(event.data).id as
             | string
             | undefined ?? null,
         payload: event,

@@ -156,14 +156,23 @@ Red de seguridad a nivel BD: si una inserción llega **sin** `branch_id`, se rel
   1. Sucursal **asignada única** del usuario en la organización (`member_branches`).
   2. Sucursal **principal** (`branches.is_main = true`).
   3. **Primera** sucursal de la organización.
-- **Tablas (12, `branch_id` nullable)**: `accounts_payable`, `accounts_receivable`, `bank_transactions`,
-  `bank_transfers`, `cash_counts`, `cash_movements`, `class_reservations`, `credit_notes`, `rates`,
-  `table_sessions`, `payments`, `reservations`.
+- **Tablas (13, `branch_id` nullable)**: `accounts_payable`, `accounts_receivable`, `bank_transactions`,
+  `bank_transfers`, `cash_counts`, `cash_movements`, `class_reservations`, `credit_notes`, `customers`,
+  `rates`, `table_sessions`, `payments`, `reservations`.
 - **No aplican** (ya tienen `branch_id NOT NULL`; el frontend lo envía): `sales`, `web_orders`, `cash_sessions`.
 - **Comportamiento**: es aditivo. Si el insert ya trae `branch_id` (p.ej. POS con `getCurrentBranchId()`),
   el trigger no lo modifica. Corre `BEFORE INSERT`, por lo que la auditoría de Fase 6 (`AFTER INSERT`)
   registra el `branch_id` final.
-- **Migración**: `20260706041253_fase9_branch_default_on_insert`.
+- **Escrituras desde el sitio público** (repo `goadmin-websites`): usan `service_role`, donde
+  `auth.uid()` es `NULL`, así que el **paso 1 nunca aplica** y el trigger siempre cae a `is_main`.
+  Por eso el sitio público solo debe enviar `branch_id` cuando conoce una sucursal que la BD no
+  puede deducir —el outlet elegido en un pedido, o la sucursal del espacio en una reserva—; en el
+  resto de los casos debe omitirlo y dejar que el trigger lo resuelva.
+- **Migraciones**: `20260706041253_fase9_branch_default_on_insert`;
+  `20260909210000_unify_customers_branch_default_with_fase9` (incorpora `customers`, que hasta
+  entonces usaba la función aparte `fn_auto_assign_customer_branch` —hoy eliminada— que ignoraba
+  `member_branches` y por tanto asignaba la principal a clientes creados por usuarios con una
+  sola sucursal asignada).
 
 ---
 

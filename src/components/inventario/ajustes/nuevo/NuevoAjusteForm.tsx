@@ -81,7 +81,7 @@ export function NuevoAjusteForm() {
 
   // Leer query params de la URL
   const paramProductId = searchParams?.get('productId') || searchParams?.get('producto_id');
-  const paramTypeRaw = searchParams?.get('type');
+  const paramTypeRaw = searchParams?.get('type') ?? null;
   const paramBranchId = searchParams?.get('branchId');
   
   // Mapear tipo del StockTab (entrada/salida) a valores válidos de BD ('gain'/'loss')

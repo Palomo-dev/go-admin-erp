@@ -1,38 +1,34 @@
 /**
  * API Route: Historial de uso de comunicaciones
- * GET /api/integrations/twilio/usage?orgId=X&channel=sms&limit=50&offset=0
+ * GET /api/integrations/twilio/usage?channel=sms&limit=50&offset=0
+ *
+ * F0: sesión + org activa (`getServerOrgContext`); el `orgId` de la query se
+ * ignora (si viene y no coincide → 403).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { commCreditsService } from '@/lib/services/commCreditsService';
 
 export async function GET(request: NextRequest) {
+  let ctx;
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    ctx = await getServerOrgContext(request);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
     }
+    throw err;
+  }
 
-    const token = authHeader.replace('Bearer ', '');
-    const supabaseAuth = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
-    }
-
+  try {
     const searchParams = request.nextUrl.searchParams;
-    const orgId = searchParams.get('orgId');
-
-    if (!orgId) {
-      return NextResponse.json({ error: 'Falta orgId' }, { status: 400 });
+    const requested = searchParams.get('orgId');
+    if (requested && Number(requested) !== ctx.organizationId) {
+      return NextResponse.json({ error: 'orgId no coincide con la organización activa' }, { status: 403 });
     }
 
-    const { data, count } = await commCreditsService.getUsageHistory(Number(orgId), {
+    const { data, count } = await commCreditsService.getUsageHistory(ctx.organizationId, {
       channel: searchParams.get('channel') || undefined,
       module: searchParams.get('module') || undefined,
       limit: Number(searchParams.get('limit')) || 50,

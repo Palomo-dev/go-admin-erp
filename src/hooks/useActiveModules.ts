@@ -5,6 +5,7 @@ import { moduleManagementService, type Module, type OrganizationModuleStatus } f
 import { permissionService } from '@/lib/services/permissionService';
 import { useSession } from '@/lib/context/SessionContext';
 import { useModuleContext } from '@/lib/context/ModuleContext';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 
 interface UseActiveModulesReturn {
   activeModules: Module[];
@@ -59,8 +60,9 @@ export function useActiveModules(organizationId?: number): UseActiveModulesRetur
       setAccessibleModules(userAccessibleModules);
 
     } catch (err) {
-      console.error('Error loading modules:', err);
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      // Un PostgrestError no se serializa con console.error(obj): salía "{}".
+      logError('[useActiveModules] cargar módulos', err);
+      setError(describeError(err));
     } finally {
       setLoading(false);
     }
@@ -98,7 +100,7 @@ export function useActiveModules(organizationId?: number): UseActiveModulesRetur
       
       return permissionCheck.hasPermission;
     } catch (error) {
-      console.error('Error checking module permission:', error);
+      logError('[useActiveModules] verificar permiso de módulo', error);
       return false;
     }
   }, [user?.id, currentOrgId, canAccessModule]);
@@ -167,7 +169,7 @@ export function useModuleAccessInfo(moduleCode: string, organizationId?: number)
         );
         setAccessInfo(info);
       } catch (error) {
-        console.error('Error loading module access info:', error);
+        logError('[useActiveModules] cargar información de acceso al módulo', error);
         setAccessInfo({
           canAccess: false,
           reason: 'Error al cargar información de acceso'

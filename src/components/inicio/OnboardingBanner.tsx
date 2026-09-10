@@ -63,6 +63,13 @@ export function OnboardingBanner({ steps, organizacionCreatedAt }: OnboardingBan
           setDismissed(true);
           return;
         }
+      } else {
+        // Fail-closed: si no tenemos created_at (ej. query falló durante refresh
+        // de token), NO mostrar el banner. Antes se mostraba porque se saltaba
+        // este chequeo, lo que hacía aparecer el onboarding de "empresa nueva"
+        // en organizaciones con datos.
+        setDismissed(true);
+        return;
       }
 
       // Verificar si todos los pasos están completados

@@ -90,6 +90,7 @@ export class CuentaPorCobrarDetailService {
         created_at: item.created_at,
         updated_at: item.updated_at,
         customer_name: item.customer_name || 'N/A',
+        customer_nit: item.customer_nit || undefined,
         customer_email: item.customer_email || '',
         customer_phone: item.customer_phone || '',
         customer_address: item.customer_address || '',

@@ -407,7 +407,9 @@ class TikTokMarketingService {
       const now = new Date().toISOString();
       const activePrice =
         prices.find(
-          (pp) => pp.effective_from <= now && (!pp.effective_to || pp.effective_to >= now)
+          (pp) =>
+            String(pp.effective_from) <= now &&
+            (!pp.effective_to || String(pp.effective_to) >= now)
         ) || prices[0];
 
       const images = (p.product_images as Array<Record<string, unknown>>) || [];

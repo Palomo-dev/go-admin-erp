@@ -1,5 +1,13 @@
 # FASE 11 — Post-venta: onboarding, activación, health, renovación, expansión
 
+> **Estado V4 (2026-09-08)** — reconciliado en `ANEXO-C-RECONCILIACION-2026-09.md` §4.4; el §1 de este documento está parcialmente obsoleto.
+> - **Ya existe (BD)**: `onboarding_templates`/`onboarding_instances`/`onboarding_steps` (0 filas; UNIQUE org+name), `fn_customer_health(p_org_id integer, p_customer_id uuid)` (queda una `refresh_mv_customer_health()` residual a borrar), `health_score_configs` (1 fila, PK `organization_id`), `health_score_snapshots` (9), `pipelines.pipeline_type` (10 pipelines).
+> - **Ya existe (backend)**: `onboardingService.ts` (880 L), `renewalService.ts` (645), `expansionService.ts` (342), `healthScoreService.ts` (987); rutas `onboarding/templates`, `onboarding/instances`, `onboarding/instances/[id]`, `onboarding/instances/[id]/steps/[stepId]`, `health/[customerId]`, `health/recalculate` (cron), `renewals/sync` (cron).
+> - **Ya existe (UI)**: `/app/crm/salud` (`SaludView`), `ClientHealthCard` en `clientes/[id]`, pipelines Onboarding/Renovación en el selector de `PipelineHeader` (PROGRESS 2026-09).
+> - **Escrito pero sin montar (💀)**: `src/components/crm/postventa/OnboardingChecklist.tsx` (221 L).
+> - **Falta**: seeds de `onboarding_templates` (`ANEXO-C` §7.7); `HealthGauge/HealthTrend/HealthAlerts`; **scheduler**: nadie invoca `health/recalculate` ni `renewals/sync` (`vercel.json` y `cron.job` sin CRM) → F0-JOBS añade los kinds `health_recalculate` y `renewals_sync` al job diario; secuencias de renovación sobre el motor F8.
+> - **Cuándo**: scheduler en la Ola 1 (F0-JOBS); UI y seeds en la Ola 5 (`PLAN.md` §7.2).
+
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj`
 > Depende de: F2 (pipelines), F8 (automatizaciones)
 > Bloquea: F12 (referidos parten de clientes satisfechos)

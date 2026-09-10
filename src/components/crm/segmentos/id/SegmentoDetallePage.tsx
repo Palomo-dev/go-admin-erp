@@ -49,7 +49,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
   const [segment, setSegment] = useState<Segment | null>(null);
   const [customers, setCustomers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(searchParams.get('edit') === 'true');
+  const [isEditing, setIsEditing] = useState(searchParams?.get('edit') === 'true');
   const [isSaving, setIsSaving] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
 

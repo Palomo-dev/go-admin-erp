@@ -178,7 +178,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
     // Construir nombre con atributos de variante si aplica
     let displayName = product.name;
     if ((product as any).parent_name && (product as any).variant_data) {
-      const entries = Object.entries((product as any).variant_data)
+      const entries = Object.entries((product as any).variant_data as Record<string, string>)
         .filter(([, v]) => v && v.trim() !== '');
       if (entries.length > 0) {
         const attrs = entries.map(([k, v]) => `${k}: ${v}`).join(' · ');

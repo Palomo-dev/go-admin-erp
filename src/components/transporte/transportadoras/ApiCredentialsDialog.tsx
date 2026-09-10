@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,200 +12,313 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Loader2, Key, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Loader2, Key, ShieldCheck, AlertTriangle, RefreshCw } from 'lucide-react';
 import { TransportCarrier } from '@/lib/services/transportService';
+
+interface SecretEstado {
+  purpose: 'primary' | 'webhook_secret';
+  keyPrefix: string | null;
+  status: string;
+  rotatedAt: string | null;
+  inVault: boolean;
+}
+
+interface CredencialesEstado {
+  connectionId: string | null;
+  environment: 'production' | 'sandbox' | null;
+  status: string | null;
+  username: string | null;
+  accountNumber: string | null;
+  lastHealthCheckAt: string | null;
+  lastErrorAt: string | null;
+  lastErrorMessage: string | null;
+  secrets: SecretEstado[];
+}
 
 interface ApiCredentialsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   carrier: TransportCarrier | null;
-  onSave: (carrierId: string, credentials: ApiCredentials) => Promise<void>;
-  isSaving?: boolean;
+  /** Se llama tras guardar con éxito, para que el padre recargue la lista. */
+  onSaved?: () => void;
 }
 
-interface ApiCredentials {
-  api_key?: string;
-  api_secret?: string;
-  username?: string;
-  password?: string;
-  sandbox_mode?: boolean;
-  custom_config?: string;
-}
+const ETIQUETA_SECRETO: Record<SecretEstado['purpose'], string> = {
+  primary: 'Clave de API',
+  webhook_secret: 'Secreto de webhook',
+};
 
+/**
+ * Credenciales de API de una transportadora.
+ *
+ * Este diálogo NO escribe en la base de datos: llama a
+ * `/api/transport/carriers/[id]/credentials`, que corre con service role y manda los
+ * secretos a Vault. Antes escribía la `api_key` en claro en `transport_carriers.metadata`
+ * desde el navegador mientras decía que se guardaban "de forma segura".
+ *
+ * Un secreto guardado no se puede volver a leer, ni aquí ni en ningún sitio: sólo se ve su
+ * prefijo. Dejar un campo vacío significa "no cambiar", no "borrar".
+ */
 export function ApiCredentialsDialog({
   open,
   onOpenChange,
   carrier,
-  onSave,
-  isSaving,
+  onSaved,
 }: ApiCredentialsDialogProps) {
-  const [credentials, setCredentials] = useState<ApiCredentials>({
-    api_key: '',
-    api_secret: '',
-    username: '',
-    password: '',
-    sandbox_mode: true,
-    custom_config: '',
-  });
-  const [showSecret, setShowSecret] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [estado, setEstado] = useState<CredencialesEstado | null>(null);
+  const [puedeEditar, setPuedeEditar] = useState(true);
+  const [cargando, setCargando] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (carrier?.metadata) {
-      const meta = carrier.metadata as Record<string, unknown>;
-      setCredentials({
-        api_key: (meta.api_key as string) || '',
-        api_secret: '',
-        username: (meta.api_username as string) || '',
-        password: '',
-        sandbox_mode: (meta.sandbox_mode as boolean) ?? true,
-        custom_config: meta.custom_config ? JSON.stringify(meta.custom_config, null, 2) : '',
-      });
-    } else {
-      setCredentials({
-        api_key: '',
-        api_secret: '',
-        username: '',
-        password: '',
-        sandbox_mode: true,
-        custom_config: '',
-      });
+  const [environment, setEnvironment] = useState<'production' | 'sandbox'>('sandbox');
+  const [username, setUsername] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [webhookSecret, setWebhookSecret] = useState('');
+
+  const cargar = useCallback(async () => {
+    if (!carrier) return;
+    setCargando(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/transport/carriers/${carrier.id}/credentials`);
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json?.error || 'No se pudo cargar el estado de las credenciales');
+      }
+      const item = json.item as CredencialesEstado;
+      setEstado(item);
+      setPuedeEditar(json.can_edit !== false);
+      setEnvironment(item.environment ?? 'sandbox');
+      setUsername(item.username ?? '');
+      setAccountNumber(item.accountNumber ?? '');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error inesperado');
+    } finally {
+      setCargando(false);
     }
   }, [carrier]);
 
-  if (!carrier) return null;
+  useEffect(() => {
+    if (open && carrier) {
+      // Los campos de secreto siempre arrancan vacíos: no se precargan nunca.
+      setApiKey('');
+      setWebhookSecret('');
+      cargar();
+    }
+  }, [open, carrier, cargar]);
 
-  const handleSave = async () => {
-    await onSave(carrier.id, credentials);
+  const guardar = async () => {
+    if (!carrier) return;
+    setGuardando(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/transport/carriers/${carrier.id}/credentials`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          environment,
+          username: username.trim() || null,
+          accountNumber: accountNumber.trim() || null,
+          apiKey: apiKey.trim() || null,
+          webhookSecret: webhookSecret.trim() || null,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json?.error || 'No se pudieron guardar las credenciales');
+      }
+      setEstado(json.item as CredencialesEstado);
+      setApiKey('');
+      setWebhookSecret('');
+      onSaved?.();
+      onOpenChange(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error inesperado');
+    } finally {
+      setGuardando(false);
+    }
   };
+
+  const sinProveedor = !!carrier && !carrier.api_provider;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-            Credenciales API - {carrier.name}
+            <Key className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+            Credenciales de API
           </DialogTitle>
           <DialogDescription>
-            Configura las credenciales para integración con {carrier.api_provider || 'el proveedor'}
+            {carrier?.name ?? 'Transportadora'} — los secretos se cifran en Vault y no se
+            pueden volver a leer desde aquí.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 sm:space-y-4">
-          <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg flex items-start gap-2">
-            <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 dark:text-yellow-300" />
-            <p className="text-sm text-yellow-700 dark:text-yellow-300">
-              Las credenciales sensibles se almacenan de forma segura. Solo ingresa nuevos valores si deseas actualizarlas.
-            </p>
+        {sinProveedor ? (
+          <div
+            className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+            role="status"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>
+              Esta transportadora no tiene proveedor de API asignado. Edítala y elige uno
+              antes de guardar credenciales.
+            </span>
           </div>
+        ) : cargando ? (
+          <div className="space-y-3" aria-live="polite" aria-busy="true">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-2/3" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {estado && estado.secrets.length > 0 && (
+              <div className="rounded-md border border-gray-200 p-3 dark:border-gray-800">
+                <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                  <ShieldCheck
+                    className="h-4 w-4 text-green-600 dark:text-green-400"
+                    aria-hidden="true"
+                  />
+                  Secretos guardados
+                </div>
+                <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                  {estado.secrets.map((s) => (
+                    <li key={s.purpose} className="flex items-center justify-between gap-2">
+                      <span>{ETIQUETA_SECRETO[s.purpose] ?? s.purpose}</span>
+                      <span className="font-mono text-xs">
+                        {s.keyPrefix ?? '—'}
+                        {!s.inVault && (
+                          <span className="ml-2 font-sans text-amber-600 dark:text-amber-400">
+                            pendiente de migrar a Vault
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="api_key">API Key</Label>
-              <Input
-                id="api_key"
-                value={credentials.api_key}
-                onChange={(e) => setCredentials({ ...credentials, api_key: e.target.value })}
-                placeholder="Tu API Key"
-              />
+            <div>
+              <Label htmlFor="cred-environment">Entorno</Label>
+              <Select
+                value={environment}
+                onValueChange={(v) => setEnvironment(v as 'production' | 'sandbox')}
+                disabled={!puedeEditar}
+              >
+                <SelectTrigger id="cred-environment" className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sandbox">Pruebas (sandbox)</SelectItem>
+                  <SelectItem value="production">Producción</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="api_secret">API Secret</Label>
-              <div className="relative">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="cred-username">Usuario</Label>
                 <Input
-                  id="api_secret"
-                  type={showSecret ? 'text' : 'password'}
-                  value={credentials.api_secret}
-                  onChange={(e) => setCredentials({ ...credentials, api_secret: e.target.value })}
-                  placeholder="••••••••"
+                  id="cred-username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  disabled={!puedeEditar}
+                  className="mt-1"
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                  onClick={() => setShowSecret(!showSecret)}
-                >
-                  {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
+              </div>
+              <div>
+                <Label htmlFor="cred-account">Número de cuenta</Label>
+                <Input
+                  id="cred-account"
+                  value={accountNumber}
+                  onChange={(e) => setAccountNumber(e.target.value)}
+                  disabled={!puedeEditar}
+                  className="mt-1"
+                />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="username">Usuario (opcional)</Label>
+            <div>
+              <Label htmlFor="cred-apikey">Clave de API</Label>
               <Input
-                id="username"
-                value={credentials.username}
-                onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
-                placeholder="Usuario de la API"
+                id="cred-apikey"
+                type="password"
+                autoComplete="off"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Déjalo vacío para no cambiarla"
+                disabled={!puedeEditar}
+                className="mt-1"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Contraseña (opcional)</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={credentials.password}
-                  onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
-                  placeholder="••••••••"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
+            <div>
+              <Label htmlFor="cred-webhook">Secreto de webhook</Label>
+              <Input
+                id="cred-webhook"
+                type="password"
+                autoComplete="off"
+                value={webhookSecret}
+                onChange={(e) => setWebhookSecret(e.target.value)}
+                placeholder="Déjalo vacío para no cambiarlo"
+                disabled={!puedeEditar}
+                className="mt-1"
+              />
+            </div>
+
+            {!puedeEditar && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Solo un administrador de la organización puede guardar credenciales.
+              </p>
+            )}
+
+            {estado?.lastErrorMessage && (
+              <div
+                className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+                role="status"
+              >
+                <RefreshCw className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>Último error de la conexión: {estado.lastErrorMessage}</span>
               </div>
-            </div>
+            )}
           </div>
+        )}
 
-          <div className="space-y-2">
-            <Label htmlFor="custom_config">Configuración Personalizada (JSON)</Label>
-            <Textarea
-              id="custom_config"
-              value={credentials.custom_config}
-              onChange={(e) => setCredentials({ ...credentials, custom_config: e.target.value })}
-              placeholder='{"webhook_url": "https://...", "timeout": 30}'
-              rows={3}
-              className="font-mono text-sm"
-            />
-          </div>
-
-          <div className="flex items-center justify-between border-t pt-4">
-            <div className="flex items-center gap-2">
-              <Switch
-                id="sandbox_mode"
-                checked={credentials.sandbox_mode}
-                onCheckedChange={(v) => setCredentials({ ...credentials, sandbox_mode: v })}
-              />
-              <Label htmlFor="sandbox_mode">Modo Sandbox / Pruebas</Label>
-            </div>
-          </div>
-        </div>
+        {error && (
+          <p
+            className="text-sm text-red-600 dark:text-red-400"
+            role="alert"
+            aria-live="assertive"
+          >
+            {error}
+          </p>
+        )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={guardando}>
             Cancelar
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Guardar Credenciales
+          <Button onClick={guardar} disabled={guardando || cargando || !puedeEditar || sinProveedor}>
+            {guardando && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+            Guardar
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+export default ApiCredentialsDialog;

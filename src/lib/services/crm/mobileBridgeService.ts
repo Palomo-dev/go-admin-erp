@@ -1,392 +1,529 @@
 /**
- * Mobile Bridge Service — FASE 5: Llamadas móvil personal
+ * Mobile Bridge Service — FASE-05: "Llamar desde mi celular" (bridge de 2 patas).
  * GO Admin ERP
  *
- * Orquesta el click-to-call de 2 patas (Twilio):
- * 1. Twilio llama al móvil personal del agente (agent leg)
- * 2. El agente contesta, escucha whisper y pulsa 1
- * 3. TwiML hace <Dial> al cliente (customer leg)
- * 4. StatusCallback correlaciona ambas patas en mobile_call_bridges + calls
+ * Flujo (ruta A, §2.1):
+ *   1. `initiateBridge` reserva créditos, crea UNA fila `calls` (`mode='bridge'`)
+ *      y su `mobile_call_bridges` enlazado por `call_id`, y pide a Twilio que
+ *      llame al celular VERIFICADO del vendedor.
+ *   2. `twiml/agent-leg` reproduce el whisper y ofrece 1 conectar / 2 cancelar.
+ *   3. `twiml/customer-leg` marca al cliente con `<Dial action=dial-complete>` y
+ *      `<Number statusCallback url=consent-whisper>`.
+ *   4. `bridge/status` correlaciona ambas patas; `/api/voice/dial-complete` (F3)
+ *      fija el desenlace, la duración conversada, los créditos y la actividad.
  *
- * Tablas: mobile_call_bridges, calls
+ * Invariantes (ronda 1, defectos B1/B2/A2/A4 del informe TEST-F5):
+ * - El celular del vendedor NUNCA llega en el body: sale de
+ *   `user_comm_preferences.mobile_phone_e164` con `mobile_verified_at`.
+ * - NINGÚN `{error}` de Supabase se ignora: si el INSERT de `calls` falla, el
+ *   bridge no se inicia y los créditos se devuelven.
+ * - Los créditos se reservan ANTES de llamar al proveedor (D6) y se reembolsan
+ *   si la llamada nunca llega a marcar al cliente.
+ * - `customer_id`/`opportunity_id` se validan contra la organización.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getActiveProvider } from '@/lib/services/providerRegistry';
 import {
-  getMasterClient,
-  getMasterPhoneNumber,
-  formatE164,
-  getWebhookBaseUrl,
-} from '@/lib/services/integrations/twilio/twilioConfig';
+  getTelephonySettings,
+  getTwilioClientForOrg,
+  pickCallerId,
+  filterOrgOwnedRefs,
+  VoiceNotConfiguredError,
+} from './voiceContextService';
+import { reserveVoiceMinutes, refundVoiceMinutes } from './callCreditsService';
+import { isBridgeSigningConfigured, signBridgeToken } from './bridgeTokens';
+import { getTwilioWebhookOrigin } from '@/lib/security/webhookSignatures';
+import type { CallStatus } from '@/lib/crm/enums';
+import {
+  ACTIVE_BRIDGE_STATUSES,
+  BRIDGE_RESERVED_MINUTES,
+  BridgeError,
+  customerLegNeverDialed,
+  isTerminalBridgeStatus,
+  maskPhone,
+  normalizeE164,
+  type BridgeStatus,
+  type BridgeFilters,
+  type InitiateBridgeInput,
+  type InitiateBridgeResult,
+  type MobileCallBridge,
+} from './bridgeState';
 
-// ─── Tipos ───────────────────────────────────────────────────────────────────
+// ─── Tipos y máquina de estados (puros, en `bridgeState.ts`) ────────────────
 
-export type BridgeStatus =
-  | 'initiating'
-  | 'agent_ringing'
-  | 'agent_answered'
-  | 'customer_dialing'
-  | 'in_progress'
-  | 'completed'
-  | 'failed'
-  | 'agent_no_answer'
-  | 'agent_rejected';
+export type {
+  BridgeStatus,
+  MobileCallBridge,
+  InitiateBridgeInput,
+  InitiateBridgeResult,
+  BridgeFilters,
+  WhisperParams,
+  BridgeLegEvent,
+} from './bridgeState';
+export {
+  TERMINAL_BRIDGE_STATUSES,
+  ACTIVE_BRIDGE_STATUSES,
+  isTerminalBridgeStatus,
+  BridgeError,
+  BRIDGE_RESERVED_MINUTES,
+  normalizeE164,
+  maskPhone,
+  buildWhisper,
+  applyAgentLegEvent,
+  applyCustomerLegEvent,
+  customerLegNeverDialed,
+} from './bridgeState';
 
-export interface MobileCallBridge {
-  id: string;
-  organization_id: number;
-  user_id: string;
-  agent_phone: string;
-  target_phone: string;
-  customer_id: string | null;
-  opportunity_id: string | null;
-  agent_leg_sid: string | null;
-  customer_leg_sid: string | null;
-  status: BridgeStatus;
-  confirm_digit_required: boolean;
-  whisper_text: string | null;
-  created_at: string;
-  updated_at: string;
+export interface BridgeContext {
+  organizationId: number;
+  userId: string;
+  supabase: SupabaseClient;
 }
 
-export interface InitiateBridgeInput {
-  agent_phone: string;
-  target_phone: string;
-  customer_id?: string | null;
-  opportunity_id?: string | null;
-  whisper_text?: string;
-  confirm_digit_required?: boolean;
-}
+const MAX_WHISPER_LENGTH = 200;
 
-export interface InitiateBridgeResult {
-  bridge: MobileCallBridge;
-  agentLegSid: string;
-}
+// ─── Lecturas ────────────────────────────────────────────────────────────────
 
-export interface BridgeFilters {
-  status?: BridgeStatus;
-  user_id?: string;
-  customer_id?: string;
-  limit?: number;
-  offset?: number;
+export interface BridgeSettings {
+  /** `comm_settings.voice_bridge_confirm_digit` (por defecto true). */
+  confirmDigit: boolean;
+  /** `comm_settings.voice_bridge_agent_timeout` (10–60 s, 25 por defecto). */
+  agentTimeout: number;
+  /** `comm_settings.voice_mobile_ivr_enabled` (variante §2.3, apagada por defecto). */
+  ivrEnabled: boolean;
 }
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * Obtiene un cliente Twilio para la organización.
- * Usa subcuenta si está configurada, sino master.
+ * Ajustes del bridge por organización (migración `crm_v4_f05_bridges_call_link`).
+ * Se leen aquí y no en `getTelephonySettings` (F3) para no tocar un archivo de
+ * otra fase; si la fila no existe se usan los valores por defecto del CHECK.
  */
-async function getTwilioClient(
+export async function getBridgeSettings(orgId: number, client: SupabaseClient): Promise<BridgeSettings> {
+  const { data, error } = await client
+    .from('comm_settings')
+    .select('voice_bridge_confirm_digit, voice_bridge_agent_timeout, voice_mobile_ivr_enabled')
+    .eq('organization_id', orgId)
+    .limit(1)
+    .maybeSingle();
+  if (error) console.error('[mobileBridge] getBridgeSettings:', error.message);
+  const row = (data ?? {}) as {
+    voice_bridge_confirm_digit?: boolean | null;
+    voice_bridge_agent_timeout?: number | null;
+    voice_mobile_ivr_enabled?: boolean | null;
+  };
+  return {
+    confirmDigit: row.voice_bridge_confirm_digit ?? true,
+    agentTimeout: clampAgentTimeout(row.voice_bridge_agent_timeout),
+    ivrEnabled: row.voice_mobile_ivr_enabled ?? false,
+  };
+}
+
+/** Celular del vendedor: solo si está verificado por OTP y es de ESTA org (§0.2). */
+export async function getVerifiedMobile(
+  userId: string,
   orgId: number,
-  supabase: SupabaseClient
-): Promise<{ client: ReturnType<typeof getMasterClient>; fromNumber: string }> {
-  const provider = await getActiveProvider(orgId, 'voice', supabase);
-
-  // Si hay subcuenta configurada con credenciales, usarla
-  if (
-    provider.credentials.TWILIO_SUBACCOUNT_SID &&
-    provider.credentials.TWILIO_SUBACCOUNT_AUTH_TOKEN
-  ) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const Twilio = (await import('twilio')).default;
-    const client = Twilio(
-      provider.credentials.TWILIO_SUBACCOUNT_SID,
-      provider.credentials.TWILIO_SUBACCOUNT_AUTH_TOKEN
-    );
-    const fromNumber =
-      provider.credentials.TWILIO_PHONE_NUMBER || getMasterPhoneNumber();
-    return { client, fromNumber };
+  client: SupabaseClient
+): Promise<string | null> {
+  const { data, error } = await client
+    .from('user_comm_preferences')
+    .select('mobile_phone_e164, mobile_verified_at')
+    .eq('user_id', userId)
+    .eq('organization_id', orgId)
+    .maybeSingle();
+  if (error) {
+    console.error('[mobileBridge] getVerifiedMobile:', error.message);
+    return null; // fail-closed
   }
-
-  // Master por defecto
-  const client = getMasterClient();
-  const fromNumber =
-    (provider.credentials.TWILIO_PHONE_NUMBER as string) ||
-    getMasterPhoneNumber();
-  return { client, fromNumber };
+  const row = data as { mobile_phone_e164?: string | null; mobile_verified_at?: string | null } | null;
+  if (!row?.mobile_phone_e164 || !row.mobile_verified_at) return null;
+  return normalizeE164(row.mobile_phone_e164);
 }
 
-// ─── Servicio ────────────────────────────────────────────────────────────────
-
-/**
- * Inicia un bridge móvil de 2 patas.
- * 1. Crea el registro en mobile_call_bridges
- * 2. Llama a Twilio para conectar al agente primero
- * 3. El agente contesta → TwiML hace Dial al cliente
- */
-export async function initiateBridge(
+/** Bridge activo del usuario (1 por vendedor, §8). */
+export async function getActiveBridgeForUser(
   orgId: number,
   userId: string,
-  data: InitiateBridgeInput,
-  supabase: SupabaseClient
-): Promise<InitiateBridgeResult> {
-  const agentPhone = formatE164(data.agent_phone);
-  const targetPhone = formatE164(data.target_phone);
-  const webhookBase = getWebhookBaseUrl();
+  client: SupabaseClient
+): Promise<MobileCallBridge | null> {
+  const { data, error } = await client
+    .from('mobile_call_bridges')
+    .select('*')
+    .eq('organization_id', orgId)
+    .eq('user_id', userId)
+    .in('status', ACTIVE_BRIDGE_STATUSES as unknown as string[])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error('[mobileBridge] getActiveBridgeForUser:', error.message);
+    throw new BridgeError('BRIDGE_LOOKUP_FAILED', 500, error.message);
+  }
+  return (data as MobileCallBridge) || null;
+}
 
-  // 1. Crear registro del bridge
-  const { data: bridge, error: bridgeError } = await supabase
+export async function getBridge(
+  id: string,
+  orgId: number,
+  client: SupabaseClient
+): Promise<MobileCallBridge | null> {
+  const { data, error } = await client
+    .from('mobile_call_bridges')
+    .select('*')
+    .eq('id', id)
+    .eq('organization_id', orgId)
+    .maybeSingle();
+  if (error) {
+    console.error('[mobileBridge] getBridge:', error.message);
+    return null;
+  }
+  return (data as MobileCallBridge) || null;
+}
+
+export async function getBridges(
+  orgId: number,
+  client: SupabaseClient,
+  filters?: BridgeFilters
+): Promise<MobileCallBridge[]> {
+  let query = client.from('mobile_call_bridges').select('*').eq('organization_id', orgId);
+  if (filters?.status) query = query.eq('status', filters.status);
+  if (filters?.user_id) query = query.eq('user_id', filters.user_id);
+  if (filters?.customer_id) query = query.eq('customer_id', filters.customer_id);
+  query = query.order('created_at', { ascending: false });
+  if (filters?.limit) {
+    query = query.limit(filters.limit);
+    if (filters.offset) query = query.range(filters.offset, filters.offset + filters.limit - 1);
+  }
+  const { data, error } = await query;
+  if (error) {
+    console.error('[mobileBridge] getBridges:', error.message);
+    throw new BridgeError('BRIDGE_LOOKUP_FAILED', 500, error.message);
+  }
+  return (data || []) as MobileCallBridge[];
+}
+
+// ─── Inicio del bridge ───────────────────────────────────────────────────────
+
+export async function initiateBridge(
+  ctx: BridgeContext,
+  input: InitiateBridgeInput
+): Promise<InitiateBridgeResult> {
+  const { organizationId: orgId, userId, supabase } = ctx;
+
+  // 1. Destino válido (nunca se "adivina" un E.164)
+  const targetPhone = normalizeE164(input.to);
+  if (!targetPhone) throw new BridgeError('INVALID_PHONE', 400, 'Número de destino inválido (formato E.164)');
+
+  // 2. Celular del vendedor: SOLO desde user_comm_preferences verificado
+  const agentPhone = await getVerifiedMobile(userId, orgId, supabase);
+  if (!agentPhone) {
+    throw new BridgeError('MOBILE_NOT_VERIFIED', 409, 'Verifica tu celular antes de llamar desde él');
+  }
+  if (agentPhone === targetPhone) {
+    throw new BridgeError('SAME_NUMBER', 400, 'El número del cliente es tu propio celular');
+  }
+
+  // 3. Un solo bridge activo por vendedor
+  const active = await getActiveBridgeForUser(orgId, userId, supabase);
+  if (active) {
+    throw new BridgeError('BRIDGE_IN_PROGRESS', 409, 'Ya tienes una llamada en curso desde tu celular');
+  }
+
+  // 4. Los ids ajenos a la organización no entran en la fila (M3)
+  const refs = await filterOrgOwnedRefs(
+    orgId,
+    { customerId: input.customerId ?? null, opportunityId: input.opportunityId ?? null },
+    supabase
+  );
+
+  // 5. Contexto de telefonía de la org (nunca el número global de la plataforma)
+  const settings = await getTelephonySettings(orgId);
+  const bridgeSettings = await getBridgeSettings(orgId, supabase);
+  const picked = await pickCallerId(orgId, settings);
+  if (!picked.e164 || picked.source === 'platform') {
+    throw new BridgeError(
+      'CALLER_ID_NOT_CONFIGURED',
+      409,
+      'Configura el caller id de la organización antes de llamar'
+    );
+  }
+  const callerId = picked.e164;
+
+  // 6. Sin secreto de firma no se marca (los callbacks serían inverificables)
+  if (!isBridgeSigningConfigured()) {
+    throw new BridgeError('VOICE_CALLBACK_SECRET_MISSING', 503, 'Falta configurar VOICE_CALLBACK_SECRET');
+  }
+  const origin = getTwilioWebhookOrigin();
+
+  // 7. Créditos ANTES del proveedor (D6): 1 minuto por pata
+  const reserved = await reserveVoiceMinutes(orgId, BRIDGE_RESERVED_MINUTES, supabase);
+  if (!reserved) throw new BridgeError('NO_CREDITS', 402, 'Sin minutos de voz disponibles');
+
+  const nowIso = new Date().toISOString();
+  const recordingEnabled = Boolean(settings.voice_recording_enabled);
+  const confirmDigit = bridgeSettings.confirmDigit;
+
+  // 8. UNA fila `calls` por conversación (§0.4). Columnas verificadas contra el
+  //    esquema real: `phone_number` NO existe; `mode/from_number/to_number` son
+  //    NOT NULL sin default.
+  const { data: callRow, error: callError } = await supabase
+    .from('calls')
+    .insert({
+      organization_id: orgId,
+      user_id: userId,
+      customer_id: refs.customerId,
+      opportunity_id: refs.opportunityId,
+      provider: 'twilio',
+      direction: 'outbound',
+      mode: 'bridge',
+      bridge_mode: 'agent_leg',
+      status: 'dialing' as CallStatus,
+      from_number: callerId,
+      to_number: targetPhone,
+      started_at: nowIso,
+      recording_enabled: recordingEnabled,
+      consent_given: false,
+      duration_source: 'provider',
+      metadata: {
+        agent_phone_masked: maskPhone(agentPhone),
+        caller_id_source: picked.source,
+        credits_reserved_min: BRIDGE_RESERVED_MINUTES,
+        ...(refs.rejected.length ? { rejected_refs: refs.rejected } : {}),
+      },
+    })
+    .select('id')
+    .single();
+
+  if (callError || !callRow) {
+    // El error del cliente de Supabase NO se ignora: sin fila `calls` no hay
+    // grabación, ni transcripción, ni actividad en la oportunidad.
+    await refundVoiceMinutes(orgId, BRIDGE_RESERVED_MINUTES, supabase);
+    throw new BridgeError('CALL_INSERT_FAILED', 500, `No se pudo registrar la llamada: ${callError?.message ?? 'desconocido'}`);
+  }
+  const callId = (callRow as { id: string }).id;
+
+  // 9. Bridge enlazado a esa fila
+  const whisperText = (input.whisper ?? '').trim().slice(0, MAX_WHISPER_LENGTH) || null;
+  const { data: bridgeRow, error: bridgeError } = await supabase
     .from('mobile_call_bridges')
     .insert({
       organization_id: orgId,
       user_id: userId,
       agent_phone: agentPhone,
       target_phone: targetPhone,
-      customer_id: data.customer_id ?? null,
-      opportunity_id: data.opportunity_id ?? null,
-      status: 'initiating',
-      confirm_digit_required: data.confirm_digit_required ?? true,
-      whisper_text: data.whisper_text ?? null,
+      customer_id: refs.customerId,
+      opportunity_id: refs.opportunityId,
+      call_id: callId,
+      status: 'initiating' as BridgeStatus,
+      confirm_digit_required: confirmDigit,
+      whisper_text: whisperText,
     })
-    .select()
+    .select('*')
     .single();
 
-  if (bridgeError || !bridge) {
-    throw new Error(
-      `Error creando bridge: ${bridgeError?.message || 'unknown'}`
-    );
+  if (bridgeError || !bridgeRow) {
+    await markCallFailed(supabase, orgId, callId, `bridge_insert: ${bridgeError?.message ?? 'desconocido'}`);
+    await refundVoiceMinutes(orgId, BRIDGE_RESERVED_MINUTES, supabase);
+    throw new BridgeError('BRIDGE_INSERT_FAILED', 500, `No se pudo crear el bridge: ${bridgeError?.message ?? 'desconocido'}`);
+  }
+  const bridge = bridgeRow as MobileCallBridge;
+
+  // 10. Consentimiento: el texto exacto que oirá el cliente queda registrado
+  //     ANTES de marcar (D9); `twiml/consent-whisper` (F3) lo lee y marca
+  //     `calls.consent_given`.
+  if (recordingEnabled) {
+    const { error: consentError } = await supabase.from('call_consents').insert({
+      organization_id: orgId,
+      call_id: callId,
+      consent_type: 'recording',
+      method: 'voice_announcement',
+      locale: 'es-MX',
+      recorded_announcement_text: settings.voice_consent_message,
+    });
+    if (consentError) console.error('[mobileBridge] call_consents insert:', consentError.message);
   }
 
-  const bridgeRow = bridge as MobileCallBridge;
-
-  // 2. Obtener cliente Twilio y número de origen
-  const { client, fromNumber } = await getTwilioClient(orgId, supabase);
-
-  // 3. Llamar al agente primero (agent leg)
-  // El TwiML del agent-leg reproducirá el whisper y pedirá confirmación
-  const agentLegUrl = `${webhookBase}/api/voice/twiml/agent-leg?bridgeId=${bridgeRow.id}`;
-  const statusCallbackUrl = `${webhookBase}/api/voice/bridge/status?bridgeId=${bridgeRow.id}&leg=agent`;
-
+  // 11. Llamada al vendedor
+  const token = signBridgeToken(bridge.id);
+  const q = `bridgeId=${encodeURIComponent(bridge.id)}&t=${token}`;
+  let agentLegSid: string;
   try {
+    const { client } = await getTwilioClientForOrg(orgId);
     const call = await client.calls.create({
       to: agentPhone,
-      from: fromNumber,
-      url: agentLegUrl,
-      statusCallback: statusCallbackUrl,
+      from: callerId,
+      url: `${origin}/api/voice/twiml/agent-leg?${q}`,
+      method: 'POST',
+      statusCallback: `${origin}/api/voice/bridge/status?${q}&leg=agent`,
       statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-      timeout: 30,
+      statusCallbackMethod: 'POST',
+      timeout: bridgeSettings.agentTimeout,
     });
-
-    // 4. Actualizar bridge con el agent_leg_sid
-    await supabase
-      .from('mobile_call_bridges')
-      .update({
-        agent_leg_sid: call.sid,
-        status: 'agent_ringing',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', bridgeRow.id);
-
-    // 5. Crear registro en calls (agent leg)
-    await supabase.from('calls').insert({
-      organization_id: orgId,
-      user_id: userId,
-      customer_id: data.customer_id ?? null,
-      opportunity_id: data.opportunity_id ?? null,
-      provider_call_sid: call.sid,
-      direction: 'outbound',
-      status: 'dialing',
-      bridge_mode: 'agent_leg',
-      agent_leg_sid: call.sid,
-      duration_source: 'provider',
-      phone_number: agentPhone,
-    });
-
-    bridgeRow.agent_leg_sid = call.sid;
-    bridgeRow.status = 'agent_ringing';
-
-    return { bridge: bridgeRow, agentLegSid: call.sid };
+    agentLegSid = call.sid;
   } catch (err) {
-    // Marcar bridge como fallido
-    await supabase
-      .from('mobile_call_bridges')
-      .update({
-        status: 'failed',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', bridgeRow.id);
-
     const message = err instanceof Error ? err.message : 'Error desconocido';
-    throw new Error(`Error iniciando llamada al agente: ${message}`);
-  }
-}
-
-/**
- * Lista los bridges de la organización con filtros opcionales.
- */
-export async function getBridges(
-  orgId: number,
-  supabase: SupabaseClient,
-  filters?: BridgeFilters
-): Promise<MobileCallBridge[]> {
-  let query = supabase
-    .from('mobile_call_bridges')
-    .select('*')
-    .eq('organization_id', orgId);
-
-  if (filters?.status) {
-    query = query.eq('status', filters.status);
-  }
-  if (filters?.user_id) {
-    query = query.eq('user_id', filters.user_id);
-  }
-  if (filters?.customer_id) {
-    query = query.eq('customer_id', filters.customer_id);
-  }
-
-  query = query.order('created_at', { ascending: false });
-
-  if (filters?.limit) {
-    query = query.limit(filters.limit);
-    if (filters.offset) {
-      query = query.range(
-        filters.offset,
-        filters.offset + filters.limit - 1
-      );
+    await updateBridgeRow(supabase, orgId, bridge.id, { status: 'failed', last_error: message.slice(0, 500) });
+    await markCallFailed(supabase, orgId, callId, message);
+    await refundVoiceMinutes(orgId, BRIDGE_RESERVED_MINUTES, supabase);
+    if (err instanceof VoiceNotConfiguredError) {
+      throw new BridgeError('VOICE_NOT_CONFIGURED', 409, err.message);
     }
+    throw new BridgeError('PROVIDER_ERROR', 502, `No se pudo llamar a tu celular: ${message}`);
   }
 
-  const { data, error } = await query;
-
-  if (error) {
-    console.warn('mobileBridgeService.getBridges - error:', error.message);
-    return [];
+  // 12. Correlación: sin `provider_call_sid` la grabación de F3 no encuentra la
+  //     llamada, así que un fallo aquí se registra (no se traga) en `last_error`.
+  const { error: callUpdateError } = await supabase
+    .from('calls')
+    .update({ provider_call_sid: agentLegSid, agent_leg_sid: agentLegSid })
+    .eq('id', callId)
+    .eq('organization_id', orgId);
+  if (callUpdateError) {
+    console.error('[mobileBridge] calls.provider_call_sid:', callUpdateError.message);
   }
 
-  return (data || []) as MobileCallBridge[];
+  const { error: bridgeUpdateError } = await updateBridgeRow(supabase, orgId, bridge.id, {
+    agent_leg_sid: agentLegSid,
+    status: 'agent_ringing',
+    ...(callUpdateError ? { last_error: `calls_update: ${callUpdateError.message}`.slice(0, 500) } : {}),
+  });
+  if (bridgeUpdateError) console.error('[mobileBridge] bridge agent_leg_sid:', bridgeUpdateError.message);
+
+  bridge.agent_leg_sid = agentLegSid;
+  bridge.status = 'agent_ringing';
+  bridge.call_id = callId;
+
+  return { bridge, callId, agentLegSid, agentPhoneMasked: maskPhone(agentPhone) };
 }
 
-/**
- * Obtiene un bridge por ID.
- */
-export async function getBridge(
-  id: string,
+function clampAgentTimeout(seconds: number | null | undefined): number {
+  const n = Number(seconds);
+  if (!Number.isFinite(n)) return 25;
+  return Math.min(60, Math.max(10, Math.round(n)));
+}
+
+async function updateBridgeRow(
+  client: SupabaseClient,
   orgId: number,
-  supabase: SupabaseClient
-): Promise<MobileCallBridge | null> {
-  const { data, error } = await supabase
+  bridgeId: string,
+  patch: Record<string, unknown>
+): Promise<{ error: { message: string } | null }> {
+  const { error } = await client
     .from('mobile_call_bridges')
-    .select('*')
-    .eq('id', id)
-    .eq('organization_id', orgId)
-    .maybeSingle();
-
-  if (error) {
-    console.warn('mobileBridgeService.getBridge - error:', error.message);
-    return null;
-  }
-
-  return (data as MobileCallBridge) || null;
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', bridgeId)
+    .eq('organization_id', orgId);
+  return { error: error ? { message: error.message } : null };
 }
 
-/**
- * Actualiza el estado de un bridge.
- */
-export async function updateBridgeStatus(
-  id: string,
+async function markCallFailed(
+  client: SupabaseClient,
   orgId: number,
-  status: BridgeStatus,
-  supabase: SupabaseClient
-): Promise<MobileCallBridge | null> {
-  const { data, error } = await supabase
-    .from('mobile_call_bridges')
-    .update({
-      status,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', id)
-    .eq('organization_id', orgId)
-    .select()
-    .maybeSingle();
+  callId: string,
+  reason: string
+): Promise<void> {
+  const { error } = await client
+    .from('calls')
+    .update({ status: 'failed' as CallStatus, ended_at: new Date().toISOString() })
+    .eq('id', callId)
+    .eq('organization_id', orgId);
+  if (error) console.error('[mobileBridge] markCallFailed:', error.message, reason);
+}
 
-  if (error) {
-    console.warn('mobileBridgeService.updateBridgeStatus - error:', error.message);
-    return null;
-  }
+// ─── Cancelación ─────────────────────────────────────────────────────────────
 
-  return (data as MobileCallBridge) || null;
+export interface CancelBridgeResult {
+  status: BridgeStatus;
+  canceledLegs: string[];
 }
 
 /**
- * Cancela un bridge en curso.
- * Si el agente ya contestó, termina la llamada.
+ * Cancela un bridge en curso (§4.5.5).
+ *
+ * - Solo el DUEÑO (o un admin de la org) puede cancelar: la RLS `mcb_update` ya
+ *   es por dueño, y aquí se comprueba igual porque el servidor usa service role.
+ * - El verbo depende del estado REAL de cada pata en Twilio: `canceled` solo se
+ *   acepta en `queued|ringing`; una llamada `in-progress` se termina con
+ *   `completed` (error 21220 en caso contrario).
+ * - Si Twilio rechaza la cancelación NO se marca el bridge como terminado: la
+ *   llamada sigue viva y la BD tiene que decir la verdad.
  */
 export async function cancelBridge(
-  id: string,
+  bridgeId: string,
   orgId: number,
-  supabase: SupabaseClient
-): Promise<void> {
-  const bridge = await getBridge(id, orgId, supabase);
-  if (!bridge) {
-    throw new Error('Bridge no encontrado');
+  userId: string,
+  isAdmin: boolean,
+  client: SupabaseClient
+): Promise<CancelBridgeResult> {
+  const bridge = await getBridge(bridgeId, orgId, client);
+  if (!bridge) throw new BridgeError('BRIDGE_NOT_FOUND', 404, 'Bridge no encontrado');
+  if (bridge.user_id !== userId && !isAdmin) {
+    throw new BridgeError('FORBIDDEN', 403, 'Solo el dueño de la llamada puede cancelarla');
+  }
+  if (isTerminalBridgeStatus(bridge.status)) {
+    throw new BridgeError('BRIDGE_TERMINAL', 409, `El bridge ya está en estado ${bridge.status}`);
   }
 
-  // Solo se puede cancelar si no está completed o failed
-  if (bridge.status === 'completed' || bridge.status === 'failed') {
-    throw new Error(`No se puede cancelar un bridge en estado ${bridge.status}`);
-  }
+  // Se guarda el estado ANTES de escribir: es el que decide si el minuto del
+  // cliente se devuelve.
+  const previousStatus = bridge.status;
+  const nowIso = new Date().toISOString();
+  await updateBridgeRow(client, orgId, bridgeId, { cancel_requested_at: nowIso });
 
-  // Intentar terminar las llamadas en Twilio
-  try {
-    const { client } = await getTwilioClient(orgId, supabase);
+  const legs = [bridge.agent_leg_sid, bridge.customer_leg_sid].filter(Boolean) as string[];
+  const canceledLegs: string[] = [];
+  const errors: string[] = [];
 
-    if (bridge.agent_leg_sid) {
-      await client.calls(bridge.agent_leg_sid).update({ status: 'canceled' });
+  if (legs.length) {
+    try {
+      const { client: twilio } = await getTwilioClientForOrg(orgId);
+      for (const sid of legs) {
+        try {
+          const live = await twilio.calls(sid).fetch();
+          const liveStatus = String(live?.status ?? '');
+          if (liveStatus === 'queued' || liveStatus === 'ringing') {
+            await twilio.calls(sid).update({ status: 'canceled' });
+            canceledLegs.push(sid);
+          } else if (liveStatus === 'in-progress') {
+            await twilio.calls(sid).update({ status: 'completed' });
+            canceledLegs.push(sid);
+          }
+          // Cualquier otro estado ya es terminal en Twilio: nada que cortar.
+        } catch (err) {
+          errors.push(`${sid}: ${err instanceof Error ? err.message : 'error'}`);
+        }
+      }
+    } catch (err) {
+      errors.push(err instanceof Error ? err.message : 'twilio_client');
     }
-    if (bridge.customer_leg_sid) {
-      await client.calls(bridge.customer_leg_sid).update({ status: 'canceled' });
-    }
-  } catch (err) {
-    console.warn('mobileBridgeService.cancelBridge - Twilio error:', err);
   }
 
-  // Actualizar estado
-  await supabase
-    .from('mobile_call_bridges')
-    .update({
-      status: 'failed',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', id)
-    .eq('organization_id', orgId);
-}
-
-/**
- * Correlaciona las dos patas del bridge cuando llegan los status callbacks.
- * Busca por agent_leg_sid o customer_leg_sid y actualiza lo que falte.
- */
-export async function correlateBridgeLegs(
-  supabase: SupabaseClient,
-  callSid: string,
-  legType: 'agent' | 'customer',
-  orgId: number,
-  bridgeId?: string
-): Promise<void> {
-  const updateData: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
-
-  if (legType === 'agent') {
-    updateData.agent_leg_sid = callSid;
-  } else {
-    updateData.customer_leg_sid = callSid;
+  if (errors.length) {
+    const detail = errors.join(' | ').slice(0, 500);
+    // No se miente: el bridge sigue activo porque la llamada sigue viva.
+    await updateBridgeRow(client, orgId, bridgeId, { last_error: `cancel: ${detail}` });
+    console.error('[mobileBridge] cancelBridge:', detail);
+    throw new BridgeError('CANCEL_FAILED', 502, `No se pudo cortar la llamada en el proveedor: ${detail}`);
   }
 
-  if (bridgeId) {
-    await supabase
-      .from('mobile_call_bridges')
-      .update(updateData)
-      .eq('id', bridgeId)
+  const { error } = await updateBridgeRow(client, orgId, bridgeId, {
+    status: 'failed',
+    last_error: 'canceled_by_user',
+  });
+  if (error) throw new BridgeError('BRIDGE_UPDATE_FAILED', 500, error.message);
+
+  if (bridge.call_id) {
+    const { error: callError } = await client
+      .from('calls')
+      .update({ status: 'canceled' as CallStatus, ended_at: nowIso })
+      .eq('id', bridge.call_id)
       .eq('organization_id', orgId);
-  } else {
-    // Buscar por el SID de la otra pata
-    const column = legType === 'agent' ? 'agent_leg_sid' : 'customer_leg_sid';
-    await supabase
-      .from('mobile_call_bridges')
-      .update(updateData)
-      .eq(column, callSid)
-      .eq('organization_id', orgId);
+    if (callError) console.error('[mobileBridge] cancel calls update:', callError.message);
   }
+
+  // El minuto del cliente reservado y no usado se devuelve (§8).
+  if (customerLegNeverDialed(previousStatus, 'failed')) {
+    await refundVoiceMinutes(orgId, 1, client);
+  }
+
+  return { status: 'failed', canceledLegs };
 }

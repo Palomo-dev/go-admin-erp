@@ -154,7 +154,8 @@ export class ConfiguracionService {
       .order('payment_method_code');
 
     if (error) throw error;
-    return data || [];
+    // supabase-js tipa payment_methods como arreglo aunque sea relacion a-uno
+    return (data || []) as unknown as OrganizationPaymentMethod[];
   }
 
   // Obtener todos los métodos de pago disponibles

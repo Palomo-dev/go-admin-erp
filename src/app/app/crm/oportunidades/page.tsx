@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { toast } from '@/components/ui/use-toast';
+import { LoadErrorState } from '@/components/common/LoadErrorState';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 import {
   OpportunitiesTable,
   OpportunitiesFilters,
@@ -26,6 +28,8 @@ export default function OportunidadesPage() {
   const { branchFilter } = useBranch();
 
   const [isLoading, setIsLoading] = useState(true);
+  // Sin esto, un fallo de carga se veía igual que «no hay oportunidades».
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [stats, setStats] = useState<OpportunityStats>({
     total: 0,
@@ -51,6 +55,7 @@ export default function OportunidadesPage() {
     if (!organization) return;
 
     setIsLoading(true);
+    setLoadError(null);
     try {
       // Filtros con branchId para tablas que tienen branch_id (opportunities, customers)
       const filtersWithBranch = { ...filters, branchId: branchFilter };
@@ -68,12 +73,8 @@ export default function OportunidadesPage() {
       setCustomers(customersData);
       setStats(statsData);
     } catch (error) {
-      console.error('Error cargando datos:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las oportunidades',
-        variant: 'destructive',
-      });
+      logError('[OportunidadesPage] cargar oportunidades', error);
+      setLoadError(describeError(error));
     } finally {
       setIsLoading(false);
     }
@@ -219,6 +220,15 @@ export default function OportunidadesPage() {
           Gestiona todas las oportunidades de venta
         </p>
       </div>
+
+      {loadError && (
+        <LoadErrorState
+          title="No se pudieron cargar las oportunidades"
+          message={loadError}
+          onRetry={() => void loadData()}
+          isRetrying={isLoading}
+        />
+      )}
 
       {/* Stats */}
       <OpportunitiesStats stats={stats} isLoading={isLoading} />

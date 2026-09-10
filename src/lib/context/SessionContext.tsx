@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from '@/components/ui/use-toast';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase/config';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 
 // Constants for session management
 // TEMPORALMENTE DESHABILITADO: Conflicto con middleware
@@ -28,6 +29,12 @@ const LOCAL_STORAGE_LAST_ACTIVITY = 'last-activity-time';
 type SessionState = {
   session: Session | null;
   loading: boolean;
+  /**
+   * Motivo por el que NO se pudo determinar si hay sesión (red caída, base
+   * intermitente, timeout). Distinto de "no hay sesión": aquí no sabemos, así
+   * que hay que mostrar un error con reintento en vez de mandar al login.
+   */
+  initError: string | null;
   inactivityTime: number; // Time in ms since last activity
   showRenewalPopup: boolean;
   countdown: number; // Countdown in seconds
@@ -37,6 +44,8 @@ type SessionState = {
 type SessionContextType = {
   session: Session | null;
   loading: boolean;
+  initError: string | null;
+  retryInit: () => void;
   showRenewalPopup: boolean;
   countdown: number;
   isActive: boolean;
@@ -50,6 +59,8 @@ type SessionContextType = {
 const SessionContext = createContext<SessionContextType>({
   session: null,
   loading: true,
+  initError: null,
+  retryInit: () => {},
   showRenewalPopup: false,
   countdown: COUNTDOWN_DURATION,
   isActive: true,
@@ -75,6 +86,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [state, setState] = useState<SessionState>({
     session: null,
     loading: true,
+    initError: null,
     inactivityTime: 0,
     showRenewalPopup: false,
     countdown: COUNTDOWN_DURATION,
@@ -218,33 +230,49 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [state.session]);
   
   // Fetch initial session
+  // `initAttempt` permite reintentar desde la interfaz sin recargar la página.
+  const [initAttempt, setInitAttempt] = useState(0);
+  const retryInit = useCallback(() => {
+    setState(prev => ({ ...prev, loading: true, initError: null }));
+    setInitAttempt(n => n + 1);
+  }, []);
+
   useEffect(() => {
+    let cancelled = false;
+
     const initSession = async () => {
       try {
         const { session, error } = await getOptimizedSession();
-        
+        if (cancelled) return;
+
         if (error) {
-          console.error('Error initializing session:', error);
-          setState(prev => ({ ...prev, loading: false, session: null }));
+          // No sabemos si hay sesión: no vaciamos la actual ni redirigimos.
+          logError('[SessionContext] inicializar sesión', error);
+          setState(prev => ({ ...prev, loading: false, initError: describeError(error) }));
           return;
         }
-        
+
         // Update session state
-        setState(prev => ({ ...prev, loading: false, session }));
-        
+        setState(prev => ({ ...prev, loading: false, session, initError: null }));
+
         // Schedule health checks
         setTimeout(() => {
           performHealthCheck();
         }, 5000);
-        
+
       } catch (err) {
-        console.error('Session initialization error:', err);
-        setState(prev => ({ ...prev, loading: false, session: null }));
+        if (cancelled) return;
+        logError('[SessionContext] error inicializando sesión', err);
+        setState(prev => ({ ...prev, loading: false, initError: describeError(err) }));
       }
     };
-    
+
     initSession();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initAttempt]);
 
   // Listener global: detectar cuando la sesión se invalida desde otra pestaña
   // (ej. cambio de correo confirmado en /auth/verify que hace signOut).
@@ -259,6 +287,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
             ...prev,
             session: null,
             loading: false,
+            initError: null,
             showRenewalPopup: false,
             countdown: COUNTDOWN_DURATION,
           }));
@@ -267,7 +296,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
             router.push('/auth/login?reason=session-invalidated');
           }
         } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          setState(prev => ({ ...prev, session, loading: false }));
+          setState(prev => ({ ...prev, session, loading: false, initError: null }));
         }
       }
     );
@@ -285,7 +314,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { session, error } = await refreshSessionToken();
       
       if (error) {
-        console.error('Error refreshing session:', error);
+        logError('[SessionContext] refrescar sesión', error);
         toast({
           title: 'Error de sesión',
           description: 'No se pudo renovar la sesión. Por favor, inicie sesión nuevamente.',
@@ -312,7 +341,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         variant: 'default',
       });
     } catch (err) {
-      console.error('Session refresh error:', err);
+      logError('[SessionContext] error refrescando sesión', err);
       setState(prev => ({ ...prev, loading: false }));
       toast({
         title: 'Error de sesión',
@@ -349,7 +378,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       router.push('/auth/login');
       
     } catch (err) {
-      console.error('Logout error:', err);
+      logError('[SessionContext] error cerrando sesión', err);
       setState(prev => ({ 
         ...prev, 
         loading: false,
@@ -378,6 +407,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const value = {
     session: state.session,
     loading: state.loading,
+    initError: state.initError,
+    retryInit,
     showRenewalPopup: state.showRenewalPopup,
     countdown: state.countdown,
     isActive: state.isActive,

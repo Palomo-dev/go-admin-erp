@@ -19,10 +19,16 @@ import {
   User,
   Briefcase,
   Clock,
+  MessageSquare,
+  Bot,
+  CheckSquare,
+  Target,
+  Timer,
+  ArrowUpRight,
+  ArrowDownLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
@@ -38,7 +44,17 @@ import {
 } from '@/components/ui/alert-dialog';
 import { actividadesService } from '../ActividadesService';
 import { ActividadForm } from '../ActividadForm';
-import { Activity, ACTIVITY_TYPE_CONFIG, CreateActivityInput, UpdateActivityInput } from '../types';
+import { LoadErrorState } from '@/components/common/LoadErrorState';
+import { describeError } from '@/lib/utils/errorMessage';
+import {
+  Activity,
+  ACTIVITY_TYPE_CONFIG,
+  CreateActivityInput,
+  DIRECTION_LABELS,
+  UpdateActivityInput,
+  formatDuration,
+  outcomeLabel,
+} from '../types';
 
 interface ActividadDetalleProps {
   activityId: string;
@@ -51,6 +67,9 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   StickyNote,
   MapPin,
   MessageCircle,
+  MessageSquare,
+  Bot,
+  CheckSquare,
   Settings,
 };
 
@@ -61,16 +80,19 @@ export function ActividadDetalle({ activityId }: ActividadDetalleProps) {
   const [customers, setCustomers] = useState<{ id: string; full_name: string; email?: string }[]>([]);
   const [opportunities, setOpportunities] = useState<{ id: string; title: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activityId]);
 
   const loadData = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const [activityData, customersData, opportunitiesData] = await Promise.all([
         actividadesService.getActivityById(activityId),
@@ -84,18 +106,15 @@ export function ActividadDetalle({ activityId }: ActividadDetalleProps) {
 
       if (!activityData) {
         toast({
-          title: 'Error',
-          description: 'No se encontró la actividad',
+          title: 'Actividad no encontrada',
+          description: 'Puede haberse eliminado o no pertenece a esta organización.',
           variant: 'destructive',
         });
         router.push('/app/crm/actividades');
       }
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'No se pudo cargar la actividad',
-        variant: 'destructive',
-      });
+      // Nada de spinner eterno ni de "no hay datos": error visible con reintento.
+      setLoadError(describeError(error));
     } finally {
       setIsLoading(false);
     }
@@ -106,19 +125,17 @@ export function ActividadDetalle({ activityId }: ActividadDetalleProps) {
 
     setIsSaving(true);
     try {
-      const updated = await actividadesService.updateActivity(activity.id, data);
-      if (updated) {
-        toast({
-          title: 'Actividad actualizada',
-          description: 'Los cambios se han guardado correctamente',
-        });
-        setIsFormOpen(false);
-        loadData();
-      }
+      await actividadesService.updateActivity(activity.id, data);
+      toast({
+        title: 'Actividad actualizada',
+        description: 'Los cambios se han guardado correctamente',
+      });
+      setIsFormOpen(false);
+      loadData();
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'No se pudo actualizar la actividad',
+        title: 'No se pudo actualizar la actividad',
+        description: describeError(error),
         variant: 'destructive',
       });
     } finally {
@@ -130,18 +147,13 @@ export function ActividadDetalle({ activityId }: ActividadDetalleProps) {
     if (!activity) return;
 
     try {
-      const success = await actividadesService.deleteActivity(activity.id);
-      if (success) {
-        toast({
-          title: 'Actividad eliminada',
-          description: 'La actividad se ha eliminado correctamente',
-        });
-        router.push('/app/crm/actividades');
-      }
+      await actividadesService.deleteActivity(activity.id);
+      toast({ title: 'Actividad eliminada' });
+      router.push('/app/crm/actividades');
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'No se pudo eliminar la actividad',
+        title: 'No se pudo eliminar la actividad',
+        description: describeError(error),
         variant: 'destructive',
       });
     }
@@ -153,6 +165,14 @@ export function ActividadDetalle({ activityId }: ActividadDetalleProps) {
         <PageHeaderSkeleton />
         <StatsSkeleton count={3} />
         <CardListSkeleton cards={2} columns="1" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8">
+        <LoadErrorState message={loadError} onRetry={loadData} isRetrying={isLoading} />
       </div>
     );
   }
@@ -282,6 +302,82 @@ export function ActividadDetalle({ activityId }: ActividadDetalleProps) {
                   </p>
                 </div>
               </div>
+
+              {/* Sentido del contacto (channel) */}
+              {(activity.channel === 'inbound' || activity.channel === 'outbound') && (
+                <>
+                  <Separator className="bg-gray-200 dark:bg-gray-700" />
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-900">
+                      {activity.channel === 'inbound' ? (
+                        <ArrowDownLeft className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                      ) : (
+                        <ArrowUpRight className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Sentido</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {DIRECTION_LABELS[activity.channel === 'inbound' ? 'inbound' : 'outbound']}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Resultado */}
+              {outcomeLabel(activity.activity_type, activity.outcome) && (
+                <>
+                  <Separator className="bg-gray-200 dark:bg-gray-700" />
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-900">
+                      <Target className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Resultado</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {outcomeLabel(activity.activity_type, activity.outcome)}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Duración */}
+              {formatDuration(activity.duration_seconds) && (
+                <>
+                  <Separator className="bg-gray-200 dark:bg-gray-700" />
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-900">
+                      <Timer className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Duración</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {formatDuration(activity.duration_seconds)}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Quién la registró */}
+              {activity.user && (
+                <>
+                  <Separator className="bg-gray-200 dark:bg-gray-700" />
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-900">
+                      <User className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Registró</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {activity.user.full_name || activity.user.email}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
 
               <Separator className="bg-gray-200 dark:bg-gray-700" />
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { Trash2, Minus, Plus } from "lucide-react";
-import { Button } from "./button";
+import { Button } from "@/components/ui/button";
 
 interface Product {
   id: string;

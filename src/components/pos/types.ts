@@ -10,6 +10,10 @@ export interface Category {
   color?: string | null;
   image_url?: string | null;
   display_order?: number;
+  /** Favorita de la organización (category_favorites). Lo rellena el POS. */
+  is_favorite?: boolean;
+  /** Unidades vendidas en 90 días (pos_category_ranking). Lo rellena el POS. */
+  sales_count_90d?: number;
   requires_preparation?: boolean;
   station?: string | null;
   created_at: string;

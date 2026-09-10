@@ -123,12 +123,37 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
   const loadCategories = useCallback(async () => {
     try {
-      const result = await POSService.getCategories();
-      setCategories(result);
+      // Categorías + ranking (favorita, ventas 90 días) en paralelo, igual que
+      // los productos. El ranking es opcional: si falla, se muestran sin él.
+      const [result, ranking] = await Promise.all([
+        POSService.getCategories(),
+        POSService.getCategoryRanking(),
+      ]);
+      setCategories(
+        result.map((c: Category) => ({
+          ...c,
+          is_favorite: ranking[c.id]?.is_favorite ?? false,
+          sales_count_90d: ranking[c.id]?.sales_count_90d ?? 0,
+        }))
+      );
     } catch (error) {
       console.error('Error loading categories:', error);
     }
   }, []);
+
+  // Marca/desmarca una categoría como favorita. Optimista: se refleja al
+  // instante y se revierte si la escritura falla.
+  const handleToggleCategoryFavorite = useCallback(async (categoryId: number) => {
+    const antes = categories.find((c) => c.id === categoryId)?.is_favorite ?? false;
+    setCategories((prev) => prev.map((c) => (c.id === categoryId ? { ...c, is_favorite: !antes } : c)));
+    try {
+      const ahora = await POSService.toggleCategoryFavorite(categoryId);
+      setCategories((prev) => prev.map((c) => (c.id === categoryId ? { ...c, is_favorite: ahora } : c)));
+    } catch (error) {
+      console.error('Error al cambiar favorita de categoría:', error);
+      setCategories((prev) => prev.map((c) => (c.id === categoryId ? { ...c, is_favorite: antes } : c)));
+    }
+  }, [categories]);
 
   useEffect(() => {
     loadCategories();
@@ -355,6 +380,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
               onSelectCategory={(value) => setSelectedCategory(value === 'all' ? null : parseInt(value))}
               mode={categoriesDisplay.mode}
               orderBy={categoriesDisplay.orderBy}
+              onToggleFavorite={handleToggleCategoryFavorite}
               className={categoriesDisplay.mode === 'searchselect' ? 'flex-1 sm:w-[180px] sm:flex-none h-9 sm:h-10 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 text-sm shrink-0' : 'flex-1'}
             />
 

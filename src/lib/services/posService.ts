@@ -598,6 +598,54 @@ export class POSService {
     }
   }
 
+  /**
+   * Favorito y unidades vendidas en 90 días por categoría, calcado del
+   * ranking de productos (`pos_product_ranking`). La RPC comprueba pertenencia
+   * a la organización y no es ejecutable por `anon`.
+   */
+  static async getCategoryRanking(): Promise<
+    Record<number, { is_favorite: boolean; sales_count_90d: number }>
+  > {
+    try {
+      const { data, error } = await supabase.rpc('pos_category_ranking', {
+        p_org_id: this.organizationId,
+      });
+      if (error) throw error;
+      const map: Record<number, { is_favorite: boolean; sales_count_90d: number }> = {};
+      for (const r of (data || []) as Array<{ category_id: number; is_favorite: boolean; sales_count_90d: number | string }>) {
+        map[r.category_id] = { is_favorite: !!r.is_favorite, sales_count_90d: Number(r.sales_count_90d) || 0 };
+      }
+      return map;
+    } catch (error) {
+      // El ranking es un adorno: si falla, las categorías se muestran igual.
+      console.warn('[posService] No se pudo cargar el ranking de categorías:', error);
+      return {};
+    }
+  }
+
+  /** Marca/desmarca una categoría como favorita de la organización. */
+  static async toggleCategoryFavorite(categoryId: number): Promise<boolean> {
+    const { data: existing, error: findError } = await supabase
+      .from('category_favorites')
+      .select('id')
+      .eq('organization_id', this.organizationId)
+      .eq('category_id', categoryId)
+      .maybeSingle();
+    if (findError) throw findError;
+
+    if (existing) {
+      const { error } = await supabase.from('category_favorites').delete().eq('id', existing.id);
+      if (error) throw error;
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('category_favorites')
+      .insert({ organization_id: this.organizationId, category_id: categoryId });
+    if (error) throw error;
+    return true;
+  }
+
   static async getProductByBarcode(barcode: string): Promise<Product | null> {
     try {
       const { data, error } = await supabase
@@ -2292,6 +2340,8 @@ export class POSService {
         channel: 'pos',
         items: cart.items.map(i => ({
           product_id: i.product_id,
+          // Para que una promoción sobre el producto padre alcance a la variante.
+          parent_product_id: i.product?.parent_product_id ?? null,
           category_id: i.product?.category_id,
           quantity: i.quantity,
           unit_price: i.unit_price,

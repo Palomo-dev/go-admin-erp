@@ -83,7 +83,7 @@ export interface ConfigStats {
 }
 
 export type PosCategoryDisplayMode = 'searchselect' | 'buttons' | 'images';
-export type PosCategoryOrderBy = 'display_order' | 'rank' | 'name';
+export type PosCategoryOrderBy = 'display_order' | 'rank' | 'name' | 'favorites';
 
 export interface PosCategoriesDisplayConfig {
   mode: PosCategoryDisplayMode;
@@ -132,7 +132,9 @@ export const defaultCashSessionModeConfig: PosCashSessionModeConfig = {
 
 export const defaultCategoriesDisplayConfig: PosCategoriesDisplayConfig = {
   mode: 'searchselect',
-  orderBy: 'display_order',
+  // Favoritas primero y luego las más vendidas, igual que los productos del POS.
+  // Se puede cambiar en Configuración del POS → Categorías.
+  orderBy: 'favorites',
 };
 
 export class ConfiguracionService {

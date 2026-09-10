@@ -1,7 +1,7 @@
 'use client';
 
 import * as LucideIcons from 'lucide-react';
-import { Package } from 'lucide-react';
+import { Package, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { SearchSelect } from '@/components/ui/search-select';
 import { cn } from '@/utils/Utils';
@@ -39,6 +39,10 @@ export interface CategoryFilterItem {
   image_url?: string | null;
   display_order?: number;
   rank?: number;
+  /** Marcada como favorita de la organización (category_favorites). */
+  is_favorite?: boolean;
+  /** Unidades vendidas en los últimos 90 días (pos_category_ranking). */
+  sales_count_90d?: number;
 }
 
 interface CategoryFilterBarProps {
@@ -48,12 +52,22 @@ interface CategoryFilterBarProps {
   mode: PosCategoryDisplayMode;
   orderBy?: PosCategoryOrderBy;
   productCounts?: Record<number, number>;
+  /** Si se pasa, cada chip muestra una estrella para marcar/desmarcar favorita. */
+  onToggleFavorite?: (categoryId: number) => void;
   className?: string;
 }
 
 function sortCategories(categories: CategoryFilterItem[], orderBy: PosCategoryOrderBy = 'display_order') {
   const sorted = [...categories];
-  if (orderBy === 'name') {
+  if (orderBy === 'favorites') {
+    // Favoritas primero, luego las más vendidas (90 días), luego el orden manual.
+    // Mismo criterio que el ranking de productos del POS.
+    sorted.sort((a, b) =>
+      Number(b.is_favorite ?? false) - Number(a.is_favorite ?? false) ||
+      (b.sales_count_90d ?? 0) - (a.sales_count_90d ?? 0) ||
+      (a.display_order ?? 0) - (b.display_order ?? 0)
+    );
+  } else if (orderBy === 'name') {
     sorted.sort((a, b) => a.name.localeCompare(b.name));
   } else if (orderBy === 'rank') {
     sorted.sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
@@ -69,6 +83,7 @@ export function CategoryFilterBar({
   onSelectCategory,
   mode,
   orderBy = 'display_order',
+  onToggleFavorite,
   productCounts,
   className,
 }: CategoryFilterBarProps) {
@@ -115,8 +130,19 @@ export function CategoryFilterBar({
         {sortedCategories.map((cat) => {
           const color = getCategoryColor(cat);
           return (
+            <div key={cat.id} className="relative shrink-0">
+            {onToggleFavorite && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onToggleFavorite(cat.id); }}
+                aria-label={cat.is_favorite ? `Quitar ${cat.name} de favoritas` : `Marcar ${cat.name} como favorita`}
+                title={cat.is_favorite ? 'Quitar de favoritas' : 'Marcar como favorita'}
+                className="absolute top-1 right-1 z-10 p-0.5 rounded-full bg-white/80 dark:bg-gray-900/80"
+              >
+                <Star className={cn('h-3.5 w-3.5', cat.is_favorite ? 'fill-current text-amber-500' : 'text-gray-400')} />
+              </button>
+            )}
             <button
-              key={cat.id}
               type="button"
               onClick={() => onSelectCategory(cat.id.toString())}
               className={cn(
@@ -140,6 +166,7 @@ export function CategoryFilterBar({
                 </span>
               </div>
             </button>
+            </div>
           );
         })}
       </div>
@@ -178,24 +205,49 @@ export function CategoryFilterBar({
         const IconComp = getCategoryIcon(cat);
         const isSelected = selectedCategory === cat.id.toString();
         const color = getCategoryColor(cat);
+        const esTop = (cat.sales_count_90d ?? 0) > 0;
         return (
-          <button
-            key={cat.id}
-            type="button"
-            onClick={() => onSelectCategory(cat.id.toString())}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium border transition-colors"
-            style={isSelected
-              ? { backgroundColor: color, borderColor: color, color: '#fff' }
-              : { backgroundColor: `${color}15`, borderColor: `${color}40`, color }}
-          >
-            {IconComp && <IconComp className="h-3.5 w-3.5" />}
-            {cat.name}
-            {productCounts && productCounts[cat.id] !== undefined && (
-              <Badge variant="outline" className="text-[0.6rem] px-1 border-current">
-                {productCounts[cat.id]}
-              </Badge>
+          // Envoltorio: un <button> no puede contener otro <button>, así que la
+          // estrella de favorito va como hermano del chip, no dentro.
+          <div key={cat.id} className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => onSelectCategory(cat.id.toString())}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium border transition-colors',
+                onToggleFavorite && 'pr-8'
+              )}
+              style={isSelected
+                ? { backgroundColor: color, borderColor: color, color: '#fff' }
+                : { backgroundColor: `${color}15`, borderColor: `${color}40`, color }}
+              title={esTop ? `${cat.sales_count_90d} unidades vendidas en los últimos 90 días` : undefined}
+            >
+              {IconComp && <IconComp className="h-3.5 w-3.5" />}
+              {cat.name}
+              {esTop && (
+                <Badge variant="outline" className="text-[0.6rem] px-1 border-current">Top</Badge>
+              )}
+              {productCounts && productCounts[cat.id] !== undefined && (
+                <Badge variant="outline" className="text-[0.6rem] px-1 border-current">
+                  {productCounts[cat.id]}
+                </Badge>
+              )}
+            </button>
+            {onToggleFavorite && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onToggleFavorite(cat.id); }}
+                aria-label={cat.is_favorite ? `Quitar ${cat.name} de favoritas` : `Marcar ${cat.name} como favorita`}
+                title={cat.is_favorite ? 'Quitar de favoritas' : 'Marcar como favorita'}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10"
+              >
+                <Star
+                  className={cn('h-3.5 w-3.5', cat.is_favorite ? 'fill-current text-amber-500' : 'opacity-50')}
+                  style={!cat.is_favorite ? { color: isSelected ? '#fff' : color } : undefined}
+                />
+              </button>
             )}
-          </button>
+          </div>
         );
       })}
     </div>

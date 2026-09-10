@@ -65,7 +65,7 @@ export function SoftphoneDock() {
 
   if (!sp.available) return null;
 
-  const { deviceState, deviceReason, deviceMissing, callStatus, activeCall, activeCallId, activeCallRow, muted, hasIncoming, incoming, liveNote, setLiveNote, audio } = sp;
+  const { deviceState, deviceReason, deviceMissing, deviceScope, callStatus, activeCall, activeCallId, activeCallRow, muted, hasIncoming, incoming, liveNote, setLiveNote, audio } = sp;
   const inCall = callStatus === 'connecting' || callStatus === 'ringing' || callStatus === 'connected';
   const connected = callStatus === 'connected';
   const recording = Boolean(activeCallRow?.recording_enabled);
@@ -98,7 +98,7 @@ export function SoftphoneDock() {
             className="fixed bottom-0 right-0 z-50 w-full sm:bottom-4 sm:right-4 sm:w-[340px]"
           >
             <Card role="region" aria-label="Softphone" className="rounded-none border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl">
-              <DockHeader deviceState={deviceState} deviceReason={deviceReason} deviceMissing={deviceMissing} callStatus={callStatus} onMinimize={() => setCollapsed(true)} onRetry={sp.retry} />
+              <DockHeader deviceState={deviceState} deviceReason={deviceReason} deviceMissing={deviceMissing} deviceScope={deviceScope} callStatus={callStatus} onMinimize={() => setCollapsed(true)} onRetry={sp.retry} />
 
               <div className="space-y-3 p-4">
                 {hasIncoming && incoming && (

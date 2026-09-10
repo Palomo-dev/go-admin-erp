@@ -77,9 +77,14 @@ export async function generateVoiceToken(organizationId: number, userId: string)
   const creds = await getVoiceCredentials(organizationId);
   const missing = missingVoiceCredentials(creds);
   if (missing.length > 0) {
+    // `source === 'org'` → la organización trajo sus propias llaves y le
+    // faltan: su administrador puede arreglarlo. Cualquier otro caso es la
+    // cuenta maestra de la plataforma, y eso NO es asunto del cliente.
+    const scope = creds.source === 'org' ? 'organization' : 'platform';
     throw new VoiceNotConfiguredError(
       `Faltan credenciales de Twilio para llamar desde el navegador: ${missing.join(', ')}`,
-      missing
+      missing,
+      scope
     );
   }
 

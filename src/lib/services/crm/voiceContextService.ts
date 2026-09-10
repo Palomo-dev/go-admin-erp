@@ -17,18 +17,45 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { getProviderCredentials } from '@/lib/services/providerCredentials.server';
 
+/**
+ * De quién son las llaves que faltan. Decide QUIÉN tiene que enterarse:
+ *  - `platform`: vienen del entorno de la plataforma (`use_master_account`,
+ *    el valor por defecto). Las conecta el dueño de la plataforma; a la
+ *    organización cliente NO se le muestra ni el proveedor ni las variables,
+ *    porque no puede hacer nada con eso y no tiene por qué saber que existe.
+ *  - `organization`: la organización configuró sus propias llaves en
+ *    «Proveedores e IA» y le faltan. A su administrador sí se le indica dónde.
+ */
+export type VoiceConfigScope = 'platform' | 'organization';
+
+/** Texto neutro para una organización cliente: sin proveedor, sin variables. */
+export const VOICE_NOT_AVAILABLE_PUBLIC_MESSAGE =
+  'La telefonía aún no está habilitada para tu organización. Contacta al soporte de la plataforma.';
+
 export class VoiceNotConfiguredError extends Error {
   code = 'VOICE_NOT_CONFIGURED' as const;
   statusCode = 409;
   /**
-   * Nombres de las credenciales que faltan (NUNCA valores). Permite que el
-   * softphone diga qué falta en vez de un genérico "no configurada".
+   * Nombres de las credenciales que faltan (NUNCA valores). Con ámbito
+   * `platform` se usan SOLO para los logs del servidor, nunca viajan al
+   * navegador de un cliente.
    */
   missing: string[];
-  constructor(message = 'Telefonía no configurada para esta organización', missing: string[] = []) {
+  scope: VoiceConfigScope;
+  /** Lo único que puede ver una organización cliente cuando el ámbito es `platform`. */
+  publicMessage: string;
+  constructor(
+    message = 'Telefonía no configurada para esta organización',
+    missing: string[] = [],
+    scope: VoiceConfigScope = 'platform',
+  ) {
     super(message);
     this.name = 'VoiceNotConfiguredError';
     this.missing = missing;
+    this.scope = scope;
+    this.publicMessage = scope === 'platform'
+      ? VOICE_NOT_AVAILABLE_PUBLIC_MESSAGE
+      : 'Faltan credenciales de telefonía en la configuración de tu organización.';
   }
 }
 

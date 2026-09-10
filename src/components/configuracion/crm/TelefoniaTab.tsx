@@ -42,6 +42,11 @@ export function TelefoniaTab() {
   if (!t.configured?.account) missing.push('Account SID / Auth Token');
   if (!t.configured?.api_key) missing.push('API Key y Secret');
   if (!t.configured?.twiml_app) missing.push('TwiML App SID');
+  // Solo si la organización trajo sus PROPIAS llaves tiene sentido decirle qué
+  // falta. Con la cuenta maestra de la plataforma (el valor por defecto), lo
+  // que falta lo conecta el dueño de la plataforma; a la organización se le
+  // dice que aún no está disponible, sin proveedor ni variables de entorno.
+  const llavesPropias = t.configured?.source === 'org';
 
   return (
     <div className="space-y-6">
@@ -49,14 +54,29 @@ export function TelefoniaTab() {
         <div className="flex items-start gap-2 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900 dark:border-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-100" role="status">
           <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
           <div>
-            <p className="font-medium">El softphone del navegador está deshabilitado: faltan {missing.join(', ')} de Twilio.</p>
-            <p className="text-xs">
-              Configúralos en{' '}
-              <Link href="/app/configuracion?modulo=crm&tab=proveedores" className="underline">
-                Proveedores e IA › Telefonía
-              </Link>{' '}
-              (o en el entorno de la plataforma: TWILIO_API_KEY, TWILIO_API_SECRET, TWILIO_TWIML_APP_SID). La TwiML App debe apuntar a <code>/api/voice/twiml/outbound</code> y su Status Callback a <code>/api/voice/status</code>.
-            </p>
+            {llavesPropias ? (
+              <>
+                <p className="font-medium">El softphone del navegador está deshabilitado: faltan {missing.join(', ')} en las credenciales de telefonía de tu organización.</p>
+                <p className="text-xs">
+                  Complétalas en{' '}
+                  <Link href="/app/configuracion?modulo=crm&tab=proveedores" className="underline">
+                    Proveedores e IA › Telefonía
+                  </Link>
+                  .
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium">El softphone del navegador aún no está habilitado para tu organización.</p>
+                <p className="text-xs">
+                  La telefonía la habilita el soporte de la plataforma; no necesitas configurar nada. Si prefieres usar una cuenta de telefonía propia, puedes cargarla en{' '}
+                  <Link href="/app/configuracion?modulo=crm&tab=proveedores" className="underline">
+                    Proveedores e IA › Telefonía
+                  </Link>
+                  .
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}

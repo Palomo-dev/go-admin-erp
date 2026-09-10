@@ -13,10 +13,16 @@ import type { CallStatus, DeviceState } from '../SoftphoneProvider';
 import { VOICE_CREDENTIAL_LABELS } from '../hooks/useTwilioDevice';
 
 /**
- * Pantalla real donde un administrador guarda las credenciales de voz:
- * Configuración › CRM › Proveedores e IA, tarjeta «Telefonía · Twilio».
- * (`CrmConfigTabs` acepta `?tab=proveedores`; `ProveedoresTab` pinta la
- * categoría `voice` con `ProviderCredentialForm`.)
+ * Pantalla donde un administrador guarda las credenciales de voz PROPIAS de su
+ * organización: Configuración › CRM › Proveedores e IA.
+ *
+ * Solo se enlaza cuando el ámbito del 409 es `organization`, es decir, cuando
+ * la organización eligió traer sus propias llaves y le faltan. Con el ámbito
+ * `platform` —el valor por defecto, cuenta maestra de la plataforma— NO se
+ * muestra ni el enlace, ni el proveedor, ni ninguna variable: eso lo conecta
+ * el dueño de la plataforma y la organización cliente no puede hacer nada con
+ * esa información. Mostrárselo era un error de audiencia (captura del dueño,
+ * 2026-09-10).
  */
 export const VOICE_PROVIDERS_SETTINGS_HREF = '/app/configuracion?modulo=crm&tab=proveedores';
 
@@ -51,14 +57,18 @@ interface DockHeaderProps {
   deviceReason: string | null;
   /** Nombres (no valores) de las credenciales que faltan. */
   deviceMissing?: string[];
+  deviceScope?: 'platform' | 'organization';
   callStatus: CallStatus;
   isAdmin?: boolean;
   onMinimize: () => void;
   onRetry: () => void;
 }
 
-export function DockHeader({ deviceState, deviceReason, deviceMissing, callStatus, isAdmin, onMinimize, onRetry }: DockHeaderProps) {
+export function DockHeader({ deviceState, deviceReason, deviceMissing, deviceScope, callStatus, isAdmin, onMinimize, onRetry }: DockHeaderProps) {
   const missing = deviceMissing ?? [];
+  // Solo cuando las llaves son de la propia organización tiene sentido decirle
+  // a alguien qué falta y dónde ponerlo.
+  const configurableAqui = deviceState === 'not_configured' && deviceScope === 'organization';
   const dotClass =
     deviceState === 'registered'
       ? 'bg-green-500'
@@ -110,7 +120,7 @@ export function DockHeader({ deviceState, deviceReason, deviceMissing, callStatu
         >
           <p>{deviceReason ?? DEVICE_LABELS[deviceState]}</p>
 
-          {deviceState === 'not_configured' && missing.length > 0 && (
+          {configurableAqui && missing.length > 0 && (
             <>
               <ul className="mt-1 list-disc space-y-0.5 pl-4">
                 {missing.map((key) => (
@@ -123,14 +133,14 @@ export function DockHeader({ deviceState, deviceReason, deviceMissing, callStatu
                 {/* Sin `isAdmin` no se puede afirmar que quien lee pueda guardarlas:
                     el texto por defecto vale para ambos y no promete permisos. */}
                 {isAdmin === false
-                  ? 'Pídele a un administrador que las guarde en Configuración › CRM › Proveedores e IA, tarjeta «Telefonía · Twilio».'
-                  : 'Las guarda un administrador en Configuración › CRM › Proveedores e IA, tarjeta «Telefonía · Twilio». Cuando estén, vuelve aquí y pulsa Reintentar.'}
+                  ? 'Pídele a un administrador de tu organización que las guarde en Configuración › CRM › Proveedores e IA.'
+                  : 'Se guardan en Configuración › CRM › Proveedores e IA. Cuando estén, vuelve aquí y pulsa Reintentar.'}
               </p>
             </>
           )}
 
           <div className="mt-1.5 flex items-center gap-3">
-            {deviceState === 'not_configured' && (
+            {configurableAqui && (
               <Link
                 href={VOICE_PROVIDERS_SETTINGS_HREF}
                 className="inline-flex items-center gap-1 text-blue-600 hover:underline dark:text-blue-400"

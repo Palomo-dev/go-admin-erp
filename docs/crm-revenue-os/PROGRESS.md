@@ -33,6 +33,30 @@
 
 ## Historial de rondas
 
+### Softphone — el cliente veía las llaves de la plataforma — 2026-09-10 (captura del dueño)
+El dueño mostró el softphone diciéndole a una organización cliente «Faltan API Key de Twilio, API Secret de Twilio, TwiML App SID…», con los nombres de las variables de entorno y un enlace a «Proveedores e IA» para que las guardara. **Error de audiencia**: el valor por defecto de `voice:twilio` es `use_master_account: true`, la cuenta maestra **de la plataforma**. Las llaves las conecta el dueño; el cliente no puede hacer nada con eso y no tiene por qué saber que existe Twilio.
+
+**Diseño aplicado, y es el correcto del todo porque el servidor ya sabía distinguirlo**: `getVoiceCredentials` devuelve `source` (`'org'` si la organización configuró las suyas; `'env'`/`'none'` si vienen de la plataforma). Con eso:
+- **Ámbito `platform`** (faltan y `source !== 'org'`): el 409 lleva un texto neutro —sin proveedor, sin variables, sin «configúralo»— y **no manda `missing`**. Lo que falta queda en `console.error` del servidor, que es donde el dueño lo va a ver. El dock no pinta lista ni enlace.
+- **Ámbito `organization`** (faltan y `source === 'org'`): la organización trajo sus propias llaves y le faltan; a su administrador sí se le dice qué y dónde.
+
+Cambios: `VoiceNotConfiguredError` lleva `scope` y `publicMessage`; `voiceTokenService` decide el ámbito; `token/route.ts` filtra la respuesta; `useTwilioDevice` expone `deviceScope` y un `describeNotConfigured` puro; `SoftphoneProvider`/`SoftphoneDock`/`DockHeader` lo enhebran; `TelefoniaTab` aplica el mismo criterio con el `configured.source` que ya recibía. Prueba nueva `voiceNotConfiguredScope.test.ts` (7 casos, escrita antes y vista en rojo 4/4 en el servidor).
+
+**Gemelo encontrado y cerrado en la pasada**: `mobileBridgeService:253` devolvía al cliente *«Falta configurar VOICE_CALLBACK_SECRET»* tal cual. Mismo error de audiencia por el canal del puente. Mensaje neutro, código conservado (la prueba B-3.2 afirma sobre el código, no sobre el texto), y `console.error` con el detalle para el dueño.
+
+### INCIDENTE — una mutación de prueba llegó a HEAD: el puente grababa SIN aviso — 2026-09-10
+Al correr las suites de voz aparecieron **4 rojas en `f5Adversarial`** (F5-38, F5-39, F5-40, F5-55). Verificado con `git stash` que **ya fallaban sin mis cambios**, y que el defecto está en **HEAD**:
+
+`src/lib/services/crm/bridgeTwimlBuilders.ts:144` decía `if (false && p.recordingEnabled && p.consentUrl) …`. Un **`false &&` literal** delante de la guarda que pone `url=consent-whisper` en el `<Number>`. Resultado: el `<Dial>` del puente al celular **grababa** (`record="record-from-answer-dual"`) y **el cliente no oía el aviso**. Es exactamente la violación del invariante «nunca grabar sin acta», y llevaba ya activada la grabación a petición del dueño.
+
+**Causa**: es la forma canónica en que un arnés de reversión «apaga» una guarda para comprobar que la prueba muerde. El tester de voz de la ronda 4 se cortó **a media campaña** («las últimas nueve mutaciones están corriendo»), no restauró, y el archivo entró en el commit acumulado del dueño. **La red mordió** —las cuatro pruebas señalaron exactamente la línea—; lo que falló fue la restauración.
+
+Restaurado, con comentario en el sitio para que un `false &&` ahí se reconozca al instante. Barrido del árbol entero: era la **única** mutación huérfana de esa forma. Suites de voz + guardarraíles: **333/333**.
+
+**Lección de proceso, y es mía**: un tester que muta archivos de producción no puede quedar en un estado en que un corte del proceso deje la mutación viva. Mientras no haya restauración automática garantizada (por ejemplo, mutar sobre una copia y no sobre el árbol), **después de cualquier corte hay que barrer `if (false &&` / `&& false)` / `|| true)` antes de commitear**. Queda como comprobación obligatoria de cierre.
+
+**Nota sobre la política de migraciones**: `CLAUDE.md` cambió el 2026-09-10 y ahora cada migración aplicada por MCP debe dejar su `.sql` en `supabase/migrations/` y su reversión en `supabase/rollbacks/` en el mismo commit (`docs/POLITICA-MIGRACIONES.md`), y el repositorio es público: nunca nombres de organizaciones cliente. Lo aplicado hoy ya lo versionó el commit `cbc647e5`. Para lo que venga, se sigue esa política.
+
 ### Zona de voz — Ronda 4 evaluada (informe PARCIAL) — 2026-09-10
 El tester entregó con nueve mutaciones aún corriendo, así que **no hay calificación numérica todavía**. Lo medido hasta el corte:
 

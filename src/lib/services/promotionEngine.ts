@@ -35,6 +35,12 @@ export type PromotionChannel = 'pos' | 'web' | 'finances';
 
 export interface PromotionItem {
   product_id: number;
+  /**
+   * Producto padre cuando el ítem es una variante. Permite que una promoción
+   * definida sobre el padre (p. ej. "GRANI CON LICOR") alcance a todas sus
+   * variantes ("EXTRAGRANDE GRANI CON LICOR"), que es lo que el usuario espera.
+   */
+  parent_product_id?: number | null;
   category_id?: number;
   brand?: string;
   quantity: number;
@@ -111,7 +117,16 @@ class PromotionEngineService {
       return [];
     }
 
-    let promos: Promotion[] = (data || []) as Promotion[];
+    // PostgREST devuelve el embed con el NOMBRE DE LA TABLA (`promotion_rules`),
+    // pero el resto del motor lee `promo.rules`. Sin este mapeo `rules` era
+    // siempre undefined → [] → y con `applies_to = 'products'|'categories'` ningún
+    // ítem coincidía: esas promociones no se aplicaban NUNCA, en ningún canal.
+    // Solo funcionaban las de `applies_to = 'all'`, que no consultan reglas.
+    // TypeScript no lo detectaba porque el tipo `Promotion` declara `rules`.
+    let promos: Promotion[] = ((data || []) as Array<Record<string, unknown>>).map((row) => {
+      const { promotion_rules, ...resto } = row;
+      return { ...resto, rules: (promotion_rules ?? resto.rules ?? []) } as Promotion;
+    });
 
     // Filtrar end_date en memoria (PostgREST no soporta or(is.null,gte) fácilmente
     // combinado con otros filtros en una sola query sin RPC)
@@ -144,13 +159,20 @@ class PromotionEngineService {
     let included = false;
     let excluded = false;
 
+    // Una regla sobre un producto alcanza al propio producto Y, si el ítem es
+    // una variante, a su padre: promocionar "GRANI CON LICOR" debe cubrir
+    // "EXTRAGRANDE GRANI CON LICOR". Antes solo se comparaba el id exacto.
+    const coincideProducto = (ruleProductId: number | null | undefined) =>
+      ruleProductId != null &&
+      (ruleProductId === item.product_id || ruleProductId === item.parent_product_id);
+
     for (const rule of rules) {
       switch (rule.rule_type) {
         case 'include_product':
-          if (rule.product_id === item.product_id) included = true;
+          if (coincideProducto(rule.product_id)) included = true;
           break;
         case 'exclude_product':
-          if (rule.product_id === item.product_id) excluded = true;
+          if (coincideProducto(rule.product_id)) excluded = true;
           break;
         case 'include_category':
           if (rule.category_id && item.category_id === rule.category_id) included = true;

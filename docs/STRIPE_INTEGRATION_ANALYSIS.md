@@ -115,9 +115,9 @@ Se encontraron **4 precios activos** para GO Admin ERP en modo TEST:
 | Sales ADs Sas (64) | active | 3 | **null** | **null** | null |
 | Imagine 02 (62) | active | 2 | **null** | **null** | null |
 | Imagine (61) | active | 3 | **null** | **null** | null |
-| Casa Boutique (60) | active | 2 | **null** | **null** | null |
+| Org 60 | active | 2 | **null** | **null** | null |
 | Cata (59) | active | 1 | **null** | **null** | null |
-| Familia Feliz (58) | active | 2 | **null** | **null** | null |
+| Org 58 | active | 2 | **null** | **null** | null |
 | Prueba f (57) | active | 2 | **null** | **null** | null |
 | Store Photo (5) | active | 1 | **null** | **null** | null |
 

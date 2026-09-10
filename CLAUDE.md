@@ -12,17 +12,23 @@ comentarios, commits y UI.
    en `supabase/rollbacks/`, en el mismo commit: ver `docs/POLITICA-MIGRACIONES.md`.
    Nunca credenciales dentro de un `.sql` — el repositorio es público. Los `.sql`
    de prueba que generes, bórralos.
-2. **Verifica tablas y columnas con el MCP ANTES de escribir cualquier query.**
+2. **El repositorio es público: nunca escribas el nombre de una organización
+   cliente.** Ni en comentarios, ni en `comment on`, ni en docs, ni en fixtures
+   de tests. Usa el id (`org 120`) o una descripción (`una tienda de calzado`).
+   La evidencia —porcentajes, conteos, importes— se conserva; la identidad no.
+   Aplica igual a los comentarios de esquema: viajan al repositorio en cada
+   migración y en los tipos generados.
+3. **Verifica tablas y columnas con el MCP ANTES de escribir cualquier query.**
    No asumas que una tabla existe porque el código actual la usa: `inventory`,
    `orders` y `order_items` aparecían en el código y nunca existieron.
-3. **`git push` y abrir PRs requieren autorización explícita** en la conversación.
+4. **`git push` y abrir PRs requieren autorización explícita** en la conversación.
    `git commit` local, solo si se pide.
-4. **La organización sale de la sesión, nunca del body.** Todo route handler
+5. **La organización sale de la sesión, nunca del body.** Todo route handler
    empieza por `getServerOrgContext()` (o `withOrg`). Si el body trae una
    organización distinta: 403 y se registra.
-5. **Los permisos se resuelven en el servidor.** Nunca a partir del nombre de un
+6. **Los permisos se resuelven en el servidor.** Nunca a partir del nombre de un
    rol, y nunca con un valor que venga del cliente.
-6. **Nada de lógica de negocio duplicada.** Si `posService` sabe crear una venta
+7. **Nada de lógica de negocio duplicada.** Si `posService` sabe crear una venta
    con impuestos y caja, se llama a `posService`. Una segunda implementación
    diverge en semanas.
 

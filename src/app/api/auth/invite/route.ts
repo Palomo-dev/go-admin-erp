@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit';
 
 /**
  * Envía una invitación usando el flujo nativo de Supabase
@@ -7,7 +8,24 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
  * correo "Invite user" configurado en el Dashboard. Después, fija la misma
  * contraseña temporal ('temp-password') que espera el flujo existente de
  * /auth/invite (InvitationWizard), para no modificar esa lógica ya probada.
+ *
+ * Seguridad: la ruta exige sesión (el middleware la protege, no está en
+ * shouldSkipRoute), pero cada petición manda un correo, así que lleva rate
+ * limit por IP y por destinatario para que una sesión cualquiera no pueda
+ * bombardear una dirección ni agotar la cuota de envío.
+ * PENDIENTE: tampoco valida que quien llama pertenezca a `organizationId` ni
+ * que `invitationCode` exista en `invitations`; eso se sigue aparte.
  */
+
+/**
+ * 30 invitaciones / 15 min por IP: holgado para dar de alta un equipo entero
+ * desde una oficina (IP compartida) y aun así corta el envío masivo.
+ * El freno que protege al destinatario es el de abajo, no este.
+ */
+const INVITE_IP_LIMIT = { limit: 30, windowMs: 15 * 60 * 1000 };
+/** 3 correos / 15 min al mismo destinatario. */
+const INVITE_EMAIL_LIMIT = { limit: 3, windowMs: 15 * 60 * 1000 };
+
 export async function POST(request: Request) {
   try {
     const {
@@ -29,6 +47,20 @@ export async function POST(request: Request) {
 
     const admin = getSupabaseAdmin();
     const normalizedEmail = email.toLowerCase();
+
+    const ip = getClientIp(request);
+    const rl = await checkRateLimits([
+      { key: `invite:send:ip:${ip}`, opts: INVITE_IP_LIMIT },
+      { key: `invite:send:email:${normalizedEmail}`, opts: INVITE_EMAIL_LIMIT },
+    ]);
+    if (!rl.allowed) {
+      const retryAfter = Math.max(1, Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000));
+      console.warn('Invitación bloqueada por rate limit:', rl.blockedKey, 'ip:', ip);
+      return NextResponse.json(
+        { error: 'Demasiadas invitaciones seguidas. Intenta de nuevo en unos minutos.' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+      );
+    }
 
     // Verificar si el usuario ya existe en auth.users (vía RPC check_email_exists)
     const { data: existsInAuth } = await admin.rpc('check_email_exists', {

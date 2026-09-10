@@ -3,6 +3,16 @@ import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { completeSignupAfterEmailConfirmation } from '@/app/auth/callback/route';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit';
+
+/**
+ * Rate limit del auto-reenvío del magic link (bombardeo de correo).
+ * Esta ruta es pública y, con `?type=magiclink&email=...` y un token inválido,
+ * dispara un envío por petición. La cookie anti-bucle no sirve como freno:
+ * basta con no mandarla. Límites por IP y por correo destino.
+ */
+const RESEND_IP_LIMIT = { limit: 5, windowMs: 15 * 60 * 1000 };
+const RESEND_EMAIL_LIMIT = { limit: 3, windowMs: 15 * 60 * 1000 };
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -179,6 +189,20 @@ export async function GET(request: NextRequest) {
           const alreadyResent = cookieStore.get(resendCookieName)?.value === '1';
 
           if (!alreadyResent) {
+            // Solo se consulta el rate limit cuando de verdad se iría a enviar,
+            // para no gastar cuota del usuario legítimo en los casos en que la
+            // cookie ya frena el reenvío.
+            const ip = getClientIp(request);
+            const rl = await checkRateLimits([
+              { key: `verify:resend:ip:${ip}`, opts: RESEND_IP_LIMIT },
+              { key: `verify:resend:email:${emailParam.toLowerCase().trim()}`, opts: RESEND_EMAIL_LIMIT },
+            ]);
+
+            if (!rl.allowed) {
+              console.warn('Reenvío automático bloqueado por rate limit:', rl.blockedKey, 'ip:', ip);
+              return redirectWithCookies(`/auth/verify/failed?type=${type}`);
+            }
+
             const resendResult = await tryResendMagicLink(emailParam, requestUrl.origin);
             if (resendResult.success) {
               // Setear cookie anti-bucle (10 min de expiración)

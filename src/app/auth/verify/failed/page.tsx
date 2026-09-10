@@ -53,14 +53,16 @@ function FailedContent() {
         <div className="bg-white dark:bg-gray-800 shadow-lg sm:shadow-2xl rounded-lg sm:rounded-xl w-full max-w-md overflow-hidden relative z-10">
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
             <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Enlace reenviado
+              Revisa tu correo
             </h2>
           </div>
           <div className="p-4 sm:p-6">
             <div className="bg-green-50 dark:bg-green-900/30 border-l-4 border-green-500 p-3 sm:p-4">
               <p className="text-xs sm:text-sm text-green-700 dark:text-green-300">
-                Hemos enviado un nuevo enlace a <strong className="break-all">{email}</strong>.
-                Revisa tu correo (y spam) y haz clic en &quot;Acceder a mi cuenta&quot;.
+                Si hay una invitaci&oacute;n pendiente para{' '}
+                <strong className="break-all">{email}</strong>, acabamos de enviar un
+                nuevo enlace. Revisa tu correo (y spam) y haz clic en
+                &quot;Acceder a mi cuenta&quot;.
               </p>
             </div>
           </div>

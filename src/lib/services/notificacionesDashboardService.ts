@@ -65,7 +65,8 @@ export interface NotificationRow {
   status: string;
   error_msg: string | null;
   sent_at: string | null;
-  read_at: string | null;
+  read_at: string | null; // Deprecado: usar is_read_by_me para display per-user
+  is_read_by_me?: boolean; // true si el usuario actual tiene fila en notification_reads
   created_at: string;
   updated_at: string;
 }

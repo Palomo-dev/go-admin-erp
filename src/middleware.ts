@@ -1,10 +1,75 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { supabase, getProjectRef } from '@/lib/supabase/config';
+import type { NextRequest, NextFetchEvent } from 'next/server';
 import { decodeJwt } from 'jose';
-import { moduleManagementService } from '@/lib/services/moduleManagementService';
+import {
+  edgeSelect,
+  edgePatch,
+  getProjectRef,
+  MW_DB_BUDGET_MS,
+} from '@/lib/supabase/edge-rest';
 
 const ACTIVITY_UPDATE_INTERVAL = 10 * 60 * 1000; // 10 minutos
+
+/**
+ * Cookie con el veredicto de acceso ya calculado, para no repetir las 6
+ * consultas de gating en cada navegacion. Solo se cachean veredictos
+ * POSITIVOS (acceso permitido); un bloqueo nunca se cachea.
+ *
+ * La cookie va FIRMADA con HMAC-SHA256. Sin firma, el cliente podria
+ * fabricarla y saltarse la verificacion de modulos durante GATE_TTL_SECONDS,
+ * porque tanto los modulos como la organizacion viajaban en claro y las
+ * cookies de organizacion las controla el propio navegador.
+ *
+ * Si GATE_COOKIE_SECRET no esta definido, el cache se desactiva por completo
+ * (se hacen las consultas reales). Nunca se confia en una cookie sin firmar.
+ */
+const GATE_COOKIE = 'ga_gate';
+const GATE_TTL_SECONDS = 60;
+const GATE_SECRET = process.env.GATE_COOKIE_SECRET || '';
+
+/** La clave HMAC se importa una sola vez por instancia del runtime. */
+let gateKeyPromise: Promise<CryptoKey> | null = null;
+function getGateKey(): Promise<CryptoKey> {
+  if (!gateKeyPromise) {
+    gateKeyPromise = crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(GATE_SECRET),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+  }
+  return gateKeyPromise;
+}
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64UrlToBytes(value: string): Uint8Array {
+  const b64 = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function gateSignature(payload: string): Promise<string> {
+  const key = await getGateKey();
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return bytesToBase64Url(new Uint8Array(sig));
+}
+
+/** Comparacion en tiempo constante: no revela el prefijo correcto de la firma. */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 
 
 /**
@@ -83,11 +148,17 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/integrations/twilio/', // <-- Excluir webhooks de Twilio (autenticación propia via firma)
     '/api/integrations/whatsapp/webhook', // <-- Excluir webhook de WhatsApp Cloud API (verificación Meta)
     '/api/integrations/whatsapp/qr/inbound', // <-- Excluir callback del microservicio Baileys (autenticación propia via shared secret)
+    '/api/integrations/whatsapp/qr/dispatch-pending', // <-- F0: despacho QR invocado por cron (fail-closed via Authorization: Bearer CRON_SECRET)
+    '/api/voice/', // <-- F0: webhooks Twilio de voz (firma X-Twilio-Signature fail-closed) y rutas de sesión (getServerOrgContext → 401 JSON, no redirect)
     '/api/super-admin-access', // <-- Excluir canje de token de super admin (autenticación propia via token BD)
     '/api/super-admin-cleanup', // <-- Excluir cleanup de super admin (autenticación propia via body)
     '/api/factus/', // <-- Excluir APIs de Factus (usan credenciales de entorno, no requieren sesión)
     '/api/facebook-feed', // <-- Excluir feed de Facebook (autenticación propia via token en query param)
     '/api/cron/', // <-- Excluir cron jobs de Vercel (autenticación propia via Authorization: Bearer CRON_SECRET)
+    '/api/crm/jobs/run', // <-- Runner de la cola CRM (pg_cron / Vercel Cron; fail-closed via Authorization: Bearer CRON_SECRET)
+    '/api/email/webhook', // <-- F7: webhook de Resend (firma svix fail-closed)
+    '/api/crm/webhooks/', // <-- F4: webhook de ElevenLabs Scribe (firma ElevenLabs-Signature fail-closed via constructEvent)
+    '/u/', // <-- F7: página pública de baja de correo (token HMAC firmado)
     '/api/web-orders/', // <-- Excluir webhooks de pedidos web (autenticación propia via x-webhook-secret header)
     '/api/auth/invite/resend', // <-- Reenvío de magic link para invitaciones (usuario no autenticado, valida contra tabla invitations)
     '/auth/v1/',
@@ -106,7 +177,7 @@ function shouldSkipRoute(pathname: string): boolean {
  * Middleware para manejar autenticación y autorización
  * Verifica sesiones, maneja redirecciones y actualiza actividad de usuario
  */
-export async function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
   
   // Interceptar OAuth code en raíz: Supabase redirige a /?code=xxx, reenviar a /auth/callback
@@ -153,12 +224,7 @@ export async function middleware(request: NextRequest) {
         i++;
       }
       authCookie = { name: authCookieName, value: fullValue };
-      console.log(`🍪 [MIDDLEWARE] Cookie chunked leída: ${i} chunks, valor empieza con: ${fullValue.substring(0, 30)}...`);
-    } else {
-      console.log(`❌ [MIDDLEWARE] No se encontró cookie ${authCookieName} ni chunks`);
     }
-  } else {
-    console.log(`🍪 [MIDDLEWARE] Cookie simple leída, valor empieza con: ${authCookie.value.substring(0, 30)}...`);
   }
   
   if (!authCookie) {
@@ -245,41 +311,50 @@ export async function middleware(request: NextRequest) {
     isAuthenticated = sessionResult.isAuthenticated;
     isExpired = sessionResult.isExpired;
     
-    if (isAuthenticated && session?.user?.sub) {
-      // Acción asíncrona: registrar actividad del usuario (optimizada)
-      updateUserActivityOptimized(session.user.sub, request);
-    }
   }
-  
 
-  return await handleRouteProtection(request, isAuthenticated, isExpired);
+  // Registrar actividad del usuario como mucho una vez cada 10 minutos.
+  // La cookie de throttle se escribe sobre la respuesta final; antes se leia
+  // pero nunca se escribia, asi que se disparaba un UPDATE en CADA peticion.
+  const activityUserId = isAuthenticated ? session?.user?.sub ?? null : null;
+  const touchActivity = !!activityUserId && needsActivityUpdate(request);
+
+  const response = await handleRouteProtection(request, isAuthenticated, isExpired, activityUserId);
+
+  if (touchActivity && activityUserId) {
+    // waitUntil: la escritura corre despues de responder, sin retrasar al usuario
+    // y sin que el runtime la mate a medias.
+    event.waitUntil(updateUserActivityOptimized(activityUserId));
+    response.cookies.set('last_activity_update', String(Date.now()), {
+      path: '/',
+      maxAge: ACTIVITY_UPDATE_INTERVAL / 1000,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+  }
+
+  return response;
 }
 
 /**
- * Actualiza la actividad del usuario de forma asíncrona (versión optimizada)
+ * True si toca refrescar la marca de actividad (throttle de 10 minutos).
  */
-function updateUserActivityOptimized(userId: string, request: NextRequest) {
-  const lastActivityUpdate = request.cookies.get('last_activity_update')?.value;
-  const currentTime = Date.now();
-  
-  // Solo actualizar si han pasado más de 10 minutos
-  if (!lastActivityUpdate || (currentTime - parseInt(lastActivityUpdate)) > ACTIVITY_UPDATE_INTERVAL) {
-    // Actualizar de forma completamente asíncrona sin bloquear
-    Promise.resolve().then(async () => {
-      try {
-        await supabase
-          .from('user_devices')
-          .update({ last_active_at: new Date().toISOString() })
-          .eq('user_id', userId)
-          .eq('is_active', true);
-      } catch (error) {
-        // Ignorar errores de actividad para no afectar navegación
-        console.warn('⚠️ [MIDDLEWARE] Error actualizando actividad:', error);
-      }
-    });
-  }
+function needsActivityUpdate(request: NextRequest): boolean {
+  const last = request.cookies.get('last_activity_update')?.value;
+  if (!last) return true;
+  const parsed = parseInt(last, 10);
+  if (isNaN(parsed)) return true;
+  return Date.now() - parsed > ACTIVITY_UPDATE_INTERVAL;
 }
 
+/**
+ * Marca actividad del usuario. Best-effort: no se espera y nunca bloquea
+ * la respuesta. Timeout corto para que jamas cuelgue la invocacion.
+ */
+function updateUserActivityOptimized(userId: string): Promise<unknown> {
+  const query = `user_devices?user_id=eq.${encodeURIComponent(userId)}&is_active=eq.true`;
+  return edgePatch(query, { last_active_at: new Date().toISOString() }, { timeoutMs: 800 });
+}
 
 /**
  * Mapeo de rutas a módulos
@@ -327,144 +402,195 @@ function getModuleFromPath(pathname: string): string | null {
 }
 
 /**
- * Verifica el acceso a módulos para una ruta específica
+ * Contexto compartido por las verificaciones de una misma peticion:
+ * presupuesto de tiempo, identidad y memo de consultas repetidas.
  */
-async function checkModuleAccess(request: NextRequest, pathname: string): Promise<NextResponse | null> {
+type GateContext = {
+  request: NextRequest;
+  /** Instante (ms) despues del cual ya no se lanzan mas consultas. */
+  deadline: number;
+  userId: string | null;
+  /** Memo de la busqueda de organizacion por subdominio. */
+  orgBySubdomain?: { id: number; status: string } | null;
+};
+
+/**
+ * Veredicto positivo cacheado en cookie.
+ *  o: organizacion activa, e: expiracion (epoch s),
+ *  s: 1 si el estado org/suscripcion quedo verificado,
+ *  m: modulos cuyo acceso quedo verificado,
+ *  u: usuario (sub del JWT) al que pertenece el veredicto.
+ *
+ * `u` va dentro de la carga firmada y se compara con el usuario de la sesion
+ * actual, para que una cookie valida no pueda reutilizarse en otra sesion.
+ */
+type GateCache = { o: string; e: number; s?: 1; m: string[]; u: string };
+
+/** Clave que identifica la organizacion activa segun las cookies. */
+function orgKeyFromCookies(request: NextRequest): string {
+  const id = request.cookies.get('org_id')?.value || '';
+  const sub = request.cookies.get('organization')?.value || '';
+  return `${id}:${sub}`;
+}
+
+/**
+ * Lee y VERIFICA la cookie de veredicto. Devuelve null ante cualquier duda:
+ * sin secreto, sin firma, firma invalida, caducada, otra organizacion u otro
+ * usuario. Devolver null solo significa "hay que consultar de verdad".
+ */
+async function readGateCache(request: NextRequest, userId: string | null): Promise<GateCache | null> {
+  if (!GATE_SECRET) return null;
+
+  const raw = request.cookies.get(GATE_COOKIE)?.value;
+  if (!raw) return null;
+
   try {
-    const moduleCode = getModuleFromPath(pathname);
-    if (!moduleCode) {
-      // Si no hay módulo asociado, permitir acceso
-      return null;
-    }
+    const decoded = decodeURIComponent(raw);
+    const separator = decoded.lastIndexOf('.');
+    if (separator <= 0) return null;
 
-    // Obtener información del usuario desde las cookies (con soporte de chunks)
-    const authCookieName = 'sb-jgmgphmzusbluqhuqihj-auth-token';
-    let authCookie = request.cookies.get(authCookieName);
-    if (!authCookie) {
-      // Buscar cookies chunked (.0, .1, .2...)
-      const chunk0 = request.cookies.get(`${authCookieName}.0`);
-      if (chunk0) {
-        let fullValue = chunk0.value;
-        let i = 1;
-        while (true) {
-          const chunk = request.cookies.get(`${authCookieName}.${i}`);
-          if (!chunk) break;
-          fullValue += chunk.value;
-          i++;
-        }
-        authCookie = { name: authCookieName, value: fullValue };
-      }
-    }
-    if (!authCookie?.value) {
-      return NextResponse.redirect(new URL('/auth/login', request.url));
-    }
+    const payload = decoded.slice(0, separator);
+    const signature = decoded.slice(separator + 1);
 
-    // Decodificar el valor de la cookie si está URL-encoded
-    try {
-      if (authCookie.value.startsWith('%7B') || authCookie.value.startsWith('%5B')) {
-        authCookie = { name: authCookie.name, value: decodeURIComponent(authCookie.value) };
-      }
-    } catch {
-      // Si falla la decodificación, mantener el valor original
-    }
+    // Verificar la firma ANTES de interpretar el contenido.
+    const expected = await gateSignature(payload);
+    if (!safeEqual(signature, expected)) return null;
 
-    // Parsear el token para obtener user_id
-    let userId: string;
-    let organizationId: number;
-    
-    try {
-      const authData = JSON.parse(authCookie.value);
-      userId = authData.user?.id;
-      
-      // Obtener organization_id desde localStorage via currentOrganizationId
-      // En middleware no tenemos acceso a localStorage, así que usamos cookies
-      const orgCookie = request.cookies.get('organization');
-      
-      if (!orgCookie?.value) {
-        console.warn('⚠️ [MIDDLEWARE] No organization cookie found - allowing access');
-        return null; // Permitir acceso si no hay organización definida
-      }
-      
-      // Buscar la organización por subdomain
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('subdomain', orgCookie.value)
-        .single();
-      
-      if (orgError || !org) {
-        console.warn('⚠️ [MIDDLEWARE] Organization not found or error:', orgCookie.value, orgError);
-        // Permitir acceso en caso de error para no bloquear la navegación
-        return null;
-      }
-      
-      organizationId = org.id;
-      
-    } catch (error) {
-      console.error('❌ [MIDDLEWARE] Error parsing auth data:', error);
-      // Permitir acceso en caso de error para no bloquear
-      return null;
-    }
+    const json = new TextDecoder().decode(base64UrlToBytes(payload));
+    const parsed = JSON.parse(json) as GateCache;
+    if (!parsed || typeof parsed.e !== 'number') return null;
+    if (parsed.e < Math.floor(Date.now() / 1000)) return null;
+    // Si cambio la organizacion activa, el cache no aplica.
+    if (parsed.o !== orgKeyFromCookies(request)) return null;
+    // Un veredicto solo vale para el usuario que lo obtuvo.
+    if (parsed.u !== (userId || '')) return null;
 
-    // 1. Verificar si la organización puede acceder al módulo
-    const canAccess = await moduleManagementService.canAccessModule(organizationId, moduleCode);
-    
-    if (!canAccess) {
-      console.log(`🚫 [MIDDLEWARE] Access denied to module ${moduleCode} for organization ${organizationId}`);
-      
-      // Redirigir a página de acceso denegado o inicio
-      const redirectUrl = new URL('/app/inicio', request.url);
-      redirectUrl.searchParams.set('error', 'module_not_activated');
-      redirectUrl.searchParams.set('module', moduleCode);
-      return NextResponse.redirect(redirectUrl);
-    }
-
-    // 2. Verificar acceso a nivel de cargo (job_position)
-    // Obtener el job_position_id del usuario en esta organización
-    const { data: memberData, error: memberError } = await supabase
-      .from('organization_members')
-      .select('job_position_id')
-      .eq('user_id', userId)
-      .eq('organization_id', organizationId)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (memberError || !memberData) {
-      // Si no se encuentra el miembro, permitir acceso (fallback)
-      return null;
-    }
-
-    const jobPositionId = memberData.job_position_id;
-
-    if (jobPositionId) {
-      // Verificar que el cargo tenga acceso al módulo
-      const { data: positionAccess, error: positionError } = await supabase
-        .from('job_position_module_access')
-        .select('can_access')
-        .eq('job_position_id', jobPositionId)
-        .eq('module_code', moduleCode)
-        .maybeSingle();
-
-      if (positionError) {
-        console.warn('⚠️ [MIDDLEWARE] Error checking job position access:', positionError);
-        return null;
-      }
-
-      if (!positionAccess || !positionAccess.can_access) {
-        console.log(`🚫 [MIDDLEWARE] Access denied to module ${moduleCode} for job position ${jobPositionId}`);
-        const redirectUrl = new URL('/app/inicio', request.url);
-        redirectUrl.searchParams.set('error', 'job_position_no_access');
-        redirectUrl.searchParams.set('module', moduleCode);
-        return NextResponse.redirect(redirectUrl);
-      }
-    }
-
-    return null; // Permitir acceso
-    
-  } catch (error) {
-    console.error('❌ [MIDDLEWARE] Error checking module access:', error);
-    return null; // En caso de error, permitir acceso para evitar bloqueos
+    return {
+      o: parsed.o,
+      e: parsed.e,
+      s: parsed.s === 1 ? 1 : undefined,
+      m: Array.isArray(parsed.m) ? parsed.m : [],
+      u: parsed.u,
+    };
+  } catch {
+    return null;
   }
+}
+
+/**
+ * Construye el valor firmado de la cookie. Se calcula en el camino async del
+ * gate para que escribirla sobre la respuesta siga siendo sincrono.
+ * Devuelve null si no hay secreto configurado (cache desactivado).
+ */
+async function buildGateCookie(gate: {
+  orgKey: string;
+  statusOk: boolean;
+  modules: string[];
+  userId: string | null;
+}): Promise<string | null> {
+  if (!GATE_SECRET) return null;
+
+  const value: GateCache = {
+    o: gate.orgKey,
+    e: Math.floor(Date.now() / 1000) + GATE_TTL_SECONDS,
+    ...(gate.statusOk ? { s: 1 as const } : {}),
+    m: gate.modules.slice(-12),
+    u: gate.userId || '',
+  };
+
+  const payload = bytesToBase64Url(new TextEncoder().encode(JSON.stringify(value)));
+  const signature = await gateSignature(payload);
+  return encodeURIComponent(`${payload}.${signature}`);
+}
+
+function writeGateCookie(response: NextResponse, signedValue: string) {
+  response.cookies.set(GATE_COOKIE, signedValue, {
+    path: '/',
+    httpOnly: true,
+    maxAge: GATE_TTL_SECONDS,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  });
+}
+
+/** Busca la organizacion por el subdominio en cookie. Se memoiza por peticion. */
+async function getOrgBySubdomain(ctx: GateContext): Promise<{ id: number; status: string } | null> {
+  if (ctx.orgBySubdomain !== undefined) return ctx.orgBySubdomain;
+
+  const subdomain = ctx.request.cookies.get('organization')?.value;
+  if (!subdomain) {
+    ctx.orgBySubdomain = null;
+    return null;
+  }
+
+  const rows = await edgeSelect<{ id: number; status: string }>(
+    `organizations?select=id,status&subdomain=eq.${encodeURIComponent(subdomain)}&limit=1`,
+    { deadline: ctx.deadline }
+  );
+  ctx.orgBySubdomain = rows && rows.length > 0 ? rows[0] : null;
+  return ctx.orgBySubdomain;
+}
+
+/**
+ * Verifica el acceso a modulos para una ruta especifica.
+ *
+ * Fail open: si una consulta falla o se agota el presupuesto de tiempo,
+ * se permite el acceso. La UI y las APIs vuelven a validar permisos.
+ */
+async function checkModuleAccess(ctx: GateContext, pathname: string): Promise<NextResponse | null> {
+  const moduleCode = getModuleFromPath(pathname);
+  if (!moduleCode) return null; // Ruta sin modulo asociado
+
+  const userId = ctx.userId;
+  if (!userId) return null;
+
+  const org = await getOrgBySubdomain(ctx);
+  if (!org) return null; // Sin organizacion identificable: permitir
+  const organizationId = org.id;
+
+  // Consultas independientes en paralelo: modulo activo en la org + cargo del usuario.
+  const [moduleRows, memberRows] = await Promise.all([
+    edgeSelect<{ is_active: boolean }>(
+      `organization_modules?select=is_active&organization_id=eq.${organizationId}` +
+        `&module_code=eq.${encodeURIComponent(moduleCode)}&is_active=eq.true&limit=1`,
+      { deadline: ctx.deadline }
+    ),
+    edgeSelect<{ job_position_id: string | null }>(
+      `organization_members?select=job_position_id&user_id=eq.${encodeURIComponent(userId)}` +
+        `&organization_id=eq.${organizationId}&is_active=eq.true&limit=1`,
+      { deadline: ctx.deadline }
+    ),
+  ]);
+
+  // 1. La organizacion tiene el modulo activo
+  if (moduleRows === null) return null; // consulta fallida -> permitir
+  if (moduleRows.length === 0) {
+    const redirectUrl = new URL('/app/inicio', ctx.request.url);
+    redirectUrl.searchParams.set('error', 'module_not_activated');
+    redirectUrl.searchParams.set('module', moduleCode);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  // 2. El cargo del usuario tiene acceso al modulo
+  if (!memberRows || memberRows.length === 0) return null; // fallback: permitir
+  const jobPositionId = memberRows[0].job_position_id;
+  if (!jobPositionId) return null;
+
+  const accessRows = await edgeSelect<{ can_access: boolean }>(
+    `job_position_module_access?select=can_access&job_position_id=eq.${encodeURIComponent(jobPositionId)}` +
+      `&module_code=eq.${encodeURIComponent(moduleCode)}&limit=1`,
+    { deadline: ctx.deadline }
+  );
+
+  if (accessRows === null) return null; // consulta fallida -> permitir
+  if (accessRows.length === 0 || !accessRows[0].can_access) {
+    const redirectUrl = new URL('/app/inicio', ctx.request.url);
+    redirectUrl.searchParams.set('error', 'job_position_no_access');
+    redirectUrl.searchParams.set('module', moduleCode);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  return null; // Permitir acceso
 }
 
 /**
@@ -480,11 +606,15 @@ const FROZEN_ALLOWED_ROUTES = [
 ];
 
 /**
- * Verifica el estado de la organización y suscripción.
- * Si la org está suspendida/eliminada o el trial expiró sin pago,
+ * Verifica el estado de la organizacion y suscripcion.
+ * Si la org esta suspendida/eliminada o el trial expiro sin pago,
  * redirige a /app/cuenta-congelada.
+ *
+ * Fail open ante cualquier error o timeout.
  */
-async function checkOrgAndSubscriptionStatus(request: NextRequest, pathname: string): Promise<NextResponse | null> {
+async function checkOrgAndSubscriptionStatus(ctx: GateContext, pathname: string): Promise<NextResponse | null> {
+  const request = ctx.request;
+
   // Solo verificar rutas /app/
   if (!pathname.startsWith('/app/')) return null;
 
@@ -492,125 +622,179 @@ async function checkOrgAndSubscriptionStatus(request: NextRequest, pathname: str
   const isAllowedRoute = FROZEN_ALLOWED_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'));
   if (isAllowedRoute) return null;
 
-  try {
-    // Obtener la organización desde la cookie 'org_id' (seteada desde client-side)
-    // o desde la cookie 'organization' (subdomain) como fallback
-    const orgIdCookie = request.cookies.get('org_id');
-    const orgSubdomainCookie = request.cookies.get('organization');
+  // Organizacion desde la cookie 'org_id' o, como fallback, por subdominio
+  let orgId: number | null = null;
+  let status: string | null = null;
 
-    let orgId: number | null = null;
+  const orgIdCookie = request.cookies.get('org_id')?.value;
+  if (orgIdCookie) {
+    const parsed = parseInt(orgIdCookie, 10);
+    if (!isNaN(parsed)) orgId = parsed;
+  }
 
-    if (orgIdCookie?.value) {
-      orgId = parseInt(orgIdCookie.value, 10);
-      if (isNaN(orgId)) orgId = null;
-    }
+  if (!orgId) {
+    const orgBySub = await getOrgBySubdomain(ctx);
+    if (!orgBySub) return null; // Sin org identificable o consulta fallida: permitir
+    orgId = orgBySub.id;
+    status = orgBySub.status;
+  }
 
-    if (!orgId && orgSubdomainCookie?.value) {
-      // Fallback: buscar por subdomain
-      const { data: orgBySub, error: subError } = await supabase
-        .from('organizations')
-        .select('id, status')
-        .eq('subdomain', orgSubdomainCookie.value)
-        .single();
+  if (status === null) {
+    const rows = await edgeSelect<{ id: number; status: string }>(
+      `organizations?select=id,status&id=eq.${orgId}&limit=1`,
+      { deadline: ctx.deadline }
+    );
+    if (!rows || rows.length === 0) return null; // Permitir en caso de error
+    status = rows[0].status;
+  }
 
-      if (subError || !orgBySub) {
-        return null; // Permitir acceso en caso de error
-      }
+  // Caso 1: Organizacion suspendida o eliminada
+  if (status === 'suspended' || status === 'deleted') {
+    const redirectUrl = new URL('/app/cuenta-congelada', request.url);
+    redirectUrl.searchParams.set('reason', status);
+    return NextResponse.redirect(redirectUrl);
+  }
 
-      orgId = orgBySub.id;
+  // Caso 2: Verificar suscripcion (la mas reciente)
+  const subs = await edgeSelect<{
+    status: string;
+    trial_end: string | null;
+    current_period_end: string | null;
+    stripe_subscription_id: string | null;
+    stripe_customer_id: string | null;
+  }>(
+    `subscriptions?select=status,trial_end,current_period_end,stripe_subscription_id,stripe_customer_id` +
+      `&organization_id=eq.${orgId}&order=created_at.desc&limit=1`,
+    { deadline: ctx.deadline }
+  );
 
-      // Verificar suspensión directamente desde esta query
-      if (orgBySub.status === 'suspended' || orgBySub.status === 'deleted') {
-        const redirectUrl = new URL('/app/cuenta-congelada', request.url);
-        redirectUrl.searchParams.set('reason', orgBySub.status);
-        return NextResponse.redirect(redirectUrl);
-      }
-    }
+  if (!subs || subs.length === 0) return null; // Sin suscripcion registrada: se maneja client-side
+  const subData = subs[0];
 
-    if (!orgId) {
-      return null; // Sin organization identificable, permitir acceso
-    }
+  const now = new Date();
 
-    // Consultar estado de la organización
-    const { data: orgData, error: orgError } = await supabase
-      .from('organizations')
-      .select('id, status')
-      .eq('id', orgId)
-      .single();
+  // Suscripcion cancelada
+  if (subData.status === 'canceled') {
+    const redirectUrl = new URL('/app/cuenta-congelada', request.url);
+    redirectUrl.searchParams.set('reason', 'canceled');
+    return NextResponse.redirect(redirectUrl);
+  }
 
-    if (orgError || !orgData) {
-      return null; // Permitir acceso en caso de error
-    }
+  // Pago pendiente (past_due)
+  if (subData.status === 'past_due') {
+    const redirectUrl = new URL('/app/cuenta-congelada', request.url);
+    redirectUrl.searchParams.set('reason', 'payment_failed');
+    return NextResponse.redirect(redirectUrl);
+  }
 
-    // Caso 1: Organización suspendida o eliminada
-    if (orgData.status === 'suspended' || orgData.status === 'deleted') {
-      const redirectUrl = new URL('/app/cuenta-congelada', request.url);
-      redirectUrl.searchParams.set('reason', orgData.status);
-      return NextResponse.redirect(redirectUrl);
-    }
+  // Trial expirado: si el status sigue "trialing" y la fecha ya paso, bloquear
+  // sin importar si tiene stripe_subscription_id (el webhook actualizaria a "active" si pago)
+  if (subData.status === 'trialing') {
+    const trialEnd = subData.trial_end
+      ? new Date(subData.trial_end)
+      : (subData.current_period_end ? new Date(subData.current_period_end) : null);
 
-    // Caso 2: Verificar suscripción
-    // Usar maybeSingle() en vez de single() para evitar error 406 cuando
-    // la organización no tiene suscripción registrada todavía.
-    const { data: subData, error: subError } = await supabase
-      .from('subscriptions')
-      .select('status, trial_end, current_period_end, stripe_subscription_id, stripe_customer_id')
-      .eq('organization_id', orgId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (subError || !subData) {
-      return null; // Sin suscripción registrada, permitir (se manejará en client-side)
-    }
-
-    const now = new Date();
-
-    // Suscripción cancelada
-    if (subData.status === 'canceled') {
-      const redirectUrl = new URL('/app/cuenta-congelada', request.url);
-      redirectUrl.searchParams.set('reason', 'canceled');
-      return NextResponse.redirect(redirectUrl);
-    }
-
-    // Pago pendiente (past_due)
-    if (subData.status === 'past_due') {
-      const redirectUrl = new URL('/app/cuenta-congelada', request.url);
-      redirectUrl.searchParams.set('reason', 'payment_failed');
-      return NextResponse.redirect(redirectUrl);
-    }
-
-    // Trial expirado: si el status sigue "trialing" y la fecha ya pasó, bloquear
-    // sin importar si tiene stripe_subscription_id (el webhook actualizaría a "active" si pagó)
-    if (subData.status === 'trialing') {
-      const trialEnd = subData.trial_end ? new Date(subData.trial_end) : (subData.current_period_end ? new Date(subData.current_period_end) : null);
-
-      if (trialEnd && trialEnd < now) {
-        const redirectUrl = new URL('/app/cuenta-congelada', request.url);
-        redirectUrl.searchParams.set('reason', 'trial_expired');
-        return NextResponse.redirect(redirectUrl);
-      }
-    }
-
-    // Suscripción inactiva sin trial vigente
-    if (subData.status === 'incomplete' || subData.status === 'incomplete_expired') {
+    if (trialEnd && trialEnd < now) {
       const redirectUrl = new URL('/app/cuenta-congelada', request.url);
       redirectUrl.searchParams.set('reason', 'trial_expired');
       return NextResponse.redirect(redirectUrl);
     }
-
-    return null; // Todo en orden
-  } catch (error) {
-    console.error('❌ [MIDDLEWARE] Error checking org/subscription status:', error);
-    return null; // En caso de error, permitir acceso para no bloquear
   }
+
+  // Suscripcion inactiva sin trial vigente
+  if (subData.status === 'incomplete' || subData.status === 'incomplete_expired') {
+    const redirectUrl = new URL('/app/cuenta-congelada', request.url);
+    redirectUrl.searchParams.set('reason', 'trial_expired');
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  return null; // Todo en orden
+}
+
+/**
+ * Ejecuta las verificaciones de /app/ (cuenta congelada + acceso a modulos)
+ * dentro de un presupuesto de tiempo acotado.
+ *
+ * Devuelve el redirect si toca bloquear, y la cookie de veredicto a escribir
+ * cuando el acceso quedo verificado (solo se cachean veredictos positivos).
+ */
+async function runAppGate(
+  request: NextRequest,
+  pathname: string,
+  userId: string | null
+): Promise<{
+  redirect: NextResponse | null;
+  /** Valor ya firmado de la cookie de veredicto, o null si no hay que escribirla. */
+  gateCookie: string | null;
+}> {
+  const coreRoutes = ['/app/inicio', '/app/plan'];
+  const isCorePath = coreRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
+
+  // En rutas exentas de congelamiento no se verifica el estado, asi que
+  // tampoco se puede cachear como verificado.
+  const isFrozenExempt =
+    pathname === '/app/cuenta-congelada' ||
+    FROZEN_ALLOWED_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'));
+
+  const moduleCode = isCorePath ? null : getModuleFromPath(pathname);
+  const cache = await readGateCache(request, userId);
+  const orgKey = orgKeyFromCookies(request);
+
+  const needStatusCheck = !isFrozenExempt && cache?.s !== 1;
+  const needModuleCheck = !!moduleCode && !cache?.m.includes(moduleCode);
+
+  if (!needStatusCheck && !needModuleCheck) {
+    return { redirect: null, gateCookie: null }; // Todo resuelto por el cache
+  }
+
+  const ctx: GateContext = {
+    request,
+    deadline: Date.now() + MW_DB_BUDGET_MS,
+    userId,
+  };
+
+  try {
+    if (needStatusCheck) {
+      const frozenResult = await checkOrgAndSubscriptionStatus(ctx, pathname);
+      if (frozenResult) return { redirect: frozenResult, gateCookie: null };
+    }
+
+    if (needModuleCheck) {
+      const moduleResult = await checkModuleAccess(ctx, pathname);
+      if (moduleResult) return { redirect: moduleResult, gateCookie: null };
+    }
+  } catch (error) {
+    // Nunca bloquear la navegacion por un fallo del gate.
+    console.error('[MIDDLEWARE] Error en verificacion de acceso:', error);
+    return { redirect: null, gateCookie: null };
+  }
+
+  const modules = cache ? [...cache.m] : [];
+  if (needModuleCheck && moduleCode && !modules.includes(moduleCode)) modules.push(moduleCode);
+
+  const statusOk = cache?.s === 1 || needStatusCheck;
+
+  const gateCookie = await buildGateCookie({ orgKey, statusOk, modules, userId });
+  return { redirect: null, gateCookie };
 }
 
 /**
  * Maneja la protección de rutas y redirecciones
  */
-async function handleRouteProtection(request: NextRequest, isAuthenticated: boolean, isExpired: boolean) {
+async function handleRouteProtection(
+  request: NextRequest,
+  isAuthenticated: boolean,
+  isExpired: boolean,
+  userId: string | null
+) {
   const { pathname } = request.nextUrl;
+
+  // Cookie de veredicto (ya firmada) a escribir sobre la respuesta final.
+  let pendingGateCookie: string | null = null;
+  const finalize = (response: NextResponse) => {
+    if (pendingGateCookie) writeGateCookie(response, pendingGateCookie);
+    return response;
+  };
   
   // Solo agregar debugging para rutas específicas
   const shouldDebug = pathname.startsWith('/app/') || pathname === '/auth/login';
@@ -703,24 +887,13 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
       return NextResponse.redirect(new URL('/app/inicio', request.url));
     }
 
-    // Verificar estado de la organización y suscripción (cuenta congelada)
-    if (pathname.startsWith('/app/') && pathname !== '/app/cuenta-congelada') {
-      const frozenResult = await checkOrgAndSubscriptionStatus(request, pathname);
-      if (frozenResult) {
-        return frozenResult;
-      }
-    }
-
-    // Verificar acceso a módulos para rutas protegidas
-    // Excluir rutas core que siempre deben ser accesibles
-    const coreRoutes = ['/app/inicio', '/app/plan'];
-    const isCorePath = coreRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
-    
-    if (pathname.startsWith('/app/') && !isCorePath) {
-      const moduleAccessResult = await checkModuleAccess(request, pathname);
-      if (moduleAccessResult) {
-        return moduleAccessResult;
-      }
+    // Verificaciones de /app/: cuenta congelada + acceso a modulos.
+    // Acotadas por presupuesto de tiempo y cacheadas en cookie durante 60s,
+    // para que nunca puedan colgar la invocacion del middleware.
+    if (pathname.startsWith('/app/')) {
+      const { redirect, gateCookie } = await runAppGate(request, pathname, userId);
+      if (redirect) return redirect;
+      pendingGateCookie = gateCookie;
     }
   }
 
@@ -733,7 +906,7 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
   
   // Si es localhost (desarrollo)
   if (hostname.includes('localhost')) {
-    return NextResponse.next();
+    return finalize(NextResponse.next());
   }
   
   // Si tiene 4 partes o más, es un subdominio de tercer nivel (organización)
@@ -748,7 +921,7 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production'
       });
-      return response;
+      return finalize(response);
     }
   }
   
@@ -759,7 +932,7 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
     console.log('✅ [MIDDLEWARE] Permitiendo acceso a la ruta');
   }
   
-  return NextResponse.next();
+  return finalize(NextResponse.next());
 }
 
 // See "Matching Paths" below to learn more
@@ -770,11 +943,18 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public (public files)
      * - api/test (test endpoints - no auth required)
      * - api/stripe (Stripe API endpoints - handle their own auth)
      * - api/sessions (Session API endpoints - handle their own auth)
+     *
+     * NOTA sobre los assets de public/: Next los sirve en la RAIZ (/sw.js),
+     * no bajo /public/, asi que el token "public" de este matcher nunca los
+     * excluia. shouldSkipRoute() si los dejaba pasar, pero solo despues de
+     * invocar el middleware. Con la PWA revalidando /sw.js en cada navegacion
+     * eso eran ~6,5 invocaciones por segundo puramente desperdiciadas.
+     * Se enumeran de forma explicita (no por regex de extension) para no
+     * arriesgar el parseo del matcher en un hotfix de produccion.
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|api/test|api/stripe|api/sessions|api/integrations/twilio|api/super-admin-access|api/super-admin-cleanup|api/factus|api/facebook-feed|api/cron|api/web-orders|api/auth).*)',
+    '/((?!_next/static|_next/image|favicon.ico|favicon-32x32.png|apple-touch-icon.png|icon-192x192.png|icon-512x512.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/test|api/stripe|api/sessions|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/super-admin-cleanup|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/web-orders|api/auth).*)',
   ],
 };

@@ -19,6 +19,7 @@ interface UltimasNotificacionesProps {
   onRetry: (notificationId: string) => void;
   onNavigate: (url: string) => void;
   onDataChange?: () => void;
+  userId?: string | null;
 }
 
 const channelIcons: Record<string, typeof Mail> = {
@@ -40,7 +41,7 @@ const statusConfig: Record<string, { label: string; badge: string }> = {
 // ── Componente principal ──────────────────────────────
 const PAGE_SIZE = 10;
 
-export function UltimasNotificaciones({ notifications, isLoading, onRetry, onNavigate, onDataChange }: UltimasNotificacionesProps) {
+export function UltimasNotificaciones({ notifications, isLoading, onRetry, onNavigate, onDataChange, userId }: UltimasNotificacionesProps) {
   const [selected, setSelected] = useState<NotificationRow | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -48,21 +49,25 @@ export function UltimasNotificaciones({ notifications, isLoading, onRetry, onNav
   const startIdx = (currentPage - 1) * PAGE_SIZE;
   const paginated = notifications.slice(startIdx, startIdx + PAGE_SIZE);
 
-  // Marcar como leída
+  // Marcar como leída (per-user: INSERT en notification_reads)
   const handleMarkRead = async (notif: NotificationRow) => {
-    if (notif.read_at) return;
-    const now = new Date().toISOString();
-    await supabase.from('notifications').update({ read_at: now }).eq('id', notif.id);
-    onDataChange?.();
+    if (notif.is_read_by_me) return;
+    if (!userId) return;
+    const { error } = await supabase
+      .from('notification_reads')
+      .insert({ notification_id: notif.id, user_id: userId });
+    if (!error) onDataChange?.();
   };
 
-  // Abrir dialog de detalle
+  // Abrir dialog de detalle (marca como leída si no lo está)
   const handleViewDetail = async (notif: NotificationRow) => {
-    if (!notif.read_at) {
-      await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', notif.id);
+    if (!notif.is_read_by_me && userId) {
+      await supabase
+        .from('notification_reads')
+        .insert({ notification_id: notif.id, user_id: userId });
       onDataChange?.();
     }
-    setSelected({ ...notif, read_at: notif.read_at || new Date().toISOString() });
+    setSelected({ ...notif, is_read_by_me: true });
   };
 
   if (isLoading) {
@@ -109,7 +114,7 @@ export function UltimasNotificaciones({ notifications, isLoading, onRetry, onNav
                 <tbody>
                   {paginated.map(notif => {
                     const Icon = channelIcons[notif.channel] || Bell;
-                    const effectiveStatus = notif.read_at ? 'read' : notif.status;
+                    const effectiveStatus = notif.is_read_by_me ? 'read' : notif.status;
                     const stat = statusConfig[effectiveStatus] || statusConfig.pending;
                     const title = notif.payload?.title || notif.payload?.type || '—';
                     const recipient = notif.recipient_email || notif.recipient_phone || (notif.recipient_user_id ? 'Individual' : 'Todos (Org)');
@@ -149,7 +154,7 @@ export function UltimasNotificaciones({ notifications, isLoading, onRetry, onNav
                             <Button variant="ghost" size="sm" onClick={() => handleViewDetail(notif)} title="Ver detalle" className="h-7 w-7 p-0">
                               <Eye className="h-3.5 w-3.5 text-blue-500" />
                             </Button>
-                            {!notif.read_at && (
+                            {!notif.is_read_by_me && (
                               <Button variant="ghost" size="sm" onClick={() => handleMarkRead(notif)} title="Marcar como leída" className="h-7 w-7 p-0">
                                 <CheckCheck className="h-3.5 w-3.5 text-green-500" />
                               </Button>

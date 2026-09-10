@@ -14,24 +14,21 @@ const PAGE_SIZE = 20;
 
 export const BandejaService = {
   // ── Estadísticas rápidas ─────────────────────────────
+  // unread usa el RPC get_unread_notifications_count (per-user)
   async getStats(orgId: number, userId: string): Promise<BandejaStats> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
-    const base = supabase
-      .from('notifications')
-      .select('id, read_at, status, created_at', { count: 'exact', head: false })
-      .eq('organization_id', orgId)
-      .or(`recipient_user_id.eq.${userId},recipient_user_id.is.null`);
 
     const [totalRes, unreadRes, failedRes, todayRes] = await Promise.all([
       supabase.from('notifications').select('id', { count: 'exact', head: true })
         .eq('organization_id', orgId)
         .or(`recipient_user_id.eq.${userId},recipient_user_id.is.null`),
-      supabase.from('notifications').select('id', { count: 'exact', head: true })
-        .eq('organization_id', orgId)
-        .or(`recipient_user_id.eq.${userId},recipient_user_id.is.null`)
-        .is('read_at', null),
+      // Unread per-user via RPC
+      supabase.rpc('get_unread_notifications_count', {
+        p_organization_id: orgId,
+        p_scope: 'all',
+        p_exclude_task_types: false,
+      }),
       supabase.from('notifications').select('id', { count: 'exact', head: true })
         .eq('organization_id', orgId)
         .or(`recipient_user_id.eq.${userId},recipient_user_id.is.null`)
@@ -44,13 +41,14 @@ export const BandejaService = {
 
     return {
       total: totalRes.count ?? 0,
-      unread: unreadRes.count ?? 0,
+      unread: (unreadRes.data as unknown as number) ?? 0,
       failed: failedRes.count ?? 0,
       today: todayRes.count ?? 0,
     };
   },
 
   // ── Listar notificaciones con filtros y paginación ───
+  // Después de cargar, mergea is_read_by_me desde notification_reads (per-user)
   async getNotifications(
     orgId: number,
     userId: string,
@@ -64,10 +62,7 @@ export const BandejaService = {
       .or(`recipient_user_id.eq.${userId},recipient_user_id.is.null`)
       .order('created_at', { ascending: false });
 
-    // Filtros
-    if (filters.readStatus === 'unread') query = query.is('read_at', null);
-    if (filters.readStatus === 'read') query = query.not('read_at', 'is', null);
-
+    // Filtros (readStatus se aplica client-side después del merge, ver abajo)
     if (filters.status !== 'all') query = query.eq('status', filters.status);
     if (filters.channel !== 'all') query = query.eq('channel', filters.channel);
 
@@ -99,35 +94,61 @@ export const BandejaService = {
       return { data: [], total: 0 };
     }
 
-    return { data: (data as BandejaNotification[]) || [], total: count ?? 0 };
+    const notifs = (data as BandejaNotification[]) || [];
+
+    // Merge is_read_by_me desde notification_reads (per-user)
+    if (notifs.length > 0) {
+      const notifIds = notifs.map(n => n.id);
+      const { data: readData } = await supabase
+        .from('notification_reads')
+        .select('notification_id')
+        .eq('user_id', userId)
+        .in('notification_id', notifIds);
+
+      const readIds = new Set((readData || []).map(r => r.notification_id));
+      notifs.forEach(n => {
+        n.is_read_by_me = readIds.has(n.id) ?? false;
+      });
+
+      // Aplicar filtro readStatus client-side (no se puede hacer en SQL con anti-join)
+      let filtered = notifs;
+      if (filters.readStatus === 'unread') {
+        filtered = notifs.filter(n => !n.is_read_by_me);
+      } else if (filters.readStatus === 'read') {
+        filtered = notifs.filter(n => n.is_read_by_me);
+      }
+
+      return { data: filtered, total: count ?? 0 };
+    }
+
+    return { data: notifs, total: count ?? 0 };
   },
 
-  // ── Marcar como leída ────────────────────────────────
-  async markAsRead(notificationId: string): Promise<boolean> {
+  // ── Marcar como leída (per-user: INSERT en notification_reads) ──
+  async markAsRead(notificationId: string, userId: string): Promise<boolean> {
     const { error } = await supabase
-      .from('notifications')
-      .update({ read_at: new Date().toISOString() })
-      .eq('id', notificationId);
+      .from('notification_reads')
+      .insert({ notification_id: notificationId, user_id: userId });
+    if (error && error.code !== '23505') return false;
+    return true;
+  },
+
+  // ── Marcar como no leída (per-user: DELETE en notification_reads) ──
+  async markAsUnread(notificationId: string, userId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('notification_reads')
+      .delete()
+      .eq('notification_id', notificationId)
+      .eq('user_id', userId);
     return !error;
   },
 
-  // ── Marcar como no leída ─────────────────────────────
-  async markAsUnread(notificationId: string): Promise<boolean> {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read_at: null })
-      .eq('id', notificationId);
-    return !error;
-  },
-
-  // ── Marcar todas como leídas ─────────────────────────
-  async markAllAsRead(orgId: number, userId: string): Promise<boolean> {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read_at: new Date().toISOString() })
-      .eq('organization_id', orgId)
-      .or(`recipient_user_id.eq.${userId},recipient_user_id.is.null`)
-      .is('read_at', null);
+  // ── Marcar todas como leídas (RPC server-side: atomico, sin limite de 1000) ──
+  async markAllAsRead(orgId: number): Promise<boolean> {
+    const { error } = await supabase.rpc('mark_all_notifications_as_read', {
+      p_organization_id: orgId,
+      p_scope: 'all',
+    });
     return !error;
   },
 

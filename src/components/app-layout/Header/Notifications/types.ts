@@ -14,7 +14,8 @@ export interface Notification {
     [key: string]: any; // Para cualquier campo adicional en payload
   };
   status: string;
-  read_at: string | null;
+  read_at: string | null; // Deprecado: usar is_read_by_me para el estado por usuario
+  is_read_by_me?: boolean; // true si el usuario actual tiene fila en notification_reads
   created_at: string;
 }
 

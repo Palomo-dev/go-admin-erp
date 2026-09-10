@@ -35,7 +35,28 @@ const getStorageImageUrl = (storagePath: string): string => {
 };
 
 export class POSService {
-  private static organizationId = getOrganizationId();
+  /**
+   * Organización activa, leída EN CADA acceso.
+   *
+   * Antes era `private static organizationId = getOrganizationId()`: un
+   * inicializador de propiedad estática, que se evalúa una sola vez al cargar
+   * el módulo. Si el usuario cambiaba de organización sin recargar la página
+   * (la lista "Mis Organizaciones" navega con el router), o si el módulo se
+   * cargaba antes de que hubiera organización en el almacenamiento, la clase
+   * se quedaba clavada en la organización vieja —o en 0— y seguía sirviendo
+   * productos, carritos y ventas del tenant anterior.
+   */
+  private static get organizationId(): number {
+    const orgId = getOrganizationId();
+    if (this.lastOrganizationId !== orgId) {
+      // Cambió la organización: la sucursal cacheada es de la anterior.
+      this.lastOrganizationId = orgId;
+      this.branchId = null;
+    }
+    return orgId;
+  }
+
+  private static lastOrganizationId: number | null = null;
   private static branchId: number | null = null;
 
   // Obtener branch_id dinámicamente (con detección de cambio de sucursal)

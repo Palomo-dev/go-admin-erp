@@ -37,10 +37,21 @@ export function getProjectRef(): string {
   return SUPABASE_URL.split('.')[0].replace('https://', '');
 }
 
-function baseHeaders(): Record<string, string> {
+/**
+ * `accessToken` es el JWT del usuario de la peticion. Va en `Authorization`
+ * para que PostgREST evalue las politicas RLS COMO ese usuario.
+ *
+ * Sin el, la consulta viaja como `anon` y `auth.uid()` es NULL. Las tablas del
+ * tenant (`organization_modules`, `job_position_module_access`,
+ * `organization_members`) exigen membresia activa en sus politicas, asi que
+ * devuelven 200 con CERO filas —no un error—. Un llamador que interprete
+ * "cero filas" como "no lo tiene contratado" bloquea al usuario en todas las
+ * organizaciones. La clave anon solo sirve para tablas con lectura publica.
+ */
+function baseHeaders(accessToken?: string | null): Record<string, string> {
   return {
     apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    Authorization: `Bearer ${accessToken || SUPABASE_ANON_KEY}`,
     'Content-Type': 'application/json',
     'x-application-name': 'GoAdminERP-middleware',
   };
@@ -54,7 +65,7 @@ function baseHeaders(): Record<string, string> {
  */
 export async function edgeSelect<T = any>(
   query: string,
-  opts: { timeoutMs?: number; deadline?: number } = {}
+  opts: { timeoutMs?: number; deadline?: number; accessToken?: string | null } = {}
 ): Promise<T[] | null> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
 
@@ -64,7 +75,7 @@ export async function edgeSelect<T = any>(
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${query}`, {
       method: 'GET',
-      headers: baseHeaders(),
+      headers: baseHeaders(opts.accessToken),
       cache: 'no-store',
       signal: AbortSignal.timeout(timeoutMs),
     });

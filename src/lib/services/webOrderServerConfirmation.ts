@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { generateInvoiceNumberWithClient } from '@/lib/utils/invoiceUtils';
 import type { WebOrder } from './webOrdersService';
+import { avisarSiNoCuadra, lineasFacturaDesdePedidoWeb, repartirTotalesPedidoWeb } from './webOrderTotals';
 
 /**
  * Sub-métodos de Wompi (pasarela de pago del website).
@@ -408,14 +409,20 @@ export const webOrderServerConfirmation = {
     const saleId = sale.id;
 
     // ── 2. Crear sale_items ──
-    const saleItems = (order.items || []).map((item) => ({
+    // El descuento de pedido (cupón/promoción del sitio web) se prorratea en
+    // las líneas: es la única forma de que factura y cartera lo vean. Ver
+    // `webOrderTotals.ts`.
+    const reparto = repartirTotalesPedidoWeb(order);
+    avisarSiNoCuadra(reparto, order);
+
+    const saleItems = reparto.items.map(({ item, descuento, total }) => ({
       sale_id: saleId,
       product_id: item.product_id,
       quantity: item.quantity,
       unit_price: Number(item.unit_price) || 0,
-      total: Number(item.total) || 0,
+      total,
       tax_amount: Number(item.tax_amount) || 0,
-      discount_amount: Number(item.discount_amount) || 0,
+      discount_amount: descuento,
       notes: {
         product_name: item.product_name,
         from_web_order: order.order_number,
@@ -539,8 +546,8 @@ export const webOrderServerConfirmation = {
         }
         console.log(`✅ ${reservedSerials.length} seriales vendidos desde pedido web ${order.order_number}`);
       }
-    } catch (serialError: any) {
-      console.warn('⚠️ Error vendiendo seriales reservados (no bloquea confirmación):', serialError?.message);
+    } catch (serialError: unknown) {
+      console.warn('⚠️ Error vendiendo seriales reservados (no bloquea confirmación):', serialError instanceof Error ? serialError.message : serialError);
     }
 
     // ── 5. Crear factura de venta (invoice_sales + invoice_items) ──
@@ -580,45 +587,13 @@ export const webOrderServerConfirmation = {
         invoiceId = invoice.id;
         invoiceNumber = invoice.number;
 
-        // Crear invoice_items a partir de web_order_items
-        const productItems = (order.items || []).map((item) => ({
-          invoice_id: invoice.id,
-          invoice_sales_id: invoice.id,
-          invoice_type: 'sale',
-          product_id: item.product_id,
-          description: (item.product_name || 'Producto web').substring(0, 255),
-          qty: item.quantity,
-          unit_price: Number(item.unit_price) || 0,
-          total_line: Number(item.total) || 0,
-          tax_rate: 0,
-          discount_amount: Number(item.discount_amount) || 0,
-          tax_included: false,
-        }));
-
-        // Línea de envío (delivery_fee): el trigger fn_recalc_invoice_totals
-        // recalcula total = SUM(invoice_items) al insertar las líneas. Si no se
-        // incluye el envío como una línea, el total de la factura queda en solo
-        // los productos y se desincroniza con sale.total (que sí incluye envío),
-        // generando además un "overpayment" del pago web frente a la factura.
-        const deliveryFee = Number(order.delivery_fee) || 0;
-        const invoiceItems = [
-          ...productItems,
-          ...(deliveryFee > 0
-            ? [{
-                invoice_id: invoice.id,
-                invoice_sales_id: invoice.id,
-                invoice_type: 'sale',
-                product_id: null,
-                description: 'Envío (Delivery)',
-                qty: 1,
-                unit_price: deliveryFee,
-                total_line: deliveryFee,
-                tax_rate: 0,
-                discount_amount: 0,
-                tax_included: false,
-              }]
-            : []),
-        ];
+        // Líneas de la factura. El trigger fn_recalc_invoice_totals pisa
+        // invoice_sales.total con SUM(total_line), así que las líneas tienen que
+        // reproducir order.total exactamente: productos con el descuento de
+        // pedido prorrateado, envío y propina como líneas propias. Si falta
+        // cualquiera de esos componentes, la factura queda con saldo fantasma
+        // (descuento) o con sobrepago (envío/propina). Ver `webOrderTotals.ts`.
+        const invoiceItems = lineasFacturaDesdePedidoWeb(order, invoice.id, reparto);
 
         if (invoiceItems.length > 0) {
           const { error: invItemsError } = await supabase
@@ -626,6 +601,22 @@ export const webOrderServerConfirmation = {
             .insert(invoiceItems);
           if (invItemsError) {
             console.error('Error creando invoice_items:', invItemsError);
+          } else {
+            // Comprobación contra la base: lo que el trigger dejó como total de
+            // la factura tiene que ser lo que el cliente pagó. Si no, se deja
+            // rastro en el log en vez de descubrirlo en cartera semanas después.
+            const { data: facturaRecalculada } = await supabase
+              .from('invoice_sales')
+              .select('total')
+              .eq('id', invoice.id)
+              .maybeSingle();
+            const totalFactura = Number(facturaRecalculada?.total);
+            const totalPedido = Number(order.total) || 0;
+            if (Number.isFinite(totalFactura) && Math.abs(totalFactura - totalPedido) >= 0.01) {
+              console.error(
+                `[webOrderServerConfirmation] Factura ${invoice.number} del pedido ${order.order_number} quedó en ${totalFactura} pero el pedido vale ${totalPedido}: revisar líneas.`,
+              );
+            }
           }
         }
 
@@ -871,7 +862,7 @@ export const webOrderServerConfirmation = {
           const destCity = (addr.city || '') as string;
 
           // Intentar match por destination_city primero
-          let rateQuery = supabase
+          const rateQuery = supabase
             .from('shipping_rates')
             .select('estimated_transit_days')
             .eq('organization_id', order.organization_id)

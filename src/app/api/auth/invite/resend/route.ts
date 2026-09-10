@@ -32,11 +32,16 @@ export async function POST(request: Request) {
     // via join con organizations. Si se incluye organization_name en el select
     // directo, Postgres retorna 42703 (column does not exist) y el reenvío
     // falla con 500 → el usuario nunca recibe el magic link.
+    // `status = 'pending'` NO implica vigente: una invitación caducada conserva
+    // ese estado. Sin filtrar por expires_at, pedir el reenvío revivía una
+    // invitación vencida con un magic link nuevo y válido.
+    // `expires_at IS NULL` se trata como "no vence" (hoy no hay ninguna así).
     const { data: pendingInvite, error: inviteError } = await admin
       .from('invitations')
       .select('code, organization_id, role_id, organizations!inner(name)')
       .eq('email', normalizedEmail)
       .eq('status', 'pending')
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();

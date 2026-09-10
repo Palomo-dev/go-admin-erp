@@ -74,7 +74,7 @@ Go Admin opera bajo un modelo **SaaS con suscripciones** integrado con **Stripe*
 ### Tabla de Organizaciones Actuales
 
 La plataforma tiene organizaciones activas de diversos tipos:
-- **Restaurante** (type_id=1): Ej: "Donde Checho"
+- **Restaurante** (type_id=1): Ej: alguna
 - **Hotel** (type_id=2): Hoteles y alojamientos
 - **Retail/Tienda** (type_id=3): Tiendas y comercios minoristas
 - **Servicios** (type_id=4): Ej: "GO Admin ERP" (la empresa misma)

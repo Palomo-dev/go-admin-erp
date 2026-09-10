@@ -63,11 +63,11 @@ Ninguno de los dos repos lo tiene. **Primer entregable de la Fase 0**: propón (
 
 | Organización | Tipo | Pedidos | Confirmados | Conversión |
 |---|---|---|---|---|
-| Tu Hogar Store (113) | retail | 2.846 | 213 | **7,5 %** |
-| Reino del Hogar (135) | retail | 1.596 | 198 | **12,4 %** |
-| Tu hogar Store prueba (112) | retail | 19 | 0 | — |
-| Descuento Express (137) | retail | 3 | 0 | — |
-| Donde Checho (120) | restaurante | 2 | 0 | — |
+| Org 113 | retail | 2.846 | 213 | **7,5 %** |
+| Org 135 | retail | 1.596 | 198 | **12,4 %** |
+| Org 112 (pruebas) | retail | 19 | 0 | — |
+| Org 137 | retail | 3 | 0 | — |
+| Org 120 | restaurante | 2 | 0 | — |
 | **Total** | | **4.466** | **411** | **9,2 %** |
 
 El volumen es **e-commerce retail**. 4.031 pedidos (90 %) mueren en `expired`/`cancelled` con pago fallido.
@@ -89,7 +89,7 @@ Eso explica el flete promedio: **$6.168** (org 113) y **$8.368** (org 135) — l
 
 ### 1.4 El restaurante sí opera, y funciona distinto
 
-Donde Checho (org 120) tiene **46 shipments desde POS** con estados que **sí avanzan** (29 `assigned`, 10 `delivered`, 2 `out_for_delivery`, 1 `picked`) y **24 tarifas por barrio de Medellín** (Sabaneta $16.000, Laureles $5.000, Belén $6.000, Domicilio Cerca $3.000…), todas `calculation_method='flat'`, sin `carrier_id`.
+Org 120 tiene **46 shipments desde POS** con estados que **sí avanzan** (29 `assigned`, 10 `delivered`, 2 `out_for_delivery`, 1 `picked`) y **24 tarifas por barrio de Medellín** (Sabaneta $16.000, Laureles $5.000, Belén $6.000, Domicilio Cerca $3.000…), todas `calculation_method='flat'`, sin `carrier_id`.
 
 | | Restaurante (org 120) | E-commerce retail (113, 135) |
 |---|---|---|
@@ -145,18 +145,18 @@ Cada paso es inocuo por sí solo y se puede desplegar y verificar antes del sigu
 1. Migración aditiva          → tablas y columnas nuevas, vacías. Nadie las lee. Producción intacta.
 2. Backend que las lee        → con guardas: si no hay zonas/tarifas/flag, camino legacy. Producción intacta.
 3. UI del ERP                 → el comerciante puede crear zonas y tarifas. El sitio sigue en legacy.
-4. Activar flag en org 112    → "Tu hogar Store prueba": 19 pedidos, 0 confirmados. Banco de pruebas real.
-5. Activar en una tienda real → Reino del Hogar (135, menor volumen) antes que Tu Hogar Store (113).
+4. Activar flag en org 112    → "Org 112": 19 pedidos, 0 confirmados. Banco de pruebas real.
+5. Activar en una tienda real → Org 135 (135, menor volumen) antes que Org 113.
 6. Resto de organizaciones    → a demanda.
 ```
 
-**El paso 4 es un regalo**: ya existe una organización de pruebas (`Tu hogar Store prueba`, org 112) con el mismo sitio y cero ventas confirmadas. Úsala antes de tocar una tienda con dinero real.
+**El paso 4 es un regalo**: ya existe una organización de pruebas (`Org 112`, de pruebas) con el mismo sitio y cero ventas confirmadas. Úsala antes de tocar una tienda con dinero real.
 
 ### 2.4 Qué debe seguir funcionando idéntico (checklist de regresión)
 
 Ejecuta esta lista **antes y después** de cada fase, y compara. Si algo cambia sin que sea intencional, es un bug.
 
-**Restaurante — Donde Checho (org 120)**
+**Restaurante — Org 120**
 - [ ] El checkout muestra Domicilio / Recoger igual que hoy.
 - [ ] Las 24 tarifas de barrio se cobran igual (mientras esté en `legacy`).
 - [ ] Los pedidos se guardan con `delivery_type='delivery_own'`.
@@ -164,7 +164,7 @@ Ejecuta esta lista **antes y después** de cada fase, y compara. Si algo cambia 
 - [ ] Los tiempos estimados siguen en minutos (30 listo / 60 entrega).
 - [ ] La asignación de conductor y la impresión de guía interna no cambian.
 
-**E-commerce — Tu Hogar Store (113) y Reino del Hogar (135), en `legacy`**
+**E-commerce — Org 113 y Org 135, en `legacy`**
 - [ ] Envío = $10.000, gratis sobre $100.000. Mismo número, mismo texto.
 - [ ] El pedido se crea, se paga por la pasarela y se auto-confirma igual.
 - [ ] Se siguen creando `sale`, `sale_items`, `invoice_sales`, `invoice_items`, `payments`, `accounts_receivable` y `shipment`.
@@ -428,7 +428,7 @@ Cuatro piezas ya existen y no se comunican entre sí:
 
 | Pieza | Estado |
 |---|---|
-| `website_settings.available_delivery_types` | ✅ existe. **Tu Hogar Store ya tiene `{delivery_own, delivery_third_party}`** |
+| `website_settings.available_delivery_types` | ✅ existe. **Org 113 ya tiene `{delivery_own, delivery_third_party}`** |
 | Selector de tarifas en el checkout | ✅ existe (`CheckoutWizard.tsx` líneas 1085-1110, radios con nombre, costo y `carrier_name`) |
 | `/api/shipping/calculate` | ✅ existe y **ya hace join a `transport_carriers`**, devuelve `carrier_name` |
 | `/api/orders` | ❌ **descarta todo eso** y guarda `delivery_own` siempre |

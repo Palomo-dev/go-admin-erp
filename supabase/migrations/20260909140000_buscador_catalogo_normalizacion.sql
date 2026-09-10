@@ -5,10 +5,10 @@
 --   El texto del cliente se limpiaba de tildes y signos, pero los nombres del
 --   catalogo los conservaban. Se comparaban lados distintos, asi que no casaban:
 --     - "mens"     -> 0 resultados, cuando 2.470 productos dicen "Men's" (95% del
---                     catalogo de la Tienda de Tenis, inalcanzable).
+--                     catalogo de una tienda de calzado, inalcanzable).
 --     - "cafe"     -> 51 resultados, cuando deberian ser 153 ("Cafe" y "Café").
 --     - "unguento" -> 0 resultados, cuando existe "Aciclovir Ungüento".
---   Productos con tilde: Gran Outlet 38,8% · Reino del Hogar 33,3% · Licorera 30,5%.
+--   Productos con tilde: tres organizaciones al 38,8%, 33,3% y 30,5%.
 --
 -- Solucion: normalizar AMBOS lados con la misma funcion, y materializar la forma
 -- normalizada en columnas generadas para que la busqueda no pague el coste de
@@ -41,7 +41,7 @@ comment on function public.f_unaccent(text) is
 -- -----------------------------------------------------------------------------
 -- 2) Normalizacion de busqueda
 --
---   "On Running Men's Performance-T - S" -> "on running mens performance t s"
+--   "Trail Runner Men's Performance-T - S" -> "trail runner mens performance t s"
 --   "Aciclovir Ungüento"                 -> "aciclovir unguento"
 --   "Pocillo Apilable Café"              -> "pocillo apilable cafe"
 --

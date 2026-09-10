@@ -51,7 +51,14 @@ export interface ReportFilters {
 const WEB_SALE_STATUSES = ['confirmed', 'preparing', 'ready', 'in_delivery', 'delivered'];
 
 export class ReportesService {
-  private static organizationId = getOrganizationId();
+  /**
+   * Se lee en cada acceso: un inicializador de propiedad estática se evalúa
+   * una sola vez al cargar el módulo y dejaba los reportes clavados en la
+   * organización con la que se cargó la página (ver POSService).
+   */
+  private static get organizationId(): number {
+    return getOrganizationId();
+  }
 
   static async setOrganizationContext(): Promise<void> {
     const orgId = getOrganizationId();

@@ -594,7 +594,7 @@ secreto no validaba y procesaba igual. En los logs de 24 h: 18 respuestas 406 so
 `integration_credentials`, que son exactamente esas búsquedas fallando.
 
 Consecuencia: cualquiera con el endpoint y una referencia de pedido podía marcarlo como
-pagado. Tu Hogar Store (~$40,3 M COP) y Reino del Hogar (~$12,5 M COP) detrás de esa ruta.
+pagado. Org 113 (~$40,3 M COP) y Org 135 (~$12,5 M COP) detrás de esa ruta.
 El cron `reconcile-web-orders` NO es red de seguridad: busca `payment_status='paid'` y
 ese update ocurre después de la guarda de firma.
 
@@ -1146,8 +1146,8 @@ funciona de punta a punta. Y las dos decisiones del fundador: activar o no
 ### Fase: F0 — Decisiones de entrega — 2026-09-10
 
 - **Piloto `write_low` en 5 organizaciones**, no en las 83. Se activó en
-  Hotel X (2), Tu Hogar Store (113), Donde Checho (120), Reino del Hogar (135) y
-  Descuento Express (137): las que usan IA de forma activa y tienen el módulo
+  Org 2, Org 113, Org 120, Org 135 y
+  Org 137: las que usan IA de forma activa y tienen el módulo
   `inventory`. Se descartó `ghsvadhg213` (101), organización de pruebas con 3
   llamadas y última actividad en febrero.
 
@@ -1378,8 +1378,8 @@ Criterio rector: aditivo, con salida segura (fail-open) y reversible.
    `chat-widget`.
 3. **Un sinonimo solo se activa si su destino existe en ese catalogo.** Asi una
    base generica en espanol nunca puede hacer que el bot afirme tener algo que
-   no tiene. Verificado: "zapatillas" resuelve en la Tienda de Tenis y NO
-   resuelve en Reino del Hogar.
+   no tiene. Verificado: "zapatillas" resuelve en la Org 139 y NO
+   resuelve en Org 135.
 4. **Todo falla abierto.** Si el contador de tasa falla, o el conteo del tope
    diario falla, se responde igual: dejar mudo a un cliente legitimo por un
    fallo de telemetria es peor que el abuso que se previene.

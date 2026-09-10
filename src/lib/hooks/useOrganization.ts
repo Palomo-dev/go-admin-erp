@@ -31,11 +31,18 @@ const ORG_NAME_KEY = 'currentOrganizationName';
  */
 const ORG_COOKIE_MIDDLEWARE = 'org_id';
 const ORG_COOKIE_SERVER = 'goadmin_org_id';
+/** Subdominio de la organización activa; el middleware la usa como respaldo. */
+const ORG_COOKIE_SUBDOMAIN = 'organization';
 const ORG_COOKIE_MAX_AGE = 30 * 24 * 60 * 60;
 
 function escribirCookie(nombre: string, valor: string): void {
   const secure = process.env.NODE_ENV === 'production' ? '; secure' : '';
   document.cookie = `${nombre}=${valor}; path=/; max-age=${ORG_COOKIE_MAX_AGE}; samesite=lax${secure}`;
+}
+
+function borrarCookie(nombre: string): void {
+  const secure = process.env.NODE_ENV === 'production' ? '; secure' : '';
+  document.cookie = `${nombre}=; path=/; max-age=0; samesite=lax${secure}`;
 }
 
 // Interfaz para la organización almacenada localmente
@@ -153,7 +160,12 @@ export function guardarOrganizacionActiva(organizacion: Organizacion): void {
     escribirCookie(ORG_COOKIE_MIDDLEWARE, idStr);
     escribirCookie(ORG_COOKIE_SERVER, idStr);
     if (completa.subdomain) {
-      escribirCookie('organization', completa.subdomain);
+      escribirCookie(ORG_COOKIE_SUBDOMAIN, completa.subdomain);
+    } else if (!isAlreadySaved) {
+      // Organización distinta y no sabemos su subdominio: la cookie anterior
+      // es de OTRO tenant. Borrarla, nunca dejarla: el middleware la usa para
+      // resolver la organización cuando falta `org_id`.
+      borrarCookie(ORG_COOKIE_SUBDOMAIN);
     }
 
     // Solo hacer log si es una organización nueva o diferente
@@ -187,9 +199,8 @@ export function limpiarOrganizacionActiva(): void {
       sessionStorage.removeItem(key);
       void removeMobileStorage(key);
     }
-    const secure = process.env.NODE_ENV === 'production' ? '; secure' : '';
-    for (const cookie of [ORG_COOKIE_MIDDLEWARE, ORG_COOKIE_SERVER, 'organization']) {
-      document.cookie = `${cookie}=; path=/; max-age=0; samesite=lax${secure}`;
+    for (const cookie of [ORG_COOKIE_MIDDLEWARE, ORG_COOKIE_SERVER, ORG_COOKIE_SUBDOMAIN]) {
+      borrarCookie(cookie);
     }
   } catch (error) {
     console.error('Error al limpiar la organización activa:', error);

@@ -317,9 +317,11 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   // La cookie de throttle se escribe sobre la respuesta final; antes se leia
   // pero nunca se escribia, asi que se disparaba un UPDATE en CADA peticion.
   const activityUserId = isAuthenticated ? session?.user?.sub ?? null : null;
+  // JWT del usuario para que las consultas del gate pasen por RLS como el.
+  const activityAccessToken = isAuthenticated ? session?.access_token ?? null : null;
   const touchActivity = !!activityUserId && needsActivityUpdate(request);
 
-  const response = await handleRouteProtection(request, isAuthenticated, isExpired, activityUserId);
+  const response = await handleRouteProtection(request, isAuthenticated, isExpired, activityUserId, activityAccessToken);
 
   if (touchActivity && activityUserId) {
     // waitUntil: la escritura corre despues de responder, sin retrasar al usuario
@@ -410,6 +412,12 @@ type GateContext = {
   /** Instante (ms) despues del cual ya no se lanzan mas consultas. */
   deadline: number;
   userId: string | null;
+  /**
+   * JWT del usuario. Las consultas del gate van con el, no con la clave anon:
+   * las tablas del tenant filtran por `auth.uid()` y como anon devolverian
+   * cero filas siempre (ver `baseHeaders` en `edge-rest.ts`).
+   */
+  accessToken: string | null;
   /** Memo de la busqueda de organizacion por subdominio. */
   orgBySubdomain?: { id: number; status: string } | null;
 };
@@ -525,10 +533,35 @@ async function getOrgBySubdomain(ctx: GateContext): Promise<{ id: number; status
 
   const rows = await edgeSelect<{ id: number; status: string }>(
     `organizations?select=id,status&subdomain=eq.${encodeURIComponent(subdomain)}&limit=1`,
-    { deadline: ctx.deadline }
+    { deadline: ctx.deadline, accessToken: ctx.accessToken }
   );
   ctx.orgBySubdomain = rows && rows.length > 0 ? rows[0] : null;
   return ctx.orgBySubdomain;
+}
+
+/**
+ * Organizacion activa segun las cookies, con el MISMO criterio para todas las
+ * verificaciones del gate: primero `org_id` y, solo si falta, el subdominio de
+ * la cookie `organization`.
+ *
+ * `checkModuleAccess` resolvia antes solo por subdominio. Como la cookie
+ * `organization` unicamente se reescribe cuando quien guarda la organizacion
+ * conoce su subdominio, podia quedarse en la organizacion ANTERIOR mientras
+ * `org_id` ya apuntaba a la nueva: el gating de modulos se evaluaba contra otro
+ * tenant y bloqueaba modulos que la organizacion activa si tiene contratados.
+ *
+ * `status` viene null cuando la organizacion se resolvio por `org_id`: quien lo
+ * necesite lo consulta.
+ */
+async function resolveOrgFromCookies(
+  ctx: GateContext
+): Promise<{ id: number; status: string | null } | null> {
+  const orgIdCookie = ctx.request.cookies.get('org_id')?.value;
+  if (orgIdCookie) {
+    const parsed = parseInt(orgIdCookie, 10);
+    if (!isNaN(parsed) && parsed > 0) return { id: parsed, status: null };
+  }
+  return await getOrgBySubdomain(ctx);
 }
 
 /**
@@ -544,7 +577,13 @@ async function checkModuleAccess(ctx: GateContext, pathname: string): Promise<Ne
   const userId = ctx.userId;
   if (!userId) return null;
 
-  const org = await getOrgBySubdomain(ctx);
+  // Sin JWT no se puede consultar: `organization_modules` filtra por
+  // `auth.uid()`, asi que como anon devolveria cero filas y bloquearia al
+  // usuario en TODAS sus organizaciones. Cero filas solo significa "no lo
+  // tiene contratado" cuando la consulta va autenticada.
+  if (!ctx.accessToken) return null;
+
+  const org = await resolveOrgFromCookies(ctx);
   if (!org) return null; // Sin organizacion identificable: permitir
   const organizationId = org.id;
 
@@ -553,12 +592,12 @@ async function checkModuleAccess(ctx: GateContext, pathname: string): Promise<Ne
     edgeSelect<{ is_active: boolean }>(
       `organization_modules?select=is_active&organization_id=eq.${organizationId}` +
         `&module_code=eq.${encodeURIComponent(moduleCode)}&is_active=eq.true&limit=1`,
-      { deadline: ctx.deadline }
+      { deadline: ctx.deadline, accessToken: ctx.accessToken }
     ),
     edgeSelect<{ job_position_id: string | null }>(
       `organization_members?select=job_position_id&user_id=eq.${encodeURIComponent(userId)}` +
         `&organization_id=eq.${organizationId}&is_active=eq.true&limit=1`,
-      { deadline: ctx.deadline }
+      { deadline: ctx.deadline, accessToken: ctx.accessToken }
     ),
   ]);
 
@@ -579,7 +618,7 @@ async function checkModuleAccess(ctx: GateContext, pathname: string): Promise<Ne
   const accessRows = await edgeSelect<{ can_access: boolean }>(
     `job_position_module_access?select=can_access&job_position_id=eq.${encodeURIComponent(jobPositionId)}` +
       `&module_code=eq.${encodeURIComponent(moduleCode)}&limit=1`,
-    { deadline: ctx.deadline }
+    { deadline: ctx.deadline, accessToken: ctx.accessToken }
   );
 
   if (accessRows === null) return null; // consulta fallida -> permitir
@@ -622,27 +661,16 @@ async function checkOrgAndSubscriptionStatus(ctx: GateContext, pathname: string)
   const isAllowedRoute = FROZEN_ALLOWED_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'));
   if (isAllowedRoute) return null;
 
-  // Organizacion desde la cookie 'org_id' o, como fallback, por subdominio
-  let orgId: number | null = null;
-  let status: string | null = null;
-
-  const orgIdCookie = request.cookies.get('org_id')?.value;
-  if (orgIdCookie) {
-    const parsed = parseInt(orgIdCookie, 10);
-    if (!isNaN(parsed)) orgId = parsed;
-  }
-
-  if (!orgId) {
-    const orgBySub = await getOrgBySubdomain(ctx);
-    if (!orgBySub) return null; // Sin org identificable o consulta fallida: permitir
-    orgId = orgBySub.id;
-    status = orgBySub.status;
-  }
+  // Misma resolucion que checkModuleAccess: 'org_id' y, si falta, subdominio.
+  const org = await resolveOrgFromCookies(ctx);
+  if (!org) return null; // Sin org identificable o consulta fallida: permitir
+  const orgId = org.id;
+  let status: string | null = org.status;
 
   if (status === null) {
     const rows = await edgeSelect<{ id: number; status: string }>(
       `organizations?select=id,status&id=eq.${orgId}&limit=1`,
-      { deadline: ctx.deadline }
+      { deadline: ctx.deadline, accessToken: ctx.accessToken }
     );
     if (!rows || rows.length === 0) return null; // Permitir en caso de error
     status = rows[0].status;
@@ -665,7 +693,7 @@ async function checkOrgAndSubscriptionStatus(ctx: GateContext, pathname: string)
   }>(
     `subscriptions?select=status,trial_end,current_period_end,stripe_subscription_id,stripe_customer_id` +
       `&organization_id=eq.${orgId}&order=created_at.desc&limit=1`,
-    { deadline: ctx.deadline }
+    { deadline: ctx.deadline, accessToken: ctx.accessToken }
   );
 
   if (!subs || subs.length === 0) return null; // Sin suscripcion registrada: se maneja client-side
@@ -721,7 +749,8 @@ async function checkOrgAndSubscriptionStatus(ctx: GateContext, pathname: string)
 async function runAppGate(
   request: NextRequest,
   pathname: string,
-  userId: string | null
+  userId: string | null,
+  accessToken: string | null
 ): Promise<{
   redirect: NextResponse | null;
   /** Valor ya firmado de la cookie de veredicto, o null si no hay que escribirla. */
@@ -751,6 +780,7 @@ async function runAppGate(
     request,
     deadline: Date.now() + MW_DB_BUDGET_MS,
     userId,
+    accessToken,
   };
 
   try {
@@ -785,7 +815,8 @@ async function handleRouteProtection(
   request: NextRequest,
   isAuthenticated: boolean,
   isExpired: boolean,
-  userId: string | null
+  userId: string | null,
+  accessToken: string | null
 ) {
   const { pathname } = request.nextUrl;
 
@@ -891,7 +922,7 @@ async function handleRouteProtection(
     // Acotadas por presupuesto de tiempo y cacheadas en cookie durante 60s,
     // para que nunca puedan colgar la invocacion del middleware.
     if (pathname.startsWith('/app/')) {
-      const { redirect, gateCookie } = await runAppGate(request, pathname, userId);
+      const { redirect, gateCookie } = await runAppGate(request, pathname, userId, accessToken);
       if (redirect) return redirect;
       pendingGateCookie = gateCookie;
     }

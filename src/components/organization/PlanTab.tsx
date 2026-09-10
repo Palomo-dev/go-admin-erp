@@ -784,11 +784,11 @@ export default function PlanTab({ orgId }: PlanTabProps) {
               // consumido`, que da un número distinto por dos razones:
               //   1. El reseteo mensual suma el ROLLOVER del mes anterior
               //      (mensual + rollover + comprados), y el límite no lo incluía:
-              //      Reino del Hogar aparecía con 7.046 disponibles cuando tenía
-              //      16.002 reales.
+              //      una organización aparecía con 7.046 disponibles cuando
+              //      tenía 16.002 reales.
               //   2. Un plan sin créditos mensuales daba límite 0 y disponible
-              //      NEGATIVO: Hotel X mostraba "8 / 0" y −8 disponibles
-              //      teniendo 10.099.992 créditos.
+              //      NEGATIVO: otra mostraba "8 / 0" y −8 disponibles teniendo
+              //      10.099.992 créditos.
               const aiCreditsAvailable = aiCredits?.remaining ?? 0;
               // El techo de la barra parte del saldo real para que el rollover y
               // los planes a medida queden dentro y nunca se pinte fuera de rango.

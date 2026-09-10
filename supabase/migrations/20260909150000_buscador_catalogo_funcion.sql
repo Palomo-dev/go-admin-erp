@@ -6,7 +6,7 @@
 --   - solo miraba `name`, ignorando brand / sku / reference / description
 --     aunque ya existian indices trigram para todos ellos,
 --   - trataba cada variante como un producto distinto (86,6% del catalogo de la
---     Tienda de Tenis son variantes; en Reino del Hogar el 58% de los mensajes
+--     una tienda de calzado son variantes; en otra el 58% de los mensajes
 --     con tarjetas mostraron el mismo producto repetido),
 --   - no descartaba nada: una coincidencia de puntaje cero se mostraba igual.
 --
@@ -21,7 +21,7 @@
 -- `nevera|lavadora|televisor|olla…`), que no sirven para la perfumeria, la
 -- drogueria, la licorera ni la tienda de tenis que ya estan en la plataforma.
 --
--- El tipo de organizacion NO es fuente fiable: "Donde Checho" esta registrado
+-- El tipo de organizacion NO es fuente fiable: hay organizaciones registradas
 -- como `restaurant` y su catalogo son "jeans kar brillos". Lo unico fiable es el
 -- catalogo mismo.
 -- -----------------------------------------------------------------------------
@@ -172,7 +172,7 @@ as $fn$
             -- Palabra completa en marca o referencia.
             when c.n_marca like '% ' || t.tok || ' %' then 3.0
             -- La categoria ayuda cuando el catalogo esta en otro idioma que el
-            -- cliente: la Tienda de Tenis tiene productos "On Running Men's"
+            -- cliente: una tienda de calzado tiene su catalogo en ingles
             -- pero su categoria se llama "Calzado".
             when c.n_categoria like '% ' || t.tok || ' %' then 2.5
             -- Subcadena: solo con cuerpo suficiente. Con 3 letras casa cualquier

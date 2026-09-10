@@ -10,7 +10,7 @@ description: End-to-end testing notes for the go-admin-erp Next.js app, includin
 - Repo: `/home/ubuntu/repos/go-admin-erp`
 - Server: `http://localhost:3000` (use `PORT=3001` if 3000 busy)
 - Test account: `andrespalacio07@hotmail.com` / `12345678`
-- Organization: `Donde Checho Restaurant` (id `120`)
+- Organization: `Org 120` (restaurante)
 - Supabase auth cookie: `sb-jgmgphmzusbluqhuqihj-auth-token`
 - CDP endpoint is dynamic; fetch `http://localhost:29229/json/version` first.
 - If `/_next/static/chunks/...` returns 400/404 after a rebuild, kill any stale `next-server` processes and restart `PORT=3000 npm run start`; `kill_shell` may leave the server process behind.

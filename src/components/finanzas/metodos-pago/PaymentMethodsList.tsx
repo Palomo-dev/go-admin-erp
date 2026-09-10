@@ -504,12 +504,22 @@ export default function PaymentMethodsList({
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      // 1. Eliminar la vinculación de la organización
-      const { error: orgError } = await supabase
+      // 1. Eliminar la vinculación de la organización.
+      // `.select()` es obligatorio: un DELETE que RLS bloquea NO devuelve
+      // error, solo afecta 0 filas. Sin esta comprobación la fila desaparecía
+      // de la pantalla y reaparecía al recargar. Borrar métodos de pago exige
+      // el permiso `billing_management` (pantalla de roles y de cargos).
+      const { data: borradas, error: orgError } = await supabase
         .from('organization_payment_methods')
         .delete()
-        .eq('id', deleteTarget.id);
+        .eq('id', deleteTarget.id)
+        .select('id');
       if (orgError) throw orgError;
+      if (!borradas || borradas.length === 0) {
+        throw new Error(
+          'No se pudo eliminar el método de pago: tu cargo o rol no tiene el permiso de facturación.'
+        );
+      }
 
       // 2. Eliminar el método de pago personalizado (si no es del sistema)
       if (!deleteTarget.payment_method?.is_system) {

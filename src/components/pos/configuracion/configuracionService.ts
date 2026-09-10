@@ -172,12 +172,23 @@ export class ConfiguracionService {
 
   // Activar/desactivar método de pago
   static async togglePaymentMethod(id: number, isActive: boolean): Promise<void> {
-    const { error } = await supabase
+    // `.select()` es obligatorio para saber si la fila cambió de verdad: un
+    // UPDATE que RLS bloquea NO devuelve error, simplemente afecta 0 filas.
+    // Sin esto el interruptor se movía en pantalla, el usuario creía haber
+    // guardado y al recargar volvía atrás. Escribir métodos de pago exige el
+    // permiso `billing_management` (pantalla de roles y de cargos).
+    const { data, error } = await supabase
       .from('organization_payment_methods')
       .update({ is_active: isActive, updated_at: new Date().toISOString() })
-      .eq('id', id);
+      .eq('id', id)
+      .select('id');
 
     if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error(
+        'No se pudo cambiar el método de pago: tu cargo o rol no tiene el permiso de facturación.'
+      );
+    }
   }
 
   // Agregar método de pago a la organización

@@ -144,7 +144,7 @@ Tras la auditoría sobre 15.016 respuestas reales y los catálogos de 19 organiz
 
 **El teléfono se detecta contando dígitos, no por la forma.** Una regla basada solo en el aspecto se comía consultas legítimas como «talla 42 43 44».
 
-**El vocabulario decide, no el vertical.** No hay plantillas por tipo de negocio: `organization_types` no es fiable («Donde Checho» está registrado como `restaurant` y vende jeans). El vocabulario sale del catálogo de cada organización y se refresca con `pg_cron` (job 20, 04:17 diario) mediante `REFRESH MATERIALIZED VIEW CONCURRENTLY`.
+**El vocabulario decide, no el vertical.** No hay plantillas por tipo de negocio: `organization_types` no es fiable (una de ellas está registrado como `restaurant` y vende jeans). El vocabulario sale del catálogo de cada organización y se refresca con `pg_cron` (job 20, 04:17 diario) mediante `REFRESH MATERIALIZED VIEW CONCURRENTLY`.
 
 **La corrección de erratas ya no es un mapa fijo.** `labadora → lavadora` funcionaba solo para línea blanca. Ahora la similitud trigram contra el catálogo real resuelve `pocilo → pocillo` y `acetaminofeno → acetaminofen` sin mantener ninguna lista.
 
@@ -154,17 +154,17 @@ Tras la auditoría sobre 15.016 respuestas reales y los catálogos de 19 organiz
 
 | Caso | Antes | Ahora |
 |---|---|---|
-| Tienda de Tenis · `mens` | 0 | **2.470** productos alcanzables, 6 tarjetas = 45 agrupados |
-| Reino del Hogar · `cafe` | 51 | **153** |
+| Org 139 · `mens` | 0 | **2.470** productos alcanzables, 6 tarjetas = 45 agrupados |
+| Org 135 · `cafe` | 51 | **153** |
 | Droguería · `unguento` | 0 | **2** |
-| Tienda de Tenis · `calzado` (categoría) | 0 | **6** |
+| Org 139 · `calzado` (categoría) | 0 | **6** |
 | `pocillo apilable` | mismo producto 2 veces | **1 tarjeta**, `presentaciones: 2` |
 | `hila` (errata de «hola») | 107 productos | **0** |
 | `estafadores`, `pago` | buscaba y fallaba | **no se busca** |
 
 ### Limitación conocida, no resuelta
 
-**No hay capa de sinónimos.** El vocabulario solo conoce las palabras que están en el catálogo. Un cliente que escriba «zapatillas» en la Tienda de Tenis no encuentra nada, porque ese catálogo está en inglés («On Running Men's»). Buscar por categoría (`calzado`) sí funciona y cubre parte del hueco.
+**No hay capa de sinónimos.** El vocabulario solo conoce las palabras que están en el catálogo. Un cliente que escriba «zapatillas» en la Org 139 no encuentra nada, porque ese catálogo está en inglés (en inglés). Buscar por categoría (`calzado`) sí funciona y cubre parte del hueco.
 
 No es una regresión — comprobado que el código anterior tampoco lo encontraba, pese a tener `zapatillas → tenis` cableado, porque el nombre del producto no contiene «tenis». La solución correcta es una tabla de sinónimos por organización, editable por el tenant. Queda como trabajo pendiente.
 

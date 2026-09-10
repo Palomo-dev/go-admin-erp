@@ -9,10 +9,17 @@
 
 import { createHmac, createHash, timingSafeEqual } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { isPlaceholderCredential } from '@/lib/crm/providerCatalog';
 
 function secret(): string {
   const s = process.env.EMAIL_UNSUBSCRIBE_SECRET?.trim();
-  if (s && s.length >= 16) return s;
+  // La longitud NO basta. El entorno real llevaba
+  // `your-email-unsubscribe-secret-16plus`, de 36 caracteres: pasaba esta
+  // comprobación, así que el respaldo no llegaba a usarse y los enlaces de baja
+  // se firmaban con una cadena escrita en la documentación. Un relleno es peor
+  // que no configurar nada: sin configurar se firma con algo secreto; con el
+  // relleno se falla ABIERTO con una clave que cualquiera conoce.
+  if (s && s.length >= 16 && !isPlaceholderCredential(s)) return s;
   const fb = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
   if (!fb) throw new Error('EMAIL_UNSUBSCRIBE_SECRET no configurado');
   return createHash('sha256').update(`unsub:${fb}`).digest('hex');

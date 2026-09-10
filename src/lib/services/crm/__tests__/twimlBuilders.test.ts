@@ -67,10 +67,23 @@ describe('twimlBuilders (FASE-03 §4.5)', () => {
 
   test('entrante: consentimiento + <Client> por identity (máx 10) y sin agentes → Hangup', () => {
     const ids = Array.from({ length: 12 }, (_, i) => `u_${'a'.repeat(32)}_o_${i}`);
+
+    // N-4: primera pasada = SOLO el aviso + <Redirect>. Sin <Dial>, porque hasta
+    // que Twilio no pida el redirect no hay prueba de que el aviso sonara.
+    const announce = buildInboundTwiml({
+      origin, callId: 'in1', from: '+573009998877', identities: ids, recordingEnabled: true,
+      consentMessage: 'Esta llamada será grabada & analizada', ringTimeoutSeconds: 25,
+      consentRedirectUrl: `${origin}/api/voice/twiml/inbound?announced=1`,
+    });
+    expect(announce).toContain('Esta llamada será grabada &amp; analizada');
+    expect(announce).toContain('<Redirect method="POST">https://app.goadmin.io/api/voice/twiml/inbound?announced=1</Redirect>');
+    expect(announce).not.toContain('<Dial');
+
+    // Segunda pasada = el <Dial>, y el aviso NO se repite.
     const xml = buildInboundTwiml({ origin, callId: 'in1', from: '+573009998877', identities: ids, recordingEnabled: true, consentMessage: 'Esta llamada será grabada & analizada', ringTimeoutSeconds: 25 });
     expect((xml.match(/<Client /g) ?? []).length).toBe(10);
     expect(xml).toContain('callerId="+573009998877"');
-    expect(xml).toContain('Esta llamada será grabada &amp; analizada');
+    expect(xml).not.toContain('Esta llamada será grabada &amp; analizada');
     expect(xml).toContain('record="record-from-answer-dual"');
 
     const none = buildInboundTwiml({ origin, callId: 'in2', from: '+571', identities: [], recordingEnabled: false, consentMessage: '', ringTimeoutSeconds: 25 });

@@ -109,10 +109,27 @@ describe('GO Assistant F0 — guarda de acciones', () => {
   });
 
   it('lo no implementado se rechaza con un motivo decible, no con un error de Postgres', () => {
-    const decision = evaluateAction(caps({ isAdmin: true }), 'create_order');
+    // Las órdenes de compra siguen sin implementar (F2 cubrió venta y ajuste).
+    const decision = evaluateAction(caps({ isAdmin: true }), 'create_purchase_order');
     expect(decision.allowed).toBe(false);
     expect(decision.reason).toBe('not_implemented');
     expect(decision.message).toMatch(/Todavía no puedo/);
+  });
+
+  it('las acciones sustituidas por una herramienta remiten a ella', () => {
+    // `create_order` y `create_stock_adjustment` ya NO son el camino: F2 las
+    // sustituyó por `registrar_venta` y `crear_ajuste_inventario`, que son
+    // transaccionales. La acción vieja sigue en el catálogo como `available:
+    // false` para que, si el modelo la nombra, se le redirija en vez de
+    // dejarle creer que no se puede vender.
+    for (const [tipo, herramienta] of [
+      ['create_order', 'registrar_venta'],
+      ['create_stock_adjustment', 'crear_ajuste_inventario'],
+    ] as const) {
+      const decision = evaluateAction(caps({ isAdmin: true }), tipo);
+      expect(decision.allowed).toBe(false);
+      expect(decision.message).toContain(herramienta);
+    }
   });
 
   it('un administrador tiene todos los permisos, pero sigue sujeto al nivel', () => {

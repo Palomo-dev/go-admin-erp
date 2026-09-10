@@ -9,7 +9,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { getChannelCredentials, getChannelProvider, resolveChannel } from './channelService';
-import { componentOf, extractParams, renderTemplateComponents, toMetaComponents, validateHsm } from './templateRender';
+import { componentOf, extractParams, renderTemplateComponents, toMetaComponents, validateHsm, validateHsmComponents, validateHsmName } from './templateRender';
 import { metaCreateTemplate, metaListTemplates, toPositionalBody, twilioApprovalStatus, twilioCreateContent, twilioStatusToHsm, type MetaTemplateRow } from './templateProvider';
 import { WhatsAppError, type HsmButton, type HsmCategory, type HsmComponent, type HsmMeta, type HsmStatus, type WhatsAppTemplate } from './types';
 import type { RenderContext } from '@/lib/services/crm/email/variables';
@@ -157,7 +157,12 @@ export async function updateHsm(orgId: number, id: string, input: UpdateHsmInput
   if (current.meta.status !== 'DRAFT' && (bodyChanged || name !== current.name || language !== current.meta.language)) {
     throw new WhatsAppError('NOT_EDITABLE', 'Una plantilla enviada a Meta no se puede editar: crea una nueva versión', 409);
   }
-  validateHsm({ name, components });
+  validateHsmName(name);
+  // Los componentes solo se validan si CAMBIAN: si no, cambiar `category`,
+  // `description` o `variable_map` en una plantilla importada de Meta con
+  // parámetros posicionales sería imposible, y `variable_map` es lo único que
+  // la haría enviable (tester F16 r3 · N-6).
+  if (bodyChanged) validateHsmComponents(components);
   if (name !== current.name || language !== current.meta.language) await assertNameFree(orgId, name, language, supabase, id);
   const meta: HsmMeta = {
     ...current.meta,

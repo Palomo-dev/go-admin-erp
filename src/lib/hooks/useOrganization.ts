@@ -9,6 +9,35 @@ const STORAGE_KEY = 'organizacionActiva';
 const BRANCH_ID_KEY = 'currentBranchId';
 const BRANCH_ALL_KEY_LOCAL = 'branchFilterAll';
 
+/**
+ * Claves "legacy" que leen el AppLayout, el OrganizationSelector y varias
+ * páginas de auth. Antes se escribían por separado de `organizacionActiva`,
+ * así que las dos fuentes divergían: el selector del sidebar mostraba una
+ * organización y `useOrganization()` devolvía otra. Ahora SOLO se escriben
+ * desde `guardarOrganizacionActiva`, para que no puedan desincronizarse.
+ */
+const ORG_ID_KEY = 'currentOrganizationId';
+const ORG_NAME_KEY = 'currentOrganizationName';
+
+/**
+ * Cookies de organización. Las dos apuntan al mismo id; cada capa lee la suya:
+ * - `org_id`: la lee `src/middleware.ts` para el gating de plan y módulos.
+ * - `goadmin_org_id`: la lee `getServerOrgContext()` (ORG_COOKIE en
+ *   `src/lib/utils/orgContext.ts`) en cada route handler.
+ *
+ * La cookie la escribe el navegador, así que NO es una credencial: el servidor
+ * siempre verifica que el usuario sea miembro activo de esa organización y
+ * responde 403 si no lo es.
+ */
+const ORG_COOKIE_MIDDLEWARE = 'org_id';
+const ORG_COOKIE_SERVER = 'goadmin_org_id';
+const ORG_COOKIE_MAX_AGE = 30 * 24 * 60 * 60;
+
+function escribirCookie(nombre: string, valor: string): void {
+  const secure = process.env.NODE_ENV === 'production' ? '; secure' : '';
+  document.cookie = `${nombre}=${valor}; path=/; max-age=${ORG_COOKIE_MAX_AGE}; samesite=lax${secure}`;
+}
+
 // Interfaz para la organización almacenada localmente
 export type Organizacion = {
   id: number;
@@ -57,41 +86,85 @@ export async function initOrganizationCache(): Promise<void> {
 }
 
 /**
- * Guarda la organización activa en localStorage y sessionStorage como respaldo
+ * Punto ÚNICO de escritura de la organización activa en el cliente.
+ *
+ * Escribe a la vez las tres capas que antes se actualizaban por separado y
+ * acababan divergiendo:
+ *   1. `organizacionActiva` (localStorage + sessionStorage + storage móvil),
+ *      que es lo que leen `obtenerOrganizacionActiva()` y `useOrganization()`.
+ *   2. `currentOrganizationId` / `currentOrganizationName`, que es lo que leen
+ *      el AppLayout (nombre del sidebar) y el OrganizationSelector.
+ *   3. Las cookies `org_id` (middleware) y `goadmin_org_id` (servidor).
+ *
+ * Si el caller pasa datos parciales de la organización que YA está activa
+ * (p. ej. `{ id, name }` desde el AppLayout), se conservan los campos que no
+ * vienen —subdominio, logo, slug— en lugar de borrarlos. Si el id es distinto
+ * se reemplaza entero: es un cambio de organización.
  */
 export function guardarOrganizacionActiva(organizacion: Organizacion): void {
   try {
     // Verificar si la organización ya está guardada para evitar logs innecesarios
     const existingData = localStorage.getItem(STORAGE_KEY);
-    const isAlreadySaved = existingData && JSON.parse(existingData)?.id === organizacion.id;
+    const previa: Organizacion | null = existingData ? JSON.parse(existingData) : null;
+    const isAlreadySaved = previa?.id === organizacion.id;
+
+    // Fusionar solo dentro de la MISMA organización: un caller con datos
+    // parciales no debe borrar el subdominio ni el logo ya conocidos.
+    const completa: Organizacion = isAlreadySaved
+      ? {
+          ...previa,
+          ...Object.fromEntries(
+            Object.entries(organizacion).filter(([, v]) => v !== undefined && v !== null && v !== '')
+          ),
+          id: organizacion.id,
+        }
+      : organizacion;
+
+    const serializada = JSON.stringify(completa);
 
     // Actualizar cache en memoria (síncrono)
-    _orgCache = organizacion;
+    _orgCache = completa;
 
     // Guardar en localStorage como fuente principal (síncrono, para middleware/SSR)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(organizacion));
+    localStorage.setItem(STORAGE_KEY, serializada);
 
     // Guardar en sessionStorage como respaldo
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(organizacion));
+    sessionStorage.setItem(STORAGE_KEY, serializada);
 
     // Persistir en almacenamiento móvil (async, fire and forget)
-    void setMobileStorage(STORAGE_KEY, JSON.stringify(organizacion));
+    void setMobileStorage(STORAGE_KEY, serializada);
 
-    // Guardar cookie org_id para que el middleware pueda validar estado de suscripción
-    document.cookie = `org_id=${organizacion.id}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax${process.env.NODE_ENV === 'production' ? '; secure' : ''}`;
-    if (organizacion.subdomain) {
-      document.cookie = `organization=${organizacion.subdomain}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax${process.env.NODE_ENV === 'production' ? '; secure' : ''}`;
+    // Claves legacy: mismas fuentes, misma escritura. No pueden divergir.
+    const idStr = completa.id.toString();
+    localStorage.setItem(ORG_ID_KEY, idStr);
+    sessionStorage.setItem(ORG_ID_KEY, idStr);
+    void setMobileStorage(ORG_ID_KEY, idStr);
+    if (completa.name) {
+      localStorage.setItem(ORG_NAME_KEY, completa.name);
+      void setMobileStorage(ORG_NAME_KEY, completa.name);
+    } else if (!isAlreadySaved) {
+      // Org nueva sin nombre: el nombre anterior ya no aplica.
+      localStorage.removeItem(ORG_NAME_KEY);
+      void removeMobileStorage(ORG_NAME_KEY);
+    }
+
+    // Cookies: `org_id` para el middleware, `goadmin_org_id` para
+    // getServerOrgContext() en los route handlers.
+    escribirCookie(ORG_COOKIE_MIDDLEWARE, idStr);
+    escribirCookie(ORG_COOKIE_SERVER, idStr);
+    if (completa.subdomain) {
+      escribirCookie('organization', completa.subdomain);
     }
 
     // Solo hacer log si es una organización nueva o diferente
     if (!isAlreadySaved) {
-      console.log('Organización guardada correctamente:', organizacion.id);
+      console.log('Organización guardada correctamente:', completa.id);
     }
 
     // Notificar globalmente que la organización cambió (para que BranchProvider
     // y otros contextos recarguen sus datos sin necesidad de reload manual)
     try {
-      window.dispatchEvent(new CustomEvent(ORGANIZATION_CHANGED_EVENT, { detail: { id: organizacion.id } }));
+      window.dispatchEvent(new CustomEvent(ORGANIZATION_CHANGED_EVENT, { detail: { id: completa.id } }));
     } catch {
       /* noop */
     }
@@ -101,15 +174,62 @@ export function guardarOrganizacionActiva(organizacion: Organizacion): void {
 }
 
 /**
+ * Borra la organización activa de todas las capas (storage, storage móvil y
+ * cookies). Se usa cuando el usuario deja de tener organizaciones: si solo se
+ * limpiara una de las capas, la siguiente carga resucitaría la organización
+ * borrada desde la que quedó.
+ */
+export function limpiarOrganizacionActiva(): void {
+  try {
+    _orgCache = null;
+    for (const key of [STORAGE_KEY, ORG_ID_KEY, ORG_NAME_KEY]) {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+      void removeMobileStorage(key);
+    }
+    const secure = process.env.NODE_ENV === 'production' ? '; secure' : '';
+    for (const cookie of [ORG_COOKIE_MIDDLEWARE, ORG_COOKIE_SERVER, 'organization']) {
+      document.cookie = `${cookie}=; path=/; max-age=0; samesite=lax${secure}`;
+    }
+  } catch (error) {
+    console.error('Error al limpiar la organización activa:', error);
+  }
+}
+
+/**
+ * Persiste la organización activa en `profiles.last_org_id`.
+ *
+ * Es el respaldo que usa el servidor cuando la petición no trae header ni
+ * cookie (`getServerOrgContext`, paso 3), y también de lo que parte el login
+ * en el siguiente dispositivo. Sin esto, cambiar de organización solo movía el
+ * cliente y el servidor seguía respondiendo con la organización anterior.
+ */
+export async function persistirOrganizacionEnPerfil(organizationId: number): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ last_org_id: organizationId })
+      .eq('id', user.id);
+    if (error) {
+      console.error('No se pudo guardar last_org_id:', error.message);
+    }
+  } catch (error) {
+    console.error('No se pudo guardar last_org_id:', error);
+  }
+}
+
+/**
  * Cambia la organización activa desde dentro de la app (no usar en el login inicial).
  * Limpia primero el estado dependiente de la organización anterior (sucursal
  * seleccionada, modo "todas las sucursales" y caché de datos de usuario) para
  * evitar que queden visibles datos de la organización previa tras el cambio.
  */
-export function cambiarOrganizacionActiva(
+export async function cambiarOrganizacionActiva(
   organizacion: Organizacion,
   options: { reload?: boolean } = { reload: true }
-): void {
+): Promise<void> {
   try {
     localStorage.removeItem('currentBranchId');
     sessionStorage.removeItem('currentBranchId');
@@ -125,17 +245,14 @@ export function cambiarOrganizacionActiva(
     console.error('Error al limpiar estado de la organización anterior:', error);
   }
 
+  // Escribe storage (incluidas las claves legacy) y las cookies `org_id` /
+  // `goadmin_org_id`, que es lo que hace que el SERVIDOR vea la nueva org.
   guardarOrganizacionActiva(organizacion);
-  try {
-    localStorage.setItem('currentOrganizationId', organizacion.id.toString());
-    if (organizacion.name) localStorage.setItem('currentOrganizationName', organizacion.name);
-    sessionStorage.setItem('currentOrganizationId', organizacion.id.toString());
-    // Persistir claves legacy en almacenamiento móvil (async)
-    void setMobileStorage('currentOrganizationId', organizacion.id.toString());
-    if (organizacion.name) void setMobileStorage('currentOrganizationName', organizacion.name);
-  } catch (error) {
-    console.error('Error al guardar claves legacy de organización:', error);
-  }
+
+  // Se espera al UPDATE antes de recargar: si el reload ganara la carrera, el
+  // perfil se quedaría apuntando a la organización anterior y cualquier
+  // petición sin cookie (otro dispositivo, cookie caducada) volvería a ella.
+  await persistirOrganizacionEnPerfil(organizacion.id);
 
   if (options.reload !== false) {
     window.location.reload();

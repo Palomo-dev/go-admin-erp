@@ -1,4 +1,4 @@
-# Estado del proyecto â€” PersonalizaciÃ³n Editor Web + Sitio PÃºblico
+# Estado del proyecto â€” Personalización Editor Web + Sitio Público
 
 > Fuente de verdad para el comando `/loop`.
 > Se actualiza en cada ronda, nunca se reescribe desde cero.
@@ -6,27 +6,27 @@
 
 ## Fases
 
-| Fase | Documento | Estado | Ronda | Ãšltima calificaciÃ³n | Responsable |
+| Fase | Documento | Estado | Ronda | Ãšltima calificación | Responsable |
 |------|-----------|--------|-------|---------------------|-------------|
 | F1 â€” Responsive y full-bleed real (HOTFIX) | `FASE-0-FUNDACIONES.md` | aprobado | 3 | 9.6 | builder |
 | F1.1 â€” Unificar sistema de anchos (tailwind.config) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
-| F1.2 â€” Reemplazar `container` por ancho explÃ­cito (SectionWrapper) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
-| F1.3 â€” Eliminar hack de mÃ¡rgenes negativos (HeroFullscreen) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
+| F1.2 â€” Reemplazar `container` por ancho explícito (SectionWrapper) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
+| F1.3 â€” Eliminar hack de márgenes negativos (HeroFullscreen) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
 | F1.4 â€” Auditar rango 768-1024px (overflow, headers, slider) | `FASE-0-FUNDACIONES.md` | aprobado | 2 | 9.2 | builder |
 | F1.5 â€” Cuarto viewport en el editor (EditorHeader) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.5 | builder |
 | F0 â€” Fundaciones del schema y controles | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
 | F0.1 â€” Extender ContentFieldDef (tipos, showIf, responsive, repeater, entity) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
 | F0.2 â€” Grupos de campos reutilizables (STYLE/CAROUSEL/GRID/CARD/BUTTON) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
 | F0.3 â€” Controles nuevos del editor (Color/Icon/Repeater/Entity/Responsive/Spacing/Alignment) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
-| F0.4 â€” AgrupaciÃ³n y condicionales en el sidebar | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
+| F0.4 â€” Agrupación y condicionales en el sidebar | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
 | F0.5 â€” Helpers de estilo del lado del sitio (sectionStyle.ts) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
 | F0.6 â€” Contrato verificado editor â†” sitio (manifest + test CI) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
-| F2 â€” Contrato de estilo + reparaciÃ³n 37 secciones | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.3 | builder |
+| F2 â€” Contrato de estilo + reparación 37 secciones | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.3 | builder |
 | F2.1 â€” Aplicar contrato de estilo en SectionWrapper (buildSectionStyle) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.3 | builder |
 | F2.2 â€” Reparar bugs de contrato de claves (itemsâ†’images, companyâ†’role) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.5 | builder |
-| F2.3 â€” Declarar 26 tipos huÃ©rfanos en el catÃ¡logo | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.3 | builder |
+| F2.3 â€” Declarar 26 tipos huérfanos en el catálogo | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.3 | builder |
 | F2.4 â€” Declarar variantes faltantes | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.3 | builder |
-| F2.5 â€” Completar contenido faltante secciÃ³n por secciÃ³n | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.3 | builder |
+| F2.5 â€” Completar contenido faltante sección por sección | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.3 | builder |
 | F2.6 â€” Actualizar matriz de cobertura | `FASE-0-FUNDACIONES.md` | pendiente | 0 | - | builder |
 | F3 â€” Hero pro (altura, botones, slider, motores de reserva) | `FASE-3-7-SECCIONES.md` | aprobado | 2 | 9.6 | builder |
 | F4 — Categorías (icono/color, grid responsive, carrusel) | `FASE-3-7-SECCIONES.md` | aprobado | 2 | 9.5 | builder |
@@ -38,10 +38,10 @@
 | F10 — Sistema dual de reseñas (generadas + reales, seleccionable) | `FASE-9-10-PAGINAS-Y-REVIEWS.md` | aprobado | 2 | 9.5 | builder |
 | F11 — Comercio: stock atómico, factura, AR, contabilidad | `FASE-11-COMERCIO.md` | aprobado | 2 | 9.6 | builder |
 | F12 — Editor profesional (preview vivo, borradores, undo) | `FASE-12-EDITOR-PRO.md` | aprobado | 2 | 9.5 | builder |
-| H0-H11 â€” Header configurable + mega-menÃº (fases 0-11) | `plan-header-megamenu/PLAN.md` | aprobado | 3 | 9.1 | builder |
+| H0-H11 â€” Header configurable + mega-menú (fases 0-11) | `plan-header-megamenu/PLAN.md` | aprobado | 3 | 9.1 | builder |
 | H12A â€” HeaderMinimal drawer default | `plan-header-megamenu/PLAN.md` | pendiente | 0 | - | builder |
 | H12B â€” Iconos y orden de acciones | `plan-header-megamenu/PLAN.md` | pendiente | 0 | - | builder |
-| H12C â€” PersonalizaciÃ³n del botÃ³n CTA | `plan-header-megamenu/PLAN.md` | pendiente | 0 | - | builder |
+| H12C â€” Personalización del botón CTA | `plan-header-megamenu/PLAN.md` | pendiente | 0 | - | builder |
 | N1 — Auto-limpieza de notificaciones (TTL por etapas) | — | aprobado | 2 | 9.2 | builder |
 
 **Orden de arranque acordado:** F1 (hotfix) â†’ F0 â†’ F2, con F11 puntos 1â€“3 en paralelo.
@@ -49,98 +49,98 @@
 
 ## Historial de rondas
 
-### Fase: AnÃ¡lisis previo â€” Ronda 0 â€” 2026-08-26
-- CalificaciÃ³n QA: n/a (fase de anÃ¡lisis, sin cÃ³digo)
-- CalificaciÃ³n Tester: n/a
-- QuÃ© se hizo:
-  - AnÃ¡lisis de `goadmin-websites`: `SectionRenderer` (37 tipos), `SectionWrapper`, hero, categorÃ­as, productos, testimonios, banners, layout, reservas de restaurante.
-  - AnÃ¡lisis del editor en `go-admin-erp`: `SECTION_CATALOG` (24 tipos), `EditorSidebar` (1565 lÃ­neas, 7 editores ad-hoc), `EditorPreview`, persistencia.
-  - AuditorÃ­a del flujo de compra web â†’ ERP y del flujo de reserva de mesa.
-  - VerificaciÃ³n en Supabase de `website_pages`, `website_page_sections`, `website_settings`, `categories`, `web_orders`, `restaurant_reservations`, `restaurant_tables`.
+### Fase: Análisis previo â€” Ronda 0 â€” 2026-08-26
+- Calificación QA: n/a (fase de análisis, sin código)
+- Calificación Tester: n/a
+- Qué se hizo:
+  - Análisis de `goadmin-websites`: `SectionRenderer` (37 tipos), `SectionWrapper`, hero, categorías, productos, testimonios, banners, layout, reservas de restaurante.
+  - Análisis del editor en `go-admin-erp`: `SECTION_CATALOG` (24 tipos), `EditorSidebar` (1565 líneas, 7 editores ad-hoc), `EditorPreview`, persistencia.
+  - Auditoría del flujo de compra web â†’ ERP y del flujo de reserva de mesa.
+  - Verificación en Supabase de `website_pages`, `website_page_sections`, `website_settings`, `categories`, `web_orders`, `restaurant_reservations`, `restaurant_tables`.
   - Plan por fases redactado en `docs/plan-editor-personalizacion-web/` (7 documentos).
-- Hallazgos crÃ­ticos:
-  1. [crÃ­tico] `SectionWrapper` usa `container mx-auto` (ancho fijo por breakpoint) y el hero lo compensa con mÃ¡rgenes negativos constantes â†’ desalineaciÃ³n y scroll horizontal en tablet.
-  2. [crÃ­tico] **15 tipos de secciÃ³n se renderizan en producciÃ³n pero no existen en el editor**: `reservation_cta`, `specialties`, `chef_section`, `delivery_cta`, `partners`, `why_choose_us`, `features_grid`, `how_it_works`, `services_list`, `pricing_table`, `demo_cta` y 6 de parking.
-  3. [crÃ­tico] **La galerÃ­a estÃ¡ rota por desajuste de claves**: el editor guarda `content.items`, los 4 componentes leen `content.images`. Mismo patrÃ³n en testimonios (`company` vs `role`).
-  4. [crÃ­tico] **La reserva de mesa es un formulario decorativo**: `ReservationCtaForm` no tiene `onSubmit` ni llama a ninguna API, mientras `restaurant_reservations` y `restaurant_tables` ya existen completas en la BD.
-  5. [crÃ­tico] Reserva de stock web no atÃ³mica (read-then-write sin transacciÃ³n) â†’ riesgo de overselling.
-  6. [crÃ­tico] Pago fallido no libera `qty_reserved`; no existe cron de expiraciÃ³n de pedidos pendientes.
-  7. [crÃ­tico] Reviews de producto generados en el cliente (`ProductReviews.tsx`) sin respaldo real. **DecisiÃ³n del negocio (E.1): se conservan tal cual** y se aÃ±aden reviews reales como segunda fuente seleccionable desde el editor (F10). Riesgo residual documentado: `AggregateRating` en JSON-LD solo se emitirÃ¡ cuando la fuente activa sea real (regla 10.7).
-  8. [alto] CatÃ¡logo a medio construir: mediana de 2 campos por secciÃ³n; 10 de 24 tipos exponen solo `title`. Parcheado con 7 editores ad-hoc dentro de `EditorSidebar`.
+- Hallazgos críticos:
+  1. [crítico] `SectionWrapper` usa `container mx-auto` (ancho fijo por breakpoint) y el hero lo compensa con márgenes negativos constantes â†’ desalineación y scroll horizontal en tablet.
+  2. [crítico] **15 tipos de sección se renderizan en producción pero no existen en el editor**: `reservation_cta`, `specialties`, `chef_section`, `delivery_cta`, `partners`, `why_choose_us`, `features_grid`, `how_it_works`, `services_list`, `pricing_table`, `demo_cta` y 6 de parking.
+  3. [crítico] **La galería está rota por desajuste de claves**: el editor guarda `content.items`, los 4 componentes leen `content.images`. Mismo patrón en testimonios (`company` vs `role`).
+  4. [crítico] **La reserva de mesa es un formulario decorativo**: `ReservationCtaForm` no tiene `onSubmit` ni llama a ninguna API, mientras `restaurant_reservations` y `restaurant_tables` ya existen completas en la BD.
+  5. [crítico] Reserva de stock web no atómica (read-then-write sin transacción) â†’ riesgo de overselling.
+  6. [crítico] Pago fallido no libera `qty_reserved`; no existe cron de expiración de pedidos pendientes.
+  7. [crítico] Reviews de producto generados en el cliente (`ProductReviews.tsx`) sin respaldo real. **Decisión del negocio (E.1): se conservan tal cual** y se añaden reviews reales como segunda fuente seleccionable desde el editor (F10). Riesgo residual documentado: `AggregateRating` en JSON-LD solo se emitirá cuando la fuente activa sea real (regla 10.7).
+  8. [alto] Catálogo a medio construir: mediana de 2 campos por sección; 10 de 24 tipos exponen solo `title`. Parcheado con 7 editores ad-hoc dentro de `EditorSidebar`.
   9. [alto] `settings.bg_color` y `settings.text_color` los lee `SectionWrapper` pero no se exponen en ninguna parte del editor. `newsletter` lee `button_text`, `placeholder` y `disclaimer` que tampoco se exponen. `ContentFieldDef` declara `type: 'color'` pero el sidebar no lo renderiza.
-  10. [alto] PÃ¡ginas de detalle/flujo no editables ni listadas: detalle de producto, detalle de categorÃ­a, carrito, checkout, confirmaciÃ³n, espacio/reserva, mi-cuenta.
+  10. [alto] Páginas de detalle/flujo no editables ni listadas: detalle de producto, detalle de categoría, carrito, checkout, confirmación, espacio/reserva, mi-cuenta.
   11. [alto] Venta web no genera asiento contable ni maneja reembolsos.
-- PrÃ³xima acciÃ³n: aprobaciÃ³n del plan por el usuario y arranque de F1 (hotfix) + F0, con F11.1â€“11.3 en paralelo.
+- Próxima acción: aprobación del plan por el usuario y arranque de F1 (hotfix) + F0, con F11.1â€“11.3 en paralelo.
 
 ### Fase: F1 â€” Responsive y full-bleed (HOTFIX) â€” Ronda 1 â€” 2026-08-27
-- CalificaciÃ³n QA: 8.6/10
-- CalificaciÃ³n Tester: 8/10 (0 fallos crÃ­ticos, 4 observaciones)
-- QuÃ© se hizo:
+- Calificación QA: 8.6/10
+- Calificación Tester: 8/10 (0 fallos críticos, 4 observaciones)
+- Qué se hizo:
   - F1.1: Config `container` en `tailwind.config.ts` (center, padding fluido, screens 640/768/1024/1280/1400px).
   - F1.2: `SectionWrapper.tsx` con `sectionType`, `CONTAINER_MAX`, `isFullBleed` (default true solo hero), `overlapHeader`. Reemplazado `container mx-auto` por `max-w-7xl mx-auto` (default) o `w-full` (full-bleed).
-  - F1.3: `HeroFullscreen.tsx` sin mÃ¡rgenes negativos, usa `--header-h` via CSS variable. `OrganizationLayout.tsx` con `ResizeObserver` para medir header.
-  - F1.4: `overflow-x-clip` en contenedor raÃ­z, `min-w-0` en `ClassScheduleGrid`, `mobile_breakpoint` default 768â†’1024.
+  - F1.3: `HeroFullscreen.tsx` sin márgenes negativos, usa `--header-h` via CSS variable. `OrganizationLayout.tsx` con `ResizeObserver` para medir header.
+  - F1.4: `overflow-x-clip` en contenedor raíz, `min-w-0` en `ClassScheduleGrid`, `mobile_breakpoint` default 768â†’1024.
   - F1.5: 4to viewport `laptop: 1024px` en `EditorHeader.tsx` y `EditorPreview.tsx`. Traducciones en 4 idiomas.
-- QuÃ© falta / feedback recibido:
-  1. [medio] `overflow-x-clip` en div raÃ­z puede afectar `sticky` del header â†’ mover a `<main>`.
+- Qué falta / feedback recibido:
+  1. [medio] `overflow-x-clip` en div raíz puede afectar `sticky` del header â†’ mover a `<main>`.
   2. [bajo] JSDoc de `useMobileHeader` desactualizado (dice "default 768").
   3. [bajo] Secciones full-bleed no-hero pierden padding horizontal (no aplica hoy, pero documentado).
-  4. [bajo] Efecto colateral: config `container` afecta 13 componentes que aÃºn usan `container mx-auto` (1400px vs 1536px a 2xl).
-- PrÃ³xima acciÃ³n: ronda 2 corrigiendo puntos 1 y 2.
+  4. [bajo] Efecto colateral: config `container` afecta 13 componentes que aún usan `container mx-auto` (1400px vs 1536px a 2xl).
+- Próxima acción: ronda 2 corrigiendo puntos 1 y 2.
 
 ### Fase: F1 â€” Responsive y full-bleed (HOTFIX) â€” Ronda 2 â€” 2026-08-27
-- CalificaciÃ³n QA: pendiente
-- QuÃ© se hizo:
-  - Movido `overflow-x-clip` del div raÃ­z al `<main>` en `OrganizationLayout.tsx` (preserva `sticky` del header).
+- Calificación QA: pendiente
+- Qué se hizo:
+  - Movido `overflow-x-clip` del div raíz al `<main>` en `OrganizationLayout.tsx` (preserva `sticky` del header).
   - Actualizado JSDoc de `useMobileHeader.ts` (default ahora 1024, no 768).
-  - Build de `goadmin-websites` pasa: `âœ“ Compiled successfully`, 46 pÃ¡ginas estÃ¡ticas.
-- Pendiente: validaciÃ³n visual en navegador de los 5 anchos (768/834/900/1024/1280px).
-- **CalificaciÃ³n final: 9.2/10 â€” APROBADA** (puntos 3 y 4 son severidad baja, no bloquean).
+  - Build de `goadmin-websites` pasa: `âœ“ Compiled successfully`, 46 páginas estáticas.
+- Pendiente: validación visual en navegador de los 5 anchos (768/834/900/1024/1280px).
+- **Calificación final: 9.2/10 â€” APROBADA** (puntos 3 y 4 son severidad baja, no bloquean).
 
 ### Fase: F0 â€” Fundaciones del schema â€” F0.1+F0.2 â€” Ronda 1 â€” 2026-08-27
-- CalificaciÃ³n QA: pendiente
-- QuÃ© se hizo:
+- Calificación QA: pendiente
+- Qué se hizo:
   - F0.1: `ContentFieldDef` extendida con `richtext|icon|repeater|entity|spacing|alignment`, `FieldGroup`, `FieldCondition` (`showIf`), `responsive`, `itemFields`, `entity`, `multiple`. `defaultValue: unknown`.
-  - F0.2: `sectionFieldGroups.ts` (564 lÃ­neas) con `STYLE_FIELDS` (15), `CAROUSEL_FIELDS` (16), `GRID_FIELDS` (4), `CARD_FIELDS` (10), `BUTTON_ITEM_FIELDS` (11). InyecciÃ³n automÃ¡tica de `STYLE_FIELDS` en `SECTION_CATALOG` vÃ­a `RAW_CATALOG.map`.
-  - Build ERP: `âœ“ Compiled successfully`, 242 pÃ¡ginas, exit 0.
+  - F0.2: `sectionFieldGroups.ts` (564 líneas) con `STYLE_FIELDS` (15), `CAROUSEL_FIELDS` (16), `GRID_FIELDS` (4), `CARD_FIELDS` (10), `BUTTON_ITEM_FIELDS` (11). Inyección automática de `STYLE_FIELDS` en `SECTION_CATALOG` vía `RAW_CATALOG.map`.
+  - Build ERP: `âœ“ Compiled successfully`, 242 páginas, exit 0.
 - Decisiones: `import type` para evitar ciclos, `RAW_CATALOG` privado, defaults conservadores (`bg_type: 'none'`, `full_bleed: false`).
 
 ### Fase: F0 â€” Fundaciones del schema â€” F0.5 â€” Ronda 1 â€” 2026-08-27
-- CalificaciÃ³n QA: pendiente
-- QuÃ© se hizo:
-  - F0.5: `goadmin-websites/lib/sectionStyle.ts` (457 lÃ­neas) con `resolveResponsive`, `buildSectionStyle`, `buildCardStyle`, `buildButtonStyle`. CSS variables + clases estÃ¡ticas. SSR-safe. Compatibilidad con `settings.bg_color`/`settings.text_color`.
-  - Build sitio: `âœ“ Compiled successfully`, 46 pÃ¡ginas, exit 0.
-- Pendiente: integraciÃ³n en `SectionWrapper.tsx` (F2), consumo de `buildCardStyle`/`buildButtonStyle` (F2+).
+- Calificación QA: pendiente
+- Qué se hizo:
+  - F0.5: `goadmin-websites/lib/sectionStyle.ts` (457 líneas) con `resolveResponsive`, `buildSectionStyle`, `buildCardStyle`, `buildButtonStyle`. CSS variables + clases estáticas. SSR-safe. Compatibilidad con `settings.bg_color`/`settings.text_color`.
+  - Build sitio: `âœ“ Compiled successfully`, 46 páginas, exit 0.
+- Pendiente: integración en `SectionWrapper.tsx` (F2), consumo de `buildCardStyle`/`buildButtonStyle` (F2+).
 
 ### Fase: F0 â€” Fundaciones â€” F0.3+F0.4 â€” Ronda 1 â€” 2026-08-27
-- CalificaciÃ³n QA: 9.0/10
-- QuÃ© se hizo:
-  - F0.3: 17 archivos en `fields/` (8 extraÃ­dos + 7 nuevos + FieldRenderer + types + accordion). `ColorField` corrige bug de `type: 'color'`. `IconField` con ~80 iconos Lucide en 12 categorÃ­as. `RepeaterField` con drag nativo. `EntityField` para category/product. `ResponsiveField` con 3 tabs. `SpacingField` generaliza `SectionSpacingEditor`. `AlignmentField` grid 3Ã—3.
-  - F0.4: `EditorSidebar.tsx` 1673â†’458 lÃ­neas. Accordion por grupo (Contenidoâ†’Datosâ†’DiseÃ±oâ†’Estiloâ†’Carruselâ†’Comportamientoâ†’Avanzado). `isFieldVisible` con `showIf`. `helpText` renderizado. 7 editores ad-hoc eliminados. CatÃ¡logo actualizado con repeaters para hero/gallery/testimonials/faq/brands y entity para products_grid/categories_grid/offers.
-  - Build ERP: exit 0, 242 pÃ¡ginas.
-- Pendientes: richtext usa textarea, EntityField stubs para branch/page/table_zone, validaciÃ³n visual.
+- Calificación QA: 9.0/10
+- Qué se hizo:
+  - F0.3: 17 archivos en `fields/` (8 extraídos + 7 nuevos + FieldRenderer + types + accordion). `ColorField` corrige bug de `type: 'color'`. `IconField` con ~80 iconos Lucide en 12 categorías. `RepeaterField` con drag nativo. `EntityField` para category/product. `ResponsiveField` con 3 tabs. `SpacingField` generaliza `SectionSpacingEditor`. `AlignmentField` grid 3Ã—3.
+  - F0.4: `EditorSidebar.tsx` 1673â†’458 líneas. Accordion por grupo (Contenidoâ†’Datosâ†’Diseñoâ†’Estiloâ†’Carruselâ†’Comportamientoâ†’Avanzado). `isFieldVisible` con `showIf`. `helpText` renderizado. 7 editores ad-hoc eliminados. Catálogo actualizado con repeaters para hero/gallery/testimonials/faq/brands y entity para products_grid/categories_grid/offers.
+  - Build ERP: exit 0, 242 páginas.
+- Pendientes: richtext usa textarea, EntityField stubs para branch/page/table_zone, validación visual.
 
 ### Fase: F0 â€” Fundaciones â€” F0.6 â€” Ronda 1 â€” 2026-08-27
-- CalificaciÃ³n QA: 9.0/10
-- QuÃ© se hizo:
-  - Manifiesto del sitio: `SECTION_MAP` exportado, `CONTENT_KEYS` en 4 componentes de galerÃ­a, `lib/sectionManifest.ts`, endpoint `GET /api/_sections/manifest`.
-  - Verificador de contrato: `sectionContract.ts` con `verifySectionContract()` (errores crÃ­ticos, contentKey mismatch, warnings huÃ©rfanos).
-  - Test CI: `jest.config.js`, 6 tests pasan (detecta 26 tipos huÃ©rfanos, 9 variantes huÃ©rfanas, bug items vs images).
-  - Aviso en editor: badge Ã¡mbar `!` con tooltip en secciones desincronizadas. Fetch del manifiesto al cargar.
+- Calificación QA: 9.0/10
+- Qué se hizo:
+  - Manifiesto del sitio: `SECTION_MAP` exportado, `CONTENT_KEYS` en 4 componentes de galería, `lib/sectionManifest.ts`, endpoint `GET /api/_sections/manifest`.
+  - Verificador de contrato: `sectionContract.ts` con `verifySectionContract()` (errores críticos, contentKey mismatch, warnings huérfanos).
+  - Test CI: `jest.config.js`, 6 tests pasan (detecta 26 tipos huérfanos, 9 variantes huérfanas, bug items vs images).
+  - Aviso en editor: badge ámbar `!` con tooltip en secciones desincronizadas. Fetch del manifiesto al cargar.
   - Fix: `booking_cta:simple` mapeado a `BookingCtaBanner` en SECTION_MAP del sitio.
-- **CalificaciÃ³n final F0: 9.0/10 â€” APROBADA**
+- **Calificación final F0: 9.0/10 â€” APROBADA**
 
-### Fase: F2 â€” Contrato de estilo + reparaciÃ³n 37 secciones â€” Ronda 1 â€” 2026-08-27
-- CalificaciÃ³n QA: 9.3/10
-- QuÃ© se hizo:
+### Fase: F2 â€” Contrato de estilo + reparación 37 secciones â€” Ronda 1 â€” 2026-08-27
+- Calificación QA: 9.3/10
+- Qué se hizo:
   - F2.1: `SectionWrapper.tsx` ahora consume `buildSectionStyle()` para fondo (color/degradado/imagen+overlay), text_color, radio, sombra, borde. Compatibilidad con `settings.bg_color`/`settings.text_color` preservada.
-  - F2.2: Bug P4 reparado â€” galerÃ­a `items`â†’`images` en catÃ¡logo + fallback `content.images ?? content.items` en 4 componentes. Testimonios `company`â†’`role` + fallback `item.role ?? item.company` en 3 componentes. MigraciÃ³n SQL no destructiva ejecutada (1 fila gallery).
-  - F2.3: 26 tipos huÃ©rfanos declarados en `RAW_CATALOG` (15 del plan + 11 adicionales del test).
+  - F2.2: Bug P4 reparado â€” galería `items`â†’`images` en catálogo + fallback `content.images ?? content.items` en 4 componentes. Testimonios `company`â†’`role` + fallback `item.role ?? item.company` en 3 componentes. Migración SQL no destructiva ejecutada (1 fila gallery).
+  - F2.3: 26 tipos huérfanos declarados en `RAW_CATALOG` (15 del plan + 11 adicionales del test).
   - F2.4: 7 variantes faltantes declaradas (categories_grid:default/horizontal/icons, contact_form:simple, cta:split, image_text:image_top, map:default, products_grid:default, team:simple).
   - F2.5: Contenido completado en gallery, newsletter, brands, faq, team, stats, amenities, menu_preview, products_grid, featured_products, offers, room_types, membership_plans, map, contact_form, text_block, cta.
-  - Test de contrato: 6/6 verdes, 0 huÃ©rfanos, 0 errores, 0 warnings.
-  - Build sitio: exit 0, 47 pÃ¡ginas. Build ERP: exit 0, 242 pÃ¡ginas.
-- **CalificaciÃ³n final F2: 9.3/10 â€” APROBADA**
+  - Test de contrato: 6/6 verdes, 0 huérfanos, 0 errores, 0 warnings.
+  - Build sitio: exit 0, 47 páginas. Build ERP: exit 0, 242 páginas.
+- **Calificación final F2: 9.3/10 â€” APROBADA**
 
 ### Fase: F8 ï¿½ Reservas de mesa ï¿½ Ronda 1 ï¿½ 2026-08-27
 - Calificaciï¿½n QA: 9.0/10
@@ -433,7 +433,7 @@ Todas las fases compilan exitosamente en ambos repositorios. Las fases F0ï¿½F
 - Que se hizo:
   - N1.1: Migracion SQL 20260827000000_notifications_ttl_cleanup.sql - indice parcial idx_notifications_unread + funcion expire_old_notifications() (SECURITY DEFINER).
   - N1.2: Endpoint GET /api/cron/expire-old-notifications con auth Bearer CRON_SECRET.
-  - N1.3: Vercel Cron diario   3 * * * en ercel.json.
+  - N1.3: Vercel Cron diario `0 3 * * *` en `vercel.json`.
   - Migracion aplicada via MCP. Ejecucion de prueba: 7,624 marcadas leidas, 933 eliminadas, 79 orgs.
 - Hallazgos QA:
   1. [critico→aclarar] Etapa 2 no filtra read_at IS NULL — correcto por diseño (limpieza total). Solo faltaba comentario.
@@ -449,7 +449,7 @@ eplace vs startsWith).
 - Que se hizo:
   - Fix #1: Comentario SQL explicando que delete_ttl aplica a TODAS las notificaciones (leidas y no leidas) por diseño.
   - Fix #2: GREATEST(v_unread_ttl_days, 1) y GREATEST(v_delete_ttl_days, 1) — minimo 1 dia, previene TTL=0 o negativo.
-  - Fix #3: Parsing token robusto uthHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader.
+  - Fix #3: Parsing token robusto `authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader`.
   - Fix #4: pg_advisory_xact_lock(hashtext('expire_old_notifications')) al inicio del BEGIN.
   - Migracion aplicada via MCP (CREATE OR REPLACE FUNCTION).
 - Hallazgos QA R2:
@@ -671,8 +671,8 @@ Próxima acción: decidir sobre la secuencia de SEC-0.c (rotación y notificaci�
 | Fase | Estado | Ronda | Última calificación | Responsable |
 |------|--------|-------|---------------------|-------------|
 | F0 — Seguridad y verdad del esquema | en_revision | 3 | QA r2: 8.5/10 | builder |
-| F1 — Núcleo del agente (tool calling, streaming, persistencia) | pendiente | 0 | - | builder |
-| F2 — Catálogo de herramientas sobre servicios existentes | pendiente | 0 | - | builder |
+| F1 — Núcleo del agente (tool calling, streaming, persistencia) | en_revision | 1 | - | builder |
+| F2 — Catálogo de herramientas (venta y ajuste hechos) | en_revision | 1 | - | builder |
 | F3 — Confirmación conversacional y deshacer | pendiente | 0 | - | builder |
 | F4 — Visión: facturas y carga masiva | pendiente | 0 | - | builder |
 | F5 — Audio y voz en vivo | pendiente | 0 | - | builder |
@@ -1142,3 +1142,414 @@ tests, no en la lógica.
 `ai_agent_actions` — es la única evidencia que falta de que la cadena completa
 funciona de punta a punta. Y las dos decisiones del fundador: activar o no
 `write_low`, y mover `CLAUDE.md` a la raíz.
+
+### Fase: F0 — Decisiones de entrega — 2026-09-10
+
+- **Piloto `write_low` en 5 organizaciones**, no en las 83. Se activó en
+  Hotel X (2), Tu Hogar Store (113), Donde Checho (120), Reino del Hogar (135) y
+  Descuento Express (137): las que usan IA de forma activa y tienen el módulo
+  `inventory`. Se descartó `ghsvadhg213` (101), organización de pruebas con 3
+  llamadas y última actividad en febrero.
+
+  Razón del cambio de criterio (la ronda 2 proponía activar las 83): la cadena
+  completa nunca se ha ejercitado por HTTP con una sesión real —todo se verificó
+  llamando a las funciones directamente— y "deshacer" no existe hasta la F3, así
+  que una acción mal dictada se arregla a mano en el ERP. Con 5 organizaciones
+  eso es soporte; con 83, un incidente.
+
+  `write_full` sigue apagado en todas: nada con impacto contable.
+
+  Revertir: `update ai_assistant_settings set capability_level='off';`
+
+- **`CLAUDE.md` movido a la raíz** desde `docs/PROPUESTA-CLAUDE-MD.md`.
+  Revertir: `git rm CLAUDE.md` (o borrarlo; no está en el índice todavía).
+
+**Siguiente:** F1 — núcleo del agente (tool calling nativo, streaming SSE,
+persistencia de conversación).
+
+### Fase: F1 — Nucleo del agente — Ronda 1 — 2026-09-10
+
+- Calificacion QA: pendiente
+- Decisiones: `docs/ia-chat/ADR-003-go-assistant-fase1.md`
+
+**Que se hizo:**
+
+- BD (via MCP): `ai_assistant_conversations` y `ai_assistant_messages` con RLS de
+  autor + lectura para administradores. Trigger que mantiene `message_count` y
+  `last_message_at`. Y `fn_expire_ai_agent_actions()` con `pg_cron` cada 10 min,
+  que cierra la deuda de caducidad que quedo de F0.
+- Nucleo en `src/lib/ai/agent/`: `types.ts` (contrato de herramienta con sus 5
+  invariantes), `toolRegistry.ts`, `runAgent.ts`, `modelRouter.ts`,
+  `systemPrompt.ts`, `conversationStore.ts`, `catalogTools.ts` y
+  `tools/consulta.ts`.
+- **Tool calling nativo**: fuera el bloque ```action con regex. Las herramientas
+  se derivan de `ACTION_CATALOG` en vez de duplicarlo — dos fuentes de verdad es
+  el error que este proyecto ya cometio con "el filtro gemelo".
+- **Streaming SSE** en `/api/ai-assistant/stream`, ruta NUEVA. `/chat` se queda
+  intacta como camino de respaldo (§3.1): el cliente cae a ella si el stream no
+  llega. Con `X-Accel-Buffering: no`, sin lo cual nginx bufferiza y anula todo.
+- **Pasos de herramienta visibles** en el panel ("Buscando en el catalogo... ->
+  6 coincidencias") en lugar de tres puntitos.
+- Dos herramientas de consulta nuevas (`buscar_productos` sobre la funcion SQL
+  existente, `consultar_stock`), de riesgo bajo: se ejecutan sin confirmar.
+- El historial ya no lo manda el cliente: se lee de la base. Efecto lateral
+  bienvenido — el vector de inyeccion de mensajes `system` desaparece.
+
+**Verificacion:** 120 tests del asistente en verde (44 guardarrailes + 35 F0 + 8
+contrato + 33 F1). Suite completa 1605 verdes, 2 rojos preexistentes y ajenos.
+`tsc` sin errores, lint limpio en los archivos de la fase.
+
+Se prueba explicitamente que `preview()` no puede escribir: se le pasa un cliente
+de BD que lanza al primer acceso.
+
+**Nota:** los 14 fallos de `f6Adversarial` que aparecieron anoche ya estan
+arreglados (alguien congelo el reloj con `jest.useFakeTimers`), asi que la suite
+vuelve a estar limpia de noche.
+
+**Lo que sigue sin evidencia:** la prueba de humo HTTP con sesion real. Todo se
+ha verificado con tests y llamando a las funciones directamente contra la base,
+pero nadie ha recorrido el camino completo (abrir panel -> pedir -> ver stream ->
+confirmar tarjeta) dejando una fila en `ai_agent_actions` y otra en
+`ai_assistant_messages`. Ni F0 ni F1 deberian darse por cerradas sin eso.
+
+**Proxima accion:** prueba de humo, y despues F2 (catalogo de herramientas sobre
+los servicios existentes: ventas, compras, ajustes documentados).
+
+### Fase: F1 — Ronda 2 — FALLO EN PRODUCCION y hallazgo que cambia F2 — 2026-09-10
+
+**El usuario probó el asistente y no respondía.** "No pude completar la
+respuesta. Inténtalo otra vez." en cada mensaje. Esa era la prueba de humo que
+faltaba, y F1 la suspendió.
+
+**Causa raíz:** los modelos `gpt-5.x` NO funcionan con Chat Completions —
+rechazan `max_tokens` con `Unsupported parameter: 'max_tokens' ... Use
+'max_completion_tokens'` — y hay que llamarlos por la **Responses API**. Las
+cinco organizaciones del piloto tienen `ai_settings.model = 'gpt-5.6-luna'`, así
+que `runAgent` fallaba en la PRIMERA llamada, siempre. Y `/chat`, el camino de
+respaldo, tenía el mismo fallo, así que tampoco rescataba.
+
+Lo agravante: **ya estaba documentado en este repo**, en
+`supabase/functions/ai-auto-response/index.ts`, verificado contra la API real.
+Estaba delante y no se miró antes de escribir el bucle.
+
+**Arreglo:** `src/lib/ai/agent/openaiAdapter.ts`, una puerta única que elige el
+endpoint según el modelo, con streaming y tool calling en ambos, y caída a
+`gpt-4o-mini` si el modelo configurado no tiene acceso en la cuenta.
+
+**Verificado contra la API real** (no con tests): `gpt-5.6-luna` responde texto
+(75/29 tokens) y llama correctamente a `buscar_productos` con
+`{"consulta":"jabón Rey de 300 gramos"}`.
+
+**Composer nuevo** (`assistant/Composer.tsx`), lo que el usuario pidió: textarea
+que crece 1→8 líneas, Enter envía / Shift+Enter salta (en móvil Enter siempre
+salta), adjuntar por botón, arrastrar-soltar y pegar captura, micrófono con
+transcripción que entra al composer para revisarla antes de enviar, y botón de
+detener mientras responde.
+
+---
+
+## HALLAZGO QUE CAMBIA EL PLAN DE F2
+
+El plan dice: "las herramientas llaman a los servicios existentes, no escriben
+SQL". **Esa premisa no se sostiene.** Comprobado uno por uno:
+
+| Servicio | Cliente browser | localStorage | Org por hook |
+|---|---|---|---|
+| posService | sí | 12 usos | sí |
+| purchaseOrderService | sí | — | — |
+| adjustmentService | sí | — | — |
+| transferenciasService | sí | — | sí |
+| supplierService / categoryService / stockService | sí | — | — |
+| movimientosService | sí | — | sí |
+
+**Todos importan `@/lib/supabase/config`**, que es el cliente de NAVEGADOR — el
+mismo que el guardarraíl 6 prohíbe en código de servidor y que fue el bug C4 de
+F0. `posService` además usa `localStorage` y guarda la organización en estado
+estático de clase. **Ninguno se puede llamar desde un route handler.**
+
+Dos salidas:
+
+(a) Refactorizar los 7 servicios para que reciban el cliente por inyección.
+    Toca la UI de producción (POS incluido), riesgo alto de regresión.
+(b) RPC transaccionales para los caminos del asistente, como ya se hizo con
+    `assistant_create_product`. No toca nada de la UI existente, y es lo que
+    §5.3 invariante 4 exige de todos modos.
+
+Recomendación: (b), incremental. Pero **facturar toca dinero**: una venta
+escribe en `sales`, `sale_items`, `invoice_sales`, `invoice_items`, impuestos,
+`payments`, `stock_levels`, `stock_movements`, `accounts_receivable` y
+`cash_movements`. No es un rato de trabajo y no debería hacerse a la carrera.
+
+**Próxima acción:** decisión del fundador sobre (a) o (b), y prueba de humo del
+arreglo del adaptador.
+
+### Fase: F2 — Venta y ajuste de inventario — Ronda 1 — 2026-09-10
+
+- Calificacion QA: pendiente
+
+**Que se hizo:**
+
+- Dos RPC transaccionales: `assistant_register_sale` y
+  `assistant_create_adjustment`, ambas SECURITY INVOKER.
+- Dos herramientas nuevas: `registrar_venta` y `crear_ajuste_inventario`,
+  riesgo `high` / nivel `write_full` / bloqueadas por voz.
+- `create_order` y `create_stock_adjustment` del catalogo viejo pasan a remitir
+  a la herramienta nueva en vez de decir "todavia no puedo".
+- Migracion y reversion versionadas en supabase/migrations y supabase/rollbacks.
+
+**Decisiones de diseno:**
+
+1. **El precio lo pone el catalogo, no el modelo.** Si no viene `unit_price`, la
+   RPC lo lee de `product_prices`. Que una IA invente el precio de venta es
+   justo lo que no puede pasar. Si el usuario da uno distinto, el preview lo
+   avisa antes de confirmar.
+2. **`include_in_cash_register = false`.** Esta venta no nace de una sesion de
+   caja abierta en el POS; meterla en el arqueo descuadraria el cierre del
+   cajero.
+3. **Sin `undo`.** Anular una venta mueve inventario Y contabilidad (los
+   disparadores `fn_auto_journal_*` generan asientos al insertar). Se anula por
+   el camino de negocio del modulo, no revirtiendo filas. El preview lo declara
+   `reversible: false` para que el usuario lo sepa ANTES de confirmar.
+4. **No se puede vender sin stock.** La RPC valida existencias por sucursal y
+   rechaza la venta entera antes de escribir nada.
+
+**Verificacion contra la BD viva** (org 132, todo con rollback):
+
+| Caso | Resultado |
+|---|---|
+| Venta pagada, precio del catalogo | $246.000, estado `paid`, 1 linea + 1 movimiento + 1 pago |
+| Stock | bajo de 13 a 10 (exactamente las 3 unidades vendidas) |
+| Stock insuficiente | `INSUFFICIENT_STOCK`, sin venta creada |
+| Producto de otra organizacion | `PRODUCT_NOT_IN_ORG` |
+| Ajuste de salida | documento + item + movimiento |
+| Ajuste sin motivo | `REASON_REQUIRED` |
+
+Comprobado despues: 0 ventas residuales, 0 ajustes, stock intacto en 13.
+
+128 tests del asistente en verde. `tsc` sin errores.
+
+**Lo que sigue faltando de F2:** ordenes de compra, facturas de compra y
+traslados entre sucursales. Y la prueba de humo de la venta desde el navegador.
+
+**Proxima accion:** F3 (deshacer) — que ahora importa mas que antes, porque las
+acciones de F2 ya mueven dinero.
+
+
+---
+
+### Fase: Motor IA Chat — Proteccion del widget, sinonimos y coste — Ronda 1 — 2026-09-10
+
+**Contexto:** hay clientes usando el chat en produccion durante todo el cambio.
+Criterio rector: aditivo, con salida segura (fail-open) y reversible.
+
+**Qué se hizo (builder):**
+
+*A. Proteccion del widget publico*
+- `widget_rate_limit` + `widget_registrar_uso()` + `widget_limpiar_rate_limit()`.
+- Trigger `trg_widget_limite_de_tasa` sobre `messages`: 30 mensajes por sesion y
+  hora, solo para `metadata.source='widget'`. Configurable por organizacion en
+  `ai_settings.metadata.widget_limite_por_hora` (0 lo desactiva).
+- Tope diario de respuestas de IA por conversacion en `ai-auto-response`
+  (`ai_settings.max_respuestas_ia_por_conversacion_dia`, default 60).
+
+*B. Coste y cache*
+- SKU `gpt_5_6_luna_cached` / `gpt_5_6_terra_cached` en `provider_pricing` y
+  columna `ai_model_catalog.sku_entrada_cacheada`.
+- `calcular_costo_llm` con 4 argumentos (descuenta tokens cacheados). La version
+  de 3 argumentos se conserva intacta para no romper a sus consumidores.
+- La Edge Function registra `cached_tokens` y `endpoint` en `ai_usage_logs`.
+
+*C. Sinonimos*
+- `sinonimos_base` (generica, espanol comercial) + `org_sinonimos` (por
+  organizacion, con RLS por pertenencia).
+- `palabras_de_catalogo` consulta en orden: exacta -> sinonimo propio ->
+  sinonimo generico -> similitud.
+- Vista `consultas_sin_resultado` para llenar los sinonimos con datos reales.
+
+**Decisiones de diseno relevantes:**
+
+1. **No se valida `Origin` en `chat-widget`.** Es una cabecera que cualquier
+   script fija con una linea de curl: solo frena abuso desde un navegador en
+   otro sitio, no un bucle automatizado, que es la amenaza real. Habria exigido
+   reescribir y redesplegar 40 KB con clientes conectados. Se hara cuando toque
+   esa funcion por otro motivo.
+2. **El limite de tasa vive en la base, no en la Edge Function.** Cubre
+   cualquier camino que inserte un mensaje del widget y evita redesplegar
+   `chat-widget`.
+3. **Un sinonimo solo se activa si su destino existe en ese catalogo.** Asi una
+   base generica en espanol nunca puede hacer que el bot afirme tener algo que
+   no tiene. Verificado: "zapatillas" resuelve en la Tienda de Tenis y NO
+   resuelve en Reino del Hogar.
+4. **Todo falla abierto.** Si el contador de tasa falla, o el conteo del tope
+   diario falla, se responde igual: dejar mudo a un cliente legitimo por un
+   fallo de telemetria es peor que el abuso que se previene.
+
+**Verificacion contra la BD viva (todo revertido):**
+
+| Caso | Resultado |
+|------|-----------|
+| 31 mensajes de una sesion del widget | corta en el 31, los 30 primeros pasan |
+| Residuo tras la prueba | 0 mensajes, 0 filas de contador propias |
+| Tenis: "zapatillas" | -> `calzado` -> 3 tarjetas reales |
+| Perfumeria: "locion" | -> `perfume` |
+| Hogar: "zapatillas" | (nada) — la salvaguarda funciona |
+| Hogar: "pocillo", "ollas" | sin cambios |
+| `calcular_costo_llm` con cache=0 | identico al valor observado en produccion |
+| `calcular_costo_llm` con 1400 cacheados | $0,19 por mil (desde $0,44) |
+
+**Correccion importante al analisis previo:** el prompt dejo de ser la palanca de
+coste. Con ~11.000 respuestas/mes: gpt-4o $66,50 -> Luna $5,57 -> Luna+cache
+$2,09. La migracion de modelo ya se llevo el 92%. El prompt sigue mereciendo
+trabajo, pero por CALIDAD (Hotel X recibe un prompt de retail), no por dinero.
+
+**Lo que queda explicitamente pendiente:**
+- Reordenar el prompt (estatico primero) y bloques por vertical — Fase B2/B3.
+- Validacion de `Origin` en `chat-widget`.
+- Medir si el prompt caching entra de verdad: ya se registra `cached_tokens`,
+  falta leer el dato con trafico real.
+
+### Fase: F3 + F4 + F6/F7 — Ronda 1 — 2026-09-10
+
+- Calificacion QA: pendiente
+
+**F3 — Deshacer.** `undoService.ts` + `POST /api/ai-assistant/undo-action` +
+boton en el panel, con ventana de `undo_window_minutes` (15 por defecto).
+
+Hallazgo grave durante la prueba contra la BD real: **la primera version era
+peligrosa.** Confiaba en que Postgres rechazara el borrado si la fila estaba en
+uso. Verificado contra `pg_constraint`, es al reves:
+
+| Borrar | Que pasaba de verdad |
+|---|---|
+| categoria | descategoriza sus productos en silencio (SET NULL) |
+| proveedor | **borra sus facturas y ordenes de compra** (CASCADE) |
+| cliente | borra conversaciones, membresias, notas de credito y 8 tablas mas |
+
+El DELETE no habria fallado: habria funcionado, destruyendo datos. Deshacer
+habria sido peor que la accion que deshace. Reescrito para comprobar
+dependencias EXPLICITAMENTE y negarse si no puede comprobarlo (fail-closed).
+Un producto con movimientos no se borra: se deja inactivo, como hace el ERP.
+
+**F4 — Visión (agente).** `ai_attachments` + bucket `ai-attachments` PRIVADO
+(verificado: `public = false`, 4 politicas RLS), `POST /attachments`, y la
+herramienta `leer_documento` (riesgo `low`: solo lee). Extraccion con zod y
+confianza por campo, NIT con digito de verificacion, importes recalculados de
+las lineas y contrastados con el total impreso.
+
+Detalle que importa: `cuadra` es `false` tambien cuando NO hay total impreso que
+contrastar. "No se pudo comprobar" no es "cuadra".
+
+**F6/F7 — Explicaciones e historial (agente).** `listar_modulos_activos`,
+`estado_configuracion`, `explicar_configuracion`, endpoints de conversaciones y
+`ConversationHistory.tsx`. Conectado al panel: **el boton de historial recupera
+un hilo guardado**, que cierra la deuda de F1 (la conversacion se persistia pero
+el panel arrancaba siempre en blanco).
+
+**Verificacion:** 173 tests del asistente en verde (7 suites). `tsc` sin
+errores. Lint limpio en los archivos tocados.
+
+**Correccion de mis propias suposiciones en los tests de F4:** el DV de
+900123456 es **8**, no 7 (el plan usaba un ejemplo con DV incorrecto). Calculado
+a mano con el algoritmo de la DIAN.
+
+**Lo que sigue faltando:** F5 (voz en vivo, necesita ws-server desplegado),
+ordenes y facturas de compra, traslados entre sucursales, carga masiva desde
+Excel, y el costo en USD en `ai_usage_logs`.
+
+**Proxima accion:** prueba de humo desde el navegador de venta, deshacer,
+adjuntar un documento y recuperar un hilo.
+
+### Fase: Correccion — moneda de la organizacion — 2026-09-10
+
+**Fallo mio, reportado por el fundador.** El asistente tenia `'COP'` cableado en
+dos sitios: el `ToolContext.currency` del stream y `payments.currency` dentro de
+`assistant_register_sale`. Para una organizacion que factura en dolares eso no
+es un detalle de formato: guardaba un importe en USD etiquetado como pesos, y a
+partir de ahi la conciliacion y los informes mienten.
+
+El ERP ya tenia el dato — `organization_currencies.is_base` sobre el catalogo
+`currencies`, mas la integracion de tasas de `openexchangerates.ts` — y no se le
+preguntaba.
+
+**Arreglo:** `src/lib/ai/assistant/orgCurrency.ts`, con la misma cadena de
+respaldo que usa el resto del ERP (base -> preferencia -> USD -> primera
+asignada), cache de 5 min por proceso, y `formatMoney` que respeta los decimales
+de cada moneda (el peso colombiano no tiene centimos).
+
+**Por que no se reutilizo `obtenerMonedaBase()`** de `openexchangerates.ts`, que
+hace lo mismo: importa `@/lib/supabase/config`, el cliente de NAVEGADOR, y no se
+puede llamar desde un route handler. Es el mismo problema de `posService` y
+compania. Se repitio la cadena con el cliente de sesion.
+
+La RPC recibe la moneda como parametro en vez de resolverla dentro: quien llama
+ya aplico la cadena completa, y repetirla en SQL crearia una segunda fuente de
+verdad que diverge.
+
+**Verificado contra la BD** (org 132, con rollback):
+
+| Caso | Resultado |
+|---|---|
+| Venta con `currency='COP'` | `payments.currency = COP` |
+| Misma venta con `currency='USD'` | `payments.currency = USD` |
+| Sin moneda | cae a `USD`, no inventa pesos |
+
+177 tests del asistente en verde (7 suites). `tsc` sin errores, lint limpio.
+
+**Pendiente relacionado:** la conversion entre monedas (si el precio del
+catalogo esta en una moneda y se cobra en otra) NO se hace todavia. Hoy se asume
+que catalogo y cobro van en la misma moneda, que es el caso de las 5
+organizaciones del piloto. Cuando haya una que venda en dos monedas hay que
+usar `currency_rates` para convertir, y decidir a que tasa (la del dia, la de la
+fecha de la venta) — es una decision de negocio, no tecnica.
+
+
+### Fase: Motor IA Chat — Ronda 2 (prompt por vertical y cache) — 2026-09-10
+
+**Qué se hizo:**
+- `ai_settings.vertical` + vista `ai_vertical_efectivo` (usa el valor explicito
+  y, si no hay, lo deduce del tipo de organizacion).
+- El prompt se partio en dos: prefijo ESTABLE por organizacion (`instructions`,
+  cacheable) y CONTEXTO ACTUAL del mensaje (turno aparte). Los bloques de retail
+  —tarjetas, checkout, [PEDIDO_LISTO], metodos de pago— quedan condicionados a
+  `esRetail`; los demas verticales reciben su propio encargo.
+- Las dos ramas de REGLAS CRITICAS (con y sin resultados) se unificaron en un
+  solo bloque: dependian del resultado de la busqueda, asi que rompian el
+  prefijo cacheable en cada mensaje.
+- `generarConResponses` ya no descarta los mensajes de sistema extra; el primero
+  va a `instructions` y los siguientes a `input`. Sin esto el contexto (con los
+  productos) se perdia por completo.
+- Limite del widget ajustado a 100 por sesion/hora (decision del usuario tras
+  revisar los datos).
+
+**Medicion antes/despues del reordenamiento (muestra pequena, 30 vs 10):**
+
+| | Antes | Despues |
+|---|---|---|
+| Aciertos de cache | 70% | 70% |
+| Entrada cacheada | 58,2% | 68,6% |
+| USD por mil | 0,284 | 0,250 |
+
+La tasa de aciertos no cambio; mejoro la PROFUNDIDAD del cache y el coste bajo
+un 12%. Con 10 muestras es indicativo, no concluyente. El valor real del cambio
+fue la separacion por vertical.
+
+**Dimensionado de los topes, con 120 dias de trafico real:**
+
+| Regla | Maximo real | Cortaria historicamente |
+|---|---|---|
+| Limite por hora (100) | 56 | 0 |
+| Tope diario por conversacion (60) | 44 | 0 |
+
+El limite inicial de 30 SI era estrecho: habria cortado 19 sesiones legitimas de
+8.172. Se corrigio tras el aviso del usuario.
+
+**Error cometido y corregido en la ronda:** un primer intento de reordenar el
+prompt con un script de reemplazo dejo un bloque de reglas duplicado. Se
+detecto, se revirtio al estado desplegado (verificado: 0 lineas de diferencia en
+el prompt) y se rehizo con ediciones exactas.
+
+**Verificacion en produccion tras desplegar:** 8 de 8 respuestas `completed`,
+0 fallos, 6 con cache al 93-98%.
+
+**Pendiente:** validacion de `Origin` en `chat-widget` (requiere tocar esa
+funcion); limitar por IP para el caso de sessionId rotatorio.

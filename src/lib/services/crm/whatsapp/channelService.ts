@@ -10,6 +10,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { normalizePhoneDigits, phoneSearchSuffix, resolveDefaultCountry } from '@/lib/services/crm/phoneNormalize';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import {
   DEFAULT_OPTIN_KEYWORDS,
@@ -55,6 +56,9 @@ export async function getOrgSettings(orgId: number, service: SupabaseClient = ge
     allowed_hours: (s.allowed_hours as WhatsAppOrgSettings['allowed_hours']) ?? null,
     daily_limit: typeof s.daily_limit === 'number' ? s.daily_limit : null,
     messaging_limit: (s.messaging_limit as WhatsAppOrgSettings['messaging_limit']) ?? null,
+    // Indicativo del país para completar los teléfonos NACIONALES que la
+    // organización guardó sin indicativo (antes estaba cableado a '57').
+    default_country_code: typeof s.default_country_code === 'string' && s.default_country_code.trim() ? String(s.default_country_code).replace(/\D/g, '') : null,
   };
 }
 
@@ -178,8 +182,27 @@ export async function getChannelCredentials(orgId: number, channelId: string, se
   return { ...(row.credentials ?? {}), provider: normalizeProvider(row.provider) } as ChannelCredentials;
 }
 
-/** Teléfono E.164 (solo dígitos) del cliente para el canal: identidad del canal → customers.phone. */
-export async function resolveRecipient(orgId: number, customerId: string, channelId: string, supabase: SupabaseClient): Promise<string | null> {
+/**
+ * Teléfono E.164 (solo dígitos) del cliente para el canal: identidad del canal
+ * → customers.phone.
+ *
+ * `defaultCountry` es el indicativo con el que se completan los teléfonos que
+ * la organización guardó en formato nacional, y tiene TRES valores distintos a
+ * propósito:
+ *
+ *  - **omitido** → se resuelve solo, de los ajustes de la organización. Es lo
+ *    que quiere casi todo el mundo.
+ *  - `null` → no se completa nada (el número ya viene cualificado).
+ *  - una cadena → se usa esa (quien ya cargó los ajustes se ahorra la consulta).
+ *
+ * El valor por defecto era `null`, y dos llamadores —la ventana de 24 h y la
+ * previsualización de plantillas— se quedaron sin pasarlo: como el 92 % de los
+ * teléfonos de la base están guardados como nacional de 10 dígitos, esos dos
+ * endpoints decían «este cliente no tiene número» de la mayoría de los
+ * clientes a los que `sendWhatsApp` sí escribía. Un parámetro que se olvida en
+ * silencio es un mal parámetro: ahora omitirlo hace lo correcto.
+ */
+export async function resolveRecipient(orgId: number, customerId: string, channelId: string, supabase: SupabaseClient, defaultCountry?: string | null): Promise<string | null> {
   const { data: ident } = await supabase
     .from('customer_channel_identities')
     .select('identity_value')
@@ -190,22 +213,78 @@ export async function resolveRecipient(orgId: number, customerId: string, channe
     .limit(1)
     .maybeSingle();
   const fromIdentity = (ident as { identity_value?: string } | null)?.identity_value;
+  // La identidad del canal la escribe el proveedor (wa_id): ya viene
+  // cualificada y NO se le completa indicativo.
   if (fromIdentity) return normalizePhoneDigits(fromIdentity);
   const { data: c } = await supabase.from('customers').select('phone').eq('id', customerId).eq('organization_id', orgId).maybeSingle();
   const phone = (c as { phone?: string | null } | null)?.phone;
-  return phone ? normalizePhoneDigits(phone) : null;
+  if (!phone) return null;
+  // Solo se consultan los ajustes si de verdad hacen falta: un teléfono ya
+  // cualificado no se toca, así que no se paga la consulta por él.
+  const cc = defaultCountry === undefined ? defaultCountryOf(await getOrgSettings(orgId, supabase)) : defaultCountry;
+  return normalizePhoneDigits(phone, cc);
 }
 
-export function normalizePhoneDigits(phone: string): string | null {
-  const digits = String(phone).replace(/@(s\.whatsapp\.net|lid)$/, '').replace(/\D/g, '');
-  if (digits.length < 8 || digits.length > 15) return null;
-  return digits;
+/**
+ * Normalización de teléfonos: la regla vive en `@/lib/services/crm/phoneNormalize`
+ * porque la comparte la barra de acciones rápidas del navegador (que no puede
+ * importar este módulo: arrastra el cliente de servicio). Se reexporta para no
+ * romper a quien ya la importaba de aquí.
+ */
+export { normalizePhoneDigits, phoneSearchSuffix, countryFromPhone, LAST_RESORT_COUNTRY_CODE, NATIONAL_PATTERNS } from '@/lib/services/crm/phoneNormalize';
+
+/**
+ * Indicativo por defecto EFECTIVO de la organización: ajuste de la org →
+ * variable de entorno → último recurso.
+ */
+export function defaultCountryOf(settings: Pick<WhatsAppOrgSettings, 'default_country_code'>): string {
+  return resolveDefaultCountry(settings.default_country_code);
 }
 
-/** País (ISO-2 minúsculas) por prefijo E.164; solo los que tienen precio en provider_pricing. */
-export function countryFromPhone(digits: string): 'co' | 'mx' | 'us' | 'other' {
-  if (digits.startsWith('57')) return 'co';
-  if (digits.startsWith('52')) return 'mx';
-  if (digits.startsWith('1')) return 'us';
-  return 'other';
+/**
+ * Busca el cliente de la organización cuyo teléfono ES este número, sin
+ * importar cómo esté escrito en la base. Devuelve null si no hay ninguno.
+ *
+ * ⚠️ Es una búsqueda en dos pasos (igualdad exacta primero, `ilike` por los
+ * últimos 4 dígitos después) porque `customers.phone` es texto libre y no hay
+ * columna normalizada.
+ *
+ * **Orden estable obligatorio** (tester F16 r3 · N-4): hay 263 grupos de
+ * clientes reales (532 filas) que comparten identificador normalizado dentro
+ * de la MISMA organización. Sin `ORDER BY` el cliente al que se engancha un
+ * entrante depende del plan de Postgres, así que dos mensajes del mismo número
+ * pueden acabar en fichas distintas. Se elige SIEMPRE el más antiguo
+ * (`created_at`), que es el que acumula el historial.
+ */
+export async function findCustomerIdByPhone(
+  orgId: number,
+  digits: string,
+  supabase: SupabaseClient,
+  opts: { defaultCountry?: string | null } = {},
+): Promise<string | null> {
+  // 1) Camino rápido: los dos formatos canónicos, con igualdad indexable.
+  const { data: exacto } = await supabase
+    .from('customers')
+    .select('id, phone')
+    .eq('organization_id', orgId)
+    .in('phone', [digits, `+${digits}`])
+    .order('created_at', { ascending: true })
+    .limit(1);
+  const hit = ((exacto ?? []) as Array<{ id: string }>)[0];
+  if (hit) return hit.id;
+
+  // 2) Cualquier otro formato: prefiltro por los últimos 4 dígitos y
+  //    comparación fina en memoria. `customers.phone` es texto libre de la
+  //    organización, así que aquí SÍ se completa el indicativo por defecto.
+  const { data: candidatos } = await supabase
+    .from('customers')
+    .select('id, phone')
+    .eq('organization_id', orgId)
+    .ilike('phone', `%${phoneSearchSuffix(digits)}`)
+    .order('created_at', { ascending: true })
+    .limit(200);
+  for (const c of (candidatos ?? []) as Array<{ id: string; phone: string | null }>) {
+    if (c.phone && normalizePhoneDigits(c.phone, opts.defaultCountry ?? null) === digits) return c.id;
+  }
+  return null;
 }

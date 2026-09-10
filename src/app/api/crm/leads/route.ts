@@ -115,6 +115,29 @@ function badRequest(message: string) {
   return NextResponse.json({ success: false, error: message }, { status: 400 });
 }
 
+function conflict(message: string, extra: Record<string, unknown> = {}) {
+  return NextResponse.json({ success: false, error: message, ...extra }, { status: 409 });
+}
+
+/**
+ * Violación de unicidad de Postgres. La base tiene dos índices que este alta
+ * puede tocar: `unique_customer_email_per_org` sobre `(organization_id, email)`
+ * y `unique_customer_id_per_org` sobre `(organization_id, identification_number)`.
+ * Dar de alta a alguien que ya está en la ficha es un caso NORMAL de uso, no un
+ * fallo del servidor: antes acababa en 500 con el mensaje crudo de Postgres.
+ */
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === 'object' && error !== null
+    && (error as { code?: unknown }).code === '23505';
+}
+
+function violatesEmailIndex(error: unknown): boolean {
+  const message = typeof error === 'object' && error !== null
+    ? String((error as { message?: unknown }).message ?? '')
+    : '';
+  return message.includes('unique_customer_email_per_org');
+}
+
 function clean(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
@@ -289,7 +312,31 @@ export async function POST(request: NextRequest) {
         })
         .select('id, full_name')
         .single();
-      if (error) throw error;
+      if (error) {
+        // Correo ya usado en esta organización: se devuelve el cliente que ya
+        // existe para que la interfaz pueda ofrecer «usar el existente» en vez
+        // de dejar al comercial ante un error sin salida.
+        if (isUniqueViolation(error) && violatesEmailIndex(error) && email) {
+          const { data: existente } = await ctx.supabase
+            .from('customers')
+            .select('id, full_name')
+            .eq('organization_id', ctx.organizationId)
+            .eq('email', email)
+            .maybeSingle();
+          return conflict(
+            `Ya existe un cliente con el correo ${email} en esta organización. `
+            + 'Usa ese cliente para crear el lead en vez de crear una ficha repetida.',
+            { existing_customer: existente ?? null }
+          );
+        }
+        if (isUniqueViolation(error)) {
+          return conflict(
+            'Ya existe un cliente con esos datos en esta organización. '
+            + 'Busca la ficha existente en vez de crear una repetida.'
+          );
+        }
+        throw error;
+      }
 
       customerId = customer.id as string;
       createdCustomerId = customerId;

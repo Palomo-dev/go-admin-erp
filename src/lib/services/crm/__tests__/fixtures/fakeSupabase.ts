@@ -186,11 +186,18 @@ export class FakeDb {
         },
         range: () => b,
         maybeSingle: async () => {
+          // `failOn['tabla:select']` permite simular un error de LECTURA (p. ej.
+          // el PGRST116 de `maybeSingle()` cuando hay filas duplicadas), no solo
+          // de escritura: hay guardas que dependen de no descartar ese `error`.
+          const readFail = state.op === 'select' ? db.failOn[`${table}:select`] : undefined;
+          if (readFail) return { data: null, error: { message: readFail } };
           const r = state.op === 'select' ? apply() : (runWrite().data ?? []);
           return { data: r[0] ?? null, error: null };
         },
         single: async () => {
           if (state.op === 'select') {
+            const readFail = db.failOn[`${table}:select`];
+            if (readFail) return { data: null, error: { message: readFail } };
             const r = apply();
             return r.length ? { data: r[0], error: null } : { data: null, error: { message: 'no rows' } };
           }

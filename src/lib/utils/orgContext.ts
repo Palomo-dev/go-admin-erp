@@ -4,12 +4,15 @@
  * - `getServerOrgContext(req?)`: sesión del usuario (cookies) + organización
  *   activa. Orden de resolución de la org:
  *     1. header `X-Organization-Id`
- *     2. cookie `goadmin_org_id`
+ *     2. cookie `goadmin_org_id` (o la legacy `org_id`)
  *     3. `profiles.last_org_id`
  *     4. si el usuario tiene EXACTAMENTE una membresía activa, esa
  *     5. si no → 400 `ORG_AMBIGUOUS`
  *   En todos los casos se verifica que el usuario sea miembro activo de la org
  *   elegida (403 si no).
+ * - `getServerOrgContextFor(organizationId)`: misma comprobación de sesión y
+ *   membresía activa, pero para una org que ya salió de un recurso del
+ *   servidor (p. ej. la invitación de un código), no de la petición.
  * - `resolveOrgFromExternal(identifier, kind)`: para webhooks (sin sesión);
  *   usa el cliente service-role y `.maybeSingle()`.
  * - `requireOrgAdmin(ctx)`: mismo criterio que `src/lib/utils/rbac.ts`
@@ -51,6 +54,16 @@ export class OrgContextError extends Error {
 
 export const ORG_HEADER = 'x-organization-id';
 export const ORG_COOKIE = 'goadmin_org_id';
+/**
+ * Cookie que escribe el cliente desde antes de que existiera `goadmin_org_id`
+ * y que sigue leyendo `src/middleware.ts` para el gating de plan y módulos.
+ * Ambas las escribe `guardarOrganizacionActiva` con el mismo id; se acepta
+ * como respaldo para los navegadores que todavía no han ejecutado la versión
+ * nueva del cliente. Como cualquier valor que venga del navegador, la
+ * organización resultante se valida contra `organization_members` (403 si el
+ * usuario no es miembro activo).
+ */
+export const ORG_COOKIE_LEGACY = 'org_id';
 
 interface MembershipRow {
   id: number;
@@ -102,7 +115,10 @@ async function getRequestedOrgId(req?: Request): Promise<number | null> {
 
   try {
     const cookieStore = await cookies();
-    return parseOrgId(cookieStore.get(ORG_COOKIE)?.value);
+    return (
+      parseOrgId(cookieStore.get(ORG_COOKIE)?.value) ??
+      parseOrgId(cookieStore.get(ORG_COOKIE_LEGACY)?.value)
+    );
   } catch {
     return null;
   }
@@ -126,13 +142,57 @@ function buildContext(
   };
 }
 
+type SessionUser = { id: string; email?: string | null };
+
+/** Usuario de la sesión (cookies) o 401. */
+async function requireSessionUser(supabase: SupabaseClient): Promise<SessionUser> {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    throw new OrgContextError('No hay sesión activa', 401, 'UNAUTHENTICATED');
+  }
+  return user;
+}
+
+/** Membresía ACTIVA del usuario en una organización concreta, o 403. */
+async function contextForOrg(
+  supabase: SupabaseClient,
+  user: SessionUser,
+  organizationId: number
+): Promise<ServerOrgContext> {
+  const { data, error } = await supabase
+    .from('organization_members')
+    .select(MEMBERSHIP_SELECT)
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+  if (error || !data) {
+    throw new OrgContextError('No perteneces a esa organización', 403, 'ORG_FORBIDDEN');
+  }
+  return buildContext(user, data as unknown as MembershipRow, supabase);
+}
+
+/**
+ * Contexto para una organización que NO viene de la petición sino de un
+ * recurso ya resuelto en el servidor (p. ej. la fila de `invitations` que
+ * identifica un código de invitación).
+ *
+ * Es el mismo criterio que `getServerOrgContext` —sesión + membresía activa,
+ * 401/403— pero sin pasar por header, cookie ni `last_org_id`: ahí la org es
+ * un dato del recurso, no una preferencia del usuario, así que dejarla a la
+ * resolución por defecto daría 403 (o `ORG_AMBIGUOUS`) a un admin legítimo
+ * cuya org activa fuese otra.
+ */
+export async function getServerOrgContextFor(organizationId: number): Promise<ServerOrgContext> {
+  const supabase = await getServerUserClient();
+  const user = await requireSessionUser(supabase);
+  return contextForOrg(supabase, user, organizationId);
+}
+
 export async function getServerOrgContext(req?: Request): Promise<ServerOrgContext> {
   const supabase = await getServerUserClient();
 
-  const { data: { user }, error: sessionError } = await supabase.auth.getUser();
-  if (sessionError || !user) {
-    throw new OrgContextError('No hay sesión activa', 401, 'UNAUTHENTICATED');
-  }
+  const user = await requireSessionUser(supabase);
 
   const membershipQuery = () =>
     supabase
@@ -144,11 +204,7 @@ export async function getServerOrgContext(req?: Request): Promise<ServerOrgConte
   // 1-2. Header / cookie
   const requested = await getRequestedOrgId(req);
   if (requested) {
-    const { data, error } = await membershipQuery().eq('organization_id', requested).maybeSingle();
-    if (error || !data) {
-      throw new OrgContextError('No perteneces a esa organización', 403, 'ORG_FORBIDDEN');
-    }
-    return buildContext(user, data as unknown as MembershipRow, supabase);
+    return contextForOrg(supabase, user, requested);
   }
 
   // 3. profiles.last_org_id (consulta directa por organization_id, sin limit)

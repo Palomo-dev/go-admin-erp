@@ -54,4 +54,22 @@ describe('quickActionsConfig', () => {
     expect(normalizePhone('0057123')).toBe('+57123');
     expect(normalizePhone('')).toBeNull();
   });
+
+  // GEMELO de F-4 (tester F16 r3). De aquí salen el enlace de WhatsApp y la
+  // LLAMADA desde el móvil: poner `+57` a cualquier número de 10 dígitos
+  // significaba escribir o llamar a un tercero con un número colombiano real.
+  test('normalizePhone: un número de 10 dígitos que NO es colombiano no se convierte en colombiano', () => {
+    expect(normalizePhone('415 555 0100')).toBeNull();
+    expect(normalizePhone('415 555 0100', '1')).toBe('+14155550100');
+  });
+
+  test('normalizePhone: una cédula escrita en el campo teléfono no es un teléfono', () => {
+    expect(normalizePhone('1036395459')).toBeNull();
+    expect(normalizePhone('1010062107')).toBeNull();
+  });
+
+  test('normalizePhone: los fijos y móviles colombianos de 10 dígitos siguen valiendo', () => {
+    expect(normalizePhone('3109876543')).toBe('+573109876543');
+    expect(normalizePhone('601 234 5678')).toBe('+576012345678');
+  });
 });

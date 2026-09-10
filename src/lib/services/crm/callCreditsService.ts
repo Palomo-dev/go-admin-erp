@@ -33,6 +33,12 @@ export interface SettlementInput {
   mode: 'browser' | 'bridge' | 'ai_agent' | 'manual' | 'inbound';
   recordingEnabled: boolean;
   unitCosts: { pstn: number | null; sdk: number | null; recording: number | null };
+  /**
+   * Patas PSTN facturables (F5 §8). Un bridge móvil son DOS llamadas reales
+   * (vendedor + cliente), así que el coste PSTN se paga dos veces; por defecto
+   * se deduce del modo (`bridge` → 2, resto → 1).
+   */
+  legs?: number;
 }
 
 export interface Settlement {
@@ -44,9 +50,14 @@ export interface Settlement {
 }
 
 /** Cálculo puro de la liquidación (testeable). */
+export function defaultLegsForMode(mode: SettlementInput['mode']): number {
+  return mode === 'bridge' ? 2 : 1;
+}
+
 export function computeSettlement(input: SettlementInput): Settlement {
   const minutes = billableMinutes(input.durationSeconds);
-  const pstn = round6((input.unitCosts.pstn ?? 0) * minutes);
+  const legs = Math.max(1, Math.round(input.legs ?? defaultLegsForMode(input.mode)));
+  const pstn = round6((input.unitCosts.pstn ?? 0) * minutes * legs);
   const sdk = input.mode === 'browser' || input.mode === 'inbound' ? round6((input.unitCosts.sdk ?? 0) * minutes) : 0;
   const recording = input.recordingEnabled ? round6((input.unitCosts.recording ?? 0) * minutes) : 0;
   return {
@@ -70,6 +81,28 @@ export async function reserveVoiceMinutes(orgId: number, minutes: number, client
   });
   if (error) {
     console.error('[callCredits] deduct_comm_credits error:', error.message);
+    return false;
+  }
+  return Boolean(data);
+}
+
+/**
+ * Devuelve `minutes` de voz a la organización (F5 §8).
+ *
+ * `deduct_comm_credits` ya acepta importes negativos y acota el abono al cupo
+ * del plan (verificado en `pg_proc` el 2026-09-10), así que NO hace falta la
+ * RPC `refund_comm_credits` que planteaba el documento.
+ */
+export async function refundVoiceMinutes(orgId: number, minutes: number, client: SupabaseClient): Promise<boolean> {
+  const amount = Math.round(minutes);
+  if (!Number.isFinite(amount) || amount <= 0) return true;
+  const { data, error } = await client.rpc('deduct_comm_credits', {
+    p_org_id: orgId,
+    p_channel: 'voice',
+    p_amount: -amount,
+  });
+  if (error) {
+    console.error('[callCredits] refund deduct_comm_credits error:', error.message);
     return false;
   }
   return Boolean(data);

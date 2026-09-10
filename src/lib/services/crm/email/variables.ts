@@ -1,6 +1,12 @@
 /**
  * Variables de plantilla (FASE-07 §4.2, C23).
  *
+ * ⚠️ ARCHIVO COMPARTIDO POR DOS FASES: **F7 (email)** y **F16 (WhatsApp)**.
+ * `crm/whatsapp/templateRender.ts` y `crm/whatsapp/outboundService.ts` usan
+ * este mismo motor. Antes de tocarlo, ejecuta las dos suites:
+ *   npx jest src/lib/services/crm/email
+ *   npx jest src/lib/services/crm/whatsapp
+ *
  * Sintaxis propia (sin Handlebars): `{{path}}`, `{{path|default}}`,
  * `{{path|money}}`, `{{path|date}}`, `{{path|date:short}}`, `{{path|upper}}`,
  * `{{path|lower}}`. Escape HTML SIEMPRE (opción `escapeHtml:false` solo para
@@ -10,8 +16,6 @@
  * `buildContext` carga los datos con el cliente recibido (RLS de sesión o
  * service role) filtrando SIEMPRE por organization_id.
  */
-
-import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface ContactCtx {
   id?: string;
@@ -205,11 +209,17 @@ export interface InterpolateResult {
  * `ACME" onerror="alert(1)` rompía el atributo (tester r2, fallo nuevo #1).
  * Se escapan solo los tramos literales: el valor de la variable (y su
  * `fallback`) se sigue escapando UNA sola vez, dentro de la sustitución.
+ *
+ * `strictPaths` (por defecto false, el contrato de F7): cuando está activo, un
+ * `{{...}}` cuyo contenido NO es una ruta válida (`{{1}}`, `{{año}}`,
+ * `{{nombre cliente}}`) se reporta en `missing` y se sustituye por vacío en vez
+ * de devolverse literal. Lo usa F16 (WhatsApp), donde ese literal llegaría al
+ * cliente. Ver la nota extensa en la rama correspondiente.
  */
 export function renderVariables(
   input: string,
   ctx: RenderContext,
-  opts: { escapeHtml?: boolean; escapeLiteral?: boolean } = {},
+  opts: { escapeHtml?: boolean; escapeLiteral?: boolean; strictPaths?: boolean } = {},
 ): InterpolateResult {
   const escape = opts.escapeHtml !== false;
   const lit = opts.escapeLiteral === true ? escapeHtml : (s: string) => s;
@@ -229,7 +239,31 @@ export function renderVariables(
   const substitute = (match: string, inner: string): string => {
     const segments = inner.split('|').map((s) => s.trim());
     const path = segments[0];
-    if (!path || !PATH_RE.test(path)) return lit(match); // literal (caso borde 4)
+    if (!path || !PATH_RE.test(path)) {
+      // ARCHIVO COMPARTIDO POR F7 (email) Y F16 (WhatsApp).
+      //
+      // Comportamiento HISTÓRICO (el de F7, aprobada con 9,5): devolver el
+      // LITERAL y NO registrar nada en `missing` — «caso borde 4», con dos
+      // tests que lo fijan (`variables.test.ts` «deja literal las llaves que
+      // no son una ruta válida» y `adversarial.test.ts` «{{ 1 + 1 }}»). Sirve
+      // para que un `{{ }}` de CSS dentro de una plantilla no se coma.
+      //
+      // El problema (tester F16 r2, defecto (a)): en WhatsApp ese literal SALE
+      // al cliente. `resolveParam` construye `{{custom.1}}` para los HSM
+      // posicionales de Meta/Twilio, `custom.1` no pasa `PATH_RE`, y como el
+      // literal no está vacío se aceptaba como valor resuelto: `missing`
+      // quedaba vacío y el cliente recibía «{{custom.1}}» por WhatsApp.
+      //
+      // `strictPaths` deja que cada emisor elija. F16 lo activa (fail-closed:
+      // se reporta como faltante y `sendWhatsApp` para con 422
+      // MISSING_VARIABLES). F7 conserva su contrato mientras su responsable no
+      // decida lo contrario; si lo decide, basta con invertir el default aquí.
+      if (opts.strictPaths) {
+        missing.add(path || match.trim());
+        return '';
+      }
+      return lit(match);
+    }
     let fallback: string | null = null;
     let filter: string | null = null;
     let filterArg: string | null = null;

@@ -17,6 +17,12 @@
  * falta para el tablero (`opportunities` y `stages`): mientras tanto el Kanban
  * usa el evento `refresh-pipeline-data` + sondeo, no un chip verde falso.
  */
+/**
+ * F5 (2026-09-10): la migración `crm_v4_f05_bridges_call_link` añadió
+ * `mobile_call_bridges` a la publicación (verificado con la consulta de arriba:
+ * `pg_publication_tables` la devuelve). El diálogo "Llamar desde mi celular"
+ * depende de ella para seguir el bridge en vivo.
+ */
 export const REALTIME_PUBLISHED_TABLES = new Set<string>([
   'activities',
   'ai_jobs',
@@ -28,6 +34,7 @@ export const REALTIME_PUBLISHED_TABLES = new Set<string>([
   'email_messages',
   'kitchen_tickets',
   'messages',
+  'mobile_call_bridges',
   'notes',
   'notification_reads',
   'notifications',

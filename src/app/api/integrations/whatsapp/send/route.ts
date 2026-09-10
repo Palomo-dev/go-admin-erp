@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { sendWhatsApp } from '@/lib/services/crm/whatsapp/outboundService';
-import { normalizePhoneDigits } from '@/lib/services/crm/whatsapp/channelService';
+import { defaultCountryOf, findCustomerIdByPhone, getOrgSettings, normalizePhoneDigits } from '@/lib/services/crm/whatsapp/channelService';
 import { whatsappErrorResponse } from '@/lib/services/crm/whatsapp/http';
 import { parseWith, zPlatformSendBody } from '@/lib/services/crm/whatsapp/schemas';
 
@@ -35,15 +35,20 @@ export async function POST(request: NextRequest) {
     }
     if (!channel_id) return NextResponse.json({ error: 'channel_id es requerido' }, { status: 400 });
 
-    // Cliente: por id, por conversación o por teléfono (sufijo 10 dígitos)
+    // Cliente: por id, por conversación o por teléfono.
+    //
+    // El `to` del CUERPO llega ya cualificado (quien llama sabe a qué número
+    // manda), así que NO se le completa el indicativo por defecto: reescribirlo
+    // sería inventarse un destinatario (tester F16 r3 · F-4). La búsqueda usa
+    // `findCustomerIdByPhone`, la misma del webhook, en vez de una comparación
+    // por sufijo propia que podía enganchar a otro cliente.
     let customerId: string | null = customer_id ?? null;
     if (!customerId && !conversation_id) {
       const digits = to ? normalizePhoneDigits(String(to)) : null;
       if (!digits) return NextResponse.json({ error: 'to (teléfono) o customer_id es requerido' }, { status: 400 });
-      const last10 = digits.slice(-10);
-      const { data: candidates } = await getServiceClient().from('customers').select('id, phone').eq('organization_id', organizationId).ilike('phone', `%${last10}`).limit(5);
-      const match = (candidates || []).find((c: { phone?: string | null }) => (c.phone || '').replace(/\D/g, '').endsWith(last10));
-      customerId = match?.id ?? null;
+      const service = getServiceClient();
+      const defaultCountry = defaultCountryOf(await getOrgSettings(organizationId, service));
+      customerId = await findCustomerIdByPhone(organizationId, digits, service, { defaultCountry });
       if (!customerId) return NextResponse.json({ error: 'No existe un cliente con ese teléfono en la organización; crea el cliente antes de enviar' }, { status: 400 });
     }
 

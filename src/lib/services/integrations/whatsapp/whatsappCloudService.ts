@@ -20,6 +20,7 @@ import {
 import { applyTemplateStatusUpdate, parseTemplateStatusUpdate } from '@/lib/services/crm/whatsapp/webhookTemplateStatus';
 import { extractInboundText, handleWhatsAppInbound, inboundContentType } from '@/lib/services/crm/whatsapp/inboundService';
 import { applyMessageEventToCampaign } from '@/lib/services/crm/whatsapp/campaignEvents';
+import { defaultCountryOf, findCustomerIdByPhone, getOrgSettings, normalizePhoneDigits } from '@/lib/services/crm/whatsapp/channelService';
 import type {
   WhatsAppCloudCredentials,
   WhatsAppSendPayload,
@@ -171,7 +172,7 @@ class WhatsAppCloudService {
       template: {
         name: templateName,
         language: { code: languageCode },
-        components: components as any,
+        components,
       },
     });
   }
@@ -274,7 +275,7 @@ class WhatsAppCloudService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const errorMsg = (errorData as any)?.error?.message || `HTTP ${response.status}`;
+        const errorMsg = (errorData as { error?: { message?: string } } | null)?.error?.message || `HTTP ${response.status}`;
         return { valid: false, message: `Error de validación: ${errorMsg}` };
       }
 
@@ -286,8 +287,8 @@ class WhatsAppCloudService {
         displayName: data.verified_name,
         qualityRating: data.quality_rating,
       };
-    } catch (error: any) {
-      return { valid: false, message: `Error de conexión: ${error.message}` };
+    } catch (error: unknown) {
+      return { valid: false, message: `Error de conexión: ${error instanceof Error ? error.message : 'desconocido'}` };
     }
   }
 
@@ -542,16 +543,32 @@ class WhatsAppCloudService {
     const errorCode = status.errors?.[0]?.code?.toString() || null;
     const errorMessage = status.errors?.[0]?.title || null;
 
-    // Registrar evento (messages no tiene columna de estado: el estado es el último message_event)
-    await supabase.from('message_events').insert({
+    // Registrar evento (messages no tiene columna de estado: el estado es el último message_event).
+    //
+    // `event_time` es GENERATED ALWAYS AS (created_at) en la BD (verificado en
+    // information_schema): incluirla en el INSERT lo hace fallar entero con
+    // 428C9 «cannot insert a non-DEFAULT value into column "event_time"».
+    // Como nadie miraba el error, TODOS los eventos de estado se perdían en
+    // silencio: sin `delivered`/`read`/`failed` no hay estado de mensaje, ni
+    // sincronización de campañas, ni 131049/131056. La marca real del
+    // proveedor se conserva dentro de `provider_payload.event_time`
+    // (tester F16 r2 · F-1).
+    const { error: eventError } = await supabase.from('message_events').insert({
       organization_id: organizationId,
       message_id: message.id,
       event_type: status.status,
-      provider_payload: providerPayload,
+      provider_payload: { ...providerPayload, event_time: eventTime },
       error_code: errorCode,
       error_message: errorMessage,
-      event_time: eventTime,
     });
+    if (eventError) {
+      console.error('[WhatsApp Webhook] message_events NO PERSISTIDO', {
+        organization_id: organizationId,
+        message_id: message.id,
+        event_type: status.status,
+        error: eventError.message,
+      });
+    }
 
     // Campañas: delivered/read/failed (131049 → skipped 24 h, 131056/130429 → reencolar)
     await applyMessageEventToCampaign(
@@ -576,12 +593,25 @@ class WhatsAppCloudService {
     phone: string,
     name: string
   ): Promise<string> {
+    // Meta manda `from` en dígitos («573109876543»); el CRM guarda los
+    // teléfonos como texto libre («+57 310 987 6543»). Sin normalizar, la
+    // búsqueda por igualdad no encontraba nunca al cliente existente y CADA
+    // respuesta creaba un cliente DUPLICADO, con lo que se perdía la
+    // atribución de la respuesta a la campaña (tester F16 r2 · F-4).
+    // El `from` de Meta ES un wa_id: ya viene cualificado. NO se le completa
+    // indicativo (eso convertiría un número de otro país en uno colombiano
+    // real y distinto — tester F16 r3 · F-4).
+    const digits = normalizePhoneDigits(phone) ?? String(phone).replace(/\D/g, '');
+    // Para comparar con `customers.phone`, que SÍ es texto libre de la org, se
+    // usa el indicativo configurado por la organización.
+    const defaultCountry = defaultCountryOf(await getOrgSettings(organizationId, supabase as never));
+
     // Buscar identidad existente
     const { data: identity } = await supabase
       .from('customer_channel_identities')
       .select('customer_id')
       .eq('channel_id', channelId)
-      .eq('identity_value', phone)
+      .eq('identity_value', digits)
       .single();
 
     if (identity) {
@@ -590,36 +620,32 @@ class WhatsAppCloudService {
         .from('customer_channel_identities')
         .update({ last_seen_at: new Date().toISOString() })
         .eq('channel_id', channelId)
-        .eq('identity_value', phone);
-      return (identity as any).customer_id as string;
+        .eq('identity_value', digits);
+      return (identity as { customer_id: string }).customer_id;
     }
 
-    // Buscar customer por teléfono
-    const { data: existingCustomer } = await supabase
-      .from('customers')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('phone', phone)
-      .single();
+    // Buscar customer por teléfono, comparando NÚMEROS y no cadenas
+    const existingId = await findCustomerIdByPhone(organizationId, digits, supabase as never, { defaultCountry });
 
     let customerId: string;
 
-    if (existingCustomer) {
-      customerId = (existingCustomer as any).id as string;
+    if (existingId) {
+      customerId = existingId;
     } else {
-      // Crear nuevo customer
+      // Crear nuevo customer. Se guarda en E.164 para que el próximo webhook
+      // lo encuentre por igualdad exacta.
       const { data: newCustomer } = await supabase
         .from('customers')
         .insert({
           organization_id: organizationId,
           first_name: name,
-          phone,
+          phone: `+${digits}`,
           metadata: { source: 'whatsapp' },
         })
         .select('id')
         .single();
 
-      customerId = (newCustomer as any)?.id;
+      customerId = (newCustomer as { id: string } | null)?.id ?? '';
     }
 
     // Crear identidad del canal.
@@ -631,13 +657,13 @@ class WhatsAppCloudService {
       customer_id: customerId,
       channel_id: channelId,
       identity_type: 'whatsapp_phone',
-      identity_value: phone,
+      identity_value: digits,
     });
     if (identityError) {
       console.error('[WhatsApp Webhook] No se pudo crear customer_channel_identities', {
         organization_id: organizationId,
         channel_id: channelId,
-        identity_value: phone,
+        identity_value: digits,
         error: identityError.message,
       });
     }
@@ -679,7 +705,7 @@ class WhatsAppCloudService {
       .select('id')
       .single();
 
-    return (newConv as any)?.id;
+    return (newConv as { id: string } | null)?.id ?? '';
   }
 
   /** Extraer contenido del mensaje según tipo */

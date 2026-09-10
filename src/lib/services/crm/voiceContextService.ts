@@ -193,6 +193,36 @@ export async function pickCallerId(
 }
 
 /**
+ * ¿Ese número E.164 es de la organización?
+ *
+ * Ronda 3 (gemelo de M2, defecto N-1): `/api/voice/call` aceptaba el `from` del
+ * cuerpo de la petición, así que un miembro autenticado podía marcar mostrando
+ * el número de otra organización (suplantación). Un número es "de la org" si es
+ * su `voice_caller_id`, su `comm_settings.phone_number`, o un `phone_numbers`
+ * activo suyo. El número global de la plataforma NO cuenta.
+ */
+export async function orgOwnsCallerId(
+  orgId: number,
+  e164: string,
+  settings: TelephonySettings,
+  client?: SupabaseClient
+): Promise<boolean> {
+  const wanted = String(e164 || '').trim();
+  if (!wanted) return false;
+  if (settings.voice_caller_id === wanted || settings.phone_number === wanted) return true;
+  const sb = client ?? getServiceClient();
+  const { data } = await sb
+    .from('phone_numbers')
+    .select('id')
+    .eq('organization_id', orgId)
+    .eq('e164', wanted)
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle();
+  return Boolean(data);
+}
+
+/**
  * ¿El `AccountSid` que firmó el webhook corresponde a esta organización?
  *
  * Ronda 2 (defecto M1): `verifyTwilioWebhook` acepta el token de CUALQUIER
@@ -203,6 +233,30 @@ export async function pickCallerId(
  * - org sin subcuenta → solo la cuenta master/legacy de la plataforma
  *
  * Fail-closed: sin `AccountSid` o sin master configurada devuelve false.
+ */
+/**
+ * ¿El AccountSid firmante pertenece a esta organización?
+ *
+ * ADVERTENCIA SOBRE SU ALCANCE REAL (F5 ronda 2, B-2) — leer antes de confiar
+ * en esta función como aislamiento entre organizaciones:
+ *
+ * Solo discrimina cuando la organización TIENE subcuenta. Si no la tiene, cae
+ * al SID master de la plataforma, que es el mismo para todas: entonces devuelve
+ * `true` para CUALQUIER organización. Y hoy **ninguna la tiene**: 0 de 83
+ * organizaciones con `comm_settings.twilio_subaccount_sid` (verificado por MCP
+ * contra `jgmgphmzusbluqhuqihj`, 2026-09-10).
+ *
+ * Consecuencia práctica, escrita para que nadie la dé por supuesta: mientras no
+ * se aprovisionen subcuentas, **la única barrera efectiva entre organizaciones
+ * en los callbacks del bridge es el token HMAC** de `bridgeTokens.ts`
+ * (`verifyBridgeToken`), que sí liga cada URL a su bridge concreto. Un atacante
+ * que firme con el SID master y acierte el bridgeId sigue necesitando ese
+ * token. Por eso ninguna ruta del bridge puede quedarse solo con esta
+ * comprobación, y por eso `VOICE_CALLBACK_SECRET` es obligatorio para marcar
+ * (`isBridgeSigningConfigured`, 503 en `initiateBridge`).
+ *
+ * Esta función sigue siendo necesaria —cierra el caso de la subcuenta ajena en
+ * cuanto exista aprovisionamiento— pero NO es suficiente por sí sola hoy.
  */
 export async function accountSidMatchesOrg(orgId: number, accountSid: string, client?: SupabaseClient): Promise<boolean> {
   if (!accountSid) return false;

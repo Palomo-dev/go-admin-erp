@@ -3,6 +3,11 @@
 import { useState, lazy, Suspense } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import OrganizationList from './OrganizationList';
+import {
+  cambiarOrganizacionActiva,
+  getOrganizationId,
+  limpiarOrganizacionActiva,
+} from '@/lib/hooks/useOrganization';
 import { useTranslations } from 'next-intl';
 import {
   AlertDialog,
@@ -83,15 +88,17 @@ export default function ManageOrganizationsTab() {
 
       if (!remainingOrgs || remainingOrgs.length === 0) {
         // No tiene más organizaciones, redirigir a selección de organización
-        localStorage.removeItem('currentOrganizationId');
-        localStorage.removeItem('currentOrganizationName');
+        limpiarOrganizacionActiva();
         localStorage.removeItem('currentOrganizationType');
         window.location.href = '/auth/select-organization';
       } else {
-        // Si la org eliminada era la actual, cambiar a otra
-        const currentOrgId = localStorage.getItem('currentOrganizationId');
-        if (currentOrgId && parseInt(currentOrgId) === orgToDelete) {
-          localStorage.setItem('currentOrganizationId', String(remainingOrgs[0].organization_id));
+        // Si la org eliminada era la actual, cambiar a otra (storage, cookies
+        // y profiles.last_org_id, o el servidor seguiría en la org borrada)
+        if (getOrganizationId() === orgToDelete) {
+          await cambiarOrganizacionActiva(
+            { id: Number(remainingOrgs[0].organization_id) },
+            { reload: false }
+          );
         }
         setRefetchKey(k => k + 1);
       }

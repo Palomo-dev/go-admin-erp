@@ -3,6 +3,8 @@
  * llamada están disponibles según el contexto. Sin React, testeable con jest.
  */
 
+import { LAST_RESORT_COUNTRY_CODE, normalizePhoneDigits } from '@/lib/services/crm/phoneNormalize';
+
 export type QuickActionKind = 'call' | 'email' | 'whatsapp' | 'meeting' | 'task' | 'note';
 export type CallMode = 'browser' | 'mobile' | 'ai';
 
@@ -82,12 +84,21 @@ export function getCallModes(ctx: QuickActionsContext): CallModeState[] {
 }
 
 /** Normaliza un teléfono a E.164 aproximado (por defecto +57). */
-export function normalizePhone(raw: string | null | undefined, defaultCountry = '57'): string | null {
+export function normalizePhone(raw: string | null | undefined, defaultCountry = LAST_RESORT_COUNTRY_CODE): string | null {
   if (!raw) return null;
   const digits = raw.replace(/[^\d+]/g, '');
   if (!digits) return null;
   if (digits.startsWith('+')) return digits;
   if (digits.startsWith('00')) return `+${digits.slice(2)}`;
-  if (digits.length === 10) return `+${defaultCountry}${digits}`;
+  if (digits.length === 10) {
+    // GEMELO de F-4 (tester r3): esto ponía `+57` a CUALQUIER número de 10
+    // dígitos, así que un número de EE.UU. o una cédula escrita en el campo
+    // teléfono se convertían en un número colombiano REAL y distinto… y de
+    // aquí salen el enlace de WhatsApp y la LLAMADA del móvil. Ahora se usa la
+    // misma regla que el servicio: si no tiene forma de número nacional de ese
+    // país, no hay teléfono.
+    const d = normalizePhoneDigits(digits, defaultCountry);
+    return d ? `+${d}` : null;
+  }
   return `+${digits}`;
 }

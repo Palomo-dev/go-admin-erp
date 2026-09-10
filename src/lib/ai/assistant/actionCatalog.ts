@@ -306,7 +306,8 @@ export const ACTION_CATALOG: Readonly<Record<AIActionType, ActionDefinition>> = 
     minLevel: 'write_full',
     requiredModule: 'pos',
     available: false,
-    unavailableReason: PENDING_F2('registrar ventas'),
+    unavailableReason:
+      'Para registrar una venta uso la herramienta `registrar_venta`, no esta accion.',
     fields: [],
   },
   update_order_status: {
@@ -354,7 +355,8 @@ export const ACTION_CATALOG: Readonly<Record<AIActionType, ActionDefinition>> = 
     minLevel: 'write_full',
     requiredModule: 'inventory',
     available: false,
-    unavailableReason: PENDING_F2('registrar ajustes de inventario documentados'),
+    unavailableReason:
+      'Para ajustar inventario uso la herramienta `crear_ajuste_inventario`, no esta accion.',
     fields: [],
   },
   create_stock_transfer: {

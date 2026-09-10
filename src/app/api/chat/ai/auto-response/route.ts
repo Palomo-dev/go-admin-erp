@@ -3,6 +3,7 @@ import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import OpenAIService from '@/lib/services/openaiService';
 import { consumeAICredits } from '@/lib/services/aiCreditsService';
+import { canAutoReply } from '@/lib/services/crm/whatsapp/consent';
 
 /**
  * POST /api/chat/ai/auto-response
@@ -80,6 +81,31 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Cumplimiento antes que nada (F16 · F-12): el INSERT en `messages` con
+    // direction='outbound' y role='ai' dispara `trg_channel_dispatch`, así que
+    // el mensaje SALE de verdad hacia Meta. Esta ruta no comprobaba ni el
+    // opt-out del destinatario (Habeas Data, Ley 1581 de 2012) ni la ventana
+    // de 24 h, saltándose los dos controles que sí aplica el envío manual por
+    // `whatsappOutboundService`. Se comprueba ANTES de llamar al proveedor
+    // para no gastar créditos de IA en una respuesta que no puede salir.
+    const gate = await canAutoReply(
+      {
+        orgId: organizationId,
+        conversationId,
+        channelType: conversation.channel?.type ?? null,
+        customerId: conversation.customer?.id ?? conversation.customer_id ?? null,
+      },
+      supabase,
+    );
+    if (!gate.allowed) {
+      console.warn('[auto-response] bloqueada por cumplimiento', {
+        organization_id: organizationId,
+        conversation_id: conversationId,
+        reason: gate.reason,
+      });
+      return NextResponse.json({ success: false, reason: gate.message, code: gate.reason });
+    }
+
     // Obtener configuración de IA de la organización
     const { data: aiSettings } = await supabase
       .from('ai_settings')
@@ -123,7 +149,7 @@ export async function POST(request: NextRequest) {
       customerName,
       customerEmail: conversation.customer?.email,
       channelType: conversation.channel?.type || 'widget',
-      conversationHistory: (messages || []).map((msg: any) => ({
+      conversationHistory: (messages || []).map((msg: { role: string; content: string; created_at: string }) => ({
         role: msg.role as 'customer' | 'agent' | 'ai',
         content: msg.content,
         timestamp: msg.created_at,
@@ -203,10 +229,10 @@ export async function POST(request: NextRequest) {
       usage: response.usage,
       cost,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error en auto-response:', error);
     return NextResponse.json(
-      { error: error.message || 'Error interno del servidor' },
+      { error: error instanceof Error ? error.message : 'Error interno del servidor' },
       { status: 500 }
     );
   }

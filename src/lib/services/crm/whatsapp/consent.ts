@@ -5,6 +5,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { getWindowByConversation } from './windowService';
 import { DEFAULT_OPTIN_KEYWORDS, DEFAULT_OPTOUT_KEYWORDS } from './types';
 
 export type ContactChannel = 'email' | 'whatsapp' | 'sms' | 'voice';
@@ -148,6 +149,48 @@ export async function applyInboundConsent(
     console.warn('[whatsapp/consent] applyInboundConsent:', err instanceof Error ? err.message : err);
   }
   return 'none';
+}
+
+export interface AutoReplyGate {
+  allowed: boolean;
+  /** Motivo legible para la respuesta de la ruta (nunca se envía al cliente final). */
+  reason?: 'opted_out' | 'window_closed';
+  message?: string;
+}
+
+/**
+ * ¿Puede una respuesta AUTOMÁTICA (IA, bot, secuencia) salir por esta
+ * conversación?
+ *
+ * Los dos controles que `whatsappOutboundService.sendWhatsApp` aplica al envío
+ * manual y que la ruta de auto-respuesta se saltaba (tester F16 r2 · F-12):
+ *
+ *  1. **Opt-out** (`fn_can_contact`): Habeas Data, Ley 1581 de 2012. Una
+ *     respuesta automática a quien pidió la baja es la peor de todas, porque
+ *     nadie la revisa.
+ *  2. **Ventana de 24 h de Meta**: fuera de la ventana solo se puede mandar
+ *     una plantilla APROBADA, y una respuesta de IA es texto libre. Enviarla
+ *     igual es una violación de política del canal.
+ *
+ * Solo aplica a WhatsApp: el widget, el correo y las redes tienen sus propias
+ * reglas y `fn_can_contact` no tiene canal para ellas. Fail-closed: si algo
+ * falla, `canContact` ya devuelve false.
+ */
+export async function canAutoReply(
+  params: { orgId: number; conversationId: string; channelType: string | null | undefined; customerId: string | null },
+  supabase: SupabaseClient,
+  now: Date = new Date(),
+): Promise<AutoReplyGate> {
+  if (params.channelType !== 'whatsapp') return { allowed: true };
+  if (params.customerId) {
+    const ok = await canContact(params.orgId, params.customerId, 'whatsapp', 'utility', supabase);
+    if (!ok) return { allowed: false, reason: 'opted_out', message: 'El contacto pidió no recibir WhatsApp (opt-out): la IA no responde' };
+  }
+  const w = await getWindowByConversation(params.orgId, params.conversationId, supabase, now);
+  if (!w.is_open) {
+    return { allowed: false, reason: 'window_closed', message: 'La ventana de 24 h de WhatsApp está cerrada: fuera de ella solo se puede enviar una plantilla aprobada' };
+  }
+  return { allowed: true };
 }
 
 async function skipPendingCampaignContacts(orgId: number, customerId: string, reason: string, supabase: SupabaseClient): Promise<void> {

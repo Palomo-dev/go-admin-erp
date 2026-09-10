@@ -13,6 +13,8 @@ import { renderVariables, type RenderContext } from '@/lib/services/crm/email/va
 import { WhatsAppError, type HsmButton, type HsmComponent, type HsmMeta, type RenderedTemplate, type WhatsAppTemplate } from './types';
 
 const PARAM_RE = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
+/** Nombres de parámetro admitidos al CREAR/EDITAR una plantilla propia (Meta 'named'). */
+export const PARAM_NAME_RE = /^[a-z_][a-z0-9_]*$/;
 
 export function extractParams(text: string | null | undefined): string[] {
   const out: string[] = [];
@@ -24,19 +26,34 @@ export function componentOf(components: HsmComponent[], type: HsmComponent['type
   return components.find((c) => c.type === type);
 }
 
+/**
+ * Un valor resuelto NUNCA puede seguir conteniendo `{{`: eso significa que el
+ * motor de variables no lo resolvió (o que el dato de origen trae llaves), y
+ * enviarlo pondría `{{...}}` delante del cliente. Se trata como no resuelto
+ * (tester F16 r2, defecto (a)-(b)).
+ */
+function valorUsable(v: string | null | undefined): string | null {
+  if (v === null || v === undefined) return null;
+  const s = String(v);
+  if (s.trim() === '') return null;
+  if (s.includes('{{')) return null;
+  return s;
+}
+
 /** Resuelve UN parámetro: override → variable_map → contexto directo por nombre. */
 export function resolveParam(param: string, meta: Pick<HsmMeta, 'variable_map'>, ctx: RenderContext, overrides: Record<string, unknown>): string | null {
   const ov = overrides[param];
-  if (ov !== undefined && ov !== null && String(ov).trim() !== '') return String(ov);
+  if (ov !== undefined && ov !== null && String(ov).trim() !== '') return valorUsable(String(ov));
   const expr = meta.variable_map?.[param];
   if (expr) {
-    const r = renderVariables(`{{${expr}}}`, ctx, { escapeHtml: false });
-    if (r.out.trim() !== '') return r.out;
-    return null;
+    const r = renderVariables(`{{${expr}}}`, ctx, { escapeHtml: false, strictPaths: true });
+    if (r.missing.length) return null;
+    return valorUsable(r.out);
   }
   // Nombre de parámetro usado directamente como ruta (p. ej. {{contact_first_name}} no aplica; probamos custom.<param>)
-  const direct = renderVariables(`{{custom.${param}}}`, ctx, { escapeHtml: false });
-  return direct.out.trim() !== '' ? direct.out : null;
+  const direct = renderVariables(`{{custom.${param}}}`, ctx, { escapeHtml: false, strictPaths: true });
+  if (direct.missing.length) return null;
+  return valorUsable(direct.out);
 }
 
 function substitute(text: string, values: Record<string, string>): string {
@@ -112,10 +129,46 @@ export function toTwilioContentVariables(r: RenderedTemplate, positionalMap: str
   return out;
 }
 
-/** Validaciones de Meta al crear/editar (nombre, longitudes, variables no adyacentes/extremos). */
-export function validateHsm(input: { name: string; components: HsmComponent[] }): void {
-  if (!/^[a-z0-9_]{1,512}$/.test(input.name)) {
+/** Nombre de plantilla admitido por Meta. */
+export function validateHsmName(name: string): void {
+  if (!/^[a-z0-9_]{1,512}$/.test(name)) {
     throw new WhatsAppError('VALIDATION', 'El nombre debe ser minúsculas, dígitos y guion bajo (máx 512)', 422);
+  }
+}
+
+/**
+ * Validaciones de Meta sobre los COMPONENTES (longitudes, parámetros, botones).
+ *
+ * ⚠️ Solo puede correr cuando los componentes CAMBIAN. Una plantilla traída de
+ * Meta por `syncFromMeta` puede llevar parámetros posicionales `{{1}}`, que
+ * estas reglas rechazan; si la validación corriera también al tocar
+ * `category`, `description` o `variable_map`, esa plantilla quedaría
+ * inutilizable por API y —lo que es peor— IMPOSIBLE de arreglar, porque
+ * `variable_map` es justamente el único campo que hace resoluble un parámetro
+ * posicional (`resolveParam` lo consulta antes de `custom.<param>`)
+ * (tester F16 r3 · N-6).
+ */
+export function validateHsmComponents(components: HsmComponent[]): void {
+  const input = { components };
+  // Solo parámetros NOMBRADOS en minúsculas: `parameter_format` de las
+  // plantillas que creamos es 'named' y `variable_map` los indexa por nombre.
+  // Un `{{1}}` posicional, un `{{Nombre}}` o un `{{año}}` no se resuelven
+  // (`PATH_RE` de `variables.ts` no los admite) y antes acababan en el mensaje
+  // como literal (tester F16 r2, defecto (a)-(c)).
+  const textos = [
+    ...input.components.map((c) => c.text ?? ''),
+    ...input.components.flatMap((c) => (c.buttons ?? []).map((b) => b.url ?? '')),
+  ];
+  for (const t of textos) {
+    // `extractParams` solo ve `[a-zA-Z0-9_]+`; aquí hay que mirar TODAS las
+    // llaves, incluidas `{{año}}` o `{{nombre cliente}}`, que son justamente
+    // las que el motor de variables no sabe resolver.
+    for (const m of (t ?? '').matchAll(/\{\{([^{}]*)\}\}/g)) {
+      const p = m[1].trim();
+      if (!PARAM_NAME_RE.test(p)) {
+        throw new WhatsAppError('INVALID_COMPONENTS', `Parámetro «{{${p}}}» inválido: usa minúsculas, dígitos y guion bajo empezando por letra (p. ej. {{nombre}})`, 422);
+      }
+    }
   }
   const body = componentOf(input.components, 'BODY');
   if (!body?.text?.trim()) throw new WhatsAppError('INVALID_COMPONENTS', 'La plantilla necesita un componente BODY con texto', 422);
@@ -136,6 +189,12 @@ export function validateHsm(input: { name: string; components: HsmComponent[] })
     if (b.type === 'URL' && !b.url) throw new WhatsAppError('INVALID_COMPONENTS', 'Botón URL sin url', 422);
     if (b.type === 'PHONE_NUMBER' && !b.phone_number) throw new WhatsAppError('INVALID_COMPONENTS', 'Botón de teléfono sin número', 422);
   }
+}
+
+/** Validación completa (alta de plantilla propia): nombre + componentes. */
+export function validateHsm(input: { name: string; components: HsmComponent[] }): void {
+  validateHsmName(input.name);
+  validateHsmComponents(input.components);
 }
 
 /** Componentes en el formato exacto de `POST /{WABA_ID}/message_templates` (con examples para named params). */

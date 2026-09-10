@@ -17,6 +17,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypt
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import type { EmailDomainExtras } from './types';
+import { isPlaceholderCredential } from '@/lib/crm/providerCatalog';
 
 // ─── Cifrado en reposo de las API keys de Resend ─────────────────────────────
 //
@@ -49,13 +50,19 @@ import type { EmailDomainExtras } from './types';
 const ENC_V1 = 'encv1:';
 const ENC_V2 = 'encv2:';
 
-/** Todas las fuentes de clave disponibles, en orden de preferencia y sin repetir. */
-function credentialKeySources(): string[] {
+/**
+ * Todas las fuentes de clave disponibles, en orden de preferencia y sin repetir.
+ *
+ * Se descartan los valores de RELLENO: cifrar con `your-…` no protege de nada,
+ * porque esa cadena está en la documentación del proyecto. Antes bastaba con que
+ * el valor no fuese vacío. Exportada para que la prueba pueda observarla.
+ */
+export function credentialKeySources(): string[] {
   const raws = [
     process.env.EMAIL_CREDENTIALS_SECRET?.trim(),
     process.env.EMAIL_UNSUBSCRIBE_SECRET?.trim(),
     process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
-  ].filter((r): r is string => !!r);
+  ].filter((r): r is string => !!r && !isPlaceholderCredential(r));
   return Array.from(new Set(raws));
 }
 

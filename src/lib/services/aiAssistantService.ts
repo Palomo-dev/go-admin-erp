@@ -21,26 +21,13 @@
  * bloque inventado por el modelo no llega nunca al ejecutor.
  */
 
-import OpenAI from 'openai';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { openModelStream } from '@/lib/ai/agent/openaiAdapter';
 import { checkAICredits } from './aiCreditsService';
 import { chargeAiCredits } from './crm/aiCostService';
 import { describeAllowedActions } from '@/lib/ai/assistant/actionGuard';
 import { isActionType, type AIActionType } from '@/lib/ai/assistant/actionCatalog';
 import type { AssistantCapabilities } from '@/lib/ai/assistant/capabilities';
-
-let openaiClient: OpenAI | null = null;
-
-function getOpenAIClient(): OpenAI {
-  if (!openaiClient) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('Missing OPENAI_API_KEY environment variable');
-    }
-    openaiClient = new OpenAI({ apiKey });
-  }
-  return openaiClient;
-}
 
 export interface AssistantMessage {
   id: string;
@@ -309,17 +296,34 @@ class AIAssistantService {
       { role: 'user', content: message },
     ];
 
-    const openai = getOpenAIClient();
-    const response = await openai.chat.completions.create({
+    // El endpoint depende del modelo: los `gpt-5.x` van por la Responses API y
+    // rechazan `max_tokens` ("Unsupported parameter"). Llamar aquí directamente
+    // a Chat Completions hacía fallar TODA respuesta en las organizaciones con
+    // `ai_settings.model = 'gpt-5.6-luna'`, que son todas las del piloto — y
+    // como este es el camino de respaldo del stream, tampoco rescataba nada.
+    const stream = await openModelStream({
       model: settings.model,
-      messages,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      tools: [],
       temperature: settings.temperature,
-      max_tokens: settings.maxTokens,
+      maxTokens: settings.maxTokens,
     });
 
-    const rawContent = response.choices[0]?.message?.content || 'Lo siento, no pude procesar tu solicitud.';
-    const usage = response.usage;
-    const totalTokens = usage?.total_tokens ?? 0;
+    let rawContent = '';
+    let promptTokensUsed = 0;
+    let completionTokensUsed = 0;
+    for await (const chunk of stream.chunks) {
+      if (chunk.delta) rawContent += chunk.delta;
+      if (chunk.usage) {
+        promptTokensUsed += chunk.usage.promptTokens;
+        completionTokensUsed += chunk.usage.completionTokens;
+      }
+    }
+    if (!rawContent) rawContent = 'Lo siento, no pude procesar tu solicitud.';
+
+    const usage = { prompt_tokens: promptTokensUsed, completion_tokens: completionTokensUsed };
+    const totalTokens = promptTokensUsed + completionTokensUsed;
+    const answeringModel = stream.model;
 
     // Cobro por consumo real, con action_type diferenciado. Si falla (carrera
     // de saldo), la respuesta ya está generada: se registra, no se rompe.
@@ -327,7 +331,7 @@ class AIAssistantService {
       await chargeAiCredits({
         orgId: context.organizationId,
         actionType: 'assistant_chat',
-        model: settings.model,
+        model: answeringModel,
         units: totalTokens,
         userId: options.userId,
         metadata: {
@@ -345,7 +349,7 @@ class AIAssistantService {
     return {
       content,
       action,
-      model: settings.model,
+      model: answeringModel,
       usage: {
         promptTokens: usage?.prompt_tokens || 0,
         completionTokens: usage?.completion_tokens || 0,

@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase, ensureSessionSynced } from '@/lib/supabase/config';
+import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 
 function SuperAdminAccessContent() {
   const router = useRouter();
@@ -50,9 +51,10 @@ function SuperAdminAccessContent() {
           return;
         }
 
-        // Guardar el contexto de la organización en localStorage
-        localStorage.setItem('currentOrganizationId', data.org_id.toString());
-        localStorage.setItem('currentOrganizationName', data.org_name);
+        // Guardar el contexto de la organización. guardarOrganizacionActiva
+        // escribe `organizacionActiva`, las claves legacy y las cookies que
+        // leen el middleware y getServerOrgContext.
+        guardarOrganizacionActiva({ id: Number(data.org_id), name: data.org_name });
         localStorage.setItem('superAdminImpersonating', 'true');
         localStorage.setItem('superAdminName', data.admin_name);
         localStorage.setItem('superAdminUserId', data.user_id || '');

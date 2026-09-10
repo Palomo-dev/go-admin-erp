@@ -76,6 +76,8 @@ interface RespuestaLlm {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  /** Tokens de entrada servidos desde cache (0,1x de tarifa). Solo Responses API. */
+  cachedTokens: number;
 }
 
 /** Credencial del proveedor: primero la de la organizacion, si no la global. */
@@ -133,6 +135,7 @@ async function generarConChatCompletions(
     promptTokens: completion.usage?.prompt_tokens ?? 0,
     completionTokens: completion.usage?.completion_tokens ?? 0,
     totalTokens: completion.usage?.total_tokens ?? 0,
+    cachedTokens: completion.usage?.prompt_tokens_details?.cached_tokens ?? 0,
   };
 }
 
@@ -142,14 +145,21 @@ async function generarConResponses(
   temperature: number,
   maxTokens: number
 ): Promise<RespuestaLlm> {
-  const system = chatMessages.find((m) => m.role === 'system');
-  const resto = chatMessages
-    .filter((m) => m.role !== 'system')
-    .map((m) => ({
-      role: m.role,
-      content: typeof m.content === 'string' ? m.content : '',
-    }))
-    .filter((m) => m.content.length > 0);
+  // El PRIMER mensaje de sistema es el prefijo estable: va en `instructions`,
+  // que es lo que el proveedor cachea. Los sistemas siguientes son contexto de
+  // este mensaje concreto y van en `input` como turnos de usuario: si se
+  // filtraran junto con el primero, ese contexto se perderia y el modelo
+  // respondería sin ver los productos.
+  const [system, ...sistemasExtra] = chatMessages.filter((m) => m.role === 'system');
+  const resto = [
+    ...sistemasExtra.map((m) => ({ role: 'user', content: String(m.content ?? '') })),
+    ...chatMessages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({
+        role: m.role,
+        content: typeof m.content === 'string' ? m.content : '',
+      })),
+  ].filter((m) => m.content.length > 0);
 
   const respuesta: any = await (openai as any).responses.create({
     model,
@@ -175,6 +185,7 @@ async function generarConResponses(
     promptTokens: respuesta?.usage?.input_tokens ?? 0,
     completionTokens: respuesta?.usage?.output_tokens ?? 0,
     totalTokens: respuesta?.usage?.total_tokens ?? 0,
+    cachedTokens: respuesta?.usage?.input_tokens_details?.cached_tokens ?? 0,
   };
 }
 
@@ -264,6 +275,7 @@ async function generarConGoogle(
     promptTokens: uso.promptTokenCount ?? 0,
     completionTokens: uso.candidatesTokenCount ?? 0,
     totalTokens: uso.totalTokenCount ?? 0,
+    cachedTokens: uso.cachedContentTokenCount ?? 0,
   };
 }
 
@@ -790,6 +802,43 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // --- Tope diario de respuestas por conversacion ---------------------------
+    //
+    // Ultima defensa de los creditos: actua aunque el atacante cambie de sesion,
+    // porque cuenta por conversacion. Dimensionado con el trafico real (881
+    // conversaciones en 30 dias): mediana 3 mensajes, p99 = 32, maximo historico
+    // 62. Con el default de 60 no toca a ningun cliente legitimo.
+    const topeDiario = (settings as any).max_respuestas_ia_por_conversacion_dia ?? 60;
+    if (topeDiario > 0) {
+      const inicioDelDia = new Date();
+      inicioDelDia.setUTCHours(0, 0, 0, 0);
+      const { count: respuestasHoy, error: errorConteo } = await supabase
+        .from('ai_jobs')
+        .select('id', { count: 'exact', head: true })
+        .eq('conversation_id', conversationId)
+        .eq('status', 'completed')
+        .gte('created_at', inicioDelDia.toISOString());
+
+      // Si el conteo falla NO se bloquea: dejar mudo a un cliente por un fallo
+      // de telemetria seria peor que el abuso que esto previene.
+      if (errorConteo) {
+        console.error('No se pudo contar el tope diario:', errorConteo.message);
+      } else if ((respuestasHoy ?? 0) >= topeDiario) {
+        console.error(
+          `Conversacion ${conversationId} alcanzo el tope diario (${respuestasHoy}/${topeDiario}).`
+        );
+        await finalizarJob(jobId, {
+          status: 'skipped',
+          error_code: 'tope_diario_conversacion',
+          error_message: `La conversacion alcanzo el tope de ${topeDiario} respuestas en un dia.`,
+          completed_at: new Date().toISOString(),
+        });
+        return new Response(JSON.stringify({ skipped: true, reason: 'tope_diario_conversacion' }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // --- Fase 0.2: sin creditos no se llama al modelo -------------------------
     const creditosDisponibles = (aiSettings as any)?.credits_remaining ?? null;
     if (creditosDisponibles !== null && creditosDisponibles <= 0) {
@@ -1086,19 +1135,69 @@ Deno.serve(async (req: Request) => {
       getCheckoutConfig(organizationId),
     ]);
 
+    // Vertical de la organizacion. `ai_vertical_efectivo` usa `ai_settings.vertical`
+    // si esta puesto y, si no, lo deduce del tipo de organizacion.
+    //
+    // Importa porque hoy TODAS reciben un prompt de tienda: 16 de las 38 no son
+    // retail (8 hoteles, 5 restaurantes, 2 de servicios, 1 de transporte), y
+    // Hotel X genero 111.745 mensajes con instrucciones sobre "tarjetas de
+    // producto" y "finalizar el pedido".
+    let vertical = 'retail';
+    try {
+      const { data: filaVertical } = await supabase
+        .from('ai_vertical_efectivo')
+        .select('vertical')
+        .eq('organization_id', organizationId)
+        .maybeSingle();
+      if (filaVertical?.vertical) vertical = filaVertical.vertical;
+    } catch (e) {
+      console.error('No se pudo leer el vertical; se usa retail:', e);
+    }
+    const esRetail = vertical === 'retail';
+
     let systemPrompt = '';
     
     if (settings.system_rules) {
       systemPrompt = `INSTRUCCIONES PRINCIPALES:\n${settings.system_rules}\n\nIMPORTANTE: \"Dar solución\" significa ayudar con información REAL del catálogo o redirigir al cliente. NUNCA inventes estados de pedidos, números de seguimiento, tiempos de entrega ni información que no tengas. Si no tienes datos reales, pregunta al cliente o sugiere contactar por otro medio.\n\n`;
     }
     
-    systemPrompt += `FORMATO DE RESPUESTA:\n- Usa saltos de línea (\\n) para separar ideas.\n- IMPORTANTE: Los productos se muestran AUTOMÁTICAMENTE como tarjetas visuales con imagen, nombre y precio. NO listes los productos como texto. Solo escribe un mensaje introductorio breve como "Aquí te muestro las opciones:" o "Tenemos estos disponibles:" y las tarjetas se mostrarán solas.\n- NO uses formato [IMG:url]. Las imágenes se muestran automáticamente en las tarjetas.\n- Usa **negritas** solo para datos importantes que NO sean productos.\n- Sé conciso y conversacional.\n- Máximo 3-4 productos por respuesta.\n\n`;
+    if (!esRetail) {
+      // Los verticales que no venden catalogo no reciben instrucciones de
+      // tarjetas, checkout ni [PEDIDO_LISTO]. Reciben su propio encargo.
+      const encargo: Record<string, string> = {
+        hotel: 'Eres el asistente de un hotel. Atiendes consultas sobre disponibilidad, tipos de habitación, tarifas, servicios y políticas de reserva y cancelación. Si te piden reservar, recoge fechas, número de huéspedes y datos de contacto, y confirma que un agente cerrará la reserva.',
+        restaurante: 'Eres el asistente de un restaurante. Atiendes consultas sobre la carta, precios, horarios, domicilios y reservas de mesa. Si te piden reservar, recoge fecha, hora, número de personas y datos de contacto.',
+        gimnasio: 'Eres el asistente de un gimnasio. Atiendes consultas sobre planes y precios de membresía, horarios, clases y servicios. Si quieren inscribirse, recoge sus datos y confirma que un asesor los contactará.',
+        parqueadero: 'Eres el asistente de un parqueadero. Atiendes consultas sobre tarifas, disponibilidad, horarios y abonos mensuales.',
+        transporte: 'Eres el asistente de una empresa de transporte. Atiendes consultas sobre rutas, horarios, tarifas y estado de envíos. Para consultar un envío, pide el número de guía.',
+        servicios: 'Eres el asistente de una empresa de servicios. Atiendes consultas sobre los servicios que se ofrecen, precios y disponibilidad. Si quieren contratar, recoge sus datos y confirma que un asesor los contactará.',
+      };
+      systemPrompt += `TU ROL: ${encargo[vertical] || encargo.servicios}
+
+`;
+      systemPrompt += `FORMATO DE RESPUESTA:
+- Usa saltos de línea (\n) para separar ideas.
+- Usa **negritas** solo para datos importantes.
+- Sé conciso y conversacional.
+- NO hables de "carrito", "checkout" ni "finalizar el pedido": aquí no se vende un catálogo por chat.
+
+`;
+      systemPrompt += `TIENDA:
+- Nombre: ${orgInfo.name || 'Nuestro negocio'}
+`;
+      if (orgInfo.domain) systemPrompt += `- Web: https://${orgInfo.domain}
+`;
+      systemPrompt += `
+`;
+    }
+
+    if (esRetail) systemPrompt += `FORMATO DE RESPUESTA:\n- Usa saltos de línea (\\n) para separar ideas.\n- IMPORTANTE: Los productos se muestran AUTOMÁTICAMENTE como tarjetas visuales con imagen, nombre y precio. NO listes los productos como texto. Solo escribe un mensaje introductorio breve como "Aquí te muestro las opciones:" o "Tenemos estos disponibles:" y las tarjetas se mostrarán solas.\n- NO uses formato [IMG:url]. Las imágenes se muestran automáticamente en las tarjetas.\n- Usa **negritas** solo para datos importantes que NO sean productos.\n- Sé conciso y conversacional.\n- Máximo 3-4 productos por respuesta.\n\n`;
     
-    systemPrompt += `TIENDA:\n- Nombre: ${orgInfo.name || 'Tienda'}\n`;
-    if (orgInfo.domain) {
+    if (esRetail) systemPrompt += `TIENDA:\n- Nombre: ${orgInfo.name || 'Tienda'}\n`;
+    if (esRetail && orgInfo.domain) {
       systemPrompt += `- Web: https://${orgInfo.domain}\n- Productos: https://${orgInfo.domain}/productos\n- Ofertas: https://${orgInfo.domain}/ofertas\n- Checkout: https://${orgInfo.domain}/checkout\n`;
     }
-    systemPrompt += `\nTU ROL: Eres un asistente de ventas. Toma el pedido del cliente de forma conversacional. Cuando el cliente quiera un producto, muéstralo. Cuando confirme qué quiere, recopila sus datos y confirma el pedido.\n\nPRECIOS: SIEMPRE usa el "PRECIO DE VENTA" indicado en el catálogo. NUNCA uses el "precio anterior tachado" como precio real. Si el cliente pregunta por el precio, responde SOLO con el precio de venta. No te contradigas ni corrijas el precio a menos que haya cambiado en el catálogo.\n\n`;
+    if (esRetail) systemPrompt += `\nTU ROL: Eres un asistente de ventas. Toma el pedido del cliente de forma conversacional. Cuando el cliente quiera un producto, muéstralo. Cuando confirme qué quiere, recopila sus datos y confirma el pedido.\n\nPRECIOS: SIEMPRE usa el "PRECIO DE VENTA" indicado en el catálogo. NUNCA uses el "precio anterior tachado" como precio real. Si el cliente pregunta por el precio, responde SOLO con el precio de venta. No te contradigas ni corrijas el precio a menos que haya cambiado en el catálogo.\n\n`;
     // Add checkout config context
     const deliveryLabels: Record<string, string> = { pickup: 'Recoger en tienda', delivery_own: 'Domicilio (delivery propio)', delivery_third_party: 'Envío por transportadora' };
     const availableDeliveries = checkoutConfig.deliveryTypes.map(d => deliveryLabels[d] || d).join(', ');
@@ -1107,14 +1206,14 @@ Deno.serve(async (req: Request) => {
     const hasPickup = checkoutConfig.deliveryTypes.includes('pickup');
     const hasDelivery = checkoutConfig.deliveryTypes.some(d => d === 'delivery_own' || d === 'delivery_third_party');
     const onlyDelivery = hasDelivery && !hasPickup;
-    systemPrompt += `CONFIGURACIÓN DE PEDIDOS:\n- Tipos de entrega: ${availableDeliveries}\n`;
-    if (checkoutConfig.shippingEnabled && hasDelivery) {
+    if (esRetail) systemPrompt += `CONFIGURACIÓN DE PEDIDOS:\n- Tipos de entrega: ${availableDeliveries}\n`;
+    if (esRetail && checkoutConfig.shippingEnabled && hasDelivery) {
       systemPrompt += `- Costo de envío: $${checkoutConfig.shippingRate.toLocaleString()}\n- Envío gratis en compras desde: $${checkoutConfig.freeShippingThreshold.toLocaleString()}\n`;
     }
-    if (checkoutConfig.taxRate > 0) {
+    if (esRetail && checkoutConfig.taxRate > 0) {
       systemPrompt += `- Impuesto: ${checkoutConfig.taxName} ${checkoutConfig.taxRate}%${checkoutConfig.taxIncluded ? ' (incluido en precio)' : ' (se suma al subtotal)'}\n`;
     }
-    systemPrompt += `- Métodos de pago: ${payMethodNames}\n\n`;
+    if (esRetail) systemPrompt += `- Métodos de pago: ${payMethodNames}\n\n`;
     // Build dynamic order flow
     let flowSteps = `FLUJO DE PEDIDO:\n1. El cliente pregunta por productos → Muestra las opciones (las tarjetas se muestran automáticamente)\n2. El cliente elige → Confirma el producto y pregunta: "¿Deseas agregar algo más?"\n`;
     if (onlyPickup) {
@@ -1136,34 +1235,56 @@ Deno.serve(async (req: Request) => {
     if (checkoutConfig.taxRate > 0) {
       flowSteps += `   - ${checkoutConfig.taxName} ${checkoutConfig.taxRate}%${checkoutConfig.taxIncluded ? ' (incluido)' : ''}\n`;
     }
-    if (checkoutConfig.shippingEnabled && hasDelivery) {
+    if (esRetail && checkoutConfig.shippingEnabled && hasDelivery) {
       flowSteps += `   - Envío: $${checkoutConfig.shippingRate.toLocaleString()} (gratis si subtotal >= $${checkoutConfig.freeShippingThreshold.toLocaleString()})\n`;
     }
     flowSteps += `   - **Total**: la suma final en pesos\n`;
     const confirmStep = onlyPickup ? '6' : onlyDelivery ? '6' : '7';
     flowSteps += `${confirmStep}. Cuando el cliente confirme el resumen, incluye AL FINAL de tu respuesta estas etiquetas EXACTAS en líneas separadas:\n[DATOS_CLIENTE:nombre_completo|telefono|email|direccion|ciudad]\n[PEDIDO_LISTO]\nEjemplo: [DATOS_CLIENTE:Juan Pérez|3001234567|juan@email.com|Calle 123 #45-67|Bogotá]\nUSA LOS DATOS REALES que el cliente proporcionó durante la conversación. Si algún dato no se proporcionó, deja el campo vacío entre los pipes.\n\n`;
     flowSteps += `REGLAS IMPORTANTES:\n- [PEDIDO_LISTO] es OBLIGATORIA cuando el cliente confirma. Sin ella no se crea el pedido.\n- NO uses formularios. TODO es por conversación natural.\n- SIEMPRE calcula los totales con NÚMEROS REALES, nunca con texto placeholder.\n- Una vez el cliente confirme sus productos, NO vuelvas a listar ni sugerir otros productos.\n- Enfócate ÚNICAMENTE en recopilar datos del pedido después de elegir productos.\n- MÉTODOS DE PAGO: Solo ofrece EXACTAMENTE estos: ${payMethodNames}. NO inventes ni menciones otros métodos de pago que no estén en esta lista.\n- STOCK: Si un producto aparece en la lista de PRODUCTOS abajo con stock > 0, ESTÁ DISPONIBLE para la venta. Solo di que NO está disponible si el stock es 0. NUNCA inventes que un producto no está disponible si tiene stock.\n- En la respuesta de confirmación (cuando incluyes [PEDIDO_LISTO]), REPITE el nombre completo y precio de cada producto del pedido.\n\n`;
-    systemPrompt += flowSteps;
+    if (esRetail) systemPrompt += flowSteps;
     
-    systemPrompt += `PEDIDOS: Si preguntan por su pedido, pide el correo. Si ya dieron email, usa los datos de abajo.\n`;
-    if (emailFromChat) systemPrompt += `Email detectado: ${emailFromChat}\n`;
-    systemPrompt += `\n`;
-    
+    systemPrompt += `PEDIDOS: Si preguntan por su pedido, pide el correo. Si ya lo dieron, usa los datos del bloque CONTEXTO ACTUAL.\n\n`;
+
+    // A partir de aqui se acumula aparte todo lo que cambia en CADA mensaje.
+    //
+    // Por que: el prompt caching de OpenAI cachea el PREFIJO de la peticion. Con
+    // el nombre del cliente y los productos dentro de `instructions`, cada
+    // conversacion generaba un prefijo distinto y el cache fallaba. Medido en
+    // produccion sobre 6 respuestas: 3 cachearon (hasta 98,9%) y 3 no cachearon
+    // nada. Separandolo, el prefijo pasa a ser identico para toda la
+    // organizacion y el cache deja de depender de con quien se hable.
+    let contextoDinamico = '';
+    if (emailFromChat) contextoDinamico += `Email detectado: ${emailFromChat}\n`;
+
     if (imageAnalysis) {
-      systemPrompt += `IMAGEN RECIBIDA DEL CLIENTE:\nAnálisis: ${imageAnalysis}\n\nINSTRUCCIÓN IMPORTANTE: Verifica si este producto EXISTE en la lista de PRODUCTOS de abajo. Si encuentras el mismo producto o modelo en la lista, confirma que SÍ lo tenemos disponible, muestra su precio e imagen con [IMG:url]. Si NO existe en la lista, ofrece alternativas similares del catálogo.\n\n`;
+      contextoDinamico += `IMAGEN RECIBIDA DEL CLIENTE:\nAnálisis: ${imageAnalysis}\n\nINSTRUCCIÓN IMPORTANTE: Verifica si este producto EXISTE en la lista de PRODUCTOS de abajo. Si encuentras el mismo producto o modelo en la lista, confirma que SÍ lo tenemos disponible, muestra su precio e imagen con [IMG:url]. Si NO existe en la lista, ofrece alternativas similares del catálogo.\n\n`;
     }
-    
-    systemPrompt += `Cliente: ${customerName} | Canal: ${conv.channel?.type || 'chat'}\n\n`;
+
+    contextoDinamico += `Cliente: ${customerName} | Canal: ${conv.channel?.type || 'chat'}\n\n`;
 
     if (categoriesText || productsResult.text || ordersText) {
-      systemPrompt += `DATOS DEL INVENTARIO REAL Y DISPONIBLE:\n\n`;
-      if (categoriesText) systemPrompt += `CATEGORÍAS: ${categoriesText}\n\n`;
-      if (productsResult.text) systemPrompt += `PRODUCTOS ENCONTRADOS EN BÚSQUEDA ACTUAL:\n${productsResult.text}\n`;
-      if (ordersText) systemPrompt += `PEDIDOS DEL CLIENTE:\n${ordersText}\n`;
-      systemPrompt += `\nREGLAS CRÍTICAS:\n- Si un producto aparece en la lista de arriba, SÍ lo tenemos disponible. Confirma su disponibilidad y precio.\n- CAMBIO DE TEMA: Si el cliente pregunta por un producto DIFERENTE al que se venía hablando, responde sobre el NUEVO producto. No sigas hablando del producto anterior.\n- Si buscamos un producto nuevo y NO aparece en la lista de arriba, di honestamente que no lo tenemos disponible actualmente y ofrece alternativas si hay.\n- Si el cliente se refiere al MISMO producto que ya mostraste antes, confirma que sigue disponible.\n- Usa [IMG:url] para mostrar imágenes de productos del catálogo.\n- NO inventes productos que no estén en la lista.\n\n`;
-    } else {
-      systemPrompt += `\nREGLAS CRÍTICAS (SIN RESULTADOS EN BÚSQUEDA):\n- SALUDO: Si el cliente dice \"Hola\", \"Buenos días\", \"Buenas\" o cualquier saludo, responde con un saludo amable y pregunta en qué puedes ayudar. NO menciones pedidos, envíos ni productos sin que te pregunten.\n- CAMBIO DE TEMA: Si el cliente pregunta por un producto NUEVO y no hay resultados, informa honestamente que no lo tenemos.\n- NO INVENTAR: Nunca inventes estados de pedidos, envíos ni información ficticia.\n- Si el cliente se refiere al MISMO producto que ya mostraste antes, confirma que sigue disponible.\n\n`;
+      contextoDinamico += `DATOS DEL INVENTARIO REAL Y DISPONIBLE:\n\n`;
+      if (categoriesText) contextoDinamico += `CATEGORÍAS: ${categoriesText}\n\n`;
+      if (productsResult.text) contextoDinamico += `PRODUCTOS ENCONTRADOS EN BÚSQUEDA ACTUAL:\n${productsResult.text}\n`;
+      if (ordersText) contextoDinamico += `PEDIDOS DEL CLIENTE:\n${ordersText}\n`;
     }
+
+    // Un solo juego de reglas, valido con y sin resultados. Antes eran dos
+    // ramas que dependian de si la busqueda encontro algo: al vivir dentro de
+    // `instructions`, el prefijo cambiaba segun el mensaje y el cache fallaba.
+    systemPrompt += `REGLAS CRÍTICAS:
+- Los productos disponibles llegan en el bloque CONTEXTO ACTUAL. Si uno aparece ahí, SÍ lo tenemos: confirma disponibilidad y precio.
+- Si el bloque no trae ningún producto, di honestamente que no lo tenemos y ofrece alternativas si las hay. NUNCA inventes productos, existencias ni precios.
+- SALUDO: si el cliente saluda, responde el saludo y pregunta en qué puedes ayudar. NO menciones pedidos, envíos ni productos sin que te pregunten.
+- CAMBIO DE TEMA: si pregunta por un producto DIFERENTE al que se venía hablando, responde sobre el NUEVO. No sigas con el anterior.
+- Si se refiere al MISMO producto que ya mostraste, confirma que sigue disponible.
+- STOCK: si un producto viene con stock > 0, ESTÁ DISPONIBLE. Solo di que no lo está si el stock es 0.
+- NO INVENTAR: nunca inventes estados de pedidos, números de guía, tiempos de entrega ni información que no tengas.
+- Usa [IMG:url] para mostrar imágenes de productos del catálogo.
+
+`;
+
 
     if ((quickReplies && quickReplies.length > 0) || (knowledgeFragments && knowledgeFragments.length > 0)) {
       systemPrompt += `REFERENCIA:\n`;
@@ -1174,31 +1295,60 @@ Deno.serve(async (req: Request) => {
     
     systemPrompt += `RECORDATORIO FINAL: Responde SIEMPRE sobre lo que el cliente pregunta AHORA. Si pregunta por un producto nuevo, enfócate en ese. Si no lo encontramos, dilo honestamente. Si se refiere a uno ya mostrado, confirma disponibilidad. Si saluda, responde el saludo. Formato legible. Usa [IMG:url] para mostrar productos.`;
 
+    // `systemPrompt` ya solo contiene lo estable de la organizacion: es el
+    // prefijo que el proveedor puede cachear. El contexto del mensaje va como
+    // un turno aparte, DESPUES del prefijo, para no romperlo.
     const chatMessages: Array<any> = [
       { role: 'system', content: systemPrompt }
     ];
-    
+    if (contextoDinamico.trim()) {
+      chatMessages.push({
+        role: 'system',
+        content: `CONTEXTO ACTUAL (datos de este mensaje, no son reglas):\n\n${contextoDinamico}`,
+      });
+    }
+
+    // ¿El mensaje que estamos respondiendo AHORA trae imagen?
+    //
+    // Antes esto miraba si CUALQUIERA de los ultimos 20 mensajes tenia imagen,
+    // asi que una sola foto contaminaba toda la conversacion: cada respuesta
+    // posterior se forzaba a gpt-4o hasta que la imagen salia de la ventana.
+    // Medido en produccion: de 62 respuestas por gpt-4o en 18 horas, solo 10
+    // las disparo una imagen; las otras 52 pagaron 15x de mas ($0,0068 frente a
+    // $0,0004) por una foto vieja que ya no tenia nada que ver.
+    const mensajeActualConImagen = !!lastCustomerMessage &&
+      (lastCustomerMessage.content_type === 'image' || !!lastCustomerMessage.metadata?.imageUrl);
+
     for (const msg of recentMessages) {
       const role = msg.role === 'customer' ? 'user' : 'assistant';
-      if (msg.content_type === 'image' || msg.metadata?.imageUrl) {
-        const imgUrl = msg.metadata?.imageUrl || msg.content;
-        if (role === 'user' && imgUrl && imgUrl.startsWith('http')) {
-          chatMessages.push({
-            role: 'user',
-            content: [
-              { type: 'text', text: msg.metadata?.caption || msg.content || 'El cliente envió esta imagen:' },
-              { type: 'image_url', image_url: { url: imgUrl, detail: 'low' } }
-            ]
-          });
-        } else {
-          chatMessages.push({ role, content: msg.content || '' });
-        }
+      const tieneImagen = msg.content_type === 'image' || msg.metadata?.imageUrl;
+      const imgUrl = tieneImagen ? (msg.metadata?.imageUrl || msg.content) : null;
+      // La imagen solo se manda al modelo si es la del mensaje actual. Las
+      // anteriores se citan por su descripcion: asi el hilo conserva el
+      // contexto sin obligar a un modelo con vision en cada turno.
+      const esLaImagenActual = tieneImagen && msg.id === lastCustomerMessage?.id;
+
+      if (tieneImagen && role === 'user' && imgUrl && imgUrl.startsWith('http') && esLaImagenActual) {
+        chatMessages.push({
+          role: 'user',
+          content: [
+            { type: 'text', text: msg.metadata?.caption || msg.content || 'El cliente envió esta imagen:' },
+            { type: 'image_url', image_url: { url: imgUrl, detail: 'low' } }
+          ]
+        });
+      } else if (tieneImagen && role === 'user') {
+        chatMessages.push({
+          role,
+          content: msg.metadata?.caption
+            ? `[el cliente envió una imagen] ${msg.metadata.caption}`
+            : '[el cliente envió una imagen antes en la conversación]',
+        });
       } else {
         chatMessages.push({ role, content: msg.content || '' });
       }
     }
 
-    const hasImage = recentMessages.some(m => m.content_type === 'image' || m.metadata?.imageUrl);
+    const hasImage = mensajeActualConImagen;
     const temperatura = parseFloat(String(settings.temperature)) || 0.7;
     const maxTokens = settings.max_tokens || 600;
 
@@ -1245,6 +1395,7 @@ Deno.serve(async (req: Request) => {
         p_model: respuesta.model || model,
         p_tokens_entrada: respuesta.promptTokens,
         p_tokens_salida: respuesta.completionTokens,
+        p_tokens_cacheados: respuesta.cachedTokens,
       });
       costoUsd = costo !== null && costo !== undefined ? Number(costo) : null;
     } catch (e) {
@@ -1405,6 +1556,9 @@ Deno.serve(async (req: Request) => {
         metadata: {
           conversation_id: conversationId, job_id: jobId, source: 'ai-auto-response',
           provider: proveedor,
+          // Para comprobar si el prompt caching entra de verdad, en vez de suponerlo.
+          cached_tokens: respuesta.cachedTokens,
+          endpoint: usaResponsesApi(model) ? 'responses' : 'chat_completions',
         },
       });
     }

@@ -393,20 +393,10 @@ function SignupContent() {
           }
         }
         
-        // Guardar organización activa en localStorage para que AppLayout la encuentre
+        // Guardar la organización activa. guardarOrganizacionActiva escribe
+        // `organizacionActiva`, las claves legacy que AppLayout lee para su
+        // estado inicial de orgId/orgName, y las cookies de organización.
         guardarOrganizacionActiva({ id: orgId, name: signupData.organizationName });
-
-        // Guardar también las claves legacy que AppLayout lee para el estado inicial
-        // de orgId/orgName (ver selectOrganizationFromPopup en organizationAuth.ts).
-        // Sin esto, AppLayout arranca con orgId=null hasta que loadUserProfileOptimized
-        // termine, dejando al usuario sin organización visible hasta recargar.
-        try {
-          localStorage.setItem('currentOrganizationId', orgId.toString());
-          localStorage.setItem('currentOrganizationName', signupData.organizationName);
-          sessionStorage.setItem('currentOrganizationId', orgId.toString());
-        } catch (e) {
-          console.warn('No se pudieron guardar las claves legacy de organización:', e);
-        }
 
         // Actualizar last_org_id en el perfil para que el fallback del AppLayout funcione
         await supabase

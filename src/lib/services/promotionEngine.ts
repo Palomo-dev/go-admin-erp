@@ -209,8 +209,10 @@ class PromotionEngineService {
         break;
       }
 
-      case 'fixed': {
-        // Monto fijo distribuido proporcionalmente entre los items aplicables
+      case 'fixed_amount': {
+        // Monto fijo distribuido proporcionalmente entre los items aplicables.
+        // Antes este case decía 'fixed', valor que el CHECK de la base nunca
+        // permite guardar: el motor jamás llegaba a aplicar un monto fijo.
         const fixed = Number(promotion.discount_value || 0);
         if (subtotal > 0 && fixed > 0) {
           for (const item of applicableItems) {

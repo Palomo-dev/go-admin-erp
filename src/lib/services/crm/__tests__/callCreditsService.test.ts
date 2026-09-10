@@ -53,8 +53,10 @@ describe('callCreditsService (FASE-03 §8, D6)', () => {
     expect(s.extraMinutes).toBe(2);
     expect(s.breakdown).toEqual({ pstn: 0.1131, sdk: 0.012, recording: 0.0075 });
     expect(s.costUsd).toBeCloseTo(0.1326, 6);
+    // F5 §8: un bridge móvil son DOS llamadas PSTN (vendedor + cliente), así que
+    // el minuto se paga dos veces (antes se liquidaba la mitad del coste real).
     const bridge = computeSettlement({ durationSeconds: 30, reservedMinutes: 1, mode: 'bridge', recordingEnabled: false, unitCosts: { pstn: 0.07, sdk: 0.004, recording: 0.0025 } });
-    expect(bridge).toMatchObject({ minutes: 1, extraMinutes: 0, breakdown: { pstn: 0.07, sdk: 0, recording: 0 } });
+    expect(bridge).toMatchObject({ minutes: 1, extraMinutes: 0, breakdown: { pstn: 0.14, sdk: 0, recording: 0 } });
   });
 
   test('reserveVoiceMinutes llama deduct_comm_credits(p_org_id, voice, amount)', async () => {

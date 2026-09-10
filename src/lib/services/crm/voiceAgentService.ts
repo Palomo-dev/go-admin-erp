@@ -35,9 +35,10 @@ import { getActiveProvider } from '@/lib/services/providerRegistry';
 import {
   getMasterClient,
   getMasterPhoneNumber,
-  formatE164,
+  normalizeDialableE164,
   getWebhookBaseUrl,
 } from '@/lib/services/integrations/twilio/twilioConfig';
+import { getTelephonySettings, pickCallerId } from '@/lib/services/crm/voiceContextService';
 import {
   VOICE_AGENT_PURPOSES,
   type VoiceAgentPurpose,
@@ -963,6 +964,12 @@ export async function runCampaignQueue(
   }
 
   const { client: twilioClient, fromNumber } = await getTwilioClientForOrg(orgId, supabase);
+  // N-3: sin caller id PROPIO no se marca. Antes se usaba el número global de la
+  // plataforma, compartido con el resto de organizaciones.
+  if (!fromNumber) {
+    result.errors.push('La organización no tiene un número de salida propio configurado (Configuración › CRM › Telefonía)');
+    return result;
+  }
   const webhookBase = getWebhookBaseUrl();
   const recordingSettings = orgSettings;
 
@@ -1373,6 +1380,15 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
     return { initiated: false, reason: 'sin teléfono' };
   }
 
+  // Gemelo de B1: `formatE164` es un formateador, no un validador — con él un
+  // teléfono de 5 dígitos se convertía en `+57xxxxx` y se marcaba igual,
+  // gastando el minuto de Twilio. Se comprueba ANTES de reservar créditos.
+  const dialableTo = normalizeDialableE164(customer.phone);
+  if (!dialableTo) {
+    await releaseCall(supabase, vac.id, 'skipped', `Teléfono no marcable: ${customer.phone}`, null);
+    return { initiated: false, reason: 'teléfono no marcable' };
+  }
+
   // D6: crédito reservado ANTES de gastar en el proveedor.
   const reserved = await reserveVoiceCredits(orgId, CREDITS_RESERVED_PER_CALL, supabase);
   if (!reserved) {
@@ -1390,7 +1406,7 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
       .eq('organization_id', orgId)
   );
 
-  const toNumber = formatE164(customer.phone);
+  const toNumber = dialableTo;
   const startedAt = new Date().toISOString();
 
   // C-F6-03: fila en `calls` con las columnas reales y todos los NOT NULL.
@@ -1448,10 +1464,11 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
       statusCallbackMethod: 'POST',
       timeout: 30,
       machineDetection: 'Enable',
-      // C-F6-09: grabación dual-channel (el aviso de consentimiento lo emite el TwiML).
-      ...(recording.enabled
-        ? { record: true, recordingChannels: 'dual', recordingStatusCallback: `${webhookBase}/api/voice/recording` }
-        : {}),
+      // C-F6-09 / A-2: la grabación dual-channel NO se pide aquí. `record: true`
+      // en el `calls.create` arranca a grabar en cuanto contestan, es decir
+      // ANTES de que suene el aviso: el acta quedaba bien fechada pero la
+      // grabación ya existía sin consentimiento. Ahora la inicia
+      // `twiml/ai-agent` por REST, después del aviso y con el acta escrita.
     });
 
     unwrap(
@@ -1733,6 +1750,12 @@ export async function dispatchAgentCall(
   }
 
   const { client, fromNumber } = await getTwilioClientForOrg(orgId, supabase);
+  if (!fromNumber) {
+    throw new VoiceDispatchBlocked(
+      'caller_id',
+      'La organización no tiene un número de salida propio configurado. Configúralo en Configuración, CRM, Telefonía.'
+    );
+  }
   const recording = orgSettings;
 
   // Reserva ATÓMICA de la fila suelta con la misma semántica que la cola de
@@ -1768,6 +1791,23 @@ export async function dispatchAgentCall(
 
 // ─── Helper: Twilio client ───────────────────────────────────────────────────
 
+/**
+ * Caller id del agente IA (defecto N-3, gemelo de M2).
+ *
+ * Antes caía en `TWILIO_PHONE_NUMBER`/`getMasterPhoneNumber()`, el número
+ * GLOBAL de la plataforma: la organización marcaba a sus clientes desde un
+ * número que no es suyo y que comparte con los demás inquilinos. Ahora sale de
+ * `pickCallerId` y, si el único candidato es el de la plataforma, se devuelve
+ * vacío y el despacho se bloquea (`caller_id`), igual que hace `twiml/outbound`.
+ */
+async function pickAgentCallerId(orgId: number, supabase: SupabaseClient, fallback: string | null): Promise<string> {
+  const settings = await getTelephonySettings(orgId, supabase);
+  const picked = await pickCallerId(orgId, settings, supabase, fallback ?? undefined);
+  if (!picked.e164) return '';
+  if (picked.source === 'platform' && process.env.VOICE_ALLOW_PLATFORM_CALLER_ID !== 'true') return '';
+  return picked.e164;
+}
+
 async function getTwilioClientForOrg(
   orgId: number,
   supabase: SupabaseClient
@@ -1776,6 +1816,11 @@ async function getTwilioClientForOrg(
   fromNumber: string;
 }> {
   const provider = await getActiveProvider(orgId, 'voice', supabase);
+  const fromNumber = await pickAgentCallerId(
+    orgId,
+    supabase,
+    (provider.credentials.TWILIO_PHONE_NUMBER as string) || getMasterPhoneNumber() || null
+  );
 
   if (
     provider.credentials.TWILIO_SUBACCOUNT_SID &&
@@ -1786,7 +1831,6 @@ async function getTwilioClientForOrg(
       provider.credentials.TWILIO_SUBACCOUNT_SID,
       provider.credentials.TWILIO_SUBACCOUNT_AUTH_TOKEN
     );
-    const fromNumber = provider.credentials.TWILIO_PHONE_NUMBER || getMasterPhoneNumber();
     return {
       client: client as unknown as DialParams['twilioClient'],
       fromNumber,
@@ -1794,6 +1838,5 @@ async function getTwilioClientForOrg(
   }
 
   const client = getMasterClient();
-  const fromNumber = (provider.credentials.TWILIO_PHONE_NUMBER as string) || getMasterPhoneNumber();
   return { client: client as unknown as DialParams['twilioClient'], fromNumber };
 }

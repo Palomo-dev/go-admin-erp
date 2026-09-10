@@ -23,6 +23,12 @@ jest.mock('@/lib/services/integrations/twilio/twilioConfig', () => ({
   getMasterClient: () => ({ calls: { create: twilioCreate } }),
   getMasterPhoneNumber: () => '+15550000000',
   formatE164: (p: string) => (p.startsWith('+') ? p : `+57${p.replace(/\D/g, '')}`),
+  // Gemelo de B1: el destino tiene que ser MARCABLE, no solo estar formateado.
+  normalizeDialableE164: (p: string | null | undefined) => {
+    if (!p) return null;
+    const e164 = p.startsWith('+') ? p : `+57${p.replace(/\D/g, '')}`;
+    return /^\+[1-9]\d{9,14}$/.test(e164) ? e164 : null;
+  },
   getWebhookBaseUrl: () => 'https://app.example.com',
 }));
 
@@ -203,7 +209,7 @@ function scenario(
     if (op.table === 'comm_settings') {
       return {
         data: {
-          voice_recording_enabled: true,
+          voice_caller_id: '+573001234567', voice_recording_enabled: true,
           voice_consent_message: 'Esta llamada será grabada.',
           // r2: el despachador comprueba que el canal esté habilitado (F-NEW-11).
           voice_agent_enabled: true,
@@ -234,9 +240,42 @@ function scenario(
   return { resolver, rpcResolver, pending, campaign };
 }
 
+/**
+ * Reloj fijado (r5).
+ *
+ * `dialClaimedCall` comprueba la franja legal de contacto del cliente
+ * (`isWithinCustomerHours`, 08:00–20:00 y nunca en domingo) contra el reloj REAL
+ * de la máquina, en la zona del cliente. Todos los escenarios de esta suite dan
+ * al cliente `timezone: 'America/Bogota'`, así que la hora de ejecución era una
+ * ENTRADA no declarada del escenario: la suite pasaba de día y se caía de noche
+ * y los domingos, con `calls_initiated: 0` y el motivo «fuera de la franja
+ * horaria del cliente». No es un fallo del producto —bloquear de madrugada es
+ * exactamente la barrera D9 que aprobó la fase— sino un dato del escenario que
+ * faltaba por fijar. Se fija aquí, igual que ya hacía `f6VoiceAgent.test.ts`
+ * para sus casos de franja.
+ *
+ * Jueves 14:00 en America/Bogota: laborable, dentro de la ventana, y lejos de
+ * los bordes 08/20 para que un cambio de horario no lo roce.
+ *
+ * Solo se falsea `Date`: los temporizadores siguen siendo reales para no alterar
+ * el orden de resolución de las promesas que estos casos ejercitan.
+ */
+const RELOJ_FIJO = new Date('2026-09-10T19:00:00.000Z');
+const NO_FALSEAR = [
+  'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval',
+  'setImmediate', 'clearImmediate', 'nextTick', 'queueMicrotask',
+  'performance', 'requestAnimationFrame', 'cancelAnimationFrame',
+  'requestIdleCallback', 'cancelIdleCallback', 'hrtime',
+] as const;
+
 beforeEach(() => {
+  jest.useFakeTimers({ doNotFake: [...NO_FALSEAR], now: RELOJ_FIJO });
   twilioCreate.mockReset();
   twilioCreate.mockResolvedValue({ sid: 'CA00000000000000000000000000000001' });
+});
+
+afterEach(() => {
+  jest.useRealTimers();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -390,7 +429,7 @@ describe('B. Concurrencia y topes del despachador de campañas', () => {
       if (op.table === 'voice_agent_campaigns' && op.verb === 'select') {
         return { data: [{ id: 'camp-1', organization_id: 7, voice_agent_id: 'a', target_source: 'pipeline_stage', target_config: { stage_id: 'st-1' }, schedule: null, max_calls_per_day: 50, max_calls_per_hour: 20, max_concurrent: 3, emergency_stop: false, consecutive_failures: 0, status: 'running' }] };
       }
-      if (op.table === 'comm_settings') return { data: { voice_recording_enabled: true, voice_agent_enabled: true, is_active: true } };
+      if (op.table === 'comm_settings') return { data: { voice_caller_id: '+573001234567', voice_recording_enabled: true, voice_agent_enabled: true, is_active: true } };
       if (op.table === 'voice_agent_call_attempts' && op.head) return { count: 0 };
       if (op.table === 'voice_agent_calls' && op.head) return { count: 0 };
       if (op.table === 'voice_agent_calls' && op.verb === 'select') return { data: [] };
@@ -460,7 +499,7 @@ describe('B. Concurrencia y topes del despachador de campañas', () => {
         return { data: [{ id: 'camp-1', organization_id: 7, voice_agent_id: 'agent-1', target_source: 'pipeline_stage', target_config: { stage_id: 's' }, schedule: null, max_calls_per_day: 50, max_calls_per_hour: 20, max_concurrent: 3, emergency_stop: false, consecutive_failures: 0, status: 'running' }] };
       }
       if (op.table === 'comm_settings') {
-        return { data: { voice_recording_enabled: true, voice_agent_enabled: true, is_active: true } };
+        return { data: { voice_caller_id: '+573001234567', voice_recording_enabled: true, voice_agent_enabled: true, is_active: true } };
       }
       // El conteo de intentos: el libro entero (todas las filas son de hoy).
       if (op.table === 'voice_agent_call_attempts' && op.head) return { count: ledger.length };
@@ -552,6 +591,43 @@ describe('B. Concurrencia y topes del despachador de campañas', () => {
     const src = SRC('src/lib/services/crm/voiceAgentService.ts');
     expect(src).toContain('export const FAILURE_STREAK_TO_STOP = 5;');
     expect(src).toMatch(/streak >= FAILURE_STREAK_TO_STOP[\s\S]{0,300}stopCampaign\(/);
+  });
+
+  test('B8 [NUEVO r5] fuera de la franja legal del cliente NO se marca: la fila vuelve a la cola', async () => {
+    // Mismo escenario y mismos datos que B1/B2: lo único que cambia es la hora.
+    // Este caso es el que faltaba y por cuya ausencia la dependencia del reloj
+    // real pasó inadvertida: los 14 casos de despacho de esta suite se caían de
+    // madrugada sin que ningún caso dijera QUÉ debía pasar de madrugada.
+    const madrugada = new Date('2026-09-11T04:00:00.000Z'); // viernes 23:00 en Bogotá
+    jest.setSystemTime(madrugada);
+
+    const { resolver, rpcResolver } = scenario();
+    const { client, ops } = makeSupabase(resolver, rpcResolver);
+    const r = await runCampaignQueue(7, client);
+
+    // Ni una marcación, ni un crédito gastado: la barrera D9 es fail-closed.
+    expect(r.calls_initiated).toBe(0);
+    expect(twilioCreate).not.toHaveBeenCalled();
+    expect(r.errors).toContain('Llamada vac-1: fuera de la franja horaria del cliente');
+
+    // Y no es un descarte: la fila se devuelve a `pending`, se suelta el cerrojo
+    // y se reprograma. Un «ahora no» no puede convertirse en una llamada perdida.
+    const vuelta = ops.find(
+      (o) => o.table === 'voice_agent_calls' && o.verb === 'update'
+    );
+    expect(vuelta).toBeDefined();
+    const payload = vuelta!.payload as Record<string, unknown>;
+    expect(payload.status).toBe('pending');
+    expect(payload.claimed_at).toBeNull();
+    expect(payload.locked_by).toBeNull();
+    expect(new Date(String(payload.scheduled_at)).getTime()).toBeGreaterThan(madrugada.getTime());
+
+    // El domingo tampoco se llama, ni siquiera a mediodía.
+    jest.setSystemTime(new Date('2026-09-13T17:00:00.000Z')); // domingo 12:00 en Bogotá
+    twilioCreate.mockClear();
+    const b = makeSupabase(resolver, rpcResolver);
+    expect((await runCampaignQueue(7, b.client)).calls_initiated).toBe(0);
+    expect(twilioCreate).not.toHaveBeenCalled();
   });
 });
 
@@ -774,19 +850,26 @@ describe('E. Multi-tenant, firma y consentimiento', () => {
     expect(src).toMatch(/\.eq\('organization_id', orgId\)/);
   });
 
-  test('E5 [CORREGIDO r1] la llamada del agente IA graba en dual y anuncia el consentimiento', async () => {
+  test('E5 [CORREGIDO r4] la grabación del agente IA arranca TRAS el aviso, no en el calls.create', async () => {
     const { resolver, rpcResolver } = scenario();
     const { client } = makeSupabase(resolver, rpcResolver);
     await runCampaignQueue(7, client);
     const args = twilioCreate.mock.calls[0][0] as Record<string, unknown>;
-    expect(args.record).toBe(true);
-    expect(args.recordingChannels).toBe('dual');
+    // Ronda 4 (A-2): `record: true` aquí graba desde que CONTESTAN, o sea antes
+    // de que suene el aviso. Separar el TwiML en dos pasadas arreglaba la fecha
+    // del acta pero no la existencia de la grabación, así que el `calls.create`
+    // ya no graba: lo hace `twiml/ai-agent` por REST, después del aviso.
+    expect(args.record).toBeUndefined();
+    expect(args.recordingChannels).toBeUndefined();
     const twiml = SRC('src/app/api/voice/twiml/ai-agent/route.ts');
     expect(twiml).toContain('config.consentMessage');
     expect(twiml).toContain("from('call_consents')");
     expect(twiml).toMatch(/<Say voice="\$\{CONSENT_VOICE\}"/);
     // El aviso no depende de una preferencia del agente: solo de si hay grabación.
     expect(twiml).toContain('config.recordingEnabled');
+    // Y la grabación dual se pide sobre la llamada YA en curso.
+    expect(twiml).toContain('recordings.create');
+    expect(twiml).toContain("recordingChannels: 'dual'");
   });
 
   test('E6 [CORREGIDO r1] la baja voluntaria existe y se respeta en el camino de marcación', () => {
@@ -1260,6 +1343,8 @@ function manualScenario(
     agentEnabled: boolean;
     businessHours: Record<string, unknown>;
     agentActive: boolean;
+    /** `null` = la org NO tiene número propio (defecto N-3). */
+    callerId: string | null;
   }> = {}
 ) {
   const agent = {
@@ -1275,6 +1360,7 @@ function manualScenario(
     if (op.table === 'comm_settings') {
       return {
         data: {
+          voice_caller_id: over.callerId === undefined ? '+573001234567' : over.callerId,
           voice_recording_enabled: true,
           voice_consent_message: 'Grabada.',
           voice_agent_enabled: over.agentEnabled ?? true,
@@ -1309,6 +1395,38 @@ function manualScenario(
   };
   return { resolver, rpcResolver };
 }
+
+describe('N-3 (ronda 3 de F3) · el agente IA no marca desde el número de la plataforma', () => {
+  test('N-3.3 (gemelo B1) un teléfono no marcable NO gasta un minuto de Twilio', async () => {
+    const base = manualScenario();
+    const resolver: Resolver = (op) => (op.table === 'customers' ? { data: { id: 'cust-1', phone: '12345', timezone: 'America/Bogota' } } : base.resolver(op));
+    const { client } = makeSupabase(resolver, base.rpcResolver);
+    const r = await dispatchAgentCall(7, client, { voiceAgentId: 'agent-1', customerId: 'cust-1' });
+    expect(r.dialed).toBe(false);
+    expect(r.reason).toBe('teléfono no marcable');
+    expect(twilioCreate).not.toHaveBeenCalled();
+  });
+
+
+  test('N-3.1 sin caller id propio el despacho se BLOQUEA (antes salía con TWILIO_PHONE_NUMBER / master)', async () => {
+    const { resolver, rpcResolver } = manualScenario({ callerId: null });
+    const { client, ops } = makeSupabase(resolver, rpcResolver);
+    await expect(
+      dispatchAgentCall(7, client, { voiceAgentId: 'agent-1', customerId: 'cust-1' })
+    ).rejects.toMatchObject({ reason: 'caller_id' });
+    expect(twilioCreate).not.toHaveBeenCalled();
+    expect(ops.filter((o) => o.table === 'calls' && o.verb === 'insert')).toHaveLength(0);
+  });
+
+  test('N-3.2 contraprueba: con `voice_caller_id` propio marca DESDE ese número', async () => {
+    const { resolver, rpcResolver } = manualScenario();
+    const { client } = makeSupabase(resolver, rpcResolver);
+    const r = await dispatchAgentCall(7, client, { voiceAgentId: 'agent-1', customerId: 'cust-1' });
+    expect(r.dialed).toBe(true);
+    expect(twilioCreate).toHaveBeenCalledTimes(1);
+    expect(twilioCreate.mock.calls[0][0]).toMatchObject({ from: '+573001234567' });
+  });
+});
 
 describe('J. Despacho puntual, disparo por etapa y consentimiento (ronda 2)', () => {
   test('J1 [CORREGIDO r2] el despacho puntual respeta el tope diario: no crea fila ni marca', async () => {
@@ -1760,7 +1878,7 @@ describe('K bis. Presupuesto UNICO del agente (R3-5)', () => {
         }] };
       }
       if (op.table === 'comm_settings') {
-        return { data: { voice_recording_enabled: true, voice_agent_enabled: true, is_active: true, voice_max_concurrent_calls: 3 } };
+        return { data: { voice_caller_id: '+573001234567', voice_recording_enabled: true, voice_agent_enabled: true, is_active: true, voice_max_concurrent_calls: 3 } };
       }
       if (op.table === 'voice_agents' && op.verb === 'select') {
         return { data: { is_active: true, max_calls_per_day: 50, max_calls_per_hour: 20, retry_policy: {} } };
@@ -2246,7 +2364,7 @@ describe('M. Menores cerrados en la ronda 3', () => {
     const resolver: Resolver = (op) => {
       if (op.table === 'comm_settings') {
         return { data: {
-          voice_recording_enabled: true, voice_consent_message: 'Esta llamada será grabada.',
+          voice_caller_id: '+573001234567', voice_recording_enabled: true, voice_consent_message: 'Esta llamada será grabada.',
           voice_agent_enabled: true, is_active: true, voice_max_concurrent_calls: 3,
         } };
       }

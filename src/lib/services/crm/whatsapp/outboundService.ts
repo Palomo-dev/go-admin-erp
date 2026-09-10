@@ -20,7 +20,7 @@ import { getServiceClient } from '@/lib/supabase/server-service';
 import { buildContext, renderVariables } from '@/lib/services/crm/email/variables';
 import { enqueueJob } from '@/lib/jobs/enqueue';
 import { canContact } from './consent';
-import { countryFromPhone, getOrgSettings, resolveChannel, resolveRecipient } from './channelService';
+import { countryFromPhone, defaultCountryOf, getOrgSettings, resolveChannel, resolveRecipient } from './channelService';
 import { requireHsm } from './templateService';
 import { renderTemplateComponents, renderedToText, toTwilioContentVariables } from './templateRender';
 import { getWindow } from './windowService';
@@ -35,7 +35,7 @@ interface Target {
 
 async function resolveTarget(input: SendWhatsAppInput, supabase: SupabaseClient): Promise<Target> {
   let customerId = input.customerId ?? null;
-  let opportunityId = input.opportunityId ?? input.relatedOpportunityId ?? null;
+  const opportunityId = input.opportunityId ?? input.relatedOpportunityId ?? null;
 
   if (input.conversationId) {
     const { data: conv } = await supabase.from('conversations').select('id, customer_id, channel_id').eq('id', input.conversationId).eq('organization_id', input.orgId).maybeSingle();
@@ -91,7 +91,10 @@ export async function sendWhatsApp(input: SendWhatsAppInput, supabase: SupabaseC
   const channel = await resolveChannel(orgId, input.channelId ?? null, supabase, service);
   if (channel.status !== 'active') throw new WhatsAppError('NO_CHANNEL', `El canal "${channel.name}" no está activo`, 422);
 
-  const recipient = await resolveRecipient(orgId, target.customerId, channel.id, supabase);
+  // Ajustes de la org: hacen falta ANTES de resolver el destinatario, porque el
+  // indicativo con el que se completan los teléfonos nacionales sale de ahí.
+  const settings = await getOrgSettings(orgId, service);
+  const recipient = await resolveRecipient(orgId, target.customerId, channel.id, supabase, defaultCountryOf(settings));
   if (!recipient) throw new WhatsAppError('NO_PHONE', 'El cliente no tiene un número de WhatsApp válido', 422);
 
   if (!(await canContact(orgId, target.customerId, 'whatsapp', purpose, service))) {
@@ -146,7 +149,10 @@ export async function sendWhatsApp(input: SendWhatsAppInput, supabase: SupabaseC
     // plantilla interpolaba). Sin `{{` no hay coste de buildContext.
     if (content.includes('{{')) {
       const ctx = await buildContext(orgId, { customerId: target.customerId, opportunityId: target.opportunityId, userId: input.senderUserId ?? null, custom: (input.variables ?? {}) as Record<string, unknown> }, service);
-      const r = renderVariables(content, ctx, { escapeHtml: false });
+      // `strictPaths`: en WhatsApp una llave que no es ruta válida ({{1}},
+      // {{año}}, {{nombre cliente}}) NO puede salir literal al cliente; se
+      // reporta como faltante y el envío para en 422 (tester r2, defecto (a)).
+      const r = renderVariables(content, ctx, { escapeHtml: false, strictPaths: true });
       if (r.missing.length) throw new WhatsAppError('MISSING_VARIABLES', `Faltan variables: ${r.missing.join(', ')}`, 422, { missing: r.missing });
       content = r.out.trim();
     }
@@ -154,8 +160,7 @@ export async function sendWhatsApp(input: SendWhatsAppInput, supabase: SupabaseC
   }
   if (content.length > 4096) throw new WhatsAppError('VALIDATION', 'El mensaje supera 4096 caracteres', 400);
 
-  // Horario permitido y límite diario (ajustes por org)
-  const settings = await getOrgSettings(orgId, service);
+  // Horario permitido y límite diario (ajustes por org, ya cargados arriba)
   if (settings.allowed_hours && !input.scheduledAt && !isWithinAllowedHours(settings.allowed_hours, now)) {
     if (!(input.force && purpose === 'utility')) {
       const next = nextAllowedSlot(settings.allowed_hours, now);
@@ -180,6 +185,18 @@ export async function sendWhatsApp(input: SendWhatsAppInput, supabase: SupabaseC
       supabase: service,
     });
     return { message_id: '', conversation_id: window.conversation_id ?? '', activity_id: null, customer_id: target.customerId, channel_id: channel.id, scheduled: true, job_id: jobId };
+  }
+
+  // Idempotencia real por `clientRequestId` (tester F16 r3 · N-5). Antes la
+  // clave se guardaba en `messages.metadata` y NADIE la consultaba, así que no
+  // servía de nada: si el proceso moría entre el INSERT (que dispara el envío
+  // por `trg_channel_dispatch`) y la marca de enviado, el reintento mandaba el
+  // mensaje OTRA VEZ. Se comprueba ANTES de descontar créditos e insertar.
+  if (input.clientRequestId) {
+    const previo = await findByClientRequestId(orgId, input.clientRequestId, service, now);
+    if (previo) {
+      return { message_id: previo.id, conversation_id: previo.conversation_id, activity_id: null, customer_id: target.customerId, channel_id: channel.id, scheduled: false, duplicate: true };
+    }
   }
 
   // Créditos (NULL = ilimitado)
@@ -233,6 +250,32 @@ export async function sendWhatsApp(input: SendWhatsAppInput, supabase: SupabaseC
   }).then(({ error }) => { if (error) console.warn('[whatsapp] comm_usage_logs:', error.message); });
 
   return { message_id: messageId, conversation_id: conversationId, activity_id: activityId, customer_id: target.customerId, channel_id: channel.id, scheduled: false };
+}
+
+/**
+ * Ventana de búsqueda de la clave de idempotencia. El reintento más lejano que
+ * puede producirse es el rescate de un testigo caducado de campaña
+ * (`STALE_CLAIM_MS`, 15 min); 7 días son de sobra y permiten que la consulta
+ * use `idx_messages_organization (organization_id, created_at DESC)` en vez de
+ * recorrer las 255.709 filas de `messages`.
+ */
+export const CLIENT_REQUEST_ID_WINDOW_MS = 7 * 24 * 3600 * 1000;
+
+/** ¿Ya existe un saliente con esta clave de idempotencia en la organización? */
+export async function findByClientRequestId(orgId: number, clientRequestId: string, service: SupabaseClient, now: Date = new Date()): Promise<{ id: string; conversation_id: string } | null> {
+  const since = new Date(now.getTime() - CLIENT_REQUEST_ID_WINDOW_MS).toISOString();
+  const { data } = await service
+    .from('messages')
+    .select('id, conversation_id')
+    .eq('organization_id', orgId)
+    .eq('direction', 'outbound')
+    .gte('created_at', since)
+    .eq('metadata->>client_request_id', clientRequestId)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  const row = data as { id: string; conversation_id: string } | null;
+  return row?.id ? { id: row.id, conversation_id: row.conversation_id } : null;
 }
 
 export async function createWhatsAppActivity(

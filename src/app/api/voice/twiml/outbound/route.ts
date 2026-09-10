@@ -2,21 +2,14 @@ import { verifyTwilioWebhook, WebhookError, getTwilioWebhookOrigin } from '@/lib
 import { resolveOrgFromExternal, OrgContextError } from '@/lib/utils/orgContext';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { parseVoiceIdentity, isClientFrom } from '@/lib/services/crm/voiceTokenService';
-import { getTelephonySettings, pickCallerId, isActiveMember, filterOrgOwnedRefs } from '@/lib/services/crm/voiceContextService';
+import { getTelephonySettings, pickCallerId, isActiveMember, filterOrgOwnedRefs, accountSidMatchesOrg } from '@/lib/services/crm/voiceContextService';
 import { buildOutboundBrowserTwiml, buildHangupTwiml, xmlResponse, escapeXml } from '@/lib/services/crm/twimlBuilders';
 import { reserveVoiceMinutes } from '@/lib/services/crm/callCreditsService';
-import { formatE164 } from '@/lib/services/integrations/twilio/twilioConfig';
+import { normalizeDialableE164 } from '@/lib/services/integrations/twilio/twilioConfig';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-/**
- * E.164 marcable: mínimo 10 dígitos en total (código de país + nacional).
- * Con `\d{6,14}` un `To='12345'` se convertía en `+5712345` y pasaba el filtro
- * (defecto B1): ningún destino nacional real tiene 5 dígitos.
- */
-const E164_RE = /^\+[1-9]\d{9,14}$/;
 
 /** Susurro al agente cuando la grabación está activa (mismo texto en reintentos). */
 const AGENT_RECORDING_PROMPT = 'Conectando. Esta llamada se grabará.';
@@ -88,15 +81,21 @@ async function handleClientOriginated(input: {
     return xmlResponse(buildHangupTwiml('No tiene permisos para llamar desde esta organización.'));
   }
 
-  const settings = await getTelephonySettings(orgId, sb);
-  // Si el AccountSid es de subcuenta, debe ser la subcuenta de ESTA org (identity de otra org en otra cuenta → no).
-  if (settings.twilio_subaccount_sid && settings.twilio_subaccount_sid !== accountSid) {
-    const master = process.env.TWILIO_MASTER_ACCOUNT_SID || process.env.TWILIO_ACCOUNT_SID;
-    if (accountSid !== master) {
-      console.warn('[TwiML Outbound] AccountSid no coincide con la subcuenta de la org', { orgId });
-      return xmlResponse(buildHangupTwiml('Cuenta de telefonía no válida.'));
-    }
+  // Aislamiento multi-tenant (M1 / A-3): quien firma debe ser la cuenta Twilio
+  // de ESTA organización (su subcuenta, o la master de la plataforma).
+  //
+  // Ronda 4: aquí había una copia MÁS DÉBIL de esa comprobación. Empezaba por
+  // `if (settings.twilio_subaccount_sid && …)`, así que una organización SIN
+  // subcuenta —hoy las 83— se saltaba el bloque entero y aceptaba CUALQUIER
+  // AccountSid resoluble: la subcuenta de otro cliente podía marcar con la
+  // identity de esta org. Se sustituye por la misma función que usan las otras
+  // cinco rutas de F3, que sí falla cerrado cuando no hay subcuenta.
+  if (!(await accountSidMatchesOrg(orgId, accountSid, sb))) {
+    console.warn('[TwiML Outbound] AccountSid ajeno a la org de la identity', { orgId });
+    return xmlResponse(buildHangupTwiml('Cuenta de telefonía no válida.'));
   }
+
+  const settings = await getTelephonySettings(orgId, sb);
 
   const to = normalizeTo(rawTo);
   if (!to) return xmlResponse(buildHangupTwiml('El número de destino no es válido.'));
@@ -241,10 +240,12 @@ async function handleRestOriginated(input: { params: Record<string, string>; ori
   return xmlResponse(parts.length ? twiml.replace('<Response>\n', `<Response>\n${parts.join('\n')}\n`) : twiml);
 }
 
+/**
+ * Destino marcable (defecto B1). La regla vive en `normalizeDialableE164`
+ * (`twilioConfig`) para que `/api/voice/call` use exactamente la misma.
+ */
 function normalizeTo(raw: string): string | null {
-  if (!raw) return null;
-  const e164 = formatE164(raw.trim());
-  return E164_RE.test(e164) ? e164 : null;
+  return normalizeDialableE164(raw);
 }
 
 function uuidOrNull(v: string | undefined): string | null {

@@ -213,7 +213,18 @@ export async function updateCampaign(orgId: number, id: string, input: UpdateCam
   const templateChanged = input.template_id !== undefined && (input.template_id ?? null) !== (c.template_id ?? null);
   // `purpose` cambia las exclusiones (marketing exige consentimiento).
   const purposeChanged = input.purpose !== undefined && input.purpose !== c.statistics.purpose;
-  if (audienceChanged || templateChanged || purposeChanged) stats.materialized_at = null;
+  // El CANAL también invalida: `materializeCampaign` calcula la ventana de 24 h
+  // POR CANAL (`openWindowSet(orgId, channelId, …)`) y el proveedor (QR o no)
+  // sale del canal. Al corregir el fallo 3 del tester r1 la invalidación se
+  // quedó comparando solo audiencia/plantilla/propósito, así que cambiar de
+  // canal conservaba `materialized_at` y la campaña se lanzaba con contactos
+  // calculados contra OTRO canal — verificado en vivo por el tester: 3 pending
+  // → 3 `skipped:window_required` con los créditos ya reservados
+  // (tester F16 r2 · F-13).
+  const channelChanged = input.channel_id !== undefined && (input.channel_id ?? null) !== (c.statistics.channel_id ?? null);
+  // Cambiar de canal WhatsApp ↔ email cambia el destinatario entero.
+  const channelKindChanged = input.channel !== undefined && input.channel !== c.channel;
+  if (audienceChanged || templateChanged || purposeChanged || channelChanged || channelKindChanged) stats.materialized_at = null;
   const patch: Record<string, unknown> = { statistics: stats, updated_at: new Date().toISOString() };
   if (input.name !== undefined) patch.name = input.name.trim();
   if (input.channel !== undefined) patch.channel = input.channel;

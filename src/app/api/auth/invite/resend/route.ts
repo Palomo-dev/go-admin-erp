@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit';
+import { resolveSelfOrigin } from '@/lib/security/requestOrigin';
 
 /**
  * Reenvía un magic link a un usuario con invitación pendiente.
@@ -43,25 +44,6 @@ function genericOk() {
     success: true,
     message: 'Si existe una invitación pendiente, te enviamos el enlace.',
   });
-}
-
-/**
- * El magic link redirige a `origin`, así que un origin arbitrario del body
- * convertiría el correo en un enlace de phishing con nuestro remitente.
- * Solo se acepta el del propio sitio; si no se puede determinar (p. ej. sin
- * headers de proxy), se acepta el del body como antes.
- */
-function resolveOrigin(request: Request, bodyOrigin: string): string {
-  const headerOrigin = request.headers.get('origin');
-  const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
-  const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
-  const selfOrigin = headerOrigin || (forwardedHost ? `${forwardedProto}://${forwardedHost}` : null);
-
-  if (!selfOrigin) return bodyOrigin;
-  if (bodyOrigin === selfOrigin) return bodyOrigin;
-
-  console.warn('Reenvío: origin del body no coincide con el de la petición:', bodyOrigin, '≠', selfOrigin);
-  return selfOrigin;
 }
 
 export async function POST(request: Request) {
@@ -107,7 +89,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const safeOrigin = resolveOrigin(request, origin);
+    const safeOrigin = resolveSelfOrigin(request, origin, 'Reenvío');
 
     const admin = getSupabaseAdmin();
 
@@ -174,7 +156,7 @@ export async function POST(request: Request) {
 
     console.log('📧 Magic Link reenviado a:', normalizedEmail, 'para invitación:', pendingInvite.code);
     return genericOk();
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error en /api/auth/invite/resend:', error);
     return genericOk();
   }

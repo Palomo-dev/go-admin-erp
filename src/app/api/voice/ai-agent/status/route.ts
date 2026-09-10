@@ -17,6 +17,7 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { verifyTwilioWebhook, WebhookError } from '@/lib/security/webhookSignatures';
+import { accountSidMatchesOrg } from '@/lib/services/crm/voiceContextService';
 import {
   mapTwilioCallStatus,
   mapTwilioToCallsStatus,
@@ -38,8 +39,9 @@ const XML_HEADERS = { 'Content-Type': 'text/xml' };
 
 export async function POST(request: Request) {
   let params: Record<string, string>;
+  let accountSid: string;
   try {
-    ({ params } = await verifyTwilioWebhook(request));
+    ({ params, accountSid } = await verifyTwilioWebhook(request));
   } catch (err) {
     if (err instanceof WebhookError) {
       console.warn('[AI Agent status] Rechazado:', err.code);
@@ -77,6 +79,14 @@ export async function POST(request: Request) {
     if (!vac) {
       console.warn('[AI Agent status] Sin correlación para', callId || callSid);
       return new NextResponse(EMPTY_TWIML, { status: 200, headers: XML_HEADERS });
+    }
+
+    // Aislamiento multi-tenant (M1, gemelo N-2): la firma solo prueba que el
+    // AccountSid es resoluble (master o subcuenta de CUALQUIER org). El id de
+    // la query es adivinable, así que quien firma debe ser la cuenta de ESTA org.
+    if (!(await accountSidMatchesOrg(vac.organization_id, accountSid, supabase))) {
+      console.warn('[AI Agent status] AccountSid ajeno a la org de la llamada', { org: vac.organization_id });
+      return new NextResponse('Forbidden', { status: 403 });
     }
 
     const callStatus = params.CallStatus || params.SessionStatus || '';

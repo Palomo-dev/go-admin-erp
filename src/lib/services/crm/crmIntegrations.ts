@@ -173,41 +173,21 @@ async function syncActivityToCalendar(input: ActivityCalendarInput): Promise<voi
 
 // ============== 3. Timeline global ==============
 
-/**
- * Registra un evento comercial en el timeline global.
- * El timeline consume la tabla de audit logs; esta función inserta
- * un evento de dominio para que aparezca en el timeline unificado.
- */
-async function logCrmTimelineEvent(params: {
-  entityType: string;
-  entityId: string;
-  action: string;
-  actorId?: string | null;
-  payload?: Record<string, unknown>;
-}): Promise<void> {
-  try {
-    const orgId = getOrganizationId();
-    if (!orgId) return;
-
-    // Intentar insertar en la tabla de timeline events
-    // Si no existe, el error se captura silenciosamente
-    await supabase.from('domain_events').insert({
-      organization_id: orgId,
-      source_category: 'domain_event',
-      source_table: 'crm',
-      event_type: 'crm_event',
-      action: params.action,
-      actor_id: params.actorId || null,
-      entity_type: params.entityType,
-      entity_id: params.entityId,
-      payload: params.payload || {},
-      event_time: new Date().toISOString(),
-    });
-  } catch (err) {
-    // La tabla puede no existir o tener estructura diferente
-    console.warn('No se pudo registrar evento en timeline:', err);
-  }
-}
+// `logCrmTimelineEvent` vivía aquí y se ha ELIMINADO (2026-09-10). Escribía en
+// `domain_events`, una tabla que **nunca ha existido** (`to_regclass` → null),
+// y su propio comentario decía que «el timeline consume la tabla de audit
+// logs», que **tampoco existe**. El error se tragaba a propósito en un
+// `try/catch`, así que la función era un no-op silencioso: cualquiera que la
+// leyera daría por hecho que los eventos comerciales quedaban registrados.
+// Además no la llamaba nadie: estaba exportada dentro del objeto
+// `crmIntegrations` y tenía cero usos en todo el árbol.
+//
+// El timeline unificado de F9 **sí funciona**, pero por otro camino:
+// `GET /api/crm/timeline/[type]/[id]` lo sirve `timelineService.getTimeline()`.
+// No hacía falta este registro, y mantenerlo solo servía para engañar.
+//
+// Es la misma familia que el fallo F-1 de F16 (escribir en una columna
+// generada): una escritura imposible cuyo error se descarta.
 
 // ============== 4. Notificaciones CRM ==============
 
@@ -263,7 +243,6 @@ async function notifyCrmEvent(params: {
 export const crmIntegrations = {
   syncPosSaleToCrm,
   syncActivityToCalendar,
-  logCrmTimelineEvent,
   notifyCrmEvent,
 };
 

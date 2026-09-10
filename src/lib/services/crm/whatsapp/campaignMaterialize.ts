@@ -12,7 +12,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { canContact } from './consent';
-import { countryFromPhone, normalizePhoneDigits, resolveChannel } from './channelService';
+import { countryFromPhone, defaultCountryOf, getOrgSettings, normalizePhoneDigits, resolveChannel } from './channelService';
 import { estimateMessageCost } from './costs';
 import { patchCampaignStats, requireCampaign } from './campaignStore';
 import { getHsm } from './templateService';
@@ -45,6 +45,8 @@ export function classifyCandidate(p: {
   windowOpen: boolean;
   duplicateRecent: boolean;
   channelIsQr: boolean;
+  /** Indicativo con el que se completan los teléfonos nacionales de la org. */
+  defaultCountry?: string | null;
 }): { recipient: string | null; reason: SkipReason | null } {
   if (p.channel === 'email') {
     const email = (p.email ?? '').trim();
@@ -53,7 +55,7 @@ export function classifyCandidate(p: {
     if (p.duplicateRecent) return { recipient: email, reason: 'duplicate_recent' };
     return { recipient: email, reason: null };
   }
-  const digits = p.phone ? normalizePhoneDigits(p.phone) : null;
+  const digits = p.phone ? normalizePhoneDigits(p.phone, p.defaultCountry ?? null) : null;
   if (!digits) return { recipient: null, reason: p.phone ? 'invalid_number' : 'no_phone' };
   if (!p.canContact) return { recipient: digits, reason: 'opted_out' };
   if (p.category === 'marketing' && countryFromPhone(digits) === 'us') return { recipient: digits, reason: 'us_marketing' };
@@ -200,6 +202,8 @@ export async function materializeCampaign(orgId: number, id: string, supabase: S
     const windows = channel === 'whatsapp' && !c.template_id ? await openWindowSet(orgId, channelId, ids, service, now) : new Set<string>();
     const dups = await duplicateSet(orgId, id, c.template_id, ids, service, now);
 
+    // Indicativo por defecto de la ORG (una sola lectura para todo el lote).
+    const defaultCountry = defaultCountryOf(await getOrgSettings(orgId, service));
     const rows: Record<string, unknown>[] = [];
     const byReason: Record<string, number> = {};
     let pending = 0;
@@ -217,6 +221,7 @@ export async function materializeCampaign(orgId: number, id: string, supabase: S
         windowOpen: windows.has(cand.customer_id),
         duplicateRecent: dups.has(cand.customer_id),
         channelIsQr: provider === 'baileys',
+        defaultCountry,
       });
       if (cls.reason) byReason[cls.reason] = (byReason[cls.reason] ?? 0) + 1;
       else pending += 1;

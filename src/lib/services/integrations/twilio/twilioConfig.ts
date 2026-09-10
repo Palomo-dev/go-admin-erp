@@ -109,6 +109,24 @@ export function formatE164(phone: string, defaultCountryCode = '+57'): string {
 }
 
 /**
+ * E.164 REALMENTE marcable: mínimo 10 dígitos en total (código de país +
+ * nacional). `formatE164` es solo un formateador: con él, `'12345'` se convierte
+ * en `'+5712345'` y parece válido (defecto B1). Ningún destino nacional real
+ * tiene 5 dígitos.
+ */
+export const DIALABLE_E164_RE = /^\+[1-9]\d{9,14}$/;
+
+/**
+ * Normaliza a E.164 y devuelve `null` si el resultado no es marcable.
+ * Punto único: `twiml/outbound` y `/api/voice/call` filtran con esto.
+ */
+export function normalizeDialableE164(raw: string | null | undefined, defaultCountryCode = '+57'): string | null {
+  if (!raw) return null;
+  const e164 = formatE164(String(raw).trim(), defaultCountryCode);
+  return DIALABLE_E164_RE.test(e164) ? e164 : null;
+}
+
+/**
  * Formatea número para WhatsApp (prefijo whatsapp:).
  */
 export function formatWhatsApp(phone: string): string {

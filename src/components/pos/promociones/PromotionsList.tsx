@@ -98,7 +98,7 @@ export function PromotionsList({ promotions, loading, onRefresh }: PromotionsLis
     switch (type) {
       case 'percentage':
         return <Percent className="h-4 w-4" />;
-      case 'fixed':
+      case 'fixed_amount':
         return <Tag className="h-4 w-4" />;
       case 'buy_x_get_y':
         return <Gift className="h-4 w-4" />;
@@ -139,7 +139,7 @@ export function PromotionsList({ promotions, loading, onRefresh }: PromotionsLis
     switch (promo.promotion_type) {
       case 'percentage':
         return `${promo.discount_value}%`;
-      case 'fixed':
+      case 'fixed_amount':
         return formatCurrency(promo.discount_value || 0);
       case 'buy_x_get_y':
         return `${promo.buy_quantity}x${promo.get_quantity}`;

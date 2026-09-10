@@ -135,20 +135,46 @@ export interface InboundTwimlParams {
   consentMessage: string;
   ringTimeoutSeconds: number;
   greeting?: string | null;
+  /**
+   * N-4 (Ley 1581): URL a la que Twilio vuelve cuando el `<Say>` del aviso de
+   * grabación YA se ha reproducido. Con ella, el aviso viaja en su PROPIO
+   * documento TwiML y el consentimiento solo se registra en la segunda pasada;
+   * `null` significa "el aviso ya sonó" (o no hay grabación) y devuelve el
+   * `<Dial>`.
+   */
+  consentRedirectUrl?: string | null;
+  /**
+   * `true` en la SEGUNDA pasada del flujo de dos documentos. El saludo ya se
+   * dijo en la primera (junto al aviso), así que repetirlo aquí se lo haría oír
+   * dos veces al cliente. Con una sola pasada (sin grabación) queda `false` y el
+   * saludo se emite normalmente.
+   */
+  announced?: boolean;
 }
 
 /** TwiML entrante (§4.5.4): <Say consent/> + <Dial><Client>identity</Client>…</Dial>. */
 export function buildInboundTwiml(p: InboundTwimlParams): string {
   const parts: string[] = [];
-  if (p.greeting) parts.push(say(p.greeting));
-  if (p.recordingEnabled && p.consentMessage) parts.push(say(p.consentMessage));
-
   const ids = p.identities.slice(0, MAX_CLIENTS_PER_DIAL);
+  // El saludo pertenece a la PRIMERA pasada. En la segunda ya sonó (A-5).
+  const greeting = p.announced ? null : p.greeting;
   if (ids.length === 0) {
+    if (greeting) parts.push(say(greeting));
     parts.push(say('En este momento no hay agentes disponibles. Por favor intente más tarde.'));
     parts.push('  <Hangup/>');
     return wrap(parts);
   }
+
+  // Primera pasada con grabación: solo el aviso. Twilio no pide el `<Redirect>`
+  // hasta que el `<Say>` termina de sonar, así que quien cuelgue durante el
+  // aviso no deja un consentimiento registrado que nunca existió.
+  if (p.consentRedirectUrl && p.recordingEnabled && p.consentMessage) {
+    if (greeting) parts.push(say(greeting));
+    parts.push(say(p.consentMessage));
+    parts.push(`  <Redirect method="POST">${escapeXml(p.consentRedirectUrl)}</Redirect>`);
+    return wrap(parts);
+  }
+  if (greeting) parts.push(say(greeting));
 
   const action = buildCallbackUrl(p.origin, '/api/voice/dial-complete', { callId: p.callId });
   const statusCb = buildCallbackUrl(p.origin, '/api/voice/status');

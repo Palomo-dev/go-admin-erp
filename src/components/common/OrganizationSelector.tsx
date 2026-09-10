@@ -92,49 +92,33 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
       const orgData = await organizationService.getUserOrganizations(uid);
       setOrganizations(orgData);
       
-      // Obtener organización guardada — intentar ambas claves de localStorage
+      // Organización guardada. Una sola fuente: `obtenerOrganizacionActiva()`.
+      // Antes se leía primero `currentOrganizationId` y, como esa clave la
+      // escribían sitios distintos de `organizacionActiva`, el selector podía
+      // mostrar una organización mientras `useOrganization()` devolvía otra.
       let resolvedOrg: Organization | null = null;
-      
+
       try {
-        // 1. Intentar clave primaria
-        const savedOrgId = localStorage.getItem('currentOrganizationId');
-        if (savedOrgId) {
-          resolvedOrg = orgData.find(org => org.id === parseInt(savedOrgId)) || null;
-        }
-        
-        // 2. Fallback: clave del hook useOrganization
-        if (!resolvedOrg) {
-          const savedOrg = obtenerOrganizacionActiva();
-          if (savedOrg?.id) {
-            resolvedOrg = orgData.find(org => org.id === savedOrg.id) || null;
-          }
+        const savedOrg = obtenerOrganizacionActiva();
+        if (savedOrg?.id) {
+          resolvedOrg = orgData.find(org => org.id === savedOrg.id) || null;
         }
       } catch (error) {
         console.error('Error al acceder a localStorage:', error);
       }
-      
-      if (resolvedOrg) {
-        setSelectedOrg(resolvedOrg);
-        // Sincronizar ambas claves para evitar desincronización
-        try {
-          localStorage.setItem('currentOrganizationId', resolvedOrg.id.toString());
-          guardarOrganizacionActiva({
-            id: resolvedOrg.id,
-            name: resolvedOrg.name,
-            logo_url: resolvedOrg.logo_url
-          });
-        } catch { /* silencioso */ }
-      } else if (orgData.length > 0) {
-        // Solo defaultear a orgData[0] si NO hay nada guardado
-        setSelectedOrg(orgData[0]);
-        try {
-          localStorage.setItem('currentOrganizationId', orgData[0].id.toString());
-          guardarOrganizacionActiva({
-            id: orgData[0].id,
-            name: orgData[0].name,
-            logo_url: orgData[0].logo_url
-          });
-        } catch { /* silencioso */ }
+
+      // Solo defaultear a la primera si no hay nada guardado (o lo guardado ya
+      // no es una organización del usuario).
+      const orgAUsar = resolvedOrg ?? (orgData.length > 0 ? orgData[0] : null);
+      if (orgAUsar) {
+        setSelectedOrg(orgAUsar);
+        // guardarOrganizacionActiva escribe TODAS las claves y las cookies.
+        guardarOrganizacionActiva({
+          id: orgAUsar.id,
+          name: orgAUsar.name,
+          logo_url: orgAUsar.logo_url,
+          subdomain: orgAUsar.subdomain,
+        });
       }
     } catch (error) {
       console.error('Error al obtener organizaciones:', error);
@@ -144,19 +128,20 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
   };
 
   // Manejar selección de organización
-  const handleSelectOrganization = (org: Organization) => {
+  const handleSelectOrganization = async (org: Organization) => {
     if (!org.id) return;
     setSelectedOrg(org);
     setIsOpen(false);
     setQuery('');
 
     // Limpia el estado dependiente de la organización anterior (sucursal,
-    // modo "todas las sucursales", caché de usuario) y recarga la página
-    cambiarOrganizacionActiva({
+    // modo "todas las sucursales", caché de usuario), escribe las cookies que
+    // lee el servidor, guarda `profiles.last_org_id` y recarga la página.
+    await cambiarOrganizacionActiva({
       id: org.id,
       name: org.name,
       logo_url: org.logo_url,
-      slug: org.subdomain
+      subdomain: org.subdomain,
     });
   };
 

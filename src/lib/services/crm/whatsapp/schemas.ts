@@ -33,11 +33,32 @@ export const zIsoDate = z
   .max(40)
   .refine((v) => !Number.isNaN(new Date(v).getTime()), 'no es una fecha ISO válida');
 
-/** El body no puede fijar la organización: siempre sale de la sesión (regla 3). */
-const noOrgInBody = <T extends z.ZodRawShape>(o: z.ZodObject<T>) =>
-  o.refine((b) => !('organization_id' in (b as Record<string, unknown>)) && !('orgId' in (b as Record<string, unknown>)), {
-    message: 'organization_id no se acepta en el body (se toma de la sesión)',
-  });
+const CLAVES_DE_ORG = ['organization_id', 'orgId', 'organizationId', 'org_id'];
+
+/**
+ * El body no puede fijar la organización: siempre sale de la sesión (regla 3).
+ *
+ * Va en `preprocess` y NO en `refine` porque zod ELIMINA las claves
+ * desconocidas ANTES de ejecutar los refinamientos: el `.refine` anterior
+ * nunca llegaba a ver `organization_id` y el body pasaba la validación, con lo
+ * que el control que documenta §1.1 del doc de fase no existía (tester F16 r2).
+ * `preprocess` sí ve el objeto crudo.
+ */
+const noOrgInBody = <T extends z.ZodTypeAny>(o: T) =>
+  z.preprocess((raw, ctx) => {
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      const r = raw as Record<string, unknown>;
+      const encontrada = CLAVES_DE_ORG.find((k) => k in r);
+      if (encontrada) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [encontrada],
+          message: `${encontrada} no se acepta en el body (se toma de la sesión)`,
+        });
+      }
+    }
+    return raw;
+  }, o);
 
 // ─── Envío individual ────────────────────────────────────────────────────────
 
@@ -106,6 +127,12 @@ export const zSettingsBody = noOrgInBody(
       .nullable()
       .optional(),
     daily_limit: z.number().int().min(0).max(1_000_000).nullable().optional(),
+    /**
+     * Indicativo del país (sin «+») con el que se completan los teléfonos
+     * guardados en formato nacional. Antes estaba cableado a '57'
+     * (tester F16 r3 · F-4). `null` = usar la cascada de entorno.
+     */
+    default_country_code: z.string().regex(/^\d{1,4}$/, 'solo dígitos (1 a 4)').nullable().optional(),
   }),
 );
 

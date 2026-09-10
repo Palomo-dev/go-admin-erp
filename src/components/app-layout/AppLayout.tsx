@@ -1168,14 +1168,16 @@ export const AppLayout = ({
           if (member?.organization_id && member?.organizations) {
             const org = member.organizations as any;
             const orgIdStr = org.id.toString();
-            // Persistir en localStorage para futuras cargas
-            localStorage.setItem('currentOrganizationId', orgIdStr);
-            if (org.name) localStorage.setItem('currentOrganizationName', org.name);
+            // Persistir para futuras cargas. guardarOrganizacionActiva escribe
+            // todas las claves y cookies, y ya emite 'organization-changed'.
+            guardarOrganizacionActiva({
+              id: Number(org.id),
+              name: org.name || undefined,
+              subdomain: org.subdomain || undefined,
+            });
             if (org.subdomain) localStorage.setItem('organization', org.subdomain);
             setOrgId(orgIdStr);
             if (org.name) setOrgName(org.name);
-            // Notificar a otros componentes
-            window.dispatchEvent(new CustomEvent('organization-changed'));
           }
         } catch (e) {
           console.error('[AppLayout] Fallback orgId desde sesión falló:', e);

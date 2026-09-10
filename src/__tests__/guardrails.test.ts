@@ -226,7 +226,6 @@ describe('F0 Guardarraíles', () => {
      * quitarlas de esta lista. Prohibido añadir rutas nuevas.
      */
     const ALLOWLIST = new Set<string>([
-      'app/api/auth/invite/route.ts', // flujo de invitación (org viene de la invitación)
       'app/api/categorias/reglas/route.ts',
       'app/api/crm/health/recalculate/route.ts', // cron/sesión propia (F9 lo migra)
       'app/api/crm/renewals/sync/route.ts', // cron (F8 lo migra)

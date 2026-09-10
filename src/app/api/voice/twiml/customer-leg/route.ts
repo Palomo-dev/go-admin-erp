@@ -1,36 +1,42 @@
 /**
- * POST /api/voice/twiml/customer-leg — TwiML para la pata del cliente.
+ * POST /api/voice/twiml/customer-leg?bridgeId=…&t=… — `action` del `<Gather>`.
  *
- * Recibe el dígito de confirmación del Gather del agent-leg.
- * Si el agente pulsó 1, hace <Dial> al cliente con grabación dual.
- * Si no pulsó 1 o timeout, cuelga.
+ * `Digits=1` → se marca al CLIENTE con el caller id de la organización:
+ *   - `statusCallback` en el `<Number>` (TwiML NO lo soporta en `<Dial>`),
+ *   - `action` en el `<Dial>` → `/api/voice/dial-complete?callId=…` (F3), que
+ *     fija el desenlace y `duration_seconds = DialCallDuration`,
+ *   - `url` en el `<Number>` → `/api/voice/twiml/consent-whisper?callId=…`
+ *     (F3): el aviso de grabación lo oye EL CLIENTE y queda registrado en
+ *     `call_consents` / `calls.consent_given` (Ley 1581, D9).
+ * Cualquier otro dígito → cancelación explícita del vendedor.
  *
- * Seguridad (F0, C12/C14): firma verificada SIEMPRE (token por AccountSid);
- * la org se toma de la fila `mobile_call_bridges` y las escrituras se
- * filtran por `organization_id`.
+ * Seguridad (§7): firma Twilio + token HMAC + `accountSidMatchesOrg`; la org
+ * sale de la fila del bridge y todas las escrituras van scoped.
  */
 
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase/server-service';
-import { verifyTwilioWebhook, WebhookError } from '@/lib/security/webhookSignatures';
-import { getWebhookBaseUrl } from '@/lib/services/integrations/twilio/twilioConfig';
+import { verifyTwilioWebhook, WebhookError, getTwilioWebhookOrigin } from '@/lib/security/webhookSignatures';
+import { accountSidMatchesOrg, getTelephonySettings, pickCallerId } from '@/lib/services/crm/voiceContextService';
+import { verifyBridgeToken, signBridgeToken } from '@/lib/services/crm/bridgeTokens';
+import { buildCustomerLegTwiml, buildBridgeHangupTwiml } from '@/lib/services/crm/bridgeTwimlBuilders';
+import { isTerminalBridgeStatus, type BridgeStatus } from '@/lib/services/crm/mobileBridgeService';
+import { refundVoiceMinutes } from '@/lib/services/crm/callCreditsService';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const XML_HEADERS = { 'Content-Type': 'text/xml' };
 
-function sayHangup(text: string): string {
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Lupe" language="es-CO">${escapeXml(text)}</Say>
-  <Hangup/>
-</Response>`;
+function xml(body: string) {
+  return new NextResponse(body, { status: 200, headers: XML_HEADERS });
 }
 
 export async function POST(request: Request) {
   let params: Record<string, string>;
+  let accountSid: string;
   try {
-    ({ params } = await verifyTwilioWebhook(request));
+    ({ params, accountSid } = await verifyTwilioWebhook(request));
   } catch (err) {
     if (err instanceof WebhookError) {
       console.warn('[Customer Leg TwiML] Rechazado:', err.code);
@@ -40,81 +46,111 @@ export async function POST(request: Request) {
   }
 
   try {
-    const bridgeId = new URL(request.url).searchParams.get('bridgeId') || '';
+    const search = new URL(request.url).searchParams;
+    const bridgeId = search.get('bridgeId') || '';
+    const token = search.get('t');
     const digits = params.Digits || '';
 
-    if (!bridgeId) {
-      return new NextResponse(
-        `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Hangup/>\n</Response>`,
-        { status: 200, headers: XML_HEADERS }
-      );
+    if (!bridgeId || !verifyBridgeToken(bridgeId, token)) {
+      console.warn('[Customer Leg TwiML] Token de bridge inválido');
+      return new NextResponse('Forbidden', { status: 403 });
     }
 
     const supabase = getServiceClient();
-
-    // Obtener el bridge (la org sale de esta fila)
-    const { data: bridge } = await supabase
+    const { data: bridge, error } = await supabase
       .from('mobile_call_bridges')
       .select('*')
       .eq('id', bridgeId)
       .maybeSingle();
-
-    if (!bridge) {
-      return new NextResponse(sayHangup('Bridge no encontrado.'), { status: 200, headers: XML_HEADERS });
+    if (error) {
+      console.error('[Customer Leg TwiML] lectura del bridge:', error.message);
+      return xml(buildBridgeHangupTwiml('Ocurrió un error. Intenta más tarde.'));
     }
+    if (!bridge) return xml(buildBridgeHangupTwiml('La llamada ya no está disponible.'));
 
     const orgId = bridge.organization_id as number;
-
-    // Si el agente no pulsó 1, rechazar
-    if (digits !== '1') {
-      await supabase
-        .from('mobile_call_bridges')
-        .update({
-          status: 'agent_rejected',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', bridgeId)
-        .eq('organization_id', orgId);
-
-      return new NextResponse(sayHangup('Llamada cancelada. Adiós.'), { status: 200, headers: XML_HEADERS });
+    if (!(await accountSidMatchesOrg(orgId, accountSid, supabase))) {
+      console.warn('[Customer Leg TwiML] AccountSid ajeno a la org del bridge', { org: orgId });
+      return new NextResponse('Forbidden', { status: 403 });
     }
 
-    // El agente confirmó — actualizar estado y hacer Dial al cliente
-    await supabase
-      .from('mobile_call_bridges')
-      .update({
-        status: 'customer_dialing',
-        updated_at: new Date().toISOString(),
+    const status = bridge.status as BridgeStatus;
+    const callId = (bridge.call_id as string | null) ?? null;
+    const nowIso = new Date().toISOString();
+
+    if (isTerminalBridgeStatus(status)) {
+      return xml(buildBridgeHangupTwiml('Esta llamada ya finalizó.'));
+    }
+
+    // El vendedor no confirmó (2 o cualquier otra tecla): cancelación explícita.
+    if (digits !== '1') {
+      const { error: updateError } = await supabase
+        .from('mobile_call_bridges')
+        .update({ status: 'agent_rejected' })
+        .eq('id', bridgeId)
+        .eq('organization_id', orgId);
+      if (updateError) console.error('[Customer Leg TwiML] update agent_rejected:', updateError.message);
+
+      if (callId) {
+        const { error: callError } = await supabase
+          .from('calls')
+          .update({ status: 'canceled', ended_at: nowIso })
+          .eq('id', callId)
+          .eq('organization_id', orgId);
+        if (callError) console.error('[Customer Leg TwiML] update calls canceled:', callError.message);
+      }
+      // El minuto del cliente reservado y nunca usado se devuelve (§8).
+      await refundVoiceMinutes(orgId, 1, supabase);
+      return xml(buildBridgeHangupTwiml('Llamada cancelada. Hasta luego.'));
+    }
+
+    const settings = await getTelephonySettings(orgId, supabase);
+    const picked = await pickCallerId(orgId, settings, supabase);
+    if (!picked.e164 || picked.source === 'platform') {
+      console.error('[Customer Leg TwiML] sin caller id propio de la org', { org: orgId });
+      return xml(buildBridgeHangupTwiml('La organización no tiene un número saliente configurado.'));
+    }
+    const recordingEnabled = Boolean(settings.voice_recording_enabled);
+
+    // `customer_dialing` solo avanza desde los estados previos: un segundo POST
+    // con el mismo dígito devuelve el MISMO TwiML sin re-escribir el estado.
+    if (status === 'agent_answered' || status === 'agent_ringing' || status === 'initiating') {
+      const { error: updateError } = await supabase
+        .from('mobile_call_bridges')
+        .update({ status: 'customer_dialing' })
+        .eq('id', bridgeId)
+        .eq('organization_id', orgId);
+      if (updateError) console.error('[Customer Leg TwiML] update customer_dialing:', updateError.message);
+
+      if (callId) {
+        const { error: callError } = await supabase
+          .from('calls')
+          .update({ status: 'ringing' })
+          .eq('id', callId)
+          .eq('organization_id', orgId);
+        if (callError) console.error('[Customer Leg TwiML] update calls ringing:', callError.message);
+      }
+    }
+
+    const origin = getTwilioWebhookOrigin();
+    const t = signBridgeToken(bridgeId);
+    const q = `bridgeId=${encodeURIComponent(bridgeId)}&t=${t}`;
+
+    return xml(
+      buildCustomerLegTwiml({
+        to: String(bridge.target_phone),
+        callerId: picked.e164,
+        recordingEnabled,
+        recordingCallbackUrl: `${origin}/api/voice/recording`,
+        statusCallbackUrl: `${origin}/api/voice/bridge/status?${q}&leg=customer`,
+        consentUrl: callId ? `${origin}/api/voice/twiml/consent-whisper?callId=${encodeURIComponent(callId)}` : null,
+        dialCompleteUrl: `${origin}/api/voice/dial-complete?callId=${encodeURIComponent(callId ?? '')}`,
+        timeout: settings.voice_ring_timeout_seconds,
+        agentNotice: recordingEnabled ? 'Conectando. Esta llamada se grabará.' : 'Conectando.',
       })
-      .eq('id', bridgeId)
-      .eq('organization_id', orgId);
-
-    const webhookBase = getWebhookBaseUrl();
-
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Lupe" language="es-CO">Conectando. Esta llamada será grabada para fines de calidad y servicio.</Say>
-  <Dial record="record-from-answer-dual"
-    recordingStatusCallback="${escapeXml(`${webhookBase}/api/voice/recording`)}"
-    statusCallback="${escapeXml(`${webhookBase}/api/voice/bridge/status?bridgeId=${bridgeId}&leg=customer`)}"
-    answerOnBridge="true">
-    <Number>${escapeXml(String(bridge.target_phone))}</Number>
-  </Dial>
-</Response>`;
-
-    return new NextResponse(twiml, { status: 200, headers: XML_HEADERS });
+    );
   } catch (error) {
     console.error('[Customer Leg TwiML] Error:', error);
-    return new NextResponse(sayHangup('Ocurrió un error. Por favor intente más tarde.'), { status: 200, headers: XML_HEADERS });
+    return xml(buildBridgeHangupTwiml('Ocurrió un error. Intenta más tarde.'));
   }
-}
-
-/** Escapa caracteres especiales XML */
-function escapeXml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
 }

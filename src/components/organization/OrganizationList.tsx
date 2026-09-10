@@ -234,20 +234,12 @@ export default function OrganizationList({ showActions = false, onDelete, filter
       const selectedOrg = organizations.find(o => o.id === orgId);
       if (!selectedOrg) return;
 
-      // Actualizar localStorage y limpiar estado de la org anterior (sin recargar)
-      cambiarOrganizacionActiva(
+      // Escribe storage y cookies, limpia el estado de la org anterior y
+      // guarda `profiles.last_org_id` (sin recargar: aquí navegamos con router).
+      await cambiarOrganizacionActiva(
         { id: selectedOrg.id, name: selectedOrg.name },
         { reload: false }
       );
-
-      // Actualizar last_org_id en la BD
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await supabase
-          .from('profiles')
-          .update({ last_org_id: orgId })
-          .eq('id', session.user.id);
-      }
 
       // Actualizar UI localmente: marcar la org seleccionada como actual
       setOrganizations(prevOrgs =>

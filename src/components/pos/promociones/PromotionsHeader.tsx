@@ -129,10 +129,17 @@ export function PromotionsHeader({
         </Card>
 
         {/* Filtros */}
-        <Card className="md:col-span-2 dark:bg-gray-800 dark:border-gray-700">
+        {/*
+          El contenedor es `grid-cols-2` en móvil. Sin `col-span-2` esta tarjeta
+          caía en una sola columna (media pantalla) y el buscador y los selects
+          salían cortados. Ancho completo en móvil, media fila en escritorio.
+        */}
+        <Card className="col-span-2 md:col-span-2 dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-2">
-              <div className="relative flex-1 sm:min-w-[180px]">
+            {/* En móvil: buscador a lo ancho, los dos selects en dos columnas
+                y el botón de refrescar al lado, en vez de cuatro filas apiladas. */}
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+              <div className="relative col-span-2 sm:flex-1 sm:min-w-[180px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   value={filters.search || ''}
@@ -173,7 +180,7 @@ export function PromotionsHeader({
                 size="icon"
                 onClick={onRefresh}
                 disabled={loading}
-                className="dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600 w-full sm:w-auto"
+                className="dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600 col-span-2 sm:w-auto"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               </Button>

@@ -17,10 +17,28 @@ import { computeCampaignCounts, enqueueBatch, CAMPAIGN_BATCH_SIZE, skipPending }
 import { patchCampaignStats, rowToCampaign } from './campaignStore';
 import { syncCampaignFromEvents } from './campaignEvents';
 import { sendWhatsApp } from './outboundService';
-import { WhatsAppError, contactState, effectiveCampaignStatus, type Campaign, type CampaignContactMeta, type SendWhatsAppInput, type SendWhatsAppResult } from './types';
+import { WhatsAppError, contactState, type Campaign, type CampaignContactMeta, type SendWhatsAppInput, type SendWhatsAppResult } from './types';
 
 export const PER_RECIPIENT_MIN_MS = 6000;
 export const MAX_THROTTLE_MPS = 80;
+
+/**
+ * Un claim se considera CADUCADO pasado este tiempo: el lote que lo tomó
+ * murió (timeout de la función, despliegue, crash) y dejó la fila en
+ * `metadata.state='queued'` para siempre. El presupuesto de un lote son 25 s
+ * (`deadlineMs`), así que 15 min es holgadísimo y no roba trabajo a un lote
+ * vivo (tester F16 r2 · F-2).
+ */
+export const STALE_CLAIM_MS = 15 * 60_000;
+
+/**
+ * Lotes consecutivos sin reclamar nada tras los que la campaña se PAUSA en vez
+ * de seguir encadenando trabajos. Antes, un lote muerto dejaba `queued > 0`
+ * para siempre: `remaining` nunca bajaba a 0, así que cada ejecución encolaba
+ * el siguiente lote indefinidamente (verificado en vivo: 4 ejecuciones →
+ * 5 jobs, claimed 0, queued 2 constantes).
+ */
+export const MAX_STALLED_BATCHES = 5;
 
 export interface BatchDeps {
   send?: (input: SendWhatsAppInput, service: SupabaseClient) => Promise<SendWhatsAppResult>;
@@ -87,6 +105,18 @@ export function classifySendError(err: unknown, attempts: number): SendFailureAc
 
 interface ContactRow { id: string; customer_id: string; state: string | null; metadata: CampaignContactMeta | null }
 
+/**
+ * Clave de idempotencia del envío de campaña. **Estable por (campaña, cliente)**:
+ * antes incluía el número de intento, así que un rescate tras un fallo a medias
+ * (proceso muerto entre la respuesta del proveedor y `fn_campaign_mark_sent`)
+ * generaba una clave DISTINTA y el mensaje salía dos veces
+ * (tester F16 r3 · N-5). `sendWhatsApp` la comprueba contra `messages` antes de
+ * insertar.
+ */
+export function campaignClientRequestId(campaignId: string, customerId: string): string {
+  return `campaign:${campaignId}:${customerId}`;
+}
+
 async function loadCampaign(campaignId: string, service: SupabaseClient): Promise<Campaign | null> {
   const { data } = await service.from('campaigns').select('id, organization_id, name, channel, status, scheduled_at, template_id, segment_id, content, statistics, created_by, created_at, updated_at').eq('id', campaignId).maybeSingle();
   return data ? rowToCampaign(data as Record<string, unknown>) : null;
@@ -102,10 +132,50 @@ export interface ClaimOutcome {
   rows: ContactRow[];
   /** Candidatos que otro lote reclamó antes (evidencia de concurrencia). */
   contested: number;
+  /**
+   * Instante (ms) más cercano en el que ALGÚN candidato no reclamado vuelve a
+   * ser reclamable: fin del backoff de un reintento o caducidad del testigo de
+   * otro lote. `null` = no queda nada esperando.
+   */
+  wakeAt: number | null;
 }
 
 /**
- * Reclamación ATÓMICA de contactos (tester r1 · fallo 2).
+ * ¿A partir de qué instante es reclamable esta fila? `0` = ya lo es,
+ * `null` = nunca (está enviada, saltada o fallida).
+ *
+ * Es el ÚNICO sitio donde se decide, para que el corte por «lotes sin
+ * progreso» y el retardo del encadenado no puedan divergir (tester F16 r3 ·
+ * N-2: el corte saltaba a los ~5 s y el rescate de testigos a los 15 min, así
+ * que el rescate no llegaba a ejecutarse nunca).
+ */
+export function claimableAt(row: Pick<ContactRow, 'state' | 'metadata'>, staleMs = STALE_CLAIM_MS): number | null {
+  const st = contactState(row);
+  if (st === 'queued') {
+    const at = row.metadata?.claimed_at ? Date.parse(String(row.metadata.claimed_at)) : NaN;
+    // Sin `claimed_at` no hay forma de saber cuándo se reclamó: se considera
+    // caducada (viene de una versión anterior o de una escritura parcial).
+    if (Number.isNaN(at)) return 0;
+    return at + staleMs;
+  }
+  if (st !== 'pending') return null;
+  const ra = row.metadata?.retry_after ? Date.parse(String(row.metadata.retry_after)) : 0;
+  return !ra || Number.isNaN(ra) ? 0 : ra;
+}
+
+/**
+ * ¿Es una fila `queued` cuyo lote murió? Se mide por `claimed_at`, que hasta
+ * la ronda 3 se escribía y NUNCA se leía (tester F16 r2 · F-2).
+ */
+export function isStaleClaim(meta: CampaignContactMeta | null | undefined, nowMs: number, staleMs = STALE_CLAIM_MS): boolean {
+  if (!meta || meta.state !== 'queued') return false;
+  const at = claimableAt({ state: null, metadata: meta }, staleMs);
+  return at !== null && at <= nowMs;
+}
+
+/**
+ * Reclamación ATÓMICA de contactos (tester r1 · fallo 2) y RECUPERACIÓN de
+ * claims caducados (tester r2 · F-2).
  *
  * Antes el UPDATE solo filtraba por `.is('state', null)`, condición que NO
  * cambia al reclamar (el estado real vive en `metadata.state`), así que dos
@@ -119,19 +189,32 @@ export interface ClaimOutcome {
  * `pending`: el otro no actualiza nada y `data` vuelve `null`. Como se pierden
  * candidatos por el camino, se sobre-consulta (`limit*4`) y se reintenta con
  * el siguiente candidato hasta completar el lote.
+ *
+ * Además vuelve a reclamar las filas que quedaron en `queued` con un
+ * `claim_token` cuyo lote murió (`isStaleClaim`). Sin eso quedaban bloqueadas
+ * para siempre, `remaining` nunca bajaba a 0 y cada ejecución encolaba el
+ * siguiente lote sin fin.
  */
 async function claimContacts(campaignId: string, batchNo: number, limit: number, service: SupabaseClient, nowMs: number): Promise<ClaimOutcome> {
   const { data } = await service.from('campaign_contacts').select('id, customer_id, state, metadata').eq('campaign_id', campaignId).is('state', null).order('created_at', { ascending: true }).limit(limit * 4);
-  const candidates = ((data ?? []) as ContactRow[]).filter((r) => {
-    if (contactState(r) !== 'pending') return false;
-    const ra = r.metadata?.retry_after ? Date.parse(String(r.metadata.retry_after)) : 0;
-    return !ra || ra <= nowMs;
-  });
+  const candidates: ContactRow[] = [];
+  // Cuándo vuelve a haber trabajo si ahora mismo no hay ninguno reclamable.
+  let wakeAt: number | null = null;
+  for (const r of (data ?? []) as ContactRow[]) {
+    // Recuperación de claims caducados: una fila 'queued' cuyo lote murió
+    // vuelve a ser reclamable. Sin esto quedaba bloqueada para siempre y la
+    // campaña nunca llegaba a 'sent'.
+    const at = claimableAt(r);
+    if (at === null) continue;
+    if (at <= nowMs) candidates.push(r);
+    else if (wakeAt === null || at < wakeAt) wakeAt = at;
+  }
   const claimed: ContactRow[] = [];
   let contested = 0;
   for (const r of candidates) {
     if (claimed.length >= limit) break;
     const prevState = r.metadata?.state ?? null;
+    const prevToken = typeof r.metadata?.claim_token === 'string' ? r.metadata.claim_token : null;
     const meta = {
       ...(r.metadata ?? {}),
       state: 'queued' as const,
@@ -143,12 +226,16 @@ async function claimContacts(campaignId: string, batchNo: number, limit: number,
     };
     const q = service.from('campaign_contacts').update({ metadata: meta, updated_at: new Date().toISOString() }).eq('id', r.id).is('state', null);
     // Condición de reclamación: el estado previo debe seguir siendo el que leímos.
-    const guarded = prevState === null ? q.is('metadata->>state', null) : q.eq('metadata->>state', prevState);
+    let guarded = prevState === null ? q.is('metadata->>state', null) : q.eq('metadata->>state', prevState);
+    // Al recuperar un claim caducado, `metadata->>state` ya es 'queued' para
+    // todos los recuperadores: la condición que desempata es el token viejo,
+    // que solo uno puede sustituir.
+    if (prevState === 'queued' && prevToken) guarded = guarded.eq('metadata->>claim_token', prevToken);
     const { data: upd } = await guarded.select('id').maybeSingle();
     if (upd) claimed.push({ ...r, metadata: meta });
     else contested += 1;
   }
-  return { rows: claimed, contested };
+  return { rows: claimed, contested, wakeAt };
 }
 
 /**
@@ -257,7 +344,7 @@ export async function runCampaignBatch(payload: { campaign_id: string; batch_no?
         role: 'agent',
         senderUserId: c.created_by,
         force: true,
-        clientRequestId: `campaign:${campaignId}:${row.customer_id}:${meta.attempts ?? 1}`,
+        clientRequestId: campaignClientRequestId(campaignId, row.customer_id),
       }, service);
       lastGlobalAt = now();
       if (recipient) lastByRecipient.set(recipient, lastGlobalAt);
@@ -301,10 +388,38 @@ export async function runCampaignBatch(payload: { campaign_id: string; batch_no?
     return { ...base, finished: false, reason: stop };
   }
   if (remaining > 0 && stop !== 'status_paused' && stop !== 'status_canceled') {
+    // Cortocircuito de lotes muertos (tester F16 r2 · F-2): si el lote no ha
+    // reclamado NADA, `remaining` no ha bajado y encolar el siguiente repite
+    // el ciclo eternamente. Se cuentan los lotes seguidos sin progreso y, al
+    // llegar al tope, la campaña se pausa para que alguien la mire en vez de
+    // seguir quemando jobs.
+    const stalledPrev = Number(c.statistics.stalled_batches ?? 0) || 0;
+    const progreso = base.sent + base.skipped + base.failed + base.requeued > 0;
+    // ESPERANDO ≠ ATASCADA (tester F16 r3 · N-1). Si no se reclamó nada porque
+    // todos los candidatos están en backoff de reintento o bajo el testigo de
+    // un lote aún vivo, la campaña no está atascada: hay una fecha en la que
+    // vuelve a haber trabajo. Antes esos lotes contaban como «sin progreso» y,
+    // como el retardo del encadenado era de 1 s, los 5 lotes se agotaban en
+    // ~5 s y CUALQUIER error transitorio del proveedor pausaba la campaña.
+    const esperando = base.claimed === 0 && claim.wakeAt !== null && claim.wakeAt > now();
+    const stalled = progreso ? 0 : esperando ? stalledPrev : stalledPrev + 1;
+    if (!esperando && stalled >= MAX_STALLED_BATCHES) {
+      log.warn('campaign_stalled', { campaign_id: campaignId, batch_no: batchNo, remaining, stalled });
+      await patchCampaignStats(campaignId, {
+        counts, pending: remaining, error_summary: errorSummary, stalled_batches: stalled,
+        state: 'paused', paused_at: new Date(now()).toISOString(), pause_reason: 'stalled_no_progress',
+      }, service);
+      return { ...base, finished: false, reason: 'stalled_no_progress' };
+    }
     const nextNo = batchNo + 1;
     const delayS = Math.max(1, Math.ceil(Math.min(remaining, CAMPAIGN_BATCH_SIZE) / throttle));
-    await enqueueBatch(orgId, campaignId, nextNo, new Date(now() + delayS * 1000), service);
-    await patchCampaignStats(campaignId, { counts, pending: remaining, next_batch_no: nextNo, error_summary: errorSummary }, service);
+    // Si no hay nada reclamable AHORA, el siguiente lote se programa para
+    // cuando de verdad vuelva a haberlo, no dentro de 1 s: ese desfase era lo
+    // que quemaba los 5 lotes antes de que venciera el primer backoff.
+    const runAt = esperando ? Math.max(claim.wakeAt as number, now() + 1000) : now() + delayS * 1000;
+    if (esperando) log.info('campaign_batch_waiting', { campaign_id: campaignId, batch_no: batchNo, next_at: new Date(runAt).toISOString() });
+    await enqueueBatch(orgId, campaignId, nextNo, new Date(runAt), service);
+    await patchCampaignStats(campaignId, { counts, pending: remaining, next_batch_no: nextNo, error_summary: errorSummary, stalled_batches: stalled }, service);
     return { ...base, finished: false, next_batch_no: nextNo, reason: stop ?? undefined };
   }
   if (remaining === 0) {

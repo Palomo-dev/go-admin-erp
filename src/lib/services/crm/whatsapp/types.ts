@@ -169,6 +169,8 @@ export interface SendWhatsAppResult {
   channel_id: string;
   scheduled: boolean;
   job_id?: string | null;
+  /** El envío ya existía con esta `clientRequestId`: no se ha vuelto a mandar. */
+  duplicate?: boolean;
 }
 
 export type CampaignChannel = 'whatsapp' | 'email';
@@ -199,6 +201,8 @@ export interface CampaignConfig {
   started_at?: string | null;
   finished_at?: string | null;
   next_batch_no?: number;
+  /** Lotes seguidos sin reclamar nada; al llegar al tope la campaña se pausa (F16 r3 · F-2). */
+  stalled_batches?: number;
   total_contacts?: number;
   pending?: number;
   skipped?: number;
@@ -305,6 +309,12 @@ export interface WhatsAppOrgSettings {
   allowed_hours: { tz: string; days: number[]; from: string; to: string } | null;
   daily_limit: number | null;
   messaging_limit?: { tier: string | null; checked_at: string } | null;
+  /**
+   * Indicativo de país (sin «+») con el que se completan los teléfonos que la
+   * organización guardó en formato NACIONAL. `null` = usar la cascada
+   * (`WHATSAPP_DEFAULT_COUNTRY_CODE` → último recurso). Ver `defaultCountryOf`.
+   */
+  default_country_code?: string | null;
 }
 
 export const DEFAULT_OPTOUT_KEYWORDS = ['STOP', 'BAJA', 'CANCELAR', 'NO MAS', 'NO MÁS', 'UNSUBSCRIBE', 'SALIR', 'DETENER'];

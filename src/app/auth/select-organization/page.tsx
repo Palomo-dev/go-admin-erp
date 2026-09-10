@@ -7,6 +7,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { proceedWithLogin } from '@/lib/auth';
+import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { useTranslations, useLocale } from 'next-intl';
 import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
 
@@ -194,9 +195,12 @@ function SelectOrganizationContent() {
         throw updateError;
       }
 
-      // Sincronizar localStorage ANTES de proceedWithLogin para evitar lectura de valor viejo
-      localStorage.setItem('currentOrganizationId', org.id.toString());
-      localStorage.setItem('currentOrganizationName', org.name);
+      // Sincronizar storage ANTES de proceedWithLogin para evitar lectura de
+      // valor viejo. guardarOrganizacionActiva escribe TODAS las claves
+      // (`organizacionActiva` incluida) y las cookies de organización: escribir
+      // solo las claves legacy dejaba `organizacionActiva` con la organización
+      // de la sesión anterior y la app se partía en dos.
+      guardarOrganizacionActiva({ id: parseInt(org.id), name: org.name });
 
       // Proceder con el login usando la función existente
       const next = searchParams?.get('dest') || searchParams?.get('next') || '/app/inicio';

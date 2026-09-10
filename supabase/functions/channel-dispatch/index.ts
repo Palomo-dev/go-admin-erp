@@ -14,7 +14,8 @@
 //   - content_type 'image' | 'file'  → Graph type:'image'|'document' (link)
 //   - provider 'twilio'              → Messages API (whatsapp:+…)
 //   - provider 'baileys' (QR)        → Evolution API (solo texto; template → failed)
-// Escribe message_events (sent|failed, error_code, event_time) y
+// Escribe message_events (sent|failed, error_code; `event_time` la genera la
+// BD a partir de created_at, NO se envía) y
 // messages.external_message_id (columna real) + metadata.dispatched.
 // ============================================================
 
@@ -183,15 +184,24 @@ async function resolveRecipient(channelType: string, channelId: string, customer
 }
 
 async function recordResult(msg: { id: string; organization_id: number; metadata: Record<string, unknown> | null }, result: SendResult, dispatchChannel: string) {
-  await supabase.from("message_events").insert({
+  // `event_time` es GENERATED ALWAYS AS (created_at) en la BD: incluirla hace
+  // fallar el INSERT entero con 428C9 y, sin comprobar el error, todos los
+  // eventos de despacho se perdían en silencio (tester F16 r2 · F-1).
+  const { error: eventError } = await supabase.from("message_events").insert({
     organization_id: msg.organization_id,
     message_id: msg.id,
     event_type: result.ok ? "sent" : "failed",
     provider_payload: result.raw || {},
     error_code: result.ok ? null : (result.errorCode ?? null),
     error_message: result.ok ? null : (result.error || "Error desconocido"),
-    event_time: new Date().toISOString(),
   });
+  if (eventError) {
+    console.error("[channel-dispatch] message_events NO PERSISTIDO", {
+      organization_id: msg.organization_id,
+      message_id: msg.id,
+      error: eventError.message,
+    });
+  }
   await supabase
     .from("messages")
     .update({

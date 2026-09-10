@@ -27,26 +27,28 @@ Al terminar, con la org de prueba de F3 y un vendedor con celular verificado:
 
 ## 1. Estado actual verificado
 
-| Componente / archivo:línea | Estado | Qué está mal |
-|---|---|---|
-| `src/app/api/voice/bridge/initiate/route.ts:19-30` | 🔴 | `agent_phone` y `target_phone` vienen del body (cualquier usuario puede hacer que Twilio marque a cualquier número con el caller id de la org). Sin precheck de créditos ni consentimiento. |
-| `src/lib/services/crm/mobileBridgeService.ts:119-214` `initiateBridge` | 🟡 | Flujo correcto (bridge → `calls.create` al agente → whisper → Gather) pero `:159-160` construye URLs con `getWebhookBaseUrl()` que hoy incluye `/api/integrations/twilio` (**C2**); `:183-195` inserta en `calls` con columna inexistente `phone_number` y sin `from_number/to_number/mode` NOT NULL (**C4**); `:169` `timeout:30`; sin `machineDetection`; token de bridge = solo `bridgeId` (UUID adivinable si se filtra). |
-| `mobileBridgeService.ts:89-96` `getTwilioClient` | 🟡 | Lee `TWILIO_SUBACCOUNT_SID/AUTH_TOKEN` del registry (0 filas); F5 usa `voiceContextService` (F3) que resuelve master/subcuenta y API Key. |
-| `src/app/api/voice/twiml/agent-leg/route.ts:63-67` | 🔴 | Fetch de `mobile_call_bridges` por `id` sin `organization_id`; `:92-102` lee `customers` (PII) sin scope (**C14**, **C19**); `:51,:114` `voice="Polly.Lupe" language="es-CO"` (combinación inexistente: es-CO no existe en Twilio); `:113` `action` sin `&amp;` no aplica pero `:131` `statusCallback="…&leg=customer"` sin escapar (**C9**); `:39` firma con URL de `getWebhookBaseUrl()` erróneo (**C13**) y opcional (**C12**). |
-| `src/app/api/voice/twiml/customer-leg/route.ts:61-65` | 🔴 | Mismo fetch sin scope; `:112-121` `<Dial>` sin `callerId`, sin `recordingStatusCallbackEvent`, sin `action`, sin `<Number statusCallback>` (el status va en `<Dial>` que no lo soporta), `:117` `&` sin escapar (**C9**); no crea/actualiza `calls` con el `customer_leg`. |
-| `src/app/api/voice/bridge/status/route.ts:75-77` | 🔴 | Sin `bridgeId` → return (rompe callbacks del agente IA, **C18**); `:110` escribe `status: callStatus` crudo de Twilio en `calls` (**C3**); `:121,:134` update `calls` solo por `provider_call_sid` con service role (**C14**); `:144-159` insert con `phone_number` (**C4**); mapea `answered` que no existe en `CallStatus` (los valores son `in-progress`, etc.). |
-| `mobileBridgeService.ts:316-354` `cancelBridge` | 🟡 | `client.calls(sid).update({status:'canceled'})` solo vale para `queued|ringing`; una llamada `in-progress` requiere `status:'completed'`. |
-| `src/lib/services/integrations/twilio/twilioConfig.ts:89` `formatE164` | 🟡 | Prefijo `+57` a ciegas; F3 lo sustituye por `libphonenumber-js`. |
-| `src/app/api/integrations/twilio/verify/send/route.ts:9-21` y `verify/check/route.ts:9-21` | 🔴 (F0) | Sin sesión: SMS pumping. F5 **no** los expone al browser; usa `twilioVerifyService` desde rutas propias autenticadas con rate limit. |
-| `src/lib/services/integrations/twilio/twilioVerifyService.ts` | ✅ | `sendCode({to, channel})`, `checkCode({to, code})` funcionan con `TWILIO_VERIFY_SERVICE_SID`. |
-| Teléfono del vendedor | 🔴 | No se guarda ni lee en ninguna parte (audit §5); `profiles.phone` existe pero nadie lo usa. F3 crea `user_comm_preferences`. |
-| UI de bridge | 🔴 | Inexistente (audit §5, audit-ui C "llamada desde celular ✗ UI"). `ActivityActions.tsx:364` abre `tel:` sin registro. |
-| `mobile_call_bridges` (tabla) | ✅ | Columnas verificadas: `user_id!, agent_phone!, target_phone!, customer_id uuid, opportunity_id uuid, agent_leg_sid, customer_leg_sid, status! CHECK (9 valores), confirm_digit_required!, whisper_text, updated_at`. RLS select/insert/update patrón org. Índice `idx_bridges_org_user`. 0 filas. Falta `call_id`. |
-| `calls.bridge_mode/agent_leg_sid/customer_leg_sid/duration_source` | ✅ | Existen con CHECK `agent_leg|customer_leg|full_bridge` y `provider|estimated|manual`. |
-| `mobile/capacitor.config.ts:27-34` | ✅ | Wrapper de `https://app.goadmin.io`; `allowNavigation` `*.goadmin.io`, `*.supabase.co`. Sin plugin de voz (`@twilio/voice-sdk` no aparece en `mobile/`). Permisos de micrófono: F0. |
-| `src/app/api/crm/transcribe/route.ts:13` | 🟡 | Transcribe un archivo subido pero descarta el resultado; F5 lo reemplaza por `POST /api/crm/calls/manual` + job `transcribe` (F4). |
+> **Actualizado en la ronda 1 de construcción (2026-09-10).** La columna "Estado" refleja el árbol
+> DESPUÉS de esta ronda; entre paréntesis queda el diagnóstico original (V4, 2026-09-08) y el
+> hallazgo del informe `TEST-F5-r1.md` que cierra. Lo que sigue pendiente está en §13.
 
----
+| Componente / archivo:línea | Estado | Situación |
+|---|---|---|
+| `src/app/api/voice/bridge/initiate/route.ts:26-42` | ✅ | Reescrita: zod sobre el body, que **solo** trae el número del cliente; `agent_phone` ya no existe en el contrato. Códigos 400 `INVALID_PHONE`/`SAME_NUMBER`, 402 `NO_CREDITS`, 409 `MOBILE_NOT_VERIFIED`/`BRIDGE_IN_PROGRESS`/`CALLER_ID_NOT_CONFIGURED`, 502 `PROVIDER_ERROR`, 503 sin `VOICE_CALLBACK_SECRET`. (Cierra **B2**.) |
+| `src/lib/services/crm/mobileBridgeService.ts:206` `initiateBridge(ctx, input)` | ✅ | Celular del vendedor desde `user_comm_preferences` verificado (`:122 getVerifiedMobile`); reserva de 2 minutos ANTES del proveedor; **UNA** fila `calls` (`mode='bridge'`, `bridge_mode='agent_leg'`, `from_number=callerId`, `to_number=cliente`) con el `{error}` comprobado y reembolso si falla; `mobile_call_bridges.call_id` enlazado; `call_consents` con el texto exacto; URLs con `t=HMAC`. (Cierra **B1**, **A3**, **A4**, **M3**, **M5**.) |
+| `mobileBridgeService.ts:101 getBridgeSettings` + `voiceContextService` (F3) | ✅ | Credenciales, caller id y ajustes salen de `voiceContextService` (`getTwilioClientForOrg`, `pickCallerId`) y de `comm_settings.voice_bridge_*`. Un caller id de la PLATAFORMA se rechaza con 409 en vez de marcar con el número global. |
+| `src/app/api/voice/twiml/agent-leg/route.ts:49-70` | ✅ | Firma Twilio + `verifyBridgeToken` + `accountSidMatchesOrg`; org desde la fila; `customers`/`opportunities` leídos con `eq('organization_id')`; TwiML desde `bridgeTwimlBuilders` (`es-MX` + `Polly.Mia-Neural`); `<Gather>` "1 conectar / 2 cancelar" con `timeout="8"`; rama AMD (`AnsweredBy=machine_*` → `<Hangup/>` + `agent_no_answer`); `agent_answered` solo desde `initiating\|agent_ringing`. (Cierra **A1**, **M4**, y F5-35/36/37.) |
+| `src/app/api/voice/twiml/customer-leg/route.ts:53-75` | ✅ | Mismo blindaje. `<Dial callerId action=…/api/voice/dial-complete?callId=…>` con `record="record-from-answer-dual"`, `recordingStatusCallbackEvent="completed absent"` y `<Number statusCallback=…&amp;leg=customer statusCallbackEvent url=…consent-whisper?callId=…>`. `Digits≠1` → `agent_rejected` + `calls.status='canceled'` + reembolso. (Cierra **B3**, **B4**.) |
+| `src/app/api/voice/bridge/status/route.ts:88-107` | ✅ | Firma + token + `accountSidMatchesOrg`; sin `bridgeId` responde **400** (ya no 200 mudo); `calls` se localiza por `bridge.call_id`; `SequenceNumber` por leg y terminales pegajosos (`callStateMachine` de F3); el `CallDuration` del vendedor va a `metadata.agent_call_duration` (la conversación la fija `dial-complete`); una excepción responde **500** para que Twilio reintente. (Cierra **B4**, **A1**, **A3**.) |
+| `mobileBridgeService.ts:450 cancelBridge(id, orgId, userId, isAdmin, client)` | ✅ | Compara el dueño (o admin), consulta el estado real de cada pata (`calls(sid).fetch()`) y manda `canceled` en `queued\|ringing` o `completed` en `in-progress`; si Twilio rechaza, **502 y el bridge NO se marca terminado**; `cancel_requested_at` + `last_error='canceled_by_user'`; reembolso del minuto no usado. Ruta `POST /api/voice/bridge/[id]/cancel`. (Cierra **A2**.) |
+| `src/lib/services/integrations/twilio/twilioConfig.ts:91` `formatE164` | 🟡 | Sigue anteponiendo `+57` a ciegas, pero **F5 ya no lo usa**: `bridgeState.ts:109 normalizeE164` rechaza lo que no sea E.164 válido (`"abc"`, `"900609"` → `null`). Queda para F3. |
+| `src/app/api/integrations/twilio/verify/{send,check}/route.ts` | ✅ (F0) | Autenticadas (401 sin sesión), `purpose:'mobile_verification'`, escriben `mobile_phone_e164` + `mobile_verified_at`. F5 **las consume** desde el bridge. Las rutas propias de §4.1 (`/api/crm/me/comm-preferences/mobile/*`) siguen pendientes (§13). |
+| Teléfono del vendedor | ✅ | `user_comm_preferences.mobile_phone_e164` + `mobile_verified_at` por org; índice único `uq_ucp_org_verified_mobile` (migración de esta ronda). |
+| UI de bridge | 🟡 | `src/components/crm/shared/MobileCallDialog.tsx` reescrito: sin campo editable, exige celular verificado de la org, Realtime sobre `mobile_call_bridges` con respaldo `GET /api/voice/bridge/[id]`, botón "Cancelar llamada". Faltan `MobileBridgeStatus` en el dock, `CallModeMenu`, `MyMobileSection` y `ManualCallDialog` (§13). |
+| `mobile_call_bridges` (tabla) | ✅ | + `call_id`, `cancel_requested_at`, `last_error`; índices `idx_bridges_call/agent_leg/org_active`; trigger `trg_mcb_touch`; **política `mcb_update` por DUEÑO**; publicada en `supabase_realtime`. |
+| `comm_settings` | ✅ | + `voice_mobile_ivr_enabled`, `voice_bridge_confirm_digit`, `voice_bridge_agent_timeout` (CHECK 10–60). |
+| `calls.bridge_mode/agent_leg_sid/customer_leg_sid/duration_source` | ✅ | Se usan de verdad: una fila por conversación con ambos SIDs. |
+| `mobile/capacitor.config.ts:27-34` | ✅ | Sin cambios: la ruta A no necesita SDK ni micrófono. |
+| `src/app/api/crm/transcribe/route.ts:13` | 🟡 | Sigue existiendo (§12 pedía eliminarlo). No se toca en esta ronda: su sustituto `POST /api/crm/calls/manual` es de F4 y hay que comprobar que nadie lo importe. |
 
 ## 2. Arquitectura y flujo
 
@@ -354,6 +356,8 @@ for (const sid of legs) {
 
 ### 4.6 Variables de entorno
 
+**Corregido en la ronda 1:** `VOICE_CALLBACK_SECRET` se daba por existente "(F3)" y **no existe** ni en el entorno ni en el código previo. Esta ronda lo crea (`bridgeTokens.ts`), lo documenta en `.env.example` y hace la fase fail-closed sin él (503 al iniciar, 403 en los callbacks). El dueño debe definirlo.
+
 Ninguna nueva: reutiliza `TWILIO_WEBHOOK_BASE_URL` (origin), `VOICE_CALLBACK_SECRET` (F3), `TWILIO_VERIFY_SERVICE_SID` (existente), credenciales del registry (F0). Opcional: `VOICE_MANUAL_AUDIO_MAX_MB` (default 40).
 
 ### 4.7 Dependencias npm
@@ -612,26 +616,87 @@ Pulso de opacidad en el paso activo (1,5 s); check verde con fade 0,2 s al compl
 
 ## 12. Archivos tocados y orden de PRs
 
-**Crear**
-- `src/lib/services/crm/mobileVerificationService.ts`, `src/lib/services/crm/manualCallService.ts`
-- `src/app/api/voice/bridge/[id]/route.ts`, `src/app/api/voice/bridge/[id]/cancel/route.ts`, `src/app/api/voice/bridge/dial-complete/route.ts`, `src/app/api/voice/twiml/agent-dial/route.ts`
-- `src/app/api/crm/me/comm-preferences/mobile/send-otp/route.ts`, `…/mobile/check-otp/route.ts`, `…/mobile/route.ts` (DELETE), `src/app/api/crm/calls/manual/route.ts`
-- `src/components/voice/MobileBridgeStatus.tsx`, `src/components/voice/hooks/useBridgeRealtime.ts`, `src/components/voice/ManualCallDialog.tsx`
-- Tests 9.1 y 9.2 (`src/lib/services/__tests__/mobileBridgeService.test.ts`, `mobileVerificationService.test.ts`, `manualCallService.test.ts`, `src/__tests__/api/voice/bridge.test.ts`).
+> **Real tras la ronda 1 (2026-09-10).** Lo que sigue en "Planificado y no hecho" está detallado en §13.
 
-**Modificar**
-- `src/lib/services/crm/mobileBridgeService.ts` (reescritura), `twimlBuilders.ts` (+3 builders), `voiceContextService.ts` (+IVR), `callCreditsService.ts` (+2 patas, reembolso)
-- `src/app/api/voice/bridge/initiate/route.ts`, `bridge/status/route.ts`, `twiml/agent-leg/route.ts`, `twiml/customer-leg/route.ts`, `twiml/inbound/route.ts` (rama IVR), `call/route.ts` (mode bridge)
-- `src/components/voice/SoftphoneProvider.tsx` (+bridge), `SoftphoneDock.tsx` (render `MobileBridgeStatus`), `CallsTable.tsx`, `CallDetailSheet.tsx`
-- `src/components/crm/shared/CallModeMenu.tsx`, `src/components/configuracion/crm/telephony/MyMobileSection.tsx`
-- `src/components/crm/pipeline/drawer/ActivityActions.tsx` (quitar `tel:` y upload), `mobile/README` (instrucciones de prueba con ngrok)
+**Creados en la ronda 1**
+- `src/lib/services/crm/bridgeState.ts` (215 L) — tipos, `BridgeError`, `normalizeE164`, `maskPhone`, `buildWhisper` y la máquina de estados pura (`applyAgentLegEvent`, `applyCustomerLegEvent`, `customerLegNeverDialed`).
+- `src/lib/services/crm/bridgeTokens.ts` (55 L) — `signBridgeToken` / `verifyBridgeToken` / `isBridgeSigningConfigured` sobre `VOICE_CALLBACK_SECRET`.
+- `src/lib/services/crm/bridgeTwimlBuilders.ts` (169 L) — `buildAgentLegTwiml`, `buildCustomerLegTwiml`, `buildAgentDialGatherTwiml`, `buildBridgeHangupTwiml`.
+- `src/app/api/voice/bridge/[id]/route.ts` (50 L, GET) y `src/app/api/voice/bridge/[id]/cancel/route.ts` (44 L, POST).
 
-**Eliminar**
-- `src/app/api/crm/transcribe/route.ts` (sustituido por `calls/manual` + F4), lógica `tel:` de `ActivityActions.tsx:364` y upload `:249`.
+**Modificados en la ronda 1**
+- `src/lib/services/crm/mobileBridgeService.ts` (reescrito, 529 L), `callCreditsService.ts` (+`legs` en `computeSettlement`, +`refundVoiceMinutes`, +`defaultLegsForMode`).
+- `src/app/api/voice/bridge/initiate/route.ts`, `bridge/status/route.ts`, `twiml/agent-leg/route.ts`, `twiml/customer-leg/route.ts` (los cuatro reescritos).
+- `src/components/crm/shared/MobileCallDialog.tsx` (reescrito, 265 L), `src/components/crm/shared/realtimeTables.ts` (+`mobile_call_bridges`).
+- `src/lib/services/crm/__tests__/f5Adversarial.test.ts` (66 casos convertidos + 11 nuevos = 77), `__tests__/callCreditsService.test.ts` (1 aserción: el bridge cuesta 2 patas).
+- `.env.example` (+`VOICE_CALLBACK_SECRET`, con instrucciones).
+
+**Migraciones aplicadas por MCP (cero `.sql` en el repo)**
+- `crm_v4_f05_bridges_call_link`, `crm_v4_f05_mobile_verification`.
+
+**Planificado y NO hecho en esta ronda** (ver §13.4)
+- `mobileVerificationService.ts` + rutas `/api/crm/me/comm-preferences/mobile/{send-otp,check-otp,DELETE}`.
+- `twiml/agent-dial` y la rama IVR de `twiml/inbound` (§2.3, apagada por defecto).
+- `MobileBridgeStatus.tsx`, `useBridgeRealtime.ts`, `ManualCallDialog.tsx`, `CallModeMenu`, `MyMobileSection`, iconos de `CallsTable`.
+- Eliminar `/api/crm/transcribe` y el modo `tel:` de `ActivityActions.tsx`.
+- `manualCallService` + `/api/crm/calls/manual`: **ya existen** (los construyó F4).
 
 **Orden de PRs (≤400 líneas cada uno):**
-1. **PR-F5-01 BD + servicio de bridge**: migración `bridges_call_link`, `mobileBridgeService` reescrito, builders TwiML, RPC `refund_comm_credits`, tests unitarios de estados y TwiML.
-2. **PR-F5-02 Rutas de bridge**: `initiate`, `agent-leg`, `customer-leg`, `bridge/status`, `dial-complete`, `[id]`, `[id]/cancel`; tests de integración 1–10.
-3. **PR-F5-03 Verificación de celular + manual**: migración `mobile_verification`, `mobileVerificationService`, rutas OTP, `manualCallService` + `calls/manual`, `MyMobileSection`, `ManualCallDialog`; tests 11–12.
-4. **PR-F5-04 UI en vivo + Capacitor**: `MobileBridgeStatus`, `useBridgeRealtime`, integración en `SoftphoneProvider`/`SoftphoneDock`/`CallModeMenu`, iconos en tabla, limpieza de `ActivityActions`; E2E 9.3 documentado con capturas de web y Android.
-5. **PR-F5-05 (opcional) IVR sin app**: flag, rama en `twiml/inbound`, `agent-dial`, job `bridge_disposition_reminder`, test 13 y E2E 9.3.9.
+1. **PR-F5-01 BD + servicio de bridge** ✅ hecho: migraciones, `bridgeState`/`bridgeTokens`/`bridgeTwimlBuilders`, `mobileBridgeService` reescrito, créditos de 2 patas con reembolso.
+2. **PR-F5-02 Rutas de bridge** ✅ hecho: `initiate`, `agent-leg`, `customer-leg`, `bridge/status`, `[id]`, `[id]/cancel` (el `action` del `<Dial>` reutiliza `/api/voice/dial-complete` de F3 en vez de crear `bridge/dial-complete`).
+3. **PR-F5-03 Verificación de celular + manual** ⏳ pendiente (el OTP funciona hoy por `/api/integrations/twilio/verify/*`).
+4. **PR-F5-04 UI en vivo + Capacitor** 🟡 parcial: `MobileCallDialog` con Realtime y cancelar; falta el dock y el resto de componentes.
+5. **PR-F5-05 (opcional) IVR sin app** ⏳ pendiente (flag `voice_mobile_ivr_enabled` ya existe, apagado).
+
+---
+
+## 13. Registro de implementación — ronda 1 (2026-09-10)
+
+Constructor: agente F5. Punto de partida: `scratchpad/reports/TEST-F5-r1.md` (**2,5/10**, "la fase nunca se construyó"). Se siguió el orden de trabajo del tester (1 bloqueantes → 9 leves).
+
+### 13.1 Base de datos (MCP `apply_migration`, cero `.sql` en el repo)
+
+| Migración | Contenido | Verificación §3.3 |
+|---|---|---|
+| `crm_v4_f05_bridges_call_link` | `mobile_call_bridges` + `call_id` (FK a `calls`, ON DELETE SET NULL), `cancel_requested_at`, `last_error`; índices `idx_bridges_call`, `idx_bridges_agent_leg`, `idx_bridges_org_active`; **`mcb_update` por dueño** (`user_id = auth.uid()`); `fn_touch_updated_at()` (con `SET search_path` y `REVOKE … FROM PUBLIC, anon`) + trigger `trg_mcb_touch`; `comm_settings` + `voice_mobile_ivr_enabled`, `voice_bridge_confirm_digit`, `voice_bridge_agent_timeout` (CHECK 10–60); `ALTER PUBLICATION supabase_realtime ADD TABLE mobile_call_bridges` | 3 columnas ✔ · 3 columnas ✔ · trigger 1 ✔ · publicación 1 ✔ · `mcb_update` contiene `user_id = auth.uid()` ✔ |
+| `crm_v4_f05_mobile_verification` | Tabla `mobile_verification_attempts` (RLS activa y **sin políticas**: solo service role, + `REVOKE` a `anon`/`authenticated`); `idx_mva_user_recent`; `fn_mobile_otp_allowed(uuid,text)` SECURITY DEFINER con `search_path`, guarda de pertenencia (`auth.uid()` solo consulta lo suyo) y `REVOKE … FROM PUBLIC, anon`; índice único `uq_ucp_org_verified_mobile` | tabla ✔ · función ✔ (`select fn_mobile_otp_allowed(…, 'send')` → true) · 0 políticas ✔ · índice ✔ |
+| `crm_v4_f05_otp_fn_service_role_only` | `REVOKE` de `fn_mobile_otp_allowed` también a `authenticated`: solo `service_role` la ejecuta. Cierra el aviso del linter de Supabase ("SECURITY DEFINER ejecutable por `authenticated` vía `/rest/v1/rpc`"); la guarda de pertenencia se queda como segunda barrera, no como única | `role_routine_grants` → solo `postgres` y `service_role` ✔ |
+
+**Aviso del linter que queda a propósito:** `mobile_verification_attempts` aparece como "RLS activa sin políticas". Es lo que pide §3.1: la tabla guarda intentos de OTP (PII) y solo la toca el service role. Se anota aquí para que no se confunda con las cinco tablas de facturación/marketplace que el tester encontró en el mismo estado sin querer.
+
+**Desviación respecto al doc:** §8 pedía una RPC nueva `refund_comm_credits`. No hace falta: `deduct_comm_credits` (verificada en `pg_proc` el 2026-09-10) **ya acepta importes negativos** y acota el abono al cupo del plan. El reembolso se hace con `p_amount` negativo desde `callCreditsService.refundVoiceMinutes`.
+
+### 13.2 Los cuatro bloqueantes del informe
+
+1. **B1 — el `INSERT` en `calls` fallaba siempre y nadie miraba el error.** El payload ya no usa `phone_number` (columna inexistente) y trae los NOT NULL reales (`mode='bridge'`, `from_number`, `to_number`, `provider`, `started_at`, `direction`). El `{error}` se comprueba: si falla, `initiateBridge` lanza `CALL_INSERT_FAILED`, **no llama a Twilio** y devuelve los 2 minutos reservados. La fila `calls` se crea ANTES de marcar, así que `provider_call_sid = agent_leg_sid` permite que `/api/voice/recording` (F3) resuelva la grabación, que F4 transcriba y que `dial-complete` cree la actividad en la oportunidad.
+2. **B2 — el número del vendedor venía del body.** `initiateBridge(ctx, input)` lo lee de `user_comm_preferences.mobile_phone_e164` exigiendo `mobile_verified_at` y `organization_id`; sin él, 409 `MOBILE_NOT_VERIFIED`. El body pasa por zod y solo lleva el número del cliente (`to`), validado con `normalizeE164` (E.164 estricto: `"abc"`/`"900609"` → 400). Además: 409 `BRIDGE_IN_PROGRESS` (un bridge activo por vendedor), 400 `SAME_NUMBER` y 409 `CALLER_ID_NOT_CONFIGURED` si el caller id sería el número global de la plataforma. La UI ya no tiene campo editable.
+3. **B3 — el aviso de grabación lo oía el vendedor.** El `<Number>` lleva `url="…/api/voice/twiml/consent-whisper?callId=…"`: el aviso lo oye **el cliente** al contestar y entra en la grabación dual. `initiateBridge` escribe `call_consents` (`consent_type='recording'`, `locale='es-MX'`, `recorded_announcement_text = comm_settings.voice_consent_message`) y la ruta de F3 marca `calls.consent_given`. La grabación ahora respeta `voice_recording_enabled` (antes era incondicional por accidente).
+4. **B4 — la máquina de estados era inalcanzable.** `statusCallback`/`statusCallbackEvent` viven en el `<Number>` (TwiML los ignora en `<Dial>`) y el `<Dial>` lleva `action="…/api/voice/dial-complete?callId=…"`. Con eso, `DialCallDuration` fija la duración conversada, `settleVoiceCall` liquida y `upsertCallActivity` crea la actividad: trabajo de F3 que ya estaba hecho. El `CallDuration` del leg del vendedor (timbre + whisper) va a `metadata.agent_call_duration`, no a `duration_seconds`.
+
+### 13.3 Altos, medios y leves
+
+- **A1** `accountSidMatchesOrg` en las tres rutas del bridge (`agent-leg:67`, `customer-leg:70`, `bridge/status:107`), como en las cinco de F3. Además `verifyBridgeToken` (HMAC `t=`) en las tres.
+- **A2** `cancelBridge(id, orgId, userId, isAdmin, client)`: compara el dueño, consulta el estado real de cada pata antes de elegir el verbo, **propaga el error del proveedor** (502) sin marcar el bridge como terminado, deja `cancel_requested_at` + `last_error` y reembolsa. Ruta `POST /api/voice/bridge/[id]/cancel` (+ `GET /api/voice/bridge/[id]` como respaldo de Realtime).
+- **A3** Token HMAC en todas las URLs, `SequenceNumber` por leg y terminales pegajosos (`callStateMachine` de F3); un `bridgeId` ausente devuelve 400 y una excepción 500 (Twilio reintenta).
+- **A4** Créditos: reserva de 2 minutos **antes** del proveedor (D6), `computeSettlement` cobra las **dos** patas PSTN del bridge (`legs`, por defecto 2 en `mode='bridge'`) y `refundVoiceMinutes` devuelve el minuto del cliente en `agent_no_answer`, `agent_rejected`, cancelación y fallo de Twilio.
+- **M1/M2** UI: Realtime sobre `mobile_call_bridges` (ya publicada) con respaldo HTTP cada 4 s solo mientras el canal no está suscrito; celular verificado y filtrado por organización, sin caída a `profiles.phone`; botón "Cancelar llamada" hasta `in_progress`.
+- **M3** `customer_id`/`opportunity_id` se validan con `filterOrgOwnedRefs` (F3): los ajenos entran como `null` y quedan anotados en `calls.metadata.rejected_refs`.
+- **M4** Todo el TwiML sale de `bridgeTwimlBuilders` con `es-MX` + `Polly.Mia-Neural` (`es-CO` no existe en Twilio) y `recordingStatusCallbackEvent="completed absent"`.
+- **M5** El caller id sale de `pickCallerId` (F3); `source='platform'` se rechaza con 409.
+- **L1** `<Gather>` con "1 conectar / 2 cancelar" y `timeout="8"`; rama AMD (`AnsweredBy=machine_*` → colgar + `agent_no_answer`); `agent_answered` no se escribe sobre un estado terminal; un segundo POST con `Digits=1` devuelve el mismo TwiML sin reescribir el estado; `whisper_text` acotado a 200 caracteres.
+
+### 13.4 Pendiente (no entra en esta ronda)
+
+1. Rutas propias de OTP (`/api/crm/me/comm-preferences/mobile/*`) y `mobileVerificationService` con `fn_mobile_otp_allowed` + `mobile_verification_attempts` (la función y la tabla **ya están** en la base; hoy el OTP funciona por `/api/integrations/twilio/verify/*`, autenticado).
+2. Variante IVR §2.3 (`twiml/agent-dial` + rama en `twiml/inbound`); `voice_mobile_ivr_enabled` existe y está apagado.
+3. UI restante: `MobileBridgeStatus` en el `SoftphoneDock`, `useBridgeRealtime`, `CallModeMenu`, `MyMobileSection`, `ManualCallDialog`, iconos por modo en `CallsTable`.
+4. Eliminar `/api/crm/transcribe` y el modo `tel:` de `ActivityActions.tsx` (hay que comprobar importadores; `calls/manual` de F4 ya lo sustituye funcionalmente).
+5. Job `calls_reconcile` para bridges zombis > 2 h y `bridge_disposition_reminder`.
+6. `VOICE_CALLBACK_SECRET` **no está en el entorno**: hasta que el dueño lo defina (ya documentado en `.env.example`), `initiate` responde 503 `VOICE_CALLBACK_SECRET_MISSING` y los callbacks 403. Es fail-closed a propósito: sin secreto no se puede verificar quién llama al webhook.
+
+### 13.5 Pruebas
+
+- `npx jest src/lib/services/crm/__tests__/f5Adversarial.test.ts` → **77/77 verdes** (los 66 casos del tester, con su escenario y sus datos, convertidos a la aserción correcta + 11 nuevos: `F5-04b/04c`, `F5-07b`, `F5-13b`, `F5-14b`, `F5-20b`, `F5-30b`, `F5-67..F5-70`).
+- **Mordida comprobada:** 9 mutaciones sobre el código de producción (statusCallback al `<Dial>`, quitar `action`, quitar `url=consent-whisper`, devolver `phone_number` al INSERT, teléfono del vendedor desde el input, quitar `accountSidMatchesOrg`, mandar `agent_phone` desde la UI, reserva de créditos después del proveedor) → **9 de 9 en rojo**, todas revertidas con md5 idéntico.
+- `NODE_OPTIONS=--max-old-space-size=8192 npx tsc --noEmit` → **0 errores en archivos de F5**.
+- Prohibido marcar números reales: todo con dobles en memoria (`jest.mock` de Twilio) y con el doble de Postgres que valida columnas, NOT NULL y CHECK reales.

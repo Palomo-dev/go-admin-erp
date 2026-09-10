@@ -93,7 +93,17 @@ export async function recordConsentChange(params: {
   const digits = phone.replace(/\D/g, '');
   const last10 = digits.slice(-10);
 
-  // Buscar clientes de la org con ese teléfono (comparación laxa por sufijo de 10 dígitos)
+  // Buscar clientes de la org con ese teléfono (comparación laxa por sufijo de
+  // 10 dígitos).
+  //
+  // GEMELO EXAMINADO Y CONSERVADO A PROPÓSITO (F16 r4). Es la misma forma que
+  // la búsqueda ad-hoc que se retiró de `POST /api/integrations/whatsapp/send`
+  // en favor de `findCustomerIdByPhone`, pero aquí la semántica es la
+  // CONTRARIA: no se elige UN destinatario, se apunta una BAJA. Pasarse de
+  // ancho deja de escribir a alguien que no lo pidió (molesto, reversible);
+  // quedarse corto es seguir escribiendo a quien pidió la baja, que es lo que
+  // prohíbe la Ley 1581 de 2012. Ante la duda, se aplica a todos los que
+  // encajan.
   const { data: customers } = await supabase
     .from('customers')
     .select('id, phone, metadata')

@@ -1,0 +1,46 @@
+-- =============================================================================
+-- Rollback de 20260910041620_secretos_fuera_de_pg_proc
+--
+-- LEE ESTO ANTES DE EJECUTARLO
+--
+-- Este rollback es DELIBERADAMENTE PARCIAL. Revierte los permisos, pero no
+-- vuelve a incrustar las claves en el cuerpo de las funciones: reproducir el
+-- estado anterior exacto significaria escribir la service_role key en claro
+-- dentro de pg_proc otra vez, que es justo lo que la migracion vino a quitar.
+--
+-- Si el problema es que alguna funcion ya no encuentra el secreto, la solucion
+-- no es este archivo: es comprobar que el secreto existe en Vault
+--   select name from vault.secrets where name in ('service_role_key','anon_key');
+-- y que la funcion puede leerlo
+--   select private.get_secret('service_role_key') is not null;
+--
+-- Ejecuta las secciones que necesites, no el archivo entero a ciegas.
+-- =============================================================================
+
+-- 1. Devolver EXECUTE a anon y authenticated (revierte el punto 5).
+--    Solo si algo del cliente llamaba a estas funciones. Cuando se aplico la
+--    migracion no habia ninguna referencia en src/ ni en supabase/functions/.
+--
+-- grant execute on function public.notify_push() to anon, authenticated;
+-- grant execute on function public.auto_update_exchange_rates() to anon, authenticated;
+-- grant execute on function public.fill_historical_rates_real_api() to anon, authenticated;
+-- grant execute on function public.fill_missing_currency_dates() to anon, authenticated;
+
+-- 2. Dar acceso al lector de secretos a algun rol adicional, si hiciera falta
+--    que otra funcion no-DEFINER lo use.
+--
+-- grant execute on function private.get_secret(text) to <rol>;
+
+-- 3. Desmontaje completo (solo si se abandona el enfoque de Vault).
+--    ATENCION: deja las 4 funciones llamando a private.get_secret, que dejara
+--    de existir -> el push y la actualizacion de tasas fallarian en silencio
+--    (ambas capturan la excepcion). Antes de esto hay que reescribir las
+--    funciones con otra fuente para las claves.
+--
+-- drop function if exists private.get_secret(text);
+-- drop schema if exists private;
+-- select vault.delete_secret(id) from vault.secrets where name in ('service_role_key','anon_key');
+
+-- 4. Lo que NO tiene vuelta atras: el punto 6 sobrescribio los JWT en
+--    supabase_migrations.schema_migrations por <JWT_REDACTADO_2026_09_09>.
+--    Es intencionado y no se restaura.

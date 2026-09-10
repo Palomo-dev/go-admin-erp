@@ -63,7 +63,8 @@ const ChatConfigPanel = dynamic(() => import('../panels/chat/ChatConfigPanel').t
   ssr: false,
 });
 
-const CRMConfigPanel = dynamic(() => import('../panels/crm/CRMConfigPanel').then((m) => m.CRMConfigPanel), {
+// F0 (REG r1): shell con pestañas General / Proveedores e IA / Créditos y sistema
+const CRMConfigPanel = dynamic(() => import('../panels/crm/CrmConfigTabs').then((m) => m.CrmConfigTabs), {
   loading: () => <LoadingSkeleton />,
   ssr: false,
 });

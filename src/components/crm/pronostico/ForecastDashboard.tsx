@@ -14,9 +14,14 @@ import { ForecastFilters } from './ForecastFilters';
 import { GoalProgress } from './GoalProgress';
 import { ForecastByStage } from './ForecastByStage';
 import { ForecastChart } from './ForecastChart';
+import { LoadErrorState } from '@/components/common/LoadErrorState';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 
 export function ForecastDashboard() {
   const [isLoading, setIsLoading] = useState(true);
+  // Con la base intermitente esta pantalla se quedaba en el esqueleto de carga
+  // (isLoading && pipelines.length === 0) para siempre.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>('');
@@ -34,6 +39,7 @@ export function ForecastDashboard() {
 
   const loadInitialData = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const pipelinesData = await opportunitiesService.getPipelines();
       setPipelines(pipelinesData);
@@ -44,12 +50,8 @@ export function ForecastDashboard() {
         setSelectedPipeline(defaultPipeline);
       }
     } catch (error) {
-      console.error('Error cargando pipelines:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los pipelines',
-        variant: 'destructive',
-      });
+      logError('[ForecastDashboard] cargar pipelines', error);
+      setLoadError(describeError(error));
     } finally {
       setIsLoading(false);
     }
@@ -59,6 +61,7 @@ export function ForecastDashboard() {
     if (!selectedPipelineId) return;
 
     setIsLoading(true);
+    setLoadError(null);
     try {
       const [stagesData, oppsData, forecastDataResult] = await Promise.all([
         opportunitiesService.getStages(selectedPipelineId),
@@ -94,12 +97,8 @@ export function ForecastDashboard() {
       const pipeline = pipelines.find((p) => p.id === selectedPipelineId);
       setSelectedPipeline(pipeline || null);
     } catch (error) {
-      console.error('Error cargando datos del pipeline:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los datos',
-        variant: 'destructive',
-      });
+      logError('[ForecastDashboard] cargar datos del pipeline', error);
+      setLoadError(describeError(error));
     } finally {
       setIsLoading(false);
     }
@@ -129,6 +128,23 @@ export function ForecastDashboard() {
       description: 'Función de exportación próximamente',
     });
   };
+
+  // El error manda sobre el esqueleto: si la carga falló hay que decirlo.
+  if (loadError) {
+    return (
+      <div className="p-4">
+        <LoadErrorState
+          title="No se pudo cargar el pronóstico"
+          message={loadError}
+          onRetry={() => {
+            if (selectedPipelineId) void loadPipelineData();
+            else void loadInitialData();
+          }}
+          isRetrying={isLoading}
+        />
+      </div>
+    );
+  }
 
   if (isLoading && pipelines.length === 0) {
     return (

@@ -92,7 +92,7 @@ export function RangosDianSection({
                         {seq.prefix as string} - {documentTypeLabels[seq.document_type as string] || seq.document_type as string}
                       </p>
                       <p className="text-xs text-gray-500 break-all">
-                        ID Factus: {seq.factus_numbering_range_id} | Res: {seq.resolution_number || 'N/A'} | {seq.range_start || '?'} - {seq.range_end || '?'} | Actual: {seq.current_number}
+                        ID Factus: {seq.factus_numbering_range_id as string} | Res: {(seq.resolution_number as string) || 'N/A'} | {(seq.range_start as number) || '?'} - {(seq.range_end as number) || '?'} | Actual: {seq.current_number as number}
                       </p>
                     </div>
                   </div>

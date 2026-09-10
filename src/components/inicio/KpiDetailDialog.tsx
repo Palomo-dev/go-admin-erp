@@ -162,6 +162,7 @@ interface KpiDetailDialogProps {
   organizationId: number | null | undefined;
   // Datos iniciales (los que ya tiene el dashboard) para mostrar al instante
   initialData: DashboardKPIData | null;
+  branchFilter?: number | 'all' | null;
 }
 
 export function KpiDetailDialog({
@@ -173,6 +174,7 @@ export function KpiDetailDialog({
   fechasCustom,
   organizationId,
   initialData,
+  branchFilter,
 }: KpiDetailDialogProps) {
   const router = useRouter();
   const t = useTranslations('home.kpis');
@@ -191,14 +193,14 @@ export function KpiDetailDialog({
     if (!organizationId) return;
     setIsRefreshing(true);
     try {
-      const dashboardData = await inicioService.getDashboardData(organizationId, periodo, horas, fechasCustom);
+      const dashboardData = await inicioService.getDashboardData(organizationId, periodo, horas, fechasCustom, branchFilter);
       setData(dashboardData.kpis);
     } catch (err) {
       console.error('Error refrescando KPI:', err);
     } finally {
       setIsRefreshing(false);
     }
-  }, [organizationId, periodo, horas, fechasCustom]);
+  }, [organizationId, periodo, horas, fechasCustom, branchFilter]);
 
   // Carga inicial al abrir
   useEffect(() => {

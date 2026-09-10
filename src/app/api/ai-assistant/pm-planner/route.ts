@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { consumeAICredits } from '@/lib/services/aiCreditsService';
+import { consumeAICredits, checkAICredits } from '@/lib/services/aiCreditsService';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,19 +45,35 @@ FORMATO JSON OBLIGATORIO (responde SOLO con JSON, sin texto adicional):
 }`;
 
 export async function POST(request: NextRequest) {
+  // Seguridad (F0, C-A): sesión + org activa; se ignora organizationId del body.
+  let ctx;
   try {
-    const { prompt, projectId, organizationId } = await request.json();
+    ctx = await getServerOrgContext(request);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+    }
+    throw err;
+  }
+  const organizationId = ctx.organizationId;
+
+  try {
+    const { prompt } = await request.json();
 
     if (!prompt) {
       return NextResponse.json({ error: 'El prompt es requerido' }, { status: 400 });
     }
 
-    // Consumir créditos de IA
-    if (organizationId) {
-      const creditResult = await consumeAICredits(organizationId, 1);
-      if (!creditResult.success) {
-        return NextResponse.json({ error: 'No tienes créditos de IA disponibles' }, { status: 403 });
-      }
+    // Saldo ANTES de llamar al modelo; el cobro va DESPUÉS de que la respuesta
+    // llegue (§10.2 del plan, misma regla que el ADR-001 fijó para
+    // `ai-auto-response`). Antes se descontaba primero: si OpenAI fallaba, el
+    // crédito ya se había ido y la organización pagaba por nada.
+    const balance = await checkAICredits(organizationId);
+    if (!balance.allowed) {
+      return NextResponse.json(
+        { error: balance.error || 'No tienes créditos de IA disponibles' },
+        { status: 402 }
+      );
     }
 
     const openai = getOpenAIClient();
@@ -76,6 +93,15 @@ export async function POST(request: NextRequest) {
     const content = completion.choices[0]?.message?.content;
     if (!content) {
       return NextResponse.json({ error: 'La IA no generó respuesta' }, { status: 500 });
+    }
+
+    const consumed = await consumeAICredits(organizationId, 1, {
+      actionType: 'pm_planner',
+      model: 'gpt-4o-mini',
+      userId: ctx.userId,
+    });
+    if (!consumed) {
+      console.warn('[pm-planner] No se pudieron descontar créditos para la org', organizationId);
     }
 
     const parsed = JSON.parse(content);

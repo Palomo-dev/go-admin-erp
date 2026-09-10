@@ -28,6 +28,7 @@ const defaultStyle: WidgetStyle = {
   primaryColor: '#3B82F6',
   iconColor: '#FFFFFF',
   iconType: 'chat',
+  iconStyle: 'outline',
   buttonSize: 56,
   borderRadius: 28,
   borderWidth: 0,

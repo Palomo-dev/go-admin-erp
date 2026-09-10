@@ -15,8 +15,8 @@ export async function GET() {
     // Devolver las plantillas sin las etapas completas para mantener la respuesta ligera.
     // El detalle de etapas se obtiene al importar.
     const templates = PIPELINE_TEMPLATES.map((t) => ({
-      id: t.id,
-      name: t.name,
+      id: t.key,
+      name: t.label,
       description: t.description,
       pipeline_type: t.pipeline_type,
       stages_count: t.stages.length,

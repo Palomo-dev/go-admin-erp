@@ -30,6 +30,8 @@ import { ClientHealthCard } from '@/components/crm/health/ClientHealthCard';
 import { DocumentUploader } from '@/components/crm/documents/DocumentUploader';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { formatCurrency } from '@/utils/Utils';
+import { QuickActionsBar } from '@/components/crm/shared/QuickActionsBar';
+import { OpportunityTimeline } from '@/components/crm/timeline/OpportunityTimeline';
 
 interface CustomerData {
   id: string;
@@ -220,6 +222,16 @@ export default function ClienteDetailPage() {
         </div>
       </div>
 
+      {/* Acciones rápidas (F9): misma barra que en el pipeline, related_type='customer' */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 overflow-x-auto">
+        <QuickActionsBar
+          variant="detail"
+          customerId={customer.id}
+          customer={{ id: customer.id, full_name: customer.full_name, email: customer.email, phone: customer.phone }}
+          onActionCompleted={() => { setActiveTab('actividades'); loadAllData(); }}
+        />
+      </div>
+
       {/* Stats rapidas */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -309,7 +321,7 @@ export default function ClienteDetailPage() {
           </TabsTrigger>
           <TabsTrigger value="actividades" className="text-xs sm:text-sm">
             <Activity className="h-3.5 w-3.5 mr-1.5" />
-            Actividades
+            Actividad
           </TabsTrigger>
         </TabsList>
 
@@ -444,53 +456,18 @@ export default function ClienteDetailPage() {
           </Card>
         </TabsContent>
 
-        {/* Tab: Actividades */}
+        {/* Tab: Actividad (F9): timeline unificado del cliente (todas sus oportunidades + conversaciones) */}
         <TabsContent value="actividades" className="space-y-4">
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader className="pb-2 px-4">
-              <CardTitle className="text-sm text-gray-900 dark:text-white">
-                Historial de Actividades ({activities.length})
-              </CardTitle>
+              <CardTitle className="text-sm text-gray-900 dark:text-white">Actividad</CardTitle>
             </CardHeader>
-            <CardContent className="px-2 sm:px-4 pb-4">
-              {activities.length === 0 ? (
-                <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-6">
-                  Sin actividades registradas
-                </p>
-              ) : (
-                <div className="space-y-1">
-                  {activities.map((act) => {
-                    const iconMap: Record<string, React.ReactNode> = {
-                      call: <Phone className="h-3.5 w-3.5" />,
-                      email: <Mail className="h-3.5 w-3.5" />,
-                      meeting: <User className="h-3.5 w-3.5" />,
-                      note: <FileText className="h-3.5 w-3.5" />,
-                      visit: <MapPin className="h-3.5 w-3.5" />,
-                    };
-                    return (
-                      <div
-                        key={act.id}
-                        className="flex items-center gap-3 p-2.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700/30"
-                      >
-                        <div className="h-7 w-7 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500">
-                          {iconMap[act.activity_type] || <Activity className="h-3.5 w-3.5" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
-                            {act.title || act.activity_type}
-                          </p>
-                          <span className="text-[10px] text-gray-400">
-                            {new Date(act.occurred_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <Badge variant="outline" className="text-[9px] capitalize shrink-0">
-                          {act.activity_type}
-                        </Badge>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+            <CardContent className="px-3 sm:px-4 pb-4">
+              <OpportunityTimeline
+                entityType="customer"
+                entityId={customer.id}
+                context={{ customerId: customer.id, customer: { id: customer.id, full_name: customer.full_name, email: customer.email, phone: customer.phone } }}
+              />
             </CardContent>
           </Card>
         </TabsContent>

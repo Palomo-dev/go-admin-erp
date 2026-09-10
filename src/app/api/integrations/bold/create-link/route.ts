@@ -56,6 +56,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Bold solo liquida en pesos colombianos
+    if (body.currency !== 'COP') {
+      return NextResponse.json(
+        { error: 'Bold solo admite pagos en COP' },
+        { status: 400 }
+      );
+    }
+
     // 1. Crear link de pago en Bold
     const linkResponse = await boldService.createPaymentLink(
       body.connectionId,
@@ -92,8 +100,8 @@ export async function POST(request: NextRequest) {
       connectorCode: 'bold',
       integrationConnectionId: body.connectionId,
       reference: body.reference,
-      externalQrId: linkResponse.link_id,
-      qrImageUrl: linkResponse.payment_url,
+      externalQrId: linkResponse.id,
+      qrImageUrl: linkResponse.link_url,
       amount: body.amount,
       currency: body.currency,
       source: body.source,
@@ -110,8 +118,8 @@ export async function POST(request: NextRequest) {
 
     // 3. Retornar respuesta del proveedor y sesion
     return NextResponse.json({
-      payment_url: linkResponse.payment_url,
-      link_id: linkResponse.link_id,
+      payment_url: linkResponse.link_url,
+      link_id: linkResponse.id,
       qr_session_id: qrSession.id,
       expires_at: linkResponse.expires_at,
       reference: body.reference,

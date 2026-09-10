@@ -233,7 +233,7 @@ export function AssignmentForm({
               Notas
             </Label>
             <RichTextEditor
-              value={formData.notes}
+              value={formData.notes ?? ''}
               onChange={(html) => handleChange('notes', html)}
               placeholder="Notas adicionales sobre la asignación"
               minHeight={60}

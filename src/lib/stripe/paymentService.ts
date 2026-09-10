@@ -7,7 +7,7 @@
  * y sincronización con la base de datos.
  */
 
-import { stripe, convertToCents, getStripeErrorMessage, isValidAmount } from './server'
+import { requireStripe, convertToCents, getStripeErrorMessage, isValidAmount } from './server'
 import {
   CreatePaymentIntentData,
   PaymentIntentResponse,
@@ -63,7 +63,7 @@ export async function createPaymentIntent(
     }
 
     // Crear Payment Intent en Stripe
-    const paymentIntent = await stripe.paymentIntents.create({
+    const paymentIntent = await requireStripe().paymentIntents.create({
       amount: amountInCents,
       currency: data.currency.toLowerCase(),
       description: data.description || 'Pago GO Admin ERP',
@@ -98,7 +98,7 @@ export async function processSuccessfulPayment(
 ): Promise<ProcessedPayment> {
   try {
     // Obtener detalles del Payment Intent de Stripe
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+    const paymentIntent = await requireStripe().paymentIntents.retrieve(paymentIntentId)
 
     if (paymentIntent.status !== 'succeeded') {
       throw new Error('El pago no ha sido completado exitosamente')
@@ -288,7 +288,7 @@ async function updateInvoiceBalance(invoiceId: string, paymentAmount: number): P
 export async function processRefund(options: RefundOptions): Promise<RefundResult> {
   try {
     // Crear reembolso en Stripe
-    const refund = await stripe.refunds.create({
+    const refund = await requireStripe().refunds.create({
       payment_intent: options.paymentIntentId,
       amount: options.amount ? convertToCents(options.amount, 'usd') : undefined,
       reason: options.reason,
@@ -323,7 +323,7 @@ export async function processRefund(options: RefundOptions): Promise<RefundResul
  */
 export async function getPaymentIntent(paymentIntentId: string) {
   try {
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+    const paymentIntent = await requireStripe().paymentIntents.retrieve(paymentIntentId)
     return paymentIntent
   } catch (error: any) {
     console.error('❌ Error obteniendo Payment Intent:', error)
@@ -339,7 +339,7 @@ export async function getPaymentIntent(paymentIntentId: string) {
  */
 export async function cancelPaymentIntent(paymentIntentId: string) {
   try {
-    const paymentIntent = await stripe.paymentIntents.cancel(paymentIntentId)
+    const paymentIntent = await requireStripe().paymentIntents.cancel(paymentIntentId)
     console.log('✅ Payment Intent cancelado:', paymentIntentId)
     return paymentIntent
   } catch (error: any) {

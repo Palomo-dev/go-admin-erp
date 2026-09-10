@@ -11,8 +11,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Cpu, Thermometer, Hash, FileText } from 'lucide-react';
-import { AI_PROVIDERS } from '@/lib/services/aiSettingsService';
+import { Cpu, Thermometer, Hash, FileText, AlertCircle, Star } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+  fetchCatalogoModelos,
+  estimarCostoRespuesta,
+  type CatalogoModelos,
+  type ModeloIA,
+  type GamaModelo,
+} from '@/lib/services/aiSettingsService';
+
+/**
+ * Consumo real promedio de una respuesta del bot, medido sobre las 2.391
+ * respuestas ya enviadas (ai_jobs). Sirve para mostrar el costo en dinero, que
+ * es lo que el usuario entiende, en vez de precios por millon de tokens.
+ */
+const TOKENS_ENTRADA_TIPICOS = 2197;
+const TOKENS_SALIDA_TIPICOS = 56;
 
 interface ModelSettingsProps {
   provider: string;
@@ -39,27 +54,51 @@ export default function ModelSettings({
   onMaxTokensChange,
   onMaxFragmentsChange
 }: ModelSettingsProps) {
-  const selectedProvider = AI_PROVIDERS.find(p => p.value === provider);
-  const availableModels = selectedProvider?.models || [];
+  const [catalogo, setCatalogo] = useState<CatalogoModelos | null>(null);
+  const [errorCatalogo, setErrorCatalogo] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelado = false;
+    fetchCatalogoModelos()
+      .then((c) => { if (!cancelado) setCatalogo(c); })
+      .catch((e: Error) => { if (!cancelado) setErrorCatalogo(e.message); });
+    return () => { cancelado = true; };
+  }, []);
+
+  const proveedores = catalogo?.proveedores ?? [];
+  const availableModels = (catalogo?.modelos ?? []).filter((m) => m.provider === provider);
 
   const handleProviderChange = (newProvider: string) => {
     onProviderChange(newProvider);
-    const newProviderData = AI_PROVIDERS.find(p => p.value === newProvider);
-    if (newProviderData && newProviderData.models.length > 0) {
-      onModelChange(newProviderData.models[0].value);
+    const primero = (catalogo?.modelos ?? []).find((m) => m.provider === newProvider);
+    if (primero) onModelChange(primero.value);
+  };
+
+  const estiloGama = (gama: GamaModelo) => {
+    switch (gama) {
+      case 'economico':   return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+      case 'equilibrado': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'premium':     return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
+      case 'legacy':      return 'bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
     }
   };
 
-  const getCostBadgeColor = (cost: string) => {
-    switch (cost) {
-      case 'muy bajo': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-      case 'bajo': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-      case 'medio': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'alto': return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
-      case 'muy alto': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-      default: return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400';
-    }
+  const etiquetaGama = (gama: GamaModelo) =>
+    gama === 'economico' ? 'económico'
+    : gama === 'equilibrado' ? 'equilibrado'
+    : gama === 'premium' ? 'premium'
+    : 'legacy';
+
+  /** Costo por cada 1.000 respuestas, que es la unidad que se entiende. */
+  const costoPorMil = (m: ModeloIA) => {
+    const unitario = estimarCostoRespuesta(m, TOKENS_ENTRADA_TIPICOS, TOKENS_SALIDA_TIPICOS);
+    if (unitario === null) return null;
+    return (unitario * 1000).toLocaleString('es-CO', {
+      style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2,
+    });
   };
+
+  const modeloActual = availableModels.find((m) => m.value === model);
 
   return (
     <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
@@ -78,9 +117,16 @@ export default function ModelSettings({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {AI_PROVIDERS.map((p) => (
-                  <SelectItem key={p.value} value={p.value}>
-                    {p.label}
+                {proveedores.map((p) => (
+                  <SelectItem key={p.value} value={p.value} disabled={!p.usable}>
+                    <span className="flex items-center gap-2">
+                      {p.label}
+                      {!p.usable && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          sin credenciales
+                        </span>
+                      )}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -97,9 +143,12 @@ export default function ModelSettings({
                 {availableModels.map((m) => (
                   <SelectItem key={m.value} value={m.value}>
                     <div className="flex items-center justify-between gap-3">
-                      <span>{m.label}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded ${getCostBadgeColor(m.cost)}`}>
-                        {m.cost}
+                      <span className="flex items-center gap-1.5">
+                        {m.recomendado && <Star className="h-3 w-3 text-amber-500 fill-amber-500" />}
+                        {m.label}
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded ${estiloGama(m.gama)}`}>
+                        {etiquetaGama(m.gama)}
                       </span>
                     </div>
                   </SelectItem>
@@ -108,6 +157,48 @@ export default function ModelSettings({
             </Select>
           </div>
         </div>
+
+        {errorCatalogo && (
+          <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            {errorCatalogo}
+          </p>
+        )}
+
+        {proveedores.some((p) => !p.usable) && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
+            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            {proveedores.find((p) => !p.usable)?.motivo}
+          </p>
+        )}
+
+        {modeloActual && (
+          <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3 space-y-1.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Costo estimado por cada 1.000 respuestas
+              </span>
+              <span className="text-sm font-mono font-semibold text-gray-900 dark:text-white">
+                {costoPorMil(modeloActual) ?? 'No calculable'}
+              </span>
+            </div>
+            {!modeloActual.tarifaCargada && (
+              <p className="text-xs text-amber-700 dark:text-amber-500">
+                Este modelo no tiene tarifa cargada, así que su gasto real no se puede medir.
+              </p>
+            )}
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Calculado con el consumo real de tu chat: {TOKENS_ENTRADA_TIPICOS.toLocaleString('es-CO')} tokens
+              de entrada y {TOKENS_SALIDA_TIPICOS} de salida por respuesta.
+              {modeloActual.contextoTokens
+                ? ` Contexto máximo: ${modeloActual.contextoTokens.toLocaleString('es-CO')} tokens.`
+                : ''}
+            </p>
+            {modeloActual.nota && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">{modeloActual.nota}</p>
+            )}
+          </div>
+        )}
 
         <div className="space-y-4">
           <div className="space-y-3">

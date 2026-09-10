@@ -110,7 +110,7 @@ export function TapeChartHeader({
             <Calendar
               mode="single"
               selected={startDate}
-              onSelect={(date) => date && onStartDateChange(date)}
+              onSelect={(date: Date | undefined) => date && onStartDateChange(date)}
               locale={es}
             />
           </PopoverContent>

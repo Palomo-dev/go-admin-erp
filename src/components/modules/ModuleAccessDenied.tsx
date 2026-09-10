@@ -25,8 +25,8 @@ interface ModuleAccessDeniedProps {
 
 export default function ModuleAccessDenied({ moduleCode, organizationId }: ModuleAccessDeniedProps) {
   const searchParams = useSearchParams();
-  const errorType = searchParams.get('error');
-  const moduleFromParams = searchParams.get('module');
+  const errorType = searchParams?.get('error') ?? null;
+  const moduleFromParams = searchParams?.get('module') ?? null;
   
   const finalModuleCode = moduleCode || moduleFromParams || '';
   
@@ -223,7 +223,7 @@ export default function ModuleAccessDenied({ moduleCode, organizationId }: Modul
                     {Object.entries(planInfo.features).map(([key, value]) => (
                       <div key={key} className="flex justify-between">
                         <span className="capitalize">{key.replace('_', ' ')}:</span>
-                        <span>{typeof value === 'boolean' ? (value ? 'Sí' : 'No') : value}</span>
+                        <span>{typeof value === 'boolean' ? (value ? 'Sí' : 'No') : String(value)}</span>
                       </div>
                     ))}
                   </div>

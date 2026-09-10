@@ -59,9 +59,9 @@ function ResetPasswordContent() {
     checkSession();
     
     // Verificar si hay parámetros de recuperación en la URL
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-    const type = searchParams.get('type');
+    const accessToken = searchParams?.get('access_token') ?? null;
+    const refreshToken = searchParams?.get('refresh_token') ?? null;
+    const type = searchParams?.get('type') ?? null;
     
     if (type === 'recovery' && accessToken && refreshToken) {
       console.log('Recovery tokens found in URL');

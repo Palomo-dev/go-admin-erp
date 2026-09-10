@@ -109,10 +109,11 @@ export function EntityInfo({ entityType, entityId, entityData, loading }: Entity
   const IconComponent = ENTITY_ICONS[entityType.toLowerCase()] || FileText;
   const fields = ENTITY_FIELDS[entityType.toLowerCase()] || [];
 
-  const formatValue = (value: unknown, format?: 'date' | 'currency' | 'boolean'): string => {
+  // Ojo: el parametro no puede llamarse `format`, tapa al `format` de date-fns
+  const formatValue = (value: unknown, valueFormat?: 'date' | 'currency' | 'boolean'): string => {
     if (value === null || value === undefined) return '-';
     
-    if (format === 'date' && typeof value === 'string') {
+    if (valueFormat === 'date' && typeof value === 'string') {
       try {
         return format(new Date(value), "dd MMM yyyy", { locale: es });
       } catch {
@@ -120,7 +121,7 @@ export function EntityInfo({ entityType, entityId, entityData, loading }: Entity
       }
     }
     
-    if (format === 'currency' && typeof value === 'number') {
+    if (valueFormat === 'currency' && typeof value === 'number') {
       return new Intl.NumberFormat('es-CO', {
         style: 'currency',
         currency: 'COP',
@@ -128,7 +129,7 @@ export function EntityInfo({ entityType, entityId, entityData, loading }: Entity
       }).format(value);
     }
     
-    if (format === 'boolean') {
+    if (valueFormat === 'boolean') {
       return value ? 'Sí' : 'No';
     }
     

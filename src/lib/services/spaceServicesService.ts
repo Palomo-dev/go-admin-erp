@@ -164,7 +164,7 @@ const spaceServicesService = {
         is_active: override ? override.is_active : true, // activo por defecto si no hay override
         is_custom: false,
         service_id: gs.id,
-        price: override ? (parseFloat(override.price) || 0) : 0,
+        price: override ? (Number(override.price) || 0) : 0,
         linked_product_id: override?.linked_product_id || null,
         linked_product_name: (override as any)?.products?.name || null,
       };

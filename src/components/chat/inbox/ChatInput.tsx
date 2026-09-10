@@ -35,13 +35,16 @@ interface ChatInputProps {
   disabled?: boolean;
   placeholder?: string;
   organizationId?: number;
+  /** Se usa para atribuir el uso de respuestas rápidas a la conversación. */
+  conversationId?: string;
 }
 
-export default function ChatInput({ 
-  onSendMessage, 
+export default function ChatInput({
+  onSendMessage,
   disabled = false,
   placeholder = 'Escribe un mensaje...',
-  organizationId
+  organizationId,
+  conversationId
 }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [showEmojis, setShowEmojis] = useState(false);
@@ -126,15 +129,21 @@ export default function ChatInput({
     textareaRef.current?.focus();
   };
 
-  const handleQuickReplySelect = (qr: QuickReply) => {
+  const handleQuickReplySelect = async (qr: QuickReply) => {
     setMessage(qr.content);
     setShowQuickReplies(false);
-    // Incrementar uso
-    supabase
-      .from('quick_replies')
-      .update({ usage_count: (qr as any).usage_count + 1 || 1 })
-      .eq('id', qr.id)
-      .then();
+
+    // Registrar el uso: incrementa quick_replies.usage_count y deja la fila en
+    // quick_replies_usage. El `update` anterior tenia un bug de precedencia
+    // (`usage_count + 1 || 1`): con usage_count undefined daba NaN y reescribia
+    // el contador a 1 en vez de incrementarlo.
+    const { error } = await supabase.rpc('register_quick_reply_use', {
+      p_quick_reply_id: qr.id,
+      p_conversation_id: conversationId ?? null,
+    });
+    if (error) {
+      console.error('No se pudo registrar el uso de la respuesta rápida:', error.message);
+    }
   };
 
   const handleFileSelect = () => {

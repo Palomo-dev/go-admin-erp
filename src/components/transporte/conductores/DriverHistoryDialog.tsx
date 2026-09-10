@@ -198,10 +198,10 @@ export function DriverHistoryDialog({
                 <p><strong>Licencia:</strong> {driver.license_number}</p>
                 <p><strong>Categoría:</strong> {driver.license_category}</p>
                 <p><strong>Vencimiento:</strong> {format(new Date(driver.license_expiry), 'dd/MM/yyyy')}</p>
-                {driver.certifications && driver.certifications.length > 0 && (
+                {driver.metadata?.certifications && driver.metadata.certifications.length > 0 && (
                   <div className="pt-1">
                     <p className="font-medium">Certificaciones:</p>
-                    {driver.certifications.map((cert, i) => (
+                    {driver.metadata.certifications.map((cert: string, i: number) => (
                       <p key={i}>✓ {cert}</p>
                     ))}
                   </div>

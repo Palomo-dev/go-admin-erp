@@ -1,24 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import OpenAIService from '@/lib/services/openaiService';
 import { consumeAICredits } from '@/lib/services/aiCreditsService';
 
+/**
+ * POST /api/chat/ai/generate-response
+ * Seguridad (F0, C-B): org de sesión; `organizationId` del body solo se acepta si coincide.
+ */
 export async function POST(request: NextRequest) {
+  let ctx;
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    ctx = await getServerOrgContext(request);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
     }
+    throw err;
+  }
+
+  try {
+    const supabase = ctx.supabase;
+    const organizationId = ctx.organizationId;
 
     const body = await request.json();
-    const { conversationId, organizationId } = body;
+    const { conversationId } = body;
 
-    if (!conversationId || !organizationId) {
+    if (body.organizationId !== undefined && Number(body.organizationId) !== organizationId) {
+      return NextResponse.json({ error: 'organizationId no coincide con la organización activa' }, { status: 403 });
+    }
+
+    if (!conversationId) {
       return NextResponse.json(
-        { error: 'conversationId y organizationId son requeridos' },
+        { error: 'conversationId es requerido' },
         { status: 400 }
       );
     }
@@ -75,6 +88,7 @@ export async function POST(request: NextRequest) {
       .from('messages')
       .select('content, role, created_at')
       .eq('conversation_id', conversationId)
+      .eq('organization_id', organizationId)
       .order('created_at', { ascending: true })
       .limit(20);
 
@@ -100,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     const response = await openaiService.generateSuggestedResponse(context);
 
-    const cost = openaiService.calculateCost(response.usage, response.model);
+    const cost = await openaiService.calculateCost(supabase, response.usage, response.model);
 
     const { data: aiJob, error: jobError } = await supabase
       .from('ai_jobs')

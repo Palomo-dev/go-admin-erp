@@ -1,354 +1,290 @@
 'use client';
 
 /**
- * SoftphoneProvider — Context provider para Twilio Voice SDK.
- * GO Admin ERP — Fase 3 (Telefonía CRM)
+ * SoftphoneProvider — contexto global del softphone (Twilio Voice JS SDK).
+ * GO Admin ERP — FASE-03 §5.2 (montado UNA vez en src/app/app/layout.tsx).
  *
- * Inicializa un Device de Twilio con el token de /api/voice/token,
- * maneja llamadas entrantes (evento 'incoming') y salientes, y expone
- * el estado de la llamada a través del hook useSoftphone().
- *
- * Reconecta el token automáticamente cuando el evento 'tokenWillExpire'
- * se dispara (10s antes de expirar).
+ * - El ciclo de vida del `Device` (token, permiso de micrófono, carga perezosa
+ *   del SDK, reintentos y renovación) vive en `hooks/useTwilioDevice` desde la
+ *   ronda 2; aquí queda solo el estado de la llamada y la API del contexto.
+ * - `makeCall` SOLO hace `device.connect({ params: { To, opportunityId, customerId } })`
+ *   (la fila `calls` la crea el webhook del TwiML App; sin POST previo, C10).
+ * - `useSoftphone()` es SEGURO: sin provider devuelve `{ available: false }`.
  */
 
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-  ReactNode,
-} from 'react';
-import { Device, Call } from '@twilio/voice-sdk';
-import { useToast } from '@/components/ui/use-toast';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import type { Call } from '@twilio/voice-sdk';
+import { toast } from '@/components/ui/use-toast';
+import { useCallRealtime } from './hooks/useCallRealtime';
+import { useAudioDevices } from './hooks/useAudioDevices';
+import { useTwilioDevice, describeDeviceError } from './hooks/useTwilioDevice';
+import type { ActiveCallInfo, CallStatus, EndedCallInfo, MakeCallOptions, SoftphoneContextValue, SoftphoneValue } from './softphoneTypes';
 
-// ─── Tipos ───────────────────────────────────────────────────────────────────
+// ─── Tipos (definidos en ./softphoneTypes, reexportados aquí) ─────────────────
 
-export type CallStatus = 'idle' | 'connecting' | 'connected' | 'ended';
+export type { DeviceState } from './hooks/useTwilioDevice';
+export { describeDeviceError } from './hooks/useTwilioDevice';
+export type {
+  CallStatus,
+  MakeCallOptions,
+  ActiveCallInfo,
+  EndedCallInfo,
+  SoftphoneContextValue,
+  SoftphoneValue,
+} from './softphoneTypes';
 
-export type DeviceState = 'unregistered' | 'registering' | 'registered' | 'error';
-
-interface MakeCallOptions {
-  customerId?: string;
-  opportunityId?: string;
-  recordingEnabled?: boolean;
-}
-
-interface SoftphoneContextValue {
-  /** Instancia del Device de Twilio (null si no se ha inicializado). */
-  device: Device | null;
-  /** Llamada activa (entrante o saliente). */
-  currentCall: Call | null;
-  /** Estado de la llamada actual. */
-  callStatus: CallStatus;
-  /** Estado del Device (registro). */
-  deviceState: DeviceState;
-  /** Número destino de la llamada saliente en curso. */
-  activeNumber: string | null;
-  /** Inicia una llamada saliente vía /api/voice/call. */
-  makeCall: (to: string, opts?: MakeCallOptions) => Promise<void>;
-  /** Cuelga la llamada activa. */
-  hangup: () => void;
-  /** Acepta una llamada entrante. */
-  acceptIncoming: () => void;
-  /** Rechaza una llamada entrante. */
-  rejectIncoming: () => void;
-  /** Si hay una llamada entrante pendiente. */
-  hasIncoming: boolean;
-}
-
-const SoftphoneContext = createContext<SoftphoneContextValue | null>(null);
-
-// ─── Helper: fetch token ─────────────────────────────────────────────────────
-
-async function fetchVoiceToken(): Promise<{ token: string; identity: string }> {
-  const res = await fetch('/api/voice/token', { method: 'POST' });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Error ${res.status} al obtener token de voz`);
-  }
-  const data = await res.json();
-  return { token: data.token, identity: data.identity };
-}
+const SoftphoneContext = createContext<SoftphoneValue>({ available: false });
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 
 export function SoftphoneProvider({ children }: { children: ReactNode }) {
-  const { toast } = useToast();
-  const deviceRef = useRef<Device | null>(null);
-  const currentCallRef = useRef<Call | null>(null);
+  const callRef = useRef<Call | null>(null);
+  const activeRef = useRef<ActiveCallInfo | null>(null);
+  const liveNoteRef = useRef('');
 
-  const [device, setDevice] = useState<Device | null>(null);
-  const [currentCall, setCurrentCall] = useState<Call | null>(null);
   const [callStatus, setCallStatus] = useState<CallStatus>('idle');
-  const [deviceState, setDeviceState] = useState<DeviceState>('unregistered');
-  const [activeNumber, setActiveNumber] = useState<string | null>(null);
-  const [hasIncoming, setHasIncoming] = useState(false);
+  const [activeCall, setActiveCall] = useState<ActiveCallInfo | null>(null);
+  const [muted, setMuted] = useState(false);
+  const [incoming, setIncoming] = useState<{ from: string; callSid: string | null } | null>(null);
+  const [liveNote, setLiveNoteState] = useState('');
+  const [lastEndedCall, setLastEndedCall] = useState<EndedCallInfo | null>(null);
 
-  // ─── Limpieza de la llamada actual ─────────────────────────────────────────
-  const cleanupCall = useCallback((call: Call) => {
-    call.removeAllListeners();
-    if (currentCallRef.current === call) {
-      currentCallRef.current = null;
-      setCurrentCall(null);
-    }
-    setHasIncoming(false);
+  const { callId: activeCallId, row: activeCallRow } = useCallRealtime(activeCall?.callSid ?? null, callStatus !== 'idle' && callStatus !== 'ended');
+  const activeCallIdRef = useRef<string | null>(null);
+  activeCallIdRef.current = activeCallId;
+
+  const setLiveNote = useCallback((text: string) => {
+    liveNoteRef.current = text;
+    setLiveNoteState(text);
   }, []);
 
-  // ─── Vincular eventos de un Call ───────────────────────────────────────────
+  const setActive = useCallback((info: ActiveCallInfo | null) => {
+    activeRef.current = info;
+    setActiveCall(info);
+  }, []);
+
+  const finishCall = useCallback(
+    (reason: 'disconnect' | 'cancel' | 'reject' | 'error') => {
+      const info = activeRef.current;
+      const call = callRef.current;
+      callRef.current = null;
+      setMuted(false);
+      setIncoming(null);
+      if (call) call.removeAllListeners();
+      if (info && (reason === 'disconnect' || reason === 'error') && info.connectedAt) {
+        const durationSeconds = Math.max(0, Math.round((Date.now() - info.connectedAt) / 1000));
+        setLastEndedCall({ ...info, callId: activeCallIdRef.current, durationSeconds, liveNote: liveNoteRef.current, endedAt: Date.now() });
+      } else if (info && reason === 'disconnect' && info.direction === 'outbound') {
+        // Saliente que no llegó a conectar (no contestó / canceló): también se dispone.
+        setLastEndedCall({ ...info, callId: activeCallIdRef.current, durationSeconds: 0, liveNote: liveNoteRef.current, endedAt: Date.now() });
+      }
+      setCallStatus('ended');
+      window.setTimeout(() => {
+        setCallStatus((s) => (s === 'ended' ? 'idle' : s));
+        setActive(null);
+        setLiveNote('');
+      }, 1200);
+    },
+    [setActive, setLiveNote]
+  );
+
   const bindCallEvents = useCallback(
     (call: Call) => {
-      call.on('accept', (acceptedCall: Call) => {
-        currentCallRef.current = acceptedCall;
-        setCurrentCall(acceptedCall);
+      call.on('accept', () => {
+        const sid = call.parameters?.CallSid ?? null;
+        const prev = activeRef.current;
+        if (prev) setActive({ ...prev, callSid: sid ?? prev.callSid, connectedAt: Date.now() });
         setCallStatus('connected');
-        setHasIncoming(false);
+        setIncoming(null);
       });
-
-      call.on('disconnect', (disconnectedCall: Call) => {
-        setCallStatus('ended');
-        cleanupCall(disconnectedCall);
-        // Reset a idle tras un breve delay para mostrar "Finalizada"
-        setTimeout(() => {
-          setCallStatus('idle');
-          setActiveNumber(null);
-        }, 1500);
-      });
-
-      call.on('cancel', () => {
-        setCallStatus('ended');
-        cleanupCall(call);
-        setTimeout(() => {
-          setCallStatus('idle');
-          setActiveNumber(null);
-        }, 1500);
-      });
-
+      call.on('ringing', () => setCallStatus((s) => (s === 'connecting' ? 'ringing' : s)));
+      call.on('mute', (isMuted: boolean) => setMuted(isMuted));
+      call.on('disconnect', () => finishCall('disconnect'));
+      call.on('cancel', () => finishCall('cancel'));
+      call.on('reject', () => finishCall('reject'));
       call.on('error', (error: unknown) => {
-        console.error('[Softphone] Call error:', error);
-        setCallStatus('ended');
-        cleanupCall(call);
-        toast({
-          title: 'Error de llamada',
-          description: error instanceof Error ? error.message : 'Error desconocido',
-          variant: 'destructive',
-        });
-        setTimeout(() => {
-          setCallStatus('idle');
-          setActiveNumber(null);
-        }, 1500);
+        const d = describeDeviceError(error);
+        toast({ title: 'Error en la llamada', description: d.reason, variant: 'destructive' });
+        finishCall('error');
       });
     },
-    [cleanupCall, toast]
+    [finishCall, setActive]
   );
 
-  // ─── Inicializar Device ────────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-
-    async function initDevice() {
-      try {
-        const { token } = await fetchVoiceToken();
-        if (cancelled) return;
-
-        const newDevice = new Device(token, {
-          logLevel: 1, // WARN
-          // edge: 'ashburn' — usar default
-        });
-
-        // Eventos del Device
-        newDevice.on('registered', () => {
-          setDeviceState('registered');
-        });
-
-        newDevice.on('registering', () => {
-          setDeviceState('registering');
-        });
-
-        newDevice.on('unregistered', () => {
-          setDeviceState('unregistered');
-        });
-
-        newDevice.on('error', (error: unknown) => {
-          console.error('[Softphone] Device error:', error);
-          setDeviceState('error');
-          toast({
-            title: 'Error de telefonía',
-            description: error instanceof Error ? error.message : 'Error en el dispositivo',
-            variant: 'destructive',
-          });
-        });
-
-        newDevice.on('incoming', (call: Call) => {
-          // Solo permitir una llamada a la vez
-          if (currentCallRef.current) {
-            call.reject();
-            return;
-          }
-
-          currentCallRef.current = call;
-          setCurrentCall(call);
-          setCallStatus('connecting');
-          setHasIncoming(true);
-          bindCallEvents(call);
-        });
-
-        // Reconectar token antes de expirar
-        newDevice.on('tokenWillExpire', async () => {
-          try {
-            const { token: newToken } = await fetchVoiceToken();
-            newDevice.updateToken(newToken);
-          } catch (err) {
-            console.error('[Softphone] Error renovando token:', err);
-          }
-        });
-
-        deviceRef.current = newDevice;
-        setDevice(newDevice);
-
-        // Registrar para recibir llamadas entrantes
-        await newDevice.register();
-      } catch (err) {
-        console.error('[Softphone] Error inicializando Device:', err);
-        setDeviceState('error');
-        // No mostrar toast en carga inicial para no spammear si no hay provider
+  // ─── Entrantes + ciclo de vida del Device (hooks/useTwilioDevice) ─────────
+  const handleIncoming = useCallback(
+    (call: Call) => {
+      if (callRef.current) {
+        call.reject();
+        return;
       }
-    }
+      const from = call.parameters?.From ?? 'Número desconocido';
+      callRef.current = call;
+      setActive({
+        direction: 'inbound',
+        callSid: call.parameters?.CallSid ?? null,
+        number: from,
+        displayName: null,
+        opportunityId: null,
+        customerId: null,
+        connectedAt: null,
+      });
+      setIncoming({ from, callSid: call.parameters?.CallSid ?? null });
+      setCallStatus('ringing');
+      bindCallEvents(call);
+    },
+    [bindCallEvents, setActive]
+  );
 
-    initDevice();
-
-    return () => {
-      cancelled = true;
-      if (currentCallRef.current) {
-        try {
-          currentCallRef.current.disconnect();
-        } catch {
-          // noop
-        }
-      }
-      if (deviceRef.current) {
-        try {
-          deviceRef.current.destroy();
-        } catch {
-          // noop
-        }
-        deviceRef.current = null;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const onDeviceDestroy = useCallback(() => {
+    callRef.current?.disconnect();
+    callRef.current = null;
   }, []);
 
-  // ─── makeCall ──────────────────────────────────────────────────────────────
+  const { deviceRef, deviceState, deviceReason, deviceErrorCode, deviceMissing, retry } = useTwilioDevice(handleIncoming, onDeviceDestroy);
+  const audio = useAudioDevices(deviceRef, deviceState === 'registered');
+
+  // ─── Acciones ──────────────────────────────────────────────────────────────
   const makeCall = useCallback(
     async (to: string, opts?: MakeCallOptions) => {
-      if (!deviceRef.current) {
-        toast({
-          title: 'Telefonía no disponible',
-          description: 'El dispositivo de voz no está inicializado',
-          variant: 'destructive',
-        });
+      const device = deviceRef.current;
+      if (!device || deviceState !== 'registered') {
+        toast({ title: 'Telefonía no disponible', description: deviceReason ?? 'El softphone no está registrado', variant: 'destructive' });
         return;
       }
-
-      if (currentCallRef.current) {
-        toast({
-          title: 'Ya hay una llamada en curso',
-          description: 'Finaliza la llamada actual antes de iniciar otra',
-          variant: 'destructive',
-        });
+      if (callRef.current) {
+        toast({ title: 'Ya hay una llamada en curso', description: 'Finaliza la llamada actual antes de iniciar otra', variant: 'destructive' });
         return;
       }
-
-      // Iniciar la llamada server-side para registrar en BD
+      const number = to.trim();
+      if (!number) return;
+      setLiveNote('');
+      setLastEndedCall(null);
+      setActive({
+        direction: 'outbound',
+        callSid: null,
+        number,
+        displayName: opts?.displayName ?? null,
+        opportunityId: opts?.opportunityId ?? null,
+        customerId: opts?.customerId ?? null,
+        connectedAt: null,
+      });
+      setCallStatus('connecting');
       try {
-        await fetch('/api/voice/call', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to,
-            customer_id: opts?.customerId,
-            opportunity_id: opts?.opportunityId,
-            recording_enabled: opts?.recordingEnabled,
-            mode: 'click-to-call',
-          }),
+        // Solo device.connect: la fila `calls` la crea /api/voice/twiml/outbound (C10).
+        const call = await device.connect({
+          params: { To: number, opportunityId: opts?.opportunityId ?? '', customerId: opts?.customerId ?? '' },
         });
-      } catch (err) {
-        console.error('[Softphone] Error iniciando llamada server-side:', err);
-      }
-
-      // Conectar vía SDK (cliente)
-      try {
-        setActiveNumber(to);
-        setCallStatus('connecting');
-
-        const call = await deviceRef.current.connect({
-          params: { To: to },
-        });
-
-        currentCallRef.current = call;
-        setCurrentCall(call);
+        callRef.current = call;
         bindCallEvents(call);
+        // `parameters.CallSid` está disponible tras el handshake inicial.
+        const sid = call.parameters?.CallSid ?? null;
+        if (sid) setActive({ ...(activeRef.current as ActiveCallInfo), callSid: sid });
       } catch (err) {
-        console.error('[Softphone] Error conectando llamada:', err);
+        const d = describeDeviceError(err);
         setCallStatus('idle');
-        setActiveNumber(null);
-        toast({
-          title: 'No se pudo iniciar la llamada',
-          description: err instanceof Error ? err.message : 'Error desconocido',
-          variant: 'destructive',
-        });
+        setActive(null);
+        toast({ title: 'No se pudo iniciar la llamada', description: d.reason, variant: 'destructive' });
       }
     },
-    [bindCallEvents, toast]
+    [deviceState, deviceReason, bindCallEvents, setActive, setLiveNote]
   );
 
-  // ─── hangup ────────────────────────────────────────────────────────────────
   const hangup = useCallback(() => {
-    if (currentCallRef.current) {
-      currentCallRef.current.disconnect();
-    }
+    const call = callRef.current;
+    if (!call) return;
+    if (incoming) call.reject();
+    else call.disconnect();
+  }, [incoming]);
+
+  const mute = useCallback((m: boolean) => {
+    callRef.current?.mute(m);
+    setMuted(m);
   }, []);
 
-  // ─── acceptIncoming ────────────────────────────────────────────────────────
+  const sendDigits = useCallback((digits: string) => {
+    const clean = digits.replace(/[^0-9*#w]/g, '');
+    if (clean && callRef.current && callRef.current.status() === 'open') callRef.current.sendDigits(clean);
+  }, []);
+
   const acceptIncoming = useCallback(() => {
-    if (currentCallRef.current && hasIncoming) {
-      currentCallRef.current.accept();
-    }
-  }, [hasIncoming]);
+    if (callRef.current && incoming) callRef.current.accept();
+  }, [incoming]);
 
-  // ─── rejectIncoming ────────────────────────────────────────────────────────
   const rejectIncoming = useCallback(() => {
-    if (currentCallRef.current && hasIncoming) {
-      currentCallRef.current.reject();
-      cleanupCall(currentCallRef.current);
-      setCallStatus('idle');
+    if (callRef.current && incoming) {
+      callRef.current.reject();
+      finishCall('reject');
     }
-  }, [hasIncoming, cleanupCall]);
+  }, [incoming, finishCall]);
 
-  const value: SoftphoneContextValue = {
-    device,
-    currentCall,
-    callStatus,
-    deviceState,
-    activeNumber,
-    makeCall,
-    hangup,
-    acceptIncoming,
-    rejectIncoming,
-    hasIncoming,
-  };
+  const clearLastEndedCall = useCallback(() => setLastEndedCall(null), []);
+
+  // ─── Atajos globales (fuera de inputs): Ctrl+Shift+D colgar, Ctrl+Shift+M mute, Ctrl+Shift+A aceptar ──
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.ctrlKey || !e.shiftKey) return;
+      const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
+      const editable = tag === 'input' || tag === 'textarea' || (e.target as HTMLElement | null)?.isContentEditable;
+      const key = e.key.toUpperCase();
+      if (key === 'D' && callRef.current) {
+        e.preventDefault();
+        hangup();
+      } else if (key === 'M' && callRef.current && !editable) {
+        e.preventDefault();
+        mute(!muted);
+      } else if (key === 'A' && incoming) {
+        e.preventDefault();
+        acceptIncoming();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [hangup, mute, muted, incoming, acceptIncoming]);
+
+  const value = useMemo<SoftphoneContextValue>(
+    () => ({
+      available: true,
+      deviceState,
+      deviceReason,
+      deviceErrorCode,
+      deviceMissing,
+      callStatus,
+      activeCall,
+      activeCallId,
+      activeCallRow,
+      muted,
+      hasIncoming: Boolean(incoming),
+      incoming,
+      liveNote,
+      setLiveNote,
+      lastEndedCall,
+      clearLastEndedCall,
+      audio,
+      makeCall,
+      hangup,
+      mute,
+      sendDigits,
+      acceptIncoming,
+      rejectIncoming,
+      retry,
+    }),
+    [deviceState, deviceReason, deviceErrorCode, deviceMissing, callStatus, activeCall, activeCallId, activeCallRow, muted, incoming, liveNote, setLiveNote, lastEndedCall, clearLastEndedCall, audio, makeCall, hangup, mute, sendDigits, acceptIncoming, rejectIncoming, retry]
+  );
 
   return <SoftphoneContext.Provider value={value}>{children}</SoftphoneContext.Provider>;
 }
 
-// ─── Hook ────────────────────────────────────────────────────────────────────
+// ─── Hook seguro ─────────────────────────────────────────────────────────────
 
-export function useSoftphone(): SoftphoneContextValue {
+/** Sin `<SoftphoneProvider>` devuelve `{ available: false }` (nunca lanza). */
+export function useSoftphone(): SoftphoneValue {
+  return useContext(SoftphoneContext);
+}
+
+/** Variante que exige el provider (dock, botones). */
+export function useSoftphoneStrict(): SoftphoneContextValue {
   const ctx = useContext(SoftphoneContext);
-  if (!ctx) {
-    throw new Error('useSoftphone debe usarse dentro de <SoftphoneProvider>');
-  }
+  if (!ctx.available) throw new Error('useSoftphoneStrict debe usarse dentro de <SoftphoneProvider>');
   return ctx;
 }

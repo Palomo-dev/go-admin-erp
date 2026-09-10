@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * Diálogo HUÉRFANO: hoy no lo importa nadie (F2 borró su único importador,
+ * `KanbanColumn.tsx`). El engranaje «Configurar etapa» del tablero abre
+ * `StageDialog.tsx`, que es donde vive la pestaña «Agente IA».
+ *
+ * F6 (ronda 3, R3-8): la pestaña «Agente IA» estaba montada AQUÍ **y** en
+ * `StageDialog`. Dos montajes = dos fuentes de verdad: si F9 volviera a montar
+ * este diálogo aparecerían dos pestañas idénticas. Se retira de aquí y queda
+ * una sola, la del diálogo que sí se abre. Si algún día se rehabilita este
+ * componente, la pestaña se toma de `StageDialog.tsx`, no se duplica.
+ */
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -29,6 +41,12 @@ import { Stage } from "@/types/crm";
 import { ColorInput } from "./ColorInput";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Trophy, XCircle } from "lucide-react";
+// F6: configuración del agente IA por etapa del embudo (se reutiliza este diálogo).
+//
+// ⚠️ Este diálogo NO tiene importadores desde que F2 borró `KanbanColumn.tsx`:
+// el engranaje «Configurar etapa» del tablero abre `StageDialog`. La pestaña
+// «Agente IA» que de verdad usa el dueño se monta allí (F-NEW-3, ronda 2).
+// Se conserva este archivo intacto por si F9 vuelve a montarlo.
 
 interface StageConfigDialogProps {
   isOpen: boolean;
@@ -134,7 +152,7 @@ export function StageConfigDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[520px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Configuración de Etapa</DialogTitle>
           <DialogDescription>

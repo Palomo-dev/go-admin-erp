@@ -4,24 +4,23 @@
  * Twilio envía actualizaciones de estado de cada pata (agent/customer).
  * Este endpoint correlaciona ambas patas en mobile_call_bridges y calls.
  *
- * Sin autenticación de sesión — valida firma de Twilio en producción.
+ * Seguridad (F0, C12/C14/C3/C4):
+ * - Firma verificada SIEMPRE (token por AccountSid).
+ * - La org se toma de la fila `mobile_call_bridges`; todas las escrituras en
+ *   `calls` se filtran por `organization_id`.
+ * - `calls.status` se mapea con `twilioCallStatusToDb` (CHECK).
+ * - El insert del customer leg usa `from_number`/`to_number` (la columna
+ *   `phone_number` no existe) y `mode: 'bridge'`.
  * Query params: bridgeId, leg (agent|customer)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { validateTwilioSignature } from '@/lib/services/integrations/twilio';
-import { getWebhookBaseUrl } from '@/lib/services/integrations/twilio/twilioConfig';
+import { NextResponse } from 'next/server';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { verifyTwilioWebhook, WebhookError } from '@/lib/security/webhookSignatures';
+import { twilioCallStatusToDb } from '@/lib/crm/enums';
 import type { BridgeStatus } from '@/lib/services/crm/mobileBridgeService';
 
-function getServiceSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('Faltan credenciales Supabase (service_role)');
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
+export const runtime = 'nodejs';
 
 /** Mapea el CallStatus de Twilio al estado del bridge */
 function mapCallStatusToBridge(
@@ -50,52 +49,59 @@ function mapCallStatusToBridge(
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
+  let params: Record<string, string>;
   try {
-    const formData = await request.formData();
-    const params: Record<string, string> = {};
-    formData.forEach((value, key) => {
-      params[key] = value.toString();
-    });
-
-    const bridgeId = request.nextUrl.searchParams.get('bridgeId') || '';
-    const leg = (request.nextUrl.searchParams.get('leg') || 'agent') as 'agent' | 'customer';
-
-    // Validar firma de Twilio
-    const signature = request.headers.get('x-twilio-signature') || '';
-    const url = `${getWebhookBaseUrl()}/api/voice/bridge/status?bridgeId=${bridgeId}&leg=${leg}`;
-    const twilioAuthToken = process.env.TWILIO_MASTER_AUTH_TOKEN;
-    if (!twilioAuthToken) {
-      console.warn('[Bridge Status] TWILIO_MASTER_AUTH_TOKEN no configurado — validación de firma omitida');
-    } else if (!validateTwilioSignature(signature, url, params)) {
-      console.warn('[Bridge Status] Firma de Twilio inválida');
-      return new NextResponse('Forbidden', { status: 403 });
+    ({ params } = await verifyTwilioWebhook(request));
+  } catch (err) {
+    if (err instanceof WebhookError) {
+      console.warn('[Bridge Status] Rechazado:', err.code);
+      return new NextResponse('Forbidden', { status: err.statusCode });
     }
+    throw err;
+  }
+
+  try {
+    const search = new URL(request.url).searchParams;
+    const bridgeId = search.get('bridgeId') || '';
+    const legParam = search.get('leg') || 'agent';
+    const leg: 'agent' | 'customer' = legParam === 'customer' ? 'customer' : 'agent';
 
     if (!bridgeId) {
+      // NOTA (C-9/C18): el status callback del agente IA llega sin bridgeId;
+      // F6 lo enruta a voice_agent_calls. Aquí solo se ignora.
       return new NextResponse('OK', { status: 200 });
     }
 
-    const supabase = getServiceSupabase();
+    const supabase = getServiceClient();
 
+    // La org sale de la fila del bridge
+    const { data: bridge } = await supabase
+      .from('mobile_call_bridges')
+      .select('id, organization_id, user_id, customer_id, opportunity_id, agent_leg_sid, agent_phone, target_phone')
+      .eq('id', bridgeId)
+      .maybeSingle();
+
+    if (!bridge) {
+      console.warn('[Bridge Status] Bridge no encontrado:', bridgeId);
+      return new NextResponse('OK', { status: 200 });
+    }
+
+    const orgId = bridge.organization_id as number;
     const callSid = params.CallSid || '';
     const callStatus = params.CallStatus || '';
     const callDuration = params.CallDuration ? parseInt(params.CallDuration, 10) : null;
+    const now = new Date().toISOString();
 
     // Mapear estado de Twilio a estado del bridge
     const newBridgeStatus = mapCallStatusToBridge(callStatus, leg);
 
-    // Actualizar el bridge
-    const updateData: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
-
+    const updateData: Record<string, unknown> = { updated_at: now };
     if (leg === 'agent') {
       updateData.agent_leg_sid = callSid;
     } else {
       updateData.customer_leg_sid = callSid;
     }
-
     if (newBridgeStatus) {
       updateData.status = newBridgeStatus;
     }
@@ -103,62 +109,67 @@ export async function POST(request: NextRequest) {
     await supabase
       .from('mobile_call_bridges')
       .update(updateData)
-      .eq('id', bridgeId);
+      .eq('id', bridgeId)
+      .eq('organization_id', orgId);
 
-    // Actualizar el registro en calls
+    // Actualizar el registro en calls (estado mapeado al CHECK)
+    const dbStatus = twilioCallStatusToDb(callStatus);
     const callsUpdate: Record<string, unknown> = {
-      status: callStatus,
+      status: dbStatus,
+      updated_at: now,
     };
-
-    if (callDuration !== null) {
+    if (callDuration !== null && !Number.isNaN(callDuration)) {
       callsUpdate.duration_seconds = callDuration;
+      callsUpdate.duration_source = 'provider';
+    }
+    if (callStatus === 'in-progress' || callStatus === 'answered') {
+      callsUpdate.answered_at = now;
+    }
+    if (['completed', 'failed', 'no-answer', 'busy', 'canceled'].includes(callStatus)) {
+      callsUpdate.ended_at = now;
     }
 
-    if (leg === 'agent') {
+    if (!callSid) {
+      return new NextResponse('OK', { status: 200 });
+    }
+
+    const { data: existingCall } = await supabase
+      .from('calls')
+      .select('id')
+      .eq('provider_call_sid', callSid)
+      .eq('organization_id', orgId)
+      .maybeSingle();
+
+    if (existingCall) {
       await supabase
         .from('calls')
         .update(callsUpdate)
-        .eq('provider_call_sid', callSid);
-    } else {
-      // Customer leg: actualizar por provider_call_sid o crear si no existe
-      const { data: existingCall } = await supabase
-        .from('calls')
-        .select('id')
-        .eq('provider_call_sid', callSid)
-        .maybeSingle();
-
-      if (existingCall) {
-        await supabase
-          .from('calls')
-          .update(callsUpdate)
-          .eq('provider_call_sid', callSid);
-      } else {
-        // El customer leg puede no tener registro previo — crearlo
-        const { data: bridge } = await supabase
-          .from('mobile_call_bridges')
-          .select('organization_id, user_id, customer_id, opportunity_id, agent_leg_sid')
-          .eq('id', bridgeId)
-          .single();
-
-        if (bridge) {
-          await supabase.from('calls').insert({
-            organization_id: bridge.organization_id,
-            user_id: bridge.user_id,
-            customer_id: bridge.customer_id,
-            opportunity_id: bridge.opportunity_id,
-            provider_call_sid: callSid,
-            parent_call_sid: bridge.agent_leg_sid,
-            direction: 'outbound',
-            status: callStatus,
-            bridge_mode: 'customer_leg',
-            customer_leg_sid: callSid,
-            agent_leg_sid: bridge.agent_leg_sid,
-            duration_source: 'provider',
-            duration_seconds: callDuration,
-            phone_number: params.To || '',
-          });
-        }
-      }
+        .eq('id', existingCall.id)
+        .eq('organization_id', orgId);
+    } else if (leg === 'customer') {
+      // El customer leg puede no tener registro previo — crearlo (scoped)
+      await supabase.from('calls').insert({
+        organization_id: orgId,
+        user_id: bridge.user_id,
+        customer_id: bridge.customer_id,
+        opportunity_id: bridge.opportunity_id,
+        provider: 'twilio',
+        provider_call_sid: callSid,
+        parent_call_sid: bridge.agent_leg_sid,
+        direction: 'outbound',
+        mode: 'bridge',
+        from_number: params.From || bridge.agent_phone || '',
+        to_number: params.To || bridge.target_phone || '',
+        status: dbStatus,
+        bridge_mode: 'customer_leg',
+        customer_leg_sid: callSid,
+        agent_leg_sid: bridge.agent_leg_sid,
+        duration_source: 'provider',
+        duration_seconds: callDuration,
+        started_at: now,
+        recording_enabled: true,
+        metadata: { bridge_id: bridgeId, leg },
+      });
     }
 
     return new NextResponse('OK', { status: 200 });

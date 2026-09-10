@@ -16,7 +16,7 @@ interface TrazabilidadSeccionProps {
 export default function TrazabilidadSeccion({ formData, updateFormData }: TrazabilidadSeccionProps) {
   const trackSerial = formData.track_serial ?? false
   const autoGenerate = formData.auto_generate_serial ?? false
-  const serialPattern = formData.serial_pattern ?? ''
+  const serialPattern: string = formData.serial_pattern ?? ''
   const warrantyMonths = formData.warranty_months ?? ''
   const [literalText, setLiteralText] = useState('')
 

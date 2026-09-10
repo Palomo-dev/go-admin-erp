@@ -3,6 +3,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // @ts-ignore: Deno URL import (resolves at runtime in Supabase Edge Functions)
 import OpenAI from "https://esm.sh/openai@4";
+// Logica pura compartida (primer ladrillo del nucleo de la Fase 1). Se importa
+// con extension .ts porque lo exige Deno; Jest la testea importandola sin ella.
+import { decidirSilencio, secretosCoinciden } from "../_shared/ai-chat/politicaRespuesta.ts";
+import { decidirBusquedaCatalogo } from "../_shared/ai-chat/intencionConsulta.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,6 +20,282 @@ const openaiKey = Deno.env.get('OPENAI_API_KEY')!;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 const openai = new OpenAI({ apiKey: openaiKey });
+
+// =============================================================================
+// Fase 0 — Seguridad, creditos, idempotencia y trazabilidad
+// =============================================================================
+
+/**
+ * Secreto compartido con `trigger_ai_auto_response`. Preferimos la variable de
+ * entorno (si algun dia se configura en el panel) y si no, lo leemos de vault
+ * via RPC. Se cachea en memoria para no consultar en cada invocacion.
+ */
+let cachedInternalSecret: string | null = null;
+async function getInternalSecret(): Promise<string | null> {
+  if (cachedInternalSecret) return cachedInternalSecret;
+  const fromEnv = Deno.env.get('AI_INTERNAL_SECRET');
+  if (fromEnv) {
+    cachedInternalSecret = fromEnv;
+    return cachedInternalSecret;
+  }
+  const { data, error } = await supabase.rpc('get_ai_internal_secret');
+  if (error || !data) {
+    console.error('No se pudo leer AI_INTERNAL_SECRET:', error?.message);
+    return null;
+  }
+  cachedInternalSecret = data as string;
+  return cachedInternalSecret;
+}
+
+interface AiSettingsRow {
+  model?: string;
+  temperature?: string | number;
+  max_tokens?: number;
+  system_rules?: string;
+  fallback_message?: string;
+  is_active?: boolean;
+  auto_response_enabled?: boolean;
+  auto_response_delay_seconds?: number;
+  hybrid_agent_pause_minutes?: number;
+  hybrid_respect_business_hours?: boolean;
+  reply_fallback_on_no_credits?: boolean;
+}
+
+// =============================================================================
+// Fase 5.2 — Multiproveedor real
+//
+// Antes `ai_settings.provider` era decorativo: se podia elegir Anthropic o
+// Google en /crm/ia y la funcion llamaba a OpenAI igual. Ahora Google se
+// implementa de verdad; Anthropic NO se ofrece porque no hay ni credencial en
+// providerRegistry ni tarifa en provider_pricing.
+// =============================================================================
+
+interface RespuestaLlm {
+  content: string;
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
+/** Credencial del proveedor: primero la de la organizacion, si no la global. */
+async function credencialProveedor(
+  organizationId: number,
+  proveedor: string,
+  claves: string[]
+): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from('provider_configs')
+      .select('credentials')
+      .eq('organization_id', organizationId)
+      .eq('category', 'llm')
+      .eq('provider', proveedor)
+      .eq('is_active', true)
+      .maybeSingle();
+    for (const clave of claves) {
+      const valor = (data?.credentials as Record<string, string> | null)?.[clave];
+      if (valor) return valor;
+    }
+  } catch (e) {
+    console.error('No se pudo leer provider_configs:', e);
+  }
+  for (const clave of claves) {
+    const valor = Deno.env.get(clave);
+    if (valor) return valor;
+  }
+  return null;
+}
+
+/**
+ * La familia 5.6 (y 6.x) vive en la Responses API, no en Chat Completions:
+ * todo el resto del repositorio la llama con `responses.parse` y
+ * `reasoning.effort: 'none'` (aiDraftService, callAnalysisService), y el
+ * ANEXO-B §4.2 la documenta bajo "Modelos de texto (Responses API)".
+ * gpt-4o y gpt-4o-mini siguen por Chat Completions.
+ */
+function usaResponsesApi(model: string): boolean {
+  return /^gpt-(5|6)/.test(model);
+}
+
+async function generarConChatCompletions(
+  model: string,
+  chatMessages: Array<any>,
+  temperature: number,
+  maxTokens: number
+): Promise<RespuestaLlm> {
+  const completion = await openai.chat.completions.create({
+    model, messages: chatMessages, temperature, max_tokens: maxTokens,
+  });
+  return {
+    content: completion.choices[0]?.message?.content || '',
+    model: completion.model || model,
+    promptTokens: completion.usage?.prompt_tokens ?? 0,
+    completionTokens: completion.usage?.completion_tokens ?? 0,
+    totalTokens: completion.usage?.total_tokens ?? 0,
+  };
+}
+
+async function generarConResponses(
+  model: string,
+  chatMessages: Array<any>,
+  temperature: number,
+  maxTokens: number
+): Promise<RespuestaLlm> {
+  const system = chatMessages.find((m) => m.role === 'system');
+  const resto = chatMessages
+    .filter((m) => m.role !== 'system')
+    .map((m) => ({
+      role: m.role,
+      content: typeof m.content === 'string' ? m.content : '',
+    }))
+    .filter((m) => m.content.length > 0);
+
+  const respuesta: any = await (openai as any).responses.create({
+    model,
+    instructions: system ? String(system.content) : undefined,
+    input: resto,
+    temperature,
+    max_output_tokens: maxTokens,
+    // Respuestas de chat: no queremos que gaste tokens razonando.
+    reasoning: { effort: 'none' },
+    // Datos de clientes: no se guardan en OpenAI (ANEXO-B §4.2).
+    store: false,
+  });
+
+  const texto = respuesta?.output_text
+    ?? respuesta?.output?.flatMap((o: any) => o?.content ?? [])
+         ?.map((c: any) => c?.text ?? '')
+         ?.join('')
+    ?? '';
+
+  return {
+    content: texto,
+    model: respuesta?.model || model,
+    promptTokens: respuesta?.usage?.input_tokens ?? 0,
+    completionTokens: respuesta?.usage?.output_tokens ?? 0,
+    totalTokens: respuesta?.usage?.total_tokens ?? 0,
+  };
+}
+
+/** Modelo de emergencia: legacy, pero comprobado que funciona por Chat Completions. */
+const MODELO_DE_EMERGENCIA = 'gpt-4o-mini';
+
+/**
+ * Genera con OpenAI eligiendo el endpoint segun el modelo.
+ *
+ * Si la Responses API falla —modelo sin acceso en la cuenta, cuota, forma
+ * distinta a la documentada— NO se reintenta el mismo modelo por Chat
+ * Completions: verificado contra la API real, gpt-5.6-luna rechaza ese endpoint
+ * ("Unsupported parameter: 'max_tokens' ... Use 'max_completion_tokens'"), asi
+ * que ese respaldo no salvaria nada. Se cae a un modelo legacy que si funciona,
+ * para que el cliente reciba respuesta, y el fallo queda en el log.
+ */
+async function generarConOpenAI(
+  model: string,
+  chatMessages: Array<any>,
+  temperature: number,
+  maxTokens: number
+): Promise<RespuestaLlm> {
+  if (!usaResponsesApi(model)) {
+    return await generarConChatCompletions(model, chatMessages, temperature, maxTokens);
+  }
+  try {
+    return await generarConResponses(model, chatMessages, temperature, maxTokens);
+  } catch (e: any) {
+    console.error(
+      `Responses API fallo con ${model} (${e?.status ?? '?'}: ${e?.message}); ` +
+      `se responde con ${MODELO_DE_EMERGENCIA}. Revisar acceso al modelo.`
+    );
+    return await generarConChatCompletions(
+      MODELO_DE_EMERGENCIA, chatMessages, temperature, maxTokens
+    );
+  }
+}
+
+/**
+ * Genera con Gemini. El historial de OpenAI se traduce al formato de Google:
+ * el mensaje `system` va aparte en `systemInstruction` y `assistant` se llama
+ * `model`.
+ */
+async function generarConGoogle(
+  apiKey: string,
+  model: string,
+  chatMessages: Array<any>,
+  temperature: number,
+  maxTokens: number
+): Promise<RespuestaLlm> {
+  const system = chatMessages.find((m) => m.role === 'system');
+  const contents = chatMessages
+    .filter((m) => m.role !== 'system')
+    .map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: typeof m.content === 'string' ? m.content : '' }],
+    }))
+    .filter((c) => c.parts[0].text.length > 0);
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const respuesta = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: system ? { parts: [{ text: String(system.content) }] } : undefined,
+      contents,
+      generationConfig: { temperature, maxOutputTokens: maxTokens },
+    }),
+  });
+
+  if (!respuesta.ok) {
+    const detalle = await respuesta.text();
+    const error: any = new Error(`Google devolvio ${respuesta.status}: ${detalle.slice(0, 300)}`);
+    error.status = respuesta.status;
+    throw error;
+  }
+
+  const json = await respuesta.json();
+  const texto = json?.candidates?.[0]?.content?.parts
+    ?.map((p: any) => p?.text || '')
+    .join('') || '';
+  const uso = json?.usageMetadata || {};
+
+  return {
+    content: texto,
+    model,
+    promptTokens: uso.promptTokenCount ?? 0,
+    completionTokens: uso.candidatesTokenCount ?? 0,
+    totalTokens: uso.totalTokenCount ?? 0,
+  };
+}
+
+/** Cierra un job de ai_jobs. Nunca lanza: la telemetria no debe tumbar la respuesta. */
+async function finalizarJob(
+  jobId: string | null,
+  patch: Record<string, unknown>
+): Promise<void> {
+  if (!jobId) return;
+  try {
+    await supabase.from('ai_jobs').update(patch).eq('id', jobId);
+  } catch (e) {
+    console.error('No se pudo actualizar ai_jobs:', e);
+  }
+}
+
+/** Reintento con backoff para errores 5xx / timeout del proveedor. */
+async function conReintentos<T>(fn: () => Promise<T>, intentos = 3): Promise<T> {
+  let ultimoError: any;
+  for (let i = 0; i < intentos; i++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      ultimoError = e;
+      const status = e?.status ?? e?.response?.status;
+      const recuperable = status === undefined || status >= 500 || status === 429;
+      if (!recuperable || i === intentos - 1) throw e;
+      await new Promise((r) => setTimeout(r, 500 * Math.pow(2, i)));
+    }
+  }
+  throw ultimoError;
+}
 
 async function classifyAndTagConversation(
   conversationId: string,
@@ -73,86 +353,34 @@ async function classifyAndTagConversation(
   }
 }
 
-function correctTypos(word: string): string {
-  const map: Record<string, string> = {
-    'labadora': 'lavadora', 'labadoras': 'lavadoras',
-    'nevara': 'nevera', 'nevaras': 'neveras',
-    'refri': 'refrigerador', 'refrigeradora': 'refrigerador', 'refigeradora': 'refrigerador',
-    'refrijeradora': 'refrigerador', 'refigerador': 'refrigerador',
-    'tele': 'televisor', 'televicion': 'television', 'televisior': 'televisor',
-    'micro': 'microondas', 'microhondas': 'microondas',
-    'licuadra': 'licuadora', 'secadra': 'secadora',
-    'conjelador': 'congelador', 'conjeladora': 'congeladora',
-    'calentadro': 'calentador', 'ventiladro': 'ventilador',
-    'celular': 'celular', 'celulares': 'celulares',
-    'audifonos': 'audifonos', 'audifono': 'audifono',
-    'computadro': 'computador', 'computadra': 'computadora',
-    'portatil': 'portatil', 'laptos': 'laptop', 'lapto': 'laptop',
-    'armarios': 'armario', 'closets': 'closet',
-    'sarten': 'sarten', 'sartenes': 'sarten',
-    'tvs': 'televisor', 'televisores': 'televisor',
-    'tenis': 'tenis', 'zapatillas': 'tenis',
-    'camisa': 'camiseta', 'camisas': 'camiseta',
-    'parlantes': 'parlante', 'bocina': 'parlante', 'bocinas': 'parlante',
-  };
-  return map[word.toLowerCase()] || word;
-}
+// correctTypos() y extractKeywords() se eliminaron.
+//
+// correctTypos era un mapa fijo de erratas de electrodomesticos
+// ("labadora" -> "lavadora"). No servia para la drogueria ni la perfumeria, y
+// ahora lo hace `palabras_de_catalogo()` por similitud contra el catalogo real
+// de cada organizacion: "pocilo" -> "pocillo", "acetaminofeno" -> "acetaminofen".
+//
+// extractKeywords vive ahora en ../_shared/ai-chat/intencionConsulta.ts
+// (`extraerTokens` / `decidirBusquedaCatalogo`), donde ademas descarta correos y
+// telefonos y se puede testear con Jest.
 
-function normalizeSpanish(word: string): string {
-  return word.toLowerCase()
-    .replace(/v/g, 'b')
-    .replace(/z/g, 's')
-    .replace(/c(?=[ei])/g, 's')
-    .replace(/j/g, 'g')
-    .replace(/h/g, '')
-    .replace(/ll/g, 'y');
-}
-
-function stemSpanish(word: string): string[] {
-  const variants = [word];
-  if (word.endsWith('es') && word.length > 4) {
-    variants.push(word.slice(0, -2));
-    variants.push(word.slice(0, -1));
-  } else if (word.endsWith('s') && word.length > 3) {
-    variants.push(word.slice(0, -1));
-  }
-  if (!word.endsWith('s')) {
-    variants.push(word + 's');
-    variants.push(word + 'es');
-  }
-  return [...new Set(variants)];
-}
-
-function extractKeywords(message: string): string[] {
-  const stopWords = new Set(['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'de', 'del', 'al', 'a', 'en', 'con', 'por', 'para', 'que', 'es', 'son', 'tiene', 'tienen', 'tienes', 'hay', 'me', 'mi', 'te', 'tu', 'se', 'su', 'nos', 'les', 'lo', 'le', 'y', 'o', 'pero', 'como', 'hola', 'buenas', 'buenos', 'dias', 'tardes', 'noches', 'gracias', 'por', 'favor', 'quiero', 'necesito', 'busco', 'quisiera', 'cuanto', 'cuesta', 'precio', 'vale', 'disponible', 'stock', 'pedido', 'orden', 'estado', 'informacion', 'sobre', 'ver', 'mostrar', 'correo', 'email', 'mail', 'imagen', 'foto', 'este', 'esta', 'eso', 'ese', 'esa', 'producto', 'productos', 'cual', 'cuales', 'donde', 'cuando', 'como', 'quien', 'algo', 'mas', 'otro', 'otra', 'otros', 'otras', 'bien', 'bueno', 'buena', 'hoy', 'aqui', 'ahi', 'alla', 'todo', 'toda', 'todos', 'todas', 'nada', 'mucho', 'poco', 'muy', 'tan', 'solo', 'tambien', 'ya', 'aun', 'si', 'no', 'que', 'porque', 'pues', 'entonces', 'asi', 'ser', 'estar', 'tener', 'tenes', 'tengo', 'tenemos', 'muestrame', 'muestren', 'dame', 'venden', 'vendes', 'vende', 'ofrecen', 'manejan', 'hacer', 'poder', 'decir', 'dar', 'saber', 'poner', 'llegar', 'pasar', 'deber', 'ir', 'venir', 'valor', 'comprar', 'esos', 'esas']);
-  const words = message.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, '')
-    .split(/\s+/)
-    .filter(w => w.length >= 2 && !stopWords.has(w))
-    .map(w => correctTypos(w));
-  return [...new Set(words)].slice(0, 5);
-}
-
+/**
+ * Palabras del hilo reciente que podrian nombrar un producto.
+ *
+ * Antes filtraba contra una lista cableada de electrodomesticos y muebles, asi
+ * que para la perfumeria, la drogueria, la licorera o la tienda de tenis este
+ * respaldo devolvia SIEMPRE vacio. Ahora devuelve candidatas y quien decide si
+ * nombran algo es `palabras_de_catalogo()`, contra el catalogo de la tienda.
+ */
 function extractHistoryKeywords(messages: Array<{content: string, role: string, content_type?: string}>): string[] {
-  const productKeywords: string[] = [];
-  const recent = messages.slice(-6);
-  for (const msg of recent) {
+  const candidatas: string[] = [];
+  const recientes = messages.slice(-6).filter(m => m.role === 'customer');
+  for (const msg of recientes) {
     if (!msg.content || msg.content_type === 'image') continue;
-    const words = msg.content.toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9\s]/g, '')
-      .split(/\s+/)
-      .filter(w => w.length > 3)
-      .map(w => correctTypos(w));
-    const productPatterns = /^(lavador|nevera|refriger|televisor|television|cocina|horno|microonda|licuador|secador|congel|calentad|ventilad|estufa|plancha|aspira|samsung|lg|mabe|haceb|hisense|whirlpool|electrolux|tcl|bosch|frigidaire|laptop|comput|celular|tablet|audifono|parlante|aire|acondicion|armario|closet|ropero|mesa|silla|sofa|cama|colchon|mueble|estante|repisa|escritorio|cajonera|comoda|biblioteca|vitrina|organizador|rattan|baranda|gabinete|librer|archivador|aparador|tocador|modular|anaquel|percher|guarda|sarten|olla|cacerola|vajilla|plato|vaso|cubierto|licuador)/;
-    for (const w of words) {
-      if (productPatterns.test(w)) {
-        productKeywords.push(w);
-      }
-    }
+    const decision = decidirBusquedaCatalogo(msg.content);
+    candidatas.push(...decision.tokens);
   }
-  return [...new Set(productKeywords)].slice(0, 5);
+  return [...new Set(candidatas)].slice(0, 5);
 }
 
 function extractAssistantProductKeywords(messages: Array<{content: string, role: string, content_type?: string}>): string[] {
@@ -192,120 +420,63 @@ async function searchProducts(organizationId: number, keywords: string[]): Promi
   if (keywords.length === 0) return { text: '', products: [] };
 
   try {
-    const allVariants: string[] = [];
-    for (const kw of keywords) {
-      allVariants.push(...stemSpanish(kw));
-      const normalized = normalizeSpanish(kw);
-      if (normalized !== kw) allVariants.push(...stemSpanish(normalized));
+    // Paso 1: ¿alguna de estas palabras nombra algo del catalogo DE ESTA tienda?
+    // Sustituye a las listas cableadas de electrodomesticos, que no servian para
+    // la perfumeria, la drogueria, la licorera ni la tienda de tenis. Ademas
+    // corrige erratas por similitud contra el catalogo real: "pocilo" ->
+    // "pocillo", "acetaminofeno" -> "acetaminofen".
+    const { data: reconocidas, error: errorVocab } = await supabase
+      .rpc('palabras_de_catalogo', { p_org: organizationId, p_palabras: keywords });
+    if (errorVocab) console.error('Error consultando vocabulario:', errorVocab.message);
+
+    const tokens: string[] = (reconocidas || [])
+      .map((r: any) => r.palabra_catalogo)
+      .filter(Boolean);
+
+    // Ninguna palabra del cliente existe en este catalogo: no hay nada que buscar.
+    // Aqui es donde mueren "hila", "estafadores" y "pago".
+    if (tokens.length === 0) return { text: '', products: [] };
+
+    // Paso 2: UNA consulta que normaliza (tildes y apostrofos), busca en nombre,
+    // marca, sku, referencia y descripcion con pesos, agrupa las variantes bajo
+    // su producto padre y exige un umbral minimo de relevancia.
+    const { data: encontrados, error: errorBusqueda } = await supabase
+      .rpc('buscar_productos', { p_org: organizationId, p_tokens: tokens, p_limite: 6 });
+    if (errorBusqueda) {
+      console.error('Error buscando productos:', errorBusqueda.message);
+      return { text: '', products: [] };
     }
-    const uniqueVariants = [...new Set(allVariants)];
+    if (!encontrados || encontrados.length === 0) return { text: '', products: [] };
 
-    let allProducts: any[] = [];
-
-    for (const variant of uniqueVariants.slice(0, 10)) {
-      const { data } = await supabase
-        .from('products')
-        .select('id, name, sku, description, category_id, status')
-        .eq('organization_id', organizationId)
-        .eq('status', 'active')
-        .ilike('name', `%${variant}%`)
-        .limit(5);
-      if (data) allProducts.push(...data);
-    }
-
-    if (allProducts.length === 0) {
-      for (const kw of keywords.slice(0, 3)) {
-        const { data } = await supabase
-          .from('products')
-          .select('id, name, sku, description, category_id, status')
-          .eq('organization_id', organizationId)
-          .eq('status', 'active')
-          .ilike('name', `%${kw}%`)
-          .limit(5);
-        if (data) allProducts.push(...data);
-      }
-    }
-
-    if (allProducts.length === 0) {
-      for (const kw of keywords.slice(0, 2)) {
-        const { data: categories } = await supabase
-          .from('categories')
-          .select('id')
-          .eq('organization_id', organizationId)
-          .ilike('name', `%${kw}%`)
-          .limit(2);
-        if (categories && categories.length > 0) {
-          const catIds = categories.map(c => c.id);
-          const { data } = await supabase
-            .from('products')
-            .select('id, name, sku, description, category_id, status')
-            .eq('organization_id', organizationId)
-            .eq('status', 'active')
-            .in('category_id', catIds)
-            .limit(6);
-          if (data) allProducts.push(...data);
-        }
-      }
-    }
-
-    const seen = new Set();
-    const dedupProducts = allProducts.filter(p => {
-      if (seen.has(p.id)) return false;
-      seen.add(p.id);
-      return true;
-    });
-    // Sort by relevance: products matching original keywords rank higher
-    dedupProducts.sort((a, b) => {
-      const aName = a.name.toLowerCase();
-      const bName = b.name.toLowerCase();
-      const aScore = keywords.filter(kw => aName.includes(kw)).length;
-      const bScore = keywords.filter(kw => bName.includes(kw)).length;
-      return bScore - aScore;
-    });
-    const unique = dedupProducts.slice(0, 6);
-
-    if (unique.length === 0) return { text: '', products: [] };
-
-    const productIds = unique.map(p => p.id);
-
-    const [pricesRes, imagesRes, stockRes] = await Promise.all([
-      supabase.from('product_prices').select('product_id, price, compare_price').in('product_id', productIds).is('effective_to', null),
-      supabase.from('product_images').select('product_id, storage_path').in('product_id', productIds).eq('is_primary', true),
-      supabase.from('stock_levels').select('product_id, qty_on_hand').in('product_id', productIds),
-    ]);
-
-    const priceMap = new Map((pricesRes.data || []).map((p: any) => [p.product_id, p]));
-    const imageMap = new Map((imagesRes.data || []).map((i: any) => [i.product_id, i.storage_path]));
-    const stockMap = new Map((stockRes.data || []).map((s: any) => [s.product_id, s.qty_on_hand]));
-
-    const enrichedProducts = unique.map(p => {
-      const priceData = priceMap.get(p.id) as any;
-      const storagePath = imageMap.get(p.id);
-      const stock = stockMap.get(p.id);
-      return {
-        id: p.id,
-        name: p.name,
-        sku: p.sku,
-        price: priceData?.price ? Number(priceData.price) : 0,
-        comparePrice: priceData?.compare_price ? Number(priceData.compare_price) : null,
-        imageUrl: storagePath ? `${supabaseUrl}/storage/v1/object/public/product-images/${storagePath}` : null,
-        stock: stock !== undefined ? Number(stock) : null,
-      };
-    });
+    const products = encontrados.map((p: any) => ({
+      id: p.id,
+      name: p.nombre,
+      sku: p.sku,
+      price: p.precio ? Number(p.precio) : 0,
+      comparePrice: p.precio_anterior ? Number(p.precio_anterior) : null,
+      imageUrl: p.imagen ? `${supabaseUrl}/storage/v1/object/public/product-images/${p.imagen}` : null,
+      stock: p.stock !== null && p.stock !== undefined ? Number(p.stock) : null,
+      presentaciones: p.presentaciones ?? 1,
+    }));
 
     let text = '';
-    for (const p of enrichedProducts) {
+    for (const p of products) {
       const price = p.price ? `$${p.price.toLocaleString('es-CO')}` : 'Precio no disponible';
-      const comparePrice = p.comparePrice && p.comparePrice > p.price ? ` (precio anterior tachado: $${p.comparePrice.toLocaleString('es-CO')}, NO usar este valor)` : '';
+      const comparePrice = p.comparePrice && p.comparePrice > p.price
+        ? ` (precio anterior tachado: $${p.comparePrice.toLocaleString('es-CO')}, NO usar este valor)` : '';
       const stockText = p.stock !== null ? ` | Stock: ${p.stock}` : '';
-      text += `- **${p.name}** | PRECIO DE VENTA: ${price}${comparePrice}${stockText}`;
+      // Las variantes van agrupadas: se le dice al modelo cuantas hay para que
+      // pregunte por la presentacion en vez de listar la misma cosa seis veces.
+      const presentaciones = p.presentaciones > 1
+        ? ` | Disponible en ${p.presentaciones} presentaciones (pregunta cual quiere)` : '';
+      text += `- **${p.name}** | PRECIO DE VENTA: ${price}${comparePrice}${stockText}${presentaciones}`;
       if (p.imageUrl) text += ` | Imagen: ${p.imageUrl}`;
-      text += `\n`;
+      text += '\n';
     }
 
-    return { text, products: enrichedProducts };
-  } catch (error) {
-    console.error('Error buscando productos:', error);
+    return { text, products };
+  } catch (e) {
+    console.error('Error en searchProducts:', e);
     return { text: '', products: [] };
   }
 }
@@ -416,10 +587,26 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
+  // --- Fase 0.1: solo el trigger puede invocar esta funcion -------------------
+  const secretoEsperado = await getInternalSecret();
+  const secretoRecibido = req.headers.get('x-internal-secret') || '';
+  if (!secretoEsperado || !secretosCoinciden(secretoRecibido, secretoEsperado)) {
+    return new Response(JSON.stringify({ error: 'No autorizado' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  let jobId: string | null = null;
+  let organizationId = 0;
+  let conversationId = '';
+  let messageId: string | null = null;
+
   try {
-    const { conversationId, messageId, organizationId } = await req.json();
-    if (!conversationId || !organizationId) {
-      return new Response(JSON.stringify({ error: 'Missing params' }), {
+    const body = await req.json();
+    conversationId = body.conversationId;
+    messageId = body.messageId ?? null;
+    if (!conversationId) {
+      return new Response(JSON.stringify({ error: 'Falta conversationId' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -430,22 +617,123 @@ Deno.serve(async (req: Request) => {
       .eq('id', conversationId)
       .single();
     if (!conv) {
-      return new Response(JSON.stringify({ error: 'Conversation not found' }), {
+      return new Response(JSON.stringify({ error: 'Conversacion no encontrada' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Fase 0.1: la organizacion SIEMPRE sale de la fila real. El valor del body
+    // es meramente informativo y, si no coincide, se rechaza la llamada.
+    organizationId = conv.organization_id;
+    if (body.organizationId !== undefined && Number(body.organizationId) !== organizationId) {
+      console.error(`organizationId del body (${body.organizationId}) no coincide con la conversacion (${organizationId})`);
+      return new Response(JSON.stringify({ error: 'organizationId no coincide con la conversacion' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const { data: channelData } = await supabase
       .from('channels')
-      .select('id, type, name, ai_mode, organization_id')
+      .select('id, type, name, ai_mode, organization_id, business_hours, ai_draft_mode')
       .eq('id', conv.channel_id)
+      .eq('organization_id', organizationId)
       .single();
-    if (!channelData || channelData.ai_mode === 'disabled') {
-      return new Response(JSON.stringify({ skipped: true, reason: 'AI disabled' }), {
+    if (!channelData) {
+      return new Response(JSON.stringify({ skipped: true, reason: 'canal_no_encontrado' }), {
         status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     conv.channel = channelData;
+
+    // --- Fase 0.3: semantica real de ai_mode --------------------------------
+    // El enum es ai_only | hybrid | manual. La comparacion anterior era contra
+    // 'disabled', un valor que no existe: guardia muerta.
+    const aiMode = channelData.ai_mode as string;
+    if (aiMode === 'manual') {
+      return new Response(JSON.stringify({ skipped: true, reason: 'canal_manual' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: aiSettings } = await supabase
+      .from('ai_settings')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    const settings: AiSettingsRow = aiSettings || {
+      model: 'gpt-5.6-luna', temperature: '0.7', max_tokens: 600, system_rules: '', fallback_message: '',
+    };
+
+    // --- Fase 0.2: la IA tambien se apaga desde aqui, no solo desde el trigger
+    if (aiSettings && (settings.is_active === false || settings.auto_response_enabled === false)) {
+      return new Response(JSON.stringify({ skipped: true, reason: 'ia_desactivada' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // --- Fase 0.4: candado de idempotencia ----------------------------------
+    // El indice unico parcial sobre (conversation_id, trigger_message_id) hace
+    // que dos invocaciones concurrentes no puedan generar dos respuestas.
+    if (messageId) {
+      const { data: job, error: jobError } = await supabase
+        .from('ai_jobs')
+        .insert({
+          organization_id: organizationId,
+          conversation_id: conversationId,
+          trigger_message_id: messageId,
+          job_type: 'auto_response',
+          status: 'processing',
+          started_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+      if (jobError) {
+        // 23505 = ya hay un job para este mensaje: otra invocacion se nos adelanto.
+        if ((jobError as any).code === '23505') {
+          return new Response(JSON.stringify({ skipped: true, reason: 'job_duplicado' }), {
+            status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        console.error('No se pudo crear ai_jobs:', jobError.message);
+      } else {
+        jobId = job?.id ?? null;
+      }
+    }
+
+    // --- Fase 0.4: debounce --------------------------------------------------
+    // Si el cliente manda 3 mensajes seguidos, esperamos la ventana configurada
+    // y solo responde la invocacion del ultimo mensaje.
+    const delaySegundos = Math.max(0, Math.min(60, settings.auto_response_delay_seconds ?? 0));
+    if (delaySegundos > 0 && messageId) {
+      await new Promise((r) => setTimeout(r, delaySegundos * 1000));
+
+      const { data: msgDisparador } = await supabase
+        .from('messages')
+        .select('created_at')
+        .eq('id', messageId)
+        .single();
+
+      if (msgDisparador) {
+        const { data: posteriores } = await supabase
+          .from('messages')
+          .select('id')
+          .eq('conversation_id', conversationId)
+          .eq('role', 'customer')
+          .gt('created_at', msgDisparador.created_at)
+          .limit(1);
+        if (posteriores && posteriores.length > 0) {
+          await finalizarJob(jobId, {
+            status: 'skipped',
+            error_code: 'superseded',
+            error_message: 'Llego un mensaje posterior del cliente; responde esa invocacion.',
+            completed_at: new Date().toISOString(),
+          });
+          return new Response(JSON.stringify({ skipped: true, reason: 'mensaje_superado' }), {
+            status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    }
 
     const { data: messages } = await supabase
       .from('messages')
@@ -455,7 +743,78 @@ Deno.serve(async (req: Request) => {
       .limit(20);
     const recentMessages = (messages || []).reverse();
     if (recentMessages.length === 0) {
-      return new Response(JSON.stringify({ skipped: true, reason: 'No messages' }), {
+      await finalizarJob(jobId, {
+        status: 'skipped', error_code: 'sin_mensajes', completed_at: new Date().toISOString(),
+      });
+      return new Response(JSON.stringify({ skipped: true, reason: 'sin_mensajes' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // --- Fase 0.3: en hybrid, el humano manda ---------------------------------
+    const pausaMinutos = settings.hybrid_agent_pause_minutes ?? 30;
+    let minutosDesdeUltimoAgente: number | null = null;
+    if (aiMode === 'hybrid') {
+      const { data: ultimoAgente } = await supabase
+        .from('messages')
+        .select('created_at')
+        .eq('conversation_id', conversationId)
+        .eq('role', 'agent')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (ultimoAgente && ultimoAgente.length > 0) {
+        minutosDesdeUltimoAgente =
+          (Date.now() - new Date(ultimoAgente[0].created_at).getTime()) / 60_000;
+      }
+    }
+
+    const motivoSilencio = decidirSilencio({
+      aiMode,
+      iaActiva: settings.is_active !== false,
+      autoRespuestaActiva: settings.auto_response_enabled !== false,
+      minutosDesdeUltimoAgente,
+      pausaPorAgenteMinutos: pausaMinutos,
+      // Opt-in: default false para no silenciar los canales que hoy responden siempre.
+      respetarHorarioLaboral: settings.hybrid_respect_business_hours === true,
+      horario: channelData.business_hours ?? null,
+    });
+
+    if (motivoSilencio) {
+      await finalizarJob(jobId, {
+        status: 'skipped',
+        error_code: motivoSilencio,
+        completed_at: new Date().toISOString(),
+      });
+      return new Response(JSON.stringify({ skipped: true, reason: motivoSilencio }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // --- Fase 0.2: sin creditos no se llama al modelo -------------------------
+    const creditosDisponibles = (aiSettings as any)?.credits_remaining ?? null;
+    if (creditosDisponibles !== null && creditosDisponibles <= 0) {
+      let mensajeEnviado = false;
+      if (settings.reply_fallback_on_no_credits === true && settings.fallback_message) {
+        await supabase.from('messages').insert({
+          organization_id: organizationId,
+          conversation_id: conversationId,
+          channel_id: conv.channel_id,
+          direction: 'outbound',
+          role: 'ai',
+          content_type: 'text',
+          content: settings.fallback_message,
+          is_read: true,
+          metadata: { source: 'auto_response_fase0', reason: 'sin_creditos' },
+        });
+        mensajeEnviado = true;
+      }
+      await finalizarJob(jobId, {
+        status: 'skipped',
+        error_code: 'no_credits',
+        error_message: 'La organizacion se quedo sin creditos de IA.',
+        completed_at: new Date().toISOString(),
+      });
+      return new Response(JSON.stringify({ skipped: true, reason: 'no_credits', fallbackEnviado: mensajeEnviado }), {
         status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -463,13 +822,6 @@ Deno.serve(async (req: Request) => {
     const lastCustomerMessage = [...recentMessages].reverse().find(m => m.role === 'customer');
     const lastAiMsg = [...recentMessages].reverse().find(m => m.direction === 'outbound');
     const lastAiContent = (lastAiMsg?.content || '').toLowerCase();
-
-    const { data: aiSettings } = await supabase
-      .from('ai_settings')
-      .select('*')
-      .eq('organization_id', organizationId)
-      .maybeSingle();
-    const settings = aiSettings || { model: 'gpt-4o-mini', temperature: '0.7', max_tokens: 600, system_rules: '', fallback_message: '' };
 
     if (lastCustomerMessage?.content) {
       classifyAndTagConversation(conversationId, organizationId, lastCustomerMessage.content);
@@ -561,19 +913,12 @@ Deno.serve(async (req: Request) => {
           });
           imageAnalysis = visionCompletion.choices[0]?.message?.content || '';
           if (imageAnalysis) {
-            const imgWords = imageAnalysis.toLowerCase()
-              .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-              .replace(/[^a-z0-9\s]/g, '')
-              .split(/\s+/)
-              .filter(w => w.length > 3);
-            const brandPatterns = /^(samsung|lg|mabe|haceb|hisense|whirlpool|electrolux|tcl|bosch|frigidaire|sony|panasonic|oster|imusa|universal)/;
-            const productPatterns = /^(lavador|nevera|refriger|televisor|television|cocina|horno|microonda|licuador|secador|congel|calentad|ventilad|estufa|plancha|aspira|laptop|comput|celular|tablet|audifono|parlante|aire)/;
-            for (const w of imgWords) {
-              if (brandPatterns.test(w) || productPatterns.test(w)) {
-                imageKeywords.push(w);
-              }
-            }
-            imageKeywords = [...new Set(imageKeywords)].slice(0, 5);
+            // La descripcion que devuelve el modelo se trata como una consulta
+            // mas: las palabras candidatas salen de ahi y quien decide si nombran
+            // algo del catalogo es `palabras_de_catalogo()`. Las listas de marcas
+            // (samsung|lg|mabe...) y de electrodomesticos que habia aqui dejaban
+            // fuera cualquier foto de un perfume, un medicamento o unos tenis.
+            imageKeywords = decidirBusquedaCatalogo(imageAnalysis).tokens.slice(0, 5);
           }
         } catch (e) {
           console.error('Error vision:', e);
@@ -638,7 +983,11 @@ Deno.serve(async (req: Request) => {
 
     // isOrderPhase: blocks product search entirely (AI is collecting customer data)
     const isOrderPhase = (() => {
-      const productInquiry = /\b(tienes|tienen|hay|busco|quiero|necesito|muestr|ver|enseñ|catalog|product|ofert|promo|nevera|lavador|refriger|televisor|cocina|horno|microonda|licuador|sarten|sartenes|olla|vajilla|aire|ventilad|estufa|plancha|aspira|laptop|comput|celular|tablet|parlante|mueble|sofa|cama|colchon|mesa|silla)/i.test(lastUserMsg);
+      // Solo verbos de intencion, que valen para cualquier vertical. La lista de
+      // electrodomesticos que habia aqui no servia para la perfumeria, la
+      // drogueria, la licorera ni la tienda de tenis; que la palabra nombre un
+      // producto lo decide el catalogo de la organizacion, no una regex.
+      const productInquiry = /\b(tienes|tienen|hay|busco|quiero|necesito|muestr|ver|enseñ|catalog|product|ofert|promo|precio|vale|cuesta|disponible)/i.test(lastUserMsg);
       if (productInquiry || userSelectingProduct) return false;
 
       const orderPhrases = ['nombre completo', 'teléfono', 'dirección', 'tipo de entrega', 'método de pago', 'domicilio', 'datos para', 'confirmar pedido', 'resumen del pedido', 'deseas agregar algo más', 'algo más a tu pedido', 'todo está correcto', 'todo esta correcto', 'resumen de tu pedido', 'finalizar el pedido', 'procesar tu pedido', 'procesado con éxito', 'pedido ha sido', 'correo electrónico'];
@@ -670,27 +1019,45 @@ Deno.serve(async (req: Request) => {
     // skipProductCards: search products for AI context but don't show visual cards
     const skipProductCards = userSelectingProduct || isOrderPhase || isSupportQuery || isSimpleMessage;
 
+    // --- ¿Hay que consultar el catalogo? -------------------------------------
+    // Antes se buscaba con casi cualquier palabra: el 45% de las busquedas no
+    // encontraba nada y las palabras que mas fallaban eran "pago", "entrega",
+    // "estafadores"... incluso un correo y un telefono. En 342 respuestas se
+    // mostraron tarjetas de producto sobre mensajes de reclamo.
     let keywords: string[] = [];
-    if (!isOrderPhase) {
-      keywords = lastCustomerMessage?.content && lastCustomerMessage.content_type !== 'image'
-        ? extractKeywords(lastCustomerMessage.content)
-        : [];
+    let motivoSinBusqueda: string | null = null;
+
+    if (isOrderPhase) {
+      motivoSinBusqueda = 'tomando_datos_del_pedido';
+    } else {
+      const texto = lastCustomerMessage?.content_type !== 'image'
+        ? (lastCustomerMessage?.content || '')
+        : '';
+      const decision = decidirBusquedaCatalogo(texto);
+
+      if (decision.buscar) {
+        keywords = decision.tokens;
+      } else {
+        motivoSinBusqueda = decision.motivo;
+      }
+
+      // Lo que se reconocio en una imagen si es una consulta de producto, aunque
+      // el texto que la acompaña sea un saludo.
       if (imageKeywords.length > 0) {
         keywords = [...new Set([...keywords, ...imageKeywords])].slice(0, 8);
+        motivoSinBusqueda = null;
       }
-      
-      if (keywords.length === 0) {
+
+      // Sin palabras propias, se hereda el hilo: de que se venia hablando.
+      if (keywords.length === 0 && !motivoSinBusqueda) {
         const historyKw = extractHistoryKeywords(recentMessages);
-        if (historyKw.length > 0) {
-          keywords = [...new Set([...keywords, ...historyKw])].slice(0, 8);
-        }
-        if (keywords.length === 0) {
-          const assistantKw = extractAssistantProductKeywords(recentMessages);
-          if (assistantKw.length > 0) {
-            keywords = [...new Set([...keywords, ...assistantKw])].slice(0, 8);
-          }
-        }
+        const assistantKw = historyKw.length > 0 ? [] : extractAssistantProductKeywords(recentMessages);
+        keywords = [...new Set([...historyKw, ...assistantKw])].slice(0, 8);
       }
+    }
+
+    if (motivoSinBusqueda) {
+      console.log(`Sin busqueda de catalogo (${motivoSinBusqueda}) en conversacion ${conversationId}`);
     }
     
     // When user is selecting a product, reuse products from previous AI message metadata
@@ -832,17 +1199,65 @@ Deno.serve(async (req: Request) => {
     }
 
     const hasImage = recentMessages.some(m => m.content_type === 'image' || m.metadata?.imageUrl);
-    const model = hasImage ? 'gpt-4o' : (settings.model || 'gpt-4o-mini');
+    const temperatura = parseFloat(String(settings.temperature)) || 0.7;
+    const maxTokens = settings.max_tokens || 600;
 
-    const completion = await openai.chat.completions.create({
-      model,
-      messages: chatMessages,
-      temperature: parseFloat(settings.temperature) || 0.7,
-      max_tokens: settings.max_tokens || 600,
-    });
+    // La vision va SIEMPRE por gpt-4o, independientemente del proveedor elegido:
+    // es el unico modelo del catalogo con soporte de imagen confirmado.
+    let proveedor = hasImage ? 'openai' : ((settings as any).provider || 'openai');
+    let model = hasImage ? 'gpt-4o' : (settings.model || 'gpt-5.6-luna');
 
-    let responseContent = completion.choices[0]?.message?.content || settings.fallback_message || 'Lo siento, no puedo responder en este momento.';
-    const usage = completion.usage;
+    let respuesta: RespuestaLlm;
+
+    if (proveedor === 'google') {
+      const claveGoogle = await credencialProveedor(organizationId, 'google', ['GOOGLE_AI_API_KEY', 'GEMINI_API_KEY']);
+      if (claveGoogle) {
+        // Fase 0.4: reintento con backoff ante 5xx / 429 / timeout.
+        respuesta = await conReintentos(() =>
+          generarConGoogle(claveGoogle, model, chatMessages, temperatura, maxTokens)
+        );
+      } else {
+        // Sin credencial no se deja al cliente sin respuesta: se cae a OpenAI y
+        // queda registrado, porque es un fallo de configuracion, no del cliente.
+        console.error(`Org ${organizationId} tiene provider=google sin credencial; se responde con OpenAI.`);
+        proveedor = 'openai';
+        model = 'gpt-5.6-luna';
+        respuesta = await conReintentos(() =>
+          generarConOpenAI(model, chatMessages, temperatura, maxTokens)
+        );
+      }
+    } else {
+      respuesta = await conReintentos(() =>
+        generarConOpenAI(model, chatMessages, temperatura, maxTokens)
+      );
+    }
+
+    let responseContent = respuesta.content || settings.fallback_message || 'Lo siento, no puedo responder en este momento.';
+
+    // Fase 5.3: costo real contra provider_pricing. Devuelve null —no cero—
+    // cuando el modelo no tiene tarifa cargada (gpt-4o y gpt-4o-mini, hoy).
+    let costoUsd: number | null = null;
+    try {
+      // El modelo REAL que reporto el proveedor, no el configurado: si entro el
+      // respaldo de emergencia son distintos, y cobrar por el configurado seria
+      // una cifra falsa. `calcular_costo_llm` acepta el snapshot con fecha.
+      const { data: costo } = await supabase.rpc('calcular_costo_llm', {
+        p_model: respuesta.model || model,
+        p_tokens_entrada: respuesta.promptTokens,
+        p_tokens_salida: respuesta.completionTokens,
+      });
+      costoUsd = costo !== null && costo !== undefined ? Number(costo) : null;
+    } catch (e) {
+      console.error('No se pudo calcular el costo:', e);
+    }
+
+    // Compatibilidad con el resto del cuerpo, escrito contra la forma de OpenAI.
+    const completion = { model: respuesta.model };
+    const usage = {
+      prompt_tokens: respuesta.promptTokens,
+      completion_tokens: respuesta.completionTokens,
+      total_tokens: respuesta.totalTokens,
+    };
 
     // Detect [PEDIDO_LISTO] marker and build checkout redirect
     let orderAction: any = undefined;
@@ -951,6 +1366,68 @@ Deno.serve(async (req: Request) => {
       };
     }
 
+    // --- Fase 0.2: cobro explicito de creditos ------------------------------
+    // Unica fuente de verdad desde la Fase 0 (el trigger trg_consume_ai_credits_on_message
+    // se elimino). decrement_ai_credits es atomico: hace SELECT ... FOR UPDATE.
+    const creditosAntes = (aiSettings as any)?.credits_remaining ?? null;
+    const { data: cobrado, error: errorCobro } = await supabase.rpc('decrement_ai_credits', {
+      p_org_id: organizationId,
+      p_cost: 1,
+    });
+    if (errorCobro) {
+      console.error('Error cobrando creditos:', errorCobro.message);
+    }
+    if (cobrado === false) {
+      await finalizarJob(jobId, {
+        status: 'skipped',
+        error_code: 'no_credits',
+        error_message: 'Los creditos se agotaron mientras se generaba la respuesta.',
+        prompt_tokens: usage?.prompt_tokens || 0,
+        completion_tokens: usage?.completion_tokens || 0,
+        completed_at: new Date().toISOString(),
+      });
+      return new Response(JSON.stringify({ skipped: true, reason: 'no_credits' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (cobrado === true) {
+      await supabase.from('ai_usage_logs').insert({
+        organization_id: organizationId,
+        action_type: 'auto_response',
+        model: completion.model || model,
+        prompt_tokens: usage?.prompt_tokens || 0,
+        completion_tokens: usage?.completion_tokens || 0,
+        total_tokens: usage?.total_tokens || 0,
+        credits_consumed: 1,
+        credits_before: creditosAntes,
+        credits_after: creditosAntes !== null ? creditosAntes - 1 : null,
+        cost_amount: costoUsd,
+        metadata: {
+          conversation_id: conversationId, job_id: jobId, source: 'ai-auto-response',
+          provider: proveedor,
+        },
+      });
+    }
+
+    // --- Fase 0 (modo borrador por canal) ------------------------------------
+    // El borrador NO puede insertarse en `messages`: trg_channel_dispatch enviaria
+    // el mensaje a WhatsApp/Facebook/Instagram. Se guarda en el job y ya esta.
+    // La UI para que el agente lo apruebe llega en la Fase 4.
+    if (channelData.ai_draft_mode === true) {
+      await finalizarJob(jobId, {
+        status: 'draft',
+        response_text: responseContent,
+        prompt_tokens: usage?.prompt_tokens || 0,
+        completion_tokens: usage?.completion_tokens || 0,
+        total_cost: costoUsd,
+        completed_at: new Date().toISOString(),
+        metadata: { model: completion.model, provider: proveedor, order_action: orderAction ?? null },
+      });
+      return new Response(JSON.stringify({ success: true, draft: true, jobId }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { data: aiMessage } = await supabase
       .from('messages')
       .insert({
@@ -982,18 +1459,32 @@ Deno.serve(async (req: Request) => {
       .select()
       .single();
 
-    await supabase.from('ai_jobs').insert({
-      organization_id: organizationId,
-      conversation_id: conversationId,
-      trigger_message_id: messageId,
-      result_message_id: aiMessage?.id,
-      job_type: 'auto_response',
-      status: 'completed',
-      response_text: responseContent,
-      prompt_tokens: usage?.prompt_tokens || 0,
-      completion_tokens: usage?.completion_tokens || 0,
-      completed_at: new Date().toISOString(),
-    });
+    // El job ya existe (se creo como candado antes de generar): aqui se cierra.
+    if (jobId) {
+      await finalizarJob(jobId, {
+        result_message_id: aiMessage?.id,
+        status: 'completed',
+        response_text: responseContent,
+        prompt_tokens: usage?.prompt_tokens || 0,
+        completion_tokens: usage?.completion_tokens || 0,
+        total_cost: costoUsd,
+        completed_at: new Date().toISOString(),
+      });
+    } else {
+      await supabase.from('ai_jobs').insert({
+        organization_id: organizationId,
+        conversation_id: conversationId,
+        trigger_message_id: messageId,
+        result_message_id: aiMessage?.id,
+        job_type: 'auto_response',
+        status: 'completed',
+        response_text: responseContent,
+        prompt_tokens: usage?.prompt_tokens || 0,
+        completion_tokens: usage?.completion_tokens || 0,
+        total_cost: costoUsd,
+        completed_at: new Date().toISOString(),
+      });
+    }
 
     await supabase
       .from('conversations')
@@ -1003,9 +1494,32 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ success: true, messageId: aiMessage?.id, version: 20 }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-  } catch (error) {
-    console.error('Error:', error);
-    return new Response(JSON.stringify({ error: 'Internal error' }), {
+  } catch (error: any) {
+    // Fase 0.4: los fallos dejaban de existir (ai_jobs solo se escribia al triunfar).
+    console.error('Error en ai-auto-response:', error);
+    await finalizarJob(jobId, {
+      status: 'failed',
+      error_code: String(error?.status ?? error?.code ?? 'error_interno'),
+      error_message: String(error?.message ?? error).slice(0, 1000),
+      completed_at: new Date().toISOString(),
+    });
+    if (!jobId && conversationId && organizationId) {
+      try {
+        await supabase.from('ai_jobs').insert({
+          organization_id: organizationId,
+          conversation_id: conversationId,
+          trigger_message_id: messageId,
+          job_type: 'auto_response',
+          status: 'failed',
+          error_code: String(error?.status ?? error?.code ?? 'error_interno'),
+          error_message: String(error?.message ?? error).slice(0, 1000),
+          completed_at: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.error('Tampoco se pudo registrar el fallo en ai_jobs:', e);
+      }
+    }
+    return new Response(JSON.stringify({ error: 'Error interno' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

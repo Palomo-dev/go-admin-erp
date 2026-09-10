@@ -13,7 +13,7 @@ const ALLOWED_ROUTES = [
 
 export function useSubscriptionGuard() {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const [checked, setChecked] = useState(false);
   const lastCheckedOrgRef = useRef<string | null>(null);
 

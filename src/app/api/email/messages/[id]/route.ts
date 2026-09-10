@@ -1,47 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
-import { getEmail, getEmailEvents } from '@/lib/services/crm/emailService';
+import { NextRequest } from 'next/server';
+import { emailErrorResponse, getServerOrgContext, ok } from '@/lib/services/crm/email/http';
+import { parseWith, zUuid } from '@/lib/services/crm/email/schemas';
+import { getMessageDetail } from '@/lib/services/crm/email/messagesService';
+import { EmailError } from '@/lib/services/crm/email/types';
+
+export const runtime = 'nodejs';
 
 /**
- * GET /api/email/messages/[id] — Obtiene el detalle de un email + sus eventos.
- * Query: ?events=true para incluir eventos.
+ * GET /api/email/messages/[id] → { data: EmailMessage, events: EmailEvent[], thread: EmailMessage[] }
+ * (`?events=true` legacy sigue funcionando: los eventos siempre se incluyen)
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const ctx = await getServerOrgContext();
-    const { id } = await params;
-    const includeEvents = request.nextUrl.searchParams.get('events') === 'true';
-
-    const message = await getEmail(id, ctx.organizationId, ctx.supabase);
-
-    if (!message) {
-      return NextResponse.json(
-        { success: false, error: 'Email no encontrado' },
-        { status: 404 },
-      );
-    }
-
-    let events = null;
-    if (includeEvents) {
-      events = await getEmailEvents(id, ctx.organizationId, ctx.supabase);
-    }
-
-    return NextResponse.json(
-      { success: true, data: message, events },
-      { status: 200 },
-    );
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode },
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Email Message] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const ctx = await getServerOrgContext(request);
+    const { id: rawId } = await params;
+    // uuid validado en la ruta: un id basura daba un 500 de Postgres (tester r2 #8).
+    const id = parseWith(zUuid, rawId, 'id');
+    const d = await getMessageDetail(ctx.organizationId, id, ctx.supabase);
+    if (!d) throw new EmailError('NOT_FOUND', 'Email no encontrado', 404);
+    return ok(d.message, 200, { events: d.events, thread: d.thread });
+  } catch (err) {
+    return emailErrorResponse(err, 'email/messages/[id] GET');
   }
 }

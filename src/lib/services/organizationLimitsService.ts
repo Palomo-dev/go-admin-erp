@@ -35,7 +35,9 @@ export async function getOrganizationUserLimits(organizationId: number): Promise
     };
   }
 
-  const planMaxUsers = planData?.plans?.max_users ?? null;
+  // supabase-js tipa la relacion embebida como arreglo aunque sea a-uno
+  const plan = planData?.plans as unknown as { max_users: number | null } | null | undefined;
+  const planMaxUsers = plan?.max_users ?? null;
 
   // Obtener addons activos de usuarios extra
   const { data: addonsData } = await supabase

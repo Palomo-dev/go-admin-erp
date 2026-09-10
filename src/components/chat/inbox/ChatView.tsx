@@ -705,6 +705,7 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
             : 'Escribe un mensaje...'
         }
         organizationId={organizationId}
+        conversationId={conversation.id}
       />
       </div>
 

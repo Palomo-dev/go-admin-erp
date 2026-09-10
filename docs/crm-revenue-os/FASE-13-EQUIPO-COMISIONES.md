@@ -1,5 +1,12 @@
 # FASE 13 — Equipo, cuotas, comisiones y dashboard de vendedor
 
+> **Estado V4 (2026-09-08)** — reconciliado en `ANEXO-C-RECONCILIACION-2026-09.md` §4.6; el §1 de este documento está parcialmente obsoleto.
+> - **Ya existe (BD)**: `sales_targets` (0 filas; `period!`, `period_start!`, `period_end!`, `target_amount!`, `target_currency d='USD'`, `target_type d='revenue'`, `achieved_amount`), `sales_roles` (60), `sales_teams`/`territories` (F1), `commissions` (103 filas) con `trg_create_commission_on_opportunity_won`.
+> - **Ya existe (backend)**: `commissionService.ts` (670 L), `salesTargetService.ts` (343), `commercialMetricsService.ts` (678); rutas `commissions/[id]/pay`, `commissions/[id]/reject`, `commissions/bulk-pay`, `sales-targets`, `sales-targets/[id]`, `sales-targets/progress`; `fn_call_quality` + `GET call-quality` para las métricas de llamadas por vendedor (F4).
+> - **Ya existe (UI)**: `/app/crm/equipo` completo (tabs Equipos/Territorios/Asignar/Performance); `/app/finanzas/comisiones` (page 95 L + `ComisionesFilters/Header/List/Stats`); `sections/CommissionsPanel.tsx` (359 L) en `CRMConfigPanel.tsx:723` (equivale al `CommissionRatesPanel` citado en §4.2).
+> - **Falta**: `seller-dashboard` (ruta y servicio), `QuotaEditor/QuotaHistory` en miembros, `ComisionesSummary/Toolbar/ClawbackDialog`, los 4 widgets de `/app/inicio`. **Atención**: `src/app/app/inicio/page.tsx`, `DashboardKPIs.tsx` y `KpiDetailDialog.tsx` son WIP del dueño (regla 7 de implementación): no tocarlos sin coordinación.
+> - **Cuándo**: Ola 5 (`PLAN.md` §7.2), después de F4 (métricas de llamadas) y F9.
+
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj`
 > Depende de: F2 (pipelines, oportunidades), F10 (cierre), F12 (partners)
 > Bloquea: F14 (Revenue OS usa datos de comisiones)

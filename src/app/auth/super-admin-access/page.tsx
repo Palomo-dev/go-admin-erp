@@ -14,7 +14,7 @@ function SuperAdminAccessContent() {
 
   useEffect(() => {
     const exchangeToken = async () => {
-      const token = searchParams.get('token');
+      const token = searchParams?.get('token') ?? null;
       if (!token) {
         setError('Token no proporcionado');
         setLoading(false);

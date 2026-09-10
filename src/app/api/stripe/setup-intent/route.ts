@@ -8,6 +8,13 @@ import { stripe } from '@/lib/stripe/server'
 
 export async function POST(request: NextRequest) {
   try {
+    if (!stripe) {
+      return NextResponse.json(
+        { error: 'Stripe no está configurado. Verifica STRIPE_SECRET_KEY.' },
+        { status: 500 }
+      )
+    }
+
     const body = await request.json()
     const { email, name, tempCustomerId } = body
 
@@ -79,6 +86,13 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    if (!stripe) {
+      return NextResponse.json(
+        { error: 'Stripe no está configurado. Verifica STRIPE_SECRET_KEY.' },
+        { status: 500 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const setupIntentId = searchParams.get('setupIntentId')
 

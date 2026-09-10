@@ -1,37 +1,38 @@
 /**
  * API Route: Enviar SMS via Twilio
  * POST /api/integrations/twilio/send-sms
+ *
+ * Seguridad (F0, C4 msg): sesión + org activa (`getServerOrgContext`);
+ * el `orgId` del body se ignora (si viene y no coincide → 403).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { twilioService } from '@/lib/services/integrations/twilio';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
 export async function POST(request: NextRequest) {
+  let ctx;
   try {
-    // Autenticación
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    ctx = await getServerOrgContext(request);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
     }
+    throw err;
+  }
 
-    const token = authHeader.replace('Bearer ', '');
-    const supabaseAuth = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
-    }
-
+  try {
     const body = await request.json();
-    const { orgId, to, message, module } = body;
+    const { to, message, module } = body;
+    const orgId = ctx.organizationId;
 
-    if (!orgId || !to || !message) {
+    if (body.orgId !== undefined && Number(body.orgId) !== orgId) {
+      return NextResponse.json({ error: 'orgId no coincide con la organización activa' }, { status: 403 });
+    }
+
+    if (!to || !message) {
       return NextResponse.json(
-        { error: 'Faltan campos requeridos: orgId, to, message' },
+        { error: 'Faltan campos requeridos: to, message' },
         { status: 400 }
       );
     }

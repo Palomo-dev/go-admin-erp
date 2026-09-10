@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { User, Search, Plus, Loader2 } from "lucide-react";
-import { Input } from "./input";
-import { Button } from "./button";
-import { Card, CardContent } from "./card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase/config";
 
 interface Customer {

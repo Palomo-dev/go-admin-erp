@@ -112,7 +112,7 @@ export function CreateClaimDialog({
         .single();
 
       if (error) throw error;
-      setSelectedSerial(data as SerialSearchResult);
+      setSelectedSerial(data as unknown as SerialSearchResult);
     } catch (err: any) {
       console.error('Error cargando serial:', err);
       toast({
@@ -149,7 +149,7 @@ export function CreateClaimDialog({
           .limit(10);
 
         if (error) throw error;
-        setSearchResults((data || []) as SerialSearchResult[]);
+        setSearchResults((data || []) as unknown as SerialSearchResult[]);
       } catch (err: any) {
         console.error('Error buscando seriales:', err);
       } finally {

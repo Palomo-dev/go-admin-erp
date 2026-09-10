@@ -30,7 +30,7 @@
 export interface CatalogEntry {
   type: string
   variants: { id: string; label: string }[]
-  contentFields: { key: string; group?: string; [k: string]: unknown }[]
+  contentFields: { key: string; group?: string }[]
 }
 
 /** Entrada del manifiesto del sitio. */

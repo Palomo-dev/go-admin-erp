@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase/config";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PipelineHeader from "./PipelineHeader";
-import PipelineStages from "./PipelineStages";
+import { KanbanBoardV2 } from "./KanbanBoardV2";
 import ForecastView from "./ForecastView";
 import TableView from "./TableView";
 import ClientsView from "./ClientsView";
@@ -126,7 +126,7 @@ export default function PipelineView() {
         
         <TabsContent value="kanban" className="mt-0">
           {currentPipelineId ? (
-            <PipelineStages pipelineId={currentPipelineId} />
+            <KanbanBoardV2 pipelineId={currentPipelineId} />
           ) : (
             <div className="p-8 text-center bg-white dark:bg-gray-800 rounded-lg shadow border border-blue-100 dark:border-blue-900">
               <FolderPlus className="h-12 w-12 text-blue-500 dark:text-blue-400 mx-auto mb-4" />

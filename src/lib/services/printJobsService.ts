@@ -745,11 +745,12 @@ export class PrintJobsService {
     const logoRasters = await buildLogoRasters(header.businessLogoUrl, printers);
 
     const payload: SharedElectronicInvoicePrintPayload = {
-      invoiceId: invoice.invoiceId,
+      internalInvoiceId: invoice.invoiceId,
       invoiceNumber: invoice.invoiceNumber,
       cufe: invoice.cufe,
       qrData: invoice.qrData,
-      environment: invoice.environment,
+      // El agente de impresion usa 'sandbox' donde la facturacion usa 'test'
+      environment: invoice.environment === 'test' ? 'sandbox' : 'production',
       validationDate: invoice.validationDate,
       createdAt: invoice.createdAt,
       items: invoice.items,

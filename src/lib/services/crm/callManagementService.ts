@@ -10,21 +10,19 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // ─── Tipos: calls ────────────────────────────────────────────────────────────
+// F3: uniones alineadas con los CHECK de BD (C3) — fuente única `@/lib/crm/enums`.
 
-export type CallDirection = 'inbound' | 'outbound';
-export type CallMode = 'manual' | 'click-to-call' | 'voice-agent' | 'power-dialer';
-export type CallStatus =
-  | 'queued'
-  | 'ringing'
-  | 'in-progress'
-  | 'completed'
-  | 'failed'
-  | 'no-answer'
-  | 'busy'
-  | 'canceled';
-export type AnsweredBy = 'human' | 'machine' | 'unknown';
-export type BridgeMode = 'agent-first' | 'customer-first' | 'simultaneous';
-export type DurationSource = 'provider' | 'estimated' | 'manual';
+import {
+  type CallDirection,
+  type CallMode,
+  type CallStatus,
+  type BridgeMode,
+  type DurationSource,
+  type RecordingStatus,
+} from '@/lib/crm/enums';
+
+export type { CallDirection, CallMode, CallStatus, BridgeMode, DurationSource, RecordingStatus };
+export type AnsweredBy = 'human' | 'machine' | 'fax' | 'unknown';
 
 export interface CallRecord {
   id: string;
@@ -55,7 +53,7 @@ export interface CallRecord {
   bridge_mode: BridgeMode | null;
   agent_leg_sid: string | null;
   customer_leg_sid: string | null;
-  duration_source: DurationSource | null;
+  duration_source: DurationSource;
   created_at: string;
   updated_at: string;
 }
@@ -112,9 +110,16 @@ export interface CallUpdateInput {
 export interface CallFilters {
   status?: CallStatus;
   direction?: CallDirection;
+  mode?: CallMode;
   customer_id?: string;
   user_id?: string;
   opportunity_id?: string;
+  provider_call_sid?: string;
+  /** metadata.disposition_outcome */
+  outcome?: string;
+  has_recording?: boolean;
+  /** Búsqueda en from_number/to_number */
+  q?: string;
   from_date?: string;
   to_date?: string;
   limit?: number;
@@ -123,17 +128,16 @@ export interface CallFilters {
 
 // ─── Tipos: call_recordings ──────────────────────────────────────────────────
 
-export type RecordingStatus = 'processing' | 'completed' | 'failed' | 'deleted';
-
 export interface CallRecording {
   id: string;
   organization_id: number;
   call_id: string;
   provider_recording_sid: string | null;
-  channels: number | null;
+  /** Texto en BD ('1' | '2'). */
+  channels: string;
   duration_seconds: number | null;
-  storage_path: string | null;
-  storage_provider: string | null;
+  storage_path: string;
+  storage_provider: string;
   size_bytes: number | null;
   status: RecordingStatus;
   retention_until: string | null;
@@ -144,9 +148,9 @@ export interface CallRecording {
 export interface CallRecordingCreateInput {
   call_id: string;
   provider_recording_sid?: string | null;
-  channels?: number | null;
+  channels?: string | number | null;
   duration_seconds?: number | null;
-  storage_path?: string | null;
+  storage_path: string;
   storage_provider?: string | null;
   size_bytes?: number | null;
   status?: RecordingStatus;
@@ -155,7 +159,7 @@ export interface CallRecordingCreateInput {
 
 export interface CallRecordingUpdateInput {
   provider_recording_sid?: string | null;
-  channels?: number | null;
+  channels?: string | number | null;
   duration_seconds?: number | null;
   storage_path?: string | null;
   storage_provider?: string | null;
@@ -234,6 +238,19 @@ export async function getCalls(
   if (filters?.opportunity_id) {
     query = query.eq('opportunity_id', filters.opportunity_id);
   }
+  if (filters?.mode) {
+    query = query.eq('mode', filters.mode);
+  }
+  if (filters?.provider_call_sid) {
+    query = query.eq('provider_call_sid', filters.provider_call_sid);
+  }
+  if (filters?.outcome) {
+    query = query.eq('metadata->>disposition_outcome', filters.outcome);
+  }
+  if (filters?.q) {
+    const q = filters.q.replace(/[%,()]/g, '');
+    query = query.or(`to_number.ilike.%${q}%,from_number.ilike.%${q}%`);
+  }
   if (filters?.from_date) {
     query = query.gte('started_at', filters.from_date);
   }
@@ -297,16 +314,16 @@ export async function createCall(
       provider_call_sid: data.provider_call_sid ?? null,
       parent_call_sid: data.parent_call_sid ?? null,
       direction: data.direction,
-      mode: data.mode ?? 'manual',
+      mode: data.mode ?? 'browser',
       from_number: data.from_number,
       to_number: data.to_number,
       customer_id: data.customer_id ?? null,
       opportunity_id: data.opportunity_id ?? null,
       user_id: data.user_id ?? null,
       voice_agent_id: data.voice_agent_id ?? null,
-      status: data.status ?? 'queued',
+      status: data.status ?? 'dialing',
       answered_by: data.answered_by ?? null,
-      started_at: data.started_at ?? null,
+      started_at: data.started_at ?? new Date().toISOString(),
       answered_at: data.answered_at ?? null,
       ended_at: data.ended_at ?? null,
       duration_seconds: data.duration_seconds ?? null,
@@ -314,12 +331,12 @@ export async function createCall(
       recording_enabled: data.recording_enabled ?? false,
       consent_given: data.consent_given ?? false,
       cost_amount: data.cost_amount ?? null,
-      cost_currency: data.cost_currency ?? null,
+      cost_currency: data.cost_currency ?? 'USD',
       metadata: data.metadata ?? {},
       bridge_mode: data.bridge_mode ?? null,
       agent_leg_sid: data.agent_leg_sid ?? null,
       customer_leg_sid: data.customer_leg_sid ?? null,
-      duration_source: data.duration_source ?? null,
+      duration_source: data.duration_source ?? 'provider',
     })
     .select()
     .single();
@@ -417,10 +434,10 @@ export async function createCallRecording(
       organization_id: organizationId,
       call_id: data.call_id,
       provider_recording_sid: data.provider_recording_sid ?? null,
-      channels: data.channels ?? null,
+      channels: data.channels === null || data.channels === undefined ? '1' : String(data.channels),
       duration_seconds: data.duration_seconds ?? null,
-      storage_path: data.storage_path ?? null,
-      storage_provider: data.storage_provider ?? null,
+      storage_path: data.storage_path,
+      storage_provider: data.storage_provider ?? 'twilio',
       size_bytes: data.size_bytes ?? null,
       status: data.status ?? 'processing',
       retention_until: data.retention_until ?? null,
@@ -445,12 +462,11 @@ export async function updateCallRecording(
   data: CallRecordingUpdateInput,
   supabase: SupabaseClient
 ): Promise<CallRecording | null> {
-  const updateData: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
+  // F3 (C5): `updated_at` lo pone el trigger `set_call_recordings_updated_at`; no se escribe a mano.
+  const updateData: Record<string, unknown> = {};
 
   if (data.provider_recording_sid !== undefined) updateData.provider_recording_sid = data.provider_recording_sid;
-  if (data.channels !== undefined) updateData.channels = data.channels;
+  if (data.channels !== undefined && data.channels !== null) updateData.channels = String(data.channels);
   if (data.duration_seconds !== undefined) updateData.duration_seconds = data.duration_seconds;
   if (data.storage_path !== undefined) updateData.storage_path = data.storage_path;
   if (data.storage_provider !== undefined) updateData.storage_provider = data.storage_provider;
@@ -586,4 +602,89 @@ export async function deletePhoneNumber(
     console.error('[callManagementService.deletePhoneNumber] error:', error.message);
     throw error;
   }
+}
+
+// ─── F3: listado con relaciones (tabla de llamadas) ──────────────────────────
+
+export interface CallListRow extends CallRecord {
+  customer: { id: string; full_name: string | null; first_name: string | null; last_name: string | null; phone: string | null } | null;
+  opportunity: { id: string; name: string } | null;
+  user: { id: string; first_name: string | null; last_name: string | null; email: string | null } | null;
+  recordings: { id: string; status: RecordingStatus; duration_seconds: number | null; channels: string }[];
+  disposition_outcome: string | null;
+}
+
+/**
+ * Lista llamadas con cliente, oportunidad, usuario (profiles) y grabaciones.
+ * Los filtros son los de `CallFilters`; `user_id` acepta 'me' resuelto por el llamador.
+ */
+export async function listCallsWithRelations(
+  organizationId: number,
+  supabase: SupabaseClient,
+  filters?: CallFilters
+): Promise<{ data: CallListRow[]; count: number }> {
+  let query = supabase
+    .from('calls')
+    .select(
+      '*, customers:customer_id(id, full_name, first_name, last_name, phone), opportunities:opportunity_id(id, name), call_recordings(id, status, duration_seconds, channels)',
+      { count: 'exact' }
+    )
+    .eq('organization_id', organizationId)
+    .order('started_at', { ascending: false, nullsFirst: false });
+
+  if (filters?.status) query = query.eq('status', filters.status);
+  if (filters?.direction) query = query.eq('direction', filters.direction);
+  if (filters?.mode) query = query.eq('mode', filters.mode);
+  if (filters?.customer_id) query = query.eq('customer_id', filters.customer_id);
+  if (filters?.user_id) query = query.eq('user_id', filters.user_id);
+  if (filters?.opportunity_id) query = query.eq('opportunity_id', filters.opportunity_id);
+  if (filters?.provider_call_sid) query = query.eq('provider_call_sid', filters.provider_call_sid);
+  if (filters?.outcome) query = query.eq('metadata->>disposition_outcome', filters.outcome);
+  if (filters?.q) {
+    const q = filters.q.replace(/[%,()]/g, '');
+    query = query.or(`to_number.ilike.%${q}%,from_number.ilike.%${q}%`);
+  }
+  if (filters?.from_date) query = query.gte('started_at', filters.from_date);
+  if (filters?.to_date) query = query.lte('started_at', filters.to_date);
+  if (filters?.has_recording === true) query = query.eq('recording_enabled', true);
+
+  const limit = Math.min(200, Math.max(1, filters?.limit ?? 50));
+  const offset = Math.max(0, filters?.offset ?? 0);
+  query = query.range(offset, offset + limit - 1);
+
+  const { data, error, count } = await query;
+  if (error) {
+    console.error('[callManagementService.listCallsWithRelations] error:', error.message);
+    return { data: [], count: 0 };
+  }
+
+  type Raw = CallRecord & {
+    customers?: CallListRow['customer'] | CallListRow['customer'][] | null;
+    opportunities?: CallListRow['opportunity'] | CallListRow['opportunity'][] | null;
+    call_recordings?: CallListRow['recordings'] | null;
+  };
+  const rows = (data ?? []) as Raw[];
+  const userIds = Array.from(new Set(rows.map((r) => r.user_id).filter((u): u is string => Boolean(u))));
+  const users = new Map<string, CallListRow['user']>();
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase.from('profiles').select('id, first_name, last_name, email').in('id', userIds);
+    for (const p of (profiles ?? []) as NonNullable<CallListRow['user']>[]) users.set(p.id, p);
+  }
+
+  const first = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
+  const mapped: CallListRow[] = rows.map((r) => {
+    const { customers, opportunities, call_recordings, ...rest } = r;
+    const recordings = (call_recordings ?? []).filter((x) => x.status !== 'deleted');
+    return {
+      ...(rest as CallRecord),
+      customer: first(customers),
+      opportunity: first(opportunities),
+      user: r.user_id ? users.get(r.user_id) ?? null : null,
+      recordings,
+      disposition_outcome: (r.metadata?.disposition_outcome as string | undefined) ?? null,
+    };
+  });
+
+  const filtered = filters?.has_recording === true ? mapped.filter((m) => m.recordings.some((x) => x.status === 'ready')) : mapped;
+  return { data: filtered, count: count ?? filtered.length };
 }

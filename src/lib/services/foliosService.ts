@@ -308,19 +308,20 @@ export class FoliosService {
           const orgId = getOrganizationId();
           const branchId = getCurrentBranchId();
           if (!branchId) {
+            // Sin sucursal no se descuenta stock, pero el item ya quedó creado
             console.warn('⚠️ No se pudo obtener branch_id para descontar stock del folio item');
-            return;
-          }
-          const stockResult = await stockMovementService.decrementOnSale(
-            orgId,
-            branchId,
-            data.folio_id,
-            [{ product_id: data.product_id, quantity: Number(data.quantity), unit_price: Number(data.unit_price || 0) }],
-            'folio_item',
-            data.created_by
-          );
-          if (stockResult.errors.length > 0) {
-            console.warn('⚠️ Folio item no descontó stock:', stockResult.errors);
+          } else {
+            const stockResult = await stockMovementService.decrementOnSale(
+              orgId,
+              branchId,
+              data.folio_id,
+              [{ product_id: data.product_id, quantity: Number(data.quantity), unit_price: Number(data.unit_price || 0) }],
+              'folio_item',
+              data.created_by
+            );
+            if (stockResult.errors.length > 0) {
+              console.warn('⚠️ Folio item no descontó stock:', stockResult.errors);
+            }
           }
         } catch (stockError) {
           console.warn('⚠️ Error descontando stock (no bloquea el item):', stockError);

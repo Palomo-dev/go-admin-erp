@@ -15,6 +15,20 @@ import {
   PipelineStageData,
 } from './types';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { describeError, logError } from '@/lib/utils/errorMessage';
+
+/**
+ * Corta la ejecución si la consulta falló.
+ *
+ * Antes ninguna consulta de este servicio miraba `error`: con la base caída el
+ * dashboard mostraba ceros y embudos vacíos como si fueran datos reales. Ahora
+ * el fallo sube al componente, que enseña un error con botón de reintentar.
+ */
+function throwIfError(context: string, error: unknown): void {
+  if (!error) return;
+  logError(`[CRMDashboard] ${context}`, error);
+  throw new Error(`No se pudo cargar ${context}: ${describeError(error)}`);
+}
 
 class CRMDashboardService {
   // Obtener KPIs principales
@@ -40,7 +54,8 @@ class CRMDashboardService {
       conversationsQuery = conversationsQuery.eq('assigned_member_id', filters.agentId);
     }
 
-    const { data: conversationsData, count: conversationsCount } = await conversationsQuery;
+    const { data: conversationsData, count: conversationsCount, error: conversationsError } = await conversationsQuery;
+    throwIfError('las conversaciones', conversationsError);
 
     // Calcular tiempo promedio de respuesta
     const responseTimes = conversationsData
@@ -61,7 +76,8 @@ class CRMDashboardService {
       pendingQuery = pendingQuery.eq('branch_id', branchId);
     }
 
-    const { count: pendingCount } = await pendingQuery;
+    const { count: pendingCount, error: pendingError } = await pendingQuery;
+    throwIfError('las conversaciones pendientes', pendingError);
 
     // Oportunidades abiertas
     let opportunitiesQuery = supabase
@@ -77,7 +93,8 @@ class CRMDashboardService {
       opportunitiesQuery = opportunitiesQuery.eq('pipeline_id', filters.pipelineId);
     }
 
-    const { data: opportunitiesData } = await opportunitiesQuery;
+    const { data: opportunitiesData, error: opportunitiesError } = await opportunitiesQuery;
+    throwIfError('las oportunidades abiertas', opportunitiesError);
     const opportunitiesOpen = opportunitiesData?.length || 0;
     const opportunitiesValue = opportunitiesData?.reduce((sum, o) => sum + (o.amount || 0), 0) || 0;
 
@@ -97,7 +114,8 @@ class CRMDashboardService {
       forecastQuery = forecastQuery.eq('branch_id', branchId);
     }
 
-    const { data: forecastData } = await forecastQuery;
+    const { data: forecastData, error: forecastError } = await forecastQuery;
+    throwIfError('el pronóstico del mes', forecastError);
 
     const monthForecast = forecastData?.reduce((sum, o) => {
       const probability = (o.stages as any)?.probability || 0;
@@ -105,11 +123,12 @@ class CRMDashboardService {
     }, 0) || 0;
 
     // Campañas activas
-    const { count: activeCampaigns } = await supabase
+    const { count: activeCampaigns, error: campaignsError } = await supabase
       .from('campaigns')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
       .in('status', ['scheduled', 'sending', 'sent']);
+    throwIfError('las campañas activas', campaignsError);
 
     // Clientes nuevos en el periodo
     let newCustomersQuery = supabase
@@ -123,7 +142,8 @@ class CRMDashboardService {
       newCustomersQuery = newCustomersQuery.eq('branch_id', branchId);
     }
 
-    const { count: newCustomers } = await newCustomersQuery;
+    const { count: newCustomers, error: newCustomersError } = await newCustomersQuery;
+    throwIfError('los clientes nuevos', newCustomersError);
 
     // Total de clientes
     let totalCustomersQuery = supabase
@@ -135,7 +155,8 @@ class CRMDashboardService {
       totalCustomersQuery = totalCustomersQuery.eq('branch_id', branchId);
     }
 
-    const { count: totalCustomers } = await totalCustomersQuery;
+    const { count: totalCustomers, error: totalCustomersError } = await totalCustomersQuery;
+    throwIfError('el total de clientes', totalCustomersError);
 
     // Calcular SLA (% de conversaciones con respuesta < 5 min)
     const slaThreshold = 300; // 5 minutos en segundos
@@ -169,12 +190,13 @@ class CRMDashboardService {
     // Obtener pipeline (usar default si no se especifica)
     let pipeline = pipelineId;
     if (!pipeline) {
-      const { data: defaultPipeline } = await supabase
+      const { data: defaultPipeline, error: defaultPipelineError } = await supabase
         .from('pipelines')
         .select('id')
         .eq('organization_id', organizationId)
         .eq('is_default', true)
         .maybeSingle();
+      throwIfError('el pipeline por defecto', defaultPipelineError);
       pipeline = defaultPipeline?.id;
     }
 
@@ -183,11 +205,12 @@ class CRMDashboardService {
     }
 
     // Obtener etapas del pipeline
-    const { data: stages } = await supabase
+    const { data: stages, error: stagesError } = await supabase
       .from('stages')
       .select('id, name, position, probability, color')
       .eq('pipeline_id', pipeline)
       .order('position', { ascending: true });
+    throwIfError('las etapas del pipeline', stagesError);
 
     if (!stages || stages.length === 0) {
       return { stages: [], totalValue: 0, weightedValue: 0 };
@@ -206,7 +229,8 @@ class CRMDashboardService {
       oppQuery = oppQuery.eq('branch_id', branchId);
     }
 
-    const { data: allOpportunities } = await oppQuery;
+    const { data: allOpportunities, error: allOpportunitiesError } = await oppQuery;
+    throwIfError('las oportunidades del embudo', allOpportunitiesError);
 
     // Agrupar oportunidades por etapa en memoria
     const opportunitiesByStage = new Map<string, { count: number; value: number }>();
@@ -312,6 +336,11 @@ class CRMDashboardService {
       return counts;
     };
 
+    throwIfError('la actividad por día (conversaciones)', conversationsRes.error);
+    throwIfError('la actividad por día (mensajes)', messagesRes.error);
+    throwIfError('la actividad por día (oportunidades)', opportunitiesRes.error);
+    throwIfError('la actividad por día (actividades)', activitiesRes.error);
+
     const convCounts = countByDate(conversationsRes.data);
     const msgCounts = countByDate(messagesRes.data);
     const oppCounts = countByDate(opportunitiesRes.data);
@@ -331,10 +360,11 @@ class CRMDashboardService {
   async getMessagesByChannel(organizationId: number, filters?: CRMFilters): Promise<MessagesByChannel[]> {
     const branchId = filters?.branchId ?? null;
 
-    const { data: channels } = await supabase
+    const { data: channels, error: channelsError } = await supabase
       .from('channels')
       .select('id, name, type')
       .eq('organization_id', organizationId);
+    throwIfError('los canales', channelsError);
 
     if (!channels || channels.length === 0) return [];
 
@@ -348,7 +378,8 @@ class CRMDashboardService {
       messagesQuery = messagesQuery.eq('branch_id', branchId);
     }
 
-    const { data: messagesData } = await messagesQuery;
+    const { data: messagesData, error: messagesError } = await messagesQuery;
+    throwIfError('los mensajes', messagesError);
 
     // Agrupar por channel_id en memoria
     const countsByChannel = new Map<string, number>();
@@ -382,7 +413,7 @@ class CRMDashboardService {
     const limit = typeof filtersOrLimit === 'number' ? filtersOrLimit : (limitArg ?? 5);
     const branchId = filters?.branchId ?? null;
 
-    const { data: members } = await supabase
+    const { data: members, error: membersError } = await supabase
       .from('organization_members')
       .select(`
         id,
@@ -390,6 +421,7 @@ class CRMDashboardService {
       `)
       .eq('organization_id', organizationId)
       .eq('is_active', true);
+    throwIfError('los agentes', membersError);
 
     if (!members || members.length === 0) return [];
 
@@ -406,7 +438,8 @@ class CRMDashboardService {
       conversationsQuery = conversationsQuery.eq('branch_id', branchId);
     }
 
-    const { data: allConversations } = await conversationsQuery;
+    const { data: allConversations, error: allConversationsError } = await conversationsQuery;
+    throwIfError('las conversaciones por agente', allConversationsError);
 
     // Agrupar por miembro en memoria
     const statsByMember = new Map<number, { total: number; resolved: number; responseTimes: number[] }>();
@@ -449,10 +482,11 @@ class CRMDashboardService {
     const limit = typeof filtersOrLimit === 'number' ? filtersOrLimit : (limitArg ?? 5);
     const branchId = filters?.branchId ?? null;
 
-    const { data: channels } = await supabase
+    const { data: channels, error: channelsError } = await supabase
       .from('channels')
       .select('id, name, type')
       .eq('organization_id', organizationId);
+    throwIfError('los canales', channelsError);
 
     if (!channels || channels.length === 0) return [];
 
@@ -479,6 +513,9 @@ class CRMDashboardService {
         return q;
       })(),
     ]);
+
+    throwIfError('los mensajes por canal', messagesRes.error);
+    throwIfError('las conversaciones por canal', conversationsRes.error);
 
     // Agrupar por channel_id en memoria
     const msgCounts = new Map<string, number>();
@@ -531,7 +568,8 @@ class CRMDashboardService {
       oppQuery = oppQuery.eq('branch_id', branchId);
     }
 
-    const { data: opportunities } = await oppQuery;
+    const { data: opportunities, error: opportunitiesListError } = await oppQuery;
+    throwIfError('las oportunidades destacadas', opportunitiesListError);
 
     return (opportunities || []).map(o => ({
       id: o.id,
@@ -579,11 +617,12 @@ class CRMDashboardService {
 
   // Obtener lista de canales para filtros
   async getChannels(organizationId: number): Promise<Channel[]> {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('channels')
       .select('id, name, type')
       .eq('organization_id', organizationId)
       .order('name');
+    throwIfError('la lista de canales', error);
 
     return (data || []).map(c => ({
       id: c.id,
@@ -594,11 +633,12 @@ class CRMDashboardService {
 
   // Obtener lista de pipelines para filtros
   async getPipelines(organizationId: number): Promise<Pipeline[]> {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('pipelines')
       .select('id, name, is_default')
       .eq('organization_id', organizationId)
       .order('name');
+    throwIfError('la lista de pipelines', error);
 
     return (data || []).map(p => ({
       id: p.id,
@@ -609,7 +649,7 @@ class CRMDashboardService {
 
   // Obtener lista de agentes para filtros
   async getAgents(organizationId: number): Promise<Agent[]> {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('organization_members')
       .select(`
         id,
@@ -617,6 +657,7 @@ class CRMDashboardService {
       `)
       .eq('organization_id', organizationId)
       .eq('is_active', true);
+    throwIfError('la lista de agentes', error);
 
     return (data || []).map(m => {
       const profile = m.profiles as any;

@@ -55,7 +55,8 @@ export default function OportunidadesTab({ clienteId, organizationId }: Oportuni
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        setOportunidades(data || []);
+        // supabase-js tipa stage/pipeline como arreglo aunque sean relaciones a-uno
+        setOportunidades((data || []) as unknown as Oportunidad[]);
       } catch (err: any) {
         console.error('Error al cargar oportunidades:', err);
         setError(err.message || 'Error al cargar las oportunidades');

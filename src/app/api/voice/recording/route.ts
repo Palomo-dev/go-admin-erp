@@ -1,195 +1,118 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { resolveOrgFromExternal, OrgContextError } from '@/lib/utils/orgContext';
-import { validateTwilioSignature } from '@/lib/services/integrations/twilio/twilioWebhook';
-import {
-  getCallRecordings,
-  createCallRecording,
-  updateCallRecording,
-} from '@/lib/services/crm/callManagementService';
-import type { RecordingStatus } from '@/lib/services/crm/callManagementService';
-import { downloadAndUploadRecording } from '@/lib/services/crm/recordingStorageService';
+import { verifyTwilioWebhook, WebhookError } from '@/lib/security/webhookSignatures';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { enqueueJob } from '@/lib/jobs/enqueue';
+import { buildStoragePath } from '@/lib/services/crm/recordingStorageService';
+import { accountSidMatchesOrg } from '@/lib/services/crm/voiceContextService';
+import { EMPTY_TWIML, xmlResponse } from '@/lib/services/crm/twimlBuilders';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
- * POST /api/voice/recording — Recording status callback de Twilio.
+ * POST /api/voice/recording — recordingStatusCallback de Twilio (FASE-03 §4.3).
  *
- * Este endpoint NO usa getServerOrgContext (no hay sesión de usuario).
- * Twilio lo invoca cuando cambia el estado de una grabación.
+ * `RecordingStatus=completed` → upsert `call_recordings` por `provider_recording_sid`
+ * (índice único `idx_recordings_sid`): `channels = RecordingChannels` (texto),
+ * `status='processing'`, `storage_path` provisional (`org_{id}/{yyyy}/{mm}/{callId}.mp3`),
+ * `storage_provider='twilio'` (transitorio) y encola el job `recording_fetch`
+ * `{call_id, recording_id, recording_url, recording_sid}` con dedupe
+ * `recording_fetch:{RecordingSid}` (Twilio reintenta el callback → 1 fila, 1 job).
+ * `absent` → sin cambios (no hubo audio). `in-progress` no está suscrito.
  *
- * Crea o actualiza el registro en `call_recordings` con el estado,
- * duración, URL y tamaño del archivo de grabación.
- *
- * Content-Type: application/xml (respuesta vacía)
+ * Seguridad: firma fail-closed (SEC); la org se resuelve por la fila `calls`.
  */
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
+  let params: Record<string, string>;
+  let accountSid: string;
   try {
-    const formData = await request.formData();
-    const params: Record<string, string> = {};
-    for (const [key, value] of formData.entries()) {
-      params[key] = String(value);
+    ({ params, accountSid } = await verifyTwilioWebhook(request));
+  } catch (err) {
+    if (err instanceof WebhookError) {
+      console.warn('[Voice Recording] Rechazado:', err.code);
+      return new Response('Forbidden', { status: err.statusCode });
     }
+    throw err;
+  }
 
-    const recordingSid = params.RecordingSid || '';
-    const callSid = params.CallSid || '';
-    const recordingStatus = params.RecordingStatus || '';
-    const recordingDuration = params.RecordingDuration ? parseInt(params.RecordingDuration, 10) : null;
-    const recordingUrl = params.RecordingUrl || '';
-    const recordingChannels = params.RecordingChannels ? parseInt(params.RecordingChannels, 10) : null;
+  const recordingSid = params.RecordingSid || '';
+  const callSid = params.CallSid || '';
+  const status = params.RecordingStatus || '';
+  const recordingUrl = params.RecordingUrl || '';
+  if (!callSid || !recordingSid || status !== 'completed' || !recordingUrl) {
+    return xmlResponse(EMPTY_TWIML);
+  }
 
-    // Validar firma de Twilio
-    const signature = request.headers.get('x-twilio-signature') || '';
-    const requestUrl = request.url;
-    const twilioAuthToken = process.env.TWILIO_MASTER_AUTH_TOKEN;
-    if (!twilioAuthToken) {
-      console.warn('[Voice Recording] TWILIO_MASTER_AUTH_TOKEN no configurado — validación de firma omitida');
-    } else if (!validateTwilioSignature(signature, requestUrl, params)) {
-      console.warn('[Voice Recording] Firma de Twilio inválida');
+  try {
+    const sb = getServiceClient();
+    const { data } = await sb
+      .from('calls')
+      .select('id, organization_id, started_at')
+      .eq('provider_call_sid', callSid)
+      .limit(1)
+      .maybeSingle();
+    const call = data as { id: string; organization_id: number; started_at: string | null } | null;
+    if (!call) {
+      console.warn('[Voice Recording] Llamada no encontrada para CallSid', callSid);
+      return xmlResponse(EMPTY_TWIML);
+    }
+    // Aislamiento multi-tenant (M1): `provider_call_sid` es único por org.
+    if (!(await accountSidMatchesOrg(call.organization_id, accountSid, sb))) {
+      console.warn('[Voice Recording] AccountSid ajeno a la org de la llamada', { org: call.organization_id });
       return new Response('Forbidden', { status: 403 });
     }
 
-    if (!callSid) {
-      console.warn('[Voice Recording] No se recibió CallSid');
-      return new NextResponse('<Response></Response>', {
-        status: 200,
-        headers: { 'Content-Type': 'application/xml' },
-      });
-    }
+    const channels = String(params.RecordingChannels || '1');
+    const duration = params.RecordingDuration ? parseInt(params.RecordingDuration, 10) : null;
+    const startedAt = call.started_at ? new Date(call.started_at) : new Date();
 
-    // Resolver organización desde el CallSid
-    let orgId: number;
-    let supabaseClient;
-    try {
-      const resolved = await resolveOrgFromExternal(callSid, 'call_sid');
-      orgId = resolved.organizationId;
-      supabaseClient = resolved.serviceClient;
-    } catch (err) {
-      if (err instanceof OrgContextError) {
-        console.warn('[Voice Recording] No se resolvió org para CallSid:', callSid);
-        return new NextResponse('<Response></Response>', {
-          status: 200,
-          headers: { 'Content-Type': 'application/xml' },
-        });
-      }
-      throw err;
-    }
-
-    // Buscar el UUID de la llamada por provider_call_sid
-    const { data: callRow, error: callError } = await supabaseClient
-      .from('calls')
-      .select('id')
-      .eq('organization_id', orgId)
-      .eq('provider_call_sid', callSid)
+    const { data: existing } = await sb
+      .from('call_recordings')
+      .select('id, status')
+      .eq('provider_recording_sid', recordingSid)
+      .limit(1)
       .maybeSingle();
 
-    if (callError || !callRow) {
-      console.warn('[Voice Recording] Llamada no encontrada en BD para CallSid:', callSid);
-      return new NextResponse('<Response></Response>', {
-        status: 200,
-        headers: { 'Content-Type': 'application/xml' },
-      });
-    }
-
-    const callUuid = callRow.id as string;
-    const mappedStatus = mapRecordingStatus(recordingStatus);
-
-    // Buscar si ya existe un registro de grabación para este recordingSid
-    const existingRecordings = await getCallRecordings(callUuid, orgId, supabaseClient);
-    const existing = existingRecordings.find(
-      (r) => r.provider_recording_sid === recordingSid
-    );
-
-    let recordingId: string | null = null;
-
+    let recordingId: string;
     if (existing) {
-      // Actualizar registro existente
-      const updated = await updateCallRecording(
-        existing.id,
-        orgId,
-        {
-          provider_recording_sid: recordingSid || null,
-          channels: recordingChannels ?? null,
-          duration_seconds: recordingDuration ?? null,
-          storage_path: recordingUrl || null,
-          storage_provider: 'twilio',
-          status: mappedStatus,
-        },
-        supabaseClient
-      ).catch((err) => {
-        console.error('[Voice Recording] Error actualizando grabación:', err);
-        return null;
-      });
-      recordingId = updated?.id ?? existing.id;
+      recordingId = (existing as { id: string }).id;
+      if ((existing as { status: string }).status === 'ready') return xmlResponse(EMPTY_TWIML);
     } else {
-      // Crear nuevo registro de grabación
-      const created = await createCallRecording(
-        orgId,
-        {
-          call_id: callUuid,
-          provider_recording_sid: recordingSid || null,
-          channels: recordingChannels ?? null,
-          duration_seconds: recordingDuration ?? null,
-          storage_path: recordingUrl || null,
+      const { data: created, error } = await sb
+        .from('call_recordings')
+        .insert({
+          organization_id: call.organization_id,
+          call_id: call.id,
+          provider_recording_sid: recordingSid,
+          channels,
+          duration_seconds: Number.isFinite(duration) ? duration : null,
+          storage_path: buildStoragePath(call.organization_id, call.id, 'mp3', Number.isNaN(startedAt.getTime()) ? new Date() : startedAt),
           storage_provider: 'twilio',
-          status: mappedStatus,
-        },
-        supabaseClient
-      ).catch((err) => {
-        console.error('[Voice Recording] Error creando grabación:', err);
-        return null;
-      });
-      recordingId = created?.id ?? null;
+          status: 'processing',
+        })
+        .select('id')
+        .single();
+      if (error) {
+        // Carrera con otro callback: releer
+        const { data: again } = await sb.from('call_recordings').select('id').eq('provider_recording_sid', recordingSid).maybeSingle();
+        if (!again) throw new Error(error.message);
+        recordingId = (again as { id: string }).id;
+      } else {
+        recordingId = (created as { id: string }).id;
+      }
     }
 
-    // Si la grabación está completa y tenemos URL + ID, descargar de Twilio
-    // y subir a Supabase Storage (async, no bloquea el callback de Twilio).
-    // Si falla, storage_path queda con la URL de Twilio (fallback).
-    if (
-      recordingId &&
-      mappedStatus === 'completed' &&
-      recordingUrl &&
-      recordingSid
-    ) {
-      // Fire-and-forget: Twilio espera respuesta rápida (<5s), la descarga
-      // puede tardar más. Usamos .catch() para evitar unhandled rejection.
-      downloadAndUploadRecording(
-        recordingId,
-        orgId,
-        recordingUrl,
-        recordingSid,
-        supabaseClient
-      ).catch((err) => {
-        const msg = err instanceof Error ? err.message : 'Error desconocido';
-        console.warn(`[Voice Recording] Fallback: no se pudo subir grabación ${recordingId} a Supabase:`, msg);
-      });
-    }
-
-    return new NextResponse('<Response></Response>', {
-      status: 200,
-      headers: { 'Content-Type': 'application/xml' },
+    await enqueueJob({
+      organizationId: call.organization_id,
+      kind: 'recording_fetch',
+      payload: { call_id: call.id, recording_id: recordingId, recording_url: recordingUrl, recording_sid: recordingSid, channels },
+      dedupeKey: `recording_fetch:${recordingSid}`,
+      maxAttempts: 6,
+      supabase: sb,
     });
+
+    return xmlResponse(EMPTY_TWIML);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Voice Recording] error:', message);
-    return new NextResponse('<Response></Response>', {
-      status: 500,
-      headers: { 'Content-Type': 'application/xml' },
-    });
-  }
-}
-
-/**
- * Mapea el estado de grabación de Twilio a nuestro enum.
- */
-function mapRecordingStatus(status: string): RecordingStatus {
-  switch (status) {
-    case 'in-progress':
-      return 'processing';
-    case 'completed':
-      return 'completed';
-    case 'failed':
-      return 'failed';
-    case 'deleted':
-      return 'deleted';
-    default:
-      return 'processing';
+    console.error('[Voice Recording] error:', error instanceof Error ? error.message : error);
+    return xmlResponse(EMPTY_TWIML, 500);
   }
 }

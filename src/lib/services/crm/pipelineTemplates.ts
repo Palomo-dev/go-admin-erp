@@ -23,6 +23,8 @@ export interface PipelineTemplateStage {
   sla_days: number | null;
   is_won: boolean;
   is_lost: boolean;
+  /** Criterio de salida de la etapa; las plantillas actuales no lo definen. */
+  exit_criteria?: string | null;
 }
 
 export interface PipelineTemplate {

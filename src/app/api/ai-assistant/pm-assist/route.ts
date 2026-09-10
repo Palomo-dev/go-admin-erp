@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { consumeAICredits } from '@/lib/services/aiCreditsService';
+import { consumeAICredits, checkAICredits } from '@/lib/services/aiCreditsService';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,20 +56,48 @@ REGLAS:
 Responde SOLO JSON: {"description":"<p>...</p>"}`;
 
 export async function POST(request: NextRequest) {
+  // Seguridad (F0, C-A): sesión + org activa; se ignora organizationId del body.
+  let ctx;
+  try {
+    ctx = await getServerOrgContext(request);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+    }
+    throw err;
+  }
+  const organizationId = ctx.organizationId;
+
   try {
     const body = await request.json();
-    const { mode, title, description, complexity, startDate, hoursPerDay = 8, organizationId } = body;
+    const { mode, title, description, complexity, startDate, hoursPerDay = 8 } = body;
 
     if (!mode || !title) {
       return NextResponse.json({ error: 'mode y title son requeridos' }, { status: 400 });
     }
 
-    if (organizationId) {
-      const ok = await consumeAICredits(organizationId, 1);
-      if (!ok) {
-        return NextResponse.json({ error: 'No tienes créditos de IA disponibles' }, { status: 403 });
-      }
+    // Saldo ANTES, cobro DESPUÉS (§10.2). Antes se descontaba primero y una
+    // llamada fallida a OpenAI se cobraba igual. Esta ruta tiene además dos
+    // caminos de generación (`describe` y el resto), así que cada uno cobra el
+    // suyo cuando su respuesta ya llegó.
+    const balance = await checkAICredits(organizationId);
+    if (!balance.allowed) {
+      return NextResponse.json(
+        { error: balance.error || 'No tienes créditos de IA disponibles' },
+        { status: 402 }
+      );
     }
+
+    const chargeTurn = async () => {
+      const consumed = await consumeAICredits(organizationId, 1, {
+        actionType: 'pm_assist',
+        model: 'gpt-4o-mini',
+        userId: ctx.userId,
+      });
+      if (!consumed) {
+        console.warn('[pm-assist] No se pudieron descontar créditos para la org', organizationId);
+      }
+    };
 
     const openai = getOpenAIClient();
 
@@ -98,6 +127,7 @@ export async function POST(request: NextRequest) {
       });
       const content = completion.choices[0]?.message?.content;
       const parsed = content ? JSON.parse(content) : {};
+      await chargeTurn();
       return NextResponse.json({ description: String(parsed.description || ''), tokens: completion.usage?.total_tokens || 0 });
     }
 
@@ -118,6 +148,7 @@ export async function POST(request: NextRequest) {
 
     const content = completion.choices[0]?.message?.content;
     if (!content) return NextResponse.json({ error: 'La IA no generó respuesta' }, { status: 500 });
+    await chargeTurn();
     const parsed = JSON.parse(content);
 
     if (isTask) {

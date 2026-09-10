@@ -5,97 +5,78 @@
  * Si el agente pulsó 1, hace <Dial> al cliente con grabación dual.
  * Si no pulsó 1 o timeout, cuelga.
  *
- * Sin autenticación de sesión — valida firma de Twilio en producción.
+ * Seguridad (F0, C12/C14): firma verificada SIEMPRE (token por AccountSid);
+ * la org se toma de la fila `mobile_call_bridges` y las escrituras se
+ * filtran por `organization_id`.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { validateTwilioSignature } from '@/lib/services/integrations/twilio';
+import { NextResponse } from 'next/server';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { verifyTwilioWebhook, WebhookError } from '@/lib/security/webhookSignatures';
 import { getWebhookBaseUrl } from '@/lib/services/integrations/twilio/twilioConfig';
 
-function getServiceSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('Faltan credenciales Supabase (service_role)');
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
+export const runtime = 'nodejs';
 
-export async function POST(request: NextRequest) {
-  try {
-    const formData = await request.formData();
-    const params: Record<string, string> = {};
-    formData.forEach((value, key) => {
-      params[key] = value.toString();
-    });
+const XML_HEADERS = { 'Content-Type': 'text/xml' };
 
-    const bridgeId = request.nextUrl.searchParams.get('bridgeId') || '';
-    const digits = params.Digits || '';
-
-    // Validar firma de Twilio
-    const signature = request.headers.get('x-twilio-signature') || '';
-    const url = `${getWebhookBaseUrl()}/api/voice/twiml/customer-leg?bridgeId=${bridgeId}`;
-    const twilioAuthToken = process.env.TWILIO_MASTER_AUTH_TOKEN;
-    if (!twilioAuthToken) {
-      console.warn('[Customer Leg TwiML] TWILIO_MASTER_AUTH_TOKEN no configurado — validación de firma omitida');
-    } else if (!validateTwilioSignature(signature, url, params)) {
-      console.warn('[Customer Leg TwiML] Firma de Twilio inválida');
-      return new NextResponse('Forbidden', { status: 403 });
-    }
-
-    if (!bridgeId) {
-      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+function sayHangup(text: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
+  <Say voice="Polly.Lupe" language="es-CO">${escapeXml(text)}</Say>
   <Hangup/>
 </Response>`;
-      return new NextResponse(twiml, {
-        status: 200,
-        headers: { 'Content-Type': 'text/xml' },
-      });
+}
+
+export async function POST(request: Request) {
+  let params: Record<string, string>;
+  try {
+    ({ params } = await verifyTwilioWebhook(request));
+  } catch (err) {
+    if (err instanceof WebhookError) {
+      console.warn('[Customer Leg TwiML] Rechazado:', err.code);
+      return new NextResponse('Forbidden', { status: err.statusCode });
+    }
+    throw err;
+  }
+
+  try {
+    const bridgeId = new URL(request.url).searchParams.get('bridgeId') || '';
+    const digits = params.Digits || '';
+
+    if (!bridgeId) {
+      return new NextResponse(
+        `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Hangup/>\n</Response>`,
+        { status: 200, headers: XML_HEADERS }
+      );
     }
 
-    const supabase = getServiceSupabase();
+    const supabase = getServiceClient();
 
-    // Obtener el bridge
+    // Obtener el bridge (la org sale de esta fila)
     const { data: bridge } = await supabase
       .from('mobile_call_bridges')
       .select('*')
       .eq('id', bridgeId)
-      .single();
+      .maybeSingle();
 
     if (!bridge) {
-      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Lupe" language="es-CO">Bridge no encontrado.</Say>
-  <Hangup/>
-</Response>`;
-      return new NextResponse(twiml, {
-        status: 200,
-        headers: { 'Content-Type': 'text/xml' },
-      });
+      return new NextResponse(sayHangup('Bridge no encontrado.'), { status: 200, headers: XML_HEADERS });
     }
+
+    const orgId = bridge.organization_id as number;
 
     // Si el agente no pulsó 1, rechazar
     if (digits !== '1') {
-      // Actualizar estado a agent_rejected
       await supabase
         .from('mobile_call_bridges')
         .update({
           status: 'agent_rejected',
           updated_at: new Date().toISOString(),
         })
-        .eq('id', bridgeId);
+        .eq('id', bridgeId)
+        .eq('organization_id', orgId);
 
-      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Lupe" language="es-CO">Llamada cancelada. Adiós.</Say>
-  <Hangup/>
-</Response>`;
-      return new NextResponse(twiml, {
-        status: 200,
-        headers: { 'Content-Type': 'text/xml' },
-      });
+      return new NextResponse(sayHangup('Llamada cancelada. Adiós.'), { status: 200, headers: XML_HEADERS });
     }
 
     // El agente confirmó — actualizar estado y hacer Dial al cliente
@@ -105,7 +86,8 @@ export async function POST(request: NextRequest) {
         status: 'customer_dialing',
         updated_at: new Date().toISOString(),
       })
-      .eq('id', bridgeId);
+      .eq('id', bridgeId)
+      .eq('organization_id', orgId);
 
     const webhookBase = getWebhookBaseUrl();
 
@@ -113,27 +95,26 @@ export async function POST(request: NextRequest) {
 <Response>
   <Say voice="Polly.Lupe" language="es-CO">Conectando. Esta llamada será grabada para fines de calidad y servicio.</Say>
   <Dial record="record-from-answer-dual"
-    recordingStatusCallback="${webhookBase}/api/voice/recording"
-    statusCallback="${webhookBase}/api/voice/bridge/status?bridgeId=${bridgeId}&leg=customer"
+    recordingStatusCallback="${escapeXml(`${webhookBase}/api/voice/recording`)}"
+    statusCallback="${escapeXml(`${webhookBase}/api/voice/bridge/status?bridgeId=${bridgeId}&leg=customer`)}"
     answerOnBridge="true">
-    <Number>${bridge.target_phone}</Number>
+    <Number>${escapeXml(String(bridge.target_phone))}</Number>
   </Dial>
 </Response>`;
 
-    return new NextResponse(twiml, {
-      status: 200,
-      headers: { 'Content-Type': 'text/xml' },
-    });
+    return new NextResponse(twiml, { status: 200, headers: XML_HEADERS });
   } catch (error) {
     console.error('[Customer Leg TwiML] Error:', error);
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Lupe" language="es-CO">Ocurrió un error. Por favor intente más tarde.</Say>
-  <Hangup/>
-</Response>`;
-    return new NextResponse(twiml, {
-      status: 200,
-      headers: { 'Content-Type': 'text/xml' },
-    });
+    return new NextResponse(sayHangup('Ocurrió un error. Por favor intente más tarde.'), { status: 200, headers: XML_HEADERS });
   }
+}
+
+/** Escapa caracteres especiales XML */
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }

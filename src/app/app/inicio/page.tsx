@@ -247,7 +247,7 @@ function InicioContent() {
       <DashboardAtajos activeModuleCodes={activeModuleCodes} />
 
       {/* KPIs */}
-      <DashboardKPIs data={dashboardData?.kpis ?? null} isLoading={isLoading} periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} />
+      <DashboardKPIs data={dashboardData?.kpis ?? null} isLoading={isLoading} periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} branchFilter={branchFilter} />
 
       {/* Alertas consolidadas de módulos */}
       <DashboardAlertas

@@ -1,10 +1,13 @@
 /**
  * Voice Agent — Exports
  * GO Admin ERP
+ *
+ * F0 (REG r1): se eliminaron los motores muertos v1 (OpenAI Realtime +
+ * Media Streams: realtimeSession.ts, voiceAgentService.ts), v2
+ * (elevenLabsTTS.ts) y v3 (deepgramSTT.ts). El único motor vivo es
+ * ConversationRelay (`conversationRelayHandler.ts`), consumido por ws-server.ts.
  */
 
-export { voiceAgentService } from './voiceAgentService';
-export { RealtimeSession } from './realtimeSession';
 export { VOICE_AGENT_TOOLS, executeToolCall } from './voiceAgentTools';
 export {
   buildVoiceAgentPrompt,
@@ -18,9 +21,3 @@ export {
   getActiveRelaySessions,
   type ConversationRelaySession,
 } from './conversationRelayHandler';
-
-// Voice Agent v2 — ElevenLabs TTS
-export { textToSpeech, textToSpeechStream } from './elevenLabsTTS';
-
-// Voice Agent v3 — Deepgram STT
-export { createDeepgramStream, transcribeAudio } from './deepgramSTT';

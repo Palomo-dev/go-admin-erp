@@ -28,9 +28,13 @@ export async function POST(request: Request) {
     const normalizedEmail = email.toLowerCase().trim();
 
     // Buscar invitación pendiente para este email
+    // NOTA: la tabla invitations NO tiene organization_name, hay que traerlo
+    // via join con organizations. Si se incluye organization_name en el select
+    // directo, Postgres retorna 42703 (column does not exist) y el reenvío
+    // falla con 500 → el usuario nunca recibe el magic link.
     const { data: pendingInvite, error: inviteError } = await admin
       .from('invitations')
-      .select('code, organization_id, organization_name, role_id')
+      .select('code, organization_id, role_id, organizations!inner(name)')
       .eq('email', normalizedEmail)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
@@ -53,6 +57,11 @@ export async function POST(request: Request) {
     }
 
     const inviteUrl = `${origin}/auth/invite?invite_code=${pendingInvite.code}`;
+    // PostgREST devuelve el embed to-one como objeto, pero se contempla el array
+    // por si el join se convierte en to-many. El fallback cubre ambas ramas.
+    const orgRel = pendingInvite.organizations as { name?: string } | { name?: string }[] | null;
+    const organizationName =
+      (Array.isArray(orgRel) ? orgRel[0]?.name : orgRel?.name) || 'la organización';
 
     // Reenviar magic link (mismo flujo que invite/route.ts para usuarios existentes)
     const { createClient } = await import('@supabase/supabase-js');
@@ -69,7 +78,7 @@ export async function POST(request: Request) {
         data: {
           invitation_code: pendingInvite.code,
           organization_id: pendingInvite.organization_id,
-          organization_name: pendingInvite.organization_name,
+          organization_name: organizationName,
         },
       },
     });

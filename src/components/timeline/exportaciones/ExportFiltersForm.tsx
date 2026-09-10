@@ -103,7 +103,7 @@ export function ExportFiltersForm({ filters, onFiltersChange }: ExportFiltersFor
               <Calendar
                 mode="single"
                 selected={filters.startDate ? new Date(filters.startDate) : undefined}
-                onSelect={(date) => handleDateChange('startDate', date)}
+                onSelect={(date: Date | undefined) => handleDateChange('startDate', date)}
                 locale={es}
                 initialFocus
               />
@@ -129,7 +129,7 @@ export function ExportFiltersForm({ filters, onFiltersChange }: ExportFiltersFor
               <Calendar
                 mode="single"
                 selected={filters.endDate ? new Date(filters.endDate) : undefined}
-                onSelect={(date) => handleDateChange('endDate', date)}
+                onSelect={(date: Date | undefined) => handleDateChange('endDate', date)}
                 locale={es}
                 initialFocus
               />

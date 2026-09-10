@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Plus, RefreshCw, ArrowLeft, CalendarClock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,14 +12,17 @@ import { ActividadesStats } from './ActividadesStats';
 import { ActividadesTable } from './ActividadesTable';
 import { ActividadForm } from './ActividadForm';
 import { ActividadesPagination } from './ActividadesPagination';
-import { actividadesService } from './ActividadesService';
-import { ActivityActions } from '@/components/crm/pipeline/drawer/ActivityActions';
+import { actividadesService, type OrgUserOption } from './ActividadesService';
+import { QuickActionsBar } from '@/components/crm/shared/QuickActionsBar';
+import { LoadErrorState } from '@/components/common/LoadErrorState';
+import { describeError } from '@/lib/utils/errorMessage';
 import { SearchSelect } from '@/components/ui/search-select';
 import {
   Activity,
   ActivityFilters,
   ActivityStats,
   CreateActivityInput,
+  RelatedType,
   UpdateActivityInput,
 } from './types';
 import {
@@ -32,112 +36,110 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+// Diálogo unificado de tarea (compacto + completo): las tareas no son filas de
+// `activities`, se crean aquí con la misma lógica que el resto del CRM.
+const TaskDialog = dynamic(() => import('@/components/crm/shared/TaskDialog').then((m) => m.TaskDialog), {
+  ssr: false,
+});
+
+const EMPTY_STATS: ActivityStats = {
+  total: 0,
+  calls: 0,
+  emails: 0,
+  whatsapp: 0,
+  meetings: 0,
+  notes: 0,
+  tasks: 0,
+};
+
+interface CustomerOption {
+  id: string;
+  full_name: string;
+  email?: string;
+  phone?: string;
+}
+
 export function ActividadesPage() {
   const { toast } = useToast();
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [stats, setStats] = useState<ActivityStats>({
-    total: 0,
-    calls: 0,
-    emails: 0,
-    meetings: 0,
-    notes: 0,
-    visits: 0,
-    whatsapp: 0,
-  });
+  const [totalItems, setTotalItems] = useState(0);
+  const [stats, setStats] = useState<ActivityStats>(EMPTY_STATS);
   const [filters, setFilters] = useState<ActivityFilters>({});
-  const [users, setUsers] = useState<{ id: string; email: string; full_name?: string }[]>([]);
-  const [customers, setCustomers] = useState<{ id: string; full_name: string; email?: string }[]>([]);
+  const [users, setUsers] = useState<OrgUserOption[]>([]);
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [opportunities, setOpportunities] = useState<{ id: string; title: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteActivity, setDeleteActivity] = useState<Activity | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [showQuickActions, setShowQuickActions] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<{
-    id: string;
-    full_name: string;
-    email?: string | null;
-    phone?: string | null;
-  } | null>(null);
+  const [taskDialog, setTaskDialog] = useState<{ type: RelatedType; id: string } | null>(null);
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
 
-  // Cargar datos del cliente seleccionado
-  useEffect(() => {
-    if (selectedCustomerId) {
-      const c = customers.find((c) => c.id === selectedCustomerId);
-      if (c) {
-        setSelectedCustomer({
-          id: c.id,
-          full_name: c.full_name,
-          email: (c as any).email || null,
-          phone: (c as any).phone || null,
-        });
-      } else {
-        setSelectedCustomer(null);
-      }
-    } else {
-      setSelectedCustomer(null);
-    }
-  }, [selectedCustomerId, customers]);
-  
-  // Paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const selectedCustomer = selectedCustomerId
+    ? customers.find((c) => c.id === selectedCustomerId) ?? null
+    : null;
+
+  /**
+   * Una sola carga: página de actividades + totales + catálogos.
+   * Si algo falla se guarda el mensaje y la pantalla ofrece «Reintentar»
+   * (antes el error se tragaba y quedaba una lista vacía indistinguible).
+   */
   const loadData = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
-      const [activitiesData, statsData, usersData, customersData, opportunitiesData] =
-        await Promise.all([
-          actividadesService.getActivities(filters),
-          actividadesService.getStats(),
-          actividadesService.getUsers(),
-          actividadesService.getCustomers(),
-          actividadesService.getOpportunities(),
-        ]);
+      const [pageData, statsData, usersData, customersData, opportunitiesData] = await Promise.all([
+        actividadesService.listActivities(filters, { page: currentPage, pageSize }),
+        actividadesService.getStats(filters),
+        actividadesService.getUsers(),
+        actividadesService.getCustomers(),
+        actividadesService.getOpportunities(),
+      ]);
 
-      setActivities(activitiesData);
+      setActivities(pageData.rows);
+      setTotalItems(pageData.total);
       setStats(statsData);
       setUsers(usersData);
       setCustomers(customersData);
       setOpportunities(opportunitiesData);
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las actividades',
-        variant: 'destructive',
-      });
+      setActivities([]);
+      setTotalItems(0);
+      setStats(EMPTY_STATS);
+      setLoadError(describeError(error));
     } finally {
       setIsLoading(false);
     }
-  }, [filters, toast]);
+  }, [filters, currentPage, pageSize]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Resetear página cuando cambian filtros o pageSize
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filters, pageSize]);
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
-  // Calcular paginación
-  const totalItems = activities.length;
-  const totalPages = Math.ceil(totalItems / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const paginatedActivities = activities.slice(startIndex, startIndex + pageSize);
+  // Si al borrar o filtrar la página actual deja de existir, se vuelve atrás.
+  useEffect(() => {
+    if (!isLoading && currentPage > totalPages) setCurrentPage(totalPages);
+  }, [isLoading, currentPage, totalPages]);
+
+  const hasFilters = Object.values(filters).some((v) => v !== undefined && v !== '');
 
   const handleFiltersChange = (newFilters: ActivityFilters) => {
     setFilters(newFilters);
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+    setCurrentPage(1);
   };
 
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
+    setCurrentPage(1);
   };
 
   const handleNewActivity = () => {
@@ -150,20 +152,30 @@ export function ActividadesPage() {
     setIsFormOpen(true);
   };
 
+  /** «Tarea» en el diálogo de actividad abre el diálogo unificado de tarea. */
+  const handleRequestTask = (related: { type: RelatedType; id: string } | null) => {
+    if (!related) {
+      toast({
+        title: 'Elige antes el cliente o la oportunidad',
+        description: 'La tarea queda ligada a esa ficha.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setIsFormOpen(false);
+    setTaskDialog(related);
+    setIsTaskDialogOpen(true);
+  };
+
   const handleDuplicateActivity = async (activity: Activity) => {
     try {
-      const duplicated = await actividadesService.duplicateActivity(activity.id);
-      if (duplicated) {
-        toast({
-          title: 'Actividad duplicada',
-          description: 'La actividad se ha duplicado correctamente',
-        });
-        loadData();
-      }
+      await actividadesService.duplicateActivity(activity.id);
+      toast({ title: 'Actividad duplicada', description: 'Se creó una copia con la fecha de hoy.' });
+      loadData();
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'No se pudo duplicar la actividad',
+        title: 'No se pudo duplicar la actividad',
+        description: describeError(error),
         variant: 'destructive',
       });
     }
@@ -171,20 +183,14 @@ export function ActividadesPage() {
 
   const handleDeleteActivity = async () => {
     if (!deleteActivity) return;
-
     try {
-      const success = await actividadesService.deleteActivity(deleteActivity.id);
-      if (success) {
-        toast({
-          title: 'Actividad eliminada',
-          description: 'La actividad se ha eliminado correctamente',
-        });
-        loadData();
-      }
+      await actividadesService.deleteActivity(deleteActivity.id);
+      toast({ title: 'Actividad eliminada' });
+      loadData();
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'No se pudo eliminar la actividad',
+        title: 'No se pudo eliminar la actividad',
+        description: describeError(error),
         variant: 'destructive',
       });
     } finally {
@@ -196,28 +202,18 @@ export function ActividadesPage() {
     setIsSaving(true);
     try {
       if (editingActivity) {
-        const updated = await actividadesService.updateActivity(editingActivity.id, data);
-        if (updated) {
-          toast({
-            title: 'Actividad actualizada',
-            description: 'Los cambios se han guardado correctamente',
-          });
-        }
+        await actividadesService.updateActivity(editingActivity.id, data);
+        toast({ title: 'Actividad actualizada' });
       } else {
-        const created = await actividadesService.createActivity(data as CreateActivityInput);
-        if (created) {
-          toast({
-            title: 'Actividad creada',
-            description: 'La actividad se ha registrado correctamente',
-          });
-        }
+        await actividadesService.createActivity(data as CreateActivityInput);
+        toast({ title: 'Actividad registrada' });
       }
       setIsFormOpen(false);
       loadData();
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'No se pudo guardar la actividad',
+        title: 'No se pudo guardar la actividad',
+        description: describeError(error),
         variant: 'destructive',
       });
     } finally {
@@ -231,7 +227,7 @@ export function ActividadesPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link href="/app/crm">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" aria-label="Volver al CRM">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
@@ -243,7 +239,7 @@ export function ActividadesPage() {
               Actividades
             </h1>
             <p className="text-gray-500 dark:text-gray-400">
-              CRM / Actividades
+              Llamadas, correos, WhatsApp, reuniones y notas del equipo
             </p>
           </div>
         </div>
@@ -253,20 +249,19 @@ export function ActividadesPage() {
             size="icon"
             onClick={loadData}
             disabled={isLoading}
+            aria-label="Recargar"
             className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
-          <Button
-            onClick={handleNewActivity}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
+          <Button onClick={handleNewActivity} className="bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="h-4 w-4 mr-2" />
             Nueva Actividad
           </Button>
           <Button
             variant="outline"
             onClick={() => setShowQuickActions(!showQuickActions)}
+            aria-expanded={showQuickActions}
             className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
           >
             <Zap className="h-4 w-4 mr-2" />
@@ -275,14 +270,12 @@ export function ActividadesPage() {
         </div>
       </div>
 
-      {/* Acciones rápidas — mismas del drawer del pipeline */}
+      {/* Acciones rápidas — la misma barra del pipeline y de la ficha 360 */}
       {showQuickActions && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Acciones rápidas con APIs (Twilio, Resend, WhatsApp, Gemini)
-            </h2>
-          </div>
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            Contactar ahora (llamada, correo, WhatsApp, reunión, tarea o nota)
+          </h2>
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label className="text-xs text-gray-600 dark:text-gray-400">
@@ -298,50 +291,58 @@ export function ActividadesPage() {
                 className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
               />
             </div>
-            {selectedCustomer && (
-              <ActivityActions
-                opportunityId={undefined}
-                customer={selectedCustomer}
-                onActivityLogged={loadData}
+            {selectedCustomer ? (
+              <QuickActionsBar
+                variant="detail"
+                customerId={selectedCustomer.id}
+                customer={{
+                  id: selectedCustomer.id,
+                  full_name: selectedCustomer.full_name,
+                  email: selectedCustomer.email ?? null,
+                  phone: selectedCustomer.phone ?? null,
+                }}
+                onActionCompleted={() => loadData()}
               />
-            )}
-            {!selectedCustomer && (
+            ) : (
               <p className="text-xs text-gray-400 dark:text-gray-500 italic py-2">
-                Selecciona un cliente para habilitar Llamar (Twilio), Email (Resend), WhatsApp y Reunión (calendario).
+                Selecciona un cliente para habilitar Llamar, Email, WhatsApp, Reunión, Tarea y Nota.
               </p>
             )}
           </div>
         </div>
       )}
 
-      {/* Stats */}
-      <ActividadesStats stats={stats} isLoading={isLoading} />
+      {loadError ? (
+        <LoadErrorState message={loadError} onRetry={loadData} isRetrying={isLoading} />
+      ) : (
+        <>
+          <ActividadesStats stats={stats} isLoading={isLoading} />
 
-      {/* Filtros */}
-      <ActividadesFiltros
-        filters={filters}
-        onFiltersChange={handleFiltersChange}
-        users={users}
-      />
+          <ActividadesFiltros filters={filters} onFiltersChange={handleFiltersChange} users={users} />
 
-      {/* Tabla */}
-      <ActividadesTable
-        activities={paginatedActivities}
-        isLoading={isLoading}
-        onEdit={handleEditActivity}
-        onDuplicate={handleDuplicateActivity}
-        onDelete={setDeleteActivity}
-      />
+          <ActividadesTable
+            activities={activities}
+            isLoading={isLoading}
+            hasFilters={hasFilters}
+            onEdit={handleEditActivity}
+            onDuplicate={handleDuplicateActivity}
+            onDelete={setDeleteActivity}
+            onCreate={handleNewActivity}
+            onClearFilters={() => handleFiltersChange({})}
+          />
 
-      {/* Paginación */}
-      <ActividadesPagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        pageSize={pageSize}
-        totalItems={totalItems}
-        onPageChange={handlePageChange}
-        onPageSizeChange={handlePageSizeChange}
-      />
+          {totalItems > 0 && (
+            <ActividadesPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          )}
+        </>
+      )}
 
       {/* Formulario */}
       <ActividadForm
@@ -352,7 +353,24 @@ export function ActividadesPage() {
         opportunities={opportunities}
         onSave={handleSaveActivity}
         isLoading={isSaving}
+        onRequestTask={handleRequestTask}
       />
+
+      {/* Tarea: mismo diálogo que el pipeline y las acciones rápidas */}
+      {taskDialog && (
+        <TaskDialog
+          open={isTaskDialogOpen}
+          onOpenChange={(open) => {
+            setIsTaskDialogOpen(open);
+            if (!open) setTaskDialog(null);
+          }}
+          mode="compact"
+          relatedType={taskDialog.type}
+          relatedId={taskDialog.id}
+          customerId={taskDialog.type === 'customer' ? taskDialog.id : undefined}
+          onSaved={() => loadData()}
+        />
+      )}
 
       {/* Confirmación de eliminación */}
       <AlertDialog open={!!deleteActivity} onOpenChange={() => setDeleteActivity(null)}>

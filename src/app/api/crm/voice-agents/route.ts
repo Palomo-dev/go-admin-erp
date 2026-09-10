@@ -66,9 +66,12 @@ export async function POST(request: NextRequest) {
         transfer_to_human_rules: body.transfer_to_human_rules,
         business_hours: body.business_hours,
         retry_policy: body.retry_policy,
+        identity_disclosure: body.identity_disclosure,
+        voice_ref_id: body.voice_ref_id,
         is_active: body.is_active,
       },
-      ctx.supabase
+      ctx.supabase,
+      ctx.userId
     );
 
     return NextResponse.json({ success: true, data: agent }, { status: 201 });

@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserCircle } from 'lucide-react';
 import { useSession } from '@/lib/context/SessionContext';
+import { LoadErrorState } from '@/components/common/LoadErrorState';
 
 /**
  * AuthGuard - Bloquea el renderizado de hijos hasta que la sesión esté confirmada.
@@ -11,14 +12,43 @@ import { useSession } from '@/lib/context/SessionContext';
  * antes de que Supabase Auth haya restaurado la sesión client-side.
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useSession();
+  const { session, loading, initError, retryInit } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !session) {
+    // Con `initError` no sabemos si hay sesión (red/base caída): mandar al login
+    // sería expulsar a un usuario que sí está autenticado. Mostramos el error.
+    if (!loading && !session && !initError) {
       router.replace('/auth/login');
     }
-  }, [loading, session, router]);
+  }, [loading, session, initError, router]);
+
+  // No se pudo comprobar la sesión: error explícito con reintento en vez de
+  // dejar el spinner girando para siempre.
+  if (!loading && initError && !session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 dark:bg-gray-900">
+        <div className="w-full max-w-lg space-y-4">
+          <LoadErrorState
+            title="No se pudo comprobar tu sesión"
+            message={initError}
+            onRetry={retryInit}
+          />
+          <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+            Si el problema continúa,{' '}
+            <button
+              type="button"
+              onClick={() => router.replace('/auth/login')}
+              className="underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-200"
+            >
+              inicia sesión de nuevo
+            </button>
+            .
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

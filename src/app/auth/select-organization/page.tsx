@@ -37,7 +37,7 @@ function SelectOrganizationContent() {
   // Intentar obtener sesión o hidratar desde URL params / cookie OAuth (flujo Google)
   const getActiveSession = async () => {
     // 1. Hidratar desde URL query param _oauth (más confiable que cookies)
-    const oauthParam = searchParams.get('_oauth');
+    const oauthParam = searchParams?.get('_oauth') ?? null;
     if (oauthParam) {
       try {
         const { at, rt } = JSON.parse(oauthParam);
@@ -45,7 +45,7 @@ function SelectOrganizationContent() {
           const { data, error } = await supabase.auth.setSession({ access_token: at, refresh_token: rt });
           // Limpiar tokens de la URL
           if (typeof window !== 'undefined') {
-            const dest = searchParams.get('dest');
+            const dest = searchParams?.get('dest') ?? null;
             const cleanUrl = dest ? `/auth/select-organization?dest=${encodeURIComponent(dest)}` : '/auth/select-organization';
             window.history.replaceState(null, '', cleanUrl);
           }
@@ -199,7 +199,7 @@ function SelectOrganizationContent() {
       localStorage.setItem('currentOrganizationName', org.name);
 
       // Proceder con el login usando la función existente
-      const next = searchParams.get('dest') || searchParams.get('next') || '/app/inicio';
+      const next = searchParams?.get('dest') || searchParams?.get('next') || '/app/inicio';
       await proceedWithLogin(false, session.user.email || '');
       
       // Redirigir al destino final

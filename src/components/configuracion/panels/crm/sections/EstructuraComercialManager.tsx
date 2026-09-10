@@ -55,6 +55,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { pickEmbedded, profileDisplayName, type EmbeddedProfile } from '@/lib/utils/embeddedProfile';
 
 // ─── Tipos (espejo del servicio) ─────────────────────────────────────────────
 
@@ -319,10 +320,11 @@ const db = {
       .eq('organization_id', orgId)
       .eq('is_active', true);
     if (error) throw error;
-    return (data || [] as { user_id: string; profiles: { id: string; first_name: string | null; last_name: string | null; email: string | null }[] }[]).map((m) => {
-      const p = m.profiles?.[0] || null;
-      const full = p ? [p.first_name, p.last_name].filter(Boolean).join(' ') : '';
-      return { id: m.user_id, name: full || p?.email || m.user_id.slice(0, 8), email: p?.email || undefined };
+    // Embebido a-uno: objeto, no array. Con `profiles[0]` la lista mostraba el
+    // identificador del usuario recortado en lugar del nombre.
+    return ((data || []) as { user_id: string; profiles: EmbeddedProfile | EmbeddedProfile[] | null }[]).map((m) => {
+      const p = pickEmbedded(m.profiles);
+      return { id: m.user_id, name: profileDisplayName(m.profiles), email: p?.email || undefined };
     });
   },
 };

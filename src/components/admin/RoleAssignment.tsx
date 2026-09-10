@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { AssignmentsSkeleton } from './RolesSkeleton';
+import { LoadErrorState } from '@/components/common/LoadErrorState';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 
 interface OrganizationMember {
   id: number;
@@ -48,6 +50,7 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
   const { roles, loading: rolesLoading } = useRoles(organizationId);
   
   const [members, setMembers] = useState<OrganizationMember[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -83,10 +86,12 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
         .eq('is_active', true);
 
       if (error) throw error;
+      setLoadError(null);
       setMembers((data as any) || []);
     } catch (error) {
-      console.error('Error loading members:', error);
-      toast.error('Error al cargar miembros de la organización');
+      logError('[RoleAssignment] cargar miembros de la organización', error);
+      setLoadError(describeError(error));
+      toast.error(`Error al cargar miembros: ${describeError(error)}`);
     } finally {
       setLoading(false);
     }
@@ -100,10 +105,13 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
 
   // Filtrar miembros según búsqueda y filtros
   const filteredMembers = members.filter(member => {
-    const matchesSearch = 
-      member.profiles.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.profiles.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.profiles.email.toLowerCase().includes(searchTerm.toLowerCase());
+    // `profiles` puede faltar (miembro sin perfil creado): sin estas guardas el
+    // filtro reventaba con "cannot read properties of null".
+    const term = searchTerm.toLowerCase();
+    const matchesSearch =
+      (member.profiles?.first_name || '').toLowerCase().includes(term) ||
+      (member.profiles?.last_name || '').toLowerCase().includes(term) ||
+      (member.profiles?.email || '').toLowerCase().includes(term);
     
     const matchesRole = filterRole === 'all' || member.role_id === filterRole;
     
@@ -185,6 +193,21 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
 
   if (loading || rolesLoading) {
     return <AssignmentsSkeleton />;
+  }
+
+  // La carga falló: se dice por qué y se ofrece reintentar, en vez de mostrar
+  // una tabla vacía como si la organización no tuviera miembros.
+  if (loadError) {
+    return (
+      <div className="space-y-6">
+        <LoadErrorState
+          title="No se pudieron cargar los miembros"
+          message={loadError}
+          onRetry={() => void loadMembers()}
+          isRetrying={loading}
+        />
+      </div>
+    );
   }
 
   return (

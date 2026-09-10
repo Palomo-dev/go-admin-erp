@@ -38,6 +38,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { SearchSelect } from '@/components/ui/search-select';
 import { pmService, PRIORITY_LABELS, TASK_TYPE_LABELS, type PMTask } from '@/lib/services/pmService';
+import { crmTaskService } from '@/lib/services/crm/taskService';
 import { RichTextEditor } from '@/components/pm/RichTextEditor';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
@@ -86,6 +87,11 @@ interface TaskCreationPanelProps {
   initialCustomerId?: string;
   initialRelatedToType?: string;
   initialRelatedToId?: string;
+  /**
+   * Valores con los que arranca el formulario al crear. Lo usa el modo
+   * compacto de `TaskDialog` para expandirse sin perder lo ya escrito.
+   */
+  initialValues?: Partial<typeof INITIAL_FORM>;
 }
 
 const INITIAL_FORM = {
@@ -105,6 +111,18 @@ const INITIAL_FORM = {
   related_to_id: '',
 };
 
+/**
+ * El campo de vencimiento del panel es `<input type="date">`: solo acepta
+ * `yyyy-MM-dd`. Un ISO completo (tarea existente) o un `datetime-local` (lo
+ * que trae el modo compacto de TaskDialog al expandirse) se veían en blanco y
+ * al guardar borraban la fecha. Se recorta al día.
+ */
+function toDateInputValue(value?: string | null): string {
+  if (!value) return '';
+  const match = String(value).match(/^\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : '';
+}
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -117,7 +135,7 @@ function getFileIcon(type: string) {
   return <File className="h-4 w-4 text-gray-500" />;
 }
 
-export default function TaskCreationPanel({ isOpen, onClose, projects, existingTasks = [], users = [], editTask, onTaskCreated, onOpenSubtask, onOpenParent, initialCustomerId, initialRelatedToType, initialRelatedToId }: TaskCreationPanelProps) {
+export default function TaskCreationPanel({ isOpen, onClose, projects, existingTasks = [], users = [], editTask, onTaskCreated, onOpenSubtask, onOpenParent, initialCustomerId, initialRelatedToType, initialRelatedToId, initialValues }: TaskCreationPanelProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -246,12 +264,22 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
     }
   }, []);
 
+  // `initialValues` se serializa para no reejecutar el efecto en cada render
+  // (el llamador suele pasar un objeto literal nuevo cada vez).
+  const initialValuesKey = JSON.stringify(initialValues ?? null);
+
   const resetForm = useCallback(() => {
+    const seed = (JSON.parse(initialValuesKey) ?? {}) as Partial<typeof INITIAL_FORM>;
     setForm({
       ...INITIAL_FORM,
       customer_id: initialCustomerId || '',
       related_to_type: initialRelatedToType || '',
       related_to_id: initialRelatedToId || '',
+      // Lo escrito en el modo compacto manda sobre los valores por defecto.
+      ...Object.fromEntries(Object.entries(seed).filter(([, v]) => v !== undefined && v !== '')),
+      // …pero la fecha hay que recortarla al día: el compacto usa
+      // `datetime-local` y este campo es `<input type="date">`.
+      ...(seed.due_date ? { due_date: toDateInputValue(seed.due_date) } : {}),
     });
     setSubtasks([]);
     setAttachments([]);
@@ -260,7 +288,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
     setShowSubtasks(false);
     setShowAttachments(false);
     setShowDependencies(false);
-  }, [initialCustomerId, initialRelatedToType, initialRelatedToId]);
+  }, [initialCustomerId, initialRelatedToType, initialRelatedToId, initialValuesKey]);
 
   // Precargar datos al editar o resetear al abrir para crear
   useEffect(() => {
@@ -270,7 +298,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         description: editTask.description || '',
         project_id: editTask.project_id || '',
         priority: editTask.priority || 'med',
-        due_date: editTask.due_date || '',
+        due_date: toDateInputValue(editTask.due_date),
         estimated_hours: editTask.estimated_hours != null ? String(editTask.estimated_hours) : '',
         actual_hours: editTask.actual_hours != null ? String(editTask.actual_hours) : '',
         status: editTask.status || 'open',
@@ -576,21 +604,23 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
     try {
       // Modo edición: actualizar campos principales y salir
       if (isEdit && editTask) {
-        await pmService.updateTask(editTask.id, {
-          title: form.title.trim(),
-          description: form.description.trim() || null,
-          project_id: form.project_id || null,
+        // Validación, normalización y escritura en un único sitio
+        // (`crmTaskService`), compartido con el modo compacto de TaskDialog.
+        await crmTaskService.updateTask(editTask.id, {
+          title: form.title,
+          description: form.description,
+          project_id: form.project_id,
           priority: form.priority,
-          due_date: form.due_date || null,
-          estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : null,
-          actual_hours: form.actual_hours ? parseFloat(form.actual_hours) : null,
+          due_date: form.due_date,
+          estimated_hours: form.estimated_hours,
+          actual_hours: form.actual_hours,
           status: form.status,
-          assigned_to: form.assigned_to || null,
-          goal_id: form.goal_id || null,
-          type: form.type || null,
-          customer_id: form.customer_id || null,
-          related_to_type: form.related_to_type || null,
-          related_to_id: form.related_to_id || null,
+          assigned_to: form.assigned_to,
+          goal_id: form.goal_id,
+          type: form.type,
+          customer_id: form.customer_id,
+          related_to_type: form.related_to_type,
+          related_to_id: form.related_to_id,
         });
         toast({ title: 'Tarea actualizada', description: `"${form.title}" guardada` });
         resetForm();
@@ -599,21 +629,21 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         return;
       }
 
-      // 1. Crear tarea principal
-      const task = await pmService.createTask({
-        title: form.title.trim(),
-        description: form.description.trim() || null,
-        project_id: form.project_id || null,
+      // 1. Crear tarea principal (mismo servicio que el modo compacto)
+      const task = await crmTaskService.createTask({
+        title: form.title,
+        description: form.description,
+        project_id: form.project_id,
         priority: form.priority,
-        due_date: form.due_date || null,
-        estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : null,
-        assigned_to: form.assigned_to || null,
-        goal_id: form.goal_id || null,
+        due_date: form.due_date,
+        estimated_hours: form.estimated_hours,
+        assigned_to: form.assigned_to,
+        goal_id: form.goal_id,
         status: 'open',
-        type: form.type || null,
-        customer_id: form.customer_id || null,
-        related_to_type: form.related_to_type || null,
-        related_to_id: form.related_to_id || null,
+        type: form.type,
+        customer_id: form.customer_id,
+        related_to_type: form.related_to_type,
+        related_to_id: form.related_to_id,
       });
 
       // 2. Crear subtareas (heredan responsable del padre; salvo reasignación explícita)

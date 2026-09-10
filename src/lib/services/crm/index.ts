@@ -213,16 +213,8 @@ export type {
 } from './expansionService';
 
 // FASE 5 - Escala del CRM
-export { followupEngineService, default as followupEngineServiceDefault } from './followupEngineService';
-export type {
-  AutomationTrigger,
-  AutomationAction,
-  AutomationActions,
-  Automation,
-  TriggerContext,
-  ExecutionResult,
-  RunResult,
-} from './followupEngineService';
+// F0: `followupEngineService` y `/api/crm/followup/run` eliminados (fail-open, C-C/C24).
+// El único motor de automatización es `automationService` + `sequenceService` (D2).
 
 export {
   getReferralPrograms,
@@ -295,12 +287,12 @@ export type {
   DocumentRelatedType,
 } from './documentService';
 
-export { getTimeline } from './timelineService';
+export { getTimeline, encodeCursor, decodeCursor, TimelineEntityNotFoundError } from './timelineService';
 export type {
   TimelineEntityType,
-  TimelineEntryType,
+  TimelineKind,
   TimelineEntry,
-  TimelineFilters,
+  TimelineQuery,
   TimelineResult,
 } from './timelineService';
 

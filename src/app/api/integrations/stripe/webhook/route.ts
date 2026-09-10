@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
             event_id: event.id,
             type: event.type,
             livemode: event.livemode,
-            data: event.data?.object ? { id: (event.data.object as Record<string, unknown>).id } : {},
+            data: event.data?.object ? { id: (event.data.object as unknown as Record<string, unknown>).id } : {},
             verified: true,
           },
           status: 'processed',

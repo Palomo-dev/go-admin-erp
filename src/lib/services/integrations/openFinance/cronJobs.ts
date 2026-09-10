@@ -133,8 +133,8 @@ async function getOrganizationsWithActiveLinks(): Promise<number[]> {
   }
 
   const ids = new Set<number>();
-  for (const row of (data || []) as OrganizationRow[]) {
-    ids.add(row.id);
+  for (const row of (data || []) as { organization_id: number }[]) {
+    ids.add(row.organization_id);
   }
   return Array.from(ids);
 }

@@ -22,6 +22,8 @@ import {
   Minus,
   FileText,
 } from 'lucide-react';
+import { LoadErrorState } from '@/components/common/LoadErrorState';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 
 interface SaludViewProps {
   organizationId: number;
@@ -62,6 +64,9 @@ const BAND_CONFIG: Record<HealthBand, { color: string; bg: string; label: string
 export function SaludView({ organizationId }: SaludViewProps) {
   const [scores, setScores] = useState<HealthScoreResult[]>([]);
   const [loading, setLoading] = useState(true);
+  // El toast desaparece; sin esto la pantalla quedaba en «0 clientes» como si
+  // no hubiera datos cuando en realidad la carga había fallado.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -72,16 +77,13 @@ export function SaludView({ organizationId }: SaludViewProps) {
       setLoading(true);
     }
     setIsRefreshing(true);
+    setLoadError(null);
     try {
       const data = await healthScoreService.getAllHealthScores(organizationId);
       setScores(data);
     } catch (err) {
-      console.error('Error cargando scores de salud:', err);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los scores de salud',
-        variant: 'destructive',
-      });
+      logError('[SaludView] cargar scores de salud', err);
+      setLoadError(describeError(err));
     } finally {
       isFirstLoadRef.current = false;
       setLoading(false);
@@ -160,6 +162,15 @@ export function SaludView({ organizationId }: SaludViewProps) {
           </Button>
         </div>
       </div>
+
+      {loadError && (
+        <LoadErrorState
+          title="No se pudo cargar la salud de clientes"
+          message={loadError}
+          onRetry={() => void loadScores()}
+          isRetrying={isRefreshing}
+        />
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">

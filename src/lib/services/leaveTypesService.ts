@@ -154,12 +154,24 @@ export class LeaveTypesService {
     const original = await this.getById(id);
     if (!original) throw new Error('Tipo de ausencia no encontrado');
 
-    const { id: _, created_at, updated_at, ...rest } = original;
-
+    // create() ya asigna organization_id e is_active; el DTO usa undefined donde
+    // la fila trae null.
     return this.create({
-      ...rest,
-      code: `${rest.code}_COPY`,
-      name: `${rest.name} (Copia)`,
+      code: `${original.code}_COPY`,
+      name: `${original.name} (Copia)`,
+      description: original.description ?? undefined,
+      paid: original.paid,
+      affects_attendance: original.affects_attendance,
+      requires_document: original.requires_document,
+      requires_approval: original.requires_approval,
+      max_days_per_year: original.max_days_per_year ?? undefined,
+      max_consecutive_days: original.max_consecutive_days ?? undefined,
+      min_notice_days: original.min_notice_days,
+      accrues_monthly: original.accrues_monthly,
+      accrual_rate: original.accrual_rate ?? undefined,
+      can_carry_over: original.can_carry_over,
+      max_carry_over_days: original.max_carry_over_days ?? undefined,
+      color: original.color ?? undefined,
     });
   }
 

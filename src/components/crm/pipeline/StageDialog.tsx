@@ -12,7 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Plus, Save, Trophy, XCircle } from "lucide-react";
+// F6 (ronda 2): la pestaña vivía en `StageConfigDialog`, que se quedó sin
+// importadores cuando F2 borró `KanbanColumn`. Se monta aquí, que es el diálogo
+// que abre de verdad el engranaje «Configurar etapa» del tablero.
+import { StageAgentTab } from "./StageAgentTab";
 
 export interface StageDialogValues {
   name: string;
@@ -29,6 +34,12 @@ interface StageDialogProps {
   mode: "create" | "edit";
   initialValues?: Partial<StageDialogValues>;
   onSubmit: (values: StageDialogValues) => Promise<void>;
+  /**
+   * Id de la etapa que se edita. Con él se muestra la pestaña «Agente IA»
+   * (qué debe conseguir el agente al llamar a los contactos de esta etapa).
+   * Al crear una etapa todavía no existe, así que la pestaña no aparece.
+   */
+  stageId?: string;
 }
 
 export function StageDialog({
@@ -37,6 +48,7 @@ export function StageDialog({
   mode,
   initialValues,
   onSubmit,
+  stageId,
 }: StageDialogProps) {
   const [name, setName] = useState("");
   const [probability, setProbability] = useState<number | null>(null);
@@ -80,16 +92,9 @@ export function StageDialog({
   };
 
   const isEdit = mode === "edit";
+  const showAgentTab = isEdit && Boolean(stageId);
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">
-            {isEdit ? "Configurar etapa" : "Nueva Etapa"}
-          </DialogTitle>
-        </DialogHeader>
-
+  const stageForm = (
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
@@ -235,6 +240,31 @@ export function StageDialog({
             </Button>
           </DialogFooter>
         </form>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">
+            {isEdit ? "Configurar etapa" : "Nueva Etapa"}
+          </DialogTitle>
+        </DialogHeader>
+
+        {showAgentTab ? (
+          <Tabs defaultValue="etapa" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="etapa">Etapa</TabsTrigger>
+              <TabsTrigger value="agente">Agente IA</TabsTrigger>
+            </TabsList>
+            <TabsContent value="etapa">{stageForm}</TabsContent>
+            <TabsContent value="agente" className="pt-4">
+              <StageAgentTab stageId={stageId as string} />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          stageForm
+        )}
       </DialogContent>
     </Dialog>
   );

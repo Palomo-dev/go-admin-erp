@@ -1,394 +1,139 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase/config";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { 
-  Settings, 
-  Bell, 
-  CheckSquare, 
-  MessageSquare,
-  CalendarClock,
-  AlertCircle
-} from "lucide-react";
-import { TableSkeleton } from "@/components/common/PageSkeletons";
-import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
+/**
+ * Pestaña "Automatización" del pipeline (FASE-08 §5.1).
+ *
+ * Antes leía y ESCRIBÍA la tabla legacy `automations` con el cliente de
+ * navegador y mostraba "estará disponible próximamente". Ahora muestra las
+ * reglas reales de `automation_rules` que aplican a este pipeline, leídas por
+ * la ruta de servidor `/api/crm/automation-rules`, y enlaza al editor completo
+ * en `/app/crm/automatizaciones`. El navegador no escribe ninguna tabla.
+ *
+ * Contención (tester r2 §5): ocultar la entrada del menú NO bastaba, porque
+ * esta vista está montada en el pipeline y sus enlaces dejaban entrar a la
+ * página igual. Ahora el enlace se muestra SOLO si la entrada
+ * `automatizaciones` de `src/config/crmNav.ts` está `enabled`, así que la
+ * casilla del menú es el único interruptor real de la página.
+ */
+
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Zap, ExternalLink, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
+import { CRM_NAV } from '@/config/crmNav';
+
+/** La página de automatizaciones solo es alcanzable si el menú la habilita. */
+const AUTOMATIONS_PAGE_ENABLED = CRM_NAV.some((i) => i.key === 'automatizaciones' && i.enabled);
 
 interface AutomationsViewProps {
   pipelineId: string;
 }
 
-interface AutomationSettings {
-  id?: string;
-  taskCreation: boolean;
-  notifications: boolean;
-  statusUpdate: boolean;
-  activityLog: boolean;
-  reminders: boolean;
-  name?: string;
-  description?: string;
-  active?: boolean;
-  trigger_json?: any;
-  actions_json?: any;
+interface RuleRow {
+  id: string;
+  name: string;
+  description: string | null;
+  trigger_type: string;
+  pipeline_id: string | null;
+  is_active: boolean;
+  actions: { type: string }[] | null;
+  last_run_at: string | null;
+  runs_count: number | null;
 }
 
 const AutomationsView: React.FC<AutomationsViewProps> = ({ pipelineId }) => {
-  const [loading, setLoading] = useState<boolean>(true);
-  const [organizationId, setOrganizationId] = useState<number | null>(null);
-  const [automationSettings, setAutomationSettings] = useState<AutomationSettings>({
-    taskCreation: true,
-    notifications: true,
-    statusUpdate: true,
-    activityLog: true,
-    reminders: false
-  });
+  const [rules, setRules] = useState<RuleRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Obtener el ID de la organización usando la función canónica de useOrganization
   useEffect(() => {
-    const orgId = getOrganizationIdFromContext();
-    if (orgId) {
-      setOrganizationId(orgId);
-    } else if (process.env.NODE_ENV !== 'production') {
-      console.warn('No se pudo obtener el ID de organización desde el contexto');
-    }
-  }, []);
-  
-  // Cargar configuraciones de automatización desde Supabase
-  useEffect(() => {
-    const loadAutomationSettings = async () => {
-      if (!pipelineId || !organizationId) return;
-      
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        setLoading(true);
-        
-        // Intenta obtener las configuraciones de automatización desde la tabla 'automations'
-        const { data, error } = await supabase
-          .from('automations')
-          .select('*')
-          .eq('organization_id', organizationId)
-          .order('created_at', { ascending: false });
-          
-        if (error) {
-          console.error('Error al cargar configuraciones de automatización:', error);
-        } else if (data && data.length > 0) {
-          // Si encontramos datos, intentamos extraer la configuración
-          // Buscamos las automatizaciones relacionadas con el pipeline actual
-          const pipelineAutomations = data.filter(auto => {
-            const triggerData = auto.trigger_json || {};
-            return triggerData.pipeline_id === pipelineId;
-          });
-          
-          if (pipelineAutomations.length > 0) {
-            // Extraemos datos de la primera automatización del pipeline
-            const autoData = pipelineAutomations[0];
-            const actionsData = autoData.actions_json || {};
-            
-            setAutomationSettings({
-              id: autoData.id,
-              name: autoData.name,
-              description: autoData.description,
-              active: autoData.active || false,
-              taskCreation: actionsData.create_tasks || true,
-              notifications: actionsData.send_notifications || true,
-              statusUpdate: actionsData.update_status || true,
-              activityLog: actionsData.log_activity || true,
-              reminders: actionsData.send_reminders || false,
-              trigger_json: autoData.trigger_json,
-              actions_json: autoData.actions_json
-            });
-          } else {
-            console.log('No se encontraron automatizaciones específicas para este pipeline, usando valores por defecto');
-          }
-        } else {
-          console.log('No se encontraron configuraciones de automatización, usando valores por defecto');
-        }
+        const res = await fetch('/api/crm/automation-rules', { cache: 'no-store' });
+        const body = (await res.json().catch(() => ({}))) as { data?: RuleRow[]; error?: string };
+        if (!res.ok) throw new Error(body.error || 'No se pudieron cargar las reglas');
+        if (!cancelled) setRules(body.data ?? []);
       } catch (err) {
-        console.error('Error inesperado al cargar configuraciones:', err);
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Error desconocido');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
-    
-    loadAutomationSettings();
-  }, [pipelineId, organizationId]);
+    void load();
+    return () => { cancelled = true; };
+  }, []);
 
-  // Manejador para cambios de configuración
-  const handleSettingChange = async (setting: keyof AutomationSettings) => {
-    // Actualizar estado local primero para UI responsiva
-    const newValue = !automationSettings[setting];
-    
-    setAutomationSettings(prev => ({
-      ...prev,
-      [setting]: newValue
-    }));
-    
-    // No continuar si no tenemos ID de organización o pipeline
-    if (!organizationId || !pipelineId) {
-      console.error('No se puede guardar configuración: falta ID de organización o pipeline');
-      return;
-    }
-    
-    try {
-      // Mapeo de configuraciones a estructura JSON de actions_json
-      const actionsJSON = {
-        create_tasks: automationSettings.taskCreation,
-        send_notifications: automationSettings.notifications,
-        update_status: automationSettings.statusUpdate,
-        log_activity: automationSettings.activityLog,
-        send_reminders: automationSettings.reminders
-      };
-      
-      // Actualizar el campo específico que cambió
-      // Solo mapeamos las configuraciones de automatizaciones que se modifican en la UI
-      const settingMappings: Partial<Record<keyof AutomationSettings, keyof typeof actionsJSON>> = {
-        taskCreation: 'create_tasks',
-        notifications: 'send_notifications',
-        statusUpdate: 'update_status',
-        activityLog: 'log_activity',
-        reminders: 'send_reminders'
-      };
-      
-      const mappedKey = settingMappings[setting];
-      if (mappedKey) {
-        actionsJSON[mappedKey] = newValue;
-      }
-      
-      // Si tenemos un ID de automatización, actualizamos ese registro
-      if (automationSettings.id) {
-        const { error: updateError } = await supabase
-          .from('automations')
-          .update({ 
-            actions_json: actionsJSON,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', automationSettings.id);
-          
-        if (updateError) {
-          throw new Error(`Error al actualizar configuración: ${updateError.message}`);
-        }
-      } else {
-        // Si no existe, creamos un nuevo registro
-        const triggerJSON = {
-          pipeline_id: pipelineId,
-          event_type: 'pipeline_change',
-          conditions: []
-        };
-        
-        const newRecord = {
-          organization_id: organizationId,
-          name: `Automatización para Pipeline ${pipelineId}`,
-          description: 'Configuración de automatización del pipeline',
-          active: true,
-          trigger_json: triggerJSON,
-          actions_json: actionsJSON,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        
-        const { data: insertedData, error: insertError } = await supabase
-          .from('automations')
-          .insert([newRecord])
-          .select('id');
-          
-        if (insertError) {
-          throw new Error(`Error al crear configuración: ${insertError.message}`);
-        }
-        
-        // Actualizar el ID en el estado local
-        if (insertedData && insertedData[0]) {
-          setAutomationSettings(prev => ({
-            ...prev,
-            id: insertedData[0].id
-          }));
-        }
-      }
-    } catch (err) {
-      console.error('Error al guardar configuración:', err);
-      // Revertir cambio local en caso de error
-      setAutomationSettings(prev => ({
-        ...prev,
-        [setting]: !newValue
-      }));
-    }
-  };
-
-  // Mostrar esqueleto mientras carga
-  if (loading) {
-    return (
-      <div className="p-3 sm:p-4">
-        <TableSkeleton columns={4} rows={4} />
-      </div>
-    );
-  }
+  const visible = useMemo(
+    () => rules.filter((r) => !r.pipeline_id || r.pipeline_id === pipelineId),
+    [rules, pipelineId],
+  );
 
   return (
-    <div className="p-3 sm:p-4 space-y-4 sm:space-y-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Sección de configuraciones de automatización */}
-        <Card className="mb-4 sm:mb-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardHeader className="p-4 sm:p-6">
-            <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-blue-500 dark:text-blue-400" />
-              <CardTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">Configuraciones de automatización</CardTitle>
-            </div>
-            <CardDescription className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">
-              Configura las acciones automáticas que ocurrirán cuando las oportunidades cambien de etapa
+    <Card className="border-gray-200 dark:border-gray-700">
+      <CardHeader>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
+              <Zap className="h-5 w-5" aria-hidden="true" /> Automatizaciones de este pipeline
+            </CardTitle>
+            <CardDescription>
+              Las ejecuta la cola del servidor cuando ocurre el evento; el historial de cada ejecución queda en
+              Automatizaciones.
             </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-            {/* Creación de tareas */}
-            <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
-              <div className="space-y-1 flex-1">
-                <div className="flex items-center gap-2">
-                  <CheckSquare className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                  <Label htmlFor="task-creation" className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base">
-                    Creación automática de tareas
-                  </Label>
-                </div>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Crea tareas de seguimiento automáticamente cuando una oportunidad cambia de etapa
-                </p>
-              </div>
-              <Switch
-                id="task-creation"
-                checked={automationSettings.taskCreation}
-                onCheckedChange={() => handleSettingChange('taskCreation')}
-                className="mt-2 sm:mt-0"
-              />
-            </div>
-            
-            <Separator className="bg-gray-200 dark:bg-gray-700" />
-            
-            {/* Notificaciones */}
-            <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
-              <div className="space-y-1 flex-1">
-                <div className="flex items-center gap-2">
-                  <Bell className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                  <Label htmlFor="notifications" className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base">
-                    Notificaciones automáticas
-                  </Label>
-                </div>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Envía notificaciones a los usuarios responsables cuando hay cambios en las oportunidades
-                </p>
-              </div>
-              <Switch
-                id="notifications"
-                checked={automationSettings.notifications}
-                onCheckedChange={() => handleSettingChange('notifications')}
-                className="mt-2 sm:mt-0"
-              />
-            </div>
-            
-            <Separator className="bg-gray-200 dark:bg-gray-700" />
-            
-            {/* Actualización de estados */}
-            <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
-              <div className="space-y-1 flex-1">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                  <Label htmlFor="status-update" className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base">
-                    Actualización de estados
-                  </Label>
-                </div>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Actualiza automáticamente el estado de las oportunidades según la etapa
-                </p>
-              </div>
-              <Switch
-                id="status-update"
-                checked={automationSettings.statusUpdate}
-                onCheckedChange={() => handleSettingChange('statusUpdate')}
-                className="mt-2 sm:mt-0"
-              />
-            </div>
-            
-            <Separator className="bg-gray-200 dark:bg-gray-700" />
-            
-            {/* Registro de actividad */}
-            <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
-              <div className="space-y-1 flex-1">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                  <Label htmlFor="activity-log" className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base">
-                    Registro de actividad
-                  </Label>
-                </div>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Registra todas las actividades y cambios relacionados con las oportunidades
-                </p>
-              </div>
-              <Switch
-                id="activity-log"
-                checked={automationSettings.activityLog}
-                onCheckedChange={() => handleSettingChange('activityLog')}
-                className="mt-2 sm:mt-0"
-              />
-            </div>
-            
-            <Separator className="bg-gray-200 dark:bg-gray-700" />
-            
-            {/* Recordatorios */}
-            <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
-              <div className="space-y-1 flex-1">
-                <div className="flex items-center gap-2">
-                  <CalendarClock className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                  <Label htmlFor="reminders" className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base">
-                    Recordatorios automáticos
-                  </Label>
-                </div>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Envía recordatorios para seguimiento de oportunidades inactivas
-                </p>
-              </div>
-              <Switch
-                id="reminders"
-                checked={automationSettings.reminders}
-                onCheckedChange={() => handleSettingChange('reminders')}
-                className="mt-2 sm:mt-0"
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 border-t border-gray-200 dark:border-gray-700 pt-4 p-4 sm:p-6">
-            <Button variant="outline" className="w-full sm:w-auto min-h-[44px] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700">
-              Cancelar
+          </div>
+          {AUTOMATIONS_PAGE_ENABLED && (
+            <Button asChild variant="outline">
+              <Link href="/app/crm/automatizaciones">
+                Gestionar <ExternalLink className="ml-1.5 h-4 w-4" aria-hidden="true" />
+              </Link>
             </Button>
-            <Button className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white">
-              Guardar cambios
-            </Button>
-          </CardFooter>
-        </Card>
-        
-        {/* Sección de automatizaciones específicas por etapa */}
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardHeader className="p-4 sm:p-6">
-            <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-blue-500 dark:text-blue-400" />
-              <CardTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">Automatizaciones por etapa</CardTitle>
-            </div>
-            <CardDescription className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">
-              Configura acciones específicas para cada etapa del pipeline
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6">
-            <p className="text-center py-6 sm:py-8 text-sm sm:text-base text-gray-600 dark:text-gray-400">
-              La configuración avanzada por etapa estará disponible próximamente
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <TableSkeleton rows={3} />
+        ) : error ? (
+          <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{error}</span>
+          </div>
+        ) : visible.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {AUTOMATIONS_PAGE_ENABLED ? (
+              <>
+                Este pipeline todavía no tiene reglas. Crea la primera desde{' '}
+                <Link href="/app/crm/automatizaciones" className="underline">Automatizaciones</Link>.
+              </>
+            ) : (
+              <>Este pipeline todavía no tiene reglas. El editor de automatizaciones aún no está habilitado.</>
+            )}
+          </p>
+        ) : (
+          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+            {visible.map((rule) => (
+              <li key={rule.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 dark:text-gray-100">{rule.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {rule.trigger_type} · {(rule.actions ?? []).length} acción(es) · {rule.runs_count ?? 0} ejecuciones
+                  </p>
+                </div>
+                <Badge variant={rule.is_active ? 'default' : 'secondary'}>
+                  {rule.is_active ? 'Activa' : 'Inactiva'}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

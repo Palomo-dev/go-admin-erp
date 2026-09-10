@@ -25,22 +25,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Se esperaba un array de eventos' }, { status: 400 });
     }
 
-    // Verificar firma ECDSA del webhook
+    // F0 (C6 msg): firma ECDSA obligatoria (fail-closed). Sin clave configurada
+    // o sin cabeceras de firma → 403.
     const signature = request.headers.get('X-Twilio-Email-Event-Webhook-Signature') || '';
     const timestamp = request.headers.get('X-Twilio-Email-Event-Webhook-Timestamp') || '';
 
-    if (signature && timestamp) {
-      const isValid = sendgridService.verifyWebhookSignature(signature, timestamp, body);
-      if (!isValid) {
-        console.error('[SendGrid Webhook] Firma ECDSA inválida');
-        return NextResponse.json({ error: 'Firma inválida' }, { status: 401 });
-      }
+    if (!process.env.SENDGRID_WEBHOOK_VERIFICATION_KEY) {
+      console.error('[SendGrid Webhook] SENDGRID_WEBHOOK_VERIFICATION_KEY no configurada. Rechazado.');
+      return NextResponse.json({ error: 'signature_not_configured' }, { status: 403 });
+    }
+    if (!signature || !timestamp) {
+      console.warn('[SendGrid Webhook] Faltan cabeceras de firma. Rechazado.');
+      return NextResponse.json({ error: 'signature_missing' }, { status: 403 });
+    }
+    const isValid = sendgridService.verifyWebhookSignature(signature, timestamp, body);
+    if (!isValid) {
+      console.error('[SendGrid Webhook] Firma ECDSA inválida');
+      return NextResponse.json({ error: 'invalid_signature' }, { status: 403 });
     }
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    // Buscar conexión de SendGrid por el primer evento
-    // Nota: Los eventos no traen org_id, se busca por conexiones activas de sendgrid_email
+    // Conexiones SendGrid activas (los eventos no traen org_id)
     const { data: connections } = await supabaseAdmin
       .from('integration_connections')
       .select(`
@@ -57,11 +63,11 @@ export async function POST(request: NextRequest) {
 
     // Procesar cada evento
     for (const event of events) {
-      // Intentar encontrar la conexión correcta buscando por sg_message_id
-      // en integration_events previos (email.send outbound)
-      let matchedConnection = connections[0]; // Default a primera conexión
+      // F0 (C6 msg): la conexión se resuelve SOLO por el evento email.send previo
+      // (sg_message_id). Sin correspondencia → se ignora el evento (nunca connections[0]).
+      let matchedConnection: (typeof connections)[number] | null = null;
 
-      if (connections.length > 1 && event.sg_message_id) {
+      if (event.sg_message_id) {
         const { data: prevEvent } = await supabaseAdmin
           .from('integration_events')
           .select('connection_id')
@@ -70,9 +76,13 @@ export async function POST(request: NextRequest) {
           .maybeSingle();
 
         if (prevEvent) {
-          const found = connections.find((c) => c.id === prevEvent.connection_id);
-          if (found) matchedConnection = found;
+          matchedConnection = connections.find((c) => c.id === prevEvent.connection_id) ?? null;
         }
+      }
+
+      if (!matchedConnection) {
+        console.warn('[SendGrid Webhook] Evento sin conexión resoluble; ignorado', { event: event.event, sg_message_id: event.sg_message_id });
+        continue;
       }
 
       // Registrar evento en integration_events

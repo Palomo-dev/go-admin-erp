@@ -7,6 +7,8 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency } from '@/utils/Utils';
 import { toastError } from '@/components/ui/use-toast';
+import { LoadErrorState } from '@/components/common/LoadErrorState';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 import ModuloSection from '../ModuloSection';
 import {
   crmDashboardService,
@@ -123,6 +125,10 @@ export default function CrmSection() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
   const [orgInfo, setOrgInfo] = useState<ExportOrganizationInfo | null>(null);
+  // Con la base caída el servicio devolvía ceros y el panel parecía vacío;
+  // ahora el fallo se muestra con botón de reintentar.
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const filters = useMemo(() => ({ ...getDefaultFilters(), branchId: branchFilter }), [branchFilter]);
 
@@ -137,6 +143,7 @@ export default function CrmSection() {
 
     async function loadAll() {
       setIsLoading(true);
+      setLoadError(null);
       try {
         const [dashboardData, pipelinesData, orgData] = await Promise.all([
           crmDashboardService.getDashboardData(organizationId, filters),
@@ -173,19 +180,19 @@ export default function CrmSection() {
         }
       } catch (err) {
         if (cancelled) return;
-        console.error('Error cargando dashboard de CRM:', err);
-        toastError('Error', 'No se pudo cargar el dashboard de CRM');
+        logError('[CrmSection] cargar dashboard de CRM', err);
+        setLoadError(describeError(err));
       } finally {
         if (!cancelled) setIsLoading(false);
       }
     }
 
-    loadAll();
+    void loadAll();
 
     return () => {
       cancelled = true;
     };
-  }, [filters]);
+  }, [filters, reloadKey]);
 
   const handlePipelineChange = useCallback(async (pipelineId: string | null) => {
     setSelectedPipelineId(pipelineId);
@@ -199,8 +206,8 @@ export default function CrmSection() {
       );
       setFunnel(funnelData);
     } catch (err) {
-      console.error('Error recargando embudo de CRM:', err);
-      toastError('Error', 'No se pudo recargar el embudo de ventas');
+      logError('[CrmSection] recargar embudo de CRM', err);
+      toastError('Error', `No se pudo recargar el embudo de ventas: ${describeError(err)}`);
     }
   }, [filters]);
 
@@ -224,6 +231,14 @@ export default function CrmSection() {
       metricasContent={<MetricasView />}
     >
       <div className="space-y-6">
+        {loadError && (
+          <LoadErrorState
+            title="No se pudo cargar el panel de CRM"
+            message={loadError}
+            onRetry={() => setReloadKey((k) => k + 1)}
+            isRetrying={isLoading}
+          />
+        )}
         <CRMKPICards data={kpis} isLoading={isLoading} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

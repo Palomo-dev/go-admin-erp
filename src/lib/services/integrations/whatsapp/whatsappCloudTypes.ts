@@ -128,7 +128,7 @@ export interface WhatsAppWebhookEntry {
 
 export interface WhatsAppWebhookChange {
   value: WhatsAppWebhookValue;
-  field: 'messages' | 'message_template_status_update';
+  field: 'messages' | 'message_template_status_update' | 'message_template_quality_update' | string;
 }
 
 export interface WhatsAppWebhookValue {

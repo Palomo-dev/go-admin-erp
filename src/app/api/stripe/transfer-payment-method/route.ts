@@ -11,6 +11,13 @@ import { stripe } from '@/lib/stripe/server';
  */
 export async function POST(request: NextRequest) {
   try {
+    if (!stripe) {
+      return NextResponse.json(
+        { error: 'Stripe no está configurado. Verifica STRIPE_SECRET_KEY.' },
+        { status: 500 }
+      );
+    }
+
     const { sourceCustomerId, targetCustomerId } = await request.json();
 
     if (!sourceCustomerId || !targetCustomerId) {
@@ -93,6 +100,13 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    if (!stripe) {
+      return NextResponse.json(
+        { error: 'Stripe no está configurado. Verifica STRIPE_SECRET_KEY.' },
+        { status: 500 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const email = searchParams.get('email');
 

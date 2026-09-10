@@ -7,7 +7,7 @@ export { openFinanceService } from './openFinanceService';
 export { consentService, ConsentService } from './consentService';
 export type { CreateConsentInput, ConsentStats } from './consentService';
 export { transactionSyncService, TransactionSyncService } from './transactionSyncService';
-export { aiMatchingService, AiMatchingService } from './aiMatchingService';
+export { aiMatchingService } from './aiMatchingService';
 export type { BankTransaction, PaymentCandidate, MatchScore, SuggestedMatch } from './aiMatchingService';
 export { balanceService, BalanceService } from './balanceService';
 export type { RealTimeBalance, BalanceValidation, BalanceHistoryEntry } from './balanceService';
@@ -30,7 +30,7 @@ export type {
   BalanceDiscrepancy,
   AnomalySummary,
 } from './anomalyDetectionService';
-export { cronJobs, CronJobs } from './cronJobs';
+export { cronJobs, CronJobsService } from './cronJobs';
 export type {
   SyncReport,
   BalanceReport,

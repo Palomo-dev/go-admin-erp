@@ -19,6 +19,7 @@ import { Loader2 } from 'lucide-react'
 import InformacionBasica from '../nuevo/InformacionBasica'
 import PrecionyCostos from '../nuevo/PreciosYCostos'
 import Inventario from '../nuevo/Inventario'
+import Envio from '../nuevo/Envio'
 import Imagenes from '../nuevo/Imagenes'
 import Variantes from '../nuevo/Variantes'
 import Notas from '../nuevo/Notas'
@@ -66,6 +67,12 @@ const productoSchema = z.object({
   category_ids: z.array(z.number()).optional(),
   has_variants: z.boolean().optional(),
   variants: z.array(z.any()).optional(),
+
+  // Envío: peso real y dimensiones para cotizar guías con transportadora
+  weight_kg: z.number().nullable().optional(),
+  length_cm: z.number().nullable().optional(),
+  width_cm: z.number().nullable().optional(),
+  height_cm: z.number().nullable().optional(),
 
   // Trazabilidad de seriales
   track_serial: z.boolean().optional(),
@@ -133,7 +140,11 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
       track_serial: false,
       serial_pattern: null,
       auto_generate_serial: false,
-      warranty_months: null
+      warranty_months: null,
+      weight_kg: null,
+      length_cm: null,
+      width_cm: null,
+      height_cm: null
     }
   });
 
@@ -378,7 +389,11 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
           track_serial: producto.track_serial || false,
           serial_pattern: producto.serial_pattern || null,
           auto_generate_serial: producto.auto_generate_serial || false,
-          warranty_months: producto.warranty_months ?? null
+          warranty_months: producto.warranty_months ?? null,
+          weight_kg: producto.weight_kg ?? null,
+          length_cm: producto.length_cm ?? null,
+          width_cm: producto.width_cm ?? null,
+          height_cm: producto.height_cm ?? null
         });
         
       } catch (error: any) {
@@ -452,6 +467,10 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
         serial_pattern: data.serial_pattern || null,
         auto_generate_serial: data.auto_generate_serial || false,
         warranty_months: data.warranty_months ?? null,
+        weight_kg: data.weight_kg ?? null,
+        length_cm: data.length_cm ?? null,
+        width_cm: data.width_cm ?? null,
+        height_cm: data.height_cm ?? null,
         updated_at: new Date().toISOString(),
       };
 
@@ -1084,6 +1103,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
                 <InformacionBasica formData={formData} updateFormData={updateFormData} />
                 <PrecionyCostos formData={formData} updateFormData={updateFormData} />
                 <Inventario formData={formData} updateFormData={updateFormData} />
+                <Envio formData={formData} updateFormData={updateFormData} />
                 <Imagenes formData={formData} updateFormData={updateFormData} />
                 <Variantes formData={formData} updateFormData={updateFormData} />
                 

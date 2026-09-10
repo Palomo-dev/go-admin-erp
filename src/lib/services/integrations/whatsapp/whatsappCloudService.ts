@@ -17,6 +17,9 @@ import {
   formatPhoneE164,
   WHATSAPP_CREDENTIAL_KEYS,
 } from './whatsappCloudConfig';
+import { applyTemplateStatusUpdate, parseTemplateStatusUpdate } from '@/lib/services/crm/whatsapp/webhookTemplateStatus';
+import { extractInboundText, handleWhatsAppInbound, inboundContentType } from '@/lib/services/crm/whatsapp/inboundService';
+import { applyMessageEventToCampaign } from '@/lib/services/crm/whatsapp/campaignEvents';
 import type {
   WhatsAppCloudCredentials,
   WhatsAppSendPayload,
@@ -32,6 +35,24 @@ import type {
   WhatsAppBusinessProfile,
   WhatsAppValidateResult,
 } from './whatsappCloudTypes';
+
+/**
+ * El INSERT de un mensaje entrante falló. Se propaga (no se traga con un
+ * `console.error`) para que el webhook responda error y el fallo sea visible:
+ * un inbound perdido desactiva la ventana de 24 h, el opt-out por palabra
+ * clave y la atribución de respuestas a campañas.
+ */
+export class WhatsAppInboundPersistError extends Error {
+  code = 'INBOUND_NOT_PERSISTED';
+  externalMessageId: string;
+  cause?: unknown;
+  constructor(externalMessageId: string, detail: string, cause?: unknown) {
+    super(`No se pudo guardar el mensaje entrante ${externalMessageId}: ${detail}`);
+    this.name = 'WhatsAppInboundPersistError';
+    this.externalMessageId = externalMessageId;
+    this.cause = cause;
+  }
+}
 
 // Supabase admin client para operaciones server-side
 function getSupabaseAdmin() {
@@ -336,16 +357,32 @@ class WhatsAppCloudService {
   // Webhook: Procesamiento de mensajes entrantes
   // ──────────────────────────────────────────────
 
-  /** Procesar payload completo del webhook y guardar en BD */
+  /**
+   * Procesar payload completo del webhook y guardar en BD.
+   * Los mensajes que no se puedan PERSISTIR no se silencian: se procesa el
+   * resto del lote y al final se lanza un error con todos los fallos, para que
+   * la ruta del webhook devuelva 5xx y Meta reintente.
+   */
   async processWebhookPayload(payload: WhatsAppWebhookPayload): Promise<void> {
     const supabase = getSupabaseAdmin();
+    const failures: string[] = [];
 
     for (const entry of payload.entry) {
       for (const change of entry.changes) {
+        // F16 (B15): estado/calidad de plantillas HSM → templates.metadata
+        if (change.field === 'message_template_status_update' || change.field === 'message_template_quality_update') {
+          const update = parseTemplateStatusUpdate(change.field, change.value);
+          if (update) {
+            const r = await applyTemplateStatusUpdate(update, entry.id ?? null, supabase);
+            console.log('[WhatsApp Webhook] template update', { field: change.field, event: update.event, name: update.message_template_name, ...r });
+          }
+          continue;
+        }
         if (change.field !== 'messages') continue;
 
         const value = change.value;
-        const phoneNumberId = value.metadata.phone_number_id;
+        const phoneNumberId = value.metadata?.phone_number_id;
+        if (!phoneNumberId) continue;
 
         // Encontrar canal por phone_number_id
         const channelInfo = await this.findChannelByPhoneNumberId(phoneNumberId);
@@ -357,13 +394,17 @@ class WhatsAppCloudService {
         // Procesar mensajes entrantes
         if (value.messages) {
           for (const msg of value.messages) {
-            await this.processIncomingMessage(
-              supabase,
-              channelInfo.channelId,
-              channelInfo.organizationId,
-              msg,
-              value
-            );
+            try {
+              await this.processIncomingMessage(
+                supabase,
+                channelInfo.channelId,
+                channelInfo.organizationId,
+                msg,
+                value
+              );
+            } catch (err) {
+              failures.push(err instanceof Error ? err.message : String(err));
+            }
           }
         }
 
@@ -374,6 +415,10 @@ class WhatsAppCloudService {
           }
         }
       }
+    }
+
+    if (failures.length) {
+      throw new WhatsAppInboundPersistError('lote', `${failures.length} mensaje(s) entrante(s) no se pudieron guardar :: ${failures.join(' | ')}`);
     }
   }
 
@@ -406,27 +451,67 @@ class WhatsAppCloudService {
       customerId
     );
 
-    // Determinar content_type y payload
-    const { contentType, messagePayload } = this.extractMessageContent(message);
+    // Determinar payload (tipo Meta) y content/content_type con la shape viva (F16, cierra C20/A2)
+    const { contentType: metaType, messagePayload } = this.extractMessageContent(message);
+    const content = extractInboundText(message as Parameters<typeof extractInboundText>[0]) || '[mensaje]';
+    const contentType = inboundContentType(message.type);
 
-    // Insertar mensaje
-    await supabase.from('messages').insert({
-      conversation_id: conversationId,
+    // Idempotencia por external_message_id (Meta reintenta webhooks)
+    const { data: dup } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('external_message_id', message.id)
+      .limit(1)
+      .maybeSingle();
+    if (dup) return;
+
+    const insertRow = {
       organization_id: organizationId,
-      sender_type: 'customer',
-      sender_id: null,
-      role: 'user',
+      conversation_id: conversationId,
+      channel_id: channelId,
+      direction: 'inbound',
+      role: 'customer',
+      sender_customer_id: customerId,
       content_type: contentType,
-      payload: messagePayload,
-      external_id: message.id,
-      status: 'received',
-    });
+      content,
+      payload: { ...messagePayload, meta_type: metaType, raw: message, phone: senderPhone, wa_id: senderPhone },
+      external_message_id: message.id,
+      is_read: false,
+      metadata: { wa_id: senderPhone, profile_name: senderName, source: 'whatsapp_cloud', timestamp: message.timestamp },
+    };
+    const { data: inserted, error: insertError } = await supabase.from('messages').insert(insertRow).select('id').single();
+    if (insertError || !inserted) {
+      // NO se traga el fallo (tester r1 · fallo 1): este INSERT llevaba tiempo
+      // reventando en silencio por el trigger `fn_update_customer_channel_identity`
+      // (inserta identity_type='whatsapp', valor que el CHECK de
+      // customer_channel_identities no admite) y el resultado era que NINGÚN
+      // mensaje entrante de la Cloud API se guardaba: sin `last_inbound_at` no
+      // hay ventana de 24 h, ni opt-out por palabra clave, ni atribución de
+      // respuestas a campañas. Se registra con todo el detalle y se propaga
+      // para que el webhook devuelva error y Meta reintente.
+      const detail = insertError?.message ?? 'insert sin filas devueltas';
+      console.error('[WhatsApp Webhook] INBOUND NO PERSISTIDO', {
+        organization_id: organizationId,
+        channel_id: channelId,
+        conversation_id: conversationId,
+        external_message_id: message.id,
+        code: (insertError as { code?: string } | null)?.code ?? null,
+        details: (insertError as { details?: string } | null)?.details ?? null,
+        hint: (insertError as { hint?: string } | null)?.hint ?? null,
+        error: detail,
+      });
+      throw new WhatsAppInboundPersistError(message.id, detail, insertError ?? null);
+    }
 
-    // Actualizar last_message_at en conversación
-    await supabase
-      .from('conversations')
-      .update({ last_message_at: new Date().toISOString(), status: 'open' })
-      .eq('id', conversationId);
+    // Conversación reabierta (last_message_at/last_inbound_at los mantienen los triggers)
+    await supabase.from('conversations').update({ status: 'open', updated_at: new Date().toISOString() }).eq('id', conversationId);
+
+    // Opt-out / opt-in, respuesta a campaña, actividad y notificación (F16)
+    await handleWhatsAppInbound(
+      { orgId: organizationId, channelId, conversationId, customerId, messageId: (inserted as { id: string }).id, text: content, contentType },
+      supabase as unknown as Parameters<typeof handleWhatsAppInbound>[1],
+    ).catch((err) => console.warn('[WhatsApp Webhook] handleWhatsAppInbound:', err instanceof Error ? err.message : err));
   }
 
   /** Procesar status update de un mensaje saliente */
@@ -435,36 +520,44 @@ class WhatsAppCloudService {
     organizationId: number,
     status: WhatsAppWebhookStatus
   ): Promise<void> {
-    // Buscar mensaje por external_id
+    // Buscar mensaje por la columna real external_message_id (F16; antes `external_id`, inexistente)
     const { data: message } = await supabase
       .from('messages')
-      .select('id')
-      .eq('external_id', status.id)
+      .select('id, metadata')
+      .eq('external_message_id', status.id)
       .eq('organization_id', organizationId)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (!message) return;
 
-    // Actualizar status del mensaje
-    await supabase
-      .from('messages')
-      .update({ status: status.status })
-      .eq('id', message.id);
+    const eventTime = status.timestamp ? new Date(parseInt(status.timestamp, 10) * 1000).toISOString() : new Date().toISOString();
+    const providerPayload = {
+      timestamp: status.timestamp,
+      recipient_id: status.recipient_id,
+      conversation: status.conversation || null,
+      pricing: status.pricing || null,
+      errors: status.errors || null,
+    };
+    const errorCode = status.errors?.[0]?.code?.toString() || null;
+    const errorMessage = status.errors?.[0]?.title || null;
 
-    // Registrar evento
+    // Registrar evento (messages no tiene columna de estado: el estado es el último message_event)
     await supabase.from('message_events').insert({
       organization_id: organizationId,
       message_id: message.id,
       event_type: status.status,
-      provider_payload: {
-        timestamp: status.timestamp,
-        recipient_id: status.recipient_id,
-        conversation: status.conversation || null,
-        pricing: status.pricing || null,
-      },
-      error_code: status.errors?.[0]?.code?.toString() || null,
-      error_message: status.errors?.[0]?.title || null,
+      provider_payload: providerPayload,
+      error_code: errorCode,
+      error_message: errorMessage,
+      event_time: eventTime,
     });
+
+    // Campañas: delivered/read/failed (131049 → skipped 24 h, 131056/130429 → reencolar)
+    await applyMessageEventToCampaign(
+      { message_id: message.id as string, event_type: status.status, error_code: errorCode, error_message: errorMessage, provider_payload: providerPayload, event_time: eventTime },
+      supabase as unknown as Parameters<typeof applyMessageEventToCampaign>[1],
+    ).catch((err) => console.warn('[WhatsApp Webhook] applyMessageEventToCampaign:', err instanceof Error ? err.message : err));
 
     // Si leído, actualizar read_at
     if (status.status === 'read') {
@@ -529,12 +622,25 @@ class WhatsAppCloudService {
       customerId = (newCustomer as any)?.id;
     }
 
-    // Crear identidad del canal
-    await supabase.from('customer_channel_identities').insert({
+    // Crear identidad del canal.
+    // `organization_id` e `identity_type` son NOT NULL y el CHECK exige
+    // 'whatsapp_phone' (NO 'whatsapp'): sin ellos este INSERT fallaba siempre
+    // en silencio.
+    const { error: identityError } = await supabase.from('customer_channel_identities').insert({
+      organization_id: organizationId,
       customer_id: customerId,
       channel_id: channelId,
+      identity_type: 'whatsapp_phone',
       identity_value: phone,
     });
+    if (identityError) {
+      console.error('[WhatsApp Webhook] No se pudo crear customer_channel_identities', {
+        organization_id: organizationId,
+        channel_id: channelId,
+        identity_value: phone,
+        error: identityError.message,
+      });
+    }
 
     return customerId;
   }

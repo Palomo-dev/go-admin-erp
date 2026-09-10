@@ -1,16 +1,20 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, Send, Loader2, Sparkles, Trash2, PanelRightClose, X, CheckCircle2, XCircle } from 'lucide-react';
+import { Bot, Send, Loader2, Sparkles, Trash2, PanelRightClose, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { cn } from '@/utils/Utils';
-import type { AssistantMessage, AssistantContext, ProposedAction } from '@/lib/services/aiAssistantService';
-import type { AIAction, UserRole } from '@/lib/services/aiActionsService';
-import { aiActionsService } from '@/lib/services/aiActionsService';
+import type { AssistantMessage, AssistantContext } from '@/lib/services/aiAssistantService';
+import {
+  EMPTY_DYNAMIC_OPTIONS,
+  FIELD_OPTION_SOURCE,
+  type DynamicOptions,
+  type PendingAction,
+} from '@/lib/ai/assistant/clientTypes';
 import ActionConfirmationForm from './ActionConfirmationForm';
 import MarkdownRenderer from './MarkdownRenderer';
 
@@ -29,7 +33,7 @@ export default function AIAssistantPanel({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [pendingAction, setPendingAction] = useState<AIAction | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [isExecutingAction, setIsExecutingAction] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -63,7 +67,7 @@ export default function AIAssistantPanel({
       const response = await fetch('/api/ai-assistant/suggestions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context }),
+        body: JSON.stringify({}),
       });
       if (response.ok) {
         const data = await response.json();
@@ -100,7 +104,14 @@ export default function AIAssistantPanel({
         body: JSON.stringify({
           message: content,
           conversationHistory: messages,
-          context,
+          // Solo datos de presentación: la organización, el rol y los permisos
+          // los resuelve el servidor desde la sesión.
+          context: {
+            userName: context.userName,
+            branchName: context.branchName,
+            currentPath: typeof window !== 'undefined' ? window.location.pathname : undefined,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          },
         }),
       });
 
@@ -122,66 +133,36 @@ export default function AIAssistantPanel({
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Si hay una acción propuesta, crear el objeto AIAction para confirmación
+      // La propuesta llega YA CREADA desde el servidor, con su id en
+      // `ai_agent_actions`. El cliente no la construye ni decide su
+      // organización ni el rol con el que se autoriza: eso era C1/C2.
       if (data.action) {
-        const proposedAction = data.action as ProposedAction;
-        const actionSchema = aiActionsService.getActionSchema(proposedAction.type);
-        
-        // Cargar opciones dinámicas (categorías, proveedores, clientes) via API
-        let dynamicOptions = { categories: [], suppliers: [], customers: [] };
-        if (context.organizationId && context.organizationId > 0) {
-          console.log('Loading dynamic options for org:', context.organizationId);
+        const proposed = data.action as PendingAction;
+
+        // Las opciones de los `select` (categorías, proveedores, clientes,
+        // sucursales) sí se piden aquí: son datos de presentación, y el
+        // endpoint las filtra por la organización de la sesión.
+        let dynamicOptions: DynamicOptions = EMPTY_DYNAMIC_OPTIONS;
+        try {
           const optionsRes = await fetch('/api/ai-assistant/dynamic-options', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ organizationId: context.organizationId }),
+            body: JSON.stringify({}),
           });
           if (optionsRes.ok) {
-            dynamicOptions = await optionsRes.json();
-            console.log('Dynamic options loaded:', dynamicOptions);
-          } else {
-            const errData = await optionsRes.json();
-            console.error('Error loading dynamic options:', errData);
+            dynamicOptions = { ...EMPTY_DYNAMIC_OPTIONS, ...(await optionsRes.json()) };
           }
-        } else {
-          console.warn('No organizationId available, skipping dynamic options');
+        } catch (optionsError) {
+          console.error('Error cargando opciones del formulario:', optionsError);
         }
-        
-        // Combinar el esquema con los valores propuestos y opciones dinámicas
-        const fieldsWithValues = actionSchema.map(field => {
-          const proposedField = proposedAction.fields.find(f => f.name === field.name);
-          let options = field.options;
-          
-          // Asignar opciones dinámicas según el campo
-          if (field.name === 'category_id') {
-            options = dynamicOptions.categories;
-          } else if (field.name === 'supplier_id') {
-            options = dynamicOptions.suppliers;
-          } else if (field.name === 'customer_id') {
-            options = dynamicOptions.customers;
-          }
-          
-          return {
-            ...field,
-            value: proposedField?.value ?? field.value,
-            options,
-          };
+
+        setPendingAction({
+          ...proposed,
+          fields: proposed.fields.map((field) => {
+            const source = FIELD_OPTION_SOURCE[field.name];
+            return source ? { ...field, options: dynamicOptions[source] } : field;
+          }),
         });
-
-        const newAction: AIAction = {
-          id: `action-${Date.now()}`,
-          type: proposedAction.type,
-          title: proposedAction.title,
-          description: proposedAction.description,
-          fields: fieldsWithValues,
-          status: 'pending',
-          createdAt: new Date(),
-          organizationId: context.organizationId,
-          userId: '',
-          userRole: (context.userRole.toLowerCase().includes('admin') ? 'admin' : 'employee') as UserRole,
-        };
-
-        setPendingAction(newAction);
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -197,26 +178,36 @@ export default function AIAssistantPanel({
     }
   };
 
-  // Manejar confirmación de acción
-  const handleConfirmAction = async (action: AIAction) => {
+  // Confirmar: se manda el id de la propuesta y las correcciones del usuario.
+  // Nunca la organización, el rol ni el estado "confirmed" (C1).
+  const handleConfirmAction = async (fields: Array<{ name: string; value: unknown }>) => {
+    if (!pendingAction) return;
     setIsExecutingAction(true);
-    
+
     try {
       const response = await fetch('/api/ai-assistant/execute-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ actionId: pendingAction.id, fields }),
       });
 
       const result = await response.json();
 
-      // Agregar mensaje con el resultado
+      // Los caminos de 401/403 (sesión caducada, sin permiso) responden
+      // `{ error, code }`, no `{ message }`: leer solo `message` pintaba
+      // "Error: undefined" justo cuando el usuario más necesita entender qué
+      // pasó. Lo señaló el tester de F0 (fallo 10).
+      const detalle =
+        result.message ||
+        result.error ||
+        'No se pudo ejecutar la acción. Vuelve a intentarlo.';
+
       const resultMessage: AssistantMessage = {
         id: `result-${Date.now()}`,
         role: 'assistant',
-        content: result.success 
-          ? `✅ **Acción completada:** ${result.message}`
-          : `❌ **Error:** ${result.message}`,
+        content: result.success
+          ? `✅ **Acción completada:** ${detalle}`
+          : `❌ **Error:** ${detalle}`,
         timestamp: new Date(),
       };
 
@@ -236,8 +227,19 @@ export default function AIAssistantPanel({
     }
   };
 
-  // Manejar rechazo de acción
-  const handleRejectAction = (action: AIAction) => {
+  // Rechazar: hay que decírselo al SERVIDOR. Cerrar la tarjeta en el navegador
+  // dejaba la propuesta viva y ejecutable 30 minutos con solo reenviar su id, y
+  // la auditoría nunca registraba que el usuario había dicho que no.
+  const handleRejectAction = () => {
+    const actionId = pendingAction?.id;
+    if (actionId) {
+      void fetch('/api/ai-assistant/reject-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionId }),
+      }).catch((error) => console.error('Error rechazando acción:', error));
+    }
+
     const rejectMessage: AssistantMessage = {
       id: `reject-${Date.now()}`,
       role: 'assistant',

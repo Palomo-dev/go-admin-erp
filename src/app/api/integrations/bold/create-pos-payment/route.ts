@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
-import { boldService } from '@/lib/services/integrations/bold';
+import { boldService, type BoldPaymentMethod } from '@/lib/services/integrations/bold';
 import { createQrSession } from '@/lib/services/integrations/qrShared/qrSessionService';
 
 interface CreatePosPaymentBody {
@@ -23,6 +23,21 @@ interface CreatePosPaymentBody {
   sourceId?: string;
   branchId?: number;
   organizationId: number;
+}
+
+const BOLD_PAYMENT_METHODS: readonly string[] = [
+  'CREDIT_CARD',
+  'PSE',
+  'BOTON_BANCOLOMBIA',
+  'NEQUI',
+  'POS',
+  'PAY_BY_LINK',
+  'PAY_BY_QR_BOLD',
+  'DAVIPLATA',
+];
+
+function isBoldPaymentMethod(value: string): value is BoldPaymentMethod {
+  return BOLD_PAYMENT_METHODS.includes(value);
 }
 
 export async function POST(request: NextRequest) {
@@ -55,6 +70,21 @@ export async function POST(request: NextRequest) {
           error:
             'Faltan campos requeridos: connectionId, amount, currency, reference, payment_method, terminal_serial, user_email, organizationId',
         },
+        { status: 400 }
+      );
+    }
+
+    // Bold solo liquida en pesos colombianos
+    if (body.currency !== 'COP') {
+      return NextResponse.json(
+        { error: 'Bold solo admite pagos en COP' },
+        { status: 400 }
+      );
+    }
+
+    if (!isBoldPaymentMethod(body.payment_method)) {
+      return NextResponse.json(
+        { error: `Metodo de pago no soportado por Bold: ${body.payment_method}` },
         { status: 400 }
       );
     }

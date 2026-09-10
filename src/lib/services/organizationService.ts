@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { logError } from '@/lib/utils/errorMessage';
 import { Organizacion } from '@/lib/hooks/useOrganization';
 
 // Interfaz extendida de Organizacion para manejar todos los campos de la tabla
@@ -49,7 +50,7 @@ export const organizationService = {
         .eq('is_active', true);
 
       if (error) {
-        console.error('Error al obtener organizaciones del usuario:', error);
+        logError('[organizationService] obtener organizaciones del usuario', error);
         throw new Error(error.message);
       }
       // Transformar la respuesta para que tenga el formato correcto
@@ -84,7 +85,7 @@ export const organizationService = {
               is_super_admin: Boolean(item.is_super_admin)
             });
           } else {
-            console.warn('Item de organización con estructura inesperada:', item);
+            console.warn('[organizationService] item de organización con estructura inesperada:', JSON.stringify(item));
           }
         });
       }
@@ -93,7 +94,7 @@ export const organizationService = {
       return organizations;
       
     } catch (error) {
-      console.error('Error general al obtener organizaciones del usuario:', error);
+      logError('[organizationService] error general al obtener organizaciones del usuario', error);
       throw error;
     }
   },
@@ -109,7 +110,7 @@ export const organizationService = {
       .single();
 
     if (error) {
-      console.error('Error al obtener organización:', error);
+      logError('[organizationService] obtener organización', error);
       throw new Error(error.message);
     }
 
@@ -140,7 +141,7 @@ export const organizationService = {
         .eq('is_active', true);
 
       if (error) {
-        console.error('Error al obtener métodos de pago:', error);
+        logError('[organizationService] obtener métodos de pago', error);
         throw error;
       }
 
@@ -159,7 +160,7 @@ export const organizationService = {
 
       return methods;
     } catch (error) {
-      console.error('Error obteniendo métodos de pago de la organización:', error);
+      logError('[organizationService] métodos de pago de la organización', error);
       // Retornar métodos por defecto en caso de error
       return [
         { code: 'cash', name: 'Efectivo', requires_reference: false },
@@ -186,7 +187,7 @@ export const organizationService = {
       .single();
 
     if (orgError) {
-      console.error('Error al crear organización:', orgError);
+      logError('[organizationService] crear organización', orgError);
       throw new Error(orgError.message);
     }
 
@@ -202,7 +203,7 @@ export const organizationService = {
       }]);
 
     if (memberError) {
-      console.error('Error al agregar miembro a la organización:', memberError);
+      logError('[organizationService] agregar miembro a la organización', memberError);
       // No lanzamos error aquí para no impedir la creación de la organización
     }
 

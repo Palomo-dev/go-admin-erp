@@ -1,144 +1,123 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { resolveOrgFromExternal, OrgContextError } from '@/lib/utils/orgContext';
-import { getCommSettings } from '@/lib/services/integrations/twilio/twilioSubaccounts';
-import { validateTwilioSignature } from '@/lib/services/integrations/twilio/twilioWebhook';
-import { createCall } from '@/lib/services/crm/callManagementService';
+import { verifyTwilioWebhook, WebhookError, getTwilioWebhookOrigin } from '@/lib/security/webhookSignatures';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { getTelephonySettings, accountSidMatchesOrg } from '@/lib/services/crm/voiceContextService';
+import { resolveInboundTargets } from '@/lib/services/crm/phoneNumberService';
+import { buildInboundTwiml, buildHangupTwiml, xmlResponse } from '@/lib/services/crm/twimlBuilders';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
- * POST /api/voice/twiml/inbound — TwiML de entrada para llamadas entrantes.
+ * POST /api/voice/twiml/inbound — VoiceUrl de los números de la org (FASE-03 §2.3, §4.5.4).
  *
- * Este endpoint NO usa getServerOrgContext (no hay sesión de usuario).
- * Es invocado por Twilio cuando una llamada entra a un número configurado.
- *
- * Resuelve la organización desde el número destino (To) en `phone_numbers`
- * y retorna TwiML para manejar la llamada entrante.
- *
- * Content-Type: application/xml
+ * ÚNICA ruta de entrantes (el handler legacy `/api/integrations/twilio/voice/incoming`
+ * delega aquí). Resuelve la org por `To` (`phone_numbers.e164` → `comm_settings.phone_number`,
+ * sin fallback "primera org", C11), crea `calls` (mode 'inbound', direction 'inbound',
+ * status 'ringing', `customer_id` por `customers.phone`), reproduce el aviso de
+ * consentimiento si hay grabación y hace `<Dial record… action=dial-complete>` a los
+ * `<Client>` con identity real `u_{uuid}_o_{org}` (C21). Sin agentes → mensaje + `<Hangup/>`.
+ * El buzón/agente IA sin respuesta lo añade F6.
  */
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
+  let params: Record<string, string>;
+  let accountSid: string;
   try {
-    const formData = await request.formData();
-    const params: Record<string, string> = {};
-    for (const [key, value] of formData.entries()) {
-      params[key] = String(value);
+    ({ params, accountSid } = await verifyTwilioWebhook(request));
+  } catch (err) {
+    if (err instanceof WebhookError) {
+      console.warn('[TwiML Inbound] Rechazado:', err.code);
+      return new Response('Forbidden', { status: err.statusCode });
     }
+    throw err;
+  }
 
-    const callSid = params.CallSid || '';
-    const from = params.From || '';
-    const to = params.To || '';
+  const origin = getTwilioWebhookOrigin();
+  const callSid = params.CallSid || '';
+  const from = params.From || '';
+  const to = params.To || '';
 
-    // Validar firma de Twilio
-    const signature = request.headers.get('x-twilio-signature') || '';
-    const requestUrl = request.url;
-    const twilioAuthToken = process.env.TWILIO_MASTER_AUTH_TOKEN;
-    if (!twilioAuthToken) {
-      console.warn('[TwiML Inbound] TWILIO_MASTER_AUTH_TOKEN no configurado — validación de firma omitida');
-    } else if (!validateTwilioSignature(signature, requestUrl, params)) {
-      console.warn('[TwiML Inbound] Firma de Twilio inválida');
+  try {
+    const sb = getServiceClient();
+    const targets = await resolveInboundTargets(to, sb);
+    if (!targets) {
+      console.warn('[TwiML Inbound] Número no configurado:', to);
+      return xmlResponse(buildHangupTwiml('Lo sentimos, este número no está configurado. Adiós.'));
+    }
+    const orgId = targets.organizationId;
+    // Aislamiento multi-tenant (M1): el número resuelve la org, pero quien firma
+    // debe ser la cuenta Twilio de esa org (o la master de la plataforma).
+    if (!(await accountSidMatchesOrg(orgId, accountSid, sb))) {
+      console.warn('[TwiML Inbound] AccountSid ajeno a la org del número', { orgId });
       return new Response('Forbidden', { status: 403 });
     }
+    const settings = await getTelephonySettings(orgId, sb);
+    const recordingEnabled = settings.voice_recording_enabled === true;
 
-    // Resolver organización desde el número destino (To)
-    let orgId: number;
-    let supabaseClient;
-    try {
-      const resolved = await resolveOrgFromExternal(to, 'phone');
-      orgId = resolved.organizationId;
-      supabaseClient = resolved.serviceClient;
-    } catch (err) {
-      if (err instanceof OrgContextError) {
-        console.warn('[TwiML Inbound] No se resolvió org para número:', to);
-        const twiml = buildUnavailableTwiml();
-        return new NextResponse(twiml, {
-          status: 200,
-          headers: { 'Content-Type': 'application/xml' },
+    // Idempotencia por CallSid
+    const { data: existing } = await sb.from('calls').select('id').eq('organization_id', orgId).eq('provider_call_sid', callSid).maybeSingle();
+    let callId = (existing as { id: string } | null)?.id ?? null;
+
+    if (!callId) {
+      const { data: customer } = from
+        ? await sb.from('customers').select('id').eq('organization_id', orgId).eq('phone', from).limit(1).maybeSingle()
+        : { data: null };
+      const { data: created, error } = await sb
+        .from('calls')
+        .insert({
+          organization_id: orgId,
+          provider: 'twilio',
+          provider_call_sid: callSid,
+          direction: 'inbound',
+          mode: 'inbound',
+          from_number: from || 'unknown',
+          to_number: to,
+          customer_id: (customer as { id: string } | null)?.id ?? null,
+          user_id: targets.userIds[0] ?? null,
+          status: 'ringing',
+          started_at: new Date().toISOString(),
+          recording_enabled: recordingEnabled,
+          consent_given: recordingEnabled,
+          cost_currency: 'USD',
+          duration_source: 'provider',
+          metadata: {
+            caller_name: params.CallerName ?? null,
+            from_city: params.FromCity ?? null,
+            from_country: params.FromCountry ?? null,
+            phone_number_id: targets.phoneNumberId,
+            ring_targets: targets.userIds,
+          },
+        })
+        .select('id')
+        .single();
+      if (error) throw new Error(`calls insert: ${error.message}`);
+      callId = (created as { id: string }).id;
+
+      if (recordingEnabled) {
+        await sb.from('call_consents').insert({
+          organization_id: orgId,
+          call_id: callId,
+          consent_type: 'recording',
+          method: 'voice_announcement',
+          locale: 'es-MX',
+          recorded_announcement_text: settings.voice_consent_message,
         });
       }
-      throw err;
     }
 
-    // Obtener comm_settings
-    const settings = await getCommSettings(orgId);
-    const recordingEnabled = settings?.voice_recording_enabled ?? false;
-    const ringTimeout = settings?.voice_ring_timeout_seconds ?? 30;
-
-    // Registrar la llamada entrante en BD
-    await createCall(
-      orgId,
-      {
-        provider: 'twilio',
-        provider_call_sid: callSid,
-        direction: 'inbound',
-        mode: 'manual',
-        from_number: from,
-        to_number: to,
-        status: 'ringing',
-        recording_enabled: recordingEnabled,
-        started_at: new Date().toISOString(),
-        metadata: { callStatus: params.CallStatus },
-      },
-      supabaseClient
-    ).catch((err) => {
-      console.error('[TwiML Inbound] Error registrando llamada:', err);
-    });
-
-    const twiml = buildInboundTwiml({
-      from,
-      recordingEnabled,
-      ringTimeout,
-    });
-
-    return new NextResponse(twiml, {
-      status: 200,
-      headers: { 'Content-Type': 'application/xml' },
-    });
+    return xmlResponse(
+      buildInboundTwiml({
+        origin,
+        callId,
+        from,
+        calledNumber: to,
+        identities: targets.identities,
+        recordingEnabled,
+        consentMessage: settings.voice_consent_message,
+        ringTimeoutSeconds: settings.voice_ring_timeout_seconds,
+      })
+    );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[TwiML Inbound] error:', message);
-    const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say language="es-MX">Ha ocurrido un error. Por favor intente más tarde.</Say>
-  <Hangup/>
-</Response>`;
-    return new NextResponse(errorTwiml, {
-      status: 500,
-      headers: { 'Content-Type': 'application/xml' },
-    });
+    console.error('[TwiML Inbound] error:', error instanceof Error ? error.message : error);
+    return xmlResponse(buildHangupTwiml('Ha ocurrido un error. Por favor intente más tarde.'));
   }
-}
-
-/**
- * Construye el TwiML de entrada.
- * Por ahora hace un <Dial> al número del agente o un mensaje de bienvenida.
- * En fases futuras se conectará con Voice Agent (Media Stream).
- */
-function buildInboundTwiml(params: {
-  from: string;
-  recordingEnabled: boolean;
-  ringTimeout: number;
-}): string {
-  const { recordingEnabled, ringTimeout } = params;
-
-  const recordAttr = recordingEnabled ? ' record="record-from-answer-dual"' : '';
-  const timeoutAttr = ` timeout="${ringTimeout}"`;
-
-  // TwiML básico — en Fase 6 se conectará con Voice Agent
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say language="es-MX">Bienvenido. Conectando con un agente.</Say>
-  <Dial${recordAttr}${timeoutAttr}>
-    <Client>incoming</Client>
-  </Dial>
-</Response>`;
-}
-
-/**
- * TwiML cuando no se encuentra la organización para el número.
- */
-function buildUnavailableTwiml(): string {
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say language="es-MX">Lo sentimos, este número no está configurado. Adiós.</Say>
-  <Hangup/>
-</Response>`;
 }

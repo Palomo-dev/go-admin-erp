@@ -27,6 +27,31 @@ import { PhoneInput } from '@/components/ui/phone-input';
 import { Loader2 } from 'lucide-react';
 import { TransportCarrier } from '@/lib/services/transportService';
 
+/**
+ * Valores admitidos por el CHECK `transport_carriers_api_provider_check`.
+ * Mantener en sincronía con la base: un valor fuera de esta lista rompe el INSERT.
+ */
+const API_PROVIDERS = [
+  { value: 'coordinadora', label: 'Coordinadora' },
+  { value: 'envia', label: 'Envía' },
+  { value: 'servientrega', label: 'Servientrega' },
+  { value: 'interrapidisimo', label: 'Interrapidísimo' },
+  { value: 'tcc', label: 'TCC' },
+  { value: 'deprisa', label: 'Deprisa' },
+  { value: 'shippo', label: 'Shippo' },
+  { value: 'other', label: 'Otro' },
+] as const;
+
+/** Radix no admite SelectItem con value="", así que "sin proveedor" necesita un centinela. */
+const SIN_PROVEEDOR = '__ninguno__';
+
+type ApiProvider = (typeof API_PROVIDERS)[number]['value'];
+
+/** El valor guardado puede venir de una fila vieja: solo aceptamos los del CHECK. */
+function isApiProvider(value: string | null | undefined): value is ApiProvider {
+  return API_PROVIDERS.some((p) => p.value === value);
+}
+
 const carrierSchema = z.object({
   code: z.string().min(1, 'El código es requerido'),
   name: z.string().min(1, 'El nombre es requerido'),
@@ -38,7 +63,10 @@ const carrierSchema = z.object({
   contact_email: z.string().email('Email inválido').optional().or(z.literal('')),
   address: z.string().optional(),
   city: z.string().optional(),
-  api_provider: z.string().optional(),
+  api_provider: z
+    .enum(['coordinadora', 'envia', 'servientrega', 'tcc', 'interrapidisimo', 'deprisa', 'shippo', 'other'])
+    .optional()
+    .or(z.literal('')),
   tracking_url_template: z.string().optional(),
   is_active: z.boolean(),
 });
@@ -101,7 +129,7 @@ export function CarrierDialog({
         contact_email: carrier.contact_email || '',
         address: carrier.address || '',
         city: carrier.city || '',
-        api_provider: carrier.api_provider || '',
+        api_provider: isApiProvider(carrier.api_provider) ? carrier.api_provider : '',
         tracking_url_template: carrier.tracking_url_template || '',
         is_active: carrier.is_active,
       });
@@ -131,6 +159,7 @@ export function CarrierDialog({
   const carrierType = watch('carrier_type');
   const serviceType = watch('service_type');
   const isActive = watch('is_active');
+  const apiProvider = watch('api_provider');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -252,11 +281,30 @@ export function CarrierDialog({
 
             <div className="space-y-2">
               <Label htmlFor="api_provider">Proveedor API (Tracking)</Label>
-              <Input
-                id="api_provider"
-                {...register('api_provider')}
-                placeholder="coordinadora, servientrega, etc."
-              />
+              {/* Antes era texto libre, y la columna tiene CHECK: cualquier valor fuera de
+                  esta lista hace que el INSERT falle. */}
+              <Select
+                value={apiProvider ?? SIN_PROVEEDOR}
+                onValueChange={(v) =>
+                  setValue('api_provider', isApiProvider(v) ? v : '')
+                }
+              >
+                <SelectTrigger id="api_provider">
+                  <SelectValue placeholder="Sin integración" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SIN_PROVEEDOR}>Sin integración</SelectItem>
+                  {API_PROVIDERS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Sin proveedor, la transportadora funciona con tarifas manuales pero no
+                cotiza ni genera guías por API.
+              </p>
             </div>
           </div>
 

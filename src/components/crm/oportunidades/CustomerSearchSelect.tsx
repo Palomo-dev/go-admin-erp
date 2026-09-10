@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, User, X, Mail, Phone } from 'lucide-react';
+import { Search, User, X, Mail, Phone, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,19 @@ interface CustomerSearchSelectProps {
   onSelect: (customerId: string) => void;
   label?: string;
   placeholder?: string;
+  /**
+   * Opcional: si se pasa, el término escrito se reporta al llamador para que
+   * busque contra el servidor (organizaciones con más clientes de los que
+   * devuelve una sola carga). Sin este prop el filtrado sigue siendo en memoria
+   * sobre `customers`, como hasta ahora.
+   */
+  onSearchChange?: (term: string) => void;
+  /** Opcional: hay una búsqueda en vuelo (solo se usa junto a `onSearchChange`). */
+  isSearching?: boolean;
+  /** Opcional: la última búsqueda falló; se muestra en vez de «no se encontraron». */
+  searchError?: string | null;
+  /** Opcional: oculta la opción «Sin cliente» cuando el cliente es obligatorio. */
+  allowEmpty?: boolean;
 }
 
 export function CustomerSearchSelect({
@@ -22,22 +35,35 @@ export function CustomerSearchSelect({
   selectedCustomerId,
   onSelect,
   label = 'Cliente',
-  placeholder = 'Buscar cliente...'
+  placeholder = 'Buscar cliente...',
+  onSearchChange,
+  isSearching = false,
+  searchError = null,
+  allowEmpty = true
 }: CustomerSearchSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
 
-  const filteredCustomers = customers.filter(customer => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      customer.full_name?.toLowerCase().includes(term) ||
-      customer.email?.toLowerCase().includes(term) ||
-      customer.phone?.includes(term)
-    );
-  });
+  // Con búsqueda contra el servidor, `customers` ya viene filtrado: volver a
+  // filtrar en memoria escondería resultados válidos.
+  const filteredCustomers = onSearchChange
+    ? customers
+    : customers.filter(customer => {
+        if (!searchTerm) return true;
+        const term = searchTerm.toLowerCase();
+        return (
+          customer.full_name?.toLowerCase().includes(term) ||
+          customer.email?.toLowerCase().includes(term) ||
+          customer.phone?.includes(term)
+        );
+      });
+
+  const handleSearchTermChange = (term: string) => {
+    setSearchTerm(term);
+    onSearchChange?.(term);
+  };
 
   const handleSelect = (customerId: string) => {
     onSelect(customerId);
@@ -109,7 +135,7 @@ export function CustomerSearchSelect({
               <Input
                 placeholder={placeholder}
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchTermChange(e.target.value)}
                 className="pl-9 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                 autoFocus
               />
@@ -119,20 +145,22 @@ export function CustomerSearchSelect({
           <div className="max-h-[280px] overflow-y-auto">
             <div className="p-2">
               {/* Opción sin cliente */}
-              <div
-                className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors ${
-                  !selectedCustomerId 
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700' 
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
-                onClick={() => handleSelect('')}
-              >
-                <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                  <User className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+              {allowEmpty && (
+                <div
+                  className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors ${
+                    !selectedCustomerId
+                      ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                  onClick={() => handleSelect('')}
+                >
+                  <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                    <User className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  </div>
+                  <span className="text-gray-600 dark:text-gray-400">Sin cliente</span>
                 </div>
-                <span className="text-gray-600 dark:text-gray-400">Sin cliente</span>
-              </div>
-              
+              )}
+
               {/* Lista de clientes */}
               {filteredCustomers.length > 0 ? (
                 <div className="mt-2 space-y-1">
@@ -174,11 +202,20 @@ export function CustomerSearchSelect({
                     </div>
                   ))}
                 </div>
-              ) : searchTerm ? (
+              ) : isSearching ? (
+                <div className="py-8 text-center">
+                  <Loader2 className="h-6 w-6 mx-auto text-gray-400 mb-2 animate-spin" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Buscando…</p>
+                </div>
+              ) : searchError ? (
+                <div className="py-8 text-center px-3">
+                  <p className="text-sm text-red-600 dark:text-red-400">{searchError}</p>
+                </div>
+              ) : searchTerm || onSearchChange ? (
                 <div className="py-8 text-center">
                   <User className="h-10 w-10 mx-auto text-gray-400 mb-2" />
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    No se encontraron clientes
+                    {searchTerm ? 'No se encontraron clientes' : 'Escribe para buscar un cliente'}
                   </p>
                 </div>
               ) : null}

@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   } catch (error: unknown) {
     if (error instanceof OrgContextError) {
       return NextResponse.json(
-        { success: false, error: error.message },
+        { success: false, error: error.message, code: error.code },
         { status: error.statusCode },
       );
     }

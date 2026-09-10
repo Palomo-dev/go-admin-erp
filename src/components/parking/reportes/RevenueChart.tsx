@@ -62,7 +62,7 @@ export function RevenueChart({ data, isLoading }: RevenueChartProps) {
 
                   {/* Valor */}
                   <span className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                    {formatCurrency(item.revenue, true)}
+                    {formatCurrency(item.revenue)}
                   </span>
 
                   {/* Barra */}

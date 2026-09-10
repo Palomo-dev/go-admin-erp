@@ -1,144 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { whatsappCloudService } from '@/lib/services/integrations/whatsapp';
-import { formatPhoneE164 } from '@/lib/services/integrations/whatsapp';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { sendWhatsApp } from '@/lib/services/crm/whatsapp/outboundService';
+import { normalizePhoneDigits } from '@/lib/services/crm/whatsapp/channelService';
+import { whatsappErrorResponse } from '@/lib/services/crm/whatsapp/http';
+import { parseWith, zPlatformSendBody } from '@/lib/services/crm/whatsapp/schemas';
 
-// POST: Enviar mensaje via WhatsApp Cloud API
+/**
+ * POST /api/integrations/whatsapp/send — compatibilidad (F0/F9).
+ *
+ * F16: delega en `whatsappOutboundService.sendWhatsApp` (ventana 24 h,
+ * consentimiento, plantillas, créditos, activity). Contrato de entrada
+ * conservado: { channel_id, to, type?: 'text'|'template'|'image'|'document',
+ *   text?: {body}, template?: {name, language:{code}, components?},
+ *   image?: {link, caption?}, document?: {link, filename?, caption?},
+ *   conversation_id?, customer_id?, opportunity_id? }
+ * Respuesta: { success, message_id, conversation_id, activity_id, customer_id, dispatched_by }.
+ * Nuevo código: usa POST /api/crm/whatsapp/send.
+ */
 export async function POST(request: NextRequest) {
+  let ctx;
   try {
-    const body = await request.json();
-    const {
-      channel_id,
-      to,
-      type = 'text',
-      text,
-      template,
-      image,
-      document,
-      audio,
-      video,
-      conversation_id,
-      organization_id,
-    } = body;
+    ctx = await getServerOrgContext(request);
+  } catch (err) {
+    if (err instanceof OrgContextError) return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+    throw err;
+  }
+  try {
+    const body = parseWith(zPlatformSendBody, await request.json().catch(() => ({})));
+    const { channel_id, to, type = 'text', text, template, image, document, conversation_id, customer_id, opportunity_id } = body;
+    const organizationId = ctx.organizationId;
+    if (body.organization_id !== undefined && Number(body.organization_id) !== organizationId) {
+      return NextResponse.json({ error: 'organization_id no coincide con la organización activa' }, { status: 403 });
+    }
+    if (!channel_id) return NextResponse.json({ error: 'channel_id es requerido' }, { status: 400 });
 
-    if (!channel_id || !to) {
-      return NextResponse.json(
-        { error: 'channel_id y to son requeridos' },
-        { status: 400 }
-      );
+    // Cliente: por id, por conversación o por teléfono (sufijo 10 dígitos)
+    let customerId: string | null = customer_id ?? null;
+    if (!customerId && !conversation_id) {
+      const digits = to ? normalizePhoneDigits(String(to)) : null;
+      if (!digits) return NextResponse.json({ error: 'to (teléfono) o customer_id es requerido' }, { status: 400 });
+      const last10 = digits.slice(-10);
+      const { data: candidates } = await getServiceClient().from('customers').select('id, phone').eq('organization_id', organizationId).ilike('phone', `%${last10}`).limit(5);
+      const match = (candidates || []).find((c: { phone?: string | null }) => (c.phone || '').replace(/\D/g, '').endsWith(last10));
+      customerId = match?.id ?? null;
+      if (!customerId) return NextResponse.json({ error: 'No existe un cliente con ese teléfono en la organización; crea el cliente antes de enviar' }, { status: 400 });
     }
 
-    // Obtener credenciales del canal
-    const creds = await whatsappCloudService.getCredentialsByChannelId(channel_id);
-    if (!creds || !creds.phoneNumberId || !creds.accessToken) {
-      return NextResponse.json(
-        { error: 'Credenciales no configuradas para este canal' },
-        { status: 400 }
-      );
-    }
+    const media = type === 'image' && image?.link
+      ? { url: String(image.link), mime: 'image/jpeg', caption: image.caption ? String(image.caption) : undefined }
+      : type === 'document' && document?.link
+        ? { url: String(document.link), mime: 'application/pdf', filename: document.filename ? String(document.filename) : undefined, caption: document.caption ? String(document.caption) : undefined }
+        : null;
+    if (type === 'text' && !text?.body) return NextResponse.json({ error: 'text.body es requerido' }, { status: 400 });
+    if (type === 'template' && (!template?.name || !template?.language?.code)) return NextResponse.json({ error: 'template.name y template.language.code son requeridos' }, { status: 400 });
+    if ((type === 'image' || type === 'document') && !media) return NextResponse.json({ error: `${type}.link es requerido` }, { status: 400 });
 
-    // Construir payload según tipo
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let result: any;
-    const formattedTo = formatPhoneE164(to);
+    const r = await sendWhatsApp({
+      orgId: organizationId,
+      channelId: channel_id,
+      customerId,
+      conversationId: conversation_id ?? null,
+      opportunityId: opportunity_id ?? null,
+      text: type === 'text' ? String(text?.body ?? '') : null,
+      rawTemplate: type === 'template' ? template : null,
+      media,
+      senderMemberId: ctx.memberId,
+      senderUserId: ctx.userId,
+      source: 'platform_send',
+    }, ctx.supabase);
 
-    switch (type) {
-      case 'text':
-        if (!text?.body) {
-          return NextResponse.json({ error: 'text.body es requerido' }, { status: 400 });
-        }
-        result = await whatsappCloudService.sendText(
-          creds.phoneNumberId,
-          creds.accessToken,
-          formattedTo,
-          text.body,
-          text.preview_url
-        );
-        break;
-
-      case 'template':
-        if (!template?.name || !template?.language?.code) {
-          return NextResponse.json(
-            { error: 'template.name y template.language.code son requeridos' },
-            { status: 400 }
-          );
-        }
-        result = await whatsappCloudService.sendTemplate(
-          creds.phoneNumberId,
-          creds.accessToken,
-          formattedTo,
-          template.name,
-          template.language.code,
-          template.components
-        );
-        break;
-
-      case 'image':
-        if (!image?.link) {
-          return NextResponse.json({ error: 'image.link es requerido' }, { status: 400 });
-        }
-        result = await whatsappCloudService.sendImage(
-          creds.phoneNumberId,
-          creds.accessToken,
-          formattedTo,
-          image.link,
-          image.caption
-        );
-        break;
-
-      case 'document':
-        if (!document?.link) {
-          return NextResponse.json({ error: 'document.link es requerido' }, { status: 400 });
-        }
-        result = await whatsappCloudService.sendDocument(
-          creds.phoneNumberId,
-          creds.accessToken,
-          formattedTo,
-          document.link,
-          document.filename,
-          document.caption
-        );
-        break;
-
-      default:
-        return NextResponse.json(
-          { error: `Tipo de mensaje no soportado: ${type}` },
-          { status: 400 }
-        );
-    }
-
-    // Guardar mensaje en BD si hay conversation_id
-    if (conversation_id && organization_id) {
-      const externalId = result?.messages?.[0]?.id || null;
-
-      await getSupabaseAdmin().from('messages').insert({
-        conversation_id,
-        organization_id,
-        sender_type: 'member',
-        role: 'agent',
-        content_type: type,
-        payload: type === 'text' ? { text: text.body } : body[type] || {},
-        external_id: externalId,
-        status: 'sent',
-      });
-
-      // Actualizar last_message_at
-      await getSupabaseAdmin()
-        .from('conversations')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('id', conversation_id);
-    }
-
-    return NextResponse.json({
-      success: true,
-      message_id: result?.messages?.[0]?.id,
-      data: result,
-    });
-  } catch (error: any) {
-    console.error('[WhatsApp Send] Error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error enviando mensaje' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, message_id: r.message_id, conversation_id: r.conversation_id, activity_id: r.activity_id, customer_id: r.customer_id, dispatched_by: 'trg_channel_dispatch' });
+  } catch (error) {
+    return whatsappErrorResponse(error);
   }
 }

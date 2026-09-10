@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { pickEmbedded, profileDisplayName, type EmbeddedProfile } from '@/lib/utils/embeddedProfile';
 
 /**
  * GET /api/crm/teams/org-members — Lista los miembros activos de la organización
@@ -26,18 +27,18 @@ export async function GET() {
       );
     }
 
-    // Normalizar: devolver { id, name, email }
-    // Supabase devuelve arrays para los joins, así que profiles es un array
+    // El embebido es a-uno: PostgREST devuelve un OBJETO, no un array. Leerlo
+    // como `profiles[0]` daba siempre null y el nombre acababa siendo el
+    // identificador del usuario recortado.
     type OrgMemberRow = {
       user_id: string;
-      profiles: { id: string; first_name: string | null; last_name: string | null; email: string | null }[];
+      profiles: EmbeddedProfile | EmbeddedProfile[] | null;
     };
-    const members = (data || [] as OrgMemberRow[]).map((m: OrgMemberRow) => {
-      const p = m.profiles?.[0] || null;
-      const full = p ? [p.first_name, p.last_name].filter(Boolean).join(' ') : '';
+    const members = ((data || []) as OrgMemberRow[]).map((m) => {
+      const p = pickEmbedded(m.profiles);
       return {
         id: m.user_id,
-        name: full || p?.email || m.user_id.slice(0, 8),
+        name: profileDisplayName(m.profiles),
         email: p?.email || null,
       };
     });

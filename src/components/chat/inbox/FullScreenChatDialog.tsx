@@ -582,6 +582,7 @@ export default function FullScreenChatDialog({
                 : 'Escribe un mensaje...'
             }
             organizationId={organizationId}
+            conversationId={conversation.id}
           />
         </div>
       </DialogContent>

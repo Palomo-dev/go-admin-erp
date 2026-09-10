@@ -1,8 +1,10 @@
 // Exportaciones centralizadas para componentes de pipeline
-// Componentes originales
-import KanbanColumn from './KanbanColumn';
+// Componentes originales (KanbanBoard/KanbanColumn/OpportunityCard viejos eliminados en F9;
+// el tablero vivo es KanbanBoardV2 + KanbanColumnV2 + OpportunityCardV2)
 import { KanbanSummary } from './KanbanSummary';
-import { KanbanBoard } from './KanbanBoard';
+import { KanbanBoardV2 } from './KanbanBoardV2';
+import { KanbanColumnV2 } from './KanbanColumnV2';
+import { OpportunityCardV2 } from './OpportunityCardV2';
 import { StageManager } from './StageManager';
 import { CustomerList } from './CustomerList';
 import { CustomerCard } from './CustomerCard';
@@ -27,9 +29,10 @@ import { usePipeline } from './hooks/usePipeline';
 
 // Exportación de componentes originales
 export {
-  KanbanColumn,
   KanbanSummary,
-  KanbanBoard,
+  KanbanBoardV2,
+  KanbanColumnV2,
+  OpportunityCardV2,
   StageManager,
   CustomerList,
   CustomerCard,

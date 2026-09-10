@@ -30,7 +30,7 @@ async function verifyPlatformAdmin(
 // GET - obtiene payout con items
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
@@ -40,7 +40,7 @@ export async function GET(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     if (!id) {
       return NextResponse.json(
         { error: 'ID de payout requerido' },
@@ -68,7 +68,7 @@ export async function GET(
 // POST - procesa o cancela un payout
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
@@ -87,7 +87,7 @@ export async function POST(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     if (!id) {
       return NextResponse.json(
         { error: 'ID de payout requerido' },

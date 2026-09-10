@@ -37,6 +37,7 @@ interface DashboardKPIsProps {
   organizationId?: number | null;
   horas?: HorasDashboard | null;
   fechasCustom?: FechasCustomDashboard | null;
+  branchFilter?: number | 'all' | null;
 }
 
 export interface KpiConfigItem {
@@ -670,7 +671,7 @@ function ComprasWebMensualSparkline({
   );
 }
 
-export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId, horas, fechasCustom }: DashboardKPIsProps) {
+export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId, horas, fechasCustom, branchFilter }: DashboardKPIsProps) {
   const t = useTranslations('home.kpis');
   const locale = useLocale();
   // Visitantes en vivo via Realtime (solo para el KPI visitasWeb)
@@ -991,6 +992,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
       fechasCustom={fechasCustom}
       organizationId={organizationId}
       initialData={data}
+      branchFilter={branchFilter}
     />
     </>
   );

@@ -1,70 +1,34 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
-import { getEmailDomains, createEmailDomain } from '@/lib/services/crm/emailService';
+import { NextRequest } from 'next/server';
+import { emailErrorResponse, getServerOrgContext, ok, readJson } from '@/lib/services/crm/email/http';
+import { requireOrgAdmin } from '@/lib/utils/orgContext';
+import { createDomain, listDomains, type CreateDomainInput } from '@/lib/services/crm/email/domainsService';
+import { parseWith, zDomainCreate } from '@/lib/services/crm/email/schemas';
 
-/**
- * GET /api/email/domains — Lista los dominios de email de la organización.
- */
-export async function GET() {
+export const runtime = 'nodejs';
+
+/** GET /api/email/domains — dominios de la org (con dns_records y extras). */
+export async function GET(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
-    const domains = await getEmailDomains(ctx.organizationId, ctx.supabase);
-
-    return NextResponse.json({ success: true, data: domains }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode },
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Email Domains] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const ctx = await getServerOrgContext(request);
+    return ok(await listDomains(ctx.organizationId, ctx.supabase));
+  } catch (err) {
+    return emailErrorResponse(err, 'email/domains GET');
   }
 }
 
 /**
- * POST /api/email/domains — Registra un nuevo dominio de email.
- * Body: { domain, from_email, from_name?, reply_to?, provider?, is_default?, ... }
+ * POST /api/email/domains (admin)
+ * { domain, from_name, from_email_local?, reply_to?, region?, open_tracking?, click_tracking?, receiving_enabled?, is_default? }
+ * → 201 dominio creado en Resend (+ API key sending_access por dominio) con DNS a publicar.
  */
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
-    const body = await request.json();
-
-    if (!body?.domain || !body?.from_email) {
-      return NextResponse.json(
-        { success: false, error: 'Faltan campos obligatorios: domain, from_email' },
-        { status: 400 },
-      );
-    }
-
-    const domain = await createEmailDomain(
-      ctx.organizationId,
-      {
-        domain: body.domain,
-        from_email: body.from_email,
-        from_name: body.from_name,
-        reply_to: body.reply_to,
-        provider: body.provider,
-        provider_domain_id: body.provider_domain_id,
-        credential_id: body.credential_id,
-        is_default: body.is_default,
-      },
-      ctx.supabase,
-    );
-
-    return NextResponse.json({ success: true, data: domain }, { status: 201 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode },
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Email Domains] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const ctx = await getServerOrgContext(request);
+    requireOrgAdmin(ctx);
+    const body = parseWith(zDomainCreate, await readJson<unknown>(request), 'body de /api/email/domains');
+    const d = await createDomain(ctx.organizationId, body as CreateDomainInput, ctx.supabase);
+    return ok(d, 201);
+  } catch (err) {
+    return emailErrorResponse(err, 'email/domains POST');
   }
 }

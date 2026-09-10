@@ -1,6 +1,23 @@
 "use client";
-import * as Sentry from "@sentry/react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+
+/**
+ * Frontera de errores de la app.
+ *
+ * IMPORTANTE — por qué NO importa `@sentry/react` de forma estática:
+ * este componente envuelve a `children` en el layout raíz, así que su import
+ * entraba en el chunk del layout y arrastraba el SDK entero. En desarrollo ese
+ * chunk iba sin minificar y superó los 6,7 MB, con Sentry como mayor parte; el
+ * navegador agotaba el tiempo de espera y la app no arrancaba con
+ * `ChunkLoadError: Loading chunk app/layout failed`.
+ *
+ * La frontera es ahora un componente de clase de React, que es lo único que hace
+ * falta para capturar el error y pintar el aviso. El SDK se carga **solo cuando
+ * ocurre un error**, que es el único momento en que se necesita. Sentry web se
+ * sigue inicializando por su vía propia (`sentry.client.config.ts`), así que el
+ * error llega igual al panel.
+ */
 
 function ErrorFallback() {
   return (
@@ -47,6 +64,38 @@ function ErrorFallback() {
   );
 }
 
-export function SentryErrorBoundary({ children }: { children: React.ReactNode }) {
-  return <Sentry.ErrorBoundary fallback={ErrorFallback}>{children}</Sentry.ErrorBoundary>;
+interface Props {
+  children: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+}
+
+export class SentryErrorBoundary extends Component<Props, State> {
+  state: State = { hasError: false };
+
+  static getDerivedStateFromError(): State {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo): void {
+    // Carga diferida: el SDK solo se descarga si de verdad hubo un error.
+    void import("@sentry/react")
+      .then((Sentry) => {
+        Sentry.captureException(error, {
+          contexts: { react: { componentStack: info.componentStack } },
+        });
+      })
+      .catch((err) => {
+        // Si ni el reporte se puede cargar, al menos queda constancia local:
+        // tragarlo en silencio dejaría el fallo sin ningún rastro.
+        console.error("[sentry] No se pudo reportar el error", err, error);
+      });
+  }
+
+  render(): ReactNode {
+    if (this.state.hasError) return <ErrorFallback />;
+    return this.props.children;
+  }
 }

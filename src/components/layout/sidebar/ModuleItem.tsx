@@ -28,7 +28,7 @@ const ModuleItem = memo(({
   isExpanded, 
   onToggle 
 }: ModuleItemProps) => {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const Icon = moduleIcons[module.code] || Package;
   const route = moduleRoutes[module.code];
   const isActive = route ? pathname.startsWith(route) : false;

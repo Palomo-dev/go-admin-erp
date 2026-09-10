@@ -65,17 +65,30 @@ export function SalesTeamTerritorySelectors({
           .order('name'),
         supabase
           .from('organization_members')
-          .select('user_id, profiles:user_id(id, first_name, last_name, email)')
+          // `user_id` tiene DOS claves foraneas (auth.users y profiles), asi que
+          // el embebido por nombre de columna es ambiguo y PostgREST no lo
+          // resuelve: la lista llegaba vacia y el nombre caia al identificador
+          // recortado. Se nombra la restriccion para desambiguar.
+          .select('user_id, profiles!organization_members_user_id_fkey1(id, first_name, last_name, email)')
           .eq('organization_id', orgId)
           .eq('is_active', true),
       ]);
       if (teamsRes.data) setTeams(teamsRes.data);
       if (territoriesRes.data) setTerritories(territoriesRes.data);
+      // El error se propaga en vez de tragarse: si la consulta falla, la lista
+      // quedaba vacia sin que nadie se enterara y el desplegable parecia vacio
+      // "porque no hay miembros".
+      if (membersRes.error) throw membersRes.error;
       if (membersRes.data) {
-        const memberList = (membersRes.data as { user_id: string; profiles: { id: string; first_name: string | null; last_name: string | null; email: string | null }[] }[]).map((m) => {
-          const p = m.profiles?.[0] || null;
-          const full = p ? [p.first_name, p.last_name].filter(Boolean).join(' ') : '';
-          return { id: m.user_id, name: full || p?.email || m.user_id.slice(0, 8) };
+        type Perfil = { id: string; first_name: string | null; last_name: string | null; email: string | null };
+        const memberList = (membersRes.data as { user_id: string; profiles: Perfil | Perfil[] | null }[]).map((m) => {
+          // Con la restriccion nombrada el embebido es a-uno y llega como objeto;
+          // se acepta tambien el array por si alguna vista lo devuelve asi.
+          const p = Array.isArray(m.profiles) ? m.profiles[0] ?? null : m.profiles;
+          const full = p ? [p.first_name, p.last_name].filter(Boolean).join(' ').trim() : '';
+          // Nunca se muestra el identificador: si no hay nombre ni correo, se
+          // dice que el perfil esta incompleto, que es informacion util.
+          return { id: m.user_id, name: full || p?.email || 'Miembro sin nombre' };
         });
         setMembers(memberList);
       }

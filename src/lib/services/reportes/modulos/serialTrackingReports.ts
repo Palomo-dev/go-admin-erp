@@ -142,13 +142,16 @@ export const serialTrackingReports: ReportDefinition[] = [
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      // `serial_numbers.sold_by_user_id` NO tiene clave foránea a `profiles`
+      // (la restricción `serial_numbers_sold_by_user_id_fkey` ni siquiera
+      // existe), así que el embebido devolvía PGRST200 y el informe entero
+      // fallaba. El vendedor se resuelve con una segunda consulta por id.
       const { data, error } = await supabase
         .from('serial_numbers')
         .select(`
-          id, serial, sale_date, sale_channel, price_at_sale,
+          id, serial, sale_date, sale_channel, price_at_sale, sold_by_user_id,
           products!inner ( id, name, sku ),
-          customers ( id, full_name ),
-          sold_by_user:profiles!serial_numbers_sold_by_user_id_fkey ( email )
+          customers ( id, full_name )
         `)
         .eq('organization_id', orgId)
         .eq('status', 'sold')
@@ -158,6 +161,25 @@ export const serialTrackingReports: ReportDefinition[] = [
         .limit(500);
 
       if (error) throw error;
+
+      const vendedorIds = Array.from(
+        new Set((data ?? []).map((s: any) => s.sold_by_user_id).filter(Boolean))
+      ) as string[];
+      const emailPorUsuario = new Map<string, string>();
+      if (vendedorIds.length > 0) {
+        const { data: perfiles, error: perfilesError } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .in('id', vendedorIds);
+        // No es fatal para el informe, pero no se traga: queda en consola.
+        if (perfilesError) {
+          console.error(
+            `[serialTrackingReports] resolver vendedores: ${perfilesError.message} [code=${perfilesError.code}]`,
+            perfilesError
+          );
+        }
+        for (const p of perfiles ?? []) emailPorUsuario.set(p.id as string, (p.email as string) ?? '');
+      }
 
       const CHANNEL_LABELS: Record<string, string> = {
         pos: 'POS',
@@ -171,7 +193,7 @@ export const serialTrackingReports: ReportDefinition[] = [
         producto: s.products?.name ?? '—',
         sku: s.products?.sku ?? '—',
         cliente: s.customers?.full_name ?? '—',
-        vendedor: s.sold_by_user?.email ?? '—',
+        vendedor: emailPorUsuario.get(s.sold_by_user_id) || '—',
         canal: CHANNEL_LABELS[s.sale_channel] ?? s.sale_channel ?? '—',
         precio: Number(s.price_at_sale ?? 0),
         fecha_venta: s.sale_date ? s.sale_date.split('T')[0] : '—',

@@ -61,10 +61,18 @@ export interface BoldCreateLinkRequest {
   reference: string;
   /** Descripcion del pago. */
   description?: string;
+  /** Metodos de pago habilitados para el link. */
+  payment_methods?: string[];
   /** URL de redireccion tras el pago. */
   redirect_url?: string;
+  /** URL de notificacion tras el pago. */
+  callback_url?: string;
+  /** Correo del pagador. */
+  payer_email?: string;
   /** Metadata adicional. */
   metadata?: Record<string, unknown>;
+  /** Vigencia del link en segundos. */
+  expires_in?: number;
   /** Fecha de expiracion ISO 8601. */
   expires_at?: string;
 }
@@ -128,10 +136,16 @@ export interface BoldCreatePosPaymentRequest {
   currency: 'COP';
   /** Referencia de la orden. */
   reference: string;
-  /** ID del terminal a usar. */
-  terminal_id: string;
   /** Metodo de pago solicitado. */
   payment_method?: BoldPaymentMethod;
+  /** Modelo del datáfono destino. */
+  terminal_model?: string;
+  /** Serial del datáfono destino. */
+  terminal_serial: string;
+  /** Correo del usuario que opera el datáfono. */
+  user_email?: string;
+  /** Descripcion del pago. */
+  description?: string;
   /** Propina en pesos. */
   tip?: number;
   /** Metadata adicional. */
@@ -139,14 +153,15 @@ export interface BoldCreatePosPaymentRequest {
 }
 
 export interface BoldCreatePosPaymentResponse {
-  id: string;
-  reference: string;
-  amount: number;
-  currency: string;
-  status: BoldTransactionStatus;
-  terminal_id: string;
+  /** Identificador de la integracion generado por Bold. */
+  integration_id: string;
+  reference?: string;
+  amount?: number;
+  currency?: string;
+  status?: BoldTransactionStatus;
+  terminal_serial?: string;
   payment_method?: BoldPaymentMethod;
-  created_at: string;
+  created_at?: string;
 }
 
 // --- Consulta de transaccion (payments.api.bold.co) ---

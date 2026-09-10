@@ -355,12 +355,20 @@ async function getBusinessInfo(
   const { info_type } = args as { info_type: string };
 
   const supabase = getServiceSupabase();
-  const { data: org } = await supabase
+  // F6/r3 (gemelo de F-NEW-8): esta lectura descartaba el `error`, así que un
+  // fallo de base se le contaba al cliente como "no hay información del
+  // negocio" — el mismo mensaje que mentía sobre la causa que ya se corrigió en
+  // `conversationRelayHandler`. Ahora el error se registra con su mensaje real.
+  const { data: org, error } = await supabase
     .from('organizations')
     .select('name, business_type, address, phone, email, website')
     .eq('id', orgId)
     .single();
 
+  if (error) {
+    console.error('[voiceAgentTools] getBusinessInfo: fallo al leer la organización:', error.message);
+    return JSON.stringify({ error: 'No pudimos consultar la información del negocio en este momento.' });
+  }
   if (!org) {
     return JSON.stringify({ error: 'No se encontró información del negocio.' });
   }

@@ -193,7 +193,7 @@ export function DeliveryTrackingCard({
           </>
         )}
 
-        {(shipment.metadata as Record<string, unknown>)?.driver_id && shipment.driver && (
+        {Boolean((shipment.metadata as Record<string, unknown>)?.driver_id) && shipment.driver && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <User className="h-4 w-4 text-muted-foreground dark:text-gray-400" />

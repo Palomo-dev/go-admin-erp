@@ -12,7 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Users, GitBranch, Check, ChevronRight, Plus, Trash2, User, Percent } from 'lucide-react';
+import { Loader2, Users, GitBranch, Check, ChevronRight, Plus, Trash2, User, Percent, MessageCircle } from 'lucide-react';
+import dynamic from 'next/dynamic';
+// F16: pestaña "Mensaje" (WhatsApp masivo a la selección → campaña opportunity_list)
+const ComposeWhatsAppDialog = dynamic(() => import('@/components/crm/whatsapp/ComposeWhatsAppDialog').then((m) => m.ComposeWhatsAppDialog), { ssr: false });
 import { toast } from '@/components/ui/use-toast';
 import { opportunitiesService } from '@/components/crm/oportunidades/opportunitiesService';
 import { supabase } from '@/lib/supabase/config';
@@ -48,7 +51,7 @@ interface BulkActionsDialogProps {
   onSuccess?: () => void;
 }
 
-type TabMode = 'assign' | 'move';
+type TabMode = 'assign' | 'move' | 'message';
 
 export default function BulkActionsDialog({
   isOpen,
@@ -89,6 +92,8 @@ export default function BulkActionsDialog({
   const [filterStageId, setFilterStageId] = useState('all');
   const [targetStageId, setTargetStageId] = useState('');
   const [selectedOppIds, setSelectedOppIds] = useState<Set<string>>(new Set());
+  // Tab 3 (F16): WhatsApp masivo a la selección
+  const [composeOpen, setComposeOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -443,6 +448,17 @@ export default function BulkActionsDialog({
           >
             <GitBranch className="h-4 w-4" />
             Mover de etapa
+          </button>
+          <button
+            onClick={() => setTab('message')}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              tab === 'message'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+            }`}
+          >
+            <MessageCircle className="h-4 w-4" />
+            Mensaje
           </button>
         </div>
 

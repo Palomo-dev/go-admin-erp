@@ -63,7 +63,7 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
         // 1. Obtener total de ventas del cliente
         const { data: salesData, error: salesError } = await supabase
           .from('sales')
-          .select('id, total, sale_date')
+          .select('id, total, sale_date, status')
           .eq('customer_id', clienteId)
           .eq('organization_id', organizationId)
           .order('sale_date', { ascending: false });

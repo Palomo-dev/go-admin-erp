@@ -48,7 +48,7 @@ export async function POST(
       );
     }
 
-    const stageOrgId = (stage.pipelines as { organization_id: number }).organization_id;
+    const stageOrgId = (stage.pipelines as unknown as { organization_id: number }).organization_id;
     if (stageOrgId !== ctx.organizationId) {
       return NextResponse.json(
         { success: false, error: 'La etapa no pertenece a la organización' },

@@ -12,7 +12,7 @@ import { openFinanceService } from '@/lib/services/integrations/openFinance/open
 // POST - login al banco con credenciales del usuario
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
@@ -22,7 +22,7 @@ export async function POST(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     if (!id) {
       return NextResponse.json(
         { error: 'ID de link requerido' },

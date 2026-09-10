@@ -197,45 +197,10 @@ export default function TransportadorasPage() {
     setShowCredentialsDialog(true);
   };
 
-  interface ApiCredentials {
-    api_key?: string;
-    api_secret?: string;
-    username?: string;
-    password?: string;
-    sandbox_mode?: boolean;
-    custom_config?: string;
-  }
-
-  const handleSaveCredentials = async (carrierId: string, credentials: ApiCredentials) => {
-    setIsSaving(true);
-    try {
-      const currentCarrier = carriers.find(c => c.id === carrierId);
-      const updatedMetadata = {
-        ...(currentCarrier?.metadata || {}),
-        api_key: credentials.api_key,
-        api_username: credentials.username,
-        sandbox_mode: credentials.sandbox_mode,
-        custom_config: credentials.custom_config ? JSON.parse(credentials.custom_config) : undefined,
-      };
-      
-      await transportService.updateCarrier(carrierId, { metadata: updatedMetadata });
-      toast({
-        title: 'Éxito',
-        description: 'Credenciales guardadas correctamente',
-      });
-      setShowCredentialsDialog(false);
-      loadData();
-    } catch (error) {
-      console.error('Error guardando credenciales:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron guardar las credenciales',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  // El guardado de credenciales ya no vive aquí: escribía la api_key en claro en
+  // `transport_carriers.metadata` desde el navegador. Ahora `ApiCredentialsDialog` llama
+  // a /api/transport/carriers/[id]/credentials, que corre con service role y manda el
+  // secreto a Vault. Este componente sólo recarga la lista cuando termina.
 
   const handleImport = async (carriersToImport: Partial<TransportCarrier>[]) => {
     if (!organization?.id) return { success: 0, errors: ['Organización no disponible'] };
@@ -308,8 +273,7 @@ export default function TransportadorasPage() {
         open={showCredentialsDialog}
         onOpenChange={setShowCredentialsDialog}
         carrier={credentialsCarrier}
-        onSave={handleSaveCredentials}
-        isSaving={isSaving}
+        onSaved={loadData}
       />
 
       <ImportCarriersDialog

@@ -96,6 +96,7 @@ import AccountSwitcher from '../AccountSwitcher';
 import { NavSection } from './NavSection';
 import { SidebarNavigationProps, NavSection as NavSectionType } from '../types';
 import { useTranslations } from 'next-intl';
+import { CRM_NAV_ENABLED } from '@/config/crmNav';
 
 // Componente para la navegación lateral
 const SidebarNavigationComponent = ({ 
@@ -128,18 +129,16 @@ const SidebarNavigationComponent = ({
           href: "/app/crm",
           icon: <Users size={18} />,
           moduleCode: 'crm',
-          submenu: [
-            { name: "Clientes", href: "/app/crm/clientes", icon: <Users size={16} /> },
-            { name: "Pipeline", href: "/app/crm/pipeline", icon: <Target size={16} /> },
-            { name: "Oportunidades", href: "/app/crm/oportunidades", icon: <TrendingUp size={16} /> },
-            { name: "Equipo", href: "/app/crm/equipo", icon: <Users size={16} /> },
-            { name: "Pronóstico", href: "/app/crm/pronostico", icon: <BarChart3 size={16} /> },
-            { name: "Actividades", href: "/app/crm/actividades", icon: <Activity size={16} /> },
-            { name: "Segmentos", href: "/app/crm/segmentos", icon: <Tag size={16} /> },
-            { name: "Campañas", href: "/app/crm/campanas", icon: <Megaphone size={16} /> },
-            { name: "Salud Clientes", href: "/app/crm/salud", icon: <HeartPulse size={16} /> },
-            { name: "Identidades", href: "/app/crm/identidades", icon: <User size={16} /> }
-          ]
+          // Fuente unica: src/config/crmNav.ts, la misma que usa el panel de
+          // submenu de AppLayout. Antes esta lista estaba escrita a mano aqui y
+          // se habia quedado en 10 entradas mientras el panel mostraba 16, asi
+          // que Leads, Llamadas, Agentes IA, Plantillas, Secuencias y
+          // Automatizaciones aparecian en un sitio y no en el otro.
+          submenu: CRM_NAV_ENABLED.map((sub) => ({
+            name: sub.name,
+            href: sub.href,
+            icon: <sub.icon size={16} />,
+          }))
         },
         {
           name: t('hrm'),

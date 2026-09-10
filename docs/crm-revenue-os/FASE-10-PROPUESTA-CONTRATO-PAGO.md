@@ -1,5 +1,12 @@
 # FASE 10 — Demo, propuesta, contrato y pago
 
+> **Estado V4 (2026-09-08)** — reconciliado en `ANEXO-C-RECONCILIACION-2026-09.md` §4.3; el §1 de este documento está obsoleto.
+> - **Ya existe (BD)**: `roi_calculators`, `contract_signatures` (provider por defecto `documenso`), `demo_sessions` (las tres con 0 filas); `quotations` con `sections_json`, `payment_link_url`, `signature_id`, `opportunity_id`; `opportunities.deal_type/win_data/billing_cycle_months`.
+> - **Ya existe (backend)**: `proposalService.ts` (422 L), `contractService.ts` (399), `demoService.ts` (214), `roiService.ts` (287), `paymentService.ts` (273), `crmFinanceService.ts` (310); rutas `contracts`, `contracts/[id]`, `contracts/webhook`, `demos`, `demos/[id]`, `roi`, `roi/templates`, `roi/templates/[id]`, `payments/register`, `finance/[type]/[id]`. Las rutas `contracts/sign` y `proposals/generate` citadas en §3.1 no existen.
+> - **Escrito pero sin montar (💀)**: `src/components/crm/propuestas/ProposalBuilderDialog.tsx` (385 L), 0 importadores.
+> - **Falta**: toda la UI de §4 (`contratos/*`, `demo/*`, `ProposalGenerator`, `RoiCalculator`), integración Documenso/Cal.com/Daily (solo placeholders de env; `provider_configs` admite `esign|calendar|video`), y el envío de la propuesta por email con adjunto, que depende de `ComposeEmailDialog` (F7) y `documents`.
+> - **Cuándo**: Ola 5 (`PLAN.md` §7.2), tras F7 (email con adjuntos) y F9 (`QuickActionsBar` donde se engancha "Enviar propuesta"). Agendar demo usa `book_meeting` Nivel 1 (`calendar_events` + ICS) de D1.
+
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj`
 > Depende de: F2 (pipeline, gates), F7 (email), F9 (ficha 360°)
 > Bloquea: F11 (onboarding se crea al ganar)

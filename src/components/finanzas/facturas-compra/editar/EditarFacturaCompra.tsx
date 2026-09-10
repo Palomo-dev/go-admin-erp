@@ -17,7 +17,7 @@ interface EditarFacturaCompraProps {
 
 export function EditarFacturaCompra({ facturaId }: EditarFacturaCompraProps) {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const [loading, setLoading] = useState(true);
   
   // Detectar si estamos en inventario o finanzas

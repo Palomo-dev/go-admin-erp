@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Tag, ShoppingCart } from "lucide-react";
-import { Badge } from "./badge";
-import { Button } from "./button";
-import { Card, CardContent } from "./card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 
 interface Product {

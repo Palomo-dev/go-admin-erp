@@ -1,6 +1,14 @@
 import { supabase } from '@/lib/supabase/config';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getOrganizationId } from '@/lib/utils/orgId';
 import { sendgridService } from '@/lib/services/integrations/sendgrid';
+
+/**
+ * Este servicio se usa desde el cliente (browser) y desde
+ * `/api/notifications/process`. Los métodos invocados desde el servidor
+ * aceptan un `client?: SupabaseClient` (F0: pasar `getServiceClient()`);
+ * por defecto usan el cliente browser.
+ */
 
 export interface NotificationPayload {
   customer_name?: string;
@@ -133,9 +141,9 @@ export class NotificationService {
   }
 
   // Marcar notificación como enviada
-  static async markAsSent(notificationId: string): Promise<boolean> {
+  static async markAsSent(notificationId: string, client: SupabaseClient = supabase): Promise<boolean> {
     try {
-      const { error } = await supabase
+      const { error } = await client
         .from('notifications')
         .update({
           status: 'sent',
@@ -153,9 +161,9 @@ export class NotificationService {
   }
 
   // Marcar notificación como fallida
-  static async markAsFailed(notificationId: string, errorMsg: string): Promise<boolean> {
+  static async markAsFailed(notificationId: string, errorMsg: string, client: SupabaseClient = supabase): Promise<boolean> {
     try {
-      const { error } = await supabase
+      const { error } = await client
         .from('notifications')
         .update({
           status: 'failed',
@@ -377,7 +385,10 @@ export class NotificationService {
    * Procesa y envía todas las notificaciones email pendientes de una organización.
    * Busca notificaciones con channel='email' y status='pending', las envía vía SendGrid.
    */
-  static async processEmailNotifications(organizationId?: number): Promise<{
+  static async processEmailNotifications(
+    organizationId?: number,
+    client: SupabaseClient = supabase
+  ): Promise<{
     processed: number;
     sent: number;
     failed: number;
@@ -394,7 +405,7 @@ export class NotificationService {
       }
 
       // Obtener notificaciones email pendientes
-      const { data: pendingEmails, error } = await supabase
+      const { data: pendingEmails, error } = await client
         .from('notifications')
         .select('id, recipient_email, payload, template_id')
         .eq('organization_id', orgId)
@@ -412,7 +423,7 @@ export class NotificationService {
 
       for (const notification of pendingEmails) {
         if (!notification.recipient_email) {
-          await this.markAsFailed(notification.id, 'Sin email de destinatario');
+          await this.markAsFailed(notification.id, 'Sin email de destinatario', client);
           failed++;
           continue;
         }
@@ -429,10 +440,10 @@ export class NotificationService {
         });
 
         if (success.success) {
-          await this.markAsSent(notification.id);
+          await this.markAsSent(notification.id, client);
           sent++;
         } else {
-          await this.markAsFailed(notification.id, success.error || 'Error de envío');
+          await this.markAsFailed(notification.id, success.error || 'Error de envío', client);
           failed++;
         }
       }

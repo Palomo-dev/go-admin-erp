@@ -3,6 +3,7 @@
 import React from 'react';
 import { Clock, User, Calendar, CheckCircle2, Circle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { type PMTask, TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '@/lib/services/pmService';
 
 interface RelatedTasksListProps {

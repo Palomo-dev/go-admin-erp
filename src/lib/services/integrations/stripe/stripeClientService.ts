@@ -119,7 +119,7 @@ class StripeClientService {
   /** Crear instancia de Stripe con la secret key del CLIENTE */
   private createStripeInstance(secretKey: string): Stripe {
     return new Stripe(secretKey, {
-      apiVersion: '2024-11-20.acacia',
+      apiVersion: '2025-09-30.clover',
       typescript: true,
       appInfo: {
         name: 'GO Admin ERP - Client Integration',
@@ -246,7 +246,7 @@ class StripeClientService {
       id: refund.id,
       amount: refund.amount,
       currency: refund.currency,
-      status: refund.status,
+      status: refund.status ?? null,
     };
   }
 
@@ -270,7 +270,7 @@ class StripeClientService {
 
     return {
       id: customer.id,
-      name: customer.name,
+      name: customer.name ?? null,
       email: customer.email,
     };
   }

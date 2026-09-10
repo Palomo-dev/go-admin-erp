@@ -1,5 +1,13 @@
 # FASE 02 — Pipeline profesional: gates, scoring, discovery, objeciones y closed-lost
 
+> **Estado V4 (2026-09-08)** — reconciliado en `ANEXO-C-RECONCILIACION-2026-09.md` §4.2; el §1 de este documento está obsoleto.
+> - **Ya existe (BD)**: `opportunities.record_type`, `discovery_data`, columnas de seguimiento y de closed-lost, `closed_at` (+ trigger); `objections`/`opportunity_objections` (0 filas); `discovery_templates` (3 filas: orgs 1, 2, 134); `loss_reasons` (8 globales); `opportunity_stage_history` con `trg_opp_stage_history` habilitado (0 filas: sin movimientos desde su creación).
+> - **Ya existe (backend)**: `stageGateService.ts` (949 L) + `POST stages/[id]/gate`; `objectionService.ts`, `discoveryService.ts`, `discoveryTemplateService.ts`, `lossReasonsService.ts` (plural; el `lossReasonService.ts` citado no existe); rutas `objections/**` (3), `discovery/**` (3), `leads`, `leads/[id]/convert`, `pipeline-templates/**` (2). Las rutas `opportunities/[id]/{discovery,objections}` no existen con ese path (equivalentes: `discovery/[opportunityId]`, `objections/opportunity/[opportunityId]`).
+> - **Ya existe (UI)**: `/app/crm/leads` (405 L, fuera del nav); `StructuredLossDialog` montado en drawer y detalle; `LossReasonsManager` y `ExitGatesEditor` en `CRMConfigPanel.tsx:687,711`; `PipelineHeader` crea pipelines por plantilla.
+> - **Escrito pero sin montar (💀)**: `ObjecionesList.tsx` (492 L), `DiscoveryWizard.tsx` (666 L), `HoyView.tsx` (426 L); `GateWarningDialog` solo lo importa `KanbanBoard.tsx`, que es código muerto → **el board vivo (`PipelineStages.tsx`) no evalúa gates**.
+> - **Falta**: página `/app/crm/objeciones` y `ObjecionEditor/ObjecionPanel`; `PipelineTemplateImporter`; seeds de `objections` y `discovery_templates` para el resto de orgs (`ANEXO-C` §7.5–7.6); test `stageGateService.test.ts`; consolidar `LossReasonDialog` con `StructuredLossDialog`.
+> - **Cuándo**: F9 (Ola 2) porta gates/`WonCloseModal`/realtime a `PipelineStages` y monta el wizard y las objeciones en la ficha; el resto en la Ola 5 (`PLAN.md` §7.2). `AutomationsView` lo reemplaza F8.
+
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj`
 > Depende de: F0 (tipos canónicos, higiene), F1 (ICP, scoring config)
 > Bloquea: F4 (análisis IA mueve etapa vía gates), F8 (secuencias por etapa), F9 (ficha 360°)

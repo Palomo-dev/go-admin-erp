@@ -477,9 +477,19 @@ class WhatsAppQrService {
     if (existingCustomer) {
       customerId = (existingCustomer as { id: string }).id;
     } else {
+      // Resolver sucursal principal de la organización para asignar branch_id
+      const { data: mainBranch } = await supabase
+        .from('branches')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('is_main', true)
+        .limit(1)
+        .maybeSingle();
+      const branchId = (mainBranch as { id: number } | null)?.id ?? null;
+
       const { data: newCustomer } = await supabase
         .from('customers')
-        .insert({ organization_id: organizationId, first_name: name, phone, metadata: { source: 'whatsapp_qr' } })
+        .insert({ organization_id: organizationId, branch_id: branchId, first_name: name, phone, metadata: { source: 'whatsapp_qr' } })
         .select('id')
         .single();
       customerId = (newCustomer as { id: string } | null)?.id || '';

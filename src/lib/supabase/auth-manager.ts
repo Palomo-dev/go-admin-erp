@@ -1,5 +1,33 @@
 // auth-manager.ts - Gestor centralizado de autenticación para reducir solicitudes de tokens
 import { supabase } from './config';
+import { describeError } from '@/lib/utils/errorMessage';
+
+/**
+ * Tiempo máximo para hablar con Supabase Auth.
+ * Sin esto, si la base está intermitente (`upstream connect error ... connection
+ * timeout`) la promesa de `getSession()` no se resuelve NUNCA: el proveedor de
+ * sesión se queda en `loading` y toda la app gira para siempre sin ningún error.
+ */
+const AUTH_CALL_TIMEOUT_MS = 12_000;
+
+/** Rechaza si `promise` no se resuelve dentro de `ms`. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label} superó los ${Math.round(ms / 1000)} s sin responder`));
+    }, ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
 
 /**
  * Limpia tokens JWT corruptos o inválidos del almacenamiento
@@ -135,7 +163,11 @@ export const getOptimizedSession = async () => {
       }
 
       // Si llegamos aquí, necesitamos verificar con Supabase
-      const { data, error } = await supabase.auth.getSession();
+      const { data, error } = await withTimeout(
+        supabase.auth.getSession(),
+        AUTH_CALL_TIMEOUT_MS,
+        'supabase.auth.getSession()'
+      );
       
       // Actualizar caché y timestamp solo si la operación fue exitosa
       if (!error && data.session) {
@@ -156,7 +188,7 @@ export const getOptimizedSession = async () => {
       
       resolve({ session: data.session, error });
     } catch (e) {
-      console.error('Error al obtener sesión:', e);
+      console.error(`Error al obtener sesión: ${describeError(e)}`, e);
       
       // Verificar si es un error JWT y limpiar tokens corruptos
       if (isJWTError(e)) {
@@ -167,22 +199,33 @@ export const getOptimizedSession = async () => {
         
         // Intentar obtener sesión nuevamente después de limpiar
         try {
-          const { data: retryData, error: retryError } = await supabase.auth.getSession();
+          const { data: retryData, error: retryError } = await withTimeout(
+            supabase.auth.getSession(),
+            AUTH_CALL_TIMEOUT_MS,
+            'supabase.auth.getSession() (reintento)'
+          );
           resolve({ session: retryData?.session || null, error: retryError });
         } catch (retryE) {
-          console.error('Error en reintento después de limpiar tokens:', retryE);
+          console.error(`Error en reintento después de limpiar tokens: ${describeError(retryE)}`, retryE);
           resolve({ session: null, error: retryE });
         }
       } else {
         resolve({ session: null, error: e });
       }
-    } finally {
-      // Liberar la promesa en curso
-      sessionCheckPromise = null;
     }
   });
-  
-  return sessionCheckPromise;
+
+  // OJO: no liberar la promesa dentro del executor. Si el cuerpo se resuelve
+  // de forma síncrona (caso "no hay cookie ni localStorage"), el `finally` se
+  // ejecutaba ANTES de esta asignación y dejaba cacheada para siempre una
+  // promesa ya resuelta con `{ session: null }`: tras iniciar sesión, todas las
+  // llamadas seguían devolviendo "sin sesión".
+  const inFlight = sessionCheckPromise;
+  void inFlight.finally(() => {
+    if (sessionCheckPromise === inFlight) sessionCheckPromise = null;
+  });
+
+  return inFlight;
 };
 
 /**

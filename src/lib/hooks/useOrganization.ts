@@ -273,6 +273,14 @@ interface FormattedOrganization {
   created_at: string | null;
   branches: FormattedBranch[];
   country_code?: string | null;  // Agregar country_code
+  /**
+   * Marca este objeto como degradado (construido desde localStorage sin datos
+   * frescos de Supabase). Los objetos parciales tienen created_at: null y
+   * branches: [], lo que puede alimentar bugs si se tratan como organización
+   * completa. Los consumidores deben validar este flag antes de confiar en
+   * created_at o branches.
+   */
+  isPartial?: boolean;
   [key: string]: any;
 }
 
@@ -286,6 +294,12 @@ interface FormattedResponse {
 interface GetOrganizationResponse {
   data: FormattedResponse[] | null;
   error: Error | string | PostgrestError | null;
+  /**
+   * true si la organización devuelta NO coincide con la guardada en localStorage
+   * (fallback). El hook useOrganization NO debe persistir este resultado con
+   * guardarOrganizacionActiva, porque sería un cambio silencioso de org.
+   */
+  usedFallback?: boolean;
 }
 
 // Tipo para identificar errores de PostgreSQL/Supabase
@@ -302,11 +316,15 @@ export async function getUserOrganization(userId: string): Promise<GetOrganizati
     console.log("Obteniendo organización para userId:", userId);
     
     // Paso 1: Obtener el miembro de la organización
+    // ORDER BY id garantiza un orden determinista (Postgres no garantiza
+    // orden de filas sin ORDER BY). Sin esto, memberData[0] es arbitrario
+    // y puede cambiar entre ejecuciones, causando un cambio silencioso de org.
     const { data: memberData, error: memberError } = await supabase
       .from("organization_members")
       .select("id, organization_id, role_id")
       .eq("user_id", userId)
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .order("id", { ascending: true });
 
     if (memberError) {
       console.error("Error al consultar members:", memberError);
@@ -323,9 +341,23 @@ export async function getUserOrganization(userId: string): Promise<GetOrganizati
     // Si el usuario tiene múltiples orgs, respetar la guardada en localStorage
     const savedOrg = obtenerOrganizacionActiva();
     let member: DbOrganizationMember;
+    let usedFallback = false;
     if (memberData.length > 1 && savedOrg?.id) {
       const saved = memberData.find((m: any) => m.organization_id === savedOrg.id);
-      member = (saved || memberData[0]) as DbOrganizationMember;
+      if (saved) {
+        member = saved as DbOrganizationMember;
+      } else {
+        // La org guardada no está entre las del usuario. No elegir otra en
+        // silencio: usamos la primera (ordenada por id) para que la UI tenga
+        // datos, pero marcamos usedFallback=true para que el hook NO persista
+        // esta elección. El usuario debe seleccionar explícitamente.
+        console.warn(
+          `Organización guardada (id=${savedOrg.id}) no encontrada entre las del usuario. ` +
+          `Usando fallback temporal (id=${memberData[0].organization_id}), NO se persistirá.`
+        );
+        member = memberData[0] as DbOrganizationMember;
+        usedFallback = true;
+      }
     } else {
       member = memberData[0] as DbOrganizationMember;
     }
@@ -392,7 +424,7 @@ export async function getUserOrganization(userId: string): Promise<GetOrganizati
     
     console.log("Datos procesados de organización (FINAL):", JSON.stringify(formattedData));
     
-    return { data: formattedData, error: null };
+    return { data: formattedData, error: null, usedFallback };
   } catch (error: any) {
     console.error("Error al obtener la organización:", error);
     return { data: null, error };
@@ -550,13 +582,16 @@ export function useOrganization() {
     try {
       const organizacionLocal = obtenerOrganizacionActiva();
       if (organizacionLocal && organizacionLocal.id) {
-        // Crear un objeto FormattedOrganization válido desde el inicio
+        // Crear un objeto FormattedOrganization válido desde el inicio.
+        // Marcado como isPartial porque se construye desde localStorage sin
+        // datos frescos de Supabase (created_at: null, branches: []).
         return {
           organization: {
             id: organizacionLocal.id,
             name: organizacionLocal.name || `Organización ${organizacionLocal.id}`,
             created_at: null,
             branches: [],
+            isPartial: true,
             slug: organizacionLocal.slug || '',
             logo_url: organizacionLocal.logo_url || '',
             subdomain: organizacionLocal.subdomain || ''
@@ -599,12 +634,14 @@ export function useOrganization() {
         if (!userId) {
           // Si no hay usuario pero hay organización en local, usamos esa
           if (organizacionLocal && organizacionLocal.id) {
-            // Crear un objeto FormattedOrganization válido a partir de los datos locales
+            // Crear un objeto FormattedOrganization válido a partir de los datos locales.
+            // Marcado como isPartial (sin datos frescos de Supabase).
             const formattedOrg: FormattedOrganization = {
               id: organizacionLocal.id,
               name: organizacionLocal.name || `Organización ${organizacionLocal.id}`,
               created_at: null,
               branches: [],
+              isPartial: true,
               slug: organizacionLocal.slug || '',
               logo_url: organizacionLocal.logo_url || '',
               subdomain: organizacionLocal.subdomain || ''
@@ -632,22 +669,27 @@ export function useOrganization() {
         }
         
         // Obtenemos datos completos de la organización desde Supabase
-        const { data, error } = await getUserOrganization(userId);
+        const { data, error, usedFallback } = await getUserOrganization(userId);
         
         if (error) {
           throw error;
         }
         
         if (data && data.length > 0) {
-          // Guardar datos actualizados en almacenamiento local
           const orgData = data[0].organization;
-          guardarOrganizacionActiva({
-            id: orgData.id,
-            name: orgData.name,
-            slug: orgData.slug || undefined,
-            logo_url: orgData.logo_url || undefined,
-            subdomain: orgData.subdomain || undefined
-          });
+          // Solo persistir si la org devuelta coincide con la guardada, o si
+          // no hay org guardada (primera vez). Si usedFallback es true, la org
+          // devuelta NO es la guardada — no sobrescribir localStorage con un
+          // fallback elegido en silencio.
+          if (!usedFallback) {
+            guardarOrganizacionActiva({
+              id: orgData.id,
+              name: orgData.name,
+              slug: orgData.slug || undefined,
+              logo_url: orgData.logo_url || undefined,
+              subdomain: orgData.subdomain || undefined
+            });
+          }
           
           // Actualizar estado del componente
           setOrganizationData({
@@ -665,6 +707,7 @@ export function useOrganization() {
             name: organizacionLocal.name || `Organización ${organizacionLocal.id}`,
             created_at: null,
             branches: [],
+            isPartial: true,
             slug: organizacionLocal.slug || '',
             logo_url: organizacionLocal.logo_url || '',
             subdomain: organizacionLocal.subdomain || ''
@@ -696,6 +739,7 @@ export function useOrganization() {
             name: organizacionLocal.name || `Organización ${organizacionLocal.id}`,
             created_at: null,
             branches: [],
+            isPartial: true,
             slug: organizacionLocal.slug || '',
             logo_url: organizacionLocal.logo_url || '',
             subdomain: organizacionLocal.subdomain || ''

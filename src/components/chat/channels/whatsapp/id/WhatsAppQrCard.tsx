@@ -82,20 +82,9 @@ export default function WhatsAppQrCard({ channelId }: WhatsAppQrCardProps) {
     fetchStatus();
   }, [fetchStatus]);
 
-  // Polling de despacho de mensajes pendientes cuando está conectado
-  useEffect(() => {
-    if (state.status !== 'connected') return;
-    const dispatchPending = async () => {
-      try {
-        await fetch('/api/integrations/whatsapp/qr/dispatch-pending', { method: 'POST' });
-      } catch {
-        /* noop */
-      }
-    };
-    dispatchPending();
-    const interval = setInterval(dispatchPending, 5000);
-    return () => clearInterval(interval);
-  }, [state.status]);
+  // F0 (C10): se eliminó el polling a /api/integrations/whatsapp/qr/dispatch-pending
+  // desde el browser (la ruta ahora exige CRON_SECRET); el despacho QR lo hace
+  // el job `whatsapp` de la cola outbound_jobs (JOBS-0).
 
   const handleStart = async () => {
     setLoading(true);

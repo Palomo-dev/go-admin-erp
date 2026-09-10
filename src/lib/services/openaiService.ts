@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 
 let openaiClient: OpenAI | null = null;
@@ -333,22 +334,37 @@ ${context.agentName ? `- Agente asistido: ${context.agentName}` : ''}`;
     }));
   }
 
-  calculateCost(usage: AIResponse['usage'], model: string): number {
-    const pricing: Record<string, { input: number; output: number }> = {
-      'gpt-4o': { input: 0.0025, output: 0.01 },
-      'gpt-4o-mini': { input: 0.00015, output: 0.0006 },
-      'o1': { input: 0.015, output: 0.06 },
-      'o1-mini': { input: 0.003, output: 0.012 },
-      'gpt-4-turbo': { input: 0.01, output: 0.03 },
-      'gpt-4': { input: 0.03, output: 0.06 },
-      'gpt-3.5-turbo': { input: 0.0005, output: 0.0015 },
-    };
-
-    const modelPricing = pricing[model] || pricing['gpt-4o-mini'];
-    const inputCost = (usage.promptTokens / 1000) * modelPricing.input;
-    const outputCost = (usage.completionTokens / 1000) * modelPricing.output;
-
-    return inputCost + outputCost;
+  /**
+   * Costo en USD de una generacion.
+   *
+   * La tabla de precios cableada que habia aqui (gpt-4o, o1, gpt-4-turbo,
+   * gpt-3.5-turbo) no conocia ninguno de los modelos en uso y caia SIEMPRE al
+   * precio de gpt-4o-mini: habria cobrado gpt-5.6-terra, que cuesta 10x, a
+   * precio de gama baja. Ahora el calculo lo hace `calcular_costo_llm()` contra
+   * `provider_pricing`, que es la tarifa que el equipo mantiene.
+   *
+   * Devuelve `null` —no cero— si el modelo no tiene tarifa cargada.
+   */
+  async calculateCost(
+    supabase: SupabaseClient,
+    usage: AIResponse['usage'],
+    model: string
+  ): Promise<number | null> {
+    try {
+      const { data, error } = await supabase.rpc('calcular_costo_llm', {
+        p_model: model,
+        p_tokens_entrada: usage.promptTokens,
+        p_tokens_salida: usage.completionTokens,
+      });
+      if (error) {
+        console.error('No se pudo calcular el costo:', error.message);
+        return null;
+      }
+      return data === null || data === undefined ? null : Number(data);
+    } catch (e) {
+      console.error('No se pudo calcular el costo:', e);
+      return null;
+    }
   }
 }
 

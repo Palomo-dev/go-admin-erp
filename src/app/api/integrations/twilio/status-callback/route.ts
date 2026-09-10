@@ -3,33 +3,32 @@
  * POST /api/integrations/twilio/status-callback
  *
  * Twilio envía actualizaciones de estado de cada mensaje enviado.
+ *
+ * Seguridad (F0, C12/C13): firma `X-Twilio-Signature` SIEMPRE (dev y prod),
+ * token resuelto por `AccountSid` (master o subcuenta), URL reconstruida
+ * desde TWILIO_WEBHOOK_BASE_URL. Sin firma/token válido → 403.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import {
-  validateTwilioSignature,
-  handleStatusCallback,
-} from '@/lib/services/integrations/twilio';
+import { NextResponse } from 'next/server';
+import { handleStatusCallback } from '@/lib/services/integrations/twilio';
 import type { TwilioStatusCallback } from '@/lib/services/integrations/twilio';
+import { verifyTwilioWebhook, WebhookError } from '@/lib/security/webhookSignatures';
 
-export async function POST(request: NextRequest) {
+export const runtime = 'nodejs';
+
+export async function POST(request: Request) {
+  let params: Record<string, string>;
   try {
-    const formData = await request.formData();
-    const params: Record<string, string> = {};
-    formData.forEach((value, key) => {
-      params[key] = value.toString();
-    });
-
-    // Validar firma en producción
-    if (process.env.NODE_ENV === 'production') {
-      const signature = request.headers.get('x-twilio-signature') || '';
-      const url = `${process.env.TWILIO_WEBHOOK_BASE_URL}/status-callback`;
-      const isValid = validateTwilioSignature(signature, url, params);
-      if (!isValid) {
-        return new NextResponse('Forbidden', { status: 403 });
-      }
+    ({ params } = await verifyTwilioWebhook(request));
+  } catch (err) {
+    if (err instanceof WebhookError) {
+      console.warn('[Webhook status-callback] Rechazado:', err.code);
+      return new NextResponse('Forbidden', { status: err.statusCode });
     }
+    throw err;
+  }
 
+  try {
     const callback: TwilioStatusCallback = {
       MessageSid: params.MessageSid || '',
       MessageStatus: params.MessageStatus as TwilioStatusCallback['MessageStatus'],

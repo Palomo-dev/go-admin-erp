@@ -49,38 +49,64 @@ export interface UpdateAISettingsData {
   is_active?: boolean;
 }
 
-export const AI_PROVIDERS = [
-  { 
-    value: 'openai', 
-    label: 'OpenAI', 
-    models: [
-      { value: 'gpt-4o', label: 'GPT-4o (Recomendado)', cost: 'medio' },
-      { value: 'gpt-4o-mini', label: 'GPT-4o Mini (Económico)', cost: 'bajo' },
-      { value: 'gpt-4-turbo', label: 'GPT-4 Turbo', cost: 'alto' },
-      { value: 'gpt-4', label: 'GPT-4', cost: 'alto' },
-      { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (Más económico)', cost: 'muy bajo' },
-      { value: 'o1', label: 'O1 (Razonamiento)', cost: 'muy alto' },
-      { value: 'o1-mini', label: 'O1 Mini', cost: 'alto' }
-    ]
-  },
-  { 
-    value: 'anthropic', 
-    label: 'Anthropic', 
-    models: [
-      { value: 'claude-3-opus', label: 'Claude 3 Opus', cost: 'alto' },
-      { value: 'claude-3-sonnet', label: 'Claude 3 Sonnet', cost: 'medio' },
-      { value: 'claude-3-haiku', label: 'Claude 3 Haiku', cost: 'bajo' }
-    ]
-  },
-  { 
-    value: 'google', 
-    label: 'Google AI', 
-    models: [
-      { value: 'gemini-pro', label: 'Gemini Pro', cost: 'medio' },
-      { value: 'gemini-pro-vision', label: 'Gemini Pro Vision', cost: 'medio' }
-    ]
+/**
+ * Catalogo de modelos de IA.
+ *
+ * Antes esto era una constante cableada con gpt-4-turbo, o1, claude-3-* y
+ * gemini-pro: modelos obsoletos, desalineados con providerRegistry.ts y sin
+ * relacion con las tarifas reales de `provider_pricing`. Ahora se sirve desde
+ * /api/chat/ai/modelos, que une el catalogo con la tarifa vigente y ademas dice
+ * si la organizacion tiene credenciales para cada proveedor.
+ */
+export type GamaModelo = 'economico' | 'equilibrado' | 'premium' | 'legacy';
+
+export interface ModeloIA {
+  provider: string;
+  value: string;
+  label: string;
+  gama: GamaModelo;
+  recomendado: boolean;
+  contextoTokens: number | null;
+  soportaVision: boolean | null;
+  nota: string | null;
+  costoEntradaUsdMillon: number | null;
+  costoSalidaUsdMillon: number | null;
+  /** false = sin tarifa en provider_pricing: su costo no se puede calcular. */
+  tarifaCargada: boolean;
+}
+
+export interface ProveedorIA {
+  value: string;
+  label: string;
+  /** false = la organizacion no tiene credenciales; no se debe poder elegir. */
+  usable: boolean;
+  motivo: string | null;
+}
+
+export interface CatalogoModelos {
+  proveedores: ProveedorIA[];
+  modelos: ModeloIA[];
+}
+
+export async function fetchCatalogoModelos(): Promise<CatalogoModelos> {
+  const res = await fetch('/api/chat/ai/modelos');
+  if (!res.ok) {
+    throw new Error('No se pudo cargar el catálogo de modelos');
   }
-];
+  return res.json();
+}
+
+/** Costo estimado en USD de una respuesta, con el consumo real promedio. */
+export function estimarCostoRespuesta(
+  modelo: ModeloIA,
+  tokensEntrada: number,
+  tokensSalida: number
+): number | null {
+  if (!modelo.tarifaCargada) return null;
+  const entrada = (tokensEntrada / 1_000_000) * (modelo.costoEntradaUsdMillon ?? 0);
+  const salida = (tokensSalida / 1_000_000) * (modelo.costoSalidaUsdMillon ?? 0);
+  return entrada + salida;
+}
 
 export interface OrganizationAIConfig {
   provider: string;

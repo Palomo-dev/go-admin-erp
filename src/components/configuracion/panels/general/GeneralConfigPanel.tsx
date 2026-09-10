@@ -72,6 +72,16 @@ export function GeneralConfigPanel() {
     );
   }
 
+  if (orgId === null) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          No se pudo determinar la organización activa.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>

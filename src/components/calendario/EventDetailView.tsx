@@ -314,14 +314,14 @@ export function EventDetailView({
       </div>
 
       {/* Metadatos adicionales */}
-      {((event.metadata as Record<string, unknown>)?.event_type || (event.metadata as Record<string, unknown>)?.visibility) && (
+      {Boolean((event.metadata as Record<string, unknown>)?.event_type || (event.metadata as Record<string, unknown>)?.visibility) && (
         <div className="flex flex-wrap gap-2 py-2">
-          {(event.metadata as Record<string, unknown>)?.event_type && (
+          {Boolean((event.metadata as Record<string, unknown>)?.event_type) && (
             <Badge variant="outline" className="text-xs">
               {`Tipo: ${String((event.metadata as Record<string, unknown>)?.event_type || '').charAt(0).toUpperCase()}${String((event.metadata as Record<string, unknown>)?.event_type || '').slice(1)}`}
             </Badge>
           )}
-          {(event.metadata as Record<string, unknown>)?.visibility && (
+          {Boolean((event.metadata as Record<string, unknown>)?.visibility) && (
             <Badge variant="outline" className="text-xs">
               {String((event.metadata as Record<string, unknown>)?.visibility) === 'public' ? '🌐 Público' : String((event.metadata as Record<string, unknown>)?.visibility) === 'private' ? '🔒 Privado' : '🏢 Organización'}
             </Badge>

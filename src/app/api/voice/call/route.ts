@@ -4,22 +4,22 @@ import { getActiveProvider } from '@/lib/services/providerRegistry';
 import { createCall } from '@/lib/services/crm/callManagementService';
 import { getCommSettings } from '@/lib/services/integrations/twilio/twilioSubaccounts';
 import { formatE164 } from '@/lib/services/integrations/twilio/twilioConfig';
+import { getTwilioWebhookOrigin } from '@/lib/security/webhookSignatures';
 import Twilio from 'twilio';
+import type { CallMode } from '@/lib/crm/enums';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
- * POST /api/voice/call — Inicia una llamada saliente server-side.
+ * POST /api/voice/call — Inicia una llamada saliente REST (legacy / F5-F6).
  *
- * Body: {
- *   to: string,          // número destino
- *   from?: string,       // número origen (default: comm_settings.voice_caller_id)
- *   customer_id?: string,
- *   opportunity_id?: string,
- *   recording_enabled?: boolean,
- *   mode?: 'manual' | 'click-to-call' | 'voice-agent',
- * }
+ * Body: { to, from?, customer_id?, opportunity_id?, recording_enabled?, mode?: 'bridge' | 'ai_agent' }
  *
- * Usa el cliente de Twilio de la organización (subcuenta o master) para
- * iniciar la llamada. Registra el call record en la tabla `calls`.
+ * F3: el modo `browser` NO pasa por aquí (400 `USE_SDK`): el softphone hace
+ * `device.connect()` y la fila `calls` la crea `/api/voice/twiml/outbound`
+ * (elimina la doble marcación C10). `mode` y `status` usan los CHECK reales de
+ * BD (C3). El bridge celular real vive en `/api/voice/bridge/initiate`.
  */
 export async function POST(request: NextRequest) {
   let ctx;
@@ -43,8 +43,16 @@ export async function POST(request: NextRequest) {
       customer_id?: string;
       opportunity_id?: string;
       recording_enabled?: boolean;
-      mode?: 'manual' | 'click-to-call' | 'voice-agent';
+      mode?: string;
     };
+
+    if (!mode || mode === 'browser' || mode === 'click-to-call') {
+      return NextResponse.json(
+        { success: false, error: 'Las llamadas desde el navegador se inician con el softphone (device.connect); usa /api/voice/bridge/initiate para el celular', code: 'USE_SDK' },
+        { status: 400 }
+      );
+    }
+    const callMode: CallMode = mode === 'voice-agent' || mode === 'ai_agent' ? 'ai_agent' : mode === 'bridge' ? 'bridge' : 'manual';
 
     if (!to) {
       return NextResponse.json(
@@ -84,8 +92,20 @@ export async function POST(request: NextRequest) {
     // 3. Crear cliente Twilio
     const client = Twilio(accountSid, authToken);
 
-    // 4. Construir URL de TwiML para salida
-    const webhookBase = process.env.TWILIO_WEBHOOK_BASE_URL || '';
+    // 4. Construir URL de TwiML para salida.
+    //    `TWILIO_WEBHOOK_BASE_URL` puede traer un path heredado
+    //    (`https://app.goadmin.io/api/integrations/twilio`); usar el valor crudo
+    //    generaba URLs 404. `getTwilioWebhookOrigin()` normaliza a origin, igual
+    //    que el resto de rutas de voz, y falla explícito si no está definido.
+    let webhookBase: string;
+    try {
+      webhookBase = getTwilioWebhookOrigin();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'TWILIO_WEBHOOK_BASE_URL no configurado', code: 'WEBHOOK_BASE_URL_MISSING' },
+        { status: 500 }
+      );
+    }
     const twimlUrl = `${webhookBase}/api/voice/twiml/outbound`;
     const statusCallback = `${webhookBase}/api/voice/status`;
     const recordingCallback = `${webhookBase}/api/voice/recording`;
@@ -110,13 +130,13 @@ export async function POST(request: NextRequest) {
         provider: 'twilio',
         provider_call_sid: callInstance.sid,
         direction: 'outbound',
-        mode: mode ?? 'click-to-call',
+        mode: callMode,
         from_number: fromNumber,
         to_number: formattedTo,
         customer_id: customer_id ?? null,
         opportunity_id: opportunity_id ?? null,
         user_id: ctx.userId,
-        status: 'queued',
+        status: 'dialing',
         recording_enabled: recordingEnabled,
         metadata: {},
       },

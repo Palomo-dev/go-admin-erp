@@ -776,9 +776,26 @@ export default function PlanTab({ orgId }: PlanTabProps) {
               const maxStorage = currentPlan.features?.storage_gb || null;
               const aiCreditsMonthly = aiCredits?.monthly || 0;
               const aiCreditsPurchased = aiCredits?.purchased || 0;
-              const aiCreditsLimit = aiCreditsMonthly + aiCreditsPurchased;
               const aiCreditsUsed = aiCredits?.consumed || 0;
-              const aiCreditsAvailable = Math.max(0, aiCreditsLimit - aiCreditsUsed);
+
+              // El saldo real es `ai_settings.credits_remaining`: es el que
+              // descuenta el bot y el que decide si queda crédito. Antes la UI
+              // lo cargaba pero no lo usaba, y mostraba `mensual + comprados -
+              // consumido`, que da un número distinto por dos razones:
+              //   1. El reseteo mensual suma el ROLLOVER del mes anterior
+              //      (mensual + rollover + comprados), y el límite no lo incluía:
+              //      Reino del Hogar aparecía con 7.046 disponibles cuando tenía
+              //      16.002 reales.
+              //   2. Un plan sin créditos mensuales daba límite 0 y disponible
+              //      NEGATIVO: Hotel X mostraba "8 / 0" y −8 disponibles
+              //      teniendo 10.099.992 créditos.
+              const aiCreditsAvailable = aiCredits?.remaining ?? 0;
+              // El techo de la barra parte del saldo real para que el rollover y
+              // los planes a medida queden dentro y nunca se pinte fuera de rango.
+              const aiCreditsLimit = Math.max(
+                aiCreditsAvailable + aiCreditsUsed,
+                aiCreditsMonthly + aiCreditsPurchased
+              );
               
               // Calcular porcentajes
               const modulesPercent = maxModules ? Math.min((totalActiveModules / maxModules) * 100, 100) : 0;
@@ -889,6 +906,11 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">{t('aiCreditsLabel')}</p>
+                    {/* El saldo real. Es lo que el usuario necesita saber y era
+                        justo lo que la tarjeta no mostraba. */}
+                    <p className="text-xs text-gray-600 mt-0.5 dark:text-gray-300">
+                      {aiCreditsAvailable.toLocaleString()} disponibles
+                    </p>
                     {aiCreditsPurchased > 0 && (
                       <p className="text-xs text-amber-500 mt-0.5 dark:text-amber-400">
                         +{aiCreditsPurchased.toLocaleString()} comprados

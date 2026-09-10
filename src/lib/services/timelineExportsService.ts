@@ -8,7 +8,7 @@ export interface TimelineExport {
   name: string;
   description?: string;
   filters: TimelineFilters;
-  format: 'json' | 'csv' | 'xlsx';
+  format: 'json' | 'csv';
   status: 'pending' | 'processing' | 'completed' | 'failed';
   file_url?: string;
   file_size?: number;

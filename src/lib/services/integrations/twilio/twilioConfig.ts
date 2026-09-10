@@ -77,10 +77,18 @@ export function getVerifyServiceSid(): string {
 }
 
 /**
- * Obtiene la URL base de webhooks.
+ * Obtiene el ORIGIN público de webhooks (`https://app.goadmin.io`), sin path.
+ * F0 (C2 voz / C-8): todas las rutas se construyen como `${origin}/api/voice/...`
+ * o `${origin}/api/integrations/twilio/...`. Si la variable trae un path
+ * (valor legacy), se descarta y se usa solo el origin.
  */
 export function getWebhookBaseUrl(): string {
-  return process.env.TWILIO_WEBHOOK_BASE_URL || 'https://app.goadmin.io/api/integrations/twilio';
+  const raw = process.env.TWILIO_WEBHOOK_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://app.goadmin.io';
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return 'https://app.goadmin.io';
+  }
 }
 
 /**

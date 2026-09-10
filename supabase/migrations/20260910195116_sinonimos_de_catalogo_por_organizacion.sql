@@ -1,8 +1,8 @@
 -- Sinonimos de catalogo.
 --
--- Problema medido: "zapatillas" no encuentra nada en la Tienda de Tenis porque
--- su catalogo esta en ingles ("On Running Men's"). De 15 palabras genericas en
--- espanol, esa tienda reconoce 1, Onix Perfums 1 y NEG infashion 0.
+-- Problema medido: "zapatillas" no encuentra nada en una tienda de calzado porque
+-- su catalogo esta en ingles. De 15 palabras genericas en
+-- espanol, esa tienda reconoce 1; otras dos reconocen 1 y 0.
 --
 -- Salvaguarda de diseno: un sinonimo SOLO se activa si `apunta_a` existe de
 -- verdad en el vocabulario de esa organizacion. Asi una base generica en espanol

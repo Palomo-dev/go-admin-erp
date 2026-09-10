@@ -150,7 +150,7 @@ const ADMIN_CTX = {
   userId: 'u-admin',
   userEmail: 'admin@ejemplo.com',
   organizationId: ORG_ID,
-  organizationName: 'Space Cocktails',
+  organizationName: 'Organización Demo',
   roleId: 2,
   roleName: 'Admin de organización',
   isSuperAdmin: false,
@@ -212,7 +212,7 @@ function req(body: unknown, headers: Record<string, string> = {}) {
 const BODY = {
   email: 'Persona@Ejemplo.COM',
   organizationId: ORG_ID,
-  organizationName: 'Space Cocktails',
+  organizationName: 'Organización Demo',
   roleId: 4,
   invitationCode: 'abc123',
   invitedBy: 'u-admin',
@@ -242,7 +242,7 @@ beforeEach(() => {
     status: 'pending',
     expires_at: EN_UNA_SEMANA,
     created_at: new Date().toISOString(),
-    organizations: { name: 'Space Cocktails' },
+    organizations: { name: 'Organización Demo' },
   };
   profileRow = null;
   membershipRow = null;
@@ -359,7 +359,7 @@ describe('POST /api/auth/invite · la invitación manda sobre el body', () => {
 
     expect(llamada<[string, InviteArgs]>(inviteUserByEmail)[1].data).toEqual({
       organization_id: ORG_ID,
-      organization_name: 'Space Cocktails',
+      organization_name: 'Organización Demo',
       role_id: 7,
       invitation_code: 'abc123',
       is_invitation: true,

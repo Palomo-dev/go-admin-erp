@@ -4,7 +4,7 @@
 -- similitud, sin consultar sinonimos. Las tablas `org_sinonimos` y
 -- `sinonimos_base` quedan intactas: se dejan de leer, no se borran.
 --
--- Efecto: "zapatillas" vuelve a no encontrar nada en la Tienda de Tenis.
+-- Efecto: "zapatillas" vuelve a no encontrar nada en una tienda de calzado.
 
 create or replace function public.palabras_de_catalogo(
   p_org integer,

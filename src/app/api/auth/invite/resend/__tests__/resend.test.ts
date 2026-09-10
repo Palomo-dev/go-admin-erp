@@ -183,7 +183,7 @@ beforeEach(() => {
     email: 'persona@ejemplo.com',
     status: 'pending',
     expires_at: EN_UNA_SEMANA,
-    organizations: { name: 'Space Cocktails' },
+    organizations: { name: 'Organización Demo' },
   };
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://ejemplo.supabase.co';
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-de-prueba';
@@ -212,7 +212,7 @@ describe('POST /api/auth/invite/resend', () => {
         data: {
           invitation_code: 'abc123',
           organization_id: 142,
-          organization_name: 'Space Cocktails',
+          organization_name: 'Organización Demo',
         },
       },
     });
@@ -239,11 +239,11 @@ describe('POST /api/auth/invite/resend', () => {
 
   // --- Nombre de la organización ----------------------------------------
   it('acepta el embed como array (to-many) sin perder el nombre', async () => {
-    inviteRow!.organizations = [{ name: 'Vivor Eats' }];
+    inviteRow!.organizations = [{ name: 'Otra Organización' }];
 
     await POST(req(BODY));
 
-    expect(signInWithOtp.mock.calls[0][0].options.data.organization_name).toBe('Vivor Eats');
+    expect(signInWithOtp.mock.calls[0][0].options.data.organization_name).toBe('Otra Organización');
   });
 
   it('cae al texto por defecto si el join no trae nombre, en ambas formas', async () => {
@@ -300,7 +300,7 @@ describe('POST /api/auth/invite/resend · respuesta uniforme', () => {
         email: 'persona@ejemplo.com',
         status: 'pending',
         expires_at: EN_UNA_SEMANA,
-        organizations: { name: 'Space Cocktails' },
+        organizations: { name: 'Organización Demo' },
       };
       escenario();
 

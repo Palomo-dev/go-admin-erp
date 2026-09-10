@@ -277,7 +277,7 @@ describe('F1 — prompt del sistema', () => {
   beforeEach(() => resetRegistry());
 
   const promptCtx = {
-    organizationName: 'Reino del Hogar',
+    organizationName: 'Organización Demo',
     userName: 'Ana',
     roleName: 'Vendedor',
     currency: 'COP',

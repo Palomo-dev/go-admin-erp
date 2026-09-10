@@ -1076,7 +1076,7 @@ CREATE OR REPLACE FUNCTION "public"."buscar_productos"("p_org" integer, "p_token
             when c.n_nombre like '% ' || t.tok || ' %' then 4.0
             when c.n_marca like '% ' || t.tok || ' %' then 3.0
             -- La categoria ayuda cuando el catalogo esta en otro idioma que el
-            -- cliente: la Tienda de Tenis tiene productos "On Running Men's"
+            -- cliente: una tienda de calzado tiene su catalogo en ingles
             -- pero su categoria se llama "Calzado".
             when c.n_categoria like '% ' || t.tok || ' %' then 2.5
             when length(t.tok) >= 4 and c.n_nombre like '%' || t.tok || '%' then 2.0

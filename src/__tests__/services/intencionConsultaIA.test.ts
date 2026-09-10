@@ -19,8 +19,8 @@ describe('normalizar — debe coincidir con normalizar_busqueda() de Postgres', 
 
   it('borra el apóstrofo en vez de convertirlo en espacio', () => {
     // Si fuera espacio daría "men s" y el cliente escribe "mens".
-    expect(normalizar("On Running Men's Performance-T - S"))
-      .toBe('on running mens performance t s');
+    expect(normalizar("Trail Runner Men's Performance-T - S"))
+      .toBe('trail runner mens performance t s');
   });
 
   it('convierte el resto de signos en espacio', () => {

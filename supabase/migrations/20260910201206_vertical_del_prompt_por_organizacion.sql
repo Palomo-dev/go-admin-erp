@@ -10,15 +10,15 @@ alter table public.ai_settings
   add column if not exists vertical text;
 
 comment on column public.ai_settings.vertical is
-  'Vertical para el prompt del bot: retail | hotel | restaurante | gimnasio | parqueadero | servicios. NULL = se deduce de organization_types. Existe porque el tipo registrado no siempre corresponde: "Donde Checho" figura como restaurant y su catalogo son jeans.';
+  'Vertical para el prompt del bot: retail | hotel | restaurante | gimnasio | parqueadero | servicios. NULL = se deduce de organization_types. Existe porque el tipo registrado no siempre corresponde: hay organizaciones que figuran como restaurant y su catalogo son jeans.';
 
 alter table public.ai_settings drop constraint if exists ai_settings_vertical_ck;
 alter table public.ai_settings add constraint ai_settings_vertical_ck
   check (vertical is null or vertical in
     ('retail','hotel','restaurante','gimnasio','parqueadero','servicios','transporte'));
 
--- Correccion respaldada por evidencia: "Donde Checho" esta registrado como
--- restaurant pero su catalogo son "jeans kar brillos" y "pantalon color kar".
+-- Correccion respaldada por evidencia: la organizacion 120 esta registrada
+-- como restaurant pero su catalogo es de ropa.
 -- Sin esto recibiria un prompt de restaurante para vender ropa.
 update public.ai_settings s
    set vertical = 'retail'

@@ -9,7 +9,7 @@
 -- (cae a 'retail' y registra el error), pero lo hara en cada mensaje.
 --
 -- La columna `vertical` NO se borra: contiene decisiones del usuario, como la
--- correccion de "Donde Checho" (registrado como restaurant, vende jeans).
+-- correccion de la organizacion 120 (registrada como restaurant, vende ropa).
 -- Para desactivar sin perder ese dato, basta con revertir el codigo.
 
 drop view if exists public.ai_vertical_efectivo;

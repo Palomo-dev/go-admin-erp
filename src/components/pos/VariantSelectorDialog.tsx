@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -228,6 +229,14 @@ export function VariantSelectorDialog({
             <Package className="h-5 w-5 text-blue-600" />
             {variants.length > 0 ? 'Seleccionar Variante' : 'Personalizar Producto'}
           </DialogTitle>
+          {/* Radix exige una descripción (o aria-describedby) en cada
+              DialogContent; sin ella avisa por consola y el lector de pantalla
+              anuncia el diálogo sin contexto. */}
+          <DialogDescription className="sr-only">
+            {variants.length > 0
+              ? 'Elige la variante del producto y la cantidad antes de añadirlo al carrito.'
+              : 'Ajusta las opciones del producto antes de añadirlo al carrito.'}
+          </DialogDescription>
         </DialogHeader>
 
         {isLoading ? (

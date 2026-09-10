@@ -37,7 +37,7 @@ import {
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { PromotionsService } from '@/components/pos/promociones/promotionsService';
 import { PromotionWizard } from '@/components/pos/promociones/nuevo';
-import { Promotion, PROMOTION_TYPE_LABELS, APPLIES_TO_LABELS } from '@/components/pos/promociones/types';
+import { Promotion, PROMOTION_TYPE_LABELS, APPLIES_TO_LABELS, WEEK_DAYS } from '@/components/pos/promociones/types';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { toast } from 'sonner';
 
@@ -111,7 +111,7 @@ export default function PromocionDetallePage() {
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'percentage': return <Percent className="h-5 w-5" />;
-      case 'fixed': return <DollarSign className="h-5 w-5" />;
+      case 'fixed_amount': return <DollarSign className="h-5 w-5" />;
       case 'buy_x_get_y': return <Gift className="h-5 w-5" />;
       case 'bundle': return <Package className="h-5 w-5" />;
       default: return <Tag className="h-5 w-5" />;
@@ -122,8 +122,7 @@ export default function PromocionDetallePage() {
     switch (promo.promotion_type) {
       case 'percentage':
         return `${promo.discount_value}%`;
-      case 'fixed':
-        return formatCurrency(promo.discount_value || 0);
+      case 'fixed_amount':        return formatCurrency(promo.discount_value || 0);
       case 'buy_x_get_y':
         return `Compra ${promo.buy_quantity}, Lleva ${promo.get_quantity}`;
       case 'bundle':
@@ -150,11 +149,25 @@ export default function PromocionDetallePage() {
     return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Activa</Badge>;
   };
 
+  // Para timestamps reales (creada, actualizada): hora local del usuario.
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-CO', {
       day: '2-digit',
       month: 'long',
       year: 'numeric'
+    });
+  };
+
+  // Para fechas de vigencia: el asistente guarda "10 de septiembre" como
+  // 2026-09-10 00:00 UTC. Mostrarlo en hora de Colombia (UTC-5) lo retrocedía
+  // a las 19:00 del día 9 y salía "09 de septiembre". Se pinta en UTC para
+  // que se lea la fecha que el usuario eligió.
+  const formatFechaVigencia = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('es-CO', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
     });
   };
 
@@ -205,6 +218,20 @@ export default function PromocionDetallePage() {
             usage_limit: promotion.usage_limit,
             is_combinable: promotion.is_combinable,
             priority: promotion.priority,
+            // Estos campos NO se pasaban. Al editar, el formulario arrancaba sin
+            // días, sin canales, sin sucursales y sin reglas; y al guardar,
+            // `update()` borraba las reglas existentes y no insertaba ninguna.
+            // Editar cualquier promoción la dejaba sin productos y sin días.
+            applicable_days: promotion.applicable_days,
+            branches: promotion.branches,
+            applies_to_pos: promotion.applies_to_pos,
+            applies_to_web: promotion.applies_to_web,
+            applies_to_finances: promotion.applies_to_finances,
+            rules: (promotion.rules || []).map((r) => ({
+              rule_type: r.rule_type,
+              product_id: r.product_id ?? undefined,
+              category_id: r.category_id ?? undefined,
+            })),
           }}
         />
       </div>
@@ -297,15 +324,38 @@ export default function PromocionDetallePage() {
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Fecha Inicio</h4>
                   <p className="dark:text-white flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    {formatDate(promotion.start_date)}
+                    {formatFechaVigencia(promotion.start_date)}
                   </p>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Fecha Fin</h4>
                   <p className="dark:text-white flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    {promotion.end_date ? formatDate(promotion.end_date) : 'Sin fecha fin'}
+                    {promotion.end_date ? formatFechaVigencia(promotion.end_date) : 'Sin fecha fin'}
                   </p>
+                </div>
+                {/* Los días de la semana no se mostraban: el usuario configuraba
+                    "solo jueves" y la ficha no lo decía por ningún lado. */}
+                <div className="md:col-span-2">
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Días de la semana</h4>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {promotion.applicable_days && promotion.applicable_days.length > 0 ? (
+                      WEEK_DAYS.map((d) => {
+                        const activo = promotion.applicable_days!.includes(d.value);
+                        return (
+                          <Badge
+                            key={d.value}
+                            variant={activo ? 'default' : 'outline'}
+                            className={activo ? '' : 'opacity-40'}
+                          >
+                            {d.short}
+                          </Badge>
+                        );
+                      })
+                    ) : (
+                      <span className="text-sm dark:text-white">Todos los días</span>
+                    )}
+                  </div>
                 </div>
               </div>
 

@@ -771,6 +771,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Orden de las categorías</p>
             <SearchSelect
               options={[
+                { value: 'favorites', label: 'Favoritas primero, luego las más vendidas' },
                 { value: 'display_order', label: 'Orden de visualización (display_order)' },
                 { value: 'rank', label: 'Rango (rank)' },
                 { value: 'name', label: 'Nombre (A-Z)' },

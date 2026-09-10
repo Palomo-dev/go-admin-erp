@@ -48,6 +48,8 @@ export interface SoftphoneContextValue {
    * (nombres de variable, nunca valores). Vacío en el resto de estados.
    */
   deviceMissing: string[];
+  /** Ámbito del 409: `platform` (lo conecta el dueño) u `organization` (lo corrige su admin). */
+  deviceScope: 'platform' | 'organization';
   callStatus: CallStatus;
   activeCall: ActiveCallInfo | null;
   /** `calls.id` de la llamada activa (Realtime por provider_call_sid). */

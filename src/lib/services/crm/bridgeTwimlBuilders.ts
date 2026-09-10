@@ -141,7 +141,12 @@ export function buildCustomerLegTwiml(p: CustomerLegTwimlParams): string {
     `statusCallbackEvent="${STATUS_EVENTS}"`,
     'statusCallbackMethod="POST"',
   ];
-  if (false && p.recordingEnabled && p.consentUrl) numberAttrs.push(`url="${escapeXml(p.consentUrl)}"`, 'method="POST"');
+  // El aviso de grabación AL CLIENTE. Es lo que hace legal la grabación: sin
+  // esta URL el <Dial> graba y el cliente no oye nada. El 2026-09-10 llegó a
+  // HEAD con un `if (false && …)` delante —una mutación de prueba que nadie
+  // restauró— y las cuatro pruebas F5-38/39/40/55 se pusieron rojas: la red
+  // mordió, la restauración falló. Si vuelves a ver un `false &&` aquí, es eso.
+  if (p.recordingEnabled && p.consentUrl) numberAttrs.push(`url="${escapeXml(p.consentUrl)}"`, 'method="POST"');
 
   parts.push(`  <Dial ${dialAttrs.join(' ')}>`);
   parts.push(`    <Number ${numberAttrs.join(' ')}>${escapeXml(p.to)}</Number>`);

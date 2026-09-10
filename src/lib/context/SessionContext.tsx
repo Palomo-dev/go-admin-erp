@@ -7,6 +7,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase/config';
 import { describeError, logError } from '@/lib/utils/errorMessage';
+import { esSesionMuerta, limpiarSesionMuerta } from '@/lib/auth/deadSession';
 
 // Constants for session management
 // TEMPORALMENTE DESHABILITADO: Conflicto con middleware
@@ -246,7 +247,20 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (cancelled) return;
 
         if (error) {
-          // No sabemos si hay sesión: no vaciamos la actual ni redirigimos.
+          // Sesión irrecuperable (refresh token inexistente, revocado, usuario
+          // borrado): limpiar el navegador y dejar que AuthGuard mande al login.
+          // Si no se borra, el middleware sigue viendo la cookie del token
+          // muerto y devuelve al usuario a /app/inicio en bucle.
+          if (esSesionMuerta(error)) {
+            console.warn('[SessionContext] sesión irrecuperable, limpiando:', (error as { code?: string })?.code ?? error);
+            await limpiarSesionMuerta();
+            if (cancelled) return;
+            setState(prev => ({ ...prev, loading: false, session: null, initError: null }));
+            return;
+          }
+
+          // Cualquier otro error (red, base caída): no sabemos si hay sesión.
+          // No vaciamos la actual ni redirigimos; se ofrece reintentar.
           logError('[SessionContext] inicializar sesión', error);
           setState(prev => ({ ...prev, loading: false, initError: describeError(error) }));
           return;
@@ -262,6 +276,13 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       } catch (err) {
         if (cancelled) return;
+        // El SDK puede lanzar (en vez de devolver) el error de token muerto.
+        if (esSesionMuerta(err)) {
+          await limpiarSesionMuerta();
+          if (cancelled) return;
+          setState(prev => ({ ...prev, loading: false, session: null, initError: null }));
+          return;
+        }
         logError('[SessionContext] error inicializando sesión', err);
         setState(prev => ({ ...prev, loading: false, initError: describeError(err) }));
       }

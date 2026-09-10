@@ -248,9 +248,19 @@ export async function initiateBridge(
   }
   const callerId = picked.e164;
 
-  // 6. Sin secreto de firma no se marca (los callbacks serían inverificables)
+  // 6. Sin secreto de firma no se marca (los callbacks serían inverificables).
+  // El código se conserva para logs y pruebas; el MENSAJE es neutro a propósito:
+  // llega tal cual a la organización cliente, y la variable que falta es de la
+  // plataforma. Nombrársela no le sirve de nada y no tiene por qué saber que
+  // existe. Lo que falta queda en el log del servidor, que es donde el dueño
+  // de la plataforma lo va a ver.
   if (!isBridgeSigningConfigured()) {
-    throw new BridgeError('VOICE_CALLBACK_SECRET_MISSING', 503, 'Falta configurar VOICE_CALLBACK_SECRET');
+    console.error('[mobileBridge] llamada desde celular sin configurar (org %d): falta VOICE_CALLBACK_SECRET', orgId);
+    throw new BridgeError(
+      'VOICE_CALLBACK_SECRET_MISSING',
+      503,
+      'Las llamadas desde el celular aún no están habilitadas para tu organización. Contacta al soporte de la plataforma.'
+    );
   }
   const origin = getTwilioWebhookOrigin();
 

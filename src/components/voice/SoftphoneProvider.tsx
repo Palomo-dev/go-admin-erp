@@ -141,7 +141,7 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
     callRef.current = null;
   }, []);
 
-  const { deviceRef, deviceState, deviceReason, deviceErrorCode, deviceMissing, retry } = useTwilioDevice(handleIncoming, onDeviceDestroy);
+  const { deviceRef, deviceState, deviceReason, deviceErrorCode, deviceMissing, deviceScope, retry } = useTwilioDevice(handleIncoming, onDeviceDestroy);
   const audio = useAudioDevices(deviceRef, deviceState === 'registered');
 
   // ─── Acciones ──────────────────────────────────────────────────────────────
@@ -249,6 +249,7 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
       deviceReason,
       deviceErrorCode,
       deviceMissing,
+      deviceScope,
       callStatus,
       activeCall,
       activeCallId,
@@ -269,7 +270,7 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
       rejectIncoming,
       retry,
     }),
-    [deviceState, deviceReason, deviceErrorCode, deviceMissing, callStatus, activeCall, activeCallId, activeCallRow, muted, incoming, liveNote, setLiveNote, lastEndedCall, clearLastEndedCall, audio, makeCall, hangup, mute, sendDigits, acceptIncoming, rejectIncoming, retry]
+    [deviceState, deviceReason, deviceErrorCode, deviceMissing, deviceScope, callStatus, activeCall, activeCallId, activeCallRow, muted, incoming, liveNote, setLiveNote, lastEndedCall, clearLastEndedCall, audio, makeCall, hangup, mute, sendDigits, acceptIncoming, rejectIncoming, retry]
   );
 
   return <SoftphoneContext.Provider value={value}>{children}</SoftphoneContext.Provider>;

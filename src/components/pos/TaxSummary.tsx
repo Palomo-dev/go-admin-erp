@@ -311,12 +311,18 @@ export function TaxSummary({
       
       <CardContent className="p-2 sm:p-3 pt-0">
         <div className="space-y-2">
-          {/* Subtotal */}
+          {/* Subtotal.
+              `subtotal` viene NETO de descuentos porque `calculateCartTaxes` resta
+              el descuento en cada línea (correcto: el impuesto se calcula sobre la
+              base ya descontada). Pero pintado así, con la línea "Descuento" debajo,
+              el desglose mentía: Subtotal 180.990 / Descuento −2.010 / Total 180.990.
+              Se muestra el bruto (neto + descuento) para que cuadre igual que en el
+              diálogo de cobro: 183.000 − 2.010 = 180.990. El cálculo no cambia. */}
           <div className="flex justify-between items-start gap-3 text-xs sm:text-sm">
             <span className="dark:text-gray-400 text-gray-600 shrink-0">Subtotal:</span>
             <div className="text-right">
               <span className="dark:text-white text-gray-900 font-medium">
-                {formatCurrency(subtotal)}
+                {formatCurrency(subtotal + (cart.discount_total || 0))}
               </span>
               {taxIncluded && (
                 <div className="text-xs dark:text-gray-500 text-gray-500">

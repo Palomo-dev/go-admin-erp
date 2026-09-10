@@ -16,16 +16,28 @@ import type { Call, Device } from '@twilio/voice-sdk';
 
 export type DeviceState = 'idle' | 'unregistered' | 'registering' | 'registered' | 'error' | 'no_permission' | 'not_configured';
 
+/**
+ * De quién son las llaves que faltan (409 VOICE_NOT_CONFIGURED):
+ *  - `platform`: las conecta el dueño de la plataforma. El servidor NO manda
+ *    `missing` en este caso, y aquí no se nombra ni al proveedor ni a ninguna
+ *    variable: la organización cliente no puede hacer nada con eso.
+ *  - `organization`: la organización configuró sus propias llaves y le faltan;
+ *    a su administrador sí se le indica dónde corregirlas.
+ */
+export type VoiceConfigScope = 'platform' | 'organization';
+
 export class VoiceTokenError extends Error {
   status: number;
   code: string | null;
-  /** Nombres de las credenciales que faltan (409 VOICE_NOT_CONFIGURED). Sin valores. */
+  /** Nombres de las credenciales que faltan. Vacío cuando el ámbito es `platform`. */
   missing: string[];
-  constructor(status: number, code: string | null, message: string, missing: string[] = []) {
+  scope: VoiceConfigScope;
+  constructor(status: number, code: string | null, message: string, missing: string[] = [], scope: VoiceConfigScope = 'platform') {
     super(message);
     this.status = status;
     this.code = code;
     this.missing = missing;
+    this.scope = scope;
   }
 }
 
@@ -37,7 +49,8 @@ export async function fetchVoiceToken(): Promise<{ token: string; identity: stri
       res.status,
       body.code ?? null,
       body.error || `Error ${res.status} al obtener el token de voz`,
-      Array.isArray(body.missing) ? (body.missing as string[]) : []
+      Array.isArray(body.missing) ? (body.missing as string[]) : [],
+      body.scope === 'organization' ? 'organization' : 'platform'
     );
   }
   return { token: body.token, identity: body.identity, ttl: body.ttl ?? 3600 };
@@ -52,6 +65,24 @@ export const VOICE_CREDENTIAL_LABELS: Record<string, string> = {
   TWILIO_TWIML_APP_SID: 'TwiML App SID',
   TWILIO_PHONE_NUMBER: 'Número de teléfono de Twilio',
 };
+
+/**
+ * Motivo legible de un 409 VOICE_NOT_CONFIGURED según su ámbito.
+ *
+ * Con ámbito `platform` el texto es NEUTRO a propósito: sin «Twilio», sin
+ * nombres de variables, sin «configúralo en…». Lo que falta lo conecta el
+ * dueño de la plataforma y ya lo tiene en el log del servidor. Mostrárselo a
+ * una organización cliente era un error de audiencia (captura del dueño,
+ * 2026-09-10): le pedíamos que guardara llaves que no son suyas.
+ */
+export function describeNotConfigured(err: { scope: VoiceConfigScope; missing: string[]; message: string }): string {
+  if (err.scope === 'platform') {
+    return err.message || 'La telefonía aún no está habilitada para tu organización. Contacta al soporte de la plataforma.';
+  }
+  return err.missing.length > 0
+    ? `Faltan ${err.missing.map((k) => VOICE_CREDENTIAL_LABELS[k] ?? k).join(', ')} en la configuración de tu organización.`
+    : err.message || 'Telefonía no configurada';
+}
 
 /** Mapea códigos del SDK a estado + motivo (FASE-03 §5.5). */
 export function describeDeviceError(err: unknown): { state: DeviceState; reason: string; code: number | null } {
@@ -96,6 +127,8 @@ export interface TwilioDeviceApi {
    * (nombres de variable, nunca valores). Vacío en el resto de estados.
    */
   deviceMissing: string[];
+  /** Ámbito del 409: decide si se le puede indicar a alguien dónde configurar. */
+  deviceScope: VoiceConfigScope;
   /** Reintenta la inicialización (tras configurar telefonía o dar permiso al micrófono). */
   retry: () => void;
 }
@@ -113,6 +146,7 @@ export function useTwilioDevice(onIncoming: (call: Call) => void, onDestroy?: ()
   const [deviceReason, setDeviceReason] = useState<string | null>(null);
   const [deviceErrorCode, setDeviceErrorCode] = useState<number | null>(null);
   const [deviceMissing, setDeviceMissing] = useState<string[]>([]);
+  const [deviceScope, setDeviceScope] = useState<VoiceConfigScope>('platform');
 
   // Refs para no reinicializar el Device cuando cambian los callbacks.
   const incomingRef = useRef(onIncoming);
@@ -149,13 +183,10 @@ export function useTwilioDevice(onIncoming: (call: Call) => void, onDestroy?: ()
         if (cancelled) return;
         if (err instanceof VoiceTokenError && (err.status === 409 || err.code === 'VOICE_NOT_CONFIGURED')) {
           setDeviceState('not_configured');
-          setDeviceMissing(err.missing);
-          setDeviceReason(
-            err.missing.length > 0
-              ? `Faltan ${err.missing.map((k) => VOICE_CREDENTIAL_LABELS[k] ?? k).join(', ')} para llamar desde el navegador.`
-              : err.message || 'Telefonía no configurada'
-          );
-          return; // sin reintentos: el admin debe configurar; `retry()` manual
+          setDeviceScope(err.scope);
+          setDeviceMissing(err.scope === 'organization' ? err.missing : []);
+          setDeviceReason(describeNotConfigured(err));
+          return; // sin reintentos: `retry()` manual
         }
         if (err instanceof VoiceTokenError && (err.status === 401 || err.status === 403)) {
           setDeviceState('unregistered');
@@ -271,5 +302,5 @@ export function useTwilioDevice(onIncoming: (call: Call) => void, onDestroy?: ()
     setAttempt((a) => a + 1);
   }, []);
 
-  return { deviceRef, deviceState, deviceReason, deviceErrorCode, deviceMissing, retry };
+  return { deviceRef, deviceState, deviceReason, deviceErrorCode, deviceMissing, deviceScope, retry };
 }

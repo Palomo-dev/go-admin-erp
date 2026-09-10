@@ -91,9 +91,19 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     ...initialData
   });
 
-  const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
-  const [ruleType, setRuleType] = useState<'include' | 'exclude'>('include');
+  // Al editar, las reglas existentes deben cargarse en la selección. Antes estos
+  // tres estados arrancaban vacíos aunque `initialData.rules` viniera lleno, así
+  // que al guardar se borraban todas las reglas de la promoción.
+  const reglasIniciales = initialData?.rules ?? [];
+  const [selectedProducts, setSelectedProducts] = useState<number[]>(
+    reglasIniciales.filter((r) => r.product_id != null).map((r) => r.product_id as number)
+  );
+  const [selectedCategories, setSelectedCategories] = useState<number[]>(
+    reglasIniciales.filter((r) => r.category_id != null).map((r) => r.category_id as number)
+  );
+  const [ruleType, setRuleType] = useState<'include' | 'exclude'>(
+    reglasIniciales.some((r) => r.rule_type.startsWith('exclude')) ? 'exclude' : 'include'
+  );
 
   useEffect(() => {
     loadProducts();
@@ -356,7 +366,19 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                     <button
                       key={type}
                       type="button"
-                      onClick={() => handleChange('promotion_type', type)}
+                      onClick={() => {
+                        // Al cambiar de tipo se vacía el valor: el 10 por defecto
+                        // (pensado como 10 %) se quedaba puesto al pasar a "Monto
+                        // Fijo", el usuario lo tomaba por otra cosa y escribía el
+                        // monto real en "Descuento Máximo". Resultado en producción:
+                        // discount_value = 10 y max_discount_amount = 8000.
+                        setFormData(prev => ({
+                          ...prev,
+                          promotion_type: type,
+                          discount_value: 0,
+                          max_discount_amount: undefined,
+                        }));
+                      }}
                       className={cn(
                         "p-4 rounded-lg border-2 text-center transition-all",
                         formData.promotion_type === type
@@ -406,17 +428,22 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                       </span>
                     </div>
                   </div>
-                  <div>
-                    <Label className="dark:text-gray-200">Descuento Máximo (opcional)</Label>
-                    <Input
-                      type="number"
-                      value={formData.max_discount_amount || ''}
-                      onChange={(e) => handleChange('max_discount_amount', parseFloat(e.target.value) || undefined)}
-                      min={0}
-                      placeholder="Sin límite"
-                      className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    />
-                  </div>
+                  {/* El tope solo tiene sentido en porcentaje: un monto fijo ya ES
+                      su propio máximo. Mostrarlo junto al monto confundía y el
+                      usuario acababa escribiendo el descuento real aquí. */}
+                  {formData.promotion_type === 'percentage' && (
+                    <div>
+                      <Label className="dark:text-gray-200">Descuento Máximo (opcional)</Label>
+                      <Input
+                        type="number"
+                        value={formData.max_discount_amount || ''}
+                        onChange={(e) => handleChange('max_discount_amount', parseFloat(e.target.value) || undefined)}
+                        min={0}
+                        placeholder="Sin límite"
+                        className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 

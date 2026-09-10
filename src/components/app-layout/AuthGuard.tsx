@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { UserCircle } from 'lucide-react';
 import { useSession } from '@/lib/context/SessionContext';
 import { LoadErrorState } from '@/components/common/LoadErrorState';
+import { limpiarSesionMuerta } from '@/lib/auth/deadSession';
 
 /**
  * AuthGuard - Bloquea el renderizado de hijos hasta que la sesión esté confirmada.
@@ -23,22 +24,33 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [loading, session, initError, router]);
 
-  // No se pudo comprobar la sesión: error explícito con reintento en vez de
-  // dejar el spinner girando para siempre.
+  // No se pudo comprobar la sesión (red, base caída): error con reintento en
+  // vez de dejar el spinner girando para siempre. Las sesiones MUERTAS
+  // (refresh token inexistente) no llegan aquí: SessionContext las limpia y
+  // deja `session = null` sin `initError`, así que el efecto de arriba manda
+  // al login directamente.
   if (!loading && initError && !session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 dark:bg-gray-900">
         <div className="w-full max-w-lg space-y-4">
           <LoadErrorState
-            title="No se pudo comprobar tu sesión"
-            message={initError}
+            title="No pudimos comprobar tu sesión"
+            // Nunca el texto crudo de Supabase: el detalle técnico ya quedó en
+            // la consola vía logError. Al usuario, algo que pueda entender.
+            message="No hay conexión con el servidor en este momento. Revisa tu conexión a internet e inténtalo de nuevo."
             onRetry={retryInit}
           />
           <p className="text-center text-xs text-gray-500 dark:text-gray-400">
             Si el problema continúa,{' '}
             <button
               type="button"
-              onClick={() => router.replace('/auth/login')}
+              onClick={async () => {
+                // Borrar la sesión local ANTES de ir al login. Sin esto, el
+                // middleware ve la cookie del token viejo y devuelve a
+                // /app/inicio: el enlace "no hacía nada".
+                await limpiarSesionMuerta();
+                router.replace('/auth/login');
+              }}
               className="underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-200"
             >
               inicia sesión de nuevo

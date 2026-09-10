@@ -30,10 +30,26 @@ async function handle(request: Request) {
     return NextResponse.json({ success: true, ...result }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
   } catch (error: unknown) {
     if (error instanceof VoiceNotConfiguredError) {
-      // `missing` son NOMBRES de credenciales, nunca valores: el dock los usa
-      // para decir qué falta en vez de un genérico "no configurada".
+      if (error.scope === 'platform') {
+        // Las llaves que faltan son de la PLATAFORMA (cuenta maestra, el valor
+        // por defecto). Eso lo arregla el dueño de la plataforma, no la
+        // organización cliente: a ella le llega un texto neutro, sin proveedor
+        // ni variables, y los nombres de lo que falta quedan aquí, en el log
+        // del servidor, que es donde el dueño los va a ver.
+        console.error(
+          '[Voice Token] telefonía de plataforma sin configurar (org %d): faltan %s',
+          ctx.organizationId,
+          error.missing.join(', ')
+        );
+        return NextResponse.json(
+          { success: false, error: error.publicMessage, code: 'VOICE_NOT_CONFIGURED', scope: 'platform' },
+          { status: 409 }
+        );
+      }
+      // La organización configuró sus propias llaves y le faltan: su
+      // administrador sí puede corregirlo. `missing` son NOMBRES, nunca valores.
       return NextResponse.json(
-        { success: false, error: error.message, code: 'VOICE_NOT_CONFIGURED', missing: error.missing },
+        { success: false, error: error.publicMessage, code: 'VOICE_NOT_CONFIGURED', scope: 'organization', missing: error.missing },
         { status: 409 }
       );
     }

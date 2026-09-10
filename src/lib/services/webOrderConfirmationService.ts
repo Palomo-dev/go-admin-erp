@@ -5,6 +5,7 @@ import { deliveryIntegrationService } from './deliveryIntegrationService';
 import { stockMovementService } from './stockMovementService';
 import { generateInvoiceNumber } from '@/lib/utils/invoiceUtils';
 import type { WebOrder } from './webOrdersService';
+import { avisarSiNoCuadra, lineasFacturaDesdePedidoWeb, repartirTotalesPedidoWeb } from './webOrderTotals';
 
 /**
  * Sub-métodos de Wompi (pasarela de pago del website).
@@ -237,14 +238,19 @@ class WebOrderConfirmationService {
       return [];
     }
 
-    const saleItems = order.items.map(item => ({
+    // El descuento de pedido (cupón/promoción del sitio web) se prorratea en
+    // las líneas, igual que en el POS. Ver `webOrderTotals.ts`.
+    const reparto = repartirTotalesPedidoWeb(order);
+    avisarSiNoCuadra(reparto, order);
+
+    const saleItems = reparto.items.map(({ item, descuento, total }) => ({
       sale_id: saleId,
       product_id: item.product_id,
       quantity: item.quantity,
       unit_price: item.unit_price,
-      total: item.total,
+      total,
       tax_amount: item.tax_amount || 0,
-      discount_amount: item.discount_amount || 0,
+      discount_amount: descuento,
       notes: {
         product_name: item.product_name,
         from_web_order: order.order_number,
@@ -453,45 +459,11 @@ class WebOrderConfirmationService {
         return { invoiceId: '', invoiceNumber: '' };
       }
 
-      // Crear invoice_items a partir de web_order_items
-      const productItems = (order.items || []).map(item => ({
-        invoice_id: invoice.id,
-        invoice_sales_id: invoice.id,
-        invoice_type: 'sale',
-        product_id: item.product_id,
-        description: item.product_name?.substring(0, 255) || 'Producto web',
-        qty: item.quantity,
-        unit_price: Number(item.unit_price) || 0,
-        total_line: Number(item.total) || 0,
-        tax_rate: 0,
-        discount_amount: Number(item.discount_amount) || 0,
-        tax_included: false,
-      }));
-
-      // Línea de envío (delivery_fee): el trigger fn_recalc_invoice_totals
-      // recalcula total = SUM(invoice_items) al insertar las líneas. Si no se
-      // incluye el envío como una línea, el total de la factura queda en solo
-      // los productos y se desincroniza con sale.total (que sí incluye envío),
-      // generando además un "overpayment" del pago web frente a la factura.
-      // `deliveryFee` fue calculado arriba en el bloque de totales.
-      const invoiceItems = [
-        ...productItems,
-        ...(deliveryFee > 0
-          ? [{
-              invoice_id: invoice.id,
-              invoice_sales_id: invoice.id,
-              invoice_type: 'sale',
-              product_id: null,
-              description: 'Envío (Delivery)',
-              qty: 1,
-              unit_price: deliveryFee,
-              total_line: deliveryFee,
-              tax_rate: 0,
-              discount_amount: 0,
-              tax_included: false,
-            }]
-          : []),
-      ];
+      // Líneas de la factura. El trigger fn_recalc_invoice_totals pisa
+      // invoice_sales.total con SUM(total_line): las líneas deben reproducir
+      // order.total (descuento de pedido prorrateado, envío y propina como
+      // líneas). Ver `webOrderTotals.ts`.
+      const invoiceItems = lineasFacturaDesdePedidoWeb(order, invoice.id);
 
       if (invoiceItems.length > 0) {
         const { error: itemsError } = await supabase

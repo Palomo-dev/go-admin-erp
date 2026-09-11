@@ -133,6 +133,8 @@ export interface WebOrderFilters {
 }
 
 class WebOrdersService {
+  private ordersChannel: ReturnType<typeof supabase.channel> | null = null;
+
   private get organizationId() {
     return getOrganizationId();
   }
@@ -750,13 +752,15 @@ class WebOrdersService {
    * Suscribirse a cambios en pedidos (tiempo real)
    */
   subscribeToOrders(callback: (payload: any) => void, branchId?: number | null) {
+    // Cancelar suscripción previa si existe para evitar fugas de canal
+    this.unsubscribeFromOrders();
     // Filtro base por organización. Cuando branchId es un número concreto,
     // se agrega el filtro branch_id para aislar los eventos por sucursal.
     const filterParts = [`organization_id=eq.${this.organizationId}`];
     if (branchId != null && typeof branchId === 'number') {
       filterParts.push(`branch_id=eq.${branchId}`);
     }
-    return supabase
+    this.ordersChannel = supabase
       .channel('web_orders_changes')
       .on(
         'postgres_changes',
@@ -769,13 +773,17 @@ class WebOrdersService {
         callback
       )
       .subscribe();
+    return this.ordersChannel;
   }
 
   /**
    * Cancelar suscripción
    */
   unsubscribeFromOrders() {
-    supabase.removeChannel(supabase.channel('web_orders_changes'));
+    if (this.ordersChannel) {
+      supabase.removeChannel(this.ordersChannel);
+      this.ordersChannel = null;
+    }
   }
 }
 

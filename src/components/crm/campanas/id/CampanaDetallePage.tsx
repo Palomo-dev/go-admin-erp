@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { PageHeaderSkeleton, StatsSkeleton } from '@/components/common/PageSkeletons';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
+import { isRealtimePublished } from '@/components/crm/shared/realtimeTables';
 import { ERROR_CODE_LABELS, SKIP_REASON_LABELS, type CampaignStatsResult } from '@/components/crm/whatsapp/api';
 import { CampanasService } from '../CampanasService';
 import { CAMPAIGN_STATUS_CONFIG, type Campaign } from '../types';
@@ -42,6 +43,14 @@ export function CampanaDetallePage({ campaignId }: { campaignId: string }) {
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
+    // `campaigns` no está publicada en `supabase_realtime`: el canal consume
+    // conexiones del pool sin recibir eventos. El polling de 15 s de abajo
+    // cubre el refresco mientras se envía. Si se publica, agregarla a
+    // REALTIME_PUBLISHED_TABLES y este canal empezará a funcionar.
+    if (!isRealtimePublished('campaigns')) {
+      const t = setInterval(() => { if (campaign?.effective_status === 'sending') void load(true); }, 15_000);
+      return () => clearInterval(t);
+    }
     const ch = supabase.channel(`campaign-${campaignId}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'campaigns', filter: `id=eq.${campaignId}` }, () => void load()).subscribe();
     const t = setInterval(() => { if (campaign?.effective_status === 'sending') void load(true); }, 15_000);
     return () => { void supabase.removeChannel(ch); clearInterval(t); };

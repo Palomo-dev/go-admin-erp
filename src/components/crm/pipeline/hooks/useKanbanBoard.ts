@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { subscribeToOpportunities, subscribeToStages, type RealtimeSubscription } from '@/lib/services/realtimeService';
+import { subscribeToStages, RealtimeSubscription } from '@/lib/services/realtimeService';
 import { allRealtimePublished, PIPELINE_REFRESH_EVENT } from '@/components/crm/shared/realtimeTables';
 import { requestStageChange, type StageChangeResult } from '../drawer/StageSelect';
 
@@ -191,13 +191,17 @@ export function useKanbanBoard(pipelineId: string | null) {
       onUpdate: (s) => setStages((prev) => prev.map((x) => (x.id === s.id ? { ...x, ...(s as Partial<KanbanStage>) } : x))),
       onDelete: (s) => setStages((prev) => prev.filter((x) => x.id !== s.id)),
     });
-    // subscribeToOpportunities filtra por stage; suscribimos por columna
-    const oppSubs = stages.map((st) => subscribeToOpportunities(st.id, {
+    // Un solo canal para opportunities (antes: uno por etapa = N canales que
+    // escuchaban los mismos eventos de la org). El filtrado por pipeline ya
+    // lo hace upsert() verificando row.pipeline_id.
+    const orgId = getOrganizationId();
+    const oppSub = new RealtimeSubscription('opportunities', orgId);
+    oppSub.subscribe<Record<string, any>>({
       onInsert: (o) => upsert(o as Record<string, unknown>),
       onUpdate: (o) => upsert(o as Record<string, unknown>),
       onDelete: (o) => remove(o as Record<string, unknown>),
-    }));
-    subsRef.current = [stageSub, ...oppSubs];
+    });
+    subsRef.current = [stageSub, oppSub];
     return () => { subsRef.current.forEach((s) => s.unsubscribe()); subsRef.current = []; };
   }, [pipelineId, realtimeOn, stages, loadStages]);
 

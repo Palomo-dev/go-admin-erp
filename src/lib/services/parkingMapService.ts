@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { isRealtimePublished } from '@/components/crm/shared/realtimeTables';
 
 export type SpaceState = 'free' | 'occupied' | 'reserved' | 'maintenance';
 export type SpaceType = 'car' | 'motorcycle' | 'bicycle' | 'disabled' | 'vip';
@@ -237,6 +238,13 @@ class ParkingMapService {
     onSpaceChange: (space: ParkingSpace) => void,
     onSessionChange: () => void
   ) {
+    // `parking_spaces` y `parking_sessions` no están en la publicación
+    // `supabase_realtime`: abrir canales consume conexiones del pool sin
+    // recibir eventos. Si se publican, agregarlas a REALTIME_PUBLISHED_TABLES.
+    if (!isRealtimePublished('parking_spaces') || !isRealtimePublished('parking_sessions')) {
+      return () => {};
+    }
+
     // Suscripción a cambios en espacios
     const spacesChannel = supabase
       .channel(`parking_spaces_${branchId}`)

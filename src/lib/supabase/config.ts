@@ -85,6 +85,37 @@ const removeCookie = (name: string) => {
 // Referencia al fetch nativo del navegador antes de cualquier override
 const nativeFetch = globalThis.fetch.bind(globalThis);
 
+// ── Circuit breaker para 522/544 (BD caída) ──
+// Cuando Supabase devuelve 522 (Connection timed out) o 544, significa que
+// la BD no responde. Seguir enviando peticiones solo agrava la sobrecarga.
+// El circuit breaker cuenta fallos consecutivos y, al superar el umbral,
+// corta todas las peticiones no-auth por COOLDOWN_MS. Las peticiones de auth
+// (login, refresh) siempre pasan para que el usuario pueda recuperar sesión.
+let cbConsecutiveFailures = 0;
+const CB_THRESHOLD = 5;        // 5 fallos 522/544 consecutivos → abrir circuito
+const CB_COOLDOWN_MS = 30_000; // 30s de cooldown antes de reintentar
+let cbOpenUntil = 0;
+
+const isCircuitOpen = (isAuth: boolean) => {
+  if (isAuth) return false; // auth siempre pasa
+  if (cbOpenUntil && Date.now() < cbOpenUntil) return true;
+  if (cbOpenUntil && Date.now() >= cbOpenUntil) cbOpenUntil = 0; // reset
+  return false;
+};
+
+const recordSuccess = () => {
+  if (cbConsecutiveFailures > 0) cbConsecutiveFailures = 0;
+  if (cbOpenUntil) cbOpenUntil = 0;
+};
+
+const recordFailure = () => {
+  cbConsecutiveFailures += 1;
+  if (cbConsecutiveFailures >= CB_THRESHOLD) {
+    cbOpenUntil = Date.now() + CB_COOLDOWN_MS;
+    console.warn(`🔌 [CIRCUIT] Circuito abierto por ${CB_COOLDOWN_MS / 1000}s (${cbConsecutiveFailures} fallos 522/544 consecutivos)`);
+  }
+};
+
 // ── Guard global: prevenir bucle infinito de refresh ──
 // Cuando el refresh token es inválido, el SDK de Supabase internamente
 // intenta refrescar en cada getSession() → bucle infinito → 429.
@@ -318,6 +349,15 @@ export const createSupabaseClient = () => {
           );
         }
 
+        // ── Circuit breaker: si la BD está caída (522/544 repetidos), cortar
+        // peticiones no-auth para no agravar la sobrecarga. Auth siempre pasa.
+        if (isCircuitOpen(isAuthRequest)) {
+          return new Response(
+            JSON.stringify({ error: { message: 'Database temporarily unavailable (circuit breaker open)' } }),
+            { status: 503, headers: { 'Content-Type': 'application/json', 'X-Circuit-Breaker': 'open' } }
+          );
+        }
+
         // ── Offline cache solo en desktop app ──
         const isDesktopApp = typeof window !== 'undefined' && 'goAdminDesktop' in window;
         const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -406,6 +446,13 @@ export const createSupabaseClient = () => {
             try {
               const response = await nativeFetch(url, fetchOptions);
               if (timeoutId) clearTimeout(timeoutId);
+
+              // ── Circuit breaker: registrar 522/544 (BD caída) ──
+              if (response.status === 522 || response.status === 544) {
+                recordFailure();
+              } else if (response.ok) {
+                recordSuccess();
+              }
 
               // Detectar refresh token inválido (400 en /token?grant_type=refresh_token)
               // y activar el bloqueo global para prevenir el bucle infinito.

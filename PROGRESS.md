@@ -1556,7 +1556,7 @@ funcion); limitar por IP para el caso de sessionId rotatorio.
 
 ## Correccion del modulo Finanzas (2026-09-10)
 
-### Fase 0 � Detener la duplicacion contable
+### Fase 0 � Detener la duplicacion contable
 
 **F-01: Duplicacion contable de facturas (CRITICO)**
 - Causa: trg_auto_journal_ar (sobre accounts_receivable) duplica el asiento
@@ -1596,3 +1596,293 @@ No investigar.
 - 24 CxC negativas (notas credito coladas por create_account_receivable_on_invoice
   que no filtra document_type). 28 CxC en cero. 1 CxC huerfana de -20.000.
   1 nota credito con numero NC-0NaN. Conectado con F-10.
+
+## Fase 1 — Seguridad (2026-09-11, en progreso)
+
+### Estado de Fase 1
+- F-08 politica de sucursal — HECHO (22 tablas)
+- F-11 funciones expuestas: 223 de 326 aun expuestas a anon
+- F-11b search_path mutable: 252 funciones sin fix
+- F-12 politicas TO public: 42 sin cambiar a TO authenticated
+- F-09 Factus: reescrito abajo (deuda de esquema, no urgente)
+
+### F-08 — Aislamiento por sucursal: APLICADO (v2, cerrado)
+- 7 tablas ya tenian branch_access_restrictive: accounts_receivable,
+  accounts_payable, bank_transactions, bank_transfers, cash_movements,
+  cash_counts, credit_notes.
+- 12 tablas faltantes ahora tienen la politica: invoice_sales,
+  invoice_purchase, payments, journal_entries, cash_sessions,
+  bank_accounts, invoice_sequences, quotations, support_documents,
+  commissions, payment_qr_sessions, branch_account_mappings.
+- Total: 19 tablas con aislamiento por sucursal (22 con las originales).
+- Funcion app_branch_access corregida (v2) con cuatro cambios:
+  1. (2) acotada por organizacion: ser admin de la org A no da acceso a
+     sucursales de la org B
+  2. (3) con is_active: un miembro desactivado no conserva acceso a sus
+     sucursales
+  3. (4) nueva: miembro de la org sin sucursales asignadas en esa org =
+     sin restriccion configurada
+  4. STABLE: permite a Postgres cachear el resultado por sentencia
+- Indices creados: idx_organization_members_user_id,
+  idx_member_branches_branch_id
+- Pruebas reales (SET LOCAL role authenticated + JWT):
+  - (a) Empleado sin sucursales: ve facturas, pagos, asientos, cajas.
+  - (b) Empleado con branch asignada: ve solo su branch, 0 de otras.
+  - (c) Admin con branches en una org y sin branches en otra: acceso
+    correcto en ambas.
+  - is_active = false: NO PROBADO. Los 130 miembros estan activos.
+- Migraciones + rollbacks en repo.
+
+### F-11 — Funciones trigger SECURITY DEFINER revocadas a PUBLIC
+- 326 funciones SECURITY DEFINER expuestas a anon via /rest/v1/rpc/.
+- 103 funciones de trigger revocadas (REVOKE FROM PUBLIC). Ninguna se
+  llama como RPC desde el cliente (verificado con grep).
+- Resultado: 326 -> 223 funciones expuestas a anon (-103).
+- Las 223 restantes son no-trigger y necesitan analisis individual (Fase 2):
+  anadir validacion interna de organization_id antes de revocar.
+- Migracion + rollback en repo.
+
+### F-11b — search_path mutable (pendiente)
+- 252 funciones aun tienen search_path mutable (sin SET search_path =
+  public, pg_temp). Pendiente de fix mecanico.
+
+### F-12 — Politicas TO public -> TO authenticated (pendiente)
+- 42 politicas aun usan TO public en vez de TO authenticated. Pendiente
+  de fix mecanico.
+
+### F-09 — Modelo de credenciales por organizacion: modelado pero no implementado (ALTA)
+- El modelo de credenciales por organizacion esta modelado pero no
+  implementado; la plataforma usa una sola cuenta Factus global para todos
+  los tenants. Las credenciales viven en variables de entorno del servidor
+  (FACTUS_CLIENT_ID, FACTUS_CLIENT_SECRET, FACTUS_USERNAME,
+  FACTUS_PASSWORD, FACTUS_ENVIRONMENT), leidas por factusTokenManager.ts.
+- electronic_invoicing_config (la tabla del modelo multi-tenant) tiene 0
+  filas. Ningun route handler la lee para autenticar con Factus.
+- provider_configs (372 filas): ninguna es de Factus.
+- integration_credentials (16 filas): credenciales de Wompi, no Factus.
+- channel_credentials (1 fila): WhatsApp/Baileys, no Factus.
+- Severidad: alta si se confirma emision real (no confirmado, ver F-33);
+  bloqueante para lanzar facturacion electronica a mas clientes.
+- Cuando se implemente, las credenciales por organizacion van a Vault desde
+  el dia uno — no a columnas de texto.
+
+### F-10 — RLS credit_note_applications (aplicado)
+- Security advisor: tabla tenia RLS habilitado sin politicas.
+- Tabla tiene organization_id (NOT NULL) pero no branch_id.
+- 4 politicas creadas (SELECT, INSERT, UPDATE, DELETE), todas filtran por
+  organization_members.is_active = true.
+- Patron igual a accounts_receivable (sin branch_id).
+- Prueba de humo: usuario ve 0 filas (tabla vacia), INSERT con org 999
+  (no miembro) falla con RLS violation.
+- Migracion + rollback en repo.
+
+### F-29 — Reglas contables con condiciones NULL (corregido)
+- Las reglas sale/created y sale/credit_note tenian condiciones NULL que
+  causaban seleccion incorrecta de cuenta (1305 vs 1105).
+- 612 facturas mal clasificadas en cuenta 1305 en vez de 1105.
+- Corregido en migracion 20260910140000_f29_fix_conditions_null_sale_rules.sql.
+
+### F-32 — Asientos de factura no coinciden con el total (bug ACTIVO, detener sangria)
+- 70 facturas donde el debito del asiento de invoice_sales != total de la
+  factura. Divergencia absoluta: 2.274.776 COP. 46 asientos por encima,
+  24 por debajo.
+- NO es edicion manual. Es una carrera de concurrencia en el camino normal
+  de creacion de facturas:
+  1. INSERT invoice_sales con el total que manda el cliente
+  2. trg_auto_journal_sale (AFTER INSERT unico) publica el asiento con ESE total
+  3. INSERT invoice_items dispara trg_recalc_invoice_totals que corrige total
+  4. El asiento nunca se entera
+- Sigue ocurriendo hoy. Ninguno de nuestros cambios lo toco.
+- F-01, F-16, F-17 y F-32 son el mismo error de arquitectura: la base de
+  datos se maneja con una secuencia de llamadas sueltas desde el cliente en
+  vez de una operacion transaccional.
+- Arreglo de fondo (Fase 3): RPC transaccional para creacion de factura.
+- Mitigacion ahora: scripts/detectar-asientos-divergentes.sql (consulta de
+  deteccion, no arreglo).
+- Las 70 facturas quedan EXCLUIDAS del paquete de contraasientos.
+
+### F-33 — Dos organizaciones comparten cuenta y resolucion DIAN en Factus (bloqueante para produccion)
+- Credenciales globales = una sola cuenta Factus para las 83 organizaciones.
+- Org 120 y org 132 facturan electronicamente y comparten TODO:
+  resolucion 18760000001, factus_numbering_range_id 389 (factura),
+  390 (NC), 391 (ND), 1776 (CRTE), 2058 (SEDS), rango 990000000-995000000.
+- Cada una lleva su current_number propio (990014118 vs 990014881) pero
+  apuntan al mismo rango real en Factus.
+- Hoy no hay dano porque es sandbox y nunca se emitio. Por eso mismo el
+  redisenno cuesta cero ahora: no hay credenciales que migrar, no hay
+  consecutivos consumidos, no hay facturas emitidas que reconciliar.
+- El dia que un cliente real pase a produccion con su propia resolucion
+  DIAN, el modelo de cuenta compartida deja de ser un problema de diseno y
+  pasa a ser un problema tributario de ese cliente. Ese es el plazo.
+- Antes de que cualquier organizacion facture electronicamente en produccion:
+  - credenciales por organizacion (electronic_invoicing_config con Vault)
+  - factus_numbering_range_id propio por organizacion
+  - resolucion DIAN propia por organizacion, validada contra su NIT
+  - org 120 necesita NIT registrado antes de cualquier cosa
+- Verificaciones (2026-09-11): 0 CUFEs, 8 jobs pending, 0 aceptados,
+  0 eventos. FACTUS_ENVIRONMENT=sandbox en .env.local.
+
+### F-34 — La cola de facturacion electronica no tiene quien la procese (bug silencioso)
+- 8 jobs en electronic_invoicing_jobs con status='pending',
+  attempt_count=0. No es que fallaron — es que nadie los intento nunca.
+  7 de org 132 (11-19 ago), 1 de org 134 (4 sep). Un mes sin procesar.
+- Existe el indice idx_ei_jobs_pending sobre (status, next_retry_at),
+  diseniado para que un worker consuma la cola. Ese worker no existe o no
+  corre.
+- Desde el usuario: le dio "enviar a la DIAN", el sistema le dijo que si, y
+  no paso nada. Durante un mes. Sin error visible.
+- Org 134 encolo un job sin tener ninguna fila en invoice_sequences.
+- Pendiente verificar: hay cron, edge function o route handler que lea
+  electronic_invoicing_jobs con status='pending'? La UI le muestra al
+  usuario que su factura quedo en cola, o le dice que se envio?
+
+### F-35 — Barrido de exposicion de datos en repo publico (tarea pendiente)
+- El repo Palomo-dev/go-admin-erp es publico (visibility: public).
+- Hay archivos sueltos en la raiz que nadie reviso con criterio de
+  exposicion: build_output.txt (44KB), tsc_out.txt (146KB),
+  tsc_phase4_v2.txt (179KB), dev_server.txt, .devin_commit_msg.txt, y un
+  archivo llamado "2". Son 400KB de volcados de compilador y logs.
+- Ademas vale la pena barrer docs/ completo, fixtures de tests, historial
+  en busca de dumps SQL con datos reales.
+- No hacer ahora. Registrar como tarea propia.
+
+## Scripts de verificacion
+
+- scripts/detectar-asientos-divergentes.sql — lista facturas cuyo asiento
+  != total. Correr antes del cierre de mes. Si devuelve filas, hay facturas
+  con asientos incorrectos que requieren ajuste manual.
+- scripts/verificar-branch-access.sql — verifica app_branch_access para
+  los 3 casos conocidos (a, b, c) + caso (d) is_active=false pendiente.
+  Correr despues de cualquier cambio a la funcion o a las politicas
+  RESTRICTIVE. Lanza RAISE EXCEPTION si cualquier caso falla. Los sujetos
+  se descubren por propiedad (sin UUIDs hardcodeados).
+
+## Uso real por submodulo (2026-09-11)
+
+No es un hallazgo de bug — es el dato que ordena todo lo que sigue. De 28
+submodulos en la UI, solo ~6 tienen uso real:
+
+### Con uso real
+| Tabla | Filas |
+|---|---|
+| journal_lines | 14.077 |
+| journal_entries | 6.848 |
+| web_orders | 4.695 |
+| sale_items | 2.530 |
+| payments | 1.670 |
+| sales | 1.625 |
+| accounts_receivable | 1.580 |
+| invoice_sales | 1.580 |
+| cash_sessions | 63 |
+
+### Con cero o casi cero
+| Tabla | Filas |
+|---|---|
+| purchase_orders | 33 |
+| invoice_purchase | 27 |
+| accounts_payable | 26 |
+| po_items | 24 |
+| cash_movements | 5 |
+| quotations | 5 |
+| ap_installments | 3 |
+| ar_installments | 3 |
+| bank_accounts | 3 |
+| bank_transactions | 2 |
+| fixed_assets | 0 |
+| asset_depreciations | 0 |
+| cost_centers | 0 |
+| budgets | 0 |
+| bank_reconciliations | 0 |
+| cash_counts | 0 |
+| budget_lines | 0 |
+| credit_note_applications | 0 |
+
+### Bug-vs-uso en compras (2026-09-11)
+
+El hallazgo #2 (accounts_payable vs invoice_purchase) y el hallazgo #6
+(inventario 1405 con saldo credito) son el mismo problema, y es de USO,
+no de codigo:
+
+(a) Facturas de compra por organizacion:
+- 27 facturas de compra en total, 6 con total > 0.
+- Org 134: 3 facturas, 3 con total > 0, 69 facturas de venta.
+- Org 132: 2 facturas, 2 con total > 0, 165 facturas de venta.
+- Org 2: 5 facturas, 1 con total > 0, 87 facturas de venta.
+- Org 113: 7 facturas, 0 con total > 0, 211 facturas de venta.
+- Org 115: 9 facturas, 0 con total > 0, 450 facturas de venta.
+- El modulo de compras casi no se usa.
+
+(b) De las 6 facturas con total > 0: 23 asientos con source='invoice_purchase'
+existen. Las que existen SI se contabilizan. El codigo funciona.
+
+(c) Como entra el inventario entonces:
+- stock_movements: 1.048 entradas source='initial' (carga inicial),
+  147 entradas source='adjustment', 6 entradas source='purchase',
+  754 salidas source='web_sale', 698 salidas source='sale',
+  126 salidas source='invoice_sale'.
+- El inventario entra por carga inicial (1.048) y ajustes (147), NO por
+  compras (solo 6).
+
+(d) fn_auto_journal_inventory_adjustment:
+- 40 asientos con source='inventory_adjustment'.
+- En 1405: debitos 8.840.018, creditos 8.790.120, saldo neto +53.897.
+- La funcion debita 1405 correctamente. El problema no esta ahi.
+
+### Conclusion bug-vs-uso
+El saldo credito de 1405 (87,9M COP) viene de source='stock_movements'
+(1.415 asientos, credito 99M, debito 4,8M, saldo -94,2M). Las salidas por
+venta acreditan inventario, pero las entradas por carga inicial y ajustes
+no debitan lo suficiente. El codigo de compras funciona (cuando se usa),
+pero el modulo no se usa. El inventario se carga por ajustes, no por
+compras. No es un bug de triggers — es un problema de uso y de diseno del
+flujo de inventario. La respuesta no es tocar triggers.
+
+## Inventario de coherencia (2026-09-11, solo lectura, sin arreglos)
+
+### 1. accounts_receivable.balance vs pagos aplicados
+- 1.579 CxC totales, 432 discrepancias (27%).
+- Diferencia agregada ~6.6M COP.
+- Cruce con F-05: 23 de 432 en F-05. Cruce con F-32: 0 de 432 en F-32.
+- 390 de 432 no estan en F-05 ni F-32 — es un problema distinto.
+
+### 2. accounts_payable vs invoice_purchase
+- 26 CxP, 19 discrepancias (73%).
+- accounts_payable.amount suma 6,79M, invoice_purchase.total suma 3,04M.
+- Diferencia: 3,75M COP.
+- Patron: los 10 peores casos tienen invoice_purchase.total=0 pero
+  accounts_payable.amount con valores reales.
+- Conclusion: bug-vs-uso (ver arriba). Es de uso, no de codigo.
+
+### 3. cash_sessions.final_amount vs movimientos
+- 54 sesiones cerradas, 48 discrepancias (89%).
+- Solo 5 movimientos de caja en toda la base.
+- final_amount no se calcula de cash_movements sino de ventas.
+- Implicacion: el arqueo de caja no esta arqueando nada. Pregunta de
+  producto, no de datos.
+
+### 4. bank_accounts.balance vs transacciones
+- 3 cuentas, 2 discrepancias (67%).
+- balance = initial_balance en todas. Transacciones netas: 90K.
+- El balance no refleja las transacciones.
+- Existe RPC update_bank_balance y transferenciasService la usa.
+- BancosService.actualizarBalanceCuenta actualiza el balance al crear
+  transacciones (update directo, no RPC).
+- Las 2 transacciones existentes (100K y -10K) son manuales de enero 2026.
+- Bug limpio, poco volumen. Invariante rota.
+
+### 5. invoice_items.total_line vs qty x unit_price
+- 2.714 items, 110 con discrepancias (4%).
+- Suma de diferencias: 9,1M COP.
+- El descuento explica 33 de 110 (30%). Quedan 77 no explicados.
+
+### 6. journal_lines — cuentas con saldo contrario a su naturaleza
+- 16 cuentas de activos con saldo credito (87,9M COP).
+- 8 cuentas de pasivos con saldo debito (12,5M COP).
+- Ingresos y gastos: sin anomalias.
+- El principal problema es 1405 (Inventarios) con saldo credito en 8+
+  organizaciones. Peor caso: org 132 con -40,2M COP.
+- Conclusion: bug-vs-uso (ver arriba). Es de uso, no de codigo.
+
+### 7. ar_installments — suma de cuotas vs total CxC
+- Solo 1 CxC con cuotas. 1 discrepancia (amount=4.000 vs cuotas=1.901).
+- Senal de uso, no un bug. No perseguir.

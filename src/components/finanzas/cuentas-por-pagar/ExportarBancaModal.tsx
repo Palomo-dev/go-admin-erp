@@ -47,10 +47,15 @@ import { useToast } from '@/components/ui/use-toast';
 
 import { CuentasPorPagarService } from './CuentasPorPagarService';
 import { AccountPayable, BankFileRecord, BankFileTransaction } from './types';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 // Función para generar contenido del archivo según el formato
-const generarContenidoArchivo = (cuentas: AccountPayable[], formato: string): string => {
+const generarContenidoArchivo = (
+  cuentas: AccountPayable[],
+  formato: string,
+  formatDate: (value: string | Date | null | undefined) => string,
+): string => {
   switch (formato) {
     case 'bancolombia':
       return cuentas.map(cuenta => {
@@ -154,6 +159,7 @@ export function ExportarBancaModal({
   onClose,
   onExportado
 }: ExportarBancaModalProps) {
+  const { formatDate } = useFormatDate();
   // Estados
   const [cuentas, setCuentas] = useState<AccountPayable[]>([]);
   const [loading, setLoading] = useState(true);
@@ -222,7 +228,7 @@ export function ExportarBancaModal({
       );
       
       // Generar contenido del archivo según el formato
-      const contenido = generarContenidoArchivo(cuentas, formatoBanco);
+      const contenido = generarContenidoArchivo(cuentas, formatoBanco, formatDate);
       const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' });
       
       // Descargar archivo

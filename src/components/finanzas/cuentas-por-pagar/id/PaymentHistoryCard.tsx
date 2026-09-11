@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CuentaPorPagarDetailService } from './service';
 import { PaymentRecord } from './types';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 
 interface PaymentHistoryCardProps {
   accountId: string;
@@ -36,6 +38,7 @@ const methodLabels: Record<string, string> = {
 };
 
 export function PaymentHistoryCard({ accountId, onUpdate }: PaymentHistoryCardProps) {
+  const { timezone } = useOrgTimezone();
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -58,13 +61,7 @@ export function PaymentHistoryCard({ accountId, onUpdate }: PaymentHistoryCardPr
   };
 
   const formatDate = (dateString: string) => {
-    return parseLocalDate(dateString).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDateTimeInTz(dateString, timezone);
   };
 
   if (isLoading) {

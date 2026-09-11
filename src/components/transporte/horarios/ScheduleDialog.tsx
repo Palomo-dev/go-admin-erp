@@ -29,6 +29,8 @@ import {
 } from '@/lib/services/transportRoutesService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/timezone';
 
 interface Vehicle {
   id: string;
@@ -72,6 +74,7 @@ export function ScheduleDialog({
   drivers,
   onSave,
 }: ScheduleDialogProps) {
+  const { timezone } = useOrgTimezone();
   const isEditing = !!schedule;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -90,7 +93,7 @@ export function ScheduleDialog({
     default_driver_id: undefined,
     available_seats: undefined,
     fare_override: undefined,
-    valid_from: new Date().toISOString().split('T')[0],
+    valid_from: todayInTz(timezone),
     valid_until: undefined,
     is_active: true,
   });
@@ -126,12 +129,12 @@ export function ScheduleDialog({
         default_driver_id: undefined,
         available_seats: undefined,
         fare_override: undefined,
-        valid_from: new Date().toISOString().split('T')[0],
+        valid_from: todayInTz(timezone),
         valid_until: undefined,
         is_active: true,
       });
     }
-  }, [schedule, open]);
+  }, [schedule, open, timezone]);
 
   const handleDayToggle = (day: number) => {
     const currentDays = formData.days_of_week || [];

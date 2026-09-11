@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { MemberCheckin } from '@/lib/services/gymService';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 interface MembershipCheckinsProps {
   checkins: MemberCheckin[];
@@ -50,6 +52,8 @@ export function MembershipCheckins({
   maxVisible = 10
 }: MembershipCheckinsProps) {
   const [showAll, setShowAll] = useState(false);
+
+  const { timezone } = useOrgTimezone();
   
   const visibleCheckins = showAll ? checkins : checkins.slice(0, maxVisible);
   const hasMore = checkins.length > maxVisible;
@@ -176,8 +180,8 @@ export function MembershipCheckins({
                   </div>
 
                   <div className="text-right text-xs text-gray-500 dark:text-gray-400">
-                    <p>{date.toLocaleDateString('es-CO')}</p>
-                    <p>{date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</p>
+                    <p>{formatDateInTz(date.toISOString(), timezone)}</p>
+                    <p>{formatTimeInTz(date.toISOString(), timezone)}</p>
                   </div>
                 </div>
               );

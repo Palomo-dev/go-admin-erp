@@ -33,7 +33,8 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import type { PurchaseOrder } from '@/lib/services/purchaseOrderService';
 import { CopyableId } from '@/components/common/CopyableId';
 
@@ -59,6 +60,7 @@ export function OrdenesCompraTable({
   onStatusChange 
 }: OrdenesCompraTableProps) {
   const router = useRouter();
+  const { formatDate } = useFormatDate();
   const [page, setPage] = useState(1);
   const itemsPerPage = 10;
 

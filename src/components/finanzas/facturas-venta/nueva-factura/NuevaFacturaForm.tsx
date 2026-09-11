@@ -25,7 +25,8 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
-import { parseLocalDate, formatCurrency } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 
 // Tipo para un ítem de factura
@@ -86,6 +87,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const router = useRouter();
   const searchParams = useSearchParams() ?? new URLSearchParams();
   const organizationId = getOrganizationId();
+  const { toDate, toInstant } = useFormatDate();
   
   // Parámetros de duplicación
   const duplicarId = searchParams.get('duplicar');
@@ -362,10 +364,13 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       setCommissionMethod((facturaInicial as any).commission_method || 'percentage');
 
       if (facturaInicial.issue_date) {
-        setIssueDate(parseLocalDate(facturaInicial.issue_date));
+        // Convertir timestamptz a dia calendario de la org, luego a Date para el DatePicker
+        const plainDate = toDate(new Date(facturaInicial.issue_date));
+        if (plainDate) setIssueDate(new Date(plainDate + 'T00:00:00'));
       }
       if (facturaInicial.due_date) {
-        setDueDate(parseLocalDate(facturaInicial.due_date));
+        const plainDate = toDate(new Date(facturaInicial.due_date));
+        if (plainDate) setDueDate(new Date(plainDate + 'T00:00:00'));
       }
 
       // Cargar items de la factura
@@ -668,8 +673,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         number: invoiceNumber,
         customer_id: selectedCustomerId,
         branch_id: branchId,
-        issue_date: issueDate ? issueDate.toISOString() : null,
-        due_date: dueDate ? dueDate.toISOString() : null,
+        issue_date: issueDate ? toInstant(toDate(issueDate)) : null,
+        due_date: dueDate ? toInstant(toDate(dueDate)) : null,
         currency,
         payment_terms: paymentTerms,
         payment_method: paymentMethodCode || null,
@@ -716,7 +721,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         branch_id: branchId,
         customer_id: selectedCustomerId || null,
         user_id: currentUserId,
-        sale_date: issueDate?.toISOString() || new Date().toISOString(),
+        sale_date: issueDate ? toInstant(toDate(issueDate)) : new Date().toISOString(),
         subtotal: safeSubtotal,
         tax_total: safeTaxTotal,
         total: safeTotal,
@@ -798,8 +803,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         customer_id: selectedCustomerId || null,
         sale_id: saleData.id, // Vinculamos con la venta creada
         number: invoiceNumber,
-        issue_date: issueDate ? issueDate.toISOString() : null,
-        due_date: dueDate ? dueDate.toISOString() : null,
+        issue_date: issueDate ? toInstant(toDate(issueDate)) : null,
+        due_date: dueDate ? toInstant(toDate(dueDate)) : null,
         currency: currency, // Moneda seleccionada por el usuario
         subtotal: safeSubtotal,
         tax_total: safeTaxTotal,

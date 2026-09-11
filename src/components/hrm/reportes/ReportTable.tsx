@@ -1,6 +1,8 @@
 'use client';
 
 import { formatCurrency, formatDate } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import {
   Table,
   TableBody,
@@ -41,6 +43,7 @@ export function ReportTable({
   data,
   isLoading,
 }: ReportTableProps) {
+  const { timezone } = useOrgTimezone();
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -100,7 +103,7 @@ export function ReportTable({
                   {formatDate(row.work_date)}
                 </TableCell>
                 <TableCell className="text-gray-600 dark:text-gray-400">
-                  {row.first_check_in ? new Date(row.first_check_in).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                  {row.first_check_in ? formatTimeInTz(row.first_check_in, timezone) : '-'}
                 </TableCell>
                 <TableCell className="text-gray-600 dark:text-gray-400">
                   {Math.round(row.scheduled_minutes / 60 * 10) / 10}h

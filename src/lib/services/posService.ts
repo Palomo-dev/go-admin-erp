@@ -1568,11 +1568,18 @@ export class POSService {
 
       // --- Evaluar promociones activas para POS ---
       // Aplica descuentos automáticos a items que no tengan discount_amount manual
+      // Promociones que quedaron aplicadas en el carrito: se registran como uso
+      // (promotions.usage_count) una vez creada la venta. Normalmente
+      // calculateCartTotals ya dejó el descuento en el ítem antes del checkout,
+      // así que el criterio es "la promoción coincide y el ítem tiene descuento".
+      let promocionesUsadas: string[] = [];
       try {
         const promoResult = await promotionEngine.evaluate({
           channel: 'pos',
           items: cart.items.map(i => ({
             product_id: i.product_id,
+            // Para que una promoción sobre el producto padre alcance a la variante.
+            parent_product_id: i.product?.parent_product_id ?? null,
             category_id: i.product?.category_id,
             quantity: i.quantity,
             unit_price: i.unit_price,
@@ -1591,6 +1598,12 @@ export class POSService {
               }
             }
           }
+          const productosConDescuento = new Set(
+            cart.items.filter(i => (i.discount_amount || 0) > 0).map(i => i.product_id),
+          );
+          promocionesUsadas = promoResult.applied
+            .filter(p => p.items_affected.some(pid => productosConDescuento.has(pid)))
+            .map(p => p.promotion_id);
         }
       } catch (promoErr) {
         console.warn('[posService] No se pudieron evaluar promociones:', promoErr);
@@ -1729,6 +1742,21 @@ export class POSService {
 
         if (saleError) throw saleError;
         saleData = newSale;
+      }
+
+      // Registrar el uso de las promociones aplicadas (contador que muestra la
+      // pantalla de promociones). Solo en ventas nuevas: el checkout de deuda
+      // ya contó cuando se creó la venta. RPC atómica (usage_count + 1 en un
+      // UPDATE), filtrada por organización; con RLS, el cajero debe ser miembro
+      // activo. Es estadística: si falla, se registra y la venta sigue.
+      if (!isDebtCheckout && promocionesUsadas.length > 0) {
+        const { error: promoUsageError } = await supabase.rpc('increment_promotion_usage', {
+          p_organization_id: cart.organization_id,
+          p_promotion_ids: promocionesUsadas,
+        });
+        if (promoUsageError) {
+          console.warn('[posService] No se pudo registrar el uso de promociones:', promoUsageError);
+        }
       }
 
       // Crear registro de comisión si aplica

@@ -6,6 +6,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { ReportData, ReporteColumna, PeriodoCierre } from './types';
+import { formatPlainDate, formatDateInTz } from '@/lib/utils/dateDisplay';
 
 // ---- Tipos ----
 
@@ -116,15 +117,16 @@ function formatCelda(valor: unknown, tipo: ReporteColumna['tipo']): string {
   if (tipo === 'porcentaje') return `${Number(valor).toFixed(1)}%`;
   if (tipo === 'numero') return fmtNumero.format(Number(valor) || 0);
   if (tipo === 'fecha') {
-    const d = new Date(String(valor));
-    return d.toLocaleDateString('es-CO');
+    const s = String(valor);
+    // Si trae 'T' es un timestamptz; si no, es un plain date YYYY-MM-DD
+    return s.includes('T') ? formatDateInTz(s) : formatPlainDate(s);
   }
   return String(valor);
 }
 
 function formatDateRange(periodo: PeriodoCierre): string {
-  const ini = new Date(periodo.fechaInicio + 'T12:00:00').toLocaleDateString('es-CO');
-  const fin = new Date(periodo.fechaFin + 'T12:00:00').toLocaleDateString('es-CO');
+  const ini = formatPlainDate(periodo.fechaInicio);
+  const fin = formatPlainDate(periodo.fechaFin);
   return `${ini} – ${fin}`;
 }
 

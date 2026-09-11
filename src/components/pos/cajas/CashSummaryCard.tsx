@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { CajasService } from './CajasService';
 import { useBlindCloseMode } from './useBlindCloseMode';
 import type { CashSession, CashSummary } from './types';
@@ -18,6 +19,7 @@ interface CashSummaryCardProps {
 }
 
 export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProps) {
+  const { formatDateTime } = useFormatDate();
   const [summary, setSummary] = useState<CashSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const { showExpected } = useBlindCloseMode();
@@ -36,17 +38,6 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-CO', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   if (loading) {
@@ -91,14 +82,14 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
           <div>
             <span className="dark:text-gray-400 text-gray-600">Abierta:</span>
             <p className="font-medium dark:text-white text-gray-900">
-              {formatDate(session.opened_at)}
+              {formatDateTime(session.opened_at)}
             </p>
           </div>
           {session.closed_at && (
             <div>
               <span className="dark:text-gray-400 text-gray-600">Cerrada:</span>
               <p className="font-medium dark:text-white text-gray-900">
-                {formatDate(session.closed_at)}
+                {formatDateTime(session.closed_at)}
               </p>
             </div>
           )}

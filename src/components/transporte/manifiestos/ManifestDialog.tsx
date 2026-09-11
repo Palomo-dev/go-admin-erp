@@ -23,6 +23,8 @@ import { Loader2, ClipboardList, Truck, Calendar } from 'lucide-react';
 import type { ManifestWithDetails, ManifestCreateInput } from '@/lib/services/manifestsService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/timezone';
 
 interface Vehicle {
   id: string;
@@ -69,8 +71,9 @@ export function ManifestDialog({
   onSave,
   isLoading = false,
 }: ManifestDialogProps) {
+  const { timezone } = useOrgTimezone();
   const [formData, setFormData] = useState<ManifestCreateInput>({
-    manifest_date: new Date().toISOString().split('T')[0],
+    manifest_date: todayInTz(timezone),
     manifest_type: 'delivery',
     carrier_id: undefined,
     vehicle_id: undefined,
@@ -98,7 +101,7 @@ export function ManifestDialog({
         });
       } else {
         setFormData({
-          manifest_date: new Date().toISOString().split('T')[0],
+          manifest_date: todayInTz(timezone),
           manifest_type: 'delivery',
           carrier_id: undefined,
           vehicle_id: undefined,

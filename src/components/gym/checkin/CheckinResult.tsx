@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/utils/Utils';
 import { Membership, getDaysRemaining, getMembershipStatusColor, getMembershipStatusLabel } from '@/lib/services/gymService';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface CheckinResultProps {
   membership: Membership;
@@ -35,6 +35,7 @@ export function CheckinResult({
   onRenew,
   isProcessing 
 }: CheckinResultProps) {
+  const { formatDate } = useFormatDate();
   const daysRemaining = getDaysRemaining(membership.end_date);
   const isExpired = daysRemaining < 0;
   const isExpiringSoon = daysRemaining >= 0 && daysRemaining <= 7;

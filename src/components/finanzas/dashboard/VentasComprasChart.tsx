@@ -4,6 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import type { VentasComprasData } from './FinanzasDashboardService';
 import {
   ResponsiveContainer,
@@ -71,13 +72,9 @@ export function VentasComprasChart({ data, isLoading, currencyCode = 'COP' }: Ve
   // Formatear label del eje X según granularidad
   const fmtLabel = (fecha: string) => {
     if (granularidad === 'dia') {
-      const [y, m, d] = fecha.split('-');
-      const date = new Date(Number(y), Number(m) - 1, Number(d));
-      return date.toLocaleDateString('es', { day: '2-digit', month: 'short' });
+      return formatPlainDate(fecha, { day: '2-digit', month: 'short' });
     }
-    const [y, m] = fecha.split('-');
-    const date = new Date(Number(y), Number(m) - 1, 1);
-    return date.toLocaleDateString('es', { month: 'short', year: '2-digit' });
+    return formatPlainDate(fecha, { month: 'short', year: '2-digit' });
   };
 
   const chartData = data.map((d) => ({

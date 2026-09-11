@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import type { ProductionOrder } from '@/lib/services/productionOrderService';
 import { ProductionOrderStatusBadge } from './ProductionOrderStatusBadge';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 
 interface ProductionOrderTableProps {
   orders: ProductionOrder[];
@@ -41,6 +43,7 @@ export function ProductionOrderTable({
   onAction,
   onDelete,
 }: ProductionOrderTableProps) {
+  const { timezone } = useOrgTimezone();
   if (loading) {
     return (
       <div className="space-y-3">
@@ -115,11 +118,7 @@ export function ProductionOrderTable({
               <ProductionOrderStatusBadge status={order.status} />
             </TableCell>
             <TableCell className="text-sm text-gray-500 dark:text-gray-400">
-              {new Date(order.created_at).toLocaleDateString('es-CO', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-              })}
+              {formatDateInTz(order.created_at, timezone)}
             </TableCell>
             <TableCell className="text-right">
               <div className="flex justify-end gap-1">

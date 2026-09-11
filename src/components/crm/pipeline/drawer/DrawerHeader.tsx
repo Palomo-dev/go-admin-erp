@@ -13,6 +13,7 @@ import { ScoreBadge } from '../ScoreBadge';
 import { StageSelect, type StageChangeResult, type StageOption } from './StageSelect';
 import type { CustomerDetails } from '@/components/crm/oportunidades/types';
 import type { OpportunityFull } from '../hooks/useOpportunityData';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 /**
  * DrawerHeader — cabecera sticky: nombre, cliente, monto, StageSelect (gate),
@@ -35,7 +36,7 @@ const STATUS_CLASS: Record<string, string> = {
   lost: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
 };
 
-const formatDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : null);
+const formatDate = (d?: string | null) => (d ? formatPlainDate(d, { day: '2-digit', month: 'short', year: 'numeric' }) : null);
 
 export function DrawerHeader({ opportunity, customer, stages, onStageResult, onWon, onLost, onEdit, onActionCompleted }: DrawerHeaderProps) {
   const isClosed = opportunity.status === 'won' || opportunity.status === 'lost';

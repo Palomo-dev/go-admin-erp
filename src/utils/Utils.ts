@@ -33,6 +33,11 @@ export function toLocalDateString(date: Date): string {
  * lo que en zonas horarias negativas (America) muestra un dia menos.
  * Esta funcion anade T00:00:00 para forzar interpretacion como hora local.
  *
+ * @deprecated Usar src/lib/utils/dateDisplay.ts en su lugar.
+ * Esta funcion tiene un bug: hace split('T')[0] sobre timestamptz,
+ * descartando el offset y quedandose con el dia UTC en lugar del dia
+ * de la zona horaria de la organizacion. Ver
+ * docs/PROMPT-fix-fechas-timezone.md BUG #1.
  * @param dateString - String de fecha (YYYY-MM-DD o ISO con timestamp)
  * @returns Date object en hora local
  */
@@ -85,7 +90,12 @@ export function formatCurrency(value: number | string | null | undefined, curren
 
 /**
  * Formatea una fecha en formato legible
- * 
+ *
+ * @deprecated Usar useFormatDate() o formatDateInTz() de
+ * src/lib/utils/dateDisplay.ts en su lugar.
+ * Esta funcion delega en parseLocalDate que tiene el bug de
+ * split('T')[0] sobre timestamptz. Ver
+ * docs/PROMPT-fix-fechas-timezone.md BUG #1.
  * @param date - Fecha a formatear (Date, string o null/undefined)
  * @param locale - Configuración regional (por defecto es-ES)
  * @returns Cadena de fecha formateada

@@ -14,6 +14,7 @@ import {
 import { AssignDriverDialog, type AvailableDriver } from '@/components/transporte/envios/id';
 import { shipmentsService, type ShipmentWithDetails } from '@/lib/services/shipmentsService';
 import { printShipmentGuideWithCut, printShipmentGuidesWithCut } from '@/components/transporte/envios/shipmentLabelPrinter';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,7 @@ export default function EnviosPage() {
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const { branchFilter, selectedBranchId } = useBranch();
+  const { timezone } = useOrgTimezone();
 
   const [shipments, setShipments] = useState<ShipmentWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -269,6 +271,7 @@ export default function EnviosPage() {
           address: organization.address,
           phone: organization.phone,
         } : undefined,
+        timezone,
       },
       selectedBranchId,
     );
@@ -401,7 +404,7 @@ export default function EnviosPage() {
       phone: organization.phone,
     } : undefined;
     const result = await printShipmentGuidesWithCut(
-      selectedShipments.map((s) => ({ shipment: s, options: { orgInfo } })),
+      selectedShipments.map((s) => ({ shipment: s, options: { orgInfo, timezone } })),
       selectedBranchId,
     );
     if (result.method === 'agent') {

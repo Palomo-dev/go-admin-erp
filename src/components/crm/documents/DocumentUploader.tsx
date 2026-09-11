@@ -23,6 +23,8 @@ import {
   Loader2,
   Paperclip,
 } from 'lucide-react';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 
 interface DocumentUploaderProps {
   organizationId: number;
@@ -39,6 +41,7 @@ export function DocumentUploader({
   title = 'Documentos',
   compact = false,
 }: DocumentUploaderProps) {
+  const { timezone } = useOrgTimezone();
   const [documents, setDocuments] = useState<CRMDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -276,7 +279,7 @@ export function DocumentUploader({
                       <span className="text-[10px] text-amber-500">confidencial</span>
                     )}
                     <span className="text-[10px] text-gray-400">
-                      {new Date(doc.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
+                      {formatDateInTz(doc.created_at, timezone, { day: '2-digit', month: 'short' })}
                     </span>
                   </div>
                 </div>

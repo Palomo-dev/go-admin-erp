@@ -22,7 +22,9 @@ import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { getToday, plainDateToInstant } from '@/lib/utils/timezone';
 
 import { CuentasPorPagarService } from './CuentasPorPagarService';
 import { CuentasPorPagarTable } from './CuentasPorPagarTable';
@@ -44,6 +46,7 @@ interface CuentasPorPagarPageProps {}
 
 export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
   const { branchFilter } = useBranch();
+  const { timezone } = useOrgTimezone();
   // Estados principales
   const [cuentas, setCuentas] = useState<AccountPayable[]>([]);
   const [pagosProgramados, setPagosProgramados] = useState<PaymentWithRelations[]>([]);
@@ -105,7 +108,8 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
       const response = await CuentasPorPagarService.obtenerCuentasPorPagar(
         { ...filtros, branchId: branchFilter },
         currentPage,
-        pageSize
+        pageSize,
+        timezone
       );
       
       setCuentas(response.cuentas);
@@ -397,10 +401,10 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
           <CuentasPorPagarTable
             cuentas={cuentas.filter(c => {
               if (!c.due_date) return false;
-              const dueDate = parseLocalDate(c.due_date);
-              const today = new Date();
-              const in15Days = new Date();
-              in15Days.setDate(today.getDate() + 15);
+              const dueDate = new Date(c.due_date);
+              const todayStr = getToday(timezone);
+              const today = new Date(plainDateToInstant(todayStr, timezone));
+              const in15Days = new Date(today.getTime() + 15 * 24 * 60 * 60 * 1000);
               return dueDate >= today && dueDate <= in15Days;
             })}
             loading={loading}

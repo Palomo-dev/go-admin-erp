@@ -31,6 +31,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { shipmentsService, type ShipmentWithDetails } from '@/lib/services/shipmentsService';
 import { printShipmentGuideWithCut, type ShipmentGuideItem } from '@/components/transporte/envios/shipmentLabelPrinter';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import {
   ShipmentItems,
   DeliveryAttempts,
@@ -64,6 +65,7 @@ export default function ShipmentDetailPage() {
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const { selectedBranchId } = useBranch();
+  const { timezone } = useOrgTimezone();
 
   const [shipment, setShipment] = useState<ShipmentWithDetails | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -364,6 +366,7 @@ export default function ShipmentDetailPage() {
           address: orgInfo.address,
           phone: orgInfo.phone,
         } : undefined,
+        timezone,
       },
       selectedBranchId,
     );

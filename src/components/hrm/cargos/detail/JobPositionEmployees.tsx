@@ -15,6 +15,7 @@ import { Users, Eye, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { AssignEmployeeDialog } from './AssignEmployeeDialog';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 export interface JobPositionEmployee {
   id: string;
@@ -37,11 +38,7 @@ export function JobPositionEmployees({ employees, positionId, positionName, orga
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return formatPlainDate(dateStr, { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   const getStatusBadge = (status: string) => {

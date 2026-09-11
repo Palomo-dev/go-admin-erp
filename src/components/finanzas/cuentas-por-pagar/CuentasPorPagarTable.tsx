@@ -39,7 +39,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 
 import { AccountPayable } from './types';
-import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { getToday, plainDateToInstant } from '@/lib/utils/timezone';
 import { CopyableId } from '@/components/common/CopyableId';
 
 interface CuentasPorPagarTableProps {
@@ -75,6 +77,8 @@ export function CuentasPorPagarTable({
 }: CuentasPorPagarTableProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const { formatDate } = useFormatDate();
+  const { timezone } = useOrgTimezone();
 
   // Estado para selección
   const [selectAll, setSelectAll] = useState(false);
@@ -110,8 +114,9 @@ export function CuentasPorPagarTable({
       return 'text-red-600 dark:text-red-400';
     }
 
-    const due = parseLocalDate(dueDate);
-    const today = new Date();
+    const due = new Date(dueDate);
+    const todayStr = getToday(timezone);
+    const today = new Date(plainDateToInstant(todayStr, timezone));
     const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDays <= 7) {

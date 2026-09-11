@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { CopyableId } from '@/components/common/CopyableId';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 export interface EmployeeRow {
   id: string;
@@ -101,11 +102,7 @@ export function EmployeeTable({
 }: EmployeeTableProps) {
   const router = useRouter();
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return formatPlainDate(dateStr, { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   const getInitials = (name: string) => {

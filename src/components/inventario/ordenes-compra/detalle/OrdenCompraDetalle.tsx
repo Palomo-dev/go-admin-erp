@@ -50,7 +50,8 @@ import {
   CreditCard
 } from 'lucide-react';
 import { SerialCaptureSection } from '@/components/shared/SerialCaptureSection';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface OrdenCompraDetalleProps {
@@ -67,6 +68,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 
 export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
   const router = useRouter();
+  const { formatDate } = useFormatDate();
 
   // Estados
   const [order, setOrder] = useState<PurchaseOrderWithItems | null>(null);

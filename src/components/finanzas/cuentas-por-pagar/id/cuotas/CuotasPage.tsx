@@ -29,7 +29,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { CuentaPorPagarDetailService } from '../service';
 import { CuentaPorPagarDetalle, APInstallment } from '../types';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { asPlainDate, formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface CuotasPageProps {
   accountId: string;
@@ -60,6 +62,7 @@ const statusConfig: Record<string, { label: string; className: string; icon: any
 
 export function CuotasPage({ accountId }: CuotasPageProps) {
   const router = useRouter();
+  const { timezone } = useOrgTimezone();
   const [account, setAccount] = useState<CuentaPorPagarDetalle | null>(null);
   const [installments, setInstallments] = useState<APInstallment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -114,7 +117,7 @@ export function CuotasPage({ accountId }: CuotasPageProps) {
       // Marcar cuotas vencidas
       const today = new Date();
       const processedInstallments = installmentsData.map(inst => {
-        const dueDate = parseLocalDate(inst.due_date);
+        const dueDate = new Date(asPlainDate(inst.due_date) + 'T12:00:00Z');
         if (dueDate < today && inst.status === 'pending') {
           return { ...inst, status: 'overdue' as const };
         }
@@ -257,11 +260,7 @@ export function CuotasPage({ accountId }: CuotasPageProps) {
   };
 
   const formatDate = (dateString: string) => {
-    return parseLocalDate(dateString).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return formatPlainDate(dateString, { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   const getStats = () => {

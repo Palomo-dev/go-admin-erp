@@ -39,7 +39,8 @@ import { useToast } from '@/components/ui/use-toast';
 
 import { CuentasPorPagarService } from './CuentasPorPagarService';
 import { PaymentWithRelations } from './types';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface AprobacionPagosModalProps {
   isOpen: boolean;
@@ -52,6 +53,7 @@ export function AprobacionPagosModal({
   onClose,
   onPagoAprobado
 }: AprobacionPagosModalProps) {
+  const { formatDate } = useFormatDate();
   // Estados
   const [pagosPendientes, setPagosPendientes] = useState<PaymentWithRelations[]>([]);
   const [loading, setLoading] = useState(true);

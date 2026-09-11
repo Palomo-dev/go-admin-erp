@@ -25,6 +25,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Plus, Package } from 'lucide-react';
 import { getPlans, createMembership, MembershipPlan } from '@/lib/services/gymService';
 import { CustomerSelectorGym, CustomerGym } from './CustomerSelectorGym';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz, toPlainDate, formatDateInTz } from '@/lib/utils/dateDisplay';
 
 interface MembershipDialogProps {
   open: boolean;
@@ -34,6 +36,7 @@ interface MembershipDialogProps {
 
 export function MembershipDialog({ open, onOpenChange, onSave }: MembershipDialogProps) {
   const router = useRouter();
+  const { timezone } = useOrgTimezone();
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -41,7 +44,7 @@ export function MembershipDialog({ open, onOpenChange, onSave }: MembershipDialo
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerGym | null>(null);
   
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(todayInTz(timezone));
 
   useEffect(() => {
     if (open) {
@@ -53,7 +56,7 @@ export function MembershipDialog({ open, onOpenChange, onSave }: MembershipDialo
   const resetForm = () => {
     setSelectedCustomer(null);
     setSelectedPlanId('');
-    setStartDate(new Date().toISOString().split('T')[0]);
+    setStartDate(todayInTz(timezone));
   };
 
   const loadPlans = async () => {
@@ -91,7 +94,7 @@ export function MembershipDialog({ open, onOpenChange, onSave }: MembershipDialo
         customer_id: selectedCustomer.id,
         membership_plan_id: plan.id,
         start_date: startDate,
-        end_date: endDate.toISOString().split('T')[0],
+        end_date: toPlainDate(endDate, timezone),
         status: 'active',
       });
 
@@ -203,15 +206,14 @@ export function MembershipDialog({ open, onOpenChange, onSave }: MembershipDialo
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Fecha de vencimiento:{' '}
                 <strong>
-                  {new Date(
-                    new Date(startDate).setDate(
-                      new Date(startDate).getDate() + selectedPlan.duration_days
-                    )
-                  ).toLocaleDateString('es-CO', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
+                  {formatDateInTz(
+                    new Date(
+                      new Date(startDate).setDate(
+                        new Date(startDate).getDate() + selectedPlan.duration_days
+                      )
+                    ).toISOString(),
+                    timezone,
+                  )}
                 </strong>
               </p>
             )}

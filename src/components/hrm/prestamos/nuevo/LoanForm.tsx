@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import type { CreateLoanDTO } from '@/lib/services/employeeLoansService';
 import { formatCurrency } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { toPlainDate } from '@/lib/utils/timezone';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +37,7 @@ export function LoanForm({
   onCancel,
   isLoading,
 }: LoanFormProps) {
+  const { timezone } = useOrgTimezone();
   const [formData, setFormData] = useState<CreateLoanDTO>({
     employment_id: '',
     loan_type: 'general',
@@ -81,7 +84,7 @@ export function LoanForm({
       nextMonth.setDate(1);
       setFormData(prev => ({
         ...prev,
-        first_payment_date: nextMonth.toISOString().split('T')[0],
+        first_payment_date: toPlainDate(nextMonth, timezone),
       }));
     }
   }, []);

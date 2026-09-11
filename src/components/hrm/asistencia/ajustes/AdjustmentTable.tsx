@@ -35,7 +35,8 @@ import {
   Minus,
   Edit,
 } from 'lucide-react';
-import { cn, formatDate } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import type { TimesheetAdjustment, AdjustmentStatus, AdjustmentType } from '@/lib/services/timesheetAdjustmentsService';
 
 interface AdjustmentTableProps {
@@ -76,6 +77,7 @@ export function AdjustmentTable({
   onViewDocument,
   isLoading,
 }: AdjustmentTableProps) {
+  const { formatDate } = useFormatDate();
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">

@@ -98,6 +98,13 @@ function Calendar({
     const month = addMonths(currentMonth, monthOffset)
     const days = []
     const startDate = startOfWeek(startOfMonth(month), { locale })
+    // Encabezado derivado de la misma startOfWeek que genera la grilla.
+    // Antes estaba hardcodeado como ["Do","Lu","Ma","Mi","Ju","Vi","Sa"]
+    // (domingo primero), lo que desalineaba cada dia una columna cuando
+    // el locale es arranca en lunes. Ver docs/PROMPT-fix-fechas-timezone.md BUG #2.
+    const weekdayHeaders = Array.from({ length: 7 }, (_, i) =>
+      format(addDays(startDate, i), "EEEEEE", { locale })
+    )
     
     for (let i = 0; i < 42; i++) {
       const day = addDays(startDate, i)
@@ -166,7 +173,7 @@ function Calendar({
           )}
         </div>
         <div className="grid grid-cols-7 gap-0 mb-2">
-          {["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sa"].map((day, i) => (
+          {weekdayHeaders.map((day, i) => (
             <div key={i} className="h-9 w-9 text-center text-xs text-muted-foreground flex items-center justify-center">
               {day}
             </div>

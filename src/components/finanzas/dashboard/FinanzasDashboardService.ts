@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
-import { parseLocalDate } from '@/utils/Utils';
+import { DEFAULT_TIMEZONE, getToday, getDateRange } from '@/lib/utils/timezone';
+import { formatDateInTz, formatPlainDate, plainDateToInstant, toPlainDate } from '@/lib/utils/dateDisplay';
 
 export interface KPIData {
   ingresos: number;
@@ -106,7 +107,7 @@ interface InvoiceSequenceRow {
 
 class FinanzasDashboardService {
   
-  async getKPIs(organizationId: number, filters: DashboardFilters, branchId?: number | null): Promise<KPIData> {
+  async getKPIs(organizationId: number, filters: DashboardFilters, branchId?: number | null, timezone: string = DEFAULT_TIMEZONE): Promise<KPIData> {
     const { fechaInicio, fechaFin } = filters;
     // fechaFin viene como 'YYYY-MM-DD'. Usar lt con el día siguiente para
     // incluir todo el día fechaFin (hasta 23:59:59), ya que los campos
@@ -175,12 +176,13 @@ class FinanzasDashboardService {
     const egresos = comprasData?.reduce((sum, c) => sum + (Number(c.total) || 0), 0) || 0;
 
     // Cartera vencida (CxC vencidas)
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = getToday(timezone);
+    const hoyStartIso = plainDateToInstant(hoy, timezone);
     let carteraQuery = supabase
       .from('accounts_receivable')
       .select('balance')
       .eq('organization_id', organizationId)
-      .lt('due_date', hoy)
+      .lt('due_date', hoyStartIso)
       .gt('balance', 0);
     if (branchId != null) carteraQuery = carteraQuery.eq('branch_id', branchId);
     const { data: carteraVencidaData } = await carteraQuery;
@@ -466,8 +468,9 @@ class FinanzasDashboardService {
       .sort((a, b) => a.fecha.localeCompare(b.fecha));
   }
   
-  async getAgingCuentasPorCobrar(organizationId: number, branchId?: number | null): Promise<AgingData[]> {
-    const hoy = new Date();
+  async getAgingCuentasPorCobrar(organizationId: number, branchId?: number | null, timezone: string = DEFAULT_TIMEZONE): Promise<AgingData[]> {
+    const hoyStr = getToday(timezone);
+    const hoy = new Date(`${hoyStr}T12:00:00Z`);
     
     let query = supabase
       .from('accounts_receivable')
@@ -493,7 +496,7 @@ class FinanzasDashboardService {
     
     data.forEach((item: AccountsReceivableAgingRow) => {
       if (!item.due_date) return;
-      const dueDate = parseLocalDate(item.due_date);
+      const dueDate = new Date(item.due_date);
       const diasVencido = Math.floor((hoy.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
       const balance = Number(item.balance) || 0;
       
@@ -519,7 +522,7 @@ class FinanzasDashboardService {
     }));
   }
   
-  async getFlujoProyectado(organizationId: number, branchId?: number | null): Promise<FlujoProyectado[]> {
+  async getFlujoProyectado(organizationId: number, branchId?: number | null, timezone: string = DEFAULT_TIMEZONE): Promise<FlujoProyectado[]> {
     const hoy = new Date();
     const result: FlujoProyectado[] = [];
 
@@ -527,8 +530,9 @@ class FinanzasDashboardService {
     // Si no hay cuotas pendientes (ar_installments/ap_installments),
     // usamos el promedio histórico como proyección base.
     const hace3Meses = new Date(hoy.getFullYear(), hoy.getMonth() - 3, 1);
-    const fechaInicioHist = hace3Meses.toISOString().split('T')[0];
-    const fechaFinHist = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().split('T')[0];
+    const finMesPasado = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+    const fechaInicioHist = toPlainDate(hace3Meses, timezone);
+    const fechaFinHist = toPlainDate(finMesPasado, timezone);
 
     const [ventasHistRes, comprasHistRes] = await Promise.all([
       (() => {
@@ -562,8 +566,9 @@ class FinanzasDashboardService {
 
     for (let i = 0; i < 6; i++) {
       const fecha = new Date(hoy.getFullYear(), hoy.getMonth() + i, 1);
-      const mesInicio = fecha.toISOString().split('T')[0];
-      const mesFin = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0).toISOString().split('T')[0];
+      const fechaFin = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
+      const mesInicio = toPlainDate(fecha, timezone);
+      const mesFin = toPlainDate(fechaFin, timezone);
 
       // Ingresos proyectados (cuotas CxC pendientes)
       let ingresosQuery = supabase
@@ -605,7 +610,7 @@ class FinanzasDashboardService {
         egresos = promedioMensualEgresos;
       }
 
-      const mesNombre = fecha.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
+      const mesNombre = formatPlainDate(mesInicio, { month: 'short', year: '2-digit' });
 
       result.push({
         mes: mesNombre,
@@ -618,19 +623,22 @@ class FinanzasDashboardService {
     return result;
   }
   
-  async getAlertas(organizationId: number, branchId?: number | null): Promise<Alerta[]> {
+  async getAlertas(organizationId: number, branchId?: number | null, timezone: string = DEFAULT_TIMEZONE): Promise<Alerta[]> {
     const alertas: Alerta[] = [];
     const hoy = new Date();
-    const en7Dias = new Date(hoy.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const hoyStr = hoy.toISOString().split('T')[0];
+    const hoyStr = getToday(timezone);
+    const en7DiasDate = new Date(hoy.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const en7Dias = toPlainDate(en7DiasDate, timezone);
+    const hoyStartIso = plainDateToInstant(hoyStr, timezone);
+    const en7DiasIso = plainDateToInstant(en7Dias, timezone);
     
     // Facturas por vencer (próximos 7 días)
     let facturasPorVencerQuery = supabase
       .from('accounts_receivable')
       .select('id, invoice_id, due_date, balance, customers(full_name)')
       .eq('organization_id', organizationId)
-      .gte('due_date', hoyStr)
-      .lte('due_date', en7Dias)
+      .gte('due_date', hoyStartIso)
+      .lte('due_date', en7DiasIso)
       .gt('balance', 0)
       .limit(5);
     if (branchId != null) facturasPorVencerQuery = facturasPorVencerQuery.eq('branch_id', branchId);
@@ -642,7 +650,7 @@ class FinanzasDashboardService {
         id: `factura-${f.id}`,
         tipo: 'factura_vencer',
         titulo: 'Factura por vencer',
-        descripcion: `${f.customers?.full_name || 'Cliente'} - Vence: ${parseLocalDate(f.due_date).toLocaleDateString('es-CO')}`,
+        descripcion: `${f.customers?.full_name || 'Cliente'} - Vence: ${formatDateInTz(f.due_date, timezone)}`,
         prioridad: 'media',
         fecha: f.due_date ?? undefined,
         enlace: `/app/finanzas/cuentas-por-cobrar/${f.id}`
@@ -650,12 +658,14 @@ class FinanzasDashboardService {
     });
     
     // Cartera vencida (más de 30 días)
-    const hace30Dias = new Date(hoy.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const hace30DiasDate = new Date(hoy.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const hace30Dias = toPlainDate(hace30DiasDate, timezone);
+    const hace30DiasIso = plainDateToInstant(hace30Dias, timezone);
     let carteraQuery = supabase
       .from('accounts_receivable')
       .select('id, balance', { count: 'exact' })
       .eq('organization_id', organizationId)
-      .lt('due_date', hace30Dias)
+      .lt('due_date', hace30DiasIso)
       .gt('balance', 0);
     if (branchId != null) carteraQuery = carteraQuery.eq('branch_id', branchId);
     const { data: carteraVencida, count: carteraCount } = await carteraQuery;
@@ -700,7 +710,7 @@ class FinanzasDashboardService {
           id: `resolucion-fecha-${seq.id}`,
           tipo: 'resolucion_dian',
           titulo: `Resolución ${seq.prefix} por vencer`,
-          descripcion: `Vence en ${diasRestantes} días (${fechaVence.toLocaleDateString('es-CO')})`,
+          descripcion: `Vence en ${diasRestantes} días (${formatPlainDate(seq.valid_until)})`,
           prioridad: diasRestantes <= 15 ? 'alta' : 'media',
           enlace: '/app/finanzas/configuracion/secuencias'
         });

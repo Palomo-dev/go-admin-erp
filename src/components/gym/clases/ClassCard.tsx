@@ -22,7 +22,8 @@ import {
   Calendar
 } from 'lucide-react';
 import { GymClass, getClassTypeLabel, getClassStatusColor, getClassStatusLabel } from '@/lib/services/gymService';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 interface ClassCardProps {
   gymClass: GymClass;
@@ -41,11 +42,13 @@ export function ClassCard({
   onDelete,
   onViewReservations,
 }: ClassCardProps) {
+  const { formatDate } = useFormatDate();
+  const { timezone } = useOrgTimezone();
   const startTime = new Date(gymClass.start_at);
   const endTime = new Date(gymClass.end_at);
   
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return formatTimeInTz(date.toISOString(), timezone);
   };
 
   return (

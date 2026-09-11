@@ -438,6 +438,16 @@ export const createSupabaseClient = () => {
                 return attemptFetch(retriesLeft - 1, delay * 2);
               }
 
+              // 503 Service Unavailable: PostgREST puede devolver 503 con
+              // PGRST002 ("Could not query the database for the schema cache")
+              // durante recargas de schema cache o picos de carga. Es transitorio:
+              // reintentar con backoff exponencial.
+              if (response.status === 503 && retriesLeft > 0 && !isAuthRequest) {
+                console.log(`Servicio no disponible (503), reintentando en ${delay}ms (${retriesLeft} intentos restantes)`);
+                await new Promise(res => setTimeout(res, delay));
+                return attemptFetch(retriesLeft - 1, delay * 2);
+              }
+
               // Para requests de auth (login, refresh, getUser): si hay 429,
               // reintentar una vez con backoff mayor (5s). No reintentar más
               // de 1 vez para no empeorar el rate limiting.

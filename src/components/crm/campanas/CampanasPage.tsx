@@ -16,7 +16,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { CampanasService } from './CampanasService';
 import { CAMPAIGN_STATUS_CONFIG, type Campaign } from './types';
 
@@ -29,6 +29,7 @@ function progressOf(c: Campaign): { done: number; total: number; pct: number } {
 
 export function CampanasPage() {
   const router = useRouter();
+  const { formatDate } = useFormatDate();
   const { toast } = useToast();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);

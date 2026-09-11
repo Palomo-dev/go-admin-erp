@@ -56,9 +56,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { ItemsDetalle } from './ItemsDetalle';
 import { PagosDetalle } from './PagosDetalle';
 import { RegistrarPagoDialog } from './RegistrarPagoDialog';
@@ -128,12 +127,13 @@ interface OrganizationPDFData {
 
 export default function DetalleFactura({ factura }: { factura: any }) {
   const router = useRouter();
+  const { formatDate: formatDateInOrg, getToday } = useFormatDate();
   const [isPaid, setIsPaid] = useState(factura.status === 'paid');
   const [dialogPagoOpen, setDialogPagoOpen] = useState(false);
   const [dialogNotaCreditoOpen, setDialogNotaCreditoOpen] = useState(false);
   const [dialogAnularOpen, setDialogAnularOpen] = useState(false);
   const [dialogMarcarPagadaOpen, setDialogMarcarPagadaOpen] = useState(false);
-  const [fechaMarcarPagada, setFechaMarcarPagada] = useState(new Date().toISOString().split('T')[0]);
+  const [fechaMarcarPagada, setFechaMarcarPagada] = useState(getToday());
   const [facturaActual, setFacturaActual] = useState(factura);
   const [pagosActuales, setPagosActuales] = useState(factura.pagos);
   const [organizationData, setOrganizationData] = useState<OrganizationPDFData | null>(null);
@@ -310,11 +310,8 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   };
 
   const formatDate = (dateString: string) => {
-    try {
-      return format(parseLocalDate(dateString), 'PPP', { locale: es });
-    } catch (error) {
-      return 'Fecha inválida';
-    }
+    if (!dateString) return 'N/A';
+    return formatDateInOrg(dateString);
   };
 
   // Función para marcar la factura como pagada totalmente
@@ -994,10 +991,17 @@ export default function DetalleFactura({ factura }: { factura: any }) {
                     factura.payment_terms === 0 ? 'Contado' : 
                     (() => {
                       if (factura.issue_date && factura.payment_terms > 0) {
-                        const fechaEmision = parseLocalDate(factura.issue_date);
+                        // Convertir issue_date (timestamptz) a dia calendario de la org
+                        const fechaEmisionStr = formatDateInOrg(factura.issue_date);
+                        // Parsear como fecha pura (dd/MM/yyyy -> componentes)
+                        const [dd, mm, yyyy] = fechaEmisionStr.split('/');
+                        const fechaEmision = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
                         const fechaVencimiento = new Date(fechaEmision);
                         fechaVencimiento.setDate(fechaVencimiento.getDate() + factura.payment_terms);
-                        const hoy = new Date();
+                        // Hoy en la zona horaria de la organizacion
+                        const hoyStr = getToday();
+                        const [hdd, hmm, hyyyy] = hoyStr.split('-');
+                        const hoy = new Date(parseInt(hyyyy), parseInt(hmm) - 1, parseInt(hdd));
                         const diasRestantes = Math.ceil((fechaVencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
                         
                         return `${factura.payment_terms} días ${diasRestantes > 0 ? 

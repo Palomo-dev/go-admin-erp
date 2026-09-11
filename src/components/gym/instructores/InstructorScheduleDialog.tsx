@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { Instructor, getClasses, GymClass, getClassTypeLabel, getClassStatusColor, getClassStatusLabel } from '@/lib/services/gymService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 
 interface InstructorScheduleDialogProps {
   open: boolean;
@@ -29,6 +31,7 @@ interface InstructorScheduleDialogProps {
 
 export function InstructorScheduleDialog({ open, onOpenChange, instructor }: InstructorScheduleDialogProps) {
   const { organization } = useOrganization();
+  const { timezone } = useOrgTimezone();
   const [classes, setClasses] = useState<GymClass[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
@@ -123,9 +126,9 @@ export function InstructorScheduleDialog({ open, onOpenChange, instructor }: Ins
     endOfWeek.setDate(endOfWeek.getDate() + 6);
     
     if (currentWeekStart.getMonth() === endOfWeek.getMonth()) {
-      return currentWeekStart.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+      return formatDateInTz(currentWeekStart.toISOString(), timezone, { month: 'long', year: 'numeric' });
     }
-    return `${currentWeekStart.toLocaleDateString('es-ES', { month: 'short' })} - ${endOfWeek.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}`;
+    return `${formatDateInTz(currentWeekStart.toISOString(), timezone, { month: 'short' })} - ${formatDateInTz(endOfWeek.toISOString(), timezone, { month: 'short', year: 'numeric' })}`;
   };
 
   // Calcular carga horaria semanal - DEBE estar antes de cualquier return condicional
@@ -187,7 +190,7 @@ export function InstructorScheduleDialog({ open, onOpenChange, instructor }: Ins
                     className={`p-2 text-center border-r ${isToday(day) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
                   >
                     <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">
-                      {day.toLocaleDateString('es-ES', { weekday: 'short' })}
+                      {formatDateInTz(day.toISOString(), timezone, { weekday: 'short' })}
                     </div>
                     <div className={`text-lg font-semibold ${isToday(day) ? 'text-blue-600' : 'text-gray-900 dark:text-white'}`}>
                       {day.getDate()}

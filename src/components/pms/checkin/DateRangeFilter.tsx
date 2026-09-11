@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
+import { DEFAULT_TIMEZONE, todayInTz, toPlainDate } from '@/lib/utils/timezone';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 export type DateRangePreset = 'today' | 'yesterday' | 'last7days' | 'last30days' | 'custom';
 
@@ -83,7 +85,8 @@ export function DateRangeFilter({
  */
 export function getDateRangeFromPreset(
   preset: DateRangePreset,
-  customDateRange?: CustomDateRange
+  customDateRange?: CustomDateRange,
+  timezone: string = DEFAULT_TIMEZONE
 ): DateRange {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -139,8 +142,8 @@ export function getDateRangeFromPreset(
   }
 
   return {
-    startDate: startDate.toISOString().split('T')[0],
-    endDate: endDate.toISOString().split('T')[0],
+    startDate: toPlainDate(startDate, timezone),
+    endDate: toPlainDate(endDate, timezone),
   };
 }
 
@@ -158,17 +161,9 @@ export function getDateRangeLabel(preset: DateRangePreset, customDateRange?: Cus
     } else if (preset === 'yesterday') {
       return 'Ayer';
     } else {
-      return date.toLocaleDateString('es-ES', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
+      return formatPlainDate(startDate, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     }
   }
 
-  const start = new Date(startDate + 'T00:00:00');
-  const end = new Date(endDate + 'T00:00:00');
-
-  return `${start.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} - ${end.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  return `${formatPlainDate(startDate, { day: 'numeric', month: 'short' })} - ${formatPlainDate(endDate, { day: 'numeric', month: 'short', year: 'numeric' })}`;
 }

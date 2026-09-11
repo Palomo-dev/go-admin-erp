@@ -4,6 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import {
   Building2,
   Edit,
@@ -57,12 +59,9 @@ export function DepartmentHeader({
   onDelete,
   isLoading,
 }: DepartmentHeaderProps) {
+  const { timezone } = useOrgTimezone();
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return formatDateInTz(dateStr, timezone, { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   return (

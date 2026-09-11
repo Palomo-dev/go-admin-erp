@@ -33,6 +33,37 @@
 
 ## Historial de rondas
 
+### Sucursal por defecto en el CRM — oportunidades invisibles — 2026-09-11 (captura del dueño)
+El dueño mostró la página de Oportunidades vacía («No se encontraron oportunidades», 0 en todas las tarjetas) mientras el pipeline enseñaba 11 y la ficha del cliente también. Pidió arreglarlo **de forma general, para los datos actuales y los futuros**, no solo el caso.
+
+**Diagnóstico, medido contra producción antes de tocar nada:**
+| tabla | sin sucursal | total |
+|---|---|---|
+| `opportunities` | 36 | 36 (**100 %**) |
+| `conversations` | 20.606 | 20.606 (**100 %**) |
+| `messages` | 256.757 | 256.757 (**100 %**) |
+| `activities` | 77 | 77 (**100 %**) |
+| `customers` | 0 | 33.334 (sí la llevan) |
+
+**Ningún** camino de escritura de esas cuatro tablas ponía `branch_id` —ni rutas, ni funciones Edge, ni webhooks, ni formularios web— y la lista, el panel del CRM y los reportes filtraban `eq('branch_id', seleccionada)`, que descarta lo nulo. El pipeline no filtra por sucursal, por eso sí las mostraba. **Con cualquier sucursal seleccionada, todo eso salía vacío para todas las organizaciones.** No era un dato de este usuario: era sistémico.
+
+**Solución en tres capas, porque "general" exige que ningún escritor futuro pueda olvidarse:**
+1. **Base de datos (la general)** — migración `sucursal_por_defecto_en_tablas_crm`, versionada con `.sql` y reversión según `docs/POLITICA-MIGRACIONES.md`:
+   - `fn_org_main_branch(org)`: la sucursal principal activa, con respaldo por si alguna organización deja de tenerla. Determinista hoy: **las 83 organizaciones tienen exactamente una principal activa**, ninguna sin sucursal, ninguna con dos (medido).
+   - trigger `BEFORE INSERT` en las cuatro tablas: si `branch_id` viene nulo, se rellena con la principal. **Cubre todos los escritores, presentes y futuros.**
+   - backfill de lo existente con la misma regla.
+   - `SECURITY DEFINER` con `search_path` fijo y `REVOKE ... FROM PUBLIC, anon`, como pide la política. Verificado: acceso solo `postgres, authenticated, service_role`.
+   - **Probada en seco dentro de una transacción con conteos antes de aplicar**: nulos 36/20.607/256.792/77 → **0/0/0/0**, y una oportunidad nueva sin sucursal en la org 125 recibió la 99. Luego aplicada y verificada igual.
+   - **El rollback SÍ revierte los datos**, y puede hacerlo con exactitud precisamente porque el 100 % era nulo: toda fila cuya sucursal sea la principal la recibió de esta regla. Está advertido en el archivo que esa afirmación caduca si algún escritor de código empieza a poner sucursal por su cuenta.
+2. **Lectura (red de seguridad)** — `applyBranchFilterInclusive` nuevo en `branchFilterHelper.ts` (`branch_id = X OR branch_id IS NULL`), con 5 pruebas escritas antes y vistas en rojo. Aplicado en `opportunitiesService` (lista y estadísticas, que delega), `CRMDashboardService` (14 sitios), `ReportesService` (4) y la ficha del cliente (2). Los filtros sobre `customers` se dejan **estrictos** a propósito: esa tabla sí lleva sucursal siempre. El estricto `applyBranchFilter` **no se toca**: es el correcto para `sales` y demás tablas con sucursal obligatoria, y lo usan ocho servicios.
+3. **Creación en código** — `createOpportunity` escribe ahora `branch_id: input.branch_id ?? getCurrentBranchId()`, el mismo origen que usa el POS. Aporta lo que el trigger no puede: en una organización multisucursal, la oportunidad nace en la sucursal que el usuario tiene **seleccionada**, no en la principal. `CreateOpportunityInput` admite `branch_id`.
+
+**Verificación final**: la consulta exacta que hace ahora la lista para la org 125 con la sucursal 99 devuelve **11 oportunidades, $19.750.003**, que es la suma de las dos columnas del pipeline de la captura. Pruebas: 72/72 en CRM + helper + guardarraíles; `tsc` con 0 errores en lo tocado.
+
+**Error mío en el camino, corregido**: al insertar el import en `ReportesService.ts` con una heurística, cayó **dentro** de un bloque `import type {` multilínea y rompió la sintaxis (5 errores). Lo detectó `tsc`. Lección: no insertar por "después del último import" cuando un import abarca varias líneas.
+
+**Nota de contexto**: el trabajo está sobre la rama `fix/timezone-fechas`, que es la activa en el árbol y lleva mucho trabajo de zona horaria en curso de otra sesión. No se ha commiteado nada (no se pidió).
+
 ### Softphone — el cliente veía las llaves de la plataforma — 2026-09-10 (captura del dueño)
 El dueño mostró el softphone diciéndole a una organización cliente «Faltan API Key de Twilio, API Secret de Twilio, TwiML App SID…», con los nombres de las variables de entorno y un enlace a «Proveedores e IA» para que las guardara. **Error de audiencia**: el valor por defecto de `voice:twilio` es `use_master_account: true`, la cuenta maestra **de la plataforma**. Las llaves las conecta el dueño; el cliente no puede hacer nada con eso y no tiene por qué saber que existe Twilio.
 

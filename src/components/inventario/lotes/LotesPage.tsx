@@ -61,11 +61,12 @@ import {
 } from 'lucide-react';
 import { LotesService } from './LotesService';
 import { Lot, LotsStats, LotFilter } from './types';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function LotesPage() {
   const { toast } = useToast();
+  const { formatDate } = useFormatDate();
   const [lotes, setLotes] = useState<Lot[]>([]);
   const [productos, setProductos] = useState<{ id: number; name: string; sku: string }[]>([]);
   const [proveedores, setProveedores] = useState<{ id: number; name: string }[]>([]);

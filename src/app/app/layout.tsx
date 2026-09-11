@@ -4,6 +4,7 @@ import { AuthGuard } from '@/components/app-layout/AuthGuard';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { MotionProvider } from '@/components/shared/MotionProvider';
 import { SoftphoneShell } from '@/components/voice/SoftphoneShell';
+import { OrganizationTimezoneProvider } from '@/lib/context/OrganizationTimezoneContext';
 
 // Force dynamic rendering for all pages in /app/app/*
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,8 @@ export default function AppLayoutPage({
     <AuthGuard>
       <MotionProvider>
         <SoftphoneShell>
-          <AppLayout>
+          <OrganizationTimezoneProvider>
+            <AppLayout>
             <Suspense fallback={
               <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
                 <PageHeaderSkeleton />
@@ -30,6 +32,7 @@ export default function AppLayoutPage({
               {children}
             </Suspense>
           </AppLayout>
+          </OrganizationTimezoneProvider>
         </SoftphoneShell>
       </MotionProvider>
     </AuthGuard>

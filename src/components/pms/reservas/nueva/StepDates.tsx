@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Calendar, Users, Bed, Home, Mountain, Tent, Building } from 'lucide-react';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
 
 interface SpaceCategory {
   code: string;
@@ -50,6 +52,7 @@ export function StepDates({
   onNext,
   onBack,
 }: StepDatesProps) {
+  const { timezone } = useOrgTimezone();
   const [nights, setNights] = useState(0);
 
   useEffect(() => {
@@ -64,12 +67,10 @@ export function StepDates({
 
   const isValid = checkin && checkout && selectedCategory && nights > 0;
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayInTz(timezone);
   
   const minCheckout = checkin
-    ? new Date(new Date(checkin).getTime() + 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split('T')[0]
+    ? toPlainDate(new Date(new Date(checkin).getTime() + 24 * 60 * 60 * 1000), timezone)
     : today;
 
   return (

@@ -28,7 +28,7 @@ import {
   FileEdit,
   ClipboardList
 } from 'lucide-react';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { ADJUSTMENT_TYPES, ADJUSTMENT_REASONS, type InventoryAdjustment } from '@/lib/services/adjustmentService';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -77,6 +77,7 @@ export function AjustesTable({
   onDelete
 }: AjustesTableProps) {
   const router = useRouter();
+  const { formatDate } = useFormatDate();
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">

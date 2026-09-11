@@ -13,7 +13,7 @@ import { Copy, Mail, MessageSquare, QrCode, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
 import { Membership, getMembershipStatusColor, getMembershipStatusLabel } from '@/lib/services/gymService';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface MembershipQRDialogProps {
   open: boolean;
@@ -28,6 +28,7 @@ export function MembershipQRDialog({
   membership,
   onRegenerateCode 
 }: MembershipQRDialogProps) {
+  const { formatDate } = useFormatDate();
   if (!membership) return null;
 
   const customer = membership.customers;

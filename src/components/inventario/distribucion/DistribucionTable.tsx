@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import type { InventoryTransfer } from '../transferencias/types';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 
 interface DistribucionTableProps {
   transferencias: InventoryTransfer[];
@@ -46,6 +48,7 @@ export function DistribucionTable({
   onCancelar,
   onVerDetalle,
 }: DistribucionTableProps) {
+  const { timezone } = useOrgTimezone();
   if (loading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -101,7 +104,7 @@ export function DistribucionTable({
                   </Badge>
                 </TableCell>
                 <TableCell className="text-sm text-gray-500 dark:text-gray-400">
-                  {t.created_at ? new Date(t.created_at).toLocaleDateString('es-CO') : '-'}
+                  {t.created_at ? formatDateInTz(t.created_at, timezone) : '-'}
                 </TableCell>
                 <TableCell className="text-sm text-gray-500 dark:text-gray-400 max-w-[200px] break-words whitespace-normal">
                   {t.notes || '-'}

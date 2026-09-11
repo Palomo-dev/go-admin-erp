@@ -13,7 +13,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { CuentaPorPagarDetailService } from './service';
 import { APInstallment } from './types';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { asPlainDate, formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface InstallmentsCardProps {
   accountId: string;
@@ -45,6 +47,7 @@ const statusConfig: Record<string, { label: string; className: string; icon: any
 };
 
 export function InstallmentsCard({ accountId, totalAmount, onUpdate }: InstallmentsCardProps) {
+  const { timezone } = useOrgTimezone();
   const [installments, setInstallments] = useState<APInstallment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -78,7 +81,7 @@ export function InstallmentsCard({ accountId, totalAmount, onUpdate }: Installme
       // Marcar cuotas vencidas
       const today = new Date();
       const processedData = data.map(inst => {
-        const dueDate = parseLocalDate(inst.due_date);
+        const dueDate = new Date(asPlainDate(inst.due_date) + 'T12:00:00Z');
         if (dueDate < today && inst.status === 'pending') {
           return { ...inst, status: 'overdue' as const };
         }
@@ -199,11 +202,7 @@ export function InstallmentsCard({ accountId, totalAmount, onUpdate }: Installme
   };
 
   const formatDate = (dateString: string) => {
-    return parseLocalDate(dateString).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return formatPlainDate(dateString, { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   if (isLoading) {

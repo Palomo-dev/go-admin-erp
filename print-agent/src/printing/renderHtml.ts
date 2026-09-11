@@ -1,4 +1,4 @@
-import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload } from './types';
+﻿import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload } from './types';
 import type { PaperSpec } from './paper';
 
 function formatMoney(value: number): string {
@@ -30,23 +30,23 @@ function translateFiscal(code: string): string {
 
 const STATION_LABELS: Record<string, string> = {
   hot_kitchen: 'COCINA CALIENTE',
-  cold_kitchen: 'COCINA FRÍA',
+  cold_kitchen: 'COCINA FRÃA',
   bar: 'BAR',
   cashier: 'CAJA',
   all: 'COMANDA',
 };
 
-// NOTA sobre impresoras térmicas:
+// NOTA sobre impresoras tÃ©rmicas:
 // - Todo debe ser NEGRO PURO (#000). Los grises se difuminan (dithering) y salen
-//   casi invisibles en papel térmico.
+//   casi invisibles en papel tÃ©rmico.
 // - Fuentes < 10px resultan ilegibles a 203dpi.
-// - El ancho se define UNA sola vez, en `@page size`. Poner además un ancho en
+// - El ancho se define UNA sola vez, en `@page size`. Poner ademÃ¡s un ancho en
 //   `html`/`body` crea dos fuentes de verdad que se contradicen: Chromium
-//   maqueta con el tamaño de página y el driver escala el resultado, lo que
+//   maqueta con el tamaÃ±o de pÃ¡gina y el driver escala el resultado, lo que
 //   produce texto diminuto y desplazado. `body` usa width: 100% para llenar
-//   exactamente la página que declara `@page`.
-// - `size` usa el área IMPRIMIBLE (72mm para 80mm), porque el driver de la
-//   impresora del sistema ya recorta al área del cabezal. Usar el ancho del
+//   exactamente la pÃ¡gina que declara `@page`.
+// - `size` usa el Ã¡rea IMPRIMIBLE (72mm para 80mm), porque el driver de la
+//   impresora del sistema ya recorta al Ã¡rea del cabezal. Usar el ancho del
 //   rollo provocaba margenes dobles y recortes en el lado derecho.
 function buildCss(paper: PaperSpec): string {
   return `
@@ -278,8 +278,8 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
   const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
   const title = payload.title || 'TICKET DE VENTA';
   const dateObj = new Date(payload.createdAt);
-  const dateStr = dateObj.toLocaleDateString('es-CO');
-  const timeStr = dateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const dateStr = dateObj.toLocaleDateString('es-CO', payload.timezone ? { timeZone: payload.timezone } : {});
+  const timeStr = dateObj.toLocaleTimeString('es-CO', { ...(payload.timezone ? { timeZone: payload.timezone } : {}), hour: '2-digit', minute: '2-digit', hour12: false });
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
 
   const businessFiscal = payload.businessFiscalResponsibilities?.map(translateFiscal).join(', ') || '';
@@ -450,8 +450,8 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
 function buildKitchenTicketBody(payload: KitchenTicketPrintPayload): string {
   const stationLabel = STATION_LABELS[payload.station] || payload.station.toUpperCase();
   const dateObj = new Date(payload.createdAt);
-  const dateStr = dateObj.toLocaleDateString('es-CO');
-  const timeStr = dateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const dateStr = dateObj.toLocaleDateString('es-CO', payload.timezone ? { timeZone: payload.timezone } : {});
+  const timeStr = dateObj.toLocaleTimeString('es-CO', { ...(payload.timezone ? { timeZone: payload.timezone } : {}), hour: '2-digit', minute: '2-digit', hour12: false });
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
 
   const itemsHTML = payload.items.map(item => {
@@ -549,8 +549,8 @@ export function buildKitchenTicketsHTML(payloads: KitchenTicketPrintPayload[], p
 
 function buildShipmentGuideBody(payload: ShipmentGuidePrintPayload): string {
   const tracking = payload.trackingNumber || payload.shipmentNumber || payload.shipmentId;
-  const dateStr = new Date(payload.createdAt).toLocaleDateString('es-CO');
-  const timeStr = new Date(payload.createdAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const dateStr = new Date(payload.createdAt).toLocaleDateString('es-CO', payload.timezone ? { timeZone: payload.timezone } : {});
+  const timeStr = new Date(payload.createdAt).toLocaleTimeString('es-CO', { ...(payload.timezone ? { timeZone: payload.timezone } : {}), hour: '2-digit', minute: '2-digit', hour12: false });
 
   const itemsHtml = (payload.items || []).map((item) => {
     const qty = item.quantity || 1;
@@ -644,8 +644,8 @@ export function buildShipmentGuidesHTML(payloads: ShipmentGuidePrintPayload[], p
 
 function buildElectronicInvoiceBody(payload: ElectronicInvoicePrintPayload): string {
   const dateObj = new Date(payload.createdAt);
-  const dateStr = dateObj.toLocaleDateString('es-CO');
-  const timeStr = dateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const dateStr = dateObj.toLocaleDateString('es-CO', payload.timezone ? { timeZone: payload.timezone } : {});
+  const timeStr = dateObj.toLocaleTimeString('es-CO', { ...(payload.timezone ? { timeZone: payload.timezone } : {}), hour: '2-digit', minute: '2-digit', hour12: false });
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
 
   const businessFiscal = payload.businessFiscalResponsibilities?.map(translateFiscal).join(', ') || '';
@@ -787,3 +787,5 @@ function buildElectronicInvoiceBody(payload: ElectronicInvoicePrintPayload): str
 export function buildElectronicInvoiceHTML(payload: ElectronicInvoicePrintPayload, paper: PaperSpec): string {
   return wrapDocument(`Factura Electronica ${payload.invoiceNumber}`, paper, [buildElectronicInvoiceBody(payload)]);
 }
+
+

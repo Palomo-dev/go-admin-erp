@@ -16,12 +16,15 @@ import {
   RefreshCw,
   ClipboardList,
 } from 'lucide-react';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 
 interface OnboardingChecklistProps {
   opportunityId: string;
 }
 
 export function OnboardingChecklist({ opportunityId }: OnboardingChecklistProps) {
+  const { timezone } = useOrgTimezone();
   const [tasks, setTasks] = useState<OnboardingTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -87,10 +90,7 @@ export function OnboardingChecklist({ opportunityId }: OnboardingChecklistProps)
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return null;
-    return new Date(dateStr).toLocaleDateString('es-CO', {
-      day: '2-digit',
-      month: 'short',
-    });
+    return formatDateInTz(dateStr, timezone, { day: '2-digit', month: 'short' });
   };
 
   return (

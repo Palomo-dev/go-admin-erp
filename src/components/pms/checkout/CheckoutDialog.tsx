@@ -53,6 +53,7 @@ import { supabase } from '@/lib/supabase/config';
 import { POSService } from '@/lib/services/posService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
 import type { Cart, CartItem } from '@/components/pos/types';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface PaymentEntry {
   id: string;
@@ -279,7 +280,7 @@ export function CheckoutDialog({
       setDateWarning({
         type: 'warning',
         title: 'Check-out Anticipado',
-        message: `La fecha programada de check-out es el ${checkoutDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} (en ${diffDays} ${diffDays === 1 ? 'día' : 'días'}). ¿Deseas realizar el check-out anticipado? Esto podría generar cargos adicionales o ajustes en la facturación.`,
+        message: `La fecha programada de check-out es el ${formatPlainDate(reservation.checkout, { day: '2-digit', month: 'long', year: 'numeric' })} (en ${diffDays} ${diffDays === 1 ? 'día' : 'días'}). ¿Deseas realizar el check-out anticipado? Esto podría generar cargos adicionales o ajustes en la facturación.`,
       });
     }
     // Check-out después de la fecha programada (tardío)
@@ -293,7 +294,7 @@ export function CheckoutDialog({
       setDateWarning({
         type: 'warning',
         title: 'Check-out Tardío',
-        message: `La fecha programada de check-out era el ${checkoutDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} (hace ${extraNights} ${extraNights === 1 ? 'día' : 'días'}). Estás realizando un check-out tardío. Se cobrarán ${extraNights} ${extraNights === 1 ? 'noche extra' : 'noches extra'} por un total aproximado de ${formatCurrency(extraCharge)}.`,
+        message: `La fecha programada de check-out era el ${formatPlainDate(reservation.checkout, { day: '2-digit', month: 'long', year: 'numeric' })} (hace ${extraNights} ${extraNights === 1 ? 'día' : 'días'}). Estás realizando un check-out tardío. Se cobrarán ${extraNights} ${extraNights === 1 ? 'noche extra' : 'noches extra'} por un total aproximado de ${formatCurrency(extraCharge)}.`,
       });
       // Auto-marcar actualización de fecha para check-out tardío
       setUpdateCheckoutDate(true);
@@ -386,12 +387,7 @@ export function CheckoutDialog({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
+    return formatPlainDate(dateString, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   };
 
   const handleOpenPayment = useCallback(async () => {

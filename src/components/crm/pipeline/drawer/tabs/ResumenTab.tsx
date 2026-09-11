@@ -16,13 +16,14 @@ import { SalesTeamTerritorySelectors } from '../SalesTeamTerritorySelectors';
 import { DiscoverySection } from '../DiscoverySection';
 import { DiscoveryConfigDialog } from '../DiscoveryConfigDialog';
 import type { DrawerTabProps } from './types';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 /**
  * Pestaña Resumen: seguimiento, info, equipo/territorio, scoring, discovery,
  * cliente (+ editar), pérdida/handoff y resumen de líneas (productos/espacios/
  * conceptos) con link al detalle. Conserva todo lo del drawer anterior.
  */
-const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A');
+const fmtDate = (d?: string | null) => (d ? formatPlainDate(d, { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A');
 
 interface Line { id: string; label: string; qty: string; total: number }
 

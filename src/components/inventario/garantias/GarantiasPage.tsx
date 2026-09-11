@@ -49,7 +49,8 @@ import {
 } from '@/lib/services/warrantyClaimsService';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { CreateClaimDialog } from './CreateClaimDialog';
-import { formatDate, formatCurrency } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { CopyableId } from '@/components/common/CopyableId';
 
 const STATUS_CONFIG: Record<WarrantyClaimStatus, { label: string; color: string; icon: React.ReactNode }> = {
@@ -74,6 +75,7 @@ const PAGE_SIZE = 20;
 export function GarantiasPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { formatDate } = useFormatDate();
   const organizationId = getOrganizationId();
 
   const [claims, setClaims] = useState<WarrantyClaimWithDetails[]>([]);

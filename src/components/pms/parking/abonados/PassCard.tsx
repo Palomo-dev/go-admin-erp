@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { cn, formatCurrency } from '@/utils/Utils';
 import type { ParkingPass } from '@/lib/services/parkingService';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface PassCardProps {
   pass: ParkingPass;
@@ -74,11 +75,7 @@ export function PassCard({
   const statusConfig = STATUS_CONFIG[pass.status] || STATUS_CONFIG.active;
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-CO', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+    return formatPlainDate(dateStr, { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   const getDaysRemaining = () => {

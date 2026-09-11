@@ -11,6 +11,8 @@ import { Calendar, ChefHat, Utensils } from 'lucide-react';
 import { type Category } from '@/lib/services/categoryService';
 import { STATION_LABELS, type PrinterStation } from '@/components/pos/configuracion/printersService';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 
 interface CategoryInfoCardProps {
   category: Category;
@@ -18,14 +20,8 @@ interface CategoryInfoCardProps {
 }
 
 export default function CategoryInfoCard({ category, parent }: CategoryInfoCardProps) {
-  const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString('es-CO', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const { timezone } = useOrgTimezone();
+  const formatDate = (d: string) => formatDateTimeInTz(d, timezone);
 
   return (
     <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">

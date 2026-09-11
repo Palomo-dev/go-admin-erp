@@ -12,13 +12,15 @@ import { contactState } from '@/lib/services/crm/whatsapp/types';
 import { ERROR_CODE_LABELS, SKIP_REASON_LABELS } from '@/components/crm/whatsapp/api';
 import { CampanasService } from '../CampanasService';
 import { CONTACT_STATE_LABEL, type CampaignContact, type ContactState } from '../types';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 const PAGE = 50;
 const VARIANT: Partial<Record<ContactState, 'success' | 'warning' | 'destructive' | 'secondary' | 'outline'>> = { sent: 'secondary', delivered: 'success', read: 'success', replied: 'success', failed: 'destructive', skipped: 'outline', pending: 'warning', queued: 'warning' };
 
-const fmt = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '—');
-
 export function CampaignContactsTable({ campaignId, refreshKey }: { campaignId: string; refreshKey?: number }) {
+  const { timezone } = useOrgTimezone();
+  const fmt = (iso: string | null | undefined) => (iso ? formatTimeInTz(iso, timezone) : '—');
   const [rows, setRows] = useState<CampaignContact[]>([]);
   const [total, setTotal] = useState(0);
   const [state, setState] = useState('all');

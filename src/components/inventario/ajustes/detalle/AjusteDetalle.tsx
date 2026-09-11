@@ -43,7 +43,8 @@ import {
   TrendingDown,
   Package
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { 
   adjustmentService, 
   ADJUSTMENT_TYPES, 
@@ -86,6 +87,7 @@ function getReasonLabel(reason: string): string {
 export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { formatDate } = useFormatDate();
   const { organization, isLoading: loadingOrg } = useOrganization();
 
   // Estados

@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { ParkingPass } from '@/lib/services/parkingService';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface AbonadosListProps {
   passes: ParkingPass[];
@@ -36,11 +37,7 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
 
 export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-CO', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+    return formatPlainDate(dateStr, { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   const formatCurrency = (amount: number) => {

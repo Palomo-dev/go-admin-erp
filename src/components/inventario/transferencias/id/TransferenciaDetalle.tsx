@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { TransferenciasService } from '../TransferenciasService';
 import { InventoryTransfer, TransferItem } from '../types';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useToast } from '@/components/ui/use-toast';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
@@ -81,6 +81,7 @@ const estadoConfig: Record<string, { label: string; className: string; icon: Rea
 export function TransferenciaDetalle({ transferenciaId }: TransferenciaDetalleProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { formatDate } = useFormatDate();
   const [transferencia, setTransferencia] = useState<InventoryTransfer | null>(null);
   const [loading, setLoading] = useState(true);
   const [procesando, setProcesando] = useState(false);

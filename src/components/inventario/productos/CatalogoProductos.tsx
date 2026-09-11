@@ -94,21 +94,35 @@ const CatalogoProductos: React.FC = () => {
         ? 'todos'
         : (filters.estado && filters.estado !== 'todos' ? filters.estado : null);
 
-      const { data, error } = await supabase.rpc('get_catalogo_productos', {
-        p_organization_id: organization.id,
-        p_page: 1,
-        p_page_size: 50,
-        p_search: filters.busqueda || null,
-        p_category_id: filters.categoria || null,
-        p_status,
-        p_branch_id: branchFilter,
-        p_sort_by: filters.ordenarPor || 'name',
-        p_sort_dir: 'asc',
-      });
+      // Retry explícito para 503/PGRST002 (PostgREST recargando schema cache)
+      let data: any = null;
+      let error: any = null;
+      const MAX_RPC_RETRIES = 3;
+      for (let attempt = 0; attempt <= MAX_RPC_RETRIES; attempt++) {
+        const result = await supabase.rpc('get_catalogo_productos', {
+          p_organization_id: organization.id,
+          p_page: 1,
+          p_page_size: 50,
+          p_search: filters.busqueda || null,
+          p_category_id: filters.categoria || null,
+          p_status,
+          p_branch_id: branchFilter,
+          p_sort_by: filters.ordenarPor || 'name',
+          p_sort_dir: 'asc',
+        });
+        data = result.data;
+        error = result.error;
+        if (!error) break;
+        if (attempt < MAX_RPC_RETRIES) {
+          const delay = 1000 * Math.pow(2, attempt);
+          console.warn(`[fetchProductosFast] RPC falló (intento ${attempt + 1}/${MAX_RPC_RETRIES + 1}), reintentando en ${delay}ms:`, error.message);
+          await new Promise((res) => setTimeout(res, delay));
+        }
+      }
 
       if (error) {
         console.error('Error en RPC get_catalogo_productos:', error);
-        // Si falla el RPC, caer al flujo completo
+        // Si falla el RPC tras reintentos, caer al flujo completo
         return false;
       }
 

@@ -1886,3 +1886,105 @@ flujo de inventario. La respuesta no es tocar triggers.
 ### 7. ar_installments — suma de cuotas vs total CxC
 - Solo 1 CxC con cuotas. 1 discrepancia (amount=4.000 vs cuotas=1.901).
 - Senal de uso, no un bug. No perseguir.
+## Correccion al diagnostico de bug-vs-uso (2026-09-11)
+
+El diagnostico anterior de "es uso, no bug" era incorrecto. Falto un paso:
+verificar si los movimientos de inventario generan asiento.
+
+De 2.845 stock_movements, 1.433 (50,2%) no tienen asiento contable. De
+esos, 730 tienen costo pero no contabilizan. La causa es un filtro
+explicito en fn_auto_journal_stock_movement, no falta de uso del modulo
+de compras. Ver F-36.
+
+## F-36 - Movimientos de inventario sin asiento contable (BLOQUEANTE)
+
+De 2.845 stock_movements, 1.433 (50,2%) no tienen asiento contable:
+
+| Source | Total | Sin asiento | Con costo sin asiento | Valor |
+|---|---|---|---|---|
+| initial | 1.048 | 1.048 (100%) | 713 | $1.369.124.500 |
+| purchase | 6 | 6 (100%) | 6 | $809.750 |
+| transfer | 10 | 10 (100%) | 0 | $0 |
+| adjustment | 177 | 127 (72%) | 11 | $30.889.139 |
+| sale | 698 | 242 (35%) | 0 | $0 (sin costo) |
+| web_sale | 754 | 0 (0%) | 0 | - |
+| invoice_sale | 126 | 0 (0%) | 0 | - |
+
+Total sin contabilizar con costo: $1.400.823.389 COP.
+
+### Causa raiz
+
+fn_auto_journal_stock_movement tiene un filtro explicito al inicio:
+
+  IF NEW.source IN ('initial', 'purchase', 'transfer') THEN RETURN NEW;
+
+Ademas, solo existe regla contable para event_type='adjusted' (83 reglas).
+No hay regla para event_type='initial' ni event_type='purchase'.
+
+### Las tres exclusiones
+
+- 'purchase': CORRECTA. fn_auto_journal_purchase YA debita 1405
+  (verificado: las 3 orgs con compras debitana 1405). Quitar la
+  exclusion recrearia F-01 del lado de compras.
+- 'transfer': CORRECTA. Una transferencia entre sucursales no cambia el
+  inventario total.
+- 'initial': EQUIVOCADA. Nada mas contabiliza la carga inicial. Esta es
+  la exclusion que vale $1.369 millones.
+
+### Por que bloquea el lanzamiento
+
+Cada cliente nuevo carga su inventario inicial. Si eso no contabiliza,
+1405 queda en 0 o con saldo incorrecto desde el dia 1. La primera venta
+acredita 1405 sin que nada lo haya debitado. El cliente arranca con los
+libros rotos.
+
+### Diseno del arreglo
+
+No es "quitar 'initial' del filtro para que cada movimiento genere su
+asiento". Un contador no quiere 1.048 asientos individuales de apertura.
+Quiere un asiento de apertura por organizacion, fechado, explicito, con
+el inventario total contra la contrapartida que el defina.
+
+Es un proceso de saldos iniciales - separado, ejecutado una vez por
+organizacion al migrarla, auditable.
+
+### Hueco de datos
+
+De los 1.048 movimientos initial, solo 713 tienen costo. Los otros 335
+no se pueden contabilizar ni queriendo. Eso es un hueco de datos que hay
+que resolver antes de cualquier asiento de apertura.
+
+### Pregunta para el contador
+
+Cual es la contrapartida correcta de una carga inicial de inventario:
+patrimonio (cuenta de apertura, ej. 3105) o cuenta puente (ej. 5905)?
+No es una compra (no hay proveedor ni pasivo). Criterio contable, no
+tecnico.
+
+## F-37 - Ventas sin costo: el margen esta inflado
+
+242 movimientos 'sale' sin costo significan que esas ventas reconocieron
+ingreso (4105) pero nunca su costo (6105). El Estado de Resultados de
+esas organizaciones muestra una utilidad bruta mas alta de la real.
+
+### Cuantificacion
+
+- 242 salidas sin costo, 17 productos distintos, 5 organizaciones.
+- Ingreso asociado: $15.133.000 COP (182 items de venta).
+- De los 17 productos: 8 tienen fila en product_costs (pero el costo no
+  se cargo en stock_movements), 9 no tienen fila en product_costs.
+
+### Solapamiento con F-36
+
+Los 17 productos vendidos sin costo son subconjunto de los 335 productos
+cargados sin costo inicial. F-36 y F-37 son un solo problema: productos
+que entraron al sistema sin costo, y todo lo que pasa despues con ellos
+es contablemente mudo.
+
+## Mojibake preexistente en PROGRESS.md (deuda)
+
+62 secuencias mojibake (em-dash doble-codificado) en lineas 1-300 del
+archivo. Preexistente de sesiones anteriores (documentado en CLAUDE.md).
+No arreglar ahora: tocar 1.300 lineas de contenido historico para
+corregir em-dashes es justo el tipo de operacion que ya corrompio este
+archivo dos veces.

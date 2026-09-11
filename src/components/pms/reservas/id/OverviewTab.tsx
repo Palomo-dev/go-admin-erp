@@ -4,6 +4,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { DoorOpen, User, Mail, Phone, Calendar, Users, Tag } from 'lucide-react';
 import { type ReservationDetail } from '@/lib/services/reservationDetailService';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface OverviewTabProps {
   reservation: ReservationDetail;
@@ -12,13 +13,7 @@ interface OverviewTabProps {
 
 export function OverviewTab({ reservation, nights }: OverviewTabProps) {
   const formatDate = (dateString: string) => {
-    // Agregar hora para evitar problemas de zona horaria
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
+    return formatPlainDate(dateString, { day: '2-digit', month: 'long', year: 'numeric' });
   };
 
   const formatCurrency = (amount: number) => {

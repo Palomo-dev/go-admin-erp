@@ -2,7 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import type { PayrollPeriod } from '@/lib/services/payrollService';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import {
   Table,
   TableBody,
@@ -69,6 +70,7 @@ export function PeriodsTable({
   isLoading,
 }: PeriodsTableProps) {
   const router = useRouter();
+  const { formatDate } = useFormatDate();
 
   const handleViewDetail = (period: PayrollPeriod) => {
     router.push(`/app/hrm/nomina/periodos/${period.id}`);

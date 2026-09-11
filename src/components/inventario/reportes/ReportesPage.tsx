@@ -50,7 +50,9 @@ import {
 import { ReportesService } from './ReportesService';
 import { ReportesPagination, usePagination } from './ReportesPagination';
 import { StockReport, KardexEntry, RotationReport, SupplierPurchaseReport, ReportFilter } from './types';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBranch, ALL_BRANCHES } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
@@ -58,6 +60,8 @@ import { BranchBadge } from '@/components/inventario/BranchBadge';
 export function ReportesPage() {
   const { toast } = useToast();
   const { branchFilter, setSelectedBranch } = useBranch();
+  const { formatDate } = useFormatDate();
+  const { timezone } = useOrgTimezone();
   const [activeTab, setActiveTab] = useState('stock');
   const [loading, setLoading] = useState(false);
   
@@ -73,8 +77,8 @@ export function ReportesPage() {
   const [productos, setProductos] = useState<{ id: number; name: string; sku: string }[]>([]);
   
   const [filters, setFilters] = useState<ReportFilter>({
-    dateFrom: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
-    dateTo: new Date().toISOString().split('T')[0],
+    dateFrom: toPlainDate(new Date(new Date().setMonth(new Date().getMonth() - 1)), timezone),
+    dateTo: todayInTz(timezone),
   });
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 

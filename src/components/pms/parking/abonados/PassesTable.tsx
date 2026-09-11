@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import type { ParkingPass } from '@/lib/services/parkingService';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface PassesTableProps {
   passes: ParkingPass[];
@@ -74,11 +75,7 @@ export function PassesTable({
   onRenew,
 }: PassesTableProps) {
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-CO', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+    return formatPlainDate(dateStr, { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   const getDaysRemaining = (endDate: string) => {

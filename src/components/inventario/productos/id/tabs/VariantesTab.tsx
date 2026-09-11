@@ -311,9 +311,11 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
           const stockByBranch: StockByBranch[] = (child.stock_levels || []).map((sl: any) => ({
             branch_id: sl.branch_id,
             branch_name: sl.branches?.name || `Sucursal ${sl.branch_id}`,
-            qty_on_hand: sl.qty_on_hand || 0,
+            // PostgREST devuelve `numeric` como texto ("100.000"). Sin convertir,
+            // `0 + "100.000"` concatena ("0100.000") en vez de sumar.
+            qty_on_hand: Number(sl.qty_on_hand) || 0,
           }));
-          const totalStock = stockByBranch.reduce((sum, s) => sum + s.qty_on_hand, 0);
+          const totalStock = stockByBranch.reduce((sum, s) => sum + Number(s.qty_on_hand || 0), 0);
 
           return {
             id: child.id,

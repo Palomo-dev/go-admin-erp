@@ -38,7 +38,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { formatCurrency, formatDate, cn } from '@/utils/Utils';
+import { formatCurrency, cn } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { CajasService } from '../CajasService';
 import { CierreCajaDialog } from '../CierreCajaDialog';
 import { useBlindCloseMode } from '../useBlindCloseMode';
@@ -53,6 +54,7 @@ interface CajaDetallePageProps {
 export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
   const router = useRouter();
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { formatDateTime } = useFormatDate();
   const [session, setSession] = useState<CashSession | null>(null);
   const [movements, setMovements] = useState<CashMovement[]>([]);
   const [counts, setCounts] = useState<CashCount[]>([]);
@@ -98,16 +100,6 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
     setShowCierreDialog(false);
     loadSessionData();
     toast.success('Caja cerrada exitosamente');
-  };
-
-  const formatDateTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString('es-CO', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   const getCountTypeLabel = (type: string) => {

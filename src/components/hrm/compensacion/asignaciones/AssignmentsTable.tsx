@@ -1,7 +1,9 @@
 'use client';
 
 import type { EmploymentCompensation } from '@/lib/services/employmentCompensationService';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/timezone';
 import {
   Table,
   TableBody,
@@ -57,8 +59,10 @@ export function AssignmentsTable({
   onEndAssignment,
   isLoading,
 }: AssignmentsTableProps) {
+  const { formatDate } = useFormatDate();
+  const { timezone } = useOrgTimezone();
   const isActive = (assignment: EmploymentCompensation) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInTz(timezone);
     return (
       assignment.effective_from <= today &&
       (!assignment.effective_to || assignment.effective_to >= today) &&

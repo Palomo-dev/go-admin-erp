@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { LoadErrorState } from '@/components/common/LoadErrorState';
 import { describeError, logError } from '@/lib/utils/errorMessage';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 
 interface SaludViewProps {
   organizationId: number;
@@ -62,6 +64,7 @@ const BAND_CONFIG: Record<HealthBand, { color: string; bg: string; label: string
 };
 
 export function SaludView({ organizationId }: SaludViewProps) {
+  const { timezone } = useOrgTimezone();
   const [scores, setScores] = useState<HealthScoreResult[]>([]);
   const [loading, setLoading] = useState(true);
   // El toast desaparece; sin esto la pantalla quedaba en «0 clientes» como si
@@ -373,6 +376,7 @@ interface HealthDetailDrawerProps {
 }
 
 function HealthDetailDrawer({ customerId, open, onOpenChange }: HealthDetailDrawerProps) {
+  const { timezone } = useOrgTimezone();
   const [score, setScore] = useState<HealthScoreResult | null>(null);
   const [history, setHistory] = useState<HealthSnapshot[]>([]);
   const [loading, setLoading] = useState(false);
@@ -556,7 +560,7 @@ function HealthDetailDrawer({ customerId, open, onOpenChange }: HealthDetailDraw
                   <div className="mt-3 space-y-1 max-h-40 overflow-y-auto">
                     {history.slice(-8).reverse().map((snap, idx) => {
                       const snapConfig = BAND_CONFIG[snap.band];
-                      const snapDate = new Date(snap.created_at).toLocaleDateString('es-CO', {
+                      const snapDate = formatDateTimeInTz(snap.created_at, timezone, {
                         day: '2-digit',
                         month: 'short',
                         hour: '2-digit',

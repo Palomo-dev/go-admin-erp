@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { applyBranchFilterInclusive } from '@/lib/services/branchFilterHelper';
 import type { 
   ReportFilters, 
   ReportData, 
@@ -24,7 +25,8 @@ class ReportesService {
       .eq('organization_id', this.organizationId);
 
     if (this.branchId != null) {
-      query = query.eq('branch_id', this.branchId);
+      // Inclusivo: estas tablas no llevan sucursal (100 % nulo medido el 2026-09-11).
+      query = applyBranchFilterInclusive(query, this.branchId);
     }
     if (filters.dateFrom) {
       query = query.gte('created_at', filters.dateFrom);
@@ -109,8 +111,8 @@ class ReportesService {
         .eq('channel_id', channel.id);
 
       if (this.branchId != null) {
-        convQuery = convQuery.eq('branch_id', this.branchId);
-        msgQuery = msgQuery.eq('branch_id', this.branchId);
+        convQuery = applyBranchFilterInclusive(convQuery, this.branchId);
+        msgQuery = applyBranchFilterInclusive(msgQuery, this.branchId);
       }
       if (filters.dateFrom) {
         convQuery = convQuery.gte('created_at', filters.dateFrom);
@@ -170,7 +172,7 @@ class ReportesService {
         .eq('pipeline_id', pipeline.id);
 
       if (this.branchId != null) {
-        oppQuery = oppQuery.eq('branch_id', this.branchId);
+        oppQuery = applyBranchFilterInclusive(oppQuery, this.branchId);
       }
       if (filters.dateFrom) {
         oppQuery = oppQuery.gte('created_at', filters.dateFrom);

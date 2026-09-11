@@ -16,6 +16,9 @@ import {
 } from './types';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { describeError, logError } from '@/lib/utils/errorMessage';
+// Inclusivo: conversaciones, mensajes, actividades y oportunidades NO llevan
+// sucursal (100 % nulo medido el 2026-09-11); con `eq` el panel salía en blanco.
+import { applyBranchFilterInclusive } from '@/lib/services/branchFilterHelper';
 
 /**
  * Corta la ejecución si la consulta falló.
@@ -45,7 +48,7 @@ class CRMDashboardService {
       .in('status', ['open', 'pending']);
 
     if (branchId != null) {
-      conversationsQuery = conversationsQuery.eq('branch_id', branchId);
+      conversationsQuery = applyBranchFilterInclusive(conversationsQuery, branchId);
     }
     if (filters.channelId) {
       conversationsQuery = conversationsQuery.eq('channel_id', filters.channelId);
@@ -73,7 +76,7 @@ class CRMDashboardService {
       .eq('status', 'pending');
 
     if (branchId != null) {
-      pendingQuery = pendingQuery.eq('branch_id', branchId);
+      pendingQuery = applyBranchFilterInclusive(pendingQuery, branchId);
     }
 
     const { count: pendingCount, error: pendingError } = await pendingQuery;
@@ -87,7 +90,7 @@ class CRMDashboardService {
       .eq('status', 'open');
 
     if (branchId != null) {
-      opportunitiesQuery = opportunitiesQuery.eq('branch_id', branchId);
+      opportunitiesQuery = applyBranchFilterInclusive(opportunitiesQuery, branchId);
     }
     if (filters.pipelineId) {
       opportunitiesQuery = opportunitiesQuery.eq('pipeline_id', filters.pipelineId);
@@ -111,7 +114,7 @@ class CRMDashboardService {
       .lte('expected_close_date', format(monthEnd, 'yyyy-MM-dd'));
 
     if (branchId != null) {
-      forecastQuery = forecastQuery.eq('branch_id', branchId);
+      forecastQuery = applyBranchFilterInclusive(forecastQuery, branchId);
     }
 
     const { data: forecastData, error: forecastError } = await forecastQuery;
@@ -226,7 +229,7 @@ class CRMDashboardService {
       .eq('status', 'open');
 
     if (branchId != null) {
-      oppQuery = oppQuery.eq('branch_id', branchId);
+      oppQuery = applyBranchFilterInclusive(oppQuery, branchId);
     }
 
     const { data: allOpportunities, error: allOpportunitiesError } = await oppQuery;
@@ -291,7 +294,7 @@ class CRMDashboardService {
           .eq('organization_id', organizationId)
           .gte('created_at', dateFromStr)
           .lt('created_at', dateToStr);
-        if (branchId != null) q = q.eq('branch_id', branchId);
+        q = applyBranchFilterInclusive(q, branchId);
         return q;
       })(),
       (() => {
@@ -301,7 +304,7 @@ class CRMDashboardService {
           .eq('organization_id', organizationId)
           .gte('created_at', dateFromStr)
           .lt('created_at', dateToStr);
-        if (branchId != null) q = q.eq('branch_id', branchId);
+        q = applyBranchFilterInclusive(q, branchId);
         return q;
       })(),
       (() => {
@@ -311,7 +314,7 @@ class CRMDashboardService {
           .eq('organization_id', organizationId)
           .gte('created_at', dateFromStr)
           .lt('created_at', dateToStr);
-        if (branchId != null) q = q.eq('branch_id', branchId);
+        q = applyBranchFilterInclusive(q, branchId);
         return q;
       })(),
       (() => {
@@ -321,7 +324,7 @@ class CRMDashboardService {
           .eq('organization_id', organizationId)
           .gte('created_at', dateFromStr)
           .lt('created_at', dateToStr);
-        if (branchId != null) q = q.eq('branch_id', branchId);
+        q = applyBranchFilterInclusive(q, branchId);
         return q;
       })(),
     ]);
@@ -375,7 +378,7 @@ class CRMDashboardService {
       .eq('organization_id', organizationId);
 
     if (branchId != null) {
-      messagesQuery = messagesQuery.eq('branch_id', branchId);
+      messagesQuery = applyBranchFilterInclusive(messagesQuery, branchId);
     }
 
     const { data: messagesData, error: messagesError } = await messagesQuery;
@@ -435,7 +438,7 @@ class CRMDashboardService {
       .in('assigned_member_id', memberIds);
 
     if (branchId != null) {
-      conversationsQuery = conversationsQuery.eq('branch_id', branchId);
+      conversationsQuery = applyBranchFilterInclusive(conversationsQuery, branchId);
     }
 
     const { data: allConversations, error: allConversationsError } = await conversationsQuery;
@@ -500,7 +503,7 @@ class CRMDashboardService {
           .select('channel_id')
           .eq('organization_id', organizationId)
           .in('channel_id', channelIds);
-        if (branchId != null) q = q.eq('branch_id', branchId);
+        q = applyBranchFilterInclusive(q, branchId);
         return q;
       })(),
       (() => {
@@ -509,7 +512,7 @@ class CRMDashboardService {
           .select('channel_id')
           .eq('organization_id', organizationId)
           .in('channel_id', channelIds);
-        if (branchId != null) q = q.eq('branch_id', branchId);
+        q = applyBranchFilterInclusive(q, branchId);
         return q;
       })(),
     ]);
@@ -565,7 +568,7 @@ class CRMDashboardService {
       .limit(limit);
 
     if (branchId != null) {
-      oppQuery = oppQuery.eq('branch_id', branchId);
+      oppQuery = applyBranchFilterInclusive(oppQuery, branchId);
     }
 
     const { data: opportunities, error: opportunitiesListError } = await oppQuery;

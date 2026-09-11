@@ -32,6 +32,8 @@ import { es } from 'date-fns/locale';
 import type { HousekeepingTask } from '@/lib/services/housekeepingService';
 import type { Space } from '@/lib/services/spacesService';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { toPlainDate } from '@/lib/utils/timezone';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface TaskDialogProps {
@@ -57,6 +59,7 @@ export function TaskDialog({
   users,
   onSave,
 }: TaskDialogProps) {
+  const { timezone } = useOrgTimezone();
   const [spaceId, setSpaceId] = useState('');
   const [taskDate, setTaskDate] = useState<Date>(new Date());
   const [notes, setNotes] = useState('');
@@ -98,7 +101,7 @@ export function TaskDialog({
     try {
       await onSave({
         space_id: spaceId,
-        task_date: taskDate.toISOString().split('T')[0],
+        task_date: toPlainDate(taskDate, timezone),
         notes: notes || undefined,
         assigned_to: assignedTo === 'unassigned' ? undefined : assignedTo,
         status: task ? status : 'pending',

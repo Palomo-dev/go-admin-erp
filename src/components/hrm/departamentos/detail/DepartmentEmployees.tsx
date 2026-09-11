@@ -12,7 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { cn, formatDate } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { Users, UserPlus, ChevronRight, Mail } from 'lucide-react';
 import Link from 'next/link';
 
@@ -57,6 +58,7 @@ export function DepartmentEmployees({
   departmentId,
   isLoading,
 }: DepartmentEmployeesProps) {
+  const { formatDate } = useFormatDate();
   const getInitials = (name: string) => {
     return name
       .split(' ')

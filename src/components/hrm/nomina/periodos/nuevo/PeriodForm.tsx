@@ -15,6 +15,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Calendar, Save, X, Loader2 } from 'lucide-react';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { toPlainDate } from '@/lib/utils/timezone';
 
 interface PeriodFormProps {
   frequencies: { value: string; label: string }[];
@@ -29,6 +31,7 @@ export function PeriodForm({
   onCancel,
   isLoading,
 }: PeriodFormProps) {
+  const { timezone } = useOrgTimezone();
   const [formData, setFormData] = useState<CreatePeriodDTO>({
     name: '',
     period_start: '',
@@ -70,9 +73,9 @@ export function PeriodForm({
 
       setFormData(prev => ({
         ...prev,
-        period_start: start.toISOString().split('T')[0],
-        period_end: end.toISOString().split('T')[0],
-        payment_date: paymentDate.toISOString().split('T')[0],
+        period_start: toPlainDate(start, timezone),
+        period_end: toPlainDate(end, timezone),
+        payment_date: toPlainDate(paymentDate, timezone),
       }));
     }
   }, [formData.frequency]);

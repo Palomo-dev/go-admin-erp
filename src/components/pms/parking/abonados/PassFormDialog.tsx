@@ -30,6 +30,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Search, User, Plus, X, Car, Mail, Phone } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
 import parkingService, {
   type ParkingPass,
   type ParkingPassType,
@@ -72,6 +74,7 @@ export function PassFormDialog({
   onPlanCreated,
 }: PassFormDialogProps) {
   const { toast } = useToast();
+  const { timezone } = useOrgTimezone();
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [showCustomerPopover, setShowCustomerPopover] = useState(false);
@@ -155,8 +158,8 @@ export function PassFormDialog({
       if (selectedType) {
         const start = new Date();
         const end = new Date(start.getTime() + selectedType.duration_days * 24 * 60 * 60 * 1000);
-        setStartDate(start.toISOString().split('T')[0]);
-        setEndDate(end.toISOString().split('T')[0]);
+        setStartDate(toPlainDate(start, timezone));
+        setEndDate(toPlainDate(end, timezone));
         setPrice(String(selectedType.price));
         setPlanName(selectedType.name);
       }
@@ -168,7 +171,7 @@ export function PassFormDialog({
     setCustomerSearch('');
     setSelectedCustomer(null);
     setPassTypeId('');
-    setStartDate(new Date().toISOString().split('T')[0]);
+    setStartDate(todayInTz(timezone));
     setEndDate('');
     setPrice('');
     setPlanName('');

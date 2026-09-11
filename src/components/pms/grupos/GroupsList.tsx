@@ -23,7 +23,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatDate, formatCurrency } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/timezone';
 import type { Group } from '@/lib/services/groupReservationsService';
 
 interface GroupsListProps {
@@ -38,14 +40,17 @@ function GroupCard({
   group, 
   onView, 
   onEdit, 
-  onDelete 
+  onDelete,
+  formatDate,
 }: { 
   group: Group;
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  formatDate: (value: string | Date | null | undefined) => string;
 }) {
-  const today = new Date().toISOString().split('T')[0];
+  const { timezone } = useOrgTimezone();
+  const today = todayInTz(timezone);
   const isActive = !group.releaseDate || group.releaseDate >= today;
 
   return (
@@ -135,6 +140,7 @@ function GroupCard({
 }
 
 export function GroupsList({ groups, onView, onEdit, onDelete, isLoading = false }: GroupsListProps) {
+  const { formatDate } = useFormatDate();
   if (isLoading) {
     return <CardListSkeleton cards={3} columns="3" />;
   }
@@ -168,6 +174,7 @@ export function GroupsList({ groups, onView, onEdit, onDelete, isLoading = false
           onView={() => onView(group)}
           onEdit={() => onEdit(group)}
           onDelete={() => onDelete(group)}
+          formatDate={formatDate}
         />
       ))}
     </div>

@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Eye, Truck, PackageCheck, XCircle } from 'lucide-react';
 import { InventoryTransfer } from './types';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { CopyableId } from '@/components/common/CopyableId';
 
 interface TransferenciasTableProps {
@@ -41,6 +41,7 @@ export function TransferenciasTable({
   onCancelar 
 }: TransferenciasTableProps) {
   const router = useRouter();
+  const { formatDate } = useFormatDate();
 
   const handleVerDetalle = (id: number) => {
     router.push(`/app/inventario/transferencias/${id}`);

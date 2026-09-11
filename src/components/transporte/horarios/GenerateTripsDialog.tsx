@@ -16,6 +16,9 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Calendar, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { RouteSchedule, transportRoutesService } from '@/lib/services/transportRoutesService';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/timezone';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface GenerateTripsDialogProps {
   open: boolean;
@@ -34,8 +37,11 @@ export function GenerateTripsDialog({
   organizationId,
   onSuccess,
 }: GenerateTripsDialogProps) {
-  const today = new Date().toISOString().split('T')[0];
-  const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const { timezone } = useOrgTimezone();
+  const today = todayInTz(timezone);
+  const nextWeekDate = new Date(`${today}T12:00:00`);
+  nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+  const nextWeek = nextWeekDate.toISOString().split('T')[0];
 
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(nextWeek);
@@ -174,7 +180,7 @@ export function GenerateTripsDialog({
                 <div className="flex flex-wrap gap-1">
                   {preview.slice(0, 20).map((date) => (
                     <Badge key={date} variant="secondary" className="text-xs">
-                      {new Date(date + 'T00:00:00').toLocaleDateString('es-CO', { 
+                      {formatPlainDate(date, { 
                         weekday: 'short', 
                         day: 'numeric', 
                         month: 'short' 

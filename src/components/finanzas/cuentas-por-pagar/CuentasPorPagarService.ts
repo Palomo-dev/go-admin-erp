@@ -12,7 +12,8 @@ import {
   PaymentApproval
 } from './types';
 import { SupplierBase, OrganizationPaymentMethod, OrganizationCurrency } from '../facturas-compra/types';
-import { parseLocalDate } from '@/utils/Utils';
+import { DEFAULT_TIMEZONE, getToday } from '@/lib/utils/timezone';
+import { plainDateToInstant, toPlainDate } from '@/lib/utils/dateDisplay';
 import { logError } from '@/lib/utils/errorMessage';
 
 /** Datos del creador de un pago, resueltos aparte del propio pago. */
@@ -67,7 +68,8 @@ export class CuentasPorPagarService {
   static async obtenerCuentasPorPagar(
     filtros: FiltrosCuentasPorPagar,
     page: number = 1,
-    pageSize: number = 10
+    pageSize: number = 10,
+    timezone: string = DEFAULT_TIMEZONE
   ): Promise<{
     cuentas: AccountPayable[];
     total: number;
@@ -151,9 +153,9 @@ export class CuentasPorPagarService {
       }
 
       // Filtros de vencimiento
-      const hoy = new Date();
-      const en15Dias = new Date();
-      en15Dias.setDate(hoy.getDate() + 15);
+      const hoyStr = getToday(timezone);
+      const hoy = new Date(plainDateToInstant(hoyStr, timezone));
+      const en15Dias = new Date(hoy.getTime() + 15 * 24 * 60 * 60 * 1000);
 
       switch (filtros.vencimiento) {
         case 'vencidas':
@@ -183,8 +185,8 @@ export class CuentasPorPagarService {
       // Calcular días vencidos
       const cuentasConVencimiento = (data || []).map(cuenta => ({
         ...cuenta,
-        days_overdue: cuenta.due_date && parseLocalDate(cuenta.due_date) < hoy 
-          ? Math.floor((hoy.getTime() - parseLocalDate(cuenta.due_date).getTime()) / (1000 * 60 * 60 * 24))
+        days_overdue: cuenta.due_date && new Date(cuenta.due_date) < hoy 
+          ? Math.floor((hoy.getTime() - new Date(cuenta.due_date).getTime()) / (1000 * 60 * 60 * 24))
           : 0
       }));
 
@@ -988,7 +990,8 @@ export class CuentasPorPagarService {
     accountId: string, 
     totalAmount: number, 
     numberOfInstallments: number,
-    startDate: Date
+    startDate: Date,
+    timezone: string = DEFAULT_TIMEZONE
   ): Promise<void> {
     try {
       const installmentAmount = Math.round((totalAmount / numberOfInstallments) * 100) / 100;
@@ -1005,7 +1008,7 @@ export class CuentasPorPagarService {
         installments.push({
           account_payable_id: accountId,
           installment_number: i,
-          due_date: dueDate.toISOString().split('T')[0],
+          due_date: toPlainDate(dueDate, timezone),
           amount: amount,
           balance: amount,
           status: 'pending',

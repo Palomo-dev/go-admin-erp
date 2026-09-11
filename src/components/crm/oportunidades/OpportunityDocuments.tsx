@@ -15,6 +15,8 @@ import {
   Loader2,
   Paperclip,
 } from 'lucide-react';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 
 interface OpportunityDocumentsProps {
   opportunityId: string;
@@ -49,6 +51,7 @@ function getFileIcon(mimeType: string | null) {
 }
 
 export function OpportunityDocuments({ opportunityId, organizationId }: OpportunityDocumentsProps) {
+  const { timezone } = useOrgTimezone();
   const [documents, setDocuments] = useState<DocItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -238,7 +241,7 @@ export function OpportunityDocuments({ opportunityId, organizationId }: Opportun
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{doc.name}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {formatFileSize(doc.file_size)} · {new Date(doc.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  {formatFileSize(doc.file_size)} · {formatDateInTz(doc.created_at, timezone, { day: '2-digit', month: 'short', year: 'numeric' })}
                 </p>
               </div>
               <div className="flex items-center gap-1 shrink-0">

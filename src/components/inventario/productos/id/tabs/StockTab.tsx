@@ -108,8 +108,9 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
         // Mapear y combinar datos de sucursales con stock (sumando hijos por sucursal)
         const stockData: StockLevel[] = branches.map((branch) => {
           const branchStocks = stock?.filter(s => s.branch_id === branch.id) || [];
-          const qtyOnHand = branchStocks.reduce((sum, s) => sum + (s.qty_on_hand || 0), 0);
-          const qtyReserved = branchStocks.reduce((sum, s) => sum + (s.qty_reserved || 0), 0);
+          // `numeric` llega como texto desde PostgREST: convertir antes de sumar.
+          const qtyOnHand = branchStocks.reduce((sum, s) => sum + (Number(s.qty_on_hand) || 0), 0);
+          const qtyReserved = branchStocks.reduce((sum, s) => sum + (Number(s.qty_reserved) || 0), 0);
           const latestStock = branchStocks.sort((a, b) => 
             (b.updated_at || '').localeCompare(a.updated_at || '')
           )[0];
@@ -151,7 +152,7 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
 
   const visibleTotals = visibleStockLevels.reduce(
     (acc, curr) => ({
-      total: acc.total + curr.qty_on_hand,
+      total: acc.total + Number(curr.qty_on_hand || 0),
       reserved: acc.reserved + curr.qty_reserved,
       available: acc.available + curr.qty_available,
     }),

@@ -21,10 +21,14 @@ import { AudienceStep, type AudienceValue } from './AudienceStep';
 import { ScheduleStep } from './ScheduleStep';
 import type { MaterializeResult } from '@/components/crm/whatsapp/api';
 import { SKIP_REASON_LABELS } from '@/components/crm/whatsapp/api';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/timezone';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 const STEPS = ['Canal y mensaje', 'Audiencia', 'Programación', 'Revisión'];
 
 export function CampanaNuevaPage() {
+  const { timezone } = useOrgTimezone();
   const router = useRouter();
   const search = useSearchParams();
   const { toast } = useToast();
@@ -40,7 +44,7 @@ export function CampanaNuevaPage() {
   const [busy, setBusy] = useState<'save' | 'mat' | 'launch' | null>(null);
   const [optin, setOptin] = useState(false);
 
-  useEffect(() => { if (!name && c.template) setName(`${c.template.name} · ${new Date().toLocaleDateString('es-CO')}`); }, [c.template, name]);
+  useEffect(() => { if (!name && c.template) setName(`${c.template.name} · ${formatPlainDate(todayInTz(timezone))}`); }, [c.template, name, timezone]);
 
   const marketing = c.preview?.category === 'marketing';
   const step0ok = !!c.channelId && (c.tab === 'template' ? !!c.templateId && !!c.preview && c.preview.status === 'APPROVED' : c.text.trim().length > 0);

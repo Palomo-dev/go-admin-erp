@@ -55,6 +55,7 @@ import { PedidosService } from '@/components/pos/mesas/id/pedidosService';
 import { MesasService } from '@/components/pos/mesas/mesasService';
 import { VentasService, type CashSession } from '@/components/pos/ventas';
 import { PrintService } from '@/lib/services/printService';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { branchService } from '@/lib/services/branchService';
@@ -69,6 +70,7 @@ import type { TableWithSession } from '@/components/pos/mesas/types';
 import { useBranch } from '@/lib/context/BranchContext';
 
 export default function MesaDetallePage() {
+  const { timezone } = useOrgTimezone();
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -594,6 +596,8 @@ export default function MesaDetallePage() {
       businessInfo,
       branchInfo,
       serverName,
+      undefined,
+      timezone,
     );
   };
 

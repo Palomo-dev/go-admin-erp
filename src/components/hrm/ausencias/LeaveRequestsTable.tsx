@@ -34,7 +34,8 @@ import {
   Ban,
   Eye,
 } from 'lucide-react';
-import { cn, formatDate } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import type { LeaveRequest, LeaveRequestStatus } from '@/lib/services/leaveRequestsService';
 
 interface LeaveRequestsTableProps {
@@ -68,6 +69,7 @@ export function LeaveRequestsTable({
   isLoading,
   isManager = false,
 }: LeaveRequestsTableProps) {
+  const { formatDate } = useFormatDate();
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">

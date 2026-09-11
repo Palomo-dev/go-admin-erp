@@ -51,7 +51,8 @@ import {
   type ResolutionType,
 } from '@/lib/services/warrantyClaimsService';
 import { getOrganizationId, getCurrentUserId } from '@/lib/hooks/useOrganization';
-import { formatDate, formatCurrency } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 const STATUS_CONFIG: Record<WarrantyClaimStatus, { label: string; color: string; icon: React.ReactNode }> = {
   pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: <Clock size={14} /> },
@@ -76,6 +77,7 @@ interface GarantiaDetailPageProps {
 
 export function GarantiaDetailPage({ claimId }: GarantiaDetailPageProps) {
   const { toast } = useToast();
+  const { formatDate } = useFormatDate();
   const organizationId = getOrganizationId();
 
   const [claim, setClaim] = useState<WarrantyClaimWithDetails | null>(null);

@@ -24,6 +24,8 @@ import {
 import { Instructor, getInstructorStats, getClasses, GymClass } from '@/lib/services/gymService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 
 interface InstructorPerformanceDialogProps {
   open: boolean;
@@ -46,6 +48,7 @@ interface PerformanceMetrics {
 
 export function InstructorPerformanceDialog({ open, onOpenChange, instructor }: InstructorPerformanceDialogProps) {
   const { organization } = useOrganization();
+  const { timezone } = useOrgTimezone();
   const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -95,7 +98,7 @@ export function InstructorPerformanceDialog({ open, onOpenChange, instructor }: 
           return classDate >= monthStart && classDate <= monthEnd;
         });
         monthlyTrend.push({
-          month: monthStart.toLocaleDateString('es-ES', { month: 'short' }),
+          month: formatDateInTz(monthStart.toISOString(), timezone, { month: 'short' }),
           classes: monthClasses.length,
           attendance: monthClasses.reduce((sum, c) => sum + (c.reservations_count || 0), 0)
         });

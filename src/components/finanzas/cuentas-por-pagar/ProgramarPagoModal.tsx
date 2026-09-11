@@ -36,7 +36,9 @@ import { useToast } from '@/components/ui/use-toast';
 import { CuentasPorPagarService } from './CuentasPorPagarService';
 import { AccountPayable, ProgramarPagoForm } from './types';
 import { OrganizationPaymentMethod } from '../facturas-compra/types';
-import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz, getToday, plainDateToInstant } from '@/lib/utils/timezone';
 
 interface ProgramarPagoModalProps {
   cuenta: AccountPayable;
@@ -51,6 +53,8 @@ export function ProgramarPagoModal({
   onClose,
   onPagoProgramado
 }: ProgramarPagoModalProps) {
+  const { formatDate } = useFormatDate();
+  const { timezone } = useOrgTimezone();
   // Estados del formulario
   const [formData, setFormData] = useState<ProgramarPagoForm>({
     account_payable_id: cuenta.id,
@@ -80,7 +84,7 @@ export function ProgramarPagoModal({
     // Sugerir fecha de vencimiento o mañana
     const fechaSugerida = cuenta.due_date 
       ? cuenta.due_date.split('T')[0]
-      : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      : todayInTz(timezone);
 
     setFormData({
       account_payable_id: cuenta.id,
@@ -204,8 +208,9 @@ export function ProgramarPagoModal({
   const getDiasHastaVencimiento = () => {
     if (!cuenta.due_date) return null;
     
-    const vencimiento = parseLocalDate(cuenta.due_date);
-    const hoy = new Date();
+    const vencimiento = new Date(cuenta.due_date);
+    const hoyStr = getToday(timezone);
+    const hoy = new Date(plainDateToInstant(hoyStr, timezone));
     const diffTime = vencimiento.getTime() - hoy.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
@@ -382,7 +387,7 @@ export function ProgramarPagoModal({
                 id="scheduled_date"
                 name="scheduled_date"
                 type="date"
-                min={new Date().toISOString().split('T')[0]}
+                min={todayInTz(timezone)}
                 value={formData.scheduled_date}
                 onChange={(e) => handleInputChange('scheduled_date', e.target.value)}
                 className={`h-9 sm:h-10 text-sm sm:text-base dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${errors.scheduled_date ? 'border-red-500' : ''}`}
@@ -398,7 +403,7 @@ export function ProgramarPagoModal({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => handleInputChange('scheduled_date', new Date().toISOString().split('T')[0])}
+                  onClick={() => handleInputChange('scheduled_date', todayInTz(timezone))}
                   className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                 >
                   Hoy

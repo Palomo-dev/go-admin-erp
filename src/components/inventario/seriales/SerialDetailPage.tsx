@@ -52,7 +52,8 @@ import {
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import type { SerialWithDetails, SerialStatus, SerialTrackingEvent } from '@/lib/services/serialTrackingService';
 import { getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
-import { formatDate, formatCurrency } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 const STATUS_CONFIG: Record<SerialStatus, { label: string; color: string; icon: React.ReactNode }> = {
   in_stock: { label: 'En Stock', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: <CheckCircle2 size={14} /> },
@@ -86,6 +87,7 @@ interface SerialDetailPageProps {
 export function SerialDetailPage({ serialId }: SerialDetailPageProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { formatDate } = useFormatDate();
   const organizationId = getOrganizationId();
   const branchId = getCurrentBranchId();
 

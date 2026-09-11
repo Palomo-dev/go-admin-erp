@@ -7,6 +7,8 @@ import { Ban, Calendar, Wrench, User, PartyPopper, Clock, HelpCircle } from 'luc
 import { ReservationBlock, BlockType } from '@/lib/services/reservationBlocksService';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/timezone';
 
 interface SpaceBlocksProps {
   blocks: ReservationBlock[];
@@ -41,12 +43,13 @@ const blockTypeConfig: Record<BlockType, { label: string; color: string; icon: a
   },
 };
 
-function isActiveToday(dateFrom: string, dateTo: string): boolean {
-  const today = new Date().toISOString().split('T')[0];
+function isActiveToday(dateFrom: string, dateTo: string, timezone: string): boolean {
+  const today = todayInTz(timezone);
   return dateFrom <= today && dateTo >= today;
 }
 
 export function SpaceBlocks({ blocks, isLoading }: SpaceBlocksProps) {
+  const { timezone } = useOrgTimezone();
   if (isLoading) {
     return (
       <Card>
@@ -84,7 +87,7 @@ export function SpaceBlocks({ blocks, isLoading }: SpaceBlocksProps) {
             {blocks.map((block) => {
               const config = blockTypeConfig[block.block_type];
               const Icon = config.icon;
-              const isActive = isActiveToday(block.date_from, block.date_to);
+              const isActive = isActiveToday(block.date_from, block.date_to, timezone);
 
               return (
                 <div

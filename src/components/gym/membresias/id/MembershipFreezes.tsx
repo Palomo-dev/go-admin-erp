@@ -10,7 +10,9 @@ import {
   CheckCircle2,
   XCircle
 } from 'lucide-react';
-import { cn, formatDate } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz, formatPlainDate } from '@/lib/utils/dateDisplay';
 import { MembershipFreeze } from '@/lib/services/gymService';
 
 interface MembershipFreezesProps {
@@ -39,6 +41,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 export function MembershipFreezes({ freezes, isLoading }: MembershipFreezesProps) {
   const totalDaysFrozen = freezes.reduce((sum, f) => sum + (f.days_frozen || 0), 0);
   const activeFreeze = freezes.find(f => f.status === 'active');
+
+  const { timezone } = useOrgTimezone();
+  const { formatDate } = useFormatDate();
 
   if (isLoading) {
     return (
@@ -149,8 +154,8 @@ export function MembershipFreezes({ freezes, isLoading }: MembershipFreezesProps
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                         <Calendar className="h-3 w-3" />
                         <span>
-                          {startDate.toLocaleDateString('es-CO')}
-                          {endDate && ` → ${endDate.toLocaleDateString('es-CO')}`}
+                          {formatPlainDate(freeze.start_date)}
+                          {freeze.end_date && ` → ${formatPlainDate(freeze.end_date)}`}
                         </span>
                       </div>
 
@@ -168,7 +173,7 @@ export function MembershipFreezes({ freezes, isLoading }: MembershipFreezesProps
                     </div>
 
                     <div className="text-right text-xs text-gray-500 dark:text-gray-400">
-                      <p>{new Date(freeze.created_at).toLocaleDateString('es-CO')}</p>
+                      <p>{formatDateInTz(freeze.created_at, timezone)}</p>
                     </div>
                   </div>
                 </div>

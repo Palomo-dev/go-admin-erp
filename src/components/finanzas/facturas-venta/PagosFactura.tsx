@@ -6,7 +6,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { PlusCircle, AlertCircle } from 'lucide-react';
 import { RegistrarPagoDialog } from '@/components/finanzas/facturas-venta/id/RegistrarPagoDialog';
 
@@ -26,6 +27,7 @@ interface Pago {
 }
 
 export function PagosFactura({ facturaId, factura }: PagosFacturaProps) {
+  const { formatDate } = useFormatDate();
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -196,7 +198,7 @@ export function PagosFactura({ facturaId, factura }: PagosFacturaProps) {
             <tbody>
               {pagos.map((pago) => (
                 <tr key={pago.id} className="border-b dark:border-gray-700">
-                  <td className="p-2 dark:text-gray-300">{formatDate(parseLocalDate(pago.created_at))}</td>
+                  <td className="p-2 dark:text-gray-300">{formatDate(pago.created_at)}</td>
                   <td className="p-2 dark:text-gray-300">{getPaymentMethodName(pago.method)}</td>
                   <td className="p-2 dark:text-gray-300">{pago.reference || '-'}</td>
                   <td className="p-2 text-right dark:text-gray-300">{formatCurrency(pago.amount, pago.currency || moneda)}</td>

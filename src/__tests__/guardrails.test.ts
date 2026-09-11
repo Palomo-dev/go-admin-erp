@@ -739,13 +739,13 @@ describe('F0 Guardarraíles', () => {
     test('(4) verifica membresía en la org antes de aplicar sin restricción', () => {
       // (4) debe tener EXISTS en organization_members para la org del branch
       // Y NOT EXISTS en member_branches para esa misma org
-      expect(sql).toMatch(/--\s*\(4\).*OR\s*\(\s*EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+organization_members\s+om/s);
-      expect(sql).toMatch(/AND\s+NOT\s+EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+member_branches\s+mb/s);
+      expect(sql).toMatch(/--\s*\(4\)[\s\S]*OR\s*\(\s*EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+organization_members\s+om/);
+      expect(sql).toMatch(/AND\s+NOT\s+EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+member_branches\s+mb/);
     });
 
     test('(4) acota NOT EXISTS por organización', () => {
       // El NOT EXISTS de (4) debe filtrar por b.organization_id = org del branch
-      expect(sql).toMatch(/b\.organization_id\s*=\s*\(\s*SELECT\s+b2\.organization_id\s+FROM\s+branches\s+b2/s);
+      expect(sql).toMatch(/b\.organization_id\s*=\s*\(\s*SELECT\s+b2\.organization_id\s+FROM\s+branches\s+b2/);
     });
 
     test('la función es STABLE', () => {

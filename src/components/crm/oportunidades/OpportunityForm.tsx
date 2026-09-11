@@ -22,6 +22,8 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { toPlainDate } from '@/lib/utils/timezone';
 import { opportunitiesService } from './opportunitiesService';
 import { Pipeline, Stage, Customer, CreateOpportunityInput, Opportunity } from './types';
 import { CustomerSearchSelect } from './CustomerSearchSelect';
@@ -68,6 +70,7 @@ interface CustomLine {
 }
 
 export function OpportunityForm({ opportunity, initialPipelineId, initialStageId, initialCustomerId, onSuccess, onCancel, hideHeader }: OpportunityFormProps) {
+  const { timezone } = useOrgTimezone();
   const router = useRouter();
   const isEditing = !!opportunity;
 
@@ -107,7 +110,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
   const [verticalId, setVerticalId] = useState<string>(opportunity?.vertical_id || '');
   const [nextContactAt, setNextContactAt] = useState<string>(
     opportunity?.next_contact_at
-      ? new Date(opportunity.next_contact_at).toISOString().split('T')[0]
+      ? toPlainDate(new Date(opportunity.next_contact_at), timezone)
       : ''
   );
   const [verticals, setVerticals] = useState<{ id: string; name: string }[]>([]);

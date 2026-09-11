@@ -36,7 +36,8 @@ import {
   getReservationStatusLabel,
   getClassTypeLabel,
 } from '@/lib/services/gymService';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 interface ReservationsListProps {
   reservations: ClassReservation[];
@@ -59,9 +60,10 @@ export function ReservationsList({
   onCheckIn,
   isLoading,
 }: ReservationsListProps) {
+  const { formatDate } = useFormatDate();
+  const { timezone } = useOrgTimezone();
   const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return formatTimeInTz(dateStr, timezone);
   };
 
   if (reservations.length === 0) {

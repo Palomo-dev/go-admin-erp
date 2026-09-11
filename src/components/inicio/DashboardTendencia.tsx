@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { TrendingUp, BarChart3 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { inicioService, type PuntoTendencia } from './inicioService';
 import { useTranslations } from 'next-intl';
 import {
@@ -82,8 +83,7 @@ export function DashboardTendencia({ organizationId, dias = 30 }: DashboardTende
 
   // Formatear fechas para el eje X
   const fmtFecha = (iso: string) => {
-    const d = new Date(iso + 'T00:00:00');
-    return d.toLocaleDateString('es', { day: '2-digit', month: 'short' });
+    return formatPlainDate(iso, { day: '2-digit', month: 'short' });
   };
 
   // Datos transformados para recharts

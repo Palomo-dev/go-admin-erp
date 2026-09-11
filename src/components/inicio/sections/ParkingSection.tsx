@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import { toastError } from '@/components/ui/use-toast';
 import ModuloSection from '../ModuloSection';
 import { ParkingKPIs, SesionesActivas, PasesPorVencer } from '@/components/parking/dashboard';
@@ -27,6 +29,7 @@ const PERIODO_LABEL = 'Estado actual';
 function buildExportData(
   kpis: ParkingDashboardStats | null,
   sessions: ActiveSession[],
+  timezone: string,
 ): SectionExportData | null {
   if (!kpis) return null;
 
@@ -54,10 +57,7 @@ function buildExportData(
     tipo: s.vehicle_type,
     espacio: s.space_label || '-',
     zona: s.zone || '-',
-    entrada: new Date(s.entry_at).toLocaleTimeString('es-CO', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
+    entrada: formatTimeInTz(s.entry_at, timezone, { hour: '2-digit', minute: '2-digit' }),
     duracion: `${Math.floor(s.duration_minutes / 60)}h ${s.duration_minutes % 60}m`,
     riesgo: s.is_at_risk ? 'Sí' : 'No',
   }));
@@ -80,6 +80,7 @@ function buildExportData(
 }
 
 export default function ParkingSection() {
+  const { timezone } = useOrgTimezone();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<ParkingDashboardStats | null>(null);
   const [sessions, setSessions] = useState<ActiveSession[]>([]);
@@ -145,8 +146,8 @@ export default function ParkingSection() {
   }, [branchFilter]);
 
   const exportData = useMemo(
-    () => buildExportData(kpis, sessions),
-    [kpis, sessions],
+    () => buildExportData(kpis, sessions, timezone),
+    [kpis, sessions, timezone],
   );
 
   return (

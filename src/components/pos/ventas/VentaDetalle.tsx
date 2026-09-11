@@ -48,7 +48,8 @@ import { supabase } from '@/lib/supabase/config';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { VentasService } from './VentasService';
 import { SaleWithDetails } from './types';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { cn } from '@/utils/Utils';
 import { PrintService } from '@/lib/services/printService';
 import { PrintJobsService } from '@/lib/services/printJobsService';
@@ -64,6 +65,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
   const router = useRouter();
   const { organization } = useOrganization();
   const { toast } = useToast();
+  const { formatDate, formatTime, formatPlain } = useFormatDate();
   const [sale, setSale] = useState<SaleWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [eInvoiceStatus, setEInvoiceStatus] = useState<EInvoiceStatus | null>(null);
@@ -297,10 +299,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {formatDate(sale.sale_date || sale.created_at)} a las{' '}
-              {new Date(sale.sale_date || sale.created_at).toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
+              {formatTime(sale.sale_date || sale.created_at)}
             </p>
           </div>
         </div>
@@ -582,8 +581,8 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                           : 'En curso'}
                       </p>
                       <p className="text-xs text-gray-400 dark:text-gray-500">
-                        {new Date(sale.mesa_info.opened_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                        {sale.mesa_info.closed_at && ` - ${new Date(sale.mesa_info.closed_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`}
+                        {formatTime(sale.mesa_info.opened_at)}
+                        {sale.mesa_info.closed_at && ` - ${formatTime(sale.mesa_info.closed_at)}`}
                       </p>
                     </div>
                   </div>
@@ -674,7 +673,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500 dark:text-gray-400">Vencimiento</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{formatDate(sale.accounts_receivable.due_date)}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{formatPlain(sale.accounts_receivable.due_date)}</span>
                 </div>
                 <Link href="/app/finanzas/cuentas-por-cobrar">
                   <Button variant="outline" size="sm" className="w-full dark:border-gray-700">
@@ -712,7 +711,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                     {sale.journal_entry.posted ? 'Publicado' : 'Borrador'}
                   </Badge>
                   <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {formatDate(sale.journal_entry.entry_date)}
+                    {formatPlain(sale.journal_entry.entry_date)}
                   </span>
                 </div>
                 {sale.journal_entry.lines && sale.journal_entry.lines.length > 0 && (

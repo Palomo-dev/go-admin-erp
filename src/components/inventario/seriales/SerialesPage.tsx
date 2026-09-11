@@ -46,7 +46,8 @@ import type { SerialWithDetails, SerialStats, SerialStatus } from '@/lib/service
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch, ALL_BRANCHES } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
-import { formatDate, formatCurrency } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { CopyableId } from '@/components/common/CopyableId';
 
 const STATUS_CONFIG: Record<SerialStatus, { label: string; color: string; icon: React.ReactNode }> = {
@@ -65,6 +66,7 @@ const PAGE_SIZE = 20;
 export function SerialesPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { formatDate } = useFormatDate();
   const organizationId = getOrganizationId();
   const { branchFilter, setSelectedBranch } = useBranch();
 

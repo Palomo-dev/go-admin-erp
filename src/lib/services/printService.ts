@@ -184,7 +184,8 @@ export class PrintService {
     cashier?: CashierInfo,
     branch?: BranchInfo,
     taxLines?: TaxLine[],
-    deliveryInfo?: DeliveryInfo
+    deliveryInfo?: DeliveryInfo,
+    timezone?: string,
   ): string {
     const payload = this.toSalePayload(
       sale,
@@ -196,6 +197,7 @@ export class PrintService {
       branch,
       taxLines,
       deliveryInfo,
+      timezone,
     );
     return buildSaleTicketHTML(payload, BROWSER_PAPER);
   }
@@ -217,7 +219,8 @@ export class PrintService {
     cashier?: CashierInfo,
     branch?: BranchInfo,
     taxLines?: TaxLine[],
-    deliveryInfo?: DeliveryInfo
+    deliveryInfo?: DeliveryInfo,
+    timezone?: string,
   ): SaleTicketPrintPayload {
     const anySale = sale as any;
 
@@ -242,6 +245,7 @@ export class PrintService {
       customerFiscalResponsibilities: (customer as any)?.fiscal_responsibilities || undefined,
       cashierName: cashier?.name,
       createdAt: anySale.created_at || new Date().toISOString(),
+      timezone,
       items: saleItems.map((item) => {
         const anyItem = item as any;
         const notes = parseItemNotes(anyItem.notes);
@@ -302,18 +306,20 @@ export class PrintService {
     cashier?: CashierInfo,
     branch?: BranchInfo,
     taxLines?: TaxLine[],
-    deliveryInfo?: DeliveryInfo
+    deliveryInfo?: DeliveryInfo,
+    timezone?: string,
   ): void {
     const html = this.generateTicketHTML(
-      sale, 
-      saleItems, 
-      customer, 
-      payments, 
-      business, 
+      sale,
+      saleItems,
+      customer,
+      payments,
+      business,
       cashier,
       branch,
       taxLines,
-      deliveryInfo
+      deliveryInfo,
+      timezone,
     );
 
     const printWindow = window.open('', '_blank', 'width=302,height=600');
@@ -376,18 +382,20 @@ export class PrintService {
     cashier?: CashierInfo,
     branch?: BranchInfo,
     taxLines?: TaxLine[],
-    deliveryInfo?: DeliveryInfo
+    deliveryInfo?: DeliveryInfo,
+    timezone?: string,
   ): void {
     const html = this.generateTicketHTML(
-      sale, 
-      saleItems, 
-      customer, 
-      payments, 
-      business, 
+      sale,
+      saleItems,
+      customer,
+      payments,
+      business,
       cashier,
       branch,
       taxLines,
-      deliveryInfo
+      deliveryInfo,
+      timezone,
     );
 
     const blob = new Blob([html], { type: 'text/html' });
@@ -423,6 +431,7 @@ export class PrintService {
     branch?: BranchInfo,
     serverName?: string,
     options?: PreCuentaPrintOptions,
+    timezone?: string,
   ): void {
     const payload: SaleTicketPrintPayload = {
       saleId: `pre-${tableName}`,
@@ -430,6 +439,7 @@ export class PrintService {
       tableName,
       serverName,
       createdAt: new Date().toISOString(),
+      timezone,
       items: items.map((item) => {
         const notes = parseItemNotes(item.notes);
         return {
@@ -503,6 +513,7 @@ export class PrintService {
     }>,
     business?: BusinessInfo,
     branch?: BranchInfo,
+    timezone?: string,
   ): void {
     const createdAt = new Date().toISOString();
     const stations = Array.from(new Set(items.map((i) => i.station || 'all')));
@@ -513,6 +524,7 @@ export class PrintService {
       tableName,
       serverName,
       createdAt,
+      timezone,
       items: items
         .filter((i) => (i.station || 'all') === station)
         .map((i) => ({

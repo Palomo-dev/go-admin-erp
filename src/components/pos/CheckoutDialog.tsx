@@ -44,6 +44,7 @@ import { ConfiguracionService } from '@/components/pos/configuracion/configuraci
 import { SerialSelectorDialog } from '@/components/pos/SerialSelectorDialog';
 import { QrPaymentDialog } from '@/components/shared/QrPaymentDialog';
 import { useMobileNative } from '@/hooks/useMobileNative';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 
 interface CheckoutDialogProps {
   cart: Cart;
@@ -80,6 +81,7 @@ interface PaymentEntry {
 }
 
 export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, onProcessPayment, organization, currentUser, branch }: CheckoutDialogProps) {
+  const { timezone } = useOrgTimezone();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [currency, setCurrency] = useState<Currency | null>(null);
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
@@ -1298,7 +1300,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         cashierInfo,
         branchInfo as any,
         taxBreakdown.length > 0 ? taxBreakdown : undefined,
-        deliveryInfo
+        deliveryInfo,
+        timezone,
       );
     }
   };
@@ -1487,6 +1490,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                           cashierName: currentUser?.name,
                           totalPaid,
                           changeAmount: change > 0 ? change : undefined,
+                          timezone,
                         } as any;
                         PrintService.printElectronicInvoice(payload);
                       });

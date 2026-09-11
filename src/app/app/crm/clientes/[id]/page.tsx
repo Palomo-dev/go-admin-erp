@@ -32,6 +32,7 @@ import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { formatCurrency } from '@/utils/Utils';
 import { QuickActionsBar } from '@/components/crm/shared/QuickActionsBar';
 import { OpportunityTimeline } from '@/components/crm/timeline/OpportunityTimeline';
+import { applyBranchFilterInclusive } from '@/lib/services/branchFilterHelper';
 
 interface CustomerData {
   id: string;
@@ -100,7 +101,9 @@ export default function ClienteDetailPage() {
         .eq('organization_id', orgId)
         .order('created_at', { ascending: false })
         .limit(20);
-      if (branchFilter != null) oppQuery = oppQuery.eq('branch_id', branchFilter);
+      // Inclusivo: las oportunidades no llevan sucursal (100 % nulo medido el
+      // 2026-09-11); con `eq` desaparecían de la ficha al elegir una sucursal.
+      oppQuery = applyBranchFilterInclusive(oppQuery, branchFilter);
 
       let actQuery = supabase
         .from('activities')
@@ -110,7 +113,7 @@ export default function ClienteDetailPage() {
         .eq('organization_id', orgId)
         .order('occurred_at', { ascending: false })
         .limit(20);
-      if (branchFilter != null) actQuery = actQuery.eq('branch_id', branchFilter);
+      actQuery = applyBranchFilterInclusive(actQuery, branchFilter);
 
       const [custResult, oppResult, actResult] = await Promise.all([
         custQuery.single(),

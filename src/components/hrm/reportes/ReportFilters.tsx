@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Filter, Search, RotateCcw } from 'lucide-react';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { toPlainDate } from '@/lib/utils/timezone';
 
 interface ReportFiltersProps {
   branches: { id: number; name: string }[];
@@ -28,14 +30,15 @@ export function ReportFilters({
   onApply,
   isLoading,
 }: ReportFiltersProps) {
+  const { timezone } = useOrgTimezone();
   // Default to current month
   const today = new Date();
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
   const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
   const [filters, setFilters] = useState<Filters>({
-    dateFrom: firstDay.toISOString().split('T')[0],
-    dateTo: lastDay.toISOString().split('T')[0],
+    dateFrom: toPlainDate(firstDay, timezone),
+    dateTo: toPlainDate(lastDay, timezone),
   });
 
   const handleChange = (field: keyof Filters, value: any) => {
@@ -48,8 +51,8 @@ export function ReportFilters({
 
   const handleReset = () => {
     const reset: Filters = {
-      dateFrom: firstDay.toISOString().split('T')[0],
-      dateTo: lastDay.toISOString().split('T')[0],
+      dateFrom: toPlainDate(firstDay, timezone),
+      dateTo: toPlainDate(lastDay, timezone),
     };
     setFilters(reset);
     onApply(reset);
@@ -90,8 +93,8 @@ export function ReportFilters({
 
     setFilters(prev => ({
       ...prev,
-      dateFrom: from.toISOString().split('T')[0],
-      dateTo: to.toISOString().split('T')[0],
+      dateFrom: toPlainDate(from, timezone),
+      dateTo: toPlainDate(to, timezone),
     }));
   };
 

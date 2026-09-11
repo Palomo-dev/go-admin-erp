@@ -6,6 +6,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/utils/Utils';
 import { GymClass, getClassTypeLabel, getClassStatusColor } from '@/lib/services/gymService';
 import { Users } from 'lucide-react';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 interface DraggableClassBarProps {
   gymClass: GymClass;
@@ -22,6 +24,7 @@ export function DraggableClassBar({
   onClick,
   onResizeEnd,
 }: DraggableClassBarProps) {
+  const { timezone } = useOrgTimezone();
   const [isResizing, setIsResizing] = useState(false);
   const [resizeEdge, setResizeEdge] = useState<'top' | 'bottom' | null>(null);
 
@@ -163,8 +166,8 @@ export function DraggableClassBar({
         )}
         {height > 80 && (
           <span className="text-[10px] opacity-70 text-white">
-            {startAt.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })} - 
-            {endAt.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}
+            {formatTimeInTz(startAt.toISOString(), timezone)} -
+            {formatTimeInTz(endAt.toISOString(), timezone)}
           </span>
         )}
       </div>

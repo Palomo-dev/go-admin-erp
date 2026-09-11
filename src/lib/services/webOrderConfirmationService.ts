@@ -356,7 +356,7 @@ class WebOrderConfirmationService {
       // FALLBACK: no encontró redemption del website → crear nueva
       const { data: coupon, error: couponError } = await supabase
         .from('coupons')
-        .select('id, usage_count')
+        .select('id')
         .eq('organization_id', order.organization_id)
         .eq('code', order.coupon_code!)
         .eq('is_active', true)
@@ -383,12 +383,9 @@ class WebOrderConfirmationService {
         return '';
       }
 
-      // Solo incrementar usage_count en fallback (website ya lo hizo si creó redemption)
-      await supabase
-        .from('coupons')
-        .update({ usage_count: (coupon.usage_count || 0) + 1 })
-        .eq('id', coupon.id);
-
+      // No se incrementa usage_count a mano: el trigger
+      // trg_coupon_redemption_increment de coupon_redemptions ya lo hace al
+      // insertar la redención. Hacerlo aquí contaba el cupón dos veces.
       return redemption?.id || '';
     } catch (error) {
       console.error('Error redimiendo cupón:', error);

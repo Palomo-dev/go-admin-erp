@@ -31,8 +31,33 @@ const calcularNuevoValor = (actual: number, modo: ModoAjuste, cantidad: number):
 };
 
 /**
+ * Ejecuta una query de Supabase con reintentos ante errores transitorios
+ * (503/PGRST002, errores de red). Lanza si todos los intentos fallan.
+ */
+async function retrySupabaseQuery<T>(
+  queryFn: () => PromiseLike<{ data: T | null; error: any }>,
+  label: string,
+  maxRetries = 3,
+  baseDelay = 1000
+): Promise<T> {
+  let lastError: any = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const { data, error } = await queryFn();
+    if (!error && data !== null) return data;
+    lastError = error;
+    if (attempt < maxRetries) {
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.warn(`[retrySupabaseQuery] ${label}: intento ${attempt + 1}/${maxRetries + 1} falló, reintentando en ${delay}ms`, error?.message || error);
+      await new Promise((res) => setTimeout(res, delay));
+    }
+  }
+  throw new Error(`${label}: ${lastError?.message || 'Error desconocido tras reintentos'}`);
+}
+
+/**
  * Expande IDs de productos para incluir padres e hijos (variantes).
  * Consulta en lotes para evitar URLs demasiado largas en PostgREST.
+ * Lanza un error si no puede expandir (no falla silenciosamente).
  */
 async function expandProductIds(productIds: number[]): Promise<number[]> {
   const EXPAND_BATCH = 300;
@@ -42,14 +67,20 @@ async function expandProductIds(productIds: number[]): Promise<number[]> {
   // Consultar productos seleccionados en lotes
   for (let i = 0; i < productIds.length; i += EXPAND_BATCH) {
     const batch = productIds.slice(i, i + EXPAND_BATCH);
-    const { data, error } = await supabase
-      .from('products')
-      .select('id, is_parent, parent_product_id')
-      .in('id', batch)
-      .neq('status', 'deleted');
-
-    if (error) console.error('[expandProductIds] Error querying products:', error);
-    if (!data) continue;
+    let data: any[];
+    try {
+      data = await retrySupabaseQuery(
+        () => supabase
+          .from('products')
+          .select('id, is_parent, parent_product_id')
+          .in('id', batch)
+          .neq('status', 'deleted'),
+        `[expandProductIds] query productos lote ${i}`
+      );
+    } catch (e: any) {
+      console.error('[expandProductIds] Error querying products:', e);
+      continue;
+    }
     for (const p of data) {
       expandedIds.add(p.id);
       if (p.is_parent) parentIdsToExpand.push(p.id);
@@ -69,26 +100,41 @@ async function expandProductIds(productIds: number[]): Promise<number[]> {
 
     for (let i = 0; i < uniqueParentIds.length; i += EXPAND_BATCH) {
       const batch = uniqueParentIds.slice(i, i + EXPAND_BATCH);
-      const { data: children, error: childErr } = await supabase
-        .from('products')
-        .select('id')
-        .in('parent_product_id', batch)
-        .neq('status', 'deleted');
-      if (childErr) console.error('[expandProductIds] Error querying children:', childErr);
-      if (children) children.forEach((c) => childrenIds.push(c.id));
+      try {
+        const children = await retrySupabaseQuery(
+          () => supabase
+            .from('products')
+            .select('id')
+            .in('parent_product_id', batch)
+            .neq('status', 'deleted'),
+          `[expandProductIds] query hijos lote ${i}`
+        );
+        children.forEach((c: any) => childrenIds.push(c.id));
+      } catch (e: any) {
+        // Si no se pueden obtener los hijos, lanzar para que el caller
+        // sepa que la expansión fue incompleta y no proceda con datos parciales.
+        throw new Error(`No se pudieron obtener las variantes de los productos padre: ${e.message || e}. ` +
+          'Es probable que el servicio de base de datos esté recargando su caché (503). Intente de nuevo en unos segundos.');
+      }
     }
 
     console.log(`[expandProductIds] ${childrenIds.length} hijos encontrados`);
 
     for (let i = 0; i < parentIdsNotInSelection.length; i += EXPAND_BATCH) {
       const batch = parentIdsNotInSelection.slice(i, i + EXPAND_BATCH);
-      const { data: parents, error: parentErr } = await supabase
-        .from('products')
-        .select('id')
-        .in('id', batch)
-        .neq('status', 'deleted');
-      if (parentErr) console.error('[expandProductIds] Error querying parents:', parentErr);
-      if (parents) parents.forEach((p) => expandedIds.add(p.id));
+      try {
+        const parents = await retrySupabaseQuery(
+          () => supabase
+            .from('products')
+            .select('id')
+            .in('id', batch)
+            .neq('status', 'deleted'),
+          `[expandProductIds] query padres lote ${i}`
+        );
+        parents.forEach((p: any) => expandedIds.add(p.id));
+      } catch (e: any) {
+        console.error('[expandProductIds] Error querying parents:', e);
+      }
     }
 
     childrenIds.forEach((id) => expandedIds.add(id));
@@ -115,7 +161,14 @@ export async function bulkUpdatePrices(
   const INSERT_CHUNK = 100; // inserts en sub-lotes más pequeños
 
   // 1. Expandir IDs: incluir hijos de padres y padres de hijos (en lotes)
-  const allIds = await expandProductIds(productIds);
+  let allIds: number[];
+  try {
+    allIds = await expandProductIds(productIds);
+  } catch (e: any) {
+    resultado.fallidos = productIds.length;
+    resultado.errores.push(e.message || 'Error al expandir productos padre → variantes');
+    return resultado;
+  }
   if (allIds.length === 0) {
     resultado.fallidos = productIds.length;
     resultado.errores.push('No se encontraron los productos seleccionados');
@@ -336,7 +389,14 @@ export async function bulkUpdateStock(
   const BATCH_SIZE = 300;
 
   // 1. Expandir IDs: incluir hijos de padres y padres de hijos (en lotes)
-  const allIds = await expandProductIds(productIds);
+  let allIds: number[];
+  try {
+    allIds = await expandProductIds(productIds);
+  } catch (e: any) {
+    resultado.fallidos = productIds.length;
+    resultado.errores.push(e.message || 'Error al expandir productos padre → variantes');
+    return resultado;
+  }
   console.log(`[bulkUpdateStock] IDs expandidos: ${allIds.length} (originales: ${productIds.length})`);
   if (allIds.length === 0) {
     resultado.fallidos = productIds.length;
@@ -525,7 +585,14 @@ export async function bulkCopyPriceToCompare(
   const INSERT_CHUNK = 100;
 
   // 1. Expandir IDs: incluir hijos de padres y padres de hijos (en lotes)
-  const allIds = await expandProductIds(productIds);
+  let allIds: number[];
+  try {
+    allIds = await expandProductIds(productIds);
+  } catch (e: any) {
+    resultado.fallidos = productIds.length;
+    resultado.errores.push(e.message || 'Error al expandir productos padre → variantes');
+    return resultado;
+  }
   if (allIds.length === 0) {
     resultado.fallidos = productIds.length;
     resultado.errores.push('No se encontraron los productos seleccionados');
@@ -674,7 +741,14 @@ export async function bulkRoundPrices(
   const INSERT_CHUNK = 100;
 
   // 1. Expandir IDs: incluir hijos de padres y padres de hijos (en lotes)
-  const allIds = await expandProductIds(productIds);
+  let allIds: number[];
+  try {
+    allIds = await expandProductIds(productIds);
+  } catch (e: any) {
+    resultado.fallidos = productIds.length;
+    resultado.errores.push(e.message || 'Error al expandir productos padre → variantes');
+    return resultado;
+  }
   if (allIds.length === 0) {
     resultado.fallidos = productIds.length;
     resultado.errores.push('No se encontraron los productos seleccionados');

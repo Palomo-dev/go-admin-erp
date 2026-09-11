@@ -2,6 +2,8 @@ import type { ShipmentWithDetails } from '@/lib/services/shipmentsService';
 import type { ShipmentGuidePrintPayload } from '@printing';
 import { buildShipmentGuideHTML, buildShipmentGuidesHTML, getPaperSpec, DEFAULT_PAPER_WIDTH } from '@printing';
 import { PrintJobsService } from '@/lib/services/printJobsService';
+import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
+import { formatDateInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 export interface ShipmentGuideItem {
   id: string;
@@ -37,10 +39,10 @@ function formatCurrency(value: number | undefined, currency: string = 'COP'): st
   return new Intl.NumberFormat('es-CO', { style: 'currency', currency, minimumFractionDigits: 0 }).format(value);
 }
 
-function formatDate(dateStr: string | undefined): string {
+function formatDate(dateStr: string | undefined, timezone: string = DEFAULT_TIMEZONE): string {
   if (!dateStr) return '-';
   try {
-    return new Date(dateStr).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return formatDateInTz(dateStr, timezone, { day: '2-digit', month: '2-digit', year: 'numeric' });
   } catch {
     return '-';
   }
@@ -97,6 +99,7 @@ interface GenerateGuideOptions {
   items?: ShipmentGuideItem[];
   driver?: ShipmentGuideDriver | null;
   orgInfo?: ShipmentGuideOrgInfo | null;
+  timezone?: string;
 }
 
 export function generateShipmentGuideHTML(
@@ -105,6 +108,7 @@ export function generateShipmentGuideHTML(
 ): string {
   const meta = (shipment.metadata as Record<string, unknown> | null) || {};
   const items = options.items || (meta.items as ShipmentGuideItem[] | undefined) || [];
+  const tz = options.timezone || DEFAULT_TIMEZONE;
 
   const senderName = (meta.sender_name as string) || shipment.sender_name || '-';
   const senderPhone = (meta.sender_phone as string) || shipment.sender_phone || '-';
@@ -418,7 +422,7 @@ export function generateShipmentGuideHTML(
   <div class="meta">
     <div class="meta-row"><span class="meta-label">Guia No:</span><span class="meta-value">${shipment.shipment_number || '-'}</span></div>
     <div class="meta-row"><span class="meta-label">Tracking:</span><span class="meta-value">${shipment.tracking_number || '-'}</span></div>
-    <div class="meta-row"><span class="meta-label">Fecha:</span><span class="meta-value">${formatDate(shipment.created_at)} ${new Date(shipment.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false })}</span></div>
+    <div class="meta-row"><span class="meta-label">Fecha:</span><span class="meta-value">${formatDate(shipment.created_at, tz)} ${formatTimeInTz(shipment.created_at, tz, { hour: '2-digit', minute: '2-digit', hour12: false })}</span></div>
     <div class="meta-row"><span class="meta-label">Estado:</span><span class="meta-value">${getStatusLabel(shipment.status)}</span></div>
     <div class="meta-row"><span class="meta-label">Pago:</span><span class="meta-value">${getPaymentLabel(shipment.payment_status)}</span></div>
   </div>

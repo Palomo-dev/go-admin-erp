@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { isRealtimePublished } from '@/components/crm/shared/realtimeTables';
 import { waApi, ApiError, type ChannelSummary, type WhatsAppTemplate } from './api';
 import { HsmEditorDialog } from './HsmEditorDialog';
 
@@ -60,7 +61,11 @@ export function WhatsAppTemplatesTab({ canEdit }: { canEdit?: boolean }) {
   useEffect(() => { void load(); }, [load]);
 
   // Realtime: el webhook message_template_status_update actualiza templates.metadata
+  // `templates` no está en la publicación `supabase_realtime`: abrir un canal consume
+  // conexiones del pool sin recibir eventos. Si se publica, agregarla a
+  // REALTIME_PUBLISHED_TABLES.
   useEffect(() => {
+    if (!isRealtimePublished('templates')) return;
     const orgId = getOrganizationId();
     const ch = supabase.channel(`wa-templates-${orgId}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'templates', filter: `organization_id=eq.${orgId}` }, () => void load())

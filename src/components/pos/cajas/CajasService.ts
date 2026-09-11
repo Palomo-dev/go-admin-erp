@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId, getBranchFilter, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { isRealtimePublished } from '@/components/crm/shared/realtimeTables';
 import type {
   CashSession,
   CashMovement,
@@ -1327,6 +1328,11 @@ export class CajasService {
     onChange: () => void,
     options?: { includeMovements?: boolean }
   ): () => void {
+    // `cash_sessions` y `cash_movements` no están en la publicación
+    // `supabase_realtime`: abrir canales consume conexiones del pool sin
+    // recibir eventos. Si se publican, agregarlas a REALTIME_PUBLISHED_TABLES.
+    if (!isRealtimePublished('cash_sessions')) return () => {};
+
     const includeMovements = options?.includeMovements ?? true;
     const channelName = `cash_sessions_changes_${organizationId}_${Date.now()}`;
 

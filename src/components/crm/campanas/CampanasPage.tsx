@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { isRealtimePublished } from '@/components/crm/shared/realtimeTables';
 import { CampanasService } from './CampanasService';
 import { CAMPAIGN_STATUS_CONFIG, type Campaign } from './types';
 
@@ -46,6 +47,10 @@ export function CampanasPage() {
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
+    // `campaigns` no está en la publicación `supabase_realtime`: abrir un canal
+    // consume conexiones del pool de Realtime sin recibir eventos. Si se
+    // publica en el futuro, basta con agregarla a REALTIME_PUBLISHED_TABLES.
+    if (!isRealtimePublished('campaigns')) return;
     const ch = supabase.channel('campaigns-list').on('postgres_changes', { event: '*', schema: 'public', table: 'campaigns', filter: `organization_id=eq.${getOrganizationId()}` }, () => void load(true)).subscribe();
     return () => { void supabase.removeChannel(ch); };
   }, [load]);

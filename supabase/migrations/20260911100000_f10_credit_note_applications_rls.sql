@@ -13,6 +13,8 @@ ALTER TABLE public.credit_note_applications
   FORCE ROW LEVEL SECURITY;
 
 -- SELECT: user sees rows from organizations where they are an active member
+DROP POLICY IF EXISTS credit_note_applications_organization_access
+  ON public.credit_note_applications;
 CREATE POLICY credit_note_applications_organization_access
   ON public.credit_note_applications
   FOR SELECT
@@ -27,6 +29,8 @@ CREATE POLICY credit_note_applications_organization_access
   );
 
 -- INSERT: user can insert only for organizations where they are an active member
+DROP POLICY IF EXISTS credit_note_applications_organization_insert
+  ON public.credit_note_applications;
 CREATE POLICY credit_note_applications_organization_insert
   ON public.credit_note_applications
   FOR INSERT
@@ -41,6 +45,8 @@ CREATE POLICY credit_note_applications_organization_insert
   );
 
 -- UPDATE: user can update only rows in their organizations
+DROP POLICY IF EXISTS credit_note_applications_organization_update
+  ON public.credit_note_applications;
 CREATE POLICY credit_note_applications_organization_update
   ON public.credit_note_applications
   FOR UPDATE
@@ -63,6 +69,8 @@ CREATE POLICY credit_note_applications_organization_update
   );
 
 -- DELETE: user can delete only rows in their organizations
+DROP POLICY IF EXISTS credit_note_applications_organization_delete
+  ON public.credit_note_applications;
 CREATE POLICY credit_note_applications_organization_delete
   ON public.credit_note_applications
   FOR DELETE

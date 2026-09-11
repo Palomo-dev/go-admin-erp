@@ -10,6 +10,7 @@ import { relativeTime } from '@/components/crm/timeline/utils';
 import { TemperatureDot } from './TemperatureDot';
 import { ScoreBadge } from './ScoreBadge';
 import type { KanbanOpportunity } from './hooks/useKanbanBoard';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 /**
  * OpportunityCardV2 (FASE-09 §5.2): avatar/iniciales, temperatura, próxima
@@ -114,7 +115,7 @@ function OpportunityCardV2Inner({ opportunity: o, index, onOpen, compact }: Oppo
                 </p>
               )}
               {!o.last_contact_at && o.expected_close_date && (
-                <p className="flex items-center gap-1 text-gray-500 dark:text-gray-400"><Calendar className="h-3 w-3" />cierra {new Date(o.expected_close_date).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}</p>
+                <p className="flex items-center gap-1 text-gray-500 dark:text-gray-400"><Calendar className="h-3 w-3" />cierra {formatPlainDate(o.expected_close_date, { day: '2-digit', month: 'short' })}</p>
               )}
             </div>
           )}

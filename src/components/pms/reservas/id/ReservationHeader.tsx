@@ -13,6 +13,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { type ReservationDetail } from '@/lib/services/reservationDetailService';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface ReservationHeaderProps {
   reservation: ReservationDetail;
@@ -44,13 +45,7 @@ const CHANNEL_CONFIG: Record<string, { label: string; color: string }> = {
 
 export function ReservationHeader({ reservation, nights, financials }: ReservationHeaderProps) {
   const formatDate = (dateString: string) => {
-    // Agregar hora para evitar problemas de zona horaria
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
+    return formatPlainDate(dateString, { day: '2-digit', month: 'long', year: 'numeric' });
   };
 
   const formatCurrency = (amount: number) => {

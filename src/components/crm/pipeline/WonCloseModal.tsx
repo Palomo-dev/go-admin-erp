@@ -19,6 +19,9 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { CotizacionesService } from '@/lib/services/cotizacionesService';
 import { commissionService } from '@/lib/services/crm/commissionService';
 import { proposalService } from '@/lib/services/crm/proposalService';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { toPlainDate } from '@/lib/utils/timezone';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface WonCloseModalProps {
   open: boolean;
@@ -128,6 +131,7 @@ export function WonCloseModal({
   onComplete,
   onCancel,
 }: WonCloseModalProps) {
+  const { timezone } = useOrgTimezone();
   const [steps, setSteps] = useState<CloseStep[]>(buildInitialSteps);
   const [running, setRunning] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -438,7 +442,7 @@ export function WonCloseModal({
       const { error } = await supabase.from('tasks').insert({
         organization_id: orgId,
         title: `Renovación ${opp.name} — hito ${daysBefore}d`,
-        description: `Recordatorio de renovación a ${daysBefore} días del vencimiento (${renewalDate.toLocaleDateString('es-ES')}). Contactar al cliente para confirmar renovación.`,
+        description: `Recordatorio de renovación a ${daysBefore} días del vencimiento (${formatPlainDate(toPlainDate(renewalDate, timezone))}). Contactar al cliente para confirmar renovación.`,
         due_date: milestoneDate.toISOString(),
         assigned_to: opp.salesperson_id || opp.created_by,
         priority: daysBefore <= 30 ? 'high' : 'med',
@@ -464,7 +468,7 @@ export function WonCloseModal({
       })
       .eq('id', opp.id);
 
-    return `Hitos creados: ${created} (renovación: ${renewalDate.toLocaleDateString('es-ES')})`;
+    return `Hitos creados: ${created} (renovación: ${formatPlainDate(toPlainDate(renewalDate, timezone))})`;
   };
 
   const executeReferral = async (opp: OpportunityData): Promise<string> => {
@@ -489,7 +493,7 @@ export function WonCloseModal({
     });
 
     if (taskError) throw taskError;
-    return `Tarea de referido programada para ${referralDate.toLocaleDateString('es-ES')}`;
+    return `Tarea de referido programada para ${formatPlainDate(toPlainDate(referralDate, timezone))}`;
   };
 
   const executeCommission = async (opp: OpportunityData): Promise<string> => {

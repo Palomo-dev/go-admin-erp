@@ -29,7 +29,9 @@ import {
   Wallet,
   FileText,
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { ReportesService, SalesReport, ProductReport, PaymentMethodReport, DailySalesData } from './reportesService';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -37,16 +39,18 @@ import { useBranch } from '@/lib/context/BranchContext';
 export function ReportesPage() {
   const { toast } = useToast();
   const { branchFilter, setSelectedBranch: setGlobalBranch } = useBranch();
+  const { formatDate } = useFormatDate();
+  const { timezone } = useOrgTimezone();
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Filtros
   const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 30);
-    return date.toISOString().split('T')[0];
+    const ref = new Date();
+    ref.setDate(ref.getDate() - 30);
+    return toPlainDate(ref, timezone);
   });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(() => todayInTz(timezone));
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
   const [source, setSource] = useState<'pos' | 'web'>('pos');

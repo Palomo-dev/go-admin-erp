@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { formatCurrency } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 export interface Payment {
   id: string;
@@ -74,6 +76,8 @@ export function MembershipPayments({
   const totalPaid = payments.reduce((sum, p) => 
     p.status === 'completed' ? sum + p.amount : sum, 0
   );
+
+  const { timezone } = useOrgTimezone();
 
   if (isLoading) {
     return (
@@ -174,8 +178,8 @@ export function MembershipPayments({
                   </div>
 
                   <div className="text-right text-xs text-gray-500 dark:text-gray-400">
-                    <p>{date.toLocaleDateString('es-CO')}</p>
-                    <p>{date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</p>
+                    <p>{formatDateInTz(date.toISOString(), timezone)}</p>
+                    <p>{formatTimeInTz(date.toISOString(), timezone)}</p>
                   </div>
                 </div>
               );

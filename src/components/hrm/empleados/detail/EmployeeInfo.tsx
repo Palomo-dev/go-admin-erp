@@ -12,6 +12,7 @@ import {
   User,
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface EmployeeInfoProps {
   employee: {
@@ -57,11 +58,7 @@ const SALARY_PERIOD_LABELS: Record<string, string> = {
 export function EmployeeInfo({ employee }: EmployeeInfoProps) {
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return formatPlainDate(dateStr, { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   return (

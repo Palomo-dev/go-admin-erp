@@ -48,6 +48,27 @@ comentarios, commits y UI.
 - Migraciones: aditivas. Columnas nuevas `NULL`-ables o con `DEFAULT`. Sin `DROP`
   ni cambios de tipo en tablas con datos de clientes.
 
+## Fechas y zona horaria — reglas canónicas
+
+El bug "la fecha se muestra un día corrido" fue sistémico. Para evitar
+reincidir, ver `docs/reglas-fechas-timezone.md` (resumen aquí):
+
+1. **`toISOString().split('T')[0]` está prohibido** para derivar un día
+   calendario. Usar `todayInTz(tz)` o `toPlainDate(date, tz)` de
+   `src/lib/utils/dateDisplay.ts`.
+2. **`.split('T')[0]` sobre un valor de la BD está prohibido** — descarta
+   el offset del timestamptz y se queda con el día UTC.
+3. **Todo renderizado de fecha pasa por el timezone de la organización.**
+   Usar `useFormatDate()` (hook de `@/lib/context/OrganizationTimezoneContext`)
+   en componentes cliente, o `formatDateInTz(value, tz)` en servidor.
+4. **`formatDate` y `parseLocalDate` de `@/utils/Utils` están deprecated.**
+   ESLint avisa al importarlas. Usar las de `dateDisplay.ts`.
+5. **Distinción crítica:** valor de `timestamptz` → `formatDateInTz`
+   (convierte); valor de `date` → `formatPlainDate` (no convierte).
+6. **La zona horaria nunca se hardcodea.** Sale de
+   `getOrganizationTimezone(orgId)`. `America/Bogota` solo como fallback.
+7. **Tests con `TZ=UTC` y `TZ=America/Bogota`:** `npm run test:tz-all`.
+
 ## Verificación antes de cerrar cualquier tarea
 
 ```bash

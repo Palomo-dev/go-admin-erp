@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import type { EmploymentCompensation, CreateAssignmentDTO, UpdateAssignmentDTO } from '@/lib/services/employmentCompensationService';
 import { formatCurrency } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/timezone';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,10 +36,11 @@ export function AssignmentForm({
   onSubmit,
   onCancel,
 }: AssignmentFormProps) {
+  const { timezone } = useOrgTimezone();
   const [formData, setFormData] = useState<CreateAssignmentDTO>({
     employment_id: '',
     package_id: '',
-    effective_from: new Date().toISOString().split('T')[0],
+    effective_from: todayInTz(timezone),
     effective_to: '',
     salary_override: undefined,
     notes: '',

@@ -2,6 +2,8 @@
 
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Bus } from 'lucide-react';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import {
   DateFilter,
   type DateRange,
@@ -21,7 +23,8 @@ export function TransportHeader({
   dateRange,
   onDateRangeChange,
 }: TransportHeaderProps) {
-  const today = new Date().toLocaleDateString('es-ES', {
+  const { timezone } = useOrgTimezone();
+  const today = formatDateInTz(new Date().toISOString(), timezone, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',

@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CompensationPackage } from '@/lib/services/compensationPackagesService';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import {
   Table,
   TableBody,
@@ -57,6 +58,7 @@ export function PackagesTable({
   isLoading,
 }: PackagesTableProps) {
   const router = useRouter();
+  const { formatDate } = useFormatDate();
 
   const handleViewDetail = (pkg: CompensationPackage) => {
     router.push(`/app/hrm/compensacion/paquetes/${pkg.id}`);

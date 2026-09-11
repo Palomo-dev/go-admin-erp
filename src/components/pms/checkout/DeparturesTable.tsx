@@ -24,6 +24,7 @@ import {
 import { TableSkeleton } from '@/components/common/PageSkeletons';
 import type { CheckoutReservation } from '@/lib/services/checkoutService';
 import { formatCurrency } from '@/utils/Utils';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface DeparturesTableProps {
   departures: CheckoutReservation[];
@@ -39,11 +40,7 @@ export function DeparturesTable({
   onViewFolio,
 }: DeparturesTableProps) {
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
+    return formatPlainDate(dateString, { weekday: 'short', day: 'numeric', month: 'short' });
   };
 
   if (isLoading) {

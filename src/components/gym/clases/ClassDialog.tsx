@@ -25,6 +25,8 @@ import { Loader2, Settings, Repeat, Calendar } from 'lucide-react';
 import { GymClass, Instructor } from '@/lib/services/gymService';
 import { Branch } from '@/types/branch';
 import { cn } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { toPlainDate, formatPlainDate } from '@/lib/utils/dateDisplay';
 
 export interface RecurrenceConfig {
   enabled: boolean;
@@ -90,6 +92,7 @@ export function ClassDialog({
   branches = [],
   instructors = [],
 }: ClassDialogProps) {
+  const { timezone } = useOrgTimezone();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
   const [formData, setFormData] = useState({
@@ -158,7 +161,7 @@ export function ClassDialog({
         class_type: gymClass.class_type || 'other',
         capacity: gymClass.capacity || 20,
         duration_minutes: duration,
-        start_date: startAt.toISOString().split('T')[0],
+        start_date: toPlainDate(startAt, timezone),
         start_time: startTime,
         end_time: calculateEndTime(startTime, duration),
         room: gymClass.room || gymClass.location || '',
@@ -193,7 +196,7 @@ export function ClassDialog({
         class_type: 'other',
         capacity: 20,
         duration_minutes: defaultDuration,
-        start_date: dateToUse.toISOString().split('T')[0],
+        start_date: toPlainDate(dateToUse, timezone),
         start_time: startTime,
         end_time: calculateEndTime(startTime, defaultDuration),
         room: '',
@@ -548,7 +551,7 @@ export function ClassDialog({
                               .join(', ')}
                           </strong>
                           {recurrence.until && (
-                            <> hasta el <strong>{new Date(recurrence.until).toLocaleDateString('es-ES')}</strong></>
+                            <> hasta el <strong>{formatPlainDate(recurrence.until)}</strong></>
                           )}
                         </p>
                       </div>

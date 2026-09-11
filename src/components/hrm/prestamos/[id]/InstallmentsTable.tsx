@@ -1,7 +1,9 @@
 'use client';
 
 import type { LoanInstallment } from '@/lib/services/employeeLoansService';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/timezone';
 import {
   Table,
   TableBody,
@@ -41,7 +43,9 @@ export function InstallmentsTable({
   onRegisterPayment,
   isLoading,
 }: InstallmentsTableProps) {
-  const today = new Date().toISOString().split('T')[0];
+  const { formatDate } = useFormatDate();
+  const { timezone } = useOrgTimezone();
+  const today = todayInTz(timezone);
 
   const getStatus = (installment: LoanInstallment) => {
     if (installment.status === 'paid') return 'paid';

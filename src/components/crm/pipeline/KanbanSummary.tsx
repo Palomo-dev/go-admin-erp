@@ -2,6 +2,8 @@
 
 import { formatCurrency } from "@/utils/Utils";
 import { Card, CardContent } from "@/components/ui/card";
+import { useOrgTimezone } from "@/lib/context/OrganizationTimezoneContext";
+import { formatDateInTz } from "@/lib/utils/dateDisplay";
 
 interface StageStats {
   id: string;
@@ -16,6 +18,7 @@ interface KanbanSummaryProps {
 }
 
 export function KanbanSummary({ stages }: KanbanSummaryProps) {
+  const { timezone } = useOrgTimezone();
 
   const totalOpportunities = stages.reduce(
     (sum, stage) => sum + stage.count,
@@ -29,7 +32,7 @@ export function KanbanSummary({ stages }: KanbanSummaryProps) {
   const months = Array.from({ length: 3 }, (_, i) => {
     const d = new Date();
     d.setMonth(currentDate.getMonth() + i);
-    return d.toLocaleDateString("es-ES", { month: "long" });
+    return formatDateInTz(d.toISOString(), timezone, { month: "long" });
   });
 
   // Estimar pronóstico mensual (simplificado)

@@ -14,7 +14,9 @@ import { AccountStatusBadge } from './AccountStatusBadge';
 import { PaymentHistoryCard } from './PaymentHistoryCard';
 import { AccountActionsCard } from './AccountActionsCard';
 import { InstallmentsCard } from './InstallmentsCard';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz, formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 
 interface CuentaPorPagarDetailPageProps {
   accountId: string;
@@ -22,6 +24,7 @@ interface CuentaPorPagarDetailPageProps {
 
 export function CuentaPorPagarDetailPage({ accountId }: CuentaPorPagarDetailPageProps) {
   const router = useRouter();
+  const { timezone } = useOrgTimezone();
   const [account, setAccount] = useState<CuentaPorPagarDetalle | null>(null);
   const [agingInfo, setAgingInfo] = useState<AgingInfo | null>(null);
   const [accountActions, setAccountActions] = useState<AccountActions | null>(null);
@@ -82,7 +85,7 @@ Proveedor: ${account.supplier_name}
 NIT: ${account.supplier_nit || 'N/A'}
 
 Factura: ${account.invoice_number || 'N/A'}
-Fecha de Vencimiento: ${account.due_date ? parseLocalDate(account.due_date).toLocaleDateString('es-CO') : 'N/A'}
+Fecha de Vencimiento: ${account.due_date ? formatDateInTz(account.due_date, timezone) : 'N/A'}
 
 Monto Original: ${formatCurrency(account.amount)}
 Total Pagado: ${formatCurrency(account.amount - account.balance)}
@@ -91,7 +94,7 @@ Balance Pendiente: ${formatCurrency(account.balance)}
 Estado: ${account.status}
 Días de Atraso: ${account.days_overdue > 0 ? account.days_overdue : 0}
 
-Fecha de Generación: ${new Date().toLocaleDateString('es-CO')}
+Fecha de Generación: ${formatDateInTz(new Date().toISOString(), timezone)}
       `.trim();
       
       const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
@@ -112,21 +115,11 @@ Fecha de Generación: ${new Date().toLocaleDateString('es-CO')}
   };
 
   const formatDate = (dateString: string) => {
-    return parseLocalDate(dateString).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDateTimeInTz(dateString, timezone);
   };
 
   const formatDateShort = (dateString: string) => {
-    return parseLocalDate(dateString).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return formatDateInTz(dateString, timezone);
   };
 
   if (isLoading) {

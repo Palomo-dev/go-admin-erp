@@ -35,7 +35,8 @@ import {
   FileEdit,
   Eye,
 } from 'lucide-react';
-import { cn, formatDate } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import type { Timesheet, TimesheetStatus } from '@/lib/services/timesheetsService';
 
 interface TimesheetTableProps {
@@ -71,6 +72,7 @@ export function TimesheetTable({
   onView,
   isLoading,
 }: TimesheetTableProps) {
+  const { formatDate } = useFormatDate();
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8 sm:py-12">

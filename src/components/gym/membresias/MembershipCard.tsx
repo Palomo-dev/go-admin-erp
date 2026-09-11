@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/utils/Utils';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { Membership, getDaysRemaining, getMembershipStatusColor, getMembershipStatusLabel } from '@/lib/services/gymService';
 
 interface MembershipCardProps {
@@ -32,6 +32,7 @@ export function MembershipCard({
   onFreeze,
   onUnfreeze
 }: MembershipCardProps) {
+  const { formatDate } = useFormatDate();
   const daysRemaining = getDaysRemaining(membership.end_date);
   const isExpired = daysRemaining < 0;
   const isExpiringSoon = daysRemaining >= 0 && daysRemaining <= 7;

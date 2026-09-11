@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { HorasPresets } from './HorasPresets';
 import type { PeriodoDashboard, HorasDashboard, FechasCustomDashboard } from './inicioService';
 import { cn } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
 
 interface PeriodoSelectorProps {
   value: PeriodoDashboard;
@@ -34,6 +36,7 @@ export function PeriodoSelector({
   fechasCustom,
   onFechasCustomChange,
 }: PeriodoSelectorProps) {
+  const { timezone } = useOrgTimezone();
   const [showHours, setShowHours] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
   const [customFrom, setCustomFrom] = useState(fechasCustom?.fechaInicio ?? '');
@@ -63,8 +66,9 @@ export function PeriodoSelector({
       setShowCustom(true);
       // Inicializar con fechas por defecto si están vacías
       if (!customFrom || !customTo) {
-        const hoy = new Date().toISOString().split('T')[0];
-        const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+        const hoy = todayInTz(timezone);
+        const hace30Date = new Date(Date.now() - 30 * 86400000);
+        const hace30 = toPlainDate(hace30Date, timezone);
         setCustomFrom(hace30);
         setCustomTo(hoy);
       }

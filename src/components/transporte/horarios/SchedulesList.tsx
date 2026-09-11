@@ -35,6 +35,7 @@ import {
   Play,
 } from 'lucide-react';
 import { RouteSchedule, TransportRoute } from '@/lib/services/transportRoutesService';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface SchedulesListProps {
   schedules: RouteSchedule[];
@@ -243,11 +244,11 @@ export function SchedulesList({
 
                   <div className="flex items-center justify-between pt-2 border-t text-xs text-gray-500 dark:text-gray-400">
                     <span>
-                      Desde: {new Date(schedule.valid_from).toLocaleDateString('es-CO')}
+                      Desde: {formatPlainDate(schedule.valid_from)}
                     </span>
                     {schedule.valid_until && (
                       <span>
-                        Hasta: {new Date(schedule.valid_until).toLocaleDateString('es-CO')}
+                        Hasta: {formatPlainDate(schedule.valid_until)}
                       </span>
                     )}
                   </div>

@@ -19,6 +19,8 @@ import {
   FileText,
   CalendarDays,
 } from "lucide-react";
+import { formatDateInTz } from "@/lib/utils/dateDisplay";
+import { useOrgTimezone } from "@/lib/context/OrganizationTimezoneContext";
 
 interface CustomerHistoryModalProps {
   isOpen: boolean;
@@ -35,6 +37,7 @@ export default function CustomerHistoryModal({
   interactions,
   isLoading,
 }: CustomerHistoryModalProps) {
+  const { timezone } = useOrgTimezone();
   if (!customer) return null;
 
   return (
@@ -97,9 +100,10 @@ export default function CustomerHistoryModal({
                     </div>
                     <div className="text-xs text-gray-500">
                       <CalendarDays className="h-3 w-3 inline-block mr-1" />
-                      {new Date(
-                        interaction.occurred_at || interaction.created_at
-                      ).toLocaleDateString()}
+                      {formatDateInTz(
+                        interaction.occurred_at || interaction.created_at,
+                        timezone
+                      )}
                     </div>
                   </div>
                 </div>

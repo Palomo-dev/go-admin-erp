@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import type { PayrollSlip } from '@/lib/services/payrollService';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
 import {
   Table,
   TableBody,

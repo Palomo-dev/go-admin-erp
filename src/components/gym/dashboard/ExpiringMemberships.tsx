@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/utils/Utils';
 import { Membership, getDaysRemaining } from '@/lib/services/gymService';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface ExpiringMembershipsProps {
   memberships: Membership[];
@@ -18,6 +18,7 @@ interface ExpiringMembershipsProps {
 }
 
 export function ExpiringMemberships({ memberships, isLoading, onExport }: ExpiringMembershipsProps) {
+  const { formatDate } = useFormatDate();
   if (isLoading) {
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">

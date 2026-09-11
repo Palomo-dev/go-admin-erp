@@ -5,6 +5,8 @@ import { FileText, Printer, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { CajasService } from './CajasService';
 import { useBlindCloseMode } from './useBlindCloseMode';
 import type { CashSessionReport } from './types';
@@ -21,6 +23,7 @@ const METHOD_LABELS = getPaymentMethodLabel;
 export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
   const [loading, setLoading] = useState(false);
   const { showExpected } = useBlindCloseMode();
+  const { timezone } = useFormatDate();
 
   const generateReport = async (format: 'letter' | 'pos') => {
     setLoading(true);
@@ -55,12 +58,7 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
     const branchName = (session as any).branch_name || `#${session.branch_id}`;
     const blindMode = !showExpected;
 
-    const formatDate = (dateString: string) => {
-      const date = new Date(dateString);
-      return date.toLocaleString('es-CO', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-      });
-    };
+    const formatDate = (dateString: string) => formatDateTimeInTz(dateString, timezone);
 
     const ingressMovements = movements.filter(m => m.type === 'in');
     const egressMovements = movements.filter(m => m.type === 'out');
@@ -251,12 +249,7 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
     const branchName = (session as any).branch_name || `#${session.branch_id}`;
     const blindMode = !showExpected;
 
-    const formatDate = (dateString: string) => {
-      const date = new Date(dateString);
-      return date.toLocaleString('es-CO', {
-        day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit'
-      });
-    };
+    const formatDate = (dateString: string) => formatDateTimeInTz(dateString, timezone);
 
     const incomeMethods = summary.income_by_method || {};
     const expenseMethods = summary.expense_by_method || {};

@@ -6,6 +6,7 @@ import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, LogIn, LogOut, Ban, Wrench } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface CalendarEvent {
   id: string;
@@ -61,11 +62,7 @@ function formatDate(dateString: string): string {
     return 'Mañana';
   }
   
-  return date.toLocaleDateString('es-ES', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  });
+  return formatPlainDate(dateString, { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 function EventItem({ event }: { event: CalendarEvent }) {

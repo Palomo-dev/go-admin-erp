@@ -36,7 +36,9 @@ import { useToast } from '@/components/ui/use-toast';
 import { CuentasPorPagarService } from './CuentasPorPagarService';
 import { AccountPayable, RegistrarPagoForm } from './types';
 import { OrganizationPaymentMethod } from '../facturas-compra/types';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/timezone';
 
 interface RegistrarPagoModalProps {
   cuenta: AccountPayable;
@@ -51,13 +53,15 @@ export function RegistrarPagoModal({
   onClose,
   onPagoRegistrado
 }: RegistrarPagoModalProps) {
+  const { formatDate } = useFormatDate();
+  const { timezone } = useOrgTimezone();
   // Estados del formulario
   const [formData, setFormData] = useState<RegistrarPagoForm>({
     account_payable_id: cuenta.id,
     amount: cuenta.balance,
     payment_method: '',
     reference: '',
-    payment_date: new Date().toISOString().split('T')[0],
+    payment_date: todayInTz(timezone),
     notes: ''
   });
 
@@ -85,7 +89,7 @@ export function RegistrarPagoModal({
       amount: cuenta.balance,
       payment_method: '',
       reference: '',
-      payment_date: new Date().toISOString().split('T')[0],
+      payment_date: todayInTz(timezone),
       notes: ''
     });
     setErrors({});

@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
 import { opportunitiesService } from "@/components/crm/oportunidades/opportunitiesService";
 import { Loader2, Save, Clock, Calendar, Thermometer, Target } from "lucide-react";
+import { useOrgTimezone } from "@/lib/context/OrganizationTimezoneContext";
+import { formatDateInTz } from "@/lib/utils/dateDisplay";
 
 interface FollowupSectionProps {
   opportunityId: string;
@@ -68,6 +70,7 @@ const formatDateTimeInput = (iso?: string | null) => {
 };
 
 export function FollowupSection({ opportunityId, initialData, onUpdated }: FollowupSectionProps) {
+  const { timezone } = useOrgTimezone();
   const [nextContactAt, setNextContactAt] = useState(formatDateTimeInput(initialData?.next_contact_at));
   const [channel, setChannel] = useState(initialData?.contact_channel || "");
   const [result, setResult] = useState(initialData?.contact_result || "");
@@ -113,7 +116,7 @@ export function FollowupSection({ opportunityId, initialData, onUpdated }: Follo
         {lastContact && (
           <Badge variant="outline" className="text-xs">
             <Clock className="h-3 w-3 mr-1" />
-            Último: {new Date(lastContact).toLocaleDateString("es-ES")}
+            Último: {formatDateInTz(lastContact, timezone)}
           </Badge>
         )}
         {initialData?.contact_channel && (

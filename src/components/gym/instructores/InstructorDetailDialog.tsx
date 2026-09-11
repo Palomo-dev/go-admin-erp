@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { Instructor, getInstructorStats, getClasses, GymClass, getClassTypeLabel } from '@/lib/services/gymService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 
 interface InstructorDetailDialogProps {
   open: boolean;
@@ -43,6 +45,7 @@ interface InstructorStats {
 
 export function InstructorDetailDialog({ open, onOpenChange, instructor }: InstructorDetailDialogProps) {
   const { organization } = useOrganization();
+  const { timezone } = useOrgTimezone();
   const [stats, setStats] = useState<InstructorStats | null>(null);
   const [classes, setClasses] = useState<GymClass[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,8 +82,8 @@ export function InstructorDetailDialog({ open, onOpenChange, instructor }: Instr
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-ES', { 
-      day: '2-digit', 
+    return formatDateInTz(dateStr, timezone, {
+      day: '2-digit',
       month: 'short',
       hour: '2-digit',
       minute: '2-digit'

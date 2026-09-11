@@ -19,6 +19,7 @@ import { forecastRealTimeService } from "@/lib/services/forecastRealTimeService"
 import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 import { LoadErrorState } from "@/components/common/LoadErrorState";
 import { describeError, logError } from "@/lib/utils/errorMessage";
+import { formatPlainDate } from "@/lib/utils/dateDisplay";
 
 interface ForecastMonth {
   month: string; // formato: YYYY-MM
@@ -449,9 +450,7 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
                           <td className="p-2 sm:p-3 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden sm:table-cell">{opp.customer_name}</td>
                           <td className="p-2 sm:p-3 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden md:table-cell">
                             {opp.expected_close_date
-                              ? new Date(
-                                  opp.expected_close_date
-                                ).toLocaleDateString()
+                              ? formatPlainDate(opp.expected_close_date)
                               : "Sin fecha"}
                           </td>
                           <td className="p-2 sm:p-3 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden lg:table-cell">{opp.stage_name}</td>

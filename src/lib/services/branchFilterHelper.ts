@@ -68,3 +68,34 @@ export function applyBranchFilterStrict<T extends SupabaseFilterBuilder>(
   // undefined → no filtrar
   return query;
 }
+
+/**
+ * Filtro de sucursal INCLUSIVO, para tablas donde la sucursal es OPCIONAL
+ * (`opportunities`, y cualquier otra con `branch_id` NULL-able).
+ *
+ * Una fila sin sucursal pertenece a la organización entera, no a ninguna
+ * sucursal: al filtrar por una sucursal concreta tiene que aparecer igual.
+ * Con el filtro estricto quedaba invisible en TODAS las vistas de sucursal y
+ * solo asomaba en «Todas las sucursales».
+ *
+ * Por qué existe (2026-09-11): las 35 oportunidades de toda la plataforma
+ * tenían `branch_id` nulo, porque la creación nunca lo escribía, y la lista
+ * de Oportunidades salía vacía para cualquier organización con una sucursal
+ * seleccionada, mientras el pipeline —que no filtra por sucursal— las mostraba.
+ *
+ * - number  → `branch_id = n OR branch_id IS NULL`
+ * - null    → «Todas las sucursales»: no filtra
+ * - undefined → no filtra
+ *
+ * NO sustituye a `applyBranchFilter`: para `sales` y demás tablas con sucursal
+ * obligatoria, el estricto es el correcto.
+ */
+export function applyBranchFilterInclusive<T extends SupabaseFilterBuilder>(
+  query: T,
+  branchFilter?: number | null,
+): T {
+  if (branchFilter != null && typeof branchFilter === 'number' && Number.isFinite(branchFilter) && branchFilter > 0) {
+    return query.or(`branch_id.eq.${branchFilter},branch_id.is.null`);
+  }
+  return query;
+}

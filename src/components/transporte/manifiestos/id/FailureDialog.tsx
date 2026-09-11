@@ -20,6 +20,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, XCircle, Package, CalendarDays } from 'lucide-react';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/timezone';
 
 interface FailureDialogProps {
   open: boolean;
@@ -58,6 +60,7 @@ export function FailureDialog({
   onConfirm,
   isLoading = false,
 }: FailureDialogProps) {
+  const { timezone } = useOrgTimezone();
   const [formData, setFormData] = useState({
     failure_reason_code: '',
     failure_reason_text: '',
@@ -154,7 +157,7 @@ export function FailureDialog({
               type="date"
               value={formData.reschedule_date}
               onChange={(e) => setFormData((p) => ({ ...p, reschedule_date: e.target.value }))}
-              min={new Date().toISOString().split('T')[0]}
+              min={todayInTz(timezone)}
             />
           </div>
 

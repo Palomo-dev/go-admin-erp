@@ -1,0 +1,22 @@
+-- ============================================================
+-- Cupones: retirar la política "Allow anon update coupons" (using = true)
+-- ============================================================
+-- Permitía a cualquier llamante —incluida la clave publicable del navegador,
+-- sin sesión— actualizar cualquier fila de `coupons` de cualquier
+-- organización (discount_value, usage_limit, is_active...). Su único
+-- consumidor era el incremento manual de `usage_count` que hacía el sitio web
+-- al crear un pedido, y ese incremento se eliminó el 2026-09-10 porque
+-- duplicaba el conteo: el trigger `trg_coupon_redemption_increment` de
+-- `coupon_redemptions` ya suma 1 al insertar la redención.
+--
+-- Tras esta migración, `coupons` conserva:
+--   · "Allow anon select coupons"  (lectura pública; el sitio web valida
+--     códigos con ella cuando no tiene service_role)
+--   · coupons_org_isolation        (ALL para miembros activos de la organización)
+--
+-- Verificado el 2026-09-10 en begin/rollback: quedan solo esas dos políticas.
+-- Ni goadmin-websites (solo lecturas de `coupons`) ni el ERP (sesión de
+-- usuario, cubierto por coupons_org_isolation) dependen de la política retirada.
+-- ============================================================
+
+drop policy if exists "Allow anon update coupons" on public.coupons;

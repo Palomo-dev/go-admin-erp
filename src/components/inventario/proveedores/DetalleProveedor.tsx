@@ -15,6 +15,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Proveedor, CompraProveedor } from './types';
 import { formatCurrency } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import { supabase } from '@/lib/supabase/config';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -32,6 +34,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
   proveedor,
   onClose
 }) => {
+  const { timezone } = useOrgTimezone();
 
   const [historialCompras, setHistorialCompras] = useState<CompraProveedor[]>([]);
   const [loadingHistorial, setLoadingHistorial] = useState(true);
@@ -113,11 +116,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
   // Función para formatear una fecha
   const formatFecha = (fecha: string | undefined) => {
     if (!fecha) return '-';
-    return new Date(fecha).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return formatDateInTz(fecha, timezone);
   };
   
   return (

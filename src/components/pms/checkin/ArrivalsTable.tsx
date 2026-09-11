@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { TableSkeleton } from '@/components/common/PageSkeletons';
 import type { CheckinReservation } from '@/lib/services/checkinService';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface ArrivalsTableProps {
   arrivals: CheckinReservation[];
@@ -64,11 +65,7 @@ export function ArrivalsTable({
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: 'short',
-    });
+    return formatPlainDate(dateString, { day: '2-digit', month: 'short' });
   };
 
   if (isLoading) {

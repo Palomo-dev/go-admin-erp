@@ -3,6 +3,8 @@
 import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { cn } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { toPlainDate } from '@/lib/utils/dateDisplay';
 
 interface DroppableTimeSlotProps {
   date: Date;
@@ -35,7 +37,8 @@ export function DroppableTimeSlot({
   style,
   cellHeight,
 }: DroppableTimeSlotProps) {
-  const dateStr = date.toISOString().split('T')[0];
+  const { timezone } = useOrgTimezone();
+  const dateStr = toPlainDate(date, timezone);
   const slotId = `slot-${dateStr}-${hour}`;
 
   const { isOver, setNodeRef } = useDroppable({

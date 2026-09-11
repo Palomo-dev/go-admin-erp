@@ -3,7 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { cn, formatCurrency, formatDate } from '@/utils/Utils';
+import { cn, formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import {
   DollarSign,
   Calendar,
@@ -83,6 +84,7 @@ export function HRMPayrollStatus({
   recentRuns,
   isLoading,
 }: HRMPayrollStatusProps) {
+  const { formatDate } = useFormatDate();
   if (isLoading) {
     return (
       <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">

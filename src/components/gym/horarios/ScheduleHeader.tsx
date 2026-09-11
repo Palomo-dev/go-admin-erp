@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, ChevronLeft, ChevronRight, ArrowLeft, Clock, Plus } from 'lucide-react';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 
 interface ScheduleHeaderProps {
   currentDate: Date;
@@ -23,8 +25,9 @@ export function ScheduleHeader({
   onNewClass,
   isLoading,
 }: ScheduleHeaderProps) {
+  const { timezone } = useOrgTimezone();
   const formatMonthYear = (date: Date) => {
-    return date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    return formatDateInTz(date.toISOString(), timezone, { month: 'long', year: 'numeric' });
   };
 
   return (

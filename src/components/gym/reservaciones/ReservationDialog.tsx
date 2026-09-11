@@ -23,6 +23,8 @@ import { Loader2, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { GymClass, ClassReservation, getClasses, getClassTypeLabel } from '@/lib/services/gymService';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 interface ReservationDialogProps {
   open: boolean;
@@ -49,6 +51,8 @@ export function ReservationDialog({ open, onOpenChange, reservation, preselected
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [reservationSource, setReservationSource] = useState<string>('app');
+
+  const { timezone } = useOrgTimezone();
 
   const isEditing = !!reservation;
 
@@ -144,8 +148,8 @@ export function ReservationDialog({ open, onOpenChange, reservation, preselected
 
   const formatClassOption = (gymClass: GymClass) => {
     const date = new Date(gymClass.start_at);
-    const time = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-    const dateStr = date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+    const time = formatTimeInTz(date.toISOString(), timezone);
+    const dateStr = formatDateInTz(date.toISOString(), timezone, { day: '2-digit', month: 'short' });
     return `${gymClass.title} - ${dateStr} ${time} (${getClassTypeLabel(gymClass.class_type)})`;
   };
 

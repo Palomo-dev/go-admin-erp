@@ -32,6 +32,7 @@ import {
   DoorOpen
 } from 'lucide-react';
 import { type ReservationListItem } from '@/lib/services/reservationListService';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface ReservationsTableProps {
   reservations: ReservationListItem[];
@@ -92,13 +93,7 @@ export function ReservationsTable({
     onSelectionChange(newSelection);
   };
   const formatDate = (dateString: string) => {
-    // Agregar hora para evitar problemas de zona horaria
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+    return formatPlainDate(dateString, { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   const formatCurrency = (amount: number) => {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { CalendarSettings, DEFAULT_CALENDAR_SETTINGS } from './types';
+import { invalidateTimezoneCache } from '@/lib/services/organizationTimezoneService';
 
 interface UseCalendarSettingsProps {
   organizationId: number | null;
@@ -122,6 +123,15 @@ export function useCalendarSettings({
           });
 
         if (insertError) throw insertError;
+      }
+
+      // Sincronizar organizations.timezone (fuente de verdad canonica para fn_today_for_org)
+      if (settings.timezone) {
+        await supabase
+          .from('organizations')
+          .update({ timezone: settings.timezone })
+          .eq('id', organizationId);
+        invalidateTimezoneCache(organizationId);
       }
 
       setOriginalSettings(settings);

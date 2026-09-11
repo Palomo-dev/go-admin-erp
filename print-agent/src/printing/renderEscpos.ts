@@ -1,4 +1,4 @@
-import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, SaleTicketPayment, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload } from './types';
+﻿import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, SaleTicketPayment, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload } from './types';
 import type { PaperSpec } from './paper';
 import { writeRasterImage } from './escposImage';
 
@@ -56,7 +56,7 @@ const GO_ADMIN_FOOTER = [
 
 const STATION_LABELS: Record<string, string> = {
   hot_kitchen: 'COCINA CALIENTE',
-  cold_kitchen: 'COCINA FRÍA',
+  cold_kitchen: 'COCINA FRÃA',
   bar: 'BAR',
   cashier: 'CAJA',
   all: 'COMANDA',
@@ -151,26 +151,27 @@ function writeItemLine(device: any, label: string, value: string, chars: number)
   device.style('normal').text(padRight('', value, chars));
 }
 
-function formatDateParts(iso: string): { date: string; time: string } {
+function formatDateParts(iso: string, timezone?: string): { date: string; time: string } {
   const d = new Date(iso);
+  const tzOpts = timezone ? { timeZone: timezone } : {};
   return {
-    date: d.toLocaleDateString('es-CO'),
+    date: d.toLocaleDateString('es-CO', tzOpts),
     // hour12: false evita el sufijo "p. m." que agrega el locale es-CO. Ese
     // sufijo gasta 6 columnas y hace que la linea de fecha desborde las 32
     // columnas disponibles en papel de 58mm.
-    time: d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false }),
+    time: d.toLocaleTimeString('es-CO', { ...tzOpts, hour: '2-digit', minute: '2-digit', hour12: false }),
   };
 }
 
 /**
- * Envía a un dispositivo escpos (chainable) los comandos para imprimir una
+ * EnvÃ­a a un dispositivo escpos (chainable) los comandos para imprimir una
  * comanda de cocina. `device` es una instancia de `escpos.Printer` ya
  * conectada a un `escpos.<Interface>` (network/usb/bluetooth).
  */
 export function printKitchenTicket(device: any, payload: KitchenTicketPrintPayload, paper: PaperSpec): void {
   const chars = paper.charsPerLine;
   const stationLabel = STATION_LABELS[payload.station] || payload.station.toUpperCase();
-  const { date, time } = formatDateParts(payload.createdAt);
+  const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
 
   // --- Header: datos del negocio ---
@@ -196,7 +197,7 @@ export function printKitchenTicket(device: any, payload: KitchenTicketPrintPaylo
     .text(sep(chars))
     .align('lt');
 
-  // --- Estación ---
+  // --- EstaciÃ³n ---
   device.style('b').size(...SIZE_TALL).text(`Estacion: ${stationLabel}`).style('normal').size(...SIZE_NORMAL);
 
   // --- Info del ticket ---
@@ -250,14 +251,14 @@ export function printKitchenTicket(device: any, payload: KitchenTicketPrintPaylo
 }
 
 /**
- * Construye una versión en texto plano de la comanda, usada por el driver
- * 'system' (impresora del sistema operativo vía spooler estándar), que no
+ * Construye una versiÃ³n en texto plano de la comanda, usada por el driver
+ * 'system' (impresora del sistema operativo vÃ­a spooler estÃ¡ndar), que no
  * habla ESC/POS directamente.
  */
 export function buildPlainTextTicket(payload: KitchenTicketPrintPayload, paper: PaperSpec): string {
   const chars = paper.charsPerLine;
   const stationLabel = STATION_LABELS[payload.station] || payload.station.toUpperCase();
-  const { date, time } = formatDateParts(payload.createdAt);
+  const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
   const lines: string[] = [];
 
@@ -311,7 +312,7 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
   const chars = paper.charsPerLine;
   // Una linea en doble ancho dispone de la mitad de columnas.
   const doubleChars = Math.floor(chars / 2);
-  const { date, time } = formatDateParts(payload.createdAt);
+  const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
 
@@ -513,11 +514,11 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
 }
 
 /**
- * Versión en texto plano del ticket de venta, para impresoras 'system'.
+ * VersiÃ³n en texto plano del ticket de venta, para impresoras 'system'.
  */
 export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper: PaperSpec): string {
   const chars = paper.charsPerLine;
-  const { date, time } = formatDateParts(payload.createdAt);
+  const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
   const lines: string[] = [];
@@ -661,7 +662,7 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
  */
 export function printShipmentGuide(device: any, payload: ShipmentGuidePrintPayload, paper: PaperSpec): void {
   const chars = paper.charsPerLine;
-  const { date, time } = formatDateParts(payload.createdAt);
+  const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const tracking = payload.trackingNumber || payload.shipmentNumber || payload.shipmentId;
 
   // --- Header: datos del negocio ---
@@ -796,7 +797,7 @@ export function printShipmentGuide(device: any, payload: ShipmentGuidePrintPaylo
  */
 export function buildPlainTextShipmentGuide(payload: ShipmentGuidePrintPayload, paper: PaperSpec): string {
   const chars = paper.charsPerLine;
-  const { date, time } = formatDateParts(payload.createdAt);
+  const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const tracking = payload.trackingNumber || payload.shipmentNumber || payload.shipmentId;
   const lines: string[] = [];
 
@@ -909,7 +910,7 @@ export function buildPlainTextShipmentGuide(payload: ShipmentGuidePrintPayload, 
 export function printElectronicInvoice(device: any, payload: ElectronicInvoicePrintPayload, paper: PaperSpec): void {
   const chars = paper.charsPerLine;
   const doubleChars = Math.floor(chars / 2);
-  const { date, time } = formatDateParts(payload.createdAt);
+  const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
   const envLabel = payload.environment === 'production' ? 'PRODUCCION' : 'PRUEBAS';
 
@@ -954,7 +955,8 @@ export function printElectronicInvoice(device: any, payload: ElectronicInvoicePr
   if (payload.cashierName) device.text(`Cajero: ${payload.cashierName}`);
   if (payload.validationDate) {
     const vd = new Date(payload.validationDate);
-    device.text(`Validacion DIAN: ${vd.toLocaleDateString('es-CO')} ${vd.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`);
+    const tzOpts = payload.timezone ? { timeZone: payload.timezone } : {};
+    device.text(`Validacion DIAN: ${vd.toLocaleDateString('es-CO', tzOpts)} ${vd.toLocaleTimeString('es-CO', { ...tzOpts, hour: '2-digit', minute: '2-digit' })}`);
   }
 
   // --- Info del cliente ---
@@ -1089,7 +1091,7 @@ export function printElectronicInvoice(device: any, payload: ElectronicInvoicePr
  */
 export function buildPlainTextElectronicInvoice(payload: ElectronicInvoicePrintPayload, paper: PaperSpec): string {
   const chars = paper.charsPerLine;
-  const { date, time } = formatDateParts(payload.createdAt);
+  const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
   const envLabel = payload.environment === 'production' ? 'PRODUCCION' : 'PRUEBAS';
 
@@ -1122,7 +1124,8 @@ export function buildPlainTextElectronicInvoice(payload: ElectronicInvoicePrintP
   if (payload.cashierName) lines.push(`Cajero: ${payload.cashierName}`);
   if (payload.validationDate) {
     const vd = new Date(payload.validationDate);
-    lines.push(`Validacion DIAN: ${vd.toLocaleDateString('es-CO')} ${vd.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`);
+    const tzOpts = payload.timezone ? { timeZone: payload.timezone } : {};
+    lines.push(`Validacion DIAN: ${vd.toLocaleDateString('es-CO', tzOpts)} ${vd.toLocaleTimeString('es-CO', { ...tzOpts, hour: '2-digit', minute: '2-digit' })}`);
   }
 
   // --- Cliente ---
@@ -1204,3 +1207,4 @@ export function buildPlainTextElectronicInvoice(payload: ElectronicInvoicePrintP
 
   return lines.join('\n');
 }
+

@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { MembershipEvent } from '@/lib/services/gymService';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 interface MembershipTimelineProps {
   events: MembershipEvent[];
@@ -83,6 +85,8 @@ const EVENT_LABELS: Record<string, string> = {
 export function MembershipTimeline({ events, isLoading, maxVisible = 10 }: MembershipTimelineProps) {
   const [showAll, setShowAll] = useState(false);
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
+
+  const { timezone } = useOrgTimezone();
   
   const visibleEvents = showAll ? events : events.slice(0, maxVisible);
   const hasMore = events.length > maxVisible;
@@ -171,9 +175,9 @@ export function MembershipTimeline({ events, isLoading, maxVisible = 10 }: Membe
                             {event.description || label}
                           </p>
                           <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            <span>{date.toLocaleDateString('es-CO')}</span>
+                            <span>{formatDateInTz(date.toISOString(), timezone)}</span>
                             <span>•</span>
-                            <span>{date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span>{formatTimeInTz(date.toISOString(), timezone)}</span>
                             {event.performed_by && (
                               <>
                                 <span>•</span>

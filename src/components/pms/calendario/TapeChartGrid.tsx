@@ -19,6 +19,8 @@ import { es } from 'date-fns/locale';
 import type { TapeChartSpace, TapeChartReservation, TapeChartBlock } from '@/lib/services/tapeChartService';
 import { DraggableReservationBar } from './DraggableReservationBar';
 import { DroppableCell } from './DroppableCell';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { toPlainDate } from '@/lib/utils/timezone';
 
 interface TapeChartGridProps {
   spaces: TapeChartSpace[];
@@ -65,6 +67,7 @@ export function TapeChartGrid({
   onCheckout,
   isLoading = false,
 }: TapeChartGridProps) {
+  const { timezone } = useOrgTimezone();
   const cellWidth = 80;
   const rowHeight = 48;
   const labelWidth = 160;
@@ -130,7 +133,7 @@ export function TapeChartGrid({
       const newCheckin = targetDate;
       const newCheckoutDate = new Date(targetDate);
       newCheckoutDate.setDate(newCheckoutDate.getDate() + nights);
-      const newCheckout = newCheckoutDate.toISOString().split('T')[0];
+      const newCheckout = toPlainDate(newCheckoutDate, timezone);
 
       onReservationMove?.(reservation.id, targetSpaceId, newCheckin, newCheckout);
     }
@@ -146,7 +149,7 @@ export function TapeChartGrid({
       // Add one day to the end date since checkout is the day after the last night
       const checkoutDate = new Date(newDate);
       checkoutDate.setDate(checkoutDate.getDate() + 1);
-      onReservationResize?.(reservationId, reservation.checkin, checkoutDate.toISOString().split('T')[0]);
+      onReservationResize?.(reservationId, reservation.checkin, toPlainDate(checkoutDate, timezone));
     }
   };
 
@@ -173,7 +176,7 @@ export function TapeChartGrid({
       // El checkout es el día después del último día seleccionado
       const checkoutDate = new Date(dates1[1]);
       checkoutDate.setDate(checkoutDate.getDate() + 1);
-      const checkout = checkoutDate.toISOString().split('T')[0];
+      const checkout = toPlainDate(checkoutDate, timezone);
       
       onCreateReservation?.(spaceId, checkin, checkout);
     }

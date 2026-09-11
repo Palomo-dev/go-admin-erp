@@ -2,5 +2,64 @@
   "extends": [
     "next/core-web-vitals",
     "next/typescript"
+  ],
+  "rules": {
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "CallExpression[callee.object.property.name='toISOString'][callee.property.name='split']",
+        "message": "toISOString().split('T') descarta la zona horaria y produce el dia UTC. Usar todayInTz() o toPlainDate() de src/lib/utils/dateDisplay.ts. Ver docs/reglas-fechas-timezone.md."
+      },
+      {
+        "selector": "CallExpression[callee.object.property.name='toISOString'][callee.property.name='slice']",
+        "message": "toISOString().slice(0,10) descarta la zona horaria. Usar todayInTz() o toPlainDate() de src/lib/utils/dateDisplay.ts. Ver docs/reglas-fechas-timezone.md."
+      }
+    ],
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "@/utils/Utils",
+            "importNames": ["formatDate", "parseLocalDate"],
+            "message": "formatDate y parseLocalDate estan deprecated por bug de zona horaria. Usar useFormatDate() de @/lib/context/OrganizationTimezoneContext o formatDateInTz() de @/lib/utils/dateDisplay. Ver docs/reglas-fechas-timezone.md."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/components/pos/ventas/**",
+        "src/components/pos/cajas/**",
+        "src/components/pos/reportes/**",
+        "src/components/finanzas/dashboard/**",
+        "src/lib/services/reportes/**",
+        "src/components/inicio/**",
+        "src/components/inventario/**",
+        "src/components/finanzas/cuentas-por-pagar/**",
+        "src/components/pms/**",
+        "src/components/hrm/**",
+        "src/components/finanzas/facturas-venta/**",
+        "src/components/finanzas/cuentas-por-cobrar/CuentasPorCobrarTable.tsx",
+        "src/app/api/factus/invoice/route.ts",
+        "src/lib/utils/dateDisplay.ts",
+        "src/lib/context/OrganizationTimezoneContext.tsx",
+        "src/lib/services/organizationTimezoneService.ts",
+        "src/components/calendario/configuracion/**"
+      ],
+      "rules": {
+        "no-restricted-syntax": "error",
+        "no-restricted-imports": "error"
+      }
+    },
+    {
+      "files": ["src/**"],
+      "rules": {
+        "no-restricted-syntax": "warn",
+        "no-restricted-imports": "warn"
+      }
+    }
   ]
 }

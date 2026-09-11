@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId as getOrgId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId as getOrgId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { applyBranchFilterInclusive } from '@/lib/services/branchFilterHelper';
+import { DEFAULT_TIMEZONE, toPlainDate } from '@/lib/utils/timezone';
 import {
   Opportunity,
   OpportunityFilters,
@@ -204,9 +206,11 @@ class OpportunitiesService {
       query = query.eq('record_type', filters.record_type);
     }
 
-    if (filters?.branchId != null) {
-      query = query.eq('branch_id', filters.branchId);
-    }
+    // INCLUSIVO, no estricto: una oportunidad sin sucursal es de toda la
+    // organización y tiene que aparecer bajo cualquier sucursal. Con `eq` la
+    // lista salía vacía (2026-09-11: el 100 % de las oportunidades de la
+    // plataforma tenían `branch_id` nulo, porque la creación no lo escribía).
+    query = applyBranchFilterInclusive(query, filters?.branchId);
 
     const { data, error } = await query.order('created_at', { ascending: false });
 
@@ -266,6 +270,10 @@ class OpportunitiesService {
         vertical_id: input.vertical_id || null,
         next_contact_at: input.next_contact_at || null,
         record_type: input.record_type || 'deal',
+        // La sucursal en la que se crea. Antes no se escribía nunca y todas
+        // nacían sin sucursal. Mismo origen que usa el POS: la seleccionada en
+        // sesión; si no hay ninguna («Todas»), queda nula y es de toda la org.
+        branch_id: input.branch_id ?? getCurrentBranchId(),
       })
       .select()
       .single();
@@ -542,7 +550,8 @@ class OpportunitiesService {
 
   async getForecastByPeriod(
     pipelineId: string,
-    period: 'weekly' | 'monthly' | 'quarterly'
+    period: 'weekly' | 'monthly' | 'quarterly',
+    timezone: string = DEFAULT_TIMEZONE
   ): Promise<ForecastData[]> {
     const opportunities = await this.getOpportunities({ pipelineId });
     const pipeline = (await this.getPipelines()).find((p) => p.id === pipelineId);
@@ -559,7 +568,7 @@ class OpportunitiesService {
       if (period === 'weekly') {
         const weekStart = new Date(date);
         weekStart.setDate(date.getDate() - date.getDay());
-        periodKey = weekStart.toISOString().split('T')[0];
+        periodKey = toPlainDate(weekStart, timezone);
       } else if (period === 'monthly') {
         periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       } else {

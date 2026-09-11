@@ -22,6 +22,7 @@ import {
   Loader2,
   Edit3,
 } from "lucide-react";
+import { formatPlainDate } from "@/lib/utils/dateDisplay";
 
 interface TaskItem {
   id: string;
@@ -55,7 +56,7 @@ const getTaskStatusColor = (status: string) => {
 
 const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return "N/A";
-  return new Date(dateStr).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+  return formatPlainDate(dateStr, { day: "2-digit", month: "short", year: "numeric" });
 };
 
 export function TasksSection({ opportunityId, customerId, tasks, onTasksChanged }: TasksSectionProps) {

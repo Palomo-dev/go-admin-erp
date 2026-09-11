@@ -1,7 +1,8 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { CuentaPorPagarDetalle, PaymentRecord, AgingInfo, AccountActions, APInstallment } from './types';
-import { parseLocalDate } from '@/utils/Utils';
+import { DEFAULT_TIMEZONE, getToday } from '@/lib/utils/timezone';
+import { plainDateToInstant, toPlainDate, formatDateInTz } from '@/lib/utils/dateDisplay';
 
 export class CuentaPorPagarDetailService {
   private static getOrganizationId(): number {
@@ -11,7 +12,7 @@ export class CuentaPorPagarDetailService {
   }
 
   // Obtener detalles de una cuenta por pagar
-  static async obtenerDetalleCuentaPorPagar(accountId: string): Promise<CuentaPorPagarDetalle | null> {
+  static async obtenerDetalleCuentaPorPagar(accountId: string, timezone: string = DEFAULT_TIMEZONE): Promise<CuentaPorPagarDetalle | null> {
     const organizationId = this.getOrganizationId();
     
     try {
@@ -105,8 +106,9 @@ export class CuentaPorPagarDetailService {
       }));
 
       // Calcular días vencidos
-      const dueDate = parseLocalDate(data.due_date);
-      const today = new Date();
+      const dueDate = new Date(data.due_date);
+      const todayStr = getToday(timezone);
+      const today = new Date(plainDateToInstant(todayStr, timezone));
       const daysOverdue = dueDate < today 
         ? Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
         : 0;
@@ -221,7 +223,8 @@ export class CuentaPorPagarDetailService {
     totalAmount: number,
     numberOfInstallments: number,
     startDate: Date,
-    interestRate: number = 0
+    interestRate: number = 0,
+    timezone: string = DEFAULT_TIMEZONE
   ): Promise<void> {
     try {
       // Eliminar cuotas existentes
@@ -246,7 +249,7 @@ export class CuentaPorPagarDetailService {
         installments.push({
           account_payable_id: accountId,
           installment_number: i,
-          due_date: dueDate.toISOString().split('T')[0],
+          due_date: toPlainDate(dueDate, timezone),
           amount: amount,
           principal: principal,
           interest: interest,
@@ -495,13 +498,13 @@ export class CuentaPorPagarDetailService {
   }
 
   // Generar estado de cuenta
-  static async generarEstadoCuenta(accountId: string): Promise<string> {
-    const account = await this.obtenerDetalleCuentaPorPagar(accountId);
+  static async generarEstadoCuenta(accountId: string, timezone: string = DEFAULT_TIMEZONE): Promise<string> {
+    const account = await this.obtenerDetalleCuentaPorPagar(accountId, timezone);
     if (!account) throw new Error('Cuenta no encontrada');
 
     const installments = await this.obtenerCuotas(accountId);
     
-    const formatDate = (date: string) => new Date(date).toLocaleDateString('es-CO');
+    const formatDate = (date: string) => formatDateInTz(date, timezone);
     const formatCurrency = (amount: number) => 
       new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(amount);
 

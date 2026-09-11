@@ -24,6 +24,8 @@ import { ClassReservation, getClassTypeLabel } from '@/lib/services/gymService';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { toast } from 'sonner';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 interface CheckInDialogProps {
   open: boolean;
@@ -38,14 +40,16 @@ export function CheckInDialog({ open, onOpenChange, reservation, onCheckInComple
   const [isLoading, setIsLoading] = useState(false);
   const [method, setMethod] = useState<CheckInMethod>('manual');
 
+  const { timezone } = useOrgTimezone();
+
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return formatTimeInTz(date.toISOString(), timezone);
   };
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    return formatDateInTz(date.toISOString(), timezone, { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   const handleCheckIn = async () => {
@@ -172,7 +176,7 @@ export function CheckInDialog({ open, onOpenChange, reservation, onCheckInComple
           <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
             <p className="text-sm text-gray-600 dark:text-gray-400">Hora de check-in</p>
             <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              {formatTimeInTz(new Date().toISOString(), timezone)}
             </p>
           </div>
         </div>

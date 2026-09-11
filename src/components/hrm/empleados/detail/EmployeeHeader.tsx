@@ -23,6 +23,7 @@ import {
   Building2,
   Briefcase,
 } from 'lucide-react';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface EmployeeHeaderProps {
   employee: {
@@ -74,11 +75,7 @@ export function EmployeeHeader({ employee, onEdit, onChangeStatus }: EmployeeHea
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return formatPlainDate(dateStr, { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   return (

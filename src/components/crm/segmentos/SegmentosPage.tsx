@@ -50,11 +50,12 @@ import { useToast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SegmentosService } from './SegmentosService';
 import { Segment, SegmentStats } from './types';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { CopyableId } from '@/components/common/CopyableId';
 
 export function SegmentosPage() {
   const router = useRouter();
+  const { formatDate } = useFormatDate();
   const { toast } = useToast();
   const [segments, setSegments] = useState<Segment[]>([]);
   const [stats, setStats] = useState<SegmentStats>({ total: 0, dynamic: 0, static: 0, totalCustomers: 0 });

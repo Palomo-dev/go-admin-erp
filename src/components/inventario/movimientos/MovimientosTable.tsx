@@ -25,7 +25,9 @@ import {
   ArrowUpCircle,
   Package
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import type { StockMovement } from '@/lib/services/stockService';
 import Link from 'next/link';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
@@ -83,6 +85,8 @@ export function MovimientosTable({
   isLoading,
   onViewSource
 }: MovimientosTableProps) {
+  const { formatDate } = useFormatDate();
+  const { timezone } = useOrgTimezone();
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -162,7 +166,7 @@ export function MovimientosTable({
                     {formatDate(item.created_at)}
                     <br />
                     <span className="text-xs">
-                      {new Date(item.created_at).toLocaleTimeString('es-CO', { 
+                      {formatTimeInTz(item.created_at, timezone, { 
                         hour: '2-digit', 
                         minute: '2-digit' 
                       })}

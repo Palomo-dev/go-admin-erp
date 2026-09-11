@@ -35,7 +35,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { SegmentosService } from '../SegmentosService';
 import { Segment, FilterRule, FILTER_FIELDS, FILTER_OPERATORS } from '../types';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface SegmentoDetallePageProps {
   segmentId: string;
@@ -45,6 +45,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { formatDate } = useFormatDate();
   
   const [segment, setSegment] = useState<Segment | null>(null);
   const [customers, setCustomers] = useState<any[]>([]);

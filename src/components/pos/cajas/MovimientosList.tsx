@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { CajasService } from './CajasService';
 import type { CashMovement } from './types';
 
@@ -16,6 +17,7 @@ interface MovimientosListProps {
 }
 
 export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListProps) {
+  const { formatDateTime } = useFormatDate();
   const [movements, setMovements] = useState<CashMovement[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,17 +35,6 @@ export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListPr
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-CO', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   const getTotalByType = (type: 'in' | 'out') => {
@@ -134,7 +125,7 @@ export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListPr
                         <div className="flex items-center space-x-2 mt-1">
                           <Clock className="h-3 w-3 dark:text-gray-500" />
                           <span className="text-sm dark:text-gray-400 text-gray-500">
-                            {formatDate(movement.created_at)}
+                            {formatDateTime(movement.created_at)}
                           </span>
                         </div>
                         {movement.notes && (

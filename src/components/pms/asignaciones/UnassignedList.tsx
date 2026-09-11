@@ -14,8 +14,9 @@ import {
   ChevronRight,
   AlertTriangle
 } from 'lucide-react';
-import { formatDate } from '@/utils/Utils';
 import { cn } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/timezone';
 import type { UnassignedReservation } from '@/lib/services/roomAssignmentService';
 
 interface UnassignedListProps {
@@ -36,15 +37,18 @@ function ReservationItem({
   reservation, 
   isSelected, 
   onSelect, 
-  onAssign 
+  onAssign,
+  formatDate,
 }: { 
   reservation: UnassignedReservation; 
   isSelected: boolean;
   onSelect: () => void;
   onAssign: () => void;
+  formatDate: (value: string | Date | null | undefined) => string;
 }) {
+  const { timezone } = useOrgTimezone();
   const status = statusConfig[reservation.status] || { label: reservation.status, color: 'bg-gray-100 text-gray-700' };
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayInTz(timezone);
   const isUrgent = reservation.checkin === today;
 
   return (
@@ -122,6 +126,7 @@ export function UnassignedList({
   onAssign,
   isLoading = false,
 }: UnassignedListProps) {
+  const { formatDate } = useFormatDate();
   const allSelected = reservations.length > 0 && selectedIds.length === reservations.length;
 
   return (
@@ -168,6 +173,7 @@ export function UnassignedList({
               isSelected={selectedIds.includes(reservation.id)}
               onSelect={() => onSelect(reservation.id)}
               onAssign={() => onAssign(reservation)}
+              formatDate={formatDate}
             />
           ))
         )}

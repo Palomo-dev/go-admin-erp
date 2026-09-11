@@ -23,6 +23,8 @@ import { Loader2 } from 'lucide-react';
 import type { TripWithDetails } from '@/lib/services/tripsService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/timezone';
 
 interface Route {
   id: string;
@@ -67,6 +69,7 @@ export function TripDialog({
   branches,
   onSave,
 }: TripDialogProps) {
+  const { timezone } = useOrgTimezone();
   const [loading, setLoading] = useState(false);
 
   const { selectedBranchId } = useBranch();
@@ -103,7 +106,7 @@ export function TripDialog({
       });
       setBranchId(trip.branch_id ?? null);
     } else {
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayInTz(timezone);
       setFormData({
         route_id: '',
         trip_date: today,

@@ -690,4 +690,80 @@ describe('F0 Guardarraíles', () => {
       expect(offenders).toEqual([]);
     });
   });
+
+  // === Caso 15: app_branch_access — propiedades de seguridad (F-08) ===
+  //
+  // app_branch_access se ejecuta en una política RESTRICTIVE sobre 19 tablas.
+  // Tres versiones se aplicaron en dos días; la v1 tenia un bug de fuga
+  // entre organizaciones. Estos tests verifican que la migración SQL contiene
+  // las cuatro propiedades de seguridad que la función debe tener:
+  //
+  // 1. (2) acotada por organización (ser admin de la org A no abre la org B)
+  // 2. (3) filtra por is_active (miembro desactivado sin acceso)
+  // 3. (4) acotada por organización + membresía verificada
+  // 4. STABLE (para que Postgres pueda cachear por sentencia)
+  describe('15. app_branch_access: propiedades de seguridad de la migración', () => {
+    const migrationPath = path.join(
+      REPO_ROOT, 'supabase', 'migrations',
+      '20260910160100_f08_fix_app_branch_access.sql'
+    );
+    let sql = '';
+
+    beforeAll(() => {
+      expect(fs.existsSync(migrationPath)).toBe(true);
+      sql = readFile(migrationPath);
+    });
+
+    test('la migración existe', () => {
+      expect(sql.length).toBeGreaterThan(0);
+    });
+
+    test('(2) está acotada por organización dueña del branch', () => {
+      // La cláusula (2) debe verificar om.organization_id contra la org del branch
+      expect(sql).toMatch(/om\.organization_id\s*=\s*\(\s*SELECT\s+b\.organization_id\s+FROM\s+branches\s+b\s+WHERE\s+b\.id\s*=\s*p_branch_id\s*\)/);
+    });
+
+    test('(2) filtra por is_active', () => {
+      // Debe haber un om.is_active = true antes de la cláusula (3)
+      expect(sql).toMatch(/om\.is_active\s*=\s*true/);
+    });
+
+    test('(3) filtra por is_active', () => {
+      // La cláusula (3) debe tener om.is_active = true
+      // Buscar el segundo occurrence de is_active = true (en la cláusula 3)
+      const matches = sql.match(/om\.is_active\s*=\s*true/g);
+      expect(matches).not.toBeNull();
+      expect(matches!.length).toBeGreaterThanOrEqual(3); // (2), (3) y (4)
+    });
+
+    test('(4) verifica membresía en la org antes de aplicar sin restricción', () => {
+      // (4) debe tener EXISTS en organization_members para la org del branch
+      // Y NOT EXISTS en member_branches para esa misma org
+      expect(sql).toMatch(/--\s*\(4\)[\s\S]*OR\s*\(\s*EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+organization_members\s+om/);
+      expect(sql).toMatch(/AND\s+NOT\s+EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+member_branches\s+mb/);
+    });
+
+    test('(4) acota NOT EXISTS por organización', () => {
+      // El NOT EXISTS de (4) debe filtrar por b.organization_id = org del branch
+      expect(sql).toMatch(/b\.organization_id\s*=\s*\(\s*SELECT\s+b2\.organization_id\s+FROM\s+branches\s+b2/);
+    });
+
+    test('la función es STABLE', () => {
+      expect(sql).toMatch(/STABLE/);
+    });
+
+    test('la función es SECURITY DEFINER', () => {
+      expect(sql).toMatch(/SECURITY\s+DEFINER/);
+    });
+
+    test('no falta is_active en ninguna cláusula con EXISTS', () => {
+      // Cada EXISTS que toca organization_members debe filtrar is_active
+      const omBlocks = sql.split('FROM organization_members');
+      // El primer elemento es el prefijo; los demás son bloques que siguen a FROM organization_members
+      for (let i = 1; i < omBlocks.length; i++) {
+        const block = omBlocks[i].substring(0, 200);
+        expect(block).toMatch(/is_active\s*=\s*true/);
+      }
+    });
+  });
 });

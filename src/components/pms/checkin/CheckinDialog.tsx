@@ -48,6 +48,7 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import organizationService from '@/lib/services/organizationService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface CheckinDialogProps {
   open: boolean;
@@ -175,7 +176,7 @@ export function CheckinDialog({
       setDateWarning({
         type: 'warning',
         title: 'Check-in Anticipado',
-        message: `La fecha programada de check-in es el ${checkinDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} (en ${diffDays} ${diffDays === 1 ? 'día' : 'días'}). ¿Deseas realizar el check-in ahora de todas formas?`,
+        message: `La fecha programada de check-in es el ${formatPlainDate(reservation.checkin, { day: '2-digit', month: 'long', year: 'numeric' })} (en ${diffDays} ${diffDays === 1 ? 'día' : 'días'}). ¿Deseas realizar el check-in ahora de todas formas?`,
       });
     }
     // Check-in después de la fecha programada
@@ -183,7 +184,7 @@ export function CheckinDialog({
       setDateWarning({
         type: 'warning',
         title: 'Check-in Tardío',
-        message: `La fecha programada de check-in era el ${checkinDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} (hace ${Math.abs(diffDays)} ${Math.abs(diffDays) === 1 ? 'día' : 'días'}). Estás realizando un check-in tardío.`,
+        message: `La fecha programada de check-in era el ${formatPlainDate(reservation.checkin, { day: '2-digit', month: 'long', year: 'numeric' })} (hace ${Math.abs(diffDays)} ${Math.abs(diffDays) === 1 ? 'día' : 'días'}). Estás realizando un check-in tardío.`,
       });
     }
     // Check-in en la fecha correcta
@@ -329,12 +330,7 @@ export function CheckinDialog({
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
+    return formatPlainDate(dateString, { day: '2-digit', month: 'long', year: 'numeric' });
   };
 
   if (!reservation) return null;

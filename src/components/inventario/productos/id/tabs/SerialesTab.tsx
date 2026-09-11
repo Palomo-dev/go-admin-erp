@@ -57,6 +57,8 @@ import { useOrganization } from '@/lib/hooks/useOrganization'
 import { supabase } from '@/lib/supabase/config'
 import { serialTrackingService, type SerialNumber, type SerialStatus } from '@/lib/services/serialTrackingService'
 import { CreateClaimDialog } from '@/components/inventario/garantias/CreateClaimDialog'
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext'
+import { formatDateInTz } from '@/lib/utils/dateDisplay'
 
 interface SerialesTabProps {
   producto: any
@@ -85,6 +87,7 @@ const STATUS_COLORS: Record<SerialStatus, string> = {
 }
 
 export default function SerialesTab({ producto }: SerialesTabProps) {
+  const { timezone } = useOrgTimezone();
   const router = useRouter()
   const { organization } = useOrganization()
   const [loading, setLoading] = useState(true)
@@ -476,7 +479,7 @@ export default function SerialesTab({ producto }: SerialesTabProps) {
                     {serial.price_at_sale ? `$${serial.price_at_sale.toLocaleString()}` : '—'}
                   </TableCell>
                   <TableCell className="text-xs text-gray-500 dark:text-gray-400">
-                    {serial.received_date ? new Date(serial.received_date).toLocaleDateString() : '—'}
+                    {serial.received_date ? formatDateInTz(serial.received_date, timezone) : '—'}
                   </TableCell>
                   <TableCell className="flex items-center gap-1">
                     {serial.status === 'sold' && (

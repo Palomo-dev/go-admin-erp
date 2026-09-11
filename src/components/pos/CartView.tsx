@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { POSService } from '@/lib/services/posService';
 import { PrintService } from '@/lib/services/printService';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import KitchenService from '@/lib/services/kitchenService';
 import { supabase } from '@/lib/supabase/config';
 import { Cart, CartItem, Sale, SaleItem, Customer } from './types';
@@ -32,6 +33,7 @@ interface CartViewProps {
 }
 
 export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true }: CartViewProps) {
+  const { timezone } = useOrgTimezone();
   const [showHoldDialog, setShowHoldDialog] = useState(false);
   const [holdReason, setHoldReason] = useState('');
   const [taxIncluded, setTaxIncluded] = useState(cart.tax_included ?? false);
@@ -423,7 +425,8 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         { name: cashierName || 'Sistema POS', email: cashierEmail },
         branchInfo as any,
         undefined,
-        undefined
+        undefined,
+        timezone,
       );
 
       toast.success('Factura enviada a imprimir');

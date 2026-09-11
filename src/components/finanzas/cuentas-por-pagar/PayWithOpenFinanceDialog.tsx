@@ -27,7 +27,8 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
@@ -78,6 +79,7 @@ export function PayWithOpenFinanceDialog({
   supplierId,
   onPaymentComplete,
 }: PayWithOpenFinanceDialogProps) {
+  const { formatDate } = useFormatDate();
   const { toast } = useToast();
 
   // Estados

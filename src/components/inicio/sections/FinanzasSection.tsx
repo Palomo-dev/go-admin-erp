@@ -5,6 +5,7 @@ import { Banknote } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatCurrency } from '@/utils/Utils';
 import { toastError } from '@/components/ui/use-toast';
 import ModuloSection from '../ModuloSection';
@@ -99,6 +100,7 @@ function buildExportData(
 
 export default function FinanzasSection() {
   const { branchFilter } = useBranch();
+  const { timezone } = useOrgTimezone();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<KPIData | null>(null);
   const [clientes, setClientes] = useState<TopClienteProveedor[]>([]);
@@ -134,13 +136,13 @@ export default function FinanzasSection() {
           alertasData,
           orgData,
         ] = await Promise.all([
-          finanzasDashboardService.getKPIs(organizationId, filters, branchFilter),
+          finanzasDashboardService.getKPIs(organizationId, filters, branchFilter, timezone),
           finanzasDashboardService.getTopClientes(organizationId, filters, 5, branchFilter),
           finanzasDashboardService.getTopProveedores(organizationId, filters, 5, branchFilter),
           finanzasDashboardService.getVentasVsCompras(organizationId, filters, branchFilter),
-          finanzasDashboardService.getAgingCuentasPorCobrar(organizationId, branchFilter),
-          finanzasDashboardService.getFlujoProyectado(organizationId, branchFilter),
-          finanzasDashboardService.getAlertas(organizationId, branchFilter),
+          finanzasDashboardService.getAgingCuentasPorCobrar(organizationId, branchFilter, timezone),
+          finanzasDashboardService.getFlujoProyectado(organizationId, branchFilter, timezone),
+          finanzasDashboardService.getAlertas(organizationId, branchFilter, timezone),
           supabase
             .from('organizations')
             .select('name, legal_name, tax_id, city, address, phone, email, logo_url')

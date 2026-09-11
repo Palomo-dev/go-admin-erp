@@ -14,6 +14,8 @@ import { MoreVertical, Edit, Trash2, MapPin, Calendar, Wrench, User, PartyPopper
 import { ReservationBlock, BlockType } from '@/lib/services/reservationBlocksService';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/timezone';
 
 interface BlocksListProps {
   blocks: ReservationBlock[];
@@ -50,12 +52,13 @@ const blockTypeConfig: Record<BlockType, { label: string; color: string; icon: a
   },
 };
 
-function isActiveToday(dateFrom: string, dateTo: string): boolean {
-  const today = new Date().toISOString().split('T')[0];
+function isActiveToday(dateFrom: string, dateTo: string, timezone: string): boolean {
+  const today = todayInTz(timezone);
   return dateFrom <= today && dateTo >= today;
 }
 
 export function BlocksList({ blocks, isLoading, onEdit, onDelete }: BlocksListProps) {
+  const { timezone } = useOrgTimezone();
   if (isLoading) {
     return <CardListSkeleton cards={3} columns="1" />;
   }
@@ -83,7 +86,7 @@ export function BlocksList({ blocks, isLoading, onEdit, onDelete }: BlocksListPr
       {blocks.map((block) => {
         const config = blockTypeConfig[block.block_type];
         const Icon = config.icon;
-        const isActive = isActiveToday(block.date_from, block.date_to);
+        const isActive = isActiveToday(block.date_from, block.date_to, timezone);
         const spaceName = block.spaces?.label || block.space_types?.name || 'Todos los espacios';
 
         return (

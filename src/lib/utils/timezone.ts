@@ -30,7 +30,7 @@ export const DEFAULT_TIMEZONE = 'America/Bogota';
  * @param date Fecha para la cual calcular el offset (DST puede cambiarlo)
  * @returns Offset en minutos (ej: -300 para UTC-5, -240 para UTC-4 con DST)
  */
-function getOffsetMinutesForTimezone(timezone: string, date: Date): number {
+export function getOffsetMinutesForTimezone(timezone: string, date: Date): number {
   // Usar Intl.DateTimeFormat para obtener los componentes de fecha
   // interpretados en el timezone indicado.
   const dtf = new Intl.DateTimeFormat('en-US', {
@@ -73,7 +73,7 @@ function getOffsetMinutesForTimezone(timezone: string, date: Date): number {
 /**
  * Convierte minutos de offset a string de offset ISO (ej: -300 -> "-05:00").
  */
-function offsetMinutesToISO(offsetMinutes: number): string {
+export function offsetMinutesToISO(offsetMinutes: number): string {
   const sign = offsetMinutes <= 0 ? '-' : '+';
   const abs = Math.abs(offsetMinutes);
   const hours = Math.floor(abs / 60);
@@ -384,3 +384,7 @@ export async function getOrgDateRange(
   const { start, end } = getDateRange(fechaInicio, fechaFin, timezone, operatingHours);
   return { start, end, timezone, operatingHours };
 }
+
+// Re-exportar helpers de fecha que viven en dateDisplay.ts pero que muchos
+// módulos importan desde '@/lib/utils/timezone'. Mantener compatibilidad.
+export { todayInTz, toPlainDate, plainDateToInstant } from './dateDisplay';

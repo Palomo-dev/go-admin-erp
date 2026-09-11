@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import type { EmployeeLoan } from '@/lib/services/employeeLoansService';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
 import {
   Table,
   TableBody,

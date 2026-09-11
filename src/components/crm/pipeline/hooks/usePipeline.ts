@@ -14,11 +14,14 @@ import {
   processCustomersWithOpportunities 
 } from "../utils/pipelineUtils";
 import * as pipelineService from "../services/pipelineService";
+import { useOrgTimezone } from "@/lib/context/OrganizationTimezoneContext";
+import { todayInTz } from "@/lib/utils/timezone";
 
 /**
  * Hook personalizado para gestionar toda la lógica del pipeline de clientes
  */
 export const usePipeline = (pipelineId: string) => {
+  const { timezone } = useOrgTimezone();
   // Estados para clientes y oportunidades
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
@@ -133,7 +136,7 @@ export const usePipeline = (pipelineId: string) => {
     setOpportunityFormData({
       name: "",
       amount: 0,
-      expected_close_date: new Date().toISOString().split("T")[0],
+      expected_close_date: todayInTz(timezone),
       stage: pipelineStages.length > 0 ? pipelineStages[0].id : "",
     });
     setIsCreateOpportunityOpen(true);

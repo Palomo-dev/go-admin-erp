@@ -201,7 +201,7 @@ describe('F16 r4 · N-5 · la clave de idempotencia no depende del intento', () 
     const send = okSend();
     await runCampaignBatch({ campaign_id: UUID_C, batch_no: 2 }, sb, { send, now: () => NOW_MS, sleep: async () => undefined });
     expect(send).toHaveBeenCalledTimes(1);
-    const input = send.mock.calls[0][0] as unknown as { clientRequestId: string };
+    const input = (send.mock.calls as unknown as [unknown[]])[0][0] as unknown as { clientRequestId: string };
     expect(input.clientRequestId).toBe(campaignClientRequestId(UUID_C, 'cust-cc-1'));
   });
 });

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import type { PayrollRun } from '@/lib/services/payrollService';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import {
   Table,
   TableBody,
@@ -43,6 +43,7 @@ export function RunsTable({
   isLoading,
 }: RunsTableProps) {
   const router = useRouter();
+  const { formatDate } = useFormatDate();
 
   const handleViewRun = (run: PayrollRun) => {
     router.push(`/app/hrm/nomina/periodos/${periodId}/runs/${run.id}`);

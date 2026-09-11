@@ -2,8 +2,8 @@
 
 import {
   FC } from 'react';
-import { cn,
-  formatDate } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -85,6 +85,7 @@ const isEntryMovement = (type: string): boolean | null => {
 };
 
 const MovimientosRecientes: FC<MovimientosRecientesProps> = ({ movements, isLoading, className }) => {
+  const { formatDate } = useFormatDate();
   if (isLoading) {
     return (
       <div className={cn(

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Clock, ChevronRight, RefreshCw } from 'lucide-react';
 import { cn } from '@/utils/Utils';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { Membership, getDaysRemaining } from '@/lib/services/gymService';
 
 interface MembershipExpiringSectionProps {
@@ -22,6 +22,7 @@ export function MembershipExpiringSection({
   isLoading,
   onRenew 
 }: MembershipExpiringSectionProps) {
+  const { formatDate } = useFormatDate();
   const expiringMemberships = React.useMemo(() => {
     return memberships
       .filter(m => {

@@ -259,6 +259,8 @@ export interface CreateOpportunityInput {
   vertical_id?: string;
   next_contact_at?: string;
   record_type?: 'lead' | 'deal';
+  /** Sucursal donde se crea; si se omite, la seleccionada en sesión. */
+  branch_id?: number | null;
   products?: {
     product_id: number;
     quantity: number;

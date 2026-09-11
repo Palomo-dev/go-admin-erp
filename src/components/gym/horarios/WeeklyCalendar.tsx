@@ -15,6 +15,8 @@ import {
 import { Card } from '@/components/ui/card';
 import { GymClass, getClassTypeLabel, getClassStatusColor } from '@/lib/services/gymService';
 import { cn } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import { DraggableClassBar } from './DraggableClassBar';
 import { DroppableTimeSlot } from './DroppableTimeSlot';
 import { Users } from 'lucide-react';
@@ -44,6 +46,7 @@ export function WeeklyCalendar({
   onClassResize,
   onCreateFromSelection,
 }: WeeklyCalendarProps) {
+  const { timezone } = useOrgTimezone();
   const cellHeight = 60; // Altura de cada celda de hora
   const labelWidth = 60;
 
@@ -182,7 +185,7 @@ export function WeeklyCalendar({
   };
 
   const formatDayHeader = (date: Date) => {
-    const dayName = date.toLocaleDateString('es-ES', { weekday: 'short' });
+    const dayName = formatDateInTz(date.toISOString(), timezone, { weekday: 'short' });
     const dayNum = date.getDate();
     return { dayName, dayNum };
   };

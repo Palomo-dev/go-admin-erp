@@ -26,6 +26,8 @@ import {
   Lock,
   Send,
 } from 'lucide-react';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatPlainDate, formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 interface TimesheetDetailDrawerProps {
   open: boolean;
@@ -42,6 +44,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.R
 };
 
 export function TimesheetDetailDrawer({ open, onOpenChange, timesheet }: TimesheetDetailDrawerProps) {
+  const { timezone } = useOrgTimezone();
   if (!timesheet) return null;
 
   const formatMinutes = (minutes: number | null | undefined): string => {
@@ -53,20 +56,12 @@ export function TimesheetDetailDrawer({ open, onOpenChange, timesheet }: Timeshe
 
   const formatDate = (dateStr: string | null): string => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('es-CO', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return formatPlainDate(dateStr, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const formatTime = (dateStr: string | null): string => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleTimeString('es-CO', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatTimeInTz(dateStr, timezone);
   };
 
   const status = statusConfig[timesheet.status] || statusConfig.open;
@@ -115,7 +110,7 @@ export function TimesheetDetailDrawer({ open, onOpenChange, timesheet }: Timeshe
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Fecha</p>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {new Date(timesheet.work_date).toLocaleDateString('es-CO')}
+                  {formatPlainDate(timesheet.work_date)}
                 </p>
               </div>
             </div>

@@ -6,6 +6,8 @@ import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/utils/Utils';
 import { MemberCheckin } from '@/lib/services/gymService';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 interface CheckinHistoryProps {
   checkins: MemberCheckin[];
@@ -13,6 +15,8 @@ interface CheckinHistoryProps {
 }
 
 export function CheckinHistory({ checkins, isLoading }: CheckinHistoryProps) {
+  const { timezone } = useOrgTimezone();
+
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
@@ -46,10 +50,7 @@ export function CheckinHistory({ checkins, isLoading }: CheckinHistoryProps) {
         <div className="space-y-2 max-h-[400px] overflow-y-auto">
           {checkins.map((checkin) => {
             const isDenied = !!checkin.denied_reason;
-            const time = new Date(checkin.checkin_at).toLocaleTimeString('es-CO', {
-              hour: '2-digit',
-              minute: '2-digit'
-            });
+            const time = formatTimeInTz(checkin.checkin_at, timezone);
 
             return (
               <div

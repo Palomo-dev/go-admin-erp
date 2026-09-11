@@ -12,6 +12,8 @@ import { toast } from 'sonner';
 import { CuentaPorPagarDetalle, AccountActions } from './types';
 import { CuentaPorPagarDetailService } from './service';
 import { formatCurrency } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
 
 interface AccountActionsCardProps {
   account: CuentaPorPagarDetalle;
@@ -29,6 +31,7 @@ interface Installment {
 }
 
 export function AccountActionsCard({ account, actions, onUpdate }: AccountActionsCardProps) {
+  const { timezone } = useOrgTimezone();
   const [isLoading, setIsLoading] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
@@ -39,7 +42,7 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
     reference: '',
     bankAccountId: '',
     installmentId: '',
-    paymentDate: new Date().toISOString().split('T')[0]
+    paymentDate: todayInTz(timezone)
   });
   const [fechaError, setFechaError] = useState(false);
 
@@ -132,7 +135,7 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
       }
       
       toast.success('Pago registrado exitosamente');
-      setPaymentData({ amount: '', method: '', reference: '', bankAccountId: '', installmentId: '', paymentDate: new Date().toISOString().split('T')[0] });
+      setPaymentData({ amount: '', method: '', reference: '', bankAccountId: '', installmentId: '', paymentDate: todayInTz(timezone) });
       setFechaError(false);
       onUpdate();
     } catch (error) {
@@ -322,12 +325,12 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
                     onChange={(e) => {
                       setPaymentData({ ...paymentData, paymentDate: e.target.value });
                       if (account.invoice_date) {
-                        const fechaEmision = new Date(account.invoice_date).toISOString().split('T')[0];
+                        const fechaEmision = toPlainDate(new Date(account.invoice_date), timezone);
                         setFechaError(e.target.value < fechaEmision);
                       }
                     }}
-                    max={new Date().toISOString().split('T')[0]}
-                    min={account.invoice_date ? new Date(account.invoice_date).toISOString().split('T')[0] : undefined}
+                    max={todayInTz(timezone)}
+                    min={account.invoice_date ? toPlainDate(new Date(account.invoice_date), timezone) : undefined}
                     className={`dark:bg-gray-900 dark:border-gray-600 ${fechaError ? 'border-red-500 dark:border-red-500' : ''}`}
                   />
                   {fechaError && (

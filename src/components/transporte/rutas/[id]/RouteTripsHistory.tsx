@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, Bus, User } from 'lucide-react';
 import { transportRoutesService } from '@/lib/services/transportRoutesService';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface Trip {
   id: string;
@@ -98,7 +99,7 @@ export function RouteTripsHistory({ routeId }: RouteTripsHistoryProps) {
                   <div className="flex items-center gap-2 sm:gap-4">
                     <div className="text-sm">
                       <p className="font-medium text-gray-900 dark:text-white">
-                        {new Date(trip.trip_date).toLocaleDateString('es-CO', {
+                        {formatPlainDate(trip.trip_date, {
                           weekday: 'short',
                           day: 'numeric',
                           month: 'short',

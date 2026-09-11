@@ -15,7 +15,9 @@ import {
   ArrowUpCircle,
   Package
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import type { KardexEntry } from '@/lib/services/kardexService';
 
 interface KardexTableProps {
@@ -69,6 +71,8 @@ export function KardexTable({
   data, 
   isLoading
 }: KardexTableProps) {
+  const { formatDate } = useFormatDate();
+  const { timezone } = useOrgTimezone();
   if (isLoading) {
     return (
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -163,7 +167,7 @@ export function KardexTable({
                     {formatDate(entry.date)}
                     <br />
                     <span className="text-xs">
-                      {new Date(entry.date).toLocaleTimeString('es-CO', { 
+                      {formatTimeInTz(entry.date, timezone, { 
                         hour: '2-digit', 
                         minute: '2-digit' 
                       })}

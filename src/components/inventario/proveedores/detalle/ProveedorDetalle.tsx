@@ -21,7 +21,8 @@ import {
   ShoppingCart, Receipt, Calendar, Plus, MapPin, Globe, CreditCard,
   Landmark, Package, Star, Wallet, TrendingDown, DollarSign, Boxes
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
@@ -51,6 +52,7 @@ interface ProveedorDetalleProps {
 export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { formatDate } = useFormatDate();
 
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderSummary[]>([]);

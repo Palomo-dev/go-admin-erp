@@ -4,6 +4,9 @@ const config = {
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
   testMatch: ['**/__tests__/**/*.test.ts'],
+  // Fijar TZ=UTC por defecto (igual que Vercel producción).
+  // Para validar con America/Bogota usar: npm run test:tz-bogota
+  setupFiles: ['<rootDir>/jest.setup.tz.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     // F7: sanitize-html trae htmlparser2@12 (solo ESM, jest CJS no lo carga);

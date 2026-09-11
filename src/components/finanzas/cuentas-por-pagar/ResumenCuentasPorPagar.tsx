@@ -15,13 +15,15 @@ import {
 } from 'lucide-react';
 
 import { AccountsPayableSummary } from './types';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface ResumenCuentasPorPagarProps {
   resumen: AccountsPayableSummary;
 }
 
 export function ResumenCuentasPorPagar({ resumen }: ResumenCuentasPorPagarProps) {
+  const { formatDate } = useFormatDate();
   
   // Calcular métricas adicionales
   const porcentajeVencido = resumen.total_amount > 0 

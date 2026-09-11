@@ -4,7 +4,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Dumbbell } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { toastError } from '@/components/ui/use-toast';
 import { useBranch } from '@/lib/context/BranchContext';
 import ModuloSection from '../ModuloSection';
@@ -44,6 +45,7 @@ const emptyStats: GymStatsType = {
 function buildExportData(
   stats: GymStatsType | null,
   memberships: Membership[],
+  formatDate: (value: string | Date | null | undefined) => string,
 ): SectionExportData | null {
   if (!stats) return null;
 
@@ -80,6 +82,7 @@ function buildExportData(
 }
 
 export default function GymSection() {
+  const { formatDate } = useFormatDate();
   const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<GymStatsType | null>(null);
@@ -158,8 +161,8 @@ export default function GymSection() {
   );
 
   const exportData = useMemo(
-    () => buildExportData(stats, memberships),
-    [stats, memberships],
+    () => buildExportData(stats, memberships, formatDate),
+    [stats, memberships, formatDate],
   );
 
   return (

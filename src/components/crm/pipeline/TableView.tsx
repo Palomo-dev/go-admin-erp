@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase/config";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/utils/Utils";
+import { formatPlainDate } from "@/lib/utils/dateDisplay";
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
 
 // Importaciones de UI
@@ -536,7 +537,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
                   </TableCell>
                   <TableCell className="text-right hidden lg:table-cell text-gray-700 dark:text-gray-300 text-xs sm:text-sm">
                     {opportunity.expected_close_date 
-                      ? new Date(opportunity.expected_close_date).toLocaleDateString()
+                      ? formatPlainDate(opportunity.expected_close_date)
                       : "Sin fecha"}
                   </TableCell>
                   <TableCell>

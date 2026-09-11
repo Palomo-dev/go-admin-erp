@@ -33,7 +33,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SaleWithDetails } from './types';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { cn } from '@/utils/Utils';
 import { CopyableId } from '@/components/common/CopyableId';
 
@@ -56,6 +57,7 @@ export function VentasTable({
   onCreateReturn,
   isLoading
 }: VentasTableProps) {
+  const { formatDate, formatTime } = useFormatDate();
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -184,10 +186,7 @@ export function VentasTable({
                     {formatDate(sale.sale_date || sale.created_at)}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(sale.sale_date || sale.created_at).toLocaleTimeString('es-ES', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                    {formatTime(sale.sale_date || sale.created_at)}
                   </p>
                 </div>
               </TableCell>

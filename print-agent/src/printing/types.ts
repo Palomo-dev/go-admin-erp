@@ -30,6 +30,8 @@ export interface KitchenTicketPrintPayload {
   serverName?: string;
   station: string;
   createdAt: string;
+  /** Zona horaria IANA de la organizacion (ej: 'America/Bogota'). Si no viene, usa el reloj del agente. */
+  timezone?: string;
   items: KitchenTicketItemPayload[];
   businessName?: string;
   branchName?: string;
@@ -111,6 +113,8 @@ export interface SaleTicketPrintPayload {
   serverName?: string;
   cashierName?: string;
   createdAt: string;
+  /** Zona horaria IANA de la organizacion (ej: 'America/Bogota'). Si no viene, usa el reloj del agente. */
+  timezone?: string;
   items: SaleTicketItemPayload[];
   subtotal?: number;
   taxTotal?: number;
@@ -205,6 +209,8 @@ export interface ElectronicInvoicePrintPayload {
 
   // Metadatos
   createdAt: string;
+  /** Zona horaria IANA de la organizacion (ej: 'America/Bogota'). Si no viene, usa el reloj del agente. */
+  timezone?: string;
   cashierName?: string;
   branchName?: string;
   branchAddress?: string;
@@ -241,6 +247,8 @@ export interface ShipmentGuidePrintPayload {
   shipmentNumber?: string;
   status?: string;
   createdAt: string;
+  /** Zona horaria IANA de la organizacion (ej: 'America/Bogota'). Si no viene, usa el reloj del agente. */
+  timezone?: string;
 
   businessName?: string;
   businessNit?: string;

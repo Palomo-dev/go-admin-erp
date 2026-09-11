@@ -33,7 +33,7 @@ import {
   getOrganizationId,
   getCurrentUserId,
 } from '@/lib/hooks/useOrganization';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface SerialSearchResult {
   id: number;
@@ -63,6 +63,7 @@ export function CreateClaimDialog({
   onCreated,
 }: CreateClaimDialogProps) {
   const { toast } = useToast();
+  const { formatDate } = useFormatDate();
   const organizationId = getOrganizationId();
 
   const [loading, setLoading] = useState(false);

@@ -25,6 +25,8 @@ import { GymClass, getClassTypeLabel, getClassStatusColor } from '@/lib/services
 import { cn } from '@/utils/Utils';
 import { DraggableClassBar } from '@/components/gym/horarios/DraggableClassBar';
 import { DroppableTimeSlot } from '@/components/gym/horarios/DroppableTimeSlot';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 
 interface ClassCalendarViewProps {
   classes: GymClass[];
@@ -52,6 +54,7 @@ export function ClassCalendarView({
   onClassResize,
   onCreateFromSelection,
 }: ClassCalendarViewProps) {
+  const { timezone } = useOrgTimezone();
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date();
     const day = today.getDay();
@@ -225,14 +228,14 @@ export function ClassCalendarView({
     const lastDay = weekDays[6];
     
     if (firstDay.getMonth() === lastDay.getMonth()) {
-      return firstDay.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+      return formatDateInTz(firstDay.toISOString(), timezone, { month: 'long', year: 'numeric' });
     }
     
-    return `${firstDay.toLocaleDateString('es-ES', { month: 'short' })} - ${lastDay.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}`;
+    return `${formatDateInTz(firstDay.toISOString(), timezone, { month: 'short' })} - ${formatDateInTz(lastDay.toISOString(), timezone, { month: 'short', year: 'numeric' })}`;
   };
 
   const formatDayHeader = (date: Date) => {
-    const dayName = date.toLocaleDateString('es-ES', { weekday: 'short' });
+    const dayName = formatDateInTz(date.toISOString(), timezone, { weekday: 'short' });
     const dayNum = date.getDate();
     return { dayName, dayNum };
   };

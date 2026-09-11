@@ -3,8 +3,8 @@
 import React from 'react';
 import { User, Calendar, CreditCard, Hash, Phone, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/utils/Utils';
-import { formatDate, formatCurrency } from '@/utils/Utils';
+import { cn, formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { Membership, getDaysRemaining, getMembershipStatusColor, getMembershipStatusLabel } from '@/lib/services/gymService';
 
 interface MembershipHeaderProps {
@@ -12,6 +12,7 @@ interface MembershipHeaderProps {
 }
 
 export function MembershipHeader({ membership }: MembershipHeaderProps) {
+  const { formatDate } = useFormatDate();
   const daysRemaining = getDaysRemaining(membership.end_date);
   const isExpired = daysRemaining < 0;
   const isExpiringSoon = daysRemaining >= 0 && daysRemaining <= 7;

@@ -20,12 +20,15 @@ import { computeWindow } from '@/lib/services/crm/whatsapp/windowService';
 import { BubblePreview } from './compose/BubblePreview';
 import { WindowBadge } from './compose/WindowBadge';
 import { waApi, ERROR_CODE_LABELS, type WindowInfo } from './api';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 interface Msg { id: string; direction: string; role: string; content: string; content_type: string; created_at: string; payload: Record<string, unknown> | null; metadata: Record<string, unknown> | null }
 interface Ev { message_id: string; event_type: string; error_code: string | null; error_message: string | null; created_at: string }
 const RANK: Record<string, number> = { sent: 1, delivered: 2, read: 3, failed: 9 };
 
 export function WhatsAppThreadPreview({ conversationId, opportunityId, limit = 5, className }: { conversationId: string; opportunityId?: string | null; limit?: number; className?: string }) {
+  const { timezone } = useOrgTimezone();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [events, setEvents] = useState<Record<string, Ev>>({});
   const [conv, setConv] = useState<{ last_inbound_at: string | null; customer_id: string; channel_id: string } | null>(null);
@@ -95,7 +98,7 @@ export function WhatsAppThreadPreview({ conversationId, opportunityId, limit = 5
           return (
             <div key={m.id} className={`${out ? 'flex justify-end' : 'flex justify-start'} animate-in fade-in-0 slide-in-from-bottom-1 duration-150 motion-reduce:animate-none`}>
               <div className="max-w-[85%]">
-                <BubblePreview body={m.content} media={media} outbound={out} status={status} time={new Date(m.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} />
+                <BubblePreview body={m.content} media={media} outbound={out} status={status} time={formatTimeInTz(m.created_at, timezone)} />
                 {ev?.event_type === 'failed' && <p className="text-[10px] text-red-600 dark:text-red-400 text-right mt-0.5">{ERROR_CODE_LABELS[ev.error_code ?? ''] ?? ev.error_message ?? 'Fallo de envío'}</p>}
               </div>
             </div>

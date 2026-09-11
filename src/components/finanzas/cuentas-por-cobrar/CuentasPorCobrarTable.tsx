@@ -48,7 +48,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { CuentaPorCobrar, ResultadoPaginado } from './types';
-import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { AplicarAbonoModal } from './AplicarAbonoModal';
 import { EnviarRecordatorioModal } from './EnviarRecordatorioModal';
 import { cn } from '@/utils/Utils';
@@ -64,6 +65,7 @@ interface CuentasPorCobrarTableProps {
 
 export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageChange, onPageSizeChange }: CuentasPorCobrarTableProps) {
   const router = useRouter();
+  const { formatDate } = useFormatDate();
   const [selectedAccount, setSelectedAccount] = useState<CuentaPorCobrar | null>(null);
   const [showAbonoModal, setShowAbonoModal] = useState(false);
   const [showRecordatorioModal, setShowRecordatorioModal] = useState(false);
@@ -239,7 +241,7 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
                       <div>
                         <span className="text-gray-500 dark:text-gray-400">Vencimiento:</span>
                         <p className="font-medium text-gray-900 dark:text-white text-[10px]">
-                          {parseLocalDate(cuenta.due_date).toLocaleDateString('es-ES')}
+                          {formatDate(cuenta.due_date)}
                         </p>
                       </div>
                       <div>
@@ -366,7 +368,7 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
                       <TableCell className="dark:text-gray-300">
                         <div className="flex items-center text-xs">
                           <Calendar className="h-2.5 w-2.5 mr-1 dark:text-gray-400" />
-                          {parseLocalDate(cuenta.due_date).toLocaleDateString('es-ES')}
+                          {formatDate(cuenta.due_date)}
                         </div>
                       </TableCell>
                       <TableCell>

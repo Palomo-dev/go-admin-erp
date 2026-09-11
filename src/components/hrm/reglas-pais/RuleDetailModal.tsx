@@ -1,7 +1,8 @@
 'use client';
 
 import type { CountryPayrollRules } from '@/lib/services/hrmConfigService';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ export function RuleDetailModal({
   open,
   onClose,
 }: RuleDetailModalProps) {
+  const { formatDate } = useFormatDate();
   if (!rule) return null;
 
   const pctFormat = (val: number | null) => ((val || 0) * 100).toFixed(2) + '%';

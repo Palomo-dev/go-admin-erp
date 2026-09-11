@@ -20,6 +20,8 @@ import factusService, {
   mapStandardCode,
   mapTaxCode,
 } from '@/lib/services/factusService';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
+import { toPlainDate } from '@/lib/utils/dateDisplay';
 
 export async function POST(request: NextRequest) {
   try {
@@ -161,6 +163,9 @@ export async function POST(request: NextRequest) {
         if (orgMuni?.code) branchMunicipalityCode = orgMuni.code;
       }
 
+      // Obtener timezone de la organizacion para enviar fechas en dia calendario correcto
+      const orgTimezone = await getOrganizationTimezone(Number(organizationId));
+
       // Mapear datos a formato Factus V2
       const factusRequest: FactusInvoiceRequest = {
         reference_code: referenceCode,
@@ -173,7 +178,7 @@ export async function POST(request: NextRequest) {
         payment_details: [{
           payment_form: invoice.payment_form || '1',
           payment_method_code: invoice.payment_method_code || mapPaymentMethod(invoice.payment_method),
-          due_date: invoice.due_date?.split('T')[0],
+          due_date: invoice.due_date ? toPlainDate(new Date(invoice.due_date), orgTimezone) : undefined,
           amount: Number(invoice.total || 0).toFixed(2),
         }],
         establishment: {

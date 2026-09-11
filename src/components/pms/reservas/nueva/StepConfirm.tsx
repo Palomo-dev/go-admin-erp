@@ -15,6 +15,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import type { Customer } from '@/lib/services/reservationsService';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface Extra {
   name: string;
@@ -67,14 +68,7 @@ export function StepConfirm({
   taxIncluded = false,
 }: StepConfirmProps) {
   const formatDate = (dateString: string) => {
-    // Agregar hora para evitar problemas de zona horaria
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return formatPlainDate(dateString, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const roomsTotal = selectedSpaces.reduce(

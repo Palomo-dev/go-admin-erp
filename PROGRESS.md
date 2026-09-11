@@ -1553,3 +1553,46 @@ el prompt) y se rehizo con ediciones exactas.
 
 **Pendiente:** validacion de `Origin` en `chat-widget` (requiere tocar esa
 funcion); limitar por IP para el caso de sessionId rotatorio.
+
+## Correccion del modulo Finanzas (2026-09-10)
+
+### Fase 0 — Detener la duplicacion contable
+
+**F-01: Duplicacion contable de facturas (CRITICO)**
+- Causa: trg_auto_journal_ar (sobre accounts_receivable) duplica el asiento
+  de fn_auto_journal_sale (sobre invoice_sales). Ambas buscan la misma regla
+  contable sale/created y publican el mismo debito/credito.
+- Medicion (10-sep-2026): 1.232 facturas duplicadas, 11 solo factura, 161
+  solo CxC, 14 sin asiento. Total 1.416 no borrador.
+- Accion: DISABLE TRIGGER trg_auto_journal_ar (migracion
+  20260910120000_f01_disable_trg_auto_journal_ar.sql). Reversible con
+  ENABLE TRIGGER.
+- Prueba de humo: factura contado debita 1105 Caja, factura credito debita
+  1305 Clientes, nota credito no crea CxC. Todo correcto.
+- Pendiente: backfill de 175 facturas sin asiento (161 solo-CxC + 14 sin
+  ninguno) y contraasientos de 1.232 duplicadas (requiere validacion del
+  contador).
+
+**F-03: Fallback de sucursal en fn_create_journal_entry (ALTO)**
+- Causa: cuando p_branch_id era NULL/0/invalido, caia a MIN(branches.id),
+  aterrizando todos los asientos en la sucursal de menor id.
+- Accion: migracion 20260910130000_f03_fix_fn_create_journal_entry_branch_fallback.sql.
+  El fallback ahora usa la sucursal is_main=true (sucursal principal).
+  Las 83 organizaciones tienen exactamente 1 sucursal principal.
+  Ademas se anade SET search_path = public, pg_temp (F-11).
+- Pendiente: 11 funciones fn_auto_journal_* con el mismo patron MIN(id)
+  quedan para Fase 2.
+
+**Ruido de prueba de humo:** 6 registros en finance_audit_log de la org 113
+(10-sep-2026) son ruido de la prueba de humo inicial, no un incidente real.
+No investigar.
+
+**Cabos sueltos documentados (no arreglados, para Fase 2):**
+- posService.ts:2102-2114 y webOrderConfirmationService.ts:628-640 insertan
+  en accounts_receivable con sale_id (sin invoice_id). El flujo sigue vivo
+  en el codigo aunque no hay CxC desde POS en 14 meses. Si se reactiva,
+  las CxC nuevas nacerian sin asiento.
+- 6 CxC huerfanas (invoice_id y sale_id ambos NULL), 3 recientes (jul-2026).
+- 24 CxC negativas (notas credito coladas por create_account_receivable_on_invoice
+  que no filtra document_type). 28 CxC en cero. 1 CxC huerfana de -20.000.
+  1 nota credito con numero NC-0NaN. Conectado con F-10.

@@ -213,14 +213,17 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
           lastOrgId: profileData.last_org_id
         });
         
-        // Si el perfil tiene una organización, usarla. Va por
-        // guardarOrganizacionActiva: escribir solo `currentOrganizationId`
-        // dejaba `organizacionActiva` con la organización de la sesión
-        // anterior (localStorage sobrevive al logout) y la app quedaba con dos
-        // organizaciones distintas activas a la vez.
-        if (profileData.last_org_id) {
+        // Si el perfil tiene una organización, usarla SOLO como fallback cuando
+        // el usuario no seleccionó una explícitamente en el popup. Antes este
+        // bloque sobreescibia la organización que el usuario acababa de elegir
+        // en el popup con `last_org_id` de la sesión anterior, y la app abría
+        // la organización equivocada.
+        const alreadySelectedOrg = localStorage.getItem('currentOrganizationId');
+        if (!alreadySelectedOrg && profileData.last_org_id) {
           guardarOrganizacionActiva({ id: Number(profileData.last_org_id) });
-          console.log('✅ [DEBUG] Organización del perfil cargada:', profileData.last_org_id);
+          console.log('✅ [DEBUG] Organización del perfil cargada (fallback):', profileData.last_org_id);
+        } else if (alreadySelectedOrg) {
+          console.log('✅ [DEBUG] Organización ya seleccionada por el usuario, no se sobrescribe:', alreadySelectedOrg);
         }
       } else {
         console.log(`⏳ [DEBUG] Intento ${profileRetries + 1}/${maxProfileRetries}: Perfil no encontrado`, profileError);

@@ -3,9 +3,14 @@
 /**
  * Alta/edición de una regla de automatización (FASE-08 §5.3).
  * La validación real vive en el servidor; aquí solo se evita enviar basura.
+ *
+ * Mejoras UX (2026-09-12):
+ *  - Selectores visales para pipeline y etapa (antes: pegar UUID a mano).
+ *  - Editor visual de condiciones con pestaña JSON avanzado (antes: JSON crudo).
+ *  - Diálogo responsive: en móvil los campos se apilan.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +19,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
 import { RuleActionsEditor } from './RuleActionsEditor';
+import { EntitySelect } from '@/components/crm/shared/EntitySelect';
+import { ConditionBuilder } from '@/components/crm/shared/ConditionBuilder';
+import { useCrmLookups, stagesOfPipeline } from '@/components/crm/shared/useCrmLookups';
 import type { AutomationRuleView, RuleAction } from './useAutomationRules';
 
 const TRIGGERS: { value: string; label: string }[] = [
@@ -42,7 +50,7 @@ interface FormState {
   cooldown_hours: number;
   is_active: boolean;
   actions: RuleAction[];
-  conditionsText: string;
+  conditions: unknown;
 }
 
 const EMPTY: FormState = {
@@ -56,45 +64,45 @@ const EMPTY: FormState = {
   cooldown_hours: 0,
   is_active: false,
   actions: [],
-  conditionsText: '',
+  conditions: { op: 'and', rules: [] },
 };
 
 export function RuleFormDialog({ open, rule, onOpenChange, onSave }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const { pipelines, stages, loading: lookupsLoading } = useCrmLookups();
+
+  // Etapas filtradas por el pipeline seleccionado (o todas si no hay pipeline).
+  const stageOptions = useMemo(
+    () => stagesOfPipeline(stages, form.pipeline_id || null),
+    [stages, form.pipeline_id],
+  );
 
   useEffect(() => {
     if (!open) return;
-    setForm(rule
-      ? {
-        name: rule.name,
-        description: rule.description ?? '',
-        trigger_type: rule.trigger_type,
-        stage_id: rule.stage_id ?? '',
-        pipeline_id: rule.pipeline_id ?? '',
-        priority: rule.priority ?? 100,
-        run_once_per_opportunity: rule.run_once_per_opportunity ?? true,
-        cooldown_hours: rule.cooldown_hours ?? 0,
-        is_active: rule.is_active,
-        actions: rule.actions ?? [],
-        conditionsText: rule.conditions ? JSON.stringify(rule.conditions, null, 2) : '',
-      }
-      : EMPTY);
+    setForm(
+      rule
+        ? {
+          name: rule.name,
+          description: rule.description ?? '',
+          trigger_type: rule.trigger_type,
+          stage_id: rule.stage_id ?? '',
+          pipeline_id: rule.pipeline_id ?? '',
+          priority: rule.priority ?? 100,
+          run_once_per_opportunity: rule.run_once_per_opportunity ?? true,
+          cooldown_hours: rule.cooldown_hours ?? 0,
+          is_active: rule.is_active,
+          actions: rule.actions ?? [],
+          conditions: rule.conditions ?? { op: 'and', rules: [] },
+        }
+        : EMPTY,
+    );
   }, [open, rule]);
 
   const submit = async () => {
     if (form.name.trim().length < 2) {
       toast({ title: 'Falta el nombre', description: 'Mínimo 2 caracteres.', variant: 'destructive' });
       return;
-    }
-    let conditions: unknown = { op: 'and', rules: [] };
-    if (form.conditionsText.trim()) {
-      try {
-        conditions = JSON.parse(form.conditionsText);
-      } catch {
-        toast({ title: 'Condiciones inválidas', description: 'El JSON no se pudo interpretar.', variant: 'destructive' });
-        return;
-      }
     }
 
     setSaving(true);
@@ -111,7 +119,7 @@ export function RuleFormDialog({ open, rule, onOpenChange, onSave }: Props) {
         cooldown_hours: Number(form.cooldown_hours) || 0,
         is_active: form.is_active,
         actions: form.actions,
-        conditions,
+        conditions: form.conditions,
       } as Partial<AutomationRuleView> & { id?: string });
       toast({ title: rule ? 'Regla actualizada' : 'Regla creada' });
       onOpenChange(false);
@@ -128,7 +136,7 @@ export function RuleFormDialog({ open, rule, onOpenChange, onSave }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{rule ? 'Editar regla' : 'Nueva regla'}</DialogTitle>
         </DialogHeader>
@@ -159,12 +167,35 @@ export function RuleFormDialog({ open, rule, onOpenChange, onSave }: Props) {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <Label htmlFor="rule-stage">Etapa (id, opcional)</Label>
-              <Input id="rule-stage" value={form.stage_id} onChange={(e) => setForm({ ...form, stage_id: e.target.value })} />
+              <Label htmlFor="rule-pipeline">Pipeline</Label>
+              {lookupsLoading ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">Cargando pipelines…</p>
+              ) : (
+                <EntitySelect
+                  value={form.pipeline_id || null}
+                  onChange={(id) => setForm({ ...form, pipeline_id: id ?? '', stage_id: '' })}
+                  options={pipelines}
+                  placeholder="Cualquier pipeline"
+                  emptyMessage="No hay pipelines creados."
+                  ariaLabel="Pipeline de la regla"
+                  renderSubtitle={(p) => (p as { pipeline_type?: string | null }).pipeline_type ?? null}
+                />
+              )}
             </div>
             <div>
-              <Label htmlFor="rule-pipeline">Pipeline (id, opcional)</Label>
-              <Input id="rule-pipeline" value={form.pipeline_id} onChange={(e) => setForm({ ...form, pipeline_id: e.target.value })} />
+              <Label htmlFor="rule-stage">Etapa</Label>
+              {lookupsLoading ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">Cargando etapas…</p>
+              ) : (
+                <EntitySelect
+                  value={form.stage_id || null}
+                  onChange={(id) => setForm({ ...form, stage_id: id ?? '' })}
+                  options={stageOptions}
+                  placeholder="Cualquier etapa"
+                  emptyMessage={form.pipeline_id ? 'El pipeline seleccionado no tiene etapas.' : 'No hay etapas creadas.'}
+                  ariaLabel="Etapa de la regla"
+                />
+              )}
             </div>
             <div>
               <Label htmlFor="rule-priority">Prioridad</Label>
@@ -188,18 +219,12 @@ export function RuleFormDialog({ open, rule, onOpenChange, onSave }: Props) {
           </div>
 
           <div>
-            <Label htmlFor="rule-conditions">Condiciones (JSON de la DSL)</Label>
-            <Textarea
-              id="rule-conditions"
-              rows={4}
-              className="font-mono text-xs"
-              placeholder='{"op":"and","rules":[{"field":"opportunity.amount","operator":"gte","value":5000000}]}'
-              value={form.conditionsText}
-              onChange={(e) => setForm({ ...form, conditionsText: e.target.value })}
+            <Label>Condiciones</Label>
+            <ConditionBuilder
+              value={form.conditions}
+              onChange={(next) => setForm({ ...form, conditions: next })}
+              label="La regla se dispara si"
             />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Campos permitidos: opportunity.*, customer.*, stage.*, pipeline.*, consent.*, event.*
-            </p>
           </div>
 
           <RuleActionsEditor actions={form.actions} onChange={(actions) => setForm({ ...form, actions })} />

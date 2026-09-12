@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, type MouseEvent as ReactMouseEvent, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
@@ -48,6 +48,8 @@ function LoginContent() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [userOrganizations, setUserOrganizations] = useState<Organization[]>([]);
   const [showOrgPopup, setShowOrgPopup] = useState(false);
+  const [favoriteOrgs, setFavoriteOrgs] = useState<number[]>([]);
+  const [orgSearchQuery, setOrgSearchQuery] = useState('');
   const [showGeolocationModal, setShowGeolocationModal] = useState(false);
   const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
@@ -268,6 +270,57 @@ function LoginContent() {
   };
   
 
+  // Cargar favoritos de localStorage al montar
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('favoriteOrgIds');
+      if (stored) {
+        setFavoriteOrgs(JSON.parse(stored));
+      }
+    } catch {
+      // Si el JSON está corrupto, ignorar
+    }
+  }, []);
+
+  // Toggle favorito: marca/desmarca una organización como favorita
+  const toggleFavoriteOrg = useCallback((e: ReactMouseEvent, orgId: number) => {
+    e.stopPropagation();
+    setFavoriteOrgs((prev) => {
+      const next = prev.includes(orgId)
+        ? prev.filter((id) => id !== orgId)
+        : [...prev, orgId];
+      localStorage.setItem('favoriteOrgIds', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  // Badge de estado de la organización
+  const getOrgStatusBadge = useCallback((status?: string) => {
+    if (!status || status === 'active') {
+      return { label: 'Activa', className: 'bg-green-100 text-green-700' };
+    }
+    if (status === 'suspended' || status === 'frozen') {
+      return { label: 'Congelada', className: 'bg-red-100 text-red-700' };
+    }
+    if (status === 'deleted') {
+      return { label: 'Eliminada', className: 'bg-gray-200 text-gray-600' };
+    }
+    return { label: 'Inactiva', className: 'bg-amber-100 text-amber-700' };
+  }, []);
+
+  // Organizaciones ordenadas: favoritas primero, luego filtradas por búsqueda
+  const sortedOrganizations = useMemo(() => {
+    const q = orgSearchQuery.trim().toLowerCase();
+    const filtered = q
+      ? userOrganizations.filter((org) => org.name?.toLowerCase().includes(q))
+      : userOrganizations;
+    return [...filtered].sort((a, b) => {
+      const aFav = favoriteOrgs.includes(a.id) ? 0 : 1;
+      const bFav = favoriteOrgs.includes(b.id) ? 0 : 1;
+      return aFav - bFav;
+    });
+  }, [userOrganizations, favoriteOrgs, orgSearchQuery]);
+
   // Handle organization selection from popup
   const onSelectOrganizationFromPopup = async (org: Organization) => {
     console.log('📄 [LOGIN PAGE] Usuario seleccionó organización:', {
@@ -473,57 +526,126 @@ function LoginContent() {
         
         {/* Organization selection popup */}
         {showOrgPopup && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-black/70 flex items-center justify-center z-50 px-4">
-            <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">Selecciona una organización</h3>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">Tu cuenta está asociada a múltiples organizaciones. Por favor selecciona una para continuar.</p>
-              
-              <div className="max-h-60 overflow-y-auto">
-                {userOrganizations.map((org) => (
-                  <button
-                    key={org.id}
-                    type="button"
-                    onClick={() => onSelectOrganizationFromPopup(org)}
-                    className="flex items-center w-full text-left px-3 py-2 sm:px-4 sm:py-3 mb-2 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-md"
-                  >
-                    {/* Organization logo or placeholder */}
-                    <div className="flex-shrink-0 mr-2 sm:mr-3">
-                      {org.logo_url ? (
-                        <img 
-                          src={org.logo_url} 
-                          alt={`${org.name} logo`} 
-                          className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm sm:text-base font-medium">
-                          {org.name.charAt(0).toUpperCase()}
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-black/70 flex items-center justify-center z-50 px-4 py-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden">
+              {/* Header del popup */}
+              <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                <div>
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    Selecciona una organización
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Tu cuenta está asociada a múltiples organizaciones.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowOrgPopup(false)}
+                  className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
+                >
+                  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Buscador */}
+              {userOrganizations.length > 3 && (
+                <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                  <div className="relative">
+                    <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+                    </svg>
+                    <input
+                      type="text"
+                      value={orgSearchQuery}
+                      onChange={(e) => setOrgSearchQuery(e.target.value)}
+                      placeholder="Buscar organización..."
+                      className="w-full pl-9 pr-3 py-2 text-sm rounded-md bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Lista de organizaciones */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                {sortedOrganizations.length === 0 ? (
+                  <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
+                    No se encontraron organizaciones.
+                  </p>
+                ) : (
+                  sortedOrganizations.map((org) => {
+                    const isFav = favoriteOrgs.includes(org.id);
+                    const statusBadge = getOrgStatusBadge(org.status);
+                    return (
+                      <div
+                        key={org.id}
+                        className="group flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-gray-700/50 transition-all cursor-pointer"
+                        onClick={() => onSelectOrganizationFromPopup(org)}
+                      >
+                        {/* Botón de favorito (estrella) */}
+                        <button
+                          type="button"
+                          onClick={(e) => toggleFavoriteOrg(e, org.id)}
+                          className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                          title={isFav ? 'Quitar de favoritas' : 'Marcar como favorita'}
+                        >
+                          <svg
+                            className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${isFav ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600 group-hover:text-gray-400'}`}
+                            fill={isFav ? 'currentColor' : 'none'}
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={1.5}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.604 17.11a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                          </svg>
+                        </button>
+
+                        {/* Logo */}
+                        <div className="flex-shrink-0">
+                          {org.logo_url ? (
+                            <img
+                              src={org.logo_url}
+                              alt={`${org.name} logo`}
+                              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border border-gray-200 dark:border-gray-600"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm sm:text-base font-semibold shadow-sm">
+                              {org.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    
-                    {/* Organization details */}
-                    <div className="flex-grow min-w-0">
-                      <div className="font-medium text-sm sm:text-base text-gray-800 dark:text-gray-100 truncate">{org.name}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{getOrgTypeLabel(org.type_id?.name || '', locale)}</div>
-                    </div>
-                    
-                    <div className="flex flex-col items-end ml-2 space-y-1">
-                      {/* Subscription plan */}
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                        {org.plan_id?.name || 'Free'}
-                      </span>
-                      
-                      {/* Status badge - only active organizations are shown, but keeping the code in case needed */}
-                      {org.status && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Activa
-                        </span>
-                      )}
-                    </div>
-                    
-                    
-                  </button>
-                ))}
+
+                        {/* Detalles */}
+                        <div className="flex-grow min-w-0">
+                          <div className="font-medium text-sm sm:text-base text-gray-800 dark:text-gray-100 truncate">
+                            {org.name}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {getOrgTypeLabel(org.type_id?.name || '', locale)}
+                          </div>
+                        </div>
+
+                        {/* Badges */}
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                            {org.plan_id?.name || 'Free'}
+                          </span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium ${statusBadge.className}`}>
+                            {statusBadge.label}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Footer del popup */}
+              <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+                <p className="text-[11px] text-center text-gray-400 dark:text-gray-500">
+                  Las organizaciones marcadas con ★ aparecen primero
+                </p>
               </div>
             </div>
           </div>

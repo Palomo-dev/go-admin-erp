@@ -284,6 +284,8 @@
     "refresh": "Refresh",
     "dashboardUpdated": "Dashboard updated",
     "errorLoadingDashboard": "Could not load dashboard data",
+    "restrictedTitle": "Restricted dashboard",
+    "restrictedMessage": "Financial indicators are only available to organization administrators. Use the quick access shortcuts to navigate to your assigned modules.",
     "markShift": "Clock In/Out",
     "quickAccess": "Quick Access",
     "salesTrend": "Sales Trend (30 days)",

@@ -20,6 +20,7 @@ interface Organization {
   role_id?: number;
   plan_id: Plan;
   status?: string;
+  logo_url?: string;
 }
 
 interface LoginResult {
@@ -330,6 +331,7 @@ async function getUserOrganizations(userId: string): Promise<Organization[]> {
         name,
         type_id,
         status,
+        logo_url,
         organization_types(
           name
         ),
@@ -365,7 +367,8 @@ async function getUserOrganizations(userId: string): Promise<Organization[]> {
         id: activeSub?.plans?.id || activeSub?.plan_id || 0,
         name: activeSub?.plans?.name || 'Free'
       },
-      status: member.organizations?.status || 'active'
+      status: member.organizations?.status || 'active',
+      logo_url: member.organizations?.logo_url || undefined
     };
   });
 }

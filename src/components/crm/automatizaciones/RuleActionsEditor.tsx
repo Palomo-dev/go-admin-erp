@@ -4,6 +4,10 @@
  * Editor de acciones de una regla (FASE-08 §5.2). Cada tipo declara sus campos;
  * las acciones sin implementación real se marcan para que nadie las active
  * creyendo que envían algo.
+ *
+ * Mejoras UX (2026-09-12):
+ *  - Selectores visuales para template_id, sequence_id y stage_id (antes: pegar UUID).
+ *  - Usa el hook useCrmLookups para cargar los catálogos.
  */
 
 import { Plus, Trash2, AlertTriangle } from 'lucide-react';
@@ -12,6 +16,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { EntitySelect } from '@/components/crm/shared/EntitySelect';
+import { useCrmLookups } from '@/components/crm/shared/useCrmLookups';
 import type { RuleAction } from './useAutomationRules';
 
 interface FieldDef {
@@ -19,6 +25,8 @@ interface FieldDef {
   label: string;
   type?: 'text' | 'number' | 'textarea';
   placeholder?: string;
+  /** Si se establece, el campo se renderiza como un EntitySelect en vez de un Input. */
+  entity?: 'template' | 'sequence' | 'stage';
 }
 
 export const ACTION_CATALOG: {
@@ -30,11 +38,11 @@ export const ACTION_CATALOG: {
   { type: 'send_email', label: 'Enviar email', implemented: true, fields: [
     { key: 'subject', label: 'Asunto', placeholder: 'Seguimiento de {{opportunity_name}}' },
     { key: 'html', label: 'Contenido HTML', type: 'textarea', placeholder: '<p>Hola {{first_name|cliente}}</p>' },
-    { key: 'template_id', label: 'Plantilla (id, opcional)' },
+    { key: 'template_id', label: 'Plantilla', entity: 'template' },
   ] },
   { type: 'send_whatsapp', label: 'Enviar WhatsApp', implemented: true, fields: [
     { key: 'text', label: 'Texto (solo dentro de la ventana de 24 h)', type: 'textarea' },
-    { key: 'template_id', label: 'Plantilla HSM (id)' },
+    { key: 'template_id', label: 'Plantilla HSM', entity: 'template' },
   ] },
   { type: 'create_task', label: 'Crear tarea', implemented: true, fields: [
     { key: 'title', label: 'Título', placeholder: 'Llamar a {{customer_name}}' },
@@ -51,10 +59,10 @@ export const ACTION_CATALOG: {
     { key: 'field_value', label: 'Valor', placeholder: 'hot' },
   ] },
   { type: 'enroll_sequence', label: 'Inscribir en secuencia', implemented: true, fields: [
-    { key: 'sequence_id', label: 'Secuencia (id)' },
+    { key: 'sequence_id', label: 'Secuencia', entity: 'sequence' },
   ] },
   { type: 'unenroll_sequence', label: 'Sacar de secuencia', implemented: true, fields: [
-    { key: 'sequence_id', label: 'Secuencia (id)' },
+    { key: 'sequence_id', label: 'Secuencia', entity: 'sequence' },
     { key: 'reason', label: 'Motivo' },
   ] },
   { type: 'notify_user', label: 'Notificar al responsable', implemented: true, fields: [
@@ -62,7 +70,7 @@ export const ACTION_CATALOG: {
     { key: 'content', label: 'Contenido', type: 'textarea' },
   ] },
   { type: 'move_stage', label: 'Mover de etapa', implemented: true, fields: [
-    { key: 'stage_id', label: 'Etapa destino (id)' },
+    { key: 'stage_id', label: 'Etapa destino', entity: 'stage' },
   ] },
   { type: 'send_sms', label: 'Enviar SMS', implemented: false, fields: [] },
   { type: 'start_ai_agent', label: 'Lanzar agente IA', implemented: false, fields: [] },
@@ -77,8 +85,74 @@ interface Props {
 }
 
 export function RuleActionsEditor({ actions, onChange }: Props) {
+  const { templates, sequences, stages, loading } = useCrmLookups();
+
   const update = (index: number, patch: Record<string, unknown>) => {
     onChange(actions.map((a, i) => (i === index ? { ...a, ...patch } : a)));
+  };
+
+  const renderField = (action: RuleAction, index: number, f: FieldDef) => {
+    if (f.entity === 'template') {
+      return (
+        <EntitySelect
+          value={(action[f.key] as string) || null}
+          onChange={(id) => update(index, { [f.key]: id })}
+          options={templates}
+          placeholder="Sin plantilla (contenido libre)"
+          emptyMessage="No hay plantillas creadas."
+          ariaLabel={f.label}
+        />
+      );
+    }
+    if (f.entity === 'sequence') {
+      return (
+        <EntitySelect
+          value={(action[f.key] as string) || null}
+          onChange={(id) => update(index, { [f.key]: id })}
+          options={sequences}
+          placeholder="Elige una secuencia"
+          emptyMessage="No hay secuencias creadas."
+          ariaLabel={f.label}
+          renderSubtitle={(s) => ((s as { is_active?: boolean }).is_active ? 'activa' : 'inactiva')}
+        />
+      );
+    }
+    if (f.entity === 'stage') {
+      return (
+        <EntitySelect
+          value={(action[f.key] as string) || null}
+          onChange={(id) => update(index, { [f.key]: id })}
+          options={stages}
+          placeholder="Elige una etapa"
+          emptyMessage="No hay etapas creadas."
+          ariaLabel={f.label}
+        />
+      );
+    }
+    if (f.type === 'textarea') {
+      return (
+        <Textarea
+          id={`a-${index}-${f.key}`}
+          rows={3}
+          value={String(action[f.key] ?? '')}
+          onChange={(e) => update(index, { [f.key]: e.target.value })}
+          placeholder={f.placeholder}
+        />
+      );
+    }
+    return (
+      <Input
+        id={`a-${index}-${f.key}`}
+        type={f.type === 'number' ? 'number' : 'text'}
+        value={String(action[f.key] ?? '')}
+        onChange={(e) => update(index, {
+          [f.key]: f.type === 'number'
+            ? (e.target.value === '' ? undefined : Number(e.target.value))
+            : e.target.value,
+        })}
+        placeholder={f.placeholder}
+      />
+    );
   };
 
   return (
@@ -139,26 +213,10 @@ export function RuleActionsEditor({ actions, onChange }: Props) {
               {def.fields.map((f) => (
                 <div key={f.key} className={f.type === 'textarea' ? 'sm:col-span-2' : ''}>
                   <Label htmlFor={`a-${index}-${f.key}`} className="text-xs">{f.label}</Label>
-                  {f.type === 'textarea' ? (
-                    <Textarea
-                      id={`a-${index}-${f.key}`}
-                      rows={3}
-                      value={String(action[f.key] ?? '')}
-                      onChange={(e) => update(index, { [f.key]: e.target.value })}
-                      placeholder={f.placeholder}
-                    />
+                  {loading && f.entity ? (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Cargando…</p>
                   ) : (
-                    <Input
-                      id={`a-${index}-${f.key}`}
-                      type={f.type === 'number' ? 'number' : 'text'}
-                      value={String(action[f.key] ?? '')}
-                      onChange={(e) => update(index, {
-                        [f.key]: f.type === 'number'
-                          ? (e.target.value === '' ? undefined : Number(e.target.value))
-                          : e.target.value,
-                      })}
-                      placeholder={f.placeholder}
-                    />
+                    renderField(action, index, f)
                   )}
                 </div>
               ))}

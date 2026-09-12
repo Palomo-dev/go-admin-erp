@@ -16,6 +16,8 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
 import { isEmptyConditionTree } from '@/lib/services/crm/automation/conditionsDsl';
 import { ConditionEditor } from './ConditionEditor';
+import { EntitySelect } from '@/components/crm/shared/EntitySelect';
+import { useCrmLookups } from '@/components/crm/shared/useCrmLookups';
 import type { SequenceStepView, SequenceView } from './useSequences';
 
 const CHANNELS = [
@@ -54,6 +56,7 @@ export function SequenceFormDialog({ open, sequence, onOpenChange, onSave }: Pro
   const [exits, setExits] = useState<string[]>(['won_lost']);
   const [steps, setSteps] = useState<SequenceStepView[]>([]);
   const [saving, setSaving] = useState(false);
+  const { templates, loading: lookupsLoading } = useCrmLookups();
 
   useEffect(() => {
     if (!open) return;
@@ -130,7 +133,7 @@ export function SequenceFormDialog({ open, sequence, onOpenChange, onSave }: Pro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{sequence ? 'Editar secuencia' : 'Nueva secuencia'}</DialogTitle>
         </DialogHeader>
@@ -207,7 +210,7 @@ export function SequenceFormDialog({ open, sequence, onOpenChange, onSave }: Pro
             )}
             {steps.map((step, index) => (
               <div key={index} className="rounded-md border border-gray-200 p-3 dark:border-gray-700">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <span className="text-xs text-gray-500 dark:text-gray-400">Paso {index + 1}</span>
                   <select
                     aria-label={`Canal del paso ${index + 1}`}
@@ -223,27 +226,29 @@ export function SequenceFormDialog({ open, sequence, onOpenChange, onSave }: Pro
                   >
                     {CHANNELS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
-                  <Input
-                    aria-label={`Retardo en días del paso ${index + 1}`}
-                    type="number"
-                    min={0}
-                    max={3650}
-                    className="w-24"
-                    disabled={!!sequence}
-                    value={step.delay_days}
-                    onChange={(e) => updateStep(index, { delay_days: Number(e.target.value) })}
-                  />
-                  {!sequence && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label={`Eliminar paso ${index + 1}`}
-                      onClick={() => setSteps(steps.filter((_, i) => i !== index))}
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Input
+                      aria-label={`Retardo en días del paso ${index + 1}`}
+                      type="number"
+                      min={0}
+                      max={3650}
+                      className="w-full sm:w-24"
+                      disabled={!!sequence}
+                      value={step.delay_days}
+                      onChange={(e) => updateStep(index, { delay_days: Number(e.target.value) })}
+                    />
+                    {!sequence && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Eliminar paso ${index + 1}`}
+                        onClick={() => setSteps(steps.filter((_, i) => i !== index))}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 {step.channel === 'condition' && (
                   <ConditionEditor
@@ -255,18 +260,34 @@ export function SequenceFormDialog({ open, sequence, onOpenChange, onSave }: Pro
                 )}
                 {!sequence && (step.channel === 'email' || step.channel === 'whatsapp' || step.channel === 'task' || step.channel === 'call') && (
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    <Input
-                      aria-label={`Asunto o título del paso ${index + 1}`}
-                      placeholder={step.channel === 'email' ? 'Asunto' : 'Título'}
-                      value={String((step.action_config ?? {})[step.channel === 'email' ? 'subject' : 'title'] ?? '')}
-                      onChange={(e) => updateConfig(index, step.channel === 'email' ? 'subject' : 'title', e.target.value)}
-                    />
-                    <Input
-                      aria-label={`Plantilla del paso ${index + 1}`}
-                      placeholder="Plantilla (id, opcional)"
-                      value={String(step.template_id ?? '')}
-                      onChange={(e) => updateStep(index, { template_id: e.target.value || null })}
-                    />
+                    <div>
+                      <Label htmlFor={`step-${index}-subject`} className="text-xs">
+                        {step.channel === 'email' ? 'Asunto' : 'Título'}
+                      </Label>
+                      <Input
+                        id={`step-${index}-subject`}
+                        aria-label={`Asunto o título del paso ${index + 1}`}
+                        placeholder={step.channel === 'email' ? 'Asunto' : 'Título'}
+                        value={String((step.action_config ?? {})[step.channel === 'email' ? 'subject' : 'title'] ?? '')}
+                        onChange={(e) => updateConfig(index, step.channel === 'email' ? 'subject' : 'title', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`step-${index}-template`} className="text-xs">Plantilla</Label>
+                      {lookupsLoading ? (
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Cargando plantillas…</p>
+                      ) : (
+                        <EntitySelect
+                          value={step.template_id ?? null}
+                          onChange={(id) => updateStep(index, { template_id: id })}
+                          options={templates}
+                          placeholder="Sin plantilla (contenido libre)"
+                          emptyMessage="No hay plantillas creadas."
+                          ariaLabel={`Plantilla del paso ${index + 1}`}
+                          renderSubtitle={(t) => (t as { channel?: string | null }).channel ?? null}
+                        />
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

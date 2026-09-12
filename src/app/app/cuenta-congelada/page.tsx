@@ -236,8 +236,8 @@ export default function CuentaCongeladaPage() {
   const canPay = !isSuspended;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex flex-col items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-2xl space-y-6">
+    <div className="min-h-full bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex flex-col items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-2xl space-y-6 py-4">
         {/* Header con icono */}
         <div className="text-center space-y-3">
           <div className={`w-16 h-16 mx-auto rounded-full ${c.iconBg} flex items-center justify-center`}>

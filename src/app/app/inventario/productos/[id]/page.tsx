@@ -104,11 +104,21 @@ export default function ProductoDetallePage() {
           : data.cost || 0;
         
         // Calcular stock total
-        const totalStock = data.stock_levels
+        // Para productos padre (con variantes), el stock está en los hijos,
+        // no en el padre. Sumar ambos: stock_levels del padre + stock_levels de children.
+        // PostgREST devuelve `numeric` como texto: convertir con Number().
+        const parentStock = data.stock_levels
           ? data.stock_levels.reduce((total: number, sl: any) => {
-              return total + (sl.qty_on_hand || 0);
+              return total + (Number(sl.qty_on_hand) || 0);
             }, 0)
           : 0;
+        const childrenStock = (data.children || []).reduce((total: number, child: any) => {
+          if (!child.stock_levels) return total;
+          return total + child.stock_levels.reduce((childTotal: number, sl: any) => {
+            return childTotal + (Number(sl.qty_on_hand) || 0);
+          }, 0);
+        }, 0);
+        const totalStock = parentStock + childrenStock;
         
         // Agregar los campos calculados al objeto producto
         const processedProduct = {

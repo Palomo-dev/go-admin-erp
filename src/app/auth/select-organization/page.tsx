@@ -3,7 +3,7 @@
 // Forzar renderizado dinámico para evitar errores de useSearchParams
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, type MouseEvent as ReactMouseEvent, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { proceedWithLogin } from '@/lib/auth';
@@ -30,6 +30,55 @@ function SelectOrganizationContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selecting, setSelecting] = useState(false);
+  const [favoriteOrgs, setFavoriteOrgs] = useState<number[]>([]);
+
+  // Cargar favoritos de localStorage al montar
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('favoriteOrgIds');
+      if (stored) {
+        setFavoriteOrgs(JSON.parse(stored));
+      }
+    } catch {
+      // Si el JSON está corrupto, ignorar
+    }
+  }, []);
+
+  // Toggle favorito
+  const toggleFavoriteOrg = useCallback((e: ReactMouseEvent, orgId: number) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setFavoriteOrgs((prev) => {
+      const next = prev.includes(orgId)
+        ? prev.filter((id) => id !== orgId)
+        : [...prev, orgId];
+      localStorage.setItem('favoriteOrgIds', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  // Badge de estado
+  const getOrgStatusBadge = useCallback((status: string) => {
+    if (!status || status === 'active') {
+      return { label: 'Activa', className: 'bg-green-100 text-green-700' };
+    }
+    if (status === 'suspended' || status === 'frozen' || status === 'trial_expired') {
+      return { label: 'Congelada', className: 'bg-red-100 text-red-700' };
+    }
+    if (status === 'deleted') {
+      return { label: 'Eliminada', className: 'bg-gray-200 text-gray-600' };
+    }
+    return { label: 'Inactiva', className: 'bg-amber-100 text-amber-700' };
+  }, []);
+
+  // Organizaciones ordenadas: favoritas primero
+  const sortedOrganizations = useMemo(() => {
+    return [...organizations].sort((a, b) => {
+      const aFav = favoriteOrgs.includes(Number(a.id)) ? 0 : 1;
+      const bFav = favoriteOrgs.includes(Number(b.id)) ? 0 : 1;
+      return aFav - bFav;
+    });
+  }, [organizations, favoriteOrgs]);
 
   useEffect(() => {
     loadUserOrganizations();
@@ -133,7 +182,7 @@ function SelectOrganizationContent() {
         `)
         .eq('user_id', session.user.id)
         .eq('is_active', true)
-        .eq('organizations.status', 'active');
+        .in('organizations.status', ['active', 'suspended', 'frozen', 'trial_expired']);
 
       if (memberError) {
         throw memberError;
@@ -291,42 +340,70 @@ function SelectOrganizationContent() {
         )}
 
         <div className="space-y-3">
-          {organizations.map((org) => (
-            <button
-              key={org.id}
-              onClick={() => handleSelectOrganization(org)}
-              disabled={selecting}
-              className="w-full flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {/* Organization logo or placeholder */}
-              <div className="flex-shrink-0 mr-4">
-                {org.logo_url ? (
-                  <img 
-                    src={org.logo_url} 
-                    alt={`${org.name} logo`} 
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-lg">
-                    {org.name.charAt(0).toUpperCase()}
-                  </div>
-                )}
+          {sortedOrganizations.map((org) => {
+            const isFav = favoriteOrgs.includes(Number(org.id));
+            const statusBadge = getOrgStatusBadge(org.status);
+            return (
+              <div
+                key={org.id}
+                onClick={() => !selecting && handleSelectOrganization(org)}
+                className={`w-full flex items-center p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer ${
+                  isFav
+                    ? 'border-amber-300 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-900/10'
+                    : 'border-gray-200 dark:border-gray-700'
+                } ${selecting ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {/* Botón de favorito */}
+                <button
+                  type="button"
+                  onClick={(e) => toggleFavoriteOrg(e, Number(org.id))}
+                  className="flex-shrink-0 mr-3 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  title={isFav ? 'Quitar de favoritas' : 'Marcar como favorita'}
+                >
+                  <svg
+                    className={`w-5 h-5 transition-colors ${isFav ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600 hover:text-gray-400'}`}
+                    fill={isFav ? 'currentColor' : 'none'}
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.604 17.11a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                  </svg>
+                </button>
+
+                {/* Organization logo or placeholder */}
+                <div className="flex-shrink-0 mr-4">
+                  {org.logo_url ? (
+                    <img
+                      src={org.logo_url}
+                      alt={`${org.name} logo`}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-medium text-lg shadow-sm">
+                      {org.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Organization details */}
+                <div className="flex-grow text-left min-w-0">
+                  <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{org.name}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{org.type_name}</div>
+                </div>
+
+                {/* Badges */}
+                <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                    {org.plan_name}
+                  </span>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadge.className}`}>
+                    {statusBadge.label}
+                  </span>
+                </div>
               </div>
-              
-              {/* Organization details */}
-              <div className="flex-grow text-left">
-                <div className="font-medium text-gray-900">{org.name}</div>
-                <div className="text-sm text-gray-500">{org.type_name}</div>
-              </div>
-              
-              {/* Plan badge */}
-              <div className="flex-shrink-0">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                  {org.plan_name}
-                </span>
-              </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
 
         <div className="mt-6">

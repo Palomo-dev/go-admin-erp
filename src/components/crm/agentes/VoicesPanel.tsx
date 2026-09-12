@@ -32,9 +32,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -43,7 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import { AlertTriangle, Info, Loader2, Mic, RefreshCw, Star, Upload } from "lucide-react";
+import { AlertTriangle, Info, Loader2, Mic, RefreshCw, Star } from "lucide-react";
 import {
   PROVIDERS_SETTINGS_HREF,
   VOICE_KIND_LABELS,
@@ -51,6 +48,7 @@ import {
   type VoiceCatalogRow,
 } from "./useVoiceCatalog";
 import { VoiceAddForms } from "./VoiceAddForms";
+import { VoiceRecorderPanel } from "./VoiceRecorderPanel";
 
 interface AgentLite {
   id: string;
@@ -64,12 +62,6 @@ export function VoicesPanel() {
   const [agents, setAgents] = useState<AgentLite[]>([]);
   const [agentsError, setAgentsError] = useState<string | null>(null);
   const [assigning, setAssigning] = useState<string | null>(null);
-
-  // Clonar mi voz: nombre, muestras de audio y consentimiento explícito.
-  const [cloneName, setCloneName] = useState("");
-  const [cloneFiles, setCloneFiles] = useState<File[]>([]);
-  const [cloneConsent, setCloneConsent] = useState(false);
-  const [cloning, setCloning] = useState(false);
 
   // Sin credencial de TTS el proveedor responde 401: se bloquea con motivo visible
   // en vez de dejar al usuario chocar contra el error del proveedor.
@@ -144,16 +136,16 @@ export function VoicesPanel() {
    * ⚠️ NO VERIFICADO: con la clave marcador de este entorno el proveedor
    * responde 401 y ese error se muestra tal cual, sin disimularlo.
    */
-  const cloneVoice = async () => {
-    if (!cloneName.trim()) {
+  const cloneVoice = async (name: string, files: File[], consent: boolean) => {
+    if (!name.trim()) {
       toast({ title: "Ponle un nombre a la voz", variant: "destructive" });
       return;
     }
-    if (cloneFiles.length === 0) {
+    if (files.length === 0) {
       toast({ title: "Sube al menos una muestra de audio", variant: "destructive" });
       return;
     }
-    if (!cloneConsent) {
+    if (!consent) {
       toast({
         title: "Falta el consentimiento",
         description:
@@ -162,19 +154,15 @@ export function VoicesPanel() {
       });
       return;
     }
-    setCloning(true);
     try {
       const body = new FormData();
-      body.append("name", cloneName.trim());
+      body.append("name", name.trim());
       body.append("consent", "true");
-      for (const f of cloneFiles) body.append("samples", f);
+      for (const f of files) body.append("samples", f);
 
       const res = await fetch("/api/crm/voices/clone", { method: "POST", body });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
-      setCloneName("");
-      setCloneFiles([]);
-      setCloneConsent(false);
       toast({
         title: "Voz clonada",
         description: json.data?.requires_verification
@@ -188,8 +176,6 @@ export function VoicesPanel() {
         description: err instanceof Error ? err.message : "Error desconocido",
         variant: "destructive",
       });
-    } finally {
-      setCloning(false);
     }
   };
 
@@ -380,77 +366,13 @@ export function VoicesPanel() {
         </h2>
         <VoiceAddForms tts={tts} onChanged={() => void reload()} />
 
-        {/* Clonar mi voz: el único camino que CREA una voz nueva desde aquí. */}
-        <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-          <h3 className="mb-1 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-            <Upload className="h-4 w-4" aria-hidden="true" />
-            Clonar mi voz
-          </h3>
-          <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            Sube entre 1 y 5 muestras de audio (mp3, wav, m4a, ogg o webm; máximo 10 MB cada una) con la
-            voz hablando con naturalidad. La voz se crea en ElevenLabs y queda en este catálogo, lista para
-            asignársela a un agente.
-          </p>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="cv-name">Nombre de la voz</Label>
-              <Input
-                id="cv-name"
-                value={cloneName}
-                onChange={(e) => setCloneName(e.target.value)}
-                placeholder="Mi voz comercial"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cv-files">Muestras de audio</Label>
-              <Input
-                id="cv-files"
-                type="file"
-                accept="audio/*"
-                multiple
-                onChange={(e) => setCloneFiles(Array.from(e.target.files ?? []).slice(0, 5))}
-              />
-              {cloneFiles.length > 0 && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {cloneFiles.length} muestra{cloneFiles.length === 1 ? "" : "s"} seleccionada
-                  {cloneFiles.length === 1 ? "" : "s"}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="mt-3 flex items-start gap-2 rounded border border-amber-200 bg-amber-50 p-2 dark:border-amber-900 dark:bg-amber-950">
-            <Checkbox
-              id="cv-consent"
-              checked={cloneConsent}
-              onCheckedChange={(v) => setCloneConsent(v === true)}
-            />
-            <Label
-              htmlFor="cv-consent"
-              className="cursor-pointer text-xs font-normal text-amber-900 dark:text-amber-100"
-            >
-              Confirmo que esta es mi voz, o la de una persona del equipo que dio su consentimiento por
-              escrito. No es la voz de un tercero (Ley 1581 de 2012 y política de ElevenLabs).
-            </Label>
-          </div>
-          <div className="mt-3">
-            <Button
-              onClick={cloneVoice}
-              disabled={cloning || providerBlocked}
-              title={providerBlocked ? providerBlockedReason : undefined}
-            >
-              {cloning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-              Clonar voz
-            </Button>
-            {providerBlocked && (
-              <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
-                Desactivado: {providerBlockedReason}{" "}
-                <Link href={PROVIDERS_SETTINGS_HREF} className="underline">
-                  Configurarla
-                </Link>
-              </p>
-            )}
-          </div>
-        </div>
+        {/* Clonar mi voz: grabar desde el micrófono o subir muestras. */}
+        <VoiceRecorderPanel
+          ttsReady={tts.ready}
+          providerBlocked={providerBlocked}
+          providerBlockedReason={providerBlockedReason}
+          onClone={(name, files, consent) => cloneVoice(name, files, consent)}
+        />
       </section>
     </div>
   );

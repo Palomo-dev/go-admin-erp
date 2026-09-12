@@ -100,10 +100,12 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
         if (stockError) throw stockError;
         
         // Calcular totales
+        // PostgREST devuelve `numeric` como texto ("5.000"). Sin Number(),
+        // `0 + "5.000"` concatena ("05.000") en vez de sumar.
         const totals = stock?.reduce(
           (acc, curr) => {
-            const qtyOnHand = curr.qty_on_hand || 0;
-            const qtyReserved = curr.qty_reserved || 0;
+            const qtyOnHand = Number(curr.qty_on_hand) || 0;
+            const qtyReserved = Number(curr.qty_reserved) || 0;
             return {
               total: acc.total + qtyOnHand,
               reserved: acc.reserved + qtyReserved,

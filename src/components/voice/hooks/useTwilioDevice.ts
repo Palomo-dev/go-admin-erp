@@ -137,8 +137,12 @@ export interface TwilioDeviceApi {
  * @param onIncoming  se invoca con cada llamada entrante aceptable (el provider
  *                    decide si la rechaza por ocupado).
  * @param onDestroy   limpieza extra al desmontar (colgar la llamada activa).
+ * @param enabled     cuando es `false` el hook no inicializa nada (no pide token,
+ *                    no pide permiso de micrófono, no carga el SDK). Así el
+ *                    `SoftphoneProvider` puede montarse siempre sin molestar al
+ *                    usuario si el módulo de CRM no está activo.
  */
-export function useTwilioDevice(onIncoming: (call: Call) => void, onDestroy?: () => void): TwilioDeviceApi {
+export function useTwilioDevice(onIncoming: (call: Call) => void, onDestroy?: () => void, enabled: boolean = true): TwilioDeviceApi {
   const deviceRef = useRef<Device | null>(null);
   const retriesRef = useRef(0);
   const [attempt, setAttempt] = useState(0);
@@ -156,6 +160,7 @@ export function useTwilioDevice(onIncoming: (call: Call) => void, onDestroy?: ()
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (!enabled) return; // Sin CRM activo: no inicializar, no pedir micrófono.
     if (isMobileNative()) {
       setDeviceState('not_configured');
       setDeviceMissing([]);
@@ -199,15 +204,22 @@ export function useTwilioDevice(onIncoming: (call: Call) => void, onDestroy?: ()
         return;
       }
 
+      // Verificar permiso del micrófono SIN pedirlo (no lanzar el prompt del
+      // navegador al montar). Si ya fue concedido, continuar; si fue denegado,
+      // mostrar el estado no_permission; si es 'prompt' (nunca se ha pedido),
+      // continuar — el SDK pedirá el micrófono cuando el usuario haga/reciba
+      // una llamada, que es el momento correcto.
       try {
-        await navigator.mediaDevices.getUserMedia({ audio: true }).then((s) => s.getTracks().forEach((t) => t.stop()));
-      } catch (err) {
-        if (cancelled) return;
-        setDeviceState('no_permission');
-        setDeviceReason('Permite el micrófono en el navegador para usar el softphone');
-        setDeviceErrorCode(31208);
-        void err;
-        return;
+        const permStatus = await navigator.permissions?.query({ name: 'microphone' as PermissionName });
+        if (permStatus?.state === 'denied') {
+          if (cancelled) return;
+          setDeviceState('no_permission');
+          setDeviceReason('Permite el micrófono en el navegador para usar el softphone');
+          setDeviceErrorCode(31401);
+          return;
+        }
+      } catch {
+        // permissions.query no soportado o falló: continuar sin verificar.
       }
 
       let mod: typeof import('@twilio/voice-sdk');
@@ -295,7 +307,7 @@ export function useTwilioDevice(onIncoming: (call: Call) => void, onDestroy?: ()
       }
       deviceRef.current = null;
     };
-  }, [attempt]);
+  }, [attempt, enabled]);
 
   const retry = useCallback(() => {
     retriesRef.current = 0;

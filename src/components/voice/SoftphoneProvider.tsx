@@ -37,7 +37,7 @@ const SoftphoneContext = createContext<SoftphoneValue>({ available: false });
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 
-export function SoftphoneProvider({ children }: { children: ReactNode }) {
+export function SoftphoneProvider({ children, enabled = true }: { children: ReactNode; enabled?: boolean }) {
   const callRef = useRef<Call | null>(null);
   const activeRef = useRef<ActiveCallInfo | null>(null);
   const liveNoteRef = useRef('');
@@ -141,7 +141,7 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
     callRef.current = null;
   }, []);
 
-  const { deviceRef, deviceState, deviceReason, deviceErrorCode, deviceMissing, deviceScope, retry } = useTwilioDevice(handleIncoming, onDeviceDestroy);
+  const { deviceRef, deviceState, deviceReason, deviceErrorCode, deviceMissing, deviceScope, retry } = useTwilioDevice(handleIncoming, onDeviceDestroy, enabled);
   const audio = useAudioDevices(deviceRef, deviceState === 'registered');
 
   // ─── Acciones ──────────────────────────────────────────────────────────────
@@ -242,8 +242,8 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [hangup, mute, muted, incoming, acceptIncoming]);
 
-  const value = useMemo<SoftphoneContextValue>(
-    () => ({
+  const value = useMemo<SoftphoneValue>(
+    () => (enabled ? {
       available: true,
       deviceState,
       deviceReason,
@@ -269,8 +269,8 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
       acceptIncoming,
       rejectIncoming,
       retry,
-    }),
-    [deviceState, deviceReason, deviceErrorCode, deviceMissing, deviceScope, callStatus, activeCall, activeCallId, activeCallRow, muted, incoming, liveNote, setLiveNote, lastEndedCall, clearLastEndedCall, audio, makeCall, hangup, mute, sendDigits, acceptIncoming, rejectIncoming, retry]
+    } : { available: false }),
+    [enabled, deviceState, deviceReason, deviceErrorCode, deviceMissing, deviceScope, callStatus, activeCall, activeCallId, activeCallRow, muted, incoming, liveNote, setLiveNote, lastEndedCall, clearLastEndedCall, audio, makeCall, hangup, mute, sendDigits, acceptIncoming, rejectIncoming, retry]
   );
 
   return <SoftphoneContext.Provider value={value}>{children}</SoftphoneContext.Provider>;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePermissions, useRoles } from '@/hooks/useRoles';
 import { RoleWithPermissions } from '@/lib/services/roleService';
@@ -181,9 +182,9 @@ export default function PermissionsMatrix({
   };
 
   if (loading || permissionsLoading) {
-    return (
-      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div className="relative top-10 mx-auto p-5 border w-4/5 max-w-6xl shadow-lg rounded-md bg-white dark:bg-gray-800 space-y-4">
+    return createPortal(
+      <div className="fixed inset-0 z-[100] bg-gray-600/50 dark:bg-black/70 flex items-center justify-center p-4">
+        <div className="w-full max-w-6xl max-h-[90vh] bg-white dark:bg-gray-800 rounded-lg shadow-xl overflow-y-auto p-4 sm:p-6 space-y-4">
           <Skeleton className="h-8 w-1/3" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -191,18 +192,19 @@ export default function PermissionsMatrix({
             ))}
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
-  return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-4 mx-auto p-5 border w-[95%] max-w-7xl shadow-lg rounded-md bg-white dark:bg-gray-800 mb-4">
-        <div className="flex flex-col h-[90vh]">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] bg-gray-600/50 dark:bg-black/70 flex items-center justify-center p-4">
+      <div className="w-full max-w-7xl h-[90vh] bg-white dark:bg-gray-800 rounded-lg shadow-xl overflow-hidden flex flex-col">
+        <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700">
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+          <div className="shrink-0 flex items-center justify-between p-4 sm:p-5 pb-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="min-w-0">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white break-words">
                 Gestionar Permisos - {role.name}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -211,14 +213,14 @@ export default function PermissionsMatrix({
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 dark:text-gray-500 hover:text-gray-600"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 shrink-0"
             >
               <X className="h-6 w-6" />
             </button>
           </div>
 
           {/* Controles */}
-          <div className="py-4 border-b border-gray-200 dark:border-gray-700 space-y-4">
+          <div className="shrink-0 px-4 sm:px-5 py-4 border-b border-gray-200 dark:border-gray-700 space-y-4">
             {/* Búsqueda y filtros */}
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
@@ -287,7 +289,7 @@ export default function PermissionsMatrix({
           </div>
 
           {/* Lista de módulos y permisos */}
-          <div className="flex-1 overflow-y-auto py-4">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4">
             {filteredModules.length === 0 ? (
               <div className="text-center py-12">
                 <Shield className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
@@ -391,7 +393,7 @@ export default function PermissionsMatrix({
           </div>
 
           {/* Footer con acciones */}
-          <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="shrink-0 flex items-center justify-between p-4 sm:p-5 pt-4 border-t border-gray-200 dark:border-gray-700">
             <div className="text-sm text-gray-600 dark:text-gray-400">
               {selectedPermissions.length} permisos seleccionados
             </div>
@@ -429,6 +431,7 @@ export default function PermissionsMatrix({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

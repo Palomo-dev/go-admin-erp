@@ -160,6 +160,13 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
     return summary.income_by_method?.[method] || 0;
   };
 
+  // Helper para ocultar montos en modo ciego: los empleados no deben ver
+  // ventas, ingresos, egresos ni ningún valor esperado. Solo cuentan físico.
+  const mask = (value: number | string): string => {
+    if (showExpectedBlind) return typeof value === 'number' ? formatCurrency(value) : value;
+    return '****';
+  };
+
   const getMethodDifference = (method: string): number => {
     const counted = methodCounts[method] || 0;
     const expected = getMethodExpected(method);
@@ -261,38 +268,38 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                   <div>
                     <span className="dark:text-gray-400 text-gray-600">Monto inicial:</span>
                     <p className="font-medium dark:text-white text-gray-900">
-                      {summary ? formatCurrency(summary.initial_amount) : '-'}
+                      {summary ? mask(summary.initial_amount) : '-'}
                     </p>
                   </div>
                   <div>
                     <span className="dark:text-gray-400 text-gray-600">Ventas en efectivo:</span>
                     <p className="font-medium text-green-600">
-                      {summary ? formatCurrency(summary.sales_cash) : '-'}
+                      {summary ? mask(summary.sales_cash) : '-'}
                     </p>
                   </div>
                   <div>
                     <span className="dark:text-gray-400 text-gray-600">Ventas totales:</span>
                     <p className="font-medium text-emerald-600">
-                      {summary ? formatCurrency(summary.sales_total ?? summary.sales_cash) : '-'}
+                      {summary ? mask(summary.sales_total ?? summary.sales_cash) : '-'}
                     </p>
                   </div>
                   <div>
                     <span className="dark:text-gray-400 text-gray-600">Ingresos:</span>
                     <p className="font-medium text-blue-600">
-                      {summary ? formatCurrency(summary.cash_in) : '-'}
+                      {summary ? mask(summary.cash_in) : '-'}
                     </p>
                   </div>
                   <div>
                     <span className="dark:text-gray-400 text-gray-600">Egresos:</span>
                     <p className="font-medium text-red-600">
-                      {summary ? formatCurrency(summary.cash_out) : '-'}
+                      {summary ? mask(summary.cash_out) : '-'}
                     </p>
                   </div>
                   {summary && summary.change_total > 0 && (
                     <div>
                       <span className="dark:text-gray-400 text-gray-600">Vuelto entregado:</span>
                       <p className="font-medium text-orange-600">
-                        -{formatCurrency(summary.change_total)}
+                        -{mask(summary.change_total)}
                       </p>
                     </div>
                   )}
@@ -300,7 +307,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                     <div>
                       <span className="dark:text-gray-400 text-gray-600">Devoluciones:</span>
                       <p className="font-medium text-red-600">
-                        -{formatCurrency(summary.returns_total)}
+                        -{mask(summary.returns_total)}
                       </p>
                     </div>
                   )}
@@ -322,7 +329,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                             {METHOD_LABELS(method)}:
                           </span>
                           <span className="font-medium text-green-600">
-                            {formatCurrency(amount)}
+                            {mask(amount)}
                           </span>
                         </div>
                       ))}
@@ -344,7 +351,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                             {METHOD_LABELS(method)}:
                           </span>
                           <span className="font-medium text-emerald-600">
-                            {formatCurrency(method === 'cash' ? amount - (summary.change_total || 0) : amount)}
+                            {mask(method === 'cash' ? amount - (summary.change_total || 0) : amount)}
                           </span>
                         </div>
                       ))}
@@ -353,7 +360,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                           Total ventas:
                         </span>
                         <span className="font-bold text-emerald-600">
-                          {formatCurrency(summary.sales_total ?? 0)}
+                          {mask(summary.sales_total ?? 0)}
                         </span>
                       </div>
                     </div>
@@ -368,7 +375,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                     </span>
                     <div className="flex justify-between items-center text-sm">
                       <span className="dark:text-gray-300 text-gray-700">Total recibido:</span>
-                      <span className="font-bold text-blue-600">{formatCurrency(summary.cash_receipts_total)}</span>
+                      <span className="font-bold text-blue-600">{mask(summary.cash_receipts_total)}</span>
                     </div>
                     {summary.cash_receipts_by_method && Object.keys(summary.cash_receipts_by_method).length > 0 && (
                       <div className="space-y-1">
@@ -378,7 +385,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                               {METHOD_ICONS[method] || <Wallet className="h-3 w-3" />}
                               {METHOD_LABELS(method)}:
                             </span>
-                            <span className="font-medium text-blue-600">{formatCurrency(amount)}</span>
+                            <span className="font-medium text-blue-600">{mask(amount)}</span>
                           </div>
                         ))}
                       </div>
@@ -400,7 +407,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                             {METHOD_LABELS(method)}:
                           </span>
                           <span className="font-medium text-red-600">
-                            {formatCurrency(amount)}
+                            {mask(amount)}
                           </span>
                         </div>
                       ))}
@@ -409,7 +416,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                           Total Pagos a Proveedores:
                         </span>
                         <span className="font-bold text-red-600">
-                          -{formatCurrency(summary.purchases_total || 0)}
+                          -{mask(summary.purchases_total || 0)}
                         </span>
                       </div>
                     </div>
@@ -468,7 +475,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                             {METHOD_LABELS(mov.method)}
                           </Badge>
                           <span className={`font-medium ${mov.direction === 'in' ? 'text-green-600' : 'text-red-600'}`}>
-                            {mov.direction === 'in' ? '+' : '-'}{formatCurrency(mov.amount)}
+                            {mov.direction === 'in' ? '+' : '-'}{mask(mov.amount)}
                           </span>
                         </div>
                       </div>

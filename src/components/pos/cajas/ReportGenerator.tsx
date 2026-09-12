@@ -58,6 +58,9 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
     const branchName = (session as any).branch_name || `#${session.branch_id}`;
     const blindMode = !showExpected;
 
+    // Helper para ocultar montos en modo ciego
+    const mask = (value: number): string => blindMode ? '***' : formatCurrency(value);
+
     const formatDate = (dateString: string) => formatDateTimeInTz(dateString, timezone);
 
     const ingressMovements = movements.filter(m => m.type === 'in');
@@ -126,15 +129,15 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
   <div class="section">
     <div class="section-title">RESUMEN FINANCIERO</div>
     <table class="table">
-      <tr><td>Monto Inicial</td><td class="amount-right">${formatCurrency(summary.initial_amount)}</td></tr>
-      <tr><td>Ventas en Efectivo (neto de vuelto)</td><td class="amount-right">${formatCurrency(summary.sales_cash)}</td></tr>
-      <tr><td>Ingresos Manuales</td><td class="amount-right">${formatCurrency(summary.cash_in)}</td></tr>
-      <tr><td>Egresos Manuales</td><td class="amount-right">-${formatCurrency(summary.cash_out)}</td></tr>
-      ${summary.change_total > 0 ? `<tr><td>Vuelto Entregado</td><td class="amount-right">-${formatCurrency(summary.change_total)}</td></tr>` : ''}
-      ${summary.returns_total > 0 ? `<tr><td>Devoluciones</td><td class="amount-right">-${formatCurrency(summary.returns_total)}</td></tr>` : ''}
-      ${summary.folio_consumptions_total > 0 ? `<tr><td>Consumos de Habitaciones</td><td class="amount-right">${formatCurrency(summary.folio_consumptions_total)}</td></tr>` : ''}
-      ${summary.cash_receipts_total > 0 ? `<tr><td>Recibos de Caja (Abonos CxC)</td><td class="amount-right">${formatCurrency(summary.cash_receipts_total)}</td></tr>` : ''}
-      ${summary.purchases_total > 0 ? `<tr><td>Pagos a Proveedores (CxP)</td><td class="amount-right">-${formatCurrency(summary.purchases_total)}</td></tr>` : ''}
+      <tr><td>Monto Inicial</td><td class="amount-right">${mask(summary.initial_amount)}</td></tr>
+      <tr><td>Ventas en Efectivo (neto de vuelto)</td><td class="amount-right">${mask(summary.sales_cash)}</td></tr>
+      <tr><td>Ingresos Manuales</td><td class="amount-right">${mask(summary.cash_in)}</td></tr>
+      <tr><td>Egresos Manuales</td><td class="amount-right">-${mask(summary.cash_out)}</td></tr>
+      ${summary.change_total > 0 ? `<tr><td>Vuelto Entregado</td><td class="amount-right">-${mask(summary.change_total)}</td></tr>` : ''}
+      ${summary.returns_total > 0 ? `<tr><td>Devoluciones</td><td class="amount-right">-${mask(summary.returns_total)}</td></tr>` : ''}
+      ${summary.folio_consumptions_total > 0 ? `<tr><td>Consumos de Habitaciones</td><td class="amount-right">${mask(summary.folio_consumptions_total)}</td></tr>` : ''}
+      ${summary.cash_receipts_total > 0 ? `<tr><td>Recibos de Caja (Abonos CxC)</td><td class="amount-right">${mask(summary.cash_receipts_total)}</td></tr>` : ''}
+      ${summary.purchases_total > 0 ? `<tr><td>Pagos a Proveedores (CxP)</td><td class="amount-right">-${mask(summary.purchases_total)}</td></tr>` : ''}
       <tr class="total-row"><td>EFECTIVO ESPERADO EN CAJA</td><td class="amount-right">${blindMode ? '***' : formatCurrency(summary.expected_amount)}</td></tr>
     </table>
     ${session.status === 'closed' && summary.counted_amount !== undefined && !blindMode ? `
@@ -152,8 +155,8 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
       ${Object.keys({...incomeMethods, ...expenseMethods}).map(method => `
         <tr>
           <td class="method-label">${METHOD_LABELS(method)}</td>
-          <td class="method-amount">${incomeMethods[method] ? formatCurrency(incomeMethods[method]) : '-'}</td>
-          <td class="method-amount">${expenseMethods[method] ? '-' + formatCurrency(expenseMethods[method]) : '-'}</td>
+          <td class="method-amount">${incomeMethods[method] ? mask(incomeMethods[method]) : '-'}</td>
+          <td class="method-amount">${expenseMethods[method] ? '-' + mask(expenseMethods[method]) : '-'}</td>
         </tr>
       `).join('')}
     </table>
@@ -167,10 +170,10 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
       ${(Object.entries(summary.cash_receipts_by_method || {})).map(([method, amount]) => `
         <tr>
           <td class="method-label">${METHOD_LABELS(method)}</td>
-          <td class="method-amount">${formatCurrency(amount)}</td>
+          <td class="method-amount">${mask(amount)}</td>
         </tr>
       `).join('')}
-      <tr class="total-row"><td class="method-label">TOTAL RECIBOS</td><td class="method-amount">${formatCurrency(summary.cash_receipts_total)}</td></tr>
+      <tr class="total-row"><td class="method-label">TOTAL RECIBOS</td><td class="method-amount">${mask(summary.cash_receipts_total)}</td></tr>
     </table>
   </div>
   ` : ''}
@@ -183,10 +186,10 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
       ${(Object.entries(summary.purchases_by_method || {})).map(([method, amount]) => `
         <tr>
           <td class="method-label">${METHOD_LABELS(method)}</td>
-          <td class="method-amount">-${formatCurrency(amount)}</td>
+          <td class="method-amount">-${mask(amount)}</td>
         </tr>
       `).join('')}
-      <tr class="total-row"><td class="method-label">TOTAL PAGOS</td><td class="method-amount">-${formatCurrency(summary.purchases_total)}</td></tr>
+      <tr class="total-row"><td class="method-label">TOTAL PAGOS</td><td class="method-amount">-${mask(summary.purchases_total)}</td></tr>
     </table>
   </div>
   ` : ''}
@@ -194,10 +197,10 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
   <div class="section">
     <div class="section-title">RESUMEN DE VENTAS</div>
     <table class="table">
-      <tr><td>Total Ventas (todos los metodos)</td><td class="amount-right">${formatCurrency(sales_summary.total_sales)}</td></tr>
-      <tr><td>Ventas en Efectivo</td><td class="amount-right">${formatCurrency(sales_summary.cash_sales)}</td></tr>
-      <tr><td>Ventas con Tarjeta</td><td class="amount-right">${formatCurrency(sales_summary.card_sales)}</td></tr>
-      <tr><td>Otros Metodos</td><td class="amount-right">${formatCurrency(sales_summary.other_sales)}</td></tr>
+      <tr><td>Total Ventas (todos los metodos)</td><td class="amount-right">${mask(sales_summary.total_sales)}</td></tr>
+      <tr><td>Ventas en Efectivo</td><td class="amount-right">${mask(sales_summary.cash_sales)}</td></tr>
+      <tr><td>Ventas con Tarjeta</td><td class="amount-right">${mask(sales_summary.card_sales)}</td></tr>
+      <tr><td>Otros Metodos</td><td class="amount-right">${mask(sales_summary.other_sales)}</td></tr>
     </table>
   </div>
 
@@ -208,8 +211,8 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
     <table class="table">
       <thead><tr><th>Fecha/Hora</th><th>Concepto</th><th class="amount-right">Ingreso</th><th>Notas</th></tr></thead>
       <tbody>
-        ${ingressMovements.map(m => `<tr><td>${formatDate(m.created_at)}</td><td>${m.concept}</td><td class="amount-right">${formatCurrency(m.amount)}</td><td>${m.notes || '-'}</td></tr>`).join('')}
-        <tr class="total-row"><td colspan="2">TOTAL INGRESOS</td><td class="amount-right">${formatCurrency(summary.cash_in)}</td><td></td></tr>
+        ${ingressMovements.map(m => `<tr><td>${formatDate(m.created_at)}</td><td>${m.concept}</td><td class="amount-right">${mask(m.amount)}</td><td>${m.notes || '-'}</td></tr>`).join('')}
+        <tr class="total-row"><td colspan="2">TOTAL INGRESOS</td><td class="amount-right">${mask(summary.cash_in)}</td><td></td></tr>
       </tbody>
     </table>
     ` : ''}
@@ -217,8 +220,8 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
     <table class="table" style="margin-top: 12px;">
       <thead><tr><th>Fecha/Hora</th><th>Concepto</th><th class="amount-right">Egreso</th><th>Notas</th></tr></thead>
       <tbody>
-        ${egressMovements.map(m => `<tr><td>${formatDate(m.created_at)}</td><td>${m.concept}</td><td class="amount-right">-${formatCurrency(m.amount)}</td><td>${m.notes || '-'}</td></tr>`).join('')}
-        <tr class="total-row"><td colspan="2">TOTAL EGRESOS</td><td class="amount-right">-${formatCurrency(summary.cash_out)}</td><td></td></tr>
+        ${egressMovements.map(m => `<tr><td>${formatDate(m.created_at)}</td><td>${m.concept}</td><td class="amount-right">-${mask(m.amount)}</td><td>${m.notes || '-'}</td></tr>`).join('')}
+        <tr class="total-row"><td colspan="2">TOTAL EGRESOS</td><td class="amount-right">-${mask(summary.cash_out)}</td><td></td></tr>
       </tbody>
     </table>
     ` : ''}
@@ -248,6 +251,9 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
     const cashierName = (session as any).opened_by_name || 'Usuario';
     const branchName = (session as any).branch_name || `#${session.branch_id}`;
     const blindMode = !showExpected;
+
+    // Helper para ocultar montos en modo ciego
+    const mask = (value: number): string => blindMode ? '***' : formatCurrency(value);
 
     const formatDate = (dateString: string) => formatDateTimeInTz(dateString, timezone);
 
@@ -293,15 +299,15 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
   <hr>
   <div class="center bold">RESUMEN FINANCIERO</div>
   <table>
-    ${line('Monto Inicial', formatCurrency(summary.initial_amount))}
-    ${line('Ventas Efectivo', formatCurrency(summary.sales_cash))}
-    ${line('Ingresos', formatCurrency(summary.cash_in))}
-    ${line('Egresos', '-' + formatCurrency(summary.cash_out))}
-    ${summary.change_total > 0 ? line('Vuelto', '-' + formatCurrency(summary.change_total)) : ''}
-    ${summary.returns_total > 0 ? line('Devoluciones', '-' + formatCurrency(summary.returns_total)) : ''}
-    ${summary.folio_consumptions_total > 0 ? line('Consumos Habitaciones', formatCurrency(summary.folio_consumptions_total)) : ''}
-    ${summary.cash_receipts_total > 0 ? line('Recibos de Caja', formatCurrency(summary.cash_receipts_total)) : ''}
-    ${summary.purchases_total > 0 ? line('Pagos Proveedores', '-' + formatCurrency(summary.purchases_total)) : ''}
+    ${line('Monto Inicial', mask(summary.initial_amount))}
+    ${line('Ventas Efectivo', mask(summary.sales_cash))}
+    ${line('Ingresos', mask(summary.cash_in))}
+    ${line('Egresos', '-' + mask(summary.cash_out))}
+    ${summary.change_total > 0 ? line('Vuelto', '-' + mask(summary.change_total)) : ''}
+    ${summary.returns_total > 0 ? line('Devoluciones', '-' + mask(summary.returns_total)) : ''}
+    ${summary.folio_consumptions_total > 0 ? line('Consumos Habitaciones', mask(summary.folio_consumptions_total)) : ''}
+    ${summary.cash_receipts_total > 0 ? line('Recibos de Caja', mask(summary.cash_receipts_total)) : ''}
+    ${summary.purchases_total > 0 ? line('Pagos Proveedores', '-' + mask(summary.purchases_total)) : ''}
     ${divider}
     ${line('ESPERADO', blindMode ? '***' : formatCurrency(summary.expected_amount))}
   </table>
@@ -315,7 +321,7 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
   <div class="center bold">PAGOS POR METODO</div>
   <table>
     ${Object.keys({...incomeMethods, ...expenseMethods}).map(method => `
-      ${line(METHOD_LABELS(method) || method, formatCurrency(incomeMethods[method] || 0))}
+      ${line(METHOD_LABELS(method) || method, mask(incomeMethods[method] || 0))}
     `).join('')}
   </table>
   ${summary.cash_receipts_total > 0 ? `
@@ -323,10 +329,10 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
   <div class="center bold">RECIBOS DE CAJA</div>
   <table>
     ${(Object.entries(summary.cash_receipts_by_method || {})).map(([method, amount]) => `
-      ${line(METHOD_LABELS(method) || method, formatCurrency(amount))}
+      ${line(METHOD_LABELS(method) || method, mask(amount))}
     `).join('')}
     ${divider}
-    ${line('TOTAL RECIBOS', formatCurrency(summary.cash_receipts_total))}
+    ${line('TOTAL RECIBOS', mask(summary.cash_receipts_total))}
   </table>
   ` : ''}
   ${summary.purchases_total > 0 ? `
@@ -334,19 +340,19 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
   <div class="center bold">PAGOS A PROVEEDORES</div>
   <table>
     ${(Object.entries(summary.purchases_by_method || {})).map(([method, amount]) => `
-      ${line(METHOD_LABELS(method) || method, '-' + formatCurrency(amount))}
+      ${line(METHOD_LABELS(method) || method, '-' + mask(amount))}
     `).join('')}
     ${divider}
-    ${line('TOTAL PAGOS', '-' + formatCurrency(summary.purchases_total))}
+    ${line('TOTAL PAGOS', '-' + mask(summary.purchases_total))}
   </table>
   ` : ''}
   <hr>
   <div class="center bold">VENTAS</div>
   <table>
-    ${line('Total', formatCurrency(sales_summary.total_sales))}
-    ${line('Efectivo', formatCurrency(sales_summary.cash_sales))}
-    ${line('Tarjeta', formatCurrency(sales_summary.card_sales))}
-    ${line('Otros', formatCurrency(sales_summary.other_sales))}
+    ${line('Total', mask(sales_summary.total_sales))}
+    ${line('Efectivo', mask(sales_summary.cash_sales))}
+    ${line('Tarjeta', mask(sales_summary.card_sales))}
+    ${line('Otros', mask(sales_summary.other_sales))}
   </table>
   <hr>
   <div class="total-box">

@@ -32,6 +32,10 @@ import { supabase } from '@/lib/supabase/config';
 import { WebCommerceObservability } from '@/components/pos/pedidos-online/WebCommerceObservability';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useBranch } from '@/lib/context/BranchContext';
+import { usePermissionContext } from '@/hooks/usePermissionContext';
+import { STAGE_MANAGER_ROLE_IDS } from '@/lib/services/crm/stagePermissions';
+import type { UserPermissionContext } from '@/lib/middleware/permissions';
+import { EmployeeDashboard } from '@/components/inicio/EmployeeDashboard';
 
 function InicioContent() {
   const searchParams = useSearchParams() ?? new URLSearchParams();
@@ -42,6 +46,7 @@ function InicioContent() {
   const { toast } = useToast();
   const t = useTranslations('home');
   const locale = useLocale();
+  const { context: permContext } = usePermissionContext(organization?.id);
 
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,7 +58,20 @@ function InicioContent() {
   const [horas, setHoras] = useState<HorasDashboard | null>(null);
   const [fechasCustom, setFechasCustom] = useState<FechasCustomDashboard | null>(null);
   const [userName, setUserName] = useState<string>('');
+  const [userId, setUserId] = useState<string | null>(null);
   const greeting = useDynamicGreeting(userName, locale);
+
+  // Solo los administradores y managers de la organización (Super Admin /
+  // Admin de organización / Manager, role_id 1/2/5, o is_super_admin) pueden
+  // ver el dashboard financiero. Los empleados no ven datos financieros.
+  // Mientras los permisos cargan (permContext === null), fail-open: mostrar
+  // el dashboard financiero para no bloquear al admin. Cuando carguen, se
+  // ajusta automáticamente sin skeleton adicional.
+  const canSeeFinancialDashboard = !!(
+    !permContext || // aún cargando → fail-open (no bloquear)
+    permContext.isSuperAdmin ||
+    STAGE_MANAGER_ROLE_IDS.includes(permContext.roleId)
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -72,6 +90,8 @@ function InicioContent() {
       if (cached) {
         const parsed = JSON.parse(cached);
         const nombre = parsed?.data?.name || '';
+        const uid = parsed?.data?.id || parsed?.id || '';
+        if (uid) setUserId(uid);
         if (nombre) {
           setUserName(nombre.split(' ')[0]);
           return;
@@ -82,6 +102,7 @@ function InicioContent() {
     }
     // Fallback: consultar Supabase auth si no hay cache
     supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.id) setUserId(user.id);
       const meta = user?.user_metadata || {};
       const nombre = meta.first_name || meta.firstName || meta.full_name || meta.name || '';
       if (nombre) setUserName(nombre.split(' ')[0]);
@@ -90,6 +111,12 @@ function InicioContent() {
 
   const loadData = useCallback(async (silent = false) => {
     if (!organization?.id) return;
+    // Los empleados no-admin no reciben datos financieros del dashboard:
+    // se omite el fetch completo para no traer KPIs/actividad al cliente.
+    if (!canSeeFinancialDashboard) {
+      setIsLoading(false);
+      return;
+    }
     if (!silent) setIsLoading(true);
     try {
       const [data, modules] = await Promise.all([
@@ -121,7 +148,7 @@ function InicioContent() {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [organization?.id, toast, t, periodo, horas, fechasCustom, branchFilter]);
+  }, [organization?.id, toast, t, periodo, horas, fechasCustom, branchFilter, canSeeFinancialDashboard]);
 
   useEffect(() => {
     loadData();
@@ -138,7 +165,7 @@ function InicioContent() {
     periodo,
     horas,
     handleRealtimeRefresh,
-    !!organization?.id,
+    !!organization?.id && canSeeFinancialDashboard,
   );
 
   const handleRefresh = async () => {
@@ -204,14 +231,16 @@ function InicioContent() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <PeriodoSelector
-            value={periodo}
-            onChange={setPeriodo}
-            horas={horas}
-            onHorasChange={setHoras}
-            fechasCustom={fechasCustom}
-            onFechasCustomChange={setFechasCustom}
-          />
+          {canSeeFinancialDashboard && (
+            <PeriodoSelector
+              value={periodo}
+              onChange={setPeriodo}
+              horas={horas}
+              onHorasChange={setHoras}
+              fechasCustom={fechasCustom}
+              onFechasCustomChange={setFechasCustom}
+            />
+          )}
 
           <Link href="/marcar">
             <Button
@@ -224,16 +253,18 @@ function InicioContent() {
             </Button>
           </Link>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="border-gray-300 dark:border-gray-700"
-          >
-            <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
-            {t('refresh')}
-          </Button>
+          {canSeeFinancialDashboard && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="border-gray-300 dark:border-gray-700"
+            >
+              <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
+              {t('refresh')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -243,44 +274,59 @@ function InicioContent() {
         organizacionCreatedAt={dashboardData?.organizacionCreatedAt || null}
       />
 
-      {/* Atajos rápidos */}
-      <DashboardAtajos activeModuleCodes={activeModuleCodes} />
-
-      {/* KPIs */}
-      <DashboardKPIs data={dashboardData?.kpis ?? null} isLoading={isLoading} periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} branchFilter={branchFilter} />
-
-      {/* Alertas consolidadas de módulos */}
-      <DashboardAlertas
-        organizationId={organization?.id}
-        activeModuleCodes={activeModuleCodes}
-      />
-
-      {/* Actividad Reciente + Tendencia de Ventas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <DashboardActividad
-          data={dashboardData?.actividad ?? []}
-          isLoading={isLoading}
-        />
-
-        {/* Tendencia de ventas (reemplaza al antiguo bloque "Accesos Rápidos" redundante) */}
-        {organization?.id && (
-          <DashboardTendencia organizationId={organization.id} dias={30} />
-        )}
-      </div>
-
-      {/* Observabilidad de comercio web: stock reservado + pedidos próximos a expirar */}
-      {organization?.id && (
-        <WebCommerceObservability
-          organizationId={organization.id}
-          withinMinutes={30}
-        />
+      {/* Atajos rápidos — solo para admins/managers. Los empleados ven su
+          propio panel con accesos filtrados por permisos de su cargo. */}
+      {canSeeFinancialDashboard && (
+        <DashboardAtajos activeModuleCodes={activeModuleCodes} />
       )}
 
-      {/* Dashboards consolidados por módulo activo */}
-      <DashboardModulos
-        activeModuleCodes={activeModuleCodes}
-        isLoading={isLoading}
-      />
+      {canSeeFinancialDashboard ? (
+        <>
+          {/* KPIs */}
+          <DashboardKPIs data={dashboardData?.kpis ?? null} isLoading={isLoading} periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} branchFilter={branchFilter} />
+
+          {/* Alertas consolidadas de módulos */}
+          <DashboardAlertas
+            organizationId={organization?.id}
+            activeModuleCodes={activeModuleCodes}
+          />
+
+          {/* Actividad Reciente + Tendencia de Ventas */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <DashboardActividad
+              data={dashboardData?.actividad ?? []}
+              isLoading={isLoading}
+            />
+
+            {/* Tendencia de ventas (reemplaza al antiguo bloque "Accesos Rápidos" redundante) */}
+            {organization?.id && (
+              <DashboardTendencia organizationId={organization.id} dias={30} />
+            )}
+          </div>
+
+          {/* Observabilidad de comercio web: stock reservado + pedidos próximos a expirar */}
+          {organization?.id && (
+            <WebCommerceObservability
+              organizationId={organization.id}
+              withinMinutes={30}
+            />
+          )}
+
+          {/* Dashboards consolidados por módulo activo */}
+          <DashboardModulos
+            activeModuleCodes={activeModuleCodes}
+            isLoading={isLoading}
+          />
+        </>
+      ) : (
+        // Empleados: panel propio con turno, tareas, notificaciones y accesos
+        // filtrados por los permisos de su cargo. Sin datos financieros.
+        <EmployeeDashboard
+          organizationId={organization?.id}
+          userId={userId}
+          permContext={permContext}
+        />
+      )}
     </div>
   );
 }

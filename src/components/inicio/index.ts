@@ -26,6 +26,7 @@ export { PeriodoSelector } from './PeriodoSelector';
 export { HorasPresets } from './HorasPresets';
 export { OnboardingBanner } from './OnboardingBanner';
 export { default as DashboardModulos } from './DashboardModulos';
+export { EmployeeDashboard } from './EmployeeDashboard';
 export { ModoCompactoContext } from './DashboardModulos';
 export { default as ModuloSection } from './ModuloSection';
 export type { ModuloSectionProps } from './ModuloSection';

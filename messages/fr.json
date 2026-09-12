@@ -284,6 +284,8 @@
     "refresh": "Actualiser",
     "dashboardUpdated": "Tableau de bord mis à jour",
     "errorLoadingDashboard": "Impossible de charger les données du tableau de bord",
+    "restrictedTitle": "Tableau de bord restreint",
+    "restrictedMessage": "Les indicateurs financiers sont disponibles uniquement pour les administrateurs de l'organisation. Utilisez les raccourcis d'accès rapide pour naviguer vers vos modules attribués.",
     "markShift": "Pointer",
     "quickAccess": "Accès Rapides",
     "salesTrend": "Tendance des Ventes (30 jours)",

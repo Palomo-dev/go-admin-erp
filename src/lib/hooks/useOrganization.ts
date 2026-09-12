@@ -74,6 +74,16 @@ export async function initOrganizationCache(): Promise<void> {
       const data = await getMobileStorage(STORAGE_KEY);
       if (data) {
         _orgCache = JSON.parse(data) as Organizacion;
+        // Sincronizar cookies con el storage al cargar: si el usuario no cambió
+        // de organización activamente (solo recargó), la cookie `goadmin_org_id`
+        // podía quedar apuntando a otra organización y el servidor respondía
+        // con datos del tenant equivocado (ej. llamadas vacías en /app/crm/llamadas
+        // mientras /app/crm/actividades sí mostraba datos porque lee del storage).
+        if (_orgCache?.id) {
+          const idStr = _orgCache.id.toString();
+          escribirCookie(ORG_COOKIE_MIDDLEWARE, idStr);
+          escribirCookie(ORG_COOKIE_SERVER, idStr);
+        }
       } else {
         _orgCache = null;
       }

@@ -284,6 +284,8 @@
     "refresh": "Atualizar",
     "dashboardUpdated": "Dashboard atualizado",
     "errorLoadingDashboard": "Não foi possível carregar os dados do dashboard",
+    "restrictedTitle": "Dashboard restrito",
+    "restrictedMessage": "Os indicadores financeiros estão disponíveis apenas para administradores da organização. Use os atalhos de acesso rápido para navegar até os módulos atribuídos a você.",
     "markShift": "Registrar Turno",
     "quickAccess": "Acessos Rápidos",
     "salesTrend": "Tendência de Vendas (30 dias)",

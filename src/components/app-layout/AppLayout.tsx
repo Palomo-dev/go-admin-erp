@@ -106,8 +106,28 @@ import { ModuleProvider } from '@/lib/context/ModuleContext';
 // `SoftphoneShell` porque aqui ya se sabe que modulos tiene activos la
 // organizacion (`activeModuleCodes`), sin una consulta extra, y porque
 // `ModuleProvider` vive dentro de este componente.
-const SoftphoneDock = dynamic(() => import('@/components/voice/SoftphoneDock').then((m) => m.SoftphoneDock), { ssr: false });
-const IncomingCallToast = dynamic(() => import('@/components/voice/IncomingCallToast').then((m) => m.IncomingCallToast), { ssr: false });
+// El `SoftphoneProvider` también se monta aquí (no en `SoftphoneShell`) con
+// `enabled` condicional al CRM: así el navegador NO pide permiso de micrófono
+// al usuario si el CRM no está activo, y cuando lo está, no lo pide en cada
+// carga (solo cuando el usuario hace/recibe una llamada).
+import { SoftphoneProvider } from '@/components/voice/SoftphoneProvider';
+
+/**
+ * Wrapper con reintentos para `dynamic()`: en dev, los chunks grandes (ej.
+ * SoftphoneDock ~4 MB sin minificar) pueden tardar demasiado en compilarse
+ * bajo demanda y el navegador lanza ChunkLoadError por timeout. Esto reintenta
+ * la carga antes de rendirse, y el `loading: () => null` evita que la app
+ * entera se caiga mientras el chunk se resuelve.
+ */
+function retryImport<T>(loader: () => Promise<T>, retries = 3, delayMs = 1000): Promise<T> {
+  return loader().catch((err) => {
+    if (retries <= 0) throw err;
+    return new Promise((resolve) => setTimeout(resolve, delayMs)).then(() => retryImport(loader, retries - 1, delayMs * 2));
+  });
+}
+
+const SoftphoneDock = dynamic(() => retryImport(() => import('@/components/voice/SoftphoneDock').then((m) => m.SoftphoneDock)), { ssr: false, loading: () => null });
+const IncomingCallToast = dynamic(() => retryImport(() => import('@/components/voice/IncomingCallToast').then((m) => m.IncomingCallToast)), { ssr: false, loading: () => null });
 import { BranchProvider } from '@/lib/context/BranchContext';
 import { NavigationProgress } from './NavigationProgress';
 import { OfflineIndicator } from './OfflineIndicator';
@@ -1280,6 +1300,7 @@ export const AppLayout = ({
 
   return (
     <ModuleProvider>
+      <SoftphoneProvider enabled={activeModuleCodes?.includes('crm') ?? false}>
       <BranchProvider>
       {/* Barra de progreso de navegación - feedback visual inmediato */}
       <NavigationProgress />
@@ -1517,10 +1538,12 @@ export const AppLayout = ({
         />
       )}
 
-      {/* Telefonia: solo si la organizacion tiene el modulo de CRM activo.
-          `activeModuleCodes` es `undefined` mientras carga, y en ese caso no se
-          pinta nada: mostrar el boton flotante y esconderlo despues daria un
-          parpadeo en cada carga de pagina. */}
+      {/* Telefonia: el SoftphoneProvider ya está activo arriba con
+          `enabled={activeModuleCodes?.includes('crm')}`. Aquí solo se montan
+          el dock y el toast, también condicionados al CRM. `activeModuleCodes`
+          es `undefined` mientras carga, y en ese caso no se pinta nada: mostrar
+          el boton flotante y esconderlo despues daria un parpadeo en cada carga
+          de pagina. */}
       {activeModuleCodes?.includes('crm') && (
         <>
           <SoftphoneDock />
@@ -1530,6 +1553,7 @@ export const AppLayout = ({
 
       </div>
       </BranchProvider>
+      </SoftphoneProvider>
     </ModuleProvider>
   );
 };

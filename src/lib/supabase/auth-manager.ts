@@ -189,14 +189,14 @@ export const getOptimizedSession = async () => {
       resolve({ session: data.session, error });
     } catch (e) {
       console.error(`Error al obtener sesión: ${describeError(e)}`, e);
-      
+
       // Verificar si es un error JWT y limpiar tokens corruptos
       if (isJWTError(e)) {
         console.warn('🚨 Error JWT detectado, limpiando tokens corruptos...');
         clearCorruptedTokens();
         cachedSession = null;
         lastSessionCheck = 0;
-        
+
         // Intentar obtener sesión nuevamente después de limpiar
         try {
           const { data: retryData, error: retryError } = await withTimeout(
@@ -210,6 +210,28 @@ export const getOptimizedSession = async () => {
           resolve({ session: null, error: retryE });
         }
       } else {
+        // Timeout de red o base intermitente: si tenemos una sesión válida
+        // en localStorage, usarla como fallback para no bloquear al usuario.
+        // La próxima llamada a getOptimizedSession() re-verificará con Supabase.
+        const errMsg = describeError(e);
+        const isTimeout = errMsg.includes('superó los') || errMsg.includes('AbortError');
+        if (isTimeout && typeof window !== 'undefined') {
+          try {
+            const lsStr = localStorage.getItem('sb-session-cache');
+            if (lsStr) {
+              const lsSession = JSON.parse(lsStr);
+              if (lsSession?.expires_at && lsSession.expires_at * 1000 > Date.now()) {
+                console.warn('⏱️ [AUTH] Timeout de getSession(), usando sesión de localStorage como fallback');
+                cachedSession = lsSession;
+                lastSessionCheck = Date.now();
+                resolve({ session: lsSession, error: null });
+                return;
+              }
+            }
+          } catch (lsErr) {
+            console.warn('Error al leer sesión de localStorage en fallback de timeout:', lsErr);
+          }
+        }
         resolve({ session: null, error: e });
       }
     }

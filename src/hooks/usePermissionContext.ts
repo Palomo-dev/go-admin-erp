@@ -89,9 +89,18 @@ export function usePermissionContext(organizationId?: number): UsePermissionCont
   // Escuchar cambios de autenticación
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event) => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          await loadContext();
+          // NUNCA hacer await aquí: auth-js espera los callbacks de
+          // onAuthStateChange dentro del lock global de sesión
+          // (_notifyAllSubscribers corre con lockAcquired = true), y
+          // loadContext() llama supabase.auth.getSession(), que vuelve a
+          // pedir ese mismo lock. Eso encadenaba la promesa sobre sí misma
+          // y bloqueaba TODAS las llamadas a Supabase de la pestaña: las
+          // páginas quedaban en skeleton hasta recargar. Fire-and-forget en
+          // el siguiente tick: el callback retorna de inmediato y
+          // loadContext corre ya fuera del lock.
+          setTimeout(() => { void loadContext(); }, 0);
         } else if (event === 'SIGNED_OUT') {
           setContext(null);
           setLoading(false);

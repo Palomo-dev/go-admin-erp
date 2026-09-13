@@ -18,6 +18,8 @@ export function useSubscriptionGuard() {
   const lastCheckedOrgRef = useRef<string | null>(null);
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     const checkStatus = async () => {
       // No verificar si estamos en una ruta permitida
       const isAllowed = ALLOWED_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'));
@@ -51,29 +53,33 @@ export function useSubscriptionGuard() {
         // Timeout de seguridad: si las queries tardan más de 4s, permitir
         // acceso para no dejar la app en skeleton indefinidamente. El
         // middleware del servidor también valida el estado de la org.
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('SUBSCRIPTION_CHECK_TIMEOUT')), 4000)
-        );
+        const queryPromise = Promise.all([
+          supabase
+            .from('organizations')
+            .select('status')
+            .eq('id', orgId)
+            .single(),
+          supabase
+            .from('subscriptions')
+            .select('status, trial_end, current_period_end')
+            .eq('organization_id', orgId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single(),
+        ]);
+        const results = await Promise.race([
+          queryPromise,
+          new Promise<null>((resolve) => {
+            timeoutId = setTimeout(() => resolve(null), 4000);
+          }),
+        ]);
+        if (timeoutId) clearTimeout(timeoutId);
+        if (!results) {
+          setChecked(true);
+          return;
+        }
 
-        // Consultar estado de la organización y suscripción en paralelo
-        const [orgResult, subResult] = await Promise.race([
-          Promise.all([
-            supabase
-              .from('organizations')
-              .select('status')
-              .eq('id', orgId)
-              .single(),
-            supabase
-              .from('subscriptions')
-              .select('status, trial_end, current_period_end')
-              .eq('organization_id', orgId)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single(),
-          ]),
-          timeoutPromise,
-        ]) as [{ data: { status?: string } | null; error: unknown }, { data: { status?: string; trial_end?: string; current_period_end?: string } | null; error: unknown }];
-
+        const [orgResult, subResult] = results;
         const org = orgResult.data;
         const sub = subResult.data;
 
@@ -116,6 +122,7 @@ export function useSubscriptionGuard() {
         lastCheckedOrgRef.current = orgIdStr;
         setChecked(true);
       } catch (error) {
+        if (timeoutId) clearTimeout(timeoutId);
         console.error('Error in useSubscriptionGuard:', error);
         // En caso de error o timeout, permitir acceso. El middleware
         // del servidor valida el estado en cada request, así que no
@@ -124,7 +131,10 @@ export function useSubscriptionGuard() {
       }
     };
 
-    checkStatus();
+    void checkStatus();
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [pathname, router]);
 
   return checked;

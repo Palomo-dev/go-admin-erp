@@ -95,6 +95,8 @@ const nativeFetch = globalThis.fetch.bind(globalThis);
 let cbConsecutiveFailures = 0;
 const CB_THRESHOLD = 5;        // 5 fallos consecutivos → abrir circuito
 const CB_COOLDOWN_MS = 30_000; // 30s de cooldown antes de reintentar
+const DATA_REQUEST_TIMEOUT_MS = 15_000;
+const TOKEN_REFRESH_TIMEOUT_MS = 12_000;
 let cbOpenUntil = 0;
 
 /** Códigos HTTP que indican que la BD no responde o está saturada. */
@@ -340,6 +342,8 @@ export const createSupabaseClient = () => {
 
         const urlString = typeof url === 'string' ? url : (url instanceof URL ? url.toString() : url.url);
         const isAuthRequest = urlString.includes('/auth/v1/');
+        const isDataRequest = urlString.includes('/rest/v1/');
+        const isTokenRefreshRequest = isAuthRequest && urlString.includes('grant_type=refresh_token');
         const method = (options?.method || 'GET').toUpperCase();
 
         // ── BLOQUEO AGRESIVO: si el refresh token es inválido, NO dejar que
@@ -422,24 +426,27 @@ export const createSupabaseClient = () => {
         }
 
         // ── Fetch normal con reintentos ──
-        // Cuando hay conexión, comportarse exactamente como la versión web:
-        // sin AbortController, sin timeout, sin cache de IndexedDB.
-        // Toda la lógica de offline solo se activa cuando navigator.onLine === false.
+        // Las peticiones de datos (/rest/v1/) y el refresh de token tienen
+        // timeout (DATA_REQUEST_TIMEOUT_MS / TOKEN_REFRESH_TIMEOUT_MS): un
+        // fetch que nunca resuelve dejaba el lock de sesión tomado para
+        // siempre y todas las páginas quedaban en skeleton al navegar.
+        // getSession()/getUser() y el resto de auth no llevan timeout propio
+        // para no impedir que el SDK restaure una sesión válida durante un
+        // cambio de organización. Toda la lógica de offline solo se activa
+        // cuando navigator.onLine === false.
         // isOnline y useOfflineLogic ya fueron declarados arriba.
 
         return new Promise((resolve, reject) => {
           const attemptFetch = async (retriesLeft: number, delay: number) => {
-            // AbortController solo cuando estamos offline — para detectar cuelgues
-            // de DNS/TCP y hacer fallback a cache. Cuando hay conexión, no usar
-            // timeout para que el comportamiento sea idéntico a la versión web.
-            // Nota: se probó a añadir timeout de 15s a peticiones de auth online,
-            // pero causaba que getSession() se cancelara tras cambiar de organización
-            // y el dashboard se quedaba cargando sin sesión.
-            const controller = useOfflineLogic ? new AbortController() : null;
+            // AbortController para consultas de datos, refresh de token y fallback offline.
+            // getSession() y getUser() online quedan excluidos para no impedir que el SDK
+            // restaure una sesión válida durante un cambio de organización.
+            const controller = (useOfflineLogic || isDataRequest || isTokenRefreshRequest) ? new AbortController() : null;
             let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
             if (controller) {
-              timeoutId = setTimeout(() => controller.abort(), 15000);
+              const timeoutMs = isTokenRefreshRequest ? TOKEN_REFRESH_TIMEOUT_MS : DATA_REQUEST_TIMEOUT_MS;
+              timeoutId = setTimeout(() => controller.abort(), timeoutMs);
               if (options?.signal) {
                 if (options.signal.aborted) controller.abort();
                 else options.signal.addEventListener('abort', () => controller.abort());

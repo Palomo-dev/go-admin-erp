@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Download, Tag, Users, Plus, Upload, FileSpreadsheet,
   Loader2, CheckCircle, AlertCircle, X
@@ -62,6 +63,7 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
   selectedCustomers,
   onRefresh
 }) => {
+  const router = useRouter();
   const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
   const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -131,7 +133,7 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
   };
 
   const handleNewCustomerClick = () => {
-    window.location.href = '/app/clientes/nuevo';
+    router.push('/app/clientes/nuevo');
   };
 
   const downloadClientTemplate = () => {
@@ -523,7 +525,7 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
               variant="default"
               size="sm"
               className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white min-h-[40px] text-sm"
-              onClick={() => window.location.href = '/app/clientes/new'}
+              onClick={() => router.push('/app/clientes/new')}
             >
               <Plus className="w-4 h-4 mr-1.5" />
               <span>Nuevo cliente</span>

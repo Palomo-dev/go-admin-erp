@@ -527,9 +527,11 @@
       "filterCrm": "CRM",
       "filterInventory": "Inventario",
       "filterPms": "PMS",
-      "of": "de",
-      "prevPage": "Página anterior",
-      "nextPage": "Página siguiente"
+      "activity": {
+        "of": "de",
+        "prevPage": "Página anterior",
+        "nextPage": "Página siguiente"
+      }
     },
     "onboarding": {
       "title": "Primeros pasos",

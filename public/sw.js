@@ -1,4 +1,10 @@
-const CACHE_NAME = 'goadmin-erp-v1';
+// ============================================================================
+// GO Admin ERP — Service Worker
+// Estrategia: network-first con timeout para navegación, cache-first para
+// estáticos. El timeout evita que la PWA se quede en blanco esperando la red.
+// ============================================================================
+
+const CACHE_NAME = 'goadmin-erp-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -8,11 +14,15 @@ const STATIC_ASSETS = [
   '/favicon.ico',
 ];
 
+// Timeout para navegación: si la red no responde en 3s, usar cache.
+// En producción con buena red, la respuesta llega en <500ms.
+// 3s es suficiente para no servir contenido stale innecesariamente.
+const NAV_TIMEOUT_MS = 3000;
+
 // Install: pre-cache static assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // Use individual fetches with catch to avoid failing on missing assets
       return Promise.allSettled(
         STATIC_ASSETS.map((url) => cache.add(url))
       );
@@ -33,7 +43,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch: network-first for navigation, cache-first for static assets
+// Fetch: network-first with timeout for navigation, cache-first for static
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
@@ -52,24 +62,35 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation requests: network-first with offline fallback
+  // Navigation requests: network-first with timeout + offline fallback
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
+      (async () => {
+        try {
+          // Race: network vs timeout
+          const networkResponse = await Promise.race([
+            fetch(request),
+            new Promise<Response>((_, reject) =>
+              setTimeout(() => reject(new Error('NAV_TIMEOUT')), NAV_TIMEOUT_MS)
+            ),
+          ]);
+
           // Cache successful navigation responses
-          if (response.ok) {
-            const responseClone = response.clone();
+          if (networkResponse.ok) {
+            const responseClone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
           }
-          return response;
-        })
-        .catch(() => {
-          // Offline: try cache, then fallback to cached root
-          return caches.match(request).then((cached) => {
-            return cached || caches.match('/');
-          });
-        })
+          return networkResponse;
+        } catch (err) {
+          // Timeout or network error: try cache, then fallback to cached root
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          const rootCached = await caches.match('/');
+          if (rootCached) return rootCached;
+          // No cache available: re-throw to let the browser handle the error
+          throw err;
+        }
+      })()
     );
     return;
   }
@@ -105,7 +126,6 @@ self.addEventListener('push', (event) => {
       data = event.data.json();
     }
   } catch (e) {
-    // Si no es JSON, intentar como texto
     if (event.data) {
       data.body = event.data.text();
     }
@@ -135,13 +155,11 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Si ya hay una ventana abierta, enfocarla
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
           return client.focus();
         }
       }
-      // Si no, abrir nueva ventana
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }

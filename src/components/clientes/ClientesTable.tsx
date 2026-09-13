@@ -368,10 +368,10 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 w-full sm:w-48">
                           <DropdownMenuLabel className="text-gray-900 dark:text-gray-100 font-semibold">Acciones</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => window.location.href = `/app/clientes/${customer.id}`} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                          <DropdownMenuItem onClick={() => router.push(`/app/clientes/${customer.id}`)} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                             Ver detalles
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => window.location.href = `/app/clientes/${customer.id}/editar`} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                          <DropdownMenuItem onClick={() => router.push(`/app/clientes/${customer.id}/editar`)} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                             Editar
                           </DropdownMenuItem>
                           <DropdownMenuItem 

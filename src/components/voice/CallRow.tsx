@@ -149,7 +149,7 @@ export function CallRow({ call, isOpen, onToggle }: CallRowProps) {
       {isOpen && (
         <TableRow className="border-gray-200 dark:border-gray-700">
           <TableCell colSpan={9} className="p-0">
-            <CallRowDetail callId={call.id} recordingEnabled={call.recording_enabled} opportunityId={call.opportunity_id} />
+            <CallRowDetail call={call} />
           </TableCell>
         </TableRow>
       )}

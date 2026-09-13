@@ -212,7 +212,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
             {/* Botón de facturación destacado */}
             <div className="p-4">
               <Link 
-                href="/app/suscripcion"
+                href="/app/plan"
                 onClick={() => setOpen(false)}
                 className="flex items-center justify-between w-full px-4 py-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg transition-colors min-h-[56px]"
               >
@@ -530,7 +530,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
         
         {/* Botón de suscripción */}
         <DropdownMenuItem asChild>
-          <Link href="/app/suscripcion" className="flex items-center bg-blue-600 hover:bg-blue-700 text-white hover:text-white w-full">
+          <Link href="/app/plan" className="flex items-center bg-blue-600 hover:bg-blue-700 text-white hover:text-white w-full">
             <CreditCard size={14} className="mr-2" />
             {t('billing')}
           </Link>

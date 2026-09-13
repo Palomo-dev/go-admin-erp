@@ -347,28 +347,28 @@ function SelectOrganizationContent() {
               <div
                 key={org.id}
                 onClick={() => !selecting && handleSelectOrganization(org)}
-                className={`relative w-full flex items-center p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer ${
+                className={`w-full flex items-center p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer ${
                   isFav
                     ? 'border-amber-300 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-900/10'
                     : 'border-gray-200 dark:border-gray-700'
                 } ${selecting ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {/* Botón de favorito — esquina superior derecha */}
+                {/* Botón de favorito */}
                 <button
                   type="button"
                   onClick={(e) => toggleFavoriteOrg(e, Number(org.id))}
-                  className="absolute top-2 right-2 p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  className="flex-shrink-0 mr-3 flex items-center justify-center w-8 h-8 rounded-full transition-colors hover:bg-amber-100 dark:hover:bg-amber-900/30"
                   title={isFav ? 'Quitar de favoritas' : 'Marcar como favorita'}
                   aria-label={isFav ? 'Quitar de favoritas' : 'Marcar como favorita'}
                 >
                   <svg
-                    className={`w-4 h-4 transition-colors ${isFav ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600 hover:text-gray-400'}`}
+                    className={`w-5 h-5 transition-all ${isFav ? 'text-amber-500 fill-amber-400' : 'text-gray-300 dark:text-gray-600 hover:text-amber-400'}`}
                     fill={isFav ? 'currentColor' : 'none'}
                     viewBox="0 0 24 24"
                     stroke="currentColor"
-                    strokeWidth={1.5}
+                    strokeWidth={2}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.604 17.11a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                   </svg>
                 </button>
 
@@ -388,7 +388,7 @@ function SelectOrganizationContent() {
                 </div>
 
                 {/* Organization details */}
-                <div className="flex-grow text-left min-w-0 pr-8">
+                <div className="flex-grow text-left min-w-0">
                   <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{org.name}</div>
                   <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{org.type_name}</div>
                 </div>

@@ -77,36 +77,50 @@ export function useCrmLookups(): CrmLookupsState {
       return;
     }
 
-    const [
-      pipelinesRes,
-      stagesRes,
-      sequencesRes,
-      templatesRes,
-    ] = await Promise.all([
-      supabase
-        .from('pipelines')
-        .select('id, name, pipeline_type, is_default')
-        .eq('organization_id', orgId)
-        .order('is_default', { ascending: false })
-        .order('name', { ascending: true }),
-      supabase
-        .from('stages')
-        .select('id, name, pipeline_id, position, is_won, is_lost')
-        .order('position', { ascending: true }),
+    // 1. Cargar pipelines primero (tienen organization_id directo).
+    const pipelinesRes = await supabase
+      .from('pipelines')
+      .select('id, name, pipeline_type, is_default')
+      .eq('organization_id', orgId)
+      .order('is_default', { ascending: false })
+      .order('name', { ascending: true });
+
+    if (pipelinesRes.error) {
+      setError(pipelinesRes.error.message);
+      setPipelines([]);
+      setStages([]);
+      setSequences([]);
+      setTemplates([]);
+      setLoading(false);
+      return;
+    }
+
+    const pipelineIds = (pipelinesRes.data ?? []).map((p) => p.id);
+    setPipelines(pipelinesRes.data as PipelineOption[]);
+
+    // 2. stages NO tiene organization_id: se filtra por pipeline_ids de la org.
+    //    Sin este filtro la consulta cruza todas las orgs vía RLS y puede colgarse.
+    // 3. sequences y templates sí tienen organization_id.
+    const [stagesRes, sequencesRes, templatesRes] = await Promise.all([
+      pipelineIds.length > 0
+        ? supabase
+            .from('stages')
+            .select('id, name, pipeline_id, position, is_won, is_lost')
+            .in('pipeline_id', pipelineIds)
+            .order('position', { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
       supabase
         .from('sequences')
         .select('id, name, is_active')
+        .eq('organization_id', orgId)
         .order('name', { ascending: true }),
       supabase
         .from('templates')
         .select('id, name, channel, kind')
+        .eq('organization_id', orgId)
         .order('name', { ascending: true }),
     ]);
 
-    if (pipelinesRes.error) {
-      setError(pipelinesRes.error.message);
-    }
-    setPipelines((pipelinesRes.data ?? []) as PipelineOption[]);
     setStages((stagesRes.data ?? []) as StageOption[]);
     setSequences((sequencesRes.data ?? []) as SequenceOption[]);
     setTemplates((templatesRes.data ?? []) as TemplateOption[]);

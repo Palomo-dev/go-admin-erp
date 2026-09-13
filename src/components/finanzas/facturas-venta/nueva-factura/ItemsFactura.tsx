@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +38,17 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
     [items]
   );
   const hasSerialItems = serializedItems.length > 0;
+
+  // Abrir automáticamente el selector de seriales cuando se agrega un producto
+  // con track_serial. Compara con la cantidad anterior para detectar nuevos items.
+  const prevSerializedCount = useRef(0);
+  useEffect(() => {
+    const currentCount = serializedItems.length;
+    if (currentCount > prevSerializedCount.current && organizationId != null && branchId != null) {
+      setShowSerialSelector(true);
+    }
+    prevSerializedCount.current = currentCount;
+  }, [serializedItems.length, organizationId, branchId]);
 
   // Mapear InvoiceItem[] -> CartItem[] para el SerialSelectorDialog
   const serialDialogItems: CartItem[] = useMemo(() => {

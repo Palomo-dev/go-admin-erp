@@ -22,6 +22,8 @@ export interface InvoiceDataForPDF {
     phone?: string;
     address?: string;
     tax_id?: string;
+    doc_type?: string;
+    doc_number?: string;
   };
   organization?: {
     name: string;
@@ -232,7 +234,7 @@ export class PDFService {
             <div class="info-box">
               <h3>${isQuotation ? 'Cotizar a' : 'Facturar a'}</h3>
               <p class="name">${data.customer?.full_name || 'Cliente'}</p>
-              ${data.customer?.tax_id ? `<p>NIT/CC: ${data.customer.tax_id}</p>` : ''}
+              ${(data.customer?.doc_number || data.customer?.tax_id) ? `<p>${data.customer?.doc_type ? data.customer.doc_type.toUpperCase() : 'NIT/CC'}: ${data.customer.doc_number || data.customer.tax_id}</p>` : ''}
               ${data.customer?.address ? `<p>${data.customer.address}</p>` : ''}
               ${data.customer?.phone ? `<p>Tel: ${data.customer.phone}</p>` : ''}
               ${data.customer?.email ? `<p>${data.customer.email}</p>` : ''}
@@ -469,7 +471,7 @@ export class PDFService {
             <div class="info-box">
               <h3>Proveedor</h3>
               <p class="name">${data.customer?.full_name || 'N/A'}</p>
-              ${data.customer?.tax_id ? `<p>NIT: ${data.customer.tax_id}</p>` : ''}
+              ${(data.customer?.doc_number || data.customer?.tax_id) ? `<p>${data.customer?.doc_type ? data.customer.doc_type.toUpperCase() : 'NIT'}: ${data.customer.doc_number || data.customer.tax_id}</p>` : ''}
               ${data.customer?.address ? `<p>${data.customer.address}</p>` : ''}
               ${data.customer?.phone ? `<p>Tel: ${data.customer.phone}</p>` : ''}
               ${data.customer?.email ? `<p>${data.customer.email}</p>` : ''}

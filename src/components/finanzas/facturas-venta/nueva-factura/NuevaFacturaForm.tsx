@@ -854,20 +854,55 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       // y el último en confirmar sobrescribía el total con una suma parcial. Un único
       // INSERT masivo dispara el trigger dentro de la misma transacción, donde todas
       // las filas ya son visibles entre sí.
-      const invoiceItemsToInsert = items.map(item => ({
-        invoice_sales_id: invoiceData.id, // Usamos el ID UUID de la factura
-        invoice_id: invoiceData.id, // Por compatibilidad con código existente
-        product_id: item.product_id,
-        description: item.description,
-        qty: item.qty,
-        unit_price: item.unit_price,
-        tax_code: item.tax_code,
-        tax_rate: item.tax_rate,
-        tax_included: item.tax_included || false, // Guardamos si el impuesto está incluido
-        total_line: item.total_line,
-        discount_amount: item.discount_amount || 0,
-        invoice_type: 'sale' // Tipo de factura (venta)
-      }));
+      // Consultar los números de serial correspondientes a los IDs seleccionados
+      // para guardarlos en invoice_items (para mostrar en detalle y PDF).
+      let serialNumbersMap: Record<number, string[]> = {};
+      const allSerialIds = items.flatMap(item =>
+        item.product_id != null && item.track_serial === true
+          ? (serialSelections[item.product_id] || [])
+          : []
+      );
+      if (allSerialIds.length > 0) {
+        const { data: serialsData } = await supabase
+          .from('product_serials')
+          .select('id, serial_number')
+          .in('id', allSerialIds);
+        if (serialsData) {
+          serialsData.forEach((s: any) => {
+            if (!serialNumbersMap[s.id]) serialNumbersMap[s.id] = [];
+            serialNumbersMap[s.id].push(s.serial_number);
+          });
+        }
+      }
+
+      const invoiceItemsToInsert = items.map(item => {
+        // Obtener los seriales seleccionados para este producto
+        const serialIds = item.product_id != null && item.track_serial === true
+          ? (serialSelections[item.product_id] || [])
+          : [];
+
+        // Mapear IDs a números de serial legibles
+        const serialNumbers = serialIds.length > 0
+          ? serialIds.flatMap(id => serialNumbersMap[id] || [])
+          : null;
+
+        return {
+          invoice_sales_id: invoiceData.id, // Usamos el ID UUID de la factura
+          invoice_id: invoiceData.id, // Por compatibilidad con código existente
+          product_id: item.product_id,
+          description: item.description,
+          qty: item.qty,
+          unit_price: item.unit_price,
+          tax_code: item.tax_code,
+          tax_rate: item.tax_rate,
+          tax_included: item.tax_included || false, // Guardamos si el impuesto está incluido
+          total_line: item.total_line,
+          discount_amount: item.discount_amount || 0,
+          invoice_type: 'sale', // Tipo de factura (venta)
+          serial_ids: serialIds.length > 0 ? serialIds : null,
+          serial_numbers: serialNumbers,
+        };
+      });
 
       // 6. Guardar ítems de factura
       // Si el insert falla por RLS o constraints, la factura queda sin items ni totales

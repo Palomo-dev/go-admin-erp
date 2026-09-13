@@ -100,10 +100,12 @@ export default function SerialesTab({ producto }: SerialesTabProps) {
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [stockTotal, setStockTotal] = useState(0)
+  const [stockByBranch, setStockByBranch] = useState<Record<number, number>>({})
   const [showClaimDialog, setShowClaimDialog] = useState(false)
   const [claimSerialId, setClaimSerialId] = useState<number | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [customerNames, setCustomerNames] = useState<Record<string, string>>({})
 
   const trackSerial = producto.track_serial ?? false
   const autoGenerate = producto.auto_generate_serial ?? false
@@ -121,6 +123,24 @@ export default function SerialesTab({ producto }: SerialesTabProps) {
         const { data, error } = await serialTrackingService.getSerialsByProduct(producto.id)
         if (error) throw error
         setSeriales(data)
+
+        // Cargar nombres de clientes para seriales vendidos
+        const soldCustomerIds = data
+          .filter((s) => s.status === 'sold' && s.sold_to_customer_id)
+          .map((s) => s.sold_to_customer_id as string)
+        if (soldCustomerIds.length > 0) {
+          const { data: customersData } = await supabase
+            .from('customers')
+            .select('id, full_name')
+            .in('id', [...new Set(soldCustomerIds)])
+          if (customersData) {
+            const namesMap: Record<string, string> = {}
+            customersData.forEach((c: any) => {
+              namesMap[c.id] = c.full_name || 'N/A'
+            })
+            setCustomerNames(namesMap)
+          }
+        }
       } catch (err: any) {
         console.error('Error cargando seriales:', err)
         toast({
@@ -151,19 +171,41 @@ export default function SerialesTab({ producto }: SerialesTabProps) {
         .order('name')
       if (branchesData) setBranches(branchesData)
 
+      // Cargar stock por sucursal para limitar la generación de seriales.
+      // Cada serial debe corresponder a una unidad de stock real en una sucursal.
       const { data: stockData } = await supabase
         .from('stock_levels')
-        .select('qty_on_hand')
+        .select('branch_id, qty_on_hand')
         .eq('product_id', producto.id)
-      const total = stockData?.reduce((sum, s) => sum + (s.qty_on_hand || 0), 0) ?? 0
+      const total = stockData?.reduce((sum, s) => sum + Number(s.qty_on_hand || 0), 0) ?? 0
       setStockTotal(total)
+      const byBranch: Record<number, number> = {}
+      stockData?.forEach((s) => {
+        const bid = Number(s.branch_id)
+        byBranch[bid] = (byBranch[bid] || 0) + Number(s.qty_on_hand || 0)
+      })
+      setStockByBranch(byBranch)
     } catch (err) {
       console.error('Error cargando sucursales/stock:', err)
     }
   }
 
   const handleGenerateSerials = async () => {
-    if (!organization?.id || !serialPattern || generateQty <= 0) return
+    // La sucursal es obligatoria: cada serial debe estar asignado a una sucursal
+    // donde exista stock real. No se pueden generar seriales "sin sucursal".
+    if (!organization?.id || !serialPattern || generateQty <= 0 || !generateBranchId) return
+    // Validar que no se generen más seriales que el stock disponible en la sucursal
+    const stockEnSucursal = stockByBranch[generateBranchId] || 0
+    const serialesEnSucursal = seriales.filter((s) => s.current_branch_id === generateBranchId).length
+    const disponibles = stockEnSucursal - serialesEnSucursal
+    if (generateQty > disponibles) {
+      toast({
+        title: 'Cantidad excede el stock',
+        description: `Solo quedan ${disponibles} unidades sin serial en ${branches.find((b) => b.id === generateBranchId)?.name || 'la sucursal'}.`,
+        variant: 'destructive',
+      })
+      return
+    }
     setIsGenerating(true)
     try {
       const { data, errors } = await serialTrackingService.generateSerialsFromPattern(
@@ -448,6 +490,7 @@ export default function SerialesTab({ producto }: SerialesTabProps) {
                 <TableHead className="w-[120px]">Garantía</TableHead>
                 <TableHead className="w-[120px]">Costo compra</TableHead>
                 <TableHead className="w-[120px]">Precio venta</TableHead>
+                <TableHead className="w-[140px]">Cliente</TableHead>
                 <TableHead>Fecha recepción</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
@@ -477,6 +520,11 @@ export default function SerialesTab({ producto }: SerialesTabProps) {
                   </TableCell>
                   <TableCell className="text-sm text-gray-600 dark:text-gray-400">
                     {serial.price_at_sale ? `$${serial.price_at_sale.toLocaleString()}` : '—'}
+                  </TableCell>
+                  <TableCell className="text-xs text-gray-600 dark:text-gray-400">
+                    {serial.status === 'sold' && serial.sold_to_customer_id
+                      ? (customerNames[serial.sold_to_customer_id] || 'N/A')
+                      : '—'}
                   </TableCell>
                   <TableCell className="text-xs text-gray-500 dark:text-gray-400">
                     {serial.received_date ? formatDateInTz(serial.received_date, timezone) : '—'}
@@ -630,47 +678,69 @@ export default function SerialesTab({ producto }: SerialesTabProps) {
                 id="generate-qty"
                 type="number"
                 min="1"
-                max="1000"
+                max={generateBranchId ? Math.max(0, (stockByBranch[generateBranchId] || 0) - seriales.filter((s) => s.current_branch_id === generateBranchId).length) : 0}
                 value={generateQty}
                 onChange={(e) => setGenerateQty(parseInt(e.target.value) || 1)}
+                disabled={!generateBranchId}
               />
-              {stockTotal > 0 && (
+              {generateBranchId ? (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Stock actual: {stockTotal} unidades · Seriales existentes: {seriales.length}
-                  {stockTotal > seriales.length && (
-                    <> · Faltan <strong>{stockTotal - seriales.length}</strong> seriales</>
+                  Stock en sucursal: {stockByBranch[generateBranchId] || 0} · Seriales existentes: {seriales.filter((s) => s.current_branch_id === generateBranchId).length}
+                  {(stockByBranch[generateBranchId] || 0) - seriales.filter((s) => s.current_branch_id === generateBranchId).length > 0 && (
+                    <> · Faltan <strong>{(stockByBranch[generateBranchId] || 0) - seriales.filter((s) => s.current_branch_id === generateBranchId).length}</strong> seriales</>
                   )}
                 </p>
+              ) : (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Seleccione una sucursal para continuar
+                </p>
               )}
-              {stockTotal > seriales.length && (
+              {generateBranchId && ((stockByBranch[generateBranchId] || 0) - seriales.filter((s) => s.current_branch_id === generateBranchId).length) > 0 && (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setGenerateQty(stockTotal - seriales.length)}
+                  onClick={() => setGenerateQty((stockByBranch[generateBranchId] || 0) - seriales.filter((s) => s.current_branch_id === generateBranchId).length)}
                   className="w-full"
                 >
-                  Generar los {stockTotal - seriales.length} seriales faltantes
+                  Generar los {(stockByBranch[generateBranchId] || 0) - seriales.filter((s) => s.current_branch_id === generateBranchId).length} seriales faltantes
                 </Button>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="generate-branch">Sucursal destino (opcional)</Label>
+              <Label htmlFor="generate-branch">Sucursal destino <span className="text-red-500">*</span></Label>
               <Select
-                value={generateBranchId?.toString() || 'none'}
-                onValueChange={(val) => setGenerateBranchId(val === 'none' ? null : parseInt(val))}
+                value={generateBranchId?.toString() || ''}
+                onValueChange={(val) => {
+                  const branchId = parseInt(val)
+                  setGenerateBranchId(branchId)
+                  // Al seleccionar sucursal, ajustar la cantidad al stock faltante
+                  const stockEnSucursal = stockByBranch[branchId] || 0
+                  const serialesEnSucursal = seriales.filter((s) => s.current_branch_id === branchId).length
+                  const faltantes = Math.max(0, stockEnSucursal - serialesEnSucursal)
+                  setGenerateQty(faltantes)
+                }}
               >
                 <SelectTrigger id="generate-branch">
-                  <SelectValue placeholder="Sin sucursal específica" />
+                  <SelectValue placeholder="Seleccione una sucursal" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Sin sucursal específica</SelectItem>
-                  {branches.map((b) => (
-                    <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
-                  ))}
+                  {branches.map((b) => {
+                    const stock = stockByBranch[b.id] || 0
+                    const serialesSuc = seriales.filter((s) => s.current_branch_id === b.id).length
+                    const faltan = Math.max(0, stock - serialesSuc)
+                    return (
+                      <SelectItem key={b.id} value={b.id.toString()}>
+                        {b.name} (Stock: {stock} · Faltan: {faltan})
+                      </SelectItem>
+                    )
+                  })}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                La sucursal es obligatoria. Cada serial se asigna a una unidad de stock en la sucursal seleccionada.
+              </p>
             </div>
 
             {warrantyMonths && (
@@ -685,7 +755,7 @@ export default function SerialesTab({ producto }: SerialesTabProps) {
             <Button variant="outline" onClick={() => setShowGenerateDialog(false)} disabled={isGenerating}>
               Cancelar
             </Button>
-            <Button onClick={handleGenerateSerials} disabled={isGenerating || generateQty <= 0}>
+            <Button onClick={handleGenerateSerials} disabled={isGenerating || generateQty <= 0 || !generateBranchId}>
               {isGenerating ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

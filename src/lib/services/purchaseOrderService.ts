@@ -68,6 +68,8 @@ export interface PurchaseOrderItemInput {
   quantity: number;
   unit_cost: number;
   notes?: string;
+  serial_numbers?: string[];
+  requires_serial?: boolean;
 }
 
 export interface PurchaseOrderWithItems extends PurchaseOrder {
@@ -233,7 +235,9 @@ class PurchaseOrderService {
           product_id: item.product_id,
           quantity: item.quantity,
           unit_cost: item.unit_cost,
-          notes: item.notes || null
+          notes: item.notes || null,
+          requires_serial: item.requires_serial || false,
+          serials_received: item.serial_numbers && item.serial_numbers.length > 0 ? item.serial_numbers : null,
         }));
 
         const { error: itemsError } = await supabase
@@ -300,7 +304,9 @@ class PurchaseOrderService {
             product_id: item.product_id,
             quantity: item.quantity,
             unit_cost: item.unit_cost,
-            notes: item.notes || null
+            notes: item.notes || null,
+            requires_serial: item.requires_serial || false,
+            serials_received: item.serial_numbers && item.serial_numbers.length > 0 ? item.serial_numbers : null,
           }));
 
           const { error: itemsError } = await supabase
@@ -1017,7 +1023,7 @@ class PurchaseOrderService {
       while (true) {
         const { data: pageData, error: pageError } = await supabase
           .from('products')
-          .select('id, uuid, sku, name, unit_code, track_stock, is_parent, parent_product_id, variant_data, categories(name)')
+          .select('id, uuid, sku, name, unit_code, track_stock, track_serial, is_parent, parent_product_id, variant_data, categories(name)')
           .eq('organization_id', organizationId)
           .eq('status', 'active')
           .neq('product_type', 'service')

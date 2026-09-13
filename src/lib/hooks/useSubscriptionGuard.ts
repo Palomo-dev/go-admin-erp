@@ -48,26 +48,39 @@ export function useSubscriptionGuard() {
           return;
         }
 
-        // Consultar estado de la organización
-        const { data: org } = await supabase
-          .from('organizations')
-          .select('status')
-          .eq('id', orgId)
-          .single();
+        // Timeout de seguridad: si las queries tardan más de 4s, permitir
+        // acceso para no dejar la app en skeleton indefinidamente. El
+        // middleware del servidor también valida el estado de la org.
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('SUBSCRIPTION_CHECK_TIMEOUT')), 4000)
+        );
+
+        // Consultar estado de la organización y suscripción en paralelo
+        const [orgResult, subResult] = await Promise.race([
+          Promise.all([
+            supabase
+              .from('organizations')
+              .select('status')
+              .eq('id', orgId)
+              .single(),
+            supabase
+              .from('subscriptions')
+              .select('status, trial_end, current_period_end')
+              .eq('organization_id', orgId)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single(),
+          ]),
+          timeoutPromise,
+        ]) as [{ data: { status?: string } | null; error: unknown }, { data: { status?: string; trial_end?: string; current_period_end?: string } | null; error: unknown }];
+
+        const org = orgResult.data;
+        const sub = subResult.data;
 
         if (org?.status === 'suspended' || org?.status === 'deleted') {
           router.push(`/app/cuenta-congelada?reason=${org.status}`);
           return;
         }
-
-        // Consultar suscripción
-        const { data: sub } = await supabase
-          .from('subscriptions')
-          .select('status, trial_end, current_period_end')
-          .eq('organization_id', orgId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
 
         if (!sub) {
           lastCheckedOrgRef.current = orgIdStr;
@@ -104,7 +117,10 @@ export function useSubscriptionGuard() {
         setChecked(true);
       } catch (error) {
         console.error('Error in useSubscriptionGuard:', error);
-        setChecked(true); // En caso de error, permitir acceso
+        // En caso de error o timeout, permitir acceso. El middleware
+        // del servidor valida el estado en cada request, así que no
+        // hay riesgo de seguridad en fallar abiertamente aquí.
+        setChecked(true);
       }
     };
 

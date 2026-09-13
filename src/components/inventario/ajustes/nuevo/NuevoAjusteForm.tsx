@@ -47,6 +47,7 @@ import Image from 'next/image';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import { type SearchSelectOption } from '@/components/inventario/ordenes-compra/SearchSelectCombobox';
 import { ProductSearchCombobox, type ProductOption } from '@/components/inventario/ordenes-compra/ProductSearchCombobox';
+import { SerialCaptureSection } from '@/components/shared/SerialCaptureSection';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
@@ -69,6 +70,8 @@ interface AdjustmentItemInput {
   counted_qty: number;
   difference: number;
   unit_cost: number;
+  track_serial?: boolean;
+  serial_numbers?: string[];
 }
 
 export function NuevoAjusteForm() {
@@ -125,7 +128,7 @@ export function NuevoAjusteForm() {
         while (true) {
           const { data: pageData, error: pageError } = await supabase
             .from('products')
-            .select('id, uuid, sku, name, status, is_parent, parent_product_id, variant_data, track_stock')
+            .select('id, uuid, sku, name, status, is_parent, parent_product_id, variant_data, track_stock, track_serial')
             .eq('organization_id', organization.id)
             .eq('status', 'active')
             .eq('track_stock', true)
@@ -218,6 +221,7 @@ export function NuevoAjusteForm() {
             variant_data: p.variant_data,
             parent_name: parentName,
             parent_image: parentImage,
+            track_serial: (p as any).track_serial === true,
           };
         }));
       } catch (error) {
@@ -452,7 +456,9 @@ export function NuevoAjusteForm() {
         system_qty: currentQty,
         counted_qty: currentQty,
         difference: 0,
-        unit_cost: unitCost
+        unit_cost: unitCost,
+        track_serial: (product as ProductOption).track_serial === true,
+        serial_numbers: [],
       };
 
       setItems(prev => [...prev, newItem]);
@@ -472,6 +478,13 @@ export function NuevoAjusteForm() {
     const countedQty = parseFloat(value) || 0;
     newItems[index].counted_qty = countedQty;
     newItems[index].difference = countedQty - newItems[index].system_qty;
+    setItems(newItems);
+  };
+
+  // Actualizar seriales de un item
+  const handleSerialsChange = (index: number, serials: string[]) => {
+    const newItems = [...items];
+    newItems[index].serial_numbers = serials;
     setItems(newItems);
   };
 
@@ -497,6 +510,26 @@ export function NuevoAjusteForm() {
         variant: 'destructive',
         title: 'Error',
         description: 'Debes agregar al menos un producto al ajuste'
+      });
+      return;
+    }
+
+    // Validar que los productos con track_serial tengan todos los seriales capturados
+    // Para ajustes de entrada (gain), la cantidad de seriales debe igualar la diferencia positiva
+    // Para ajustes de salida (loss), la cantidad de seriales debe igualar la diferencia negativa (valor absoluto)
+    const incompleteSerialItems = items.filter((item) => {
+      if (!item.track_serial) return false;
+      const diffQty = type === 'gain'
+        ? Math.max(0, item.difference)
+        : Math.max(0, -item.difference);
+      if (diffQty === 0) return false; // No hay cambio de stock, no requiere seriales
+      return (item.serial_numbers || []).length < diffQty;
+    });
+    if (incompleteSerialItems.length > 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Seriales incompletos',
+        description: `Faltan seriales por capturar en ${incompleteSerialItems.length} producto(s) con trazabilidad.`
       });
       return;
     }
@@ -527,7 +560,8 @@ export function NuevoAjusteForm() {
           items: items.map(item => ({
             product_id: item.product_id,
             quantity: item.counted_qty,
-            unit_cost: item.unit_cost
+            unit_cost: item.unit_cost,
+            serial_numbers: item.serial_numbers && item.serial_numbers.length > 0 ? item.serial_numbers : undefined,
           }))
         },
         userId
@@ -735,7 +769,8 @@ export function NuevoAjusteForm() {
                     </TableHeader>
                     <TableBody>
                       {items.map((item, index) => (
-                        <TableRow key={index} className="dark:border-gray-700">
+                        <React.Fragment key={index}>
+                        <TableRow className="dark:border-gray-700">
                           <TableCell>
                             <div className="flex items-center gap-3">
                               {item.product_image ? (
@@ -803,6 +838,32 @@ export function NuevoAjusteForm() {
                             </Button>
                           </TableCell>
                         </TableRow>
+                        {item.track_serial && branchId && (() => {
+                          // Para gain: capturar seriales para la diferencia positiva
+                          // Para loss: capturar seriales para la diferencia negativa (valor absoluto)
+                          const diffQty = type === 'gain'
+                            ? Math.max(0, item.difference)
+                            : Math.max(0, -item.difference);
+                          if (diffQty === 0) return null;
+                          return (
+                            <TableRow className="dark:border-gray-700 bg-blue-50/30 dark:bg-blue-900/5">
+                              <TableCell colSpan={7} className="py-3">
+                                <SerialCaptureSection
+                                  productId={item.product_id}
+                                  productName={item.product_name}
+                                  productSku={item.product_sku}
+                                  organizationId={organization?.id || 0}
+                                  branchId={branchId}
+                                  quantity={diffQty}
+                                  serials={item.serial_numbers || []}
+                                  onSerialsChange={(serials) => handleSerialsChange(index, serials)}
+                                  compact
+                                />
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })()}
+                        </React.Fragment>
                       ))}
                     </TableBody>
                   </Table>

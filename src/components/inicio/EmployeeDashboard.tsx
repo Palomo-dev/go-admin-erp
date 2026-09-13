@@ -27,6 +27,10 @@ import {
   Clock,
   ChevronRight,
   Inbox,
+  ShoppingCart,
+  Package,
+  Users,
+  CalendarDays,
   type LucideIcon,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -64,23 +68,24 @@ const MODULE_ACCESS_CATALOG: Array<{
   icon: LucideIcon;
   color: string;
 }> = [
-  { moduleCode: 'pos', href: '/app/pos', icon: QrCode, color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' },
-  { moduleCode: 'inventory', href: '/app/inventario', icon: Circle, color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400' },
-  { moduleCode: 'crm', href: '/app/crm', icon: Bell, color: 'bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400' },
+  { moduleCode: 'pos', href: '/app/pos', icon: ShoppingCart, color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' },
+  { moduleCode: 'inventory', href: '/app/inventario', icon: Package, color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400' },
+  { moduleCode: 'crm', href: '/app/crm', icon: Users, color: 'bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400' },
   { moduleCode: 'hrm', href: '/app/hrm', icon: Clock, color: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' },
-  { moduleCode: 'calendar', href: '/app/calendario', icon: Clock, color: 'bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400' },
+  { moduleCode: 'calendar', href: '/app/calendario', icon: CalendarDays, color: 'bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400' },
   { moduleCode: 'notifications', href: '/app/notificaciones', icon: Bell, color: 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400' },
 ];
 
-const TASK_STATUS_CONFIG: Record<string, { label: string; badge: string; icon: LucideIcon }> = {
-  todo: { label: 'Por hacer', badge: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300', icon: Circle },
-  in_progress: { label: 'En progreso', badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', icon: Clock },
-  done: { label: 'Completada', badge: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', icon: CheckCircle2 },
-  completed: { label: 'Completada', badge: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', icon: CheckCircle2 },
+const TASK_STATUS_CONFIG: Record<string, { labelKey: string; badge: string; icon: LucideIcon }> = {
+  todo: { labelKey: 'home.taskStatus.todo', badge: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300', icon: Circle },
+  in_progress: { labelKey: 'home.taskStatus.inProgress', badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', icon: Clock },
+  done: { labelKey: 'home.taskStatus.done', badge: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', icon: CheckCircle2 },
+  completed: { labelKey: 'home.taskStatus.done', badge: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', icon: CheckCircle2 },
 };
 
 export function EmployeeDashboard({ organizationId, userId, permContext }: EmployeeDashboardProps) {
   const t = useTranslations('home');
+  const tRoot = useTranslations();
 
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
@@ -161,7 +166,7 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
                 {t('markShift')}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Registra tu entrada o salida de turno
+                {t('markShiftDesc')}
               </p>
             </div>
           </div>
@@ -189,7 +194,7 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
                   <Icon className="h-5 w-5" />
                 </div>
                 <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400 text-center leading-tight truncate w-full">
-                  {t(`shortcuts.${shortcut.moduleCode === 'inventory' ? 'inventory' : shortcut.moduleCode}`)}
+                  {t(`shortcuts.${shortcut.moduleCode === 'notifications' ? 'notifications' : shortcut.moduleCode === 'config' ? 'config' : shortcut.moduleCode}`)}
                 </span>
               </Link>
             );
@@ -203,13 +208,13 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-indigo-500" />
-              Mis tareas
+              {t('myTasks')}
             </CardTitle>
             <Link
               href="/app/pm"
               className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
             >
-              Ver todas
+              {t('viewAll')}
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </CardHeader>
@@ -224,7 +229,7 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
               <div className="text-center py-8">
                 <Inbox className="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600" />
                 <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  No tienes tareas asignadas
+                  {t('noTasks')}
                 </p>
               </div>
             ) : (
@@ -245,12 +250,12 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
                         </p>
                         {task.due_date && (
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            Vence: {task.due_date}
+                            {t('dueDate')}: {task.due_date}
                           </p>
                         )}
                       </div>
                       <Badge variant="secondary" className={cn('text-xs shrink-0', statusConfig.badge)}>
-                        {statusConfig.label}
+                        {tRoot(statusConfig.labelKey)}
                       </Badge>
                     </Link>
                   );
@@ -265,10 +270,10 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <Bell className="h-5 w-5 text-blue-500" />
-              Mis notificaciones
+              {t('myNotifications')}
               {unreadCount > 0 && (
                 <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-xs">
-                  {unreadCount} sin leer
+                  {unreadCount} {t('unread')}
                 </Badge>
               )}
             </CardTitle>
@@ -276,7 +281,7 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
               href="/app/notificaciones"
               className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
             >
-              Ver todas
+              {t('viewAll')}
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </CardHeader>
@@ -291,7 +296,7 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
               <div className="text-center py-8">
                 <Bell className="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600" />
                 <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  No tienes notificaciones
+                  {t('noNotifications')}
                 </p>
               </div>
             ) : (
@@ -309,7 +314,7 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
                     <div className={cn('mt-1 h-2 w-2 rounded-full shrink-0', notif.is_read_by_me ? 'bg-gray-300 dark:bg-gray-600' : 'bg-blue-500')} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {notif.payload?.title || 'Notificación'}
+                        {notif.payload?.title || t('notification')}
                       </p>
                       {notif.payload?.content && (
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">

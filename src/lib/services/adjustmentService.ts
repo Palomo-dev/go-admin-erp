@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { serialTrackingService } from '@/lib/services/serialTrackingService';
 
 // Tipos para Ajustes de Inventario
 export interface InventoryAdjustment {
@@ -49,6 +50,7 @@ export interface AdjustmentItem {
   // Campos calculados
   system_qty?: number;
   difference?: number;
+  serial_numbers?: string[] | null;
 }
 
 // Input para crear ajuste
@@ -63,6 +65,7 @@ export interface CreateAdjustmentInput {
     quantity: number;
     lot_id?: number;
     unit_cost?: number;
+    serial_numbers?: string[];
   }[];
 }
 
@@ -76,6 +79,7 @@ export interface UpdateAdjustmentInput {
     quantity: number;
     lot_id?: number;
     unit_cost?: number;
+    serial_numbers?: string[];
   }[];
 }
 
@@ -299,7 +303,8 @@ class AdjustmentService {
           product_id: item.product_id,
           quantity: item.quantity,
           lot_id: item.lot_id || null,
-          unit_cost: item.unit_cost || null
+          unit_cost: item.unit_cost || null,
+          serial_numbers: item.serial_numbers && item.serial_numbers.length > 0 ? item.serial_numbers : null,
         }));
 
         const { error: itemsError } = await supabase
@@ -370,7 +375,8 @@ class AdjustmentService {
             product_id: item.product_id,
             quantity: item.quantity,
             lot_id: item.lot_id || null,
-            unit_cost: item.unit_cost || null
+            unit_cost: item.unit_cost || null,
+            serial_numbers: item.serial_numbers && item.serial_numbers.length > 0 ? item.serial_numbers : null,
           }));
 
           await supabase
@@ -460,6 +466,66 @@ class AdjustmentService {
               avg_cost: item.unit_cost || 0,
               min_level: 0
             });
+        }
+
+        // 3. Procesar seriales para productos con trazabilidad
+        const serials = (item as any).serial_numbers as string[] | null;
+        if (serials && serials.length > 0) {
+          if (difference > 0) {
+            // Ajuste de entrada: crear seriales nuevos asociados a la sucursal
+            try {
+              const serialInputs: import('@/lib/services/serialTrackingService').SerialInput[] = serials.map((serial) => ({
+                product_id: item.product_id,
+                organization_id: organizationId,
+                branch_id: adjustment.branch_id,
+                serial,
+                cost_at_purchase: item.unit_cost || 0,
+              }));
+              const { errors: serialErrors } = await serialTrackingService.createSerials(serialInputs);
+              if (serialErrors.length > 0) {
+                console.warn('Algunos seriales no se pudieron crear en el ajuste:', serialErrors);
+              }
+            } catch (serialErr) {
+              console.error('Error creando seriales en ajuste:', serialErr);
+            }
+          } else if (difference < 0) {
+            // Ajuste de salida: marcar seriales como dados de baja (defective)
+            try {
+              const now = new Date().toISOString();
+              for (const serial of serials) {
+                const { data: serialRow } = await supabase
+                  .from('serial_numbers')
+                  .select('id, status, organization_id, current_branch_id')
+                  .eq('serial', serial)
+                  .eq('organization_id', organizationId)
+                  .maybeSingle();
+                if (!serialRow) continue;
+                if (serialRow.status !== 'in_stock') continue;
+                await supabase
+                  .from('serial_numbers')
+                  .update({
+                    status: 'defective',
+                    updated_at: now,
+                    updated_by: userId,
+                  })
+                  .eq('id', serialRow.id);
+                await supabase.from('serial_tracking_events').insert({
+                  serial_number_id: serialRow.id,
+                  organization_id: serialRow.organization_id,
+                  event_type: 'status_change',
+                  from_status: serialRow.status,
+                  to_status: 'defective',
+                  from_branch_id: serialRow.current_branch_id,
+                  to_branch_id: adjustment.branch_id,
+                  source_table: 'inventory_adjustments',
+                  source_id: adjustmentId.toString(),
+                  performed_by: userId,
+                });
+              }
+            } catch (serialErr) {
+              console.error('Error marcando seriales en ajuste de salida:', serialErr);
+            }
+          }
         }
       }));
 

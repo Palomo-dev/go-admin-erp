@@ -11,6 +11,14 @@ import { cn } from '@/utils/Utils';
 
 const DIAL_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];
 
+// Letras bajo cada tecla (como un teléfono real)
+const KEY_LETTERS: Record<string, string> = {
+  '1': '', '2': 'ABC', '3': 'DEF',
+  '4': 'GHI', '5': 'JKL', '6': 'MNO',
+  '7': 'PQRS', '8': 'TUV', '9': 'WXYZ',
+  '*': '', '0': '+', '#': '',
+};
+
 interface KeypadProps {
   value: string;
   onChange: (value: string) => void;
@@ -81,18 +89,42 @@ export function Keypad({ value, onChange, onSubmit, dtmfMode = false, onDigit, d
             key={key}
             type="button"
             onClick={() => press(key)}
+            onContextMenu={(e) => {
+              // Click derecho o pulsación larga en 0 → +
+              if (key === '0') {
+                e.preventDefault();
+                press('+');
+              }
+            }}
             disabled={disabled}
-            aria-label={dtmfMode ? `Enviar ${key}` : `Tecla ${key}`}
+            aria-label={dtmfMode ? `Enviar ${key}` : `Tecla ${key}${KEY_LETTERS[key] ? ` (${KEY_LETTERS[key]})` : ''}`}
             className={cn(
-              'h-10 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700',
+              'relative h-12 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700',
               'text-lg font-mono font-semibold text-gray-900 dark:text-gray-100 transition-colors disabled:opacity-50',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500'
             )}
           >
             {key}
+            {KEY_LETTERS[key] && (
+              <span className="absolute bottom-0.5 left-0 right-0 text-[8px] font-sans font-normal text-gray-400 dark:text-gray-500 leading-none">
+                {KEY_LETTERS[key]}
+              </span>
+            )}
           </button>
         ))}
       </div>
+      {/* Botón + para marcado internacional (E.164) */}
+      {!dtmfMode && (
+        <button
+          type="button"
+          onClick={() => press('+')}
+          disabled={disabled}
+          aria-label="Insertar símbolo más"
+          className="h-10 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 text-lg font-mono font-semibold text-gray-900 dark:text-gray-100 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          +
+        </button>
+      )}
     </div>
   );
 }

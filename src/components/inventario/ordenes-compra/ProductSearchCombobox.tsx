@@ -18,6 +18,7 @@ export interface ProductOption {
   cost?: number;
   image?: string | null;
   track_stock?: boolean;
+  track_serial?: boolean;
   is_parent?: boolean;
   parent_product_id?: number | null;
   variant_data?: Record<string, string> | null;

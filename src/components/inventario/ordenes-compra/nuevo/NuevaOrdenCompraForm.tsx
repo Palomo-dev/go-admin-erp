@@ -21,6 +21,7 @@ import { BranchSelectorField } from '@/components/inventario/BranchSelectorField
 
 import { ProductSearchCombobox, type ProductOption } from '../ProductSearchCombobox';
 import { SearchSelectCombobox, type SearchSelectOption } from '../SearchSelectCombobox';
+import { SerialCaptureSection } from '@/components/shared/SerialCaptureSection';
 import {
   Table,
   TableBody,
@@ -47,6 +48,7 @@ interface OrderItem extends PurchaseOrderItemInput {
   productName: string;
   sku: string;
   image?: string | null;
+  track_serial?: boolean;
 }
 
 export function NuevaOrdenCompraForm() {
@@ -167,7 +169,10 @@ export function NuevaOrdenCompraForm() {
       sku: product.sku,
       image: product.image || (product as any).parent_image || null,
       quantity,
-      unit_cost: cost
+      unit_cost: cost,
+      track_serial: (product as any).track_serial === true,
+      requires_serial: (product as any).track_serial === true,
+      serial_numbers: [],
     };
 
     setItems([...items, newItem]);
@@ -191,6 +196,16 @@ export function NuevaOrdenCompraForm() {
     }));
   };
 
+  // Actualizar seriales de un item
+  const handleSerialsChange = (itemId: string, serials: string[]) => {
+    setItems(items.map(item => {
+      if (item.id === itemId) {
+        return { ...item, serial_numbers: serials };
+      }
+      return item;
+    }));
+  };
+
   // Calcular total
   const total = items.reduce((sum, item) => sum + (item.quantity * item.unit_cost), 0);
 
@@ -206,6 +221,18 @@ export function NuevaOrdenCompraForm() {
     }
     if (items.length === 0) {
       toastError('Error', 'Agrega al menos un producto');
+      return;
+    }
+
+    // Validar que los productos con track_serial tengan todos los seriales capturados
+    const incompleteSerialItems = items.filter(
+      (item) => item.track_serial && (item.serial_numbers || []).length < Math.floor(item.quantity)
+    );
+    if (incompleteSerialItems.length > 0) {
+      toastError(
+        'Seriales incompletos',
+        `Faltan seriales por capturar en ${incompleteSerialItems.length} producto(s) con trazabilidad.`
+      );
       return;
     }
 
@@ -225,7 +252,9 @@ export function NuevaOrdenCompraForm() {
         items.map(item => ({
           product_id: item.product_id,
           quantity: item.quantity,
-          unit_cost: item.unit_cost
+          unit_cost: item.unit_cost,
+          serial_numbers: item.serial_numbers && item.serial_numbers.length > 0 ? item.serial_numbers : undefined,
+          requires_serial: item.requires_serial || false,
         }))
       );
 
@@ -443,7 +472,8 @@ export function NuevaOrdenCompraForm() {
                     </TableHeader>
                     <TableBody>
                       {items.map((item) => (
-                        <TableRow key={item.id} className="dark:border-gray-700">
+                        <React.Fragment key={item.id}>
+                        <TableRow className="dark:border-gray-700">
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
@@ -501,6 +531,24 @@ export function NuevaOrdenCompraForm() {
                             </Button>
                           </TableCell>
                         </TableRow>
+                        {item.track_serial && branchId && (
+                          <TableRow className="dark:border-gray-700 bg-blue-50/30 dark:bg-blue-900/5">
+                            <TableCell colSpan={5} className="py-3">
+                              <SerialCaptureSection
+                                productId={item.product_id}
+                                productName={item.productName}
+                                productSku={item.sku}
+                                organizationId={getOrganizationId() || 0}
+                                branchId={branchId}
+                                quantity={Math.floor(item.quantity)}
+                                serials={item.serial_numbers || []}
+                                onSerialsChange={(serials) => handleSerialsChange(item.id, serials)}
+                                compact
+                              />
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        </React.Fragment>
                       ))}
                     </TableBody>
                   </Table>

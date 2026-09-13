@@ -25,6 +25,7 @@ import Variantes from '../nuevo/Variantes'
 import Notas from '../nuevo/Notas'
 import Etiquetas from '../nuevo/Etiquetas'
 import TrazabilidadSeccion from '../nuevo/TrazabilidadSeccion'
+import { buildVariantDisplayName } from '@/utils/variantUtils'
 
 // Esquema de validación con Zod (mismo que en FormularioProducto)
 const productoSchema = z.object({
@@ -802,7 +803,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
               .from('products')
               .update({
                 sku: variant.sku,
-                name: variant.name,
+                name: buildVariantDisplayName(data.name, variant.attributes) || variant.name,
                 barcode: variant.barcode || null,
                 variant_data: variant.attributes,
                 updated_at: new Date().toISOString(),
@@ -925,7 +926,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
               .insert({
                 organization_id,
                 sku: variant.sku,
-                name: variant.name,
+                name: buildVariantDisplayName(data.name, variant.attributes) || variant.name,
                 barcode: variant.barcode || null,
                 parent_product_id: productoId,
                 is_parent: false,

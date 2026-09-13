@@ -38,7 +38,7 @@ export default function FacturaDetallesPage({ params }: PageProps) {
         // Obtener la factura
         let facturaQuery = supabase
           .from('invoice_sales')
-          .select('*, customers(id, full_name, email, phone)')
+          .select('*, customers(id, full_name, email, phone, doc_type, doc_number, address)')
           .eq('id', invoiceId)
           .eq('organization_id', organizationId);
         if (branchFilter != null) facturaQuery = facturaQuery.eq('branch_id', branchFilter);

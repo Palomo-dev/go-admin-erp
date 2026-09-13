@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
 import { isEmptyConditionTree } from '@/lib/services/crm/automation/conditionsDsl';
+import { exitConditionLabel } from '@/lib/services/crm/automation/conditionsI18n';
 import { ConditionEditor } from './ConditionEditor';
 import { EntitySelect } from '@/components/crm/shared/EntitySelect';
 import { useCrmLookups } from '@/components/crm/shared/useCrmLookups';
@@ -133,7 +134,7 @@ export function SequenceFormDialog({ open, sequence, onOpenChange, onSave }: Pro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-1rem)] max-w-3xl overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle>{sequence ? 'Editar secuencia' : 'Nueva secuencia'}</DialogTitle>
         </DialogHeader>
@@ -162,7 +163,7 @@ export function SequenceFormDialog({ open, sequence, onOpenChange, onSave }: Pro
             <Textarea id="seq-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
 
-          <div className="flex flex-wrap gap-6">
+          <div className="flex flex-wrap gap-4 sm:gap-6">
             <div className="flex items-center gap-2">
               <Switch id="seq-active" checked={isActive} onCheckedChange={setIsActive} />
               <Label htmlFor="seq-active">Activa</Label>
@@ -175,7 +176,7 @@ export function SequenceFormDialog({ open, sequence, onOpenChange, onSave }: Pro
 
           <fieldset>
             <legend className="text-sm font-medium text-gray-900 dark:text-gray-100">Condiciones de salida</legend>
-            <div className="mt-1 flex flex-wrap gap-3">
+            <div className="mt-1 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
               {EXIT_CONDITIONS.map((c) => (
                 <label key={c} className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
                   <input
@@ -183,7 +184,7 @@ export function SequenceFormDialog({ open, sequence, onOpenChange, onSave }: Pro
                     checked={exits.includes(c)}
                     onChange={(e) => setExits(e.target.checked ? [...exits, c] : exits.filter((x) => x !== c))}
                   />
-                  {c}
+                  {exitConditionLabel(c)}
                 </label>
               ))}
             </div>
@@ -210,11 +211,11 @@ export function SequenceFormDialog({ open, sequence, onOpenChange, onSave }: Pro
             )}
             {steps.map((step, index) => (
               <div key={index} className="rounded-md border border-gray-200 p-3 dark:border-gray-700">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <span className="text-xs text-gray-500 dark:text-gray-400">Paso {index + 1}</span>
                   <select
                     aria-label={`Canal del paso ${index + 1}`}
-                    className="h-9 flex-1 rounded-md border border-gray-300 bg-white px-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    className="h-9 w-full rounded-md border border-gray-300 bg-white px-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 sm:flex-1"
                     value={step.channel}
                     disabled={!!sequence}
                     onChange={(e) => updateStep(index, {
@@ -295,9 +296,9 @@ export function SequenceFormDialog({ open, sequence, onOpenChange, onSave }: Pro
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
-          <Button onClick={submit} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</Button>
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className="w-full sm:w-auto">Cancelar</Button>
+          <Button onClick={submit} disabled={saving} className="w-full sm:w-auto">{saving ? 'Guardando…' : 'Guardar'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

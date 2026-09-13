@@ -136,7 +136,7 @@ export function RuleFormDialog({ open, rule, onOpenChange, onSave }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-1rem)] max-w-3xl overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle>{rule ? 'Editar regla' : 'Nueva regla'}</DialogTitle>
         </DialogHeader>

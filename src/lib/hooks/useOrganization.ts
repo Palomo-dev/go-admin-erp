@@ -303,6 +303,11 @@ export function obtenerOrganizacionActiva(): Organizacion {
       const parsed = JSON.parse(localData);
       if (parsed?.id) {
         _orgCache = parsed;
+        // Sincronizar cookies síncronamente: sin esto, el servidor resolvía
+        // la org de una cookie obsoleta y /api/crm/calls devolvía vacío.
+        const idStr = String(parsed.id);
+        escribirCookie(ORG_COOKIE_MIDDLEWARE, idStr);
+        escribirCookie(ORG_COOKIE_SERVER, idStr);
         return parsed;
       }
     }

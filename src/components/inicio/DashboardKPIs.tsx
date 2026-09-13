@@ -189,15 +189,15 @@ const colorMap: Record<string, { bg: string; icon: string; text: string; stroke:
   amber: { bg: 'bg-amber-50 dark:bg-amber-900/20', icon: 'text-amber-600 dark:text-amber-400', text: 'text-amber-700 dark:text-amber-300', stroke: '#f59e0b' },
 };
 
-// Etiqueta dinámica según período
+// Etiqueta dinámica según período (claves de traducción bajo home.kpis.periods)
 const periodoLabel: Record<PeriodoDashboard, string> = {
-  hoy: 'Hoy',
-  ayer: 'Ayer',
-  '7d': '7 días',
-  '30d': '30 días',
-  '90d': '90 días',
-  año: 'Año',
-  personalizado: 'Personalizado',
+  hoy: 'periods.today',
+  ayer: 'periods.yesterday',
+  '7d': 'periods.7days',
+  '30d': 'periods.30days',
+  '90d': 'periods.90days',
+  año: 'periods.year',
+  personalizado: 'periods.custom',
 };
 
 function generateSparklineData(value: number, deltaPct: number | null, points = 7): number[] {
@@ -242,12 +242,14 @@ function VentasHorariasSparkline({
   horaActual,
   stroke,
   formatValue,
+  t,
 }: {
   hoy: PuntoHora[];
   ayer: PuntoHora[];
   horaActual: number;
   stroke: string;
   formatValue: (n: number) => string;
+  t: (key: string) => string;
 }) {
   // Recortar hasta la hora actual (inclusive) y combinar ambas series por hora
   const data = hoy
@@ -284,11 +286,11 @@ function VentasHorariasSparkline({
                   <div className="text-gray-500">{fmtHora(hora ?? 0)}</div>
                   <div className="flex items-center gap-1">
                     <span className="inline-block w-2 h-2 rounded-full" style={{ background: stroke }} />
-                    Hoy: {formatValue(payload.find((p) => p.dataKey === 'hoy')?.value ?? 0)}
+                    {t('sparkline.today')}: {formatValue(payload.find((p) => p.dataKey === 'hoy')?.value ?? 0)}
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="inline-block w-2 h-2 rounded-full bg-gray-400" />
-                    Ayer: {formatValue(payload.find((p) => p.dataKey === 'ayer')?.value ?? 0)}
+                    {t('sparkline.yesterday')}: {formatValue(payload.find((p) => p.dataKey === 'ayer')?.value ?? 0)}
                   </div>
                 </div>
               );
@@ -325,12 +327,14 @@ function MensualSparkline({
   diaActual,
   stroke,
   formatValue,
+  t,
 }: {
   mesActual: PuntoDiaMes[];
   mesAnterior: PuntoDiaMes[];
   diaActual: number;
   stroke: string;
   formatValue: (n: number) => string;
+  t: (key: string) => string;
 }) {
   // Combinar ambas series por día del mes, recortando hasta el día actual
   const dias = Array.from({ length: diaActual }, (_, i) => i + 1);
@@ -363,14 +367,14 @@ function MensualSparkline({
               const dia = payload[0]?.payload?.dia;
               return (
                 <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm px-2 py-1 text-[10px] font-medium text-gray-700 dark:text-gray-200 space-y-0.5">
-                  <div className="text-gray-500">Día {dia}</div>
+                  <div className="text-gray-500">{t('sparkline.day')}{dia}</div>
                   <div className="flex items-center gap-1">
                     <span className="inline-block w-2 h-2 rounded-full" style={{ background: stroke }} />
-                    Este mes: {formatValue(payload.find((p) => p.dataKey === 'actual')?.value ?? 0)}
+                    {t('sparkline.thisMonth')}: {formatValue(payload.find((p) => p.dataKey === 'actual')?.value ?? 0)}
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="inline-block w-2 h-2 rounded-full bg-gray-400" />
-                    Mes pasado: {formatValue(payload.find((p) => p.dataKey === 'anterior')?.value ?? 0)}
+                    {t('sparkline.lastMonth')}: {formatValue(payload.find((p) => p.dataKey === 'anterior')?.value ?? 0)}
                   </div>
                 </div>
               );
@@ -412,6 +416,7 @@ function MiniConversionFunnel({
   visitasAnterior,
   pedidosAnterior,
   completadosAnterior,
+  t,
 }: {
   visitas: number;
   pedidos: number;
@@ -423,34 +428,35 @@ function MiniConversionFunnel({
   visitasAnterior?: number;
   pedidosAnterior?: number;
   completadosAnterior?: number;
+  t: (key: string) => string;
 }) {
   const max = Math.max(visitas, 1);
   const stages = [
     {
-      label: 'Visitas', value: visitas, color: '#3b82f6',
+      label: t('funnel.visits'), value: visitas, color: '#3b82f6',
       items: [
-        { label: 'Visitantes', value: visitas.toLocaleString(), color: '#3b82f6' },
-        ...(visitasAnterior ? [{ label: 'Período anterior', value: visitasAnterior.toLocaleString() }] : []),
-        { label: 'Tasa visita→pedido', value: `${tasaVisitaPedido.toFixed(1)}%` },
+        { label: t('funnel.visitors'), value: visitas.toLocaleString(), color: '#3b82f6' },
+        ...(visitasAnterior ? [{ label: t('funnel.prevPeriod'), value: visitasAnterior.toLocaleString() }] : []),
+        { label: t('funnel.visitToOrderRate'), value: `${tasaVisitaPedido.toFixed(1)}%` },
       ],
     },
     {
-      label: 'Pedidos', value: pedidos, color: '#f59e0b',
+      label: t('funnel.orders'), value: pedidos, color: '#f59e0b',
       items: [
-        { label: 'Pedidos', value: pedidos.toLocaleString(), color: '#f59e0b' },
-        ...(pedidosAnterior ? [{ label: 'Período anterior', value: pedidosAnterior.toLocaleString() }] : []),
-        { label: 'Tasa visita→pedido', value: `${tasaVisitaPedido.toFixed(1)}%` },
-        { label: 'Tasa pedido→completado', value: `${tasaPedidoCompletado.toFixed(1)}%` },
-        { label: 'Tasa abandono', value: `${tasaAbandono.toFixed(1)}%` },
+        { label: t('funnel.orders'), value: pedidos.toLocaleString(), color: '#f59e0b' },
+        ...(pedidosAnterior ? [{ label: t('funnel.prevPeriod'), value: pedidosAnterior.toLocaleString() }] : []),
+        { label: t('funnel.visitToOrderRate'), value: `${tasaVisitaPedido.toFixed(1)}%` },
+        { label: t('funnel.orderToCompleteRate'), value: `${tasaPedidoCompletado.toFixed(1)}%` },
+        { label: t('funnel.abandonRate'), value: `${tasaAbandono.toFixed(1)}%` },
       ],
     },
     {
-      label: 'Comple.', value: completados, color: '#22c55e',
+      label: t('funnel.completed'), value: completados, color: '#22c55e',
       items: [
-        { label: 'Completados', value: completados.toLocaleString(), color: '#22c55e' },
-        ...(completadosAnterior ? [{ label: 'Período anterior', value: completadosAnterior.toLocaleString() }] : []),
-        { label: 'Tasa pedido→completado', value: `${tasaPedidoCompletado.toFixed(1)}%` },
-        { label: 'De pedidos', value: `${completados} / ${pedidos}` },
+        { label: t('funnel.completed'), value: completados.toLocaleString(), color: '#22c55e' },
+        ...(completadosAnterior ? [{ label: t('funnel.prevPeriod'), value: completadosAnterior.toLocaleString() }] : []),
+        { label: t('funnel.orderToCompleteRate'), value: `${tasaPedidoCompletado.toFixed(1)}%` },
+        { label: t('funnel.fromOrders'), value: `${completados} / ${pedidos}` },
       ],
     },
   ];
@@ -505,8 +511,9 @@ interface ComprasTooltipProps {
   payload?: { value: number; dataKey: string; payload: { hora?: number; dia?: number } }[];
   xLabel: string; // "hora" | "día"
   fmtX: (n: number) => string;
+  t: (key: string) => string;
 }
-function ComprasWebTooltip({ active, payload, xLabel, fmtX }: ComprasTooltipProps) {
+function ComprasWebTooltip({ active, payload, xLabel, fmtX, t }: ComprasTooltipProps) {
   if (!active || !payload || !payload.length) return null;
   const x = payload[0]?.payload?.hora ?? payload[0]?.payload?.dia ?? 0;
   const get = (key: string) => payload.find((p) => p.dataKey === key)?.value ?? 0;
@@ -522,12 +529,12 @@ function ComprasWebTooltip({ active, payload, xLabel, fmtX }: ComprasTooltipProp
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm px-2 py-1 text-[10px] font-medium text-gray-700 dark:text-gray-200 space-y-0.5">
       <div className="text-gray-500">{xLabel} {fmtX(x)}</div>
-      <Row color={COMPRAS_COLORS.pedidos} label="Pedidos hoy" value={get('hoyPedidos')} />
-      <Row color={COMPRAS_COLORS.pagados} label="Pagados hoy" value={get('hoyPagados')} />
-      <Row color={COMPRAS_COLORS.canceladas} label="Cancelados hoy" value={get('hoyCanceladas')} />
-      <Row color={COMPRAS_COLORS.pedidos} label="Pedidos ayer" value={get('ayerPedidos')} dashed />
-      <Row color={COMPRAS_COLORS.pagados} label="Pagados ayer" value={get('ayerPagados')} dashed />
-      <Row color={COMPRAS_COLORS.canceladas} label="Cancelados ayer" value={get('ayerCanceladas')} dashed />
+      <Row color={COMPRAS_COLORS.pedidos} label={t('web.ordersToday')} value={get('hoyPedidos')} />
+      <Row color={COMPRAS_COLORS.pagados} label={t('web.paidToday')} value={get('hoyPagados')} />
+      <Row color={COMPRAS_COLORS.canceladas} label={t('web.cancelledToday')} value={get('hoyCanceladas')} />
+      <Row color={COMPRAS_COLORS.pedidos} label={t('web.ordersYesterday')} value={get('ayerPedidos')} dashed />
+      <Row color={COMPRAS_COLORS.pagados} label={t('web.paidYesterday')} value={get('ayerPagados')} dashed />
+      <Row color={COMPRAS_COLORS.canceladas} label={t('web.cancelledYesterday')} value={get('ayerCanceladas')} dashed />
     </div>
   );
 }
@@ -535,7 +542,7 @@ function ComprasWebTooltip({ active, payload, xLabel, fmtX }: ComprasTooltipProp
 // Sparkline horario de compras web con desglose por estado (pedidos/pagados/cancelados)
 // y comparación vs ayer a la misma hora.
 function ComprasWebHorariasSparkline({
-  hoy, ayer, hoyPagadas, ayerPagadas, hoyCanceladas, ayerCanceladas, horaActual,
+  hoy, ayer, hoyPagadas, ayerPagadas, hoyCanceladas, ayerCanceladas, horaActual, t,
 }: {
   hoy: PuntoHora[];
   ayer: PuntoHora[];
@@ -544,6 +551,7 @@ function ComprasWebHorariasSparkline({
   hoyCanceladas: PuntoHora[];
   ayerCanceladas: PuntoHora[];
   horaActual: number;
+  t: (key: string) => string;
 }) {
   const data = hoy
     .filter((p) => p.hora <= horaActual)
@@ -581,7 +589,7 @@ function ComprasWebHorariasSparkline({
           />
           <YAxis hide domain={[0, 'auto']} allowDecimals={false} />
           <RechartsTooltip
-            content={<ComprasWebTooltip xLabel="hora" fmtX={fmtHora} />}
+            content={<ComprasWebTooltip xLabel={t('web.hour')} fmtX={fmtHora} t={t} />}
             cursor={false}
           />
           {lineCfg.map((l) => (
@@ -605,7 +613,7 @@ function ComprasWebHorariasSparkline({
 // Sparkline por período (7d/30d/90d/año) de compras web con desglose por estado
 // y comparación vs período anterior.
 function ComprasWebMensualSparkline({
-  actual, anterior, actualPagadas, anteriorPagadas, actualCanceladas, anteriorCanceladas, diaActual,
+  actual, anterior, actualPagadas, anteriorPagadas, actualCanceladas, anteriorCanceladas, diaActual, t,
 }: {
   actual: PuntoDiaMes[];
   anterior: PuntoDiaMes[];
@@ -614,6 +622,7 @@ function ComprasWebMensualSparkline({
   actualCanceladas: PuntoDiaMes[];
   anteriorCanceladas: PuntoDiaMes[];
   diaActual: number;
+  t: (key: string) => string;
 }) {
   const dias = Array.from({ length: diaActual }, (_, i) => i + 1);
   const data = dias.map((dia) => ({
@@ -650,7 +659,7 @@ function ComprasWebMensualSparkline({
           />
           <YAxis hide domain={[0, 'auto']} allowDecimals={false} />
           <RechartsTooltip
-            content={<ComprasWebTooltip xLabel="día" fmtX={fmtDia} />}
+            content={<ComprasWebTooltip xLabel={t('web.day')} fmtX={fmtDia} t={t} />}
             cursor={false}
           />
           {lineCfg.map((l) => (
@@ -709,7 +718,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
           // Reemplazar "30 días"/"30 days"/"30 dias"/"30 jours" por el nombre del mes
           label = baseLabel.replace(/\s*30\s+\S+$/i, ` ${nombreMes}`);
         } else if (kpi.dynamicLabel) {
-          label = baseLabel.replace(/Hoy$/i, periodoLabel[periodo]);
+          label = baseLabel.replace(/Hoy$/i, t(periodoLabel[periodo]));
         }
 
         // Cálculo de delta % vs período anterior
@@ -845,14 +854,14 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
             {/* Desglose de tasas de conversión web */}
             {kpi.hasDesglose && kpi.key === 'conversionWeb' && data && (
               <div className="mt-1 flex items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400">
-                <span title="Visitantes que hicieron pedido">
-                  Visita→Pedido: <span className="font-semibold text-gray-700 dark:text-gray-200">{data.tasaVisitaPedido.toFixed(1)}%</span>
+                <span title={t('conversion.visitorsToOrders')}>
+                  {t('conversion.visitToOrder')}: <span className="font-semibold text-gray-700 dark:text-gray-200">{data.tasaVisitaPedido.toFixed(1)}%</span>
                 </span>
-                <span title="Pedidos que se completaron (pagados online o confirmados manuales)">
-                  Conv.: <span className="font-semibold text-green-600 dark:text-green-400">{data.tasaPedidoCompletado.toFixed(1)}%</span>
+                <span title={t('conversion.ordersCompletedTitle')}>
+                  {t('conversion.conv')}: <span className="font-semibold text-green-600 dark:text-green-400">{data.tasaPedidoCompletado.toFixed(1)}%</span>
                 </span>
-                <span title="Pedidos expirados o cancelados">
-                  Abandono: <span className="font-semibold text-red-500 dark:text-red-400">{data.tasaAbandono.toFixed(1)}%</span>
+                <span title={t('conversion.abandonedTitle')}>
+                  {t('conversion.abandonment')}: <span className="font-semibold text-red-500 dark:text-red-400">{data.tasaAbandono.toFixed(1)}%</span>
                 </span>
               </div>
             )}
@@ -895,6 +904,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
                 visitasAnterior={data.visitasWebAnterior}
                 pedidosAnterior={data.comprasWebAnterior}
                 completadosAnterior={data.comprasWebCompletadasAnterior}
+                t={t}
               />
             ) : hasComprasHoraria ? (
               <ComprasWebHorariasSparkline
@@ -905,6 +915,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
                 hoyCanceladas={data!.comprasPorHoraHoyCanceladas!}
                 ayerCanceladas={data!.comprasPorHoraAyerCanceladas!}
                 horaActual={data!.horaActualOrg!}
+                t={t}
               />
             ) : hasComprasPeriodo ? (
               <ComprasWebMensualSparkline
@@ -915,6 +926,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
                 actualCanceladas={data!.comprasPorDiaPeriodoCanceladas!.actual}
                 anteriorCanceladas={data!.comprasPorDiaPeriodoCanceladas!.anterior}
                 diaActual={periodoSerie!.actual.length}
+                t={t}
               />
             ) : hasHoraria ? (
               <VentasHorariasSparkline
@@ -923,6 +935,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
                 horaActual={data!.horaActualOrg!}
                 stroke={colors.stroke}
                 formatValue={fmtVal}
+                t={t}
               />
             ) : hasPeriodo ? (
               <MensualSparkline
@@ -931,6 +944,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
                 diaActual={periodoSerie!.actual.length}
                 stroke={colors.stroke}
                 formatValue={fmtVal}
+                t={t}
               />
             ) : serieMensual && data?.diaActualMes ? (
               <MensualSparkline
@@ -939,6 +953,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
                 diaActual={data.diaActualMes}
                 stroke={colors.stroke}
                 formatValue={fmtVal}
+                t={t}
               />
             ) : (
               <div className="mt-2 h-8 -mx-1">
@@ -974,7 +989,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
               type="button"
               onClick={() => setSelectedKpi(kpi)}
               className={`block text-left w-full ${spanClass}`}
-              aria-label={`${label} - ver detalle`}
+              aria-label={`${label} - ${t('viewDetail')}`}
             >
               {content}
             </button>

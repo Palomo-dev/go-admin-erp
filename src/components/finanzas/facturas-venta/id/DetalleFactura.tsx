@@ -458,7 +458,9 @@ export default function DetalleFactura({ factura }: { factura: any }) {
         email: factura.customers.email,
         phone: factura.customers.phone,
         address: factura.customers.address,
-        tax_id: factura.customers.tax_id
+        tax_id: factura.customers.tax_id,
+        doc_type: factura.customers.doc_type,
+        doc_number: factura.customers.doc_number
       } : undefined,
       items: (factura.items || factura.invoice_items || [])?.map((item: any) => ({
         description: item.description || item.products?.name || '',
@@ -957,6 +959,14 @@ export default function DetalleFactura({ factura }: { factura: any }) {
               <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
                 <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium sm:w-36">Cliente:</span>
                 <span className="text-sm sm:text-base text-gray-900 dark:text-gray-100">{factura.customers?.full_name || 'N/A'}</span>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium sm:w-36">Documento:</span>
+                <span className="text-sm sm:text-base text-gray-900 dark:text-gray-100">
+                  {factura.customers?.doc_number
+                    ? `${(factura.customers?.doc_type || '').toUpperCase()} ${factura.customers.doc_number}`
+                    : 'N/A'}
+                </span>
               </div>
               <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
                 <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium sm:w-36">Email:</span>

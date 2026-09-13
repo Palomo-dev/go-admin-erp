@@ -25,24 +25,7 @@ import {
   type ConditionOperator,
   type ConditionRule,
 } from '@/lib/services/crm/automation/conditionsDsl';
-
-const OPERATOR_LABEL: Record<ConditionOperator, string> = {
-  eq: 'es igual a',
-  ne: 'no es igual a',
-  gt: 'mayor que',
-  gte: 'mayor o igual que',
-  lt: 'menor que',
-  lte: 'menor o igual que',
-  in: 'está en (lista, separada por comas)',
-  not_in: 'no está en (lista, separada por comas)',
-  contains: 'contiene',
-  not_contains: 'no contiene',
-  is_null: 'está vacío',
-  is_not_null: 'no está vacío',
-  before: 'es anterior a (fecha)',
-  after: 'es posterior a (fecha)',
-  within_days: 'en los últimos N días',
-};
+import { fieldLabel, groupLabel, operatorLabel } from '@/lib/services/crm/automation/conditionsI18n';
 
 /** Operadores que no usan valor: el input se oculta. */
 const NO_VALUE: ReadonlySet<string> = new Set(['is_null', 'is_not_null']);
@@ -56,12 +39,12 @@ const LIST_VALUE: ReadonlySet<string> = new Set(['in', 'not_in']);
 // SIEMPRE. Ofrecerlo era una trampa de usabilidad: el editor invitaba a elegir
 // justo lo unico que no puede funcionar. Los campos de evento siguen validos en
 // las reglas de automatizacion, que si reciben el evento.
-const FIELD_GROUPS: { label: string; prefix: string }[] = [
-  { label: 'Oportunidad', prefix: 'opportunity.' },
-  { label: 'Cliente', prefix: 'customer.' },
-  { label: 'Etapa', prefix: 'stage.' },
-  { label: 'Pipeline', prefix: 'pipeline.' },
-  { label: 'Consentimiento', prefix: 'consent.' },
+const FIELD_GROUPS: { prefix: string }[] = [
+  { prefix: 'opportunity.' },
+  { prefix: 'customer.' },
+  { prefix: 'stage.' },
+  { prefix: 'pipeline.' },
+  { prefix: 'consent.' },
 ];
 
 const SELECT_CLASS = 'h-9 w-full rounded-md border border-gray-300 bg-white px-2 text-sm '
@@ -181,9 +164,9 @@ export function ConditionEditor({ value, onChange, stepLabel, disabled }: Props)
                   const fields = CONDITION_FIELDS.filter((f) => f.startsWith(grp.prefix));
                   if (fields.length === 0) return null;
                   return (
-                    <optgroup key={grp.prefix} label={grp.label}>
+                    <optgroup key={grp.prefix} label={groupLabel(grp.prefix)}>
                       {fields.map((f) => (
-                        <option key={f} value={f}>{f.slice(grp.prefix.length)}</option>
+                        <option key={f} value={f}>{fieldLabel(f)}</option>
                       ))}
                     </optgroup>
                   );
@@ -204,7 +187,7 @@ export function ConditionEditor({ value, onChange, stepLabel, disabled }: Props)
                 }}
               >
                 {OPERATORS.map((op) => (
-                  <option key={op} value={op}>{OPERATOR_LABEL[op]}</option>
+                  <option key={op} value={op}>{operatorLabel(op)}</option>
                 ))}
               </select>
 

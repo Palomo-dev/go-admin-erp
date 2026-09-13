@@ -109,6 +109,18 @@ export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [
                               ))}
                             </div>
                           )}
+                          {(() => {
+                            const rate = Number(item.tax_rate);
+                            const isIncluded = item.tax_included ?? taxIncluded;
+                            if (!isNaN(rate) && rate > 0 && isIncluded) {
+                              return (
+                                <span className="md:hidden inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                                  Imp. incluido
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       );
                     })()}
@@ -127,11 +139,20 @@ export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [
                       const isIncluded = item.tax_included ?? taxIncluded;
                       const nameHasRate = /\d+/.test(taxName);
                       return (
-                        <div className="flex flex-col items-end">
+                        <div className="flex flex-col items-end gap-0.5">
                           <span className="text-gray-700 dark:text-gray-200">{taxName}</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {nameHasRate ? (isIncluded ? 'Incluido' : 'Adicional') : `${rate.toFixed(2)}% ${isIncluded ? '(incl.)' : '(+imp.)'}`}
-                          </span>
+                          {isIncluded ? (
+                            <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                              Incluido
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {nameHasRate ? 'Adicional' : `${rate.toFixed(2)}% (+imp.)`}
+                            </span>
+                          )}
+                          {!nameHasRate && isIncluded && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{rate.toFixed(2)}%</span>
+                          )}
                         </div>
                       );
                     }

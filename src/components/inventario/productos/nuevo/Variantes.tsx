@@ -25,6 +25,7 @@ import {
   X,
   Tags
 } from 'lucide-react'
+import { buildVariantDisplayName } from '@/utils/variantUtils'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 
 interface VariantesProps {
@@ -286,11 +287,11 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
 
   const removeAttributeType = (typeName: string) => {
     setSelectedAttributeTypes(selectedAttributeTypes.filter(t => t !== typeName))
-    // Limpiar el atributo de las variantes existentes
+    // Limpiar el atributo de las variantes existentes y recalcular nombres
     const updatedVariants = formData.variants.map((v: any) => {
       const newAttrs = { ...v.attributes }
       delete newAttrs[typeName]
-      return { ...v, attributes: newAttrs }
+      return { ...v, attributes: newAttrs, name: buildVariantDisplayName(formData.name, newAttrs) }
     })
     updateFormData('variants', updatedVariants)
     // Limpiar selección de valores del generador de combinaciones
@@ -356,11 +357,10 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
       .map((combo, idx) => {
         const varNum = formData.variants.length + idx + 1
         const suffix = Date.now().toString(36).slice(-2).toUpperCase() + idx
-        const nameSuffix = Object.values(combo).join(' ')
         return {
           sku: `${formData.sku}-V${varNum}${suffix}`,
           barcode: '',
-          name: `${formData.name} - ${nameSuffix}`,
+          name: buildVariantDisplayName(formData.name, combo),
           price: formData.price,
           cost: formData.cost,
           attributes: combo,
@@ -398,7 +398,7 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
     const newVariant = {
       sku: `${formData.sku}-V${varNum}${suffix}`,
       barcode: '',
-      name: `${formData.name} - Variante ${varNum}`,
+      name: formData.name,
       price: formData.price,
       cost: formData.cost,
       attributes: {} as Record<string, string>,
@@ -430,10 +430,13 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
 
   const updateVariantAttribute = (variantIndex: number, attrName: string, value: string) => {
     const newVariants = [...formData.variants]
-    newVariants[variantIndex].attributes = {
+    const newAttrs = {
       ...newVariants[variantIndex].attributes,
       [attrName]: value
     }
+    newVariants[variantIndex].attributes = newAttrs
+    // Recalcular el nombre legible de la variante a partir del nombre del padre + atributos
+    newVariants[variantIndex].name = buildVariantDisplayName(formData.name, newAttrs)
     updateFormData('variants', newVariants)
   }
 

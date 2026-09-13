@@ -4,7 +4,7 @@
 // estáticos. El timeout evita que la PWA se quede en blanco esperando la red.
 // ============================================================================
 
-const CACHE_NAME = 'goadmin-erp-v2';
+const CACHE_NAME = 'goadmin-erp-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -75,7 +75,20 @@ self.addEventListener('fetch', (event) => {
             ),
           ]);
 
-          // Cache successful navigation responses
+          // Safari rechaza respuestas SW con redirected=true.
+          // Si la respuesta fue redirigida (ej. middleware -> /auth/login),
+          // reconstruuir una respuesta limpia sin el flag redirected.
+          if (networkResponse.redirected) {
+            const body = await networkResponse.blob();
+            const cleanResponse = new Response(body, {
+              status: networkResponse.status,
+              statusText: networkResponse.statusText,
+              headers: networkResponse.headers,
+            });
+            return cleanResponse;
+          }
+
+          // Cache successful non-redirected navigation responses
           if (networkResponse.ok) {
             const responseClone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));

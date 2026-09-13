@@ -1283,23 +1283,37 @@ export const AppLayout = ({
       sessionStorage.removeItem('organizacionActiva');
       sessionStorage.removeItem('currentBranchId');
       
+      // Cargar dependencias en paralelo (antes eran 3 imports secuenciales)
+      const [orgMod, accountMod, configMod] = await Promise.all([
+        import('@/lib/hooks/useOrganization'),
+        import('@/lib/auth/accountSwitcher'),
+        import('@/lib/supabase/config'),
+      ]);
+      
       // Invalidar caché en memoria de branch_id
-      const { invalidateBranchIdCache } = await import('@/lib/hooks/useOrganization');
-      invalidateBranchIdCache();
+      orgMod.invalidateBranchIdCache();
       
       // Quitar esta cuenta del selector de cuentas (ya no debe ofrecerse
       // para cambio instantáneo, pues su sesión se está cerrando)
-      const { getActiveAccountUserId, removeSavedAccount } = await import('@/lib/auth/accountSwitcher');
-      const activeAccountId = getActiveAccountUserId();
-      if (activeAccountId) removeSavedAccount(activeAccountId);
+      const activeAccountId = accountMod.getActiveAccountUserId();
+      if (activeAccountId) accountMod.removeSavedAccount(activeAccountId);
       
-      // Importar dinámicamente la función signOut para evitar referencias circulares
-      const { signOut } = await import('@/lib/supabase/config');
-      const { error } = await signOut();
-      
-      if (error) {
-        console.error('Error al cerrar sesión:', error);
-        return;
+      // Cerrar sesión en Supabase con timeout: si la red está lenta,
+      // no bloquear al usuario. La limpieza local ya se hizo arriba
+      // y el middleware no encontrará la cookie, así que el redirect
+      // a /auth/login funciona igual.
+      try {
+        await Promise.race([
+          configMod.signOut(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('SIGNOUT_TIMEOUT')), 5000)
+          ),
+        ]);
+      } catch (signOutErr) {
+        // No bloquear el logout si signOut falla o tarda demasiado.
+        // La sesión local ya se limpió; el server invalidará el token
+        // cuando expire o en el próximo login.
+        console.warn('signOut lento/fallido, continuando logout:', signOutErr);
       }
       
       console.log('Sesión cerrada exitosamente');
@@ -1308,6 +1322,8 @@ export const AppLayout = ({
       window.location.replace('/auth/login');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
+      // Aun en error, redirigir a login para no dejar al usuario pegado
+      window.location.replace('/auth/login');
     } finally {
       setLoading(false);
     }

@@ -89,7 +89,7 @@ import { AppHeader } from './Header/AppHeader';
 import { SidebarNavigation } from './Sidebar/SidebarNavigation';
 import { SubMenuPanel } from './Sidebar/SubMenuPanel';
 import AIAssistantPanel from './Header/AIAssistantPanel';
-import { getOrganizationId, guardarOrganizacionActiva, initOrganizationCache } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { useSubscriptionGuard } from '@/lib/hooks/useSubscriptionGuard';
 import { useTheme } from 'next-themes';
 import { themeService } from '@/lib/services/themeService';
@@ -1104,10 +1104,6 @@ export const AppLayout = ({
 
   // Cargar datos del perfil del usuario y configurar suscripción
   useEffect(() => {
-    // Sincronizar cookies con el storage ANTES de cualquier API call.
-    // Sin esto, el servidor resolvía la organización de una cookie obsoleta
-    // y /api/crm/calls devolvía llamadas de otra org (o vacío).
-    void initOrganizationCache();
     loadUserProfileOptimized();
     
     // Configurar canal de suscripción para cambios en el perfil

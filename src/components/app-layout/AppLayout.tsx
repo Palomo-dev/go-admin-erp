@@ -905,7 +905,24 @@ export const AppLayout = ({
       const user = session.user;
       let currentOrgId = getOrganizationId();
 
-      // Fallback: si no hay org en localStorage, obtener last_org_id del perfil
+      // Intentar cargar desde cache PRIMERO, antes de cualquier consulta a la BD.
+      // Si el cache es válido para la org actual, mostrarlo instantáneamente y
+      // salir sin hacer ninguna consulta.
+      const cachedData = loadFromCache();
+      if (cachedData && cachedData.orgId === currentOrgId.toString()) {
+        console.log('⚡ Datos cargados desde cache (sin consultas)');
+        setUserData(cachedData.data);
+        setOrgName(cachedData.orgName);
+        setLoading(false);
+
+        // Sincronizar el selector de cuentas en background (no bloquea)
+        const { updateSavedAccountProfile } = await import('@/lib/auth/accountSwitcher');
+        updateSavedAccountProfile(user.id, { name: cachedData.data.name, avatarUrl: cachedData.data.avatar });
+        return;
+      }
+
+      // Si no hay org en localStorage, obtener last_org_id del perfil Y validar
+      // membresía en paralelo (antes eran 3 consultas secuenciales).
       if (!currentOrgId || currentOrgId === 0) {
         const { data: profileOrg } = await supabase
           .from('profiles')
@@ -926,94 +943,116 @@ export const AppLayout = ({
         }
       }
 
-      // Validación temprana: verificar que el usuario sigue siendo miembro
-      // activo de la org guardada. Si la org fue eliminada o el usuario fue
-      // removido, buscar la org real y corregir localStorage antes de que
-      // otros componentes disparen consultas con un org_id obsoleto.
-      if (currentOrgId && currentOrgId > 0) {
-        const { data: validMember } = await supabase
+      // Validación de membresía + consulta unificada en paralelo.
+      // Antes eran 2-3 consultas secuenciales; ahora se hacen al mismo tiempo.
+      const [memberCheck, unifiedResult] = await Promise.all([
+        // Validar que el usuario sigue siendo miembro activo de la org
+        currentOrgId && currentOrgId > 0
+          ? supabase
+              .from('organization_members')
+              .select('organization_id')
+              .eq('user_id', user.id)
+              .eq('organization_id', currentOrgId)
+              .eq('is_active', true)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+        // Consulta unificada con JOIN
+        currentOrgId && currentOrgId > 0
+          ? supabase
+              .from('profiles')
+              .select(`
+                first_name,
+                last_name,
+                email,
+                avatar_url,
+                organization_members!inner(
+                  role_id,
+                  is_super_admin,
+                  organization_id,
+                  organizations(
+                    name
+                  )
+                )
+              `)
+              .eq('id', user.id)
+              .eq('organization_members.organization_id', currentOrgId)
+              .eq('organization_members.is_active', true)
+              .single()
+          : Promise.resolve({ data: null, error: { code: 'NO_ORG' } }),
+      ]);
+
+      // Si la org guardada no es válida, buscar la primera org activa
+      if (currentOrgId && currentOrgId > 0 && !memberCheck.data) {
+        const { data: fallbackMember } = await supabase
           .from('organization_members')
           .select('organization_id, organizations(id, name)')
           .eq('user_id', user.id)
-          .eq('organization_id', currentOrgId)
           .eq('is_active', true)
+          .order('organization_id', { ascending: true })
+          .limit(1)
           .maybeSingle();
 
-        if (!validMember) {
-          // La org guardada no es válida — buscar la primera org activa del usuario
-          const { data: fallbackMember } = await supabase
-            .from('organization_members')
-            .select('organization_id, organizations(id, name)')
-            .eq('user_id', user.id)
-            .eq('is_active', true)
-            .order('organization_id', { ascending: true })
-            .limit(1)
-            .maybeSingle();
-
-          if (fallbackMember?.organization_id) {
-            const validOrgId = fallbackMember.organization_id;
-            const orgInfo = Array.isArray(fallbackMember.organizations)
-              ? fallbackMember.organizations[0]
-              : fallbackMember.organizations;
-            console.warn(`⚠️ Org guardada (${currentOrgId}) no es válida, corrigiendo a: ${validOrgId}`);
-            currentOrgId = validOrgId;
-            guardarOrganizacionActiva({ id: validOrgId, name: orgInfo?.name || '' });
-            // Limpiar cache de usuario para que no se usen datos de la org anterior
-            try { localStorage.removeItem('appLayout_userData_cache'); } catch {}
-          } else {
-            // El usuario no tiene ninguna org activa
-            console.warn('⚠️ Usuario no tiene ninguna organización activa');
-            currentOrgId = 0;
+        if (fallbackMember?.organization_id) {
+          const validOrgId = fallbackMember.organization_id;
+          const orgInfo = Array.isArray(fallbackMember.organizations)
+            ? fallbackMember.organizations[0]
+            : fallbackMember.organizations;
+          console.warn(`⚠️ Org guardada (${currentOrgId}) no es válida, corrigiendo a: ${validOrgId}`);
+          currentOrgId = validOrgId;
+          guardarOrganizacionActiva({ id: validOrgId, name: orgInfo?.name || '' });
+          try { localStorage.removeItem('appLayout_userData_cache'); } catch {}
+          // Reintentar la consulta unificada con la org correcta
+          const { data: retryData, error: retryError } = await supabase
+            .from('profiles')
+            .select(`
+              first_name, last_name, email, avatar_url,
+              organization_members!inner(role_id, is_super_admin, organization_id, organizations(name))
+            `)
+            .eq('id', user.id)
+            .eq('organization_members.organization_id', currentOrgId)
+            .eq('organization_members.is_active', true)
+            .single();
+          if (retryError || !retryData) {
+            await loadUserProfileFallback(user, currentOrgId);
+            return;
           }
+          // Procesar retryData igual que unifiedData abajo
+          const member = Array.isArray(retryData.organization_members) ? retryData.organization_members[0] : retryData.organization_members;
+          const organization = Array.isArray(member.organizations) ? member.organizations[0] : member.organizations;
+          let roleName = 'Usuario';
+          if (member.role_id) {
+            const { data: roleData } = await supabase.from('roles').select('name').eq('id', member.role_id).single();
+            roleName = roleData?.name || 'Usuario';
+          }
+          const finalUserData = {
+            name: `${retryData.first_name || ''} ${retryData.last_name || ''}`.trim() || retryData.email,
+            email: retryData.email,
+            role: roleName,
+            avatar: retryData.avatar_url || ''
+          };
+          const finalOrgName = organization?.name || '';
+          setUserData(finalUserData);
+          setOrgName(finalOrgName);
+          setOrgId(currentOrgId.toString());
+          saveToCache(finalUserData, finalOrgName, currentOrgId.toString());
+          const { updateSavedAccountProfile } = await import('@/lib/auth/accountSwitcher');
+          updateSavedAccountProfile(user.id, { name: finalUserData.name, avatarUrl: finalUserData.avatar });
+          setLoading(false);
+          return;
+        } else {
+          console.warn('⚠️ Usuario no tiene ninguna organización activa');
+          currentOrgId = 0;
         }
       }
 
       setOrgId(currentOrgId.toString());
 
-      // Intentar cargar desde cache primero
-      const cachedData = loadFromCache();
-      if (cachedData && cachedData.orgId === currentOrgId.toString()) {
-        console.log('⚡ Datos cargados desde cache');
-        setUserData(cachedData.data);
-        setOrgName(cachedData.orgName);
-
-        const { updateSavedAccountProfile } = await import('@/lib/auth/accountSwitcher');
-        updateSavedAccountProfile(user.id, { name: cachedData.data.name, avatarUrl: cachedData.data.avatar });
-
-        setLoading(false);
-        return;
-      }
-
-      console.log('🔄 Cargando perfil optimizado para usuario:', user.id);
-      
-      // Consulta unificada con JOIN para obtener todos los datos de una vez
-      // Nota: Usamos organization_members_role_id_fkey para especificar la relación con roles
-      const { data: unifiedData, error: unifiedError } = await supabase
-        .from('profiles')
-        .select(`
-          first_name,
-          last_name,
-          email,
-          avatar_url,
-          organization_members!inner(
-            role_id,
-            is_super_admin,
-            organization_id,
-            organizations(
-              name
-            )
-          )
-        `)
-        .eq('id', user.id)
-        .eq('organization_members.organization_id', currentOrgId)
-        .eq('organization_members.is_active', true)
-        .single();
+      const unifiedData = unifiedResult.data;
+      const unifiedError = unifiedResult.error as { code?: string; message?: string } | null;
 
       if (unifiedError) {
         console.warn('Consulta unificada falló, usando fallback:', unifiedError.code || unifiedError.message || 'unknown');
 
-        // Si el error es PGRST116 (0 rows), el org_id en localStorage podría ser inválido.
-        // Buscar la organización real del usuario sin filtrar por org_id.
         if (unifiedError.code === 'PGRST116') {
           const { data: memberData } = await supabase
             .from('organization_members')
@@ -1035,7 +1074,6 @@ export const AppLayout = ({
           }
         }
 
-        // Fallback a consultas separadas si falla el JOIN
         await loadUserProfileFallback(user, currentOrgId);
         return;
       }
@@ -1046,7 +1084,6 @@ export const AppLayout = ({
         return;
       }
 
-      // Procesar datos unificados
       const member = Array.isArray(unifiedData.organization_members) 
         ? unifiedData.organization_members[0] 
         : unifiedData.organization_members;
@@ -1082,16 +1119,11 @@ export const AppLayout = ({
         org: finalOrgName
       });
 
-      // Actualizar estados
       setUserData(finalUserData);
       setOrgName(finalOrgName);
       
-      // Guardar en cache
       saveToCache(finalUserData, finalOrgName, currentOrgId.toString());
 
-      // Sincronizar el nombre real del perfil con el selector de cuentas guardadas:
-      // ese registro solo conoce el auth user_metadata (a veces sin nombre), por lo
-      // que sin esto el selector muestra el correo repetido en vez del nombre.
       const { updateSavedAccountProfile } = await import('@/lib/auth/accountSwitcher');
       updateSavedAccountProfile(user.id, { name: finalUserData.name, avatarUrl: finalUserData.avatar });
       

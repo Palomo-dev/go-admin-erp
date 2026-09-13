@@ -347,21 +347,22 @@ function SelectOrganizationContent() {
               <div
                 key={org.id}
                 onClick={() => !selecting && handleSelectOrganization(org)}
-                className={`w-full flex items-center p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer ${
+                className={`relative w-full flex items-center p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer ${
                   isFav
                     ? 'border-amber-300 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-900/10'
                     : 'border-gray-200 dark:border-gray-700'
                 } ${selecting ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {/* Botón de favorito */}
+                {/* Botón de favorito — esquina superior derecha */}
                 <button
                   type="button"
                   onClick={(e) => toggleFavoriteOrg(e, Number(org.id))}
-                  className="flex-shrink-0 mr-3 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  className="absolute top-2 right-2 p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   title={isFav ? 'Quitar de favoritas' : 'Marcar como favorita'}
+                  aria-label={isFav ? 'Quitar de favoritas' : 'Marcar como favorita'}
                 >
                   <svg
-                    className={`w-5 h-5 transition-colors ${isFav ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600 hover:text-gray-400'}`}
+                    className={`w-4 h-4 transition-colors ${isFav ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600 hover:text-gray-400'}`}
                     fill={isFav ? 'currentColor' : 'none'}
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -387,7 +388,7 @@ function SelectOrganizationContent() {
                 </div>
 
                 {/* Organization details */}
-                <div className="flex-grow text-left min-w-0">
+                <div className="flex-grow text-left min-w-0 pr-8">
                   <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{org.name}</div>
                   <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{org.type_name}</div>
                 </div>

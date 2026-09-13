@@ -1106,18 +1106,23 @@ export const AppLayout = ({
   useEffect(() => {
     loadUserProfileOptimized();
     
-    // Configurar canal de suscripción para cambios en el perfil
+    // Configurar canal de suscripción para cambios en el perfil.
+    // NOTA: No incluir profileRefresh en las dependencias — el callback
+    // del subscription lo incrementa, creando un bucle de re-suscripciones
+    // que satura el pool de conexiones Realtime de Postgres.
+    let subscription: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+    
     const setupProfileSubscription = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const userId = session?.user?.id;
         
-        if (!userId) {
-          console.warn('No user ID available for profile subscription');
+        if (!userId || cancelled) {
           return;
         }
         
-        const subscription = supabase
+        subscription = supabase
           .channel('public:profiles')
           .on('postgres_changes', 
             { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
@@ -1127,17 +1132,20 @@ export const AppLayout = ({
             }
           )
           .subscribe();
-        
-        return () => {
-          subscription.unsubscribe();
-        };
       } catch (error) {
         console.error('Error setting up profile subscription:', error);
       }
     };
     
     setupProfileSubscription();
-  }, [loadUserProfileOptimized, profileRefresh]);
+    
+    return () => {
+      cancelled = true;
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    };
+  }, [loadUserProfileOptimized]);
   
   // Sincronizar tema desde Supabase (preferencia del usuario) al cargar
   useEffect(() => {

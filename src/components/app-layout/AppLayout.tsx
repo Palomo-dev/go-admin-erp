@@ -89,7 +89,7 @@ import { AppHeader } from './Header/AppHeader';
 import { SidebarNavigation } from './Sidebar/SidebarNavigation';
 import { SubMenuPanel } from './Sidebar/SubMenuPanel';
 import AIAssistantPanel from './Header/AIAssistantPanel';
-import { getOrganizationId, guardarOrganizacionActiva, initOrganizationCache } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { useSubscriptionGuard } from '@/lib/hooks/useSubscriptionGuard';
 import { useTheme } from 'next-themes';
 import { themeService } from '@/lib/services/themeService';
@@ -1104,24 +1104,25 @@ export const AppLayout = ({
 
   // Cargar datos del perfil del usuario y configurar suscripción
   useEffect(() => {
-    // Sincronizar cookies con el storage ANTES de cualquier API call.
-    // Sin esto, el servidor resolvía la organización de una cookie obsoleta
-    // y /api/crm/calls devolvía llamadas de otra org (o vacío).
-    void initOrganizationCache();
     loadUserProfileOptimized();
     
-    // Configurar canal de suscripción para cambios en el perfil
+    // Configurar canal de suscripción para cambios en el perfil.
+    // NOTA: No incluir profileRefresh en las dependencias — el callback
+    // del subscription lo incrementa, creando un bucle de re-suscripciones
+    // que satura el pool de conexiones Realtime de Postgres.
+    let subscription: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+    
     const setupProfileSubscription = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const userId = session?.user?.id;
         
-        if (!userId) {
-          console.warn('No user ID available for profile subscription');
+        if (!userId || cancelled) {
           return;
         }
         
-        const subscription = supabase
+        subscription = supabase
           .channel('public:profiles')
           .on('postgres_changes', 
             { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
@@ -1131,17 +1132,20 @@ export const AppLayout = ({
             }
           )
           .subscribe();
-        
-        return () => {
-          subscription.unsubscribe();
-        };
       } catch (error) {
         console.error('Error setting up profile subscription:', error);
       }
     };
     
     setupProfileSubscription();
-  }, [loadUserProfileOptimized, profileRefresh]);
+    
+    return () => {
+      cancelled = true;
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    };
+  }, [loadUserProfileOptimized]);
   
   // Sincronizar tema desde Supabase (preferencia del usuario) al cargar
   useEffect(() => {

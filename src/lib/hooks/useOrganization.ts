@@ -35,7 +35,15 @@ const ORG_COOKIE_SERVER = 'goadmin_org_id';
 const ORG_COOKIE_SUBDOMAIN = 'organization';
 const ORG_COOKIE_MAX_AGE = 30 * 24 * 60 * 60;
 
+/** Cache del último valor escrito a cada cookie, para evitar escrituras redundantes. */
+const _lastCookieValues: Record<string, string> = {};
+
 function escribirCookie(nombre: string, valor: string): void {
+  // Evitar escribir la cookie si el valor no cambió desde la última vez.
+  // `obtenerOrganizacionActiva()` se llama muchas veces por render y escribir
+  // `document.cookie` en cada llamada causaba re-renders y cargas colgadas.
+  if (_lastCookieValues[nombre] === valor) return;
+  _lastCookieValues[nombre] = valor;
   const secure = process.env.NODE_ENV === 'production' ? '; secure' : '';
   document.cookie = `${nombre}=${valor}; path=/; max-age=${ORG_COOKIE_MAX_AGE}; samesite=lax${secure}`;
 }
@@ -294,6 +302,12 @@ export function obtenerOrganizacionActiva(): Organizacion {
   try {
     // 0. Cache en memoria (respuesta inmediata, cargado por initOrganizationCache)
     if (_orgCache && _orgCache.id) {
+      // Sincronizar cookies también desde el cache: si el navegador recargó
+      // pero el cache en memoria sobrevivió (mismo tab), las cookies pueden
+      // estar obsoletas.
+      const idStr = String(_orgCache.id);
+      escribirCookie(ORG_COOKIE_MIDDLEWARE, idStr);
+      escribirCookie(ORG_COOKIE_SERVER, idStr);
       return _orgCache;
     }
 

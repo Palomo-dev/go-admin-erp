@@ -766,4 +766,59 @@ describe('F0 Guardarraíles', () => {
       }
     });
   });
+
+  describe('Carga de páginas tolerante a solicitudes bloqueadas', () => {
+    const supabaseConfig = readFile(path.join(SRC_ROOT, 'lib', 'supabase', 'config.ts'));
+    const subscriptionGuard = readFile(path.join(SRC_ROOT, 'lib', 'hooks', 'useSubscriptionGuard.ts'));
+    const inicio = readFile(path.join(SRC_ROOT, 'app', 'app', 'inicio', 'page.tsx'));
+    const kpis = readFile(path.join(SRC_ROOT, 'components', 'inicio', 'DashboardKPIs.tsx'));
+
+    test('datos y refresh tienen timeout sin cancelar el resto de auth', () => {
+      expect(supabaseConfig).toContain('const DATA_REQUEST_TIMEOUT_MS = 15_000;');
+      expect(supabaseConfig).toContain('const TOKEN_REFRESH_TIMEOUT_MS = 12_000;');
+      expect(supabaseConfig).toContain("const isDataRequest = urlString.includes('/rest/v1/');");
+      expect(supabaseConfig).toContain("const isTokenRefreshRequest = isAuthRequest && urlString.includes('grant_type=refresh_token');");
+      expect(supabaseConfig).toContain('const controller = (useOfflineLogic || isDataRequest || isTokenRefreshRequest) ? new AbortController() : null;');
+      expect(supabaseConfig).toContain('const timeoutMs = isTokenRefreshRequest ? TOKEN_REFRESH_TIMEOUT_MS : DATA_REQUEST_TIMEOUT_MS;');
+    });
+
+    test('el timeout de suscripción habilita la página sin lanzar un error', () => {
+      expect(subscriptionGuard).not.toContain('SUBSCRIPTION_CHECK_TIMEOUT');
+      expect(subscriptionGuard).toContain('new Promise<null>((resolve)');
+      expect(subscriptionGuard).toContain('if (!results)');
+    });
+
+    test('el inicio limita la carga inicial a cuatro skeletons', () => {
+      expect(inicio).not.toContain('Array.from({ length: 10 })');
+      expect(inicio).not.toContain('Array.from({ length: 8 })');
+      expect(kpis).toContain('Array.from({ length: 4 })');
+    });
+  });
+
+  // === Caso 16: callbacks de onAuthStateChange nunca son async ===
+  // auth-js 2.69 hace `await` de los callbacks de onAuthStateChange DENTRO
+  // del lock global de sesión (_notifyAllSubscribers corre con lockAcquired =
+  // true). Si un callback es async y hace await de algo que vuelve a pedir la
+  // sesión (getSession/getUser o cualquier query REST con jwt), la promesa se
+  // encadena sobre sí misma: deadlock permanente. Ninguna query de Supabase
+  // volvía a salir de la pestaña y todas las páginas quedaban en skeleton
+  // hasta recargar (bug de navegación client-side de sep-2026; origen:
+  // usePermissionContext con `await loadContext()`).
+  describe('16. Ningún callback de onAuthStateChange es async', () => {
+    const allFiles = walkDir(SRC_ROOT).filter((f) => !isExcluded(f));
+    const violations: string[] = [];
+
+    beforeAll(() => {
+      for (const file of allFiles) {
+        const content = stripAllComments(readFile(file));
+        if (/onAuthStateChange\s*\(\s*async\b/.test(content)) {
+          violations.push(rel(file));
+        }
+      }
+    });
+
+    test('los callbacks se ejecutan fire-and-forget (sin async/await)', () => {
+      expect(violations).toEqual([]);
+    });
+  });
 });

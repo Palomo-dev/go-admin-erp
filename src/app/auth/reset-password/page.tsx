@@ -39,7 +39,10 @@ function ResetPasswordContent() {
     };
 
     // Escuchar cambios en el estado de autenticación para detectar PASSWORD_RECOVERY
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // El callback NO debe ser async: auth-js lo espera dentro de su lock
+    // global y cualquier await aquí puede bloquear todas las llamadas a
+    // Supabase de la pestaña. Este handler solo hace setState síncrono.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state change:', event, session);
       
       if (event === 'PASSWORD_RECOVERY') {

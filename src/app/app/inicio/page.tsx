@@ -182,15 +182,10 @@ function InicioContent() {
   if (!mounted || !organization) {
     return (
       <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <div className="animate-pulse space-y-6">
+        <div className="animate-pulse space-y-4">
           <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-48" />
-          <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl" />
-            ))}
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded-xl" />
             ))}
           </div>
@@ -281,43 +276,47 @@ function InicioContent() {
       )}
 
       {canSeeFinancialDashboard ? (
-        <>
-          {/* KPIs */}
-          <DashboardKPIs data={dashboardData?.kpis ?? null} isLoading={isLoading} periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} branchFilter={branchFilter} />
+        isLoading ? (
+          <DashboardKPIs data={null} isLoading periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} branchFilter={branchFilter} />
+        ) : (
+          <>
+            {/* KPIs */}
+            <DashboardKPIs data={dashboardData?.kpis ?? null} isLoading={false} periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} branchFilter={branchFilter} />
 
-          {/* Alertas consolidadas de módulos */}
-          <DashboardAlertas
-            organizationId={organization?.id}
-            activeModuleCodes={activeModuleCodes}
-          />
-
-          {/* Actividad Reciente + Tendencia de Ventas */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <DashboardActividad
-              data={dashboardData?.actividad ?? []}
-              isLoading={isLoading}
+            {/* Alertas consolidadas de módulos */}
+            <DashboardAlertas
+              organizationId={organization?.id}
+              activeModuleCodes={activeModuleCodes}
             />
 
-            {/* Tendencia de ventas (reemplaza al antiguo bloque "Accesos Rápidos" redundante) */}
+            {/* Actividad Reciente + Tendencia de Ventas */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <DashboardActividad
+                data={dashboardData?.actividad ?? []}
+                isLoading={false}
+              />
+
+              {/* Tendencia de ventas (reemplaza al antiguo bloque "Accesos Rápidos" redundante) */}
+              {organization?.id && (
+                <DashboardTendencia organizationId={organization.id} dias={30} />
+              )}
+            </div>
+
+            {/* Observabilidad de comercio web: stock reservado + pedidos próximos a expirar */}
             {organization?.id && (
-              <DashboardTendencia organizationId={organization.id} dias={30} />
+              <WebCommerceObservability
+                organizationId={organization.id}
+                withinMinutes={30}
+              />
             )}
-          </div>
 
-          {/* Observabilidad de comercio web: stock reservado + pedidos próximos a expirar */}
-          {organization?.id && (
-            <WebCommerceObservability
-              organizationId={organization.id}
-              withinMinutes={30}
+            {/* Dashboards consolidados por módulo activo */}
+            <DashboardModulos
+              activeModuleCodes={activeModuleCodes}
+              isLoading={false}
             />
-          )}
-
-          {/* Dashboards consolidados por módulo activo */}
-          <DashboardModulos
-            activeModuleCodes={activeModuleCodes}
-            isLoading={isLoading}
-          />
-        </>
+          </>
+        )
       ) : (
         // Empleados: panel propio con turno, tareas, notificaciones y accesos
         // filtrados por los permisos de su cargo. Sin datos financieros.
@@ -336,15 +335,10 @@ export default function InicioPage() {
     <Suspense
       fallback={
         <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-          <div className="animate-pulse space-y-6">
+          <div className="animate-pulse space-y-4">
             <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-48" />
-            <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div key={i} className="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl" />
-              ))}
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {Array.from({ length: 8 }).map((_, i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded-xl" />
               ))}
             </div>

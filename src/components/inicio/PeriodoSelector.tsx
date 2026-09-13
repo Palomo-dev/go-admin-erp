@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Calendar, CalendarDays, CalendarRange, CalendarClock, CalendarHeart, Clock, CalendarMinus, CalendarSearch, Check, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { HorasPresets } from './HorasPresets';
@@ -19,13 +20,13 @@ interface PeriodoSelectorProps {
   onFechasCustomChange?: (fechas: FechasCustomDashboard | null) => void;
 }
 
-const OPCIONES: { value: PeriodoDashboard; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { value: 'hoy', label: 'Hoy', icon: CalendarClock },
-  { value: 'ayer', label: 'Ayer', icon: CalendarMinus },
-  { value: '7d', label: '7 días', icon: Calendar },
-  { value: '30d', label: '30 días', icon: CalendarDays },
-  { value: '90d', label: '90 días', icon: CalendarRange },
-  { value: 'año', label: 'Año', icon: CalendarHeart },
+const OPCIONES: { value: PeriodoDashboard; labelKey: 'today' | 'yesterday' | '7days' | '30days' | '90days' | 'year'; icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: 'hoy', labelKey: 'today', icon: CalendarClock },
+  { value: 'ayer', labelKey: 'yesterday', icon: CalendarMinus },
+  { value: '7d', labelKey: '7days', icon: Calendar },
+  { value: '30d', labelKey: '30days', icon: CalendarDays },
+  { value: '90d', labelKey: '90days', icon: CalendarRange },
+  { value: 'año', labelKey: 'year', icon: CalendarHeart },
 ];
 
 export function PeriodoSelector({
@@ -36,6 +37,7 @@ export function PeriodoSelector({
   fechasCustom,
   onFechasCustomChange,
 }: PeriodoSelectorProps) {
+  const t = useTranslations('home');
   const { timezone } = useOrgTimezone();
   const [showHours, setShowHours] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
@@ -116,7 +118,7 @@ export function PeriodoSelector({
               aria-pressed={isActive}
             >
               <Icon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{opt.label}</span>
+              <span className="hidden sm:inline">{t(`periods.${opt.labelKey}`)}</span>
             </button>
           );
         })}
@@ -131,10 +133,10 @@ export function PeriodoSelector({
               : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
           )}
           aria-pressed={isCustom}
-          title="Rango de fechas personalizado"
+          title={t('periods.customRange')}
         >
           <CalendarSearch className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Personalizado</span>
+          <span className="hidden sm:inline">{t('periods.custom')}</span>
         </button>
       </div>
 
@@ -162,7 +164,7 @@ export function PeriodoSelector({
             onClick={handleCustomApply}
             disabled={!customFrom || !customTo}
             className="h-8 w-8 bg-blue-600 hover:bg-blue-700"
-            title="Aplicar"
+            title={t('common.apply')}
           >
             <Check className="h-3.5 w-3.5" />
           </Button>
@@ -171,7 +173,7 @@ export function PeriodoSelector({
             size="icon"
             onClick={handleCustomCancel}
             className="h-8 w-8"
-            title="Cancelar"
+            title={t('common.cancel')}
           >
             <X className="h-3.5 w-3.5" />
           </Button>
@@ -200,12 +202,12 @@ export function PeriodoSelector({
             size="sm"
             onClick={handleToggleHours}
             className="h-8 text-xs"
-            title="Filtrar por horas del día"
+            title={t('hours.filterByHours')}
           >
             <Clock className="h-3.5 w-3.5 mr-1" />
             {hasHoras
               ? `${horas?.horaInicio || '00:00'}-${horas?.horaFin || '23:59'}`
-              : 'Horas'}
+              : t('hours.hours')}
           </Button>
         )
       )}

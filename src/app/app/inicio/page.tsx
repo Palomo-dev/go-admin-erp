@@ -140,7 +140,7 @@ function InicioContent() {
       console.error('Error cargando dashboard:', err);
       if (!silent) {
         toast({
-          title: 'Error',
+          title: t('common.error'),
           description: t('errorLoadingDashboard'),
           variant: 'destructive',
         });

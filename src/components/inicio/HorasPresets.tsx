@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Clock, Check, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/utils/Utils';
@@ -14,16 +15,17 @@ interface HorasPresetsProps {
 }
 
 // Presets comunes para filtrar por horas del día
-const PRESETS: { label: string; inicio: string; fin: string; icon?: string }[] = [
-  { label: 'Mañana', inicio: '06:00', fin: '12:00', icon: '🌅' },
-  { label: 'Tarde', inicio: '12:00', fin: '18:00', icon: '☀️' },
-  { label: 'Noche', inicio: '18:00', fin: '23:59', icon: '🌙' },
-  { label: 'Madrugada', inicio: '00:00', fin: '06:00', icon: '🌃' },
-  { label: 'Almuerzo', inicio: '12:00', fin: '14:00', icon: '🍽️' },
-  { label: 'Cena', inicio: '18:00', fin: '22:00', icon: '🍴' },
+const PRESETS: { labelKey: 'morning' | 'afternoon' | 'night' | 'dawn' | 'lunch' | 'dinner'; inicio: string; fin: string; icon?: string }[] = [
+  { labelKey: 'morning', inicio: '06:00', fin: '12:00', icon: '🌅' },
+  { labelKey: 'afternoon', inicio: '12:00', fin: '18:00', icon: '☀️' },
+  { labelKey: 'night', inicio: '18:00', fin: '23:59', icon: '🌙' },
+  { labelKey: 'dawn', inicio: '00:00', fin: '06:00', icon: '🌃' },
+  { labelKey: 'lunch', inicio: '12:00', fin: '14:00', icon: '🍽️' },
+  { labelKey: 'dinner', inicio: '18:00', fin: '22:00', icon: '🍴' },
 ];
 
 export function HorasPresets({ horaInicio, horaFin, onApply, onCancel }: HorasPresetsProps) {
+  const t = useTranslations('home.hours');
   const [inicio, setInicio] = useState(horaInicio);
   const [fin, setFin] = useState(horaFin);
 
@@ -44,7 +46,7 @@ export function HorasPresets({ horaInicio, horaFin, onApply, onCancel }: HorasPr
           const isActive = inicio === preset.inicio && fin === preset.fin;
           return (
             <button
-              key={preset.label}
+              key={preset.labelKey}
               type="button"
               onClick={() => applyPreset(preset)}
               className={cn(
@@ -56,7 +58,7 @@ export function HorasPresets({ horaInicio, horaFin, onApply, onCancel }: HorasPr
               title={`${preset.inicio} - ${preset.fin}`}
             >
               {preset.icon && <span className="text-xs">{preset.icon}</span>}
-              {preset.label}
+              {t(preset.labelKey)}
             </button>
           );
         })}
@@ -70,7 +72,7 @@ export function HorasPresets({ horaInicio, horaFin, onApply, onCancel }: HorasPr
           value={inicio}
           onChange={(e) => setInicio(e.target.value)}
           className="h-8 w-[100px] text-xs"
-          aria-label="Hora de inicio"
+          aria-label={t('start')}
         />
         <span className="text-xs text-gray-400">→</span>
         <Input
@@ -78,14 +80,14 @@ export function HorasPresets({ horaInicio, horaFin, onApply, onCancel }: HorasPr
           value={fin}
           onChange={(e) => setFin(e.target.value)}
           className="h-8 w-[100px] text-xs"
-          aria-label="Hora de fin"
+          aria-label={t('end')}
         />
         <Button
           variant="default"
           size="icon"
           onClick={handleApply}
           className="h-8 w-8 bg-blue-600 hover:bg-blue-700"
-          title="Aplicar"
+          title={t('apply')}
         >
           <Check className="h-4 w-4" />
         </Button>
@@ -94,7 +96,7 @@ export function HorasPresets({ horaInicio, horaFin, onApply, onCancel }: HorasPr
           size="icon"
           onClick={onCancel}
           className="h-8 w-8"
-          title="Cancelar"
+          title={t('cancel')}
         >
           <X className="h-4 w-4" />
         </Button>

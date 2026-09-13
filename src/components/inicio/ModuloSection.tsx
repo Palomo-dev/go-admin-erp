@@ -18,6 +18,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { Download, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/utils/Utils';
 import {
@@ -79,6 +80,7 @@ export default function ModuloSection({
   // Consumir modo compacto del context si no se pasa explícitamente
   const compactoContext = React.useContext(ModoCompactoContext);
   const compacto = compactoProp || compactoContext;
+  const t = useTranslations('home');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'reportes' | 'metricas'>('dashboard');
   const [isExporting, setIsExporting] = useState<'csv' | 'pdf' | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -114,48 +116,48 @@ export default function ModuloSection({
 
   const handleExportCSV = useCallback(() => {
     if (!exportData) {
-      toastError('Sin datos', 'No hay datos para exportar en esta sección');
+      toastError(t('section.noData'), t('section.noDataExport'));
       return;
     }
     try {
       setIsExporting('csv');
       dashboardSectionExport.exportToCSV(
         exportData,
-        orgInfo?.name || 'Organización',
+        orgInfo?.name || t('section.organization'),
       );
-      toastSuccess('CSV exportado', `${moduleName} — ${exportData.titulo}`);
+      toastSuccess(t('section.csvExported'), `${moduleName} — ${exportData.titulo}`);
     } catch (err) {
       console.error('Error exportando CSV:', err);
-      toastError('Error', 'No se pudo generar el CSV');
+      toastError(t('common.error'), t('section.csvError'));
     } finally {
       setIsExporting(null);
     }
-  }, [exportData, orgInfo, moduleName]);
+  }, [exportData, orgInfo, moduleName, t]);
 
   const handleExportPDF = useCallback(async () => {
     if (!exportData) {
-      toastError('Sin datos', 'No hay datos para exportar en esta sección');
+      toastError(t('section.noData'), t('section.noDataExport'));
       return;
     }
     // Fallback: si no hay orgInfo, usar uno minimal para que el PDF se genere
-    const org = orgInfo ?? { name: 'Organización' };
+    const org = orgInfo ?? { name: t('section.organization') };
     try {
       setIsExporting('pdf');
       await dashboardSectionExport.exportToPDF(exportData, org);
-      toastSuccess('PDF exportado', `${moduleName} — ${exportData.titulo}`);
+      toastSuccess(t('section.pdfExported'), `${moduleName} — ${exportData.titulo}`);
     } catch (err) {
       console.error('Error exportando PDF:', err);
-      toastError('Error', 'No se pudo generar el PDF');
+      toastError(t('common.error'), t('section.pdfError'));
     } finally {
       setIsExporting(null);
     }
-  }, [exportData, orgInfo, moduleName]);
+  }, [exportData, orgInfo, moduleName, t]);
 
   return (
     <section
       id={moduleCode}
       className="scroll-mt-20"
-      aria-label={`Sección ${moduleName}`}
+      aria-label={t('section.ariaLabel', { name: moduleName })}
     >
       {/* Header de la sección */}
       <div className={cn(
@@ -227,7 +229,7 @@ export default function ModuloSection({
                 : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
             )}
           >
-            Dashboard
+            {t('section.dashboard')}
           </button>
           <button
             type="button"
@@ -239,7 +241,7 @@ export default function ModuloSection({
                 : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
             )}
           >
-            Reportes
+            {t('section.reports')}
           </button>
           {metricasContent && (
             <button
@@ -252,7 +254,7 @@ export default function ModuloSection({
                   : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
               )}
             >
-              Métricas
+              {t('section.metrics')}
             </button>
           )}
         </div>
@@ -286,10 +288,10 @@ export default function ModuloSection({
           ) : reportesContent ? (
             reportesContent
           ) : (
-            <ReportesPlaceholder moduleName={moduleName} />
+            <ReportesPlaceholder moduleName={moduleName} t={t} />
           )
         ) : (
-          <NotMigratedPlaceholder moduleName={moduleName} moduleCode={moduleCode} />
+          <NotMigratedPlaceholder moduleName={moduleName} moduleCode={moduleCode} t={t} />
         )}
       </div>
         </>
@@ -303,9 +305,11 @@ export default function ModuloSection({
 function NotMigratedPlaceholder({
   moduleName,
   moduleCode,
+  t,
 }: {
   moduleName: string;
   moduleCode: string;
+  t: ReturnType<typeof useTranslations>;
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-10 text-center">
@@ -313,29 +317,32 @@ function NotMigratedPlaceholder({
         <Download className="h-6 w-6 text-gray-400 dark:text-gray-500" />
       </div>
       <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        {moduleName} — Dashboard en migración
+        {t('section.notMigratedTitle', { name: moduleName })}
       </h3>
       <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm">
-        El dashboard de este módulo ({moduleCode}) se está consolidando en
-        esta página. Mientras tanto, puedes acceder a sus funciones desde el
-        menú lateral.
+        {t('section.notMigratedDesc', { code: moduleCode })}
       </p>
     </div>
   );
 }
 
-function ReportesPlaceholder({ moduleName }: { moduleName: string }) {
+function ReportesPlaceholder({
+  moduleName,
+  t,
+}: {
+  moduleName: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
   return (
     <div className="flex flex-col items-center justify-center py-10 text-center">
       <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-full mb-3">
         <FileText className="h-6 w-6 text-gray-400 dark:text-gray-500" />
       </div>
       <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        Reportes de {moduleName} — En migración
+        {t('section.reportsMigratingTitle', { name: moduleName })}
       </h3>
       <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm">
-        Los reportes de este módulo se están consolidando en esta página.
-        Mientras tanto, accede a ellos desde el menú lateral.
+        {t('section.reportsMigratingDesc')}
       </p>
     </div>
   );

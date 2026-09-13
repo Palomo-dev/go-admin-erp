@@ -182,14 +182,14 @@ export function DashboardActividad({ data, isLoading }: DashboardActividadProps)
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/50">
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {safePage * ITEMS_PER_PAGE + 1}–{Math.min((safePage + 1) * ITEMS_PER_PAGE, dataFiltrada.length)} de {dataFiltrada.length}
+                {safePage * ITEMS_PER_PAGE + 1}–{Math.min((safePage + 1) * ITEMS_PER_PAGE, dataFiltrada.length)} {t('activity.of')} {dataFiltrada.length}
               </span>
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setCurrentPage(Math.max(0, safePage - 1))}
                   disabled={safePage === 0}
                   className="p-1.5 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  aria-label="Página anterior"
+                  aria-label={t('activity.prevPage')}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -200,7 +200,7 @@ export function DashboardActividad({ data, isLoading }: DashboardActividadProps)
                   onClick={() => setCurrentPage(Math.min(totalPages - 1, safePage + 1))}
                   disabled={safePage >= totalPages - 1}
                   className="p-1.5 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  aria-label="Página siguiente"
+                  aria-label={t('activity.nextPage')}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>

@@ -83,7 +83,7 @@ const SECTION_COMPONENTS: Record<string, React.ComponentType> = {
 
 interface ModuloConfig {
   code: string;
-  name: string;
+  nameKey: string;
   icon: React.ComponentType<{ className?: string }>;
   accentColor: string;
   accentBg: string;
@@ -93,7 +93,7 @@ interface ModuloConfig {
 const MODULOS_NEGOCIO: ModuloConfig[] = [
   {
     code: 'finance',
-    name: 'Finanzas',
+    nameKey: 'modules.finance',
     icon: Banknote,
     accentColor: 'text-emerald-600 dark:text-emerald-400',
     accentBg: 'bg-emerald-100 dark:bg-emerald-900/30',
@@ -101,7 +101,7 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
   },
   {
     code: 'inventory',
-    name: 'Inventario',
+    nameKey: 'modules.inventory',
     icon: Package,
     accentColor: 'text-amber-600 dark:text-amber-400',
     accentBg: 'bg-amber-100 dark:bg-amber-900/30',
@@ -109,7 +109,7 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
   },
   {
     code: 'pos',
-    name: 'POS',
+    nameKey: 'modules.pos',
     icon: ShoppingCart,
     accentColor: 'text-blue-600 dark:text-blue-400',
     accentBg: 'bg-blue-100 dark:bg-blue-900/30',
@@ -117,7 +117,7 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
   },
   {
     code: 'crm',
-    name: 'CRM',
+    nameKey: 'modules.crm',
     icon: UserCheck,
     accentColor: 'text-purple-600 dark:text-purple-400',
     accentBg: 'bg-purple-100 dark:bg-purple-900/30',
@@ -125,7 +125,7 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
   },
   {
     code: 'pms_hotel',
-    name: 'PMS Hotel',
+    nameKey: 'modules.pmsHotel',
     icon: BedDouble,
     accentColor: 'text-indigo-600 dark:text-indigo-400',
     accentBg: 'bg-indigo-100 dark:bg-indigo-900/30',
@@ -133,7 +133,7 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
   },
   {
     code: 'parking',
-    name: 'Parking',
+    nameKey: 'modules.parking',
     icon: ParkingCircle,
     accentColor: 'text-cyan-600 dark:text-cyan-400',
     accentBg: 'bg-cyan-100 dark:bg-cyan-900/30',
@@ -141,7 +141,7 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
   },
   {
     code: 'gym',
-    name: 'Gym',
+    nameKey: 'modules.gym',
     icon: Dumbbell,
     accentColor: 'text-rose-600 dark:text-rose-400',
     accentBg: 'bg-rose-100 dark:bg-rose-900/30',
@@ -149,7 +149,7 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
   },
   {
     code: 'hrm',
-    name: 'HRM',
+    nameKey: 'modules.hrm',
     icon: Briefcase,
     accentColor: 'text-teal-600 dark:text-teal-400',
     accentBg: 'bg-teal-100 dark:bg-teal-900/30',
@@ -157,7 +157,7 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
   },
   {
     code: 'transport',
-    name: 'Transporte',
+    nameKey: 'modules.transport',
     icon: Truck,
     accentColor: 'text-orange-600 dark:text-orange-400',
     accentBg: 'bg-orange-100 dark:bg-orange-900/30',
@@ -165,7 +165,7 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
   },
   {
     code: 'pm',
-    name: 'Project Management',
+    nameKey: 'modules.pm',
     icon: FolderKanban,
     accentColor: 'text-violet-600 dark:text-violet-400',
     accentBg: 'bg-violet-100 dark:bg-violet-900/30',
@@ -173,7 +173,7 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
   },
   {
     code: 'notifications',
-    name: 'Notificaciones',
+    nameKey: 'modules.notifications',
     icon: Bell,
     accentColor: 'text-yellow-600 dark:text-yellow-400',
     accentBg: 'bg-yellow-100 dark:bg-yellow-900/30',
@@ -181,7 +181,7 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
   },
   {
     code: 'integrations',
-    name: 'Integraciones',
+    nameKey: 'modules.integrations',
     icon: Zap,
     accentColor: 'text-fuchsia-600 dark:text-fuchsia-400',
     accentBg: 'bg-fuchsia-100 dark:bg-fuchsia-900/30',
@@ -189,7 +189,7 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
   },
   {
     code: 'calendar',
-    name: 'Calendario',
+    nameKey: 'modules.calendar',
     icon: Calendar,
     accentColor: 'text-sky-600 dark:text-sky-400',
     accentBg: 'bg-sky-100 dark:bg-sky-900/30',
@@ -197,7 +197,7 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
   },
   {
     code: 'operations',
-    name: 'Timeline',
+    nameKey: 'modules.timeline',
     icon: Activity,
     accentColor: 'text-slate-600 dark:text-slate-400',
     accentBg: 'bg-slate-100 dark:bg-slate-900/30',
@@ -205,7 +205,7 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
   },
   {
     code: 'chat',
-    name: 'Chat',
+    nameKey: 'modules.chat',
     icon: MessageSquare,
     accentColor: 'text-green-600 dark:text-green-400',
     accentBg: 'bg-green-100 dark:bg-green-900/30',
@@ -218,9 +218,11 @@ const MODULOS_NEGOCIO: ModuloConfig[] = [
 function SectionNav({
   modulos,
   activeModuleCodes,
+  t,
 }: {
   modulos: ModuloConfig[];
   activeModuleCodes: string[] | undefined;
+  t: (key: string) => string;
 }) {
   const visible = activeModuleCodes
     ? modulos.filter((m) => activeModuleCodes.includes(m.code))
@@ -231,7 +233,7 @@ function SectionNav({
   return (
     <nav
       className="flex flex-wrap gap-2 mb-6 p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700"
-      aria-label="Navegación entre módulos"
+      aria-label={t('modulesNav.ariaLabel')}
     >
       {visible.map((m) => {
         const Icon = m.icon;
@@ -242,7 +244,7 @@ function SectionNav({
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             <Icon className={`h-3.5 w-3.5 ${m.accentColor}`} />
-            {m.name}
+            {t(m.nameKey)}
           </a>
         );
       })}
@@ -298,12 +300,12 @@ export default function DashboardModulos({
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 text-center">
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          No hay módulos de negocio activos. Activa módulos desde{' '}
+          {t('modules.noActivePrefix')}{' '}
           <a
             href="/app/organizacion/modulos"
             className="text-blue-600 dark:text-blue-400 underline"
           >
-            Configuración de módulos
+            {t('modules.configLink')}
           </a>
           .
         </p>
@@ -319,6 +321,7 @@ export default function DashboardModulos({
         <SectionNav
           modulos={modulos}
           activeModuleCodes={activeModuleCodes}
+          t={t}
         />
 
         <button
@@ -352,7 +355,7 @@ export default function DashboardModulos({
             ) : (
               <ModuloSection
                 moduleCode={modulo.code}
-                moduleName={modulo.name}
+                moduleName={t(modulo.nameKey)}
                 icon={modulo.icon}
                 accentColor={modulo.accentColor}
                 accentBg={modulo.accentBg}

@@ -1,23 +1,18 @@
 // ============================================================================
 // GO Admin ERP — Service Worker
-// Estrategia: network-first con timeout para navegación, cache-first para
-// estáticos. El timeout evita que la PWA se quede en blanco esperando la red.
+// Estrategia simple: NO interceptar navegaciones (el navegador lo hace mejor).
+// Solo cachear estáticos para offline. Esto evita los bugs de Safari con
+// respuestas redirigidas y los loops de navegacion a /.
 // ============================================================================
 
-const CACHE_NAME = 'goadmin-erp-v3';
+const CACHE_NAME = 'goadmin-erp-v4';
 const STATIC_ASSETS = [
-  '/',
   '/manifest.json',
   '/icon-192x192.png',
   '/icon-512x512.png',
   '/apple-touch-icon.png',
   '/favicon.ico',
 ];
-
-// Timeout para navegación: si la red no responde en 3s, usar cache.
-// En producción con buena red, la respuesta llega en <500ms.
-// 3s es suficiente para no servir contenido stale innecesariamente.
-const NAV_TIMEOUT_MS = 3000;
 
 // Install: pre-cache static assets
 self.addEventListener('install', (event) => {
@@ -43,7 +38,9 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch: network-first with timeout for navigation, cache-first for static
+// Fetch: SOLO interceptar estaticos (_next/static, iconos, manifest).
+// NO interceptar navegaciones ni API — el navegador lo hace mejor y evita
+// bugs de Safari con respuestas redirigidas.
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
@@ -54,59 +51,6 @@ self.addEventListener('fetch', (event) => {
 
   // Skip cross-origin requests (Supabase, Google, etc.)
   if (url.origin !== self.location.origin) return;
-
-  // Skip API routes and Next.js internals
-  if (url.pathname.startsWith('/api/') ||
-      url.pathname.startsWith('/_next/data/') ||
-      url.pathname.includes('/_next/webpack-hmr')) {
-    return;
-  }
-
-  // Navigation requests: network-first with timeout + offline fallback
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      (async () => {
-        try {
-          // Race: network vs timeout
-          const networkResponse = await Promise.race([
-            fetch(request),
-            new Promise<Response>((_, reject) =>
-              setTimeout(() => reject(new Error('NAV_TIMEOUT')), NAV_TIMEOUT_MS)
-            ),
-          ]);
-
-          // Safari rechaza respuestas SW con redirected=true.
-          // Si la respuesta fue redirigida (ej. middleware -> /auth/login),
-          // reconstruuir una respuesta limpia sin el flag redirected.
-          if (networkResponse.redirected) {
-            const body = await networkResponse.blob();
-            const cleanResponse = new Response(body, {
-              status: networkResponse.status,
-              statusText: networkResponse.statusText,
-              headers: networkResponse.headers,
-            });
-            return cleanResponse;
-          }
-
-          // Cache successful non-redirected navigation responses
-          if (networkResponse.ok) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-          }
-          return networkResponse;
-        } catch (err) {
-          // Timeout or network error: try cache, then fallback to cached root
-          const cached = await caches.match(request);
-          if (cached) return cached;
-          const rootCached = await caches.match('/');
-          if (rootCached) return rootCached;
-          // No cache available: re-throw to let the browser handle the error
-          throw err;
-        }
-      })()
-    );
-    return;
-  }
 
   // Static assets (_next/static, icons, manifest): cache-first
   if (url.pathname.startsWith('/_next/static/') ||
@@ -126,6 +70,9 @@ self.addEventListener('fetch', (event) => {
       })
     );
   }
+
+  // NO interceptar navegaciones ni API ni nada mas.
+  // El navegador maneja navegacion, redirecciones del middleware, etc.
 });
 
 // Push notifications: mostrar notificación cuando llega un push

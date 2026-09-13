@@ -33,6 +33,7 @@ import { cn, formatCurrency } from '@/utils/Utils';
 import Image from 'next/image';
 import { BarcodeScanner } from '@/components/ui/barcode-scanner';
 import { VariantSelectorDialog, type SelectedModifier } from './VariantSelectorDialog';
+import { resolveVariantDisplayName } from '@/utils/variantUtils';
 import { CategoryFilterBar } from './CategoryFilterBar';
 import { ConfiguracionService, PosCategoriesDisplayConfig, defaultCategoriesDisplayConfig } from './configuracion/configuracionService';
 import {
@@ -242,8 +243,11 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     const parent = selectedParentProduct as any;
     const inheritedCategory = variant.categories || variant.category || parent?.categories || parent?.category || null;
     const inheritedStation = variant.station || inheritedCategory?.station || parent?.station || null;
+    // Construir nombre legible de la variante desde variant_data (ej: "iPhone 16 Pro Max (256 GB)")
+    const displayName = resolveVariantDisplayName(variant.name, variant.variant_data, parent?.name);
     const enrichedVariant = {
       ...variant,
+      name: displayName,
       category: inheritedCategory,
       categories: inheritedCategory,
       station: inheritedStation,

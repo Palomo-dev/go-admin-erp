@@ -20,6 +20,7 @@ import {
 import { ProductoFormDialog } from '@/components/shared/form-dialogs';
 import { VariantSelectorDialog, type SelectedModifier } from '@/components/pos/VariantSelectorDialog';
 import { formatCurrency } from '@/utils/Utils';
+import { resolveVariantDisplayName } from '@/utils/variantUtils';
 import { recipeService, type ProductRecipe } from '@/lib/services/recipeService';
 import type { UnifiedProduct, ProductSearchMode } from './types';
 
@@ -404,13 +405,25 @@ export function ProductSearchDialog({
   // Manejar selección de variante desde el diálogo
   const handleVariantSelect = (variant: any, modifiers: SelectedModifier[] = []) => {
     const parent = selectedParent as any;
+    // Construir nombre legible desde variant_data: "iPhone 16 Pro Max (256 GB)"
+    // en vez del nombre interno "iPhone 16 Pro Max - Variante 1"
+    const displayName = resolveVariantDisplayName(
+      variant.name,
+      variant.variant_data,
+      parent?.name
+    );
     const enrichedVariant: UnifiedProduct = {
       ...variant,
+      name: displayName,
       tax_code: variant.tax_code || parent?.tax_code,
       tax_rate: variant.tax_rate || parent?.tax_rate,
       tax_name: variant.tax_name || parent?.tax_name,
       cost: variant.cost ?? parent?.cost ?? 0,
       price: variant.price ?? parent?.price ?? 0,
+      // Heredar track_serial del padre si la variante no lo tiene definido.
+      // Las variantes se crean con track_serial=false por defecto, pero la
+      // trazabilidad de seriales se hereda del producto padre.
+      track_serial: variant.track_serial === true || parent?.track_serial === true,
     };
 
     onProductSelect(enrichedVariant, modifiers);

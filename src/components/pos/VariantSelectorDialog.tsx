@@ -17,6 +17,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { POSService } from '@/lib/services/posService';
 import { cn } from '@/lib/utils';
 import { ProductModifiersService, type ProductModifierGroup } from '@/lib/services/productModifiersService';
+import { resolveVariantDisplayName } from '@/utils/variantUtils';
 
 interface Variant {
   id: number;
@@ -306,7 +307,7 @@ export function VariantSelectorDialog({
               <div className="mt-4 p-4 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-medium">{selectedVariant.name}</p>
+                    <p className="font-medium">{resolveVariantDisplayName(selectedVariant.name, selectedVariant.variant_data, product.name)}</p>
                     <p className="text-sm text-muted-foreground">
                       SKU: {selectedVariant.sku}
                     </p>
@@ -403,7 +404,7 @@ export function VariantSelectorDialog({
                   >
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="font-medium">{variant.name}</p>
+                        <p className="font-medium">{resolveVariantDisplayName(variant.name, variant.variant_data, product.name)}</p>
                         <p className="text-sm text-muted-foreground">
                           SKU: {variant.sku}
                         </p>

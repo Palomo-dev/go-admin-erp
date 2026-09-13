@@ -19,6 +19,7 @@ import Variantes from './Variantes'
 import Notas from './Notas'
 import Etiquetas from './Etiquetas'
 import TrazabilidadSeccion from './TrazabilidadSeccion'
+import { buildVariantDisplayName } from '@/utils/variantUtils'
 
 interface ProductFormData {
   // Información básica
@@ -489,13 +490,16 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
         for (const variant of formData.variants) {
           try {
             const variantBarcode = variant.barcode?.trim() || formData.barcode || null
+            // Recalcular el nombre legible de la variante a partir del nombre del padre + atributos.
+            // Esto garantiza consistencia aunque el nombre no se haya actualizado en el estado.
+            const variantName = buildVariantDisplayName(formData.name, variant.attributes) || variant.name
             const { data: variantProduct, error: variantError } = await supabase
               .from('products')
               .insert({
                 organization_id: organization.id,
                 sku: variant.sku,
                 barcode: variantBarcode,
-                name: variant.name,
+                name: variantName,
                 parent_product_id: product.id,
                 is_parent: false,
                 variant_data: variant.attributes,

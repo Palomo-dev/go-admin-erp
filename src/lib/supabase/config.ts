@@ -429,13 +429,13 @@ export const createSupabaseClient = () => {
 
         return new Promise((resolve, reject) => {
           const attemptFetch = async (retriesLeft: number, delay: number) => {
-            // AbortController para detectar cuelgues de DNS/TCP.
-            // - Offline: todas las peticiones (fallback a cache).
-            // - Online + auth: las peticiones de auth no deben colgarse >15s
-            //   (un microcorte de red deja getSession() pendiente para siempre
-            //   y el usuario ve "timeout" sin sesión). Las queries de datos
-            //   pueden ser legítimamente largas, así que esas sí esperan.
-            const controller = (useOfflineLogic || isAuthRequest) ? new AbortController() : null;
+            // AbortController solo cuando estamos offline — para detectar cuelgues
+            // de DNS/TCP y hacer fallback a cache. Cuando hay conexión, no usar
+            // timeout para que el comportamiento sea idéntico a la versión web.
+            // Nota: se probó a añadir timeout de 15s a peticiones de auth online,
+            // pero causaba que getSession() se cancelara tras cambiar de organización
+            // y el dashboard se quedaba cargando sin sesión.
+            const controller = useOfflineLogic ? new AbortController() : null;
             let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
             if (controller) {

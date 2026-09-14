@@ -29,6 +29,9 @@ vive fuera del repo, en `docs/auditoria-finanzas/` (ignorado por `.gitignore`).
 | [F-34](F-34.md) | Cola de facturación electrónica sin worker | Alta | Documentado | Fase 2 |
 | [F-35](F-35.md) | Exposición de datos en repo público | Media | Documentado | Fase 2 |
 | [F-36](F-36.md) | Stock sin costo: inventario y ventas contablemente mudos | Bloqueante | Documentado, arreglo en 3 partes | Fase 2 |
+| [F-38](F-38.md) | Carga masiva de inventario no deja rastro (sin stock_movements) | Bloqueante | Documentado | Fase 2 |
+| [F-39](F-39.md) | Fuga cross-tenant en políticas sin filtro de organización | Alta | Documentado | Fase 2 |
+| [F-40](F-40.md) | ImportLeadsCsv inserta columna GENERADA y no setea customer_type | Media | Documentado | Fase 2 |
 
 ## Notas
 

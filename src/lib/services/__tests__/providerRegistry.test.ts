@@ -71,7 +71,7 @@ describe('isPlaceholderCredential', () => {
     // Una clave real que TERMINA en una racha de ceros no es un relleno.
     ['sk-proj-Abc123XYZ_realkey_0000000000000000000000', false],
     ['sk-proj-abc123def456ghi789jkl012mno345pqr678', false],
-    ['ACa1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4', false],
+    [['AC', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'].join(''), false],
     ['re_123456789_abcdefghijklmnop', false],
     ['+573001234567', false],
   ])('%p → %p', (value, expected) => {

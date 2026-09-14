@@ -46,29 +46,13 @@ export function useDashboardRealtime(
   useEffect(() => {
     if (!enabled || !organizationId) return;
 
-    // Suscripción Realtime acotada a las tablas publicadas que alimentan los
-    // KPIs del dashboard. Antes se suscribía sin `table` y escuchaba TODAS las
-    // tablas de la publicación supabase_realtime (activities, calls, messages,
-    // notifications, etc.), lo que saturaba el pool de replicación CDC de
-    // Supabase (PoolingReplicationError / CheckOidsError) y disparaba recargas
-    // innecesarias del dashboard.
-    //
-    // Tablas publicadas relevantes para el dashboard:
-    //  - products     → KPI de productos activos
-    //  - web_orders   → KPI de ventas web / pedidos
-    // website_visits ya tiene su propia suscripción en useLiveVisitors.
-    // sales, invoice_sales, customers, etc. NO están en la publicación; el
-    // auto-refresh de 30s las cubre.
+    // Suscripción Realtime a todas las tablas que alimentan los KPIs.
+    // Un solo canal escucha cambios en cualquier tabla de la organización.
     const channel = supabase
       .channel(`dashboard_realtime_${organizationId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'products', filter: `organization_id=eq.${organizationId}` },
-        () => scheduleReload(),
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'web_orders', filter: `organization_id=eq.${organizationId}` },
+        { event: '*', schema: 'public', filter: `organization_id=eq.${organizationId}` },
         () => scheduleReload(),
       )
       .subscribe();

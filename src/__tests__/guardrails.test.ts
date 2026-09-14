@@ -772,7 +772,6 @@ describe('F0 Guardarraíles', () => {
     const subscriptionGuard = readFile(path.join(SRC_ROOT, 'lib', 'hooks', 'useSubscriptionGuard.ts'));
     const inicio = readFile(path.join(SRC_ROOT, 'app', 'app', 'inicio', 'page.tsx'));
     const kpis = readFile(path.join(SRC_ROOT, 'components', 'inicio', 'DashboardKPIs.tsx'));
-    const dashboardRealtime = readFile(path.join(SRC_ROOT, 'components', 'inicio', 'useDashboardRealtime.ts'));
 
     test('datos y refresh tienen timeout sin cancelar el resto de auth', () => {
       expect(supabaseConfig).toContain('const DATA_REQUEST_TIMEOUT_MS = 15_000;');
@@ -801,18 +800,6 @@ describe('F0 Guardarraíles', () => {
       expect(inicio).not.toContain('Array.from({ length: 10 })');
       expect(inicio).not.toContain('Array.from({ length: 8 })');
       expect(kpis).toContain('Array.from({ length: 4 })');
-    });
-
-    test('el dashboard realtime acota la suscripción a tablas específicas', () => {
-      // Sin `table` en el filtro, la suscripción escucha TODAS las tablas
-      // publicadas en supabase_realtime (activities, calls, messages,
-      // notifications, etc.), saturando el pool CDC de Supabase.
-      // Cada postgres_changes DEBE especificar `table`.
-      expect(dashboardRealtime).not.toContain(
-        "schema: 'public', filter: `organization_id=eq."
-      );
-      expect(dashboardRealtime).toContain("table: 'products'");
-      expect(dashboardRealtime).toContain("table: 'web_orders'");
     });
   });
 

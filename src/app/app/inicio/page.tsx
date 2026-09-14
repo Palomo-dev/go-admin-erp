@@ -34,7 +34,6 @@ import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useBranch } from '@/lib/context/BranchContext';
 import { usePermissionContext } from '@/hooks/usePermissionContext';
 import { STAGE_MANAGER_ROLE_IDS } from '@/lib/services/crm/stagePermissions';
-import type { UserPermissionContext } from '@/lib/middleware/permissions';
 import { EmployeeDashboard } from '@/components/inicio/EmployeeDashboard';
 
 function InicioContent() {
@@ -42,11 +41,11 @@ function InicioContent() {
   const error = searchParams.get('error');
   const moduleCode = searchParams.get('module');
   const { organization } = useOrganization();
-  const { branchFilter } = useBranch();
+  const { branchFilter, isLoading: branchLoading } = useBranch();
   const { toast } = useToast();
   const t = useTranslations('home');
   const locale = useLocale();
-  const { context: permContext } = usePermissionContext(organization?.id);
+  const { context: permContext, loading: permissionsLoading } = usePermissionContext(organization?.id);
 
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,13 +63,11 @@ function InicioContent() {
   // Solo los administradores y managers de la organización (Super Admin /
   // Admin de organización / Manager, role_id 1/2/5, o is_super_admin) pueden
   // ver el dashboard financiero. Los empleados no ven datos financieros.
-  // Mientras los permisos cargan (permContext === null), fail-open: mostrar
-  // el dashboard financiero para no bloquear al admin. Cuando carguen, se
-  // ajusta automáticamente sin skeleton adicional.
   const canSeeFinancialDashboard = !!(
-    !permContext || // aún cargando → fail-open (no bloquear)
-    permContext.isSuperAdmin ||
-    STAGE_MANAGER_ROLE_IDS.includes(permContext.roleId)
+    permContext && (
+      permContext.isSuperAdmin ||
+      STAGE_MANAGER_ROLE_IDS.includes(permContext.roleId)
+    )
   );
 
   useEffect(() => {
@@ -110,7 +107,7 @@ function InicioContent() {
   }, []);
 
   const loadData = useCallback(async (silent = false) => {
-    if (!organization?.id) return;
+    if (!organization?.id || branchLoading || permissionsLoading) return;
     // Los empleados no-admin no reciben datos financieros del dashboard:
     // se omite el fetch completo para no traer KPIs/actividad al cliente.
     if (!canSeeFinancialDashboard) {
@@ -148,7 +145,7 @@ function InicioContent() {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [organization?.id, toast, t, periodo, horas, fechasCustom, branchFilter, canSeeFinancialDashboard]);
+  }, [organization?.id, toast, t, periodo, horas, fechasCustom, branchFilter, branchLoading, permissionsLoading, canSeeFinancialDashboard]);
 
   useEffect(() => {
     loadData();

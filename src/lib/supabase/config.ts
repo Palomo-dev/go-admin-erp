@@ -96,6 +96,7 @@ let cbConsecutiveFailures = 0;
 const CB_THRESHOLD = 5;        // 5 fallos consecutivos → abrir circuito
 const CB_COOLDOWN_MS = 30_000; // 30s de cooldown antes de reintentar
 const DATA_REQUEST_TIMEOUT_MS = 15_000;
+const DATA_WRITE_TIMEOUT_MS = 45_000; // escrituras (POST/PATCH/PUT/DELETE) con triggers/RPCs pueden tardar más
 const TOKEN_REFRESH_TIMEOUT_MS = 12_000;
 let cbOpenUntil = 0;
 
@@ -445,7 +446,10 @@ export const createSupabaseClient = () => {
             let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
             if (controller) {
-              const timeoutMs = isTokenRefreshRequest ? TOKEN_REFRESH_TIMEOUT_MS : DATA_REQUEST_TIMEOUT_MS;
+              const isWriteRequest = method === 'POST' || method === 'PATCH' || method === 'PUT' || method === 'DELETE';
+              const timeoutMs = isTokenRefreshRequest
+                ? TOKEN_REFRESH_TIMEOUT_MS
+                : isWriteRequest ? DATA_WRITE_TIMEOUT_MS : DATA_REQUEST_TIMEOUT_MS;
               timeoutId = setTimeout(() => controller.abort(), timeoutMs);
               if (options?.signal) {
                 if (options.signal.aborted) controller.abort();

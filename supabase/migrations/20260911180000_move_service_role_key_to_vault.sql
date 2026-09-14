@@ -71,3 +71,19 @@ $$;
 -- El alter_job no es idempotente en un script de migracion (cron.alter_job
 -- requiere que el job exista). Se ejecuto via MCP. Si se necesita reproducir:
 -- select cron.alter_job(job_id := 4, command := 'select public.fn_cron_actualizar_tasas();');
+
+-- Correccion de seguridad: revocar EXECUTE publico.
+-- El default de Postgres es EXECUTE para PUBLIC en funciones nuevas. Esta
+-- funcion es SECURITY DEFINER y lee la service_role del Vault: si anon puede
+-- invocarla por RPC, puede disparar un POST con la service_role como Bearer.
+-- El cron corre como postgres, que sigue teniendo EXECUTE.
+revoke execute on function public.fn_cron_actualizar_tasas()
+  from public, anon, authenticated;
+grant execute on function public.fn_cron_actualizar_tasas()
+  to postgres;
+
+-- Verificacion:
+--   select proname, array_to_string(proacl, ' | ')
+--   from pg_proc where proname = 'fn_cron_actualizar_tasas';
+--   -> 'postgres=X/postgres | service_role=X/postgres'
+--   No debe aparecer '=X' suelto, ni anon, ni authenticated.

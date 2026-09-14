@@ -1988,3 +1988,91 @@ archivo. Preexistente de sesiones anteriores (documentado en CLAUDE.md).
 No arreglar ahora: tocar 1.300 lineas de contenido historico para
 corregir em-dashes es justo el tipo de operacion que ya corrompio este
 archivo dos veces.
+
+### Fase: Motor IA Chat — Ronda 3 (consulta de pedidos) — 2026-09-14
+
+**Reporte del usuario:** "no me da informacion de los pedidos si deberia dar
+informacion de los pedidos."
+
+**Diagnostico (con datos de produccion, ultimos 30 dias):**
+- `getCustomerOrders` buscaba con `email || emailFromChat`: el correo de la
+  conversacion (`visitor_*@widget.local`, ficticio) siempre ganaba al que el
+  cliente escribia en el chat. Y solo consultaba `invoice_sales`, cuando en
+  org 135 el 88% de los pedidos vive en `web_orders` (2.139 web vs 272
+  facturas). Un pedido pendiente, cancelado o expirado —justo por el que un
+  cliente escribe preocupado— era invisible.
+- Impacto medido: 88 de 88 preguntas por un pedido con correo dado en el chat se
+  respondieron sin datos (`context_used.orders = false`).
+- Caso real: una clienta con pedido confirmado y pagado ($51.000, 4 de
+  septiembre, sin entregar) recibio 3 veces "no puedo consultar pedidos" y pidio
+  "asesor humano" 3 veces sin que el bot pudiera derivar.
+
+**Qué se hizo:**
+- Nuevo modulo puro `supabase/functions/_shared/ai-chat/pedidosCliente.ts`
+  (importable por Deno y por Jest): `extraerNumeroDePedido`,
+  `extraerCorreoDelChat`, `correoParaBuscar`, `describirEstadoPedido`,
+  `fechaEnZona`, `formatearPedidosWeb`, `formatearFacturas`.
+- `getCustomerOrders` reescrita con orden de busqueda: 1) numero de pedido
+  escrito (`WO-<org>-XXXX`), 2) correo escrito en el chat sobre `web_orders`,
+  3) facturas por cliente enlazado (`metadata.linked_customer_id`) o por el
+  correo real. El correo del widget nunca se usa.
+- Estados en palabras del cliente: CANCELADO, EXPIRADO (pago no completado),
+  ENTREGADO, EN CAMINO, LISTO, CONFIRMADO EN PREPARACION, PENDIENTE DE PAGO;
+  con tipo de entrega, transportadora y entrega estimada.
+- Fechas en la zona horaria de la organizacion (`organizations.timezone`,
+  cargada con la conversacion), no en UTC: regla canonica de fechas del repo.
+- Prompt: la linea de PEDIDOS decia que el bot NO podia consultar; ahora dice
+  que SI puede y que pida numero de pedido o correo si no tiene datos.
+- 17 tests nuevos en `src/__tests__/services/pedidosClienteIA.test.ts`
+  (pasan con `TZ=UTC` y con la zona local). Guardrails intactos: 138/138.
+
+**Verificacion en produccion (mismo dia, tras desplegar):**
+- Primer despliegue 13:20 UTC. A los 21 segundos, primera respuesta con datos:
+  "La compra asociada al correo … corresponde al pedido WO-135-…, por $70.000.
+  Estado: confirmado y en preparacion. Pago: pagado."
+- Segundo despliegue (modulo compartido + zona horaria) 13:29 UTC: 10 de 10
+  jobs `completed`, 0 fallos; respuestas con pedidos web cancelados por pago
+  fallido y con facturas (`M13050613`) correctamente citadas.
+- Un caso con `orders = false` tras el arreglo se verifico: ese correo no tiene
+  pedidos en `web_orders`; el bot pidio numero de pedido, que es lo correcto.
+
+**Sin cambios de esquema:** no hubo migracion ni rollback en esta ronda.
+
+**Pendiente (sube de prioridad por el caso real):** escalado a humano (Fase 4).
+El cliente pidio "asesor humano" 3 veces y el bot solo pudo remitir a la web.
+Sigue pendiente ademas: validacion de `Origin` y limite por IP en `chat-widget`.
+
+### Fase 0 — Ronda 7 — 2026-09-14 (0.1 aplicado; corrección de SEC-0.a)
+
+**Estado al retomar tras 4 días.** El commit de la firma de Wompi (`c53521d`, sitio) está en
+`origin/main` y desplegado: los logs muestran 0 respuestas 406 en `integration_credentials`
+en 48 h (antes, 18 diarias por la búsqueda en la columna equivocada). El arreglo de `/tracking`
+(0.2) también está desplegado, commiteado por otra persona dentro de `01b8cd2`. Envíos:
+459 → 536 en 4 días. Credenciales rotadas: 0. Credenciales en Vault: 0.
+
+**Bug propio en SEC-0.a, corregido.** 155 webhooks de Wompi procesados en 6 días y **cero
+veredictos de firma registrados**: `integration_events.connection_id` es NOT NULL y
+`logSignatureCheck` lo mandaba en null, heredado del insert original. El insert fallaba en
+silencio, así que no había evidencia para activar `WOMPI_WEBHOOK_ENFORCE_SIGNATURE`.
+Arreglado en el sitio (`828ad44`, sin push): `getEventsSecret` devuelve también la conexión,
+el registro la exige, y `external_event_id` va en null para no chocar con el índice de
+deduplicación (el id de la transacción queda en `payload.transaction_id`). Verificado
+reproduciendo el insert contra la base con la forma exacta del código.
+Lección: había comprobado el CHECK de `status` pero no la nulabilidad de `connection_id`.
+
+**0.1 — APLICADO.** Migración `20260914130000_fase0_1_cerrar_rls_publica_transporte`,
+con `.sql` y rollback versionados según `docs/POLITICA-MIGRACIONES.md`. Ensayada primero
+dentro de `begin … rollback` con las verificaciones incluidas. Quita las 4 políticas
+`*_public_read`, revoca `anon` en las 4 tablas, y reescribe las políticas de pertenencia
+con `(select auth.uid())` y JOIN en vez de subquery anidado, sin cambiar su semántica.
+Verificado con la anon key real: las 4 tablas responden `42501 permission denied`;
+`verify:tracking` sigue OK por service role.
+
+**Deuda declarada.** Las cuatro migraciones anteriores de esta épica (cierre de
+`integration_*`, funciones de Vault, seed de transportadoras, columnas de `products`) se
+aplicaron por MCP sin `.sql` ni rollback, bajo la regla anterior. Pendiente reconstruirlas
+en `supabase/migrations/` y `supabase/rollbacks/`.
+
+Fase 0 restante: **0.5** (consolidar las dos rutas de creación de envío) y aprobar los
+`CLAUDE.md`. Pendiente del usuario: push de `828ad44` en el sitio; rotación de las 16
+credenciales de Wompi; activar el bloqueo cuando haya veredictos `match`.

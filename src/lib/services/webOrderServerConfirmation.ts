@@ -755,75 +755,23 @@ export const webOrderServerConfirmation = {
     }
 
     // ── 8. Crear shipment (envío) si es delivery ──
+    // Una sola ruta de creación: la misma que usa la confirmación manual desde el POS.
+    // Antes había aquí un INSERT propio con otro formato de guía, sin fecha estimada, sin
+    // evento de creación y sin shipment_items; cualquier arreglo en una ruta no llegaba a
+    // la otra. Se le pasa el service role y el cliente ya resuelto (customerId), que puede
+    // diferir de order.customer_id.
     let shipmentId: string | undefined;
 
     if (order.delivery_type === 'delivery_own' || order.delivery_type === 'delivery_third_party') {
       try {
-        // Verificar si ya existe shipment para este pedido
-        const { data: existingShipment } = await supabase
-          .from('shipments')
-          .select('id')
-          .eq('source_type', 'web_order')
-          .eq('source_id', order.id)
-          .maybeSingle();
-
-        if (existingShipment) {
-          shipmentId = existingShipment.id;
-        } else {
-          const addr = (order.delivery_address || {}) as Record<string, unknown>;
-          const trackingNumber = `TRK-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-
-          // La tabla shipments no tiene columna delivery_country, así que el
-          // país se persiste en metadata (jsonb) y se anexa a delivery_instructions.
-          const country = (addr.country || '') as string;
-          const stateCode = (addr.state_code || '') as string;
-          const baseInstructions = (addr.instructions || order.customer_notes || '') as string;
-          const deliveryInstructions = country
-            ? `${baseInstructions}${baseInstructions ? ' | ' : ''}País: ${country}${stateCode ? ` (${stateCode})` : ''}`
-            : baseInstructions;
-
-          const { data: shipment, error: shipmentError } = await supabase
-            .from('shipments')
-            .insert({
-              organization_id: order.organization_id,
-              branch_id: order.branch_id,
-              source_type: 'web_order',
-              source_id: order.id,
-              shipment_number: `DEL-${order.order_number}`,
-              tracking_number: trackingNumber,
-              customer_id: customerId,
-              delivery_address: (addr.address || addr.street || '') as string,
-              delivery_city: (addr.city || '') as string,
-              delivery_department: (addr.department || addr.state || addr.neighborhood || '') as string,
-              delivery_postal_code: (addr.postal_code || '') as string,
-              delivery_latitude: (addr.lat || addr.latitude || null) as number | null,
-              delivery_longitude: (addr.lng || addr.longitude || null) as number | null,
-              delivery_contact_name: order.customer_name || null,
-              delivery_contact_phone: order.customer_phone || null,
-              delivery_instructions: deliveryInstructions,
-              status: 'pending',
-              notes: `Pedido web: ${order.order_number}`,
-              metadata: {
-                web_order_number: order.order_number,
-                web_order_total: order.total,
-                items_count: order.items?.length || 0,
-                delivery_type: order.delivery_type,
-                delivery_partner: order.delivery_partner || null,
-                delivery_country: country || null,
-                delivery_state: (addr.state || addr.department || '') as string,
-                delivery_state_code: stateCode || null,
-              },
-            })
-            .select('id')
-            .single();
-
-          if (shipmentError) {
-            console.error('Error creando shipment:', shipmentError);
-          } else {
-            shipmentId = shipment.id;
-          }
-        }
+        const { deliveryIntegrationService } = await import('./deliveryIntegrationService');
+        const shipment = await deliveryIntegrationService.createShipmentFromWebOrder(order, {
+          client: supabase,
+          customerId: customerId ?? null,
+        });
+        shipmentId = shipment.id;
       } catch (shipError) {
+        // Nunca fallar la confirmación del pedido por el envío: queda recuperable.
         console.error('Error en creación de envío:', shipError);
       }
     }

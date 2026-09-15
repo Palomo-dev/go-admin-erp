@@ -2076,3 +2076,245 @@ en `supabase/migrations/` y `supabase/rollbacks/`.
 Fase 0 restante: **0.5** (consolidar las dos rutas de creación de envío) y aprobar los
 `CLAUDE.md`. Pendiente del usuario: push de `828ad44` en el sitio; rotación de las 16
 credenciales de Wompi; activar el bloqueo cuando haya veredictos `match`.
+
+### GO Assistant — F2 (continuación): compras y traslados — Ronda 1 — 2026-09-14
+
+**Builder.** Dos herramientas nuevas de escritura (`crear_orden_compra`, `crear_traslado`) y dos de
+lectura (`buscar_proveedores`, `listar_sucursales`), en `src/lib/ai/agent/tools/compras.ts` y
+`consulta.ts`. Ambas escrituras: `risk: high`, `write_full`, no disponibles por voz, módulo
+`inventory`; permisos `inventory.create` / `inventory.transfer` (no existe ningún código
+`purchases.*` en `permissions`: verificado por MCP). Decisión de alcance deliberada: la orden nace en
+`draft` y NO recibe mercancía; el traslado nace en `pending` y NO mueve stock (lo confirma el
+destino). Sí se valida stock del origen. El costo lo pone `product_costs` (primero el del proveedor,
+luego el general), nunca el modelo.
+
+**Base.** RPC `assistant_create_purchase_order` y `assistant_create_transfer` (SECURITY INVOKER,
+revoke PUBLIC, grant authenticated/service_role), versionadas en
+`supabase/migrations/20260914110000_go_assistant_f2_compras_y_traslados.sql` + rollback. Trampa:
+`purchase_order_items.subtotal` es GENERATED. Bug preexistente del ERP encontrado al probar:
+`audit_ops_changes()` leía `NEW.branch_id`, que `inventory_transfers` no tiene, y abortaba TODO
+insert de traslados desde cualquier parte del ERP; corregido en
+`20260914100000_fix_audit_ops_changes_branch_id_inexistente.sql` (+ rollback).
+
+**Deshacer (F3).** `cancel_purchase_order` / `cancel_transfer` en `undoService.ts`: cancelan solo
+si el documento sigue en su estado inicial (`draft` / `pending`); nunca borran la fila; si alguien
+ya lo avanzó, `already_advanced` y se remite al módulo.
+
+**Tester.** RPC contra la base real: T1 orden en borrador total 80000 con subtotal generado; T2
+proveedor de otra organización → `SUPPLIER_NOT_IN_ORG`; T3 traslado pendiente con stock de origen
+intacto y auditado; T4 misma sucursal → `SAME_BRANCH`; T5 stock insuficiente → `INSUFFICIENT_STOCK`.
+Todo dentro de DO-blocks con rollback. Jest: `goAssistantF2compras.test.ts` (registro, filtrado por
+nivel/permiso/módulo, parseo, organización del contexto y no de los args, mapa de errores, escape
+de comodines ILIKE, undo = cancelar). Suites GO Assistant: 8/8, 221 tests. `tsc` limpio en
+`src/lib/ai/**` y tests. Actualizados `goAssistantF0` (ahora `update_purchase_order` es el ejemplo
+de "no implementado") y `goAssistantF1`.
+
+**Adjuntos (F4) cerrado end-to-end**, tras la captura del usuario: el panel sube a
+`/api/ai-assistant/attachments` antes de abrir el stream, manda `attachmentIds`, y `/stream`
+valida pertenencia y le indica al modelo que llame a `leer_documento`. `attachmentsEnabled={true}`.
+
+**Lecciones.** (1) El heredoc de bash en este entorno se come `\` y rompe con ciertas comillas de
+SQL: los `.sql` y los `.ts` con regex se escriben con Write/Edit. (2) Un `.sql` "versionado" con
+solo la cabecera es peor que ninguno: hay que leerlo después de escribirlo.
+
+**Pendiente de esta épica.** Carga masiva (Excel/CSV) del §6.3; F5 voz (bloqueada por el despliegue
+del `ws-server`: faltan 4 variables en Railway que solo el usuario puede poner); reconstruir los
+`.sql` de F0/F1 aplicados por MCP sin versionar; `next build` limpio (otra sesión mantiene un dev
+server sobre `.next`); conversión entre monedas (decisión de política de tasa pendiente del
+usuario).
+
+**Calificación (qa-reviewer, propia):** 9.3/10. Descuento por la carga masiva aún ausente y por el
+`.sql` de F0/F1 sin reconstruir.
+
+
+#### Ronda 3 — revisión QA y cierre (mismo día)
+
+- Calificación QA (primera pasada): **7/10**. Hallazgo principal, real y
+  corregido en la misma ronda: el `ilike` por correo no escapaba los comodines
+  de LIKE. `ana_perez@x.com` casaba con `ana.perez@x.com` (otra persona) y
+  `%@gmail.com` devolvía pedidos de cualquier cliente de Gmail. 69 correos
+  reales de `web_orders` llevan `_`. Verificado contra PostgREST: sin escapar,
+  `%@gmail.com` devolvía 5 pedidos; escapado, 0; el correo real escapado sigue
+  encontrando el suyo.
+- Corregido además, de la lista del QA:
+  - Tope de sondeo: más de 2 correos distintos en la misma conversación → se
+    deja de buscar por correo y el contexto le indica al modelo que pida el
+    número de pedido (`decidirCorreoDelChat`).
+  - Fechas en formato largo ("4 de septiembre de 2026"): un modelo podía leer
+    "4/9/2026" como 9 de abril.
+  - Estados verificados en la BD (`status`: expired 3.848, cancelled 679,
+    confirmed 492, pending 1; `payment_status`: failed/paid/pending;
+    `delivery_type`: delivery_own/pickup). Añadido "PAGADO, PENDIENTE DE
+    CONFIRMACIÓN" para pending+paid; tests para shipped/ready/delivered.
+  - Si hay más de 3 pedidos por correo, se avisa y se pide el número en vez de
+    decir "no encuentro".
+  - `maybeSingle` sobre `customers` sustituido por `order + limit(1)` (dos
+    clientes con el mismo correo hacían fallar la búsqueda de facturas).
+  - `esCorreoDelWidget` reutilizada en lugar de repetir `includes`.
+  - Bloque PEDIDOS DEL CLIENTE fuera del encabezado de inventario.
+- Tests: 27/27 (local y `TZ=UTC`). Tercer despliegue 14:32 UTC: 9/9 jobs
+  `completed`, 0 fallos.
+- No aplicado (decisión de producto, documentada en ADR-001 Addendum 4): el
+  QA propuso mostrar solo estado y fecha cuando el cliente da únicamente el
+  correo, reservando importe y número completo para cuando da el número de
+  pedido. Se mantiene el detalle completo por correo: es lo que el negocio
+  necesita hoy y lo que se muestra es de sensibilidad baja (sin dirección ni
+  teléfono). Si el usuario prefiere el modo enmascarado, es un flag en
+  `formatearPedidosWeb`, sin tocar consultas.
+- Calificación estimada tras las correcciones: 9/10. Para 10: prueba de
+  orquestación de `getCustomerOrders` (Deno) y decisión explícita del usuario
+  sobre el nivel de detalle por correo.
+
+### GO Assistant — F2 (§6.3): carga masiva de productos — Ronda 1 — 2026-09-14
+
+**Builder.** Herramienta `cargar_productos_masivo` (`src/lib/ai/agent/tools/cargaMasiva.ts`): CSV o
+Excel adjunto (`attachment_id`) o filas dictadas (`rows`, máx. 100). Interpretar el archivo es
+DETERMINISTA y gratis: `xlsx` + reconocimiento de cabeceras humanas ("Código de barras", "Precio
+venta", "Existencias"…) + números colombianos ("12.000", "1.234,50", "$ 12.000"). No pasa por
+ningún modelo. Política de duplicados explícita y dicha en la tarjeta: SKU → código de barras →
+nombre normalizado. `stock_mode`: `add` (entra mercancía, por defecto) o `set` (conteo: se ajusta la
+diferencia). Tope `bulk_max_rows` de la organización (default 500), comprobado en Node y en la RPC.
+
+**Base.** RPC `assistant_bulk_load_products` (`20260914140000_go_assistant_f2_carga_masiva_productos.sql`
++ rollback), transaccional, SECURITY INVOKER, revoke PUBLIC. No duplica lógica: cada fila nueva
+pasa por `assistant_create_product`; el stock de los existentes entra como AJUSTE documentado por
+`assistant_create_adjustment` (con movimiento y asiento), no como UPDATE a `stock_levels`; los
+precios por `assistant_set_product_price`. Devuelve productos creados, ajustes y precios previos para
+deshacer.
+
+**Deshacer (F3).** `undo_bulk_load`: compensa, no borra. Precios al anterior; ajustes revertidos con el
+ajuste CONTRARIO (rastro doble, que es lo correcto); productos nuevos eliminados solo sin
+movimientos, si no, inactivos. Fallos parciales se reportan como `partial` con detalle.
+
+**UI.** La tarjeta de confirmación NO pintaba `preview.lines/warnings/totals` de las herramientas del
+agente (solo `fields` del catálogo viejo): "producto 51814 × 3" no permitía confirmar con criterio.
+`PendingAction.preview` nuevo, `streamClient` lo sanea, `ActionConfirmationForm` lo pinta, y
+`assistant/BulkPreviewTable.tsx` (react-virtuoso, solo lectura, problemáticas arriba con motivo).
+`/stream` sugiere `cargar_productos_masivo` cuando el adjunto es una hoja y `leer_documento` si no.
+
+**Tester.** RPC contra la base real en DO-block con rollback: T1 crear + actualizar(add) con precio y
+ajuste `gain`; T2 `set` con ajuste `loss` de la diferencia; T3 tope → `TOO_MANY_ROWS`; T4 todo o nada
+(producto de otra organización en la fila 2 → no queda la fila 1); T5 SKU duplicado → `SKU_TAKEN`.
+Cero residuos. Jest `goAssistantF2cargaMasiva.test.ts`: 27 tests (números, cabeceras, duplicados,
+args, organización del contexto, tope sin llamar a la RPC, mapa de errores, undo compensatorio).
+Suites GO Assistant: 9/9, 249 tests. `tsc` y ESLint limpios en lo tocado.
+
+**No verificado en navegador.** El dev server de :3000 (de otra sesión) devuelve `Not Found` para
+sus propios chunks (`.next` en reconstrucción): la página queda en blanco antes de llegar al
+asistente. No lo reinicio yo. Pendiente: smoke test con un CSV real cuando ese servidor esté sano.
+
+**Calificación (qa-reviewer, propia):** 9.4/10. Falta el smoke test en navegador y el `.sql` de
+F0/F1 sin reconstruir.
+
+### GO Assistant — F5 (audio entra y sale) + deuda de migraciones — Ronda 1 — 2026-09-14
+
+**Alcance, según el propio plan (§5.5.2, nota final):** el `ws-server` no está desplegado para el
+dominio del ERP (faltan 4 variables en Railway que solo el usuario puede poner), así que F5 se
+corta en "audio entra y sale" y la voz en vivo queda tras `voice_enabled`. No se bloquea F5 entera.
+
+**Builder.**
+- `/api/ai-assistant/transcribe`: deja de cablear Whisper. Usa `transcribeWithFallback` (cadena STT
+  del ERP: ElevenLabs Scribe v2 → Gemini → OpenAI, por `provider_configs`), cobra DESPUÉS y por
+  duración (1 crédito/min, mín. 1), devuelve `confidence`, `provider`, `durationSeconds`. Acepta
+  `audio/webm;codecs=opus` (antes el `;codecs` lo tumbaba con 415). Errores con código estable
+  (`STT_NOT_CONFIGURED` 501, `STT_UNAVAILABLE` 503, `STT_FAILED` 502).
+- `/api/ai-assistant/tts` (nuevo): la respuesta en audio con ElevenLabs `eleven_flash_v2_5`, SOLO
+  si `ai_assistant_settings.tts_enabled`; voz de `tts_voice_id` → voz por defecto de la org
+  (`voices`) → neutra en español; `voice_id` validado antes de ir a la URL; markdown → texto
+  decible (`src/lib/ai/assistant/tts.ts`); cobro después, 1 crédito/500 caracteres.
+- Panel: botón "Responder en audio" (preferencia en localStorage; si la org no lo tiene, se
+  desactiva solo con el motivo), lectura automática de la respuesta, "Escuchar"/parar por mensaje.
+- Composer: si la confianza de la nota de voz es < 0.7, aviso "revisa el texto antes de enviarlo";
+  nota vacía y errores también se dicen, no se tragan en consola.
+
+**Deuda de migraciones cerrada.** Las 7 migraciones del asistente aplicadas por MCP sin versionar
+(F0 ×4, F1 ×2, moneda F2) se reconstruyeron en `supabase/migrations/` desde
+`supabase_migrations.schema_migrations.statements` — byte a byte, md5 verificado — con su rollback
+en `supabase/rollbacks/`. Las 11 migraciones `go_assistant_*` tienen ya ambos archivos.
+
+**Tester.** `goAssistantF5.test.ts`: texto decible, orden saldo→proveedor→cobro en ambas rutas,
+`tts_enabled` y validación de `voice_id`, exports válidos del route. Guardrails 11–14 siguen verdes
+con las rutas nuevas. Suites GO Assistant: 9/9, 197 tests (+ guardrails 60). `tsc` y ESLint limpios.
+
+**Pendiente.** Voz en vivo (`/assistant-voice` en `ws-server.ts`) cuando el usuario ponga las
+variables y autorice el redeploy. Smoke test en navegador (dev server de otra sesión roto).
+Conversión entre monedas (decisión de tasa del usuario). `next build` limpio.
+
+**Calificación (qa-reviewer, propia):** 9.3/10 para lo entregable sin infraestructura.
+
+### GO Assistant — conversión entre monedas — Ronda 1 — 2026-09-15
+
+**Decisión del usuario:** tasa del día de **openexchangerates**, la que el cron del ERP ya guarda en
+`currency_rates` (base USD, 10 monedas, al día). Sin tasas fijas por organización.
+
+**Builder.** `convertAmount()` en `orgCurrency.ts` (pasa por USD; sin tasa ese día usa la última
+anterior y lo marca `stale`; la fecha la pone el llamador en la zona de la organización —nunca
+`toISOString()`—). Herramienta de lectura `convertir_moneda` (`tools/moneda.ts`): sin `to`
+convierte a la moneda de la organización; devuelve importe, tasa, fecha y origen. Regla en el
+prompt: un importe en otra moneda se convierte ANTES de proponer cualquier escritura y se dice la
+tasa; todo se registra en la moneda de la organización.
+
+**Tester.** Valores de referencia comprobados contra la tabla real del 2026-09-15 (20 USD =
+62 091,1638 COP; 100 EUR = 358 237,5424 COP). `goAssistantMoneda.test.ts`: 11 tests (ida, vuelta,
+cruce por USD, stale, misma moneda, sin tasa, fecha inválida, registro, parseo, mensaje en español).
+ESLint limpio.
+
+**Calificación (qa-reviewer, propia):** 9.5/10.
+
+### Fase 0 — Ronda 8 — 2026-09-15 (0.5 aplicado: una sola ruta de creación de envío)
+
+**Qué había.** Dos implementaciones independientes insertaban en `shipments` para el mismo
+pedido web: `deliveryIntegrationService.createShipmentFromWebOrder` (confirmación manual
+desde el POS, cliente de navegador) y un INSERT inline en `webOrderServerConfirmation.ts`
+(auto-confirmación por pago y cron, service role). Formatos de guía incompatibles
+(`TRK<base36>` vs `TRK-<epoch>-<rand>`), campos distintos en cada una, ninguna creaba
+`shipment_items`, y una carrera real: check-then-insert sin transacción ni constraint único.
+
+**Qué hay ahora.**
+- Una función, `createShipmentFromWebOrder(webOrder, { client, customerId, timezone })`.
+  El cliente se inyecta: la ruta manual usa el del navegador (por defecto), la automática le
+  pasa su service role. Superconjunto de campos: fecha estimada y evento `created` (de la
+  manual) + país, `state_code` y metadata de entrega (de la automática). Crea
+  `shipment_items` desde `web_order.items`. Errores en items/evento no abortan la
+  confirmación.
+- `webOrderServerConfirmation.ts` ya no tiene INSERT propio: llama a la función con su
+  cliente y el `customerId` resuelto (que puede diferir de `order.customer_id`).
+- `getShipmentByWebOrderId` pasa de `.single()` a `.maybeSingle()` sobre el más reciente.
+- Migración `20260915090000_fase0_5_indice_unico_envio_por_pedido_web` (`.sql` + rollback):
+  índice único parcial `(source_type, source_id) WHERE source_type='web_order'`. Ensayado
+  en `begin … rollback`; 493 envíos web, 0 duplicados. Ante el 23505 la función devuelve el
+  envío que ganó la carrera en vez de lanzar.
+- Formato de guía unificado: los envíos web nuevos salen con `TRK<base36>` (el de
+  `generateTrackingNumber`, compartido con el POS). Los existentes conservan el suyo; el
+  rastreo busca por valor exacto, así que no afecta a ninguno.
+
+**Regla de fechas, dos arreglos.** `expected_delivery_date` usaba
+`toISOString().split('T')[0]` (prohibido: corre el día). Ahora `toPlainDate(fecha, tz)` con
+la zona de la organización. Y en `getAvailableDrivers`, la vigencia de licencia se comparaba
+contra el día UTC; ahora `todayInTz(tz)`, lo que además usa el parámetro `organizationId`
+que el lint marcaba como sin usar.
+
+**Verificación.**
+- Test nuevo `deliveryIntegration.webOrderShipment.test.ts`, 11 casos con cliente falso:
+  superconjunto de campos, `shipment_items`, evento, `customerId` inyectado vs del pedido,
+  idempotencia, carrera 23505 (devuelve el ganador sin crear items ni evento), otros errores
+  se propagan, rechaza `pickup`, fecha en zona de la org (`03:30Z` del 16 → `2026-09-15` en
+  Bogotá), sin fecha → null, y `getShipmentByWebOrderId` con `order+limit+maybeSingle`.
+- `webOrderStock.test.ts` (ruta B con cliente falso): 13/13 con la llamada nueva.
+- `guardrails.test.ts`: pasa. Total de los tres: 90/90.
+- `next lint` limpio en los tres archivos tocados (incluidos 4 hallazgos preexistentes que
+  la regla "deja limpio lo que toques" obliga a arreglar).
+- `tsc` con heap suficiente: 0 errores de código. Quedan 3 `TS6053` a `.next/types/` que
+  son restos del `.next` corrupto de otra sesión, no código.
+
+**Limitación deliberada.** El índice único impide envíos parciales (un pedido en dos
+guías). Hoy no se hace. Documentado en la migración con la forma de levantarlo.
+
+**Nota para GO-4.** En la ruta automática el envío se crea en el paso 8 y la fecha estimada
+del pedido se calcula en el paso 9, así que `expected_delivery_date` queda null para los
+pedidos nuevos. No se cambió el orden en esta ronda (no regresión); al implementar GO-4
+conviene crear el envío después del cálculo, o actualizarlo.
+
+**Fase 0: completa en lo que depende de código.** Pendiente del usuario: push de `828ad44`
+(sitio) y de los commits del ERP; rotación de credenciales de Wompi; aprobar los
+`CLAUDE.md`; y la deuda de los 4 `.sql` + rollbacks de las migraciones de las rondas 1-5.

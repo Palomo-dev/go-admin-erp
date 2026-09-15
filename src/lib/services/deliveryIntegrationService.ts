@@ -1,5 +1,28 @@
 import { supabase } from '@/lib/supabase/config';
-import type { WebOrder } from './webOrdersService';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { WebOrder, WebOrderItem } from './webOrdersService';
+import { toPlainDate, todayInTz } from '@/lib/utils/dateDisplay';
+import { getOrganizationTimezone } from './organizationTimezoneService';
+
+/**
+ * Opciones de `createShipmentFromWebOrder`.
+ *
+ * `client` existe porque la misma función corre en dos contextos: desde la UI del POS
+ * (cliente de navegador con sesión) y desde la auto-confirmación por pago y el cron
+ * (service role). Antes había DOS implementaciones, una por contexto, con campos y
+ * formatos de guía distintos. Ahora hay una, y el contexto sólo cambia el cliente.
+ */
+export interface CreateWebOrderShipmentOptions {
+  /** Cliente Supabase a usar. Por defecto, el del navegador. */
+  client?: SupabaseClient;
+  /**
+   * Id de cliente ya resuelto. La auto-confirmación crea o localiza al cliente antes
+   * de llegar aquí y su id puede diferir de `webOrder.customer_id`.
+   */
+  customerId?: string | null;
+  /** Zona horaria de la organización; si no viene, se consulta. */
+  timezone?: string;
+}
 
 export interface DeliveryShipment {
   id: string;
@@ -115,25 +138,55 @@ export interface ProofOfDelivery {
 
 class DeliveryIntegrationService {
   /**
-   * Crea un shipment automáticamente desde un web_order con delivery_type = 'delivery_own'
+   * Crea el envío de un pedido web. ÚNICA ruta: la llaman la confirmación manual desde
+   * el POS y la auto-confirmación por pago (webhook y cron `reconcile-web-orders`).
+   *
+   * Idempotente de dos formas: consulta antes de insertar, y si aun así dos llamadas se
+   * cruzan (UI + webhook sobre el mismo pedido), el índice único parcial sobre
+   * `(source_type, source_id)` hace fallar al segundo insert con 23505 y aquí se devuelve
+   * el envío que ganó la carrera, en vez de propagar el error.
+   *
+   * Superconjunto de lo que hacían las dos rutas anteriores: fecha estimada y evento de
+   * creación (ruta manual) + país, código de departamento y metadata de entrega (ruta
+   * automática). Y crea `shipment_items`, que ninguna de las dos creaba.
    */
-  async createShipmentFromWebOrder(webOrder: WebOrder): Promise<DeliveryShipment> {
+  async createShipmentFromWebOrder(
+    webOrder: WebOrder,
+    opts: CreateWebOrderShipmentOptions = {}
+  ): Promise<DeliveryShipment> {
     if (webOrder.delivery_type !== 'delivery_own' && webOrder.delivery_type !== 'delivery_third_party') {
       throw new Error('Solo se pueden crear shipments para pedidos con delivery (propio o tercero)');
     }
 
+    const client = opts.client ?? supabase;
+
     // Verificar si ya existe un shipment para este pedido
-    const existing = await this.getShipmentByWebOrderId(webOrder.id);
+    const existing = await this.getShipmentByWebOrderId(webOrder.id, client);
     if (existing) {
       return existing;
     }
 
-    // Generar número de tracking
-    const trackingNumber = await this.generateTrackingNumber(webOrder.organization_id);
+    const trackingNumber = await this.generateTrackingNumber();
 
     // Extraer datos de dirección (soporta múltiples formatos)
     const addr = (webOrder.delivery_address || {}) as Record<string, unknown>;
-    
+
+    // La tabla shipments no tiene columna delivery_country: el país se persiste en
+    // metadata y se anexa a delivery_instructions para que el mensajero lo vea.
+    const country = (addr.country || '') as string;
+    const stateCode = (addr.state_code || '') as string;
+    const baseInstructions = (addr.instructions || webOrder.customer_notes || '') as string;
+    const deliveryInstructions = country
+      ? `${baseInstructions}${baseInstructions ? ' | ' : ''}País: ${country}${stateCode ? ` (${stateCode})` : ''}`
+      : baseInstructions;
+
+    // Día calendario en la zona de la organización, no el día UTC del instante.
+    let expectedDeliveryDate: string | null = null;
+    if (webOrder.estimated_delivery_at) {
+      const tz = opts.timezone ?? (await getOrganizationTimezone(webOrder.organization_id));
+      expectedDeliveryDate = toPlainDate(new Date(webOrder.estimated_delivery_at), tz);
+    }
+
     const shipmentData = {
       organization_id: webOrder.organization_id,
       branch_id: webOrder.branch_id,
@@ -141,65 +194,116 @@ class DeliveryIntegrationService {
       source_id: webOrder.id,
       shipment_number: `DEL-${webOrder.order_number}`,
       tracking_number: trackingNumber,
-      customer_id: webOrder.customer_id,
+      customer_id: opts.customerId !== undefined ? opts.customerId : (webOrder.customer_id ?? null),
       delivery_address: (addr.address || addr.street || '') as string,
       delivery_city: (addr.city || '') as string,
       delivery_department: (addr.department || addr.state || addr.neighborhood || '') as string,
       delivery_postal_code: (addr.postal_code || '') as string,
       delivery_latitude: (addr.lat || addr.latitude || null) as number | null,
       delivery_longitude: (addr.lng || addr.longitude || null) as number | null,
-      delivery_contact_name: webOrder.customer_name,
-      delivery_contact_phone: webOrder.customer_phone,
-      delivery_instructions: (addr.instructions || webOrder.customer_notes || '') as string,
-      expected_delivery_date: webOrder.estimated_delivery_at
-        ? new Date(webOrder.estimated_delivery_at).toISOString().split('T')[0]
-        : null,
+      delivery_contact_name: webOrder.customer_name || null,
+      delivery_contact_phone: webOrder.customer_phone || null,
+      delivery_instructions: deliveryInstructions,
+      expected_delivery_date: expectedDeliveryDate,
       status: 'pending' as const,
       notes: `Pedido web: ${webOrder.order_number}`,
       metadata: {
         web_order_number: webOrder.order_number,
         web_order_total: webOrder.total,
         items_count: webOrder.items?.length || 0,
+        delivery_type: webOrder.delivery_type,
+        delivery_partner: webOrder.delivery_partner || null,
+        delivery_country: country || null,
+        delivery_state: (addr.state || addr.department || '') as string,
+        delivery_state_code: stateCode || null,
       },
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('shipments')
       .insert(shipmentData)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // 23505 = otra llamada insertó primero. Devolver el envío existente es el
+      // comportamiento correcto: el pedido ya tiene su envío.
+      if (error.code === '23505') {
+        const winner = await this.getShipmentByWebOrderId(webOrder.id, client);
+        if (winner) return winner;
+      }
+      throw error;
+    }
 
-    // Registrar evento de creación
-    await this.createTransportEvent({
-      organization_id: webOrder.organization_id,
-      reference_type: 'shipment',
-      reference_id: data.id,
-      event_type: 'created',
-      actor_type: 'system',
-      description: `Envío creado desde pedido web ${webOrder.order_number}`,
-    });
+    const shipment = data as DeliveryShipment;
 
-    return data as DeliveryShipment;
+    // Ni la creación de items ni el evento pueden hacer fallar la confirmación del pedido.
+    await this.createShipmentItemsFromWebOrder(shipment.id, webOrder.items ?? [], client);
+
+    await this.createTransportEvent(
+      {
+        organization_id: webOrder.organization_id,
+        reference_type: 'shipment',
+        reference_id: shipment.id,
+        event_type: 'created',
+        actor_type: 'system',
+        description: `Envío creado desde pedido web ${webOrder.order_number}`,
+      },
+      client
+    );
+
+    return shipment;
   }
 
   /**
-   * Obtiene el shipment asociado a un web_order
+   * Copia las líneas del pedido web al envío. No lanza: un fallo aquí deja el envío sin
+   * detalle, que es recuperable, mientras que abortar la confirmación no lo sería.
    */
-  async getShipmentByWebOrderId(webOrderId: string): Promise<DeliveryShipment | null> {
-    const { data, error } = await supabase
+  private async createShipmentItemsFromWebOrder(
+    shipmentId: string,
+    items: WebOrderItem[],
+    client: SupabaseClient
+  ): Promise<void> {
+    if (items.length === 0) return;
+
+    const rows = items.map((item) => ({
+      shipment_id: shipmentId,
+      description: item.product_name,
+      qty: item.quantity,
+      unit_value: item.unit_price,
+      total_value: item.total,
+      product_id: item.product_id ?? null,
+      sku: item.product_sku ?? null,
+      notes: item.notes ?? null,
+    }));
+
+    const { error } = await client.from('shipment_items').insert(rows);
+    if (error) {
+      console.warn('[deliveryIntegration] No se pudieron crear los shipment_items del pedido web:', error);
+    }
+  }
+
+  /**
+   * Obtiene el shipment asociado a un web_order.
+   *
+   * `maybeSingle()` sobre el más reciente: `.single()` lanza tanto con cero filas como con
+   * más de una, y la UI de asignación y de seguimiento dependen de esta función.
+   */
+  async getShipmentByWebOrderId(
+    webOrderId: string,
+    client: SupabaseClient = supabase
+  ): Promise<DeliveryShipment | null> {
+    const { data, error } = await client
       .from('shipments')
       .select('*')
       .eq('source_type', 'web_order')
       .eq('source_id', webOrderId)
-      .single();
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
-    }
-    return data as DeliveryShipment;
+    if (error) throw error;
+    return (data as DeliveryShipment | null) ?? null;
   }
 
   /**
@@ -515,6 +619,9 @@ class DeliveryIntegrationService {
    * Obtiene conductores disponibles
    */
   async getAvailableDrivers(organizationId: number): Promise<DeliveryDriver[]> {
+    // "Hoy" en la zona de la organización: comparar contra el día UTC dejaba fuera (o
+    // dentro) licencias en las horas alrededor de la medianoche.
+    const hoy = todayInTz(await getOrganizationTimezone(organizationId));
     const { data, error } = await supabase
       .from('driver_credentials')
       .select(`
@@ -534,22 +641,34 @@ class DeliveryIntegrationService {
         )
       `)
       .eq('is_active', true)
-      .gte('license_expiry', new Date().toISOString().split('T')[0]);
+      .gte('license_expiry', hoy);
 
     if (error) throw error;
 
+    type DriverRow = Record<string, unknown> & {
+      employment?: {
+        organization_member?: {
+          id?: number;
+          profiles?: DriverProfile | DriverProfile[];
+        };
+      };
+    };
+    type DriverProfile = {
+      id?: number; first_name?: string; last_name?: string; phone?: string; avatar_url?: string;
+    };
+
     // Filtrar solo conductores de la organización
-    return (data || [])
-      .filter((driver: any) => {
+    return ((data || []) as DriverRow[])
+      .filter((driver) => {
         const memberId = driver.employment?.organization_member?.id;
         if (!memberId) return false;
         // Necesitamos verificar que el member pertenece a la org
         // Por ahora filtramos después con una query separada si es necesario
         return true;
       })
-      .map((driver: any) => {
-        const profile = driver.employment?.organization_member?.profiles?.[0]
-          || driver.employment?.organization_member?.profiles;
+      .map((driver) => {
+        const perfiles = driver.employment?.organization_member?.profiles;
+        const profile: DriverProfile | undefined = Array.isArray(perfiles) ? perfiles[0] : perfiles;
         return {
           ...driver,
           employee: profile ? {
@@ -749,7 +868,7 @@ class DeliveryIntegrationService {
       notes?: string;
     }>;
   }): Promise<DeliveryShipment> {
-    const trackingNumber = await this.generateTrackingNumber(params.organizationId);
+    const trackingNumber = await this.generateTrackingNumber();
     const shipmentNumber = `POS-${params.saleId.slice(-8).toUpperCase()}`;
 
     // Obtener nombre de la organización (remitente)
@@ -977,7 +1096,7 @@ class DeliveryIntegrationService {
 
   // Métodos privados
 
-  private async generateTrackingNumber(organizationId: number): Promise<string> {
+  private async generateTrackingNumber(): Promise<string> {
     const prefix = 'TRK';
     const timestamp = Date.now().toString(36).toUpperCase();
     const random = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -996,12 +1115,15 @@ class DeliveryIntegrationService {
     location_text?: string;
     description?: string;
     payload?: Record<string, unknown>;
-  }): Promise<void> {
-    await supabase.from('transport_events').insert({
+  }, client: SupabaseClient = supabase): Promise<void> {
+    const { error } = await client.from('transport_events').insert({
       ...eventData,
       event_time: new Date().toISOString(),
       source: 'internal',
     });
+    if (error) {
+      console.warn('[deliveryIntegration] No se pudo registrar el evento de transporte:', error);
+    }
   }
 }
 

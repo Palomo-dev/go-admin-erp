@@ -1691,3 +1691,8 @@ vencimiento; `renewalService.syncRenewals()` crea oportunidades en pipeline
 
 ### Aviso sobre la rama — 2026-09-15
 - El árbol de trabajo está ahora en la rama **`desktop/fase-1-instalador`** (creada por otra sesión desde `main` + un commit del instalador de escritorio), con **734 archivos sin commit** que incluyen todo el trabajo del CRM V4 de estos días. Los cambios sin commit viajan con el árbol, así que nada se ha perdido, pero **al commitear el CRM hay que decidir la rama** (la memoria dice «commits directo en main»). Esta sesión no cambia de rama para no interferir con la otra.
+
+### Commit en `main` — 2026-09-15
+- Por orden del dueño («solo trabajar todo sobre main, hacer commit de todo lo estable»): commit **`47fbc8c5`** en `main` con 622 archivos (+67 222 / −12 061): todo el CRM V4 de este ciclo (F2, F3, F5, F10 r3, F11, F12, F13, F14, F16, rediseños de UX, zona de voz, seguridad, docs) y las migraciones **aplicadas** con su rollback. Excluido a propósito: trabajo de otras sesiones en curso (F0-* de hoy, GO Assistant, escritorio/impresión, POS, inventario, `ws-server.ts`) y las migraciones **no aplicadas** (`ciclo_de_vida_cliente_por_compra_real`, `voz_r6_retirar_actas`), que siguen preparadas en el árbol. Barrido previo: cero mutaciones vivas, cero NUL, cero arneses, sin secretos reales en el diff (solo claves sintéticas de tests). Sin `git push`.
+- La rama `desktop/fase-1-instalador` la creó otra sesión; `main` ya apuntaba al mismo commit, así que el árbol volvió a `main` sin conflicto. Regla del dueño: **nada de ramas; todo en `main`.**
+- F10: ronda 3 construida (modal reconstruido cotejado y en 286 L, `cancelled` bloquea el devengo como el trigger, `cop`, `isSafeId`, puntero real); tester reanudado para el veredicto final.

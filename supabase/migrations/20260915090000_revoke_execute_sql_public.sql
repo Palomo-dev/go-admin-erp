@@ -1,0 +1,34 @@
+-- 20260915090000_revoke_execute_sql_public.sql
+-- F-sec: execute_sql(sql_query text) ejecutable por PUBLIC = RCE como postgres
+--
+-- execute_sql era SECURITY DEFINER (dueño postgres) con EXECUTE para PUBLIC,
+-- anon y authenticated. Su filtro (ILIKE 'SELECT%' OR ILIKE 'WITH%') no
+-- protege nada: corre como postgres, RLS no aplica, y un SELECT plano ya
+-- lee toda la base. Un CTE que empiece por WITH tambien puede modificar datos.
+--
+-- Verificado como anon antes del fix:
+--   select * from execute_sql('select count(*) from customers');
+--   -> 33767
+--   select * from execute_sql('select count(*) from organizations');
+--   -> 84
+--   select * from execute_sql('select count(*) from profiles');
+--   -> 131
+--
+-- Brecha activa: el revoke se aplico directamente sobre produccion el
+-- 2026-09-15 (sin migracion, por urgencia). Esta migracion es documental:
+-- refleja el cambio ya aplicado para que no quede huerfano.
+--
+-- ACL despues del revoke: postgres=X/postgres | service_role=X/postgres
+-- Prueba negativa como anon:
+--   select * from execute_sql('select 1');
+--   -> ERROR 42501: permission denied for function execute_sql
+--
+-- Recomendacion: DROP de la funcion. Nadie la invoca por RPC en los
+-- cuatro repos (go-admin-erp, go-admin-investors, go-admin-super,
+-- go-admin-chat). Solo aparece en denylists (actionCatalog.ts) y docs.
+
+-- Cambio ya aplicado en produccion. No re-aplicar.
+-- revoke execute on function public.execute_sql(sql_query text)
+--   from public, anon, authenticated;
+-- grant execute on function public.execute_sql(sql_query text)
+--   to postgres, service_role;

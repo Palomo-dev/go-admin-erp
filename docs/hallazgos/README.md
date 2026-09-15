@@ -13,21 +13,21 @@ vive fuera del repo, en `docs/auditoria-finanzas/` (ignorado por `.gitignore`).
 | ID | Título | Severidad | Estado | Fase |
 |---|---|---|---|---|
 | [F-01](F-01.md) | Duplicación de asientos por trigger CxC + trigger factura | Crítica | Mitigado (trigger deshabilitado, backfill hecho) | Fase 0 |
-| [F-02](F-02.md) | Sin evidencia registrada | — | Sin evidencia | — |
+| [F-02](F-02.md) | Reglas contables ambiguas y huérfanas | Alta | Parcial (8 reglas huérfanas pendientes) | Fase 3a |
 | [F-03](F-03.md) | Fallback de branch en fn_create_journal_entry | Alta | Corregido | Fase 0 |
-| [F-04](F-04.md) | Sin evidencia registrada | — | Sin evidencia | — |
+| [F-04](F-04.md) | Número de factura no único | Bloqueante | Documentado | Fase 3a |
 | [F-05](F-05.md) | Estado y saldo de factura contradictorios | Alta | Documentado | Fase 0 |
-| [F-06](F-06.md) | Sin evidencia registrada | — | Sin evidencia | — |
-| [F-07](F-07.md) | Sin evidencia registrada | — | Sin evidencia | — |
+| [F-06](F-06.md) | Vocabulario polimórfico sin normalizar | Media (deuda) | Documentado | Fase 3c |
+| [F-07](F-07.md) | Tablas sin FK y columnas heredadas | Media (deuda) | Documentado | Fase 3c |
 | [F-08](F-08.md) | Aislamiento por sucursal en tablas financieras | Alta | Corregido (19 tablas) | Fase 1 |
 | [F-09](F-09.md) | Credenciales Factus globales, no por organización | Alta | Documentado, sin implementar | Fase 1 |
 | [F-10](F-10.md) | RLS faltante en credit_note_applications | Media | Corregido | Fase 1 |
 | [F-11](F-11.md) | Funciones SECURITY DEFINER expuestas a anon | Alta | Parcial (103 triggers revocados, 223 pendientes) | Fase 1 |
 | [F-11b](F-11b.md) | search_path mutable en funciones | Media | Pendiente (252 sin tocar) | Fase 1 |
 | [F-12](F-12.md) | Políticas `TO public` deberían ser `TO authenticated` | Media | Corregido (49 de finanzas) | Fase 1 |
-| [F-13](F-13.md) | Sin evidencia registrada | — | Sin evidencia | — |
-| [F-14](F-14.md) | Sin evidencia registrada | — | Sin evidencia | — |
-| [F-15](F-15.md) | Sin evidencia registrada | — | Sin evidencia | — |
+| [F-13](F-13.md) | 62 FK de finanzas sin índice | Media | Documentado | Fase 3b |
+| [F-14](F-14.md) | 86 políticas re-evalúan auth.uid() por fila | Media | Documentado | Fase 3b |
+| [F-15](F-15.md) | Índices duplicados | Baja (limpieza) | Documentado | Fase 3b |
 | [F-16](F-16.md) | Registro de pago: 3 escrituras sueltas sin transacción | Crítica | Documentado | Fase 3a |
 | [F-17](F-17.md) | Mismo patrón en transferencias, cotizaciones, notas crédito | Crítica | Documentado | Fase 3a |
 | [F-18](F-18.md) | Consultas sin organization_id | Alta | Documentado | Fase 3a |
@@ -58,5 +58,5 @@ vive fuera del repo, en `docs/auditoria-finanzas/` (ignorado por `.gitignore`).
 
 - **F-32** se absorbió en **F-16/F-17**: la race condition desaparece cuando la creación de factura pase a RPC transaccional.
 - **F-37** se unificó en **F-36**: ambos eran el mismo bug (productos cargados sin costo).
-- F-02, F-04, F-06, F-07, F-13, F-14, F-15 no tienen evidencia registrada (el paquete del contador se movió fuera del repo).
+- **F-01/F-29 (contraasientos):** opción (b) — resetear contabilidad de organizaciones de desarrollo y re-derivar desde facturas. Procedimiento en `docs/procedimientos/reversion-asientos-duplicados.md`.
 - `PROGRESS.md` queda congelado con su contenido histórico. La auditoría activa vive aquí.

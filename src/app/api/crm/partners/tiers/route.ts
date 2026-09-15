@@ -1,67 +1,42 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { NextRequest } from 'next/server';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { getPartnerTiers, createPartnerTier } from '@/lib/services/crm/partnerService';
+import { validateTierInput } from '@/lib/services/crm/f12Validation';
+import { jsonOk, readJson, rejectForeignOrganization, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
 
-/**
- * GET /api/crm/partners/tiers — Lista tiers de partners.
- */
+const TAG = 'CRM Partner Tiers';
+
+/** GET /api/crm/partners/tiers — tiers de la organización, de menor a mayor exigencia. */
 export async function GET() {
   try {
     const ctx = await getServerOrgContext();
     const tiers = await getPartnerTiers(ctx.organizationId, ctx.supabase);
-
-    return NextResponse.json({ success: true, data: tiers }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Partner Tiers] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return jsonOk(tiers);
+  } catch (error) {
+    return routeError(error, TAG);
   }
 }
 
 /**
- * POST /api/crm/partners/tiers — Crea un tier de partner.
- * Body: { name, min_deals?, min_revenue?, commission_rate?, benefits? }
+ * POST /api/crm/partners/tiers — crea un tier.
+ * Body: { name, min_deals?, min_revenue?, commission_rate?, benefits?: string[] }
+ * 409 si el nombre ya existe (UNIQUE organization_id, name).
  */
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const body = await request.json();
-
-    if (!body?.name) {
-      return NextResponse.json(
-        { success: false, error: 'Faltan campos obligatorios: name' },
-        { status: 400 }
-      );
-    }
-
+    const body = await readJson(request);
+    rejectForeignOrganization(TAG, body.organization_id, ctx);
+    const parsed = validateTierInput(body, { partial: false });
+    if (!parsed.ok) return validationFail(parsed.errors);
+    const v = parsed.value;
     const tier = await createPartnerTier(
       ctx.organizationId,
-      {
-        name: body.name,
-        min_deals: body.min_deals,
-        min_revenue: body.min_revenue,
-        commission_rate: body.commission_rate,
-        benefits: body.benefits,
-      },
-      ctx.supabase
+      { name: v.name!, min_deals: v.min_deals, min_revenue: v.min_revenue, commission_rate: v.commission_rate, benefits: v.benefits },
+      ctx.supabase,
     );
-
-    return NextResponse.json({ success: true, data: tier }, { status: 201 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Partner Tiers] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return jsonOk(tier, {}, 201);
+  } catch (error) {
+    return routeError(error, TAG);
   }
 }

@@ -29,6 +29,10 @@ import {
   type ConditionNode,
 } from './automation/conditionsDsl';
 import { emptyRuleContext, loadRuleContext, type RuleContext } from './automation/ruleContext';
+import { defaultEventFor } from './automation/ruleCatalog';
+
+/** Evento por defecto según el disparador. Vive en `ruleCatalog` (puro) para que el editor use la misma función. */
+export { defaultEventFor };
 
 export { UPDATE_FIELD_ALLOWLIST, validateUpdateField, AUTOMATION_ACTION_TYPES, NOT_IMPLEMENTED_ACTIONS };
 export type { AutomationAction };
@@ -235,18 +239,6 @@ export async function createAutomationRule(
   return rule as AutomationRule;
 }
 
-/** Evento por defecto según el disparador (`stage_change` → stage_changed). */
-export function defaultEventFor(triggerType: AutomationTriggerType | undefined): string | null {
-  switch (triggerType) {
-    case 'stage_change':
-      return 'opportunity.stage_changed';
-    case 'field_change':
-      return 'opportunity.updated';
-    default:
-      return null;
-  }
-}
-
 export async function updateAutomationRule(
   id: string,
   orgId: number,
@@ -265,7 +257,13 @@ export async function updateAutomationRule(
   if (data.actions !== undefined) updateData.actions = data.actions;
   if (data.is_active !== undefined) updateData.is_active = data.is_active;
   if (data.priority !== undefined) updateData.priority = data.priority;
-  if (data.event !== undefined) updateData.event = data.event;
+  if (data.event !== undefined) {
+    updateData.event = data.event;
+  } else if (data.trigger_type !== undefined) {
+    // Cambiar el disparador sin traer `event` dejaba el viejo y
+    // `evaluateTrigger` descartaba la regla para siempre (R2, ronda 2).
+    updateData.event = defaultEventFor(data.trigger_type);
+  }
   if (data.pipeline_id !== undefined) updateData.pipeline_id = data.pipeline_id;
   if (data.stage_id !== undefined) updateData.stage_id = data.stage_id;
   if (data.run_once_per_opportunity !== undefined) updateData.run_once_per_opportunity = data.run_once_per_opportunity;

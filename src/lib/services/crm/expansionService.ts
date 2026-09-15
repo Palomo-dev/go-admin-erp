@@ -5,7 +5,8 @@ import { getOrganizationId } from '@/lib/utils/orgId';
  * Servicio CRM para detectar y gestionar oportunidades de expansión (FASE 4 - Post-venta).
  * Detecta clientes saludables sin actividad de expansión y crecimiento de compras.
  *
- * Tablas: pipelines, stages, opportunities, mv_customer_health, health_score_snapshots, sales
+ * Tablas: pipelines, stages, opportunities, health_score_snapshots, sales
+ * (la vista materializada de salud ya no existe para la aplicación: F11 r2)
  */
 
 export type ExpansionType = 'cross-sell' | 'upsell' | 'nueva-sucursal' | 'nuevo-modulo';

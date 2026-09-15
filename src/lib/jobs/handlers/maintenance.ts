@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { enqueueJob } from '../enqueue';
 import { JobRetryableError, type CrmEvent, type JobHandler, type JobLogger } from '../types';
+import { reconcileConsentsWithoutRecording, type ReconcileResult } from '@/lib/services/crm/consentReconcileService';
 
 /**
  * Mantenimiento diario (FASE-00 §4.4; cron `crm-daily-maintenance` 08:30 UTC).
@@ -14,6 +15,12 @@ import { JobRetryableError, type CrmEvent, type JobHandler, type JobLogger } fro
  *     `crm_event` con dedupe `crm_event:{id}` (si ya hay un job vivo la RPC
  *     devuelve ese id y no duplica). Los que superan 3 intentos se cuentan
  *     como `events_abandoned` y no se vuelven a encolar.
+ *  6. Reconciliación de actas sin grabación (zona de voz, ronda 6):
+ *     `reconcileConsentsWithoutRecording` — llamadas terminadas hace > 10 min
+ *     con `recording_enabled`, `consent_given` y sin fila en `call_recordings`
+ *     → se recupera la grabación desde Twilio si existe o se retira el acta.
+ *     Aislado: si falla, se reporta en `consents_reconciled.error` y NO tumba
+ *     los pasos anteriores (que son idempotentes por sí mismos).
  *
  * Es GLOBAL (service role, sin filtro por organización): la retención es del
  * sistema, no de una org. Por eso no va por la cola con un `organization_id`
@@ -37,6 +44,7 @@ export interface MaintenanceResult extends Record<string, unknown> {
   events_resynced: number;
   events_abandoned: number;
   cutoff: string;
+  consents_reconciled?: ReconcileResult | { error: string };
 }
 
 export async function runMaintenance(supabase: SupabaseClient, log: JobLogger, signal: AbortSignal): Promise<MaintenanceResult> {
@@ -110,6 +118,15 @@ export async function runMaintenance(supabase: SupabaseClient, log: JobLogger, s
     }
   }
 
+  // 6. Actas sin grabación (zona de voz). Aislado del resto.
+  let consentsReconciled: MaintenanceResult['consents_reconciled'];
+  try {
+    consentsReconciled = await reconcileConsentsWithoutRecording(supabase, { signal, log });
+  } catch (err) {
+    consentsReconciled = { error: err instanceof Error ? err.message : String(err) };
+    log.warn('consent_reconcile_failed', { error: consentsReconciled.error });
+  }
+
   const result: MaintenanceResult = {
     jobs_deleted: jobsDeleted ?? 0,
     jobs_terminal_deleted: terminalDeleted ?? 0,
@@ -118,6 +135,7 @@ export async function runMaintenance(supabase: SupabaseClient, log: JobLogger, s
     events_resynced: resynced,
     events_abandoned: abandoned,
     cutoff,
+    consents_reconciled: consentsReconciled,
   };
   log.info('maintenance_done', result);
   return result;

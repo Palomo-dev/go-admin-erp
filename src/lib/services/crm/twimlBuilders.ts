@@ -13,7 +13,13 @@
 export const CONSENT_LANGUAGE = 'es-MX';
 export const CONSENT_VOICE = 'Polly.Mia-Neural';
 export const STATUS_EVENTS = 'initiated ringing answered completed';
-export const RECORDING_EVENTS = 'completed absent';
+/**
+ * `in-progress` (ronda 6, punto b): `<Start><Recording>` y `<Dial record=>` no
+ * tienen señal síncrona de fallo; `in-progress` es la única evidencia positiva
+ * de que la grabación ARRANCÓ (queda en `calls.metadata.recording_started_at`).
+ * `absent` avisa de la que no existe; `completed` registra la que sí.
+ */
+export const RECORDING_EVENTS = 'in-progress completed absent';
 export const MAX_CLIENTS_PER_DIAL = 10;
 
 export function escapeXml(text: string): string {

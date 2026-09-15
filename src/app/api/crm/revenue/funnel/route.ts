@@ -1,27 +1,17 @@
-import { NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { getPipelineFunnel } from '@/lib/services/crm/revenueOsService';
+import { jsonOk, revenueRouteError } from '@/lib/services/crm/revenueOs/routeSupport';
 
 /**
- * GET /api/crm/revenue/funnel — Funnel de pipeline actual.
- *
- * Ejecuta fn_pipeline_funnel RPC.
+ * GET /api/crm/revenue/funnel — embudo actual (`fn_pipeline_funnel`) enriquecido
+ * con `pipeline_id`, `is_won`, `is_lost` y `probability` de las etapas de la org.
  */
 export async function GET() {
   try {
     const ctx = await getServerOrgContext();
     const funnel = await getPipelineFunnel(ctx.organizationId, ctx.supabase);
-
-    return NextResponse.json({ success: true, data: funnel }, { status: 200 });
+    return jsonOk(funnel);
   } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Revenue Funnel] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return revenueRouteError(error, 'CRM Revenue Funnel');
   }
 }

@@ -45,9 +45,15 @@ export async function POST(request: NextRequest) {
     const ctx = await getServerOrgContext();
     const body = await request.json();
 
-    if (!body?.title) {
+    // Regla dura 5: la organización sale de la sesión; un body con otra → 403 y se registra.
+    if (body?.organization_id != null && Number(body.organization_id) !== ctx.organizationId) {
+      console.warn('[CRM Objections] POST con organization_id ajeno en el body', { session: ctx.organizationId, body: body.organization_id });
+      return NextResponse.json({ success: false, error: 'Organización no permitida' }, { status: 403 });
+    }
+
+    if (!body?.title || typeof body.title !== 'string' || !body?.category || typeof body.category !== 'string') {
       return NextResponse.json(
-        { success: false, error: 'Falta el campo obligatorio: title' },
+        { success: false, error: 'Faltan campos obligatorios: title, category' },
         { status: 400 }
       );
     }

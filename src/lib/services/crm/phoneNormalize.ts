@@ -91,13 +91,26 @@ export function normalizePhoneDigits(phone: string, defaultCountry: string | nul
 }
 
 /**
- * Últimos 4 dígitos: prefiltro barato para buscar un teléfono guardado con
- * cualquier separador. Cubre 12.448 de los 12.465 teléfonos normalizables
- * (99,86 %); los 17 restantes llevan la extensión al final. El filtro fino se
- * hace luego en memoria comparando `normalizePhoneDigits`.
+ * Últimos 4 dígitos del número normalizado. Se conserva para quien lo use como
+ * prefiltro textual, pero para buscar en `customers.phone` la función buena es
+ * `phoneSuffixPattern`: un `ilike '%6543'` sobre el texto crudo NO encuentra
+ * «+57 310 987 65 43» (el espacio parte los últimos 4 dígitos) ni
+ * «310 9876543<|» (basura al final). Medido el 2026-09-14: 18 de 12.870
+ * teléfonos normalizables se perdían así, 14 por el separador y 4 por la cola.
  */
 export function phoneSearchSuffix(digits: string): string {
   return digits.slice(-4);
+}
+
+/**
+ * Expresión regular (sintaxis de Postgres, para `~*` / PostgREST `imatch`) que
+ * acepta un teléfono guardado en texto libre cuyos ÚLTIMOS 4 dígitos son los
+ * del número normalizado, con cualquier cosa que no sea dígito entre ellos y
+ * después. Sigue siendo un PREFILTRO: la comparación fina la hace
+ * `normalizePhoneDigits` en memoria.
+ */
+export function phoneSuffixPattern(digits: string): string {
+  return `${phoneSearchSuffix(digits).split('').join('\\D*')}\\D*$`;
 }
 
 /** País (ISO-2 minúsculas) por prefijo E.164; solo los que tienen precio en provider_pricing. */

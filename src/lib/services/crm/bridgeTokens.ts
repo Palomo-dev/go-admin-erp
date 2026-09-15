@@ -19,6 +19,7 @@
  */
 
 import { createHmac, timingSafeEqual } from 'crypto';
+import { readRealSecret } from '@/lib/security/secrets';
 
 export class BridgeTokenNotConfiguredError extends Error {
   code = 'VOICE_CALLBACK_SECRET_MISSING' as const;
@@ -30,8 +31,9 @@ export class BridgeTokenNotConfiguredError extends Error {
 }
 
 function secret(): string | null {
-  const s = process.env.VOICE_CALLBACK_SECRET;
-  return s && s.length >= 16 ? s : null;
+  // F0-SEC r2: antes bastaba `length >= 16`, y `genera-uno-con-openssl-rand-hex-32`
+  // (el literal de .env.example) lo cumplía. Ahora relleno = no configurado.
+  return readRealSecret('VOICE_CALLBACK_SECRET');
 }
 
 /** ¿Se puede firmar hoy? (para responder 503 antes de tocar al proveedor). */

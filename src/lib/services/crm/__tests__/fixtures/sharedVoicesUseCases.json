@@ -1,0 +1,50 @@
+{
+  "_comment": "Capturado en vivo el 2026-09-14 con GET /v1/shared-voices (solo lectura, page_size=3, language=es). Evidencia de que la API filtra por `use_cases` y NO por `use_case`: con el nombre equivocado devuelve el total sin filtrar.",
+  "captured_at": "2026-09-14",
+  "queries": {
+    "without_filter": {
+      "query": "page_size=3&page=0&language=es",
+      "total_count": 7772,
+      "use_cases_of_first_page": ["informative_educational", "narrative_story", "narrative_story"]
+    },
+    "wrong_param_use_case": {
+      "query": "page_size=3&page=0&language=es&use_case=conversational",
+      "total_count": 7772,
+      "use_cases_of_first_page": ["informative_educational", "narrative_story", "narrative_story"]
+    },
+    "right_param_use_cases": {
+      "query": "page_size=3&page=0&language=es&use_cases=conversational",
+      "total_count": 1924,
+      "use_cases_of_first_page": ["conversational", "conversational", "conversational"]
+    },
+    "gender_female": {
+      "query": "page_size=3&page=0&language=es&gender=female",
+      "total_count": 2489,
+      "genders_of_first_page": ["female", "female", "female"]
+    }
+  },
+  "raw_voice_paid_plan": {
+    "public_owner_id": "3b2a7b3b652d2960a0596357b89cd4d29030bbe3e0bb76863cf955fdeada1a66",
+    "voice_id": "E6Ovvm45Mr8G306dTM7t",
+    "name": "Ourania - Edge Reflections",
+    "accent": "latin american",
+    "gender": "female",
+    "age": "middle_aged",
+    "descriptive": "pleasant",
+    "use_case": "informative_educational",
+    "category": "professional",
+    "language": "es",
+    "locale": "es-AR",
+    "description": "A teacher who is an ally—relaxed and good-humored.\n",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/database/workspace/34ff07997fd94ef39ccbcb9b0c16b617/voices/E6Ovvm45Mr8G306dTM7t/2dde7986-5bdd-4681-8104-2a147a16eb8a.mp3",
+    "cloned_by_count": 0,
+    "free_users_allowed": false,
+    "featured": false
+  },
+  "subscription": {
+    "tier": "free",
+    "can_use_instant_voice_cloning": false,
+    "character_count": 203,
+    "character_limit": 10000
+  }
+}

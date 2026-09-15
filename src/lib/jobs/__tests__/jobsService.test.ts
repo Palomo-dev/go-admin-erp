@@ -20,9 +20,11 @@ describe('roles', () => {
     expect(canRetryJobs(role(9, 'admin'))).toBe(false); // nombres legacy 'admin'/'owner' no existen en roles
   });
 
-  it('ver la cola: admin o Manager (rol 5)', () => {
+  it('ver la cola: admin o Manager por role_id 5, nunca por el nombre (F-6, regla 6)', () => {
     expect(canViewJobs(role(5, 'Manager'))).toBe(true);
-    expect(canViewJobs(role(9, 'Gerente'))).toBe(true);
+    expect(canViewJobs(role(5, 'x'))).toBe(true);
+    expect(canViewJobs(role(9, 'Gerente'))).toBe(false);
+    expect(canViewJobs(role(4, 'Manager'))).toBe(false);
     expect(canViewJobs(role(2, 'Admin de organización'))).toBe(true);
     expect(canViewJobs(role(4, 'Empleado'))).toBe(false);
     expect(canViewJobs(role(3, 'Cliente'))).toBe(false);

@@ -6,6 +6,7 @@ import {
   unenrollFromSequence,
   type EnrollmentStatus,
 } from '@/lib/services/crm/sequenceService';
+import { resolveEnrollmentNames } from '@/lib/services/crm/sequenceStats';
 
 /**
  * GET /api/crm/sequences/[id]/enrollments — Inscripciones de la secuencia.
@@ -28,7 +29,9 @@ export async function GET(
       offset: search.get('offset') ? parseInt(search.get('offset')!, 10) : undefined,
     });
 
-    return NextResponse.json({ success: true, data: result.data, count: result.count }, { status: 200 });
+    // Nombres de oportunidad y cliente para la lista (antes mostraba UUIDs).
+    const data = await resolveEnrollmentNames(ctx.organizationId, ctx.supabase, result.data);
+    return NextResponse.json({ success: true, data, count: result.count }, { status: 200 });
   } catch (error: unknown) {
     if (error instanceof OrgContextError) {
       return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });

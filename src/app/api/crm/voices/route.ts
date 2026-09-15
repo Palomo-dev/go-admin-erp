@@ -1,9 +1,12 @@
 /**
- * GET    /api/crm/voices — catálogo de voces de la organización.
- * POST   /api/crm/voices — registra una voz (o importa el catálogo de ElevenLabs
+ * GET    /api/crm/voices — catálogo de voces de la organización, enriquecido con
+ *                          `preview_url` y etiquetas del proveedor cuando las hay, más
+ *                          `account` (plan del proveedor: `free_tier`, `can_clone`) o `null`.
+ * POST   /api/crm/voices — registra una voz (o importa el workspace de ElevenLabs
  *                          con `{ action: 'import_elevenlabs' }`).
  * PATCH  /api/crm/voices — actualiza una voz (`{ id, ... }`).
- * DELETE /api/crm/voices?id=… — la elimina.
+ * DELETE /api/crm/voices?id=… — la elimina del catálogo y, si esta cuenta la copió
+ *                          o clonó y ninguna otra organización la usa, del proveedor.
  *
  * La organización SIEMPRE sale de la sesión. Escribir exige rol de administrador.
  */
@@ -11,18 +14,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
 import {
-  listVoices,
   createVoice,
   updateVoice,
-  deleteVoice,
   importElevenLabsVoices,
 } from '@/lib/services/crm/voiceCatalogService';
+import { getAccountCapabilities, listVoicesEnriched, removeVoice } from '@/lib/services/crm/voiceLibraryService';
+import { describeLibraryError, foreignOrganizationInBody } from '@/lib/services/crm/voiceLibrary';
+import { ElevenLabsError } from '@/lib/services/integrations/elevenlabs/voiceCloneClient';
+import { getServiceClient } from '@/lib/supabase/server-service';
 
 export const runtime = 'nodejs';
+
+/**
+ * Regla dura 5 (CLAUDE.md): la organización sale de la sesión. Si el body trae
+ * otra, 403 y se registra; la misma no es un ataque y se ignora (nunca se usa).
+ */
+function foreignOrg(method: string, body: unknown, sessionOrg: number): NextResponse | null {
+  const claimed = foreignOrganizationInBody((body as { organization_id?: unknown } | null)?.organization_id, sessionOrg);
+  if (claimed === null) return null;
+  console.warn(`[voices] ${method} con organization_id ajeno en el body`, { session: sessionOrg, body: claimed });
+  return NextResponse.json({ success: false, error: 'Organización no permitida' }, { status: 403 });
+}
 
 function fail(error: unknown) {
   if (error instanceof OrgContextError) {
     return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });
+  }
+  if (error instanceof ElevenLabsError) {
+    return NextResponse.json({ success: false, error: describeLibraryError(error) }, { status: 502 });
   }
   const message = error instanceof Error ? error.message : 'Error desconocido';
   const status = (error as { status?: number })?.status;
@@ -33,8 +52,12 @@ function fail(error: unknown) {
 export async function GET() {
   try {
     const ctx = await getServerOrgContext();
-    const data = await listVoices(ctx.supabase, ctx.organizationId);
-    return NextResponse.json({ success: true, data }, { status: 200 });
+    const [data, account] = await Promise.all([
+      listVoicesEnriched(ctx.supabase, ctx.organizationId),
+      // Plan del proveedor (solo lectura) para avisar antes del clic; `null` si no se sabe.
+      getAccountCapabilities(ctx.organizationId),
+    ]);
+    return NextResponse.json({ success: true, data, account }, { status: 200 });
   } catch (error) {
     return fail(error);
   }
@@ -45,6 +68,8 @@ export async function POST(request: NextRequest) {
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
     const body = await request.json();
+    const forbidden = foreignOrg('POST', body, ctx.organizationId);
+    if (forbidden) return forbidden;
 
     if (body?.action === 'import_elevenlabs') {
       const result = await importElevenLabsVoices(ctx.supabase, ctx.organizationId);
@@ -60,7 +85,7 @@ export async function POST(request: NextRequest) {
     const data = await createVoice(ctx.supabase, ctx.organizationId, body, ctx.userId);
     return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && /consentimiento|Falta|necesita/i.test(error.message)) {
+    if (error instanceof Error && /consentimiento|Falta|necesita|caracteres/i.test(error.message)) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
     return fail(error);
@@ -72,6 +97,8 @@ export async function PATCH(request: NextRequest) {
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
     const body = await request.json();
+    const forbidden = foreignOrg('PATCH', body, ctx.organizationId);
+    if (forbidden) return forbidden;
     if (!body?.id) return NextResponse.json({ success: false, error: 'Falta id' }, { status: 400 });
     const { id, ...rest } = body;
     const data = await updateVoice(ctx.supabase, ctx.organizationId, id, rest);
@@ -87,8 +114,22 @@ export async function DELETE(request: NextRequest) {
     requireOrgAdmin(ctx);
     const id = request.nextUrl.searchParams.get('id');
     if (!id) return NextResponse.json({ success: false, error: 'Falta id' }, { status: 400 });
-    await deleteVoice(ctx.supabase, ctx.organizationId, id);
-    return NextResponse.json({ success: true }, { status: 200 });
+    const orgId = ctx.organizationId;
+    // Con clave de plataforma compartida, otra organización puede tener la misma voz
+    // del proveedor: solo se borra allí si nadie más la referencia (service role,
+    // porque el RLS del usuario no ve las filas de otras organizaciones).
+    const countOtherReferences = async (providerVoiceId: string) => {
+      const { count, error } = await getServiceClient()
+        .from('voices')
+        .select('id', { count: 'exact', head: true })
+        .eq('provider', 'elevenlabs')
+        .eq('provider_voice_id', providerVoiceId)
+        .neq('organization_id', orgId);
+      if (error) throw new Error(error.message);
+      return count ?? 0;
+    };
+    const data = await removeVoice(ctx.supabase, orgId, id, countOtherReferences);
+    return NextResponse.json({ success: true, data }, { status: 200 });
   } catch (error) {
     return fail(error);
   }

@@ -863,13 +863,18 @@ describe('E. Multi-tenant, firma y consentimiento', () => {
     expect(args.recordingChannels).toBeUndefined();
     const twiml = SRC('src/app/api/voice/twiml/ai-agent/route.ts');
     expect(twiml).toContain('config.consentMessage');
-    expect(twiml).toContain("from('call_consents')");
+    // Ronda 5: el acta la escribe el único escritor, no un insert a mano.
+    expect(twiml).toContain('recordConsent(');
+    expect(twiml).not.toMatch(/from\('call_consents'\)/);
     expect(twiml).toMatch(/<Say voice="\$\{CONSENT_VOICE\}"/);
     // El aviso no depende de una preferencia del agente: solo de si hay grabación.
     expect(twiml).toContain('config.recordingEnabled');
-    // Y la grabación dual se pide sobre la llamada YA en curso.
-    expect(twiml).toContain('recordings.create');
-    expect(twiml).toContain("recordingChannels: 'dual'");
+    // Y la grabación dual arranca por la vía documentada para ConversationRelay
+    // (`<Start><Recording>` antes del `<Connect>`), no por REST con el fallo tragado.
+    expect(twiml).toContain('<Start>');
+    expect(twiml).toContain('<Recording channels="dual"');
+    const code = twiml.split(/\r?\n/).filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    expect(code).not.toMatch(/recordings\s*\.\s*create/);
   });
 
   test('E6 [CORREGIDO r1] la baja voluntaria existe y se respeta en el camino de marcación', () => {
@@ -1078,7 +1083,7 @@ describe('G. Token de sesión del ws-server', () => {
   });
 
   test('G1 PASA: con secreto, el token va firmado, expira y valida la org', () => {
-    process.env.WS_SESSION_SECRET = 'secreto-de-prueba';
+    process.env.WS_SESSION_SECRET = 'secreto-de-prueba-0123456789abcdef0123456789abcdef';
     const t = issueWsSessionToken({ orgId: 7, agentId: 'a', callId: 'c', callSid: 'CA1' });
     expect(verifyWsSessionToken(t)?.orgId).toBe(7);
     const [p, s] = t.split('.');
@@ -1089,7 +1094,7 @@ describe('G. Token de sesión del ws-server', () => {
   });
 
   test('G2 PASA: token caducado se rechaza', () => {
-    process.env.WS_SESSION_SECRET = 'secreto-de-prueba';
+    process.env.WS_SESSION_SECRET = 'secreto-de-prueba-0123456789abcdef0123456789abcdef';
     const t = issueWsSessionToken({ orgId: 7 }, -1);
     expect(verifyWsSessionToken(t)).toBeNull();
   });
@@ -1099,7 +1104,9 @@ describe('G. Token de sesión del ws-server', () => {
     expect(() => issueWsSessionToken({ orgId: 7 })).toThrow('WS_SESSION_SECRET no configurado');
     const src = SRC('src/app/api/voice/twiml/ai-agent/route.ts');
     // La comprobación va ANTES de tocar la base y devuelve un mensaje específico.
-    const check = src.indexOf("if (!process.env.WS_SESSION_SECRET)");
+    // F0-SEC r2: la comprobación pasa por `readWsSessionSecret()` (relleno y
+    // longitud < 32 cuentan como no configurado), no por `!process.env.X`.
+    const check = src.indexOf("if (!readWsSessionSecret())");
     expect(check).toBeGreaterThan(0);
     expect(check).toBeLessThan(src.indexOf('getServiceClient()'));
     expect(src).toContain('El asistente virtual no está configurado en este momento');
@@ -1128,7 +1135,8 @@ describe('H. Cola y cron', () => {
     expect(src).toContain("import { verifyCronSecret, WebhookError } from '@/lib/security/webhookSignatures';");
     expect(src).toMatch(/verifyCronSecret\(request\)[\s\S]{0,400}status: err\.statusCode/);
     const helper = SRC('src/lib/security/webhookSignatures.ts');
-    expect(helper).toMatch(/if \(!expected\) throw new WebhookError\(401, 'cron_secret_not_configured'\)/);
+    // F0-SEC r2: el 401 lo lanza `requireRealSecret` (ausente, relleno o corto → mismo código).
+    expect(helper).toMatch(/requireRealSecret\('CRON_SECRET', \{ code: 'cron_secret_not_configured' \}\)/);
     // Y el cron NO acepta ninguna organización de entrada.
     expect(src).not.toMatch(/body\??\.organization_id/);
   });
@@ -1281,10 +1289,15 @@ describe('I. Defectos verificados contra la base real', () => {
     expect(runtime).toContain('isCloned');
     expect(DB.voiceAgentColumnsAddedR1).toContain('voice_ref_id');
     // El consentimiento de clonación lo impone la base (CHECK voices_cloned_requires_consent)
-    // y también la UI.
+    // y también la UI. Rediseño UX 2026-09-14: el consentimiento vive en el paso 1
+    // del asistente (`voces/CloneStepConsent.tsx`), y la marca «NO VERIFICADO» ya no
+    // aplica: biblioteca, previsualización y clonación se ejecutaron contra la API
+    // real ese día (ver historial en `voiceCloneClient.ts`).
+    const consentStep = SRC('src/components/crm/agentes/voces/CloneStepConsent.tsx');
+    expect(consentStep).toContain('consentimiento');
+    expect(consentStep).toContain('HABEAS_DATA_TEXT');
     const panel = SRC('src/components/crm/agentes/VoicesPanel.tsx');
-    expect(panel).toContain('consentimiento');
-    expect(panel).toContain('NO VERIFICADO');
+    expect(panel).toContain('voices_cloned_requires_consent');
   });
 
   test('I8 [CORREGIDO r1] el agente se identifica como asistente virtual y el saludo es de llamada SALIENTE', () => {
@@ -1579,12 +1592,16 @@ describe('J. Despacho puntual, disparo por etapa y consentimiento (ronda 2)', ()
     expect(route).toContain('cloneVoiceFromSample');
     expect(route).toContain('NO VERIFICADO');
 
-    // Pantalla: subida de muestras y casilla de consentimiento.
-    const panel = SRC('src/components/crm/agentes/VoicesPanel.tsx');
-    expect(panel).toContain('/api/crm/voices/clone');
-    expect(panel).toContain('type="file"');
-    expect(panel).toContain('Clonar voz');
-    expect(panel).toContain('cloneConsent');
+    // Pantalla (rediseño UX 2026-09-14): el asistente en pasos llama a la ruta,
+    // el paso de grabación conserva la subida de archivo y el paso 1 exige la casilla.
+    const wizard = SRC('src/components/crm/agentes/voces/CloneVoiceWizard.tsx');
+    expect(wizard).toContain('/api/crm/voices/clone');
+    expect(wizard).toContain('validateCloneStep');
+    expect(wizard).toContain('Crear mi voz');
+    const record = SRC('src/components/crm/agentes/voces/CloneStepRecord.tsx');
+    expect(record).toContain('type="file"');
+    const consentStep = SRC('src/components/crm/agentes/voces/CloneStepConsent.tsx');
+    expect(consentStep).toContain('onConsentChange');
   });
 
   test('J9 [CORREGIDO r2] el dia del tope es el de la organizacion, no UTC', () => {

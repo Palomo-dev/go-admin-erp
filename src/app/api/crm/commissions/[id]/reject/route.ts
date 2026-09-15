@@ -1,46 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
-import { rejectCommission } from '@/lib/services/crm/commissionService';
+import { NextRequest } from 'next/server';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
+import { rejectCommission } from '@/lib/services/crm/commissionAdminService';
+import { jsonFail, jsonOk, readJson, rejectForeignOrganization, requireTeamManager, routeError } from '@/lib/services/crm/f13RouteSupport';
 
 /**
- * POST /api/crm/commissions/[id]/reject — Rechaza una comisión.
- * Body: { reason: string }
+ * POST /api/crm/commissions/[id]/reject — accrued → cancelled (metadata.reason = 'rejected').
+ * Body: { reason: string } (obligatorio). Solo admin/manager. 409 si no está en `accrued`.
+ * Una pagada no se rechaza: para eso está el clawback.
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await getServerOrgContext();
+    requireTeamManager(ctx);
     const { id } = await params;
-    const body = await request.json();
-
-    if (!body?.reason) {
-      return NextResponse.json(
-        { success: false, error: 'Falta el campo obligatorio: reason' },
-        { status: 400 }
-      );
-    }
-
-    const commission = await rejectCommission(id, ctx.organizationId, body.reason, ctx.supabase);
-
-    if (!commission) {
-      return NextResponse.json(
-        { success: false, error: 'Comisión no encontrada o no se puede rechazar' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ success: true, data: commission }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Commissions Reject] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const body = await readJson(request);
+    rejectForeignOrganization('CRM Commissions Reject', body.organization_id, ctx);
+    const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
+    if (!reason) return jsonFail(400, 'Falta el motivo del rechazo (reason)', { field: 'reason' });
+    const commission = await rejectCommission(id, ctx.organizationId, reason, ctx.supabase, ctx.userId);
+    if (!commission) return jsonFail(404, 'Comisión no encontrada en esta organización');
+    return jsonOk(commission);
+  } catch (error) {
+    return routeError(error, 'CRM Commissions Reject');
   }
 }

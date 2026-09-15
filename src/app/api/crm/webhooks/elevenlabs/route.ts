@@ -4,6 +4,7 @@ import { getServiceClient } from '@/lib/supabase/server-service';
 import { completeTranscriptFromWebhook, type ScribeWebhookPayload } from '@/lib/services/crm/transcriptionService';
 import { enqueueAnalyze } from '@/lib/services/crm/callIntelligenceService';
 import { getCallAiPolicy } from '@/lib/services/crm/callAiPolicy';
+import { readRealSecret } from '@/lib/security/secrets';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,9 +21,10 @@ export const dynamic = 'force-dynamic';
  * (evita enumeración y reintentos).
  */
 export async function POST(req: NextRequest) {
-  const secret = process.env.ELEVENLABS_WEBHOOK_SECRET;
+  // F0-SEC r2: ausente, de relleno (`your-elevenlabs-webhook-secret`) o corto → 401.
+  const secret = readRealSecret('ELEVENLABS_WEBHOOK_SECRET');
   if (!secret) {
-    console.error('[webhooks/elevenlabs] ELEVENLABS_WEBHOOK_SECRET no configurado (fail-closed)');
+    console.error('[webhooks/elevenlabs] ELEVENLABS_WEBHOOK_SECRET no configurado o de relleno (fail-closed)');
     return NextResponse.json({ error: 'webhook not configured' }, { status: 401 });
   }
   const raw = await req.text();

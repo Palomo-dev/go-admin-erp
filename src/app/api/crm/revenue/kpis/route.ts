@@ -1,33 +1,19 @@
-import { NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
-import { getKpiCards } from '@/lib/services/crm/revenueOsService';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
+import { getKpiCards, getOrgTimezoneServer } from '@/lib/services/crm/revenueOsService';
+import { jsonOk, revenueRouteError } from '@/lib/services/crm/revenueOs/routeSupport';
 
 /**
- * GET /api/crm/revenue/kpis — KPI cards del dashboard.
- *
- * Retorna:
- * - pipeline_value: SUM opportunities.amount WHERE status='open'
- * - revenue_this_month: payments WHERE status='completed' AND payment_date en mes actual
- * - win_rate: won / (won + lost)
- * - open_deals: count opportunities WHERE status='open'
- * - calls_this_week: count calls en la semana actual
- * - emails_this_week: count email_messages en la semana actual
+ * GET /api/crm/revenue/kpis — tarjetas rápidas: pipeline abierto, cobrado en el
+ * mes en curso, win rate histórico, abiertas, llamadas y emails de la semana.
+ * Mes y semana se cortan en la zona horaria de la organización.
  */
 export async function GET() {
   try {
     const ctx = await getServerOrgContext();
-    const kpis = await getKpiCards(ctx.organizationId, ctx.supabase);
-
-    return NextResponse.json({ success: true, data: kpis }, { status: 200 });
+    const timezone = await getOrgTimezoneServer(ctx.organizationId, ctx.supabase);
+    const kpis = await getKpiCards(ctx.organizationId, timezone, ctx.supabase);
+    return jsonOk(kpis);
   } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Revenue KPIs] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return revenueRouteError(error, 'CRM Revenue KPIs');
   }
 }

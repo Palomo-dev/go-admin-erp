@@ -700,3 +700,33 @@ Constructor: agente F5. Punto de partida: `scratchpad/reports/TEST-F5-r1.md` (**
 - **Mordida comprobada:** 9 mutaciones sobre el código de producción (statusCallback al `<Dial>`, quitar `action`, quitar `url=consent-whisper`, devolver `phone_number` al INSERT, teléfono del vendedor desde el input, quitar `accountSidMatchesOrg`, mandar `agent_phone` desde la UI, reserva de créditos después del proveedor) → **9 de 9 en rojo**, todas revertidas con md5 idéntico.
 - `NODE_OPTIONS=--max-old-space-size=8192 npx tsc --noEmit` → **0 errores en archivos de F5**.
 - Prohibido marcar números reales: todo con dobles en memoria (`jest.mock` de Twilio) y con el doble de Postgres que valida columnas, NOT NULL y CHECK reales.
+
+## 14. Registro de implementación — rondas 2 a 4 (2026-09-10 → 2026-09-14)
+
+Resumen; el detalle vive en `docs/crm-revenue-os/PROGRESS.md` («Zona de voz»). Desde la ronda 2, F5 y F3 las construye UN solo constructor de zona de voz: comparten `consent-whisper`, `recordConsent`, `bridgeTwimlBuilders` y `/api/voice/recording`.
+
+### Ronda 2 (2026-09-10) — tras el tester r1 de F5
+- Hallazgo que cambió el mapa de seguridad de toda la zona de voz: con **0 de 83 organizaciones con subcuenta**, `accountSidMatchesOrg` caía al SID maestro y aceptaba cualquier organización; demostrado en vivo (una subcuenta cambió el estado del bridge de otra organización). Cerrado con la comprobación fail-closed en `bridge/initiate`, `bridge/status`, `agent-leg` y `customer-leg`; `bridge/initiate` valida referencias con `filterOrgOwnedRefs`.
+- Comprobación débil de subcuenta usada como decisión de autorización: 1 → 0. Grabación pedida en el alta (`record: true` en `calls.create`): 2 → 0.
+
+### Ronda 3 (2026-09-14) — «nunca grabar sin acta» (con F3 r5) — tester 7,5
+- `initiateBridge` ya **no escribe acta al marcar** (V-4): las 4 actas de llamadas nunca contestadas de la org 125 eran evidencia de que el defecto era real. El acta la escribe `consent-whisper` por `recordConsent` cuando el cliente contesta y oye el aviso, y falla cerrado con `<Hangup/>`.
+- `buildCustomerLegTwiml` solo emite `record=` si viaja `consentUrl`; `customer-leg` no promete «se grabará» a un bridge sin `call_id`.
+- Incidente registrado: la mutación `if (false && …)` que llegó a HEAD en `bridgeTwimlBuilders.ts` (el puente grababa sin aviso); la red mordió, la restauración falló; corregido con comentario en el sitio.
+
+### Ronda 4 (2026-09-14) — N-1: el puente tiene UNA sola fuente de verdad
+- **Defecto reproducido por el tester**: `initiateBridge` fijaba `calls.recording_enabled` al marcar; `customer-leg`/`agent-leg` decidían `record=` **releyendo `comm_settings` al conectar**; el whisper decidía el acta por la fila. Si la organización encendía la grabación entre marcar y conectar (10–60 s): `<Dial record=>` con un whisper que respondía `<Response/>` vacío → grabación sin acta y sin aviso.
+- **Arreglo**: `consentService.recordingEnabledForCall(callId, orgId)` es la única fuente para `record=` en las dos patas: lee `calls.recording_enabled` (la misma fila que lee el whisper) y falla cerrado (sin `callId`, fila ajena, `NULL` o error de lectura → no se graba). `settings.voice_recording_enabled` ya no se consulta en las rutas del puente (prueba estática N-1.5 además de las de comportamiento).
+- Pruebas `f3f5Round6Consent` N-1.1…N-1.6: encendido entre marcar y conectar → sin `record=`, sin whisper, sin «se grabará», y el whisper no anuncia ni deja acta; apagado entre marcar y conectar → la fila manda, hay `record=` con whisper y acta; `agent-leg` sin confirmación por dígito, mismo resultado; fila ilegible/ajena/`NULL` → sin grabar. Contrato F5-41 reescrito (la fila manda) y F5-42 (`in-progress completed absent`).
+- Mutaciones muertas en esta zona: M01 (customer-leg vuelve a `comm_settings`), M02 (agent-leg), M03 (`recordingEnabledForCall` falla abierto ante error), M25 (`!== false` con fila ausente/NULL).
+- Compartido con F3 r6: reconciliación diaria de actas sin grabación (`consentReconcileService`, vía `runMaintenance`), `in-progress` suscrito, `completed` sin acta registrado como `unverified_announcement`.
+
+
+### Ronda 5 (2026-09-15) — tester r5: **F5 9,5/10, APROBADA**
+- Una sola fuente de verdad en el puente confirmada por el tester: `bridgeTwimlBuilders.ts:144` conserva la guarda (el `record=` de la pata del cliente solo viaja con `consentUrl`); whisper/`customer-leg`/`agent-leg` resisten reintentos del mismo `CallSid` (R.1–R.4 de `f3f5Round7Tester`: una acta, mismo `announced_at`; acta fallida → `<Hangup/>`; agentes desconectados entre el aviso y la 2ª pasada → `<Hangup/>` sin `record=` ni acta).
+- `/api/voice/call` cerrado con 410 antes de tocar proveedor o BD (`VOICE_LEGACY_REST_OUTBOUND`); cero llamadores vivos en ambos repositorios ni en `supabase/functions`.
+- Compartido con F3 r7: reconciliación con evidencia positiva (F-1a/F-1b), `consent_method` en lista/timeline y distintivo «Aviso no acreditado», declaración obligatoria en las rutas manuales.
+
+### Ronda 8 (2026-09-15) — compartida con el cierre de F3 (sin cambios en las rutas del puente)
+- `consentReconcileService` (lo usan las llamadas del puente igual que las del navegador y el agente): una llamada diferida sigue siendo candidata fuera de la ventana de 7 días (`calls.metadata.consent_reconcile_deferred_at`/`consent_reconcile_deferrals`); aviso a partir de 20 diferimientos o 30 días sin retirar el acta a ciegas; `recovered` limpia la marca.
+- `agentRuntime` sin fila `calls` enlazada → no promete grabación (fallo cerrado, como las patas del puente desde N-1). `recordConsent` sigue siendo el único escritor de `call_consents` (G.1 verde). Detalle en FASE-03 §15 (ronda 8).

@@ -1,234 +1,239 @@
 'use client';
 
 /**
- * /app/crm/automatizaciones — reglas del motor único (FASE-08 §5.1).
+ * /app/crm/automatizaciones — rediseño UX (brief 6.2, 2026-09-14).
  *
- * Lista, activa/desactiva, edita, simula en seco y muestra el historial real de
- * `automation_runs` (incluidos los `failed` y `skipped`, que antes se
- * enterraban en un run "completed").
+ * Tarjetas con la regla en lenguaje humano, búsqueda y filtros arriba,
+ * editor como frase construible, prueba en seco explicada e historial en
+ * una hoja lateral. Mismos servicios y rutas que la versión anterior
+ * (`/api/crm/automation-rules/**`, `/api/crm/automation-runs`): cambia la
+ * presentación, no el motor.
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { Plus, Play, Pencil, Trash2, RefreshCw, History } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Plus, History, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { toast } from '@/components/ui/use-toast';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
+import { AnimatePresence } from 'motion/react';
+import { StaggerList } from '@/components/shared/motion/staggerList';
 import { cn } from '@/utils/Utils';
-import { RuleFormDialog } from './RuleFormDialog';
-import { fetchRuns, useAutomationRules, type AutomationRuleView, type AutomationRunView } from './useAutomationRules';
+import { EMPTY_FILTERS, EXAMPLE_FORM, filterRules, type RuleFilters, type RuleFormState } from '@/lib/services/crm/automation/ruleEditorModel';
+import { RuleCard } from './RuleCard';
+import { RulesToolbar } from './RulesToolbar';
+import { RulesEmptyState } from './RulesEmptyState';
+import { RuleEditorSheet } from './RuleEditorSheet';
+import { DryRunDialog } from './DryRunDialog';
+import { RunsSheet } from './RunsSheet';
+import { useAutomationRules, type AutomationRuleView } from './useAutomationRules';
+import { useRuleLookups } from './useRuleLookups';
 
-const STATUS_STYLES: Record<string, string> = {
-  completed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
-  failed: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
-  skipped: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-  running: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
-  pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
-};
-
-function formatDate(value: string | null): string {
-  if (!value) return '—';
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
-}
+type Target = { rule: AutomationRuleView } | null;
 
 export function AutomatizacionesPage() {
-  const { rules, loading, error, reload, save, toggle, remove, dryRun } = useAutomationRules();
-  const [formOpen, setFormOpen] = useState(false);
+  const { rules, loading, loaded, error, reload, save, toggle, remove, dryRun } = useAutomationRules();
+  const lookups = useRuleLookups();
+  const { formatDateTime } = useFormatDate();
+
+  const [filters, setFilters] = useState<RuleFilters>(EMPTY_FILTERS);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<AutomationRuleView | null>(null);
-  const [runs, setRuns] = useState<AutomationRunView[]>([]);
-  const [runsFor, setRunsFor] = useState<string | null>(null);
-  const [runsLoading, setRunsLoading] = useState(false);
-
-  const loadRuns = useCallback(async (ruleId?: string) => {
-    setRunsLoading(true);
-    try {
-      setRuns(await fetchRuns(ruleId));
-      setRunsFor(ruleId ?? null);
-    } catch (err) {
-      toast({
-        title: 'No se pudo cargar el historial',
-        description: err instanceof Error ? err.message : 'Error desconocido',
-        variant: 'destructive',
-      });
-    } finally {
-      setRunsLoading(false);
+  const [initialForm, setInitialForm] = useState<RuleFormState | null>(null);
+  const [dryRunTarget, setDryRunTarget] = useState<Target>(null);
+  const [runsTarget, setRunsTarget] = useState<{ ruleId: string | null; ruleName: string | null } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Target>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [refocusSwitchId, setRefocusSwitchId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  // «Nueva regla» es el fallback de foco de la hoja y del diálogo de borrar:
+  // el botón que abrió puede haberse desmontado (estado vacío tras crear la
+  // primera regla, R-1; tarjeta borrada, H5).
+  const newButtonRef = useRef<HTMLButtonElement>(null);
+  const deletedRef = useRef(false);
+  const returnDeleteFocus = useReturnFocus(deleteTarget !== null, () => newButtonRef.current);
+  // H5: tras borrar, el botón «Eliminar» de la tarjeta sigue en el DOM mientras
+  // la tarjeta sale animada, así que no basta con `isConnected`: si se borró,
+  // el foco va a «Nueva regla»; si se canceló, vuelve al botón que abrió.
+  const onDeleteCloseAutoFocus = (event: Event) => {
+    if (deletedRef.current) {
+      deletedRef.current = false;
+      event.preventDefault();
+      newButtonRef.current?.focus();
+      return;
     }
-  }, []);
+    returnDeleteFocus(event);
+  };
 
-  useEffect(() => { void loadRuns(); }, [loadRuns]);
+  const shown = useMemo(() => filterRules(rules, filters), [rules, filters]);
+
+  const openEditor = (rule: AutomationRuleView | null, form: RuleFormState | null = null) => {
+    setEditing(rule);
+    setInitialForm(form);
+    setEditorOpen(true);
+  };
 
   const onToggle = async (rule: AutomationRuleView) => {
+    setTogglingId(rule.id);
     try {
       await toggle(rule);
-      toast({ title: rule.is_active ? 'Regla desactivada' : 'Regla activada' });
+      toast({ title: rule.is_active ? `«${rule.name}» desactivada` : `«${rule.name}» activada` });
     } catch (err) {
-      toast({
-        title: 'No se pudo cambiar el estado',
-        description: err instanceof Error ? err.message : 'Error desconocido',
-        variant: 'destructive',
-      });
+      toast({ title: 'No se pudo cambiar el estado', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
+    } finally {
+      setTogglingId(null);
+      setRefocusSwitchId(rule.id);
     }
   };
 
-  const onDelete = async (rule: AutomationRuleView) => {
-    if (!window.confirm(`¿Eliminar la regla "${rule.name}"?`)) return;
+  // El interruptor se deshabilita mientras guarda y el navegador suelta el foco
+  // al body; tras el render que lo vuelve a habilitar, se le devuelve si nadie
+  // lo movió a otro sitio.
+  useEffect(() => {
+    if (!refocusSwitchId) return;
+    if (document.activeElement === document.body) document.getElementById(`rule-active-${refocusSwitchId}`)?.focus();
+    setRefocusSwitchId(null);
+  }, [refocusSwitchId]);
+
+  const onDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await remove(rule.id);
-      toast({ title: 'Regla eliminada' });
+      await remove(deleteTarget.rule.id);
+      deletedRef.current = true;
+      toast({ title: `«${deleteTarget.rule.name}» eliminada` });
     } catch (err) {
-      toast({
-        title: 'No se pudo eliminar',
-        description: err instanceof Error ? err.message : 'Error desconocido',
-        variant: 'destructive',
-      });
+      toast({ title: 'No se pudo eliminar', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
     }
   };
 
-  const onDryRun = async (rule: AutomationRuleView) => {
+  const refresh = async () => {
+    setRefreshing(true);
     try {
-      const result = await dryRun(rule.id, null);
-      toast({
-        title: result.matched ? 'La regla se dispararía' : 'La regla no se dispararía',
-        description: result.matched
-          ? `${result.actions_plan.length} acción(es) en el plan`
-          : `Motivo: ${result.skip_reason ?? 'condiciones no cumplidas'}`,
-      });
-    } catch (err) {
-      toast({
-        title: 'No se pudo simular',
-        description: err instanceof Error ? err.message : 'Error desconocido',
-        variant: 'destructive',
-      });
+      await Promise.all([reload(), lookups.reload()]);
+    } finally {
+      setRefreshing(false);
     }
   };
 
   return (
-    <div className="space-y-4 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Automatizaciones</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Reglas que actúan solas cuando ocurre algo en el pipeline. Las ejecuta la cola del servidor, no el navegador.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => { void reload(); void loadRuns(runsFor ?? undefined); }}>
-            <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden="true" /> Actualizar
-          </Button>
-          <Button onClick={() => { setEditing(null); setFormOpen(true); }}>
-            <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> Nueva regla
-          </Button>
-        </div>
-      </div>
+    <TooltipProvider delayDuration={300}>
+      <div className="space-y-5 p-4 sm:p-6">
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Automatizaciones</h1>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              Reglas que actúan solas cuando pasa algo en el pipeline. Las ejecuta el servidor, no el navegador.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="ghost" size="icon" aria-label="Actualizar lista" disabled={refreshing} onClick={() => void refresh()}>
+              <RefreshCw className={cn('h-4 w-4', refreshing && 'motion-safe:animate-spin')} aria-hidden="true" />
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setRunsTarget({ ruleId: null, ruleName: null })}>
+              <History className="mr-1.5 h-4 w-4" aria-hidden="true" /> Historial
+            </Button>
+            <Button ref={newButtonRef} type="button" className="bg-blue-600 text-white hover:bg-blue-700" onClick={() => openEditor(null)}>
+              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> Nueva regla
+            </Button>
+          </div>
+        </header>
 
-      {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="space-y-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
-      ) : rules.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
-          <p className="font-medium text-gray-900 dark:text-gray-100">Todavía no hay reglas</p>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Crea la primera: por ejemplo, al entrar a “Propuesta”, enviar un email y crear una tarea a 3 días.
-          </p>
-          <Button className="mt-4" onClick={() => { setEditing(null); setFormOpen(true); }}>Crear regla</Button>
-        </div>
-      ) : (
-        <ul className="space-y-2">
-          {rules.map((rule) => (
-            <li key={rule.id} className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900 dark:text-gray-100">{rule.name}</span>
-                    <Badge variant={rule.is_active ? 'default' : 'secondary'}>
-                      {rule.is_active ? 'Activa' : 'Inactiva'}
-                    </Badge>
-                  </div>
-                  <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    {rule.trigger_type} · {rule.actions?.length ?? 0} acción(es) · {rule.runs_count ?? 0} ejecuciones ·
-                    {' '}última: {formatDate(rule.last_run_at)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Switch
-                    aria-label={`Activar la regla ${rule.name}`}
-                    checked={rule.is_active}
-                    onCheckedChange={() => void onToggle(rule)}
-                  />
-                  <Button size="icon" variant="ghost" aria-label={`Simular ${rule.name}`} onClick={() => void onDryRun(rule)}>
-                    <Play className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                  <Button size="icon" variant="ghost" aria-label={`Historial de ${rule.name}`} onClick={() => void loadRuns(rule.id)}>
-                    <History className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                  <Button size="icon" variant="ghost" aria-label={`Editar ${rule.name}`} onClick={() => { setEditing(rule); setFormOpen(true); }}>
-                    <Pencil className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                  <Button size="icon" variant="ghost" aria-label={`Eliminar ${rule.name}`} onClick={() => void onDelete(rule)}>
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <section aria-labelledby="runs-title" className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 id="runs-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Historial {runsFor ? '(regla seleccionada)' : '(todas las reglas)'}
-          </h2>
-          {runsFor && (
-            <Button size="sm" variant="ghost" onClick={() => void loadRuns()}>Ver todas</Button>
-          )}
-        </div>
-        {runsLoading ? (
-          <Skeleton className="h-24 w-full" />
-        ) : runs.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Sin ejecuciones registradas.</p>
-        ) : (
-          <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
-            {runs.map((run) => (
-              <li key={run.id} className="p-3 text-sm">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={cn('rounded px-2 py-0.5 text-xs font-medium', STATUS_STYLES[run.status] ?? STATUS_STYLES.pending)}>
-                    {run.status}
-                  </span>
-                  <span className="text-gray-500 dark:text-gray-400">{formatDate(run.created_at)}</span>
-                  {run.skip_reason && <span className="text-gray-500 dark:text-gray-400">motivo: {run.skip_reason}</span>}
-                </div>
-                {run.error_message && (
-                  <p className="mt-1 break-words text-xs text-red-700 dark:text-red-300">{run.error_message}</p>
-                )}
-                {run.result?.results && run.result.results.length > 0 && (
-                  <ul className="mt-1 space-y-0.5 text-xs text-gray-600 dark:text-gray-300">
-                    {run.result.results.map((r) => (
-                      <li key={r.index}>
-                        #{r.index + 1} {r.type}: {r.status === 'failed' ? `error — ${r.error}` : 'ok'}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
-          </ul>
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>{loaded ? 'No se pudo actualizar la lista' : 'No se pudieron cargar las reglas'}</AlertTitle>
+            <AlertDescription>
+              {error}. {loaded ? 'Se muestra la última lista conocida; pulsa' : 'Pulsa'} «Actualizar» para reintentar.
+            </AlertDescription>
+          </Alert>
         )}
-      </section>
 
-      <RuleFormDialog
-        open={formOpen}
-        rule={editing}
-        onOpenChange={setFormOpen}
-        onSave={save}
-      />
-    </div>
+        {loading ? (
+          <div className="space-y-4" aria-busy="true" aria-label="Cargando reglas">
+            <Skeleton className="h-9 w-full max-w-md" />
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-44 w-full rounded-xl" />)}
+            </div>
+          </div>
+        ) : rules.length === 0 && (loaded || !error) ? (
+          <RulesEmptyState
+            filtered={false}
+            onCreate={() => openEditor(null)}
+            onUseExample={() => openEditor(null, EXAMPLE_FORM)}
+            onClearFilters={() => setFilters(EMPTY_FILTERS)}
+          />
+        ) : rules.length === 0 ? null : (
+          <>
+            <RulesToolbar filters={filters} onChange={setFilters} total={rules.length} shown={shown.length} />
+            {shown.length === 0 ? (
+              <RulesEmptyState
+                filtered
+                onCreate={() => openEditor(null)}
+                onUseExample={() => openEditor(null, EXAMPLE_FORM)}
+                onClearFilters={() => setFilters(EMPTY_FILTERS)}
+              />
+            ) : (
+              <StaggerList as="ul" aria-label="Reglas de automatización" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <AnimatePresence initial={false}>
+                  {shown.map((rule) => (
+                    <RuleCard
+                      key={rule.id}
+                      rule={rule}
+                      lookups={lookups.humanizer}
+                      lastRunAbsolute={formatDateTime(rule.last_run_at)}
+                      toggling={togglingId === rule.id}
+                      onToggle={(r) => void onToggle(r)}
+                      onDryRun={(r) => setDryRunTarget({ rule: r })}
+                      onHistory={(r) => setRunsTarget({ ruleId: r.id, ruleName: r.name })}
+                      onEdit={(r) => openEditor(r)}
+                      onDelete={(r) => setDeleteTarget({ rule: r })}
+                    />
+                  ))}
+                </AnimatePresence>
+              </StaggerList>
+            )}
+          </>
+        )}
+
+        <RuleEditorSheet
+          open={editorOpen}
+          rule={editing}
+          initialForm={initialForm}
+          lookups={lookups}
+          onOpenChange={setEditorOpen}
+          onSave={save}
+          returnFocusFallback={() => newButtonRef.current}
+        />
+
+        <DryRunDialog
+          open={dryRunTarget !== null}
+          rule={dryRunTarget?.rule ?? null}
+          lookups={lookups.humanizer}
+          onOpenChange={(open) => { if (!open) setDryRunTarget(null); }}
+          onRun={dryRun}
+        />
+
+        <RunsSheet
+          open={runsTarget !== null}
+          ruleId={runsTarget?.ruleId ?? null}
+          ruleName={runsTarget?.ruleName ?? null}
+          onOpenChange={(open) => { if (!open) setRunsTarget(null); }}
+        />
+
+        <ConfirmDialog
+          open={deleteTarget !== null}
+          onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+          title="Eliminar regla"
+          description={`Se eliminará «${deleteTarget?.rule.name ?? ''}» y dejará de ejecutarse. También se borra su historial de ejecuciones. Esta acción no se puede deshacer.`}
+          confirmLabel="Eliminar"
+          variant="destructive"
+          onConfirm={onDelete}
+          onCloseAutoFocus={onDeleteCloseAutoFocus}
+        />
+      </div>
+    </TooltipProvider>
   );
 }

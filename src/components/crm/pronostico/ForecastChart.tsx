@@ -1,15 +1,17 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency } from '@/utils/Utils';
+import { fmtMoney } from '@/components/crm/revenueos/formatters';
 import { ForecastData } from '@/components/crm/oportunidades/types';
 
 interface ForecastChartProps {
   data: ForecastData[];
   isLoading?: boolean;
+  /** Moneda base de la organización; null → cifras sin símbolo. */
+  currency: string | null;
 }
 
-export function ForecastChart({ data, isLoading }: ForecastChartProps) {
+export function ForecastChart({ data, isLoading, currency }: ForecastChartProps) {
   if (isLoading) {
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -121,16 +123,16 @@ export function ForecastChart({ data, isLoading }: ForecastChartProps) {
                 {/* Valores */}
                 <div className="absolute inset-0 flex items-center justify-end pr-3">
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300 bg-white/80 dark:bg-gray-800/80 px-1 rounded">
-                    {formatCurrency(item.wonAmount + item.weightedAmount)}
+                    {fmtMoney(item.wonAmount + item.weightedAmount, currency)}
                   </span>
                 </div>
               </div>
 
               {/* Detalle */}
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                <span>Ganado: {formatCurrency(item.wonAmount)}</span>
-                <span>Pond.: {formatCurrency(item.weightedAmount)}</span>
-                <span>Abierto: {formatCurrency(item.openAmount)}</span>
+                <span>Ganado: {fmtMoney(item.wonAmount, currency)}</span>
+                <span>Pond.: {fmtMoney(item.weightedAmount, currency)}</span>
+                <span>Abierto: {fmtMoney(item.openAmount, currency)}</span>
               </div>
             </div>
           ))}
@@ -140,19 +142,19 @@ export function ForecastChart({ data, isLoading }: ForecastChartProps) {
         <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-lg font-bold text-green-600 dark:text-green-400">
-              {formatCurrency(data.reduce((sum, d) => sum + d.wonAmount, 0))}
+              {fmtMoney(data.reduce((sum, d) => sum + d.wonAmount, 0), currency)}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">Total Ganado</p>
           </div>
           <div>
             <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
-              {formatCurrency(data.reduce((sum, d) => sum + d.weightedAmount, 0))}
+              {fmtMoney(data.reduce((sum, d) => sum + d.weightedAmount, 0), currency)}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">Total Ponderado</p>
           </div>
           <div>
             <p className="text-lg font-bold text-gray-600 dark:text-gray-400">
-              {formatCurrency(data.reduce((sum, d) => sum + d.openAmount, 0))}
+              {fmtMoney(data.reduce((sum, d) => sum + d.openAmount, 0), currency)}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">Total Abierto</p>
           </div>

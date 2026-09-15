@@ -1,51 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { NextRequest } from 'next/server';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { getTargetProgress } from '@/lib/services/crm/salesTargetService';
+import { QUOTA_PERIODS, type QuotaPeriod } from '@/lib/services/crm/quotaProgress';
+import { canManageCommissions } from '@/lib/services/crm/commissionTransitions';
+import { getOrgTimezone } from '@/lib/services/crm/sellerDashboardService';
+import { jsonFail, jsonOk, rejectForeignOrganization, routeError } from '@/lib/services/crm/f13RouteSupport';
 
 /**
- * GET /api/crm/sales-targets/progress — Progreso de cuota.
+ * GET /api/crm/sales-targets/progress — progreso de cuota (persiste `achieved_amount`).
  * Query: ?user_id=<required>&period=monthly|quarterly|yearly
+ * Un empleado solo puede pedir el suyo (403 si pide otro). Fechas en la zona de la organización.
+ * Escribe `achieved_amount`: un `organization_id` ajeno en el query → 403 y registro.
  */
 export async function GET(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const { searchParams } = new URL(request.url);
+    const sp = new URL(request.url).searchParams;
+    rejectForeignOrganization('CRM Sales Targets Progress', sp.get('organization_id'), ctx);
+    const userId = sp.get('user_id');
+    const period = sp.get('period') || 'monthly';
+    if (!userId) return jsonFail(400, 'Parámetro requerido: user_id', { field: 'user_id' });
+    if (!(QUOTA_PERIODS as readonly string[]).includes(period)) return jsonFail(400, 'period inválido. Valores: monthly, quarterly, yearly', { field: 'period' });
+    if (!canManageCommissions(ctx) && userId !== ctx.userId) return jsonFail(403, 'Solo puedes consultar tu propio progreso', { code: 'FORBIDDEN' });
 
-    const userId = searchParams.get('user_id');
-    const period = searchParams.get('period') || 'monthly';
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'Parámetro requerido: user_id' },
-        { status: 400 }
-      );
-    }
-
-    const validPeriods = ['monthly', 'quarterly', 'yearly'];
-    if (!validPeriods.includes(period)) {
-      return NextResponse.json(
-        { success: false, error: 'period inválido. Valores: monthly, quarterly, yearly' },
-        { status: 400 }
-      );
-    }
-
-    const progress = await getTargetProgress(
-      ctx.organizationId,
-      userId,
-      period as 'monthly' | 'quarterly' | 'yearly',
-      ctx.supabase
-    );
-
-    return NextResponse.json({ success: true, data: progress }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Sales Targets Progress] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const tz = await getOrgTimezone(ctx.organizationId, ctx.supabase);
+    const progress = await getTargetProgress(ctx.organizationId, userId, period as QuotaPeriod, ctx.supabase, tz);
+    return jsonOk(progress, { timezone: tz });
+  } catch (error) {
+    return routeError(error, 'CRM Sales Targets Progress');
   }
 }

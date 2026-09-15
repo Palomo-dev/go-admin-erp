@@ -1766,10 +1766,21 @@ describe('O. Ronda 3: condición configurable y fail-closed, y el barrido que no
     expect(editor).toContain('CONDITION_FIELDS');
     expect(editor).toContain('OPERATORS');
 
+    // Rediseño UX 2026-09-14 (brief 6.3): `SequenceFormDialog` pasó a ser
+    // `SequenceEditorDialog` (validación) → `StepTimelineEditor` → `StepCard`
+    // → `StepBranch`, que es donde se integra el `ConditionEditor` como
+    // bifurcación. La garantía es la misma: el editor existe y el diálogo
+    // bloquea guardar una condición sin reglas.
     const dialog = fs.readFileSync(
-      path.join(process.cwd(), 'src/components/crm/secuencias/SequenceFormDialog.tsx'), 'utf8') as string;
-    expect(dialog).toContain('<ConditionEditor');
+      path.join(process.cwd(), 'src/components/crm/secuencias/SequenceEditorDialog.tsx'), 'utf8') as string;
     expect(dialog).toContain('isEmptyConditionTree');
+    expect(dialog).toContain('<StepTimelineEditor');
+    const branch = fs.readFileSync(
+      path.join(process.cwd(), 'src/components/crm/secuencias/StepBranch.tsx'), 'utf8') as string;
+    expect(branch).toContain('<ConditionEditor');
+    const card = fs.readFileSync(
+      path.join(process.cwd(), 'src/components/crm/secuencias/StepCard.tsx'), 'utf8') as string;
+    expect(card).toContain('<StepBranch');
   });
 
   // ── N11: una condición que no se puede evaluar corta ───────────────────────

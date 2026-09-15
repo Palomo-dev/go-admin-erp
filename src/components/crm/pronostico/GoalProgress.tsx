@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { formatCurrency } from '@/utils/Utils';
+import { fmtMoney } from '@/components/crm/revenueos/formatters';
 import { Target, TrendingUp, CheckCircle, XCircle } from 'lucide-react';
 import { Pipeline } from '@/components/crm/oportunidades/types';
 
@@ -12,6 +12,8 @@ interface GoalProgressProps {
   openAmount: number;
   weightedAmount: number;
   isLoading?: boolean;
+  /** Moneda base de la organización; null → cifras sin símbolo. */
+  currency: string | null;
 }
 
 export function GoalProgress({
@@ -20,6 +22,7 @@ export function GoalProgress({
   openAmount,
   weightedAmount,
   isLoading,
+  currency,
 }: GoalProgressProps) {
   const goal = pipeline?.goal_amount || 0;
   const goalPeriod = pipeline?.goal_period || 'monthly';
@@ -71,10 +74,10 @@ export function GoalProgress({
             <div>
               <div className="flex items-baseline justify-between mb-2 gap-2">
                 <span className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white truncate">
-                  {formatCurrency(wonAmount)}
+                  {fmtMoney(wonAmount, currency)}
                 </span>
                 <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 shrink-0">
-                  de {formatCurrency(goal)}
+                  de {fmtMoney(goal, currency)}
                 </span>
               </div>
               <Progress value={goalProgress} className="h-2 sm:h-3" />
@@ -93,7 +96,7 @@ export function GoalProgress({
               </div>
               <div className="flex items-baseline justify-between mb-2 gap-2">
                 <span className="text-base sm:text-xl font-bold text-blue-800 dark:text-blue-200 truncate">
-                  {formatCurrency(totalPotential)}
+                  {fmtMoney(totalPotential, currency)}
                 </span>
                 <span className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 shrink-0">
                   {potentialProgress.toFixed(1)}%
@@ -109,7 +112,7 @@ export function GoalProgress({
                   <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                  {formatCurrency(wonAmount)}
+                  {fmtMoney(wonAmount, currency)}
                 </p>
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Ganado</p>
               </div>
@@ -118,7 +121,7 @@ export function GoalProgress({
                   <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                  {formatCurrency(weightedAmount)}
+                  {fmtMoney(weightedAmount, currency)}
                 </p>
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Ponderado</p>
               </div>
@@ -127,7 +130,7 @@ export function GoalProgress({
                   <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                  {formatCurrency(openAmount)}
+                  {fmtMoney(openAmount, currency)}
                 </p>
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">En proceso</p>
               </div>

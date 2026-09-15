@@ -44,7 +44,8 @@ describe('twimlBuilders (FASE-03 §4.5)', () => {
     expect(xml).toContain('callerId="+5760123456"');
     expect(xml).toContain('record="record-from-answer-dual"');
     expect(xml).toContain('recordingStatusCallback="https://app.goadmin.io/api/voice/recording"');
-    expect(xml).toContain('recordingStatusCallbackEvent="completed absent"');
+    // Ronda 6 de voz: `in-progress` es la única evidencia positiva de que la grabación arrancó.
+    expect(xml).toContain('recordingStatusCallbackEvent="in-progress completed absent"');
     expect(xml).toContain('answerOnBridge="true"');
     expect(xml).toContain('timeout="30"');
     expect(xml).toContain('timeLimit="7200"');

@@ -24,6 +24,12 @@ interface ConfirmDialogProps {
   variant?: ConfirmVariant;
   loading?: boolean;
   onConfirm: () => void | Promise<void>;
+  /**
+   * Radix, sin `Trigger`, deja el foco en el `body` al cerrar. Pasa aquí el
+   * `onCloseAutoFocus` de `useReturnFocus` (`@/lib/hooks/useReturnFocus`)
+   * para devolverlo al botón que abrió la confirmación.
+   */
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 const variantClass: Record<ConfirmVariant, string> = {
@@ -45,6 +51,7 @@ export function ConfirmDialog({
   variant = 'default',
   loading = false,
   onConfirm,
+  onCloseAutoFocus,
 }: ConfirmDialogProps) {
   const handleConfirm = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -54,7 +61,7 @@ export function ConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="bg-white dark:bg-gray-900">
+      <AlertDialogContent className="bg-white dark:bg-gray-900" onCloseAutoFocus={onCloseAutoFocus}>
         <AlertDialogHeader>
           <AlertDialogTitle className="text-gray-900 dark:text-white">
             {title}
@@ -64,7 +71,10 @@ export function ConfirmDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={loading}>
+          <AlertDialogCancel
+            disabled={loading}
+            className="dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
             {cancelLabel}
           </AlertDialogCancel>
           <AlertDialogAction

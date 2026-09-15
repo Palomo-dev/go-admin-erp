@@ -205,9 +205,13 @@ describe('maintenanceHandler', () => {
     expect(hasEq(q1, 'status', 'done')).toBe(true);
     const cutoff = new Date(q1.ops.find((o) => o.method === 'lt')?.args[1] as string).getTime();
     expect(Date.now() - cutoff).toBeGreaterThan(29 * 24 * 3600 * 1000);
-    // 2) outbound_jobs failed|dead (F-8)
+    // 2) outbound_jobs failed|dead (F-8; F0-DB r3 B5: retención de 30 d por updated_at,
+    //    misma ventana que `done`, para que v_outbound_jobs_failed no acumule terminales para siempre)
     expect(queries[1].table).toBe('outbound_jobs');
     expect(queries[1].ops.find((o) => o.method === 'in')?.args).toEqual(['status', ['failed', 'dead']]);
+    const terminalLt = queries[1].ops.find((o) => o.method === 'lt')?.args as [string, string];
+    expect(terminalLt[0]).toBe('updated_at');
+    expect(new Date(terminalLt[1]).getTime()).toBe(cutoff);
     // 3) crm_events processed|skipped; 4) crm_events failed por created_at (F-8)
     expect(opArg(queries[2], 'in')).toBe('status');
     expect(hasEq(queries[3], 'status', 'failed')).toBe(true);

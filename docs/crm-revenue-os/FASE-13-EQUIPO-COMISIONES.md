@@ -415,6 +415,38 @@ export async function getSellerDashboard(supabase, orgId, userId, period) {
 - `sales_targets` con RLS — el usuario puede ver sus propias cuotas.
 - Aprobación de comisiones requiere rol de manager/admin.
 
+### 5.1 Deuda verificada (2026-09-15): RLS de `sales_targets` por pertenencia, no por rol
+
+Verificado por MCP (`pg_policies`): `st_insert`, `st_update` y `st_delete` tienen
+como `qual`/`with check` la pertenencia activa a la organización
+(`organization_members.is_active`), sin mirar el rol. Las rutas
+`api/crm/sales-targets/*` sí exigen admin/manager por id de rol, pero cualquier
+miembro activo (rol 4, Empleado) puede crear, alterar o borrar cuotas ajenas
+llamando a PostgREST directamente. Hoy `sales_targets` tiene 0 filas; el
+riesgo es futuro, no actual.
+
+**Propuesta (sin aplicar; migración + rollback cuando se decida):** sustituir
+las tres políticas de escritura por una condición por rol, con `IN (SELECT ...)`
+y `(select auth.uid())` para no repetir el coste de RLS que ya dio timeouts en
+otras tablas (nada de `EXISTS` anidado). Verificado por MCP el 2026-09-15:
+`organization_members` tiene `user_id, role_id, is_active, is_super_admin`;
+roles `2 Admin de organización`, `5 Manager`, `4 Empleado`.
+
+```sql
+-- escritura: solo Admin (2) y Manager (5) de la organización, o super admin
+CREATE POLICY st_write_by_role ON public.sales_targets
+  FOR ALL TO authenticated
+  USING (organization_id IN (
+    SELECT om.organization_id FROM public.organization_members om
+    WHERE om.user_id = (select auth.uid()) AND om.is_active
+      AND (om.role_id IN (2, 5) OR om.is_super_admin)))
+  WITH CHECK (organization_id IN (
+    SELECT om.organization_id FROM public.organization_members om
+    WHERE om.user_id = (select auth.uid()) AND om.is_active
+      AND (om.role_id IN (2, 5) OR om.is_super_admin)));
+-- lectura: pertenencia (como hoy) o, más estricto, user_id = auth.uid() para rol 4
+```
+
 ---
 
 ## 6. Pruebas

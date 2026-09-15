@@ -1,10 +1,16 @@
 import type { ServerOrgContext } from './orgContext';
 
-const ORG_ADMIN_ROLE_IDS = [1, 2]; // Super Admin, Admin de organización
-const ORG_ADMIN_ROLE_NAMES = ['Super Admin', 'Admin de organización'];
+/**
+ * Ids de los roles administradores (verificados en `roles` el 2026-09-15:
+ * 1 = Super Admin, 2 = Admin de organización). La resolución es por id y por
+ * `organization_members.is_super_admin`, NUNCA por el nombre del rol
+ * (CLAUDE.md regla 6; QA F0-REG r1 medio 15): un rol renombrado o creado con
+ * ese nombre en otra organización no debe ganar privilegios.
+ */
+const ORG_ADMIN_ROLE_IDS = [1, 2];
 
 export function isOrgAdmin(ctx: ServerOrgContext): boolean {
-  return ORG_ADMIN_ROLE_NAMES.includes(ctx.roleName) || ORG_ADMIN_ROLE_IDS.includes(ctx.roleId);
+  return ctx.isSuperAdmin === true || ORG_ADMIN_ROLE_IDS.includes(ctx.roleId);
 }
 
 export function requireRole(ctx: ServerOrgContext, allowedRoleNames: string[]): void {

@@ -4,7 +4,8 @@
  * Estado de las secuencias (FASE-08 §5.2). Todo pasa por rutas de servidor.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { enrollErrorText } from './sequenceOptions';
 
 export interface SequenceStepView {
   id?: string;
@@ -18,6 +19,15 @@ export interface SequenceStepView {
   is_active?: boolean;
 }
 
+/** Inscritos activos y tasa de respuesta (GET de lista, brief UX 6.3). */
+export interface SequenceEnrollmentStats {
+  active: number;
+  total: number;
+  replied: number;
+  /** 0..1; `null` sin inscripciones. */
+  response_rate: number | null;
+}
+
 export interface SequenceView {
   id: string;
   name: string;
@@ -28,6 +38,7 @@ export interface SequenceView {
   exit_conditions: unknown[];
   steps?: SequenceStepView[];
   updated_at: string;
+  enrollment_stats?: SequenceEnrollmentStats;
 }
 
 export interface EnrollPreviewStep {
@@ -37,6 +48,8 @@ export interface EnrollPreviewStep {
   delay_days: number;
   delay_hours: number | null;
   name: string | null;
+  /** El preview solo devuelve pasos activos; viaja para que `enrollBlockReason` cuente igual que la tarjeta. */
+  is_active?: boolean;
   /** Solo en los pasos `condition`: reglas configuradas (0 = corta siempre). */
   condition_rules?: number;
 }
@@ -61,6 +74,9 @@ export interface EnrollmentView {
   exit_reason: string | null;
   paused_reason?: string | null;
   next_run_at?: string | null;
+  /** Resueltos en el GET para no mostrar UUIDs. */
+  opportunity_name?: string | null;
+  customer_name?: string | null;
 }
 
 async function readJson(res: Response): Promise<{ ok: boolean; body: Record<string, unknown> }> {
@@ -84,13 +100,20 @@ export function useSequences() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Solo la primera carga muestra el esqueleto. Si cada recarga (guardar,
+  // activar, inscribir) desmontara la rejilla, el botón que abrió el diálogo
+  // dejaría de existir y el foco caería al body (tester r2, misma causa que
+  // H1 de Automatizaciones).
+  const loadedOnce = useRef(false);
+
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!loadedOnce.current) setLoading(true);
     setError(null);
     try {
       const { ok, body } = await readJson(await fetch('/api/crm/sequences', { cache: 'no-store' }));
       if (!ok) throw new Error(messageOf(body, 'No se pudieron cargar las secuencias'));
       setSequences((body.data as SequenceView[]) ?? []);
+      loadedOnce.current = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
@@ -141,7 +164,9 @@ export function useSequences() {
       }),
     );
     const skipped = (body.skipped as { reason: string }[] | undefined) ?? [];
-    if (!ok) throw new Error(messageOf(body, 'No se pudo inscribir') + (skipped[0] ? ` (${skipped[0].reason})` : ''));
+    // El código de la RPC (`sequence_inactive`, `already_active`…) se muestra en
+    // castellano y es el mensaje entero: el título del toast ya dice «No se pudo inscribir».
+    if (!ok) throw new Error(skipped[0] ? enrollErrorText(skipped[0].reason) : messageOf(body, 'No se pudo inscribir'));
     return { enrolled: Number(body.enrolled ?? 0), skipped };
   }, []);
 
@@ -163,12 +188,12 @@ export async function fetchEnrollments(sequenceId: string): Promise<EnrollmentVi
 export async function fetchEnrollPreview(
   sequenceId: string,
   q: string,
-): Promise<{ steps: EnrollPreviewStep[]; candidates: EnrollCandidate[] }> {
+): Promise<{ sequence: { is_active: boolean }; steps: EnrollPreviewStep[]; candidates: EnrollCandidate[] }> {
   const url = `/api/crm/sequences/${sequenceId}/enroll/preview${q ? `?q=${encodeURIComponent(q)}` : ''}`;
   const { ok, body } = await readJson(await fetch(url, { cache: 'no-store' }));
   if (!ok) throw new Error(messageOf(body, 'No se pudo preparar la inscripción'));
-  const data = (body.data ?? {}) as { steps?: EnrollPreviewStep[]; candidates?: EnrollCandidate[] };
-  return { steps: data.steps ?? [], candidates: data.candidates ?? [] };
+  const data = (body.data ?? {}) as { sequence?: { is_active?: boolean }; steps?: EnrollPreviewStep[]; candidates?: EnrollCandidate[] };
+  return { sequence: { is_active: data.sequence?.is_active !== false }, steps: data.steps ?? [], candidates: data.candidates ?? [] };
 }
 
 /** Reanuda una inscripción pausada (tester r2 N3). */
@@ -181,7 +206,7 @@ export async function resumeEnrollment(sequenceId: string, enrollmentId: string)
     }),
   );
   if (!ok) {
-    const reason = (body.data as { reason?: string } | undefined)?.reason;
+    const reason = enrollErrorText((body.data as { reason?: string } | undefined)?.reason);
     throw new Error(messageOf(body, 'No se pudo reanudar') + (reason ? ` (${reason})` : ''));
   }
 }

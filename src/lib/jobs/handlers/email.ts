@@ -11,9 +11,15 @@ import { isEmailError } from '@/lib/services/crm/email/types';
  *   { inbound: true, resend_email_id, to[] }    → reintento de ingestión inbound
  * 429/5xx del proveedor → JobRetryableError (backoff de fn_fail_job);
  * 4xx definitivos → JobFatalError.
+ *
+ * Idempotencia (F0-JOBS r3, N-4): `dispatchScheduledEmail` salta si la fila ya
+ * no está `pending` o tiene `provider_message_id`, y `sendPendingBatch` salta
+ * las ya enviadas; un reintento nunca repite un envío. `signal`: el timeout
+ * del runner es advisory, así que no se inicia un envío ya abortado.
  */
-export const emailJobHandler: JobHandler = async ({ job, supabase, orgId, log }) => {
+export const emailJobHandler: JobHandler = async ({ job, supabase, orgId, log, signal }) => {
   const p = job.payload ?? {};
+  if (signal.aborted) throw new JobRetryableError('aborted antes del envío');
   try {
     if (p.batch === true) {
       const ids = Array.isArray(p.email_message_ids) ? (p.email_message_ids as string[]) : [];

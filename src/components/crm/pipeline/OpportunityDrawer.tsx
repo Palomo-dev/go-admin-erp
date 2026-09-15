@@ -16,8 +16,10 @@ import { ClosedWonDialog } from './drawer/ClosedWonDialog';
 import { DrawerHeader } from './drawer/DrawerHeader';
 import { requestStageChange, type StageChangeResult } from './drawer/StageSelect';
 import { useOpportunityData, type OpportunityFull } from './hooks/useOpportunityData';
-import { DRAWER_TABS, type DrawerTab } from './drawer/tabs/types';
+import { DRAWER_TABS, ONBOARDING_TAB, type DrawerTab } from './drawer/tabs/types';
+import { isOnboardingOpportunity } from '@/lib/services/crm/onboardingProgress';
 import { ResumenTab } from './drawer/tabs/ResumenTab';
+import { OnboardingTab } from './drawer/tabs/OnboardingTab';
 import { ActividadTab } from './drawer/tabs/ActividadTab';
 import { TareasTab } from './drawer/tabs/TareasTab';
 import { NotasTab } from './drawer/tabs/NotasTab';
@@ -127,7 +129,10 @@ export function OpportunityDrawer({ open, onOpenChange, opportunityId, opportuni
     setWonClose(true);
   };
 
-  const closedByTab = (t: DrawerTab) => t === 'tareas' && openTasks != null ? `Tareas (${openTasks})` : DRAWER_TABS.find((x) => x.id === t)!.label;
+  // F11: la pestaña Onboarding solo existe en oportunidades del pipeline de onboarding.
+  const showOnboarding = isOnboardingOpportunity(opportunity as { metadata?: unknown; pipeline?: { pipeline_type?: string | null } | null } | null);
+  const tabs = showOnboarding ? [DRAWER_TABS[0], ONBOARDING_TAB, ...DRAWER_TABS.slice(1)] : DRAWER_TABS;
+  const closedByTab = (t: DrawerTab) => t === 'tareas' && openTasks != null ? `Tareas (${openTasks})` : tabs.find((x) => x.id === t)!.label;
   const tabProps = opportunity ? { opportunity, customer, data } : null;
 
   return (
@@ -159,7 +164,7 @@ export function OpportunityDrawer({ open, onOpenChange, opportunityId, opportuni
             </SheetHeader>
             <Tabs value={tab} onValueChange={(v) => setTab(v as DrawerTab)} className="flex-1 flex flex-col min-h-0">
               <TabsList className="mx-4 sm:mx-5 mt-2 h-9 w-auto justify-start overflow-x-auto bg-gray-100 dark:bg-gray-800 shrink-0">
-                {DRAWER_TABS.map((t) => (
+                {tabs.map((t) => (
                   <TabsTrigger key={t.id} value={t.id} className="text-xs px-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900">{closedByTab(t.id)}</TabsTrigger>
                 ))}
               </TabsList>
@@ -167,6 +172,7 @@ export function OpportunityDrawer({ open, onOpenChange, opportunityId, opportuni
                 {tabProps && (
                   <>
                     <TabsContent value="resumen" className="mt-0"><ResumenTab {...tabProps} active={tab === 'resumen'} /></TabsContent>
+                    {showOnboarding && <TabsContent value="onboarding" className="mt-0"><OnboardingTab {...tabProps} active={tab === 'onboarding'} onMutated={notifyMutation} /></TabsContent>}
                     <TabsContent value="actividad" className="mt-0"><ActividadTab {...tabProps} active={tab === 'actividad'} refreshToken={refreshToken} /></TabsContent>
                     <TabsContent value="tareas" className="mt-0"><TareasTab {...tabProps} active={tab === 'tareas'} onCountChange={setOpenTasks} /></TabsContent>
                     <TabsContent value="notas" className="mt-0"><NotasTab {...tabProps} active={tab === 'notas'} /></TabsContent>

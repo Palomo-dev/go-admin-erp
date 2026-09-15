@@ -2,8 +2,9 @@
 
 /**
  * Configuración › CRM › WhatsApp (FASE-16 §5.2 `WhatsAppSettingsTab`): canal por
- * defecto, palabras de baja/alta, horario permitido, límite diario, capacidades
- * por canal y messaging_limit del WABA. Persistencia en
+ * defecto, palabras de baja/alta, horario permitido, límite diario, indicativo
+ * del país por defecto (F16 r5 · T-3), capacidades por canal y
+ * messaging_limit del WABA. Persistencia en
  * provider_configs(category='whatsapp').settings vía /api/crm/whatsapp/settings.
  */
 import { useEffect, useState } from 'react';
@@ -116,6 +117,24 @@ export function WhatsAppTab() {
           <div>
             <Label htmlFor="wa-daily" className="text-xs">Límite diario propio de mensajes salientes (vacío = solo el de Meta)</Label>
             <Input id="wa-daily" type="number" min={1} value={settings.daily_limit ?? ''} disabled={!canEdit} onChange={(e) => set({ daily_limit: e.target.value ? Number(e.target.value) : null })} className="h-8 w-40 text-xs bg-white dark:bg-gray-900" />
+          </div>
+          <div>
+            <Label htmlFor="wa-country" className="text-xs">Indicativo del país por defecto (vacío = 57, Colombia)</Label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500" aria-hidden="true">+</span>
+              <Input
+                id="wa-country"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="57"
+                aria-describedby="wa-country-help"
+                value={settings.default_country_code ?? ''}
+                disabled={!canEdit}
+                onChange={(e) => set({ default_country_code: e.target.value.replace(/\D/g, '').slice(0, 4) || null })}
+                className="h-8 w-24 text-xs bg-white dark:bg-gray-900"
+              />
+            </div>
+            <p id="wa-country-help" className="text-[11px] text-gray-500">Con él se completan los teléfonos guardados sin indicativo («310 987 6543»): en el envío de WhatsApp, la llamada desde el celular y la baja por palabra clave. Un número que no tenga forma de teléfono nacional de ese país no se envía.</p>
           </div>
         </CardContent>
       </Card>

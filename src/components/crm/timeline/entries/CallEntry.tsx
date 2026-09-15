@@ -109,7 +109,7 @@ export function CallEntry({ entry, compact, opportunityId, onAction }: { entry: 
       </div>
 
       {hasRecording && (
-        <CallPlayer callId={call.id} recordingEnabled={call.recording_enabled} className="max-w-md" seekToMs={seekMs} onTimeUpdate={setCurrentMs} />
+        <CallPlayer callId={call.id} recordingEnabled={call.recording_enabled} consentMethod={call.consent_method} className="max-w-md" seekToMs={seekMs} onTimeUpdate={setCurrentMs} />
       )}
 
       {analysis?.summary && !compact && (

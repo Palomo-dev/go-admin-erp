@@ -1,96 +1,52 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
-import { getPartnerDeals, createPartnerDeal } from '@/lib/services/crm/partnerService';
+import { NextRequest } from 'next/server';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
+import { getPartnerDeals, registerPartnerDeal } from '@/lib/services/crm/partnerService';
+import { validateDealInput } from '@/lib/services/crm/f12Validation';
+import { canManagePartners, jsonOk, readJson, readPage, rejectForeignOrganization, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
+
+const TAG = 'CRM Partner Deals';
+type Params = { params: Promise<{ id: string }> };
 
 /**
- * GET /api/crm/partners/[id]/deals — Lista deals de un partner.
- * Query: ?deal_type=&commission_status=&limit=&offset=
+ * GET /api/crm/partners/[id]/deals — deals del partner con la oportunidad resuelta.
+ * Query: ?deal_type=&commission_status=&limit=&offset= · 404 partner ajeno.
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: Params) {
   try {
     const ctx = await getServerOrgContext();
     const { id } = await params;
     const { searchParams } = new URL(request.url);
-
-    const filters = {
-      partner_id: id,
+    rejectForeignOrganization(TAG, searchParams.get('organization_id'), ctx);
+    const result = await getPartnerDeals(id, ctx.organizationId, ctx.supabase, {
       deal_type: searchParams.get('deal_type') || undefined,
       commission_status: searchParams.get('commission_status') || undefined,
-      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : undefined,
-      offset: searchParams.get('offset') ? parseInt(searchParams.get('offset')!, 10) : undefined,
-    };
-
-    const result = await getPartnerDeals(ctx.organizationId, ctx.supabase, filters);
-
-    return NextResponse.json(
-      { success: true, data: result.data, count: result.count },
-      { status: 200 }
-    );
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Partner Deals] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+      ...readPage(searchParams),
+    });
+    return jsonOk(result.data, { count: result.count, can_manage: canManagePartners(ctx) });
+  } catch (error) {
+    return routeError(error, TAG);
   }
 }
 
 /**
- * POST /api/crm/partners/[id]/deals — Crea un deal para un partner.
- * Body: { opportunity_id, deal_type, commission_amount? }
+ * POST /api/crm/partners/[id]/deals — registra un deal. La comisión se
+ * calcula en servidor (monto de la oportunidad × tasa efectiva del partner o
+ * del tier) y nace `pending`; `commission_amount`/`commission_status` del body
+ * se ignoran. Evalúa la promoción automática de tier.
+ * Body: { opportunity_id, deal_type (referral|co_sell|reseller) }
+ * 404 partner u oportunidad ajenos · 409 oportunidad ya registrada para el partner.
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: Params) {
   try {
     const ctx = await getServerOrgContext();
     const { id } = await params;
-    const body = await request.json();
-
-    if (!body?.opportunity_id || !body?.deal_type) {
-      return NextResponse.json(
-        { success: false, error: 'Faltan campos obligatorios: opportunity_id, deal_type' },
-        { status: 400 }
-      );
-    }
-
-    const validDealTypes = ['referral', 'co_sell', 'reseller'];
-    if (!validDealTypes.includes(body.deal_type)) {
-      return NextResponse.json(
-        { success: false, error: 'deal_type inválido. Valores: referral, co_sell, reseller' },
-        { status: 400 }
-      );
-    }
-
-    const deal = await createPartnerDeal(
-      ctx.organizationId,
-      {
-        partner_id: id,
-        opportunity_id: body.opportunity_id,
-        deal_type: body.deal_type,
-        commission_amount: body.commission_amount,
-      },
-      ctx.supabase
-    );
-
-    return NextResponse.json({ success: true, data: deal }, { status: 201 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Partner Deals] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const body = await readJson(request);
+    rejectForeignOrganization(TAG, body.organization_id, ctx);
+    const parsed = validateDealInput(body);
+    if (!parsed.ok) return validationFail(parsed.errors);
+    const result = await registerPartnerDeal(id, ctx.organizationId, parsed.value, ctx.supabase);
+    return jsonOk(result, {}, 201);
+  } catch (error) {
+    return routeError(error, TAG);
   }
 }

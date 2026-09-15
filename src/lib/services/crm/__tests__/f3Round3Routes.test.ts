@@ -142,7 +142,7 @@ beforeEach(() => {
   // Sin este secreto la grabación queda inhibida a propósito (nunca grabar sin
   // acta), que es justamente lo que comprueba `f3f5Round4Consent`.
   process.env.VOICE_CALLBACK_SECRET = 'f3-r3-secret-0123456789abcdef';
-  process.env.WS_SESSION_SECRET = 'ws-secret-for-tests';
+  process.env.WS_SESSION_SECRET = 'ws-secret-for-tests-0123456789abcdef0123456789abcdef';
   process.env.WS_SERVER_URL = 'wss://ws.test';
   delete process.env.TWILIO_ACCOUNT_SID;
   delete process.env.TWILIO_AUTH_TOKEN;

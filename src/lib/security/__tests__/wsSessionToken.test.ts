@@ -1,10 +1,14 @@
 /// <reference types="jest" />
 import { issueWsSessionToken, verifyWsSessionToken } from '../wsSessionToken';
 
+// F0-SEC r2: el secreto tiene que ser real y de >= 32 caracteres (antes bastaba no vacío).
+const SECRET = 'a1b2c3d4e5f60718293a4b5c6d7e8f9001122334455667788990aabbccddeeff';
+const OTHER_SECRET = 'ffeeddccbbaa0998877665544332211009f8e7d6c5b4a3928170f6e5d4c3b2a1';
+
 describe('wsSessionToken', () => {
   const original = process.env.WS_SESSION_SECRET;
   beforeEach(() => {
-    process.env.WS_SESSION_SECRET = 'test-secret-1234567890';
+    process.env.WS_SESSION_SECRET = SECRET;
   });
   afterAll(() => {
     if (original === undefined) delete process.env.WS_SESSION_SECRET;
@@ -37,7 +41,7 @@ describe('wsSessionToken', () => {
 
   test('secreto distinto → null; sin secreto → null (fail-closed)', () => {
     const token = issueWsSessionToken({ orgId: 1 });
-    process.env.WS_SESSION_SECRET = 'other';
+    process.env.WS_SESSION_SECRET = OTHER_SECRET;
     expect(verifyWsSessionToken(token)).toBeNull();
     delete process.env.WS_SESSION_SECRET;
     expect(verifyWsSessionToken(token)).toBeNull();

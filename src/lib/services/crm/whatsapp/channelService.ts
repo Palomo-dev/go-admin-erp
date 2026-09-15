@@ -10,7 +10,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { normalizePhoneDigits, phoneSearchSuffix, resolveDefaultCountry } from '@/lib/services/crm/phoneNormalize';
+import { normalizePhoneDigits, phoneSuffixPattern, resolveDefaultCountry } from '@/lib/services/crm/phoneNormalize';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import {
   DEFAULT_OPTIN_KEYWORDS,
@@ -231,7 +231,7 @@ export async function resolveRecipient(orgId: number, customerId: string, channe
  * importar este módulo: arrastra el cliente de servicio). Se reexporta para no
  * romper a quien ya la importaba de aquí.
  */
-export { normalizePhoneDigits, phoneSearchSuffix, countryFromPhone, LAST_RESORT_COUNTRY_CODE, NATIONAL_PATTERNS } from '@/lib/services/crm/phoneNormalize';
+export { normalizePhoneDigits, phoneSearchSuffix, phoneSuffixPattern, countryFromPhone, LAST_RESORT_COUNTRY_CODE, NATIONAL_PATTERNS } from '@/lib/services/crm/phoneNormalize';
 
 /**
  * Indicativo por defecto EFECTIVO de la organización: ajuste de la org →
@@ -245,16 +245,31 @@ export function defaultCountryOf(settings: Pick<WhatsAppOrgSettings, 'default_co
  * Busca el cliente de la organización cuyo teléfono ES este número, sin
  * importar cómo esté escrito en la base. Devuelve null si no hay ninguno.
  *
- * ⚠️ Es una búsqueda en dos pasos (igualdad exacta primero, `ilike` por los
- * últimos 4 dígitos después) porque `customers.phone` es texto libre y no hay
- * columna normalizada.
+ * ⚠️ Prefiltro por expresión regular sobre los últimos 4 dígitos (`imatch` =
+ * `~*`) y comparación fina en memoria, porque `customers.phone` es texto
+ * libre y no hay columna normalizada. No es un `ilike '%6543'`: con separador
+ * dentro de los últimos 4 dígitos («+57 310 987 65 43») o basura al final
+ * («310 9876543<|») el `ilike` no encontraba al cliente y el entrante creaba
+ * uno duplicado (18 teléfonos reales, medido el 2026-09-14). Como es texto
+ * libre de la organización, aquí SÍ se completa el indicativo por defecto.
  *
- * **Orden estable obligatorio** (tester F16 r3 · N-4): hay 263 grupos de
- * clientes reales (532 filas) que comparten identificador normalizado dentro
- * de la MISMA organización. Sin `ORDER BY` el cliente al que se engancha un
- * entrante depende del plan de Postgres, así que dos mensajes del mismo número
- * pueden acabar en fichas distintas. Se elige SIEMPRE el más antiguo
- * (`created_at`), que es el que acumula el historial.
+ * **Orden estable obligatorio** (tester F16 r3 · N-4): hay 276 grupos de
+ * clientes reales (559 filas, medido el 2026-09-14) que comparten
+ * identificador normalizado dentro de la MISMA organización. Sin `ORDER BY` el
+ * cliente al que se engancha un entrante depende del plan de Postgres, así que
+ * dos mensajes del mismo número pueden acabar en fichas distintas. Se elige
+ * SIEMPRE el más antiguo (`created_at`) —el que acumula el historial— y, a
+ * igual `created_at` (una importación masiva escribe el mismo `now()` en todas
+ * sus filas), el `id` menor.
+ *
+ * **Una sola consulta** (F16 r5 · T-4). Hasta la ronda 4 había un «camino
+ * rápido» previo por igualdad exacta (`phone in (digits, +digits)`) que
+ * cortocircuitaba: si la ficha NUEVA estaba en E.164 exacto y la VIEJA con
+ * separadores, ganaba la nueva y «siempre el más antiguo» era falso (2 grupos
+ * reales de los 276, medido el 2026-09-14). El prefiltro por sufijo es
+ * superconjunto de la igualdad exacta, así que una única consulta ordenada
+ * basta; el índice de `organization_id` acota el barrido y la regex se evalúa
+ * solo sobre los clientes de la organización.
  */
 export async function findCustomerIdByPhone(
   orgId: number,
@@ -262,26 +277,13 @@ export async function findCustomerIdByPhone(
   supabase: SupabaseClient,
   opts: { defaultCountry?: string | null } = {},
 ): Promise<string | null> {
-  // 1) Camino rápido: los dos formatos canónicos, con igualdad indexable.
-  const { data: exacto } = await supabase
-    .from('customers')
-    .select('id, phone')
-    .eq('organization_id', orgId)
-    .in('phone', [digits, `+${digits}`])
-    .order('created_at', { ascending: true })
-    .limit(1);
-  const hit = ((exacto ?? []) as Array<{ id: string }>)[0];
-  if (hit) return hit.id;
-
-  // 2) Cualquier otro formato: prefiltro por los últimos 4 dígitos y
-  //    comparación fina en memoria. `customers.phone` es texto libre de la
-  //    organización, así que aquí SÍ se completa el indicativo por defecto.
   const { data: candidatos } = await supabase
     .from('customers')
     .select('id, phone')
     .eq('organization_id', orgId)
-    .ilike('phone', `%${phoneSearchSuffix(digits)}`)
+    .filter('phone', 'imatch', phoneSuffixPattern(digits))
     .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
     .limit(200);
   for (const c of (candidatos ?? []) as Array<{ id: string; phone: string | null }>) {
     if (c.phone && normalizePhoneDigits(c.phone, opts.defaultCountry ?? null) === digits) return c.id;

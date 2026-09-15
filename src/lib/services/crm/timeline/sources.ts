@@ -151,7 +151,7 @@ export async function fetchNotes(ctx: Ctx): Promise<SourceResult> {
 
 export const CALL_SELECT =
   'id, direction, status, mode, duration_seconds, from_number, to_number, recording_enabled, cost_amount, started_at, user_id, ' +
-  'call_recordings(id, status), call_transcripts(id, status), ' +
+  'call_recordings(id, status), call_transcripts(id, status), call_consents(consent_type, method), ' +
   'call_analyses(id, summary, sentiment, quality_score, suggested_stage_id, next_steps, created_at)';
 
 export const LIVE_STATUSES = ['dialing', 'ringing', 'in_progress'];

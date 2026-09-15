@@ -1,65 +1,61 @@
 'use client';
 
 /**
- * Diálogo de inscripción en una secuencia (FASE-08 §5.3).
+ * Diálogo de inscripción (FASE-08 §5.3, rediseño UX brief 6.3).
  *
- * Corrige el hallazgo N7 del tester r2: «la única acción que dispara envíos
- * reales desde la interfaz era un identificador pegado a mano, sin selector,
- * sin previsualizar los pasos y sin confirmación, mientras que borrar una
- * secuencia sí la pide».
- *
- * Ahora son dos pasos explícitos:
- *   1. Buscar la oportunidad por nombre y elegirla de una lista (con el nombre
- *      del cliente, su email y un aviso si ya está inscrita).
- *   2. Confirmar viendo la lista completa de pasos que se van a ejecutar y
- *      cuándo, más el destinatario real.
+ * Corto: (1) a quién —buscar y elegir la oportunidad—, (2) qué se va a
+ * enviar —siempre desde el primer paso: la RPC `fn_enroll_in_sequence` no
+ * admite `p_start_step`, así que no se ofrece una elección que no existe—,
+ * y (3) una advertencia inequívoca, con los canales nombrados, de que se
+ * enviarán mensajes REALES a una persona, con casilla de confirmación.
+ * Sigue llamando a `/enroll/preview` y `/enroll` (F8, sin cambios).
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Search, UserPlus } from 'lucide-react';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/use-toast';
-import { fetchEnrollPreview, type EnrollCandidate, type EnrollPreviewStep } from './useSequences';
-
-const CHANNEL_LABEL: Record<string, string> = {
-  email: 'Email al cliente',
-  whatsapp: 'WhatsApp al cliente',
-  sms: 'SMS (sin proveedor: fallará)',
-  call: 'Tarea de llamada para el vendedor',
-  task: 'Tarea',
-  wait: 'Espera',
-  condition: 'Condición (puede cortar la secuencia)',
-};
-
-function delayLabel(step: EnrollPreviewStep): string {
-  const days = step.delay_days ?? 0;
-  const hours = step.delay_hours ?? 0;
-  if (days === 0 && hours === 0) return 'inmediato';
-  return [days > 0 ? `${days} d` : null, hours > 0 ? `${hours} h` : null].filter(Boolean).join(' ');
-}
+import { describeDelay } from '@/lib/services/crm/sequenceTimeline';
+import { ChannelIcon, channelMeta } from './channelMeta';
+import { enrollBlockReason, enrollErrorText, enrollWarning, stepsCountLabel } from './sequenceOptions';
+import { fetchEnrollPreview, type EnrollCandidate, type EnrollPreviewStep, type SequenceView } from './useSequences';
+import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
 
 interface Props {
   open: boolean;
-  sequenceId: string | null;
-  sequenceName: string;
+  sequence: SequenceView | null;
   onOpenChange: (open: boolean) => void;
   onEnroll: (sequenceId: string, opportunityId: string) => Promise<{ enrolled: number; skipped: { reason: string }[] }>;
   onDone: () => void | Promise<void>;
+  /** Adónde va el foco al cerrar si el botón que abrió ya no existe. */
+  returnFocusFallback?: () => HTMLElement | null;
 }
 
-export function EnrollDialog({ open, sequenceId, sequenceName, onOpenChange, onEnroll, onDone }: Props) {
+/** «El primero sale de inmediato» / «El primero sale 2 días después» (antes «sale inmediato»). */
+function firstStepSentence(first: EnrollPreviewStep | undefined): string {
+  if (!first) return 'El primero sale ahora.';
+  const delay = describeDelay(first);
+  return delay === 'Inmediato' ? 'El primero sale de inmediato.' : `El primero sale ${delay.toLowerCase()}.`;
+}
+
+export function EnrollDialog({ open, sequence, onOpenChange, onEnroll, onDone, returnFocusFallback }: Props) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [steps, setSteps] = useState<EnrollPreviewStep[]>([]);
+  // Lo que dice el servidor al abrir: si la secuencia se desactivó desde otra pestaña, la tarjeta no lo sabe.
+  const [previewActive, setPreviewActive] = useState(true);
   const [candidates, setCandidates] = useState<EnrollCandidate[]>([]);
   const [selected, setSelected] = useState<EnrollCandidate | null>(null);
+  const [acknowledged, setAcknowledged] = useState(false);
   const [saving, setSaving] = useState(false);
+  const sequenceId = sequence?.id ?? null;
+  const onCloseAutoFocus = useReturnFocus(open, returnFocusFallback);
 
   const load = useCallback(async (q: string) => {
     if (!sequenceId) return;
@@ -69,6 +65,7 @@ export function EnrollDialog({ open, sequenceId, sequenceName, onOpenChange, onE
       const preview = await fetchEnrollPreview(sequenceId, q);
       setSteps(preview.steps);
       setCandidates(preview.candidates);
+      setPreviewActive(preview.sequence.is_active);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
@@ -80,84 +77,50 @@ export function EnrollDialog({ open, sequenceId, sequenceName, onOpenChange, onE
     if (!open) return;
     setQuery('');
     setSelected(null);
+    setAcknowledged(false);
     void load('');
   }, [open, load]);
+
+  // Qué canales llegan a una persona y qué contacto falta: función pura probada.
+  const { sendsToCustomer, channelNames, contactNote } = enrollWarning(steps, selected ?? { customer_email: null });
+  const first = steps[0];
+  // Misma guarda que la tarjeta, con los datos frescos del preview (pasos activos + estado).
+  const blockReason = loading ? null : enrollBlockReason({ is_active: previewActive, steps });
+  const canConfirm = !!selected && blockReason === null && !saving && (!sendsToCustomer || acknowledged);
 
   const confirmEnroll = async () => {
     if (!sequenceId || !selected) return;
     setSaving(true);
     try {
       const result = await onEnroll(sequenceId, selected.id);
-      toast({
-        title: result.enrolled > 0 ? 'Oportunidad inscrita' : 'No se inscribió',
-        description: result.enrolled > 0
-          ? `${steps.length} paso(s) programados. El primero saldrá ${delayLabel(steps[0] ?? { delay_days: 0, delay_hours: 0 } as EnrollPreviewStep)}.`
-          : (result.skipped[0]?.reason ?? 'sin detalle'),
-        variant: result.enrolled > 0 ? undefined : 'destructive',
-      });
       if (result.enrolled > 0) {
+        toast({
+          title: `${selected.name} inscrita`,
+          description: `${steps.length} paso${steps.length === 1 ? '' : 's'} programado${steps.length === 1 ? '' : 's'}. ${firstStepSentence(first)}`,
+        });
         onOpenChange(false);
         await onDone();
+      } else {
+        toast({ title: 'No se inscribió', description: enrollErrorText(result.skipped[0]?.reason) || 'sin detalle', variant: 'destructive' });
       }
     } catch (err) {
-      toast({
-        title: 'No se pudo inscribir',
-        description: err instanceof Error ? err.message : 'Error desconocido',
-        variant: 'destructive',
-      });
+      toast({ title: 'No se pudo inscribir', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const sendsToCustomer = steps.some((s) => s.channel === 'email' || s.channel === 'whatsapp' || s.channel === 'sms');
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent onCloseAutoFocus={onCloseAutoFocus} className="max-h-[88vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Inscribir en «{sequenceName}»</DialogTitle>
+          <DialogTitle>Inscribir en «{sequence?.name ?? ''}»</DialogTitle>
+          <DialogDescription>Elige la oportunidad. Empieza por el primer paso y sigue sola desde el servidor.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <section aria-labelledby="pasos-secuencia">
-            <h3 id="pasos-secuencia" className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Lo que se va a ejecutar ({steps.length} paso{steps.length === 1 ? '' : 's'})
-            </h3>
-            {loading && steps.length === 0 ? (
-              <Skeleton className="mt-2 h-20 w-full" />
-            ) : steps.length === 0 ? (
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Esta secuencia no tiene pasos activos: no se puede inscribir.
-              </p>
-            ) : (
-              <ol className="mt-2 space-y-1 text-sm">
-                {steps.map((s) => (
-                  <li key={s.id} className="flex flex-wrap items-center gap-2 text-gray-700 dark:text-gray-300">
-                    <span className="font-mono text-xs text-gray-500 dark:text-gray-400">#{s.step_number}</span>
-                    <span>{CHANNEL_LABEL[s.channel] ?? s.channel}</span>
-                    <Badge variant="secondary">{delayLabel(s)}</Badge>
-                    {s.channel === 'condition' && (s.condition_rules ?? 0) === 0 && (
-                      <Badge variant="destructive">sin reglas: cortará aquí</Badge>
-                    )}
-                    {s.name ? <span className="text-xs text-gray-500 dark:text-gray-400">{s.name}</span> : null}
-                  </li>
-                ))}
-              </ol>
-            )}
-            {sendsToCustomer && (
-              <p className="mt-2 flex items-start gap-1.5 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                Esta secuencia envía mensajes reales al cliente. El consentimiento y la ventana de 24 h se aplican al
-                despachar, pero la inscripción es inmediata.
-              </p>
-            )}
-          </section>
-
-          <section aria-labelledby="elegir-oportunidad" className="space-y-2">
-            <h3 id="elegir-oportunidad" className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Oportunidad
-            </h3>
+          <section aria-labelledby="enroll-who" className="space-y-2">
+            <h3 id="enroll-who" className="text-sm font-medium text-gray-900 dark:text-gray-100">1. A quién</h3>
             <div className="flex items-center gap-2">
               <Label htmlFor="buscar-oportunidad" className="sr-only">Buscar oportunidad por nombre</Label>
               <Input
@@ -167,37 +130,31 @@ export function EnrollDialog({ open, sequenceId, sequenceName, onOpenChange, onE
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void load(query); } }}
               />
-              <Button type="button" variant="outline" onClick={() => void load(query)} disabled={loading}>
-                <Search className="mr-1.5 h-4 w-4" aria-hidden="true" /> Buscar
+              <Button type="button" variant="outline" onClick={() => void load(query)} disabled={loading} aria-label="Buscar">
+                <Search className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
-
-            {error && (
-              <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>
-            )}
-
+            {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
             {loading ? (
-              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-28 w-full" />
             ) : candidates.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">Sin oportunidades abiertas que coincidan.</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Sin oportunidades abiertas que coincidan.</p>
             ) : (
-              <ul className="max-h-56 divide-y divide-gray-200 overflow-y-auto rounded-md border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
+              <ul className="max-h-48 divide-y divide-gray-200 overflow-y-auto rounded-md border border-gray-200 dark:divide-gray-700 dark:border-gray-700" aria-label="Oportunidades">
                 {candidates.map((c) => (
                   <li key={c.id}>
                     <button
                       type="button"
                       aria-pressed={selected?.id === c.id}
                       disabled={c.already_enrolled}
-                      onClick={() => setSelected(c)}
-                      className={`flex w-full flex-wrap items-center justify-between gap-2 px-3 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-60 ${
-                        selected?.id === c.id
-                          ? 'bg-blue-50 dark:bg-blue-950/40'
-                          : 'hover:bg-gray-50 dark:hover:bg-gray-800/60'
+                      onClick={() => { setSelected(c); setAcknowledged(false); }}
+                      className={`flex w-full flex-wrap items-center justify-between gap-2 px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60 ${
+                        selected?.id === c.id ? 'bg-blue-50 dark:bg-blue-950/40' : 'hover:bg-gray-50 dark:hover:bg-gray-800/60'
                       }`}
                     >
                       <span className="min-w-0">
                         <span className="block truncate font-medium text-gray-900 dark:text-gray-100">{c.name}</span>
-                        <span className="block truncate text-xs text-gray-500 dark:text-gray-400">
+                        <span className="block truncate text-xs text-gray-600 dark:text-gray-400">
                           {c.customer_name ?? 'Sin cliente'}{c.customer_email ? ` · ${c.customer_email}` : ' · sin email'}
                         </span>
                       </span>
@@ -209,28 +166,55 @@ export function EnrollDialog({ open, sequenceId, sequenceName, onOpenChange, onE
             )}
           </section>
 
-          {selected && (
-            <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-900/40">
-              <p className="text-gray-900 dark:text-gray-100">
-                Se inscribirá <strong>{selected.name}</strong>
-                {selected.customer_name ? <> — cliente <strong>{selected.customer_name}</strong></> : null}
-                {selected.customer_email ? <> ({selected.customer_email})</> : <> (sin email: los pasos de correo fallarán)</>}.
+          <section aria-labelledby="enroll-from" className="space-y-2">
+            <h3 id="enroll-from" className="text-sm font-medium text-gray-900 dark:text-gray-100">2. Qué se va a enviar</h3>
+            {loading && steps.length === 0 ? (
+              <Skeleton className="h-10 w-full" />
+            ) : blockReason ? (
+              <p role="alert" className="text-sm text-red-700 dark:text-red-300">{blockReason}</p>
+            ) : (
+              <ol className="flex flex-wrap items-center gap-2" aria-label={stepsCountLabel(steps.length)}>
+                {steps.map((s, i) => (
+                  <li key={s.id} className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs ${
+                    i === 0 ? 'border-blue-600 bg-blue-50 text-blue-900 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-100' : 'border-gray-200 text-gray-700 dark:border-gray-700 dark:text-gray-300'
+                  }`}>
+                    <ChannelIcon channel={s.channel} size="sm" />
+                    <span>{i === 0 ? 'Empieza: ' : ''}{channelMeta(s.channel).label} · {describeDelay(s).toLowerCase()}</span>
+                    {s.channel === 'condition' && (s.condition_rules ?? 0) === 0 && <Badge variant="destructive">sin reglas: corta</Badge>}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+
+          {selected && blockReason === null && (
+            <div
+              role="alert"
+              className={`rounded-lg border-2 p-3 text-sm ${sendsToCustomer
+                ? 'border-red-500 bg-red-50 text-red-900 dark:border-red-500 dark:bg-red-950/40 dark:text-red-100'
+                : 'border-gray-300 bg-gray-50 text-gray-900 dark:border-gray-600 dark:bg-gray-900/40 dark:text-gray-100'}`}
+            >
+              <p className="flex items-start gap-2 font-medium">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                {sendsToCustomer
+                  ? <span>Esto NO es una prueba: se enviarán mensajes reales por <strong>{channelNames}</strong> a <strong>{selected.customer_name ?? selected.name}</strong>{contactNote}.</span>
+                  : <span>Se inscribirá <strong>{selected.name}</strong>. Esta secuencia no envía mensajes al cliente: solo crea tareas o esperas.</span>}
               </p>
+              {sendsToCustomer && (
+                <label className="mt-2 flex items-start gap-2">
+                  <input type="checkbox" className="mt-0.5" checked={acknowledged} onChange={(e) => setAcknowledged(e.target.checked)} />
+                  <span>Entiendo que se enviarán mensajes reales por {channelNames} a esta persona en cuanto toque cada paso.</span>
+                </label>
+              )}
             </div>
           )}
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            onClick={() => void confirmEnroll()}
-            disabled={saving || !selected || steps.length === 0}
-          >
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
+          <Button type="button" onClick={() => void confirmEnroll()} disabled={!canConfirm} className="bg-blue-600 text-white hover:bg-blue-700">
             <UserPlus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-            {saving ? 'Inscribiendo…' : 'Confirmar inscripción'}
+            {saving ? 'Inscribiendo…' : sendsToCustomer ? 'Confirmar inscripción y envíos' : 'Confirmar inscripción'}
           </Button>
         </DialogFooter>
       </DialogContent>

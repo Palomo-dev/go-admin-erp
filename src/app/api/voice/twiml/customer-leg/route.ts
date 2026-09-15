@@ -6,8 +6,14 @@
  *   - `action` en el `<Dial>` → `/api/voice/dial-complete?callId=…` (F3), que
  *     fija el desenlace y `duration_seconds = DialCallDuration`,
  *   - `url` en el `<Number>` → `/api/voice/twiml/consent-whisper?callId=…`
- *     (F3): el aviso de grabación lo oye EL CLIENTE y queda registrado en
- *     `call_consents` / `calls.consent_given` (Ley 1581, D9).
+ *     (F3): el aviso de grabación lo oye EL CLIENTE y es ese whisper quien
+ *     escribe el acta por `recordConsent` (Ley 1581, D9). Sin `call_id` no
+ *     hay acta posible → no hay `record=` (ronda 5).
+ *   - `record=` se decide por `calls.recording_enabled`
+ *     (`recordingEnabledForCall`), la MISMA fila que lee el whisper (ronda 6,
+ *     N-1): antes se releía `comm_settings` al conectar y, si la organización
+ *     encendía la grabación entre marcar y conectar, el `<Dial>` grababa con un
+ *     whisper que respondía vacío. Una sola fuente de verdad.
  * Cualquier otro dígito → cancelación explícita del vendedor.
  *
  * Seguridad (§7): firma Twilio + token HMAC + `accountSidMatchesOrg`; la org
@@ -22,6 +28,7 @@ import { verifyBridgeToken, signBridgeToken } from '@/lib/services/crm/bridgeTok
 import { buildCustomerLegTwiml, buildBridgeHangupTwiml } from '@/lib/services/crm/bridgeTwimlBuilders';
 import { isTerminalBridgeStatus, type BridgeStatus } from '@/lib/services/crm/mobileBridgeService';
 import { refundVoiceMinutes } from '@/lib/services/crm/callCreditsService';
+import { recordingEnabledForCall } from '@/lib/services/crm/consentService';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -110,7 +117,13 @@ export async function POST(request: Request) {
       console.error('[Customer Leg TwiML] sin caller id propio de la org', { org: orgId });
       return xml(buildBridgeHangupTwiml('La organización no tiene un número saliente configurado.'));
     }
-    const recordingEnabled = Boolean(settings.voice_recording_enabled);
+    // Sin `call_id` no hay fila `calls` donde el whisper pueda escribir el acta:
+    // no se graba (V-4, ronda 5) y al vendedor no se le dice que se graba.
+    // Con `call_id`, manda la fila (N-1, ronda 6), no `comm_settings`.
+    const recordingEnabled = await recordingEnabledForCall(callId, orgId, supabase);
+    if (!callId) {
+      console.warn('[Customer Leg TwiML] bridge sin call_id: grabación inhibida (sin acta posible)', { org: orgId });
+    }
 
     // `customer_dialing` solo avanza desde los estados previos: un segundo POST
     // con el mismo dígito devuelve el MISMO TwiML sin re-escribir el estado.

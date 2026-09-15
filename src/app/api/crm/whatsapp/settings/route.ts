@@ -49,6 +49,10 @@ export const PUT = withWhatsAppRoute(async (ctx, req) => {
     patch.allowed_hours = h ? { tz: h.tz || 'America/Bogota', days: Array.isArray(h.days) ? h.days.map(Number).filter((d) => d >= 0 && d <= 6) : [1, 2, 3, 4, 5, 6], from: h.from, to: h.to } : null;
   }
   if (b.daily_limit !== undefined) patch.daily_limit = b.daily_limit === null || b.daily_limit === 0 ? null : Math.max(1, Number(b.daily_limit));
+  // Indicativo con el que se completan los teléfonos guardados en formato
+  // nacional (F-4). `zSettingsBody` ya lo validaba (solo dígitos) pero no se
+  // copiaba al patch: se aceptaba y se perdía en silencio.
+  if (b.default_country_code !== undefined) patch.default_country_code = b.default_country_code || null;
   const settings = await saveOrgSettings(ctx.organizationId, patch);
   return NextResponse.json({ success: true, settings });
 }, { admin: true });

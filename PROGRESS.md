@@ -2362,3 +2362,98 @@ probar el diálogo de credenciales con una sesión de admin contra una transport
 sembrada; pedir acceso de API a las cuatro transportadoras (plazo más largo de la épica).
 
 **Fase 0: cerrada.** Siguiente: plan mode para Fase 1.
+
+
+---
+
+## Objetivo: POS de doble pantalla (pantalla del cliente) — inicio 2026-09-15
+
+> Plan: `docs/pos-doble-pantalla/PLAN.md`. Ciclo `/loop` con builder → tester → qa-reviewer,
+> rondas hasta ≥ 9,5 (máximo 3 por parte antes de escalar). Las calificaciones y el feedback
+> de cada ronda se anexan abajo; esta tabla se edita en sitio.
+
+## Fases — POS doble pantalla
+| Fase | Parte | Estado | Ronda actual | Última calificación | Responsable |
+|------|-------|--------|---------------|----------------------|-------------|
+| F0 Espejo local | A · Protocolo, proyección del carrito y transporte BroadcastChannel (con tests) | pendiente | 0 | - | builder |
+| F0 Espejo local | B · Emisión desde posService y CheckoutDialog (efectivo/tarjeta/QR sin imagen) | pendiente | 0 | - | builder |
+| F0 Espejo local | C · Ruta `/pos-display` con estados Reposo/Pedido/Cobro/Gracias/Conectando y marca | pendiente | 0 | - | builder |
+| F0 Espejo local | D · Indicador y botón en el POS, tarjeta "Pantalla del cliente" en Configuración › POS (interruptor maestro) | pendiente | 0 | - | builder |
+| F0 Espejo local | Integración · pruebas de extremo a extremo de la fase | pendiente | 0 | - | tester |
+| F1 Electron 2ª pantalla | displayWindow, IPC, persistencia, monitores que van y vienen, atajo de salida | pendiente | 0 | - | builder |
+| F2 Terminal, ajustes, propina y QR | pos_terminals, tarjeta completa de ajustes, estado Propina, Cobro·QR con imagen | pendiente | 0 | - | builder |
+| F3 Pantalla en otro dispositivo | SupabaseBroadcastTransport, emparejamiento, rutas /api/pos/display/* | pendiente | 0 | - | builder |
+| F4 Calificación y reposo con promociones | pos_display_feedback, calificación, reposo con promociones | pendiente | 0 | - | builder |
+
+## Historial de rondas — POS doble pantalla
+
+
+### Fase: Motor IA Chat — Ronda 4 (tallas y catálogos grandes) — 2026-09-15
+
+**Reporte del usuario (capturas de una tienda de calzado, org 137):** el bot
+decía "no tenemos talla 40" y "no puedo confirmar talla 39" para unos tenis
+que existen en 7.5, 8, 8.5, 9 y 9.5 US; y ante "las zapatillas diesel q
+precio" respondía "no encuentro las zapatillas Diesel" teniendo 6 modelos.
+
+**Diagnóstico (con la BD):**
+1. `buscar_productos` tardaba **19,1 s** en esa organización (16.551
+   productos activos) cuando un token era de categoría ("calzado"): los tres
+   LATERAL de precio/imagen/stock se evaluaban para ~300 raíces antes del
+   LIMIT y filtraban por `coalesce(parent_product_id, id) = raiz`, sin índice.
+   PostgREST la cancelaba a los 8 s (`statement_timeout` de `authenticator`)
+   y el bot seguía sin productos: `context_used.products = false`.
+2. El modelo nunca veía las variantes: solo "Disponible en 5 presentaciones".
+   Sin la lista de tallas no podía ni confirmar ni convertir.
+3. El prompt de visión pedía "marca, modelo" pensando en electrodomésticos;
+   con la captura de la ficha devolvió palabras genéricas ("producto", "par",
+   "marca") y la búsqueda no encontró nada.
+
+**Qué se hizo:**
+- Migración `20260915140000_buscador_variantes_y_rendimiento` (+ rollback):
+  `buscar_productos` v3 recorta a `p_limite` ANTES de los laterales y usa
+  `p2.id = raiz OR p2.parent_product_id = raiz` (PK + `idx_products_parent_id`).
+  Mismo caso: **19.096 ms → 386 ms**. Resultados idénticos en orgs 135, 128.
+- Nueva RPC `variantes_de_productos(p_org, p_ids, p_max)`: variantes activas
+  con atributos, stock y precio, en orden natural de talla ("7.5 US" antes que
+  "10 US"). Revocada a `anon`.
+- Módulo puro `_shared/ai-chat/variantesCatalogo.ts`: `resumirVariantes`
+  ("Tamaño disponibles: 7.5 US (100), 8 US (AGOTADA), …"), `esAtributoDeTalla`
+  (distingue "Tamaño: 8 US" de "Tamaño: 100 ml") y `GUIA_TALLAS`.
+- El contexto del bot ahora lleva la lista de variantes bajo cada producto (en
+  la búsqueda normal y cuando el cliente elige entre tarjetas anteriores) y,
+  SOLO si hay tallas, la guía de conversión aproximada US → Colombia/EU
+  (hombre, mujer, niños) con reglas: la lista es la única verdad, convertir y
+  ofrecer la equivalente y las vecinas, decir "aproximado", nunca inventar.
+  Si la organización escribe su propia tabla en `ai_settings.system_rules`,
+  el prompt le dice al modelo que esa manda.
+- Prompt de visión: transcribir literalmente nombre, marca, modelo, talla y
+  SKU de capturas de fichas de producto; 8 palabras clave en vez de 5.
+- Tests: 9 nuevos (`variantesCatalogoIA.test.ts`); guardrails y pedidos en
+  verde (109/109 en el lote).
+
+**Verificación:** RPC probadas con el producto real (5 tallas, stock 100 c/u,
+precio 73.000). Despliegue de la función a las 21:1x UTC. Pendiente de tráfico
+real para confirmar `products = true` en org 137 con "diesel".
+
+**Decisión de producto pendiente:** la tabla de equivalencias por defecto es
+aproximada (US 8 → CO 40, US 8.5 → 40.5/41). Cada tienda puede sobreescribirla
+en "Reglas del sistema" de la configuración de IA.
+
+#### Ronda 4 — segunda prueba del usuario (mismo día, 23:34 UTC)
+
+- "Tiene zapatillas diésel?" → `products = true` con 6 tarjetas: el arreglo de
+  rendimiento funciona en producción.
+- "Que tienes talla 40?" → `keywords = ["talla"]`, `products = false`: la
+  pregunta de seguimiento no nombra ningún producto, la búsqueda nueva no
+  encontraba nada y el hilo se perdía (el bot: "no tengo información de talla
+  40"). Las variantes estaban a un paso, en las tarjetas anteriores.
+- Arreglo: `pareceSeguimientoDeVariante` (talla/tamaño/color/medida/
+  presentación, o un número o letra de talla en frase corta) reutiliza las
+  tarjetas del mensaje anterior con sus variantes reales, igual que cuando el
+  cliente elige un producto. 2 tests nuevos (41/41 en intención).
+- El usuario también pidió "tamaños o medidas o unidades de medida": en la
+  tienda de hogar (org 135) el 84% de las descripciones traen medidas y el bot
+  no veía ninguna. `extraerMedidas` saca los fragmentos con número+unidad de la
+  descripción (cm, ml, litros, kg, oz, pulgadas…), respetando decimales, y se
+  añade bajo cada producto como "Medidas/capacidad (de la descripción)". 3 tests.
+- Desplegado 23:5x UTC. Pendiente de que el usuario repita la prueba de talla.

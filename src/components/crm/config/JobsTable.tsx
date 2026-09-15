@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import type { JobListItem } from '@/lib/services/crm/jobsService';
 
 /** Tabla de jobs usada por `JobsMonitor` (lista principal y "Últimos fallos"). */
@@ -28,10 +29,18 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | '
   dead: 'destructive',
 };
 
-export function fmtDate(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+/**
+ * `run_at`/`updated_at` son `timestamptz`: se renderizan en la zona de la
+ * organización con `useFormatDate()` (regla 3 de fechas; F0-JOBS r3 N-7), no
+ * con `toLocaleString` del navegador.
+ */
+function useFmtDate() {
+  const { formatDateTime } = useFormatDate();
+  return (iso: string | null): string => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? '—' : formatDateTime(d);
+  };
 }
 
 /** Un job `queued` con intentos previos es un reintento automático pendiente. */
@@ -52,6 +61,7 @@ export interface JobsTableProps {
 
 export function JobsTable({ items, loading, emptyText, canRetry, retrying, onRetry, compact }: JobsTableProps) {
   const cols = canRetry ? 7 : 6;
+  const fmtDate = useFmtDate();
   return (
     <div className="overflow-x-auto rounded-md border border-gray-200 dark:border-gray-700">
       <Table>

@@ -1,17 +1,27 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+/**
+ * Discovery / calificación de la oportunidad (FASE-09 drawer; F2 le añade el
+ * progreso). Usa la plantilla activa de la organización —la sembrada
+ * «Discovery General/Ventas» o la que el usuario configure— como lista plana
+ * de campos (`DiscoveryField`). El progreso sale de `discoveryProgress` y se
+ * expone como `progressbar`; las obligatorias que faltan se nombran. Cada
+ * campo lo pinta `FieldRenderer` (label, aria-required y pista).
+ */
+
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/use-toast";
 import { opportunitiesService } from "@/components/crm/oportunidades/opportunitiesService";
 import {
   getActiveDiscoveryTemplate,
   type DiscoveryField,
 } from "@/lib/services/crm/discoveryTemplateService";
-import { Loader2, Save, UserSearch, ChevronDown, ChevronUp, Settings } from "lucide-react";
+import { discoveryProgress, missingRequired } from "@/lib/services/crm/discoveryProgress";
+import { cn } from "@/utils/Utils";
+import { CheckCircle2, ChevronDown, Loader2, Save, Settings, UserSearch } from "lucide-react";
+import { FieldRenderer } from "./FieldRenderer";
 
 interface DiscoverySectionProps {
   opportunityId: string;
@@ -20,21 +30,25 @@ interface DiscoverySectionProps {
   onConfigure?: () => void;
 }
 
-export function DiscoverySection({ opportunityId, initialData, onUpdated, onConfigure }: DiscoverySectionProps) {
+export function DiscoverySection({
+  opportunityId,
+  initialData,
+  onUpdated,
+  onConfigure,
+}: DiscoverySectionProps) {
   const [fields, setFields] = useState<DiscoveryField[]>([]);
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  const panelId = `discovery-panel-${opportunityId}`;
 
-  // Cargar template de discovery de la organización
   const loadTemplate = useCallback(async () => {
     setLoading(true);
     try {
       const { fields: templateFields } = await getActiveDiscoveryTemplate();
       setFields(templateFields);
     } catch {
-      // Si falla, usar campos por defecto
       setFields([]);
     } finally {
       setLoading(false);
@@ -45,22 +59,15 @@ export function DiscoverySection({ opportunityId, initialData, onUpdated, onConf
     loadTemplate();
   }, [loadTemplate]);
 
-  // Cargar valores desde initialData
   useEffect(() => {
-    if (initialData && Object.keys(initialData).length > 0) {
-      const loaded: Record<string, string> = {};
-      for (const [key, val] of Object.entries(initialData)) {
-        loaded[key] = typeof val === "string" ? val : String(val ?? "");
-      }
-      setValues(loaded);
-    } else {
-      setValues({});
-    }
+    const loaded: Record<string, string> = {};
+    for (const [key, val] of Object.entries(initialData ?? {}))
+      loaded[key] = typeof val === "string" ? val : String(val ?? "");
+    setValues(loaded);
   }, [initialData, opportunityId]);
 
-  const update = (fieldId: string, value: string) => {
-    setValues((prev) => ({ ...prev, [fieldId]: value }));
-  };
+  const progress = useMemo(() => discoveryProgress(fields, values), [fields, values]);
+  const missing = useMemo(() => missingRequired(fields, values), [fields, values]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -68,149 +75,146 @@ export function DiscoverySection({ opportunityId, initialData, onUpdated, onConf
       await opportunitiesService.updateOpportunity(opportunityId, {
         discovery_data: values as unknown as Record<string, unknown>,
       });
-      toast({ title: "Discovery guardado" });
+      toast({
+        title: "Discovery guardado",
+        description: progress.complete
+          ? "Todas las obligatorias respondidas."
+          : `${progress.answered} de ${progress.total} campos.`,
+      });
       onUpdated?.();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Error desconocido";
-      toast({ title: "Error", description: msg, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Error desconocido",
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  const hasData = Object.values(values).some((v) => v?.trim() !== "");
-
   return (
     <div className="space-y-3">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center justify-between w-full text-left"
-      >
-        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-          <UserSearch className="h-4 w-4 text-blue-500" />
-          Discovery / Calificación
-          {hasData && (
-            <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
-              Completado
-            </span>
-          )}
-        </span>
-        <div className="flex items-center gap-2">
-          {onConfigure && (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.stopPropagation();
-                onConfigure();
-              }}
-              className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-            >
-              <Settings className="h-3 w-3" />
-              Configurar
-            </span>
-          )}
-          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </div>
-      </button>
-
-      {expanded && (
-        <div className="space-y-3">
-          {loading ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-            </div>
-          ) : fields.length === 0 ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400 italic py-2">
-              No hay campos de discovery configurados. Usa el botón "Configurar" para definirlos.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {fields.map((field) => (
-                <FieldRenderer
-                  key={field.id}
-                  field={field}
-                  value={values[field.id] || ""}
-                  onChange={(v) => update(field.id, v)}
-                />
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={panelId}
+          onClick={() => setExpanded((v) => !v)}
+          className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <UserSearch className="h-4 w-4 text-blue-500" aria-hidden="true" />
+            Discovery / Calificación
+            {!loading &&
+              fields.length > 0 &&
+              (progress.complete ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                  <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                  Completo
+                </span>
+              ) : (
+                <span className="text-xs font-normal text-gray-600 dark:text-gray-400">
+                  {progress.answered} de {progress.total}
+                </span>
               ))}
-            </div>
-          )}
+          </span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none",
+              expanded && "rotate-180",
+            )}
+            aria-hidden="true"
+          />
+        </button>
+        {onConfigure && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-blue-700 dark:text-blue-300"
+            onClick={onConfigure}
+          >
+            <Settings className="mr-1 h-3 w-3" aria-hidden="true" /> Configurar
+          </Button>
+        )}
+      </div>
 
-          {fields.length > 0 && (
-            <Button size="sm" onClick={handleSave} disabled={saving} className="w-full h-8 text-xs">
-              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
-              Guardar discovery
-            </Button>
+      {!loading && fields.length > 0 && (
+        <div className="space-y-1">
+          {/* Contraste no-texto (WCAG 1.4.11) en oscuro: pista gray-800 y relleno 500 → azul 3,99:1, esmeralda 5,79:1 (gray-700 + 600 daba 1,99 y 2,74). */}
+          <div
+            role="progressbar"
+            aria-label="Progreso del discovery"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progress.percent}
+            aria-valuetext={`${progress.answered} de ${progress.total} campos respondidos`}
+            className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800"
+          >
+            <div
+              className={cn(
+                "h-full rounded-full transition-[width] motion-reduce:transition-none",
+                progress.complete
+                  ? "bg-emerald-600 dark:bg-emerald-500"
+                  : "bg-blue-600 dark:bg-blue-500",
+              )}
+              style={{ width: `${progress.percent}%` }}
+            />
+          </div>
+          {missing.length > 0 && (
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Falta: {missing.map((f) => f.label).join(", ")}
+            </p>
           )}
         </div>
       )}
-    </div>
-  );
-}
 
-function FieldRenderer({
-  field,
-  value,
-  onChange,
-}: {
-  field: DiscoveryField;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  if (field.type === "textarea") {
-    return (
-      <div className="space-y-1 sm:col-span-2">
-        <Label className="text-xs text-gray-600 dark:text-gray-400">
-          {field.label}
-          {field.required && <span className="text-red-500 ml-0.5">*</span>}
-        </Label>
-        <Textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={field.placeholder}
-          rows={2}
-          className="text-sm"
-        />
+      <div id={panelId} hidden={!expanded} className="space-y-3">
+        {loading ? (
+          <div
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+            aria-busy="true"
+            aria-label="Cargando plantilla de discovery"
+          >
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-md" />
+            ))}
+          </div>
+        ) : fields.length === 0 ? (
+          <p className="py-2 text-xs italic text-gray-600 dark:text-gray-400">
+            No hay campos de discovery configurados. Usa «Configurar» para definirlos.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {fields.map((field) => (
+              <FieldRenderer
+                key={field.id}
+                id={`discovery-${opportunityId}-${field.id}`}
+                field={field}
+                value={values[field.id] || ""}
+                onChange={(v) => setValues((prev) => ({ ...prev, [field.id]: v }))}
+              />
+            ))}
+          </div>
+        )}
+        {fields.length > 0 && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSave}
+            disabled={saving}
+            className="h-8 w-full bg-blue-600 text-xs text-white hover:bg-blue-700"
+          >
+            {saving ? (
+              <Loader2 className="mr-1 h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden="true" />
+            ) : (
+              <Save className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            Guardar discovery
+          </Button>
+        )}
       </div>
-    );
-  }
-
-  if (field.type === "select" && field.options) {
-    return (
-      <div className="space-y-1">
-        <Label className="text-xs text-gray-600 dark:text-gray-400">
-          {field.label}
-          {field.required && <span className="text-red-500 ml-0.5">*</span>}
-        </Label>
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full h-9 px-3 text-sm rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Seleccionar...</option>
-          {field.options.map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-1">
-      <Label className="text-xs text-gray-600 dark:text-gray-400">
-        {field.label}
-        {field.required && <span className="text-red-500 ml-0.5">*</span>}
-      </Label>
-      <Input
-        type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={field.placeholder}
-        className="h-9 text-sm"
-      />
     </div>
   );
 }

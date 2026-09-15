@@ -31,10 +31,11 @@ jest.mock('@/lib/supabase/server-service', () => ({
               if (table === 'customers') {
                 const org = ops.find((o) => o.m === 'eq' && o.a[0] === 'organization_id')?.a[1];
                 const inList = ops.find((o) => o.m === 'in')?.a[1] as string[] | undefined;
-                const like = ops.find((o) => o.m === 'ilike')?.a[1] as string | undefined;
+                // Prefiltro regex de `findCustomerIdByPhone` (`imatch` = `~*`).
+                const re = ops.find((o) => o.m === 'filter' && o.a[1] === 'imatch')?.a[2] as string | undefined;
                 let out = clientes.filter((c) => c.organization_id === Number(org));
                 if (inList) out = out.filter((c) => inList.includes(c.phone));
-                if (like) { const suf = like.replace(/%/g, ''); out = out.filter((c) => c.phone.endsWith(suf)); }
+                if (re) { const rx = new RegExp(re, 'i'); out = out.filter((c) => rx.test(c.phone)); }
                 return resolve({ data: out, error: null });
               }
               return resolve({ data: null, error: null });

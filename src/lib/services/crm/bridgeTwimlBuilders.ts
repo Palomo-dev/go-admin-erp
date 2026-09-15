@@ -119,6 +119,11 @@ export function buildCustomerLegTwiml(p: CustomerLegTwimlParams): string {
   const parts: string[] = [];
   if (p.agentNotice) parts.push(say(p.agentNotice));
 
+  // Ronda 5 (V-4): `record=` SOLO si viaja el whisper que escribe el acta. Sin
+  // `consentUrl` (bridge sin `call_id`) no hay dónde registrar el aviso, así
+  // que no se graba. Nunca grabar sin acta.
+  const recording = p.recordingEnabled && Boolean(p.consentUrl);
+
   const dialAttrs = [
     `callerId="${escapeXml(p.callerId)}"`,
     `timeout="${clampTimeout(p.timeout ?? 30)}"`,
@@ -127,7 +132,7 @@ export function buildCustomerLegTwiml(p: CustomerLegTwimlParams): string {
     `action="${escapeXml(p.dialCompleteUrl)}"`,
     'method="POST"',
   ];
-  if (p.recordingEnabled) {
+  if (recording) {
     dialAttrs.push(
       'record="record-from-answer-dual"',
       `recordingStatusCallback="${escapeXml(p.recordingCallbackUrl)}"`,
@@ -146,7 +151,7 @@ export function buildCustomerLegTwiml(p: CustomerLegTwimlParams): string {
   // HEAD con un `if (false && …)` delante —una mutación de prueba que nadie
   // restauró— y las cuatro pruebas F5-38/39/40/55 se pusieron rojas: la red
   // mordió, la restauración falló. Si vuelves a ver un `false &&` aquí, es eso.
-  if (p.recordingEnabled && p.consentUrl) numberAttrs.push(`url="${escapeXml(p.consentUrl)}"`, 'method="POST"');
+  if (recording && p.consentUrl) numberAttrs.push(`url="${escapeXml(p.consentUrl)}"`, 'method="POST"');
 
   parts.push(`  <Dial ${dialAttrs.join(' ')}>`);
   parts.push(`    <Number ${numberAttrs.join(' ')}>${escapeXml(p.to)}</Number>`);

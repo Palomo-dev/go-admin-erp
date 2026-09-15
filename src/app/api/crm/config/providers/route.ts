@@ -3,9 +3,11 @@
  *
  * - Sesión obligatoria; organization_id SIEMPRE desde `getServerOrgContext()`.
  * - GET: lista por categoría con `configured`, `platform_available`, `settings`.
- *   NUNCA devuelve credenciales (ni sus valores). Siembra perezosa si 0 filas.
+ *   NUNCA devuelve credenciales (ni sus valores). Siembra perezosa si 0 filas,
+ *   solo cuando quien consulta es admin (un GET de un miembro no escribe; ve
+ *   las filas virtuales del catálogo).
  * - PUT: solo admin (`isOrgAdmin`); upsert por (org, category, provider) con
- *   service role; valida shape por categoría/proveedor contra el catálogo.
+ *   service role; valida shape, claves y `settings` contra el catálogo (422).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -56,8 +58,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const items = await listProviderConfigsSafe(ctx.organizationId, parsed?.success ? parsed.data : undefined);
-    return NextResponse.json({ success: true, items, can_edit: isOrgAdmin(ctx) });
+    const canEdit = isOrgAdmin(ctx);
+    const items = await listProviderConfigsSafe(ctx.organizationId, parsed?.success ? parsed.data : undefined, { seed: canEdit });
+    return NextResponse.json({ success: true, items, can_edit: canEdit });
   } catch (err) {
     console.error('[config/providers GET]', err);
     return NextResponse.json({ success: false, error: 'No se pudo listar la configuración' }, { status: 500 });

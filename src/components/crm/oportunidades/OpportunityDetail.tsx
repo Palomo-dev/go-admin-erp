@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ComponentType } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Activity, BarChart3, BedDouble, Bot, FileText, ListTodo, Package, Paperclip, StickyNote } from 'lucide-react';
+import { Activity, BarChart3, BedDouble, Bot, FileText, Handshake, ListTodo, Package, Paperclip, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,6 +22,8 @@ import { DetailSidebar } from './detail/DetailSidebar';
 import { LineItemsTab, toItems } from './detail/LineItemsTab';
 import { AnalyticsTab } from './detail/AnalyticsTab';
 import { useStageFlow } from './detail/useStageFlow';
+import { ClosingTab } from './detail/ClosingTab';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 
 /**
  * OpportunityDetail (FASE-09 §5.1): header + embudo + QuickActionsBar; tabs
@@ -29,7 +31,7 @@ import { useStageFlow } from './detail/useStageFlow';
  * con el drawer, más Productos · Espacios · Conceptos · Analítica propias.
  * Sin merge manual de timeline ni ActivityActions.
  */
-type DetailTab = 'activity' | 'tasks' | 'notes' | 'documents' | 'ia' | 'products' | 'spaces' | 'custom' | 'analytics';
+type DetailTab = 'activity' | 'tasks' | 'notes' | 'documents' | 'ia' | 'products' | 'spaces' | 'custom' | 'analytics' | 'closing';
 
 const TABS: Array<{ id: DetailTab; label: string; icon: ComponentType<{ className?: string }> }> = [
   { id: 'activity', label: 'Actividad', icon: Activity },
@@ -41,6 +43,8 @@ const TABS: Array<{ id: DetailTab; label: string; icon: ComponentType<{ classNam
   { id: 'spaces', label: 'Espacios', icon: BedDouble },
   { id: 'custom', label: 'Conceptos', icon: FileText },
   { id: 'analytics', label: 'Analítica', icon: BarChart3 },
+  // F10: demo → propuesta → contrato → pago
+  { id: 'closing', label: 'Cierre', icon: Handshake },
 ];
 
 const VALID_TABS = new Set<string>(TABS.map((t) => t.id));
@@ -50,6 +54,7 @@ export function OpportunityDetail({ opportunityId }: { opportunityId: string }) 
   const search = useSearchParams();
   const initialTab = search?.get('tab');
   const data = useOpportunityData(opportunityId);
+  const { organization } = useOrganization();
   const { opportunity, customer, stages, loading, error } = data;
   const [tab, setTab] = useState<DetailTab>(initialTab && VALID_TABS.has(initialTab) ? (initialTab as DetailTab) : 'activity');
   const [products, setProducts] = useState<OpportunityProduct[]>([]);
@@ -146,7 +151,7 @@ export function OpportunityDetail({ opportunityId }: { opportunityId: string }) 
     <div className="space-y-6">
       <DetailHeader opportunity={opportunity} customer={customer} stages={stages} displayAmount={displayAmount} busy={busy || flow.busy}
         onStageClick={(id) => void flow.change(id)} onWon={flow.markWon} onLost={flow.markLost} onDuplicate={handleDuplicate} onDelete={handleDelete}
-        onActionCompleted={(k) => { if (k !== 'call') { goToTab('activity'); setRefreshToken((n) => n + 1); } }} />
+        onActionCompleted={(k) => { if (k === 'proposal') { goToTab('closing'); return; } if (k !== 'call') { goToTab('activity'); setRefreshToken((n) => n + 1); } }} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
@@ -171,6 +176,7 @@ export function OpportunityDetail({ opportunityId }: { opportunityId: string }) 
             <TabsContent value="spaces"><LineItemsTab kind="spaces" items={toItems('spaces', spaces)} /></TabsContent>
             <TabsContent value="custom"><LineItemsTab kind="custom" items={toItems('custom', customLines)} /></TabsContent>
             <TabsContent value="analytics"><AnalyticsTab opportunity={opportunity} displayAmount={displayAmount} active={tab === 'analytics'} /></TabsContent>
+            <TabsContent value="closing"><ClosingTab opportunity={opportunity} customer={customer} organizationName={organization?.name} active={tab === 'closing'} onActivity={() => setRefreshToken((n) => n + 1)} /></TabsContent>
           </Tabs>
         </div>
         <DetailSidebar opportunity={opportunity} customer={customer} totals={totals} displayAmount={displayAmount} onEditCustomer={() => setEditCustomer(true)} />

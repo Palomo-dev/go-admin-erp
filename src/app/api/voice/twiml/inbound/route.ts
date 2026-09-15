@@ -2,8 +2,9 @@ import { verifyTwilioWebhook, WebhookError, getTwilioWebhookOrigin } from '@/lib
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { getTelephonySettings, accountSidMatchesOrg } from '@/lib/services/crm/voiceContextService';
 import { resolveInboundTargets } from '@/lib/services/crm/phoneNumberService';
-import { buildInboundTwiml, buildHangupTwiml, buildCallbackUrl, xmlResponse } from '@/lib/services/crm/twimlBuilders';
+import { buildInboundTwiml, buildHangupTwiml, buildCallbackUrl, xmlResponse, CONSENT_LANGUAGE } from '@/lib/services/crm/twimlBuilders';
 import { isBridgeSigningConfigured, signConsentToken, verifyConsentToken } from '@/lib/services/crm/bridgeTokens';
+import { recordConsent } from '@/lib/services/crm/consentService';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,6 +45,16 @@ export const dynamic = 'force-dynamic';
  * sin fila en `call_consents`). Se registra un aviso en el log para que el
  * dueño sepa que la grabación de esa organización está inhibida por
  * configuración, no por preferencia.
+ *
+ * Ronda 5 (V-3): el acta la escribe `recordConsent` (único escritor de
+ * `call_consents`, idempotente sobre el índice único). Si NO se puede escribir,
+ * se falla CERRADO igual que `ai-agent`: el `<Dial>` sale sin `record=` y la
+ * fila pasa a `recording_enabled=false`. Antes, con el INSERT fallando, se
+ * devolvía igualmente el `<Dial>` con grabación.
+ *
+ * Ronda 6 (N-6): con fila `calls` ya creada, `record=` se decide por
+ * `recording_enabled` de ESA fila, no por `comm_settings`: tras una caída que
+ * dejó la fila en `false`, el reintento del mismo token no graba.
  */
 export async function POST(request: Request) {
   let params: Record<string, string>;
@@ -98,8 +109,17 @@ export async function POST(request: Request) {
     }
 
     // Idempotencia por CallSid
-    const { data: existing } = await sb.from('calls').select('id').eq('organization_id', orgId).eq('provider_call_sid', callSid).maybeSingle();
-    let callId = (existing as { id: string } | null)?.id ?? null;
+    const { data: existing } = await sb.from('calls').select('id, recording_enabled').eq('organization_id', orgId).eq('provider_call_sid', callSid).maybeSingle();
+    const existingRow = existing as { id: string; recording_enabled: boolean | null } | null;
+    let callId = existingRow?.id ?? null;
+    /**
+     * Lo que de verdad va a llevar el TwiML: cae a `false` si el acta falla.
+     * Con fila YA creada manda la fila (N-6, ronda 6): si una pasada anterior
+     * la dejó en `recording_enabled=false` porque el acta no se pudo escribir,
+     * el reintento de Twilio con el mismo token no debe grabar aunque la BD ya
+     * responda. Coherencia fila ↔ TwiML: una sola fuente de verdad.
+     */
+    let recordNow = existingRow ? existingRow.recording_enabled === true && canProveConsent : recordingEnabled;
 
     if (!callId) {
       const { data: customer } = from
@@ -139,34 +159,38 @@ export async function POST(request: Request) {
       callId = (created as { id: string }).id;
     }
 
-    // El aviso YA sonó: ahora sí hay consentimiento que registrar (una sola vez).
-    if (announced && recordingEnabled && callId) {
-      await sb.from('calls').update({ consent_given: true }).eq('id', callId).eq('organization_id', orgId);
-      // A-6: `call_consents` NO tiene todavía un UNIQUE sobre
-      // (organization_id, call_id, consent_type) —solo la PK—, así que la
-      // unicidad del acta la sostiene esta lectura previa. Por eso el `error`
-      // NO se descarta: con filas duplicadas `maybeSingle()` falla, `data`
-      // vuelve `null` y la versión anterior insertaba OTRA copia, agravando el
-      // problema. Fail-closed: si la lectura falla, no se inserta.
-      const { data: prevConsent, error: prevConsentError } = await sb
-        .from('call_consents')
-        .select('id')
-        .eq('organization_id', orgId)
-        .eq('call_id', callId)
-        .eq('consent_type', 'recording')
-        .maybeSingle();
-      if (prevConsentError) {
-        console.error('[TwiML Inbound] no se pudo comprobar el acta previa:', prevConsentError.message);
-      } else if (!prevConsent) {
-        await sb.from('call_consents').insert({
-          organization_id: orgId,
-          call_id: callId,
-          consent_type: 'recording',
-          announced_at: new Date().toISOString(),
-          method: 'voice_announcement',
-          locale: 'es-MX',
-          recorded_announcement_text: settings.voice_consent_message,
-        });
+    // F-3 (ronda 7, gemelo de N-2): sin agentes conectados `buildInboundTwiml`
+    // responde `<Hangup/>` sin `<Dial>`, así que NO va a haber grabación. Un
+    // acta escrita en ese camino sería «acta sin grabación» que ningún callback
+    // corregiría (Twilio no envía `absent` de algo que nunca arrancó). No se
+    // escribe; no se retira una preexistente porque un reintento de Twilio del
+    // mismo token tras un `<Dial record=>` real sí pudo dejar grabación.
+    const willDial = targets.identities.length > 0;
+    if (recordNow && !willDial) {
+      console.warn('[TwiML Inbound] sin agentes conectados: <Hangup/> sin grabación, no se escribe acta', { orgId, callId });
+      recordNow = false;
+    }
+
+    // El aviso YA sonó: ahora sí hay acta que escribir (una sola vez, por el
+    // único escritor). Sin acta no hay `record=`: nunca al revés.
+    if (announced && recordNow && callId) {
+      try {
+        await recordConsent(
+          orgId,
+          {
+            callId,
+            consentType: 'recording',
+            consentGiven: true,
+            consentMessage: settings.voice_consent_message,
+            method: 'voice_announcement',
+            locale: CONSENT_LANGUAGE,
+          },
+          sb
+        );
+      } catch (err) {
+        console.error('[TwiML Inbound] sin acta no se graba:', err instanceof Error ? err.message : err, { orgId });
+        recordNow = false;
+        await sb.from('calls').update({ recording_enabled: false }).eq('id', callId).eq('organization_id', orgId);
       }
     }
 
@@ -177,12 +201,12 @@ export async function POST(request: Request) {
         from,
         calledNumber: to,
         identities: targets.identities,
-        recordingEnabled,
+        recordingEnabled: recordNow,
         consentMessage: settings.voice_consent_message,
         ringTimeoutSeconds: settings.voice_ring_timeout_seconds,
         announced,
         consentRedirectUrl:
-          announced || !recordingEnabled
+          announced || !recordNow
             ? null
             : buildCallbackUrl(origin, '/api/voice/twiml/inbound', { ct: signConsentToken(callSid) }),
       })

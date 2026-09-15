@@ -1,69 +1,46 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { NextRequest } from 'next/server';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { getPartners, createPartner } from '@/lib/services/crm/partnerService';
+import { validatePartnerInput } from '@/lib/services/crm/f12Validation';
+import { canManagePartners, jsonOk, readJson, rejectForeignOrganization, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
+
+const TAG = 'CRM Partners';
 
 /**
- * GET /api/crm/partners — Lista partners.
+ * GET /api/crm/partners — partners de la organización con tier, tasa efectiva
+ * y resumen de comisiones (registro, no dinero). `can_manage` dice si la
+ * sesión puede aprobar/pagar/rechazar comisiones y borrar partners.
  */
 export async function GET() {
   try {
     const ctx = await getServerOrgContext();
     const partners = await getPartners(ctx.organizationId, ctx.supabase);
-
-    return NextResponse.json({ success: true, data: partners }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Partners] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return jsonOk(partners, { can_manage: canManagePartners(ctx) });
+  } catch (error) {
+    return routeError(error, TAG);
   }
 }
 
 /**
- * POST /api/crm/partners — Crea un partner.
- * Body: { name, email, company_name?, phone?, tier_id?, commission_rate?, is_active? }
+ * POST /api/crm/partners — crea un partner.
+ * Body: { name, email, company_name?, phone?, tier_id?, commission_rate? (0 = hereda del tier), is_active? }
+ * 409 correo ya usado en la organización · 404 tier ajeno · 403 organization_id ajeno.
  */
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const body = await request.json();
-
-    if (!body?.name || !body?.email) {
-      return NextResponse.json(
-        { success: false, error: 'Faltan campos obligatorios: name, email' },
-        { status: 400 }
-      );
-    }
-
+    const body = await readJson(request);
+    rejectForeignOrganization(TAG, body.organization_id, ctx);
+    const parsed = validatePartnerInput(body, { partial: false });
+    if (!parsed.ok) return validationFail(parsed.errors);
+    const v = parsed.value;
     const partner = await createPartner(
       ctx.organizationId,
-      {
-        name: body.name,
-        company_name: body.company_name,
-        email: body.email,
-        phone: body.phone,
-        tier_id: body.tier_id,
-        commission_rate: body.commission_rate,
-        is_active: body.is_active,
-      },
-      ctx.supabase
+      { name: v.name!, email: v.email!, company_name: v.company_name, phone: v.phone, tier_id: v.tier_id, commission_rate: v.commission_rate, is_active: v.is_active },
+      ctx.supabase,
     );
-
-    return NextResponse.json({ success: true, data: partner }, { status: 201 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Partners] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return jsonOk(partner, {}, 201);
+  } catch (error) {
+    return routeError(error, TAG);
   }
 }

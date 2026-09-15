@@ -3,9 +3,11 @@ import { resolveOrgFromExternal, OrgContextError } from '@/lib/utils/orgContext'
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { parseVoiceIdentity, isClientFrom } from '@/lib/services/crm/voiceTokenService';
 import { getTelephonySettings, pickCallerId, isActiveMember, filterOrgOwnedRefs, accountSidMatchesOrg } from '@/lib/services/crm/voiceContextService';
-import { buildOutboundBrowserTwiml, buildHangupTwiml, xmlResponse, escapeXml } from '@/lib/services/crm/twimlBuilders';
+import { buildOutboundBrowserTwiml, buildHangupTwiml, buildCallbackUrl, xmlResponse, escapeXml, CONSENT_LANGUAGE, CONSENT_VOICE } from '@/lib/services/crm/twimlBuilders';
 import { reserveVoiceMinutes } from '@/lib/services/crm/callCreditsService';
 import { normalizeDialableE164 } from '@/lib/services/integrations/twilio/twilioConfig';
+import { isBridgeSigningConfigured, signConsentToken, verifyConsentToken } from '@/lib/services/crm/bridgeTokens';
+import { recordConsent } from '@/lib/services/crm/consentService';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
@@ -20,12 +22,25 @@ const AGENT_RECORDING_PROMPT = 'Conectando. Esta llamada se grabará.';
  * Rama A (client-originated, `From=client:u_{uuid}_o_{org}`): resuelve la org por
  * la identity (C10: la fila `calls` se crea AQUÍ; el browser ya no hace POST
  * /api/voice/call), verifica membresía, reserva 1 minuto de créditos
- * (`deduct_comm_credits`), inserta `calls` (mode browser, dialing) y
- * `call_consents` si hay grabación, y responde el TwiML de §4.5.1 (el
- * consentimiento lo oye el cliente en `<Number url=consent-whisper>`).
+ * (`deduct_comm_credits`), inserta `calls` (mode browser, dialing) y responde
+ * el TwiML de §4.5.1. El aviso de grabación lo oye el CLIENTE al contestar en
+ * `<Number url=consent-whisper>`, y es ESE whisper quien escribe el acta
+ * (`recordConsent`): aquí no se escribe `call_consents` (ronda 5, V-4: el acta
+ * al marcar fechaba como "avisado" llamadas que nunca contestaban). La rama de
+ * idempotencia (fila ya creada, reintento de Twilio) devuelve el mismo TwiML,
+ * con el mismo whisper (V-1).
  *
- * Rama B (REST-originated, F5/F6: `From` = número): comportamiento previo,
- * resolviendo la org por `CallSid` en `calls`.
+ * Rama B (REST-originated, `/api/voice/call`: `From` = número): resuelve la org
+ * por `CallSid` en `calls`. **CERRADA por defecto (ronda 6, N-5)**: responde
+ * `<Hangup/>`. Es un flujo heredado sin llamadores en la interfaz que además
+ * vuelve a marcar al `to` desde una llamada cuyo `to` YA es el cliente (doble
+ * aviso). Solo se activa con `VOICE_LEGACY_REST_OUTBOUND=true` (documentada en
+ * `.env.example`), y entonces exige `accountSidMatchesOrg` y sigue el aviso en
+ * dos pasadas con token, exactamente como `twiml/inbound`: 1ª `<Say aviso/> +
+ * <Redirect ?ct=…>`; 2ª (token válido) `recordConsent` y SOLO entonces
+ * `<Dial record=…>`. Si el acta falla, se conecta sin grabar y la fila pasa a
+ * `recording_enabled=false` (V-1, V-3). Sin `VOICE_CALLBACK_SECRET` no hay
+ * forma de acreditar el aviso → no se graba.
  *
  * Seguridad: firma Twilio fail-closed (SEC) — el token se resuelve por AccountSid.
  */
@@ -51,7 +66,7 @@ export async function POST(request: Request) {
     if (isClientFrom(from)) {
       return await handleClientOriginated({ params, accountSid, origin, callSid, from, rawTo });
     }
-    return await handleRestOriginated({ params, origin, callSid, rawTo });
+    return await handleRestOriginated({ params, accountSid, origin, callSid, rawTo, requestUrl: request.url });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Error desconocido';
     console.error('[TwiML Outbound] error:', message);
@@ -171,22 +186,8 @@ async function handleClientOriginated(input: {
     },
   });
 
-  if (recordingEnabled) {
-    await sb
-      .from('call_consents')
-      .insert({
-        organization_id: orgId,
-        call_id: callId,
-        consent_type: 'recording',
-        method: 'voice_announcement',
-        locale: 'es-MX',
-        recorded_announcement_text: settings.voice_consent_message,
-      })
-      .then(({ error }) => {
-        if (error) console.warn('[TwiML Outbound] call_consents:', error.message);
-      });
-  }
-
+  // Sin acta aquí a propósito (V-4): la escribe `consent-whisper` cuando el
+  // cliente contesta y oye el aviso. Una llamada no contestada no deja acta.
   return xmlResponse(
     buildOutboundBrowserTwiml({
       origin,
@@ -200,8 +201,17 @@ async function handleClientOriginated(input: {
   );
 }
 
-async function handleRestOriginated(input: { params: Record<string, string>; origin: string; callSid: string; rawTo: string }): Promise<Response> {
-  const { params, origin, callSid, rawTo } = input;
+/** Bandera explícita de entorno: sin ella la rama REST no existe (N-5). */
+function isLegacyRestOutboundEnabled(): boolean {
+  return process.env.VOICE_LEGACY_REST_OUTBOUND === 'true';
+}
+
+async function handleRestOriginated(input: { params: Record<string, string>; accountSid: string; origin: string; callSid: string; rawTo: string; requestUrl: string }): Promise<Response> {
+  const { params, accountSid, origin, callSid, rawTo, requestUrl } = input;
+  if (!isLegacyRestOutboundEnabled()) {
+    console.warn('[TwiML Outbound] rama REST heredada deshabilitada (VOICE_LEGACY_REST_OUTBOUND): <Hangup/>', { callSid });
+    return xmlResponse(buildHangupTwiml());
+  }
   let orgId: number;
   let sb: SupabaseClient;
   try {
@@ -215,6 +225,11 @@ async function handleRestOriginated(input: { params: Record<string, string>; ori
     }
     throw err;
   }
+  // Aislamiento multi-tenant (M1): la org sale de la fila, quien firma debe ser su cuenta.
+  if (!(await accountSidMatchesOrg(orgId, accountSid, sb))) {
+    console.warn('[TwiML Outbound] REST: AccountSid ajeno a la org de la llamada', { orgId });
+    return new Response('Forbidden', { status: 403 });
+  }
   const { data: callRow } = await sb
     .from('calls')
     .select('id, to_number, from_number, recording_enabled')
@@ -225,19 +240,49 @@ async function handleRestOriginated(input: { params: Record<string, string>; ori
   const settings = await getTelephonySettings(orgId, sb);
   const to = normalizeTo(call?.to_number || rawTo);
   if (!call || !to) return xmlResponse(buildHangupTwiml('Llamada no registrada.'));
-  const parts: string[] = [];
-  if (call.recording_enabled && settings.voice_consent_message) {
-    parts.push(`  <Say language="es-MX" voice="Polly.Mia-Neural">${escapeXml(settings.voice_consent_message)}</Say>`);
+
+  // La pata única es el cliente: el aviso va en dos pasadas con token (como
+  // `twiml/inbound`). Sin secreto no se puede acreditar → no se graba.
+  const canProveConsent = isBridgeSigningConfigured() && callSid !== '';
+  let recordingEnabled = call.recording_enabled === true && canProveConsent;
+  if (call.recording_enabled === true && !canProveConsent) {
+    console.warn('[TwiML Outbound] REST: grabación inhibida, no se puede acreditar el aviso (Ley 1581)', { orgId });
   }
-  const twiml = buildOutboundBrowserTwiml({
-    origin,
-    callId: call.id,
-    to,
-    callerId: call.from_number || params.From || '',
-    recordingEnabled: call.recording_enabled,
-    ringTimeoutSeconds: settings.voice_ring_timeout_seconds,
-  });
-  return xmlResponse(parts.length ? twiml.replace('<Response>\n', `<Response>\n${parts.join('\n')}\n`) : twiml);
+  const announced = verifyConsentToken(callSid, new URL(requestUrl).searchParams.get('ct'));
+
+  // 1ª pasada: SOLO el aviso. Sin acta, sin `record=`.
+  if (recordingEnabled && !announced) {
+    const back = buildCallbackUrl(origin, '/api/voice/twiml/outbound', { ct: signConsentToken(callSid) });
+    return xmlResponse(
+      `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Say language="${CONSENT_LANGUAGE}" voice="${CONSENT_VOICE}">${escapeXml(settings.voice_consent_message)}</Say>\n  <Redirect method="POST">${escapeXml(back)}</Redirect>\n</Response>`
+    );
+  }
+
+  // 2ª pasada: el aviso YA sonó. Acta primero; sin acta no hay grabación.
+  if (recordingEnabled) {
+    try {
+      await recordConsent(
+        orgId,
+        { callId: call.id, consentType: 'recording', consentGiven: true, consentMessage: settings.voice_consent_message, method: 'voice_announcement', locale: CONSENT_LANGUAGE },
+        sb
+      );
+    } catch (err) {
+      console.error('[TwiML Outbound] REST: sin acta no se graba:', err instanceof Error ? err.message : err, { orgId });
+      recordingEnabled = false;
+      await sb.from('calls').update({ recording_enabled: false }).eq('id', call.id).eq('organization_id', orgId);
+    }
+  }
+
+  return xmlResponse(
+    buildOutboundBrowserTwiml({
+      origin,
+      callId: call.id,
+      to,
+      callerId: call.from_number || params.From || '',
+      recordingEnabled,
+      ringTimeoutSeconds: settings.voice_ring_timeout_seconds,
+    })
+  );
 }
 
 /**

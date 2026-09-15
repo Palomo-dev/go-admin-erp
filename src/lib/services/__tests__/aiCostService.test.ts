@@ -1,11 +1,13 @@
 /// <reference types="jest" />
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * aiCostService — F0 (REG r1):
+ * aiCostService — F0 (REG r1, ampliado en r2):
  *  - el RPC decrement_ai_credits se ejecuta ANTES del proveedor;
  *  - si el RPC devuelve false → InsufficientCreditsError y NO se llama al proveedor;
- *  - si el proveedor falla → reembolso (RPC con costo negativo);
- *  - cost_amount real desde provider_pricing en metadata del log;
+ *  - si el proveedor falla → reembolso (RPC dedicada, idempotente por logId);
+ *  - cost_amount real desde provider_pricing en columna y metadata del log;
+ *  - org sin fila ai_settings → auto-provisión con el cupo del plan + reintento;
+ *  - presupuesto mensual (§8) → BudgetExceededError (402, budget_exceeded);
  *  - chargeCommCredits usa deduct_comm_credits + comm_usage_logs.
  */
 
@@ -15,6 +17,7 @@ import {
   withAiCharge,
   chargeCommCredits,
   InsufficientCreditsError,
+  BudgetExceededError,
   defaultCreditsForUnits,
   __setAiCostClientFactory,
 } from '@/lib/services/crm/aiCostService';
@@ -40,7 +43,7 @@ function fakeDb(opts: { rpcResult?: boolean | ((name: string, args: any) => bool
         },
         select: () => q,
         eq: (c: string, v: unknown) => { filters[c] = v; return q; },
-        lte: () => q, order: () => q, limit: () => q,
+        lte: () => q, or: () => q, order: () => q, limit: () => q,
         maybeSingle: async () => {
           const key = `${filters.provider}:${filters.sku}`;
           const price = opts.prices?.[key];
@@ -88,10 +91,132 @@ describe('chargeAiCredits', () => {
     expect(calls.filter((c) => c.type === 'insert')).toHaveLength(0);
   });
 
-  it('propaga error del RPC', async () => {
-    const { sb } = fakeDb({ rpcError: { message: 'ai_settings no encontrada' } });
+  it('propaga un error genérico del RPC (no es 402)', async () => {
+    const { sb } = fakeDb({ rpcError: { message: 'connection reset' } });
     __setAiCostClientFactory(() => sb);
     await expect(chargeAiCredits({ orgId: 7, actionType: 'x', model: 'm', units: 1 })).rejects.toThrow(/decrement_ai_credits/);
+  });
+
+  // QA r1 alto 4: 27 orgs con CRM no tenían fila en ai_settings y recibían 500.
+  // Con la fila ausente se auto-provisiona con el cupo del plan y se reintenta
+  // UNA vez; si el plan no da cupo, 402.
+  it('org sin fila: auto-provisiona con el cupo del plan y reintenta el RPC una sola vez', async () => {
+    const { sb, calls } = fakeDb({ rpcResult: true });
+    let hasRow = false;
+    let rpcCalls = 0;
+    sb.rpc = async (name: string, args: any) => {
+      calls.push({ type: 'rpc', name, args });
+      if (name !== 'decrement_ai_credits') return { data: true, error: null };
+      rpcCalls += 1;
+      return hasRow ? { data: true, error: null } : { data: false, error: null };
+    };
+    const origFrom = sb.from;
+    sb.from = (table: string) => {
+      if (table === 'ai_settings') {
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: hasRow ? { organization_id: 7, credits_remaining: 500 } : null, error: null }) }) }),
+          insert: (row: any) => { calls.push({ type: 'insert', name: table, args: row }); hasRow = true; return { then: (r: any) => r({ data: null, error: null }) }; },
+        };
+      }
+      if (table === 'subscriptions') {
+        return { select: () => ({ eq: () => ({ single: async () => ({ data: { plan_id: 1, metadata: {}, plans: { code: 'pro', is_custom_enterprise: false } }, error: null }) }) }) };
+      }
+      if (table === 'plans') {
+        return { select: () => ({ eq: () => ({ single: async () => ({ data: { ai_credits_monthly: 500, ai_credits_max_rollover: 1000, ai_model: 'gpt-5.6-luna', ai_max_tokens: 4000 }, error: null }) }) }) };
+      }
+      return origFrom(table);
+    };
+    __setAiCostClientFactory(() => sb);
+
+    const r = await chargeAiCredits({ orgId: 7, actionType: 'x', model: 'm', units: 1, credits: 2 });
+    expect(r.credits).toBe(2);
+    expect(rpcCalls).toBe(2);
+    const provisioned = calls.find((c) => c.type === 'insert' && c.name === 'ai_settings')!;
+    expect(provisioned.args).toMatchObject({ organization_id: 7, credits_remaining: 500, is_active: true });
+    // Saldo previo = saldo tras el cobro + créditos: alimenta credits_before/after y p_previous.
+    expect(r.previousBalance).toBe(502);
+  });
+
+  it('org sin fila y plan sin cupo → InsufficientCreditsError (402), sin segundo RPC', async () => {
+    const { sb, calls } = fakeDb({ rpcResult: false });
+    const origFrom = sb.from;
+    sb.from = (table: string) => {
+      if (table === 'ai_settings') {
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
+          insert: (row: any) => { calls.push({ type: 'insert', name: table, args: row }); return { then: (r: any) => r({ data: null, error: null }) }; },
+        };
+      }
+      if (table === 'subscriptions') {
+        return { select: () => ({ eq: () => ({ single: async () => ({ data: { plan_id: 1, metadata: {}, plans: { code: 'free', is_custom_enterprise: false } }, error: null }) }) }) };
+      }
+      if (table === 'plans') {
+        return { select: () => ({ eq: () => ({ single: async () => ({ data: { ai_credits_monthly: 0, ai_credits_max_rollover: 0, ai_model: 'gpt-5.6-luna', ai_max_tokens: 500 }, error: null }) }) }) };
+      }
+      return origFrom(table);
+    };
+    __setAiCostClientFactory(() => sb);
+    await expect(chargeAiCredits({ orgId: 7, actionType: 'x', model: 'm', units: 1 })).rejects.toBeInstanceOf(InsufficientCreditsError);
+    expect(calls.filter((c) => c.type === 'rpc' && c.name === 'decrement_ai_credits')).toHaveLength(1);
+  });
+
+  // §8 / QA r1 medio 13: el presupuesto mensual bloquea, no solo avisa.
+  it('presupuesto mensual agotado → BudgetExceededError (402, budget_exceeded) sin tocar el RPC', async () => {
+    const { sb, calls } = fakeDb({ rpcResult: true, prices: { 'openai:gpt_5_6_luna_in': 2 } });
+    const origFrom = sb.from;
+    sb.from = (table: string) => {
+      if (table === 'provider_configs') {
+        const q: any = { select: () => q, eq: () => q, order: () => q, limit: async () => ({ data: [{ settings: { monthly_budget_usd: 10 }, priority: 10 }], error: null }) };
+        return q;
+      }
+      if (table === 'organizations') {
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { timezone: 'America/Bogota' }, error: null }) }) }) };
+      }
+      return origFrom(table);
+    };
+    const origRpc = sb.rpc;
+    sb.rpc = async (name: string, args: any) => {
+      if (name === 'fn_ai_usage_month') {
+        expect(args.p_tz).toBe('America/Bogota');
+        expect(args.p_since).toMatch(/^\d{4}-\d{2}-01T00:00:00\.000-05:00$/);
+        return { data: { spent_usd: 9.5, spent_credits: 100, rows: 3, by_model: [], by_day: [] }, error: null };
+      }
+      return origRpc(name, args);
+    };
+    __setAiCostClientFactory(() => sb);
+    __setPricingClientFactory(() => sb);
+
+    let caught: unknown;
+    try {
+      await chargeAiCredits({ orgId: 7, actionType: 'x', model: 'gpt-5.6-luna', units: 1, unitSku: 'gpt_5_6_luna_in' }); // estimado 2 USD → 11.5 > 10
+    } catch (e) { caught = e; }
+    expect(caught).toBeInstanceOf(BudgetExceededError);
+    expect(caught).toBeInstanceOf(InsufficientCreditsError); // los handlers de jobs ya lo mapean a JobFatalError
+    expect((caught as BudgetExceededError).code).toBe('budget_exceeded');
+    expect((caught as Error).message).toContain('budget_exceeded');
+    expect(calls.filter((c) => c.type === 'rpc' && c.name === 'decrement_ai_credits')).toHaveLength(0);
+  });
+
+  it('con presupuesto y gasto por debajo, cobra con normalidad', async () => {
+    const { sb, calls } = fakeDb({ rpcResult: true, prices: { 'openai:gpt_5_6_luna_in': 2 } });
+    const origFrom = sb.from;
+    sb.from = (table: string) => {
+      if (table === 'provider_configs') {
+        const q: any = { select: () => q, eq: () => q, order: () => q, limit: async () => ({ data: [{ settings: { monthly_budget_usd: 10 }, priority: 10 }], error: null }) };
+        return q;
+      }
+      if (table === 'organizations') {
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { timezone: 'America/Bogota' }, error: null }) }) }) };
+      }
+      return origFrom(table);
+    };
+    const origRpc = sb.rpc;
+    sb.rpc = async (name: string, args: any) => (name === 'fn_ai_usage_month' ? { data: { spent_usd: 5, spent_credits: 1, rows: 1, by_model: [], by_day: [] }, error: null } : origRpc(name, args));
+    __setAiCostClientFactory(() => sb);
+    __setPricingClientFactory(() => sb);
+    const r = await chargeAiCredits({ orgId: 7, actionType: 'x', model: 'gpt-5.6-luna', units: 1, unitSku: 'gpt_5_6_luna_in' });
+    expect(r.cost_amount).toBe(2);
+    expect(calls.filter((c) => c.type === 'rpc' && c.name === 'decrement_ai_credits')).toHaveLength(1);
   });
 
   it('infiere provider google para modelos gemini', async () => {
@@ -171,6 +296,23 @@ describe('withAiCharge (orden y reembolso)', () => {
 });
 
 describe('refundAiCredits', () => {
+  // QA r1 medio 10: p_previous (saldo antes del cobro) viaja a refund_ai_credits
+  // cuando se conoce, y solo entonces (los tests anteriores fijan args exactos sin él).
+  it('pasa p_previous a refund_ai_credits cuando el cobro lo conoce', async () => {
+    const { sb, calls } = fakeDb({ rpcResult: true });
+    const origFrom = sb.from;
+    sb.from = (table: string) => {
+      if (table === 'ai_settings') return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { credits_remaining: 493 }, error: null }) }) }) };
+      return origFrom(table);
+    };
+    __setAiCostClientFactory(() => sb);
+    await expect(
+      withAiCharge({ orgId: 7, actionType: 'draft', model: 'm', units: 1, credits: 10 }, async () => { throw new Error('provider down'); }),
+    ).rejects.toThrow('provider down');
+    const refund = calls.find((c) => c.type === 'rpc' && c.name === 'refund_ai_credits')!;
+    expect(refund.args).toEqual({ p_org_id: 7, p_amount: 10, p_previous: 503 });
+  });
+
   it('con 0 créditos no llama al RPC', async () => {
     const { sb, calls } = fakeDb({ rpcResult: true });
     __setAiCostClientFactory(() => sb);

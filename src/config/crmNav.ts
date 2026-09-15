@@ -25,6 +25,9 @@ import {
   FileText,
   GitBranch,
   Zap,
+  MessageSquareWarning,
+  Gift,
+  Handshake,
 } from 'lucide-react';
 
 export interface CrmNavItem {
@@ -74,6 +77,15 @@ export const CRM_NAV: CrmNavItem[] = [
   // Esta casilla es ademas el unico interruptor real: los enlaces de
   // AutomationsView solo se renderizan si esta entrada esta activa.
   { key: 'automatizaciones', name: 'Automatizaciones', href: '/app/crm/automatizaciones', icon: Zap, phase: 'F8', enabled: true },
+  // F2: biblioteca de objeciones. La pagina existe y sus rutas tienen prueba
+  // de contrato con la organizacion doblada (`objections.contract.test.ts`).
+  { key: 'objeciones', name: 'Objeciones', href: '/app/crm/objeciones', icon: MessageSquareWarning, phase: 'F2', enabled: true },
+  // F12: referidos (clientes que recomiendan) y partners (consultores que
+  // venden). Las paginas existen y sus rutas tienen prueba de contrato con la
+  // organizacion doblada (`referrals.contract.test.ts`, `partners.contract.test.ts`).
+  // Ninguna accion mueve dinero: recompensas y comisiones son registros.
+  { key: 'referidos', name: 'Referidos', href: '/app/crm/referidos', icon: Gift, phase: 'F12', enabled: true },
+  { key: 'partners', name: 'Partners', href: '/app/crm/partners', icon: Handshake, phase: 'F12', enabled: true },
 ];
 
 /** Entradas visibles en el nav (solo `enabled`). */

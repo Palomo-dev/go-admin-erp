@@ -13,23 +13,22 @@
  *
  * Todas lanzan `WebhookError` (statusCode 401/403) o devuelven false. Nunca
  * "warn & continue": sin secreto configurado => rechazo.
+ *
+ * F0-SEC r2: «configurado» significa un secreto REAL (`secrets.ts`): un valor
+ * de relleno (`your-…`, `changeme`, el literal de `.env.example`) o más corto
+ * que `DEFAULT_MIN_SECRET_LENGTH` se rechaza igual que uno ausente. Aplica a
+ * los secretos de entorno y a los que vienen de la base (token de subcuenta,
+ * app_secret de un canal).
  */
 
 import crypto from 'crypto';
 import Twilio from 'twilio';
 import { Webhook as SvixWebhook } from 'svix';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { WebhookError } from './errors';
+import { assertRealSecret, isRealSecret, readRealSecret, requireRealSecret } from './secrets';
 
-export class WebhookError extends Error {
-  statusCode: number;
-  code: string;
-  constructor(statusCode: number, code: string, message?: string) {
-    super(message ?? code);
-    this.name = 'WebhookError';
-    this.statusCode = statusCode;
-    this.code = code;
-  }
-}
+export { WebhookError } from './errors';
 
 /** Comparación en tiempo constante de dos strings (false si longitudes distintas). */
 export function safeEqual(a: string, b: string): boolean {
@@ -65,22 +64,41 @@ export function parseFormBody(rawBody: string): Record<string, string> {
 }
 
 /**
+ * Auth Token de la cuenta master de Twilio (`TWILIO_MASTER_AUTH_TOKEN`, con
+ * `TWILIO_AUTH_TOKEN` como alias legacy). `null` si falta o es de relleno.
+ * Lo usan `resolveTwilioAuthToken` y el ws-server (org sin subcuenta).
+ */
+export function resolveTwilioMasterAuthToken(): string | null {
+  return readRealSecret('TWILIO_MASTER_AUTH_TOKEN', { aliases: ['TWILIO_AUTH_TOKEN'] });
+}
+
+/**
+ * Token de subcuenta leído de `comm_settings`. Un valor de relleno guardado en
+ * la base (p. ej. copiado de la documentación) vale lo mismo que ninguno.
+ */
+export function realSubaccountToken(token: unknown, accountSid: string): string | null {
+  if (isRealSecret(token)) return token;
+  if (typeof token === 'string' && token.trim() !== '') {
+    console.error(`[webhookSignatures] comm_settings.twilio_subaccount_auth_token de ${accountSid} es de relleno o demasiado corto: se rechaza (fail-closed)`);
+  }
+  return null;
+}
+
+/**
  * Resuelve el Auth Token de Twilio para el `AccountSid` del webhook.
  * - master → `TWILIO_MASTER_AUTH_TOKEN` (o `TWILIO_AUTH_TOKEN` legacy si coincide con `TWILIO_ACCOUNT_SID`)
  * - subcuenta → `comm_settings.twilio_subaccount_auth_token` (service client)
- * - desconocido → null (=> 403)
+ * - desconocido, o token ausente/de relleno/corto → null (=> 403)
  */
 export async function resolveTwilioAuthToken(accountSid: string): Promise<string | null> {
   if (!accountSid) return null;
 
   const masterSid = process.env.TWILIO_MASTER_ACCOUNT_SID;
-  const masterToken = process.env.TWILIO_MASTER_AUTH_TOKEN;
-  if (masterSid && accountSid === masterSid) return masterToken || null;
+  if (masterSid && accountSid === masterSid) return readRealSecret('TWILIO_MASTER_AUTH_TOKEN');
 
   // Alias legacy (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN)
   const legacySid = process.env.TWILIO_ACCOUNT_SID;
-  const legacyToken = process.env.TWILIO_AUTH_TOKEN;
-  if (legacySid && accountSid === legacySid) return legacyToken || null;
+  if (legacySid && accountSid === legacySid) return readRealSecret('TWILIO_AUTH_TOKEN');
 
   try {
     const { data } = await getServiceClient()
@@ -90,7 +108,7 @@ export async function resolveTwilioAuthToken(accountSid: string): Promise<string
       .limit(1)
       .maybeSingle();
     const token = (data as { twilio_subaccount_auth_token?: string | null } | null)?.twilio_subaccount_auth_token;
-    return token || null;
+    return realSubaccountToken(token, accountSid);
   } catch (err) {
     console.error('[webhookSignatures] Error resolviendo token de subcuenta:', err instanceof Error ? err.message : err);
     return null;
@@ -113,7 +131,8 @@ export function verifyTwilioRequest(
 ): Record<string, string> {
   const signature = req.headers.get('x-twilio-signature') || '';
   if (!signature) throw new WebhookError(403, 'twilio_signature_missing');
-  if (!opts.authToken) throw new WebhookError(403, 'twilio_auth_token_missing');
+  // Vacío, de relleno o corto → mismo 403 (el motivo va al log, no al cliente)
+  assertRealSecret(opts.authToken, 'twilio_auth_token', { status: 403, code: 'twilio_auth_token_missing' });
 
   const params = parseFormBody(rawBody);
   const { pathname, search } = new URL(req.url);
@@ -141,21 +160,29 @@ export async function verifyTwilioWebhook(
 
 /**
  * Valida la firma de Twilio sobre una URL arbitraria (p. ej. el handshake WSS
- * de ConversationRelay, sin params POST).
+ * de ConversationRelay, sin params POST) con un token ya resuelto. El token
+ * tiene que ser real (relleno o corto → false).
  */
-export function verifyTwilioUrlSignature(authToken: string, signature: string, url: string): boolean {
-  if (!authToken || !signature || !url) return false;
-  return Twilio.validateRequest(authToken, signature, url, {});
+export function verifyTwilioUrlSignature(
+  authToken: string,
+  signature: string,
+  url: string,
+  params: Record<string, string> = {}
+): boolean {
+  if (!isRealSecret(authToken) || !signature || !url) return false;
+  return Twilio.validateRequest(authToken, signature, url, params);
 }
 
 // ─── Meta (WhatsApp Cloud / Messenger / Instagram) ───────────────────────────
 
 /**
  * Verifica `X-Hub-Signature-256` con `crypto.timingSafeEqual`.
- * Devuelve false si falta cualquiera de las tres piezas.
+ * Devuelve false si falta cualquiera de las tres piezas o si `appSecret` es de
+ * relleno o corto (un app_secret real de Meta tiene 32 hex): con un secreto
+ * publicado, «firma válida» no significa nada.
  */
 export function verifyMetaSignature(rawBody: string, header: string | null, appSecret: string): boolean {
-  if (!rawBody || !header || !appSecret) return false;
+  if (!rawBody || !header || !isRealSecret(appSecret)) return false;
   const expected = `sha256=${crypto.createHmac('sha256', appSecret).update(rawBody, 'utf8').digest('hex')}`;
   return safeEqual(expected, header);
 }
@@ -179,11 +206,13 @@ export function verifyResendWebhook<T = unknown>(
   headers: { 'svix-id': string; 'svix-timestamp': string; 'svix-signature': string } | Record<string, string>,
   secret: string | undefined = process.env.RESEND_WEBHOOK_SECRET
 ): T {
-  if (!secret) throw new WebhookError(401, 'resend_webhook_secret_missing');
+  // Ausente, de relleno (`whsec_your-webhook-secret` base64-decodifica y svix lo
+  // aceptaría como clave HMAC válida que cualquiera conoce) o corto → 401 ANTES de svix.
+  const realSecret = assertRealSecret(secret, 'RESEND_WEBHOOK_SECRET', { code: 'resend_webhook_secret_missing' });
 
   let verified: unknown;
   try {
-    const wh = new SvixWebhook(secret);
+    const wh = new SvixWebhook(realSecret);
     verified = wh.verify(rawBody, headers);
   } catch (err) {
     throw new WebhookError(401, 'resend_signature_invalid', err instanceof Error ? err.message : undefined);
@@ -205,11 +234,10 @@ export function verifyResendWebhook<T = unknown>(
 
 /**
  * Valida `Authorization: Bearer ${CRON_SECRET}` (o `x-cron-secret`).
- * Fail-closed: sin `CRON_SECRET` configurado => 401 siempre.
+ * Fail-closed: sin `CRON_SECRET` real (ausente, de relleno o corto) => 401 siempre.
  */
 export function verifyCronSecret(req: Request): void {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) throw new WebhookError(401, 'cron_secret_not_configured');
+  const expected = requireRealSecret('CRON_SECRET', { code: 'cron_secret_not_configured' });
 
   const auth = req.headers.get('authorization') || '';
   const bearer = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';

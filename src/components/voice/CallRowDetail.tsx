@@ -43,7 +43,7 @@ export function CallRowDetail({ call }: CallRowDetailProps) {
         customerName={customerName}
         onLinked={() => setLinkVersion((v) => v + 1)}
       />
-      <CallPlayer callId={call.id} recordingEnabled={call.recording_enabled} variant="full" seekToMs={seekToMs} onTimeUpdate={onTime} />
+      <CallPlayer callId={call.id} recordingEnabled={call.recording_enabled} consentMethod={call.consent_method} variant="full" seekToMs={seekToMs} onTimeUpdate={onTime} />
       <div className="hidden gap-3 md:grid md:grid-cols-2">
         <CallTranscriptPanel callId={call.id} state={state} onSeek={onSeek} currentMs={currentMs} />
         <CallAnalysisPanel callId={call.id} state={state} opportunityId={call.opportunity_id} />

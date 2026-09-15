@@ -2,9 +2,10 @@
  * Tabla FALSA con estado para los tests de FASE-16.
  *
  * A diferencia de los dobles de `mockSupabase` («devuelve siempre lo mismo»),
- * esta evalúa DE VERDAD los filtros (`eq`, `neq`, `is`, `in`, `ilike`, `gt`,
- * `gte`, `lt`, `lte`, incluidos los operadores JSON `metadata->>campo`), el
- * `order` y el `limit`, y APLICA los `update` sobre las filas.
+ * esta evalúa DE VERDAD los filtros (`eq`, `neq`, `is`, `in`, `ilike`, `or`,
+ * `filter(…, 'match'|'imatch', …)`, `gt`, `gte`, `lt`, `lte`, incluidos los
+ * operadores JSON `metadata->>campo`), los `order` (varios, en cadena) y el
+ * `limit`, y APLICA los `update` sobre las filas.
  *
  * Sin esto no hay prueba que muerda: si el doble de `customers` devuelve el
  * mismo cliente para CUALQUIER consulta, el camino rápido de
@@ -41,12 +42,59 @@ function likeToRegExp(pattern: string): RegExp {
   return new RegExp(`^${esc}$`, 'i');
 }
 
+/**
+ * Divide un `.or('a.eq.1,b.in.(x,y)')` de PostgREST en sus condiciones,
+ * respetando los paréntesis de `in.(…)`.
+ */
+function splitOr(filters: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let cur = '';
+  for (const ch of filters) {
+    if (ch === '(') depth += 1;
+    if (ch === ')') depth -= 1;
+    if (ch === ',' && depth === 0) { out.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+/**
+ * Evalúa UNA condición `col.op.val` de un `.or()`. Solo los operadores que
+ * usa el código bajo prueba (`in`, `is`, `eq`, `neq`); cualquier otro se
+ * rechaza para que un `.or()` no soportado no pase en silencio.
+ */
+function orConditionPasses(row: Row, cond: string): boolean {
+  // El nombre de columna puede llevar `->>`; el operador es el primer segmento
+  // tras el ÚLTIMO `.` antes del valor: `metadata->>state.in.(a,b)`.
+  const m = /^(.+?)\.(in|is|eq|neq)\.(.*)$/.exec(cond.trim());
+  if (!m) throw new Error(`fakeTable: condición .or() no soportada: "${cond}"`);
+  const [, col, op, raw] = m;
+  const v = columnValue(row, col);
+  switch (op) {
+    case 'in': {
+      const list = raw.replace(/^\(|\)$/g, '').split(',').map((x) => x.trim().replace(/^"|"$/g, ''));
+      return v !== null && list.some((x) => x === String(v));
+    }
+    case 'is':
+      if (raw === 'null') return v === null;
+      return String(v) === raw;
+    case 'eq': return v !== null && String(v) === raw;
+    case 'neq': return v !== null && String(v) !== raw;
+    default: return false;
+  }
+}
+
 /** ¿La fila cumple TODOS los filtros aplicados a la consulta? */
 export function rowPasses(row: Row, ops: Op[]): boolean {
   for (const o of ops) {
     const col = o.args[0] as string;
     const val = o.args[1];
     switch (o.method) {
+      case 'or':
+        if (!splitOr(String(col)).some((c) => orConditionPasses(row, c))) return false;
+        break;
       case 'eq':
         if (String(columnValue(row, col)) !== String(val)) return false;
         break;
@@ -64,6 +112,18 @@ export function rowPasses(row: Row, ops: Op[]): boolean {
       case 'ilike':
         if (!likeToRegExp(String(val)).test(String(columnValue(row, col) ?? ''))) return false;
         break;
+      case 'filter': {
+        // `.filter(col, op, val)`: solo los operadores de expresión regular de
+        // PostgREST (`match` = `~`, `imatch` = `~*`), que son los que usa el
+        // prefiltro de `findCustomerIdByPhone`. Cualquier otro LANZA (tester
+        // F16 r5 · N-5): antes se ignoraba en silencio y una consulta con
+        // `filter('phone', 'ilike', …)` habría pasado como si filtrara.
+        const op = String(o.args[1]);
+        const pat = String(o.args[2]);
+        if (op !== 'match' && op !== 'imatch') throw new Error(`fakeTable: operador de .filter() no soportado: "${op}"`);
+        if (!new RegExp(pat, op === 'imatch' ? 'i' : '').test(String(columnValue(row, col) ?? ''))) return false;
+        break;
+      }
       case 'gt': if (!(cmp(columnValue(row, col), val) > 0)) return false; break;
       case 'gte': if (!(cmp(columnValue(row, col), val) >= 0)) return false; break;
       case 'lt': if (!(cmp(columnValue(row, col), val) < 0)) return false; break;
@@ -131,11 +191,19 @@ export function fakeTable(initial: Row[] = [], options: FakeTableOptions = {}): 
     selectCalls += 1;
     const source = options.selectRows ? options.selectRows(rows, selectCalls) : rows;
     let out = source.filter((r) => rowPasses(r, ops));
-    const ord = ops.find((o) => o.method === 'order');
-    if (ord) {
-      const col = String(ord.args[0]);
-      const asc = ((ord.args[1] as { ascending?: boolean } | undefined)?.ascending) !== false;
-      out = [...out].sort((a, b) => cmp(columnValue(a, col), columnValue(b, col)) * (asc ? 1 : -1));
+    // Varios `.order()` encadenados = ORDER BY a, b, …: el segundo solo decide
+    // cuando el primero empata.
+    const ords = ops.filter((o) => o.method === 'order');
+    if (ords.length) {
+      out = [...out].sort((a, b) => {
+        for (const ord of ords) {
+          const col = String(ord.args[0]);
+          const asc = ((ord.args[1] as { ascending?: boolean } | undefined)?.ascending) !== false;
+          const c = cmp(columnValue(a, col), columnValue(b, col)) * (asc ? 1 : -1);
+          if (c !== 0) return c;
+        }
+        return 0;
+      });
     }
     const lim = ops.find((o) => o.method === 'limit');
     if (lim) out = out.slice(0, Number(lim.args[0]));

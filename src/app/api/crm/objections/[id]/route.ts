@@ -14,7 +14,20 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const objection = await updateObjection(id, ctx.organizationId, body, ctx.supabase);
+    // Regla dura 5: la organización sale de la sesión; un body con otra → 403 y se registra.
+    if (body?.organization_id != null && Number(body.organization_id) !== ctx.organizationId) {
+      console.warn('[CRM Objections] PATCH con organization_id ajeno en el body', { session: ctx.organizationId, body: body.organization_id });
+      return NextResponse.json({ success: false, error: 'Organización no permitida' }, { status: 403 });
+    }
+
+    // Solo las columnas editables: ni id, ni organization_id, ni fechas del body.
+    const { title, category, detection_signals, recommended_response, discovery_questions, related_case_studies, vertical_id, is_active, sort_order } = body ?? {};
+    const objection = await updateObjection(
+      id,
+      ctx.organizationId,
+      { title, category, detection_signals, recommended_response, discovery_questions, related_case_studies, vertical_id, is_active, sort_order },
+      ctx.supabase
+    );
 
     if (!objection) {
       return NextResponse.json(

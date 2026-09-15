@@ -1,40 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
-import { getCohortRetention } from '@/lib/services/crm/revenueOsService';
+import { NextRequest } from 'next/server';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
+import { COHORT_LOOKBACK_MONTHS, getCohortRetention } from '@/lib/services/crm/revenueOsService';
+import { addMonthsPlain } from '@/lib/services/crm/revenueOs/dateRange';
+import { jsonOk, resolveRequestRange, revenueRouteError } from '@/lib/services/crm/revenueOs/routeSupport';
 
 /**
- * GET /api/crm/revenue/cohorts — Cohortes de retención.
- *
- * Query params opcionales:
- * - start: fecha inicio (YYYY-MM-DD), default: 24 meses atrás
- * - end: fecha fin (YYYY-MM-DD), default: hoy
- *
- * Ejecuta fn_cohort_retention RPC.
+ * GET /api/crm/revenue/cohorts?start&end — cohortes de `fn_cohort_retention`.
+ * Sin `start`, se mira 24 meses atrás desde el fin (las cohortes necesitan
+ * historia para M6/M12). Rango validado (400).
  */
 export async function GET(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const { searchParams } = new URL(request.url);
-
-    const now = new Date();
-    const defaultStart = new Date(now);
-    defaultStart.setMonth(defaultStart.getMonth() - 24);
-
-    const start = searchParams.get('start') || defaultStart.toISOString().slice(0, 10);
-    const end = searchParams.get('end') || now.toISOString().slice(0, 10);
-
-    const cohorts = await getCohortRetention(ctx.organizationId, start, end, ctx.supabase);
-
-    return NextResponse.json({ success: true, data: cohorts }, { status: 200 });
+    const hasStart = Boolean(new URL(request.url).searchParams.get('start'));
+    const { timezone, today, range } = await resolveRequestRange(ctx, request);
+    const start = hasStart ? range.start : addMonthsPlain(range.end, -COHORT_LOOKBACK_MONTHS);
+    const cohorts = await getCohortRetention(ctx.organizationId, start, range.end, ctx.supabase);
+    return jsonOk(cohorts, { period: { start, end: range.end, today, timezone } });
   } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Revenue Cohorts] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return revenueRouteError(error, 'CRM Revenue Cohorts');
   }
 }

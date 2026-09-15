@@ -20,11 +20,15 @@
  *    ruta de sesión; allow-list para facebook/instagram y email/webhook).
  * 8. Ningún `.from('comm_settings')` encadena `.limit(1)` + `.single()` fuera de orgContext.
  * 9. `src/lib/crm/enums.ts` coincide con el snapshot de CHECKs `db-checks.json`.
+ * 18. `vercel.json` ↔ `src/lib/jobs/schedule.ts`: los crons de `/api/crm/jobs/run`
+ *     son exactamente el drenaje total (`*\/DRAIN_INTERVAL_MIN`) y las claves de
+ *     `VERCEL_SCHEDULE_KINDS`; ningún otro archivo cablea la cadencia.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { DB_CHECK_ENUMS } from '@/lib/crm/enums';
+import { DRAIN_INTERVAL_MIN, DRAIN_SCHEDULE, JOBS_RUN_PATH, JOBS_RUN_SCHEDULES, VERCEL_SCHEDULE_KINDS } from '@/lib/jobs/schedule';
 
 const SRC_ROOT = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(SRC_ROOT, '..');
@@ -227,8 +231,7 @@ describe('F0 Guardarraíles', () => {
      */
     const ALLOWLIST = new Set<string>([
       'app/api/categorias/reglas/route.ts',
-      'app/api/crm/health/recalculate/route.ts', // cron/sesión propia (F9 lo migra)
-      'app/api/crm/renewals/sync/route.ts', // cron (F8 lo migra)
+      'app/api/crm/health/recalculate/route.ts', // cron fail-closed con verifyCronSecret; body.organization_id solo acota la pasada (F11)
       'app/api/crm/voice-agents/campaigns/run/route.ts', // cron fail-closed (F6 lo migra a withCron)
       'app/api/dian/lookup/route.ts',
       'app/api/domains/purchase/route.ts',
@@ -350,7 +353,6 @@ describe('F0 Guardarraíles', () => {
       'lib/services/crm/inventoryCrmLink.ts',
       'lib/services/crm/leadCaptureService.ts',
       'lib/services/crm/lossReasonsService.ts',
-      'lib/services/crm/onboardingService.ts',
       'lib/services/crm/pipelineSeedService.ts',
       'lib/services/crm/pmsCrmLink.ts',
       'lib/services/crm/posCrmLink.ts',
@@ -792,14 +794,102 @@ describe('F0 Guardarraíles', () => {
 
     test('el inicio espera sucursal y permisos antes de consultar el dashboard', () => {
       expect(inicio).toContain('const { branchFilter, isLoading: branchLoading } = useBranch();');
-      expect(inicio).toContain('const { context: permContext, loading: permissionsLoading } = usePermissionContext(organization?.id);');
-      expect(inicio).toContain('if (!organization?.id || branchLoading || permissionsLoading) return;');
+      expect(inicio).toContain('const { context: permContext, resolvedOrganizationId } = usePermissionContext(organization?.id);');
+      // La espera de permisos pasa por `rolResuelto` y no por `permissionsLoading`
+      // directo: usePermissionContext recarga el contexto en SIGNED_IN /
+      // TOKEN_REFRESHED y ese flip true→false volvía a disparar loadData con
+      // skeleton (2026-09-14: "el skeleton se dispara dos veces"). Y se resuelve
+      // solo cuando el contexto cargado es de ESTA organización
+      // (resolvedOrganizationId), no con `!loading` a secas.
+      expect(inicio).toContain('const rolResuelto = !!organization && resolvedOrganizationId === organization.id;');
+      expect(inicio).toContain('if (!organization?.id || branchLoading || !rolResuelto) return;');
+    });
+
+    test('el inicio no elige panel (empleado/financiero) hasta resolver el rol', () => {
+      // Con permContext aún null, canSeeFinancialDashboard es false y a un
+      // administrador se le pintaba primero el panel de empleado.
+      expect(inicio).toContain('{!rolResuelto ? (');
+      expect(inicio).toContain(') : canSeeFinancialDashboard ? (');
     });
 
     test('el inicio limita la carga inicial a cuatro skeletons', () => {
       expect(inicio).not.toContain('Array.from({ length: 10 })');
       expect(inicio).not.toContain('Array.from({ length: 8 })');
       expect(kpis).toContain('Array.from({ length: 4 })');
+    });
+  });
+
+  // === Automatizaciones (rediseño UX, rondas 3-4): lo que el tester vio romperse ===
+  // Regla (ronda 4): un guardarraíl que se rompe con un reformateo es peor que
+  // ninguno. La conducta se prueba EJECUTADA en ruleMutations.test.ts y
+  // ruleEditorModel.test.ts; aquí solo queda el cableado, con regex que
+  // toleran espacios, paréntesis, llaves y constantes intermedias.
+  describe('Automatizaciones: estado tras una mutación y foco tras cerrar', () => {
+    const dir = path.join(SRC_ROOT, 'components', 'crm', 'automatizaciones');
+    const hook = readFile(path.join(dir, 'useAutomationRules.ts'));
+    const page = readFile(path.join(dir, 'AutomatizacionesPage.tsx'));
+    const sheet = readFile(path.join(dir, 'RuleEditorSheet.tsx'));
+
+    // R-1: la hoja devuelve el foco al botón «Nueva regla» si el estado vacío se desmontó.
+    const RETURN_FOCUS = /useReturnFocus\s*\(\s*open\s*,\s*returnFocusFallback\s*\)/;
+    const FALLBACK_PROP = /returnFocusFallback\s*=\s*\{[^}]+\}/;
+    // R-5: el bloque del disparador avisa del evento mudo sobre el formulario cargado.
+    const MUTED = /mutedEvent\s*\(\s*form\s*\)/;
+    // R-2 / M26: el hook no hace red ni estado por su cuenta; todo pasa por
+    // ruleMutations (PATCH OK + GET 500, esqueleto solo en la primera carga…).
+    const DIRECT_FETCH = /\bfetch\s*\(/;
+    const OWN_STATE = /\b(useState|useRef)\s*\(/;
+    const REDUCER = /useReducer\s*\(\s*applyMutation\b/;
+
+    test('R-2/M26: el hook delega en ruleMutations (probado ejecutado) y no reimplementa red ni estado', () => {
+      expect(hook).toMatch(REDUCER);
+      expect(hook).not.toMatch(DIRECT_FETCH);
+      expect(hook).not.toMatch(OWN_STATE);
+      expect(hook.match(/\brunMutation\s*\(/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+      expect(hook).not.toMatch(/\bviewOf\b|\bupsertRule\b|\bwithoutRule\b/);
+    });
+
+    test('R-2: el Alert de recarga fallida dice que se muestra la última lista conocida', () => {
+      expect(page).toContain('Se muestra la última lista conocida');
+    });
+
+    test('R-1: la hoja del editor tiene fallback de foco («Nueva regla») para cuando el estado vacío se desmontó', () => {
+      expect(sheet).toMatch(RETURN_FOCUS);
+      expect(page).toMatch(FALLBACK_PROP);
+      expect(page).toMatch(/newButtonRef\s*\.\s*current/);
+    });
+
+    test('R-3: el estado vacío describe lo que el ejemplo hace de verdad (no promete una etapa que no lleva)', () => {
+      const empty = readFile(path.join(dir, 'RulesEmptyState.tsx'));
+      expect(empty).toMatch(/describeRule\s*\(\s*\{\s*\.\.\.EXAMPLE_FORM/);
+      expect(empty).not.toContain('entra en «Propuesta enviada»');
+    });
+
+    test('R-5: el bloque del disparador avisa del evento mudo sobre el formulario cargado (mutedEvent)', () => {
+      expect(readFile(path.join(dir, 'TriggerBlock.tsx'))).toMatch(MUTED);
+    });
+
+    test('R-4: sin requestAnimationFrame para mover el foco (con la ventana ocluida no dispara)', () => {
+      for (const f of ['RuleEditorSheet.tsx', 'ActionsBlock.tsx', 'ConditionsBlock.tsx']) {
+        expect({ f, raf: /requestAnimationFrame\s*\(/.test(readFile(path.join(dir, f))) }).toEqual({ f, raf: false });
+      }
+    });
+
+    test('los guardarraíles de cadena toleran un reformateo (prettier): los cuatro rojos falsos de la ronda 3 son verdes', () => {
+      // Los dos primeros ya no tienen guardarraíl de texto: el hook no contiene
+      // esas líneas y su conducta se prueba ejecutada. Ningún regex de arriba
+      // los mira, y ningún regex de arriba se rompe con ellos.
+      const reformatted = [
+        'setRules(prev => upsertRule(prev, row))',
+        'if (!loadedOnce.current) {\n  setLoading(true);\n}',
+        'const focusFallback = () => newButtonRef.current;\n<RuleEditorSheet returnFocusFallback={focusFallback} />',
+        'const muted = mutedEvent( form );',
+        'const onCloseAutoFocus = useReturnFocus( open , returnFocusFallback )',
+      ];
+      expect(reformatted.filter((s) => DIRECT_FETCH.test(s) || OWN_STATE.test(s))).toEqual([]);
+      expect(reformatted[2]).toMatch(FALLBACK_PROP);
+      expect(reformatted[3]).toMatch(MUTED);
+      expect(reformatted[4]).toMatch(RETURN_FOCUS);
     });
   });
 
@@ -827,6 +917,113 @@ describe('F0 Guardarraíles', () => {
 
     test('los callbacks se ejecutan fire-and-forget (sin async/await)', () => {
       expect(violations).toEqual([]);
+    });
+  });
+
+  // === Caso 17 (F11 r2): la vista materializada de salud no existe para la app ===
+  // Era una vista sin RLS (31 205 filas de 15 organizaciones, SELECT para anon
+  // y authenticated) con un cálculo distinto al de `fn_customer_health` + config.
+  // r1 le cableó «Medir ahora»; r2 borró todos los lectores. El orquestador
+  // retira el GRANT a `authenticated` y la vista cuando este caso esté verde.
+  describe('17. Ningún archivo de src/ nombra la vista materializada de salud', () => {
+    const MV_NAME = ['mv_customer', 'health'].join('_');
+    const violations: string[] = [];
+    beforeAll(() => {
+      // Incluye tests y fixtures: un doble que la modele vuelve a invitar a leerla.
+      for (const file of walkDir(SRC_ROOT).filter((f) => !f.includes('node_modules'))) {
+        if (path.resolve(file) === path.resolve(__filename)) continue;
+        if (readFile(file).includes(MV_NAME)) violations.push(rel(file));
+      }
+    });
+    test('ni código ni comentarios ni tests nombran la vista', () => {
+      expect(violations).toEqual([]);
+    });
+  });
+
+  // === Caso 18 (F0-JOBS r3, QA r2 N-3): un solo contrato de scheduling ===
+  // `9c0288a7` bajó el drenaje de Vercel a `*/2` sin tocar la ruta, la UI ni
+  // FASE-00, que siguieron prometiendo «cada minuto». Desde r3 la cadencia y
+  // los kinds por schedule viven en `src/lib/jobs/schedule.ts`; este caso
+  // impide que `vercel.json` y ese módulo vuelvan a divergir.
+  describe('18. vercel.json coincide con src/lib/jobs/schedule.ts', () => {
+    const vercel = JSON.parse(readFile(path.join(REPO_ROOT, 'vercel.json'))) as { crons?: { path: string; schedule: string }[] };
+    const jobsCrons = (vercel.crons ?? []).filter((c) => c.path === JOBS_RUN_PATH).map((c) => c.schedule);
+
+    test('el drenaje total es */DRAIN_INTERVAL_MIN y DRAIN_INTERVAL_MIN es un entero de 1 a 59', () => {
+      expect(Number.isInteger(DRAIN_INTERVAL_MIN)).toBe(true);
+      expect(DRAIN_INTERVAL_MIN).toBeGreaterThanOrEqual(1);
+      expect(DRAIN_INTERVAL_MIN).toBeLessThan(60);
+      expect(DRAIN_SCHEDULE).toBe(`*/${DRAIN_INTERVAL_MIN} * * * *`);
+      expect(VERCEL_SCHEDULE_KINDS[DRAIN_SCHEDULE]).toBeUndefined();
+    });
+
+    test('cada cron de /api/crm/jobs/run en vercel.json es el drenaje total o una clave de VERCEL_SCHEDULE_KINDS', () => {
+      expect(jobsCrons.length).toBeGreaterThan(0);
+      const unknown = jobsCrons.filter((s) => !JOBS_RUN_SCHEDULES.includes(s));
+      expect(unknown).toEqual([]);
+    });
+
+    test('todo schedule declarado en schedule.ts existe en vercel.json exactamente una vez', () => {
+      for (const schedule of JOBS_RUN_SCHEDULES) {
+        expect(jobsCrons.filter((s) => s === schedule)).toHaveLength(1);
+      }
+    });
+
+    test('el código de JOBS (runner, ruta, UI) no cablea cron strings ni promete «cada minuto»', () => {
+      const scopes = [path.join(SRC_ROOT, 'lib', 'jobs'), path.join(SRC_ROOT, 'app', 'api', 'crm', 'jobs'), path.join(SRC_ROOT, 'components', 'crm', 'config')];
+      const offenders: string[] = [];
+      for (const file of scopes.flatMap((d) => walkDir(d)).filter((f) => !isExcluded(f))) {
+        if (rel(file) === 'lib/jobs/schedule.ts') continue;
+        const content = stripAllComments(readFile(file));
+        if (/(['"`])(\*\/\d+|\d+ \d+|\*) \* \* \* \*/.test(content) || /cada minuto|≤1 min|cada 2 minutos/.test(content)) {
+          offenders.push(rel(file));
+        }
+      }
+      expect(offenders).toEqual([]);
+    });
+  });
+
+  // === Caso 19: un solo punto de cobro de créditos de IA (F0-REG r2) ===
+  //
+  // CLAUDE.md: el cobro de créditos de IA tiene un punto único,
+  // `chargeAiCredits`/`refundAiCredits` (`withAiCharge`) en
+  // `src/lib/services/crm/aiCostService.ts`: RPC atómico ANTES del proveedor,
+  // reembolso si el proveedor falla, 402 tipado. `consumeAICredits`
+  // (`aiCreditsService.ts`) cobra DESPUÉS y sin costo en USD: el QA de F0-REG
+  // r1 (alto 6) la encontró viva en 12 llamadores V3. Se mantiene solo para
+  // ellos (allow-list cerrada, uno por línea para que el diff cante). Ningún
+  // archivo nuevo puede importarla: usar `withAiCharge`. Cuando un llamador
+  // migre, se quita de la lista; la lista solo puede encoger.
+  describe('19. Ningún archivo nuevo importa consumeAICredits (punto único de cobro)', () => {
+    const LEGACY_CALLERS = new Set([
+      'app/api/ai-assistant/generate-image/route.ts',
+      'app/api/ai-assistant/improve-text/route.ts',
+      'app/api/ai-assistant/pm-assist/route.ts',
+      'app/api/ai-assistant/pm-planner/route.ts',
+      'app/api/ai-assistant/seo-keywords/route.ts',
+      'app/api/chat/ai/auto-response/route.ts',
+      'app/api/chat/ai/classify-intent/route.ts',
+      'app/api/chat/ai/generate-response/route.ts',
+      'app/api/chat/ai/generate-summary/route.ts',
+      'app/api/chat/ai/lab-test/route.ts',
+      'lib/services/reportes/reportAgentService.ts',
+    ]);
+
+    test('solo los llamadores V3 de la allow-list importan consumeAICredits', () => {
+      const offenders = walkDir(SRC_ROOT)
+        .filter((f) => !isExcluded(f))
+        .filter((f) => !rel(f).endsWith('lib/services/aiCreditsService.ts')) // define la función
+        .filter((f) => /\bconsumeAICredits\b/.test(stripAllComments(readFile(f))))
+        .map(rel)
+        .filter((r) => !LEGACY_CALLERS.has(r));
+      expect(offenders).toEqual([]);
+    });
+
+    test('withAICreditsCheck delega en withAiCharge (no cobra después del proveedor)', () => {
+      const src = stripAllComments(readFile(path.join(SRC_ROOT, 'lib/services/aiCreditsService.ts')));
+      const body = src.slice(src.indexOf('export async function withAICreditsCheck'));
+      expect(body).toMatch(/return withAiCharge\(/);
+      expect(body).not.toMatch(/consumeAICredits\(/);
     });
   });
 });

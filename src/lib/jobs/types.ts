@@ -39,6 +39,11 @@ export interface OutboundJob {
   dedupe_key: string | null;
   created_at: string;
   updated_at: string;
+  /**
+   * Liberaciones por deadline sin ejecutar (crm_v4_f00_37). Opcional porque la
+   * columna es posterior a DB-r2; el runner solo la escribe si la fila la trae.
+   */
+  releases?: number;
 }
 
 /** Fila de `crm_events` (outbox). */
@@ -144,6 +149,9 @@ export interface KindCounters {
  *  - failed: fallo terminal no reintentable (no_handler, JobFatalError)
  *  - dead: agotaron `max_attempts`
  *  - released: reclamados pero devueltos a la cola por deadline (sin ejecutar)
+ *    o repetidos en la misma invocación (N-8)
+ *  - completeFailed: handler OK pero `fn_complete_job` falló (N-4); cuentan
+ *    también en `failed` cuando `fn_fail_job(-1)` los cerró
  */
 export interface RunJobsSummary {
   worker: string;
@@ -156,6 +164,12 @@ export interface RunJobsSummary {
   released: number;
   /** Liberados con el fallback UPDATE porque `fn_release_job` aún no existe (DB-r2). */
   releasedWithoutRpc?: number;
+  /**
+   * r3 (N-4): handler exitoso cuyo `fn_complete_job` falló dos veces. El job se
+   * cierra `failed` terminal (`complete_failed:`), nunca se re-ejecuta. Si
+   * también falla `fn_fail_job`, queda `running` hasta el reclaim.
+   */
+  completeFailed?: number;
   ms: number;
   byKind: Partial<Record<JobKind, KindCounters>>;
 }

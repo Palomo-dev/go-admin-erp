@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { whatsappCloudService } from '@/lib/services/integrations/whatsapp';
 import type { WhatsAppWebhookPayload } from '@/lib/services/integrations/whatsapp';
+import { planWebhookAuthorization, type ResolvedChannel, type WebhookChannelResolver } from '@/lib/services/integrations/whatsapp/webhookAuthorization';
 import { verifyMetaSignature } from '@/lib/security/webhookSignatures';
+import { readRealSecret } from '@/lib/security/secrets';
 
 export const runtime = 'nodejs';
 
@@ -28,37 +30,44 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Extrae los `phone_number_id` presentes en el payload (uno por entry/change).
+ * Resolución de canales contra la base para `planWebhookAuthorization`.
+ * El `app_secret` del canal se devuelve tal cual: el plan decide si es real
+ * (ámbito `channel`) o si el canal cae al secreto global.
  */
-function extractPhoneNumberIds(payload: WhatsAppWebhookPayload): string[] {
-  const ids = new Set<string>();
-  for (const entry of payload.entry || []) {
-    for (const change of entry.changes || []) {
-      const id = (change as { value?: { metadata?: { phone_number_id?: string } } }).value?.metadata?.phone_number_id;
-      if (id) ids.add(id);
+const channelResolver: WebhookChannelResolver = {
+  async byPhoneNumberId(phoneNumberId: string): Promise<ResolvedChannel | null> {
+    const channel = await whatsappCloudService.findChannelByPhoneNumberId(phoneNumberId);
+    if (!channel) return null;
+    const creds = await whatsappCloudService.getCredentialsByChannelId(channel.channelId);
+    return { ...channel, appSecret: creds?.appSecret || null };
+  },
+  async byBusinessAccountId(wabaId: string): Promise<ResolvedChannel[]> {
+    const channels = await whatsappCloudService.findChannelsByBusinessAccountId(wabaId);
+    const out: ResolvedChannel[] = [];
+    for (const channel of channels) {
+      const creds = await whatsappCloudService.getCredentialsByChannelId(channel.channelId);
+      out.push({ ...channel, appSecret: creds?.appSecret || null });
     }
-  }
-  return Array.from(ids);
-}
+    return out;
+  },
+};
 
 /**
- * Resuelve el app_secret para verificar la firma:
- * 1. `channel_credentials.credentials.app_secret` del canal (por phone_number_id)
- * 2. `META_APP_SECRET` global (app de la plataforma / Embedded Signup)
+ * `META_APP_SECRET` de la plataforma (alias legacy `WHATSAPP_APP_SECRET`).
+ * F0-SEC r2: un valor de relleno (`your-meta-app-secret`) cuenta como ausente.
  */
-async function resolveAppSecret(phoneNumberId: string | null): Promise<string | null> {
-  if (phoneNumberId) {
-    const channel = await whatsappCloudService.findChannelByPhoneNumberId(phoneNumberId);
-    if (channel) {
-      const creds = await whatsappCloudService.getCredentialsByChannelId(channel.channelId);
-      if (creds?.appSecret) return creds.appSecret;
-    }
-  }
-  return process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || null;
+function globalAppSecret(): string | null {
+  return readRealSecret('META_APP_SECRET', { aliases: ['WHATSAPP_APP_SECRET'] });
 }
 
 // POST: Recibir mensajes y status updates
 // F0 (C3 msg): firma X-Hub-Signature-256 verificada SIEMPRE (fail-closed) sobre el raw body.
+// F0-SEC r2: autorización POR ENTRADA. La firma cubre el cuerpo entero y la
+// calcula UNA app de Meta, así que todas las `entry[*]` tienen que pertenecer
+// al mismo secreto (el del canal, o el global de la plataforma). Un payload que
+// mezcle canales de secretos distintos se rechaza ENTERO con 403 `mixed_channels`:
+// nunca una organización procesa entradas de otra. La decisión y las reglas
+// están documentadas en `webhookAuthorization.ts`.
 export async function POST(request: NextRequest) {
   let rawBody: string;
   let payload: WhatsAppWebhookPayload;
@@ -71,18 +80,21 @@ export async function POST(request: NextRequest) {
   }
 
   const signature = request.headers.get('x-hub-signature-256');
-
-  // Verificar firma antes de procesar nada
-  const phoneNumberIds = extractPhoneNumberIds(payload);
-  const appSecret = await resolveAppSecret(phoneNumberIds[0] ?? null);
-
-  if (!appSecret) {
-    console.error('[WhatsApp Webhook] Sin app_secret para verificar la firma (canal/META_APP_SECRET). Rechazado.');
-    return NextResponse.json({ error: 'signature_secret_missing' }, { status: 403 });
+  if (!signature) {
+    console.warn('[WhatsApp Webhook] Sin X-Hub-Signature-256. Rechazado.');
+    return NextResponse.json({ error: 'invalid_signature' }, { status: 403 });
   }
 
-  if (!verifyMetaSignature(rawBody, signature, appSecret)) {
-    console.warn('[WhatsApp Webhook] Firma inválida. Rechazado.', { phoneNumberIds });
+  // 1. Resolver a qué secreto pertenece CADA entrada y exigir que coincidan.
+  const plan = await planWebhookAuthorization(payload, channelResolver, globalAppSecret());
+  if (plan.kind === 'reject') {
+    console.warn(`[WhatsApp Webhook] Rechazado (${plan.code}): ${plan.detail}`);
+    return NextResponse.json({ error: plan.code }, { status: plan.status });
+  }
+
+  // 2. Verificar la firma con ese único secreto.
+  if (!verifyMetaSignature(rawBody, signature, plan.secret)) {
+    console.warn('[WhatsApp Webhook] Firma inválida. Rechazado.', { scope: plan.scope, organizationIds: plan.organizationIds });
     return NextResponse.json({ error: 'invalid_signature' }, { status: 403 });
   }
 
@@ -91,13 +103,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true, ignored: true }, { status: 200 });
   }
 
+  if (plan.droppedEntryIndexes.length > 0) {
+    console.warn('[WhatsApp Webhook] Entradas descartadas: no resuelven a ningún canal del secreto que firmó.', {
+      scope: plan.scope,
+      organizationIds: plan.organizationIds,
+      droppedEntryIndexes: plan.droppedEntryIndexes,
+    });
+  }
+
   // F16 r2 (tester r1 · fallo 1): el procesamiento se ESPERA y sus fallos se
   // propagan. Antes iba en fire-and-forget con un `.catch(console.error)`, así
   // que un inbound que no se podía guardar (trigger de identidades) se perdía
   // en silencio y Meta nunca lo reintentaba. Son 1-3 INSERT por webhook, muy
   // por debajo del margen de Meta.
   try {
-    await whatsappCloudService.processWebhookPayload(payload);
+    await whatsappCloudService.processWebhookPayload({ ...payload, entry: plan.entries });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[WhatsApp Webhook] Error procesando payload:', message);

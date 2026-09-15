@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { foreignOrganizationInBody } from '@/lib/security/organizationBody';
 import {
   getOnboardingInstance,
+  OnboardingIncompleteError,
   updateOnboardingInstanceStatus,
 } from '@/lib/services/crm/onboardingService';
 
@@ -42,6 +44,9 @@ export async function GET(
 /**
  * PATCH /api/crm/onboarding/instances/[id] — Actualiza el estado de una instancia.
  * Body: { status: 'active' | 'completed' | 'at_risk' | 'churned' }
+ * `completed` exige todos los pasos hechos (409 si no) y mueve la oportunidad
+ * a la etapa `is_won` de su pipeline de onboarding (si mover falla, la
+ * instancia vuelve a `active` y se responde 500). Regla 5 en el body.
  */
 export async function PATCH(
   request: NextRequest,
@@ -51,6 +56,12 @@ export async function PATCH(
     const ctx = await getServerOrgContext();
     const { id } = await params;
     const body = await request.json();
+    // Regla dura 5: la organización sale de la sesión; un body con otra → 403 y se registra.
+    const foreignOrg = foreignOrganizationInBody(body?.organization_id, ctx.organizationId);
+    if (foreignOrg !== null) {
+      console.warn('[onboarding/instances PATCH] petición con organization_id ajeno en el body', { session: ctx.organizationId, body: foreignOrg });
+      return NextResponse.json({ success: false, error: 'Organización no permitida' }, { status: 403 });
+    }
 
     const validStatuses = ['active', 'completed', 'at_risk', 'churned'];
     if (!body?.status || !validStatuses.includes(body.status)) {
@@ -81,6 +92,12 @@ export async function PATCH(
         { success: false, error: error.message },
         { status: error.statusCode }
       );
+    }
+    if (error instanceof OnboardingIncompleteError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 409 });
+    }
+    if (error instanceof Error && /no encontrada/.test(error.message)) {
+      return NextResponse.json({ success: false, error: 'Instancia no encontrada' }, { status: 404 });
     }
     const message = error instanceof Error ? error.message : 'Error desconocido';
     console.error('[CRM Onboarding Instance] PATCH error:', message);

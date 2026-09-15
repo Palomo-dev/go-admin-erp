@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { getServiceClient } from '@/lib/supabase/server-service';
-import { createManualCallWithAudio, ManualCallError, resolveManualAudioMaxBytes, audioTooLargeMessage } from '@/lib/services/crm/manualCallService';
+import { createManualCallWithAudio, ManualCallError, resolveManualAudioMaxBytes, audioTooLargeMessage, readRecordingDeclaration, MANUAL_DECLARATION_REQUIRED_ERROR } from '@/lib/services/crm/manualCallService';
+import { MANUAL_RECORDING_DECLARATION_TEXT } from '@/lib/services/crm/consentService';
 import { enqueueTranscribe, runTranscribePipeline } from '@/lib/services/crm/callIntelligenceService';
 import { TranscriptionError } from '@/lib/services/crm/transcriptionService';
 import { AnalysisError } from '@/lib/services/crm/callAnalysisService';
@@ -13,7 +14,8 @@ export const maxDuration = 60;
  * POST /api/crm/calls/manual — Registra una llamada manual con audio (FASE-04 §5.3 D).
  * multipart/form-data: audio|file (tope = el mayor `maxBytes` de la cadena STT con
  * credenciales de la org, 25 MB si no hay ninguna; mp3/wav/m4a/ogg/webm por magic bytes),
- * opportunity_id | customer_id, occurred_at?, duration_seconds?, notes?, direction? (outbound|inbound), source?
+ * opportunity_id | customer_id, occurred_at?, duration_seconds?, notes?, direction? (outbound|inbound), source?,
+ * recording_declaration=true (OBLIGATORIO, F-5: la casilla de Habeas Data que marca quien sube; sin ella 400).
  * Query: ?sync=1 transcribe + analiza inline (dev). Respuesta 201 { call_id, recording_id, job_id }.
  */
 export async function POST(request: NextRequest) {
@@ -35,6 +37,15 @@ export async function POST(request: NextRequest) {
       return typeof v === 'string' && v.trim() ? v.trim() : null;
     };
     const durationRaw = str('duration_seconds') ?? str('duration');
+    // F-5 (ronda 7 de voz): la acta `manual` solo puede decir lo que el usuario
+    // marcó. Sin la casilla de declaración (Habeas Data) no se registra nada.
+    // H-3 (ronda 8): el valor LEÍDO viaja al servicio (que también rechaza
+    // `false`); nunca un `true` cableado que, saltada esta guarda, fabricaría
+    // «Declaración marcada por el usuario».
+    const recordingDeclaration = readRecordingDeclaration(form);
+    if (!recordingDeclaration) {
+      return NextResponse.json({ success: false, error: MANUAL_DECLARATION_REQUIRED_ERROR, code: 'RECORDING_DECLARATION_REQUIRED', declaration_text: MANUAL_RECORDING_DECLARATION_TEXT }, { status: 400 });
+    }
     const sync = request.nextUrl.searchParams.get('sync') === '1';
     const sb = getServiceClient();
 
@@ -52,6 +63,7 @@ export async function POST(request: NextRequest) {
         source: str('source') ?? 'manual_upload',
         originalFilename: file.name ?? null,
         maxBytes: limit.maxBytes,
+        recordingDeclaration,
       },
       sb,
     );

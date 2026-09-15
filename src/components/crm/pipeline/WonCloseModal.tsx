@@ -1,14 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
+import { useState, useEffect, useCallback, type ReactElement } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, CheckCircle2, XCircle, Trophy, AlertCircle } from 'lucide-react';
@@ -20,9 +13,18 @@ import { CotizacionesService } from '@/lib/services/cotizacionesService';
 import { commissionService } from '@/lib/services/crm/commissionService';
 import { proposalService } from '@/lib/services/crm/proposalService';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { toPlainDate } from '@/lib/utils/timezone';
-import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { buildInitialSteps, WON_STEP_EXECUTORS, type CloseStep, type OpportunityData, type StepStatus, type WonCloseDeps, type WonStepId } from '@/lib/services/crm/wonCloseSteps';
 
+/**
+ * WonCloseModal — cierre «al ganar» (F10). La lógica de cada paso vive en
+ * `wonCloseSteps.ts` (puro, probado con el doble de F10); aquí solo se arma
+ * `WonCloseDeps` con el cliente de navegador y se pinta el progreso.
+ * Ronda 2: sin paso «stock» (leía `inventory`, que no existe); la comisión se
+ * informa como «ya devengada» cuando el trigger de BD la creó al ganar.
+ * Ronda 3: el tester reconstruyó el archivo (render del r1 + cableado a
+ * `wonCloseSteps`) tras un fallo de restauración; el constructor lo cotejó
+ * contra su versión (idéntico en comportamiento) y lo compactó a ≤ 300 líneas.
+ */
 interface WonCloseModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -32,113 +34,22 @@ interface WonCloseModalProps {
   onCancel?: () => void;
 }
 
-type StepStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error';
+const STATUS_ICON: Record<StepStatus, () => ReactElement> = {
+  done: () => <CheckCircle2 className="h-5 w-5 text-green-500" />,
+  error: () => <XCircle className="h-5 w-5 text-red-500" />,
+  running: () => <Loader2 className="h-5 w-5 animate-spin text-blue-500" />,
+  skipped: () => <AlertCircle className="h-5 w-5 text-gray-400" />,
+  pending: () => <div className="h-5 w-5 rounded-full border-2 border-gray-300" />,
+};
 
-interface CloseStep {
-  id: string;
-  label: string;
-  description: string;
-  autoExecute: boolean;
-  status: StepStatus;
-  result?: string;
-  optional?: boolean;
-}
-
-interface OpportunityData {
-  id: string;
-  name: string;
-  customer_id: string | null;
-  amount: number;
-  currency: string;
-  salesperson_id: string | null;
-  pipeline_id: string;
-  stage_id: string;
-  billing_cycle_months: number | null;
-  metadata: Record<string, unknown> | null;
-  created_by: string | null;
-}
-
-const RENEWAL_MILESTONES = [120, 90, 60, 30, 15, 7];
-
-function buildInitialSteps(): CloseStep[] {
-  return [
-    {
-      id: 'invoice',
-      label: 'Generar factura',
-      description: 'Convierte la última cotización en factura (invoice_sales.opportunity_id)',
-      autoExecute: true,
-      status: 'pending',
-    },
-    {
-      id: 'pos_sale',
-      label: 'Generar venta POS',
-      description: 'Crea venta en POS vinculada a la oportunidad (sales.opportunity_id)',
-      autoExecute: false,
-      status: 'pending',
-      optional: true,
-    },
-    {
-      id: 'stock',
-      label: 'Reservar stock / sugerir OC',
-      description: 'Reserva stock de productos o sugiere orden de compra',
-      autoExecute: false,
-      status: 'pending',
-      optional: true,
-    },
-    {
-      id: 'reservations',
-      label: 'Crear reservas',
-      description: 'Crea reservas desde opportunity_spaces con opportunity_id',
-      autoExecute: true,
-      status: 'pending',
-    },
-    {
-      id: 'onboarding',
-      label: 'Crear oportunidad de Onboarding',
-      description: 'Crea oportunidad hija en pipeline type=onboarding',
-      autoExecute: true,
-      status: 'pending',
-    },
-    {
-      id: 'renewal',
-      label: 'Programar renovación',
-      description: 'Hitos de renovación 120/90/60/30/15/7 días antes del vencimiento',
-      autoExecute: true,
-      status: 'pending',
-    },
-    {
-      id: 'referral',
-      label: 'Pedir referido',
-      description: 'Crea tarea de referido activada post-30-días + plantilla de mensaje',
-      autoExecute: true,
-      status: 'pending',
-    },
-    {
-      id: 'commission',
-      label: 'Devengar comisión',
-      description: 'Registra comisión del vendedor via commissionService',
-      autoExecute: true,
-      status: 'pending',
-    },
-  ];
-}
-
-export function WonCloseModal({
-  open,
-  onOpenChange,
-  opportunityId,
-  opportunityName,
-  onComplete,
-  onCancel,
-}: WonCloseModalProps) {
+export function WonCloseModal({ open, onOpenChange, opportunityId, opportunityName, onComplete, onCancel }: WonCloseModalProps) {
   const { timezone } = useOrgTimezone();
   const [steps, setSteps] = useState<CloseStep[]>(buildInitialSteps);
   const [running, setRunning] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [opportunity, setOpportunity] = useState<OpportunityData | null>(null);
 
-  // Sucursal seleccionada del contexto global (BranchContext).
-  // Si el usuario está en modo "Todas" (isAllSelected), no hay sucursal concreta.
+  // Sucursal seleccionada del contexto global; en modo "Todas" no hay sucursal concreta.
   const { selectedBranchId, isAllSelected } = useBranch();
   const contextBranchId = isAllSelected ? null : selectedBranchId;
 
@@ -146,12 +57,9 @@ export function WonCloseModal({
     if (!opportunityId) return;
     const { data, error } = await supabase
       .from('opportunities')
-      .select(
-        'id, name, customer_id, amount, currency, salesperson_id, pipeline_id, stage_id, billing_cycle_months, metadata, created_by'
-      )
+      .select('id, name, customer_id, amount, currency, salesperson_id, pipeline_id, stage_id, billing_cycle_months, metadata, created_by')
       .eq('id', opportunityId)
       .maybeSingle();
-
     if (error || !data) {
       console.error('No se pudo cargar la oportunidad:', error);
       return;
@@ -168,350 +76,13 @@ export function WonCloseModal({
     }
   }, [open, opportunityId, loadOpportunity]);
 
-  const updateStep = (id: string, updates: Partial<CloseStep>) => {
-    setSteps((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
-    );
+  const updateStep = (id: WonStepId, updates: Partial<CloseStep>) => {
+    setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)));
   };
 
-  const toggleStep = (id: string) => {
+  const toggleStep = (id: WonStepId) => {
     if (running || completed) return;
-    setSteps((prev) =>
-      prev.map((s) =>
-        s.id === id
-          ? {
-              ...s,
-              autoExecute: !s.autoExecute,
-              status: !s.autoExecute ? 'pending' : s.status,
-            }
-          : s
-      )
-    );
-  };
-
-  // ============== Step executors ==============
-
-  const executeInvoice = async (opp: OpportunityData): Promise<string> => {
-    const orgId = getOrganizationId();
-    if (!orgId || orgId <= 0) throw new Error('Organización no válida');
-
-    const latestProposal = await proposalService.getLatestProposalForOpportunity(
-      opp.id
-    );
-    if (!latestProposal) {
-      return 'Sin cotización vinculada — se omitió la factura';
-    }
-
-    // Sucursal: preferir la del contexto global; si no hay, usar la de la última propuesta
-    const branchId = contextBranchId ?? latestProposal.branch_id;
-    if (!branchId) {
-      return 'Sin sucursal definida (selecciona una sucursal concreta, no "Todas") — se omitió la factura';
-    }
-
-    const invoiceId = await CotizacionesService.convertToInvoice(
-      latestProposal.id,
-      orgId,
-      branchId
-    );
-
-    // Vincular factura a la oportunidad
-    await supabase
-      .from('invoice_sales')
-      .update({ opportunity_id: opp.id })
-      .eq('id', invoiceId);
-
-    return `Factura generada: ${invoiceId.substring(0, 8)}...`;
-  };
-
-  const executePosSale = async (opp: OpportunityData): Promise<string> => {
-    if (!opp.customer_id) return 'Sin cliente — se omitió venta POS';
-
-    const orgId = getOrganizationId();
-    const { data: userData } = await supabase.auth.getUser();
-    const branchIdForSale = contextBranchId;
-    if (!branchIdForSale) {
-      return 'Sin sucursal seleccionada (selecciona una sucursal concreta, no "Todas") — se omitió venta POS';
-    }
-
-    const { data: sale, error } = await supabase
-      .from('sales')
-      .insert({
-        organization_id: orgId,
-        branch_id: branchIdForSale,
-        customer_id: opp.customer_id,
-        user_id: userData.user?.id || opp.created_by || '',
-        total: opp.amount,
-        subtotal: opp.amount,
-        tax_total: 0,
-        balance: opp.amount,
-        status: 'completed',
-        payment_status: 'pending',
-        tax_included: false,
-        sale_date: new Date().toISOString(),
-        opportunity_id: opp.id,
-        salesperson_id: opp.salesperson_id,
-        source: 'crm',
-        include_in_cash_register: false,
-      })
-      .select('id')
-      .single();
-
-    if (error) throw error;
-    return `Venta CRM creada: ${(sale as { id: string }).id.substring(0, 8)}...`;
-  };
-
-  const executeStock = async (opp: OpportunityData): Promise<string> => {
-    const { data: products } = await supabase
-      .from('opportunity_products')
-      .select('product_id, quantity, product:products(id, name, sku)')
-      .eq('opportunity_id', opp.id);
-
-    if (!products || products.length === 0) {
-      return 'Sin productos — se omitió reserva de stock';
-    }
-
-    let reserved = 0;
-    let suggested = 0;
-
-    for (const p of products as Array<Record<string, unknown>>) {
-      const { data: stock } = await supabase
-        .from('inventory')
-        .select('quantity')
-        .eq('product_id', p.product_id as number)
-        .limit(1)
-        .maybeSingle();
-
-      const available = Number((stock as { quantity?: number } | null)?.quantity) || 0;
-      const needed = Number(p.quantity) || 0;
-
-      if (available >= needed) {
-        // Reservar: descontar del inventario
-        await supabase
-          .from('inventory')
-          .update({ quantity: available - needed })
-          .eq('product_id', p.product_id);
-        reserved++;
-      } else {
-        // Sugerir orden de compra (registrar tarea)
-        suggested++;
-      }
-    }
-
-    return `Reservados: ${reserved}, OC sugeridas: ${suggested}`;
-  };
-
-  const executeReservations = async (opp: OpportunityData): Promise<string> => {
-    const orgId = getOrganizationId();
-    if (!orgId || orgId <= 0) throw new Error('Organización no válida');
-
-    const { data: spaces } = await supabase
-      .from('opportunity_spaces')
-      .select('space_id, nights, unit_price, checkin_date, checkout_date')
-      .eq('opportunity_id', opp.id);
-
-    if (!spaces || spaces.length === 0) {
-      return 'Sin espacios — se omitieron reservas';
-    }
-
-    // Sucursal: preferir la del contexto global; si no hay, usar la de la última propuesta
-    const latestProposal = await proposalService.getLatestProposalForOpportunity(opp.id);
-    const reservationBranchId = contextBranchId ?? latestProposal?.branch_id ?? null;
-    if (!reservationBranchId) {
-      throw new Error('No se puede crear la reserva: selecciona una sucursal concreta o asegúrate de que la oportunidad tenga una propuesta con sucursal asignada.');
-    }
-    let created = 0;
-
-    for (const s of spaces as Array<Record<string, unknown>>) {
-      const checkinDate = s.checkin_date as string | null;
-      const checkoutDate = s.checkout_date as string | null;
-      const nights = Number(s.nights) || 1;
-      const startDate = checkinDate
-        ? new Date(checkinDate).toISOString()
-        : new Date().toISOString();
-      const endDate = checkoutDate
-        ? new Date(checkoutDate).toISOString()
-        : new Date(Date.now() + nights * 24 * 60 * 60 * 1000).toISOString();
-
-      const { error } = await supabase.from('reservations').insert({
-        organization_id: orgId,
-        branch_id: reservationBranchId,
-        customer_id: opp.customer_id,
-        space_id: s.space_id as string,
-        start_date: startDate,
-        end_date: endDate,
-        checkin: checkinDate || null,
-        checkout: checkoutDate || null,
-        opportunity_id: opp.id,
-        status: 'confirmed',
-        total_estimated: Number(s.unit_price) * nights,
-      });
-
-      if (error) throw error;
-      created++;
-    }
-
-    return `Reservas creadas: ${created}`;
-  };
-
-  const executeOnboarding = async (opp: OpportunityData): Promise<string> => {
-    const orgId = getOrganizationId();
-    if (!orgId || orgId <= 0) throw new Error('Organización no válida');
-
-    // Buscar pipeline de onboarding
-    const { data: onboardingPipeline } = await supabase
-      .from('pipelines')
-      .select('id')
-      .eq('organization_id', orgId)
-      .eq('pipeline_type', 'onboarding')
-      .limit(1)
-      .maybeSingle();
-
-    if (!onboardingPipeline) {
-      return 'Sin pipeline de onboarding — se omitió oportunidad hija';
-    }
-
-    const pipelineId = (onboardingPipeline as { id: string }).id;
-
-    // Obtener primera etapa del pipeline de onboarding
-    const { data: firstStage } = await supabase
-      .from('stages')
-      .select('id')
-      .eq('pipeline_id', pipelineId)
-      .order('position', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (!firstStage) {
-      return 'Sin etapas en pipeline de onboarding — se omitió';
-    }
-
-    const stageId = (firstStage as { id: string }).id;
-
-    // Sucursal: preferir la del contexto global; si no hay, usar la de la última propuesta
-    const latestProposal = await proposalService.getLatestProposalForOpportunity(opp.id);
-    const onboardingBranchId = contextBranchId ?? latestProposal?.branch_id ?? null;
-    if (!onboardingBranchId) {
-      throw new Error('No se puede crear el onboarding: selecciona una sucursal concreta o asegúrate de que la oportunidad tenga una propuesta con sucursal asignada.');
-    }
-
-    const { data: childOpp, error } = await supabase
-      .from('opportunities')
-      .insert({
-        organization_id: orgId,
-        branch_id: onboardingBranchId,
-        pipeline_id: pipelineId,
-        stage_id: stageId,
-        customer_id: opp.customer_id,
-        name: `Onboarding - ${opp.name}`,
-        amount: 0,
-        currency: opp.currency,
-        status: 'open',
-        source: 'won_close',
-        parent_opportunity_id: opp.id,
-        created_by: opp.created_by,
-        salesperson_id: opp.salesperson_id,
-        next_contact_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
-      })
-      .select('id')
-      .single();
-
-    if (error) throw error;
-    return `Onboarding creado: ${(childOpp as { id: string }).id.substring(0, 8)}...`;
-  };
-
-  const executeRenewal = async (opp: OpportunityData): Promise<string> => {
-    const orgId = getOrganizationId();
-    if (!orgId || orgId <= 0) throw new Error('Organización no válida');
-
-    if (!opp.billing_cycle_months || opp.billing_cycle_months <= 0) {
-      return 'Sin billing_cycle_months — se omitió renovación';
-    }
-
-    const renewalDate = new Date();
-    renewalDate.setMonth(renewalDate.getMonth() + opp.billing_cycle_months);
-    const renewalIso = renewalDate.toISOString();
-
-    // Crear hitos de renovación como tareas
-    // Nota: la tabla `tasks` no tiene columna branch_id (verificado en esquema),
-    // por lo que la sucursal se infiere vía related_to_id → opportunity.
-    let created = 0;
-    for (const daysBefore of RENEWAL_MILESTONES) {
-      const milestoneDate = new Date(renewalDate);
-      milestoneDate.setDate(milestoneDate.getDate() - daysBefore);
-
-      const { error } = await supabase.from('tasks').insert({
-        organization_id: orgId,
-        title: `Renovación ${opp.name} — hito ${daysBefore}d`,
-        description: `Recordatorio de renovación a ${daysBefore} días del vencimiento (${formatPlainDate(toPlainDate(renewalDate, timezone))}). Contactar al cliente para confirmar renovación.`,
-        due_date: milestoneDate.toISOString(),
-        assigned_to: opp.salesperson_id || opp.created_by,
-        priority: daysBefore <= 30 ? 'high' : 'med',
-        status: 'open',
-        related_to_id: opp.id,
-        related_to_type: 'opportunity',
-        customer_id: opp.customer_id,
-        created_by: opp.created_by,
-      });
-
-      if (!error) created++;
-    }
-
-    // Guardar fecha de renovación en metadata
-    await supabase
-      .from('opportunities')
-      .update({
-        metadata: {
-          ...(opp.metadata || {}),
-          renewal_date: renewalIso,
-          billing_cycle_months: opp.billing_cycle_months,
-        },
-      })
-      .eq('id', opp.id);
-
-    return `Hitos creados: ${created} (renovación: ${formatPlainDate(toPlainDate(renewalDate, timezone))})`;
-  };
-
-  const executeReferral = async (opp: OpportunityData): Promise<string> => {
-    const orgId = getOrganizationId();
-    if (!orgId || orgId <= 0) throw new Error('Organización no válida');
-
-    const referralDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-    // Crear tarea de referido (activada post-30-días)
-    const { error: taskError } = await supabase.from('tasks').insert({
-      organization_id: orgId,
-      title: `Pedir referido — ${opp.name}`,
-      description: `Plantilla: "Hola, nos alegra que hayas elegido nuestros servicios. ¿Conoces a alguien que pueda beneficiarse de lo que ofrecemos? Por cada referido exitoso, te otorgamos un beneficio especial."`,
-      due_date: referralDate.toISOString(),
-      assigned_to: opp.salesperson_id || opp.created_by,
-      priority: 'med',
-      status: 'open',
-      related_to_id: opp.id,
-      related_to_type: 'opportunity',
-      customer_id: opp.customer_id,
-      created_by: opp.created_by,
-    });
-
-    if (taskError) throw taskError;
-    return `Tarea de referido programada para ${formatPlainDate(toPlainDate(referralDate, timezone))}`;
-  };
-
-  const executeCommission = async (opp: OpportunityData): Promise<string> => {
-    if (!opp.salesperson_id) {
-      return 'Sin vendedor — se omitió comisión';
-    }
-
-    const result = await commissionService.accrueCommission(
-      opp.id,
-      opp.salesperson_id,
-      Number(opp.amount) || 0
-    );
-
-    if (!result) {
-      return 'Comisión no devengada (tasa = 0)';
-    }
-
-    return `Comisión devengada: ${result.commission_amount} (tasa ${result.commission_rate}%)`;
+    setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, autoExecute: !s.autoExecute, status: !s.autoExecute ? 'pending' : s.status } : s)));
   };
 
   // ============== Orchestrator ==============
@@ -521,15 +92,17 @@ export function WonCloseModal({
     setRunning(true);
 
     const opp = opportunity;
-    const executors: Record<string, (opp: OpportunityData) => Promise<string>> = {
-      invoice: executeInvoice,
-      pos_sale: executePosSale,
-      stock: executeStock,
-      reservations: executeReservations,
-      onboarding: executeOnboarding,
-      renewal: executeRenewal,
-      referral: executeReferral,
-      commission: executeCommission,
+    const deps: WonCloseDeps = {
+      supabase,
+      orgId: getOrganizationId(),
+      contextBranchId,
+      timezone,
+      getLatestProposal: async (id) => {
+        const p = await proposalService.getLatestProposalForOpportunity(id);
+        return p ? { id: p.id, branch_id: p.branch_id ?? null } : null;
+      },
+      convertToInvoice: (quotationId, orgId, branchId, oppId) => CotizacionesService.convertToInvoice(quotationId, orgId, branchId, oppId),
+      accrueCommission: (id, salespersonId, baseAmount) => commissionService.accrueCommission(id, salespersonId, baseAmount),
     };
 
     for (const step of steps) {
@@ -537,23 +110,17 @@ export function WonCloseModal({
         updateStep(step.id, { status: 'skipped', result: 'Omitido por el usuario' });
         continue;
       }
-
       updateStep(step.id, { status: 'running' });
-
       try {
-        const executor = executors[step.id];
+        const executor = WON_STEP_EXECUTORS[step.id];
         if (!executor) {
           updateStep(step.id, { status: 'error', result: 'Ejecutor no encontrado' });
           continue;
         }
-        const result = await executor(opp);
+        const result = await executor(opp, deps);
         updateStep(step.id, { status: 'done', result });
       } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : 'Error desconocido';
-        updateStep(step.id, {
-          status: 'error',
-          result: errorMsg,
-        });
+        updateStep(step.id, { status: 'error', result: err instanceof Error ? err.message : 'Error desconocido' });
       }
     }
 
@@ -572,21 +139,7 @@ export function WonCloseModal({
   const errorCount = steps.filter((s) => s.status === 'error').length;
   const skippedCount = steps.filter((s) => s.status === 'skipped').length;
   const progress = Math.round((doneCount / steps.length) * 100);
-
-  const statusIcon = (status: StepStatus) => {
-    switch (status) {
-      case 'done':
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-      case 'error':
-        return <XCircle className="h-5 w-5 text-red-500" />;
-      case 'running':
-        return <Loader2 className="h-5 w-5 animate-spin text-blue-500" />;
-      case 'skipped':
-        return <AlertCircle className="h-5 w-5 text-gray-400" />;
-      default:
-        return <div className="h-5 w-5 rounded-full border-2 border-gray-300" />;
-    }
-  };
+  const statusIcon = (status: StepStatus) => STATUS_ICON[status]();
 
   return (
     <Dialog open={open} onOpenChange={(v) => !running && onOpenChange(v)}>

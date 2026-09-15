@@ -19,9 +19,14 @@ jest.mock('@/lib/supabase/server-service', () => {
   const consentKey = (r: Record<string, unknown>) => `${r.organization_id}|${r.customer_id}|${r.channel}`;
   const client = {
     from: (table: string) => {
+      if (table === 'provider_configs') {
+        // F16 r5: `recordConsentChange` lee el indicativo de la organización.
+        return { select: () => ({ eq: () => ({ eq: () => ({ order: () => ({ limit: () => ({ maybeSingle: async () => ({ data: null }) }) }) }) }) }) };
+      }
       if (table === 'customers') {
         return {
-          select: () => ({ eq: () => ({ ilike: () => ({ limit: async () => ({ data: state.customers }) }) }) }),
+          // F16 r5 · T-2: el prefiltro ya no es `ilike` sino `filter(phone, imatch, …)`.
+          select: () => ({ eq: () => ({ filter: () => ({ limit: async () => ({ data: state.customers }) }) }) }),
           update: (payload: Record<string, unknown>) => ({
             eq: () => ({ eq: async () => { state.updates.push(payload); return { error: null }; } }),
           }),

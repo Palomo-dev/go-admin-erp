@@ -57,6 +57,12 @@ export async function checkRateLimit(key: string, opts: RateLimitOptions): Promi
   if (!key) {
     return { allowed: false, remaining: 0, resetAt: new Date(now + windowMs), count: opts.limit };
   }
+  // F0-SEC r2 (sonda P7): una ventana de 0 ms (o negativa/NaN) reiniciaba el
+  // cubo en cada hit y el límite nunca bloqueaba. Es un error de configuración,
+  // no una forma de desactivar el límite: se bloquea (fail-closed).
+  if (!Number.isFinite(windowMs) || windowMs <= 0) {
+    return { allowed: false, remaining: 0, resetAt: new Date(now), count: opts.limit };
+  }
 
   sweep(now, windowMs);
 

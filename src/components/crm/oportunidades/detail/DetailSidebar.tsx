@@ -9,6 +9,7 @@ import { es } from 'date-fns/locale';
 import { formatCurrency } from '@/utils/Utils';
 import type { OpportunityFull } from '@/components/crm/pipeline/hooks/useOpportunityData';
 import type { CustomerDetails } from '../types';
+import { OpportunityObjectionsBlock } from '@/components/crm/objeciones/OpportunityObjectionsBlock';
 
 /** Sidebar del detalle: valor total, info clave, comisión, cliente y razón de pérdida (sin cambios funcionales). */
 export interface DetailSidebarProps {
@@ -92,6 +93,13 @@ export function DetailSidebar({ opportunity, customer, totals, displayAmount, on
               )}
             </div>
           ) : <p className="text-sm text-gray-500 dark:text-gray-400">Sin cliente asignado</p>}
+        </CardContent>
+      </Card>
+
+      {/* F2: objeciones registradas en la oportunidad, misma superficie que el drawer. */}
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardContent className="pt-5">
+          <OpportunityObjectionsBlock opportunityId={opportunity.id} />
         </CardContent>
       </Card>
 

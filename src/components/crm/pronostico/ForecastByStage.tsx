@@ -1,13 +1,15 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency } from '@/utils/Utils';
+import { fmtMoney } from '@/components/crm/revenueos/formatters';
 import { Stage, Opportunity } from '@/components/crm/oportunidades/types';
 
 interface ForecastByStageProps {
   stages: Stage[];
   opportunities: Opportunity[];
   isLoading?: boolean;
+  /** Moneda base de la organización; null → cifras sin símbolo. */
+  currency: string | null;
 }
 
 interface StageData {
@@ -17,7 +19,7 @@ interface StageData {
   weightedAmount: number;
 }
 
-export function ForecastByStage({ stages, opportunities, isLoading }: ForecastByStageProps) {
+export function ForecastByStage({ stages, opportunities, isLoading, currency }: ForecastByStageProps) {
   const stageData: StageData[] = stages
     .sort((a, b) => a.position - b.position)
     .map((stage) => {
@@ -75,7 +77,7 @@ export function ForecastByStage({ stages, opportunities, isLoading }: ForecastBy
                 </div>
                 <div className="text-right shrink-0">
                   <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(data.totalAmount)}
+                    {fmtMoney(data.totalAmount, currency)}
                   </span>
                   <span className="text-[10px] sm:text-sm text-gray-500 dark:text-gray-400 ml-1 sm:ml-2">
                     × {Math.round(Number(data.stage.probability || 0))}%
@@ -102,7 +104,7 @@ export function ForecastByStage({ stages, opportunities, isLoading }: ForecastBy
                 />
                 <div className="absolute inset-0 flex items-center justify-end pr-2 sm:pr-3">
                   <span className="text-[10px] sm:text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {formatCurrency(data.weightedAmount)}
+                    {fmtMoney(data.weightedAmount, currency)}
                   </span>
                 </div>
               </div>
@@ -114,12 +116,12 @@ export function ForecastByStage({ stages, opportunities, isLoading }: ForecastBy
             <div className="flex items-center justify-between text-sm sm:text-lg font-bold gap-2">
               <span className="text-gray-900 dark:text-white">Total Ponderado</span>
               <span className="text-blue-600 dark:text-blue-400">
-                {formatCurrency(stageData.reduce((sum, d) => sum + d.weightedAmount, 0))}
+                {fmtMoney(stageData.reduce((sum, d) => sum + d.weightedAmount, 0), currency)}
               </span>
             </div>
             <div className="flex items-center justify-between text-[10px] sm:text-sm text-gray-500 dark:text-gray-400 mt-1 gap-2">
               <span>Valor bruto en pipeline</span>
-              <span>{formatCurrency(stageData.reduce((sum, d) => sum + d.totalAmount, 0))}</span>
+              <span>{fmtMoney(stageData.reduce((sum, d) => sum + d.totalAmount, 0), currency)}</span>
             </div>
           </div>
         </div>

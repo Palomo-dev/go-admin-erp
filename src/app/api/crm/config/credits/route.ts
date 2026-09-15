@@ -2,12 +2,21 @@
  * GET /api/crm/config/credits — saldos, consumo del mes y presupuesto.
  *
  * Sesión (cualquier miembro). Lee con service role pero SIEMPRE filtrado por
- * la org de sesión. Respuesta:
+ * la org de sesión. El consumo del mes se agrega en SQL
+ * (`fn_ai_usage_month` / `fn_comm_usage_month`, migración crm_v4_f00_39) con
+ * el costo `coalesce(cost_amount, metadata.cost_amount)` y los días cortados
+ * en la zona horaria de la organización; el mes empieza en el primer día
+ * calendario de esa zona, no en UTC (reglas de fechas 3 y 6). Mientras la 39
+ * no esté aplicada, `aiUsageStatsService` agrega en Node y avisa con
+ * `truncated` si superó su tope.
+ *
+ * Respuesta:
  * {
  *   ai:   { credits_remaining, purchased_credits, credits_reset_at,
- *           monthly_budget_usd, spent_month_usd, spent_month_credits, by_model[], by_day[] },
+ *           monthly_budget_usd, spent_month_usd, spent_month_credits, budget_used_pct,
+ *           by_model[], by_day[], truncated },
  *   comm: { sms_remaining, whatsapp_remaining, voice_minutes_remaining, is_active,
- *           spent_month_usd, by_channel[] },
+ *           spent_month_usd, by_channel[], truncated },
  *   pricing: ProviderPricing[]
  * }
  */
@@ -15,30 +24,12 @@
 import { NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { getServiceClient } from '@/lib/supabase/server-service';
-import { getProviderSettings } from '@/lib/services/providerCredentials.server';
+import { getMonthlyBudgetUsd } from '@/lib/services/crm/aiCostService';
 import { listPricing } from '@/lib/services/crm/pricingService';
+import { getOrgTimezoneServer } from '@/lib/services/crm/revenueOsService';
+import { getAiUsageMonth, getCommUsageMonth, monthStartInTz } from '@/lib/services/crm/aiUsageStatsService';
 
 export const dynamic = 'force-dynamic';
-
-interface AiLogRow {
-  model: string | null;
-  action_type: string | null;
-  credits_consumed: number | null;
-  total_tokens: number | null;
-  metadata: Record<string, unknown> | null;
-  created_at: string;
-}
-interface CommLogRow {
-  channel: string;
-  credits_used: number | null;
-  metadata: Record<string, unknown> | null;
-  created_at: string;
-}
-
-function costOf(meta: Record<string, unknown> | null): number {
-  const v = meta?.cost_amount;
-  return typeof v === 'number' && Number.isFinite(v) ? v : 0;
-}
 
 export async function GET() {
   let ctx;
@@ -53,75 +44,36 @@ export async function GET() {
 
   const orgId = ctx.organizationId;
   const sb = getServiceClient();
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
-  const since = monthStart.toISOString();
 
   try {
-    const [aiSettings, commSettings, aiLogs, commLogs, llm, pricing] = await Promise.all([
+    const timezone = await getOrgTimezoneServer(orgId, ctx.supabase);
+    const since = monthStartInTz(timezone);
+
+    const [aiSettings, commSettings, aiUsage, commUsage, monthlyBudget, pricing] = await Promise.all([
       sb.from('ai_settings').select('credits_remaining, purchased_credits, credits_reset_at').eq('organization_id', orgId).maybeSingle(),
       sb.from('comm_settings').select('sms_remaining, whatsapp_remaining, voice_minutes_remaining, is_active, credits_reset_at').eq('organization_id', orgId).maybeSingle(),
-      sb.from('ai_usage_logs').select('model, action_type, credits_consumed, total_tokens, metadata, created_at').eq('organization_id', orgId).gte('created_at', since).limit(5000),
-      sb.from('comm_usage_logs').select('channel, credits_used, metadata, created_at').eq('organization_id', orgId).gte('created_at', since).limit(5000),
-      getProviderSettings(orgId, 'llm', 'openai'),
+      getAiUsageMonth(sb, orgId, since, timezone),
+      getCommUsageMonth(sb, orgId, since),
+      getMonthlyBudgetUsd(sb, orgId),
       listPricing(),
     ]);
 
-    const aiRows = (aiLogs.data ?? []) as AiLogRow[];
-    const commRows = (commLogs.data ?? []) as CommLogRow[];
-
-    const byModel = new Map<string, { model: string; credits: number; cost_usd: number; tokens: number; calls: number }>();
-    const byDay = new Map<string, { day: string; credits: number; cost_usd: number }>();
-    let aiCredits = 0;
-    let aiUsd = 0;
-    for (const r of aiRows) {
-      const credits = r.credits_consumed ?? 0;
-      const usd = costOf(r.metadata);
-      aiCredits += credits;
-      aiUsd += usd;
-      const m = r.model || 'desconocido';
-      const cur = byModel.get(m) ?? { model: m, credits: 0, cost_usd: 0, tokens: 0, calls: 0 };
-      cur.credits += credits;
-      cur.cost_usd += usd;
-      cur.tokens += r.total_tokens ?? 0;
-      cur.calls += credits >= 0 ? 1 : 0;
-      byModel.set(m, cur);
-      const day = r.created_at.slice(0, 10);
-      const d = byDay.get(day) ?? { day, credits: 0, cost_usd: 0 };
-      d.credits += credits;
-      d.cost_usd += usd;
-      byDay.set(day, d);
-    }
-
-    const byChannel = new Map<string, { channel: string; credits: number; cost_usd: number; count: number }>();
-    let commUsd = 0;
-    for (const r of commRows) {
-      const usd = costOf(r.metadata);
-      commUsd += usd;
-      const c = byChannel.get(r.channel) ?? { channel: r.channel, credits: 0, cost_usd: 0, count: 0 };
-      c.credits += r.credits_used ?? 0;
-      c.cost_usd += usd;
-      c.count += 1;
-      byChannel.set(r.channel, c);
-    }
-
-    const budget = Number(llm.settings.monthly_budget_usd);
-    const monthlyBudget = Number.isFinite(budget) && budget > 0 ? budget : null;
+    const aiUsd = aiUsage.spent_usd;
 
     return NextResponse.json({
       success: true,
-      period: { since, until: new Date().toISOString() },
+      period: { since, until: new Date().toISOString(), timezone },
       ai: {
         credits_remaining: aiSettings.data?.credits_remaining ?? null,
         purchased_credits: aiSettings.data?.purchased_credits ?? 0,
         credits_reset_at: aiSettings.data?.credits_reset_at ?? null,
         monthly_budget_usd: monthlyBudget,
         spent_month_usd: Math.round(aiUsd * 1e4) / 1e4,
-        spent_month_credits: aiCredits,
+        spent_month_credits: aiUsage.spent_credits,
         budget_used_pct: monthlyBudget ? Math.min(999, Math.round((aiUsd / monthlyBudget) * 100)) : null,
-        by_model: [...byModel.values()].sort((a, b) => b.credits - a.credits),
-        by_day: [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day)),
+        by_model: aiUsage.by_model,
+        by_day: aiUsage.by_day,
+        truncated: aiUsage.truncated,
       },
       comm: {
         sms_remaining: commSettings.data?.sms_remaining ?? null,
@@ -129,8 +81,9 @@ export async function GET() {
         voice_minutes_remaining: commSettings.data?.voice_minutes_remaining ?? null,
         is_active: commSettings.data?.is_active ?? false,
         credits_reset_at: commSettings.data?.credits_reset_at ?? null,
-        spent_month_usd: Math.round(commUsd * 1e4) / 1e4,
-        by_channel: [...byChannel.values()],
+        spent_month_usd: Math.round(commUsage.spent_usd * 1e4) / 1e4,
+        by_channel: commUsage.by_channel,
+        truncated: commUsage.truncated,
       },
       pricing,
     });

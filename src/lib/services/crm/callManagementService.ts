@@ -612,6 +612,12 @@ export interface CallListRow extends CallRecord {
   user: { id: string; first_name: string | null; last_name: string | null; email: string | null } | null;
   recordings: { id: string; status: RecordingStatus; duration_seconds: number | null; channels: string }[];
   disposition_outcome: string | null;
+  /**
+   * `call_consents.method` de la acta de grabación (F-4, ronda 7 de voz):
+   * `unverified_announcement` = grabación sin aviso acreditado; la UI la marca.
+   * `null` sin acta.
+   */
+  consent_method: string | null;
 }
 
 /**
@@ -626,7 +632,7 @@ export async function listCallsWithRelations(
   let query = supabase
     .from('calls')
     .select(
-      '*, customers:customer_id(id, full_name, first_name, last_name, phone), opportunities:opportunity_id(id, name), call_recordings(id, status, duration_seconds, channels)',
+      '*, customers:customer_id(id, full_name, first_name, last_name, phone), opportunities:opportunity_id(id, name), call_recordings(id, status, duration_seconds, channels), call_consents(consent_type, method)',
       { count: 'exact' }
     )
     .eq('organization_id', organizationId)
@@ -662,6 +668,7 @@ export async function listCallsWithRelations(
     customers?: CallListRow['customer'] | CallListRow['customer'][] | null;
     opportunities?: CallListRow['opportunity'] | CallListRow['opportunity'][] | null;
     call_recordings?: CallListRow['recordings'] | null;
+    call_consents?: { consent_type: string; method: string }[] | null;
   };
   const rows = (data ?? []) as Raw[];
   const userIds = Array.from(new Set(rows.map((r) => r.user_id).filter((u): u is string => Boolean(u))));
@@ -673,7 +680,7 @@ export async function listCallsWithRelations(
 
   const first = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
   const mapped: CallListRow[] = rows.map((r) => {
-    const { customers, opportunities, call_recordings, ...rest } = r;
+    const { customers, opportunities, call_recordings, call_consents, ...rest } = r;
     const recordings = (call_recordings ?? []).filter((x) => x.status !== 'deleted');
     return {
       ...(rest as CallRecord),
@@ -682,6 +689,7 @@ export async function listCallsWithRelations(
       user: r.user_id ? users.get(r.user_id) ?? null : null,
       recordings,
       disposition_outcome: (r.metadata?.disposition_outcome as string | undefined) ?? null,
+      consent_method: (call_consents ?? []).find((c) => c.consent_type === 'recording')?.method ?? null,
     };
   });
 

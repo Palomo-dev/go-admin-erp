@@ -25,6 +25,8 @@ export interface ComposeEmailDialogProps {
   customerId?: string;
   customer?: { id?: string; full_name?: string | null; email?: string | null } | null;
   defaultSubject?: string;
+  /** F10: cuerpo HTML inicial (p. ej. la propuesta renderizada). */
+  defaultBody?: string;
   replyTo?: { email_message_id: string; subject: string };
   /** `scheduled` = el envío quedó programado/encolado (202), no enviado. */
   onSent?: (result: { email_message_id?: string; scheduled?: boolean }) => void;
@@ -32,10 +34,10 @@ export interface ComposeEmailDialogProps {
 
 interface TemplateOption { id: string; name: string; subject?: string | null; body_html?: string | null }
 
-export function ComposeEmailDialog({ open, onOpenChange, opportunityId, customerId, customer, defaultSubject, replyTo, onSent }: ComposeEmailDialogProps) {
+export function ComposeEmailDialog({ open, onOpenChange, opportunityId, customerId, customer, defaultSubject, defaultBody, replyTo, onSent }: ComposeEmailDialogProps) {
   const [to, setTo] = useState(customer?.email ?? '');
   const [subject, setSubject] = useState(replyTo ? (replyTo.subject.startsWith('Re:') ? replyTo.subject : `Re: ${replyTo.subject}`) : defaultSubject ?? '');
-  const [body, setBody] = useState('');
+  const [body, setBody] = useState(defaultBody ?? '');
   const [templates, setTemplates] = useState<TemplateOption[]>([]);
   const [templateId, setTemplateId] = useState('');
   const [sending, setSending] = useState(false);

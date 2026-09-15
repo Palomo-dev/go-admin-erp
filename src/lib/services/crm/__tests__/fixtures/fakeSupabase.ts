@@ -3,8 +3,11 @@
  * Soporta el subconjunto del query builder que usa el código:
  *   from().select().eq().neq().in().gte().order().limit().range().maybeSingle()/single()
  *   from().insert(row|rows).select().single()
+ *   from().upsert(row|rows, { onConflict, ignoreDuplicates }).select().maybeSingle()
+ *     (honra `onConflict` —o `unique[tabla]`—: con `ignoreDuplicates` el duplicado
+ *     se descarta y NO vuelve en `data`; sin él se fusiona sobre la fila existente)
  *   from().update(patch).eq().select().single()
- *   from().delete().eq()
+ *   from().delete().eq()   (también lt/lte/gt/not; `count` en el resultado)
  *   storage.from(bucket).download()/upload()/remove()
  *   rpc(name, args)
  * Registra todas las llamadas para poder afirmar sobre ellas.
@@ -88,7 +91,7 @@ export class FakeDb {
   client(): SupabaseClient {
     const db = this;
     const from = (table: string) => {
-      const state: { filters: Array<(r: Row) => boolean>; order?: { col: string; asc: boolean }; limit?: number; op: string; payload?: any; selectAfter?: boolean } = {
+      const state: { filters: Array<(r: Row) => boolean>; order?: { col: string; asc: boolean }; limit?: number; op: string; payload?: any; selectAfter?: boolean; upsertOpts?: { onConflict?: string; ignoreDuplicates?: boolean } } = {
         filters: [],
         op: 'select',
       };
@@ -102,8 +105,34 @@ export class FakeDb {
         return out;
       };
       const runWrite = (): { data: Row[] | null; error: { message: string } | null } => {
-        const fail = db.failOn[`${table}:${state.op}`];
+        const fail = db.failOn[`${table}:${state.op}`] ?? (state.op === 'upsert' ? db.failOn[`${table}:insert`] : undefined);
         if (fail) return { data: null, error: { message: fail } };
+        if (state.op === 'upsert') {
+          // `ON CONFLICT (cols)`: las columnas de `onConflict` o, si no vienen,
+          // el UNIQUE simulado de la tabla. Sin ninguna de las dos es un insert.
+          const cols = (state.upsertOpts?.onConflict ?? db.unique[table]?.join(',') ?? '')
+            .split(',')
+            .map((c) => c.trim())
+            .filter(Boolean);
+          const list: Row[] = Array.isArray(state.payload) ? state.payload : [state.payload];
+          const returned: Row[] = [];
+          for (const r of list) {
+            const dup = cols.length ? db.rows(table).find((x) => cols.every((c) => x[c] === r[c])) : undefined;
+            if (dup) {
+              if (state.upsertOpts?.ignoreDuplicates) continue; // DO NOTHING: no vuelve en `data`
+              Object.assign(dup, r); // DO UPDATE
+              returned.push(dup);
+              continue;
+            }
+            const row = { id: r.id ?? uuid(), created_at: r.created_at ?? new Date().toISOString(), updated_at: r.updated_at ?? new Date().toISOString(), ...r };
+            const v = db.violation(table, row);
+            if (v) return { data: null, error: { message: v } };
+            db.rows(table).push(row);
+            returned.push(row);
+          }
+          db.calls.push({ table, op: 'upsert', payload: list });
+          return { data: returned, error: null };
+        }
         if (state.op === 'insert') {
           const list: Row[] = Array.isArray(state.payload) ? state.payload : [state.payload];
           const created: Row[] = [];
@@ -151,9 +180,10 @@ export class FakeDb {
           state.op = 'delete';
           return b;
         },
-        upsert: (payload: any) => {
-          state.op = 'insert';
+        upsert: (payload: any, opts?: { onConflict?: string; ignoreDuplicates?: boolean }) => {
+          state.op = 'upsert';
           state.payload = payload;
+          state.upsertOpts = opts;
           return b;
         },
         eq: (col: string, val: any) => {
@@ -170,6 +200,27 @@ export class FakeDb {
         },
         gte: (col: string, val: any) => {
           state.filters.push((r) => getPath(r, col) >= val);
+          return b;
+        },
+        // Ronda 6 de voz (aditivo): `lt/lte/gt/not` para consultas con ventana
+        // temporal (reconciliación de actas). Semántica de PostgREST: un NULL
+        // nunca compara como verdadero.
+        lt: (col: string, val: unknown) => {
+          state.filters.push((r) => getPath(r, col) != null && getPath(r, col) < (val as number | string));
+          return b;
+        },
+        lte: (col: string, val: unknown) => {
+          state.filters.push((r) => getPath(r, col) != null && getPath(r, col) <= (val as number | string));
+          return b;
+        },
+        gt: (col: string, val: unknown) => {
+          state.filters.push((r) => getPath(r, col) != null && getPath(r, col) > (val as number | string));
+          return b;
+        },
+        not: (col: string, op: string, val: unknown) => {
+          if (op === 'is') state.filters.push((r) => getPath(r, col) !== val);
+          else if (op === 'eq') state.filters.push((r) => String(getPath(r, col)) !== String(val));
+          else if (op === 'in') state.filters.push((r) => !(val as unknown[]).map(String).includes(String(getPath(r, col))));
           return b;
         },
         is: (col: string, val: any) => {
@@ -191,8 +242,13 @@ export class FakeDb {
           // de escritura: hay guardas que dependen de no descartar ese `error`.
           const readFail = state.op === 'select' ? db.failOn[`${table}:select`] : undefined;
           if (readFail) return { data: null, error: { message: readFail } };
-          const r = state.op === 'select' ? apply() : (runWrite().data ?? []);
-          return { data: r[0] ?? null, error: null };
+          if (state.op === 'select') return { data: apply()[0] ?? null, error: null };
+          // Escritura + `.select().maybeSingle()`: el `error` de `failOn` se
+          // PROPAGA (antes se descartaba y una guarda que dependía de él pasaba
+          // por la rama equivocada: mutación M13 de la ronda 5 de voz).
+          const w = runWrite();
+          if (w.error) return { data: null, error: w.error };
+          return { data: (w.data ?? [])[0] ?? null, error: null };
         },
         single: async () => {
           if (state.op === 'select') {
@@ -206,7 +262,15 @@ export class FakeDb {
           return { data: (w.data ?? [])[0] ?? null, error: null };
         },
         then: (res: any, rej: any) => {
-          const w = state.op === 'select' ? { data: apply(), error: null } : runWrite();
+          const readFail = state.op === 'select' ? db.failOn[`${table}:select`] : undefined;
+          const w = readFail
+            ? { data: null, error: { message: readFail }, count: null }
+            : state.op === 'select'
+              ? { data: apply(), error: null, count: apply().length }
+              : (() => {
+                  const r = runWrite();
+                  return { ...r, count: r.data ? r.data.length : null };
+                })();
           return Promise.resolve(w).then(res, rej);
         },
       };

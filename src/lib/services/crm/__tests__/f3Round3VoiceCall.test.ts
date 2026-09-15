@@ -88,13 +88,19 @@ function seed(commSettings?: Row[]): FakeDb {
 beforeEach(() => {
   jest.clearAllMocks();
   process.env.TWILIO_WEBHOOK_BASE_URL = 'https://webhooks.test';
+  // Ronda 7 de voz (F-6): la ruta responde 410 sin esta bandera. Estas pruebas
+  // ejercitan N-1 (A2/M2/B1) DENTRO de la rama heredada, así que se abre aquí.
+  process.env.VOICE_LEGACY_REST_OUTBOUND = 'true';
   delete process.env.TWILIO_PHONE_NUMBER;
   delete process.env.VOICE_ALLOW_PLATFORM_CALLER_ID;
   fake = seed();
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
 });
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {
+  jest.restoreAllMocks();
+  delete process.env.VOICE_LEGACY_REST_OUTBOUND;
+});
 
 describe('N-1 · /api/voice/call: A2, M2 y B1 en la ruta REST', () => {
   it('N-1.1 (A2) · customer_id/opportunity_id de otra org llegan del body → se descartan a null', async () => {

@@ -1274,7 +1274,12 @@ async function getOrgVoiceSettings(
   } | null;
 
   return {
-    enabled: data?.voice_recording_enabled !== false,
+    // Fallo CERRADO (F-2, ronda 7 de voz): esta es la fila `calls.recording_enabled`
+    // que se fija al marcar y que `twiml/ai-agent` y `agentRuntime` leen como
+    // única fuente de verdad. Con `!== false` una organización sin fila o con
+    // la columna en NULL grababa por defecto (N-9 solo se había aplicado a
+    // `agentRuntime`).
+    enabled: data?.voice_recording_enabled === true,
     consentMessage:
       data?.voice_consent_message ||
       'Esta llamada será grabada con fines de calidad y quedará registrada en nuestro sistema.',
@@ -1467,8 +1472,9 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
       // C-F6-09 / A-2: la grabación dual-channel NO se pide aquí. `record: true`
       // en el `calls.create` arranca a grabar en cuanto contestan, es decir
       // ANTES de que suene el aviso: el acta quedaba bien fechada pero la
-      // grabación ya existía sin consentimiento. Ahora la inicia
-      // `twiml/ai-agent` por REST, después del aviso y con el acta escrita.
+      // grabación ya existía sin consentimiento. La inicia `twiml/ai-agent`
+      // con `<Start><Recording>` (ronda 5; ya NO por REST), en la segunda
+      // pasada, después del aviso y solo con el acta escrita.
     });
 
     unwrap(

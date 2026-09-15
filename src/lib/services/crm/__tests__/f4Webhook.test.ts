@@ -16,7 +16,8 @@ jest.mock('@/lib/services/crm/callAiPolicy', () => ({ getCallAiPolicy: jest.fn(a
 import { POST } from '@/app/api/crm/webhooks/elevenlabs/route';
 import { completeTranscriptFromWebhook } from '@/lib/services/crm/transcriptionService';
 
-const SECRET = 'wsec_test_f4';
+// F0-SEC r2: el secreto tiene que tener la forma de uno real (>= 16, sin relleno).
+const SECRET = 'wsec_f4_0123456789abcdef0123456789';
 
 function sign(body: string, secret = SECRET, tsSeconds = Math.floor(Date.now() / 1000)): string {
   const digest = createHmac('sha256', secret).update(`${tsSeconds}.${body}`).digest('hex');

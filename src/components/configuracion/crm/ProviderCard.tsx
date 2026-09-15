@@ -46,7 +46,12 @@ export function ProviderCard({ item, canEdit, onSave, onTest }: ProviderCardProp
   const persistSettings = async () => {
     setSaving(true);
     try {
-      await onSave({ category: item.category, provider: item.provider, settings });
+      // Solo las claves editables del catálogo: el servidor valida `settings`
+      // contra SETTING_FIELDS y rechaza claves desconocidas (los defaults
+      // derivados como `model` de llm:openai no viajan). `null` borra la clave.
+      const editable: Record<string, unknown> = {};
+      for (const f of fields) if (f.key in settings) editable[f.key] = settings[f.key] ?? null;
+      await onSave({ category: item.category, provider: item.provider, settings: editable });
     } finally {
       setSaving(false);
     }

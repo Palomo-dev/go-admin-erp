@@ -156,6 +156,7 @@ function toCallData(c: Row): TimelineCallData {
     from_number: c.from_number ?? null,
     to_number: c.to_number ?? null,
     recording_enabled: Boolean(c.recording_enabled),
+    consent_method: (Array.isArray(c.call_consents) ? c.call_consents : []).find((k: Row) => k.consent_type === 'recording')?.method ?? null,
     cost_amount: c.cost_amount != null ? Number(c.cost_amount) : null,
     recording: rec ? { id: rec.id, status: rec.status } : null,
     transcript: tr ? { id: tr.id, status: tr.status } : null,
@@ -211,7 +212,7 @@ export function assemble(r: Raw, h: Hydration): TimelineEntry | null {
           ? toCallData(c)
           : {
               id: r.row.call_id ?? r.id, direction: (r.row.metadata?.direction as string) ?? 'outbound', status: 'completed', mode: (r.row.metadata?.mode as string) ?? 'manual',
-              duration_seconds: r.row.duration_seconds ?? null, from_number: null, to_number: null, recording_enabled: false, cost_amount: null, recording: null, transcript: null, analysis: null,
+              duration_seconds: r.row.duration_seconds ?? null, from_number: null, to_number: null, recording_enabled: false, cost_amount: null, consent_method: null, recording: null, transcript: null, analysis: null,
             };
         return { ...base, kind: LIVE_STATUSES.includes(call.status) ? 'call_live' : 'call', call, activity: toActivityRef(r.row) };
       }

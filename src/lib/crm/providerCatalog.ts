@@ -187,18 +187,53 @@ export const SETTING_FIELDS: Partial<Record<`${ProviderCategory}:${string}`, Set
 function isFillerCredential(v: string): boolean {
   // El prefijo de proveedor puede ser `SK`, `AP`, `sk-`, `re_`, `whsec_`…
   const body = v.replace(/^[A-Za-z]{0,8}[-_.]?/, '');
-  return body.length >= 6 && /^(.)\1*$/.test(body);
+  if (body.length >= 6 && /^(.)\1*$/.test(body)) return true;
+  // Relleno corto sin prefijo ('0000', 'xxxx'): un solo carácter repetido ≥ 4
+  // veces nunca es una credencial (QA r1 bajo 18).
+  return v.length >= 4 && /^(.)\1*$/.test(v);
 }
 
 /**
+ * Palabras que, como valor COMPLETO (sin distinguir mayúsculas, con o sin
+ * prefijo de proveedor), son un hueco sin rellenar y no una credencial:
+ * `changeme`, `TODO`, `secret`, `test`, `dummy`… (F0-SEC r2, sonda P1).
+ * Se comparan contra el valor entero a propósito: `sk_test_…` de Stripe o un
+ * secreto real que contenga la subcadena `test` NO son relleno.
+ */
+const PLACEHOLDER_WORDS = new Set([
+  'changeme', 'change-me', 'change_me', 'replaceme', 'replace-me', 'replace_me',
+  'todo', 'fixme', 'example', 'sample', 'secret', 'password', 'test', 'dummy',
+  'placeholder', 'none', 'null', 'undefined', 'xxx', 'redacted',
+]);
+
+/**
+ * Prefijos con los que empiezan los rellenos de `.env.example` y de la
+ * documentación: `changeme-…`, `replace-me-…`, `cambia-esto-por-…`,
+ * `genera-uno-con-openssl-…`, `generate-with-…`, `todo-…`.
+ */
+const PLACEHOLDER_PREFIXES = [
+  'changeme', 'change-me', 'change_me', 'replaceme', 'replace-me', 'replace_me',
+  'cambia-esto', 'cambiame', 'cambia-me', 'genera-uno', 'generate-', 'todo-', 'todo_', 'fixme',
+  'example-', 'example_', 'dummy-', 'dummy_', 'placeholder-', 'placeholder_',
+];
+
+/**
  * Detecta valores de ejemplo de `.env.example` (p. ej. `your-...`, `sk-your...`,
- * `ACyour-account-sid`, `re_your-resend-key`) y rellenos `SKxxxxxxxx…`. Un
- * placeholder NO cuenta como credencial configurada (tester-F00 r1).
+ * `ACyour-account-sid`, `re_your-resend-key`, `cambia-esto-por-…`,
+ * `genera-uno-con-openssl-…`), palabras de relleno (`changeme`, `todo`,
+ * `secret`, `test`…), huecos de plantilla (`<app-secret>`, `${META_APP_SECRET}`)
+ * y rellenos `SKxxxxxxxx…`. Un placeholder NO cuenta como credencial
+ * configurada (tester-F00 r1).
  *
  * F6 r3: sin la comprobación de relleno, `TWILIO_API_KEY=SKxxxx…` y
  * `TWILIO_TWIML_APP_SID=APxxxx…` pasaban por credenciales reales. El softphone
  * decía que solo faltaba el API Secret y, una vez guardado, la llamada seguía
  * fallando con un 401 de Twilio sin explicación. Ahora el aviso enumera las tres.
+ *
+ * F0-SEC r2: la capa `src/lib/security/` (cron, Meta, Resend, Twilio, token del
+ * ws-server) pasa a fallar cerrada con todo lo que esta función marque; ver
+ * `src/lib/security/secrets.ts`. Un relleno que se acepta es PEOR que un secreto
+ * ausente: firma con una clave que está publicada en el repositorio.
  */
 export function isPlaceholderCredential(value: unknown): boolean {
   if (typeof value !== 'string') return true;
@@ -209,6 +244,12 @@ export function isPlaceholderCredential(value: unknown): boolean {
   // Prefijos de proveedor + "your-" (ACyour-…, SKyour-…, re_your-…, whsec_your-…)
   if (/^[a-z]{0,6}[_.]?your[-_]/i.test(v)) return true;
   if (lower.includes('your-') && lower.length < 48) return true;
+  // Hueco de plantilla sin sustituir: `<meta-app-secret>`, `${CRON_SECRET}`, `{{secret}}`
+  if (/^<[^<>]*>$/.test(v) || /^\$\{[^}]*\}$/.test(v) || /^\{\{[^}]*\}\}$/.test(v)) return true;
+  // Palabra de relleno como valor completo, con o sin prefijo de proveedor (`whsec_changeme`)
+  const word = lower.replace(/^[a-z]{0,8}[-_.]?/, '');
+  if (PLACEHOLDER_WORDS.has(lower) || PLACEHOLDER_WORDS.has(word)) return true;
+  if (PLACEHOLDER_PREFIXES.some((p) => lower.startsWith(p) || word.startsWith(p))) return true;
   if (isFillerCredential(v)) return true;
   return false;
 }

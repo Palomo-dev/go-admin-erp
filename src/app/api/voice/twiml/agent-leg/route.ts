@@ -9,6 +9,10 @@
  * (`accountSidMatchesOrg`, el patrón que F3 aplica en sus otras cinco rutas).
  * La org SIEMPRE sale de la fila persistida y todas las lecturas/escrituras
  * posteriores llevan `eq('organization_id', …)`.
+ *
+ * Sin confirmación por dígito, el `<Dial>` al cliente sale de aquí: `record=`
+ * se decide por `calls.recording_enabled` (`recordingEnabledForCall`), la
+ * misma fila que lee `consent-whisper` (ronda 6, N-1).
  */
 
 import { NextResponse } from 'next/server';
@@ -18,6 +22,7 @@ import { accountSidMatchesOrg, getTelephonySettings, pickCallerId } from '@/lib/
 import { verifyBridgeToken, signBridgeToken } from '@/lib/services/crm/bridgeTokens';
 import { buildAgentLegTwiml, buildCustomerLegTwiml, buildBridgeHangupTwiml } from '@/lib/services/crm/bridgeTwimlBuilders';
 import { buildWhisper, isTerminalBridgeStatus, type BridgeStatus } from '@/lib/services/crm/mobileBridgeService';
+import { recordingEnabledForCall } from '@/lib/services/crm/consentService';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -154,8 +159,9 @@ export async function POST(request: Request) {
     if (!picked.e164 || picked.source === 'platform') {
       return xml(buildBridgeHangupTwiml('La organización no tiene un número saliente configurado.'));
     }
-    const recordingEnabled = Boolean(settings.voice_recording_enabled);
     const callId = bridge.call_id as string | null;
+    // `record=` sale de la fila `calls`, la misma que lee el whisper (N-1, ronda 6).
+    const recordingEnabled = await recordingEnabledForCall(callId, orgId, supabase);
 
     await supabase
       .from('mobile_call_bridges')

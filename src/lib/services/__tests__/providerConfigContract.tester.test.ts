@@ -86,6 +86,7 @@ function fakeCostDb(prices: Record<string, number>, rpcResult = true) {
           return q;
         },
         lte: () => q,
+        or: () => q,
         order: () => q,
         limit: () => q,
         maybeSingle: async () => {
@@ -205,8 +206,8 @@ describe('upsertProviderConfig — validación contra catálogo', () => {
     expect(ops.find((o) => o.kind === 'upsert')!.args.payload.settings).toEqual({ model: 'gpt-5.6-luna', monthly_budget_usd: 120 });
   });
 
-  // HUECO #1: settings no se validan contra SETTING_FIELDS (tipo/opciones/claves).
-  test.failing('HUECO: settings con tipo inválido o clave desconocida deberían rechazarse (422)', async () => {
+  // HUECO #1 (cerrado en F0-REG r2): settings se validan contra SETTING_FIELDS.
+  test('settings con tipo inválido o clave desconocida se rechazan (422)', async () => {
     const { sb } = fakeProviderDb([]);
     __setProviderCredentialsClient(sb);
     await expect(

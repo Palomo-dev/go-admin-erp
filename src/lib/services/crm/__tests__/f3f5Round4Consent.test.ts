@@ -177,7 +177,7 @@ beforeEach(() => {
   process.env.TWILIO_MASTER_ACCOUNT_SID = MASTER_SID;
   process.env.TWILIO_MASTER_AUTH_TOKEN = MASTER_TOKEN;
   process.env.VOICE_CALLBACK_SECRET = SECRET;
-  process.env.WS_SESSION_SECRET = 'ws-secret-for-tests';
+  process.env.WS_SESSION_SECRET = 'ws-secret-for-tests-0123456789abcdef0123456789abcdef';
   process.env.WS_SERVER_URL = 'wss://ws.test';
   delete process.env.TWILIO_ACCOUNT_SID;
   delete process.env.TWILIO_AUTH_TOKEN;
@@ -242,15 +242,33 @@ describe('A-1 · el acta de grabación exige un token que acuñó el servidor', 
     expect(fake.rows('calls')[0].consent_given).toBe(true);
   });
 
-  it('A-1.6 · A-6 · si la lectura del acta previa falla, NO se inserta otra copia', async () => {
+  it('A-1.6 · A-6 [CONTRATO r5] · con acta previa no se inserta otra copia, y si la relectura falla no se graba', async () => {
+    // Ronda 5: `call_consents` YA tiene el índice único (org, call, tipo)
+    // (`call_consents_org_call_type_uidx`, verificado por MCP) y el único
+    // escritor es `recordConsent`, que hace `upsert … ignoreDuplicates` y relee
+    // el acta existente. Si esa relectura falla, `recordConsent` lanza y el
+    // `<Dial>` sale SIN `record=`: nunca grabar sin acta.
     const first = await (await inbound('')).text();
     const ct = extractConsentToken(first);
-    // `call_consents` no tiene UNIQUE (org, call, tipo): la unicidad la sostiene
-    // esa lectura. Si el `error` se descarta, un duplicado previo hace que
-    // `maybeSingle()` falle, `data` vuelva null y se inserte OTRA copia.
+    const callId = fake.rows('calls')[0].id as string;
+    fake.rows('call_consents').push({ id: 'k-prev', organization_id: ORG, call_id: callId, consent_type: 'recording', announced_at: '2026-09-10T10:00:00.000Z', method: 'voice_announcement', locale: 'es-MX', recorded_announcement_text: 'Esta llamada será grabada.' });
+    fake.unique.call_consents = ['organization_id', 'call_id', 'consent_type'];
     fake.failOn['call_consents:select'] = 'JSON object requested, multiple rows returned';
-    await inbound(`?ct=${encodeURIComponent(ct)}`);
-    expect(fake.rows('call_consents')).toHaveLength(0);
+    const xml = await (await inbound(`?ct=${encodeURIComponent(ct)}`)).text();
+    expect(fake.rows('call_consents')).toHaveLength(1);
+    expect(xml).not.toContain('record="record-from-answer-dual"');
+    // [CONTRATO r6, N-6] Ese fallo dejó la fila en `recording_enabled=false`.
+    // Con la BD recuperada, el reintento del MISMO token respeta la fila (una
+    // sola fuente de verdad): sigue sin `record=` y el acta previa no se toca.
+    // Hasta la ronda 5 aquí se esperaba que el reintento SÍ grabara, con la
+    // fila diciendo `false`: fila y TwiML se contradecían.
+    expect(fake.rows('calls')[0].recording_enabled).toBe(false);
+    delete fake.failOn['call_consents:select'];
+    const retry = await (await inbound(`?ct=${encodeURIComponent(ct)}`)).text();
+    expect(fake.rows('call_consents')).toHaveLength(1);
+    expect(fake.rows('call_consents')[0].announced_at).toBe('2026-09-10T10:00:00.000Z');
+    expect(retry).not.toContain('record="record-from-answer-dual"');
+    expect(fake.rows('calls')[0].recording_enabled).toBe(false);
   });
 
   it('A-1.7 · sin CallSid no hay nada a lo que ligar el token: no se graba y NO se entra en bucle', async () => {
@@ -356,7 +374,7 @@ describe('A-2 · el agente IA no firma el acta antes de que suene el aviso', () 
     expect(fake.rows('calls')[0].consent_given).toBe(true);
   });
 
-  it('A-2.4 · la grabación arranca DESPUÉS del aviso, no en el calls.create', async () => {
+  it('A-2.4 [CONTRATO r5] · la grabación arranca DESPUÉS del aviso, por <Start><Recording>, no en el calls.create ni por REST', async () => {
     // `record: true` en el `calls.create` graba desde que contestan, es decir
     // ANTES del aviso: separar las pasadas arreglaría la fecha del acta pero no
     // la existencia de la grabación. Se mira el CÓDIGO, no los comentarios.
@@ -367,13 +385,16 @@ describe('A-2 · el agente IA no firma el acta antes de que suene el aviso', () 
       .join('\n');
     expect(code).not.toMatch(/record:\s*true/);
 
+    // Ronda 5: la ronda 4 la pedía por REST (`recordings.create`) y se tragaba
+    // el fallo. Ahora va en el TwiML de la 2ª pasada, que es la vía que Twilio
+    // documenta para `<Connect><ConversationRelay>`.
     const first = await (await aiAgent('')).text();
+    expect(first).not.toContain('<Recording');
     const ct = extractConsentToken(first);
+    const second = await (await aiAgent(`&ct=${encodeURIComponent(ct)}`)).text();
+    expect(second).toMatch(/<Start>\s*<Recording[^>]*channels="dual"/);
+    expect(second.indexOf('<Start>')).toBeLessThan(second.indexOf('<Connect'));
     expect(recordingsCreate).not.toHaveBeenCalled();
-    await aiAgent(`&ct=${encodeURIComponent(ct)}`);
-    expect(recordingsCreate).toHaveBeenCalledTimes(1);
-    expect(recordingsCreate.mock.calls[0][0]).toMatchObject({ recordingChannels: 'dual' });
-    expect(twilioCallsFn).toHaveBeenCalledWith('CAr4agent01');
   });
 
   it('A-2.6 · GEMELO · ningún `calls.create` de la zona de voz arranca la grabación antes del aviso', () => {

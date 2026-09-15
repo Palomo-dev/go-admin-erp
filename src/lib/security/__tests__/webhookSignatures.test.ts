@@ -25,7 +25,10 @@ jest.mock('svix', () => ({
 
 jest.mock('@/lib/supabase/server-service', () => {
   const rows: Record<string, { twilio_subaccount_auth_token: string | null }> = {
-    ACsub000000000000000000000000000001: { twilio_subaccount_auth_token: 'sub-token-1' },
+    ACsub000000000000000000000000000001: { twilio_subaccount_auth_token: 'sub-token-1-0123456789abcdef0123' },
+    // F0-SEC r2: un token de relleno guardado en la base vale lo mismo que ninguno
+    ACsub000000000000000000000000000002: { twilio_subaccount_auth_token: 'your-twilio-auth-token' },
+    ACsub000000000000000000000000000003: { twilio_subaccount_auth_token: 'short' },
   };
   return {
     getServiceClient: () => ({
@@ -55,7 +58,10 @@ import {
 
 const ORIGIN = 'https://app.example.test';
 const MASTER_SID = 'ACmaster0000000000000000000000000';
-const MASTER_TOKEN = 'master-token-abc';
+// F0-SEC r2: los secretos de los tests tienen la forma de los reales (>= 16, sin relleno).
+const MASTER_TOKEN = 'master-token-abc-0123456789abcdef';
+const SUB_TOKEN = 'sub-token-1-0123456789abcdef0123';
+const CRON = 'cron-secret-for-tests-0123456789';
 
 function twilioSig(token: string, url: string, params: Record<string, string>): string {
   // Misma fórmula que Twilio: HMAC-SHA1(token, url + params ordenados) base64
@@ -93,7 +99,7 @@ describe('svix instalado', () => {
 });
 
 describe('verifyMetaSignature', () => {
-  const secret = 'meta-app-secret';
+  const secret = 'meta-app-secret-0123456789abcdef';
   const body = JSON.stringify({ object: 'whatsapp_business_account', entry: [] });
   const good = `sha256=${crypto.createHmac('sha256', secret).update(body).digest('hex')}`;
 
@@ -105,6 +111,12 @@ describe('verifyMetaSignature', () => {
     expect(verifyMetaSignature(body, null, secret)).toBe(false);
     expect(verifyMetaSignature(body, good, '')).toBe(false);
     expect(verifyMetaSignature(body + ' ', good, secret)).toBe(false);
+  });
+  test('secreto de relleno o corto → false aunque la firma cuadre (F0-SEC r2)', () => {
+    for (const s of ['your-meta-app-secret', 'changeme', 'meta-app-secret', '<app-secret>']) {
+      const sig = `sha256=${crypto.createHmac('sha256', s).update(body).digest('hex')}`;
+      expect(verifyMetaSignature(body, sig, s)).toBe(false);
+    }
   });
 });
 
@@ -128,11 +140,24 @@ describe('verifyCronSecret (fail-closed)', () => {
   });
 
   test('header incorrecto o ausente → 401; correcto → ok', () => {
-    process.env.CRON_SECRET = 's3cret';
+    process.env.CRON_SECRET = CRON;
     expect(() => verifyCronSecret(new Request('https://x/'))).toThrow(WebhookError);
     expect(() => verifyCronSecret(new Request('https://x/', { headers: { authorization: 'Bearer nope' } }))).toThrow(WebhookError);
-    expect(() => verifyCronSecret(new Request('https://x/', { headers: { authorization: 'Bearer s3cret' } }))).not.toThrow();
-    expect(() => verifyCronSecret(new Request('https://x/', { headers: { 'x-cron-secret': 's3cret' } }))).not.toThrow();
+    expect(() => verifyCronSecret(new Request('https://x/', { headers: { authorization: `Bearer ${CRON}` } }))).not.toThrow();
+    expect(() => verifyCronSecret(new Request('https://x/', { headers: { 'x-cron-secret': CRON } }))).not.toThrow();
+  });
+
+  test('CRON_SECRET de relleno o corto → 401 con el mismo código que ausente (F0-SEC r2)', () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      for (const v of ['your-secure-random-token-here', 'changeme', 's3cret', '${CRON_SECRET}']) {
+        process.env.CRON_SECRET = v;
+        const req = new Request('https://x/', { headers: { authorization: `Bearer ${v}` } });
+        expect(() => verifyCronSecret(req)).toThrow(expect.objectContaining({ statusCode: 401, code: 'cron_secret_not_configured' }));
+      }
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 });
 
@@ -158,9 +183,24 @@ describe('Twilio', () => {
 
   test('resolveTwilioAuthToken: master → env; subcuenta → comm_settings; desconocido → null', async () => {
     await expect(resolveTwilioAuthToken(MASTER_SID)).resolves.toBe(MASTER_TOKEN);
-    await expect(resolveTwilioAuthToken('ACsub000000000000000000000000000001')).resolves.toBe('sub-token-1');
+    await expect(resolveTwilioAuthToken('ACsub000000000000000000000000000001')).resolves.toBe(SUB_TOKEN);
     await expect(resolveTwilioAuthToken('ACunknown')).resolves.toBeNull();
     await expect(resolveTwilioAuthToken('')).resolves.toBeNull();
+  });
+
+  test('resolveTwilioAuthToken: master de relleno o token de subcuenta de relleno/corto → null (F0-SEC r2)', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      process.env.TWILIO_MASTER_AUTH_TOKEN = 'your-master-auth-token';
+      await expect(resolveTwilioAuthToken(MASTER_SID)).resolves.toBeNull();
+      process.env.TWILIO_ACCOUNT_SID = 'AClegacy000000000000000000000000';
+      process.env.TWILIO_AUTH_TOKEN = 'changeme';
+      await expect(resolveTwilioAuthToken('AClegacy000000000000000000000000')).resolves.toBeNull();
+      await expect(resolveTwilioAuthToken('ACsub000000000000000000000000000002')).resolves.toBeNull();
+      await expect(resolveTwilioAuthToken('ACsub000000000000000000000000000003')).resolves.toBeNull();
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 
   test('verifyTwilioRequest: firma válida sobre origin+path+query (no sobre el host de la petición)', () => {
@@ -196,7 +236,7 @@ describe('Twilio', () => {
     const params = { MessageSid: 'SM1', AccountSid: subSid, MessageStatus: 'delivered' };
     const body = new URLSearchParams(params).toString();
     const url = `${ORIGIN}/api/integrations/twilio/status-callback`;
-    const sig = twilioSig('sub-token-1', url, params);
+    const sig = twilioSig(SUB_TOKEN, url, params);
     const req = makeReq('/api/integrations/twilio/status-callback', body, { 'x-twilio-signature': sig });
     const result = await verifyTwilioWebhook(req);
     expect(result.accountSid).toBe(subSid);

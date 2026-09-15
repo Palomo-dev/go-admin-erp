@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { isRealtimePublished } from './realtimeTables';
 import { normalizePhone } from './quickActionsConfig';
+import { useOrgDefaultCountry } from './useOrgDefaultCountry';
 
 /**
  * MobileCallDialog — "Llamar desde mi celular" (FASE-05 §5).
@@ -53,6 +54,9 @@ function maskPhone(e164: string): string {
 }
 
 export function MobileCallDialog({ open, onOpenChange, opportunityId, customerId, targetPhone, customerName, onStarted }: MobileCallDialogProps) {
+  // F16 r5 · T-3: indicativo de la organización para los teléfonos nacionales
+  // (antes siempre '57'; de aquí sale la LLAMADA real al cliente).
+  const defaultCountry = useOrgDefaultCountry() ?? undefined;
   const [mobile, setMobile] = useState<string | null>(null);
   const [loadingPrefs, setLoadingPrefs] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -144,7 +148,7 @@ export function MobileCallDialog({ open, onOpenChange, opportunityId, customerId
   }, [bridgeId, refresh]);
 
   const handleStart = async () => {
-    const to = normalizePhone(targetPhone);
+    const to = normalizePhone(targetPhone, defaultCountry);
     if (!to) {
       toast({ title: 'Número inválido', description: 'El cliente no tiene un teléfono en formato válido.', variant: 'destructive' });
       return;
@@ -219,7 +223,7 @@ export function MobileCallDialog({ open, onOpenChange, opportunityId, customerId
                   Tu celular: <span className="font-medium">{maskPhone(mobile)}</span>
                 </p>
                 <p className="text-gray-700 dark:text-gray-200">
-                  Cliente: <span className="font-medium">{normalizePhone(targetPhone) ?? targetPhone}</span>
+                  Cliente: <span className="font-medium">{normalizePhone(targetPhone, defaultCountry) ?? targetPhone}</span>
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Costo aproximado: 2 patas PSTN (≈ USD 0,08/min).</p>
               </>

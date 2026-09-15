@@ -8,7 +8,10 @@ import { getCallAiPolicy, type CallAiPolicy } from '@/lib/services/crm/callAiPol
 import { getTranscript, renderTranscriptForLlm, reconcileAiUsageModel, CreditLedger } from '@/lib/services/crm/transcriptionService';
 import { recommendedGeminiModel } from '@/lib/services/crm/stt/geminiAudio';
 import { tagCall } from '@/lib/services/crm/callTagService';
-import { evaluateStageGate, type GateResult } from '@/lib/services/crm/stageGateService';
+// `stageGateService` importa el cliente de NAVEGADOR (`@/lib/supabase/config`)
+// al cargarse; se importa bajo demanda en `applyAnalysis` para que los route
+// handlers que traen este módulo (calls/manual, transcribe…) no lo creen.
+import type { GateResult } from '@/lib/services/crm/stageGateService';
 import {
   analysisZod,
   renderCallAnalysisPrompt,
@@ -787,6 +790,7 @@ export async function applyAnalysis(
       const valid = validateSuggestedStage(analysis.suggested_stage_id, analysis.suggested_stage_confidence, (stages ?? []) as StageRef[], opp.stage_id);
       if (!valid.stageId) skipped.push({ action: 'stage', reason: 'stage_not_in_pipeline' });
       else {
+        const { evaluateStageGate } = await import('@/lib/services/crm/stageGateService');
         gate = await evaluateStageGate(supabase, orgId, { opportunityId: opp.id, targetStageId: valid.stageId });
         if (!gate.ok && !opts.ignoreGate) skipped.push({ action: 'stage', reason: 'gate_not_met' });
         else {

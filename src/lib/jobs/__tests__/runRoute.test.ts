@@ -6,6 +6,8 @@ import { NextRequest } from 'next/server';
 // `webhookSignatures` (vía orgContext/verifyCronSecret) importa svix (ESM): se mockea como en SEC.
 jest.mock('svix', () => ({ Webhook: class {} }));
 jest.mock('twilio', () => ({ __esModule: true, default: {} }));
+// F11: el scheduler importa renewalService → cliente de navegador (crea el cliente al importar).
+jest.mock('@/lib/supabase/config', () => ({ supabase: {} }));
 
 jest.mock('@/lib/jobs/runner', () => ({
   makeWorkerId: () => 'w-test',
@@ -72,11 +74,65 @@ describe('/api/crm/jobs/run', () => {
     expect(runJobs).toHaveBeenCalledWith(expect.objectContaining({ kinds: ['maintenance'] }));
   });
 
-  it('header x-vercel-cron-schedule del cron diario ⇒ recording_cleanup+maintenance; x-cron-secret también autentica', async () => {
+  it('header x-vercel-cron-schedule del cron diario ⇒ recording_cleanup+maintenance en cola y health_recalculate+renewals_sync en proceso; x-cron-secret también autentica', async () => {
     const res = await GET(req('/api/crm/jobs/run', { headers: { 'x-cron-secret': SECRET, 'x-vercel-cron-schedule': '30 8 * * *' } }));
     expect(res.status).toBe(200);
-    expect((await res.json()).kinds).toEqual(['recording_cleanup', 'maintenance']);
+    const json = await res.json();
+    expect(json.kinds).toEqual(['recording_cleanup', 'maintenance']);
+    expect(json.tasks).toEqual(['health_recalculate', 'renewals_sync']);
     expect(runScheduledKinds).toHaveBeenCalledTimes(1);
+    expect(runScheduledKinds).toHaveBeenCalledWith(expect.objectContaining({ kinds: ['recording_cleanup', 'maintenance', 'health_recalculate', 'renewals_sync'] }));
+    // el drenador NUNCA recibe las tareas en proceso (no son outbound_jobs.kind)
+    expect(runJobs).toHaveBeenCalledWith(expect.objectContaining({ kinds: ['recording_cleanup', 'maintenance'] }));
+  });
+
+  it('F11: ?kind=health_recalculate,renewals_sync se acepta, ejecuta el productor y NO drena la cola (claimed 0)', async () => {
+    const res = await GET(req('/api/crm/jobs/run?kind=health_recalculate,renewals_sync', { headers: auth }));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.kinds).toEqual([]);
+    expect(json.tasks).toEqual(['health_recalculate', 'renewals_sync']);
+    expect(json.claimed).toBe(0);
+    expect(runScheduledKinds).toHaveBeenCalledWith(expect.objectContaining({ kinds: ['health_recalculate', 'renewals_sync'] }));
+    expect(runJobs).not.toHaveBeenCalled();
+  });
+
+  it('F11: 400 sigue listando health_recalculate/renewals_sync como válidos', async () => {
+    const res = await GET(req('/api/crm/jobs/run?kind=health_recalculatee', { headers: auth }));
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.valid).toEqual(expect.arrayContaining(['health_recalculate', 'renewals_sync', 'maintenance']));
+  });
+
+  // r3 (QA r2 N-1): el productor recibe el presupuesto y, si lo agota, NO se drena.
+  it('el productor recibe totalBudgetMs; si al volver quedan < 2 s ⇒ runJobs NO se invoca y la respuesta lleva reason:budget_exhausted', async () => {
+    const base = Date.now();
+    let offset = 0;
+    const spy = jest.spyOn(Date, 'now').mockImplementation(() => base + offset);
+    (runScheduledKinds as jest.Mock).mockImplementationOnce(async () => {
+      offset = 49_000; // el productor consumió 49 s de los 50 s
+      return { maintenance: { ok: true, ms: 49_000, result: { jobs_deleted: 0 } } };
+    });
+    const res = await GET(req('/api/crm/jobs/run', { headers: { ...auth, 'x-vercel-cron-schedule': '30 8 * * *' } }));
+    spy.mockRestore();
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toMatchObject({ success: true, claimed: 0, reason: 'budget_exhausted', scheduled: { maintenance: { ok: true } } });
+    expect(runJobs).not.toHaveBeenCalled();
+    expect(runScheduledKinds).toHaveBeenCalledWith(expect.objectContaining({ totalBudgetMs: 48_000, budgetMs: 20_000, taskBudgetMs: 12_000 }));
+  });
+
+  it('productor que consume 40 s ⇒ se drena con el resto (10 s), sin Math.max(2 s)', async () => {
+    const base = Date.now();
+    let offset = 0;
+    const spy = jest.spyOn(Date, 'now').mockImplementation(() => base + offset);
+    (runScheduledKinds as jest.Mock).mockImplementationOnce(async () => {
+      offset = 40_000;
+      return { maintenance: { ok: true, ms: 40_000, result: { jobs_deleted: 0 } } };
+    });
+    await GET(req('/api/crm/jobs/run?kind=maintenance', { headers: auth }));
+    spy.mockRestore();
+    expect(runJobs).toHaveBeenCalledWith(expect.objectContaining({ deadlineMs: 10_000 }));
   });
 
   it('body JSON malformado ⇒ todos los kinds (no 400); limit se recorta a 200; worker largo se ignora', async () => {

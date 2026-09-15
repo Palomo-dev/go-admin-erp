@@ -110,6 +110,27 @@ class WhatsAppCloudService {
     };
   }
 
+  /**
+   * Canales cuyo `credentials.business_account_id` es el WABA dado. Lo usa la
+   * autorización por entrada del webhook (F0-SEC r2) para los cambios que no
+   * traen `phone_number_id` (estado/calidad de plantillas): `entry.id` es el WABA.
+   */
+  async findChannelsByBusinessAccountId(businessAccountId: string): Promise<Array<{ channelId: string; organizationId: number }>> {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('channel_credentials')
+      .select('channel_id, channels!inner(organization_id)')
+      .eq('provider', 'meta')
+      .filter('credentials->>business_account_id', 'eq', businessAccountId);
+
+    if (error || !data) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any[]).map((row) => ({
+      channelId: row.channel_id as string,
+      organizationId: row.channels?.organization_id as number,
+    }));
+  }
+
   // ──────────────────────────────────────────────
   // Envío de mensajes
   // ──────────────────────────────────────────────

@@ -14,13 +14,12 @@
  *    (`platform_available`). El registry ya descarta los placeholders de
  *    `.env.example`, así que una clave de ejemplo cuenta como "no hay".
  *
- * ⚠️ NO VERIFICADO: que una voz de ElevenLabs suene de verdad depende de una
- * `ELEVENLABS_API_KEY` real. En este entorno la clave es el marcador de ejemplo
- * y el proveedor devuelve 401, así que importar/clonar/probar no se ha podido
- * ejecutar contra el proveedor. El hook solo informa del estado; no lo disimula.
+ * El hook solo informa del estado de la credencial; no lo disimula. Desde el
+ * 2026-09-14 la biblioteca, la previsualización y la clonación se han ejecutado
+ * contra el proveedor real (ver `voiceLibraryService.ts`).
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface VoiceCatalogRow {
   id: string;
@@ -34,6 +33,10 @@ export interface VoiceCatalogRow {
   consent_recorded_at: string | null;
   is_default: boolean;
   is_active: boolean;
+  /** Enriquecido por el servidor con lo que sabe el proveedor (puede faltar). */
+  preview_url?: string | null;
+  labels?: Record<string, string>;
+  provider_category?: string | null;
 }
 
 export interface TtsCredentialStatus {
@@ -60,36 +63,55 @@ interface ProviderItem {
   is_active?: boolean;
 }
 
+/** Plan del proveedor de voz, según el servidor; `null` cuando no se pudo saber. */
+export interface VoiceAccountInfo {
+  tier: string;
+  free_tier: boolean;
+  can_clone: boolean;
+}
+
 export interface VoiceCatalogState {
   voices: VoiceCatalogRow[];
   /** La voz marcada por defecto para la organización, si existe. */
   defaultVoice: VoiceCatalogRow | null;
+  /** Primera carga (o reintento tras error): la lista aún no existe y se pinta esqueleto. */
   loading: boolean;
+  /** Recarga con lista ya en pantalla: se refresca en sitio, sin esqueleto (R3). */
+  refreshing: boolean;
   /** Error real de la lectura del catálogo (nunca se traga). */
   error: string | null;
   tts: TtsCredentialStatus;
+  account: VoiceAccountInfo | null;
   reload: () => Promise<void>;
 }
 
 export function useVoiceCatalog(): VoiceCatalogState {
   const [voices, setVoices] = useState<VoiceCatalogRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tts, setTts] = useState<TtsCredentialStatus>(TTS_UNKNOWN);
+  const [account, setAccount] = useState<VoiceAccountInfo | null>(null);
+  const loadedOnce = useRef(false);
 
   const reload = useCallback(async () => {
-    setLoading(true);
+    if (loadedOnce.current) setRefreshing(true);
+    else setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/crm/voices", { cache: "no-store" });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status} al leer el catálogo de voces`);
       setVoices((json.data ?? []) as VoiceCatalogRow[]);
+      setAccount((json.account as VoiceAccountInfo | null | undefined) ?? null);
+      loadedOnce.current = true;
     } catch (err) {
       setVoices([]);
+      loadedOnce.current = false;
       setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
 
     // El estado de la credencial es informativo: si falla, se declara "no se pudo
@@ -115,8 +137,10 @@ export function useVoiceCatalog(): VoiceCatalogState {
     voices,
     defaultVoice: voices.find((v) => v.is_default && v.is_active) ?? null,
     loading,
+    refreshing,
     error,
     tts,
+    account,
     reload,
   };
 }

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isOrgAdminContext, type ServerOrgContext } from '@/lib/utils/orgContext';
 import { enqueueJob } from '@/lib/jobs/enqueue';
+import { DRAIN_INTERVAL_MIN } from '@/lib/jobs/schedule';
 import { JOB_STATUSES, isJobKind, type JobKind, type JobStatus, type OutboundJob } from '@/lib/jobs/types';
 
 /**
@@ -19,9 +20,13 @@ export const PAYLOAD_PREVIEW_CHARS = 500;
  * organización, 3 Cliente, 4 Empleado, 5 Manager).
  *  - Reintentar: admin de la org (`isOrgAdminContext`, criterio único del repo).
  *  - Ver la cola: admin o Manager (tester r1 F-7; §4.1 "admin/manager").
+ *
+ * F0-JOBS r3 (QA r2 F-6): el permiso se decide por `role_id` resuelto en el
+ * servidor (`getServerOrgContext`), NUNCA por el nombre del rol (regla 6 de
+ * CLAUDE.md): un rol personalizado llamado «Gerente» con `role_id` 9 no ve la
+ * cola, y el `role_id` 5 la ve se llame como se llame.
  */
 const MANAGER_ROLE_ID = 5;
-const MANAGER_ROLE_NAMES = new Set(['Manager', 'Gerente']);
 
 type RoleCtx = Pick<ServerOrgContext, 'roleName' | 'roleId' | 'isSuperAdmin'>;
 
@@ -30,7 +35,7 @@ export function canRetryJobs(ctx: RoleCtx): boolean {
 }
 
 export function canViewJobs(ctx: RoleCtx): boolean {
-  return canRetryJobs(ctx) || ctx.roleId === MANAGER_ROLE_ID || MANAGER_ROLE_NAMES.has(ctx.roleName);
+  return canRetryJobs(ctx) || ctx.roleId === MANAGER_ROLE_ID;
 }
 
 /**
@@ -141,6 +146,9 @@ export async function listRecentFailed(sb: SupabaseClient, orgId: number, limit 
   return ((data ?? []) as unknown as OutboundJob[]).map(toItem);
 }
 
+/** Un `queued` cuyo `run_at` lleva más de un ciclo de drenaje sin reclamarse (`queuedOverdue`). */
+const QUEUED_OVERDUE_MS = DRAIN_INTERVAL_MIN * 60 * 1000;
+
 /**
  * Conteos por estado/kind. Se calculan en memoria sobre `kind,status,run_at`
  * (limitado a 5 000 filas recientes: suficiente para la UI y sin RPC nueva).
@@ -161,7 +169,7 @@ export async function getJobStats(sb: SupabaseClient, orgId: number): Promise<Jo
   for (const row of (data ?? []) as Pick<OutboundJob, 'kind' | 'status' | 'run_at'>[]) {
     if (row.status in byStatus) byStatus[row.status] += 1;
     byKind[row.kind] = (byKind[row.kind] ?? 0) + 1;
-    if (row.status === 'queued' && new Date(row.run_at).getTime() < now - 2 * 60 * 1000) queuedOverdue += 1;
+    if (row.status === 'queued' && new Date(row.run_at).getTime() < now - QUEUED_OVERDUE_MS) queuedOverdue += 1;
   }
   return { byStatus, byKind, queuedOverdue };
 }

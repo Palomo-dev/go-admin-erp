@@ -1325,3 +1325,414 @@ en cascada, no hay ventana de 24 h, ni opt-out por palabra clave, ni atribución
 respuestas a campañas. La diferencia con la ronda 1 es que ahora **se ve**: el webhook
 responde 500 y el log lleva el detalle del constraint.
 
+
+---
+
+### Ronda 4 (2026-09-10 → 2026-09-14) — cierre de los hallazgos del tester r3 (7,5/10)
+
+**Agente:** builder F16 (tres relanzamientos: dos constructores se cortaron sin informe;
+el tercero inspeccionó, midió y completó). **Entrada:** N-1, N-2, N-4, N-5, N-6, N-7 y F-4
+del tester r3. F-12 lo cerró el dueño en la base (`trigger_channel_dispatch`) y no se tocó.
+
+#### RETIRADA de una declaración falsa de la ronda 3
+
+En la ronda 3 se afirmó haber arreglado que `'415 555 0100'` (número nacional de EE.UU.)
+acabara clasificado como país `'other'` «saltándose el bloqueo de marketing a EE.UU.».
+**Esa afirmación era falsa**: el arreglo de la ronda 3 devolvía `574155550100` → `'co'`,
+el bloqueo seguía sin aplicarse y el identificador era uno inventado. El test que decía
+cubrirlo afirmaba sobre formato **internacional** (`+1 (415) 555-0100`), que el código
+viejo ya normalizaba igual. Queda retirada. Medido en esta ronda con el código actual
+(sonda ejecutada y borrada):
+
+| entrada | indicativo | resultado | país |
+|---|---|---|---|
+| `415 555 0100` | `57` | **`null`** | — |
+| `415 555 0100` | `1` | `14155550100` | `us` |
+| `415 555 0100` | ninguno | `null` | — |
+| `4155550100` | `57` | `null` | — |
+| `310 987 6543` | `57` | `573109876543` | `co` |
+| `310 987 6543` | ninguno | `null` | — |
+
+Un número nacional solo se completa si TIENE LA FORMA del país (`NATIONAL_PATTERNS`:
+`57`, `52`, `1`); con un indicativo sin regla, `null`. El riesgo residual que esta regla
+**no** cierra queda escrito en `phoneNormalize.ts`: un `310 XXX XXXX` de Los Ángeles
+guardado sin indicativo sigue saliendo como colombiano, porque 310 es a la vez un área de
+EE.UU. y un prefijo de Claro; solo lo deshace guardar el teléfono en E.164.
+
+#### Qué había hecho ya el constructor interrumpido (commit `27e79c30`) — verificado, no rehecho
+
+- **N-1/N-2**: `claimableAt` es el único juez de «cuándo vuelve a haber trabajo»;
+  `claimContacts` devuelve `wakeAt`; «esperando ≠ atascada» (`esperando` no cuenta como
+  lote sin progreso, no re-pausa una campaña reanudada a mano) y el siguiente lote se
+  programa para `wakeAt` (vencimiento del backoff o caducidad del testigo, 15 min), no
+  dentro de 1 s. Corte y rescate usan el mismo reloj.
+- **N-5**: `campaignClientRequestId(campaña, cliente)` estable, sin `attempts`;
+  `sendWhatsApp` consulta `findByClientRequestId` ANTES de descontar créditos e insertar
+  (ventana de 7 días para que use `idx_messages_organization`) y devuelve
+  `duplicate: true` con el mensaje previo.
+- **N-6**: `updateHsm` valida componentes solo si `bodyChanged`.
+- **N-4**: `findCustomerIdByPhone` con `ORDER BY created_at`.
+- **F-4**: `NATIONAL_PATTERNS`, cascada `provider_configs.settings.default_country_code`
+  → `WHATSAPP_DEFAULT_COUNTRY_CODE` → `'57'` (`resolveDefaultCountry`); el `wa_id` del
+  proveedor y el `to` de `POST /api/integrations/whatsapp/send` no reciben indicativo;
+  título del test de la ronda 3 corregido. La regla vive en un módulo puro,
+  `src/lib/services/crm/phoneNormalize.ts`, compartido con la barra de acciones rápidas.
+- **N-7**: `__tests__/fakeTable.ts`, un doble que evalúa filtros/orden/límite y aplica
+  los `update`, para que `findCustomerIdByPhone` completo, `strictPaths` por
+  `sendWhatsApp`, el desempate por `claim_token` y el bloqueo de marketing a EE.UU.
+  tengan pruebas que muerdan. También encontró y cerró una regresión propia:
+  `resolveRecipient` sin indicativo en dos llamadores (ventana y previsualización).
+
+#### Completado en el tercer relanzamiento (medido en la base el 2026-09-14)
+
+| Hueco | Medida | Arreglo | Prueba |
+|---|---|---|---|
+| El `PUT /api/crm/whatsapp/settings` **descartaba** `default_country_code`: `zSettingsBody` lo validaba pero el handler no lo copiaba al `patch`. «Sacar el 57 a configuración» estaba a medias: ninguna organización podía guardarlo. | `provider_configs` con `default_country_code`: **0 de 31**. | `settings/route.ts` copia el campo (`null` lo borra). | `settings/__tests__/defaultCountry.f16.test.ts` (4) |
+| El prefiltro `ilike '%XXXX'` no encuentra un teléfono con separador **dentro** de los últimos 4 dígitos (`+57 310 987 65 43`) ni con basura al final (`310 9876543<\|`). El entrante creaba un cliente duplicado. | **18** de 12.870 normalizables (14 por separador, 4 por cola); `phone ilike '%2050'` = 0 y `~* '2\D*0\D*5\D*0\D*$'` = 1 en la org 135. PostgREST `imatch` probado en vivo (HTTP 200, 1 fila). | `phoneSuffixPattern(digits)` + `.filter('phone','imatch',…)`. | `round4.test.ts` (3) |
+| Desempate solo por `created_at`: una importación en una transacción escribe el mismo `now()` en todas sus filas. | Hoy 0 grupos empatados; el riesgo es de la próxima importación. | `.order('id')` como segundo criterio en los dos caminos; `fakeTable` ordena por varios `order`. | `round4.test.ts` (2) |
+| Último `'57'` cableado de la fase: el coste estimado de la campaña usaba tarifa colombiana para todas las organizaciones. | — | `estimateCampaignCost({defaultCountry})`. | `round4.test.ts` (2) |
+| Ninguna prueba ejercitaba la ruta de compatibilidad `POST /api/integrations/whatsapp/send` (el «no completes el `to`» estaba escrito y nada lo mordía). | — | — | `send/__tests__/to.f16.test.ts` (3) |
+
+#### Pasada de reversiones: **24 lanzadas, 24 en rojo, 24 restauradas por md5**
+
+Copias por ruta completa en el scratchpad, `md5` antes y después idénticos en todas.
+N-1 (3 reversiones: 6/4/1 rojos), N-2 (2: 2/3), N-7 `claim_token` (1), N-5 (2: 1/2),
+N-7 `strictPaths` (2), N-7 marketing EE.UU. (1), F-4 (7: patrón nacional 4, indicativo
+cableado 1, `resolveRecipient` 1, ruta `/send` 1, `wa_id` del proveedor 1, coste 1, `PUT`
+ajustes 2), N-4 (5: sin `ORDER BY` 2, sin `id` lento 1, sin `id` rápido 1, prefiltro
+`ilike` 3, comparación por sufijo 3), N-7 `findCustomerIdByPhone` sin camino lento (6),
+N-6 (2). Las 4 que en la ronda 3 quedaron en verde ahora muerden.
+
+#### Estado real de los teléfonos (2026-09-14, 12.910 clientes con teléfono; eran 12.494)
+
+- **40 no normalizan**: 24 fijos de 7 dígitos sin el `60X`, 7 de 10 dígitos que no tienen
+  forma colombiana (5 cédulas y 2 de EE.UU. escritos como nacional) y 9 que no son un
+  teléfono (direcciones, un correo, letras).
+- **276 grupos / 559 filas en colisión** de identificador dentro de la misma organización
+  (cubo máximo 3; org 120: 207 grupos / 418 filas, org 135: 34 / 69, org 113: 26 / 54,
+  org 125: 6 / 12, org 134: 3 / 6). **173 grupos con el mismo nombre** (346 filas;
+  duplicados de verdad) y **103 con nombres distintos** (teléfono compartido: familia,
+  empresa con varios contactos). Ninguno parece número de relleno. 169 grupos tienen el
+  texto idéntico; 107 el mismo número escrito de dos formas.
+  *Corrección aritmética (ronda 5, tester r4):* la ronda 4 contó **99 / 177** comparando
+  el nombre tal cual; comparando con `lower(trim(full_name))` —que es como se debe
+  decidir una fusión— son **173 / 103** (156 con el nombre exactamente igual; los 17
+  restantes solo difieren en mayúsculas o espacios). Medido el 2026-09-14 por MCP.
+
+**Propuesta (no ejecutada, requiere decisión del dueño):**
+
+1. **Los 173 grupos con el mismo nombre** (`lower(trim())`): fusión por organización con un script en dos
+   pasos —informe en seco por org (survivor = `created_at` más antiguo, `id` menor, que
+   es el mismo criterio que hoy usa `findCustomerIdByPhone`) y, aprobado el informe,
+   reapuntar `opportunities.customer_id`, `conversations.customer_id`,
+   `messages.sender_customer_id`, `activities.related_id` (`related_type='customer'`),
+   `customer_channel_identities.customer_id` y `contact_consents.customer_id` al
+   survivor, y **desactivar** el duplicado (no borrarlo). Transacción por grupo.
+2. **Los 103 con nombres distintos**: **no fusionar**. El orden estable ya hace que el
+   entrante caiga siempre en la ficha más antigua; lo que falta es que se vea: un aviso
+   «teléfono compartido con N clientes» en la ficha y un filtro en la lista para que la
+   organización decida.
+3. **Los 40 que no normalizan**: no inventar nada. Un filtro «teléfono inválido» en la
+   lista de clientes; los 24 fijos necesitan el indicativo de área (que depende de la
+   ciudad y no se puede deducir con seguridad), los 7 son datos mal capturados y los 9 van
+   a notas o se vacían.
+4. **Migración `phone_digits`** (solo si antes se resuelven 1 y 3; con `default_country_code`
+   ya guardable por la API): columna generada `customers.phone_digits text generated
+   always as (fn_phone_digits(phone)) stored` con **solo dígitos, sin país por defecto**
+   (`+`/`00` fuera, sufijo `@s.whatsapp.net` fuera, `null` fuera de 8..15), índice
+   `(organization_id, phone_digits) where phone_digits is not null`, y la regla de país
+   en **una única función**, la de TypeScript (`normalizePhoneDigits`): la búsqueda pasa a
+   ser `phone_digits in (digits, nacional)` donde `nacional` es `digits` sin el indicativo
+   de la org si el resto encaja en `NATIONAL_PATTERNS`. Sustituye el prefiltro regex por
+   una igualdad indexada. `ADD COLUMN … STORED` reescribe la tabla: ventana corta fuera de
+   horario. Rollback: `drop index`, `drop column`, `drop function`.
+
+#### Verificación ejecutada
+
+- `npx jest src/lib/services/crm/whatsapp src/app/api/chat/ai/auto-response
+  src/app/api/integrations src/app/api/crm/whatsapp/settings`: **15 suites / 199 casos
+  verdes**. Suite completa: 2180 pasan / 3 rojos: los 2 de `website/sectionContract`
+  (preexistentes) y `f3f5Round5Consent` V-5.2, de la zona de voz, que otro constructor
+  tiene en obra en el mismo árbol (`consentService.ts` modificado, test sin versionar).
+- `tsc --noEmit --incremental false` con 8 GB: **2 errores, ninguno de F16**
+  (`components/crm/secuencias/*`, en obra por otro constructor).
+- `eslint` limpio en los 8 archivos tocados.
+- **Cero envíos reales**: ningún mensaje insertado; toda la verificación es con dobles y
+  consultas de solo lectura por MCP.
+- **Limpieza con conteos**: no se creó ninguna fila con prefijo `F16R4T` (0 clientes, 0
+  campañas). Estado previo y posterior idénticos: `message_events` = 20 (última
+  2026-08-25), `contact_consents` = 0. `templates` = **6**, no 0 como decía el estado
+  previo: son plantillas de **correo** de la org 125 (`metadata.provider` nulo, creadas el
+  2026-09-11 22:40), ajenas a F16 y anteriores a este relanzamiento; no se tocaron.
+  Teléfonos = 12.910 (12.494 en la ronda 3: la base creció).
+
+#### Queda abierto
+
+- El campo `default_country_code` no tiene control en la pestaña de WhatsApp
+  (`src/components/crm/**`, zona de otro constructor): hoy solo se guarda por la API.
+- Decisiones 1–4 de la propuesta de teléfonos.
+- Riesgo residual del rango 3XX (arriba).
+- El hallazgo de la Edge Function `ai-auto-response` sin consentimiento sigue siendo de
+  otra fase (ver PROGRESS.md).
+
+### Ronda 5 (2026-09-14) — cierre de los hallazgos del tester r4 (8,5/10; listón 9,5)
+
+**Agente:** builder F16. **Entrada:** T-1, T-2, T-3, T-4, T-5, R07, R23 y la corrección
+aritmética del tester r4. Se usó su `whatsapp/__tests__/testerR4.test.ts` (37 casos) tal
+cual; el T-1 se **invirtió** en el mismo archivo (no se reescribió el resto).
+
+#### T-1 [GRAVE] · la campaña se pausaba con pendientes sin enviar — CERRADO
+
+- Causa: `claimContacts` consultaba `state IS NULL` y descartaba saltadas/fallidas
+  **después**, en `claimableAt`; con ≥200 de ellas por delante (mismo `created_at` por
+  inserción en lotes de 500 y sin desempate por `id`) llenaban la ventana `limit*4`, el
+  lote reclamaba 0, `wakeAt` era `null` y a los 5 lotes se pausaba por
+  `stalled_no_progress` con pendientes.
+- Arreglo en `campaignBatch.ts`: la consulta lleva
+  `or(metadata->>state.in.(pending,queued), metadata->>state.is.null)` (constante
+  `CLAIMABLE_STATE_FILTER`; el NULL se conserva porque `contactState` y `countContacts`
+  lo tratan como `pending`, y sin él `remaining > 0` con 0 reclamables sería otra pausa
+  falsa) y `order(created_at), order(id)` como desempate.
+- `fakeTable` evalúa ahora `.or()` (sintaxis PostgREST, `in.(…)` / `is.null` / `eq` /
+  `neq`; cualquier otro operador lanza para que no pase en silencio).
+- Test del tester invertido: 200 saltadas + 10 pendientes → **10 envíos en el lote 2,
+  `completed`, `status='sent'`, 0 pausas**. Añadidos: 200 fallidas delante (3 envíos,
+  `completed`) y el orden determinista por `id` con `created_at` repetido.
+- Mutaciones: sin `.or()` → 3 rojos; sin `order(id)` → 1 rojo. Restaurado por md5
+  (`57e3e1dc…`).
+
+#### T-2 [MEDIO, Ley 1581] · la baja por palabra clave por Twilio se perdía — CERRADO
+
+- Medido por MCP (solo lectura): de **12.853** teléfonos con ≥10 dígitos, **9.298
+  (72,3 %) no pasan** `ilike '%<últimos 10>'` y **los 12.853 pasan** el prefiltro
+  `phoneSuffixPattern` con `~*`.
+- Arreglo en `twilioWebhook.recordConsentChange`: indicativo de la organización
+  (`getOrgSettings` → `resolveDefaultCountry`), entrante normalizado con
+  `normalizePhoneDigits`, prefiltro `filter('phone','imatch', phoneSuffixPattern)` con
+  `eq(organization_id)` y `limit(200)`, y comparación fina en memoria: **si el teléfono
+  guardado normaliza, tiene que ser el mismo E.164** («+1 310 987 6543» comparte los
+  últimos 10 dígitos con «+57 310 987 6543» y es otra persona, no una duda); solo si no
+  normaliza se cae a la red ancha del sufijo de 10 dígitos.
+- Prueba nueva `twilio/__tests__/twilioWebhookPhoneSuffix.f16.test.ts` (18 casos, con
+  `fakeTable`): 10 de 15 iniciales en rojo con el `ilike` (incluido el formato más común
+  «+57 310 987 6543»). Mutaciones: volver al `ilike` → 10 rojos; solo `endsWith` sin
+  normalización → 1 rojo (el +1 vs +57); sin `eq(organization_id)` → 2 rojos; indicativo
+  fijo en vez del de la org → 1 rojo. Restaurado por md5 (`ec95fa96…`).
+- El mock del test SEC-0 (`twilioWebhookOptOut.test.ts`) se actualizó (`ilike` → `filter`,
+  más `provider_configs`); su `test.failing` del UNIQUE de `contact_consents` sigue igual
+  (no es de esta ronda).
+- No se tocó `src/app/api/voice/**` ni `consentService.ts`.
+
+#### R07 y R23 · `findByClientRequestId` — ahora muerden
+
+- `round5.test.ts`: la misma clave en otra organización **no** es duplicado y el envío
+  sale (con cobro); en la misma organización se calla sin cobrar; la consulta lleva
+  `eq(organization_id)`. Ventana: 7 d − 1 s bloquea, 7 d + 1 s no; `gte(created_at)`
+  con el instante exacto; un mensaje de 30 días no impide el envío; los entrantes no
+  cuentan.
+- Mutaciones: quitar `eq('organization_id')` → **3 rojos**; quitar `gte('created_at')` →
+  **5 rojos** (incluido el N-5 «solo protege 7 días» del tester, que ya lo cubría en
+  parte). Restaurado por md5 (`21499ff8…`).
+
+#### T-5 · idempotencia por SELECT-luego-INSERT — migración PROPUESTA, no aplicada
+
+> **Corregido en la ronda 6.** El texto de la ronda 5 presuponía una RPC `refund`
+> «simétrica a `deduct_comm_credits`» que **no existe** (verificado por el tester r5 y
+> de nuevo por MCP el 2026-09-14: en `public` solo hay `deduct_comm_credits(p_org_id,
+> p_channel, p_amount)` y el trigger `sync_comm_credits_on_subscription`; `refund_ai_credits`
+> es de los créditos de IA, otro saldo). **No hace falta una RPC nueva:**
+> `deduct_comm_credits` acepta importes negativos —rama `ELSE` de `IF v_amount > 0`,
+> «Reembolso acotado al cupo del plan»: `v_new := LEAST(v_remaining + (-v_amount),
+> GREATEST(v_cap, v_remaining))`—, así que la devolución es
+> `rpc('deduct_comm_credits', { p_org_id, p_channel: 'whatsapp', p_amount: -1 })`.
+> Con `whatsapp_remaining = NULL` (ilimitado) ni el cobro ni la devolución tocan nada.
+
+Hoy `messages` no tiene ningún índice sobre `metadata->>'client_request_id'` (MCP,
+2026-09-14: 12 índices, ninguno sobre el JSON); la comprobación se apoya en
+`idx_messages_organization (organization_id, created_at desc)` y filtra el JSON después,
+y dos envíos individuales concurrentes con la misma clave pasan los dos. Sigue habiendo
+**0** mensajes con `client_request_id`, así que el índice único no chocaría con nada.
+
+**Secuencia obligatoria** (el orden importa: el índice sin el código convierte un doble
+envío en un 500 con crédito cobrado, peor que hoy):
+
+1. **Código primero** (`outboundService.ts`, un PR sin migración):
+   - Capturar `23505` en el INSERT de `messages` (`msgErr.code === '23505'`).
+   - **Devolver el crédito** con `deduct_comm_credits(p_amount: -1)` (el cobro va
+     antes del INSERT). Si la devolución falla, registrarlo con `console.warn` y seguir:
+     un crédito perdido es mejor que un mensaje duplicado.
+   - Releer por clave **sin ventana** (`findByClientRequestId` con la ventana anulada, o
+     una variante) y devolver `{ …, duplicate: true }`, igual que hoy hace el SELECT
+     previo.
+   - Efecto colateral que encontró el tester r5: `findOrCreateConversation` corre
+     **antes** del INSERT que fallaría. Si el cliente no tenía conversación `open`/`pending`
+     en ese canal, la carrera perdedora deja una conversación creada y vacía. Es
+     tolerable (la siguiente búsqueda `in('status', ['open','pending'])` la reutiliza,
+     así que no se acumulan), pero el `catch` del `23505` debe **borrar la conversación
+     si la creó este mismo envío y no tiene mensajes**, o bien mover la búsqueda de
+     conversación después de una reserva de la clave. Lo primero es una línea; lo
+     segundo, rediseñar el orden.
+   - Prueba: dos `sendWhatsApp` concurrentes con la misma clave contra un `fakeTable`
+     de `messages` que rechace la segunda inserción con `23505` → un mensaje, un
+     crédito neto (cobro +1, devolución −1), `duplicate: true` en la segunda, cero
+     conversaciones huérfanas.
+2. **Decidir la ventana.** El índice hace la clave **única para siempre** y el código la
+   comprueba con una ventana de **7 días** (R23). Lo natural es (a) quitar la ventana del
+   SELECT y dejar que el índice mande (`campaign:{id}:{cust}` ya es única por campaña);
+   la alternativa (b) es meter el día en la clave. Va en el mismo PR del punto 1.
+3. **Migración después**, con el código ya desplegado:
+
+```sql
+-- supabase/migrations/20260915090000_messages_client_request_id_unique.sql
+-- Idempotencia real del envío saliente (F16 · T-5): la clave (organización,
+-- client_request_id) solo puede insertarse una vez. Parcial: solo salientes con clave.
+-- CONCURRENTLY no admite transacción: aplicar con `execute_sql`, no con `apply_migration`.
+create unique index concurrently if not exists messages_org_client_request_id_uq
+  on public.messages (organization_id, (metadata->>'client_request_id'))
+  where direction = 'outbound' and metadata->>'client_request_id' is not null;
+comment on index public.messages_org_client_request_id_uq is
+  'F16 T-5: idempotencia por client_request_id (metadata) por organización, solo salientes.';
+
+-- supabase/rollbacks/20260915090000_messages_client_request_id_unique_rollback.sql
+drop index concurrently if exists public.messages_org_client_request_id_uq;
+```
+
+   Nombre en la convención del repositorio (`YYYYMMDDHHMMSS_nombre.sql`, reversión con
+   sufijo `_rollback`); la marca de tiempo se fija al aplicarla. Índice de expresión sobre
+   JSON: ~1 ms por INSERT en `messages`; solo contiene salientes con clave (hoy 0 filas),
+   tamaño despreciable.
+
+Nada de esto se ha aplicado ni codificado: sigue siendo decisión del dueño.
+
+#### T-3 [BAJO-MEDIO] · indicativo de la organización en el navegador — CERRADO
+
+- Nuevo `crm/shared/useOrgDefaultCountry.ts`: lee `settings.default_country_code` de
+  `GET /api/crm/whatsapp/settings`, **caché por organización a nivel de módulo** (la
+  barra se monta en cada tarjeta del Kanban: sin caché serían N peticiones por tablero),
+  una sola petición para llamadas concurrentes, un fallo de la API (org sin el módulo)
+  devuelve `null` y no se cachea. 13 casos en
+  `crm/shared/__tests__/useOrgDefaultCountry.test.ts` (escritos antes; rojo por módulo
+  ausente).
+- `QuickActionsBar` y `MobileCallDialog` pasan ese indicativo a `normalizePhone` en las
+  tres llamadas que decidían el destino (llamada desde navegador, `targetPhone` del
+  diálogo y el `to` del puente). El celular del vendedor (`mobile_phone_e164`) no cambia:
+  ya es E.164.
+- `WhatsAppTab`: control «Indicativo del país por defecto» (solo dígitos, máx. 4, vacío =
+  `null`, `aria-describedby` con la explicación), guardado con el resto por `PUT`.
+  ⚠️ **No verificado en el navegador**: las pestañas del panel están sin sesión y no se
+  inicia sesión por cuenta propia; verificado por `tsc`, ESLint y `next build`.
+
+#### T-4 [BAJO] · «siempre el más antiguo» — HECHO CIERTO
+
+- Medido por MCP: de los 276 grupos en colisión, 3 mezclan formato canónico y no
+  canónico y en **2** el camino rápido (igualdad E.164) devolvía la ficha nueva en vez de
+  la vieja escrita con separadores.
+- `findCustomerIdByPhone` pasa a **una sola consulta**: el prefiltro por sufijo es
+  superconjunto de la igualdad exacta, así que se elimina el camino rápido y el orden
+  `(created_at, id)` decide entre todos los formatos. Coste: la regex se evalúa solo sobre
+  los clientes de la organización (índice de `organization_id`).
+- Pruebas en `round5.test.ts` (3, rojas antes): vieja con separadores + nueva E.164 →
+  la vieja; vieja nacional + nueva `57…` → la vieja; una sola consulta con `imatch`,
+  `eq(organization_id)`, orden `(created_at, id)` y sin `in`. Mutaciones: sin `order(id)`
+  → 3 rojos (2 de r4 + 1); orden descendente → 2 rojos. Restaurado por md5
+  (`5ec3a82d…`).
+
+#### Corrección aritmética de la propuesta de colisiones
+
+Medido por MCP con `lower(trim(full_name))`: **173 grupos con el mismo nombre (346
+filas)** y **103 con nombres distintos**, no 99 / 177 (156 con el nombre exactamente
+igual; 17 solo difieren en mayúsculas o espacios). Corregido arriba en «Estado real de
+los teléfonos» y en los puntos 1 y 2 de la propuesta. Sigue siendo decisión del dueño;
+no se ejecutó nada.
+
+#### Verificación ejecutada
+
+- Cero envíos reales; cero migraciones aplicadas; solo lecturas por MCP.
+- Limpieza con conteos: no se creó ninguna fila (prefijo `F16R5T` solo en claves de
+  prueba en memoria). Antes = después: `message_events` = 20, `contact_consents` = 0,
+  `templates` = 6, `campaign_contacts` = 0, teléfonos = 12.921, campañas `F16R5T%` = 0.
+- Restauraciones: 4 archivos mutados (`campaignBatch.ts`, `twilioWebhook.ts`,
+  `outboundService.ts`, `channelService.ts`), 11 mutaciones, 11 rojas, md5 idéntico tras
+  cada una y al terminar.
+- `npx jest` de F16: 22 suites / 333 verdes (línea base 16 / 244). `tsc` completo (8 GB, sin
+  incremental): 17 errores, **0 en los archivos tocados** (`crm/agentes/*`, `crm/secuencias/*`
+  y `consentReconcileService.ts`, en obra por otros constructores). ESLint limpio en los 13
+  archivos tocados. `next build` **no ejecutado**: tres dev servers comparten `.next`
+  (mismo motivo que la ronda 4).
+
+### Ronda 6 (2026-09-14) — las tres del tester r5 (9,0/10; «con esas tres cosas, 9,5»)
+
+**Agente:** builder F16. **Entrada:** T19/T20, T11 y el texto de T-5. Lista corta, sin
+ampliar alcance. Cero envíos, cero migraciones, cero `.sql`.
+
+#### T19/T20 [MEDIO] · el indicativo en las tres llamadas que deciden a quién se llama — AHORA MUERDE
+
+- Sin @testing-library (jest en `node`), se sigue el precedente de la zona de voz
+  (A-2.4 / A-2.6: «se mira el CÓDIGO, no lo que dice de sí mismo»). Nueva
+  `crm/shared/__tests__/callTargetCountry.f16.test.ts` (9 casos): lee
+  `QuickActionsBar.tsx` y `MobileCallDialog.tsx` sin líneas de comentario, extrae cada
+  `normalizePhone(...)` y afirma que **las dos con `customer?.phone`** (llamada desde
+  navegador y `targetPhone` del diálogo) y **todas las de `targetPhone`** (el `to` del
+  puente y el «Cliente:» que se muestra) llevan `defaultCountry` como segundo
+  argumento; que `defaultCountry` sale de `useOrgDefaultCountry()` y no de un literal;
+  que `softphone.makeCall(to, …)` y el `body` de `POST /api/voice/bridge/initiate` usan
+  ESE `to`; y que la única llamada sin indicativo es `row.mobile_phone_e164` (el celular
+  del vendedor, ya E.164 verificado por OTP).
+- Mutaciones (las tres del tester + una): quitar `defaultCountry` de `handleCall` → **3
+  rojos**; del `targetPhone` que recibe el diálogo → **3 rojos**; del `to` del puente en
+  `MobileCallDialog` → **3 rojos**; indicativo fijo `'57'` en vez del hook → **1 rojo**.
+  Restaurado por copia y comprobado por md5 (`e4988565…`, `4c278ebd…`).
+
+#### T11 [BAJO-MEDIO] · la rama `metadata->>state.is.null` — AHORA MUERDE
+
+- Verificado por MCP: `campaign_contacts.metadata` es `jsonb NULL DEFAULT '{}'`. Una
+  fila con `{}` o `NULL` es `pending` para `contactState`/`countContacts`
+  (`remaining > 0`); sin la rama, la consulta de reclamación no la devuelve nunca →
+  0 reclamadas → `stalled_no_progress` con pendientes.
+- Nueva `whatsapp/__tests__/round6.test.ts` (5 casos): la constante conserva la rama y
+  `rowPasses` la evalúa con `{}` y `NULL`; 5 filas `{}` → 5 envíos en el primer lote,
+  `completed`, 0 pausas; 5 filas `NULL` → igual; mezcla 3 `pending` + 3 `{}` + 3 `NULL`
+  + 2 saltadas → 9 envíos y las 2 saltadas intactas.
+- Mutación: quitar `,metadata->>state.is.null` de `CLAIMABLE_STATE_FILTER` → **4 rojos**
+  (`send` llamado 0 veces con 5 pendientes: la pausa falsa), `testerR4` sigue verde (es
+  el superviviente del tester, reproducido). Restaurado por md5 (`57e3e1dc…`).
+
+#### T-5 texto [BAJO] · corregido arriba, en su sección
+
+- La RPC `refund` **no existe**; `deduct_comm_credits` **acepta negativos** (verificado
+  por MCP leyendo la función: «Reembolso acotado al cupo del plan»), así que la
+  devolución es la misma RPC con `p_amount: -1`. Secuencia obligatoria escrita: código
+  (capturar `23505`, devolver, releer sin ventana, `duplicate: true`, y limpiar la
+  conversación que `findOrCreateConversation` crea antes del INSERT que fallaría) →
+  decisión de la ventana de 7 días → índice `CONCURRENTLY` por `execute_sql`. Nombres
+  en la convención `YYYYMMDDHHMMSS_nombre.sql` / `_rollback.sql`. Nada aplicado.
+
+#### Pulido
+
+- **N-5 hecho**: `fakeTable.filter()` lanza con cualquier operador que no sea
+  `match`/`imatch` (antes los ignoraba en silencio), como ya hacía `.or()`. Caso en
+  `round6.test.ts` (rojo antes del cambio). Los dos `.filter()` de producción
+  (`channelService`, `twilioWebhook`) son `imatch`.
+- **N-4 evaluado y NO cambiado**: medido por MCP, las 4 filas reales con «+» y
+  exactamente 10 dígitos empiezan por `57`, `54`, `12` y `57`: son E.164 con dígitos de
+  menos (truncados), no nacionales con un «+» de más; **0** tienen forma nacional
+  colombiana. Tratarlas como «no normaliza» las mandaría a la red ancha, que exige que
+  los 10 dígitos guardados sean los últimos 10 del entrante, y tampoco casarían. Cambio
+  sin efecto sobre ninguna fila real y con superficie en `normalizePhoneDigits`
+  (compartida con voz): no se hace.
+
+#### Verificación ejecutada
+
+- jest de F16: **24 suites / 347 verdes** (eran 22 / 333; +9 contrato +5 ronda 6).
+  Completa una vez al final; por mutación solo las suites afectadas.
+- ESLint limpio en los 3 archivos TS tocados; `tsc` acotado (tests nuevos, `fakeTable`
+  y las suites que lo consumen): **0 errores**. `next build` no ejecutado (mismo motivo
+  que las rondas 4 y 5: dev servers compartiendo `.next`).
+- Conteos antes = después: `message_events` 20, `contact_consents` 0, `templates` 6,
+  `campaign_contacts` 0, teléfonos 12.921, campañas `F16R6T%` 0, mensajes con
+  `client_request_id` 0. Solo lecturas por MCP.
+- 5 mutaciones en 3 archivos (`QuickActionsBar.tsx` ×2, `MobileCallDialog.tsx` ×2,
+  `campaignBatch.ts` ×1), 5 rojas, md5 idéntico tras cada una y al terminar.
+- Archivos: nuevos `callTargetCountry.f16.test.ts`, `round6.test.ts`; modificados
+  `fakeTable.ts`, este documento y `PROGRESS.md`. Ningún archivo de
+  `crm/{agentes,automatizaciones,secuencias}` ni de la zona de voz.

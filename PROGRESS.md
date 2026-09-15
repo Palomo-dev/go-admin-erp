@@ -2318,3 +2318,47 @@ conviene crear el envío después del cálculo, o actualizarlo.
 **Fase 0: completa en lo que depende de código.** Pendiente del usuario: push de `828ad44`
 (sitio) y de los commits del ERP; rotación de credenciales de Wompi; aprobar los
 `CLAUDE.md`; y la deuda de los 4 `.sql` + rollbacks de las migraciones de las rondas 1-5.
+
+### Fase 0 — Ronda 9 — 2026-09-15 — CIERRE DE LA FASE 0
+
+Estado de cada punto del plan aprobado el 2026-09-09:
+
+| Punto | Estado | Dónde |
+|---|---|---|
+| SEC-0.a firma de webhook Wompi | **desplegado**; corrección del registro de veredictos en `828ad44` (sitio, sin push) | sitio |
+| SEC-0.b integration_credentials / connections / connectors | **aplicado** 2026-09-09; `.sql` + rollback en `61ef1037` | BD + ERP |
+| SEC-0.b organization_payment_methods | **aplicado** 2026-09-15 tras leer el fuente de `chat-widget` (usa service role); `9863486d` | BD + ERP |
+| SEC-0.c rotación / abuso / notificación | **del usuario**; sin cambios (0 credenciales rotadas) | — |
+| 0.0 CLAUDE.md ERP | **hecho** (lo creó el usuario a partir del borrador) | ERP |
+| 0.0 CLAUDE.md sitio | **hecho**, `b91cdf6` | sitio |
+| 0.1 RLS pública de transporte | **aplicado** `275efe1a`; verificado con anon key real (42501 en las 4); `get_advisors` sin hallazgos nuevos | BD + ERP |
+| 0.2 /tracking | **desplegado** (dentro de `01b8cd2`); `verify:tracking` OK | sitio |
+| 0.2 tipos de transporte en `types/database.ts` | **hecho con plan B**, `b91cdf6` (ver hallazgo abajo) | sitio |
+| 0.3 credenciales → Vault (funciones, servicio, endpoint, diálogo, select de proveedor) | **completo en código** (rondas 2 y 6); sin credencial real guardada todavía | BD + ERP |
+| 0.4 seed de proveedores y transportadoras | **aplicado**; `.sql` + rollback en `61ef1037` | BD + ERP |
+| 0.5 una sola ruta de creación de envío + índice único | **aplicado** `3cffad75`; 11 tests nuevos | BD + ERP |
+| 0.6 peso y dimensiones de producto | **aplicado**; `.sql` + rollback en `61ef1037` | BD + ERP |
+| Deuda de `.sql` de las rondas 1-5 | **pagada** `61ef1037` | ERP |
+
+**Hallazgo del sitio, para un issue aparte.** `types/database.ts` está declarado como
+`interface` y ninguna tabla lleva `Relationships`; supabase-js 2.107 exige ambas cosas
+(`Schema = Database['public'] extends GenericSchema ? … : never`). Resultado: el `Database`
+a mano resuelve a `never` para TODAS las tablas y ningún `select` se ha comprobado nunca —
+es la razón de los 72 `as any` de `queries.ts` y de que `sender_city` compilara. Al
+corregir la declaración aparecen **202 errores de tipo** (155 en `queries.ts`, 14 en
+`api/transport/fares`, 7 en `api/transport/tickets`, 4 en `webhooks/bold`…). Evidencia
+guardada. Es un proyecto del repo, no de GO-1: se aplicó el plan B (tablas de transporte
+declaradas en la forma correcta, `as any` conservados con el motivo al lado, compuerta
+real = `verify-tracking.mjs`).
+
+**Compuertas finales.** ERP: `tsc` 0 errores de código, `jest` 90/90 en lo relacionado,
+`lint` limpio en lo tocado, `next build` OK. Sitio: `tsc` 0, `next build` OK,
+`verify:tracking` OK.
+
+**Pendiente del usuario (no de código):** push de `828ad44` y `b91cdf6` (sitio) y de
+`275efe1a`, `3cffad75`, `61ef1037`, `9863486d` (ERP); rotación de las 16 credenciales de
+Wompi; activar `WOMPI_WEBHOOK_ENFORCE_SIGNATURE=true` cuando haya veredictos `match`;
+probar el diálogo de credenciales con una sesión de admin contra una transportadora
+sembrada; pedir acceso de API a las cuatro transportadoras (plazo más largo de la épica).
+
+**Fase 0: cerrada.** Siguiente: plan mode para Fase 1.

@@ -1,4 +1,5 @@
 -- 20260915090000_fase0_5_indice_unico_envio_por_pedido_web.sql
+-- Versión aplicada en Supabase: 20260915062704 (vía MCP, proyecto jgmgphmzusbluqhuqihj).
 -- Fase 0.5 (GO-1) — Un pedido web, un envío.
 --
 -- Hasta ahora dos rutas de código independientes creaban el envío de un pedido web

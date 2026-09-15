@@ -1,4 +1,5 @@
 -- 20260914130000_fase0_1_cerrar_rls_publica_transporte.sql
+-- Versión aplicada en Supabase: 20260914133443 (vía MCP, proyecto jgmgphmzusbluqhuqihj).
 -- Fase 0.1 (GO-1) — Cierra el acceso anónimo a las tablas de envíos.
 --
 -- Las cuatro tablas tenían una política FOR SELECT TO public USING (true). La anon key

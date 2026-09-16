@@ -262,12 +262,6 @@ describe('F0 Guardarraíles', () => {
       // punto único. Cambio exacto por archivo en
       // docs/crm-revenue-os/rondas/F0-SEC-CD-builder-r2.md §(b). Sus POST/PATCH con
       // body ya usan `rejectForeignOrganization`; faltan los DELETE/POST sin body.
-      ['app/api/crm/health/[customerId]/route.ts', 'F11: POST sin lectura de body → añadir `await readOrgBody(ctx, request)`'],
-      ['app/api/crm/onboarding/templates/route.ts', 'F11: POST → `readOrgBody(ctx, request)` en vez de request.json()'],
-      ['app/api/crm/partners/[id]/route.ts', 'F12: DELETE sin body → `await readOrgBody(ctx, request)`'],
-      ['app/api/crm/partners/tiers/[id]/route.ts', 'F12: DELETE sin body → idem'],
-      ['app/api/crm/payments/register/route.ts', 'F10: POST → `readOrgBody(ctx, request)` en vez de request.json()'],
-      ['app/api/crm/referrals/programs/[id]/route.ts', 'F12: DELETE sin body → idem'],
     ]);
 
     const ALLOWLIST = new Set<string>([

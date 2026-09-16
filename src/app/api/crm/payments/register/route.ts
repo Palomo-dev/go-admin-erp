@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { registerCrmPayment } from '@/lib/services/crm/paymentService';
+import { readOrgBody } from '@/lib/security/organizationBody';
 
 /**
  * POST /api/crm/payments/register — Registra un pago CRM atómicamente.
@@ -20,7 +21,8 @@ import { registerCrmPayment } from '@/lib/services/crm/paymentService';
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const body = await request.json();
+    // Regla dura 5 (b): 403 + registro si el body trae otra organización.
+    const body = await readOrgBody(ctx, request);
 
     if (!body?.invoice_id || !body?.amount || !body?.currency || !body?.reference) {
       return NextResponse.json(

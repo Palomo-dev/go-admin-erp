@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import {
+import { readOrgBody } from '@/lib/security/organizationBody';
   getOnboardingTemplatesServer,
   createOnboardingTemplateServer,
 } from '@/lib/services/crm/onboardingService';
@@ -34,7 +35,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const body = await request.json();
+    // Regla dura 5 (b): 403 + registro si el body trae otra organización.
+    const body = await readOrgBody(ctx, request);
 
     if (!body?.name || !body?.steps) {
       return NextResponse.json(

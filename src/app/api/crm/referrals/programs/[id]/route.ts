@@ -3,6 +3,7 @@ import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { assertProgramInOrg, deleteReferralProgram, updateReferralProgram } from '@/lib/services/crm/referralsService';
 import { validateProgramInput } from '@/lib/services/crm/f12Validation';
 import { jsonFail, jsonOk, readJson, rejectForeignOrganization, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
+import { readOrgBody } from '@/lib/security/organizationBody';
 
 const TAG = 'CRM Referral Programs';
 type Params = { params: Promise<{ id: string }> };
@@ -32,9 +33,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 }
 
 /** DELETE /api/crm/referrals/programs/[id] — los referidos enlazados quedan con `program_id = NULL` (FK ON DELETE SET NULL). */
-export async function DELETE(_request: NextRequest, { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: Params) {
   try {
     const ctx = await getServerOrgContext();
+    // Regla dura 5 (b): sin body, pero la query podría traer otra organización.
+    await readOrgBody(ctx, request);
     const { id } = await params;
     const deleted = await deleteReferralProgram(id, ctx.organizationId, ctx.supabase);
     if (!deleted) return jsonFail(404, 'Programa no encontrado en esta organización', { code: 'NOT_FOUND' });

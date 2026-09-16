@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import {
+import { readOrgBody } from '@/lib/security/organizationBody';
   getHealthScore,
   calculateHealthScore,
   getHealthTrend,
@@ -59,11 +60,13 @@ export async function GET(
  * eso, `POST …/snapshot`).
  */
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ customerId: string }> }
 ) {
   try {
     const ctx = await getServerOrgContext();
+    // Regla dura 5 (b): sin body, pero la query podría traer otra organización.
+    await readOrgBody(ctx, request);
     const { customerId } = await params;
 
     const result = await calculateHealthScore(ctx.organizationId, customerId, ctx.supabase);

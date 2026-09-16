@@ -45,7 +45,7 @@ function InicioContent() {
   const { toast } = useToast();
   const t = useTranslations('home');
   const locale = useLocale();
-  const { context: permContext, loading: permissionsLoading } = usePermissionContext(organization?.id);
+  const { context: permContext, resolvedOrganizationId } = usePermissionContext(organization?.id);
 
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +69,21 @@ function InicioContent() {
       STAGE_MANAGER_ROLE_IDS.includes(permContext.roleId)
     )
   );
+
+  // El rol está resuelto SOLO cuando el hook completó una carga para ESTA
+  // organización. No vale con `permContext !== null || !loading`, que era el
+  // guardia anterior y seguía fallando: el hook arranca antes de que exista
+  // `organization` (carga para la última organización del perfil), y entre
+  // esa carga y la siguiente `loading` vale false un instante con un contexto
+  // null o de otra organización. En ese instante `canSeeFinancialDashboard`
+  // era false y a un administrador se le pintaba el panel de empleado antes
+  // de saltar al financiero.
+  //
+  // Con `resolvedOrganizationId === organization.id` el contexto es de esta
+  // organización, sea un rol real o null por falta de membresía (ese null sí
+  // es definitivo). Sin sesión el hook no marca nada como resuelto, así que
+  // se queda en skeleton hasta que el layout redirija a login.
+  const rolResuelto = !!organization && resolvedOrganizationId === organization.id;
 
   useEffect(() => {
     setMounted(true);
@@ -106,8 +121,36 @@ function InicioContent() {
     }).catch(() => {});
   }, []);
 
+  // Módulos activos: una sola vez por organización y en paralelo con el
+  // contexto de permisos, no dentro de cada carga del dashboard. Así, cuando
+  // el rol se resuelve, Atajos/Alertas/Módulos ya se pintan filtrados en vez
+  // de mostrar todo y refiltrar (otro parpadeo).
+  useEffect(() => {
+    const orgId = organization?.id;
+    if (!orgId) return;
+    let cancelado = false;
+    moduleManagementService
+      .getActiveModules(orgId)
+      .then((modules) => {
+        if (cancelado) return;
+        const newCodes = modules.map((m) => m.code).sort();
+        // Misma referencia si el contenido no cambió: evita refetchs en hijos.
+        setActiveModuleCodes((prev) =>
+          prev && prev.length === newCodes.length && prev.every((c, i) => c === newCodes[i])
+            ? prev
+            : newCodes,
+        );
+      })
+      .catch(() => {
+        // Sin códigos, los hijos muestran todos los módulos (comportamiento previo).
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [organization?.id]);
+
   const loadData = useCallback(async (silent = false) => {
-    if (!organization?.id || branchLoading || permissionsLoading) return;
+    if (!organization?.id || branchLoading || !rolResuelto) return;
     // Los empleados no-admin no reciben datos financieros del dashboard:
     // se omite el fetch completo para no traer KPIs/actividad al cliente.
     if (!canSeeFinancialDashboard) {
@@ -116,23 +159,8 @@ function InicioContent() {
     }
     if (!silent) setIsLoading(true);
     try {
-      const [data, modules] = await Promise.all([
-        inicioService.getDashboardData(organization.id, periodo, horas, fechasCustom, branchFilter),
-        moduleManagementService.getActiveModules(organization.id).catch(() => null),
-      ]);
+      const data = await inicioService.getDashboardData(organization.id, periodo, horas, fechasCustom, branchFilter);
       setDashboardData(data);
-      // Solo actualizar activeModuleCodes si el contenido real cambió,
-      // para evitar re-renders y refetchs innecesarios en componentes hijos
-      // (DashboardAlertas, DashboardModulos) durante el auto-refresh silencioso.
-      if (modules) {
-        const newCodes = modules.map(m => m.code).sort();
-        setActiveModuleCodes((prev) => {
-          if (prev && prev.length === newCodes.length && prev.every((c, i) => c === newCodes[i])) {
-            return prev; // mismo contenido → mantener referencia previa
-          }
-          return newCodes;
-        });
-      }
     } catch (err) {
       console.error('Error cargando dashboard:', err);
       if (!silent) {
@@ -145,7 +173,7 @@ function InicioContent() {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [organization?.id, toast, t, periodo, horas, fechasCustom, branchFilter, branchLoading, permissionsLoading, canSeeFinancialDashboard]);
+  }, [organization?.id, toast, t, periodo, horas, fechasCustom, branchFilter, branchLoading, rolResuelto, canSeeFinancialDashboard]);
 
   useEffect(() => {
     loadData();
@@ -268,52 +296,63 @@ function InicioContent() {
 
       {/* Atajos rápidos — solo para admins/managers. Los empleados ven su
           propio panel con accesos filtrados por permisos de su cargo. */}
-      {canSeeFinancialDashboard && (
+      {rolResuelto && canSeeFinancialDashboard && (
         <DashboardAtajos activeModuleCodes={activeModuleCodes} />
       )}
 
-      {canSeeFinancialDashboard ? (
-        isLoading ? (
+      {!rolResuelto ? (
+        // Rol aún sin resolver: un único skeleton neutro. No se elige panel
+        // todavía para no pintar el de empleado a un administrador.
+        <>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3 animate-pulse">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-[74px] sm:h-[86px] bg-gray-200 dark:bg-gray-700 rounded-xl" />
+            ))}
+          </div>
           <DashboardKPIs data={null} isLoading periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} branchFilter={branchFilter} />
-        ) : (
-          <>
-            {/* KPIs */}
-            <DashboardKPIs data={dashboardData?.kpis ?? null} isLoading={false} periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} branchFilter={branchFilter} />
+        </>
+      ) : canSeeFinancialDashboard ? (
+        <>
+          {/* KPIs y Actividad dependen de `dashboardData`: son los únicos que
+              muestran skeleton al cambiar de periodo. El resto de secciones
+              carga por su cuenta y se monta desde el principio, en paralelo,
+              en vez de esperar a que termine la carga principal (antes eran
+              dos oleadas de loaders: primero KPIs, después todo lo demás). */}
+          <DashboardKPIs data={isLoading ? null : (dashboardData?.kpis ?? null)} isLoading={isLoading} periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} branchFilter={branchFilter} />
 
-            {/* Alertas consolidadas de módulos */}
-            <DashboardAlertas
-              organizationId={organization?.id}
-              activeModuleCodes={activeModuleCodes}
+          {/* Alertas consolidadas de módulos */}
+          <DashboardAlertas
+            organizationId={organization?.id}
+            activeModuleCodes={activeModuleCodes}
+          />
+
+          {/* Actividad Reciente + Tendencia de Ventas */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <DashboardActividad
+              data={dashboardData?.actividad ?? []}
+              isLoading={isLoading}
             />
 
-            {/* Actividad Reciente + Tendencia de Ventas */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <DashboardActividad
-                data={dashboardData?.actividad ?? []}
-                isLoading={false}
-              />
-
-              {/* Tendencia de ventas (reemplaza al antiguo bloque "Accesos Rápidos" redundante) */}
-              {organization?.id && (
-                <DashboardTendencia organizationId={organization.id} dias={30} />
-              )}
-            </div>
-
-            {/* Observabilidad de comercio web: stock reservado + pedidos próximos a expirar */}
+            {/* Tendencia de ventas (reemplaza al antiguo bloque "Accesos Rápidos" redundante) */}
             {organization?.id && (
-              <WebCommerceObservability
-                organizationId={organization.id}
-                withinMinutes={30}
-              />
+              <DashboardTendencia organizationId={organization.id} dias={30} />
             )}
+          </div>
 
-            {/* Dashboards consolidados por módulo activo */}
-            <DashboardModulos
-              activeModuleCodes={activeModuleCodes}
-              isLoading={false}
+          {/* Observabilidad de comercio web: stock reservado + pedidos próximos a expirar */}
+          {organization?.id && (
+            <WebCommerceObservability
+              organizationId={organization.id}
+              withinMinutes={30}
             />
-          </>
-        )
+          )}
+
+          {/* Dashboards consolidados por módulo activo */}
+          <DashboardModulos
+            activeModuleCodes={activeModuleCodes}
+            isLoading={false}
+          />
+        </>
       ) : (
         // Empleados: panel propio con turno, tareas, notificaciones y accesos
         // filtrados por los permisos de su cargo. Sin datos financieros.

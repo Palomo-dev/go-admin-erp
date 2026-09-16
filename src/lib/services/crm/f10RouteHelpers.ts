@@ -15,9 +15,21 @@ export function foreignOrgResponse(tag: string, body: unknown, sessionOrg: numbe
   return NextResponse.json({ success: false, error: 'Organización no permitida' }, { status: 403 });
 }
 
+/** Error de negocio tipado del servicio: lleva `statusCode` (400/409…) y opcionalmente `code`. */
+function typedStatus(error: unknown): { status: number; code?: string } | null {
+  if (!(error instanceof Error)) return null;
+  const e = error as Error & { statusCode?: unknown; code?: unknown };
+  if (typeof e.statusCode !== 'number' || e.statusCode < 400 || e.statusCode > 499) return null;
+  return { status: e.statusCode, code: typeof e.code === 'string' ? e.code : undefined };
+}
+
 export function failResponse(tag: string, error: unknown): NextResponse {
   if (error instanceof OrgContextError) {
     return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });
+  }
+  const typed = typedStatus(error);
+  if (typed) {
+    return NextResponse.json({ success: false, error: (error as Error).message, ...(typed.code ? { code: typed.code } : {}) }, { status: typed.status });
   }
   const message = error instanceof Error ? error.message : 'Error desconocido';
   console.error(`[${tag}]`, message);

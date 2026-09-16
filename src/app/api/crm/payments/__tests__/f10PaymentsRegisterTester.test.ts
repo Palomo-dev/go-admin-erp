@@ -59,20 +59,20 @@ describe('POST /api/crm/payments/register', () => {
     expect(db.writes).toEqual([]);
   });
 
-  it.failing('importe negativo → 400; hoy 201 y el saldo de la factura sube', async () => {
+  it('importe negativo → 400 (r4: lo rechaza registerCrmPayment con code INVALID_AMOUNT)', async () => {
     const res = await POST(req({ invoice_id: 'inv-1', amount: -400, currency: 'COP', reference: 'neg' }));
     expect(res.status).toBe(400);
     expect(db.rows.payments).toHaveLength(0);
     expect(Number(db.rows.invoice_sales[0].balance)).toBe(1000);
   });
 
-  it.failing('importe no numérico ("abc") → 400; hoy pasa el filtro (truthy) y llega NaN al INSERT', async () => {
+  it('importe no numérico ("abc") → 400 (r4: el servicio no acepta lo que no sea número finito > 0)', async () => {
     const res = await POST(req({ invoice_id: 'inv-1', amount: 'abc', currency: 'COP', reference: 'nan' }));
     expect(res.status).toBe(400);
     expect(db.rows.payments).toHaveLength(0);
   });
 
-  it.failing('moneda distinta a la de la factura → 400; hoy descuenta el importe tal cual', async () => {
+  it('moneda distinta a la de la factura → 400 (r4: CURRENCY_MISMATCH en el servicio)', async () => {
     const res = await POST(req({ invoice_id: 'inv-1', amount: 100, currency: 'USD', reference: 'usd' }));
     expect(res.status).toBe(400);
     expect(Number(db.rows.invoice_sales[0].balance)).toBe(1000);

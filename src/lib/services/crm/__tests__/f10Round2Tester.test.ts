@@ -26,7 +26,7 @@ jest.mock('@/lib/utils/orgContext', () => ({ OrgContextError: class extends Erro
 
 import { registerCrmPayment, isStripeReferenceDuplicate } from '@/lib/services/crm/paymentService';
 import { createPaymentLinkForQuotation, processStripeWebhook, type StripeAdapter } from '@/lib/services/crm/stripePaymentLinkService';
-import { markProposalSent, generateProposal } from '@/lib/services/crm/proposalServerService';
+import { markProposalSent, generateProposal, ProposalConvertedError } from '@/lib/services/crm/proposalServerService';
 import { updateContractStatus } from '@/lib/services/crm/contractService';
 import { executeOnboarding, executeRenewal, executeReferral, type OpportunityData, type WonCloseDeps } from '@/lib/services/crm/wonCloseSteps';
 import { canManualSign } from '@/app/api/crm/contracts/[id]/route';
@@ -90,23 +90,32 @@ const manual = (amount: number, reference: string, currency = 'COP') => ({ invoi
 beforeEach(() => { db = seed(); jest.clearAllMocks(); });
 
 describe('T2-A Pago manual por registerCrmPayment (misma función que usa POST /api/crm/payments/register)', () => {
-  it.failing('A1 importe NEGATIVO → debe rechazarse; hoy se inserta y el saldo de la factura SUBE', async () => {
+  it('A1 (r4) importe NEGATIVO → rechazado con code INVALID_AMOUNT / 400, sin escrituras y saldo intacto', async () => {
     const r = await registerCrmPayment(120, manual(-500000, 'ref-neg'), client());
-    expect(r.success).toBe(false);
-    expect(db.rows.payments).toHaveLength(0);
+    expect(r).toMatchObject({ success: false, code: 'INVALID_AMOUNT', http_status: 400, payment_id: null });
+    expect(db.writes).toEqual([]);
     expect(Number(invoice().balance)).toBe(5000000);
   });
 
-  it.failing('A2 importe cero o NaN → debe rechazarse; hoy NaN pasa la comparación y se intenta insertar', async () => {
-    const r = await registerCrmPayment(120, manual(Number.NaN, 'ref-nan'), client());
-    expect(r.success).toBe(false);
+  it('A2 (r4) importe cero, NaN, Infinity o texto → rechazado antes de leer la factura', async () => {
+    for (const bad of [0, Number.NaN, Number.POSITIVE_INFINITY, '100' as unknown as number]) {
+      const r = await registerCrmPayment(120, manual(bad, `ref-bad-${String(bad)}`), client());
+      expect(r).toMatchObject({ success: false, code: 'INVALID_AMOUNT', http_status: 400 });
+    }
+    expect(db.writes).toEqual([]);
     expect(db.rows.payments).toHaveLength(0);
   });
 
-  it.failing('A3 moneda distinta a la de la factura (USD sobre COP) → debe rechazarse; hoy descuenta 100 «USD» del saldo en COP', async () => {
+  it('A3 (r4) moneda distinta a la de la factura (USD sobre COP) → CURRENCY_MISMATCH / 400; minúsculas (cop) coinciden', async () => {
     const r = await registerCrmPayment(120, manual(100, 'ref-usd', 'USD'), client());
-    expect(r.success).toBe(false);
+    expect(r).toMatchObject({ success: false, code: 'CURRENCY_MISMATCH', http_status: 400 });
+    expect(String(r.message)).toMatch(/USD/);
+    expect(String(r.message)).toMatch(/COP/);
+    expect(db.rows.payments).toHaveLength(0);
     expect(Number(invoice().balance)).toBe(5000000);
+    const ok = await registerCrmPayment(120, manual(100, 'ref-cop', 'cop'), client());
+    expect(ok.success).toBe(true);
+    expect(db.rows.payments[0]).toMatchObject({ currency: 'COP', amount: 100 });
   });
 
   it.failing('A4 dos pagos concurrentes con referencias DISTINTAS por el saldo completo → el segundo debe rechazarse; hoy ambos pasan la comprobación de saldo y la factura queda en negativo', async () => {
@@ -189,17 +198,24 @@ describe('T2-B Enlace de pago y webhook', () => {
 describe('T2-C Ciclo de vida de la propuesta', () => {
   const sb = () => createFakeSupabase(db) as unknown as Parameters<typeof markProposalSent>[2];
 
-  it.failing('C1 marcar «enviada» una cotización ya FACTURADA (converted) debe rechazarse; hoy regresa a sent y habilita una segunda conversión a factura (convertToInvoice solo frena status=converted)', async () => {
-    const r = await markProposalSent(120, 'q-1', sb(), { userId: 'u-1' });
-    expect(r).toBeNull();
+  it('C1 (r4) marcar «enviada» una cotización ya FACTURADA (converted) → ProposalConvertedError (409) sin escrituras; sigue converted', async () => {
+    await expect(markProposalSent(120, 'q-1', sb(), { userId: 'u-1' })).rejects.toBeInstanceOf(ProposalConvertedError);
+    await expect(markProposalSent(120, 'q-1', sb(), { userId: 'u-1' })).rejects.toMatchObject({ statusCode: 409 });
+    expect(db.writes).toEqual([]);
     expect(db.rows.quotations[0].status).toBe('converted');
   });
 
-  it.failing('C2 «Regenerar» sobre una cotización facturada cambia total/subtotal y deja quotation_items sin tocar: la factura y la cotización divergen', async () => {
+  it('C2 (r4) «Regenerar» sobre una cotización facturada → ProposalConvertedError (409): total y secciones intactos', async () => {
     db.rows.opportunities[0].amount = 9999999;
-    const r = await generateProposal(120, 'op-1', sb(), { userId: 'u-1', timezone: 'America/Bogota' });
-    expect(r?.isNew).toBe(false);
+    await expect(generateProposal(120, 'op-1', sb(), { userId: 'u-1', timezone: 'America/Bogota' })).rejects.toMatchObject({ name: 'ProposalConvertedError', statusCode: 409 });
+    expect(db.writes).toEqual([]);
     expect(db.rows.quotations[0].total).toBe(6800000);
+  });
+
+  it('C2b (r4) una cotización con factura enlazada (converted_invoice_id) pero status distinto tampoco se regenera', async () => {
+    db.rows.quotations[0].status = 'sent';
+    await expect(generateProposal(120, 'op-1', sb(), { userId: 'u-1', timezone: 'America/Bogota' })).rejects.toBeInstanceOf(ProposalConvertedError);
+    expect(db.writes).toEqual([]);
   });
 
   it('C3 regenerar una propuesta en borrador sí refresca el total (camino feliz)', async () => {
@@ -272,10 +288,17 @@ describe('T2-E Contratos: firma manual', () => {
     expect(canManualSign({ roleId: Number.NaN, isSuperAdmin: false })).toBe(false);
   });
 
-  it.failing('E2 «signed» a mano no vincula quotations.signature_id como sí hace el webhook: dos caminos, dos resultados', async () => {
+  it('E2 (r4) «signed» a mano vincula quotations.signature_id como el webhook (filtrando por organización); sin quotation_id no toca quotations', async () => {
     const r = await updateContractStatus('ct-1', 120, 'signed', sb(), { userId: 'u-1' });
     expect(r?.status).toBe('signed');
     expect(db.rows.quotations[0].signature_id).toBe('ct-1');
+    const link = db.writes.find((w) => w.table === 'quotations' && w.op === 'update');
+    expect(link?.filters).toMatchObject({ id: 'q-1', organization_id: 120 });
+    expect(db.rows.quotations[1].signature_id).toBeUndefined();
+    db = seed();
+    db.rows.contract_signatures[0].quotation_id = null;
+    await updateContractStatus('ct-1', 120, 'signed', sb(), { userId: 'u-1' });
+    expect(db.writes.filter((w) => w.table === 'quotations')).toHaveLength(0);
   });
 
   it('E3 «signed» a mano deja actividad system con manual_signed_by en la oportunidad, filtrando por organización', async () => {

@@ -7,7 +7,22 @@
 // orgContext arrastra svix (ESM) por webhookSignatures: se dobla como en el resto de suites F10.
 jest.mock('@/lib/utils/orgContext', () => ({ OrgContextError: class extends Error { statusCode = 401; }, getServerOrgContext: jest.fn() }));
 
-import { isSafeId, UUID_RE } from '@/lib/services/crm/f10RouteHelpers';
+import { isSafeId, UUID_RE, failResponse } from '@/lib/services/crm/f10RouteHelpers';
+import { ProposalConvertedError, ProposalCustomerRequiredError } from '@/lib/services/crm/proposalServerService';
+
+describe('failResponse (r4): los errores tipados del servicio llevan su propio statusCode', () => {
+  it('ProposalConvertedError → 409, ProposalCustomerRequiredError → 400, Error suelto → 500', async () => {
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      expect(failResponse('t', new ProposalConvertedError('COT-1')).status).toBe(409);
+      expect(await failResponse('t', new ProposalConvertedError('COT-1')).json()).toMatchObject({ success: false, code: 'PROPOSAL_CONVERTED', error: expect.stringMatching(/COT-1/) });
+      expect(failResponse('t', new ProposalCustomerRequiredError()).status).toBe(400);
+      expect(failResponse('t', new Error('x')).status).toBe(500);
+    } finally {
+      errSpy.mockRestore();
+    }
+  });
+});
 
 describe('isSafeId', () => {
   it('acepta uuid v4 y ids cortos de prueba', () => {

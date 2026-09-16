@@ -224,10 +224,31 @@ export interface GenerateOptions {
 
 /** La oportunidad no tiene cliente: es un error del usuario (400), no del servidor. */
 export class ProposalCustomerRequiredError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'CUSTOMER_REQUIRED';
   constructor() {
     super('La oportunidad no tiene cliente: asigna uno antes de generar la propuesta');
     this.name = 'ProposalCustomerRequiredError';
   }
+}
+
+/**
+ * r4: la cotización ya se convirtió en factura (`status='converted'` o
+ * `converted_invoice_id`): ni se regenera (los totales divergirían de la
+ * factura) ni vuelve a `sent` (reabriría `convertToInvoice`, que solo frena
+ * `status='converted'`). 409, lo mapea `failResponse` por `statusCode`.
+ */
+export class ProposalConvertedError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'PROPOSAL_CONVERTED';
+  constructor(number: string) {
+    super(`La propuesta ${number} ya está facturada: no se puede regenerar ni marcar como enviada`);
+    this.name = 'ProposalConvertedError';
+  }
+}
+
+export function isConvertedProposal(p: Pick<ProposalRecord, 'status' | 'converted_invoice_id'>): boolean {
+  return p.status === 'converted' || Boolean(p.converted_invoice_id);
 }
 
 /** Crea la cotización enlazada o, si ya existe, regenera conservando solo lo editado a mano (o nada con `force`). */
@@ -248,6 +269,7 @@ export async function generateProposal(orgId: number, opportunityId: string, sup
   const total = ctx.pricing.lines.length ? ctx.pricing.total : ctx.opportunityAmount;
 
   if (existing) {
+    if (isConvertedProposal(existing)) throw new ProposalConvertedError(existing.number);
     const sections = mergeSections(existing.sections, generated, { force: opts.force === true });
     const { data, error } = await supabase
       .from('quotations')
@@ -318,6 +340,7 @@ export async function updateProposalSections(orgId: number, quotationId: string,
 export async function markProposalSent(orgId: number, quotationId: string, supabase: SupabaseClient, opts: { userId: string | null; emailMessageId?: string | null }): Promise<{ next_contact_at: string } | null> {
   const proposal = await getProposal(orgId, quotationId, supabase);
   if (!proposal) return null;
+  if (isConvertedProposal(proposal)) throw new ProposalConvertedError(proposal.number);
   const now = Date.now();
   const nextContact = new Date(now + 24 * 60 * 60 * 1000).toISOString();
   const { error } = await supabase.from('quotations').update({ status: 'sent', updated_at: new Date(now).toISOString() }).eq('id', quotationId).eq('organization_id', orgId);

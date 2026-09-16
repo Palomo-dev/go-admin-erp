@@ -44,7 +44,14 @@ export interface RegisterPaymentResult {
   idempotent: boolean;
   /** true solo cuando el INSERT chocó con el índice único (carrera): nada se recalculó en esta llamada. */
   duplicate?: boolean;
+  /** Rechazo de validación (r4): la ruta responde con `http_status` (400) y `code`. */
+  code?: 'INVALID_AMOUNT' | 'CURRENCY_MISMATCH';
+  http_status?: number;
   message: string;
+}
+
+function rejectInput(code: NonNullable<RegisterPaymentResult['code']>, message: string): RegisterPaymentResult {
+  return { success: false, payment_id: null, invoice_status: null, commission_created: false, idempotent: false, code, http_status: 400, message };
 }
 
 /** Postgres `unique_violation` sobre el índice parcial de referencias de Stripe. */
@@ -71,6 +78,16 @@ export async function registerCrmPayment(
   data: RegisterPaymentInput,
   supabase: SupabaseClient
 ): Promise<RegisterPaymentResult> {
+  // ─── 0. Validación del importe (r4): `payments` no tiene CHECK y un abono negativo SUBÍA el saldo ──
+  const paymentAmount = typeof data.amount === 'number' ? data.amount : Number.NaN;
+  if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+    return rejectInput('INVALID_AMOUNT', `El importe del pago debe ser un número mayor que cero (recibido: ${String(data.amount)})`);
+  }
+  const paymentCurrency = String(data.currency ?? '').trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(paymentCurrency)) {
+    return rejectInput('CURRENCY_MISMATCH', `Moneda inválida: ${String(data.currency)}`);
+  }
+
   // ─── 1. Idempotencia: verificar si ya existe un pago con la misma reference ──
   const { data: existingPayment } = await supabase
     .from('payments')
@@ -122,8 +139,13 @@ export async function registerCrmPayment(
     commission_type: string | null;
   };
 
+  // Moneda del pago = moneda de la factura (r4): un abono en USD no descuenta saldo en COP.
+  const invoiceCurrency = String(invoiceRow.currency ?? '').trim().toUpperCase();
+  if (invoiceCurrency && invoiceCurrency !== paymentCurrency) {
+    return rejectInput('CURRENCY_MISMATCH', `La moneda del pago (${paymentCurrency}) no coincide con la de la factura (${invoiceCurrency})`);
+  }
+
   // Validar que el monto no exceda el balance
-  const paymentAmount = Number(data.amount);
   const currentBalance = Number(invoiceRow.balance);
 
   if (paymentAmount > currentBalance) {
@@ -147,7 +169,7 @@ export async function registerCrmPayment(
       source_id: data.invoice_id,
       method: data.method ?? null,
       amount: paymentAmount,
-      currency: data.currency,
+      currency: paymentCurrency,
       reference: data.reference,
       processor_response: data.processor_response ?? null,
       status: 'completed',

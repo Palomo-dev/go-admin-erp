@@ -227,6 +227,11 @@ export async function updateContractStatus(id: string, orgId: number, status: Co
   if (error) throw new Error(`Error actualizando estado del contrato: ${error.message}`);
   const rows = (result ?? []) as ContractSignature[];
   if (rows.length === 0) throw new ContractConflictError(`El contrato cambió de estado mientras tanto (ya no está en ${current.status}); recarga y vuelve a intentarlo`);
+  if (status === 'signed' && current.quotation_id) {
+    // r4: el mismo enlace que hace el webhook (quotations.signature_id), filtrando por organización.
+    const { error: quotError } = await supabase.from('quotations').update({ signature_id: id }).eq('id', current.quotation_id).eq('organization_id', orgId);
+    if (quotError) console.warn('contractService.updateContractStatus - cotización no vinculada:', quotError.message);
+  }
   if (status === 'signed') {
     const { error: actError } = await supabase.from('activities').insert({
       organization_id: orgId,

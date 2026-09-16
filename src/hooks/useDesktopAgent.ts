@@ -45,7 +45,7 @@ export function useDesktopAgent(): UseDesktopAgentReturn {
   const startAgentForCurrentOrg = useCallback(
     async (branchIds?: number[], branchNames?: string[]) => {
       const bridge = getDesktopBridge();
-      if (!bridge?.startAgent) {
+      if (!bridge?.startAgent && !bridge?.startAgentWithToken) {
         setError('Desktop bridge no disponible');
         return false;
       }
@@ -75,13 +75,37 @@ export function useDesktopAgent(): UseDesktopAgentReturn {
           return false;
         }
 
-        const status = await bridge.startAgent(
-          sessionData.session.refresh_token,
-          org.id,
-          org.name || `Org ${org.id}`,
-          finalBranchIds,
-          finalBranchNames,
-        );
+        let status: DesktopAgentStatus;
+        if (bridge.startAgentWithToken) {
+          // Sesión propia para el agente. Compartir el refresh token de esta
+          // sesión (camino legado) hacía que web y agente rotaran la misma
+          // familia de tokens y Supabase la revocara entera en menos de una
+          // hora: el agente dejaba de latir y la web caía en
+          // refresh_token_not_found.
+          const res = await fetch('/api/desktop/agent-session', { method: 'POST' });
+          const body = await res.json().catch(() => null);
+          if (!res.ok || !body?.token_hash) {
+            setError(body?.error || 'No se pudo generar el código de vinculación del agente');
+            return false;
+          }
+          status = await bridge.startAgentWithToken(
+            body.token_hash,
+            org.id,
+            org.name || `Org ${org.id}`,
+            finalBranchIds,
+            finalBranchNames,
+          );
+        } else {
+          // Desktop antiguo (< 0.1.3): único camino disponible.
+          console.warn('[desktop] Go Admin Desktop sin startAgentWithToken: usando el refresh token de la web (actualiza el Desktop)');
+          status = await bridge.startAgent!(
+            sessionData.session.refresh_token,
+            org.id,
+            org.name || `Org ${org.id}`,
+            finalBranchIds,
+            finalBranchNames,
+          );
+        }
 
         setAgentStatus(status);
         return true;

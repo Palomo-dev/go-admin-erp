@@ -1,11 +1,13 @@
 import { app, ipcMain } from 'electron';
 import http from 'http';
-import { startAgent, stopAgent, getStatus, logout } from './agentRunner';
+import { startAgent, startAgentWithTokenHash, stopAgent, getStatus, logout } from './agentRunner';
 import { setAutoStart, isAutoStartEnabled } from './autostart';
 import { saveConfig, loadConfig } from './store';
 import { DISCOVERY_PORT } from './constants';
 import { getUpdateState, checkForUpdates, installUpdate } from './updater';
 import { readLog, clearLog } from './crashReporter';
+import { isOnline, checkNow } from './connectivity';
+import { reloadApp } from './windows/mainWindow';
 
 export function registerIpcHandlers(): void {
   // ── Agente ──
@@ -28,6 +30,21 @@ export function registerIpcHandlers(): void {
     stopAgent();
     return getStatus();
   });
+
+  ipcMain.handle(
+    'agent:start-token',
+    async (
+      _e,
+      tokenHash: string,
+      orgId: number,
+      orgName: string,
+      branchIds: number[],
+      branchNames: string[],
+    ) => {
+      await startAgentWithTokenHash(tokenHash, orgId, orgName, branchIds, branchNames);
+      return getStatus();
+    },
+  );
 
   ipcMain.handle('agent:status', () => getStatus());
 
@@ -109,6 +126,16 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('update:check', () => checkForUpdates());
   ipcMain.handle('update:install', () => {
     installUpdate();
+    return true;
+  });
+
+  // ── Conectividad real (no navigator.onLine) ──
+  ipcMain.handle('connectivity:get', () => isOnline());
+  ipcMain.handle('connectivity:check', () => checkNow());
+
+  // ── Ventana ──
+  ipcMain.handle('app:reload', () => {
+    reloadApp();
     return true;
   });
 

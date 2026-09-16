@@ -96,6 +96,18 @@ export interface GoAdminDesktopBridge {
     branchIds: number[],
     branchNames: string[],
   ) => Promise<DesktopAgentStatus>;
+  /**
+   * Arranque con código de vinculación (POST /api/desktop/agent-session):
+   * el agente abre su propia sesión y no comparte el refresh token de la web.
+   * Solo existe en Desktop >= 0.1.3; si falta, se cae al `startAgent` legado.
+   */
+  startAgentWithToken?: (
+    tokenHash: string,
+    orgId: number,
+    orgName: string,
+    branchIds: number[],
+    branchNames: string[],
+  ) => Promise<DesktopAgentStatus>;
   stopAgent?: () => Promise<DesktopAgentStatus>;
   status?: () => Promise<DesktopAgentStatus>;
   logout?: () => Promise<boolean>;
@@ -113,6 +125,14 @@ export interface GoAdminDesktopBridge {
   printRaw?: (printerId: string, payload: unknown) => Promise<DesktopPrintResult>;
   reprintJob?: (jobId: string) => Promise<DesktopPrintResult>;
   openCashDrawer?: (printerName?: string) => Promise<DesktopPrintResult>;
+
+  // Conectividad real (health-check contra Supabase, no navigator.onLine)
+  isOnline?: () => Promise<boolean>;
+  checkConnectivity?: () => Promise<boolean>;
+  onConnectivity?: (callback: (online: boolean) => void) => void;
+
+  // Ventana
+  reload?: () => Promise<boolean>;
 
   // Versión y actualizaciones
   version?: () => Promise<string>;

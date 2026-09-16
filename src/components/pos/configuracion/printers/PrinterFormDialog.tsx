@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SearchSelect } from '@/components/ui/search-select';
-import { Loader2, Wifi, Printer as PrinterIcon, Check, Usb } from 'lucide-react';
+import { Loader2, Wifi, Printer as PrinterIcon, Check, Usb, Bluetooth } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import {
   type Printer,
@@ -32,6 +32,8 @@ import {
   type DesktopDiscoverResponse,
   type DesktopUsbResponse,
   type DesktopUsbDevice,
+  type DesktopBluetoothResponse,
+  type DesktopBluetoothDevice,
 } from '@/lib/utils/desktop';
 import { isMobile } from '@/lib/utils/mobile';
 
@@ -72,6 +74,7 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
   const [systemPrinters, setSystemPrinters] = useState<{ name: string; isDefault: boolean }[]>([]);
   const [networkPrinters, setNetworkPrinters] = useState<{ ip: string; port: number }[]>([]);
   const [usbDevices, setUsbDevices] = useState<DesktopUsbDevice[]>([]);
+  const [bluetoothDevices, setBluetoothDevices] = useState<DesktopBluetoothDevice[]>([]);
   const [showDetected, setShowDetected] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
 
@@ -89,9 +92,18 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
       PromiseSettledResult<DesktopPrintersResponse>,
       PromiseSettledResult<DesktopDiscoverResponse>,
       PromiseSettledResult<DesktopUsbResponse>,
+      PromiseSettledResult<DesktopBluetoothResponse>,
     ]
   > => {
     const bridge = getDesktopBridge();
+
+    // Bluetooth: dispositivos emparejados en Windows. Antes no se consultaba
+    // y la unica via era teclear la MAC a mano (que ademas el agente no sabia
+    // usar en Windows).
+    const bluetooth: Promise<DesktopBluetoothResponse> =
+      bridge && desktopSupports('listBluetoothDevices')
+        ? bridge.listBluetoothDevices!()
+        : fetch(`${DISCOVERY_URL}/bluetooth`).then((r) => r.json());
 
     // El USB se pide por el puente si el Desktop instalado lo soporta, y si no
     // por HTTP: el servidor de descubrimiento del agente expone /usb en ambos
@@ -109,11 +121,12 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
             fetch(`${DISCOVERY_URL}/discover`).then((r) => r.json()),
           ];
 
-    return Promise.allSettled([...base, usb]) as Promise<
+    return Promise.allSettled([...base, usb, bluetooth]) as Promise<
       [
         PromiseSettledResult<DesktopPrintersResponse>,
         PromiseSettledResult<DesktopDiscoverResponse>,
         PromiseSettledResult<DesktopUsbResponse>,
+        PromiseSettledResult<DesktopBluetoothResponse>,
       ]
     >;
   };
@@ -124,6 +137,7 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
     setSystemPrinters([]);
     setNetworkPrinters([]);
     setUsbDevices([]);
+    setBluetoothDevices([]);
     setShowDetected(true);
 
     // Rama móvil (Capacitor): descubrir impresoras Bluetooth LE
@@ -155,7 +169,7 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
     }
 
     try {
-      const [printersRes, discoverRes, usbRes] = await fetchDetection();
+      const [printersRes, discoverRes, usbRes, bluetoothRes] = await fetchDetection();
 
       if (printersRes.status === 'fulfilled' && printersRes.value?.printers) {
         setSystemPrinters(printersRes.value.printers);
@@ -166,10 +180,15 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
       if (usbRes.status === 'fulfilled' && usbRes.value?.devices) {
         setUsbDevices(usbRes.value.devices);
       }
+      if (bluetoothRes.status === 'fulfilled' && bluetoothRes.value?.devices) {
+        // Solo los que parecen impresoras: un teclado o unos audifonos no ayudan.
+        setBluetoothDevices(bluetoothRes.value.devices.filter((d) => d.isPrinter));
+      }
       if (
         printersRes.status === 'rejected' &&
         discoverRes.status === 'rejected' &&
-        usbRes.status === 'rejected'
+        usbRes.status === 'rejected' &&
+        bluetoothRes.status === 'rejected'
       ) {
         setDetectError(detectionErrorMessage);
       }
@@ -187,6 +206,29 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
 
   const selectNetworkPrinter = (ip: string, port: number) => {
     setForm((f) => ({ ...f, connection_type: 'network', ip_address: ip, port, name: f.name || `Impresora ${ip}` }));
+    setShowDetected(false);
+  };
+
+  /**
+   * En Windows una termica Bluetooth emparejada queda instalada como impresora
+   * del sistema (puerto COM), y el agente imprime por ese nombre igual que USB.
+   * Se intenta casar el dispositivo con una impresora instalada por nombre; si
+   * no hay coincidencia, el usuario elige la impresora de Windows en la lista.
+   */
+  const selectBluetoothDevice = (device: DesktopBluetoothDevice) => {
+    const normalizar = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const objetivo = normalizar(device.name);
+    const instalada = systemPrinters.find((p) => {
+      const n = normalizar(p.name);
+      return objetivo.length >= 3 && (n.includes(objetivo) || objetivo.includes(n));
+    });
+    setForm((f) => ({
+      ...f,
+      connection_type: 'bluetooth',
+      mac_address: device.macAddress || f.mac_address,
+      system_printer_name: instalada?.name || f.system_printer_name || null,
+      name: f.name || device.name || 'Impresora Bluetooth',
+    }));
     setShowDetected(false);
   };
 
@@ -272,8 +314,8 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
     if (form.connection_type === 'usb' && !form.system_printer_name?.trim()) {
       return 'Una impresora USB necesita el nombre exacto de Windows. Pulsa "Detectar impresoras" y selecciona una del sistema.';
     }
-    if (form.connection_type === 'bluetooth' && !form.mac_address?.trim()) {
-      return 'Una impresora Bluetooth necesita su direccion MAC.';
+    if (form.connection_type === 'bluetooth' && !form.system_printer_name?.trim() && !form.mac_address?.trim()) {
+      return 'Una impresora Bluetooth necesita el nombre con el que Windows la instalo (recomendado) o su direccion MAC. Pulsa "Detectar impresoras".';
     }
     if (form.connection_type === 'system' && !form.system_printer_name?.trim()) {
       return 'Una impresora del sistema necesita el nombre exacto de Windows. Pulsa "Detectar impresoras" y selecciona una.';
@@ -420,6 +462,39 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
                   )}
                 </div>
 
+                {/* Dispositivos Bluetooth emparejados */}
+                <div>
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 flex items-center gap-1">
+                    <Bluetooth className="h-3 w-3" />
+                    Bluetooth emparejadas ({bluetoothDevices.length})
+                  </p>
+                  {bluetoothDevices.length === 0 ? (
+                    <p className="text-xs text-gray-400">
+                      No se encontraron impresoras Bluetooth emparejadas. Empareja la impresora desde
+                      Configuracion de Windows y vuelve a detectar.
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {bluetoothDevices.map((d, idx) => (
+                        <button
+                          key={`${d.macAddress || d.name}:${idx}`}
+                          type="button"
+                          onClick={() => selectBluetoothDevice(d)}
+                          className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <span className="flex items-center gap-2 min-w-0 break-words">
+                            <Bluetooth className="h-3 w-3 text-blue-500 shrink-0" />
+                            <span className="break-words whitespace-normal">{d.name}</span>
+                          </span>
+                          {d.macAddress && (
+                            <span className="shrink-0 ml-2 text-[10px] text-gray-400 font-mono">{d.macAddress}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {/* Dispositivos USB */}
                 <div>
                   <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 flex items-center gap-1">
@@ -485,13 +560,32 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
 
 
           {form.connection_type === 'bluetooth' && (
-            <div>
-              <Label>Dirección MAC</Label>
-              <Input
-                value={form.mac_address || ''}
-                onChange={(e) => setForm((f) => ({ ...f, mac_address: e.target.value }))}
-                placeholder="00:11:22:33:44:55"
-              />
+            <div className="space-y-3">
+              <div className="flex gap-2 rounded-md bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-xs text-blue-700 dark:text-blue-400">
+                <Bluetooth className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>
+                  En Windows la impresora Bluetooth emparejada queda instalada como impresora del sistema.
+                  Selecciona ese nombre en &quot;Impresoras del sistema&quot;: se imprime por ahi con ESC/POS
+                  (corte automatico y cajon). La MAC es opcional y solo se usa en Linux/macOS.
+                </span>
+              </div>
+              {form.system_printer_name ? (
+                <div className="text-xs text-gray-500">
+                  Impresora de Windows: <strong>{form.system_printer_name}</strong>
+                </div>
+              ) : (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Falta la impresora de Windows: pulsa &quot;Detectar impresoras&quot; y elige la que corresponda.
+                </p>
+              )}
+              <div>
+                <Label>Dirección MAC (opcional)</Label>
+                <Input
+                  value={form.mac_address || ''}
+                  onChange={(e) => setForm((f) => ({ ...f, mac_address: e.target.value }))}
+                  placeholder="00:11:22:33:44:55"
+                />
+              </div>
             </div>
           )}
 

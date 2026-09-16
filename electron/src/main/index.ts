@@ -1,14 +1,12 @@
 import { app, BrowserWindow, session } from 'electron';
-import * as path from 'path';
-import { createMainWindow, getMainWindow, createSplashWindow, closeSplash } from './windows/mainWindow';
+import { createMainWindow, getMainWindow, createSplashWindow, closeSplash, prepareQuit } from './windows/mainWindow';
 import { createTray, destroyTray } from './tray';
 import { initUpdater, stopUpdater } from './updater';
 import { registerIpcHandlers } from './ipc';
 import { tryAutoStart, stopAgent, markOffline } from './agentRunner';
 import { wasOpenedHidden } from './autostart';
-import { WEB_APP_URL } from './constants';
 import { initCrashReporter } from './crashReporter';
-import { initOfflineManager } from './offlineManager';
+import { initConnectivity, stopConnectivity } from './connectivity';
 
 let quitting = false;
 
@@ -45,17 +43,11 @@ if (!gotLock) {
 
   app.whenReady().then(async () => {
     initCrashReporter();
-    initOfflineManager();
+    initConnectivity();
 
     // ── Optimizaciones de rendimiento ──
     // Desactivar spellcheck para reducir overhead en inputs
     session.defaultSession.setSpellCheckerEnabled(false);
-
-    // ── Cache persistente para soporte offline ──
-    // Garantiza que los assets JS/CSS de Next.js (_next/static/) se mantengan
-    // en disco y estén disponibles sin conexión a internet.
-    // setCacheMode no disponible en todas las versiones de Electron
-    // session.defaultSession.setCacheMode('persistent');
 
     registerIpcHandlers();
 
@@ -87,7 +79,11 @@ if (!gotLock) {
     if (!quitting) {
       e.preventDefault();
       quitting = true;
+      // CRÍTICO: sin esto, mainWindow.on('close') hace preventDefault() y
+      // Electron cancela la secuencia de quit: la app nunca se cierra.
+      prepareQuit();
       stopUpdater();
+      stopConnectivity();
       await markOffline();
       stopAgent();
       destroyTray();

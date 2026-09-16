@@ -12,6 +12,15 @@ try {
     branchIds: number[],
     branchNames: string[],
   ) => ipcRenderer.invoke('agent:start', refreshToken, orgId, orgName, branchIds, branchNames),
+  // Sesión propia del agente (código de vinculación del ERP). Si la web ve
+  // este método, lo usa en vez de startAgent(refreshToken).
+  startAgentWithToken: (
+    tokenHash: string,
+    orgId: number,
+    orgName: string,
+    branchIds: number[],
+    branchNames: string[],
+  ) => ipcRenderer.invoke('agent:start-token', tokenHash, orgId, orgName, branchIds, branchNames),
   stopAgent: () => ipcRenderer.invoke('agent:stop'),
   status: () => ipcRenderer.invoke('agent:status'),
   logout: () => ipcRenderer.invoke('agent:logout'),
@@ -30,6 +39,17 @@ try {
     ipcRenderer.invoke('printing:print-raw', printerId, payload),
   reprintJob: (jobId: string) => ipcRenderer.invoke('printing:reprint', jobId),
   openCashDrawer: (printerName?: string) => ipcRenderer.invoke('printing:open-cash-drawer', printerName),
+
+  // Conectividad real (comprobación contra Supabase, no navigator.onLine)
+  isOnline: () => ipcRenderer.invoke('connectivity:get'),
+  checkConnectivity: () => ipcRenderer.invoke('connectivity:check'),
+  onConnectivity: (callback: (online: boolean) => void) => {
+    ipcRenderer.removeAllListeners('connectivity:state');
+    ipcRenderer.on('connectivity:state', (_e, online: boolean) => callback(online));
+  },
+
+  // Ventana
+  reload: () => ipcRenderer.invoke('app:reload'),
 
   // Versión y actualizaciones
   version: () => ipcRenderer.invoke('app:version'),

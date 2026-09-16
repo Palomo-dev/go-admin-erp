@@ -195,8 +195,25 @@ export function isStaleClaim(meta: CampaignContactMeta | null | undefined, nowMs
  * para siempre, `remaining` nunca bajaba a 0 y cada ejecución encolaba el
  * siguiente lote sin fin.
  */
+/**
+ * Filtro de la consulta de candidatos. Solo entran las filas que PUEDEN llegar
+ * a reclamarse: `metadata->>state` en `pending`/`queued`, o NULL (que
+ * `contactState` interpreta como `pending`). Las saltadas y fallidas también
+ * tienen `state` NULL en la columna, y hasta la ronda 4 entraban en la
+ * consulta y se descartaban DESPUÉS, en `claimableAt`: con ≥200 de ellas por
+ * delante (mismo `created_at`, inserción en lotes de 500) llenaban la ventana
+ * de `limit*4`, el lote reclamaba 0, `wakeAt` era `null` y la campaña acababa
+ * pausada por `stalled_no_progress` con pendientes sin enviar (tester F16 r4 ·
+ * T-1). Es realista: la org 135 tiene el 44 % de clientes sin teléfono útil y
+ * la 113 el 76 %.
+ */
+export const CLAIMABLE_STATE_FILTER = 'metadata->>state.in.(pending,queued),metadata->>state.is.null';
+
 async function claimContacts(campaignId: string, batchNo: number, limit: number, service: SupabaseClient, nowMs: number): Promise<ClaimOutcome> {
-  const { data } = await service.from('campaign_contacts').select('id, customer_id, state, metadata').eq('campaign_id', campaignId).is('state', null).order('created_at', { ascending: true }).limit(limit * 4);
+  // `order(id)` como desempate: sin él, con `created_at` repetido, el orden
+  // entre lotes no es estable y una misma fila puede no aparecer nunca dentro
+  // de la ventana.
+  const { data } = await service.from('campaign_contacts').select('id, customer_id, state, metadata').eq('campaign_id', campaignId).is('state', null).or(CLAIMABLE_STATE_FILTER).order('created_at', { ascending: true }).order('id', { ascending: true }).limit(limit * 4);
   const candidates: ContactRow[] = [];
   // Cuándo vuelve a haber trabajo si ahora mismo no hay ninguno reclamable.
   let wakeAt: number | null = null;

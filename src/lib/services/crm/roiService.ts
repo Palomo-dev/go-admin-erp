@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { evaluateFormula } from '@/lib/services/crm/roiEvaluator';
 
 /**
  * Servicio CRM - Calculadoras de ROI (Fase 10).
@@ -16,7 +17,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  *     ]
  *   }
  *
- * El cálculo se evalúa en runtime con un parser seguro de expresiones matemáticas.
+ * El cálculo se evalúa con `roiEvaluator` (parser aritmético propio: sin eval ni Function).
  */
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -79,52 +80,13 @@ export interface RoiCalculationResult {
   calculator_id: string;
   inputs: Record<string, number>;
   outputs: Record<string, number>;
+  /** Operaciones que no pudieron evaluarse (clave de salida → motivo). */
+  errors: Record<string, string>;
 }
 
-// ─── Parser seguro de expresiones ────────────────────────────────────────────
-
-/**
- * Evalúa una expresión matemática de forma segura.
- * Solo permite: números, operadores (+, -, *, /, %, paréntesis),
- * variables (identificadores con puntos), y funciones Math básicas.
- *
- * Construye un scope con los valores de inputs y los outputs ya calculados,
- * luego evalúa la expresión sustituyendo variables.
- */
-function safeEvalExpression(
-  expression: string,
-  scope: Record<string, number>
-): number {
-  try {
-    // Sustituir variables del scope en la expresión
-    // Las variables pueden tener formato: inputs.xxx, outputs.xxx, o nombres simples
-    let expr = expression;
-
-    // Ordenar claves por longitud descendente para sustituir las más largas primero
-    const keys = Object.keys(scope).sort((a, b) => b.length - a.length);
-
-    for (const key of keys) {
-      // Escapar caracteres especiales en el key
-      const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`\\b${escapedKey}\\b`, 'g');
-      expr = expr.replace(regex, String(scope[key]));
-    }
-
-    // Validar que solo queden caracteres seguros
-    if (!/^[\d\s+\-*/%.()]+$/.test(expr)) {
-      console.warn('roiService.safeEvalExpression - expresión no segura:', expr);
-      return 0;
-    }
-
-    // Evaluar con Function constructor (más seguro que eval)
-    // eslint-disable-next-line no-new-func
-    const result = Function(`"use strict"; return (${expr})`)();
-    return typeof result === 'number' && !isNaN(result) ? result : 0;
-  } catch (err) {
-    console.warn('roiService.safeEvalExpression - error:', err);
-    return 0;
-  }
-}
+// ─── Evaluación ──────────────────────────────────────────────────────────────
+// F10: la evaluación vive en `roiEvaluator.ts` (parser propio, sin `Function`).
+// Antes aquí se construía una función a partir del texto de una fila jsonb.
 
 // ─── Funciones del servicio ──────────────────────────────────────────────────
 
@@ -234,54 +196,28 @@ export async function deleteRoiCalculator(
 }
 
 /**
- * Calcula el ROI desde inputs + formula de una calculadora.
- *
- * @param calculatorId - ID de la calculadora
- * @param inputs - Valores de entrada (key → número)
- * @param supabase - Cliente Supabase
- * @returns Outputs calculados
+ * Calcula el ROI desde inputs + formula de una calculadora DE LA ORGANIZACIÓN.
+ * La fórmula viene de la fila (nunca del cliente) y se evalúa con el parser
+ * seguro; una operación inválida queda en `errors`, no tumba el cálculo.
  */
 export async function calculateRoi(
   calculatorId: string,
   inputs: Record<string, number>,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  orgId: number
 ): Promise<RoiCalculationResult> {
-  // 1. Obtener la calculadora
   const { data, error } = await supabase
     .from('roi_calculators')
     .select('id, formula')
     .eq('id', calculatorId)
+    .eq('organization_id', orgId)
     .maybeSingle();
 
   if (error || !data) {
     throw new Error('Calculadora ROI no encontrada');
   }
 
-  const formula = (data as { formula: RoiFormula }).formula;
-  const operations = formula.operations || [];
-
-  // 2. Construir scope inicial con los inputs
-  const scope: Record<string, number> = {};
-
-  // Aplanar inputs: soporta tanto inputs.xxx como claves directas
-  for (const [key, value] of Object.entries(inputs)) {
-    scope[key] = Number(value) || 0;
-    scope[`inputs.${key}`] = Number(value) || 0;
-  }
-
-  // 3. Ejecutar operaciones en orden, alimentando el scope con cada resultado
-  const outputs: Record<string, number> = {};
-
-  for (const op of operations) {
-    const result = safeEvalExpression(op.expression, scope);
-    outputs[op.output_key] = result;
-    scope[op.output_key] = result;
-    scope[`outputs.${op.output_key}`] = result;
-  }
-
-  return {
-    calculator_id: calculatorId,
-    inputs,
-    outputs,
-  };
+  const formula = (data as { formula: RoiFormula | null }).formula;
+  const { outputs, errors } = evaluateFormula(formula?.operations ?? [], inputs);
+  return { calculator_id: calculatorId, inputs, outputs, errors };
 }

@@ -1,0 +1,155 @@
+/**
+ * F10 — doble de Supabase para las pruebas de contrato de rutas y servicios.
+ *
+ * Derivado del de F13 (mismo contrato) con lo que F10 necesita: `neq`, `is`,
+ * `like`, `order` real, embeds `product:products(...)`, `customers(...)`,
+ * `objection:objections(...)`, `verticals(...)`, y `rpc`. Aplica los filtros
+ * de verdad y REGISTRA cada escritura con sus filtros. Cada tabla lleva
+ * señuelos de otra organización (121): leer o escribir sin `organization_id`
+ * cambia el payload y la prueba muere.
+ */
+
+export type Row = Record<string, unknown>;
+
+export interface Write {
+  table: string;
+  op: 'insert' | 'update' | 'delete';
+  row: Row | null;
+  filters: Record<string, unknown>;
+}
+
+export interface FakeDb {
+  rows: Record<string, Row[]>;
+  writes: Write[];
+  nextWriteError?: { table: string; error: { code: string; message: string } };
+  rpcCalls?: Array<{ fn: string; args: Record<string, unknown> }>;
+  rpcResult?: Record<string, unknown>;
+}
+
+type Pred = (row: Row) => boolean;
+
+function cmp(a: unknown, b: string): number {
+  const sa = String(a);
+  const ta = Date.parse(sa);
+  const tb = Date.parse(b);
+  if (!Number.isNaN(ta) && !Number.isNaN(tb) && /T/.test(sa) && /T/.test(b)) return ta - tb;
+  if (!Number.isNaN(Number(sa)) && !Number.isNaN(Number(b))) return Number(sa) - Number(b);
+  return sa < b ? -1 : sa > b ? 1 : 0;
+}
+
+let idSeq = 0;
+
+function embed(db: FakeDb, table: string, selectArg: string, row: Row): Row {
+  const out = { ...row };
+  const re = /(\w+):(\w+)\(([^)]*)\)|(\w+)\(([^)]*)\)/g;
+  for (const m of selectArg.matchAll(re)) {
+    const alias = m[1] ?? m[4];
+    const target = m[2] ?? m[4];
+    if (!alias || !target) continue;
+    const fkByTable: Record<string, string> = { products: 'product_id', customers: 'customer_id', objections: 'objection_id', verticals: 'vertical_id', stages: 'stage_id', quotations: 'quotation_id', pipelines: 'pipeline_id' };
+    const fk = fkByTable[target];
+    if (!fk) continue;
+    const related = (db.rows[target] ?? []).find((r) => r.id === row[fk]) ?? null;
+    out[alias] = related;
+  }
+  void table;
+  return out;
+}
+
+export function createFakeSupabase(db: FakeDb) {
+  const from = (table: string) => {
+    const preds: Pred[] = [];
+    const filters: Record<string, unknown> = {};
+    let write: Write | null = null;
+    let single = false;
+    let head = false;
+    let wantCount = false;
+    let selectArg = '*';
+    let rangeArg: [number, number] | null = null;
+    let limitArg: number | null = null;
+    let orderArg: { col: string; asc: boolean } | null = null;
+    const chain: Record<string, unknown> = {};
+
+    chain.select = (arg?: string, opts?: { count?: string; head?: boolean }) => {
+      if (arg) selectArg = arg;
+      if (opts?.count) wantCount = true;
+      if (opts?.head) head = true;
+      return chain;
+    };
+    chain.order = (col: string, opts?: { ascending?: boolean }) => { orderArg = { col, asc: opts?.ascending !== false }; return chain; };
+    chain.limit = (n: number) => { limitArg = n; return chain; };
+    chain.range = (a: number, b: number) => { rangeArg = [a, b]; return chain; };
+    chain.eq = (col: string, value: unknown) => { preds.push((r) => r[col] === value); filters[col] = value; return chain; };
+    chain.neq = (col: string, value: unknown) => { preds.push((r) => r[col] !== value); filters[`${col}__neq`] = value; return chain; };
+    chain.is = (col: string, value: unknown) => { preds.push((r) => (value === null ? r[col] == null : r[col] === value)); filters[`${col}__is`] = value; return chain; };
+    chain.in = (col: string, values: unknown[]) => { preds.push((r) => values.includes(r[col])); filters[`${col}__in`] = values; return chain; };
+    chain.like = (col: string, pattern: string) => { const re = new RegExp('^' + pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*') + '$'); preds.push((r) => re.test(String(r[col] ?? ''))); return chain; };
+    chain.gte = (col: string, value: string) => { preds.push((r) => r[col] != null && cmp(r[col], value) >= 0); filters[`${col}__gte`] = value; return chain; };
+    chain.gt = (col: string, value: string) => { preds.push((r) => r[col] != null && cmp(r[col], value) > 0); return chain; };
+    chain.lte = (col: string, value: string) => { preds.push((r) => r[col] != null && cmp(r[col], value) <= 0); filters[`${col}__lte`] = value; return chain; };
+    chain.lt = (col: string, value: string) => { preds.push((r) => r[col] != null && cmp(r[col], value) < 0); filters[`${col}__lt`] = value; return chain; };
+    chain.single = () => { single = true; return chain; };
+    chain.maybeSingle = () => { single = true; return chain; };
+    chain.insert = (row: Row | Row[]) => { write = { table, op: 'insert', row: Array.isArray(row) ? { __rows: row } : row, filters }; return chain; };
+    chain.update = (row: Row) => { write = { table, op: 'update', row, filters }; return chain; };
+    chain.delete = () => { write = { table, op: 'delete', row: null, filters }; return chain; };
+
+    chain.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
+      try {
+        const all = (db.rows[table] ??= []);
+        if (write) {
+          db.writes.push(write);
+          if (db.nextWriteError && db.nextWriteError.table === table) {
+            const err = db.nextWriteError.error;
+            db.nextWriteError = undefined;
+            resolve({ data: null, error: err, count: null });
+            return;
+          }
+          const matched = all.filter((r) => preds.every((p) => p(r)));
+          if (write.op === 'insert') {
+            const rowsIn = (write.row && Array.isArray((write.row as Row).__rows)) ? ((write.row as Row).__rows as Row[]) : [write.row as Row];
+            // Índice único parcial REAL (migración 20260915140000): payments(organization_id, reference) WHERE reference LIKE 'stripe:%'.
+            if (table === 'payments') {
+              const dup = rowsIn.find((r) => typeof r.reference === 'string' && r.reference.startsWith('stripe:') && all.some((e) => e.organization_id === r.organization_id && e.reference === r.reference));
+              if (dup) {
+                resolve({ data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint "uq_payments_org_stripe_reference"' }, count: null });
+                return;
+              }
+            }
+            const created = rowsIn.map((r) => ({ id: `new-${table}-${++idSeq}`, ...r }));
+            all.push(...created);
+            resolve({ data: single ? created[0] : created, error: null, count: null });
+            return;
+          }
+          if (write.op === 'update') {
+            for (const r of matched) Object.assign(r, write.row);
+            resolve({ data: single ? matched[0] ?? null : matched, error: null, count: null });
+            return;
+          }
+          for (const r of matched) all.splice(all.indexOf(r), 1);
+          resolve({ data: null, error: null, count: null });
+          return;
+        }
+        let data = all.filter((r) => preds.every((p) => p(r)));
+        if (orderArg) {
+          const { col, asc } = orderArg;
+          data = [...data].sort((a, b) => (asc ? 1 : -1) * cmp(a[col], String(b[col])));
+        }
+        const count = wantCount ? data.length : null;
+        if (rangeArg) data = data.slice(rangeArg[0], rangeArg[1] + 1);
+        else if (limitArg != null) data = data.slice(0, limitArg);
+        if (selectArg.includes('(')) data = data.map((r) => embed(db, table, selectArg, r));
+        if (head) { resolve({ data: null, error: null, count }); return; }
+        resolve({ data: single ? data[0] ?? null : data, error: null, count });
+      } catch (e) {
+        if (reject) reject(e); else throw e;
+      }
+    };
+    return chain;
+  };
+  const rpc = (fn: string, args: Record<string, unknown>) => {
+    (db.rpcCalls ??= []).push({ fn, args });
+    return Promise.resolve({ data: db.rpcResult?.[fn] ?? null, error: null });
+  };
+  return { from, rpc, auth: { getUser: async () => ({ data: { user: { id: 'u-1' } } }) } };
+}

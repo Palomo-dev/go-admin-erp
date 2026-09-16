@@ -49,7 +49,7 @@ import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkel
 import { VentasService } from './VentasService';
 import { SaleWithDetails } from './types';
 import { formatCurrency } from '@/utils/Utils';
-import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { cn } from '@/utils/Utils';
 import { PrintService } from '@/lib/services/printService';
 import { PrintJobsService } from '@/lib/services/printJobsService';
@@ -66,6 +66,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
   const { organization } = useOrganization();
   const { toast } = useToast();
   const { formatDate, formatTime, formatPlain } = useFormatDate();
+  const { timezone } = useOrgTimezone();
   const [sale, setSale] = useState<SaleWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [eInvoiceStatus, setEInvoiceStatus] = useState<EInvoiceStatus | null>(null);
@@ -123,7 +124,9 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
       branch,
       Array.isArray((sale as any).tax_breakdown) && (sale as any).tax_breakdown.length > 0
         ? (sale as any).tax_breakdown
-        : undefined
+        : undefined,
+      undefined,
+      timezone,
     );
   };
 

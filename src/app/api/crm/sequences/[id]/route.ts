@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { updateSequence, deleteSequence, validateSequenceInput } from '@/lib/services/crm/sequenceService';
 
 function errorResponse(error: unknown, tag: string): NextResponse {
@@ -25,7 +26,7 @@ export async function PATCH(
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
     const { id } = await params;
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     const issues = validateSequenceInput(body);
     if (issues.length) {
@@ -47,11 +48,12 @@ export async function PATCH(
  * 409 si quedan inscripciones vivas.
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const ctx = await getServerOrgContext();
+    await readOrgBody(ctx, request);
     requireOrgAdmin(ctx);
     const { id } = await params;
     await deleteSequence(id, ctx.organizationId, ctx.supabase);

@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { consumeAICredits, checkAICredits } from '@/lib/services/aiCreditsService';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
+import { readOrgBody } from '@/lib/security/organizationBody';
 export const dynamic = 'force-dynamic';
 
 function getOpenAIClient(): OpenAI {
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
   const organizationId = ctx.organizationId;
 
   try {
-    const { prompt } = await request.json();
+    const { prompt } = await readOrgBody(ctx, request);
 
     if (!prompt) {
       return NextResponse.json({ error: 'El prompt es requerido' }, { status: 400 });
@@ -112,6 +113,7 @@ export async function POST(request: NextRequest) {
       tokens: completion.usage?.total_tokens || 0,
     });
   } catch (error: any) {
+    if (error instanceof OrgContextError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     console.error('Error PM Planner:', error);
 
     if (error?.status === 429 || error?.code === 'insufficient_quota') {

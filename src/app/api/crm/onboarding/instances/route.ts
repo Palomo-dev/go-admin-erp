@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { foreignOrganizationInBody } from '@/lib/security/organizationBody';
 import {
   getOnboardingInstances,
   createOnboardingInstance,
@@ -44,35 +45,45 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/crm/onboarding/instances — Crea una instancia de onboarding desde una plantilla.
- * Body: { opportunity_id, template_id }
+ * Body: { opportunity_id, template_id? } — sin `template_id` se usa la plantilla
+ * activa por defecto de la organización. Idempotente por oportunidad (200 si
+ * ya existía, 201 si se creó). La organización sale de la sesión; un body con
+ * otra organización → 403 y se registra (regla 5).
  */
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     const body = await request.json();
+    // Regla dura 5: la organización sale de la sesión; un body con otra → 403 y se registra.
+    const foreignOrg = foreignOrganizationInBody(body?.organization_id, ctx.organizationId);
+    if (foreignOrg !== null) {
+      console.warn('[onboarding/instances POST] petición con organization_id ajeno en el body', { session: ctx.organizationId, body: foreignOrg });
+      return NextResponse.json({ success: false, error: 'Organización no permitida' }, { status: 403 });
+    }
 
-    if (!body?.opportunity_id || !body?.template_id) {
+    if (!body?.opportunity_id || typeof body.opportunity_id !== 'string') {
       return NextResponse.json(
-        { success: false, error: 'Faltan campos obligatorios: opportunity_id, template_id' },
+        { success: false, error: 'Falta el campo obligatorio: opportunity_id' },
         { status: 400 }
       );
     }
+    const templateId = typeof body.template_id === 'string' && body.template_id ? body.template_id : null;
 
     const instance = await createOnboardingInstance(
       ctx.organizationId,
       body.opportunity_id,
-      body.template_id,
+      templateId,
       ctx.supabase
     );
 
     if (!instance) {
       return NextResponse.json(
-        { success: false, error: 'No se pudo crear la instancia de onboarding' },
+        { success: false, error: 'Oportunidad o plantilla no encontrada en la organización' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, data: instance }, { status: 201 });
+    return NextResponse.json({ success: true, data: instance }, { status: instance.already_existed ? 200 : 201 });
   } catch (error: unknown) {
     if (error instanceof OrgContextError) {
       return NextResponse.json(

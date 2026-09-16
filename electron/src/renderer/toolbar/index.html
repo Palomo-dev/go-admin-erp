@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:">
+  <title>Go Admin Desktop</title>
+  <link rel="stylesheet" href="toolbar.css">
+</head>
+<body>
+  <!--
+    Barra de aplicación de Go Admin Desktop.
+    Se carga por file:// desde dist/renderer/toolbar; nunca desde la web.
+    Los botones de ventana (minimizar/maximizar/cerrar) son nativos: los
+    dibuja Windows sobre la zona derecha (Window Controls Overlay).
+  -->
+  <header id="bar" class="bar" role="toolbar" aria-label="Barra de aplicación">
+    <div class="brand" aria-hidden="true">
+      <span class="brand-go">GO</span><span class="brand-admin">Admin</span>
+    </div>
+
+    <nav class="nav" aria-label="Navegación">
+      <button id="btn-back" class="icon-btn" type="button" title="Atrás (Alt+←)" aria-label="Atrás" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <button id="btn-forward" class="icon-btn" type="button" title="Adelante (Alt+→)" aria-label="Adelante" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+      <button id="btn-reload" class="icon-btn" type="button" title="Recargar (F5)" aria-label="Recargar">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      </button>
+      <button id="btn-home" class="icon-btn" type="button" title="Inicio (Alt+Inicio)" aria-label="Inicio">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>
+      </button>
+    </nav>
+
+    <div id="title" class="title" aria-live="polite"></div>
+
+    <div class="status">
+      <button id="conn" class="pill conn online" type="button" title="Conexión con el servidor. Clic para comprobar ahora." aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="conn-text">En línea</span>
+      </button>
+
+      <div id="update" class="pill update" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
+        <span id="update-text"></span>
+        <button id="update-install" class="install" type="button" hidden>Reiniciar e instalar</button>
+      </div>
+
+      <button id="btn-menu" class="icon-btn" type="button" title="Menú" aria-label="Menú de la aplicación" aria-haspopup="menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+      </button>
+    </div>
+
+    <div id="progress" class="progress" hidden aria-hidden="true"></div>
+  </header>
+
+  <script src="toolbar.js"></script>
+</body>
+</html>

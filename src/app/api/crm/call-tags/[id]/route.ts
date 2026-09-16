@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { updateCallTag, deleteCallTag } from '@/lib/services/crm/callTagService';
 
 /**
@@ -13,7 +14,7 @@ export async function PATCH(
   try {
     const ctx = await getServerOrgContext();
     const { id } = await params;
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     const tag = await updateCallTag(
       id,
@@ -53,11 +54,12 @@ export async function PATCH(
  * DELETE /api/crm/call-tags/[id] — Elimina un tag de llamada.
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const ctx = await getServerOrgContext();
+    await readOrgBody(ctx, request);
     const { id } = await params;
 
     await deleteCallTag(id, ctx.organizationId, ctx.supabase);

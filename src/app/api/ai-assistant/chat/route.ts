@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { aiAssistantService, type AssistantMessage, type AssistantContext } from '@/lib/services/aiAssistantService';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getAssistantCapabilities } from '@/lib/ai/assistant/capabilities';
 import { evaluateAction } from '@/lib/ai/assistant/actionGuard';
 import { getActionDefinition, getActionSchema, sanitizeActionFields } from '@/lib/ai/assistant/actionCatalog';
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
     const { message, conversationHistory } = body as {
       message: string;
       conversationHistory?: AssistantMessage[];
@@ -177,6 +178,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
+    if (error instanceof OrgContextError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     const message = error instanceof Error ? error.message : 'Error procesando la solicitud';
     console.error('Error en AI Assistant API:', message);
     return NextResponse.json({ error: message }, { status: 500 });

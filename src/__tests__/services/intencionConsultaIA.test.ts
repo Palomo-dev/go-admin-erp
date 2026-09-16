@@ -7,6 +7,7 @@ import {
   extraerTokens,
   normalizar,
   pareceCortesia,
+  pareceSeguimientoDeVariante,
   pareceSoporte,
   quitarDatosDeContacto,
 } from '../../../supabase/functions/_shared/ai-chat/intencionConsulta';
@@ -184,5 +185,19 @@ describe('decidirBusquedaCatalogo — la decisión completa', () => {
     expect(d.motivo).toBe('soporte');
     // Aun así se conservan los tokens, por si la organización decide buscar.
     expect(d.tokens).toContain('pocillos');
+  });
+});
+
+describe('pareceSeguimientoDeVariante', () => {
+  it('reconoce preguntas por talla, color, medida o presentacion de lo ya mostrado', () => {
+    for (const t of ['Que tienes talla 40?', 'O talla 39', 'en 39?', 'y el 8.5?', 'hay en rojo?', 'el de 100 ml', 'y en XL?', 'tienen tamaño grande', 'de cuantos litros es']) {
+      expect(pareceSeguimientoDeVariante(t)).toBe(true);
+    }
+  });
+
+  it('no confunde una consulta nueva con un seguimiento', () => {
+    for (const t of ['Tiene zapatillas diesel?', 'hola buenas tardes', 'tienen armarios de madera para la sala', 'quiero ver neveras samsung', 'Adidas?']) {
+      expect(pareceSeguimientoDeVariante(t)).toBe(false);
+    }
   });
 });

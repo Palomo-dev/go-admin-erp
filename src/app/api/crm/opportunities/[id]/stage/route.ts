@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { changeStage } from '@/lib/services/crm/opportunityStageService';
 import { canOverrideStageGate, STAGE_MANAGER_REQUIRED } from '@/lib/services/crm/stagePermissions';
 
@@ -37,7 +38,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   try {
     const ctx = await getServerOrgContext(request);
     const { id } = await params;
-    const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+    const parsed = bodySchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });
     }

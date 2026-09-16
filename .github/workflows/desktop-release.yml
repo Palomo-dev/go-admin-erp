@@ -1,0 +1,140 @@
+name: Desktop Release
+
+# Publica Go Admin Desktop (Windows) al crear un tag vX.Y.Z.
+#
+# 1. Compila print-agent (electron/src/agent es una copia generada de
+#    print-agent/src por sync-agent.js, que corre dentro de `npm run build`).
+# 2. Empaqueta con electron-builder (NSIS + .blockmap + latest.yml).
+# 3. Firma si hay credenciales en los secrets: .pfx (CSC_LINK / CSC_KEY_PASSWORD)
+#    o Azure Trusted Signing (AZURE_*). Sin secrets, publica sin firmar.
+# 4. Publica en Palomo-dev/go-admin-desktop-releases (repo público de releases)
+#    y, mientras queden instalaciones 0.1.x apuntando al repo de código, también
+#    en Palomo-dev/go-admin-erp (ver electron/electron-builder.yml → publish).
+#
+# Secrets esperados (Settings → Secrets → Actions):
+#   DESKTOP_RELEASES_TOKEN  PAT con permiso `contents: write` sobre
+#                           go-admin-desktop-releases (GITHUB_TOKEN no alcanza
+#                           a otro repositorio).
+#   CSC_LINK, CSC_KEY_PASSWORD                       (certificado .pfx, opcional)
+#   AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET,
+#   AZURE_TRUSTED_SIGNING_ENDPOINT, AZURE_TRUSTED_SIGNING_ACCOUNT,
+#   AZURE_TRUSTED_SIGNING_PROFILE                    (Trusted Signing, opcional)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, sign & publish (Windows)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      # `secrets` no se puede usar en `if:` de un paso; se traduce aquí.
+      HAY_AZURE_SIGNING: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT != '' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            print-agent/package-lock.json
+            electron/package-lock.json
+
+      - name: Verificar que el tag coincide con electron/package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          $tag = "${{ github.ref_name }}".TrimStart('v')
+          $pkg = (Get-Content electron/package.json | ConvertFrom-Json).version
+          if ($tag -ne $pkg) {
+            Write-Error "El tag v$tag no coincide con electron/package.json ($pkg). Sube la versión antes de etiquetar."
+            exit 1
+          }
+
+      - name: Instalar y compilar print-agent
+        working-directory: print-agent
+        run: |
+          npm ci --omit=optional
+          npm run build
+
+      - name: Instalar dependencias de electron
+        working-directory: electron
+        run: npm ci
+
+      # Trusted Signing: la librería (dlib) viene en el paquete NuGet
+      # Microsoft.Trusted.Signing.Client. Solo se descarga si hay credenciales.
+      - name: Preparar Azure Trusted Signing
+        if: env.HAY_AZURE_SIGNING == 'true'
+        run: |
+          nuget install Microsoft.Trusted.Signing.Client -OutputDirectory $env:RUNNER_TEMP\tsc -ExcludeVersion
+          $dlib = Get-ChildItem -Path "$env:RUNNER_TEMP\tsc" -Recurse -Filter Azure.CodeSigning.Dlib.dll |
+            Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1
+          if (-not $dlib) { Write-Error 'No se encontró Azure.CodeSigning.Dlib.dll'; exit 1 }
+          "AZURE_CODESIGNING_DLIB=$($dlib.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Empaquetar (electron-builder)
+        working-directory: electron
+        env:
+          # Publicación: electron-builder sube el .exe, el .blockmap y latest.yml
+          # al repo configurado en electron-builder.yml (go-admin-desktop-releases).
+          GH_TOKEN: ${{ secrets.DESKTOP_RELEASES_TOKEN }}
+          # Firma .pfx (electron-builder la aplica sola si existen estas dos)
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # Firma Azure Trusted Signing (electron-builder.config.js → build/sign-azure.js)
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TRUSTED_SIGNING_ENDPOINT: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+          AZURE_TRUSTED_SIGNING_ACCOUNT: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT }}
+          AZURE_TRUSTED_SIGNING_PROFILE: ${{ secrets.AZURE_TRUSTED_SIGNING_PROFILE }}
+        run: |
+          $publish = if ("${{ github.ref }}".StartsWith('refs/tags/v')) { 'always' } else { 'never' }
+          npm run build
+          npx electron-builder --win --publish $publish
+
+      - name: Verificar artefactos
+        working-directory: electron/release
+        run: |
+          Get-ChildItem -Filter 'GoAdminERP-Setup-*.exe' | ForEach-Object { Write-Host $_.Name ($_.Length / 1MB).ToString('0.0') 'MB' }
+          if (-not (Test-Path 'latest.yml')) { Write-Error 'Falta latest.yml'; exit 1 }
+          if (-not (Get-ChildItem -Filter '*.blockmap')) { Write-Error 'Falta el .blockmap (actualizaciones diferenciales)'; exit 1 }
+          if (-not (Test-Path 'win-unpacked/resources/app.asar.unpacked/build/icon.ico')) { Write-Error 'Falta build/icon.ico desempaquetado'; exit 1 }
+          Get-Content latest.yml
+
+      # Transición: las instalaciones 0.1.x buscan actualizaciones en el repo de
+      # código. Se sube la misma release ahí hasta que todas hayan migrado.
+      - name: Publicar también en el repo de código (transición 0.1.x)
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: electron/release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $assets = Get-ChildItem | Where-Object { $_.Name -match '^GoAdminERP-Setup-.*\.(exe|exe\.blockmap)$' -or $_.Name -eq 'latest.yml' } | ForEach-Object { $_.FullName }
+          gh release view $tag --repo ${{ github.repository }} 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo ${{ github.repository }} --title "Go Admin Desktop $tag" --notes "Publicado desde desktop-release.yml. Release canónica: https://github.com/Palomo-dev/go-admin-desktop-releases/releases/tag/$tag" $assets
+          } else {
+            gh release upload $tag --repo ${{ github.repository }} --clobber $assets
+          }
+
+      - name: Guardar artefactos del workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-admin-desktop-${{ github.ref_name }}
+          path: |
+            electron/release/GoAdminERP-Setup-*.exe
+            electron/release/GoAdminERP-Setup-*.exe.blockmap
+            electron/release/latest.yml
+          if-no-files-found: error

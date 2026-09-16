@@ -2,7 +2,7 @@
 
 import { useState, type MouseEvent, type PointerEvent, type ReactElement } from 'react';
 import dynamic from 'next/dynamic';
-import { Phone, Mail, MessageCircle, Calendar, CheckSquare, StickyNote, ChevronDown, Loader2 } from 'lucide-react';
+import { Phone, Mail, MessageCircle, Calendar, CheckSquare, StickyNote, ChevronDown, Loader2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -21,6 +21,7 @@ import {
   type CallMode,
   type QuickActionKind,
 } from './quickActionsConfig';
+import { useOrgDefaultCountry } from './useOrgDefaultCountry';
 
 /**
  * QuickActionsBar — Llamar (navegador | mi celular | agente IA), Email, WhatsApp,
@@ -60,7 +61,7 @@ function useOptionalSoftphone() {
 }
 
 const ICONS: Record<QuickActionKind, typeof Phone> = {
-  call: Phone, email: Mail, whatsapp: MessageCircle, meeting: Calendar, task: CheckSquare, note: StickyNote,
+  call: Phone, email: Mail, whatsapp: MessageCircle, meeting: Calendar, task: CheckSquare, note: StickyNote, proposal: FileText,
 };
 
 const COLORS: Record<QuickActionKind, string> = {
@@ -70,6 +71,7 @@ const COLORS: Record<QuickActionKind, string> = {
   meeting: 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30',
   task: 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30',
   note: 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30',
+  proposal: 'text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30',
 };
 
 type OpenDialog = 'email' | 'whatsapp' | 'meeting' | 'task' | 'note' | 'mobile' | null;
@@ -78,6 +80,9 @@ export function QuickActionsBar({
   variant, opportunityId, customerId, customer, opportunityName, actions, onActionCompleted, className,
 }: QuickActionsBarProps) {
   const softphone = useOptionalSoftphone();
+  // F16 r5 · T-3: indicativo de la organización para los teléfonos nacionales
+  // (antes siempre '57'). `undefined` mientras carga → último recurso.
+  const defaultCountry = useOrgDefaultCountry() ?? undefined;
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
   const [calling, setCalling] = useState(false);
 
@@ -99,7 +104,7 @@ export function QuickActionsBar({
   };
 
   const handleCall = async (mode: CallMode) => {
-    const to = normalizePhone(customer?.phone);
+    const to = normalizePhone(customer?.phone, defaultCountry);
     if (mode === 'browser') {
       if (!softphone || !to) return;
       setCalling(true);
@@ -200,6 +205,8 @@ export function QuickActionsBar({
                     aria-label={item.label}
                     onClick={(e) => {
                       stop(e);
+                      // F10: «Propuesta» no abre diálogo aquí: el contenedor lleva a la pestaña Cierre.
+                      if (item.kind === 'proposal') { onActionCompleted?.('proposal'); return; }
                       setOpenDialog(item.kind as OpenDialog);
                     }}
                   >
@@ -229,7 +236,7 @@ export function QuickActionsBar({
         <QuickNoteDialog open onOpenChange={(o) => !o && setOpenDialog(null)} relatedType={opportunityId ? 'opportunity' : 'customer'} relatedId={(opportunityId ?? resolvedCustomerId) as string} onCreated={(r) => done('note', r)} />
       )}
       {openDialog === 'mobile' && (
-        <MobileCallDialog open onOpenChange={(o) => !o && setOpenDialog(null)} opportunityId={opportunityId} customerId={resolvedCustomerId} targetPhone={normalizePhone(customer?.phone) ?? ''} customerName={customer?.full_name ?? undefined} onStarted={(r) => done('call', r)} />
+        <MobileCallDialog open onOpenChange={(o) => !o && setOpenDialog(null)} opportunityId={opportunityId} customerId={resolvedCustomerId} targetPhone={normalizePhone(customer?.phone, defaultCountry) ?? ''} customerName={customer?.full_name ?? undefined} onStarted={(r) => done('call', r)} />
       )}
     </TooltipProvider>
   );

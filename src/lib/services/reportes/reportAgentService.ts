@@ -8,7 +8,7 @@ import { checkAICredits, estimateCredits, consumeAICredits } from '../aiCreditsS
 import { getReportesVisibles, getReporteById } from './reportesCatalogo';
 import { ejecutarReporte } from './reportesEngine';
 import { resolverPeriodo } from './periodosService';
-import type { PeriodoCierre, TipoCierre, ReportData } from './types';
+import type { PeriodoCierre, TipoCierre, ReportData, ReportesClient } from './types';
 
 // ---- Tipos ----
 
@@ -155,6 +155,13 @@ class ReportAgentService {
     context: ReportAgentContext,
     periodoActual: PeriodoCierre,
     modulosActivos: string[],
+    /**
+     * F0-SEC r3 (tester r2, fallo 3): cliente de Supabase con la sesión del
+     * usuario. Este servicio corre en un route handler, donde el cliente
+     * browser no tiene sesión: sin este parámetro las RPC `fn_reporte_*`
+     * correrían como `anon`, que la migración `crm_v4_f00_40` cierra.
+     */
+    client?: ReportesClient,
   ): Promise<ReportAgentResponse> {
     // 1. Verificar créditos
     const creditsCheck = await checkAICredits(context.organizationId);
@@ -231,7 +238,7 @@ class ReportAgentService {
 
       // Ejecutar reporte
       try {
-        reportData = await ejecutarReporte(block.reportId, context.organizationId, periodo, context.branchId);
+        reportData = await ejecutarReporte(block.reportId, context.organizationId, periodo, context.branchId, client);
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : 'Error desconocido';
         return {

@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { getOrganizationId } from '@/lib/hooks/useOrganization'
+import { avisarCambioCatalogo } from '@/lib/services/website/avisarCambioCatalogo'
 
 import { supabase } from '@/lib/supabase/config'
 import { Form } from '@/components/ui/form'
@@ -899,23 +900,21 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
                     });
                   }
                 } else if (Number(stockItem.qty_on_hand) > 0) {
-                  await supabase.from('stock_levels').insert({
-                    product_id: variant.id,
-                    branch_id: stockItem.branch_id,
-                    qty_on_hand: stockItem.qty_on_hand,
+                  // Registrar entrada de stock atómicamente vía RPC
+                  const { error: rpcError } = await supabase.rpc('fn_register_stock_entry', {
+                    p_entries: [{
+                      organization_id,
+                      branch_id: stockItem.branch_id,
+                      product_id: variant.id,
+                      qty: Number(stockItem.qty_on_hand),
+                      unit_cost: Number(variant.cost) || 0,
+                      source: 'initial',
+                      source_id: null,
+                      note: 'Stock inicial desde edición',
+                    }],
                   });
 
-                  await supabase.from('stock_movements').insert({
-                    organization_id,
-                    branch_id: stockItem.branch_id,
-                    product_id: variant.id,
-                    direction: 'in',
-                    qty: Number(stockItem.qty_on_hand),
-                    unit_cost: Number(variant.cost) || 0,
-                    source: 'initial',
-                    source_id: null,
-                    note: `Stock inicial desde edición`,
-                  });
+                  if (rpcError) throw rpcError;
                 }
               }
             }
@@ -969,25 +968,25 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
 
             // Crear stock inicial
             if (variant.stock && Array.isArray(variant.stock)) {
-              for (const stockItem of variant.stock) {
-                if (!stockItem.branch_id || Number(stockItem.qty_on_hand) <= 0) continue;
-                await supabase.from('stock_levels').insert({
-                  product_id: newVariant.id,
-                  branch_id: stockItem.branch_id,
-                  qty_on_hand: stockItem.qty_on_hand,
-                });
-
-                await supabase.from('stock_movements').insert({
+              const newVariantEntries = variant.stock
+                .filter((stockItem: { branch_id?: number | null; qty_on_hand?: number | string | null }) => stockItem.branch_id && Number(stockItem.qty_on_hand) > 0)
+                .map((stockItem: { branch_id?: number | null; qty_on_hand?: number | string | null }) => ({
                   organization_id,
                   branch_id: stockItem.branch_id,
                   product_id: newVariant.id,
-                  direction: 'in',
                   qty: Number(stockItem.qty_on_hand),
                   unit_cost: Number(variant.cost) || 0,
                   source: 'initial',
                   source_id: null,
                   note: `Stock inicial variante ${variant.sku}`,
+                }));
+
+              if (newVariantEntries.length > 0) {
+                const { error: rpcError } = await supabase.rpc('fn_register_stock_entry', {
+                  p_entries: newVariantEntries,
                 });
+
+                if (rpcError) throw rpcError;
               }
             }
           }
@@ -1033,6 +1032,8 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
       // Mostrar mensaje de éxito
       loadingToast.dismiss();
       toastSuccess("Éxito", "Producto actualizado correctamente");
+      // La tienda web cachea el catálogo 30 s: que el cambio se vea ya.
+      avisarCambioCatalogo();
       
       // Redireccionar a los detalles del producto usando UUID
       setTimeout(() => {
@@ -1146,6 +1147,22 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
                           toast({
                             title: "Datos incompletos",
                             description: "Por favor complete los campos obligatorios (Nombre, SKU y Unidad)",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+
+                        // Validar costo cuando hay stock inicial
+                        const variantsWithStock = (formData.variants || []).filter(
+                          (v: any) => v.stock && v.stock.some((s: any) => Number(s.qty_on_hand) > 0)
+                        );
+                        const variantsWithoutCost = variantsWithStock.filter(
+                          (v: any) => !v.cost || Number(v.cost) <= 0
+                        );
+                        if (variantsWithoutCost.length > 0) {
+                          toast({
+                            title: "Error de validación",
+                            description: `Hay ${variantsWithoutCost.length} variante(s) con stock pero sin costo. El costo es obligatorio cuando hay cantidad en inventario.`,
                             variant: "destructive"
                           });
                           return;

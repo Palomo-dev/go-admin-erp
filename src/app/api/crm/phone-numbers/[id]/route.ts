@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   updatePhoneNumber,
   deletePhoneNumber,
@@ -39,7 +40,7 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const raw = (readOrgBody(ctx, await request.json().catch(() => ({})))) as Record<string, unknown>;
     // F3: solo label/assigned_user_id/is_primary/is_active (e164/provider_sid vienen de Twilio).
     const body: PhoneNumberUpdateInput = {};
     for (const k of ALLOWED_PATCH_KEYS) if (raw[k] !== undefined) (body as Record<string, unknown>)[k] = raw[k];
@@ -80,6 +81,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, data: phoneNumber, webhooks_synced: webhooksSynced }, { status: 200 });
   } catch (error: unknown) {
+    if (error instanceof OrgContextError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     const message = error instanceof Error ? error.message : 'Error desconocido';
     console.error('[CRM Phone Numbers] PATCH error:', message);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
@@ -90,12 +92,13 @@ export async function PATCH(
  * DELETE /api/crm/phone-numbers/[id] — Elimina un número telefónico.
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   let ctx;
   try {
     ctx = await getServerOrgContext();
+    await readOrgBody(ctx, request);
   } catch (err) {
     if (err instanceof OrgContextError) {
       return NextResponse.json(

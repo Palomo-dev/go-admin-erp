@@ -4,7 +4,13 @@
  * Estrategias en cascada:
  *   1. Desktop IPC directo — si la app corre en Electron, envía el comando
  *      ESC/POS inmediatamente vía IPC al proceso principal, que lo reenvía
- *      al agente local. Es la opción más rápida (sin round-trip a Supabase).
+ *      al agente local. Funciona sin internet:
+ *        1a. `PrintJobsService.enqueueOpenCashDrawer` — en Desktop imprime por
+ *            `printRaw` contra la(s) impresora(s) `cashier` configuradas
+ *            (caché por sucursal si no hay red) y deja el `print_jobs` como
+ *            auditoría. Es el mismo `sendCashDrawerCommand` que usa el agente.
+ *        1b. `bridge.openCashDrawer()` — impresora por defecto de Windows,
+ *            para instalaciones sin impresora `cashier` asignada.
  *   2. WebUSB — si el navegador soporta WebUSB y hay una impresora USB
  *      conectada, envía el comando directamente desde el browser.
  *   3. Print Job (fallback) — encola un `open_cash_drawer` en `print_jobs`
@@ -38,7 +44,10 @@ class CashDrawerService {
       if (mobileResult.success) return this.withHaptic(mobileResult);
     }
 
-    // 1. Desktop IPC directo
+    // 1. Desktop IPC directo (1a impresora cashier configurada, 1b default)
+    const desktopPrinterResult = await this.tryDesktopConfiguredPrinter(branchId);
+    if (desktopPrinterResult.success) return this.withHaptic(desktopPrinterResult);
+
     const desktopResult = await this.tryDesktopIPC();
     if (desktopResult.success) return this.withHaptic(desktopResult);
 
@@ -46,7 +55,11 @@ class CashDrawerService {
     const webusbResult = await this.tryWebUSB();
     if (webusbResult.success) return this.withHaptic(webusbResult);
 
-    // 3. Print Job fallback
+    // 3. Print Job fallback. Si 1a ya dejó el job `pending` (el agente local no
+    // respondió), no se encola otro: sería un segundo `open_cash_drawer`.
+    if (desktopPrinterResult.queued) {
+      return this.withHaptic({ success: true, strategy: 'print_job' });
+    }
     const printJobResult = await this.tryPrintJob(branchId);
     if (printJobResult.success) return this.withHaptic(printJobResult);
 
@@ -106,7 +119,38 @@ class CashDrawerService {
   }
 
   /**
-   * Estrategia 1: Electron Desktop IPC.
+   * Estrategia 1a: Electron Desktop, impresora `cashier` configurada.
+   *
+   * No duplica la apertura: delega en `PrintJobsService.enqueueOpenCashDrawer`,
+   * que en Desktop imprime primero por `printRaw` y registra la auditoría en
+   * `print_jobs` sin bloquear. Solo cuenta como éxito si el comando salió por
+   * el agente local (`printedLocally > 0`); si el job quedó `pending` porque el
+   * agente no respondió, se sigue con las demás estrategias (y ese `pending`
+   * lo imprimirá el agente cuando vuelva, como siempre).
+   */
+  private static async tryDesktopConfiguredPrinter(
+    branchId: number,
+  ): Promise<CashDrawerResult & { queued?: boolean }> {
+    const bridge = getDesktopBridge();
+    if (!bridge?.printRaw) {
+      return { success: false, strategy: 'desktop_ipc', error: 'Bridge no disponible' };
+    }
+    try {
+      const { enqueued, printedLocally } = await PrintJobsService.enqueueOpenCashDrawer(branchId);
+      if (printedLocally > 0) return { success: true, strategy: 'desktop_ipc' };
+      return {
+        success: false,
+        strategy: 'desktop_ipc',
+        error: enqueued > 0 ? 'El agente local no respondió; job pendiente en print_jobs' : 'Sin impresora cashier configurada',
+        queued: enqueued > 0,
+      };
+    } catch (err: any) {
+      return { success: false, strategy: 'desktop_ipc', error: err?.message || 'Error abriendo cajón por el agente local' };
+    }
+  }
+
+  /**
+   * Estrategia 1b: Electron Desktop IPC con la impresora por defecto del sistema.
    * Envía el comando directamente al agente local vía IPC sin round-trip a Supabase.
    */
   private static async tryDesktopIPC(): Promise<CashDrawerResult> {

@@ -21,6 +21,7 @@ import {
   MANDATORY_TOOLS,
   type ChatToolDefinition,
 } from '@/lib/services/crm/voiceAgentTools';
+import { recordingEnabledForCall } from '@/lib/services/crm/consentService';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -242,11 +243,13 @@ export async function buildRuntimeConfig(
   let customerId: string | null = null;
   let opportunityId: string | null = null;
   let stageAgentId: string | null = null;
+  /** Fila `calls` enlazada: la ÚNICA fuente de verdad de si esta llamada graba (F-2). */
+  let consentCallId: string | null = null;
 
   if (params.callId) {
     const vacRes = await supabase
       .from('voice_agent_calls')
-      .select('id, customer_id, opportunity_id, stage_agent_id')
+      .select('id, customer_id, opportunity_id, stage_agent_id, call_id')
       .eq('id', params.callId)
       .eq('organization_id', orgId)
       .eq('voice_agent_id', agent.id)
@@ -257,12 +260,14 @@ export async function buildRuntimeConfig(
       customer_id: string | null;
       opportunity_id: string | null;
       stage_agent_id: string | null;
+      call_id: string | null;
     } | null;
     if (vac) {
       voiceAgentCallId = vac.id;
       customerId = vac.customer_id;
       opportunityId = vac.opportunity_id;
       stageAgentId = vac.stage_agent_id;
+      consentCallId = vac.call_id ?? null;
     }
   }
 
@@ -298,7 +303,19 @@ export async function buildRuntimeConfig(
     .maybeSingle();
   if (commRes.error) throw new AgentRuntimeError('db_error', `comm_settings: ${commRes.error.message}`);
   const commRow = commRes.data as { voice_recording_enabled?: boolean; voice_consent_message?: string } | null;
-  const recordingEnabled = commRow?.voice_recording_enabled !== false;
+  // F-2 (ronda 7 de voz): con fila `calls` enlazada manda ESA fila
+  // (`recording_enabled`, fijada al marcar por `voiceAgentService`), la misma
+  // que lee `twiml/ai-agent` para decidir `<Start><Recording>`. Releer
+  // `comm_settings` al contestar era la segunda fuente de verdad que N-1 cerró
+  // en el puente: si la org encendía la grabación entre marcar y contestar, el
+  // prompt hablaba de una grabación que la fila no autorizaba.
+  // Sin fila enlazada (llamadas sin `callId`) NO se graba (H-2, ronda 8):
+  // la ruta `twiml/ai-agent` no emite `<Start><Recording>` sin fila (V-2), así
+  // que caer a `comm_settings` hacía que el prompt dijera «confirmas que la
+  // llamada se está grabando» en una llamada que no se graba. La única
+  // fuente de verdad es la fila `calls`; sin ella, fallo cerrado. N-9.2 de
+  // `f3f5Round6Consent` codificaba el fallback como correcto; se corrigió.
+  const recordingEnabled = consentCallId ? await recordingEnabledForCall(consentCallId, orgId, supabase) : false;
   const consentMessage =
     commRow?.voice_consent_message ||
     'Esta llamada será grabada con fines de calidad y quedará registrada en nuestro sistema.';

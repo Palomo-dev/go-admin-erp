@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { canRetryJobs, JobRetryError, retryJob } from '@/lib/services/crm/jobsService';
 
 /**
  * POST /api/crm/jobs/[id]/retry — re-encola un job `dead|failed` (FASE-00 §4.1).
  *
- * Auth: sesión + admin de la org (`isOrgAdminContext`: super admin o rol 1/2;
- * tester r1 F-6). El job debe pertenecer a la org de sesión (404 si no).
+ * Auth: sesión + `canRetryJobs` (r4): super admin, rol 1/2 o cargo/rol con
+ * `admin.full_access` resuelto en la BD (`hasOrgAdminOrPermission` sobre
+ * `check_user_permission`, fail-closed). Manager (5) NO reintenta.
+ * El job debe pertenecer a la org de sesión (404 si no).
  * 409 si no está en dead|failed.
  * Idempotente: reutiliza el `dedupe_key` original (o `job:{id}:retry:{attempts}`).
  */
@@ -18,7 +21,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await getServerOrgContext(request);
-    if (!canRetryJobs(ctx)) {
+    await readOrgBody(ctx, request);
+    if (!(await canRetryJobs(ctx))) {
       return NextResponse.json({ success: false, error: 'Requiere rol administrador' }, { status: 403 });
     }
 

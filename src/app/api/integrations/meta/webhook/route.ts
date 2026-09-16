@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { INTEGRATION_CONNECTION_USABLE_STATUS } from '@/lib/integrations/connectionStatus';
 import { metaMarketingService } from '@/lib/services/integrations/meta';
 
 // GET: Verificación del webhook (Facebook envía challenge)
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
           integration_providers!inner ( code )
         )
       `)
-      .eq('status', 'active');
+      .eq('status', INTEGRATION_CONNECTION_USABLE_STATUS);
 
     const metaConnections = (connections || []).filter((c: Record<string, unknown>) => {
       const connectors = c.integration_connectors as Record<string, unknown> | undefined;

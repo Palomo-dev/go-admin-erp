@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { checkRateLimit } from '@/lib/security/rateLimit';
 
 /**
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = (await request.json()) as { actionId?: unknown };
+    const body = (await readOrgBody(ctx, request)) as { actionId?: unknown };
     const actionId = typeof body.actionId === 'string' ? body.actionId : null;
     if (!actionId) {
       return NextResponse.json(
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
     // hubiera ejecutado o caducado. Cerrar la tarjeta es la respuesta correcta.
     return NextResponse.json({ success: true, rejected: (data?.length ?? 0) > 0 });
   } catch (error: unknown) {
+    if (error instanceof OrgContextError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     const message = error instanceof Error ? error.message : 'Error procesando la solicitud';
     console.error('Error rechazando acción del asistente:', message);
     return NextResponse.json({ success: false, message }, { status: 500 });

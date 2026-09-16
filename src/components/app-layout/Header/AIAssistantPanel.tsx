@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, Sparkles, Trash2, PanelRightClose, X, Wrench, Undo2, History } from 'lucide-react';
+import { Bot, Sparkles, Trash2, PanelRightClose, X, Wrench, Undo2, History, Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
@@ -58,6 +58,84 @@ export default function AIAssistantPanel({
   const [isExecutingAction, setIsExecutingAction] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+
+  // ── Respuesta en audio (F5, R2) ──────────────────────────────────────────
+  // Preferencia del usuario (localStorage) × disponibilidad de la organización
+  // (`ai_assistant_settings.tts_enabled`, que se descubre al primer intento).
+  const [speakReplies, setSpeakReplies] = useState(false);
+  const [ttsUnavailable, setTtsUnavailable] = useState<string | null>(null);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    try {
+      setSpeakReplies(window.localStorage.getItem('go-assistant:tts') === '1');
+    } catch {
+      /* sin localStorage, sin preferencia */
+    }
+  }, []);
+
+  const stopSpeaking = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      if (audioRef.current.src.startsWith('blob:')) URL.revokeObjectURL(audioRef.current.src);
+      audioRef.current = null;
+    }
+    setSpeakingId(null);
+  }, []);
+
+  /** Lee un mensaje en voz alta. Se cobra en el servidor, solo si la org lo activó. */
+  const speak = useCallback(
+    async (messageId: string, text: string) => {
+      stopSpeaking();
+      if (!text.trim()) return;
+      setSpeakingId(messageId);
+      try {
+        const res = await fetch('/api/ai-assistant/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          if (err.code === 'TTS_DISABLED' || err.code === 'TTS_NOT_CONFIGURED') {
+            setTtsUnavailable(err.error || 'La respuesta en audio no está disponible.');
+            setSpeakReplies(false);
+            try {
+              window.localStorage.setItem('go-assistant:tts', '0');
+            } catch {
+              /* nada */
+            }
+          }
+          setSpeakingId(null);
+          return;
+        }
+        const blob = await res.blob();
+        const audio = new Audio(URL.createObjectURL(blob));
+        audioRef.current = audio;
+        audio.onended = () => stopSpeaking();
+        audio.onerror = () => stopSpeaking();
+        await audio.play();
+      } catch (error) {
+        console.error('[GO Assistant] No se pudo reproducir la respuesta:', error);
+        setSpeakingId(null);
+      }
+    },
+    [stopSpeaking]
+  );
+
+  const toggleSpeakReplies = () => {
+    const next = !speakReplies;
+    setSpeakReplies(next);
+    if (!next) stopSpeaking();
+    try {
+      window.localStorage.setItem('go-assistant:tts', next ? '1' : '0');
+    } catch {
+      /* nada */
+    }
+  };
+
+  useEffect(() => () => stopSpeaking(), [stopSpeaking]);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1023px)');
@@ -179,7 +257,11 @@ export default function AIAssistantPanel({
   );
 
   const sendMessage = async (content: string) => {
-    if (!content.trim() || isLoading) return;
+    // Con adjunto y sin texto se manda igual: "aquí tienes la factura" está
+    // implícito. El modelo recibe los ids y sabe qué hacer.
+    const texto = content.trim() || (attachments.length > 0 ? 'Lee este documento.' : '');
+    if (!texto || isLoading) return;
+    content = texto;
 
     const userMessage: AssistantMessage = {
       id: `user-${Date.now()}`,
@@ -204,11 +286,45 @@ export default function AIAssistantPanel({
     };
 
     try {
+      // Los adjuntos se suben ANTES de hablar con el modelo: el modelo recibe
+      // sus ids y decide si llama a `leer_documento`. Si alguno falla, se avisa
+      // y se sigue con los que sí subieron — un archivo corrupto no debe
+      // bloquear la pregunta.
+      const attachmentIds: string[] = [];
+      const pendientes = attachments;
+      for (const a of pendientes) {
+        try {
+          const form = new FormData();
+          form.append('file', a.file, a.file.name);
+          if (conversationId) form.append('conversation_id', conversationId);
+          const res = await fetch('/api/ai-assistant/attachments', { method: 'POST', body: form });
+          const data = await res.json();
+          if (res.ok && typeof data.id === 'string') {
+            attachmentIds.push(data.id);
+          } else {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `attach-err-${Date.now()}`,
+                role: 'assistant',
+                content: `⚠️ No pude subir «${a.file.name}»: ${data.error || 'error desconocido'}.`,
+                timestamp: new Date(),
+              },
+            ]);
+          }
+        } catch (uploadError) {
+          console.error('Error subiendo adjunto:', uploadError);
+        }
+      }
+      // Se limpian aunque alguno fallara: el usuario ya vio el aviso.
+      for (const a of pendientes) if (a.previewUrl) URL.revokeObjectURL(a.previewUrl);
+      setAttachments([]);
+
       const controller = new AbortController();
       abortRef.current = controller;
 
       const result = await streamAssistant(
-        { message: content, conversationId, context: clientContext() },
+        { message: content, conversationId, context: clientContext(), attachmentIds },
         {
           onToken: (delta) => setStreamingText((prev) => prev + delta),
           // Los pasos de herramienta no son adorno: convierten la espera en
@@ -239,10 +355,14 @@ export default function AIAssistantPanel({
 
       const finalText = result.content || captured.error?.message || '';
       if (finalText) {
+        const assistantId = `assistant-${Date.now()}`;
         setMessages((prev) => [
           ...prev,
-          { id: `assistant-${Date.now()}`, role: 'assistant', content: finalText, timestamp: new Date() },
+          { id: assistantId, role: 'assistant', content: finalText, timestamp: new Date() },
         ]);
+        // R2: la respuesta también en audio, si el usuario lo pidió. No se
+        // lee un error del sistema en voz alta.
+        if (speakReplies && result.content && !captured.error) void speak(assistantId, result.content);
       }
 
       if (captured.action) {
@@ -528,6 +648,25 @@ export default function AIAssistantPanel({
         
         <div className="flex items-center gap-1 flex-shrink-0 ml-2">
           <button
+            onClick={toggleSpeakReplies}
+            className={cn(
+              'flex items-center justify-center h-8 w-8 rounded-full text-white transition-colors',
+              speakReplies ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-700 hover:bg-blue-800'
+            )}
+            title={
+              ttsUnavailable
+                ? ttsUnavailable
+                : speakReplies
+                  ? 'Responder en audio: activado'
+                  : 'Responder en audio'
+            }
+            aria-label="Responder en audio"
+            aria-pressed={speakReplies}
+            disabled={Boolean(ttsUnavailable)}
+          >
+            {speakReplies ? <Volume2 size={14} /> : <VolumeX size={14} />}
+          </button>
+          <button
             onClick={() => setShowHistory((v) => !v)}
             className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-700 text-white hover:bg-blue-800 transition-colors"
             title="Conversaciones anteriores"
@@ -620,6 +759,24 @@ export default function AIAssistantPanel({
                     <MarkdownRenderer content={message.content} />
                   ) : (
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  )}
+                  {message.role === 'assistant' && !ttsUnavailable && message.content.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => (speakingId === message.id ? stopSpeaking() : void speak(message.id, message.content))}
+                      className="mt-1.5 flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                      aria-label={speakingId === message.id ? 'Detener lectura' : 'Escuchar respuesta'}
+                    >
+                      {speakingId === message.id ? (
+                        <>
+                          <Loader2 size={11} className="animate-spin" aria-hidden="true" /> Leyendo… (tocar para parar)
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 size={11} aria-hidden="true" /> Escuchar
+                        </>
+                      )}
+                    </button>
                   )}
                 </div>
               </div>
@@ -720,9 +877,7 @@ export default function AIAssistantPanel({
         attachments={attachments}
         onAttach={handleAttach}
         onRemoveAttachment={handleRemoveAttachment}
-        // Los adjuntos se recogen pero todavia no se leen: la extraccion de
-        // facturas es la Fase 4. Se avisa en vez de aceptarlos en silencio.
-        attachmentsEnabled={false}
+        attachmentsEnabled={true}
       />
 
       <div className="px-4 pb-2 bg-white dark:bg-gray-900 flex-shrink-0">

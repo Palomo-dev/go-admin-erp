@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { withWhatsAppRoute, readJson } from '@/lib/services/crm/whatsapp/http';
+import { withWhatsAppRoute } from '@/lib/services/crm/whatsapp/http';
 import { sendWhatsApp } from '@/lib/services/crm/whatsapp/outboundService';
 import { parseWith, zReplyBody } from '@/lib/services/crm/whatsapp/schemas';
 
+import { readOrgBody } from '@/lib/security/organizationBody';
 /**
  * POST /api/crm/whatsapp/reply — respuesta inline en un hilo existente
  * (WhatsAppThreadPreview / WhatsAppEntry). Body: { conversationId, text, opportunityId? }.
@@ -11,7 +12,7 @@ import { parseWith, zReplyBody } from '@/lib/services/crm/whatsapp/schemas';
 export const runtime = 'nodejs';
 
 export const POST = withWhatsAppRoute(async (ctx, req) => {
-  const b = parseWith(zReplyBody, await readJson<unknown>(req));
+  const b = parseWith(zReplyBody, await readOrgBody<unknown>(ctx, req));
   const { data: conv } = await ctx.supabase.from('conversations').select('id, channel_id').eq('id', b.conversationId).eq('organization_id', ctx.organizationId).maybeSingle();
   if (!conv) return NextResponse.json({ error: 'Conversación no encontrada', code: 'NOT_FOUND' }, { status: 404 });
   const r = await sendWhatsApp({

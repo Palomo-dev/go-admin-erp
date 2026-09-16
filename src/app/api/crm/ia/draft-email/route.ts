@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server';
-import { emailErrorResponse, getServerOrgContext, ok, readJson } from '@/lib/services/crm/email/http';
+import { emailErrorResponse, getServerOrgContext, ok } from '@/lib/services/crm/email/http';
 import { draftEmail, type DraftEmailInput } from '@/lib/services/crm/email/aiDraftService';
 import { parseWith, zDraftEmail } from '@/lib/services/crm/email/schemas';
 
+import { readOrgBody } from '@/lib/security/organizationBody';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
@@ -15,7 +16,7 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext(request);
-    const body = parseWith(zDraftEmail, await readJson<unknown>(request), 'body de draft-email');
+    const body = parseWith(zDraftEmail, await readOrgBody<unknown>(ctx, request), 'body de draft-email');
     const input = { ...body, templateId: body.templateId ?? body.template_id ?? null } as DraftEmailInput;
     const r = await draftEmail(ctx.organizationId, ctx.userId, input, ctx.supabase);
     return ok(r);

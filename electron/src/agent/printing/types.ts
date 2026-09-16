@@ -31,6 +31,8 @@ export interface KitchenTicketPrintPayload {
   serverName?: string;
   station: string;
   createdAt: string;
+  /** Zona horaria IANA de la organizacion (ej: 'America/Bogota'). Si no viene, usa el reloj del agente. */
+  timezone?: string;
   items: KitchenTicketItemPayload[];
   businessName?: string;
   branchName?: string;
@@ -112,6 +114,8 @@ export interface SaleTicketPrintPayload {
   serverName?: string;
   cashierName?: string;
   createdAt: string;
+  /** Zona horaria IANA de la organizacion (ej: 'America/Bogota'). Si no viene, usa el reloj del agente. */
+  timezone?: string;
   items: SaleTicketItemPayload[];
   subtotal?: number;
   taxTotal?: number;
@@ -206,6 +210,8 @@ export interface ElectronicInvoicePrintPayload {
 
   // Metadatos
   createdAt: string;
+  /** Zona horaria IANA de la organizacion (ej: 'America/Bogota'). Si no viene, usa el reloj del agente. */
+  timezone?: string;
   cashierName?: string;
   branchName?: string;
   branchAddress?: string;
@@ -242,6 +248,8 @@ export interface ShipmentGuidePrintPayload {
   shipmentNumber?: string;
   status?: string;
   createdAt: string;
+  /** Zona horaria IANA de la organizacion (ej: 'America/Bogota'). Si no viene, usa el reloj del agente. */
+  timezone?: string;
 
   businessName?: string;
   businessNit?: string;
@@ -281,4 +289,25 @@ export interface ShipmentGuidePrintPayload {
   currency?: string;
 
   notes?: string;
+}
+
+/**
+ * Tipo de trabajo tal como lo acepta `printToDevice`: los documentos de
+ * `TicketKind` mas la apertura de cajon, que no imprime nada.
+ */
+export type PrintJobType = TicketKind | 'open_cash_drawer';
+
+/**
+ * Sobre que el POS envia al agente local por `POST /print` (Go Admin Desktop:
+ * `window.goAdminDesktop.printRaw(printerId, sobre)` -> IPC -> discovery server).
+ *
+ * Viaja la fila completa de `printers` porque el agente no puede consultarla
+ * en Supabase cuando no hay internet: el POS ya la tiene resuelta (de red o
+ * de su cache offline) y es la misma que usaria el agente para un
+ * `print_jobs`. El agente sigue siendo quien da formato al ticket.
+ */
+export interface LocalPrintRequest<TPrinter = unknown, TPayload = unknown> {
+  jobType: PrintJobType;
+  printer: TPrinter;
+  payload: TPayload;
 }

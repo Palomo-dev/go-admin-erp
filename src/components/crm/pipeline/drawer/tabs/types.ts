@@ -9,8 +9,9 @@ export interface DrawerTabProps {
   active: boolean;
 }
 
-export type DrawerTab = 'resumen' | 'actividad' | 'tareas' | 'notas' | 'documentos' | 'ia';
+export type DrawerTab = 'resumen' | 'onboarding' | 'actividad' | 'tareas' | 'notas' | 'documentos' | 'ia';
 
+/** Pestañas siempre visibles. `onboarding` (F11) se añade solo en oportunidades de onboarding. */
 export const DRAWER_TABS: Array<{ id: DrawerTab; label: string }> = [
   { id: 'resumen', label: 'Resumen' },
   { id: 'actividad', label: 'Actividad' },
@@ -19,3 +20,5 @@ export const DRAWER_TABS: Array<{ id: DrawerTab; label: string }> = [
   { id: 'documentos', label: 'Documentos' },
   { id: 'ia', label: 'IA' },
 ];
+
+export const ONBOARDING_TAB: { id: DrawerTab; label: string } = { id: 'onboarding', label: 'Onboarding' };

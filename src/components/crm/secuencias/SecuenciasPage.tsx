@@ -1,241 +1,207 @@
 'use client';
 
 /**
- * /app/crm/secuencias — secuencias multicanal (FASE-08 §5.1).
+ * /app/crm/secuencias — secuencias multicanal (FASE-08 §5.1, rediseño UX
+ * brief 6.3). Lista en tarjetas con mini-línea de tiempo, inscritos activos y
+ * tasa de respuesta; búsqueda y chips de filtro arriba; editor en línea de
+ * tiempo vertical; inscripción con advertencia de envíos reales.
  *
- * Lista, crea, activa/desactiva, inscribe una oportunidad y muestra las
- * inscripciones con su estado real. La inscripción es atómica y no duplica:
- * si ya hay una viva, la respuesta lo dice (`already_active`).
- *
- * Ronda 2: inscribir ya no es pegar un UUID (tester r2 N7) sino elegir la
- * oportunidad en `EnrollDialog`, con previsualización de los pasos y
- * confirmación; y una inscripción pausada se puede REANUDAR (tester r2 N3).
+ * Toda la lógica sigue en las rutas de `src/app/api/crm/sequences/**` y en
+ * `sequenceService.ts` (F8): aquí solo hay presentación.
  */
 
-import { useCallback, useState } from 'react';
-import { Plus, RefreshCw, Trash2, Pencil, Users, UserPlus, Play } from 'lucide-react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { MotionConfig } from 'motion/react';
+import { Plus, RefreshCw, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { toast } from '@/components/ui/use-toast';
-import { SequenceFormDialog } from './SequenceFormDialog';
+import { AnimatePresence } from '@/components/shared/motion/primitives';
+import { StaggerItem, StaggerList } from '@/components/shared/motion/staggerList';
+import { SequenceCard } from './SequenceCard';
+import { SequenceEmptyState } from './SequenceEmptyState';
+import { SequenceEditorDialog } from './SequenceEditorDialog';
 import { EnrollDialog } from './EnrollDialog';
-import {
-  fetchEnrollments,
-  resumeEnrollment,
-  unenroll,
-  useSequences,
-  type EnrollmentView,
-  type SequenceView,
-} from './useSequences';
+import { EnrollmentsSheet } from './EnrollmentsSheet';
+import { useSequences, type SequenceView } from './useSequences';
+import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
 
-function formatDate(value: string | null): string {
-  if (!value) return '—';
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
-}
+type StatusFilter = 'all' | 'active' | 'inactive';
+
+const FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'Todas' },
+  { value: 'active', label: 'Activas' },
+  { value: 'inactive', label: 'Inactivas' },
+];
 
 export function SecuenciasPage() {
   const { sequences, loading, error, reload, save, toggle, remove, enroll } = useSequences();
-  const [formOpen, setFormOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<SequenceView | null>(null);
-  const [openEnrollments, setOpenEnrollments] = useState<string | null>(null);
-  const [enrollments, setEnrollments] = useState<EnrollmentView[]>([]);
-  const [enrollDialog, setEnrollDialog] = useState<SequenceView | null>(null);
+  const [enrollTarget, setEnrollTarget] = useState<SequenceView | null>(null);
+  const [sheetTarget, setSheetTarget] = useState<SequenceView | null>(null);
+  const [sheetRefresh, setSheetRefresh] = useState(0);
+  const [deleting, setDeleting] = useState<SequenceView | null>(null);
+  const newButtonRef = useRef<HTMLButtonElement>(null);
+  // Si el botón que abrió un diálogo ya no existe al cerrarlo (la tarjeta se
+  // filtró o se borró), el foco va a «Nueva secuencia», nunca al body.
+  const focusFallback = useCallback(() => newButtonRef.current, []);
+  // La confirmación de borrado devuelve el foco por `onCloseAutoFocus` del
+  // `ConfirmDialog`, como `EnrollmentsSheet` (antes: sondeo de hasta 3 s).
+  const onDeleteCloseAutoFocus = useReturnFocus(deleting !== null, focusFallback);
 
-  const loadEnrollments = useCallback(async (sequenceId: string) => {
-    try {
-      setEnrollments(await fetchEnrollments(sequenceId));
-      setOpenEnrollments(sequenceId);
-    } catch (err) {
-      toast({
-        title: 'No se pudieron cargar las inscripciones',
-        description: err instanceof Error ? err.message : 'Error desconocido',
-        variant: 'destructive',
-      });
-    }
-  }, []);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return sequences.filter((s) => {
+      if (status === 'active' && !s.is_active) return false;
+      if (status === 'inactive' && s.is_active) return false;
+      return !q || s.name.toLowerCase().includes(q) || (s.description ?? '').toLowerCase().includes(q);
+    });
+  }, [sequences, query, status]);
 
-  const onResume = async (sequenceId: string, enrollmentId: string) => {
-    try {
-      await resumeEnrollment(sequenceId, enrollmentId);
-      toast({ title: 'Inscripción reanudada', description: 'El siguiente paso pendiente volvió a la cola.' });
-      await loadEnrollments(sequenceId);
-    } catch (err) {
-      toast({
-        title: 'No se pudo reanudar',
-        description: err instanceof Error ? err.message : 'Error desconocido',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const onUnenroll = async (sequenceId: string, enrollmentId: string) => {
-    try {
-      await unenroll(sequenceId, enrollmentId);
-      toast({ title: 'Inscripción finalizada' });
-      await loadEnrollments(sequenceId);
-    } catch (err) {
-      toast({
-        title: 'No se pudo desinscribir',
-        description: err instanceof Error ? err.message : 'Error desconocido',
-        variant: 'destructive',
-      });
-    }
-  };
+  const openCreate = () => { setEditing(null); setEditorOpen(true); };
 
   const runAction = async (fn: () => Promise<unknown>, okTitle: string) => {
     try {
       await fn();
       toast({ title: okTitle });
+      // Activar/desactivar con un filtro de estado puesto saca la tarjeta de
+      // la rejilla (tras la animación de salida, ≤300 ms) y el `Switch`
+      // pulsado desaparece: el foco no se queda en el body.
+      window.setTimeout(() => { if (document.activeElement === document.body) newButtonRef.current?.focus(); }, 400);
     } catch (err) {
-      toast({
-        title: 'Operación no realizada',
-        description: err instanceof Error ? err.message : 'Error desconocido',
-        variant: 'destructive',
-      });
+      toast({ title: 'Operación no realizada', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
     }
   };
 
   return (
-    <div className="space-y-4 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Secuencias</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Series de pasos por canal con retardos. Cada paso se ejecuta desde la cola del servidor, una sola vez.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => void reload()}>
-            <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden="true" /> Actualizar
-          </Button>
-          <Button onClick={() => { setEditing(null); setFormOpen(true); }}>
-            <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> Nueva secuencia
-          </Button>
-        </div>
-      </div>
+    <MotionConfig reducedMotion="user">
+      <TooltipProvider delayDuration={300}>
+        <div className="space-y-5 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Secuencias</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Pasos por canal con esperas entre ellos. Cada paso sale del servidor una sola vez.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => void reload()} aria-label="Actualizar la lista">
+                <RefreshCw className="h-4 w-4 sm:mr-1.5" aria-hidden="true" /><span className="hidden sm:inline">Actualizar</span>
+              </Button>
+              <Button ref={newButtonRef} className="bg-blue-600 text-white hover:bg-blue-700" onClick={openCreate}>
+                <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> Nueva secuencia
+              </Button>
+            </div>
+          </div>
 
-      {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="space-y-2">{[0, 1].map((i) => <Skeleton key={i} className="h-24 w-full" />)}</div>
-      ) : sequences.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
-          <p className="font-medium text-gray-900 dark:text-gray-100">Todavía no hay secuencias</p>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Por ejemplo: email el día 0, tarea de llamada el día 1 y WhatsApp el día 3.
-          </p>
-          <Button className="mt-4" onClick={() => { setEditing(null); setFormOpen(true); }}>Crear secuencia</Button>
-        </div>
-      ) : (
-        <ul className="space-y-2">
-          {sequences.map((sequence) => (
-            <li key={sequence.id} className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900 dark:text-gray-100">{sequence.name}</span>
-                    <Badge variant={sequence.is_active ? 'default' : 'secondary'}>
-                      {sequence.is_active ? 'Activa' : 'Inactiva'}
-                    </Badge>
-                  </div>
-                  <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    {sequence.trigger_type} · {sequence.steps?.length ?? 0} paso(s) ·{' '}
-                    {(sequence.steps ?? []).map((s) => `${s.channel}(+${s.delay_days}d)`).join(' → ') || 'sin pasos'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Switch
-                    aria-label={`Activar la secuencia ${sequence.name}`}
-                    checked={sequence.is_active}
-                    onCheckedChange={() => void runAction(() => toggle(sequence), sequence.is_active ? 'Secuencia desactivada' : 'Secuencia activada')}
-                  />
-                  <Button size="icon" variant="ghost" aria-label={`Inscripciones de ${sequence.name}`} onClick={() => void loadEnrollments(sequence.id)}>
-                    <Users className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                  <Button size="icon" variant="ghost" aria-label={`Editar ${sequence.name}`} onClick={() => { setEditing(sequence); setFormOpen(true); }}>
-                    <Pencil className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label={`Eliminar ${sequence.name}`}
-                    onClick={() => {
-                      if (window.confirm(`¿Eliminar la secuencia "${sequence.name}"?`)) {
-                        void runAction(() => remove(sequence.id), 'Secuencia eliminada');
-                      }
-                    }}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative sm:max-w-xs sm:flex-1">
+              <Label htmlFor="seq-search" className="sr-only">Buscar secuencia por nombre</Label>
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+              <Input id="seq-search" className="pl-8" placeholder="Buscar por nombre" value={query} onChange={(e) => setQuery(e.target.value)} />
+            </div>
+            <div role="group" aria-label="Filtrar por estado" className="flex gap-1.5">
+              {FILTERS.map((f) => {
+                const selected = status === f.value;
+                return (
+                  <button
+                    key={f.value}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setStatus(f.value)}
+                    className={`rounded-full border px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                      selected
+                        ? 'border-blue-600 bg-blue-600 text-white'
+                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800'
+                    }`}
                   >
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </div>
-              </div>
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+            {!loading && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 sm:ml-auto" aria-live="polite">
+                {filtered.length} de {sequences.length}
+              </p>
+            )}
+          </div>
 
-              {openEnrollments === sequence.id && (
-                <div className="mt-3 space-y-2 border-t border-gray-200 pt-3 dark:border-gray-700">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button size="sm" onClick={() => setEnrollDialog(sequence)}>
-                      <UserPlus className="mr-1.5 h-4 w-4" aria-hidden="true" /> Inscribir oportunidad
-                    </Button>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Se elige de una lista y se confirma viendo los pasos que se van a enviar.
-                    </span>
-                  </div>
-                  {enrollments.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Sin inscripciones.</p>
-                  ) : (
-                    <ul className="divide-y divide-gray-200 text-sm dark:divide-gray-700">
-                      {enrollments.map((e) => (
-                        <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
-                          <span className="text-gray-700 dark:text-gray-300">
-                            {e.opportunity_id ?? e.customer_id ?? '—'} · {e.status}
-                            {e.status === 'paused' && e.paused_reason ? ` (${e.paused_reason})` : ''}
-                            {e.exit_reason ? ` (${e.exit_reason})` : ''} · {formatDate(e.enrolled_at)}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            {e.status === 'paused' && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                aria-label="Reanudar la inscripción pausada"
-                                onClick={() => void onResume(sequence.id, e.id)}
-                              >
-                                <Play className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Reanudar
-                              </Button>
-                            )}
-                            {(e.status === 'active' || e.status === 'paused') && (
-                              <Button size="sm" variant="ghost" onClick={() => void onUnenroll(sequence.id, e.id)}>
-                                Desinscribir
-                              </Button>
-                            )}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+          {error && (
+            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+              {error} — pulsa «Actualizar» para reintentar.
+            </div>
+          )}
 
-      <SequenceFormDialog open={formOpen} sequence={editing} onOpenChange={setFormOpen} onSave={save} />
+          {loading ? (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <SequenceEmptyState
+              filtered={sequences.length > 0}
+              onCreate={openCreate}
+              onClearFilters={() => { setQuery(''); setStatus('all'); }}
+            />
+          ) : (
+            <StaggerList className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {filtered.map((sequence) => (
+                  <StaggerItem key={sequence.id}>
+                    <SequenceCard
+                      sequence={sequence}
+                      onToggle={(s) => void runAction(() => toggle(s), s.is_active ? 'Secuencia desactivada' : 'Secuencia activada')}
+                      onEnroll={setEnrollTarget}
+                      onEnrollments={setSheetTarget}
+                      onEdit={(s) => { setEditing(s); setEditorOpen(true); }}
+                      onDelete={setDeleting}
+                    />
+                  </StaggerItem>
+                ))}
+              </AnimatePresence>
+            </StaggerList>
+          )}
 
-      <EnrollDialog
-        open={enrollDialog !== null}
-        sequenceId={enrollDialog?.id ?? null}
-        sequenceName={enrollDialog?.name ?? ''}
-        onOpenChange={(open) => { if (!open) setEnrollDialog(null); }}
-        onEnroll={enroll}
-        onDone={() => (enrollDialog ? loadEnrollments(enrollDialog.id) : Promise.resolve())}
-      />
-    </div>
+          <SequenceEditorDialog open={editorOpen} sequence={editing} onOpenChange={setEditorOpen} onSave={save} returnFocusFallback={focusFallback} />
+
+          <EnrollDialog
+            open={enrollTarget !== null}
+            sequence={enrollTarget}
+            onOpenChange={(open) => { if (!open) setEnrollTarget(null); }}
+            onEnroll={enroll}
+            onDone={async () => { setSheetRefresh((n) => n + 1); await reload(); }}
+            returnFocusFallback={focusFallback}
+          />
+
+          <EnrollmentsSheet
+            sequence={sheetTarget}
+            refreshKey={sheetRefresh}
+            onOpenChange={(open) => { if (!open) setSheetTarget(null); }}
+            onEnroll={setEnrollTarget}
+            returnFocusFallback={focusFallback}
+          />
+
+          <ConfirmDialog
+            open={deleting !== null}
+            onOpenChange={(open) => { if (!open) setDeleting(null); }}
+            onCloseAutoFocus={onDeleteCloseAutoFocus}
+            title={`Eliminar «${deleting?.name ?? ''}»`}
+            description="Se borra la secuencia y sus pasos. Las inscripciones en curso dejan de avanzar. Esta acción no se puede deshacer."
+            confirmLabel="Eliminar"
+            variant="destructive"
+            onConfirm={async () => {
+              if (deleting) await runAction(() => remove(deleting.id), 'Secuencia eliminada');
+            }}
+          />
+        </div>
+      </TooltipProvider>
+    </MotionConfig>
   );
 }

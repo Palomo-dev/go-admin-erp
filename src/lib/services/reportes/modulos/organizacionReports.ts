@@ -3,7 +3,13 @@
 // Consultas directas a Supabase para miembros, sucursales y uso
 // ============================================================
 
-import { supabase } from '@/lib/supabase/config';
+import { supabase as browserSupabase } from '@/lib/supabase/config';
+import type { ReportesClient } from '../types';
+// F0-SEC r3 (tester r2, fallo 3): `fetch` acepta el cliente de Supabase por
+// parámetro. En el navegador (app/reportes) cae al cliente browser con la sesión
+// del usuario; en el servidor (asistente de reportes) el route handler pasa el
+// cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
+// corren como `authenticated` miembro y nunca como `anon`.
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -22,8 +28,9 @@ export const organizacionReports: ReportDefinition[] = [
     descripcion: 'Usuarios, roles y estado de membresía',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db
         .from('organization_members')
         .select('id, user_id, role_id, is_active, created_at')
         .eq('organization_id', orgId);
@@ -60,13 +67,14 @@ export const organizacionReports: ReportDefinition[] = [
     descripcion: 'Métricas comparativas por sucursal',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data: branches } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data: branches } = await db
         .from('branches')
         .select('id, name, is_active')
         .eq('organization_id', orgId);
 
-      const { data: sales } = await supabase
+      const { data: sales } = await db
         .from('sales')
         .select('branch_id, total')
         .eq('organization_id', orgId)
@@ -114,13 +122,14 @@ export const organizacionReports: ReportDefinition[] = [
     descripcion: 'Métricas de uso: sesiones, módulos activos, storage',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data: modules } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data: modules } = await db
         .from('organization_modules')
         .select('module_code, is_active')
         .eq('organization_id', orgId);
 
-      const { data: eventos } = await supabase
+      const { data: eventos } = await db
         .from('ops_audit_log')
         .select('id, created_at')
         .eq('organization_id', orgId)

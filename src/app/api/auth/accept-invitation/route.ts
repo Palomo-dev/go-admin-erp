@@ -1,31 +1,28 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { createClient } from '@supabase/supabase-js';
+import { estadoCuentaInvitacion } from '@/lib/auth/cuentaInvitacion';
 
 /**
- * Acepta una invitación y crea/actualiza el usuario SIN requerir una sesión
- * previa. Esto elimina la dependencia del email de verificación de Supabase
- * (que Gmail/Outlook pueden consumir por prefetch).
+ * Acepta una invitación SIN sesión previa: crea la cuenta del invitado con la
+ * contraseña que eligió. Existe porque Gmail/Outlook consumen el token del
+ * correo por prefetch y el enlace también puede abrirse copiado desde la
+ * tabla de invitaciones.
  *
- * Flujo:
- * 1. Validar el código de invitación
- * 2. Si el usuario no existe en auth.users: crearlo con admin.createUser
- *    (con la contraseña elegida por el usuario)
- * 3. Si el usuario ya existe: actualizar su contraseña con admin.updateUserById
- * 4. Llamar a accept_invitation_atomic (crea perfil + membresía + marca usada)
- * 5. Retornar success para que el frontend haga login con email+password
+ * SOLO para cuentas nuevas o huérfanas (ver `estadoCuentaInvitacion`). Si el
+ * correo ya tiene una cuenta real, responde 409 y el asistente manda al
+ * usuario a iniciar sesión: la aceptación se hace entonces con su propia
+ * sesión vía `accept_invitation_atomic` (que comprueba que el correo de la
+ * sesión sea el de la invitación).
+ *
+ * Antes esta ruta aceptaba `isExistingUser` del cliente y, si el usuario ya
+ * existía, LE CAMBIABA LA CONTRASEÑA con solo tener el código de invitación.
+ * Cualquier administrador de cualquier organización podía invitar un correo
+ * ajeno, copiar el enlace y quedarse con esa cuenta y todas sus
+ * organizaciones. El estado lo decide ahora el servidor.
  */
 export async function POST(request: Request) {
   try {
-    const {
-      inviteCode,
-      email,
-      password,
-      firstName,
-      lastName,
-      phone,
-      isExistingUser,
-    } = await request.json();
+    const { inviteCode, email, password, firstName, lastName, phone } = await request.json();
 
     if (!inviteCode || !email || !password) {
       return NextResponse.json(
@@ -33,9 +30,15 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    if (typeof password !== 'string' || password.length < 8) {
+      return NextResponse.json(
+        { error: 'La contraseña debe tener al menos 8 caracteres' },
+        { status: 400 }
+      );
+    }
 
     const admin = getSupabaseAdmin();
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = String(email).toLowerCase().trim();
 
     // 1. Validar la invitación
     const { data: inviteData, error: inviteError } = await admin.rpc(
@@ -53,98 +56,71 @@ export async function POST(request: Request) {
 
     const invitation = inviteData[0];
 
-    // Verificar que el email coincide
-    if (invitation.email !== normalizedEmail) {
+    if (String(invitation.email).toLowerCase().trim() !== normalizedEmail) {
       return NextResponse.json(
         { error: 'El email no coincide con la invitación' },
         { status: 400 }
       );
     }
 
-    // 2. Para usuarios NUEVOS: crear el usuario en auth.users con la contraseña
+    // 2. Estado de la cuenta: lo decide el servidor, nunca el cliente.
+    const { estado, usuario } = await estadoCuentaInvitacion(admin, normalizedEmail, {
+      code: invitation.code,
+      organization_id: invitation.organization_id,
+    });
+
+    if (estado === 'existente') {
+      return NextResponse.json(
+        {
+          error: 'Este correo ya tiene una cuenta. Inicia sesión para aceptar la invitación.',
+          code: 'CUENTA_EXISTENTE',
+        },
+        { status: 409 }
+      );
+    }
+
     let userId: string | undefined;
 
-    if (!isExistingUser) {
-      // Verificar si ya existe (puede haber sido creado por un inviteUserByEmail previo)
-      const { data: userList } = await admin.auth.admin.listUsers();
-      const existingUser = userList?.users?.find(
-        (u) => u.email?.toLowerCase() === normalizedEmail
-      );
-
-      if (existingUser) {
-        // El usuario ya existe (creado por invitación anterior) — actualizar contraseña
-        console.log('Usuario ya existe, actualizando contraseña:', existingUser.id);
-        userId = existingUser.id;
-        const { error: updateError } = await admin.auth.admin.updateUserById(
-          existingUser.id,
-          {
-            password,
-            email_confirm: true,
-            user_metadata: {
-              first_name: firstName,
-              last_name: lastName,
-              phone,
-            },
-          }
-        );
-        if (updateError) {
-          console.error('Error actualizando usuario existente:', updateError);
-          return NextResponse.json(
-            { error: updateError.message },
-            { status: 500 }
-          );
-        }
-      } else {
-        // Usuario completamente nuevo — crear con admin.createUser
-        console.log('Creando nuevo usuario:', normalizedEmail);
-        const { data: newUser, error: createError } = await admin.auth.admin.createUser({
-          email: normalizedEmail,
-          password,
-          email_confirm: true,
-          user_metadata: {
-            first_name: firstName,
-            last_name: lastName,
-            phone,
-            is_invitation: true,
-            invitation_code: inviteCode,
-          },
-        });
-        if (createError) {
-          console.error('Error creando usuario:', createError);
-          return NextResponse.json(
-            { error: createError.message },
-            { status: 500 }
-          );
-        }
-        userId = newUser.user?.id;
-        console.log('✅ Usuario creado:', userId);
+    if (estado === 'huerfana' && usuario) {
+      // Cuenta creada por una invitación anterior que nunca se completó:
+      // nadie la reclamó (sin perfil ni membresías), se le fija la contraseña.
+      console.log('Cuenta huérfana de invitación, fijando contraseña:', usuario.id);
+      userId = usuario.id;
+      const { error: updateError } = await admin.auth.admin.updateUserById(usuario.id, {
+        password,
+        email_confirm: true,
+        user_metadata: {
+          ...(usuario.user_metadata ?? {}),
+          first_name: firstName,
+          last_name: lastName,
+          phone,
+        },
+      });
+      if (updateError) {
+        console.error('Error fijando contraseña de cuenta huérfana:', updateError);
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
       }
     } else {
-      // Usuario existente: actualizar metadata con admin API
-      const { data: userList } = await admin.auth.admin.listUsers();
-      const existingUser = userList?.users?.find(
-        (u) => u.email?.toLowerCase() === normalizedEmail
-      );
-      if (existingUser) {
-        userId = existingUser.id;
-        const { error: updateError } = await admin.auth.admin.updateUserById(
-          existingUser.id,
-          {
-            user_metadata: {
-              first_name: firstName,
-              last_name: lastName,
-              phone,
-            },
-          }
-        );
-        if (updateError) {
-          console.error('Error actualizando usuario existente:', updateError);
-          return NextResponse.json(
-            { error: updateError.message },
-            { status: 500 }
-          );
-        }
+      console.log('Creando nuevo usuario:', normalizedEmail);
+      const { data: newUser, error: createError } = await admin.auth.admin.createUser({
+        email: normalizedEmail,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          first_name: firstName,
+          last_name: lastName,
+          phone,
+          is_invitation: true,
+          invitation_code: inviteCode,
+          organization_id: invitation.organization_id,
+        },
+      });
+      if (createError) {
+        console.error('Error creando usuario:', createError);
+        return NextResponse.json({ error: createError.message }, { status: 500 });
       }
+      userId = newUser.user?.id;
+      console.log('✅ Usuario creado:', userId);
     }
 
     if (!userId) {
@@ -154,8 +130,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. Crear perfil + membresía + marcar invitación como usada (transacción atómica)
-    // Pasar p_user_id porque usamos admin key (auth.uid() retorna NULL con service role)
+    // 3. Perfil + membresía + marcar invitación como usada (transacción atómica).
+    // p_user_id porque va con la clave de servicio (auth.uid() sería NULL).
     const { data: acceptResult, error: acceptError } = await admin.rpc(
       'accept_invitation_atomic',
       {
@@ -182,10 +158,10 @@ export async function POST(request: Request) {
       organizationId: invitation.organization_id,
       organizationName: invitation.organization_name,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error en /api/auth/accept-invitation:', error);
     return NextResponse.json(
-      { error: error.message || 'Error inesperado' },
+      { error: error instanceof Error ? error.message : 'Error inesperado' },
       { status: 500 }
     );
   }

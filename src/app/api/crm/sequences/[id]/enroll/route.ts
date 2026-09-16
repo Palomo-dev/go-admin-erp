@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { enrollInSequence } from '@/lib/services/crm/sequenceService';
 
 /**
@@ -18,7 +19,7 @@ export async function POST(
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
     const { id } = await params;
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     const ids: string[] = Array.isArray(body?.opportunity_ids)
       ? body.opportunity_ids.filter((v: unknown) => typeof v === 'string')

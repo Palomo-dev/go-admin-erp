@@ -337,20 +337,11 @@ export async function initiateBridge(
   }
   const bridge = bridgeRow as MobileCallBridge;
 
-  // 10. Consentimiento: el texto exacto que oirá el cliente queda registrado
-  //     ANTES de marcar (D9); `twiml/consent-whisper` (F3) lo lee y marca
-  //     `calls.consent_given`.
-  if (recordingEnabled) {
-    const { error: consentError } = await supabase.from('call_consents').insert({
-      organization_id: orgId,
-      call_id: callId,
-      consent_type: 'recording',
-      method: 'voice_announcement',
-      locale: 'es-MX',
-      recorded_announcement_text: settings.voice_consent_message,
-    });
-    if (consentError) console.error('[mobileBridge] call_consents insert:', consentError.message);
-  }
+  // 10. Consentimiento: aquí NO se escribe acta (ronda 5, V-4). La escribe
+  //     `twiml/consent-whisper` (F3) por `recordConsent` cuando el CLIENTE
+  //     contesta y oye el aviso, con `announced_at` de ese momento. Antes se
+  //     insertaba al marcar y una llamada no contestada dejaba un acta fechada
+  //     como si el aviso hubiera sonado.
 
   // 11. Llamada al vendedor
   const token = signBridgeToken(bridge.id);

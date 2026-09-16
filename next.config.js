@@ -1,6 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Salida standalone para la app de escritorio (fase 3 del desktop): además
+  // del build normal, `next build` deja en `.next/standalone/` un `server.js`
+  // autosuficiente con solo las dependencias que usa el servidor. Electron lo
+  // empaqueta como extraResource y lo arranca en 127.0.0.1 para que la app
+  // abra y navegue sin internet (ver docs/desktop/FASE-3-NEXT-EMBEBIDO.md).
+  // Solo en el build del desktop (NEXT_DIST_DIR definido por
+  // electron/scripts/build-web.js): el despliegue de Vercel no cambia de forma.
+  ...(process.env.NEXT_DIST_DIR ? { output: 'standalone' } : {}),
+  // Directorio de salida configurable para que el build del desktop
+  // (electron/scripts/build-web.js → NEXT_DIST_DIR=.next-desktop) no comparta
+  // `.next` con un `next dev` o `next build` que corra a la vez en el mismo
+  // árbol: el segundo borra `.next/server` y el primero muere con
+  // "Cannot find module webpack-runtime.js". Sin la variable, `.next` de siempre.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   eslint: {
     // Permite que el build en producción complete aunque haya errores de ESLint
     ignoreDuringBuilds: true,

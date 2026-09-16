@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getAutomationRules,
   createAutomationRule,
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     if (!body?.name || !body?.trigger_type) {
       return NextResponse.json(

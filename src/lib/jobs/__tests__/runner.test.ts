@@ -7,7 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // registrar handlers controlados por el test.
 jest.mock('../handlers', () => ({}));
 
-import { runJobs } from '../runner';
+import { runJobs, releaseBackoffSeconds, releaseCap } from '../runner';
 import { clearJobHandlers, registerJobHandler } from '../registry';
 import { JobFatalError, JobRetryableError, type OutboundJob } from '../types';
 
@@ -218,10 +218,65 @@ describe('runJobs', () => {
     expect(summary.claimed).toBe(1);
     expect(calls.filter((c) => c.fn === 'fn_release_job')).toHaveLength(1); // se memoriza que falta
     expect(updates).toEqual([
-      { status: 'queued', locked_at: null, locked_by: null, attempts: 1 },
-      { status: 'queued', locked_at: null, locked_by: null, attempts: 0 },
+      expect.objectContaining({ status: 'queued', locked_at: null, locked_by: null, attempts: 1 }),
+      expect.objectContaining({ status: 'queued', locked_at: null, locked_by: null, attempts: 0 }),
     ]);
     expect(updates.some((u) => 'last_error' in u)).toBe(false);
+    // crm_v4_f00_37: liberar nunca deja run_at = now(); la fila del claim no trae
+    // `releases` (DB anterior a la migración) → backoff mínimo (30 s) y sin tope.
+    for (const u of updates) {
+      expect(typeof u.run_at).toBe('string');
+      expect(new Date(String(u.run_at)).getTime() - started).toBeGreaterThanOrEqual(30_000 - 5);
+      expect('releases' in u).toBe(false);
+    }
+  });
+
+  it('tope de liberaciones (crm_v4_f00_37): 12 liberaciones seguidas → backoff creciente con tope 15 min y dead al llegar a max_attempts*2', async () => {
+    // Un job que en cada ejecución vuelve a aparecer en el segundo lote (N-8) y se libera
+    // por el fallback UPDATE. La fila reclamada trae `releases` (la columna existe) y el
+    // runner debe replicar la regla de fn_release_job: releases+1, run_at con backoff y
+    // `dead` + last_error al llegar al tope (max_attempts 5 → 10 liberaciones).
+    registerJobHandler('noop', async () => ({ ok: true }));
+    const updatesAll: Record<string, unknown>[] = [];
+    const before = Date.now();
+    for (let i = 0; i < 12; i++) {
+      const j = makeJob({ id: 'loop', kind: 'noop', max_attempts: 5, attempts: 1, releases: i });
+      const { sb, updates } = makeSupabase([[j], [j]]);
+      const summary = await runJobs({ supabase: sb, worker: 'w12', limit: 1 });
+      expect(summary.released).toBe(1);
+      expect(updates).toHaveLength(1);
+      updatesAll.push(updates[0]);
+    }
+    expect(updatesAll).toHaveLength(12);
+    const secondsFromNow = (u: Record<string, unknown>) => Math.round((new Date(String(u.run_at)).getTime() - before) / 1000);
+    // Nunca queued con run_at = now(): backoff 30, 60, 120, 240, 480, 900, 900… (tope 15 min).
+    expect(updatesAll.map((u) => u.releases)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    expect(secondsFromNow(updatesAll[0])).toBeGreaterThanOrEqual(30);
+    expect(secondsFromNow(updatesAll[0])).toBeLessThan(60);
+    expect(secondsFromNow(updatesAll[4])).toBeGreaterThanOrEqual(480);
+    for (const u of updatesAll.slice(5)) {
+      expect(secondsFromNow(u)).toBeGreaterThanOrEqual(900);
+      expect(secondsFromNow(u)).toBeLessThan(910);
+    }
+    // Liberaciones 1..9 siguen en cola; desde la 10.ª (= max_attempts*2) el job muere con rastro.
+    for (const u of updatesAll.slice(0, 9)) {
+      expect(u.status).toBe('queued');
+      expect('last_error' in u).toBe(false);
+    }
+    for (const u of updatesAll.slice(9)) {
+      expect(u.status).toBe('dead');
+      expect(String(u.last_error)).toMatch(/^released_limit: \d+ liberaciones por deadline \(worker w12\)$/);
+    }
+    // Liberar nunca consume el intento del claim.
+    expect(updatesAll.every((u) => u.attempts === 0)).toBe(true);
+  });
+
+  it('releaseBackoffSeconds / releaseCap: valores de la firma de fn_release_job', () => {
+    expect([1, 2, 3, 4, 5, 6, 7, 20].map(releaseBackoffSeconds)).toEqual([30, 60, 120, 240, 480, 900, 900, 900]);
+    expect(releaseBackoffSeconds(0)).toBe(30);
+    expect(releaseCap(5)).toBe(10);
+    expect(releaseCap(3)).toBe(6);
+    expect(releaseCap(0)).toBe(2);
   });
 
   it('libera con fn_release_job(p_job_id, p_worker) cuando la RPC existe (DB-r2) sin UPDATE directo', async () => {

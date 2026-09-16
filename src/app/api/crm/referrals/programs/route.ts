@@ -1,68 +1,52 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { NextRequest } from 'next/server';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { getReferralPrograms, createReferralProgram } from '@/lib/services/crm/referralsService';
+import { validateProgramInput } from '@/lib/services/crm/f12Validation';
+import { getOrgBaseCurrency } from '@/lib/services/crm/salesTargetService';
+import { jsonOk, readJson, rejectForeignOrganization, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
+
+const TAG = 'CRM Referral Programs';
 
 /**
- * GET /api/crm/referrals/programs — Lista programas de referidos.
+ * GET /api/crm/referrals/programs — programas de la organización (?active=true
+ * solo activos) y `currency`: moneda base de la organización
+ * (`organization_currencies.is_base`, helper único de F13) o `null` si no
+ * está configurada; la interfaz pinta la recompensa sin símbolo y lo dice.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const programs = await getReferralPrograms(ctx.organizationId, ctx.supabase);
-
-    return NextResponse.json({ success: true, data: programs }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Referral Programs] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const { searchParams } = new URL(request.url);
+    const [programs, currency] = await Promise.all([
+      getReferralPrograms(ctx.organizationId, ctx.supabase, { activeOnly: searchParams.get('active') === 'true' }),
+      getOrgBaseCurrency(ctx.organizationId, ctx.supabase),
+    ]);
+    return jsonOk(programs, { currency });
+  } catch (error) {
+    return routeError(error, TAG);
   }
 }
 
 /**
- * POST /api/crm/referrals/programs — Crea un programa de referidos.
- * Body: { name, reward_type, reward_amount, reward_to, description?, is_active? }
+ * POST /api/crm/referrals/programs — crea un programa.
+ * Body: { name, reward_type (credit|discount|cash|gift), reward_to (referrer|referred|both), reward_amount?, description?, is_active? }
+ * 409 si el nombre ya existe (UNIQUE organization_id, name).
  */
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const body = await request.json();
-
-    if (!body?.name || !body?.reward_type || !body?.reward_to) {
-      return NextResponse.json(
-        { success: false, error: 'Faltan campos obligatorios: name, reward_type, reward_to' },
-        { status: 400 }
-      );
-    }
-
+    const body = await readJson(request);
+    rejectForeignOrganization(TAG, body.organization_id, ctx);
+    const parsed = validateProgramInput(body, { partial: false });
+    if (!parsed.ok) return validationFail(parsed.errors);
+    const v = parsed.value;
     const program = await createReferralProgram(
       ctx.organizationId,
-      {
-        name: body.name,
-        description: body.description,
-        reward_type: body.reward_type,
-        reward_amount: body.reward_amount ?? 0,
-        reward_to: body.reward_to,
-        is_active: body.is_active,
-      },
-      ctx.supabase
+      { name: v.name!, description: v.description, reward_type: v.reward_type!, reward_amount: v.reward_amount!, reward_to: v.reward_to!, is_active: v.is_active },
+      ctx.supabase,
     );
-
-    return NextResponse.json({ success: true, data: program }, { status: 201 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Referral Programs] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return jsonOk(program, {}, 201);
+  } catch (error) {
+    return routeError(error, TAG);
   }
 }

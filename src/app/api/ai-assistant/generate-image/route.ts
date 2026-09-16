@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { consumeAICredits } from '@/lib/services/aiCreditsService';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
   const organizationId = ctx.organizationId;
 
   try {
-    const { productName, description } = await request.json();
+    const { productName, description } = await readOrgBody(ctx, request);
 
     console.log('=== Generate Image API ===');
     console.log('Product:', productName);
@@ -129,6 +130,7 @@ Style: Clean white background, professional e-commerce product photography, high
     });
 
   } catch (error: any) {
+    if (error instanceof OrgContextError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     console.error('=== Error en Generate Image ===');
     console.error('Message:', error?.message);
     console.error('Code:', error?.code);

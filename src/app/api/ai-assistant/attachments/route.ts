@@ -21,6 +21,7 @@
 import { randomUUID } from 'crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { checkRateLimit } from '@/lib/security/rateLimit';
 
 /** 20 MB, el mismo tope que declara el bucket. */
@@ -46,7 +47,7 @@ const ALLOWED: Record<string, { ext: string; kind: AttachmentKind }> = {
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { ext: 'xlsx', kind: 'spreadsheet' },
 };
 
-export const BUCKET = 'ai-attachments';
+const BUCKET = 'ai-attachments';
 
 /** Los navegadores mandan CSV con etiquetas variadas; se normalizan aquí. */
 const MIME_ALIASES: Record<string, string> = {
@@ -57,7 +58,7 @@ const MIME_ALIASES: Record<string, string> = {
   'application/vnd.ms-excel.sheet.macroenabled.12': 'application/vnd.ms-excel',
 };
 
-export function normalizeMime(raw: string): string {
+function normalizeMime(raw: string): string {
   const base = raw.split(';')[0]?.trim().toLowerCase() ?? '';
   return MIME_ALIASES[base] ?? base;
 }
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
 
   let form: FormData;
   try {
-    form = await request.formData();
+    form = readOrgBody(ctx, await request.formData());
   } catch {
     return NextResponse.json(
       { error: 'La subida tiene que ser multipart/form-data.', code: 'BAD_REQUEST' },

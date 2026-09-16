@@ -247,3 +247,28 @@ Mitigación sugerida (fuera de alcance, conviene priorizarla): límite de tasa p
 | Tests | 23 nuevos, todos en verde; suite completa 1.439 en verde |
 
 Sin verificar en producción por falta de tráfico real en la ventana de trabajo: el debounce de tres mensajes seguidos y el registro de un `failed` por caída del proveedor. Ambos están cubiertos por la lógica y el candado, pero conviene mirar `ai_jobs` tras el primer día de tráfico.
+
+## Addendum 4 — Consulta de pedidos del cliente (2026-09-14)
+
+**Problema.** Un cliente escribía "quiero saber el estado de mi pedido, mi correo es …" y el bot respondía que no podía consultar pedidos. Medido en 30 días de producción: **88 de 88** preguntas por un pedido con correo dado se respondieron sin datos (`context_used.orders = false`). Un caso real: pedido confirmado y pagado, sin entregar diez días después, y tres respuestas de "no puedo consultar".
+
+**Causas.**
+1. `getCustomerOrders` usaba `email || emailFromChat`: el correo ficticio de la conversación (`visitor_*@widget.local`) siempre ganaba al que el cliente escribía.
+2. Solo se consultaba `invoice_sales`. En la organización con más tráfico, el 88% de los pedidos vive en `web_orders` (2.139 web frente a 272 facturas en 30 días), y precisamente los pendientes, cancelados y expirados —por los que se escribe preocupado— nunca llegan a factura.
+3. El prompt decía literalmente que el bot no podía consultar pedidos.
+
+**Decisión.** La lógica pura vive en `_shared/ai-chat/pedidosCliente.ts` (probada con Jest, importada por Deno). Orden de búsqueda: número de pedido escrito (`WO-<org>-XXXX`) → correo escrito en el chat sobre `web_orders` → facturas por cliente enlazado o por correo real. El correo del widget nunca identifica a nadie. Los estados se traducen a palabras del cliente (EXPIRADO = "el pago no se completó") y las fechas se muestran en la zona horaria de la organización, no en UTC.
+
+**Verificación en producción.** A los 21 segundos del despliegue, primera respuesta con datos reales (pedido, importe, estado, pago). Tras el segundo despliegue: 10 de 10 jobs `completed`, 0 fallos. Sin cambios de esquema.
+
+**Consecuencia que sube de prioridad.** El mismo cliente pidió "asesor humano" tres veces y el bot solo pudo remitir a la web: el escalado a humano (Fase 4) deja de ser opcional.
+
+**Política de privacidad elegida (tras revisión QA del mismo día).** Buscar pedidos por el correo que el cliente escribe, sin verificar que sea suyo, es el patrón habitual de "consulta tu pedido" y se acepta con tres salvaguardas: (1) los comodines de LIKE se escapan —sin esto `%@gmail.com` devolvía pedidos de cualquier cliente de Gmail—; (2) más de dos correos distintos en una conversación desactivan la búsqueda por correo y el bot pide el número de pedido; (3) todas las consultas filtran por la organización de la conversación. Con solo el correo se muestra número, importe, estado, tipo de entrega y fecha; nunca dirección ni teléfono. El modo enmascarado (estado y fecha con correo; detalle completo solo con número de pedido) queda como flag pendiente de decisión de producto.
+
+## Addendum 5 — Tallas, variantes y catálogos grandes (2026-09-15)
+
+**Problema.** En una tienda de calzado (16.551 productos activos) el bot decía "no tenemos talla 40" para unos tenis que existen en 7.5–9.5 US, y "no encuentro las zapatillas Diesel" teniendo seis modelos.
+
+**Causas.** (1) `buscar_productos` tardaba 19 s cuando un token era de categoría: los LATERAL de precio/imagen/stock corrían para ~300 raíces antes del LIMIT con un filtro sin índice; PostgREST cancelaba a los 8 s y el bot quedaba sin productos. (2) El modelo solo recibía "Disponible en N presentaciones", nunca la lista. (3) El prompt de visión, pensado para electrodomésticos, devolvía palabras genéricas ante una captura de ficha de producto.
+
+**Decisión.** El LIMIT se aplica antes de resolver precio/imagen/stock (386 ms). Una RPC `variantes_de_productos` devuelve las variantes activas con stock y precio, y el contexto las lista bajo cada producto. La guía de tallas (US → Colombia/EU, aproximada) entra al contexto solo cuando lo mostrado tiene tallas de ropa o calzado —no para "Tamaño: 100 ml"— y cede ante la tabla propia que la organización escriba en `system_rules`. Reglas para el modelo: la lista es la única verdad; convertir, ofrecer la equivalente y las vecinas, decir que es aproximado, nunca inventar tallas ni stock.

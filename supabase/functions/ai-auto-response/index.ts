@@ -6,7 +6,9 @@ import OpenAI from "https://esm.sh/openai@4";
 // Logica pura compartida (primer ladrillo del nucleo de la Fase 1). Se importa
 // con extension .ts porque lo exige Deno; Jest la testea importandola sin ella.
 import { decidirSilencio, secretosCoinciden } from "../_shared/ai-chat/politicaRespuesta.ts";
-import { decidirBusquedaCatalogo } from "../_shared/ai-chat/intencionConsulta.ts";
+import { decidirBusquedaCatalogo, pareceSeguimientoDeVariante } from "../_shared/ai-chat/intencionConsulta.ts";
+import { GUIA_TALLAS, ResumenVariantes, extraerMedidas, resumirVariantes } from "../_shared/ai-chat/variantesCatalogo.ts";
+import { MAXIMO_PEDIDOS_MOSTRADOS, correoParaBuscar, decidirCorreoDelChat, escaparLike, esCorreoDelWidget, extraerNumeroDePedido, formatearFacturas, formatearPedidosWeb } from "../_shared/ai-chat/pedidosCliente.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -415,20 +417,48 @@ function extractAssistantProductKeywords(messages: Array<{content: string, role:
   return [...new Set(productKeywords)].slice(0, 5);
 }
 
-function extractEmailFromMessages(messages: Array<{content: string, role: string}>): string | null {
-  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-  const customerMsgs = messages.filter(m => m.role === 'customer').reverse();
-  for (const msg of customerMsgs) {
-    const matches = msg.content.match(emailRegex);
-    if (matches) {
-      const realEmail = matches.find(e => !e.includes('@widget.local'));
-      if (realEmail) return realEmail.toLowerCase();
-    }
+/**
+ * Variantes reales (tallas, colores, presentaciones) de unos productos, ya
+ * redactadas por producto padre. Antes el modelo solo sabia "hay 5
+ * presentaciones" y, ante "talla 40", contestaba "no la tenemos" sin haber
+ * visto ninguna.
+ */
+async function detalleDeVariantes(organizationId: number, ids: number[]): Promise<ResumenVariantes> {
+  const vacio: ResumenVariantes = { porRaiz: new Map<number, string>(), hayTallas: false };
+  if (ids.length === 0) return vacio;
+  const { data: filas, error } = await supabase
+    .rpc('variantes_de_productos', { p_org: organizationId, p_ids: ids, p_max_por_producto: 40 });
+  if (error) {
+    console.error('Error consultando variantes:', error.message);
+    return vacio;
   }
-  return null;
+  return resumirVariantes(filas || []);
 }
 
-async function searchProducts(organizationId: number, keywords: string[]): Promise<{text: string, products: any[]}> {
+/**
+ * Medidas sacadas de la descripcion de cada producto ("30 x 20 cm", "1,5
+ * litros"). La descripcion completa no cabe en el contexto; sus medidas si.
+ */
+async function medidasDeProductos(organizationId: number, ids: number[]): Promise<Map<number, string>> {
+  const salida = new Map<number, string>();
+  if (ids.length === 0) return salida;
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, description')
+    .eq('organization_id', organizationId)
+    .in('id', ids);
+  if (error) {
+    console.error('Error consultando descripciones:', error.message);
+    return salida;
+  }
+  for (const fila of data || []) {
+    const medidas = extraerMedidas(fila.description);
+    if (medidas) salida.set(Number(fila.id), medidas);
+  }
+  return salida;
+}
+
+async function searchProducts(organizationId: number, keywords: string[]): Promise<{text: string, products: any[], hayTallas?: boolean}> {
   if (keywords.length === 0) return { text: '', products: [] };
 
   try {
@@ -471,6 +501,13 @@ async function searchProducts(organizationId: number, keywords: string[]): Promi
       presentaciones: p.presentaciones ?? 1,
     }));
 
+    // Paso 3: las variantes reales (tallas, colores, presentaciones) de lo
+    // encontrado.
+    const [variantes, medidas] = await Promise.all([
+      detalleDeVariantes(organizationId, products.map((p: any) => Number(p.id))),
+      medidasDeProductos(organizationId, products.map((p: any) => Number(p.id))),
+    ]);
+
     let text = '';
     for (const p of products) {
       const price = p.price ? `$${p.price.toLocaleString('es-CO')}` : 'Precio no disponible';
@@ -479,14 +516,18 @@ async function searchProducts(organizationId: number, keywords: string[]): Promi
       const stockText = p.stock !== null ? ` | Stock: ${p.stock}` : '';
       // Las variantes van agrupadas: se le dice al modelo cuantas hay para que
       // pregunte por la presentacion en vez de listar la misma cosa seis veces.
-      const presentaciones = p.presentaciones > 1
+      const detalleVariantes = variantes.porRaiz.get(Number(p.id));
+      const presentaciones = p.presentaciones > 1 && !detalleVariantes
         ? ` | Disponible en ${p.presentaciones} presentaciones (pregunta cual quiere)` : '';
       text += `- **${p.name}** | PRECIO DE VENTA: ${price}${comparePrice}${stockText}${presentaciones}`;
       if (p.imageUrl) text += ` | Imagen: ${p.imageUrl}`;
+      if (detalleVariantes) text += `\n  ${detalleVariantes}`;
+      const medidasProducto = medidas.get(Number(p.id));
+      if (medidasProducto) text += `\n  Medidas/capacidad (de la descripción): ${medidasProducto}`;
       text += '\n';
     }
 
-    return { text, products };
+    return { text, products, hayTallas: variantes.hayTallas };
   } catch (e) {
     console.error('Error en searchProducts:', e);
     return { text: '', products: [] };
@@ -508,40 +549,103 @@ async function getCategories(organizationId: number): Promise<string> {
   }
 }
 
-async function getCustomerOrders(organizationId: number, email: string | null, customerId: string | null, emailFromChat: string | null): Promise<string> {
+/**
+ * Pedidos del cliente para el contexto del bot.
+ *
+ * Bug que corrige (visto el 2026-09-14): una clienta con un pedido pagado y
+ * facturado escribio su correo tres veces y el bot respondio "no puedo consultar
+ * el estado del pedido". La causa: `email || emailFromChat` y `customerId`
+ * tomaban SIEMPRE el registro del visitante anonimo del widget
+ * (`visitor_...@widget.local`), que existe siempre y no tiene pedidos. El correo
+ * que la clienta escribio nunca llegaba a usarse.
+ *
+ * Ademas solo miraba `invoice_sales`, donde solo estan los pedidos PAGADOS: en
+ * la organizacion principal hay 2.139 pedidos en `web_orders` en 30 dias y solo
+ * 272 facturas. Un pedido pendiente, cancelado o expirado —justo por el que un
+ * cliente escribe preocupado— era invisible.
+ *
+ * Orden de busqueda:
+ *   1. Numero de pedido escrito en el chat (WO-<org>-XXXX): el mas preciso.
+ *   2. Correo escrito en el chat: lo que el cliente dijo manda sobre el
+ *      registro anonimo de la conversacion.
+ *   3. Cliente real enlazado a la conversacion (`metadata.linked_customer_id`).
+ *   4. Correo real del cliente de la conversacion, si no es el ficticio del widget.
+ */
+async function getCustomerOrders(
+  organizationId: number,
+  email: string | null,
+  customerId: string | null,
+  emailFromChat: string | null,
+  numeroDePedido: string | null = null,
+  linkedCustomerId: string | null = null,
+  zonaHoraria: string | null = null
+): Promise<string> {
   try {
-    const searchEmail = email || emailFromChat;
-    if (!searchEmail && !customerId) return '';
-    
-    let customerIdToSearch = customerId;
-    if (!customerIdToSearch && searchEmail) {
+
+    // --- 1) Por numero de pedido ------------------------------------------
+    if (numeroDePedido) {
+      const { data: porNumero } = await supabase
+        .from('web_orders')
+        .select('order_number, status, payment_status, total, delivery_type, delivery_partner, created_at, confirmed_at, ready_at, delivered_at, cancelled_at, estimated_delivery_at, customer_email')
+        .eq('organization_id', organizationId)
+        .ilike('order_number', numeroDePedido)
+        .limit(1);
+      if (porNumero && porNumero.length > 0) {
+        return formatearPedidosWeb(porNumero, `Pedido consultado por número: ${numeroDePedido}`, zonaHoraria);
+      }
+    }
+
+    // --- 2) Por correo: primero el que escribio el cliente -------------------
+    const correoReal = correoParaBuscar(emailFromChat, email);
+
+    let texto = '';
+
+    if (correoReal) {
+      const { data: pedidosWeb } = await supabase
+        .from('web_orders')
+        .select('order_number, status, payment_status, total, delivery_type, delivery_partner, created_at, confirmed_at, ready_at, delivered_at, cancelled_at, estimated_delivery_at, customer_email')
+        .eq('organization_id', organizationId)
+        .ilike('customer_email', escaparLike(correoReal))
+        .order('created_at', { ascending: false })
+        // Uno mas del maximo, para poder avisar de que hay otros.
+        .limit(MAXIMO_PEDIDOS_MOSTRADOS + 1);
+      if (pedidosWeb && pedidosWeb.length > 0) {
+        texto += formatearPedidosWeb(pedidosWeb, `Pedidos web asociados al correo ${correoReal}`, zonaHoraria);
+      }
+    }
+
+    // --- 3) Facturas: por cliente enlazado, o por correo real ------------------
+    let idParaFacturas: string | null = linkedCustomerId;
+    if (!idParaFacturas && correoReal) {
       const { data: cust } = await supabase
         .from('customers')
         .select('id')
         .eq('organization_id', organizationId)
-        .eq('email', searchEmail)
-        .maybeSingle();
-      if (cust) customerIdToSearch = cust.id;
+        .ilike('email', escaparLike(correoReal))
+        .order('created_at', { ascending: true })
+        .limit(1);
+      if (cust && cust.length > 0) idParaFacturas = cust[0].id;
     }
-    if (!customerIdToSearch) return '';
-    
-    const { data: orders } = await supabase
-      .from('invoice_sales')
-      .select('number, total, status, created_at')
-      .eq('organization_id', organizationId)
-      .eq('customer_id', customerIdToSearch)
-      .order('created_at', { ascending: false })
-      .limit(3);
-    
-    if (!orders || orders.length === 0) return '';
-    
-    let text = '';
-    for (const o of orders) {
-      const date = new Date(o.created_at).toLocaleDateString('es-CO');
-      text += `- Pedido #${o.number} | $${Number(o.total).toLocaleString('es-CO')} | Estado: ${o.status} | Fecha: ${date}\n`;
+    if (!idParaFacturas && customerId && !esCorreoDelWidget(email)) {
+      idParaFacturas = customerId;
     }
-    return text;
-  } catch {
+
+    if (idParaFacturas) {
+      const { data: facturas } = await supabase
+        .from('invoice_sales')
+        .select('number, total, status, created_at')
+        .eq('organization_id', organizationId)
+        .eq('customer_id', idParaFacturas)
+        .order('created_at', { ascending: false })
+        .limit(3);
+      if (facturas && facturas.length > 0) {
+        texto += formatearFacturas(facturas, zonaHoraria);
+      }
+    }
+
+    return texto;
+  } catch (e) {
+    console.error('Error consultando pedidos:', e);
     return '';
   }
 }
@@ -625,7 +729,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: conv } = await supabase
       .from('conversations')
-      .select('id, channel_id, customer_id, organization_id, customer:customers(id, first_name, last_name, full_name, email, metadata)')
+      .select('id, channel_id, customer_id, organization_id, organization:organizations(timezone), customer:customers(id, first_name, last_name, full_name, email, metadata)')
       .eq('id', conversationId)
       .single();
     if (!conv) {
@@ -953,7 +1057,7 @@ Deno.serve(async (req: Request) => {
               {
                 role: 'user',
                 content: [
-                  { type: 'text', text: 'Describe este producto/imagen en español. Si es un electrodoméstico o producto, identifica: marca, modelo, tipo de producto y color. Sé breve y específico. Incluye palabras clave para buscar este producto en un catálogo.' },
+                  { type: 'text', text: 'Describe este producto/imagen en español, en máximo 3 líneas. Si es una captura de pantalla de una tienda o de una ficha de producto, TRANSCRIBE LITERALMENTE el nombre del producto, la marca, el modelo o referencia, la talla o presentación y el SKU que se vean. Si es una foto, identifica marca, modelo, tipo de producto y color. Termina con una línea "Palabras clave:" con las 6 palabras más distintivas para buscarlo en un catálogo (marca y modelo primero; nada de palabras genéricas como producto, par, marca, imagen).' },
                   { type: 'image_url', image_url: { url: imgUrl, detail: 'low' } }
                 ]
               }
@@ -967,7 +1071,7 @@ Deno.serve(async (req: Request) => {
             // algo del catalogo es `palabras_de_catalogo()`. Las listas de marcas
             // (samsung|lg|mabe...) y de electrodomesticos que habia aqui dejaban
             // fuera cualquier foto de un perfume, un medicamento o unos tenis.
-            imageKeywords = decidirBusquedaCatalogo(imageAnalysis).tokens.slice(0, 5);
+            imageKeywords = decidirBusquedaCatalogo(imageAnalysis).tokens.slice(0, 8);
           }
         } catch (e) {
           console.error('Error vision:', e);
@@ -975,7 +1079,17 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const emailFromChat = extractEmailFromMessages(recentMessages);
+    // Si el cliente ya probo mas de dos correos distintos, se deja de buscar
+    // por correo: el chat no es un oraculo para enumerar quien compra aqui.
+    const decisionCorreo = decidirCorreoDelChat(recentMessages);
+    const emailFromChat = decisionCorreo.correo;
+    const numeroDePedido = extraerNumeroDePedido(recentMessages);
+    // Cliente real al que el widget enlazo esta conversacion (cuando el
+    // visitante dio un correo que ya existia en la base).
+    const linkedCustomerId: string | null = conv.customer?.metadata?.linked_customer_id ?? null;
+    // Las fechas de pedidos y facturas se muestran en el dia calendario de la
+    // organizacion, no en el de UTC (regla canonica de fechas del repo).
+    const zonaHoraria: string | null = conv.organization?.timezone ?? null;
 
     const { data: quickReplies } = await supabase
       .from('quick_replies')
@@ -1066,7 +1180,16 @@ Deno.serve(async (req: Request) => {
     })();
 
     // skipProductCards: search products for AI context but don't show visual cards
-    const skipProductCards = userSelectingProduct || isOrderPhase || isSupportQuery || isSimpleMessage;
+    let skipProductCards = userSelectingProduct || isOrderPhase || isSupportQuery || isSimpleMessage;
+
+    // "Que tienes talla 40?", "en rojo?", "el de 100 ml": pregunta por una
+    // variante de lo que acaba de ver. Si el mensaje no nombra nada del catalogo
+    // (la busqueda vuelve vacia), se responde con las tarjetas anteriores y sus
+    // variantes reales. Si SI nombra algo ("talla 40 en calzado"), manda la
+    // busqueda nueva: en la primera version esto reutilizaba unas pantalonetas
+    // para responder por calzado.
+    const hayTarjetasRecientes = last4.some(m => m.direction === 'outbound' && m.metadata?.products?.length > 0);
+    const esSeguimientoDeVariante = hayTarjetasRecientes && pareceSeguimientoDeVariante(lastUserMsg);
 
     // --- ¿Hay que consultar el catalogo? -------------------------------------
     // Antes se buscaba con casi cualquier palabra: el 45% de las busquedas no
@@ -1110,37 +1233,54 @@ Deno.serve(async (req: Request) => {
     }
     
     // When user is selecting a product, reuse products from previous AI message metadata
-    let productsFromPreviousCards: {text: string, products: any[]} | null = null;
-    if (userSelectingProduct) {
+    let productsFromPreviousCards: {text: string, products: any[], hayTallas?: boolean} | null = null;
+    if (userSelectingProduct || esSeguimientoDeVariante) {
       const aiWithProducts = recentMessages.filter(m => m.direction === 'outbound' && m.metadata?.products?.length > 0);
       const lastAiWithProducts = aiWithProducts[aiWithProducts.length - 1];
       if (lastAiWithProducts?.metadata?.products) {
         const prods = lastAiWithProducts.metadata.products;
+        // El cliente esta eligiendo talla/presentacion de una tarjeta anterior:
+        // aqui es donde mas falta hacen las variantes reales.
+        const idsPrevios = prods.map((p: any) => Number(p.id)).filter((n: number) => !Number.isNaN(n));
+        const [variantesPrevias, medidasPrevias] = await Promise.all([
+          detalleDeVariantes(organizationId, idsPrevios),
+          medidasDeProductos(organizationId, idsPrevios),
+        ]);
         let text = '';
         for (const p of prods) {
           const price = p.price ? `$${Number(p.price).toLocaleString('es-CO')}` : 'Precio no disponible';
           const comparePrice = p.comparePrice && Number(p.comparePrice) > Number(p.price) ? ` (precio anterior tachado: $${Number(p.comparePrice).toLocaleString('es-CO')}, NO usar)` : '';
           const stockText = p.stock !== null && p.stock !== undefined ? ` | Stock: ${p.stock}` : ' | Stock: disponible';
-          text += `- **${p.name}** | PRECIO DE VENTA: ${price}${comparePrice}${stockText}\n`;
+          const detalle = variantesPrevias.porRaiz.get(Number(p.id));
+          const medidasPrev = medidasPrevias.get(Number(p.id));
+          text += `- **${p.name}** | PRECIO DE VENTA: ${price}${comparePrice}${stockText}${detalle ? `\n  ${detalle}` : ''}${medidasPrev ? `\n  Medidas/capacidad (de la descripción): ${medidasPrev}` : ''}\n`;
         }
-        productsFromPreviousCards = { text, products: prods };
+        productsFromPreviousCards = { text, products: prods, hayTallas: variantesPrevias.hayTallas };
       }
     }
 
-    const [categoriesText, productsResult, ordersText, orgInfo, checkoutConfig] = await Promise.all([
+    const [categoriesText, productosBuscados, ordersText, orgInfo, checkoutConfig] = await Promise.all([
       getCategories(organizationId),
-      productsFromPreviousCards ? Promise.resolve(productsFromPreviousCards) : searchProducts(organizationId, keywords),
-      getCustomerOrders(organizationId, customerEmail, customerId, emailFromChat),
+      (userSelectingProduct && productsFromPreviousCards) ? Promise.resolve(productsFromPreviousCards) : searchProducts(organizationId, keywords),
+      getCustomerOrders(organizationId, customerEmail, customerId, emailFromChat, numeroDePedido, linkedCustomerId, zonaHoraria),
       getOrganizationInfo(organizationId),
       getCheckoutConfig(organizationId),
     ]);
+
+    // Seguimiento sin resultados propios: se hereda lo ultimo mostrado, con
+    // sus variantes, y no se repiten las tarjetas.
+    let productsResult = productosBuscados;
+    if (esSeguimientoDeVariante && !userSelectingProduct && productsResult.products.length === 0 && productsFromPreviousCards) {
+      productsResult = productsFromPreviousCards;
+      skipProductCards = true;
+    }
 
     // Vertical de la organizacion. `ai_vertical_efectivo` usa `ai_settings.vertical`
     // si esta puesto y, si no, lo deduce del tipo de organizacion.
     //
     // Importa porque hoy TODAS reciben un prompt de tienda: 16 de las 38 no son
     // retail (8 hoteles, 5 restaurantes, 2 de servicios, 1 de transporte), y
-    // Hotel X genero 111.745 mensajes con instrucciones sobre "tarjetas de
+    // la org 2 genero 111.745 mensajes con instrucciones sobre "tarjetas de
     // producto" y "finalizar el pedido".
     let vertical = 'retail';
     try {
@@ -1244,7 +1384,7 @@ Deno.serve(async (req: Request) => {
     flowSteps += `REGLAS IMPORTANTES:\n- [PEDIDO_LISTO] es OBLIGATORIA cuando el cliente confirma. Sin ella no se crea el pedido.\n- NO uses formularios. TODO es por conversación natural.\n- SIEMPRE calcula los totales con NÚMEROS REALES, nunca con texto placeholder.\n- Una vez el cliente confirme sus productos, NO vuelvas a listar ni sugerir otros productos.\n- Enfócate ÚNICAMENTE en recopilar datos del pedido después de elegir productos.\n- MÉTODOS DE PAGO: Solo ofrece EXACTAMENTE estos: ${payMethodNames}. NO inventes ni menciones otros métodos de pago que no estén en esta lista.\n- STOCK: Si un producto aparece en la lista de PRODUCTOS abajo con stock > 0, ESTÁ DISPONIBLE para la venta. Solo di que NO está disponible si el stock es 0. NUNCA inventes que un producto no está disponible si tiene stock.\n- En la respuesta de confirmación (cuando incluyes [PEDIDO_LISTO]), REPITE el nombre completo y precio de cada producto del pedido.\n\n`;
     if (esRetail) systemPrompt += flowSteps;
     
-    systemPrompt += `PEDIDOS: Si preguntan por su pedido, pide el correo. Si ya lo dieron, usa los datos del bloque CONTEXTO ACTUAL.\n\n`;
+    systemPrompt += `PEDIDOS: SÍ puedes consultar el estado de los pedidos. Si el cliente pregunta por su pedido, pídele el número de pedido (formato WO-...) o el correo con el que compró. Si ya dio uno de los dos, el bloque CONTEXTO ACTUAL traerá sus pedidos: usa esos datos y responde con el estado tal como aparece (confirmado, en preparación, en camino, entregado, cancelado, expirado o pendiente de pago). Si un pedido aparece como EXPIRADO, explica que el pago no se completó y que puede volver a hacerlo. NUNCA digas que no puedes consultar pedidos: si el bloque no trae ninguno con ese correo o número, di que no encuentras pedidos con esos datos y pide que verifique el correo o el número.\n\n`;
 
     // A partir de aqui se acumula aparte todo lo que cambia en CADA mensaje.
     //
@@ -1263,11 +1403,15 @@ Deno.serve(async (req: Request) => {
 
     contextoDinamico += `Cliente: ${customerName} | Canal: ${conv.channel?.type || 'chat'}\n\n`;
 
-    if (categoriesText || productsResult.text || ordersText) {
+    if (categoriesText || productsResult.text) {
       contextoDinamico += `DATOS DEL INVENTARIO REAL Y DISPONIBLE:\n\n`;
       if (categoriesText) contextoDinamico += `CATEGORÍAS: ${categoriesText}\n\n`;
       if (productsResult.text) contextoDinamico += `PRODUCTOS ENCONTRADOS EN BÚSQUEDA ACTUAL:\n${productsResult.text}\n`;
-      if (ordersText) contextoDinamico += `PEDIDOS DEL CLIENTE:\n${ordersText}\n`;
+      if (productsResult.hayTallas) contextoDinamico += GUIA_TALLAS;
+    }
+    if (ordersText) contextoDinamico += `PEDIDOS DEL CLIENTE:\n${ordersText}\n`;
+    if (decisionCorreo.sondeo) {
+      contextoDinamico += `PEDIDOS DEL CLIENTE: el cliente ha dado varios correos distintos en esta conversación. Por seguridad no se busca más por correo: pídele el número de pedido (WO-...).\n\n`;
     }
 
     // Un solo juego de reglas, valido con y sin resultados. Antes eran dos

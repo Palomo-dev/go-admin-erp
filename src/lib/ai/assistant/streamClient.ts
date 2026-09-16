@@ -11,7 +11,7 @@
  * Por eso los fallos se señalizan y no se lanzan.
  */
 
-import type { PendingAction } from './clientTypes';
+import type { BulkPreviewRow, PendingAction } from './clientTypes';
 
 export interface ToolStep {
   name: string;
@@ -67,8 +67,44 @@ function drainEvents(buffer: string): { events: ParsedEvent[]; rest: string } {
   return { events, rest };
 }
 
+/** El `preview` del servidor, saneado a lo que la tarjeta sabe pintar. */
+function toActionPreview(raw: unknown): PendingAction['preview'] {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const p = raw as Record<string, unknown>;
+  const lines = Array.isArray(p.lines)
+    ? (p.lines as Array<Record<string, unknown>>)
+        .filter((l) => l && typeof l.label === 'string')
+        .map((l) => ({
+          label: String(l.label),
+          value: String(l.value ?? ''),
+          confidence: typeof l.confidence === 'number' ? l.confidence : undefined,
+        }))
+    : [];
+  const warnings = Array.isArray(p.warnings) ? (p.warnings as unknown[]).map(String) : [];
+  const totals =
+    p.totals && typeof p.totals === 'object'
+      ? Object.fromEntries(Object.entries(p.totals as Record<string, unknown>).map(([k, v]) => [k, String(v)]))
+      : undefined;
+  const bulkRaw = p.bulk && typeof p.bulk === 'object' ? (p.bulk as Record<string, unknown>) : null;
+  const bulk = bulkRaw
+    ? {
+        total: Number(bulkRaw.total ?? 0),
+        nuevos: Number(bulkRaw.nuevos ?? 0),
+        duplicados: Number(bulkRaw.duplicados ?? 0),
+        conErrores: Number(bulkRaw.conErrores ?? 0),
+        rows: Array.isArray(bulkRaw.rows) ? (bulkRaw.rows as BulkPreviewRow[]) : [],
+      }
+    : undefined;
+  return { lines, warnings, totals, reversible: p.reversible !== false, bulk };
+}
+
 export async function streamAssistant(
-  body: { message: string; conversationId?: string | null; context?: Record<string, unknown> },
+  body: {
+    message: string;
+    conversationId?: string | null;
+    context?: Record<string, unknown>;
+    attachmentIds?: string[];
+  },
   handlers: StreamHandlers,
   signal?: AbortSignal
 ): Promise<StreamResult> {
@@ -151,6 +187,7 @@ export async function streamAssistant(
                 typeof payload.expiresAt === 'string'
                   ? payload.expiresAt
                   : new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+              preview: toActionPreview(payload.preview),
             });
             break;
           case 'usage':

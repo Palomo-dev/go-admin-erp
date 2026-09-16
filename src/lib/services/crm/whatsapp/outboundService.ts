@@ -261,10 +261,20 @@ export async function sendWhatsApp(input: SendWhatsAppInput, supabase: SupabaseC
  */
 export const CLIENT_REQUEST_ID_WINDOW_MS = 7 * 24 * 3600 * 1000;
 
-/** ¿Ya existe un saliente con esta clave de idempotencia en la organización? */
+/**
+ * ¿Ya existe un saliente con esta clave de idempotencia en la organización?
+ *
+ * Fail-closed (F0-JOBS r4, tester r3 T-2): un error de la consulta (timeout de
+ * `statement_timeout`, corte de red) se PROPAGA en vez de devolver `null`.
+ * `null` significa «no se ha enviado» y aquí eso dispara un envío y un
+ * descuento de créditos; ante la duda hay que reintentar la comprobación, no
+ * enviar. El handler `whatsapp` lo convierte en `JobRetryableError`; en
+ * `sendWhatsApp` sube como error interno (la ruta responde 500 y el cliente
+ * repite con la misma clave). Índice parcial pendiente: `crm_v4_f00_42`.
+ */
 export async function findByClientRequestId(orgId: number, clientRequestId: string, service: SupabaseClient, now: Date = new Date()): Promise<{ id: string; conversation_id: string } | null> {
   const since = new Date(now.getTime() - CLIENT_REQUEST_ID_WINDOW_MS).toISOString();
-  const { data } = await service
+  const { data, error } = await service
     .from('messages')
     .select('id, conversation_id')
     .eq('organization_id', orgId)
@@ -274,6 +284,7 @@ export async function findByClientRequestId(orgId: number, clientRequestId: stri
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();
+  if (error) throw new Error(`findByClientRequestId: ${error.message}`);
   const row = data as { id: string; conversation_id: string } | null;
   return row?.id ? { id: row.id, conversation_id: row.conversation_id } : null;
 }

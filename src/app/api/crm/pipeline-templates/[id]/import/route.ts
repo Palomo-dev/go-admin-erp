@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { isOrgAdmin } from '@/lib/utils/rbac';
 import { getPipelineTemplateById } from '@/lib/services/crm/pipelineTemplates';
 
@@ -48,6 +49,7 @@ export async function POST(
     } catch {
       // Body vacío es válido
     }
+    readOrgBody(ctx, body);
 
     const pipelineName = body.pipelineName || template.label;
     const setAsDefault = body.setAsDefault ?? false;

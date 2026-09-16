@@ -11,6 +11,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  *
  * Operación atómica con idempotencia por `reference`:
  *   1. Verifica idempotencia (si ya existe un payment con la misma reference, no re-procesa).
+ *      La comprobación previa no cubre dos webhooks simultáneos: para
+ *      `reference LIKE 'stripe:%'` el índice único parcial
+ *      `uq_payments_org_stripe_reference` (organization_id, reference) corta la
+ *      carrera y el 23505 se devuelve como `idempotent: true, duplicate: true`
+ *      sin tocar factura ni cartera (el primer webhook ya lo hizo).
  *   2. Inserta en payments con source='invoice_sales', source_id=invoice_id.
  *   3. Actualiza invoice_sales.balance y status (paid si balance=0, partial si >0).
  *   4. Actualiza accounts_receivable.balance.
@@ -37,7 +42,23 @@ export interface RegisterPaymentResult {
   invoice_status: string | null;
   commission_created: boolean;
   idempotent: boolean;
+  /** true solo cuando el INSERT chocó con el índice único (carrera): nada se recalculó en esta llamada. */
+  duplicate?: boolean;
+  /** Rechazo de validación (r4): la ruta responde con `http_status` (400) y `code`. */
+  code?: 'INVALID_AMOUNT' | 'CURRENCY_MISMATCH';
+  http_status?: number;
   message: string;
+}
+
+function rejectInput(code: NonNullable<RegisterPaymentResult['code']>, message: string): RegisterPaymentResult {
+  return { success: false, payment_id: null, invoice_status: null, commission_created: false, idempotent: false, code, http_status: 400, message };
+}
+
+/** Postgres `unique_violation` sobre el índice parcial de referencias de Stripe. */
+export function isStripeReferenceDuplicate(error: { code?: string; message?: string } | null | undefined, reference: string): boolean {
+  if (!error || error.code !== '23505') return false;
+  if (!reference.startsWith('stripe:')) return false;
+  return typeof error.message !== 'string' || error.message.includes('uq_payments_org_stripe_reference') || /payments/.test(error.message);
 }
 
 // ─── Funciones del servicio ──────────────────────────────────────────────────
@@ -57,6 +78,16 @@ export async function registerCrmPayment(
   data: RegisterPaymentInput,
   supabase: SupabaseClient
 ): Promise<RegisterPaymentResult> {
+  // ─── 0. Validación del importe (r4): `payments` no tiene CHECK y un abono negativo SUBÍA el saldo ──
+  const paymentAmount = typeof data.amount === 'number' ? data.amount : Number.NaN;
+  if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+    return rejectInput('INVALID_AMOUNT', `El importe del pago debe ser un número mayor que cero (recibido: ${String(data.amount)})`);
+  }
+  const paymentCurrency = String(data.currency ?? '').trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(paymentCurrency)) {
+    return rejectInput('CURRENCY_MISMATCH', `Moneda inválida: ${String(data.currency)}`);
+  }
+
   // ─── 1. Idempotencia: verificar si ya existe un pago con la misma reference ──
   const { data: existingPayment } = await supabase
     .from('payments')
@@ -108,8 +139,13 @@ export async function registerCrmPayment(
     commission_type: string | null;
   };
 
+  // Moneda del pago = moneda de la factura (r4): un abono en USD no descuenta saldo en COP.
+  const invoiceCurrency = String(invoiceRow.currency ?? '').trim().toUpperCase();
+  if (invoiceCurrency && invoiceCurrency !== paymentCurrency) {
+    return rejectInput('CURRENCY_MISMATCH', `La moneda del pago (${paymentCurrency}) no coincide con la de la factura (${invoiceCurrency})`);
+  }
+
   // Validar que el monto no exceda el balance
-  const paymentAmount = Number(data.amount);
   const currentBalance = Number(invoiceRow.balance);
 
   if (paymentAmount > currentBalance) {
@@ -133,7 +169,7 @@ export async function registerCrmPayment(
       source_id: data.invoice_id,
       method: data.method ?? null,
       amount: paymentAmount,
-      currency: data.currency,
+      currency: paymentCurrency,
       reference: data.reference,
       processor_response: data.processor_response ?? null,
       status: 'completed',
@@ -146,6 +182,18 @@ export async function registerCrmPayment(
     .single();
 
   if (payError) {
+    if (isStripeReferenceDuplicate(payError, data.reference)) {
+      // Otro proceso insertó la misma reference entre la comprobación y el INSERT: ya está registrado.
+      return {
+        success: true,
+        payment_id: null,
+        invoice_status: null,
+        commission_created: false,
+        idempotent: true,
+        duplicate: true,
+        message: 'Pago ya registrado por otro proceso (índice único de referencia Stripe)',
+      };
+    }
     return {
       success: false,
       payment_id: null,
@@ -214,14 +262,16 @@ export async function registerCrmPayment(
   let commissionCreated = false;
 
   if (newInvoiceStatus === 'paid' && invoiceRow.opportunity_id) {
-    // Verificar si ya existe una comisión devengada para esta oportunidad
+    // ¿Ya existe una comisión para esta oportunidad? En CUALQUIER estado (r3):
+    // misma regla que el trigger de BD y que commissionService.accrueCommission;
+    // una cancelada (rechazo/clawback) no se vuelve a devengar sola.
     const { data: existingComm } = await supabase
       .from('commissions')
       .select('id')
       .eq('organization_id', orgId)
       .eq('source_type', 'opportunity')
       .eq('source_id', invoiceRow.opportunity_id)
-      .in('status', ['accrued', 'paid'])
+      .limit(1)
       .maybeSingle();
 
     if (!existingComm && invoiceRow.salesperson_id) {

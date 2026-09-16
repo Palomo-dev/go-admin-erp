@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { meetingPatchSchema, MeetingNotFoundError, updateMeeting } from '@/lib/services/crm/meetingsService';
 
 /**
@@ -10,7 +11,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   try {
     const ctx = await getServerOrgContext(request);
     const { id } = await params;
-    const parsed = meetingPatchSchema.safeParse(await request.json().catch(() => null));
+    const parsed = meetingPatchSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });
     }

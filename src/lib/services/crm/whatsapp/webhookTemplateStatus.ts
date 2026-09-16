@@ -3,6 +3,12 @@
  * de Meta (FASE-16 §4.3, cierra B15). Actualiza `templates.metadata.status`
  * por `meta_template_id` (fallback name+language dentro del WABA) y pausa las
  * campañas `sending` que usen una plantilla PAUSED/DISABLED.
+ *
+ * F0-SEC r3 (tester r2, H2): la búsqueda se restringe SIEMPRE a las
+ * organizaciones autorizadas (`organizationIds`: las dueñas del canal cuyo
+ * WABA firmó el webhook). Antes, con `meta_template_id`, buscaba en todas las
+ * organizaciones y una plantilla de B se podía pausar con la firma de A. Sin
+ * organizaciones no se consulta nada: fail-closed.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -40,8 +46,16 @@ export function parseTemplateStatusUpdate(field: string, value: unknown): Templa
   return { event: ev, message_template_id: id, message_template_name: name, message_template_language: lang, reason, quality_score: null, field };
 }
 
-export async function applyTemplateStatusUpdate(update: TemplateStatusUpdate, wabaId: string | null, service: SupabaseClient): Promise<{ updated: number; paused_campaigns: number }> {
-  let q = service.from('templates').select('id, organization_id, metadata').eq('channel', 'whatsapp');
+export async function applyTemplateStatusUpdate(
+  update: TemplateStatusUpdate,
+  wabaId: string | null,
+  service: SupabaseClient,
+  organizationIds: readonly number[],
+): Promise<{ updated: number; paused_campaigns: number }> {
+  const orgIds = Array.from(new Set(organizationIds.filter((id) => Number.isInteger(id) && id > 0)));
+  if (orgIds.length === 0) return { updated: 0, paused_campaigns: 0 };
+
+  let q = service.from('templates').select('id, organization_id, metadata').eq('channel', 'whatsapp').in('organization_id', orgIds);
   if (update.message_template_id) q = q.eq('metadata->>meta_template_id', update.message_template_id);
   else if (update.message_template_name) {
     q = q.eq('name', update.message_template_name);

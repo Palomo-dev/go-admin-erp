@@ -72,4 +72,14 @@ describe('quickActionsConfig', () => {
     expect(normalizePhone('3109876543')).toBe('+573109876543');
     expect(normalizePhone('601 234 5678')).toBe('+576012345678');
   });
+
+  // F10 r2 (M51 del tester): «Propuesta» solo se habilita desde una oportunidad.
+  test('proposal: deshabilitada con solo cliente (razón «Solo desde una oportunidad»), habilitada con oportunidad, ausente sin pedirla', () => {
+    const onlyCustomer = getQuickActions({ customer: { email: 'a@x.co', phone: null }, hasOpportunity: false, hasCustomer: true, softphone: null, actions: ['proposal', 'email'] });
+    expect(onlyCustomer.find((a) => a.kind === 'proposal')).toEqual({ kind: 'proposal', label: 'Propuesta', enabled: false, reason: 'Solo desde una oportunidad' });
+    expect(onlyCustomer.find((a) => a.kind === 'email')?.enabled).toBe(true);
+    const withOpp = getQuickActions({ customer: null, hasOpportunity: true, hasCustomer: false, softphone: null, actions: ['proposal'] });
+    expect(withOpp).toEqual([{ kind: 'proposal', label: 'Propuesta', enabled: true }]);
+    expect(getQuickActions({ customer: null, hasOpportunity: true, hasCustomer: true, softphone: null }).map((a) => a.kind)).not.toContain('proposal');
+  });
 });

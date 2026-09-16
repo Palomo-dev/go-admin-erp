@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   activityInputSchema,
   createActivity,
@@ -17,7 +18,7 @@ import {
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext(request);
-    const json = await request.json().catch(() => null);
+    const json = readOrgBody(ctx, await request.json().catch(() => null));
     const parsed = activityInputSchema.safeParse(json);
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });

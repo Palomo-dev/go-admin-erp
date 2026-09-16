@@ -59,6 +59,8 @@ export interface TimelineCallData {
   to_number: string | null;
   recording_enabled: boolean;
   cost_amount: number | null;
+  /** `call_consents.method` de la acta de grabación (F-4): `unverified_announcement` se marca en la UI. */
+  consent_method: string | null;
   recording: { id: string; status: string } | null;
   transcript: { id: string; status: string } | null;
   analysis: {

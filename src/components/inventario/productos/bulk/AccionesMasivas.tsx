@@ -45,6 +45,7 @@ import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
+import { avisarCambioCatalogo } from '@/lib/services/website/avisarCambioCatalogo';
 import {
   bulkUpdatePrices,
   bulkUpdateStock,
@@ -118,6 +119,9 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   }, [organization?.id, selectedBranchId]);
 
   const mostrarResultado = (accion: string, exitosos: number, fallidos: number, errores: string[]) => {
+    // La tienda web cachea el catálogo 30 s: avisarle para que refleje ya
+    // los precios, el stock o el estado que acaban de cambiar.
+    if (exitosos > 0) avisarCambioCatalogo();
     if (fallidos === 0) {
       toast({ title: accion, description: `${exitosos} productos actualizados correctamente.` });
     } else {

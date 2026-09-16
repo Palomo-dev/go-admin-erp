@@ -72,6 +72,8 @@ export default function Composer({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  /** Aviso bajo el composer tras una nota de voz (baja confianza, error). */
+  const [voiceNote, setVoiceNote] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -145,12 +147,20 @@ export default function Composer({
             // El texto entra en el composer, NO se envía solo: el usuario ve lo
             // que se entendió y lo corrige antes de mandarlo.
             onChange(value ? `${value} ${data.text}` : data.text);
+            // §5.5.1: la confianza se enseña. Si el proveedor no está seguro,
+            // se le pide al usuario que revise antes de enviar.
+            const conf = typeof data.confidence === 'number' ? data.confidence : null;
+            setVoiceNote(conf !== null && conf < 0.7 ? 'No entendí bien la nota: revisa el texto antes de enviarlo.' : null);
             setTimeout(() => textareaRef.current?.focus(), 50);
+          } else if (res.ok && !data.text) {
+            setVoiceNote('No se oyó nada en la nota. Prueba a grabar de nuevo, más cerca del micrófono.');
           } else {
             console.error('Error transcribiendo:', data.error);
+            setVoiceNote(typeof data.error === 'string' ? data.error : 'No pude transcribir la nota.');
           }
         } catch (error) {
           console.error('Error transcribiendo:', error);
+          setVoiceNote('No pude transcribir la nota.');
         } finally {
           setIsTranscribing(false);
         }
@@ -251,7 +261,11 @@ export default function Composer({
           <textarea
             ref={textareaRef}
             value={value}
-            onChange={(e) => onChange(e.target.value.slice(0, MAX_CHARS))}
+            onChange={(e) => {
+              onChange(e.target.value.slice(0, MAX_CHARS));
+              // En cuanto el usuario edita, el aviso de la nota de voz ya cumplió.
+              if (voiceNote) setVoiceNote(null);
+            }}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             rows={1}
@@ -307,9 +321,15 @@ export default function Composer({
       </div>
 
       <div className="flex items-center justify-between mt-1.5 px-1">
-        <p className="text-[10px] text-gray-400">
-          {isMobile ? 'Toca enviar para mandar' : 'Enter envía · Shift+Enter salta de línea'}
-        </p>
+        {voiceNote ? (
+          <p className="text-[10px] text-amber-600 dark:text-amber-400" role="status">
+            {voiceNote}
+          </p>
+        ) : (
+          <p className="text-[10px] text-gray-400">
+            {isMobile ? 'Toca enviar para mandar' : 'Enter envía · Shift+Enter salta de línea'}
+          </p>
+        )}
         {/* El contador solo aparece cerca del límite: antes es ruido. */}
         {nearLimit && (
           <p className="text-[10px] text-amber-600 tabular-nums">

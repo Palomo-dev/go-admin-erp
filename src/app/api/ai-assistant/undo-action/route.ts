@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getAssistantCapabilities } from '@/lib/ai/assistant/capabilities';
 import { applyUndo } from '@/lib/ai/assistant/undoService';
 import { checkRateLimit } from '@/lib/security/rateLimit';
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = (await request.json()) as { actionId?: unknown };
+    const body = (await readOrgBody(ctx, request)) as { actionId?: unknown };
     const actionId = typeof body.actionId === 'string' ? body.actionId : null;
     if (!actionId) {
       return NextResponse.json(
@@ -162,6 +163,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: outcome.message });
   } catch (error: unknown) {
+    if (error instanceof OrgContextError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     const message = error instanceof Error ? error.message : 'Error procesando la solicitud';
     console.error('Error deshaciendo acción del asistente:', message);
     return NextResponse.json({ success: false, message }, { status: 500 });

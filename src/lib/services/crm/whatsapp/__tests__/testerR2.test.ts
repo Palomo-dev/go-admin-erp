@@ -42,12 +42,16 @@ describe('F16 r2 · schemas: `noOrgInBody` no rechaza nada', () => {
 
   // CORREGIDO en r3: la comprobación se movió a `preprocess`, que sí ve el
   // objeto crudo antes de que zod elimine las claves desconocidas.
-  it('createCampaign con organization_id en el body: se RECHAZA', () => {
-    expect(zCreateCampaignBody.safeParse({ ...body, organization_id: 999 }).success).toBe(false);
+  // F0-SEC r2: y de ahí salió de los esquemas. La regla dura 5 tiene UN punto
+  // (`readOrgBody`, `@/lib/security/organizationBody`) que cada ruta llama antes
+  // de validar: organización ajena → 403 + registro; la misma → se ignora. El
+  // esquema, por tanto, vuelve a no rechazar nada y descarta la clave.
+  it('createCampaign con organization_id en el body: el esquema NO decide; readOrgBody ya respondió 403 antes', () => {
+    expect(zCreateCampaignBody.safeParse({ ...body, organization_id: 999 }).success).toBe(true);
   });
 
-  it('send con orgId en el body: se RECHAZA', () => {
-    expect(zSendBody.safeParse({ customerId: UUID_B, channelId: UUID_A, text: 'hola', orgId: 7 }).success).toBe(false);
+  it('send con orgId en el body: idem', () => {
+    expect(zSendBody.safeParse({ customerId: UUID_B, channelId: UUID_A, text: 'hola', orgId: 7 }).success).toBe(true);
   });
 });
 

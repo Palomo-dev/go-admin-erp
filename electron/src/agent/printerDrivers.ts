@@ -136,15 +136,29 @@ async function printViaNetwork(printer: PrinterRow, jobType: PrintJobRow['job_ty
 }
 
 /**
- * NOTA: requiere que el dispositivo Bluetooth ya esté emparejado con el SO
- * y que mac_address corresponda al emparejamiento. Validar con hardware real.
+ * Bluetooth.
+ *
+ * En Windows una térmica Bluetooth emparejada queda instalada como impresora
+ * normal sobre un puerto COM ("Standard Serial over Bluetooth"), así que el
+ * camino fiable es el mismo que USB: spooler RAW por `system_printer_name`.
+ * Antes este tipo dependía SIEMPRE de `escpos-bluetooth`, un módulo nativo
+ * opcional que en Windows no compila: "Soporte Bluetooth no disponible" en
+ * cada intento. El módulo nativo queda solo como respaldo cuando no hay
+ * impresora de sistema configurada (Linux/macOS con el dispositivo
+ * emparejado por MAC).
  */
 function printViaBluetooth(printer: PrinterRow, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): Promise<void> {
+  if (printer.system_printer_name) {
+    return printViaRawSpooler(printer, jobType, payload);
+  }
   if (!escpos.Bluetooth) {
-    throw new Error('Soporte Bluetooth no disponible: el módulo nativo escpos-bluetooth no se pudo instalar en este equipo');
+    throw new Error(
+      `Impresora Bluetooth "${printer.name}": configura el nombre con el que Windows la instaló (system_printer_name); ` +
+      'el envío directo por MAC requiere el módulo nativo escpos-bluetooth, que no está disponible en este equipo'
+    );
   }
   if (!printer.mac_address) {
-    throw new Error(`Impresora "${printer.name}" no tiene mac_address configurada`);
+    throw new Error(`Impresora "${printer.name}" no tiene mac_address ni system_printer_name configurados`);
   }
 
   const paper = getPaperSpec(printer.paper_width);
@@ -419,7 +433,8 @@ async function sendCashDrawerCommand(printer: PrinterRow): Promise<void> {
     });
   }
 
-  // raw_spooler, usb, system → todos usan el spooler RAW de Windows
+  // raw_spooler, usb, system y bluetooth (emparejado como impresora de
+  // Windows) → todos usan el spooler RAW de Windows
   const printerName = printer.system_printer_name || printer.name;
   await sendRawToPrinter(printerName, buffer);
   console.log(`[printer] sendCashDrawerCommand: comando enviado a "${printerName}"`);

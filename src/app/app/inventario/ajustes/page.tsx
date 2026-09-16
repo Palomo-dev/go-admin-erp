@@ -6,6 +6,7 @@ import {
   useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
+import { avisarCambioCatalogo } from '@/lib/services/website/avisarCambioCatalogo';
 import { supabase } from '@/lib/supabase/config';
 import { 
   adjustmentService,
@@ -176,6 +177,8 @@ export default function AjustesPage() {
 
       if (error) throw error;
 
+      // La tienda web cachea el stock 30 s: que el ajuste se refleje ya.
+      avisarCambioCatalogo();
       toast({
         title: 'Ajuste aplicado',
         description: 'Los movimientos de stock han sido generados correctamente'

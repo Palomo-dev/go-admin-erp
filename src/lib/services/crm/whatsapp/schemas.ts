@@ -33,37 +33,19 @@ export const zIsoDate = z
   .max(40)
   .refine((v) => !Number.isNaN(new Date(v).getTime()), 'no es una fecha ISO válida');
 
-const CLAVES_DE_ORG = ['organization_id', 'orgId', 'organizationId', 'org_id'];
-
 /**
- * El body no puede fijar la organización: siempre sale de la sesión (regla 3).
- *
- * Va en `preprocess` y NO en `refine` porque zod ELIMINA las claves
- * desconocidas ANTES de ejecutar los refinamientos: el `.refine` anterior
- * nunca llegaba a ver `organization_id` y el body pasaba la validación, con lo
- * que el control que documenta §1.1 del doc de fase no existía (tester F16 r2).
- * `preprocess` sí ve el objeto crudo.
+ * La organización nunca sale del body (regla dura 5). Hasta F0-SEC r1 estos
+ * esquemas envolvían cada body con un `preprocess` (`noOrgInBody`) que devolvía
+ * 400 sin registro ante cualquier `organization_id`. Desde F0-SEC r2 la
+ * decisión es ÚNICA y vive en `readOrgBody` (`@/lib/security/organizationBody`),
+ * que cada ruta llama ANTES de validar: organización ajena → 403 + registro;
+ * la misma organización de la sesión → se ignora (zod la descarta como clave
+ * desconocida). Aquí ya no se duplica.
  */
-const noOrgInBody = <T extends z.ZodTypeAny>(o: T) =>
-  z.preprocess((raw, ctx) => {
-    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      const r = raw as Record<string, unknown>;
-      const encontrada = CLAVES_DE_ORG.find((k) => k in r);
-      if (encontrada) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [encontrada],
-          message: `${encontrada} no se acepta en el body (se toma de la sesión)`,
-        });
-      }
-    }
-    return raw;
-  }, o);
 
 // ─── Envío individual ────────────────────────────────────────────────────────
 
-export const zSendBody = noOrgInBody(
-  z.object({
+export const zSendBody = z.object({
     channelId: zUuidNullable,
     channel_id: zUuidNullable,
     customerId: zUuidNullable,
@@ -91,8 +73,7 @@ export const zSendBody = noOrgInBody(
     clientRequestId: z.string().max(200).nullable().optional(),
     purpose: zPurpose.optional(),
     source: z.enum(['crm', 'campaign', 'sequence', 'agent', 'bulk', 'platform_send']).optional(),
-  }),
-).refine(
+}).refine(
   (b) => {
     const text = typeof b.text === 'string' ? b.text : b.text?.body;
     return !!text?.trim() || !!b.template || !!b.media;
@@ -100,20 +81,17 @@ export const zSendBody = noOrgInBody(
   { message: 'Se requiere text, template o media' },
 );
 
-export const zReplyBody = noOrgInBody(
-  z.object({
+export const zReplyBody = z.object({
     conversationId: zUuid,
     text: z.string().trim().min(1, 'text es requerido').max(4096),
     opportunityId: zUuidNullable,
-  }),
-);
+});
 
 // ─── Ajustes por organización ────────────────────────────────────────────────
 
 const zHhMm = z.string().regex(/^\d{2}:\d{2}$/, 'debe ser HH:MM');
 
-export const zSettingsBody = noOrgInBody(
-  z.object({
+export const zSettingsBody = z.object({
     default_channel_id: zUuid.nullable().or(z.literal('')).optional(),
     optout_keywords: z.array(z.string().max(60)).max(30).optional(),
     optin_keywords: z.array(z.string().max(60)).max(30).optional(),
@@ -133,8 +111,7 @@ export const zSettingsBody = noOrgInBody(
      * (tester F16 r3 · F-4). `null` = usar la cascada de entorno.
      */
     default_country_code: z.string().regex(/^\d{1,4}$/, 'solo dígitos (1 a 4)').nullable().optional(),
-  }),
-);
+});
 
 // ─── Campañas ────────────────────────────────────────────────────────────────
 
@@ -162,8 +139,8 @@ const campaignFields = {
   description: z.string().max(2000).nullable().optional(),
 };
 
-export const zCreateCampaignBody = noOrgInBody(z.object(campaignFields));
-export const zUpdateCampaignBody = noOrgInBody(z.object(campaignFields).partial());
+export const zCreateCampaignBody = z.object(campaignFields);
+export const zUpdateCampaignBody = z.object(campaignFields).partial();
 
 export const zLaunchBody = z.object({
   scheduled_at: zIsoDate.nullable().optional(),
@@ -214,8 +191,8 @@ const hsmFields = {
   channel_id: zUuidNullable,
 };
 
-export const zCreateHsmBody = noOrgInBody(z.object(hsmFields));
-export const zUpdateHsmBody = noOrgInBody(z.object(hsmFields).partial());
+export const zCreateHsmBody = z.object(hsmFields);
+export const zUpdateHsmBody = z.object(hsmFields).partial();
 export const zChannelIdBody = z.object({ channelId: zUuid.nullable().optional() });
 
 export const zHsmPreviewBody = z.object({

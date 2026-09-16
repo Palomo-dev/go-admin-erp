@@ -8,7 +8,7 @@ import { groupByDay, mergeEntries, relativeTime } from '../utils';
 const note = (id: string, at: string): TimelineEntry => ({ kind: 'note', id, occurred_at: at, user: null, note: { id, body: 'x', is_pinned: false }, activity: null });
 const call = (kind: 'call' | 'call_live', id: string, at: string): TimelineEntry => ({
   kind, id, occurred_at: at, user: null, activity: null,
-  call: { id, direction: 'outbound', status: kind === 'call' ? 'completed' : 'in_progress', mode: 'browser', duration_seconds: null, from_number: null, to_number: null, recording_enabled: false, cost_amount: null, recording: null, transcript: null, analysis: null },
+  call: { id, direction: 'outbound', status: kind === 'call' ? 'completed' : 'in_progress', mode: 'browser', duration_seconds: null, from_number: null, to_number: null, recording_enabled: false, cost_amount: null, consent_method: null, recording: null, transcript: null, analysis: null },
 });
 
 describe('mergeEntries', () => {

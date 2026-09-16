@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { importVerticalTemplate } from '@/lib/services/crm/verticalsService';
 
 /**
  * POST /api/crm/verticales/import-template — Importa los 6 verticales de plantilla.
  * Idempotente: solo crea los verticales que no existan previamente (valida por slug).
  */
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const ctx = await getServerOrgContext();
+    await readOrgBody(ctx, request);
 
     const createdCount = await importVerticalTemplate(ctx.organizationId, ctx.supabase);
 

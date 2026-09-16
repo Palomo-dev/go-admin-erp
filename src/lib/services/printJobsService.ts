@@ -1,15 +1,20 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { PrintersService, type PrinterStation } from '@/components/pos/configuracion/printersService';
+import { PrintersService, type Printer, type PrinterStation } from '@/components/pos/configuracion/printersService';
 import {
   getPaperSpec,
+  type LocalPrintRequest,
   type MonochromeRaster,
+  type PrintJobType,
   type SaleTicketPrintPayload as SharedSaleTicketPrintPayload,
   type ShipmentGuidePrintPayload as SharedShipmentGuidePrintPayload,
   type ElectronicInvoicePrintPayload as SharedElectronicInvoicePrintPayload,
 } from '@printing';
+import { getDesktopBridge, isDesktop, isDesktopOnline, type GoAdminDesktopBridge } from '@/lib/utils/desktop';
+import { readDesktopCache, writeDesktopCache } from '@/lib/utils/desktopLocalCache';
 import { rasterizeLogo } from './logoRasterService';
 import { PrintService } from './printService';
+import { getOrganizationTimezone } from './organizationTimezoneService';
 
 /** Campos de cabecera que comparten el ticket de venta y la pre-cuenta. */
 interface BusinessHeader {
@@ -38,11 +43,20 @@ interface BusinessHeader {
 async function resolveBusinessHeader(provided: BusinessHeader): Promise<BusinessHeader> {
   if (provided.businessName) return provided;
 
+  // En Desktop se guarda la última cabecera resuelta con red: sin internet el
+  // ticket sale igual con nombre, NIT y sucursal en vez de esperar timeouts.
+  const orgId = getOrganizationId();
+  const cacheKey = `print-business-header:${orgId}`;
+  if (isDesktop() && !(await isDesktopOnline())) {
+    const cached = readDesktopCache<BusinessHeader>(cacheKey);
+    if (cached) return { ...cached, ...stripUndefined(provided) };
+  }
+
   try {
-    const { business, branch } = await PrintService.getBusinessAndBranch(getOrganizationId());
+    const { business, branch } = await PrintService.getBusinessAndBranch(orgId);
     if (!business) return provided;
 
-    return {
+    const resolved: BusinessHeader = {
       businessName: business.name,
       businessNit: provided.businessNit || business.nit || business.taxId,
       businessPhone: provided.businessPhone || business.phone,
@@ -56,11 +70,185 @@ async function resolveBusinessHeader(provided: BusinessHeader): Promise<Business
       branchAddress: provided.branchAddress || branch?.address,
       branchPhone: provided.branchPhone || branch?.phone,
     };
+    if (isDesktop()) writeDesktopCache(cacheKey, resolved);
+    return resolved;
   } catch (error) {
     // Un ticket con cabecera incompleta es mejor que no imprimir la venta.
     console.warn('No se pudo completar la cabecera del negocio del ticket:', error);
-    return provided;
+    const cached = isDesktop() ? readDesktopCache<BusinessHeader>(cacheKey) : null;
+    return cached ? { ...cached, ...stripUndefined(provided) } : provided;
   }
+}
+
+/** Copia sin claves `undefined`, para que un spread no pise valores cacheados. */
+function stripUndefined<T extends object>(value: T): Partial<T> {
+  const out: Partial<T> = {};
+  for (const key of Object.keys(value) as Array<keyof T>) {
+    if (value[key] !== undefined) out[key] = value[key];
+  }
+  return out;
+}
+
+/**
+ * Resuelve el timezone de la organizacion cuando el llamador no lo aporta.
+ *
+ * Mismo principio que resolveBusinessHeader: el payload se guarda en
+ * `print_jobs` y lo consume el agente, donde ya no hay contexto de React.
+ * Si el timezone no viaja en el JSON, el agente cae al reloj del PC de la
+ * impresora — que en Colombia acierta por casualidad, pero falla en cuanto
+ * la organizacion este en otra zona o alguien cambie la hora del PC.
+ *
+ * Usa getOrganizationTimezone (servicio no-React con cache) para no depender
+ * del contexto de React en el lado del encolador.
+ */
+async function resolveTimezone(provided?: string): Promise<string> {
+  if (provided) return provided;
+  const orgId = getOrganizationId();
+  const cacheKey = `org-timezone:${orgId}`;
+  if (isDesktop() && !(await isDesktopOnline())) {
+    const cached = readDesktopCache<string>(cacheKey);
+    if (cached) return cached;
+  }
+  try {
+    const timezone = await getOrganizationTimezone(orgId);
+    if (isDesktop()) writeDesktopCache(cacheKey, timezone);
+    return timezone;
+  } catch (error) {
+    console.warn('No se pudo resolver el timezone de la organizacion:', error);
+    return (isDesktop() ? readDesktopCache<string>(cacheKey) : null) ?? 'America/Bogota';
+  }
+}
+
+/** Fila que se inserta en `print_jobs` (auditoría o cola para el agente). */
+interface PrintJobInsert {
+  organization_id: number;
+  branch_id: number;
+  printer_id: string;
+  station: string | null;
+  job_type: PrintJobType;
+  reference_id: string | null;
+  payload: unknown;
+  status: 'pending' | 'printed';
+  printed_at?: string;
+}
+
+/** Resultado común de los `enqueue*`. */
+export interface EnqueueResult {
+  /** Filas que llegaron a un destino de impresión (local o `print_jobs`). */
+  enqueued: number;
+  /** De ellas, las que ya salieron por el agente local del Desktop. */
+  printedLocally: number;
+}
+
+/**
+ * Impresión local por el bridge del Desktop: IPC `printing:print-raw` ->
+ * discovery server `POST /print` -> `printToDevice()`, el mismo código que
+ * ejecuta el agente para un `print_jobs`. Nunca lanza.
+ */
+async function printLocally(
+  bridge: GoAdminDesktopBridge,
+  printer: Printer | undefined,
+  row: PrintJobInsert,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!bridge.printRaw) return { ok: false, error: 'El Desktop instalado no expone printRaw' };
+  if (!printer) return { ok: false, error: 'Impresora no resuelta en el POS' };
+  try {
+    const request: LocalPrintRequest<Printer, unknown> = {
+      jobType: row.job_type,
+      printer,
+      payload: row.payload,
+    };
+    const result = await bridge.printRaw(printer.id, request);
+    if (result?.success) return { ok: true };
+    return { ok: false, error: result?.error || 'El agente local no confirmó la impresión' };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * true si estamos en Go Admin Desktop, el bridge expone `printRaw` y el agente
+ * embebido está corriendo. Sin bridge (navegador) devuelve false sin consultar.
+ */
+async function isDesktopAgentRunning(): Promise<boolean> {
+  const bridge = getDesktopBridge();
+  if (!bridge?.printRaw) return false;
+  if (!bridge.status) return true;
+  try {
+    const status = await bridge.status();
+    return status?.running !== false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Transporte único de todos los `enqueue*`.
+ *
+ * - Navegador: inserta las filas en `print_jobs` con `status: 'pending'` y el
+ *   agente las imprime (comportamiento de siempre).
+ * - Go Admin Desktop con `printRaw`: imprime PRIMERO por el agente local, sin
+ *   depender de internet, y registra después la fila en `print_jobs` como
+ *   auditoría (`status: 'printed'`). Ese registro no se espera: si no hay
+ *   red, el interceptor de `config.ts` lo encola y lo sincroniza al volver.
+ * - Si el agente local no responde para una impresora, esa fila cae al camino
+ *   de siempre (`pending`) y se avisa por consola.
+ *
+ * Lanza solo si ninguna fila salió localmente y la inserción falló: es el
+ * mismo contrato que tenían los `enqueue*` antes de la impresión local.
+ */
+async function dispatchPrintJobs(rows: PrintJobInsert[], printers: Printer[]): Promise<EnqueueResult> {
+  const bridge = getDesktopBridge();
+  if (!bridge?.printRaw) {
+    const { error } = await supabase.from('print_jobs').insert(rows);
+    if (error) throw error;
+    return { enqueued: rows.length, printedLocally: 0 };
+  }
+
+  const printersById = new Map(printers.map((p) => [p.id, p]));
+  const auditRows: PrintJobInsert[] = [];
+  let printedLocally = 0;
+
+  for (const row of rows) {
+    const printer = printersById.get(row.printer_id);
+    const result = await printLocally(bridge, printer, row);
+    if (result.ok) {
+      printedLocally++;
+      auditRows.push({ ...row, status: 'printed', printed_at: new Date().toISOString() });
+      continue;
+    }
+    console.warn('[printJobs] Impresión local fallida; el job se encola en print_jobs para el agente', {
+      jobType: row.job_type,
+      printerId: row.printer_id,
+      printerName: printer?.name ?? null,
+      referenceId: row.reference_id,
+      error: result.error,
+    });
+    auditRows.push(row);
+  }
+
+  // PostgrestBuilder es PromiseLike (sin `.catch`): se envuelve en una Promise real.
+  const insert: Promise<void> = (async () => {
+    const { error } = await supabase.from('print_jobs').insert(auditRows);
+    if (error) throw error;
+  })();
+
+  if (printedLocally === 0) {
+    // Nada salió localmente: la cola remota es el único camino, como antes.
+    await insert;
+    return { enqueued: auditRows.length, printedLocally };
+  }
+
+  // Ya se imprimió: la auditoría (y los posibles fallbacks) no bloquean.
+  insert.catch((error: unknown) => {
+    console.warn('[printJobs] El ticket salió por el agente local pero no se pudo registrar en print_jobs', {
+      rows: auditRows.length,
+      printedLocally,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+
+  return { enqueued: auditRows.length, printedLocally };
 }
 
 /**
@@ -97,6 +285,7 @@ export interface KitchenTicketPrintPayload {
   serverName?: string;
   station: PrinterStation | string;
   createdAt: string;
+  timezone?: string;
   items: Array<{
     productName: string;
     quantity: number;
@@ -149,6 +338,11 @@ export class PrintJobsService {
    * Se usa para decidir si vale la pena encolar jobs de impresión física.
    */
   static async isAgentOnline(branchId: number): Promise<boolean> {
+    // En Go Admin Desktop el agente vive en el mismo proceso: si está corriendo,
+    // imprime por IPC aunque no haya internet, así que no hace falta (ni se
+    // puede, sin red) consultar el heartbeat en `print_agents`.
+    if (await isDesktopAgentRunning()) return true;
+
     const orgId = getOrganizationId();
     const { data, error } = await supabase
       .from('print_agents')
@@ -181,7 +375,7 @@ export class PrintJobsService {
       businessName?: string;
       branchName?: string;
     }
-  ): Promise<{ enqueued: number; skippedStations: string[] }> {
+  ): Promise<EnqueueResult & { skippedStations: string[] }> {
     const orgId = getOrganizationId();
 
     // Agrupar items por estación (items sin estación van a 'all')
@@ -193,6 +387,7 @@ export class PrintJobsService {
     }
 
     let enqueued = 0;
+    let printedLocally = 0;
     const skippedStations: string[] = [];
 
     // Array.from y no `for...of` sobre el iterador del Map: el tsconfig del ERP
@@ -212,12 +407,13 @@ export class PrintJobsService {
         serverName: ticket.serverName,
         station,
         createdAt: ticket.createdAt,
+        timezone: await resolveTimezone(),
         items: items.map((i) => ({ productName: i.productName, quantity: i.quantity, notes: i.notes, variantData: i.variantData, modifiers: i.modifiers })),
         businessName: ticket.businessName,
         branchName: ticket.branchName,
       };
 
-      const rows = printers.map((printer) => ({
+      const rows: PrintJobInsert[] = printers.map((printer) => ({
         organization_id: orgId,
         branch_id: printer.branch_id || branchId,
         printer_id: printer.id,
@@ -228,15 +424,16 @@ export class PrintJobsService {
         status: 'pending' as const,
       }));
 
-      const { error } = await supabase.from('print_jobs').insert(rows);
-      if (error) {
+      try {
+        const result = await dispatchPrintJobs(rows, printers);
+        enqueued += result.enqueued;
+        printedLocally += result.printedLocally;
+      } catch (error) {
         console.error('Error encolando print_job:', error);
-        continue;
       }
-      enqueued += rows.length;
     }
 
-    return { enqueued, skippedStations };
+    return { enqueued, printedLocally, skippedStations };
   }
 
   /**
@@ -257,7 +454,7 @@ export class PrintJobsService {
       notes: string | null;
       sale_items?: { quantity: number; notes?: any; products?: { name: string; variant_data?: Record<string, string> | null } | null } | null;
     }>;
-  }): Promise<{ enqueued: number; skippedStations: string[] }> {
+  }): Promise<EnqueueResult & { skippedStations: string[] }> {
     return this.enqueueKitchenTicket(ticket.branch_id, {
       ticketId: ticket.id,
       tableName: ticket.table_sessions?.restaurant_tables?.name,
@@ -320,14 +517,15 @@ export class PrintJobsService {
       businessLogoUrl?: string;
       deliveryInfo?: { type: string; address: string; driverName?: string; contactName?: string; contactPhone?: string; city?: string; instructions?: string };
     }
-  ): Promise<{ enqueued: number }> {
+  ): Promise<EnqueueResult> {
     const orgId = getOrganizationId();
     const printers = await PrintersService.getPrintersByStation(branchId, 'cashier');
 
-    if (printers.length === 0) return { enqueued: 0 };
+    if (printers.length === 0) return { enqueued: 0, printedLocally: 0 };
 
     const header = await resolveBusinessHeader(sale);
     const logoRasters = await buildLogoRasters(header.businessLogoUrl, printers);
+    const timezone = await resolveTimezone();
 
     const payload: SaleTicketPrintPayload = {
       saleId: sale.saleId,
@@ -340,6 +538,7 @@ export class PrintJobsService {
       customerAddress: sale.customerAddress,
       customerFiscalResponsibilities: sale.customerFiscalResponsibilities,
       createdAt: sale.createdAt,
+      timezone,
       items: sale.items,
       total: sale.total,
       subtotal: sale.subtotal,
@@ -358,12 +557,12 @@ export class PrintJobsService {
 
     // El raster se adjunta por impresora: una de 58mm y otra de 80mm necesitan
     // bitmaps de distinto ancho, asi que el payload no puede ser el mismo.
-    const rows = printers.map((printer) => ({
+    const rows: PrintJobInsert[] = printers.map((printer) => ({
       organization_id: orgId,
       branch_id: printer.branch_id || branchId,
       printer_id: printer.id,
       station: 'cashier',
-      job_type: 'sale_ticket' as const,
+      job_type: 'sale_ticket',
       reference_id: sale.saleId,
       payload: {
         ...payload,
@@ -372,10 +571,7 @@ export class PrintJobsService {
       status: 'pending' as const,
     }));
 
-    const { error } = await supabase.from('print_jobs').insert(rows);
-    if (error) throw error;
-
-    return { enqueued: rows.length };
+    return dispatchPrintJobs(rows, printers);
   }
 
   /**
@@ -410,14 +606,15 @@ export class PrintJobsService {
       tipAmount?: number;
       deliveryInfo?: { type: string; address: string; driverName?: string; contactName?: string; contactPhone?: string; city?: string; instructions?: string };
     }
-  ): Promise<{ enqueued: number }> {
+  ): Promise<EnqueueResult> {
     const orgId = getOrganizationId();
     const printers = await PrintersService.getPrintersByStation(branchId, 'cashier');
 
-    if (printers.length === 0) return { enqueued: 0 };
+    if (printers.length === 0) return { enqueued: 0, printedLocally: 0 };
 
     const header = await resolveBusinessHeader(preCuenta);
     const logoRasters = await buildLogoRasters(header.businessLogoUrl, printers);
+    const timezone = await resolveTimezone();
 
     const payload = {
       saleId: `pre-${preCuenta.tableId}`,
@@ -425,6 +622,7 @@ export class PrintJobsService {
       tableName: preCuenta.tableName,
       serverName: preCuenta.serverName,
       createdAt: preCuenta.createdAt,
+      timezone,
       items: preCuenta.items,
       subtotal: preCuenta.subtotal,
       taxTotal: preCuenta.taxTotal,
@@ -438,12 +636,12 @@ export class PrintJobsService {
       ...header,
     };
 
-    const rows = printers.map((printer) => ({
+    const rows: PrintJobInsert[] = printers.map((printer) => ({
       organization_id: orgId,
       branch_id: printer.branch_id || branchId,
       printer_id: printer.id,
       station: 'cashier',
-      job_type: 'pre_cuenta' as const,
+      job_type: 'pre_cuenta',
       reference_id: preCuenta.tableId,
       payload: {
         ...payload,
@@ -452,10 +650,7 @@ export class PrintJobsService {
       status: 'pending' as const,
     }));
 
-    const { error } = await supabase.from('print_jobs').insert(rows);
-    if (error) throw error;
-
-    return { enqueued: rows.length };
+    return dispatchPrintJobs(rows, printers);
   }
 
   /**
@@ -485,8 +680,8 @@ export class PrintJobsService {
       businessName?: string;
       branchName?: string;
     }
-  ): Promise<{ enqueued: number; skippedStations: string[] }> {
-    if (!sale.items.length) return { enqueued: 0, skippedStations: [] };
+  ): Promise<EnqueueResult & { skippedStations: string[] }> {
+    if (!sale.items.length) return { enqueued: 0, printedLocally: 0, skippedStations: [] };
 
     const orgId = getOrganizationId();
 
@@ -500,7 +695,7 @@ export class PrintJobsService {
 
     if (error || !products) {
       console.warn('No se pudo consultar categorías para comanda automática:', error);
-      return { enqueued: 0, skippedStations: [] };
+      return { enqueued: 0, printedLocally: 0, skippedStations: [] };
     }
 
     // Mapear product_id -> { requires_preparation, station }
@@ -540,7 +735,7 @@ export class PrintJobsService {
       });
 
     if (prepItems.length === 0) {
-      return { enqueued: 0, skippedStations: [] };
+      return { enqueued: 0, printedLocally: 0, skippedStations: [] };
     }
 
     // Generar un ticketId pseudo-aleatorio basado en el saleId
@@ -635,11 +830,11 @@ export class PrintJobsService {
   static async enqueueShipmentGuide(
     branchId: number,
     guide: ShipmentGuidePrintPayload,
-  ): Promise<{ enqueued: number }> {
+  ): Promise<EnqueueResult> {
     const orgId = getOrganizationId();
     const printers = await PrintersService.getPrintersByStation(branchId, 'cashier');
 
-    if (printers.length === 0) return { enqueued: 0 };
+    if (printers.length === 0) return { enqueued: 0, printedLocally: 0 };
 
     const header = await resolveBusinessHeader({
       businessName: guide.businessName,
@@ -650,27 +845,25 @@ export class PrintJobsService {
 
     const payload: ShipmentGuidePrintPayload = {
       ...guide,
+      timezone: guide.timezone || (await resolveTimezone()),
       businessName: header.businessName,
       businessNit: header.businessNit,
       businessPhone: header.businessPhone,
       businessAddress: header.businessAddress,
     };
 
-    const rows = printers.map((printer) => ({
+    const rows: PrintJobInsert[] = printers.map((printer) => ({
       organization_id: orgId,
       branch_id: printer.branch_id || branchId,
       printer_id: printer.id,
       station: 'cashier',
-      job_type: 'shipment_guide' as const,
+      job_type: 'shipment_guide',
       reference_id: guide.shipmentId,
       payload: payload as any,
       status: 'pending' as const,
     }));
 
-    const { error } = await supabase.from('print_jobs').insert(rows);
-    if (error) throw error;
-
-    return { enqueued: rows.length };
+    return dispatchPrintJobs(rows, printers);
   }
 
   /**
@@ -681,13 +874,15 @@ export class PrintJobsService {
   static async enqueueShipmentGuides(
     branchId: number,
     guides: ShipmentGuidePrintPayload[],
-  ): Promise<{ enqueued: number }> {
-    let total = 0;
+  ): Promise<EnqueueResult> {
+    let enqueued = 0;
+    let printedLocally = 0;
     for (const guide of guides) {
       const result = await this.enqueueShipmentGuide(branchId, guide);
-      total += result.enqueued;
+      enqueued += result.enqueued;
+      printedLocally += result.printedLocally;
     }
-    return { enqueued: total };
+    return { enqueued, printedLocally };
   }
 
   /**
@@ -735,14 +930,15 @@ export class PrintJobsService {
       changeAmount?: number;
       notes?: string;
     }
-  ): Promise<{ enqueued: number }> {
+  ): Promise<EnqueueResult> {
     const orgId = getOrganizationId();
     const printers = await PrintersService.getPrintersByStation(branchId, 'cashier');
 
-    if (printers.length === 0) return { enqueued: 0 };
+    if (printers.length === 0) return { enqueued: 0, printedLocally: 0 };
 
     const header = await resolveBusinessHeader(invoice);
     const logoRasters = await buildLogoRasters(header.businessLogoUrl, printers);
+    const timezone = await resolveTimezone();
 
     const payload: SharedElectronicInvoicePrintPayload = {
       internalInvoiceId: invoice.invoiceId,
@@ -753,6 +949,7 @@ export class PrintJobsService {
       environment: invoice.environment === 'test' ? 'sandbox' : 'production',
       validationDate: invoice.validationDate,
       createdAt: invoice.createdAt,
+      timezone,
       items: invoice.items,
       total: invoice.total,
       subtotal: invoice.subtotal,
@@ -774,12 +971,12 @@ export class PrintJobsService {
       notes: invoice.notes,
     };
 
-    const rows = printers.map((printer) => ({
+    const rows: PrintJobInsert[] = printers.map((printer) => ({
       organization_id: orgId,
       branch_id: printer.branch_id || branchId,
       printer_id: printer.id,
       station: 'cashier',
-      job_type: 'electronic_invoice' as const,
+      job_type: 'electronic_invoice',
       reference_id: invoice.invoiceId,
       payload: {
         ...payload,
@@ -788,10 +985,7 @@ export class PrintJobsService {
       status: 'pending' as const,
     }));
 
-    const { error } = await supabase.from('print_jobs').insert(rows);
-    if (error) throw error;
-
-    return { enqueued: rows.length };
+    return dispatchPrintJobs(rows, printers);
   }
 
   /**
@@ -799,26 +993,23 @@ export class PrintJobsService {
    * asignada(s) a la estación 'cashier'. El agente local recibe el job
    * y envía el comando ESC/POS de apertura (ESC p m t1 t2).
    */
-  static async enqueueOpenCashDrawer(branchId: number): Promise<{ enqueued: number }> {
+  static async enqueueOpenCashDrawer(branchId: number): Promise<EnqueueResult> {
     const orgId = getOrganizationId();
     const printers = await PrintersService.getPrintersByStation(branchId, 'cashier');
 
-    if (printers.length === 0) return { enqueued: 0 };
+    if (printers.length === 0) return { enqueued: 0, printedLocally: 0 };
 
-    const rows = printers.map((printer) => ({
+    const rows: PrintJobInsert[] = printers.map((printer) => ({
       organization_id: orgId,
       branch_id: printer.branch_id || branchId,
       printer_id: printer.id,
       station: 'cashier',
-      job_type: 'open_cash_drawer' as const,
+      job_type: 'open_cash_drawer',
       reference_id: null,
       payload: {} as any,
       status: 'pending' as const,
     }));
 
-    const { error } = await supabase.from('print_jobs').insert(rows);
-    if (error) throw error;
-
-    return { enqueued: rows.length };
+    return dispatchPrintJobs(rows, printers);
   }
 }

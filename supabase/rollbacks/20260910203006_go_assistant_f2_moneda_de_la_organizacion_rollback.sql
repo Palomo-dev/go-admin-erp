@@ -1,0 +1,5 @@
+-- Reversión de 20260910203006_go_assistant_f2_moneda_de_la_organizacion.sql
+-- Vuelve a la versión de `assistant_register_sale` de 20260910180000 (moneda
+-- 'COP' cableada). Reaplicar el cuerpo de esa migración:
+--   supabase/migrations/20260910180000_go_assistant_f2_venta_y_ajuste.sql
+-- No se duplica aquí para no tener dos copias que diverjan.

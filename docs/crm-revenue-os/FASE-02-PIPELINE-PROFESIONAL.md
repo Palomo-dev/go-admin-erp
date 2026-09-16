@@ -306,33 +306,59 @@ Ejemplo por cada una de las 10 etapas de la plantilla "Ventas B2B SaaS":
 
 ### 2.3 Schema canónico de `opportunities.discovery_data`
 
+> Corregido en la ronda 2 de F2 (2026-09-15). La versión anterior de esta
+> sección describía `sections{}` anidadas con `answers[]`; **nunca existió**
+> así. Verificado por MCP: las 54 plantillas sembradas en `discovery_templates`
+> guardan `sections` como **array plano** de campos (`jsonb_typeof = 'array'`,
+> claves `id, type, label, required, placeholder`), y `DiscoverySection` del
+> drawer lee y escribe esa forma. El `DiscoveryWizard` que esperaba secciones
+> anidadas se borró en la ronda 1 porque no podía renderizar la plantilla real.
+
+**Plantilla** (`discovery_templates.sections`, tipo `DiscoveryField[]` en
+`src/lib/services/crm/discoveryTemplateService.ts`):
+
+```json
+[
+  { "id": "who_is",   "type": "text",     "label": "Quién es (rol/cargo)",  "required": true,  "placeholder": "Ej: Gerente general" },
+  { "id": "problem",  "type": "textarea", "label": "Problema principal",    "required": true,  "placeholder": "Ej: Control de inventario manual" },
+  { "id": "budget",   "type": "text",     "label": "Presupuesto",           "required": false, "placeholder": "Ej: $2M - $5M" },
+  { "id": "decision", "type": "select",   "label": "Decisor",               "options": ["CEO", "CFO", "Gerente"] }
+]
+```
+
+`type` ∈ `text | textarea | number | date | select` (`options[]` solo para
+`select`); `required` y `placeholder` son opcionales.
+
+**Respuestas** (`opportunities.discovery_data`): objeto plano indexado por el
+`id` del campo, valores en texto tal como los escribe el vendedor. Sin
+`template_id`, sin `sections`, sin contadores: el progreso se calcula, no se
+guarda.
+
 ```json
 {
-  "template_id": 123,
-  "completed_sections": 3,
-  "total_sections": 5,
-  "sections": {
-    "situacion": {
-      "completed": true,
-      "answers": [
-        { "question_id": "q1", "question": "¿Cómo manejan el inventario hoy?", "answer": "En Excel" }
-      ]
-    },
-    "problema": {
-      "completed": true,
-      "answers": [
-        { "question_id": "q2", "question": "¿Qué problemas tienen?", "answer": "Mermas del 15%" }
-      ]
-    },
-    "impacto": { "completed": false, "answers": [] },
-    "consecuencia": { "completed": false, "answers": [] },
-    "decision": { "completed": false, "answers": [] }
-  },
-  "decision_maker": { "name": "Juan Pérez", "role": "Gerente" },
-  "budget_mentioned": 5000000,
-  "timeline": "90 días"
+  "who_is": "Gerente general",
+  "problem": "Inventario en Excel con mermas del 15%",
+  "budget": "",
+  "decision": "CFO"
 }
 ```
+
+**Progreso** (`src/lib/services/crm/discoveryProgress.ts`, puro y con pruebas):
+`discoveryProgress(fields, values)` cuenta como respondido todo valor con
+contenido tras `trim()`; `percent` es sobre el total de campos; `complete` es
+«todas las obligatorias respondidas» y, si la plantilla no marca ninguna como
+obligatoria (caso de la sembrada), «todos los campos respondidos».
+`missingRequired(fields, values)` devuelve las obligatorias sin respuesta en el
+orden de la plantilla; el drawer las nombra bajo la barra («Falta: …»). Las
+claves de `discovery_data` que ya no estén en la plantilla se ignoran.
+
+**Deuda conocida (fuera de la zona de F2 r2, no tocada):** el gate
+`require_discovery` de `stageGateService.ts` (§3.3, casos 6 y `discovery` sin
+`requiredKeys`) sigue leyendo `completed_sections` / `total_sections`, que en
+la forma plana no existen, así que ese criterio sin `requiredKeys` **nunca
+pasa**. Con `requiredKeys: ['who_is', …]` funciona porque mira las claves
+planas. Debe alinearse con `discoveryProgress(fields, values)` cuando se
+toque el gate.
 
 ### 2.4 Catálogo de plantillas de pipeline importables
 
@@ -825,3 +851,41 @@ F2 no introduce cambios cross-platform. El Kanban y los dialogs son responsive.
 | `src/components/crm/hoy/HoyView.tsx` | modificar | Integrar seguimiento |
 | `src/components/crm/pipeline/PipelineTemplateImporter.tsx` | crear | Selector plantillas |
 | `src/__tests__/services/stageGateService.test.ts` | crear | Tests gate |
+
+## 11. Deuda
+
+### D-1 · `stageGateService`: `require_discovery` siempre «incompleto (0/0)» con la plantilla plana — ticket abierto en F2 r3 (2026-09-15)
+
+**Síntoma.** El criterio `require_discovery` (`evaluateStageGate`, bloque
+`// require_discovery`) y el fallback del requisito `discovery` sin
+`requiredKeys` (`case 'discovery'`) leen `discovery_data.completed_sections` y
+`discovery_data.total_sections`. La plantilla de la organización es un **array
+plano** de `DiscoveryField` (`discovery_templates.sections`, verificado por el
+tester de r1 en las 54 sembradas) y el drawer guarda `discovery_data` como
+`{ [field.id]: valor }` (§2.3), así que esas dos claves **no existen nunca**:
+`total === 0` → el gate responde «Discovery incompleto (0/0 secciones)» y
+**no deja pasar** aunque las diez preguntas estén respondidas.
+
+**Alcance hoy.** 0 de 90 etapas usan `require_discovery` (conteo del tester de
+r2 sobre `stages.exit_criteria`); es deuda **latente**: el primer administrador
+que active la casilla en `ExitGatesEditor` bloquea su pipeline sin explicación.
+
+**Arreglo propuesto (no aplicado: fuera de la zona de F2 r3).**
+1. En `stageGateService`, evaluar con `discoveryProgress(fields, values)`
+   (`src/lib/services/crm/discoveryProgress.ts`, ya probado) sobre la plantilla
+   activa de la organización (`getDiscoveryTemplateForOrg(orgId, supabase)`):
+   `passed = progress.complete`; mensaje «Discovery incompleto: faltan A, B»
+   con `missingRequired`. Mantener `requiredKeys` como está (mira claves
+   planas y funciona).
+2. Retirar la lectura de `completed_sections`/`total_sections` de los dos
+   sitios; no hay datos con esa forma que preservar.
+3. En `ExitGatesEditor`, exponer el progreso que se exigirá («obligatorias de
+   la plantilla activa: N») para que la casilla diga qué va a bloquear.
+4. Tests: `stageGateService.test.ts`, matriz «plantilla con 2 obligatorias ×
+   discovery_data vacío / parcial / completo / claves sobrantes», y un caso de
+   regresión con `discovery_data = { completed_sections: 3, total_sections: 3 }`
+   que hoy pasa por accidente y debe dejar de pasar.
+
+**Fuera de este ticket.** `tabs/ResumenTab.tsx` (F9) tiene 166 líneas reales
+pero **419 a 100 columnas**; el límite de 300 del brief §5 se mide a 100
+columnas desde F2 r3 (`sourceContract.test.ts`, solo sobre los archivos de F2).

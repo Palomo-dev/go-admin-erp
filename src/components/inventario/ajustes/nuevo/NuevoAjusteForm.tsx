@@ -50,6 +50,7 @@ import { ProductSearchCombobox, type ProductOption } from '@/components/inventar
 import { SerialCaptureSection } from '@/components/shared/SerialCaptureSection';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { useBranch } from '@/lib/context/BranchContext';
+import { avisarCambioCatalogo } from '@/lib/services/website/avisarCambioCatalogo';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface ProductForAdjustment {
@@ -587,6 +588,8 @@ export function NuevoAjusteForm() {
           return;
         }
 
+        // La tienda web cachea el stock 30 s: que el ajuste se refleje ya.
+        avisarCambioCatalogo();
         toast({
           title: 'Ajuste creado y aplicado',
           description: 'Los movimientos de stock han sido generados'

@@ -379,7 +379,7 @@ export default function ClienteDetailPage() {
 
         {/* Tab: Salud */}
         <TabsContent value="salud" className="space-y-4">
-          <ClientHealthCard customerId={customer.id} customerName={customer.full_name} />
+          <ClientHealthCard customerId={customer.id} customerName={customer.full_name} lifecycleStage={customer.lifecycle_stage} />
         </TabsContent>
 
         {/* Tab: Finanzas */}

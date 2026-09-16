@@ -28,8 +28,8 @@ import { createServer, type IncomingMessage } from 'http';
 import type { Duplex } from 'stream';
 import { WebSocketServer, WebSocket } from 'ws';
 import { handleConversationRelayConnection } from './src/lib/services/integrations/twilio/voiceAgent/conversationRelayHandler';
-import { verifyWsSessionToken, type WsSessionClaims } from './src/lib/security/wsSessionToken';
-import { verifyTwilioUrlSignature } from './src/lib/security/webhookSignatures';
+import { readWsSessionSecret, verifyWsSessionToken, type WsSessionClaims } from './src/lib/security/wsSessionToken';
+import { realSubaccountToken, resolveTwilioMasterAuthToken, verifyTwilioUrlSignature } from './src/lib/security/webhookSignatures';
 import { getServiceClient } from './src/lib/supabase/server-service';
 
 const PORT = parseInt(process.env.WS_PORT || '8080', 10);
@@ -62,7 +62,11 @@ function getPublicWsOrigin(): string | null {
   }
 }
 
-/** Auth Token de Twilio para la org (subcuenta si la tiene; si no, master). */
+/**
+ * Auth Token de Twilio para la org (subcuenta si la tiene; si no, master).
+ * F0-SEC r2: mismo criterio de «secreto real» que `webhookSignatures.ts`: un
+ * token de relleno (en la base o en el entorno) vale lo mismo que ninguno → 403.
+ */
 async function getTwilioAuthTokenForOrg(orgId: number): Promise<string | null> {
   try {
     const { data } = await getServiceClient()
@@ -72,11 +76,13 @@ async function getTwilioAuthTokenForOrg(orgId: number): Promise<string | null> {
       .limit(1)
       .maybeSingle();
     const row = data as { twilio_subaccount_sid?: string | null; twilio_subaccount_auth_token?: string | null } | null;
-    if (row?.twilio_subaccount_sid && row?.twilio_subaccount_auth_token) return row.twilio_subaccount_auth_token;
+    if (row?.twilio_subaccount_sid && row?.twilio_subaccount_auth_token) {
+      return realSubaccountToken(row.twilio_subaccount_auth_token, row.twilio_subaccount_sid);
+    }
   } catch (err) {
     console.error('[WS] Error leyendo comm_settings:', err instanceof Error ? err.message : err);
   }
-  return process.env.TWILIO_MASTER_AUTH_TOKEN || process.env.TWILIO_AUTH_TOKEN || null;
+  return resolveTwilioMasterAuthToken();
 }
 
 function reject(socket: Duplex, status: number, reason: string): void {
@@ -170,7 +176,7 @@ server.listen(PORT, () => {
   console.log(`   Puerto: ${PORT}`);
   console.log(`   Ruta:   ws://localhost:${PORT}${WS_PATH}?st=<token>`);
   console.log(`   Health: http://localhost:${PORT}/health`);
-  if (!process.env.WS_SESSION_SECRET) console.warn('   ⚠️  WS_SESSION_SECRET no configurado: todas las conexiones serán rechazadas');
+  if (!readWsSessionSecret()) console.warn('   ⚠️  WS_SESSION_SECRET ausente, de relleno o corto (< 32): todas las conexiones serán rechazadas');
   if (!getPublicWsOrigin()) console.warn('   ⚠️  WS_PUBLIC_URL no configurado: todas las conexiones serán rechazadas\n');
 });
 

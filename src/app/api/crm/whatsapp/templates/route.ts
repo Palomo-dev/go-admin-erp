@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { withWhatsAppRoute, readJson } from '@/lib/services/crm/whatsapp/http';
+import { withWhatsAppRoute } from '@/lib/services/crm/whatsapp/http';
 import { createHsm, listHsm, type CreateHsmInput } from '@/lib/services/crm/whatsapp/templateService';
 import { parseWith, searchParamsToObject, zCreateHsmBody, zHsmListQuery } from '@/lib/services/crm/whatsapp/schemas';
 import type { HsmCategory, HsmStatus } from '@/lib/services/crm/whatsapp/types';
 
+import { readOrgBody } from '@/lib/security/organizationBody';
 /**
  * GET  /api/crm/whatsapp/templates?status=APPROVED&category=&q=&channelId=&includeInactive=1 → { data }
  * POST /api/crm/whatsapp/templates (admin) CreateHsmInput → 201 { data } (status DRAFT)
@@ -21,7 +22,7 @@ export const GET = withWhatsAppRoute(async (ctx, req) => {
 });
 
 export const POST = withWhatsAppRoute(async (ctx, req) => {
-  const b = parseWith(zCreateHsmBody, await readJson<unknown>(req));
+  const b = parseWith(zCreateHsmBody, await readOrgBody<unknown>(ctx, req));
   const data = await createHsm(ctx.organizationId, ctx.userId, b as CreateHsmInput, ctx.supabase);
   return NextResponse.json({ data }, { status: 201 });
 }, { admin: true });

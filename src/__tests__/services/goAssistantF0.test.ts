@@ -109,8 +109,9 @@ describe('GO Assistant F0 — guarda de acciones', () => {
   });
 
   it('lo no implementado se rechaza con un motivo decible, no con un error de Postgres', () => {
-    // Las órdenes de compra siguen sin implementar (F2 cubrió venta y ajuste).
-    const decision = evaluateAction(caps({ isAdmin: true }), 'create_purchase_order');
+    // Actualizar una orden de compra sigue sin implementar (F2 cubrió venta,
+    // ajuste, orden de compra y traslado).
+    const decision = evaluateAction(caps({ isAdmin: true }), 'update_purchase_order');
     expect(decision.allowed).toBe(false);
     expect(decision.reason).toBe('not_implemented');
     expect(decision.message).toMatch(/Todavía no puedo/);
@@ -125,6 +126,8 @@ describe('GO Assistant F0 — guarda de acciones', () => {
     for (const [tipo, herramienta] of [
       ['create_order', 'registrar_venta'],
       ['create_stock_adjustment', 'crear_ajuste_inventario'],
+      ['create_purchase_order', 'crear_orden_compra'],
+      ['create_stock_transfer', 'crear_traslado'],
     ] as const) {
       const decision = evaluateAction(caps({ isAdmin: true }), tipo);
       expect(decision.allowed).toBe(false);

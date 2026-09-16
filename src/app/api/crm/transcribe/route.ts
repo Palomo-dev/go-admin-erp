@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
-import { createManualCallWithAudio, ManualCallError, resolveManualAudioMaxBytes, audioTooLargeMessage } from '@/lib/services/crm/manualCallService';
+import { createManualCallWithAudio, ManualCallError, resolveManualAudioMaxBytes, audioTooLargeMessage, readRecordingDeclaration, MANUAL_DECLARATION_REQUIRED_ERROR } from '@/lib/services/crm/manualCallService';
+import { MANUAL_RECORDING_DECLARATION_TEXT } from '@/lib/services/crm/consentService';
 import { runTranscribePipeline } from '@/lib/services/crm/callIntelligenceService';
 import { TranscriptionError } from '@/lib/services/crm/transcriptionService';
 import { AnalysisError } from '@/lib/services/crm/callAnalysisService';
@@ -22,7 +24,7 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const form = await request.formData();
+    const form = readOrgBody(ctx, await request.formData());
     const file = (form.get('file') ?? form.get('audio')) as File | null;
     if (!file || typeof file === 'string') return NextResponse.json({ error: 'Archivo de audio requerido' }, { status: 400 });
     // Tope real de la cadena STT de la org (tester r2 nº 7), no un número fijo.
@@ -33,12 +35,18 @@ export async function POST(request: NextRequest) {
     const opportunityId = typeof form.get('opportunity_id') === 'string' && (form.get('opportunity_id') as string).trim() ? (form.get('opportunity_id') as string).trim() : null;
     const customerId = typeof form.get('customer_id') === 'string' && (form.get('customer_id') as string).trim() ? (form.get('customer_id') as string).trim() : null;
     if (!opportunityId && !customerId) return NextResponse.json({ error: 'opportunity_id o customer_id requerido' }, { status: 400 });
+    // F-5 (ronda 7 de voz): misma exigencia que `/api/crm/calls/manual`.
+    // H-3 (ronda 8): el valor leído viaja al servicio, nunca `true` cableado.
+    const recordingDeclaration = readRecordingDeclaration(form);
+    if (!recordingDeclaration) {
+      return NextResponse.json({ error: MANUAL_DECLARATION_REQUIRED_ERROR, code: 'RECORDING_DECLARATION_REQUIRED', declaration_text: MANUAL_RECORDING_DECLARATION_TEXT }, { status: 400 });
+    }
 
     const sb = getServiceClient();
     const created = await createManualCallWithAudio(
       ctx.organizationId,
       ctx.userId,
-      { audio: Buffer.from(await file.arrayBuffer()), opportunityId, customerId, source: 'activity_actions', originalFilename: file.name ?? null, maxBytes: limit.maxBytes },
+      { audio: Buffer.from(await file.arrayBuffer()), opportunityId, customerId, source: 'activity_actions', originalFilename: file.name ?? null, maxBytes: limit.maxBytes, recordingDeclaration },
       sb,
     );
     const out = await runTranscribePipeline(ctx.organizationId, created.callId, { supabase: sb, inlineAnalyze: true, userId: ctx.userId });

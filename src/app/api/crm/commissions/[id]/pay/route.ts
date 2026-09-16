@@ -1,37 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
-import { payCommission } from '@/lib/services/crm/commissionService';
+import { NextRequest } from 'next/server';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
+import { payCommission } from '@/lib/services/crm/commissionAdminService';
+import { jsonFail, jsonOk, readJson, rejectForeignOrganization, requireTeamManager, routeError } from '@/lib/services/crm/f13RouteSupport';
 
 /**
- * POST /api/crm/commissions/[id]/pay — Marca una comisión como pagada.
+ * POST /api/crm/commissions/[id]/pay — accrued → paid.
+ * Solo admin/manager (rol de sesión). 404 si no es de la organización; 409 si el
+ * estado de partida no es `accrued` (validado en el servidor y en el UPDATE).
+ * Body opcional; si trae `organization_id` de otra organización → 403 y registro.
  */
-export async function POST(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await getServerOrgContext();
+    requireTeamManager(ctx);
+    rejectForeignOrganization('CRM Commissions Pay', (await readJson(request)).organization_id, ctx);
     const { id } = await params;
-
-    const commission = await payCommission(id, ctx.organizationId, ctx.supabase);
-
-    if (!commission) {
-      return NextResponse.json(
-        { success: false, error: 'Comisión no encontrada o no está en estado accrued' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ success: true, data: commission }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Commissions Pay] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const commission = await payCommission(id, ctx.organizationId, ctx.supabase, ctx.userId);
+    if (!commission) return jsonFail(404, 'Comisión no encontrada en esta organización');
+    return jsonOk(commission);
+  } catch (error) {
+    return routeError(error, 'CRM Commissions Pay');
   }
 }

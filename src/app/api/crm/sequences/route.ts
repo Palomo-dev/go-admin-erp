@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getSequences, createSequence, validateSequenceInput } from '@/lib/services/crm/sequenceService';
+import { getSequenceStats, type SequenceStats } from '@/lib/services/crm/sequenceStats';
+
+const EMPTY_STATS: SequenceStats = { active: 0, total: 0, replied: 0, response_rate: null };
 
 function errorResponse(error: unknown, tag: string): NextResponse {
   if (error instanceof OrgContextError) {
@@ -14,12 +18,19 @@ function errorResponse(error: unknown, tag: string): NextResponse {
 
 /**
  * GET /api/crm/sequences — Lista las secuencias con sus pasos (sesión).
+ * Cada una lleva `enrollment_stats` (inscritos activos, tasa de respuesta)
+ * para las tarjetas de la lista (brief UX 6.3). Se llama `enrollment_stats`
+ * y no `stats` porque `sequences.stats` ya es una columna jsonb.
  */
 export async function GET() {
   try {
     const ctx = await getServerOrgContext();
-    const sequences = await getSequences(ctx.organizationId, ctx.supabase);
-    return NextResponse.json({ success: true, data: sequences }, { status: 200 });
+    const [sequences, stats] = await Promise.all([
+      getSequences(ctx.organizationId, ctx.supabase),
+      getSequenceStats(ctx.organizationId, ctx.supabase),
+    ]);
+    const data = sequences.map((s) => ({ ...s, enrollment_stats: stats[s.id] ?? EMPTY_STATS }));
+    return NextResponse.json({ success: true, data }, { status: 200 });
   } catch (error: unknown) {
     return errorResponse(error, 'GET error');
   }
@@ -34,7 +45,7 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     if (!body?.name) {
       return NextResponse.json({ success: false, error: 'Falta el campo obligatorio: name' }, { status: 400 });

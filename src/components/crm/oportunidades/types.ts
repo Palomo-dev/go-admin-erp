@@ -5,6 +5,8 @@ export interface Pipeline {
   name: string;
   organization_id: number;
   is_default: boolean;
+  /** `sales` | `onboarding` | `renewal` (F11: decide la pestaña Onboarding). */
+  pipeline_type?: string | null;
   goal_amount: number;
   goal_period: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
   goal_currency: string;

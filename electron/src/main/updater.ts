@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { UPDATE_CHECK_INTERVAL_MS } from './constants';
+import { broadcast } from './broadcast';
 
 export type UpdateState =
   | { status: 'idle' }
@@ -18,11 +19,11 @@ export function getUpdateState(): UpdateState {
   return state;
 }
 
-function setState(next: UpdateState, win: BrowserWindow | null): void {
+function setState(next: UpdateState, _win: BrowserWindow | null): void {
   state = next;
-  if (win && !win.isDestroyed()) {
-    win.webContents.send('update:state', next);
-  }
+  // Se difunde a la barra (que muestra «Reiniciar e instalar» al llegar a
+  // 'downloaded') y a la web (window.goAdminDesktop.onUpdateState).
+  broadcast('update:state', next);
 }
 
 export function initUpdater(win: BrowserWindow | null): void {

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { toast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { opportunitiesService } from '@/components/crm/oportunidades/opportunitiesService';
 import {
@@ -14,10 +13,17 @@ import { ForecastFilters } from './ForecastFilters';
 import { GoalProgress } from './GoalProgress';
 import { ForecastByStage } from './ForecastByStage';
 import { ForecastChart } from './ForecastChart';
+import { ForecastScenarios } from './ForecastScenarios';
+import { weightedOpenAmount } from '@/lib/services/crm/revenueOs/forecastScenarios';
 import { LoadErrorState } from '@/components/common/LoadErrorState';
 import { describeError, logError } from '@/lib/utils/errorMessage';
 
-export function ForecastDashboard() {
+interface ForecastDashboardProps {
+  /** Moneda base de la organización (`dashboard.currency` de Revenue OS); null → cifras sin símbolo. */
+  currency: string | null;
+}
+
+export function ForecastDashboard({ currency }: ForecastDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   // Con la base intermitente esta pantalla se quedaba en el esqueleto de carga
   // (isLoading && pipelines.length === 0) para siempre.
@@ -82,12 +88,9 @@ export function ForecastDashboard() {
         .filter((o) => o.status === 'open')
         .reduce((sum, o) => sum + (o.amount || 0), 0);
 
-      const weighted = oppsData
-        .filter((o) => o.status === 'open')
-        .reduce((sum, o) => {
-          const stage = stagesData.find((s) => s.id === o.stage_id);
-          return sum + (o.amount || 0) * (stage?.probability || 0);
-        }, 0);
+      // `stages.probability` es 0–100: el ponderado sale del módulo puro de
+      // F14 (antes se multiplicaba sin dividir por 100 y salía 100× inflado).
+      const weighted = weightedOpenAmount(oppsData, stagesData);
 
       setWonAmount(won);
       setOpenAmount(open);
@@ -120,13 +123,6 @@ export function ForecastDashboard() {
 
   const handlePeriodChange = (newPeriod: 'weekly' | 'monthly' | 'quarterly') => {
     setPeriod(newPeriod);
-  };
-
-  const handleExport = () => {
-    toast({
-      title: 'Info',
-      description: 'Función de exportación próximamente',
-    });
   };
 
   // El error manda sobre el esqueleto: si la carga falló hay que decirlo.
@@ -168,7 +164,6 @@ export function ForecastDashboard() {
         period={period}
         onPipelineChange={handlePipelineChange}
         onPeriodChange={handlePeriodChange}
-        onExport={handleExport}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -179,16 +174,24 @@ export function ForecastDashboard() {
           openAmount={openAmount}
           weightedAmount={weightedAmount}
           isLoading={isLoading}
+          currency={currency}
         />
 
         {/* Gráfico de tendencia */}
         <div className="lg:col-span-2">
-          <ForecastChart data={forecastData} isLoading={isLoading} />
+          <ForecastChart data={forecastData} isLoading={isLoading} currency={currency} />
         </div>
       </div>
 
-      {/* Pronóstico por etapa */}
-      <ForecastByStage stages={stages} opportunities={opportunities} isLoading={isLoading} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Escenarios (F14): mejor / esperado / peor sobre las abiertas */}
+        <ForecastScenarios stages={stages} opportunities={opportunities} isLoading={isLoading} currency={currency} />
+
+        {/* Pronóstico por etapa */}
+        <div className="lg:col-span-2">
+          <ForecastByStage stages={stages} opportunities={opportunities} isLoading={isLoading} currency={currency} />
+        </div>
+      </div>
     </div>
   );
 }

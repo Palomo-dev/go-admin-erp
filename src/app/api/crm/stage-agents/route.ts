@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getStageAgent,
   listStageAgents,
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     if (!body?.stage_id) {
       return NextResponse.json({ success: false, error: 'Falta stage_id' }, { status: 400 });
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
+    await readOrgBody(ctx, request);
     requireOrgAdmin(ctx);
     const id = request.nextUrl.searchParams.get('id');
     if (!id) return NextResponse.json({ success: false, error: 'Falta id' }, { status: 400 });

@@ -5,6 +5,7 @@ import { upsertCallActivity } from '@/lib/services/crm/callActivityService';
 import { resolveSttSizeLimit } from '@/lib/services/crm/stt';
 import { CALL_MODES, CALL_STATUSES, DURATION_SOURCES, RECORDING_STATUSES } from '@/lib/crm/enums';
 import { assertDbEnum } from '@/lib/services/crm/callAnalysisRules';
+import { recordConsent, manualConsentText, MANUAL_RECORDING_DECLARATION_TEXT } from './consentService';
 
 /**
  * Llamada manual con audio (FASE-04 §5.3 D / F5). SOLO SERVIDOR.
@@ -121,6 +122,28 @@ export interface ManualCallInput {
    * fijo salvo como fallback sin credenciales.
    */
   maxBytes?: number | null;
+  /**
+   * F-5 (ronda 7 de voz): declaración EXPLÍCITA del usuario de que la grabación
+   * se hizo con el conocimiento del interlocutor (Habeas Data). Las rutas la
+   * exigen (`recording_declaration=true` → 400 si falta). Aquí `true` se
+   * refleja en la acta; `undefined` deja constancia de que NO consta; `false`
+   * se rechaza. Nunca se atribuye al usuario una declaración que no marcó.
+   */
+  recordingDeclaration?: boolean;
+}
+
+/** Mensaje de las rutas cuando falta la declaración (400). Nombra el campo y el texto que hay que marcar. */
+export const MANUAL_DECLARATION_REQUIRED_ERROR =
+  `Falta la declaración de la grabación: envía el campo recording_declaration=true tras marcar «${MANUAL_RECORDING_DECLARATION_TEXT}»`;
+
+/**
+ * Lee la casilla de declaración del `multipart/form-data` (F-5). Solo el
+ * literal `true`/`1`/`on` (lo que envía un `<input type="checkbox">`) cuenta
+ * como marcada; cualquier otra cosa, o su ausencia, es «no declarado».
+ */
+export function readRecordingDeclaration(form: FormData): boolean {
+  const v = form.get('recording_declaration');
+  return typeof v === 'string' && ['true', '1', 'on'].includes(v.trim().toLowerCase());
 }
 
 export interface ManualCallResult {
@@ -155,6 +178,9 @@ export async function createManualCallWithAudio(orgId: number, userId: string | 
   const kind = detectAudioKind(input.audio);
   if (!kind) throw new ManualCallError('Formato de audio no soportado (mp3, wav, m4a, ogg, webm)', 415);
   if (!input.opportunityId && !input.customerId) throw new ManualCallError('opportunity_id o customer_id requerido');
+  if (input.recordingDeclaration === false) {
+    throw new ManualCallError(`Sin la declaración del usuario no se puede registrar la grabación: marca «${MANUAL_RECORDING_DECLARATION_TEXT}»`);
+  }
 
   // Resolver oportunidad/cliente de la org
   let customerId = input.customerId ?? null;
@@ -198,7 +224,9 @@ export async function createManualCallWithAudio(orgId: number, userId: string | 
       ended_at: endedAt,
       duration_seconds: durationSeconds,
       recording_enabled: true,
-      consent_given: true,
+      // `consent_given` lo pone `recordConsent` (único escritor de actas) justo
+      // abajo, con el acta `manual`. Nunca a mano (ronda 6 de voz, N-4).
+      consent_given: false,
       cost_currency: 'USD',
       duration_source: MANUAL_DURATION_SOURCE,
       metadata: { source: input.source ?? 'manual_upload', notes: input.notes ?? null, original_filename: input.originalFilename ?? null, audio_kind: kind, size_bytes: input.audio.length },
@@ -207,6 +235,36 @@ export async function createManualCallWithAudio(orgId: number, userId: string | 
     .single();
   if (callErr || !call) throw new ManualCallError(`No se pudo crear la llamada: ${callErr?.message ?? 'sin datos'}`, 500);
   const callId = (call as { id: string }).id;
+
+  // Acta ANTES de guardar la grabación («nunca grabar sin acta», F3/F5). Es una
+  // grabación hecha FUERA del sistema: el sistema no reprodujo ningún aviso,
+  // así que `method='manual'` y la evidencia es quién la sube, cuándo y si
+  // marcó la declaración (F-5: solo se escribe lo que el usuario marcó de
+  // verdad; la columna no tiene CHECK, verificado por MCP). Sin acta no se
+  // sube el audio ni se registra la grabación.
+  try {
+    await recordConsent(
+      orgId,
+      {
+        callId,
+        consentType: 'recording',
+        consentGiven: true,
+        method: 'manual',
+        locale: 'es-CO',
+        consentMessage: manualConsentText({
+          userId,
+          uploadedAt: new Date().toISOString(),
+          callStartedAt: startedAt,
+          source: input.source ?? 'manual_upload',
+          declared: input.recordingDeclaration === true,
+        }),
+      },
+      sb
+    );
+  } catch (e) {
+    await sb.from('calls').delete().eq('id', callId).eq('organization_id', orgId);
+    throw new ManualCallError(`No se pudo registrar el consentimiento de la grabación: ${e instanceof Error ? e.message : 'sin datos'}`, 500);
+  }
 
   const d = new Date(startedAt);
   const storagePath = `org_${orgId}/${d.getUTCFullYear()}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${callId}.${kind}`;

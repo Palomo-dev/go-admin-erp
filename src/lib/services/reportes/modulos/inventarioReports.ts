@@ -3,7 +3,13 @@
 // Llama a las RPCs: fn_reporte_stock_critico, fn_reporte_movimientos_inventario, fn_reporte_rotacion_inventario
 // ============================================================
 
-import { supabase } from '@/lib/supabase/config';
+import { supabase as browserSupabase } from '@/lib/supabase/config';
+import type { ReportesClient } from '../types';
+// F0-SEC r3 (tester r2, fallo 3): `fetch` acepta el cliente de Supabase por
+// parámetro. En el navegador (app/reportes) cae al cliente browser con la sesión
+// del usuario; en el servidor (asistente de reportes) el route handler pasa el
+// cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
+// corren como `authenticated` miembro y nunca como `anon`.
 import { getOrgDateRange } from '@/lib/utils/timezone';
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
@@ -54,8 +60,9 @@ export const inventarioReports: ReportDefinition[] = [
     descripcion: 'Productos bajo el mínimo de stock',
     categoria: 'operativo',
     periodosSugeridos: ['diario'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      let query = supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      let query = db
         .from('stock_levels')
         .select(`
           product_id,
@@ -99,7 +106,7 @@ export const inventarioReports: ReportDefinition[] = [
 
       const padresMap = new Map<number, { sku: string; name: string }>();
       if (parentIds.size > 0) {
-        const { data: padresData } = await supabase
+        const { data: padresData } = await db
           .from('products')
           .select('id, sku, name')
           .in('id', Array.from(parentIds));
@@ -236,12 +243,13 @@ export const inventarioReports: ReportDefinition[] = [
     descripcion: 'Entradas, salidas y ajustes del período',
     categoria: 'operativo',
     periodosSugeridos: ['diario', 'semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await supabase.rpc('fn_reporte_movimientos_inventario', {
+      const { data, error } = await db.rpc('fn_reporte_movimientos_inventario', {
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
@@ -258,7 +266,7 @@ export const inventarioReports: ReportDefinition[] = [
 
       let productosMap: Record<string, { nombre: string; sku: string }> = {};
       if (productoIds.length) {
-        const { data: productos } = await supabase
+        const { data: productos } = await db
           .from('products')
           .select('id, name, sku')
           .in('id', [...new Set(productoIds)]);
@@ -332,12 +340,13 @@ export const inventarioReports: ReportDefinition[] = [
     descripcion: 'Top vendidos, dead stock y días promedio de inventario',
     categoria: 'operativo',
     periodosSugeridos: ['semanal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await supabase.rpc('fn_reporte_rotacion_inventario', {
+      const { data, error } = await db.rpc('fn_reporte_rotacion_inventario', {
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
@@ -370,12 +379,13 @@ export const inventarioReports: ReportDefinition[] = [
     descripcion: 'Margen de ganancia por producto',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      let ventasQuery = supabase
+      let ventasQuery = db
         .from('sales')
         .select('id')
         .eq('organization_id', orgId)
@@ -405,7 +415,7 @@ export const inventarioReports: ReportDefinition[] = [
         );
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('sale_items')
         .select('product_id, quantity, unit_price, total, discount_amount, products(name, sku)')
         .in('sale_id', saleIds)

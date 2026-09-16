@@ -2,3 +2,5 @@ node_modules/
 dist/
 release/
 *.log
+# Build standalone de Next (lo genera scripts/build-web.js; va como extraResource)
+resources/web/

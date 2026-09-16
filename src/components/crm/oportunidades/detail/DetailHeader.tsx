@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn, formatCurrency } from '@/utils/Utils';
 import { QuickActionsBar, type QuickActionKind } from '@/components/crm/shared/QuickActionsBar';
+import { ALL_QUICK_ACTIONS } from '@/components/crm/shared/quickActionsConfig';
 import { TemperatureDot } from '@/components/crm/pipeline/TemperatureDot';
 import type { OpportunityFull } from '@/components/crm/pipeline/hooks/useOpportunityData';
 import type { CustomerDetails, Stage } from '../types';
@@ -73,7 +74,7 @@ export function DetailHeader({ opportunity, customer, stages, displayAmount, bus
             <Button size="sm" variant="outline" onClick={onDelete} disabled={busy} className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20" aria-label="Eliminar"><Trash2 className="h-4 w-4" /></Button>
           </div>
         </div>
-        <QuickActionsBar variant="detail" opportunityId={opportunity.id} customerId={opportunity.customer_id ?? undefined} customer={barCustomer} opportunityName={opportunity.name} onActionCompleted={onActionCompleted} />
+        <QuickActionsBar variant="detail" opportunityId={opportunity.id} customerId={opportunity.customer_id ?? undefined} customer={barCustomer} opportunityName={opportunity.name} actions={[...ALL_QUICK_ACTIONS, 'proposal']} onActionCompleted={onActionCompleted} />
       </div>
 
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">

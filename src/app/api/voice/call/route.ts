@@ -15,6 +15,11 @@ export const dynamic = 'force-dynamic';
 /**
  * POST /api/voice/call — Inicia una llamada saliente REST (legacy / F5-F6).
  *
+ * CERRADA por defecto (F-6, ronda 7 de voz): responde 410 salvo con
+ * `VOICE_LEGACY_REST_OUTBOUND=true`, la misma bandera que abre la rama REST de
+ * `/api/voice/twiml/outbound` (N-5). Sin ella marcaba una llamada real que
+ * colgaba al contestar.
+ *
  * Body: { to, from?, customer_id?, opportunity_id?, recording_enabled?, mode?: 'bridge' | 'ai_agent' }
  *
  * F3: el modo `browser` NO pasa por aquí (400 `USE_SDK`): el softphone hace
@@ -42,6 +47,22 @@ export async function POST(request: NextRequest) {
       );
     }
     throw err;
+  }
+
+  // F-6 (ronda 7 de voz): esta ruta crea una llamada REAL en Twilio cuyo TwiML
+  // (`/api/voice/twiml/outbound`, rama REST) responde `<Hangup/>` desde N-5:
+  // una llamada fantasma con coste, abierta a cualquier miembro autenticado.
+  // Se cierra con la MISMA bandera; sin ella, 410 antes de tocar Twilio ni la BD.
+  if (process.env.VOICE_LEGACY_REST_OUTBOUND !== 'true') {
+    console.warn('[Voice Call] marcación REST heredada deshabilitada (VOICE_LEGACY_REST_OUTBOUND)', { org: ctx.organizationId });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'La marcación REST heredada está deshabilitada (VOICE_LEGACY_REST_OUTBOUND). Usa el softphone del navegador, /api/voice/bridge/initiate para el celular o la campaña del agente IA.',
+        code: 'LEGACY_REST_OUTBOUND_DISABLED',
+      },
+      { status: 410 }
+    );
   }
 
   try {

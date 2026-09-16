@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { withWhatsAppRoute, readJson } from '@/lib/services/crm/whatsapp/http';
+import { withWhatsAppRoute } from '@/lib/services/crm/whatsapp/http';
 import { parseWith, searchParamsToObject, zCampaignListQuery, zCreateCampaignBody } from '@/lib/services/crm/whatsapp/schemas';
 import { createCampaign, listCampaigns, type CreateCampaignInput } from '@/lib/services/crm/whatsapp/campaignStore';
 import { isOrgAdminContext } from '@/lib/utils/orgContext';
 
+import { readOrgBody } from '@/lib/security/organizationBody';
 /**
  * GET  /api/crm/campaigns?status=&channel=&q= → { data: Campaign[], can_manage }
  * POST /api/crm/campaigns CreateCampaignInput → 201 { data }
@@ -21,7 +22,7 @@ export const GET = withWhatsAppRoute(async (ctx, req) => {
 });
 
 export const POST = withWhatsAppRoute(async (ctx, req) => {
-  const b = parseWith(zCreateCampaignBody, await readJson<unknown>(req));
+  const b = parseWith(zCreateCampaignBody, await readOrgBody<unknown>(ctx, req));
   const data = await createCampaign(ctx.organizationId, ctx.userId, b as CreateCampaignInput, ctx.supabase);
   return NextResponse.json({ data }, { status: 201 });
 });

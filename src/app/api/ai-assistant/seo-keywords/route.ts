@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { consumeAICredits } from '@/lib/services/aiCreditsService';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
+import { readOrgBody } from '@/lib/security/organizationBody';
 export const dynamic = 'force-dynamic';
 
 function getOpenAIClient(): OpenAI {
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
       services,
       businessType,
       currentKeywords,
-    } = await request.json();
+    } = await readOrgBody(ctx, request);
 
     if (!organizationName) {
       return NextResponse.json(
@@ -87,6 +88,7 @@ Responde SOLO con las 12 keywords separadas por comas, sin explicaciones.`;
 
     return NextResponse.json({ keywords });
   } catch (error: any) {
+    if (error instanceof OrgContextError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     console.error('Error generando keywords SEO:', error);
     return NextResponse.json(
       { error: error.message || 'Error generando keywords' },

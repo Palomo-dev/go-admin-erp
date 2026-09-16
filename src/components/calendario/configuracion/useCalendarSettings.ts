@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { CalendarSettings, DEFAULT_CALENDAR_SETTINGS } from './types';
 import { invalidateTimezoneCache } from '@/lib/services/organizationTimezoneService';
+import { isSupportedTimeZone } from '@/lib/utils/timezone';
 
 interface UseCalendarSettingsProps {
   organizationId: number | null;
@@ -21,9 +22,10 @@ interface UseCalendarSettingsReturn {
   hasChanges: boolean;
 }
 
+// `userId` sigue en las props por compatibilidad con los llamadores, pero el
+// hook no lo usa (la configuración es por organización).
 export function useCalendarSettings({
   organizationId,
-  userId,
 }: UseCalendarSettingsProps): UseCalendarSettingsReturn {
   const [settings, setSettings] = useState<CalendarSettings>(DEFAULT_CALENDAR_SETTINGS);
   const [originalSettings, setOriginalSettings] = useState<CalendarSettings>(DEFAULT_CALENDAR_SETTINGS);
@@ -88,6 +90,16 @@ export function useCalendarSettings({
       return { success: false, error: 'No hay organización seleccionada' };
     }
 
+    // F0-REG r3 (QA r2 medio 2): `organizations.timezone` se escribe desde
+    // sesión y PostgREST acepta cualquier texto. Solo nombres IANA canónicos
+    // (Intl.supportedValuesOf + UTC); la BD lo vuelve a comprobar contra
+    // pg_timezone_names (trigger trg_validate_org_timezone, mig. 44).
+    if (settings.timezone && !isSupportedTimeZone(settings.timezone)) {
+      const msg = `Zona horaria no reconocida: ${settings.timezone}`;
+      setError(msg);
+      return { success: false, error: msg };
+    }
+
     setIsSaving(true);
     setError(null);
 
@@ -127,10 +139,13 @@ export function useCalendarSettings({
 
       // Sincronizar organizations.timezone (fuente de verdad canonica para fn_today_for_org)
       if (settings.timezone) {
-        await supabase
+        const { error: tzError } = await supabase
           .from('organizations')
           .update({ timezone: settings.timezone })
           .eq('id', organizationId);
+        // El trigger de BD rechaza zonas fuera de pg_timezone_names (22023):
+        // antes el error se tragaba y la UI decía «guardado».
+        if (tzError) throw new Error(`Zona horaria rechazada: ${tzError.message}`);
         invalidateTimezoneCache(organizationId);
       }
 

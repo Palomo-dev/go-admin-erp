@@ -15,6 +15,8 @@
 
 import Twilio from 'twilio';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { normalizePhoneDigits, phoneSuffixPattern, resolveDefaultCountry } from '@/lib/services/crm/phoneNormalize';
+import { getOrgSettings } from '@/lib/services/crm/whatsapp/channelService';
 import type {
   TwilioIncomingMessage,
   TwilioStatusCallback,
@@ -90,11 +92,13 @@ export async function recordConsentChange(params: {
 }): Promise<void> {
   const supabase = getServiceClient();
   const { orgId, phone, channel, status } = params;
-  const digits = phone.replace(/\D/g, '');
+  // Indicativo de la organización, para completar los teléfonos NACIONALES que
+  // guardó sin él («310 987 6543»). El entrante de Twilio ya viene en E.164.
+  const defaultCountry = resolveDefaultCountry((await getOrgSettings(orgId, supabase)).default_country_code);
+  const digits = normalizePhoneDigits(phone, defaultCountry) ?? phone.replace(/\D/g, '');
   const last10 = digits.slice(-10);
 
-  // Buscar clientes de la org con ese teléfono (comparación laxa por sufijo de
-  // 10 dígitos).
+  // Buscar clientes de la org con ese teléfono.
   //
   // GEMELO EXAMINADO Y CONSERVADO A PROPÓSITO (F16 r4). Es la misma forma que
   // la búsqueda ad-hoc que se retiró de `POST /api/integrations/whatsapp/send`
@@ -104,16 +108,32 @@ export async function recordConsentChange(params: {
   // quedarse corto es seguir escribiendo a quien pidió la baja, que es lo que
   // prohíbe la Ley 1581 de 2012. Ante la duda, se aplica a todos los que
   // encajan.
+  //
+  // F16 r5 · T-2: el prefiltro era `ilike '%<últimos 10 dígitos>'`, que exige
+  // los 10 dígitos CONTIGUOS. «+57 310 987 65 43» no lo pasa, y 9.298 de
+  // 12.846 teléfonos (72 %) están guardados con separadores dentro de esos 10
+  // dígitos: la baja de todos ellos se perdía. Ahora el prefiltro es el mismo
+  // que usa `findCustomerIdByPhone` (`phoneSuffixPattern` + `imatch`, que
+  // tolera separadores y basura al final) y la comparación fina se hace en
+  // memoria con `normalizePhoneDigits`: si el teléfono guardado normaliza,
+  // tiene que ser EL MISMO número E.164 («+1 310 987 6543» comparte los
+  // últimos 10 dígitos con «+57 310 987 6543» y es otra persona, no una
+  // duda). Solo cuando no normaliza (formato raro) se cae a la red ancha del
+  // sufijo de 10 dígitos.
   const { data: customers } = await supabase
     .from('customers')
     .select('id, phone, metadata')
     .eq('organization_id', orgId)
-    .ilike('phone', `%${last10}`)
-    .limit(20);
+    .filter('phone', 'imatch', phoneSuffixPattern(digits))
+    .limit(200);
 
-  const matched = (customers || []).filter((c: { phone?: string | null }) =>
-    (c.phone || '').replace(/\D/g, '').endsWith(last10)
-  ) as Array<{ id: string; metadata?: Record<string, unknown> | null }>;
+  const matched = (customers || []).filter((c: { phone?: string | null }) => {
+    if (!c.phone) return false;
+    const normalizado = normalizePhoneDigits(c.phone, defaultCountry);
+    if (normalizado !== null) return normalizado === digits;
+    const raw = c.phone.replace(/\D/g, '');
+    return raw.length >= 10 && raw.endsWith(last10);
+  }) as Array<{ id: string; metadata?: Record<string, unknown> | null }>;
 
   const flag = channel === 'whatsapp' ? 'do_not_whatsapp' : 'do_not_sms';
   const now = new Date().toISOString();

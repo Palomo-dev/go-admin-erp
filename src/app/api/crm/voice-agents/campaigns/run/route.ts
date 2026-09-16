@@ -8,26 +8,23 @@
  * Se conserva el alias con su contrato original (fail-closed por `CRON_SECRET` y
  * `organization_id` opcional en el cuerpo para ejecutar una sola organización), porque
  * hay invocaciones internas que dependen de él.
+ *
+ * F0-SEC r2: envuelto en `withCron` (punto único del cron: `verifyCronSecret` con
+ * secreto REAL, 401 JSON si falta o no coincide). El `organization_id` del cuerpo
+ * NO es la regla dura 5 —aquí no hay sesión de usuario— sino el ámbito de una
+ * pasada de cron ya autenticada por secreto; por eso esta ruta no llama a
+ * `readOrgBody` y el guardarraíl 5 la reconoce por `withCron(`.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyCronSecret, WebhookError } from '@/lib/security/webhookSignatures';
+import { NextResponse } from 'next/server';
+import { withCron } from '@/lib/utils/orgContext';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { runCampaignsForAllOrgs, runCampaignsForOrg } from '@/lib/services/crm/voiceAgentCron';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-async function handle(request: NextRequest): Promise<NextResponse> {
-  try {
-    verifyCronSecret(request);
-  } catch (err) {
-    if (err instanceof WebhookError) {
-      return NextResponse.json({ success: false, error: 'No autorizado' }, { status: err.statusCode });
-    }
-    throw err;
-  }
-
+async function handle(request: Request): Promise<NextResponse> {
   let organizationId: number | undefined;
   try {
     const body = await request.json();
@@ -55,10 +52,5 @@ async function handle(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  return handle(request);
-}
-
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  return handle(request);
-}
+export const POST = withCron(handle);
+export const GET = withCron(handle);

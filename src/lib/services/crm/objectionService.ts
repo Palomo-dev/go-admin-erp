@@ -25,7 +25,8 @@ export interface Objection {
 
 export interface ObjectionInput {
   title: string;
-  category?: string | null;
+  /** NOT NULL en la BD (verificado por MCP el 2026-09-15). */
+  category: string;
   detection_signals?: string[] | null;
   recommended_response?: string | null;
   discovery_questions?: string[] | null;
@@ -57,7 +58,7 @@ export interface OpportunityObjection {
   resolved: boolean;
   resolved_at: string | null;
   created_at: string;
-  updated_at: string;
+  // La tabla NO tiene `updated_at` (verificado por MCP el 2026-09-15).
   // Relación opcional
   objection?: Objection | null;
 }
@@ -65,6 +66,33 @@ export interface OpportunityObjection {
 export interface OpportunityObjectionInput {
   notes?: string | null;
   detected_by?: string | null;
+}
+
+/** Tope de `opportunity_objections.notes` en caracteres: el mismo `maxLength` del picker. Se aplica AQUÍ, no solo en el input. */
+export const NOTES_MAX = 280;
+
+/** Error con código HTTP que las rutas devuelven tal cual (404 no encontrada, 400 datos inválidos). */
+export class ObjectionRequestError extends Error {
+  constructor(message: string, readonly statusCode: number) {
+    super(message);
+    this.name = 'ObjectionRequestError';
+  }
+}
+
+/** La oportunidad o la objeción no existen en la organización: el enlace no se crea. */
+export class ObjectionNotFoundError extends ObjectionRequestError {
+  constructor(message: string) {
+    super(message, 404);
+    this.name = 'ObjectionNotFoundError';
+  }
+}
+
+/** Datos inválidos (p. ej. nota más larga que `NOTES_MAX`): nada se lee ni se escribe. */
+export class ObjectionValidationError extends ObjectionRequestError {
+  constructor(message: string) {
+    super(message, 400);
+    this.name = 'ObjectionValidationError';
+  }
 }
 
 export interface ObjectionFilters {
@@ -123,10 +151,11 @@ export async function createObjection(
     .insert({
       organization_id: organizationId,
       title: data.title,
-      category: data.category ?? null,
-      detection_signals: data.detection_signals ?? null,
+      category: data.category,
+      // jsonb NOT NULL DEFAULT '[]' (verificado por MCP el 2026-09-15): null → 500.
+      detection_signals: data.detection_signals ?? [],
       recommended_response: data.recommended_response ?? null,
-      discovery_questions: data.discovery_questions ?? null,
+      discovery_questions: data.discovery_questions ?? [],
       related_case_studies: data.related_case_studies ?? null,
       vertical_id: data.vertical_id ?? null,
       is_active: data.is_active ?? true,
@@ -220,7 +249,11 @@ export async function getOpportunityObjections(
 }
 
 /**
- * Vincula una objection a una oportunidad.
+ * Vincula una objection a una oportunidad. Antes de insertar comprueba que la
+ * oportunidad y la objeción existen EN la organización: RLS ya impide leer
+ * las ajenas, pero sin esta comprobación se creaba un enlace basura hacia un
+ * id de otra organización. Lanza `ObjectionNotFoundError` (404) o
+ * `ObjectionValidationError` (400) si la nota supera `NOTES_MAX`.
  */
 export async function addOpportunityObjection(
   organizationId: number,
@@ -229,14 +262,30 @@ export async function addOpportunityObjection(
   data: OpportunityObjectionInput,
   supabase: SupabaseClient
 ): Promise<OpportunityObjection | null> {
+  // El tope se comprueba antes de tocar la BD: por la API entraban 281 caracteres (ronda 2).
+  const notes = typeof data.notes === 'string' ? data.notes.trim() : '';
+  if (notes.length > NOTES_MAX) {
+    throw new ObjectionValidationError(`La nota no puede superar ${NOTES_MAX} caracteres (tiene ${notes.length})`);
+  }
+
+  const [opportunity, objection] = await Promise.all([
+    supabase.from('opportunities').select('id').eq('id', opportunityId).eq('organization_id', organizationId).maybeSingle(),
+    supabase.from('objections').select('id').eq('id', objectionId).eq('organization_id', organizationId).maybeSingle(),
+  ]);
+  if (opportunity.error) throw opportunity.error;
+  if (objection.error) throw objection.error;
+  if (!opportunity.data) throw new ObjectionNotFoundError('Oportunidad no encontrada');
+  if (!objection.data) throw new ObjectionNotFoundError('Objeción no encontrada');
+
   const { data: result, error } = await supabase
     .from('opportunity_objections')
     .insert({
       organization_id: organizationId,
       opportunity_id: opportunityId,
       objection_id: objectionId,
-      notes: data.notes ?? null,
-      detected_by: data.detected_by ?? null,
+      notes: notes || null,
+      // NOT NULL con CHECK ('manual','ia'): nunca null.
+      detected_by: data.detected_by ?? 'manual',
       resolved: false,
     })
     .select()
@@ -248,7 +297,8 @@ export async function addOpportunityObjection(
   await supabase
     .from('opportunities')
     .update({ objection_id: objectionId, updated_at: new Date().toISOString() })
-    .eq('id', opportunityId);
+    .eq('id', opportunityId)
+    .eq('organization_id', organizationId);
 
   return result as OpportunityObjection;
 }
@@ -266,7 +316,6 @@ export async function resolveOpportunityObjection(
     .update({
       resolved: true,
       resolved_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     })
     .eq('id', id)
     .eq('organization_id', organizationId)

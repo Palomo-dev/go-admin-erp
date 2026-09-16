@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { INTEGRATION_CONNECTION_USABLE_STATUS } from '@/lib/integrations/connectionStatus';
 import { metaMarketingService } from '@/lib/services/integrations/meta';
 
 /**
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
         integration_connectors!inner ( code )
       `)
       .eq('organization_id', organization_id)
-      .eq('status', 'active');
+      .eq('status', INTEGRATION_CONNECTION_USABLE_STATUS);
 
     const metaConn = (connections || []).find((c: Record<string, unknown>) => {
       const connector = c.integration_connectors as Record<string, unknown> | undefined;

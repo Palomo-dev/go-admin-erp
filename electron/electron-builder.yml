@@ -1,26 +1,61 @@
 appId: io.goadmin.desktop
 productName: Go Admin ERP
 copyright: Copyright © 2025 GO Admin
-artifactName: GoAdminERP-Setup.${ext}
+
+# Con versión: antes era GoAdminERP-Setup.${ext} y cada release de GitHub
+# pisaba el asset anterior, un .exe suelto no decía qué versión era, y los
+# rollbacks eran a ciegas.
+artifactName: GoAdminERP-Setup-${version}.${ext}
 
 directories:
   output: release
   buildResources: build
 
+# Releases en un repositorio propio y público, separado del código: el
+# auto-update (electron-updater) descarga latest.yml y el .exe de aquí sin
+# token. Lo publica .github/workflows/desktop-release.yml.
+#
+# TRANSICIÓN: las instalaciones 0.1.x llevan embebido un app-update.yml que
+# apunta al repo de código (Palomo-dev/go-admin-erp). El workflow sube la
+# misma release a los dos repositorios hasta que esas instalaciones se
+# actualicen; después se puede dejar solo este.
 publish:
   provider: github
   owner: Palomo-dev
-  repo: go-admin-erp
+  repo: go-admin-desktop-releases
+  releaseType: release
 
 win:
   target: nsis
   icon: build/icon.ico
+  # CONGELADO en asInvoker + perMachine: false (instalación por usuario, sin
+  # UAC). El build 0.1.0 (30-jul-2026) salió con requireAdministrator +
+  # perMachine: true; installer.nsh (customInit) detecta esa instalación
+  # anterior por su clave de desinstalación en HKLM y la quita antes de
+  # instalar, para no dejar dos copias en paralelo.
   requestedExecutionLevel: asInvoker
+  # Firma de código. electron-builder firma solo cuando existen las variables
+  # de entorno CSC_LINK (ruta o base64 del .pfx) y CSC_KEY_PASSWORD; nunca se
+  # leen de archivos del repositorio. Para Azure Trusted Signing se usa
+  # electron-builder.config.js, que añade `win.sign` cuando hay variables
+  # AZURE_*. Sin credenciales el .exe sale sin firmar (SmartScreen avisará).
+  signtoolOptions:
+    signingHashAlgorithms:
+      - sha256
+    rfc3161TimeStampServer: http://timestamp.digicert.com
+  # Mientras los releases salgan sin firmar, electron-updater no debe exigir
+  # firma al actualizar (fallaría con "not signed by the application owner").
+  # Cuando exista certificado: poner publisherName con el nombre exacto del
+  # certificado y cambiar esto a true.
+  verifyUpdateCodeSignature: false
 
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  # Los accesos directos los crea installer.nsh según lo que marque el
+  # usuario en la página de opciones (customInstall) y los borra
+  # customUnInstall.
   createDesktopShortcut: false
   createStartMenuShortcut: false
   shortcutName: Go Admin ERP
@@ -34,12 +69,17 @@ nsis:
   license: build/license.txt
   installerLanguages: es
   language: 1034
+  # Actualizaciones diferenciales: electron-builder genera el .blockmap del
+  # instalador y electron-updater descarga solo los bloques que cambian.
+  differentialPackage: true
 
+# Sin "node_modules/**/*": ese patrón anulaba el filtrado automático de
+# electron-builder, que ya incluye las dependencies de producción y excluye
+# las devDependencies. Verificado con `npx asar list release/win-unpacked/resources/app.asar`.
 files:
   - dist/**/*
   - build/**/*
   - package.json
-  - node_modules/**/*
 
 # Desempaquetar el icono del asar para que Windows pueda usarlo como
 # icono de ventana (BrowserWindow.icon) y de la bandeja del sistema (Tray).
@@ -47,3 +87,12 @@ files:
 # de Windows que resuelven el icono de la ventana/taskbar.
 asarUnpack:
   - build/icon.ico
+
+# Web (build standalone de Next) fuera del asar: server.js necesita leer
+# archivos reales del disco (chunks, node_modules, .next/static, public).
+# La genera `npm run build:web` (scripts/build-web.js) en resources/web/ y
+# el paquete la deja en resources/web/ junto al app.asar. Si no existe, el
+# paquete se construye igual y la app cae a https://app.goadmin.io.
+extraResources:
+  - from: resources/web
+    to: web

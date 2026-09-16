@@ -6,6 +6,56 @@ import os from 'os';
 import { config } from './config';
 import { buildCashDrawerBuffer } from './printing/escposBuffer';
 import { sendRawToPrinter, getPrinterInfo } from './transports/rawSpooler';
+import { printToDevice } from './printerDrivers';
+import type { LocalPrintRequest, PrintJobType } from './printing/types';
+import type { PrinterRow, PrintJobPayload } from './types';
+
+const LOCAL_PRINT_JOB_TYPES: ReadonlySet<string> = new Set<PrintJobType>([
+  'kitchen_ticket',
+  'pre_cuenta',
+  'sale_ticket',
+  'shipment_guide',
+  'electronic_invoice',
+  'open_cash_drawer',
+]);
+
+/**
+ * Valida el sobre de `POST /print`. Devuelve el motivo del rechazo o null.
+ * Solo se comprueba lo que `printToDevice` necesita para elegir transporte;
+ * el contenido del ticket lo valida el render como con cualquier print_job.
+ */
+function validateLocalPrintRequest(
+  printerId: unknown,
+  envelope: unknown,
+): { error: string } | { request: LocalPrintRequest<PrinterRow, PrintJobPayload> } {
+  if (!envelope || typeof envelope !== 'object') return { error: 'payload es requerido' };
+  const req = envelope as Partial<LocalPrintRequest<Partial<PrinterRow>, unknown>>;
+
+  if (typeof req.jobType !== 'string' || !LOCAL_PRINT_JOB_TYPES.has(req.jobType)) {
+    return { error: `jobType no soportado: ${String(req.jobType)}` };
+  }
+  const printer = req.printer;
+  if (!printer || typeof printer !== 'object' || typeof printer.id !== 'string') {
+    return { error: 'printer (fila de printers) es requerido' };
+  }
+  if (typeof printerId === 'string' && printerId && printerId !== printer.id) {
+    return { error: 'printerId no coincide con printer.id' };
+  }
+  if (typeof printer.connection_type !== 'string') {
+    return { error: 'printer.connection_type es requerido' };
+  }
+  if (printer.is_active === false) {
+    return { error: 'Impresora inactiva' };
+  }
+
+  return {
+    request: {
+      jobType: req.jobType,
+      printer: printer as PrinterRow,
+      payload: (req.payload ?? {}) as PrintJobPayload,
+    },
+  };
+}
 
 export interface SystemPrinter {
   name: string;
@@ -480,6 +530,7 @@ function probePort(ip: string, port: number, timeoutMs: number): Promise<boolean
  *   GET /discover      → escanea la red local en busca de impresoras (puerto 9100)
  *   GET /usb           → enumera dispositivos USB con su vendor_id/product_id
  *   GET /bluetooth     → lista dispositivos Bluetooth emparejados
+ *   POST /print        → imprime un job localmente (sobre LocalPrintRequest)
  */
 export function startDiscoveryServer(): http.Server {
   const server = http.createServer(async (req, res) => {
@@ -605,6 +656,46 @@ Get-CimInstance Win32_PnPEntity |
       return;
     }
 
+    // POST /print — impresión local directa, sin pasar por print_jobs.
+    // Es el destino de `printing:print-raw` de Go Admin Desktop: el POS lo usa
+    // para imprimir aunque no haya internet. Body:
+    //   { "printerId": "<uuid>", "payload": { jobType, printer, payload } }
+    // `printer` es la fila de `printers` que el POS ya resolvió (o su caché
+    // offline) y `payload` el mismo JSON que iría en `print_jobs.payload`.
+    // El formato del ticket lo decide `printToDevice`, igual que para un job.
+    if (url === '/print' && req.method === 'POST') {
+      let body = '';
+      for await (const chunk of req) body += chunk;
+      let parsed: { printerId?: unknown; payload?: unknown } = {};
+      try {
+        parsed = JSON.parse(body || '{}');
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Body JSON inválido' }));
+        return;
+      }
+
+      const validation = validateLocalPrintRequest(parsed.printerId, parsed.payload);
+      if ('error' in validation) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: validation.error }));
+        return;
+      }
+
+      const { jobType, printer, payload } = validation.request;
+      try {
+        await printToDevice(printer, jobType, payload);
+        console.log(`[discovery] print: ${jobType} enviado a "${printer.name}" (${printer.connection_type})`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (err: any) {
+        console.error(`[discovery] print error (${jobType} → "${printer.name}"):`, err.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+      return;
+    }
+
     // POST /test-print — envía un test ESC/POS simple a la impresora
     // Body: { "printerName": "POS-80C" } (requerido)
     if (url === '/test-print' && req.method === 'POST') {
@@ -695,6 +786,7 @@ Get-CimInstance Win32_PnPEntity |
     console.log(`[discovery]   GET /usb       - dispositivos USB (vendor/product id)`);
     console.log(`[discovery]   GET /bluetooth - dispositivos Bluetooth emparejados`);
     console.log(`[discovery]   GET /debug-usb   - diagnóstico raw de PowerShell USB`);
+    console.log(`[discovery]   POST /print       - impresión local directa (Desktop, sin print_jobs)`);
     console.log(`[discovery]   POST /test-print  - test de impresión ESC/POS`);
     console.log(`[discovery]   GET /printer-info - info de impresora en Windows`);
   });

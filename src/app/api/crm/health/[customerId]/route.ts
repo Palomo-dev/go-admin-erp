@@ -4,7 +4,7 @@ import {
   getHealthScore,
   calculateHealthScore,
   getHealthTrend,
-} from '@/lib/services/crm/healthScoreService';
+} from '@/lib/services/crm/healthScoreServer';
 
 /**
  * GET /api/crm/health/[customerId] — Obtiene el health score actual de un cliente.
@@ -54,7 +54,9 @@ export async function GET(
 }
 
 /**
- * POST /api/crm/health/[customerId] — Recalcula el health score de un cliente.
+ * POST /api/crm/health/[customerId] — Recalcula el health score de un cliente
+ * (RPC + config; `customers.health_score` solo si cambió; sin snapshot: para
+ * eso, `POST …/snapshot`).
  */
 export async function POST(
   _request: NextRequest,

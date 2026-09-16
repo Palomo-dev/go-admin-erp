@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { INTEGRATION_CONNECTION_USABLE_STATUS } from '@/lib/integrations/connectionStatus';
 import { mercadopagoService } from '@/lib/services/integrations/mercadopago';
 import { MERCADOPAGO_API_BASE } from '@/lib/services/integrations/mercadopago';
 
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
           integration_providers!inner ( code )
         )
       `)
-      .eq('status', 'active');
+      .eq('status', INTEGRATION_CONNECTION_USABLE_STATUS);
 
     // Filtrar conexiones de MercadoPago
     const mpConnections = (connections || []).filter((c: Record<string, unknown>) => {

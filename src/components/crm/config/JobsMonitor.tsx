@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/utils/Utils';
 import type { JobListItem, JobStats } from '@/lib/services/crm/jobsService';
+import { DRAIN_INTERVAL_MIN } from '@/lib/jobs/schedule';
 import { JobsTable, STATUS_LABEL, type StatusFilter } from './JobsTable';
 
 /**
@@ -18,6 +19,10 @@ import { JobsTable, STATUS_LABEL, type StatusFilter } from './JobsTable';
  * Semántica de estados (tester r1 F-10): `failed` es TERMINAL (no reintentable
  * automáticamente), `dead` agotó intentos; los reintentos automáticos son
  * `queued` con `attempts > 0` y aparecen en "Últimos fallos".
+ *
+ * La cadencia del drenaje (`DRAIN_INTERVAL_MIN`) sale del mismo módulo que
+ * lee la ruta `run` y que vigila el guardarraíl 18 contra `vercel.json`
+ * (F0-JOBS r3, QA r2 N-3): la UI no promete nada que el cron no cumpla.
  */
 
 const PAGE_SIZE = 50;
@@ -77,7 +82,7 @@ export function JobsMonitor({ organizationId, className }: JobsMonitorProps) {
       const res = await fetch(`/api/crm/jobs/${id}/retry`, { method: 'POST', headers: headers() });
       const json = (await res.json()) as { success: boolean; error?: string; jobId?: string };
       if (!res.ok || !json.success) throw new Error(json.error || `HTTP ${res.status}`);
-      toast({ title: 'Job re-encolado', description: 'Se ejecutará en el próximo ciclo (≤1 min).' });
+      toast({ title: 'Job re-encolado', description: `Se ejecutará en el próximo ciclo (≤${DRAIN_INTERVAL_MIN} min).` });
       await load();
     } catch (err) {
       toast({ title: 'No se pudo reintentar', description: err instanceof Error ? err.message : 'Error', variant: 'destructive' });
@@ -99,7 +104,7 @@ export function JobsMonitor({ organizationId, className }: JobsMonitorProps) {
             Cola de trabajos
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Envíos, transcripciones y automatizaciones en segundo plano. Se drena cada minuto.
+            Envíos, transcripciones y automatizaciones en segundo plano. Se drena cada {DRAIN_INTERVAL_MIN} minutos.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -138,7 +143,7 @@ export function JobsMonitor({ organizationId, className }: JobsMonitorProps) {
       )}
       {stats && stats.queuedOverdue > 0 && (
         <p role="status" className="text-sm text-amber-700 dark:text-amber-300">
-          {stats.queuedOverdue} job(s) llevan más de 2 min en cola: revisa que el cron esté activo.
+          {stats.queuedOverdue} job(s) llevan más de {DRAIN_INTERVAL_MIN} min en cola: revisa que el cron esté activo.
         </p>
       )}
 

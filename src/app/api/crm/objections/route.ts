@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getObjections,
   createObjection,
@@ -43,11 +44,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
-    if (!body?.title) {
+
+    if (!body?.title || typeof body.title !== 'string' || !body?.category || typeof body.category !== 'string') {
       return NextResponse.json(
-        { success: false, error: 'Falta el campo obligatorio: title' },
+        { success: false, error: 'Faltan campos obligatorios: title, category' },
         { status: 400 }
       );
     }

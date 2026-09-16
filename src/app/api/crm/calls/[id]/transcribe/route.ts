@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { getTranscript, isLiveAttempt, TranscriptionError } from '@/lib/services/crm/transcriptionService';
 import { enqueueTranscribe, runTranscribePipeline, forceRetryBucket, findLiveCallJob } from '@/lib/services/crm/callIntelligenceService';
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     } catch {
       /* body vacío */
     }
+    readOrgBody(ctx, body);
     const force = body.force === true;
     const provider = normalizeSttProvider(body.provider) ?? null;
     const sync = request.nextUrl.searchParams.get('sync') === '1';

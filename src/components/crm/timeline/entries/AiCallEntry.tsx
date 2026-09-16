@@ -35,7 +35,7 @@ export function AiCallEntry({ entry, compact }: { entry: AiLike; compact?: boole
         {v && v.turns_count > 0 && <span className="text-xs text-gray-500 dark:text-gray-400">{v.turns_count} turnos</span>}
       </div>
       {entry.activity?.notes && !compact && <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap line-clamp-4">{entry.activity.notes}</p>}
-      {call?.recording_enabled && call.recording && <CallPlayer callId={call.id} recordingEnabled className="max-w-md" />}
+      {call?.recording_enabled && call.recording && <CallPlayer callId={call.id} recordingEnabled consentMethod={call.consent_method} className="max-w-md" />}
       {log.length > 0 && (
         <div>
           <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">

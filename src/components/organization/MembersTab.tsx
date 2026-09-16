@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
 import BranchAssignmentModal from './BranchAssignmentModal';
+import { MemberQuotasSheet } from './quotas/MemberQuotasSheet';
 import { MembersSkeleton } from './OrganizationSkeletons';
 import { useTranslations } from 'next-intl';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -59,6 +60,8 @@ export default function MembersTab({ orgId }: { orgId: number }) {
   // Estado para el modal de asignación de sucursales
   const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<{id: string, name: string} | null>(null);
+  // F13: cuotas del miembro (hoja lateral); la organización y el rol los resuelve el servidor.
+  const [quotasMember, setQuotasMember] = useState<{ userId: string; name: string } | null>(null);
 
   // Límite de usuarios del plan
   const [maxUsers, setMaxUsers] = useState<number | null>(null);
@@ -726,6 +729,14 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
+                      type="button"
+                      onClick={() => setQuotasMember({ userId: member.user_id, name: member.full_name })}
+                      className="mr-3 inline-flex items-center rounded-md border border-blue-600 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 dark:text-blue-300 dark:hover:text-white"
+                      aria-label={`Cuotas de ${member.full_name}`}
+                    >
+                      Cuotas
+                    </button>
+                    <button
                       onClick={() => removeMember(member.id)}
                       className="text-red-600 hover:text-red-900 dark:text-red-300 dark:hover:text-red-50"
                     >
@@ -752,6 +763,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         </div>
       )}
     </div>
+      <MemberQuotasSheet open={quotasMember !== null} onOpenChange={(o) => !o && setQuotasMember(null)} member={quotasMember} />
       {/* Modal de asignación de sucursales */}
       {isBranchModalOpen && selectedMember && (
         <BranchAssignmentModal

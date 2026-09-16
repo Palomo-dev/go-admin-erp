@@ -21,6 +21,47 @@
 /** Zona horaria IANA por defecto (Colombia). Usar solo como fallback. */
 export const DEFAULT_TIMEZONE = 'America/Bogota';
 
+let supportedTimeZones: Set<string> | null | undefined;
+function supportedTimeZoneSet(): Set<string> | null {
+  if (supportedTimeZones !== undefined) return supportedTimeZones;
+  try {
+    const intl = Intl as unknown as { supportedValuesOf?: (key: string) => string[] };
+    supportedTimeZones = typeof intl.supportedValuesOf === 'function' ? new Set(intl.supportedValuesOf('timeZone')) : null;
+  } catch {
+    supportedTimeZones = null;
+  }
+  return supportedTimeZones;
+}
+
+/**
+ * ¿Es `tz` un nombre IANA canónico que se puede ESCRIBIR en
+ * `organizations.timezone`? (F0-REG r3, QA r2 medio 2.)
+ *
+ * Más estricto que «`Intl.DateTimeFormat` no lanza»: ICU acepta alias y
+ * abreviaturas (`US/Eastern`, `EST`, `america/bogota`) que Postgres no
+ * siempre reconoce, y `fn_ai_usage_month` / `at time zone` fallarían con
+ * `22023`. Se exige pertenencia exacta a `Intl.supportedValuesOf('timeZone')`
+ * (más `UTC`, que ICU no lista). Donde `supportedValuesOf` no exista
+ * (navegadores antiguos) se cae a la comprobación de `DateTimeFormat`; la
+ * BD tiene además el trigger `trg_validate_org_timezone` (migración
+ * crm_v4_f00_44) contra `pg_timezone_names`.
+ *
+ * Para LEER una zona ya guardada sigue valiendo la comprobación laxa
+ * (`getOrgTimezoneServer`, `isValidTimezone`): una fila vieja con alias no
+ * debe tumbar nada, solo caer al fallback.
+ */
+export function isSupportedTimeZone(tz: unknown): tz is string {
+  if (typeof tz !== 'string' || tz.length === 0 || tz.length > 64) return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+  } catch {
+    return false;
+  }
+  if (tz === 'UTC') return true;
+  const set = supportedTimeZoneSet();
+  return set ? set.has(tz) : true;
+}
+
 /**
  * Devuelve el offset en minutos de una zona horaria IANA para una
  * fecha dada. Maneja correctamente horario de verano (DST) cuando

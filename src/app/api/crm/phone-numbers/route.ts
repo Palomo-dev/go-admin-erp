@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getPhoneNumbers,
   createPhoneNumber,
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     if (!body?.e164 || !body?.provider) {
       return NextResponse.json(
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: phoneNumber }, { status: 201 });
   } catch (error: unknown) {
+    if (error instanceof OrgContextError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     const message = error instanceof Error ? error.message : 'Error desconocido';
     console.error('[CRM Phone Numbers] POST error:', message);
     return NextResponse.json({ success: false, error: message }, { status: 500 });

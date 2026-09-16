@@ -182,21 +182,14 @@ export type {
 } from './inventoryCrmLink';
 
 // FASE 4 - Post-venta del CRM
-export { onboardingService, default as onboardingServiceDefault } from './onboardingService';
-export type {
-  OnboardingStep,
-  OnboardingTemplate,
-  OnboardingTask,
-} from './onboardingService';
+// F11 r2: el onboarding de navegador murió (clase sin consumidores que cableaba
+// 'COP'); lo server-side vive en `onboardingService.ts` (funciones) y se
+// importa desde las rutas, no desde este índice.
+export { ONBOARDING_STAGES } from './onboardingService';
 
 export { healthScoreService, default as healthScoreServiceDefault } from './healthScoreService';
 export type {
   HealthBand,
-  HealthThreshold,
-  HealthIndicator,
-  HealthBands,
-  HealthScoreConfig,
-  CustomerHealth,
   HealthScoreResult,
   HealthSnapshot,
 } from './healthScoreService';
@@ -351,7 +344,10 @@ export {
   createContract,
   getContract,
   updateContractStatus,
-  handleContractWebhook,
+  processDocumensoWebhook,
+  getEsignReadiness,
+  EsignNotConfiguredError,
+  ContractSendError,
 } from './contractService';
 export type {
   ContractSignature,
@@ -359,7 +355,7 @@ export type {
   ContractStatus,
   CreateContractInput,
   ContractFilters,
-  DocumensoWebhookPayload,
+  WebhookOutcome,
 } from './contractService';
 
 export { registerCrmPayment } from './paymentService';

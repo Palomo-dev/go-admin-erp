@@ -10,10 +10,19 @@ import { InsufficientCreditsError } from '@/lib/services/crm/aiCostService';
  *   INSUFFICIENT_CREDITS, CALL_NOT_FOUND) → JobFatalError (`failed` terminal).
  * - Proveedor 429/5xx/red → JobRetryableError (backoff de fn_fail_job).
  * - Al completar encola `analyze` (dedupe `analyze:{call_id}`) si la política lo permite.
+ * - `signal` (F0-JOBS r3, N-4): el timeout del runner es advisory; no se
+ *   arranca una transcripción (cobro de créditos) ya abortada. El pipeline es
+ *   idempotente por `call_transcripts` (salvo `force`).
+ * - r4 (tester r3 T-1): aquí el único punto de decisión del handler es la
+ *   entrada: la pertenencia de la llamada a la org, la transcripción existente
+ *   y el cobro los hace `transcribeCall` (F4) en una sola secuencia y
+ *   `runTranscribePipeline` NO admite `signal`. Un abort DURANTE el pipeline no
+ *   lo cancela; lo cubre la guarda `processing` viva de `call_transcripts`.
  */
-export const transcribeHandler: JobHandler = async ({ job, supabase, orgId, log }) => {
+export const transcribeHandler: JobHandler = async ({ job, supabase, orgId, log, signal }) => {
   const callId = typeof job.payload.call_id === 'string' ? job.payload.call_id : null;
   if (!callId) throw new JobFatalError('payload.call_id requerido');
+  if (signal.aborted) throw new JobRetryableError('aborted antes de transcribir');
   const force = job.payload.force === true;
   const provider = typeof job.payload.provider === 'string' ? job.payload.provider : null;
 

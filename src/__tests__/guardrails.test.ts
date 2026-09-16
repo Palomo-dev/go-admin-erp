@@ -20,11 +20,17 @@
  *    ruta de sesión; allow-list para facebook/instagram y email/webhook).
  * 8. Ningún `.from('comm_settings')` encadena `.limit(1)` + `.single()` fuera de orgContext.
  * 9. `src/lib/crm/enums.ts` coincide con el snapshot de CHECKs `db-checks.json`.
+ * 18. `vercel.json` ↔ `src/lib/jobs/schedule.ts`: los crons de `/api/crm/jobs/run`
+ *     son exactamente el drenaje total (`*\/DRAIN_INTERVAL_MIN`) y las claves de
+ *     `VERCEL_SCHEDULE_KINDS`; ningún otro archivo cablea la cadencia.
+ * 20. Ningún archivo de src/ filtra `integration_connections` por
+ *     `status = 'active'`: el CHECK real es draft|connected|paused|error|revoked.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { DB_CHECK_ENUMS } from '@/lib/crm/enums';
+import { DRAIN_INTERVAL_MIN, DRAIN_SCHEDULE, JOBS_RUN_PATH, JOBS_RUN_SCHEDULES, VERCEL_SCHEDULE_KINDS } from '@/lib/jobs/schedule';
 
 const SRC_ROOT = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(SRC_ROOT, '..');
@@ -218,18 +224,54 @@ describe('F0 Guardarraíles', () => {
   });
 
   // === Caso 5: organizationId del body sin getServerOrgContext ===
-  describe('5. Ningún route.ts toma organizationId del body sin getServerOrgContext', () => {
+  describe('5. Rutas de escritura: la organización sale de la sesión y un body ajeno responde 403', () => {
     /**
-     * Deuda legacy conocida (NO CRM): rutas anteriores a F0 que aún leen el org
-     * del body/query con otra autenticación (Bearer + getUser, Stripe, cron,
-     * webhooks firmados propios). Cada fase que las toque debe migrarlas y
-     * quitarlas de esta lista. Prohibido añadir rutas nuevas.
+     * F0-SEC r2 (sub-parte C): el guardarraíl pasó de comparar a NIVEL DE
+     * ARCHIVO («aparece org en body» vs «aparece getServerOrgContext») a
+     * comprobar cada HANDLER EXPORTADO (`export async function POST` /
+     * `export const POST = withOrg(`…). Antes, un `POST` que leyera la
+     * organización del body pasaba solo porque el `GET` del mismo archivo
+     * tenía sesión (tester F0-SEC r1, fallo 6: `crm/renewals/sync`).
+     *
+     * Dos ámbitos:
+     *
+     * (A) ESTRICTO — `crm/**` y `ai-assistant/**`. Todo handler POST/PUT/PATCH/
+     *     DELETE debe cumplir las dos mitades de la regla dura 5:
+     *       (a) resolver la organización por sesión en el propio handler
+     *           (`withOrg(`, `getServerOrgContext(`, `getServerOrgContextFor(`,
+     *           `withWhatsAppRoute(`), y
+     *       (b) llamar al punto único que convierte una organización ajena en
+     *           403 + registro: `readOrgBody(` (`@/lib/security/organizationBody`)
+     *           o sus envoltorios `rejectForeignOrganization(` (F12/F13),
+     *           `foreignOrgResponse(` (F10) o `foreignOrganizationInBody(`.
+     *     La llamada puede vivir en un helper LOCAL del archivo que el handler
+     *     invoque. Quedan fuera automáticamente los handlers de cron
+     *     (`withCron(` / `verifyCronSecret(`) y los webhooks firmados
+     *     (`verify*` de `webhookSignatures`, `constructEvent`, documenso): ahí
+     *     no hay sesión y la organización sale de la firma o de la fila.
+     *     `STRICT_ALLOWLIST`: rutas que todavía no cumplen (b), con motivo.
+     *     Prohibido añadir entradas nuevas sin motivo; quitar cuando se migren.
+     *
+     * (B) LEGACY — resto de `src/app/api`: si un handler lee la organización
+     *     del body/query, ese MISMO handler debe tener el contexto de sesión.
+     *     `ALLOWLIST` = deuda anterior a F0 (Bearer + getUser, Stripe, cron,
+     *     webhooks propios). Cada fase que las toque debe migrarlas y quitarlas.
      */
+    const STRICT_ALLOWLIST = new Map<string, string>([
+      // Propiedad de la sesión F10–F13 (2026-09-15): handlers que aún no llaman al
+      // punto único. Cambio exacto por archivo en
+      // docs/crm-revenue-os/rondas/F0-SEC-CD-builder-r2.md §(b). Sus POST/PATCH con
+      // body ya usan `rejectForeignOrganization`; faltan los DELETE/POST sin body.
+      ['app/api/crm/health/[customerId]/route.ts', 'F11: POST sin lectura de body → añadir `await readOrgBody(ctx, request)`'],
+      ['app/api/crm/onboarding/templates/route.ts', 'F11: POST → `readOrgBody(ctx, request)` en vez de request.json()'],
+      ['app/api/crm/partners/[id]/route.ts', 'F12: DELETE sin body → `await readOrgBody(ctx, request)`'],
+      ['app/api/crm/partners/tiers/[id]/route.ts', 'F12: DELETE sin body → idem'],
+      ['app/api/crm/payments/register/route.ts', 'F10: POST → `readOrgBody(ctx, request)` en vez de request.json()'],
+      ['app/api/crm/referrals/programs/[id]/route.ts', 'F12: DELETE sin body → idem'],
+    ]);
+
     const ALLOWLIST = new Set<string>([
       'app/api/categorias/reglas/route.ts',
-      'app/api/crm/health/recalculate/route.ts', // cron/sesión propia (F9 lo migra)
-      'app/api/crm/renewals/sync/route.ts', // cron (F8 lo migra)
-      'app/api/crm/voice-agents/campaigns/run/route.ts', // cron fail-closed (F6 lo migra a withCron)
       'app/api/dian/lookup/route.ts',
       'app/api/domains/purchase/route.ts',
       'app/api/integrations/meta/setup/route.ts',
@@ -258,7 +300,6 @@ describe('F0 Guardarraíles', () => {
       'app/api/integrations/meta/oauth/authorize/route.ts',
       'app/api/integrations/meta/product-sync/route.ts',
       'app/api/integrations/open-finance/consents/route.ts',
-      'app/api/integrations/open-finance/consents/stats/route.ts',
       'app/api/integrations/open-finance/links/route.ts',
       'app/api/integrations/open-finance/refresh-balances/route.ts',
       'app/api/integrations/open-finance/sync/route.ts',
@@ -291,37 +332,168 @@ describe('F0 Guardarraíles', () => {
       /\{[^}]*\b(organizationId|organization_id|orgId)\b[^}]*\}\s*=\s*(await\s+)?(request|req)\.json\(\)/,
       /\{[^}]*\b(organizationId|organization_id|orgId)\b[^}]*\}\s*=\s*body\b/,
     ];
+    const SESSION_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withWhatsAppRoute)\s*\(/;
+    const CRON_RE = /\b(withCron|verifyCronSecret)\s*\(/;
+    const WEBHOOK_RE = /\b(verifyTwilioWebhook|verifyTwilioRequest|verifyMetaSignature|verifyResendWebhook|constructEvent|verifyDocumensoWebhook|verifyElevenLabsWebhook)\s*\(|webhooks\.constructEvent|isPlaceholderCredential/;
+    const FOREIGN_RE = /\b(readOrgBody|rejectForeignOrganization|foreignOrgResponse|foreignOrganizationInBody)(?:<[^>]*>)?\s*\(/;
+    const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+    const HANDLER_RE = /^export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE)\b/;
+    const TOP_LEVEL_RE = /^(export\s|async function |function |const |let |type |interface )/;
 
-    const violations: string[] = [];
-    const staleAllowlist: string[] = [];
+    type Handler = { method: string; text: string };
+
+    /** Divide un route.ts (sin comentarios) en sus handlers exportados. */
+    function splitHandlers(content: string): Handler[] {
+      const lines = content.split(/\r?\n/);
+      const starts: Array<{ line: number; method: string }> = [];
+      lines.forEach((l, i) => {
+        const m = HANDLER_RE.exec(l);
+        if (m) starts.push({ line: i, method: m[1] });
+      });
+      return starts.map(({ line, method }, k) => {
+        let end = k + 1 < starts.length ? starts[k + 1].line : lines.length;
+        for (let t = line + 1; t < end; t++) {
+          if (TOP_LEVEL_RE.test(lines[t])) {
+            end = t;
+            break;
+          }
+        }
+        return { method, text: lines.slice(line, end).join('\n') };
+      });
+    }
+
+    /** Nombres de funciones/constantes locales cuyo cuerpo contiene `re`. */
+    function localHelpersMatching(content: string, re: RegExp): string[] {
+      const names: string[] = [];
+      const declRe = /^(?:async\s+)?function\s+(\w+)\s*\(|^const\s+(\w+)\s*=\s*(?:async\s*)?(?:\(|function)/gm;
+      const decls: Array<{ name: string; start: number }> = [];
+      let m: RegExpExecArray | null;
+      while ((m = declRe.exec(content))) decls.push({ name: m[1] ?? m[2], start: m.index });
+      decls.forEach((d, i) => {
+        const end = i + 1 < decls.length ? decls[i + 1].start : content.length;
+        if (re.test(content.slice(d.start, end))) names.push(d.name);
+      });
+      return names;
+    }
+
+    function usesHelper(handler: Handler, helpers: string[]): boolean {
+      return helpers.some((h) => new RegExp(`\\b${h}\\s*\\(|\\b${h}\\b\\s*[;,)]`).test(handler.text));
+    }
+
+    /** Reconoce `export const POST = handle;` / `withCron(handle)` / `withOrg(handler)`: el cuerpo real es el helper. */
+    function inlineAliases(handler: Handler, content: string): string {
+      const alias = /=\s*(?:\w+\()?\s*(\w+)\s*\)?\s*;?\s*$/.exec(handler.text.split('\n')[0]);
+      if (!alias) return handler.text;
+      const helperRe = new RegExp(`^(?:async\\s+)?function\\s+${alias[1]}\\s*\\(|^const\\s+${alias[1]}\\s*=`, 'm');
+      const start = content.search(helperRe);
+      if (start < 0) return handler.text;
+      const rest = content.slice(start + 1);
+      const next = rest.search(TOP_LEVEL_RE.source.replace('^', '\\n'));
+      return handler.text + '\n' + (next >= 0 ? rest.slice(0, next) : rest);
+    }
+
+    const strictViolations: string[] = [];
+    const strictStale: string[] = [];
+    const legacyViolations: string[] = [];
+    const legacyStale: string[] = [];
 
     beforeAll(() => {
-      const routes = walkDir(path.join(SRC_ROOT, 'app', 'api'))
-        .filter((f) => !isExcluded(f) && /route\.ts$/.test(f));
-      const offenders = new Set<string>();
+      const apiRoot = path.join(SRC_ROOT, 'app', 'api');
+      const routes = walkDir(apiRoot).filter((f) => !isExcluded(f) && /route\.ts$/.test(f));
+      const strictOffenders = new Set<string>();
+      const legacyOffenders = new Set<string>();
+
       for (const file of routes) {
-        const content = stripAllComments(readFile(file));
-        const usesBodyOrg = BODY_ORG_PATTERNS.some((p) => p.test(content));
-        if (!usesBodyOrg) continue;
-        const hasCtx = /getServerOrgContext|withOrg\(/.test(content);
-        if (!hasCtx) offenders.add(rel(file));
+        const relPath = rel(file);
+        let content: string;
+        try {
+          content = stripAllComments(readFile(file));
+        } catch (err) {
+          // Archivos transitorios de otros agentes (tester r1, fallo 14): saltar, no caer.
+          if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue;
+          throw err;
+        }
+        const handlers = splitHandlers(content).map((h) => ({ ...h, text: inlineAliases(h, content) }));
+        const strict = /^app\/api\/(crm|ai-assistant)\//.test(relPath);
+        // `crm/webhooks/**` no tiene sesión por diseño: la organización sale de la
+        // firma (Stripe `constructEvent`, Documenso, ElevenLabs) o de la fila.
+        // Que verifiquen firma lo vigila el guardarraíl 7 y la sub-parte A.
+        if (/^app\/api\/crm\/webhooks\//.test(relPath)) continue;
+        const sessionHelpers = localHelpersMatching(content, SESSION_RE);
+        const foreignHelpers = localHelpersMatching(content, FOREIGN_RE);
+        const cronHelpers = localHelpersMatching(content, CRON_RE);
+        const webhookHelpers = localHelpersMatching(content, WEBHOOK_RE);
+
+        for (const h of handlers) {
+          if (!WRITE_METHODS.has(h.method)) continue;
+          const hasSession = SESSION_RE.test(h.text) || usesHelper(h, sessionHelpers);
+          const isCron = CRON_RE.test(h.text) || usesHelper(h, cronHelpers);
+          const isWebhook = WEBHOOK_RE.test(h.text) || usesHelper(h, webhookHelpers);
+          const hasForeign = FOREIGN_RE.test(h.text) || usesHelper(h, foreignHelpers);
+
+          if (strict) {
+            if (isCron || isWebhook) continue;
+            if (!hasSession || !hasForeign) strictOffenders.add(relPath);
+            continue;
+          }
+          const usesBodyOrg = BODY_ORG_PATTERNS.some((p) => p.test(h.text));
+          if (usesBodyOrg && !hasSession) legacyOffenders.add(relPath);
+        }
       }
-      for (const f of offenders) if (!ALLOWLIST.has(f)) violations.push(f);
-      for (const f of ALLOWLIST) if (!offenders.has(f)) staleAllowlist.push(f);
+
+      for (const f of strictOffenders) if (!STRICT_ALLOWLIST.has(f)) strictViolations.push(f);
+      for (const f of STRICT_ALLOWLIST.keys()) if (!strictOffenders.has(f)) strictStale.push(f);
+      for (const f of legacyOffenders) if (!ALLOWLIST.has(f)) legacyViolations.push(f);
+      for (const f of ALLOWLIST) if (!legacyOffenders.has(f)) legacyStale.push(f);
     });
 
-    test('rutas CRM/IA/mensajería resuelven la org por sesión', () => {
-      if (violations.length > 0) {
-        console.error('route.ts con org del body sin getServerOrgContext:\n' + violations.join('\n'));
+    test('todo handler de escritura de crm/** y ai-assistant/** resuelve la org por sesión Y llama a readOrgBody (403 ante org ajena)', () => {
+      if (strictViolations.length > 0) {
+        console.error('handlers POST/PUT/PATCH/DELETE sin sesión o sin readOrgBody:\n' + strictViolations.sort().join('\n'));
       }
-      expect(violations).toEqual([]);
+      expect(strictViolations.sort()).toEqual([]);
     });
 
-    test('la allow-list no contiene entradas obsoletas (ya migradas)', () => {
-      if (staleAllowlist.length > 0) {
-        console.error('Quitar de ALLOWLIST (ya no usan org del body):\n' + staleAllowlist.join('\n'));
+    test('la allow-list estricta no contiene entradas obsoletas (ya adoptaron readOrgBody)', () => {
+      if (strictStale.length > 0) {
+        console.error('Quitar de STRICT_ALLOWLIST (ya cumplen):\n' + strictStale.join('\n'));
       }
-      expect(staleAllowlist).toEqual([]);
+      expect(strictStale).toEqual([]);
+    });
+
+    test('fuera del CRM, ningún handler toma la organización del body sin sesión en ese mismo handler', () => {
+      if (legacyViolations.length > 0) {
+        console.error('handlers con org del body sin getServerOrgContext:\n' + legacyViolations.join('\n'));
+      }
+      expect(legacyViolations).toEqual([]);
+    });
+
+    test('la allow-list legacy no contiene entradas obsoletas (ya migradas)', () => {
+      if (legacyStale.length > 0) {
+        console.error('Quitar de ALLOWLIST (ya no usan org del body):\n' + legacyStale.join('\n'));
+      }
+      expect(legacyStale).toEqual([]);
+    });
+
+    test('el divisor por handler distingue un POST cron de un GET con sesión en el mismo archivo (fallo 6 del tester r1)', () => {
+      const sample = [
+        "export async function POST(request: Request) {",
+        "  verifyCronSecret(request);",
+        "  const body = await request.json();",
+        "  const org = body.organization_id;",
+        "  return Response.json({ org });",
+        "}",
+        "",
+        "export async function GET() {",
+        "  const ctx = await getServerOrgContext();",
+        "  return Response.json({ ctx });",
+        "}",
+      ].join('\n');
+      const handlers = splitHandlers(sample);
+      expect(handlers.map((h) => h.method)).toEqual(['POST', 'GET']);
+      expect(SESSION_RE.test(handlers[0].text)).toBe(false);
+      expect(CRON_RE.test(handlers[0].text)).toBe(true);
+      expect(SESSION_RE.test(handlers[1].text)).toBe(true);
     });
   });
 
@@ -350,7 +522,6 @@ describe('F0 Guardarraíles', () => {
       'lib/services/crm/inventoryCrmLink.ts',
       'lib/services/crm/leadCaptureService.ts',
       'lib/services/crm/lossReasonsService.ts',
-      'lib/services/crm/onboardingService.ts',
       'lib/services/crm/pipelineSeedService.ts',
       'lib/services/crm/pmsCrmLink.ts',
       'lib/services/crm/posCrmLink.ts',
@@ -446,7 +617,7 @@ describe('F0 Guardarraíles', () => {
     const ALLOWLIST = new Map<string, string>([
       ['app/api/webhooks/facebook/[channelId]/route.ts', 'metaMessagingService.verifySignature (X-Hub-Signature-256)'],
       ['app/api/webhooks/instagram/[channelId]/route.ts', 'metaMessagingService.verifySignature (X-Hub-Signature-256)'],
-      ['app/api/email/webhook/route.ts', 'svix inline en emailService.handleEmailWebhook (F7 lo migra a verifyResendWebhook)'],
+      ['app/api/email/webhook/route.ts', 'verifyResendWebhook se llama dentro de crm/email/webhookService.ts (F7), no en la ruta; la ruta solo importa webhookErrorResponse/WebhookError'],
     ]);
 
     const violations: string[] = [];
@@ -792,14 +963,102 @@ describe('F0 Guardarraíles', () => {
 
     test('el inicio espera sucursal y permisos antes de consultar el dashboard', () => {
       expect(inicio).toContain('const { branchFilter, isLoading: branchLoading } = useBranch();');
-      expect(inicio).toContain('const { context: permContext, loading: permissionsLoading } = usePermissionContext(organization?.id);');
-      expect(inicio).toContain('if (!organization?.id || branchLoading || permissionsLoading) return;');
+      expect(inicio).toContain('const { context: permContext, resolvedOrganizationId } = usePermissionContext(organization?.id);');
+      // La espera de permisos pasa por `rolResuelto` y no por `permissionsLoading`
+      // directo: usePermissionContext recarga el contexto en SIGNED_IN /
+      // TOKEN_REFRESHED y ese flip true→false volvía a disparar loadData con
+      // skeleton (2026-09-14: "el skeleton se dispara dos veces"). Y se resuelve
+      // solo cuando el contexto cargado es de ESTA organización
+      // (resolvedOrganizationId), no con `!loading` a secas.
+      expect(inicio).toContain('const rolResuelto = !!organization && resolvedOrganizationId === organization.id;');
+      expect(inicio).toContain('if (!organization?.id || branchLoading || !rolResuelto) return;');
+    });
+
+    test('el inicio no elige panel (empleado/financiero) hasta resolver el rol', () => {
+      // Con permContext aún null, canSeeFinancialDashboard es false y a un
+      // administrador se le pintaba primero el panel de empleado.
+      expect(inicio).toContain('{!rolResuelto ? (');
+      expect(inicio).toContain(') : canSeeFinancialDashboard ? (');
     });
 
     test('el inicio limita la carga inicial a cuatro skeletons', () => {
       expect(inicio).not.toContain('Array.from({ length: 10 })');
       expect(inicio).not.toContain('Array.from({ length: 8 })');
       expect(kpis).toContain('Array.from({ length: 4 })');
+    });
+  });
+
+  // === Automatizaciones (rediseño UX, rondas 3-4): lo que el tester vio romperse ===
+  // Regla (ronda 4): un guardarraíl que se rompe con un reformateo es peor que
+  // ninguno. La conducta se prueba EJECUTADA en ruleMutations.test.ts y
+  // ruleEditorModel.test.ts; aquí solo queda el cableado, con regex que
+  // toleran espacios, paréntesis, llaves y constantes intermedias.
+  describe('Automatizaciones: estado tras una mutación y foco tras cerrar', () => {
+    const dir = path.join(SRC_ROOT, 'components', 'crm', 'automatizaciones');
+    const hook = readFile(path.join(dir, 'useAutomationRules.ts'));
+    const page = readFile(path.join(dir, 'AutomatizacionesPage.tsx'));
+    const sheet = readFile(path.join(dir, 'RuleEditorSheet.tsx'));
+
+    // R-1: la hoja devuelve el foco al botón «Nueva regla» si el estado vacío se desmontó.
+    const RETURN_FOCUS = /useReturnFocus\s*\(\s*open\s*,\s*returnFocusFallback\s*\)/;
+    const FALLBACK_PROP = /returnFocusFallback\s*=\s*\{[^}]+\}/;
+    // R-5: el bloque del disparador avisa del evento mudo sobre el formulario cargado.
+    const MUTED = /mutedEvent\s*\(\s*form\s*\)/;
+    // R-2 / M26: el hook no hace red ni estado por su cuenta; todo pasa por
+    // ruleMutations (PATCH OK + GET 500, esqueleto solo en la primera carga…).
+    const DIRECT_FETCH = /\bfetch\s*\(/;
+    const OWN_STATE = /\b(useState|useRef)\s*\(/;
+    const REDUCER = /useReducer\s*\(\s*applyMutation\b/;
+
+    test('R-2/M26: el hook delega en ruleMutations (probado ejecutado) y no reimplementa red ni estado', () => {
+      expect(hook).toMatch(REDUCER);
+      expect(hook).not.toMatch(DIRECT_FETCH);
+      expect(hook).not.toMatch(OWN_STATE);
+      expect(hook.match(/\brunMutation\s*\(/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+      expect(hook).not.toMatch(/\bviewOf\b|\bupsertRule\b|\bwithoutRule\b/);
+    });
+
+    test('R-2: el Alert de recarga fallida dice que se muestra la última lista conocida', () => {
+      expect(page).toContain('Se muestra la última lista conocida');
+    });
+
+    test('R-1: la hoja del editor tiene fallback de foco («Nueva regla») para cuando el estado vacío se desmontó', () => {
+      expect(sheet).toMatch(RETURN_FOCUS);
+      expect(page).toMatch(FALLBACK_PROP);
+      expect(page).toMatch(/newButtonRef\s*\.\s*current/);
+    });
+
+    test('R-3: el estado vacío describe lo que el ejemplo hace de verdad (no promete una etapa que no lleva)', () => {
+      const empty = readFile(path.join(dir, 'RulesEmptyState.tsx'));
+      expect(empty).toMatch(/describeRule\s*\(\s*\{\s*\.\.\.EXAMPLE_FORM/);
+      expect(empty).not.toContain('entra en «Propuesta enviada»');
+    });
+
+    test('R-5: el bloque del disparador avisa del evento mudo sobre el formulario cargado (mutedEvent)', () => {
+      expect(readFile(path.join(dir, 'TriggerBlock.tsx'))).toMatch(MUTED);
+    });
+
+    test('R-4: sin requestAnimationFrame para mover el foco (con la ventana ocluida no dispara)', () => {
+      for (const f of ['RuleEditorSheet.tsx', 'ActionsBlock.tsx', 'ConditionsBlock.tsx']) {
+        expect({ f, raf: /requestAnimationFrame\s*\(/.test(readFile(path.join(dir, f))) }).toEqual({ f, raf: false });
+      }
+    });
+
+    test('los guardarraíles de cadena toleran un reformateo (prettier): los cuatro rojos falsos de la ronda 3 son verdes', () => {
+      // Los dos primeros ya no tienen guardarraíl de texto: el hook no contiene
+      // esas líneas y su conducta se prueba ejecutada. Ningún regex de arriba
+      // los mira, y ningún regex de arriba se rompe con ellos.
+      const reformatted = [
+        'setRules(prev => upsertRule(prev, row))',
+        'if (!loadedOnce.current) {\n  setLoading(true);\n}',
+        'const focusFallback = () => newButtonRef.current;\n<RuleEditorSheet returnFocusFallback={focusFallback} />',
+        'const muted = mutedEvent( form );',
+        'const onCloseAutoFocus = useReturnFocus( open , returnFocusFallback )',
+      ];
+      expect(reformatted.filter((s) => DIRECT_FETCH.test(s) || OWN_STATE.test(s))).toEqual([]);
+      expect(reformatted[2]).toMatch(FALLBACK_PROP);
+      expect(reformatted[3]).toMatch(MUTED);
+      expect(reformatted[4]).toMatch(RETURN_FOCUS);
     });
   });
 
@@ -827,6 +1086,164 @@ describe('F0 Guardarraíles', () => {
 
     test('los callbacks se ejecutan fire-and-forget (sin async/await)', () => {
       expect(violations).toEqual([]);
+    });
+  });
+
+  // === Caso 17 (F11 r2): la vista materializada de salud no existe para la app ===
+  // Era una vista sin RLS (31 205 filas de 15 organizaciones, SELECT para anon
+  // y authenticated) con un cálculo distinto al de `fn_customer_health` + config.
+  // r1 le cableó «Medir ahora»; r2 borró todos los lectores. El orquestador
+  // retira el GRANT a `authenticated` y la vista cuando este caso esté verde.
+  describe('17. Ningún archivo de src/ nombra la vista materializada de salud', () => {
+    const MV_NAME = ['mv_customer', 'health'].join('_');
+    const violations: string[] = [];
+    beforeAll(() => {
+      // Incluye tests y fixtures: un doble que la modele vuelve a invitar a leerla.
+      for (const file of walkDir(SRC_ROOT).filter((f) => !f.includes('node_modules'))) {
+        if (path.resolve(file) === path.resolve(__filename)) continue;
+        if (readFile(file).includes(MV_NAME)) violations.push(rel(file));
+      }
+    });
+    test('ni código ni comentarios ni tests nombran la vista', () => {
+      expect(violations).toEqual([]);
+    });
+  });
+
+  // === Caso 18 (F0-JOBS r3, QA r2 N-3): un solo contrato de scheduling ===
+  // `9c0288a7` bajó el drenaje de Vercel a `*/2` sin tocar la ruta, la UI ni
+  // FASE-00, que siguieron prometiendo «cada minuto». Desde r3 la cadencia y
+  // los kinds por schedule viven en `src/lib/jobs/schedule.ts`; este caso
+  // impide que `vercel.json` y ese módulo vuelvan a divergir.
+  describe('18. vercel.json coincide con src/lib/jobs/schedule.ts', () => {
+    const vercel = JSON.parse(readFile(path.join(REPO_ROOT, 'vercel.json'))) as { crons?: { path: string; schedule: string }[] };
+    const jobsCrons = (vercel.crons ?? []).filter((c) => c.path === JOBS_RUN_PATH).map((c) => c.schedule);
+
+    test('el drenaje total es */DRAIN_INTERVAL_MIN y DRAIN_INTERVAL_MIN es un entero de 1 a 59', () => {
+      expect(Number.isInteger(DRAIN_INTERVAL_MIN)).toBe(true);
+      expect(DRAIN_INTERVAL_MIN).toBeGreaterThanOrEqual(1);
+      expect(DRAIN_INTERVAL_MIN).toBeLessThan(60);
+      expect(DRAIN_SCHEDULE).toBe(`*/${DRAIN_INTERVAL_MIN} * * * *`);
+      expect(VERCEL_SCHEDULE_KINDS[DRAIN_SCHEDULE]).toBeUndefined();
+    });
+
+    test('cada cron de /api/crm/jobs/run en vercel.json es el drenaje total o una clave de VERCEL_SCHEDULE_KINDS', () => {
+      expect(jobsCrons.length).toBeGreaterThan(0);
+      const unknown = jobsCrons.filter((s) => !JOBS_RUN_SCHEDULES.includes(s));
+      expect(unknown).toEqual([]);
+    });
+
+    test('todo schedule declarado en schedule.ts existe en vercel.json exactamente una vez', () => {
+      for (const schedule of JOBS_RUN_SCHEDULES) {
+        expect(jobsCrons.filter((s) => s === schedule)).toHaveLength(1);
+      }
+    });
+
+    test('el código de JOBS (runner, ruta, UI) no cablea cron strings ni promete «cada minuto»', () => {
+      const scopes = [path.join(SRC_ROOT, 'lib', 'jobs'), path.join(SRC_ROOT, 'app', 'api', 'crm', 'jobs'), path.join(SRC_ROOT, 'components', 'crm', 'config')];
+      const offenders: string[] = [];
+      for (const file of scopes.flatMap((d) => walkDir(d)).filter((f) => !isExcluded(f))) {
+        if (rel(file) === 'lib/jobs/schedule.ts') continue;
+        const content = stripAllComments(readFile(file));
+        if (/(['"`])(\*\/\d+|\d+ \d+|\*) \* \* \* \*/.test(content) || /cada minuto|≤1 min|cada 2 minutos/.test(content)) {
+          offenders.push(rel(file));
+        }
+      }
+      expect(offenders).toEqual([]);
+    });
+  });
+
+  // === Caso 19: un solo punto de cobro de créditos de IA (F0-REG r2) ===
+  //
+  // CLAUDE.md: el cobro de créditos de IA tiene un punto único,
+  // `chargeAiCredits`/`refundAiCredits` (`withAiCharge`) en
+  // `src/lib/services/crm/aiCostService.ts`: RPC atómico ANTES del proveedor,
+  // reembolso si el proveedor falla, 402 tipado. `consumeAICredits`
+  // (`aiCreditsService.ts`) cobra DESPUÉS y sin costo en USD: el QA de F0-REG
+  // r1 (alto 6) la encontró viva en 12 llamadores V3. Se mantiene solo para
+  // ellos (allow-list cerrada, uno por línea para que el diff cante). Ningún
+  // archivo nuevo puede importarla: usar `withAiCharge`. Cuando un llamador
+  // migre, se quita de la lista; la lista solo puede encoger.
+  describe('19. Ningún archivo nuevo importa consumeAICredits (punto único de cobro)', () => {
+    const LEGACY_CALLERS = new Set([
+      'app/api/ai-assistant/generate-image/route.ts',
+      'app/api/ai-assistant/improve-text/route.ts',
+      'app/api/ai-assistant/pm-assist/route.ts',
+      'app/api/ai-assistant/pm-planner/route.ts',
+      'app/api/ai-assistant/seo-keywords/route.ts',
+      'app/api/chat/ai/auto-response/route.ts',
+      'app/api/chat/ai/classify-intent/route.ts',
+      'app/api/chat/ai/generate-response/route.ts',
+      'app/api/chat/ai/generate-summary/route.ts',
+      'app/api/chat/ai/lab-test/route.ts',
+      'lib/services/reportes/reportAgentService.ts',
+    ]);
+
+    test('solo los llamadores V3 de la allow-list importan consumeAICredits', () => {
+      const offenders = walkDir(SRC_ROOT)
+        .filter((f) => !isExcluded(f))
+        .filter((f) => !rel(f).endsWith('lib/services/aiCreditsService.ts')) // define la función
+        .filter((f) => /\bconsumeAICredits\b/.test(stripAllComments(readFile(f))))
+        .map(rel)
+        .filter((r) => !LEGACY_CALLERS.has(r));
+      expect(offenders).toEqual([]);
+    });
+
+    test('withAICreditsCheck delega en withAiCharge (no cobra después del proveedor)', () => {
+      const src = stripAllComments(readFile(path.join(SRC_ROOT, 'lib/services/aiCreditsService.ts')));
+      const body = src.slice(src.indexOf('export async function withAICreditsCheck'));
+      expect(body).toMatch(/return withAiCharge\(/);
+      expect(body).not.toMatch(/consumeAICredits\(/);
+    });
+  });
+  // === Caso 20: integration_connections nunca se filtra por 'active' ===
+  //
+  // Seis webhooks (mercadopago, meta ×2, paypal, payu, stripe) buscaban su
+  // conexión con `.eq('status', 'active')`. Verificado por MCP el 2026-09-15:
+  // el CHECK `integration_connections_status_check` admite solo
+  // draft|connected|paused|error|revoked, y las conexiones reales están en
+  // `connected`. Ninguna de esas rutas encontraba jamás la conexión: el
+  // proveedor recibía `verified: false` y nadie se enteraba.
+  //
+  // El único estado utilizable vive en `INTEGRATION_CONNECTION_USABLE_STATUS`
+  // (`src/lib/integrations/connectionStatus.ts`). F10 definió antes
+  // `STRIPE_CONNECTION_USABLE_STATUS` en el CRM; las dos deben seguir iguales.
+  //
+  // OJO: `integration_credentials.status` SÍ admite 'active'
+  // (active|expired|revoked|rotating). Esta guarda es solo para
+  // `integration_connections`, dentro de una misma sentencia (sin `;` en medio).
+  describe('20. Ningún archivo filtra integration_connections por status = active', () => {
+    const pattern = /\.from\(\s*['"]integration_connections['"]\s*\)[^;]*?\.eq\(\s*['"]status['"]\s*,\s*['"]active['"]\s*\)/;
+
+    test('ningún archivo de src/ (ni ws-server.ts) usa el estado inexistente', () => {
+      const offenders = walkDir(SRC_ROOT)
+        .filter((f) => !isExcluded(f))
+        .filter((f) => pattern.test(stripAllComments(readFile(f))))
+        .map(rel);
+      const ws = path.join(REPO_ROOT, 'ws-server.ts');
+      if (fs.existsSync(ws) && pattern.test(stripAllComments(readFile(ws)))) offenders.push('ws-server.ts');
+      expect(offenders).toEqual([]);
+    });
+
+    test('la constante compartida es connected y coincide con la del CRM (F10)', () => {
+      const shared = stripAllComments(readFile(path.join(SRC_ROOT, 'lib/integrations/connectionStatus.ts')));
+      expect(shared).toMatch(/INTEGRATION_CONNECTION_USABLE_STATUS(?::\s*IntegrationConnectionStatus)?\s*=\s*'connected'/);
+      const crm = stripAllComments(readFile(path.join(SRC_ROOT, 'lib/services/crm/stripePaymentLinkService.ts')));
+      expect(crm).toMatch(/STRIPE_CONNECTION_USABLE_STATUS\s*=\s*'connected'/);
+    });
+
+    test('los seis handlers corregidos usan la constante compartida', () => {
+      const routes = [
+        'app/api/integrations/mercadopago/webhook/route.ts',
+        'app/api/integrations/meta/product-sync/route.ts',
+        'app/api/integrations/meta/webhook/route.ts',
+        'app/api/integrations/paypal/webhook/route.ts',
+        'app/api/integrations/payu/webhook/route.ts',
+        'app/api/integrations/stripe/webhook/route.ts',
+      ];
+      for (const r of routes) {
+        const src = stripAllComments(readFile(path.join(SRC_ROOT, r)));
+        expect(src).toMatch(/\.from\(\s*['"]integration_connections['"]\s*\)[^;]*?\.eq\(\s*['"]status['"]\s*,\s*INTEGRATION_CONNECTION_USABLE_STATUS\s*\)/);
+      }
     });
   });
 });

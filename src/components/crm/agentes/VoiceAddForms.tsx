@@ -12,11 +12,11 @@
  * D9: no se clona la voz de un tercero; una voz `cloned` exige consentimiento y
  * la base lo impone con el CHECK `voices_cloned_requires_consent`.
  *
- * ⚠️ NO VERIFICADO: importar llama a la API real de ElevenLabs. En este entorno
- * la ELEVENLABS_API_KEY es el marcador de ejemplo y devuelve 401, así que
- * mostrará el error del proveedor tal cual, sin disimularlo. Por eso el botón se
- * deshabilita cuando el registry dice que no hay credencial: es más honesto que
- * dejar al usuario chocar contra un 401 sin explicación.
+ * Importar llama a la API real de ElevenLabs (`GET /v1/voices`, verificado en
+ * vivo el 2026-09-14). El botón se deshabilita cuando el registry dice que no
+ * hay credencial: es más honesto que dejar al usuario chocar contra un 401.
+ * Desde el rediseño UX de 2026-09-14 estos dos formularios viven plegados bajo
+ * «Más opciones» en la pestaña Mis voces.
  */
 
 import React, { useState } from "react";
@@ -124,8 +124,8 @@ export function VoiceAddForms({ tts, onChanged }: Props) {
           Traer las voces que ya existen en ElevenLabs
         </h3>
         <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-          Copia a este catálogo las voces de tu cuenta de ElevenLabs (la biblioteca pública y las que hayas
-          creado). Es la forma más rápida de tener de dónde elegir.
+          Copia a este catálogo las voces que ya están en tu workspace de ElevenLabs (las que añadiste desde
+          la web del proveedor o clonaste allí). Para explorar la biblioteca pública usa la pestaña Biblioteca.
         </p>
         <Button variant="outline" onClick={importFromProvider} disabled={busy || providerBlocked} title={providerBlocked ? providerBlockedReason : undefined}>
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="mr-2 h-4 w-4" aria-hidden="true" />}

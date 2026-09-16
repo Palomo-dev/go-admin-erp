@@ -40,6 +40,44 @@
 
 ---
 
+> **Estado V4 — construcción r1 (2026-09-15).** Verificado por MCP antes de escribir:
+> `onboarding_templates.steps` = `[{day,key,owner,title}]` (53 filas sembradas),
+> `onboarding_instances`/`onboarding_steps` **sin `updated_at`**, `tasks.status` CHECK
+> `open|in_progress|done|canceled`, `health_score_configs.config` =
+> `{bands, indicators[{key,label,weight,direction,thresholds}]}`, `fn_customer_health(p_org_id, p_customer_id default null)`.
+> Decisiones de esta ronda:
+> - **Scheduler**: `health_recalculate` y `renewals_sync` son tareas **en proceso** (`ScheduledTask`,
+>   `src/lib/jobs/scheduledOrgs.ts`), no `outbound_jobs.kind` (el CHECK real no los admite y el
+>   guardarraíl 9 compara `JOB_KINDS` con él). Van en el cron diario `'30 8 * * *'` de
+>   `/api/crm/jobs/run` junto a `recording_cleanup`+`maintenance`; implementación en
+>   `src/lib/jobs/scheduled/{healthRecalculate,renewalsSync}.ts`. Organizaciones desde
+>   `organization_modules` (`crm` activo). Los crons legados `/api/crm/health/recalculate` y
+>   `/api/crm/renewals/sync` (POST) ejecutan la misma tarea con `verifyCronSecret` fail-closed.
+> - **Renovación**: `scheduleRenewal(orgId, parentOppId, billingCycleMonths, supabase, {now, timezone})`
+>   usa `closed_at` (lanza `RenewalPlanError` si es null), hitos como `tasks` (`status='open'`,
+>   `type='renewal_milestone'`), hitos vencidos no se crean, idempotente por
+>   `(organization_id, parent_opportunity_id, deal_type='renewal')`; refresca `next_contact_at`
+>   desde las tareas abiertas. Secuencia de renovación sobre F8 vía `enrollInSequence` si la
+>   organización tiene una secuencia activa con `trigger_type='event'` +
+>   `trigger_config.event='renewal_scheduled'` (o `template_key='renewal'`). Lógica pura en
+>   `renewalMilestones.ts`.
+> - **Onboarding**: `createOnboardingInstance(orgId, opportunityId, templateId | null, supabase)`
+>   (plantilla activa por defecto; idempotente por oportunidad), `completeOnboardingInstance`
+>   exige todos los pasos (409 en la ruta) y mueve la oportunidad a la etapa `is_won` del pipeline
+>   (nunca por nombre). **Punto de entrada para F10 al ganar:**
+>   `startOnboardingForWonOpportunity(orgId, opportunityId, supabase, {now?})` →
+>   `{ onboarding_opportunity_id, instance_id, steps_created, already_existed }`.
+>   Checklist en el drawer de la oportunidad (pestaña «Onboarding», solo en oportunidades de
+>   onboarding): `src/components/crm/postventa/OnboardingChecklist.tsx` +
+>   `GET /api/crm/onboarding/by-opportunity/[opportunityId]`. Esto sustituye la nota de §4.2
+>   que decía que no se creaba el checklist.
+> - **Health**: `HealthGauge`, `HealthTrend` (sparkline + tabla accesible), `HealthAlerts`
+>   (cartera vencida / sin actividad / sin factura con los campos reales de la RPC) y
+>   `HealthDimensions` (indicadores de `config`), montados en `/app/crm/salud`
+>   (`SaludView` ≤ 300 L) y en `ClientHealthCard`. El score aplica `config.indicators` sobre la
+>   fila de la RPC (`healthBands.ts`); sin indicadores, se usa el score de la RPC.
+> - Corrige §6: la renovación crea **una** oportunidad, no seis.
+
 ## 2. Base de datos
 
 ### 2.1 Migraciones

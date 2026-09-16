@@ -739,7 +739,9 @@ const seedTwimlBridge = (patch: Row = {}) =>
     .seed('mobile_call_bridges', [
       { id: 'b1', organization_id: 7, user_id: 'u', customer_id: 'cus-1', opportunity_id: null, call_id: 'call-1', agent_phone: '+571', target_phone: '+573001112233', status: 'agent_ringing', confirm_digit_required: true, whisper_text: null, ...patch },
     ])
-    .seed('calls', [{ id: 'call-1', organization_id: 7, status: 'dialing', metadata: {} }])
+    // Ronda 6 (N-1): `record=` sale de `calls.recording_enabled` (fijado al
+    // marcar), la misma fila que lee el whisper; ya no de `comm_settings`.
+    .seed('calls', [{ id: 'call-1', organization_id: 7, status: 'dialing', recording_enabled: true, metadata: {} }])
     .seed('customers', [{ id: 'cus-1', organization_id: 7, first_name: 'Juan', last_name: 'Pérez', company_name: 'Corral' }]);
 
 describe('TwiML agent-leg / customer-leg', () => {
@@ -832,40 +834,49 @@ describe('TwiML agent-leg / customer-leg', () => {
     expect(xml).toMatch(/<Number[^>]*url="[^"]*consent-whisper[^"]*callId=call-1/);
   });
 
-  test('F5-40 el consentimiento SÍ se registra en `call_consents` con el texto exacto (D9 / doc §7)', async () => {
+  test('F5-40 [CONTRATO r5] el acta NO se escribe al marcar: la escribe consent-whisper cuando el cliente contesta (V-4)', async () => {
+    // Ronda 5: hasta la ronda 4 `initiateBridge` insertaba `call_consents` al
+    // marcar y `announced_at` (DEFAULT now()) fechaba como "avisado" una
+    // llamada que nadie contestó. El acta la escribe ahora `consent-whisper`
+    // por `recordConsent` (único escritor), y aquí solo queda enlazado el
+    // whisper en el TwiML del cliente. El texto exacto y `announced_at` se
+    // prueban en `f3f5Round5Consent` V-5.
     const sb = seedVerifiedMobile(new FakeSupabase());
     await initiateBridge(ctxOf(sb), { to: '+573001112233' });
-    const consent = sb.ops.find((o) => o.table === 'call_consents' && o.kind === 'insert');
-    expect(consent).toBeDefined();
-    expect(consent!.payload).toMatchObject({
-      organization_id: 7,
-      consent_type: 'recording',
-      method: 'voice_announcement',
-      locale: 'es-MX',
-      recorded_announcement_text: telephonySettings.voice_consent_message,
-    });
-    // Y la ruta que lo reproduce queda enlazada en el TwiML del cliente.
+    expect(sb.ops.filter((o) => o.table === 'call_consents')).toHaveLength(0);
+    expect(sb.tables.calls![0].consent_given).toBe(false);
     const { xml } = await postCustomerLeg('1');
     expect(xml).toContain('consent-whisper');
   });
 
-  test('F5-41 la grabación respeta `comm_settings.voice_recording_enabled`', async () => {
+  test('F5-41 [CONTRATO r6] la grabación respeta `calls.recording_enabled` (la fila fijada al marcar), NO `comm_settings` releído al conectar', async () => {
+    // Ronda 6 (N-1): `initiateBridge` fija `calls.recording_enabled` al marcar
+    // y el whisper decide el acta por ESA fila. Si el `<Dial>` releyera
+    // `comm_settings` al conectar, encender la grabación entre marcar y
+    // conectar daría `record=` con un whisper que responde vacío: grabación
+    // sin aviso y sin acta. Una sola fuente de verdad: la fila.
+    serviceClient.tables.calls![0].recording_enabled = false;
+    telephonySettings.voice_recording_enabled = true;
+    const off = await postCustomerLeg('1');
+    expect(off.xml).not.toContain('record="record-from-answer-dual"');
+    expect(off.xml).not.toContain('consent-whisper');
+    expect(off.xml).not.toContain('se grabará');
+
+    serviceClient = seedTwimlBridge();
     telephonySettings.voice_recording_enabled = false;
     try {
-      const { xml } = await postCustomerLeg('1');
-      expect(xml).not.toContain('record="record-from-answer-dual"');
-      expect(xml).not.toContain('consent-whisper');
+      const on = await postCustomerLeg('1');
+      expect(on.xml).toContain('record="record-from-answer-dual"');
+      expect(on.xml).toContain('consent-whisper');
     } finally {
       telephonySettings.voice_recording_enabled = true;
     }
-    const { xml } = await postCustomerLeg('1');
-    expect(xml).toContain('record="record-from-answer-dual"');
   });
 
-  test('F5-42 `recordingStatusCallbackEvent="completed absent"`: una grabación ausente sí se notifica', async () => {
+  test('F5-42 [CONTRATO r6] `recordingStatusCallbackEvent="in-progress completed absent"`: arranque, fin y ausencia se notifican', async () => {
     const { xml } = await postCustomerLeg('1');
     expect(xml).toContain('recordingStatusCallback=');
-    expect(xml).toContain('recordingStatusCallbackEvent="completed absent"');
+    expect(xml).toContain('recordingStatusCallbackEvent="in-progress completed absent"');
   });
 
   test('F5-43 Digits distinto de 1 → `agent_rejected` y la llamada queda `canceled` (ya no en dialing)', async () => {
@@ -1027,18 +1038,19 @@ describe('8b. Aviso de grabación y consentimiento (D9 / doc §7)', () => {
     const { xml } = await postCustomerLeg('1');
     expect(xml).toContain('consent-whisper');
     expect(xml).toMatch(/<Number[^>]+url=/);
+    // Ronda 5: el whisper escribe el acta por el único escritor (`recordConsent`).
     const cw = SRC('src/app/api/voice/twiml/consent-whisper/route.ts');
-    expect(cw).toContain('call_consents');
-    expect(cw).toContain('consent_given');
+    expect(cw).toContain('recordConsent(');
+    expect(cw).not.toMatch(/from\('call_consents'\)/);
   });
 
-  test('F5-56 el bridge escribe `call_consents` y enlaza quien marca `consent_given`', async () => {
-    expect(SRC(BRIDGE_SVC_SRC)).toContain('call_consents');
+  test('F5-56 [CONTRATO r5] el bridge NO escribe `call_consents`: enlaza el whisper, que es quien escribe el acta', async () => {
+    expect(SRC(BRIDGE_SVC_SRC)).not.toMatch(/from\('call_consents'\)/);
     expect(SRC(CUSTOMER_LEG_SRC)).toContain('consent-whisper');
     expect(SRC(AGENT_LEG_SRC)).toContain('consent-whisper');
     const sb = seedVerifiedMobile(new FakeSupabase());
     await initiateBridge(ctxOf(sb), { to: '+573001112233' });
-    expect(sb.ops.filter((o) => o.table === 'call_consents')).toHaveLength(1);
+    expect(sb.ops.filter((o) => o.table === 'call_consents')).toHaveLength(0);
   });
 });
 

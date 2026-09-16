@@ -15,6 +15,7 @@ import { FollowupSection } from '../FollowupSection';
 import { SalesTeamTerritorySelectors } from '../SalesTeamTerritorySelectors';
 import { DiscoverySection } from '../DiscoverySection';
 import { DiscoveryConfigDialog } from '../DiscoveryConfigDialog';
+import { OpportunityObjectionsBlock } from '@/components/crm/objeciones/OpportunityObjectionsBlock';
 import type { DrawerTabProps } from './types';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
@@ -94,6 +95,9 @@ export function ResumenTab({ opportunity, customer, data, active }: DrawerTabPro
       <ScoringSection opportunityId={opportunity.id} />
       <Separator />
       <DiscoverySection opportunityId={opportunity.id} initialData={opportunity.discovery_data} onUpdated={() => void data.refetch.opportunity()} onConfigure={() => setDiscoveryConfig(true)} />
+      <Separator />
+      {/* F2: objeciones registradas + registrar del catálogo en dos clics. */}
+      <OpportunityObjectionsBlock opportunityId={opportunity.id} onChanged={() => void data.refetch.opportunity()} />
       <Separator />
       <section>
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">

@@ -5,7 +5,9 @@
 
 import { LAST_RESORT_COUNTRY_CODE, normalizePhoneDigits } from '@/lib/services/crm/phoneNormalize';
 
-export type QuickActionKind = 'call' | 'email' | 'whatsapp' | 'meeting' | 'task' | 'note';
+// F10: 'proposal' (Enviar propuesta) solo aparece donde se pida por `actions`; no está en ALL_QUICK_ACTIONS
+// para no cambiar la tarjeta Kanban ni el drawer.
+export type QuickActionKind = 'call' | 'email' | 'whatsapp' | 'meeting' | 'task' | 'note' | 'proposal';
 export type CallMode = 'browser' | 'mobile' | 'ai';
 
 export const ALL_QUICK_ACTIONS: readonly QuickActionKind[] = ['call', 'email', 'whatsapp', 'meeting', 'task', 'note'];
@@ -40,6 +42,7 @@ export const QUICK_ACTION_LABELS: Record<QuickActionKind, string> = {
   meeting: 'Reunión',
   task: 'Tarea',
   note: 'Nota',
+  proposal: 'Propuesta',
 };
 
 export function getQuickActions(ctx: QuickActionsContext): QuickActionState[] {
@@ -59,6 +62,10 @@ export function getQuickActions(ctx: QuickActionsContext): QuickActionState[] {
           : { kind, label, enabled: false, reason: 'El cliente no tiene teléfono' };
       case 'call':
         return { kind, label, enabled: true };
+      case 'proposal':
+        return ctx.hasOpportunity
+          ? { kind, label, enabled: true }
+          : { kind, label, enabled: false, reason: 'Solo desde una oportunidad' };
       default:
         return { kind, label, enabled: true };
     }

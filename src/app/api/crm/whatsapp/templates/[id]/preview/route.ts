@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withWhatsAppRoute, readJson } from '@/lib/services/crm/whatsapp/http';
+import { withWhatsAppRoute } from '@/lib/services/crm/whatsapp/http';
 import { previewHsm, requireHsm } from '@/lib/services/crm/whatsapp/templateService';
 import { parseWith, zHsmPreviewBody } from '@/lib/services/crm/whatsapp/schemas';
 import { buildContext, sampleContext } from '@/lib/services/crm/email/variables';
@@ -7,13 +7,14 @@ import { estimateMessageCost } from '@/lib/services/crm/whatsapp/costs';
 import { resolveChannel, resolveRecipient } from '@/lib/services/crm/whatsapp/channelService';
 import { getWindow } from '@/lib/services/crm/whatsapp/windowService';
 
+import { readOrgBody } from '@/lib/security/organizationBody';
 /**
  * POST /api/crm/whatsapp/templates/[id]/preview
  * { context?: {customerId?, opportunityId?, custom?}, variables?, channelId? }
  * → { header, body, footer, buttons, values, missing, category, status, variable_map, estimated_cost }
  */
 export const POST = withWhatsAppRoute(async (ctx, req, params) => {
-  const b = parseWith(zHsmPreviewBody, await readJson<unknown>(req));
+  const b = parseWith(zHsmPreviewBody, await readOrgBody<unknown>(ctx, req));
   const t = await requireHsm(ctx.organizationId, params.id, ctx.supabase);
   const refs = b.context ?? {};
   const rctx = refs.customerId || refs.opportunityId

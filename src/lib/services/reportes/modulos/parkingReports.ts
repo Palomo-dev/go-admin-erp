@@ -3,7 +3,13 @@
 // Consultas directas a Supabase para ocupación, ingresos y rotación
 // ============================================================
 
-import { supabase } from '@/lib/supabase/config';
+import { supabase as browserSupabase } from '@/lib/supabase/config';
+import type { ReportesClient } from '../types';
+// F0-SEC r3 (tester r2, fallo 3): `fetch` acepta el cliente de Supabase por
+// parámetro. En el navegador (app/reportes) cae al cliente browser con la sesión
+// del usuario; en el servidor (asistente de reportes) el route handler pasa el
+// cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
+// corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
@@ -23,9 +29,10 @@ export const parkingReports: ReportDefinition[] = [
     descripcion: 'Sesiones, tiempo promedio y tasa de ocupación',
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const { data, error } = await applyBranchFilter(
-        supabase
+        db
           .from('parking_sessions')
           .select('id, parking_space_id, entry_at, exit_at, status')
           .eq('organization_id', orgId)
@@ -66,9 +73,10 @@ export const parkingReports: ReportDefinition[] = [
     descripcion: 'Ingresos por tarifas, abonados y pagos',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const { data, error } = await applyBranchFilter(
-        supabase
+        db
           .from('parking_sessions')
           .select('id, amount, status, entry_at')
           .eq('organization_id', orgId)
@@ -105,9 +113,10 @@ export const parkingReports: ReportDefinition[] = [
     descripcion: 'Uso por espacio, rotación y tiempo promedio',
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const { data, error } = await applyBranchFilter(
-        supabase
+        db
           .from('parking_sessions')
           .select('parking_space_id, entry_at, exit_at')
           .eq('organization_id', orgId)

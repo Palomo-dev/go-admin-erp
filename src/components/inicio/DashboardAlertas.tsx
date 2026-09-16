@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
@@ -52,28 +52,25 @@ const SEVERITY_CONFIG = {
 
 export function DashboardAlertas({ organizationId, activeModuleCodes }: DashboardAlertasProps) {
   const t = useTranslations('home');
-  const [alertas, setAlertas] = useState<AlertaDashboard[]>([]);
+  const [todas, setTodas] = useState<AlertaDashboard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Una sola consulta por organización. El filtro por módulos activos se
+  // aplica al renderizar: antes estaba en las dependencias del efecto y, al
+  // llegar los códigos (undefined → lista), se volvía a consultar y, si no
+  // había alertas, se volvía a mostrar el skeleton.
   useEffect(() => {
     if (!organizationId) return;
     let cancelled = false;
-    // Solo mostrar skeleton en la carga inicial; en refetchs posteriores
-    // (ej. auto-refresh del dashboard) mantener los datos previos para evitar parpadeo.
-    setIsLoading(alertas.length === 0);
+    setIsLoading(true);
     inicioService
       .getAlertas(organizationId)
       .then((result) => {
-        if (cancelled) return;
-        // Filtrar por módulos activos si se proporciona
-        const filtered = activeModuleCodes
-          ? result.filter((a) => activeModuleCodes.includes(a.modulo))
-          : result;
-        setAlertas(filtered);
+        if (!cancelled) setTodas(result);
       })
       .catch((err) => {
         console.error('Error cargando alertas:', err);
-        if (!cancelled) setAlertas([]);
+        if (!cancelled) setTodas([]);
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -81,8 +78,12 @@ export function DashboardAlertas({ organizationId, activeModuleCodes }: Dashboar
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizationId, activeModuleCodes]);
+  }, [organizationId]);
+
+  const alertas = useMemo(
+    () => (activeModuleCodes ? todas.filter((a) => activeModuleCodes.includes(a.modulo)) : todas),
+    [todas, activeModuleCodes],
+  );
 
   if (isLoading) {
     return (

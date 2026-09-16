@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getOpportunityObjections,
   addOpportunityObjection,
   resolveOpportunityObjection,
+  ObjectionRequestError,
 } from '@/lib/services/crm/objectionService';
 
 /**
@@ -35,8 +37,9 @@ export async function GET(
 
 /**
  * POST /api/crm/objections/opportunity/[opportunityId] — Vincula una objection a una oportunidad.
- * Body: { objection_id, notes?, detected_by? }
- * Query: ?resolveId=<id> — marca una opportunity_objection como resuelta.
+ * Body: { objection_id, notes? } | { resolveId } — marca una opportunity_objection como resuelta.
+ * La oportunidad sale SOLO de la ruta (un `opportunity_id` en el body se ignora) y
+ * `detected_by` es siempre 'manual' desde aquí: la IA escribe por otro camino.
  */
 export async function POST(
   request: NextRequest,
@@ -45,7 +48,8 @@ export async function POST(
   try {
     const ctx = await getServerOrgContext();
     const { opportunityId } = await params;
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
+
 
     // Si viene resolveId en el body, resolver en lugar de vincular
     if (body?.resolveId) {
@@ -64,16 +68,14 @@ export async function POST(
       ctx.organizationId,
       opportunityId,
       body.objection_id,
-      {
-        notes: body.notes,
-        detected_by: body.detected_by,
-      },
+      { notes: body.notes, detected_by: 'manual' },
       ctx.supabase
     );
 
     return NextResponse.json({ success: true, data: result }, { status: 201 });
   } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
+    // ObjectionRequestError cubre 404 (no encontrada) y 400 (nota > NOTES_MAX): el statusCode viaja tal cual.
+    if (error instanceof OrgContextError || error instanceof ObjectionRequestError) {
       return NextResponse.json(
         { success: false, error: error.message },
         { status: error.statusCode }

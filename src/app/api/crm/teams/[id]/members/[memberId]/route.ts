@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { updateTeamMember, removeTeamMember } from '@/lib/services/crm/salesStructureService';
 
 /**
@@ -12,7 +13,7 @@ export async function PATCH(
   try {
     const ctx = await getServerOrgContext();
     const { memberId } = await params;
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     const member = await updateTeamMember(memberId, ctx.organizationId, body, ctx.supabase);
 
@@ -41,11 +42,12 @@ export async function PATCH(
  * DELETE /api/crm/teams/[id]/members/[memberId] — Elimina un miembro del equipo.
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
   try {
     const ctx = await getServerOrgContext();
+    await readOrgBody(ctx, request);
     const { memberId } = await params;
 
     await removeTeamMember(memberId, ctx.organizationId, ctx.supabase);

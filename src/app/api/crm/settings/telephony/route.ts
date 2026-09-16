@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { isOrgAdmin } from '@/lib/utils/rbac';
 import {
   getTelephonySettingsView,
@@ -83,7 +84,7 @@ export async function PATCH(request: NextRequest) {
   if (!isOrgAdmin(ctx) && !ctx.isSuperAdmin) {
     return NextResponse.json({ success: false, error: 'Solo un administrador puede cambiar la telefonía' }, { status: 403 });
   }
-  const parsed = telephonyPatchSchema.safeParse(await request.json().catch(() => null));
+  const parsed = telephonyPatchSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
   if (!parsed.success) {
     return NextResponse.json({ success: false, error: 'Body inválido', issues: parsed.error.issues }, { status: 400 });
   }

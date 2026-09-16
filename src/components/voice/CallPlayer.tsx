@@ -9,6 +9,9 @@
  *  - `seekToMs`: al cambiar, salta a ese instante y reproduce (clic en un segmento).
  *  - `onTimeUpdate(ms)`: posición actual (resalta el segmento activo).
  *  - `variant='full'`: barra de progreso + tiempos (fila expandida).
+ *  - `consentMethod` (F-4, ronda 7): `call_consents.method` de la acta; con
+ *    `unverified_announcement` se muestra «Aviso no acreditado» junto al
+ *    reproductor. Al cargar el detalle se relee de `consents` (la acta manda).
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -16,6 +19,7 @@ import { Play, Pause, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/utils/Utils';
+import { UnverifiedConsentBadge, isUnverifiedConsent } from './ConsentBadge';
 
 interface CallPlayerProps {
   callId: string;
@@ -25,6 +29,8 @@ interface CallPlayerProps {
   seekToMs?: number | null;
   onTimeUpdate?: (ms: number) => void;
   variant?: 'icon' | 'full';
+  /** `call_consents.method` de la acta de grabación (ver cabecera, F-4). */
+  consentMethod?: string | null;
 }
 
 interface Recording {
@@ -32,15 +38,23 @@ interface Recording {
   status: string;
 }
 
+interface Consent {
+  consent_type: string;
+  method: string;
+}
+
 function fmt(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-export function CallPlayer({ callId, recordingEnabled, className, seekToMs, onTimeUpdate, variant = 'icon' }: CallPlayerProps) {
+export function CallPlayer({ callId, recordingEnabled, className, seekToMs, onTimeUpdate, variant = 'icon', consentMethod = null }: CallPlayerProps) {
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [recordings, setRecordings] = useState<Recording[]>([]);
+  /** La acta leída del detalle manda sobre la prop (F-4). */
+  const [fetchedMethod, setFetchedMethod] = useState<string | null>(null);
+  const unverified = isUnverifiedConsent(fetchedMethod ?? consentMethod);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -57,6 +71,8 @@ export function CallPlayer({ callId, recordingEnabled, className, seekToMs, onTi
       if (!res.ok) throw new Error('Error al obtener grabaciones');
       const data = await res.json();
       const recs: Recording[] = (data?.data?.recordings ?? []).filter((r: Recording) => r.status === 'ready' || r.status === 'completed');
+      const acta = ((data?.data?.consents ?? []) as Consent[]).find((c) => c.consent_type === 'recording');
+      setFetchedMethod(acta?.method ?? null);
       setRecordings(recs);
       setFetched(true);
       return recs;
@@ -159,11 +175,22 @@ export function CallPlayer({ callId, recordingEnabled, className, seekToMs, onTi
     </Button>
   );
 
-  if (variant === 'icon') return button;
+  // F-4: el distintivo va pegado al reproductor, con icono + texto (nunca solo color).
+  if (variant === 'icon') {
+    return unverified ? (
+      <span className="inline-flex items-center gap-1">
+        {button}
+        <UnverifiedConsentBadge method="unverified_announcement" />
+      </span>
+    ) : (
+      button
+    );
+  }
 
   const pct = durationMs > 0 ? Math.min(100, (currentMs / durationMs) * 100) : 0;
   return (
-    <div className={cn('flex items-center gap-3 rounded-md border border-gray-200 bg-white px-2 py-1.5 dark:border-gray-700 dark:bg-gray-800', className)}>
+    <div className={cn('flex flex-wrap items-center gap-3 rounded-md border border-gray-200 bg-white px-2 py-1.5 dark:border-gray-700 dark:bg-gray-800', unverified && 'border-amber-400 dark:border-amber-500', className)}>
+      {unverified && <UnverifiedConsentBadge method="unverified_announcement" variant="full" className="basis-full" />}
       {button}
       <input
         type="range"

@@ -138,7 +138,7 @@ export function CallRow({ call, isOpen, onToggle }: CallRowProps) {
         </TableCell>
         <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
           {ready ? (
-            <CallPlayer callId={call.id} recordingEnabled={call.recording_enabled} />
+            <CallPlayer callId={call.id} recordingEnabled={call.recording_enabled} consentMethod={call.consent_method} />
           ) : processing ? (
             <span className="text-[10px] text-gray-500 dark:text-gray-400" title="Procesando grabación…">…</span>
           ) : (

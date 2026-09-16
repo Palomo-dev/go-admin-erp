@@ -59,7 +59,27 @@ npm run package
 npm run package:dir
 ```
 
-El instalador se genera en `electron/release/Go Admin Desktop-Setup-0.1.0.exe`.
+El instalador se genera en `electron/release/GoAdminERP-Setup-<versión>.exe`, junto con
+su `.blockmap` (actualizaciones diferenciales) y `latest.yml`.
+
+### Publicar una versión
+
+1. Subir `version` en `electron/package.json` (el workflow aborta si el tag no coincide).
+2. `git tag vX.Y.Z && git push origin vX.Y.Z`.
+3. `.github/workflows/desktop-release.yml` compila en `windows-latest`, firma si hay
+   credenciales y publica en **Palomo-dev/go-admin-desktop-releases** (repositorio público
+   de releases, separado del código; es de donde descarga `electron-updater`). Mientras
+   queden instalaciones 0.1.x —que buscan actualizaciones en el repo de código— sube la
+   misma release también ahí.
+
+Secrets del workflow: `DESKTOP_RELEASES_TOKEN` (PAT con `contents: write` sobre el repo de
+releases) y, para firmar, `CSC_LINK` + `CSC_KEY_PASSWORD` (certificado .pfx) **o** las
+variables `AZURE_*` de Azure Trusted Signing (ver `electron-builder.config.js`). Nunca hay
+credenciales en el repositorio; sin ellas el .exe sale sin firmar y SmartScreen avisará.
+
+Decisión congelada: instalación **por usuario** (`perMachine: false`, `asInvoker`, sin UAC).
+El instalador detecta y desinstala la 0.1.0 instalada para todos los usuarios
+(`build/installer.nsh` → `customInit`).
 
 ### Icono de ventana vs. icono del instalador
 

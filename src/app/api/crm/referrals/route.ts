@@ -1,86 +1,51 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { NextRequest } from 'next/server';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { getReferrals, createReferral } from '@/lib/services/crm/referralsService';
+import { validateReferralInput } from '@/lib/services/crm/f12Validation';
+import { jsonOk, readJson, readPage, rejectForeignOrganization, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
+
+const TAG = 'CRM Referrals';
 
 /**
- * GET /api/crm/referrals — Lista referidos.
+ * GET /api/crm/referrals — referidos de la organización de la sesión, con
+ * referidor, programa y oportunidad resueltos.
  * Query: ?status=&program_id=&referrer_customer_id=&reward_paid=&limit=&offset=
  */
 export async function GET(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     const { searchParams } = new URL(request.url);
-
+    rejectForeignOrganization(TAG, searchParams.get('organization_id'), ctx);
     const rewardPaid = searchParams.get('reward_paid');
-    const filters = {
+    const result = await getReferrals(ctx.organizationId, ctx.supabase, {
       status: searchParams.get('status') || undefined,
       program_id: searchParams.get('program_id') || undefined,
       referrer_customer_id: searchParams.get('referrer_customer_id') || undefined,
       reward_paid: rewardPaid !== null ? rewardPaid === 'true' : undefined,
-      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : undefined,
-      offset: searchParams.get('offset') ? parseInt(searchParams.get('offset')!, 10) : undefined,
-    };
-
-    const result = await getReferrals(ctx.organizationId, ctx.supabase, filters);
-
-    return NextResponse.json(
-      { success: true, data: result.data, count: result.count },
-      { status: 200 }
-    );
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Referrals] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+      ...readPage(searchParams),
+    });
+    return jsonOk(result.data, { count: result.count });
+  } catch (error) {
+    return routeError(error, TAG);
   }
 }
 
 /**
- * POST /api/crm/referrals — Crea un referido.
- * Body: { referrer_customer_id, referred_name, referred_email?, referred_phone?, program_id?, ... }
+ * POST /api/crm/referrals — registra un referido. Nace `pending`, sin
+ * recompensa ni enlaces: `status`, `reward_paid` y `opportunity_id` del body
+ * se ignoran (van por `/status`, `/reward` y `/convert`).
+ * Body: { referrer_customer_id, referred_name, referred_email?, referred_phone?, program_id? }
  */
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const body = await request.json();
-
-    if (!body?.referrer_customer_id || !body?.referred_name) {
-      return NextResponse.json(
-        { success: false, error: 'Faltan campos obligatorios: referrer_customer_id, referred_name' },
-        { status: 400 }
-      );
-    }
-
-    const referral = await createReferral(
-      ctx.organizationId,
-      {
-        program_id: body.program_id,
-        referrer_customer_id: body.referrer_customer_id,
-        referred_customer_id: body.referred_customer_id,
-        referred_name: body.referred_name,
-        referred_email: body.referred_email,
-        referred_phone: body.referred_phone,
-        opportunity_id: body.opportunity_id,
-        status: body.status,
-      },
-      ctx.supabase
-    );
-
-    return NextResponse.json({ success: true, data: referral }, { status: 201 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Referrals] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const body = await readJson(request);
+    rejectForeignOrganization(TAG, body.organization_id, ctx);
+    const parsed = validateReferralInput(body);
+    if (!parsed.ok) return validationFail(parsed.errors);
+    const referral = await createReferral(ctx.organizationId, parsed.value, ctx.supabase);
+    return jsonOk(referral, {}, 201);
+  } catch (error) {
+    return routeError(error, TAG);
   }
 }

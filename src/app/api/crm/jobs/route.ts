@@ -6,8 +6,9 @@ import { canRetryJobs, canViewJobs, getJobStats, listJobs, listRecentFailed, par
  * GET /api/crm/jobs — observabilidad de la cola de la org (FASE-00 §4.1).
  *
  * Auth: sesión (`getServerOrgContext(request)`: header `X-Organization-Id` o
- * cookie `goadmin_org_id`); org SIEMPRE de sesión. Rol: admin de la org o
- * Manager (403 en otro caso; tester r1 F-7).
+ * cookie `goadmin_org_id`); org SIEMPRE de sesión. Rol (r4): super admin, rol
+ * 1/2/5 (`STAGE_MANAGER_ROLE_IDS`) o cargo/rol con `admin.full_access`
+ * resuelto en la BD (`check_user_permission`); 403 en otro caso.
  * Query: `?status=queued|running|done|failed|dead&kind=&page=&pageSize=`
  * Respuesta: `{ success, items, total, page, pageSize, stats, recentFailed, canRetry }`
  * (`payload_preview` redactado: solo `*_id`, `kind`, `campaign_id`, `event_type`…).
@@ -17,7 +18,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext(request);
-    if (!canViewJobs(ctx)) {
+    if (!(await canViewJobs(ctx))) {
       return NextResponse.json({ success: false, error: 'Requiere rol administrador o manager' }, { status: 403 });
     }
     const sp = request.nextUrl.searchParams;
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
       listRecentFailed(ctx.supabase, ctx.organizationId, 50),
     ]);
 
-    return NextResponse.json({ success: true, ...list, stats, recentFailed, canRetry: canRetryJobs(ctx) }, { status: 200 });
+    return NextResponse.json({ success: true, ...list, stats, recentFailed, canRetry: await canRetryJobs(ctx) }, { status: 200 });
   } catch (error: unknown) {
     if (error instanceof OrgContextError) {
       return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });

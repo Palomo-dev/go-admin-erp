@@ -193,6 +193,48 @@ async function deleteIfClean(
  * información, no un fallo. "No pude deshacerlo porque ya se vendió" es una
  * respuesta útil; borrar igualmente, no.
  */
+/**
+ * Deshacer un documento = cancelarlo, y solo si nadie lo ha movido de su estado
+ * inicial. Una orden ya enviada al proveedor o un traslado ya en tránsito no se
+ * "deshacen": se gestionan desde su módulo. Nunca se borra la fila.
+ */
+async function cancelIfUntouched(
+  ctx: UndoContext,
+  table: 'purchase_orders' | 'inventory_transfers',
+  id: number,
+  estadoInicial: string,
+  etiqueta: string
+): Promise<UndoOutcome> {
+  if (!id) return { ok: false, errorCode: 'bad_payload', message: `No sé qué ${etiqueta} deshacer.` };
+
+  const { data, error } = await ctx.supabase
+    .from(table)
+    .select('id, status')
+    .eq('id', id)
+    .eq('organization_id', ctx.organizationId)
+    .maybeSingle();
+  if (error) return { ok: false, errorCode: 'lookup_failed', message: error.message };
+  const row = data as { id: number; status: string } | null;
+  if (!row) return { ok: false, errorCode: 'not_found', message: `No encontré ${etiqueta}.` };
+  if (row.status === 'cancelled') return { ok: true, message: `${etiqueta} ya estaba cancelado.` };
+  if (row.status !== estadoInicial) {
+    return {
+      ok: false,
+      errorCode: 'already_advanced',
+      message: `No cancelé ${etiqueta}: ya no está en estado "${estadoInicial}" (está en "${row.status}"). Gestiónalo desde su módulo.`,
+    };
+  }
+
+  const { error: updErr } = await ctx.supabase
+    .from(table)
+    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('organization_id', ctx.organizationId)
+    .eq('status', estadoInicial);
+  if (updErr) return { ok: false, errorCode: 'cancel_failed', message: updErr.message };
+  return { ok: true, message: `${etiqueta.charAt(0).toUpperCase()}${etiqueta.slice(1)} quedó cancelado.` };
+}
+
 export async function applyUndo(ctx: UndoContext, undo: { kind: string; payload: Payload }): Promise<UndoOutcome> {
   const { kind, payload } = undo;
 
@@ -312,6 +354,71 @@ export async function applyUndo(ctx: UndoContext, undo: { kind: string; payload:
       return deleteIfClean(ctx, 'customers', String(payload.customer_id ?? ''), 'el cliente');
     case 'restore_customer':
       return restoreSnapshot(ctx, 'customers', String(payload.customer_id ?? ''), (payload.before as Payload) ?? {}, 'El cliente');
+
+    // Carga masiva (§6.3): compensa, no borra. Los precios vuelven al anterior,
+    // los ajustes de stock se revierten con el ajuste CONTRARIO (queda rastro
+    // doble, que es lo correcto), y los productos creados se eliminan solo si
+    // no tienen movimientos; si ya los tienen, quedan inactivos.
+    case 'undo_bulk_load': {
+      const branchId = intId(payload.branch_id);
+      const precios = Array.isArray(payload.precios) ? (payload.precios as Payload[]) : [];
+      const ajustes = Array.isArray(payload.ajustes) ? (payload.ajustes as Payload[]) : [];
+      const creados = Array.isArray(payload.productos_creados) ? (payload.productos_creados as Payload[]) : [];
+      const fallos: string[] = [];
+
+      for (const p of precios) {
+        const r = await applyUndo(ctx, { kind: 'revert_price', payload: p });
+        if (!r.ok) fallos.push(`precio del producto ${String(p.product_id)}: ${r.message}`);
+      }
+
+      for (const a of ajustes) {
+        const items = Array.isArray(a.items) ? a.items : [];
+        if (!branchId || items.length === 0) continue;
+        const contrario = a.type === 'gain' ? 'loss' : 'gain';
+        const { error } = await ctx.supabase.rpc('assistant_create_adjustment', {
+          p_organization_id: ctx.organizationId,
+          p_branch_id: branchId,
+          p_user_id: ctx.userId,
+          p_payload: {
+            type: contrario,
+            reason: `Deshacer carga masiva (ajuste #${String(a.adjustment_id)})`,
+            items,
+          },
+        });
+        if (error) fallos.push(`ajuste #${String(a.adjustment_id)}: ${error.message}`);
+      }
+
+      let inactivos = 0;
+      for (const c of creados) {
+        const r = await applyUndo(ctx, { kind: 'delete_product', payload: { product_id: c.product_id } });
+        if (!r.ok) fallos.push(`producto ${String(c.name ?? c.product_id)}: ${r.message}`);
+        else if (r.message.includes('inactivo')) inactivos += 1;
+      }
+
+      if (fallos.length > 0) {
+        return {
+          ok: false,
+          errorCode: 'partial',
+          message: `Deshice parte de la carga, pero no todo: ${fallos.slice(0, 3).join('; ')}${fallos.length > 3 ? '…' : ''}`,
+        };
+      }
+      const resumen: string[] = [];
+      if (creados.length > 0) {
+        resumen.push(
+          inactivos > 0
+            ? `${creados.length} productos creados (${inactivos} ya tenían movimientos y quedaron inactivos)`
+            : `${creados.length} productos creados eliminados`
+        );
+      }
+      if (ajustes.length > 0) resumen.push(`${ajustes.length === 1 ? 'el ajuste de stock revertido' : 'los ajustes de stock revertidos'} con el ajuste contrario`);
+      if (precios.length > 0) resumen.push(`${precios.length} precios devueltos al anterior`);
+      return { ok: true, message: `Carga deshecha: ${resumen.join(', ') || 'no había nada que revertir'}.` };
+    }
+
+    case 'cancel_purchase_order':
+      return cancelIfUntouched(ctx, 'purchase_orders', intId(payload.purchase_order_id) ?? 0, 'draft', 'la orden de compra');
+    case 'cancel_transfer':
+      return cancelIfUntouched(ctx, 'inventory_transfers', intId(payload.transfer_id) ?? 0, 'pending', 'el traslado');
 
     default:
       return {

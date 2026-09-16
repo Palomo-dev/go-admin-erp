@@ -4,3 +4,4 @@ export { ForecastFilters } from './ForecastFilters';
 export { ForecastChart } from './ForecastChart';
 export { ForecastByStage } from './ForecastByStage';
 export { GoalProgress } from './GoalProgress';
+export { ForecastScenarios } from './ForecastScenarios';

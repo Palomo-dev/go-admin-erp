@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { isOrgAdmin } from '@/lib/utils/rbac';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { importNumbersFromTwilio, syncNumberWebhooks } from '@/lib/services/crm/phoneNumberService';
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
   let ctx;
   try {
     ctx = await getServerOrgContext(request);
+    await readOrgBody(ctx, request);
   } catch (err) {
     if (err instanceof OrgContextError) {
       return NextResponse.json({ success: false, error: err.message }, { status: err.statusCode });

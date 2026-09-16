@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { updateICPCriterion, deleteICPCriterion } from '@/lib/services/crm/icpService';
 
 /**
@@ -12,7 +13,7 @@ export async function PATCH(
   try {
     const ctx = await getServerOrgContext();
     const { criterionId } = await params;
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     const criterion = await updateICPCriterion(criterionId, ctx.organizationId, body, ctx.supabase);
 
@@ -41,11 +42,12 @@ export async function PATCH(
  * DELETE /api/crm/icp/[id]/criteria/[criterionId] — Elimina un criterion.
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; criterionId: string }> }
 ) {
   try {
     const ctx = await getServerOrgContext();
+    await readOrgBody(ctx, request);
     const { criterionId } = await params;
 
     await deleteICPCriterion(criterionId, ctx.organizationId, ctx.supabase);

@@ -1,4 +1,5 @@
 import { JobRetryableError, type JobHandler } from '../types';
+import { getOrgTimezoneForJob, orgDay } from '../orgTimezone';
 import { deleteRecording } from '@/lib/services/crm/recordingStorageService';
 import { getTwilioClientForOrg, VoiceNotConfiguredError } from '@/lib/services/crm/voiceContextService';
 
@@ -6,7 +7,9 @@ import { getTwilioClientForOrg, VoiceNotConfiguredError } from '@/lib/services/c
  * Job `recording_cleanup` (FASE-03 §4.4; reemplaza el placeholder de F0).
  * Lo encola el scheduler una vez al día por org (`recording_cleanup:{yyyy-mm-dd}`).
  *
- * Borra grabaciones `ready` con `retention_until < hoy` (lotes de 200):
+ * Borra grabaciones `ready` con `retention_until < hoy` (lotes de 200).
+ * `retention_until` es `date`: «hoy» es el día calendario de la ORGANIZACIÓN
+ * (`organizations.timezone`, F0-JOBS r3 N-7), nunca el día UTC del servidor:
  * objeto en Storage + `DELETE /Recordings/{Sid}.json` en Twilio (si hay
  * credenciales REST) + `status='deleted'`. Cada borrado es idempotente; un
  * fallo individual no detiene el lote (se cuenta en `failed`). Si quedan más
@@ -15,7 +18,7 @@ import { getTwilioClientForOrg, VoiceNotConfiguredError } from '@/lib/services/c
 export const CLEANUP_BATCH = 200;
 
 export const recordingCleanupHandler: JobHandler = async ({ supabase, orgId, log, signal }) => {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = orgDay(await getOrgTimezoneForJob(orgId, supabase, log));
   const { data, error, count } = await supabase
     .from('call_recordings')
     .select('id, provider_recording_sid', { count: 'exact' })

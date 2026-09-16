@@ -11,21 +11,24 @@ import type { OutboundJob } from '../types';
 const role = (roleId: number, roleName: string, isSuperAdmin = false) => ({ roleId, roleName, isSuperAdmin });
 
 describe('roles', () => {
-  it('reintentar: solo admin de la org (rol 1/2 o super admin)', () => {
-    expect(canRetryJobs(role(2, 'Admin de organización'))).toBe(true);
-    expect(canRetryJobs(role(1, 'Super Admin'))).toBe(true);
-    expect(canRetryJobs(role(4, 'Empleado', true))).toBe(true);
-    expect(canRetryJobs(role(5, 'Manager'))).toBe(false);
-    expect(canRetryJobs(role(4, 'Empleado'))).toBe(false);
-    expect(canRetryJobs(role(9, 'admin'))).toBe(false); // nombres legacy 'admin'/'owner' no existen en roles
+  // Sin sesión completa (userId/organizationId/supabase) solo decide el criterio síncrono; la RPC se prueba en builderR4.test.ts.
+  it('reintentar: admin de la org (rol 1/2 o super admin) por el criterio síncrono', async () => {
+    expect(await canRetryJobs(role(2, 'Admin de organización'))).toBe(true);
+    expect(await canRetryJobs(role(1, 'Super Admin'))).toBe(true);
+    expect(await canRetryJobs(role(4, 'Empleado', true))).toBe(true);
+    expect(await canRetryJobs(role(5, 'Manager'))).toBe(false);
+    expect(await canRetryJobs(role(4, 'Empleado'))).toBe(false);
+    expect(await canRetryJobs(role(9, 'admin'))).toBe(false); // nombres legacy 'admin'/'owner' no existen en roles
   });
 
-  it('ver la cola: admin o Manager (rol 5)', () => {
-    expect(canViewJobs(role(5, 'Manager'))).toBe(true);
-    expect(canViewJobs(role(9, 'Gerente'))).toBe(true);
-    expect(canViewJobs(role(2, 'Admin de organización'))).toBe(true);
-    expect(canViewJobs(role(4, 'Empleado'))).toBe(false);
-    expect(canViewJobs(role(3, 'Cliente'))).toBe(false);
+  it('ver la cola: STAGE_MANAGER_ROLE_IDS (1, 2, 5) o super admin, nunca por el nombre (F-6, regla 6; r4 sin constante propia)', async () => {
+    expect(await canViewJobs(role(5, 'Manager'))).toBe(true);
+    expect(await canViewJobs(role(5, 'x'))).toBe(true);
+    expect(await canViewJobs(role(9, 'Gerente'))).toBe(false);
+    expect(await canViewJobs(role(4, 'Manager'))).toBe(false);
+    expect(await canViewJobs(role(2, 'Admin de organización'))).toBe(true);
+    expect(await canViewJobs(role(4, 'Empleado'))).toBe(false);
+    expect(await canViewJobs(role(3, 'Cliente'))).toBe(false);
   });
 });
 

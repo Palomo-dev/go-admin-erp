@@ -1,7 +1,7 @@
 -- Vertical del prompt conversacional.
 --
 -- Hoy TODAS las organizaciones reciben un prompt de retail que habla de
--- "tarjetas de producto", "[PEDIDO_LISTO]" y "finalizar el pedido". Hotel X
+-- "tarjetas de producto", "[PEDIDO_LISTO]" y "finalizar el pedido". La org 2
 -- genero 111.745 mensajes de IA con ese prompt.
 --
 -- NULL = se deduce del tipo de organizacion. Se deja explicito para poder

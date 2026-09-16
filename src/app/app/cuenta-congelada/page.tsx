@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import SubscriptionPlanSelector from '@/components/subscription/SubscriptionPlanSelector';
-import { useTranslations } from 'next-intl';
 import {
   LockClosedIcon,
   CreditCardIcon,
@@ -89,7 +88,6 @@ export default function CuentaCongeladaPage() {
               const now = new Date();
               const isTrialActive = sub.status === 'trialing' &&
                 sub.trial_end && new Date(sub.trial_end) > now;
-              const isSubscriptionActive = ['active', 'trialing'].includes(sub.status) && !isTrialActive;
 
               if (isTrialActive || sub.status === 'active') {
                 router.push('/app/inicio');
@@ -136,8 +134,8 @@ export default function CuentaCongeladaPage() {
       } else {
         setError(data.error || 'Error al crear la sesión de pago');
       }
-    } catch (err: any) {
-      setError(err.message || 'Error de conexión');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error de conexión');
     } finally {
       setCheckoutLoading(false);
     }
@@ -190,7 +188,6 @@ export default function CuentaCongeladaPage() {
 
   const isSuspended = reason === 'suspended' || reason === 'deleted';
   const isPaymentFailed = reason === 'payment_failed';
-  const isCanceled = reason === 'canceled';
 
   const config = {
     trial_expired: {
@@ -236,7 +233,18 @@ export default function CuentaCongeladaPage() {
   const canPay = !isSuspended;
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex flex-col items-center justify-center p-4 sm:p-6">
+    // Esta página se renderiza FUERA del shell de la app (AppLayout la devuelve
+    // sin sidebar ni header), y globals.css fija `overflow: hidden` en html/body
+    // porque el scroll lo hace el contenedor interno del shell. Sin ese
+    // contenedor, el body cortaba la página a la altura de la ventana y los
+    // planes de abajo quedaban inalcanzables. Por eso lleva su propio
+    // contenedor de scroll a altura de ventana.
+    //
+    // `min-h-full` (no `h-full`) en el hijo importa: si el contenido supera la
+    // ventana, el flex crece con él y `justify-center` no recorta nada por
+    // arriba; si cabe, lo centra.
+    <div className="h-dynamic-screen overflow-y-auto overscroll-contain bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-full flex flex-col items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-2xl space-y-6 py-4">
         {/* Header con icono */}
         <div className="text-center space-y-3">
@@ -453,6 +461,7 @@ export default function CuentaCongeladaPage() {
           </p>
         </div>
       </div>
+    </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { consumeAICredits, checkAICredits } from '@/lib/services/aiCreditsService';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
+import { readOrgBody } from '@/lib/security/organizationBody';
 export const dynamic = 'force-dynamic';
 
 function getOpenAIClient(): OpenAI {
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
   const organizationId = ctx.organizationId;
 
   try {
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
     const { mode, title, description, complexity, startDate, hoursPerDay = 8 } = body;
 
     if (!mode || !title) {
@@ -201,6 +202,7 @@ export async function POST(request: NextRequest) {
       tokens: completion.usage?.total_tokens || 0,
     });
   } catch (error: any) {
+    if (error instanceof OrgContextError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     console.error('Error PM Assist:', error);
     return NextResponse.json({ error: error.message || 'Error al generar sugerencias con IA' }, { status: 500 });
   }

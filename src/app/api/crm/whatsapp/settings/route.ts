@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { withWhatsAppRoute, readJson } from '@/lib/services/crm/whatsapp/http';
+import { withWhatsAppRoute } from '@/lib/services/crm/whatsapp/http';
 import { getOrgSettings, listChannels, saveOrgSettings, getChannelCredentials } from '@/lib/services/crm/whatsapp/channelService';
 import { metaMessagingLimit } from '@/lib/services/crm/whatsapp/templateProvider';
 import { isOrgAdminContext } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { parseWith, zSettingsBody } from '@/lib/services/crm/whatsapp/schemas';
 import type { WhatsAppOrgSettings } from '@/lib/services/crm/whatsapp/types';
 
@@ -31,7 +32,7 @@ export const GET = withWhatsAppRoute(async (ctx, req) => {
 });
 
 export const PUT = withWhatsAppRoute(async (ctx, req) => {
-  const b = parseWith(zSettingsBody, await readJson<unknown>(req)) as Partial<WhatsAppOrgSettings>;
+  const b = parseWith(zSettingsBody, await readOrgBody<unknown>(ctx, req)) as Partial<WhatsAppOrgSettings>;
   const patch: Partial<WhatsAppOrgSettings> = {};
   if (b.default_channel_id !== undefined) {
     if (b.default_channel_id) {
@@ -49,6 +50,10 @@ export const PUT = withWhatsAppRoute(async (ctx, req) => {
     patch.allowed_hours = h ? { tz: h.tz || 'America/Bogota', days: Array.isArray(h.days) ? h.days.map(Number).filter((d) => d >= 0 && d <= 6) : [1, 2, 3, 4, 5, 6], from: h.from, to: h.to } : null;
   }
   if (b.daily_limit !== undefined) patch.daily_limit = b.daily_limit === null || b.daily_limit === 0 ? null : Math.max(1, Number(b.daily_limit));
+  // Indicativo con el que se completan los teléfonos guardados en formato
+  // nacional (F-4). `zSettingsBody` ya lo validaba (solo dígitos) pero no se
+  // copiaba al patch: se aceptaba y se perdía en silencio.
+  if (b.default_country_code !== undefined) patch.default_country_code = b.default_country_code || null;
   const settings = await saveOrgSettings(ctx.organizationId, patch);
   return NextResponse.json({ success: true, settings });
 }, { admin: true });

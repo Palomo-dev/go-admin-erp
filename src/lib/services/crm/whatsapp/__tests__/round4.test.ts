@@ -20,8 +20,10 @@ import {
   defaultCountryOf,
   findCustomerIdByPhone,
   normalizePhoneDigits,
+  phoneSuffixPattern,
   resolveRecipient,
 } from '../channelService';
+import { estimateCampaignCost } from '../campaignMaterialize';
 import { sendWhatsApp } from '../outboundService';
 import { zSettingsBody } from '../schemas';
 import { updateHsm } from '../templateService';
@@ -30,8 +32,9 @@ import { fakeTable, type Row } from './fakeTable';
 
 jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: () => { throw new Error('no service client en tests'); } }));
 
-const mockEnqueueJob = jest.fn(async (_args: unknown) => 'job-1');
+const mockEnqueueJob = jest.fn(async (args: unknown) => (void args, 'job-1'));
 jest.mock('@/lib/jobs/enqueue', () => ({ enqueueJob: (args: unknown) => mockEnqueueJob(args) }));
+jest.mock('@/lib/services/crm/pricingService', () => ({ getUnitCost: jest.fn(async () => 0.0125) }));
 
 // `buildContext` sí se dobla (necesita media base de datos); `renderVariables`
 // es el REAL, que es justo lo que hace que `strictPaths` muerda.
@@ -316,8 +319,9 @@ describe('F16 r4 · N-4 · findCustomerIdByPhone: camino lento y orden estable',
       { id: 'c-1', organization_id: 7, phone: '+57 310 987 6543', created_at: '2021-01-01T00:00:00Z' },
     ]);
     await expect(findCustomerIdByPhone(7, '573109876543', sb, { defaultCountry: '57' })).resolves.toBe('c-1');
-    // …y para llegar ahí ha tenido que usar el prefiltro, no la igualdad.
-    expect(calls.some((c) => has(c.ops, 'ilike'))).toBe(true);
+    // …y para llegar ahí ha tenido que usar el prefiltro (regex `imatch`,
+    // antes `ilike`), no la igualdad.
+    expect(calls.some((c) => c.ops.some((o) => o.method === 'filter' && o.args[1] === 'imatch'))).toBe(true);
   });
 
   it('no engancha a un cliente cuyo teléfono solo COINCIDE EN EL SUFIJO', async () => {
@@ -683,5 +687,94 @@ describe('F16 r4 · F-4 · resolveRecipient no reescribe el identificador del pr
       provider_configs: () => ({ data: { settings: { default_country_code: '57' } } }),
     }).sb;
     await expect(resolveRecipient(7, 'cust-1', 'chan-1', sb)).resolves.toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HUECOS MEDIDOS EN LA BASE AL RETOMAR LA RONDA 4 (segundo relanzamiento)
+//
+// Cifras del 2026-09-14 sobre 12.910 clientes con teléfono (la base creció
+// desde los 12.494 de la ronda 3): 40 no normalizan, 276 grupos / 559 filas
+// en colisión (cubo máximo 3, ningún grupo con `created_at` empatado) y
+// 18 teléfonos que el prefiltro `ilike '%XXXX'` NO encontraba.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('F16 r4 · N-4 · el prefiltro encuentra teléfonos con separador DENTRO de los últimos 4 dígitos', () => {
+  // Reversión que muerde: `.filter('phone', 'imatch', phoneSuffixPattern(digits))`
+  // → `.ilike('phone', '%' + digits.slice(-4))` en `findCustomerIdByPhone`.
+  //
+  // De los 18 teléfonos reales que el prefiltro perdía, 14 son de la forma
+  // «+57 310 987 65 43» (un espacio parte los últimos 4 dígitos) y 4 llevan
+  // basura al final («310 9876543<|», «+57 3109876543,»). Con `ilike '%6543'`
+  // ninguno pasaba el prefiltro y el entrante creaba un cliente DUPLICADO.
+  const clientes = (rows: Row[]) => makeSupabase({ customers: fakeTable(rows).resolver });
+
+  it('«+57 310 987 65 43» se encuentra', async () => {
+    const { sb } = clientes([{ id: 'c-1', organization_id: 7, phone: '+57 310 987 65 43', created_at: '2021-01-01T00:00:00Z' }]);
+    await expect(findCustomerIdByPhone(7, '573109876543', sb, { defaultCountry: '57' })).resolves.toBe('c-1');
+  });
+
+  it('«310 9876543<|» y «+57 3109876543,» también', async () => {
+    const { sb } = clientes([
+      { id: 'c-1', organization_id: 7, phone: '310 9876543<|', created_at: '2021-01-01T00:00:00Z' },
+      { id: 'c-2', organization_id: 7, phone: '+57 3209876543,', created_at: '2021-01-01T00:00:00Z' },
+    ]);
+    await expect(findCustomerIdByPhone(7, '573109876543', sb, { defaultCountry: '57' })).resolves.toBe('c-1');
+    await expect(findCustomerIdByPhone(7, '573209876543', sb, { defaultCountry: '57' })).resolves.toBe('c-2');
+  });
+
+  it('el patrón exige los 4 dígitos en orden y al FINAL: «6543» no encaja con «…65 4 39»', () => {
+    const re = new RegExp(phoneSuffixPattern('573109876543'), 'i');
+    expect(re.test('+57 310 987 65 43')).toBe(true);
+    expect(re.test('3109876543<|')).toBe(true);
+    expect(re.test('+57 310 987 6543 ext 9')).toBe(false);
+    expect(re.test('+57 310 987 6534')).toBe(false);
+  });
+});
+
+describe('F16 r4 · N-4 · con `created_at` EMPATADO (importación masiva) el desempate es por id', () => {
+  // Reversión que muerde: quitar `.order('id', { ascending: true })` de los dos
+  // caminos de `findCustomerIdByPhone`. Hoy ningún grupo real empata en
+  // `created_at`, pero una importación en una sola transacción escribe el
+  // mismo `now()` en todas las filas: sin segundo criterio el orden vuelve a
+  // depender del plan de Postgres.
+  const empatados = (): Row[] => [
+    { id: 'c-b', organization_id: 7, phone: '+57 310-987-6543', created_at: '2024-05-05T00:00:00Z' },
+    { id: 'c-a', organization_id: 7, phone: '310 987 6543', created_at: '2024-05-05T00:00:00Z' },
+  ];
+  const clientes = (rows: Row[]) => makeSupabase({ customers: fakeTable(rows).resolver }).sb;
+
+  it('camino lento: el id menor gana, en cualquier orden de llegada', async () => {
+    await expect(findCustomerIdByPhone(7, '573109876543', clientes(empatados()), { defaultCountry: '57' })).resolves.toBe('c-a');
+    await expect(findCustomerIdByPhone(7, '573109876543', clientes(empatados().reverse()), { defaultCountry: '57' })).resolves.toBe('c-a');
+  });
+
+  it('camino rápido: igual', async () => {
+    const filas: Row[] = [
+      { id: 'c-b', organization_id: 7, phone: '+573109876543', created_at: '2024-05-05T00:00:00Z' },
+      { id: 'c-a', organization_id: 7, phone: '573109876543', created_at: '2024-05-05T00:00:00Z' },
+    ];
+    await expect(findCustomerIdByPhone(7, '573109876543', clientes(filas))).resolves.toBe('c-a');
+    await expect(findCustomerIdByPhone(7, '573109876543', clientes([...filas].reverse()))).resolves.toBe('c-a');
+  });
+});
+
+describe('F16 r4 · F-4 · el coste estimado de la campaña usa el indicativo de la org, no «57»', () => {
+  // Reversión que muerde: `recipient: defaultCountry` → `recipient: '57'` en
+  // `estimateCampaignCost` (campaignMaterialize.ts). Era el último «57»
+  // cableado de la fase: una organización mexicana veía el precio colombiano.
+  it('con indicativo 52 consulta la tarifa de México', async () => {
+    const { getUnitCost } = jest.requireMock('@/lib/services/crm/pricingService') as { getUnitCost: jest.Mock };
+    getUnitCost.mockClear();
+    const r = await estimateCampaignCost({ provider: 'meta', category: 'marketing', isTemplate: true, pending: 3, defaultCountry: '52' });
+    expect(getUnitCost).toHaveBeenCalledWith('meta', 'wa_marketing_mx');
+    expect(r).toBe(0.0375);
+  });
+
+  it('con indicativo 57 consulta la de Colombia', async () => {
+    const { getUnitCost } = jest.requireMock('@/lib/services/crm/pricingService') as { getUnitCost: jest.Mock };
+    getUnitCost.mockClear();
+    await estimateCampaignCost({ provider: 'meta', category: 'utility', isTemplate: true, pending: 1, defaultCountry: '57' });
+    expect(getUnitCost).toHaveBeenCalledWith('meta', 'wa_utility_co');
   });
 });

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { INTEGRATION_CONNECTION_USABLE_STATUS } from '@/lib/integrations/connectionStatus';
 import { stripeClientService } from '@/lib/services/integrations/stripe';
-import { STRIPE_CLIENT_CREDENTIAL_PURPOSES } from '@/lib/services/integrations/stripe/stripeClientConfig';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
           integration_providers!inner ( code )
         )
       `)
-      .eq('status', 'active');
+      .eq('status', INTEGRATION_CONNECTION_USABLE_STATUS);
 
     const stripeConnections = (connections || []).filter((c: Record<string, unknown>) => {
       const connectors = c.integration_connectors as Record<string, unknown> | undefined;

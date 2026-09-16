@@ -4,11 +4,19 @@
  * - `getUnitCost(provider, sku)`: USD por unidad vigente hoy (cache 5 min).
  * - `estimateCost(items)`: suma de `quantity * unit_cost` por línea.
  *
- * Si la tabla aún no existe (DB F0 M7 pendiente) o el sku no está, devuelve
- * `null` y `estimateCost` marca la línea como `priced=false` (nunca inventa).
+ * Vigencia = `valid_from <= hoy AND (valid_to IS NULL OR valid_to >= hoy)`,
+ * la misma regla que `fn_unit_cost(provider, sku, p_at)` en BD (QA r1 medio
+ * 16: antes se ignoraba `valid_to` y una tarifa cerrada seguía cobrándose).
+ * `hoy` es el día calendario UTC (`todayInTz('UTC')`): `valid_from`/`valid_to`
+ * son columnas `date` y las tarifas se publican por día, no por instante.
+ *
+ * Si el sku no está, devuelve `null` y `estimateCost` marca la línea como
+ * `priced=false` (nunca inventa). Un error de BD también devuelve `null`,
+ * pero NO se cachea: la siguiente llamada vuelve a preguntar.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { todayInTz } from '@/lib/utils/dateDisplay';
 
 export interface PricingRow {
   provider: string;
@@ -19,6 +27,7 @@ export interface PricingRow {
   credits_per_unit: number | null;
   currency: string;
   valid_from: string;
+  valid_to: string | null;
   verified: boolean;
 }
 
@@ -66,8 +75,9 @@ async function resolveClient(): Promise<SupabaseClient> {
   return mod.getServiceClient();
 }
 
+/** Día calendario UTC (YYYY-MM-DD). Nunca `toISOString().slice(0, 10)`. */
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayInTz('UTC');
 }
 
 /**
@@ -80,29 +90,36 @@ export async function getUnitCost(provider: string, sku: string): Promise<number
   if (hit && hit.expiresAt > now) return hit.value;
 
   let value: number | null = null;
+  let failed = false;
   try {
     const sb = await resolveClient();
     const today = todayIso();
-    // Schema real (DB F0 r1): sin valid_to; vigente = valid_from más reciente <= hoy.
+    // Vigente = valid_from más reciente <= hoy, sin valid_to o con valid_to >= hoy
+    // (misma regla que fn_unit_cost en BD).
     const { data, error } = await sb
       .from('provider_pricing')
-      .select('unit_cost_usd, valid_from')
+      .select('unit_cost_usd, valid_from, valid_to')
       .eq('provider', provider)
       .eq('sku', sku)
       .lte('valid_from', today)
+      .or(`valid_to.is.null,valid_to.gte.${today}`)
       .order('valid_from', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (error) {
+      failed = true;
       console.warn(`[pricing] provider_pricing no disponible (${error.code ?? ''}): ${error.message}`);
     } else if (data && data.unit_cost_usd != null) {
       value = Number(data.unit_cost_usd);
     }
   } catch (err) {
+    failed = true;
     console.warn('[pricing] Error consultando provider_pricing:', err instanceof Error ? err.message : err);
   }
 
-  cache.set(key, { value, expiresAt: now + PRICING_CACHE_TTL_MS });
+  // Un error transitorio no se cachea: si no, `cost_amount` quedaría en null
+  // durante 5 minutos aunque la BD ya responda (QA r1 bajo 18).
+  if (!failed) cache.set(key, { value, expiresAt: now + PRICING_CACHE_TTL_MS });
   return value;
 }
 
@@ -131,8 +148,9 @@ export async function listPricing(): Promise<PricingRow[]> {
     const today = todayIso();
     const { data, error } = await sb
       .from('provider_pricing')
-      .select('provider, sku, unit, unit_cost_usd, credits_per_unit, currency, valid_from, verified')
+      .select('provider, sku, unit, unit_cost_usd, credits_per_unit, currency, valid_from, valid_to, verified')
       .lte('valid_from', today)
+      .or(`valid_to.is.null,valid_to.gte.${today}`)
       .order('provider')
       .order('sku')
       .order('valid_from', { ascending: false });

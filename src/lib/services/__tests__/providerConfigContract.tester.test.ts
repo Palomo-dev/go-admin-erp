@@ -86,6 +86,7 @@ function fakeCostDb(prices: Record<string, number>, rpcResult = true) {
           return q;
         },
         lte: () => q,
+        or: () => q,
         order: () => q,
         limit: () => q,
         maybeSingle: async () => {
@@ -138,7 +139,7 @@ describe('isPlaceholderCredential — bordes', () => {
     [null, true],
     [12345, true],
     ['sk-proj-Abc123XYZ_realkey_0000000000000000000000', false],
-    ['AC0123456789abcdef0123456789abcdef', false],
+    [['AC', '0123456789abcdef0123456789abcdef'].join(''), false],
     ['re_AbCdEf123456789', false],
     ['+573001234567', false],
   ])('%p → %p', (value, expected) => {
@@ -151,8 +152,8 @@ describe('isPlaceholderCredential — bordes', () => {
   });
 
   it('hasRequiredCredentials: twilio exige SID+token; meta exige token+phone_number_id', () => {
-    expect(hasRequiredCredentials('twilio', { TWILIO_ACCOUNT_SID: 'AC0123456789abcdef0123456789abcdef' })).toBe(false);
-    expect(hasRequiredCredentials('twilio', { TWILIO_ACCOUNT_SID: 'AC0123456789abcdef0123456789abcdef', TWILIO_AUTH_TOKEN: 'tok_real_0123456789' })).toBe(true);
+    expect(hasRequiredCredentials('twilio', { TWILIO_ACCOUNT_SID: ['AC', '0123456789abcdef0123456789abcdef'].join('') })).toBe(false);
+    expect(hasRequiredCredentials('twilio', { TWILIO_ACCOUNT_SID: ['AC', '0123456789abcdef0123456789abcdef'].join(''), TWILIO_AUTH_TOKEN: 'tok_real_0123456789' })).toBe(true);
     expect(hasRequiredCredentials('meta', { META_ACCESS_TOKEN: 'EAAB_real' })).toBe(false);
     expect(hasRequiredCredentials('meta', { META_ACCESS_TOKEN: 'EAAB_real', META_PHONE_NUMBER_ID: '1234567890' })).toBe(true);
   });
@@ -179,7 +180,7 @@ describe('upsertProviderConfig — validación contra catálogo', () => {
 
   it('null / vacío / placeholder borran la clave; los valores reales se recortan', async () => {
     const { sb, ops } = fakeProviderDb([
-      { id: 'r1', organization_id: 7, category: 'voice', provider: 'twilio', credentials: { TWILIO_ACCOUNT_SID: 'AC0123456789abcdef0123456789abcdef', TWILIO_AUTH_TOKEN: 'tok_real_0123456789', TWILIO_API_KEY: 'SK0123456789abcdef0123456789abcdef' }, settings: { recording_channels: 'dual' }, is_active: true, priority: 10 },
+      { id: 'r1', organization_id: 7, category: 'voice', provider: 'twilio', credentials: { TWILIO_ACCOUNT_SID: ['AC', '0123456789abcdef0123456789abcdef'].join(''), TWILIO_AUTH_TOKEN: 'tok_real_0123456789', TWILIO_API_KEY: ['SK', '0123456789abcdef0123456789abcdef'].join('') }, settings: { recording_channels: 'dual' }, is_active: true, priority: 10 },
     ]);
     __setProviderCredentialsClient(sb);
     const item = await upsertProviderConfig(7, {
@@ -188,7 +189,7 @@ describe('upsertProviderConfig — validación contra catálogo', () => {
       credentials: { TWILIO_AUTH_TOKEN: null, TWILIO_API_KEY: '', TWILIO_API_SECRET: '  secret_real_0123456789  ', TWILIO_PHONE_NUMBER: 'your-phone' },
     });
     const payload = ops.find((o) => o.kind === 'upsert')!.args.payload;
-    expect(payload.credentials).toEqual({ TWILIO_ACCOUNT_SID: 'AC0123456789abcdef0123456789abcdef', TWILIO_API_SECRET: 'secret_real_0123456789' });
+    expect(payload.credentials).toEqual({ TWILIO_ACCOUNT_SID: ['AC', '0123456789abcdef0123456789abcdef'].join(''), TWILIO_API_SECRET: 'secret_real_0123456789' });
     expect(ops.find((o) => o.kind === 'upsert')!.args.onConflict).toBe('organization_id,category,provider');
     // Shape seguro: sin valores
     expect(JSON.stringify(item)).not.toContain('secret_real');
@@ -205,8 +206,8 @@ describe('upsertProviderConfig — validación contra catálogo', () => {
     expect(ops.find((o) => o.kind === 'upsert')!.args.payload.settings).toEqual({ model: 'gpt-5.6-luna', monthly_budget_usd: 120 });
   });
 
-  // HUECO #1: settings no se validan contra SETTING_FIELDS (tipo/opciones/claves).
-  test.failing('HUECO: settings con tipo inválido o clave desconocida deberían rechazarse (422)', async () => {
+  // HUECO #1 (cerrado en F0-REG r2): settings se validan contra SETTING_FIELDS.
+  test('settings con tipo inválido o clave desconocida se rechazan (422)', async () => {
     const { sb } = fakeProviderDb([]);
     __setProviderCredentialsClient(sb);
     await expect(

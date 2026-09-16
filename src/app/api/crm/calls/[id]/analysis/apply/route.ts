@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerOrgContext, OrgContextError, isOrgAdminContext } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { applyAnalysis, getAnalysis } from '@/lib/services/crm/callAnalysisService';
 
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     } catch {
       /* body vacío */
     }
+    readOrgBody(ctx, raw);
     const parsed = bodySchema.safeParse(raw ?? {});
     if (!parsed.success) return NextResponse.json({ success: false, error: 'Body inválido', details: parsed.error.flatten() }, { status: 400 });
     const { analysisId: bodyAnalysisId, ignore_gate } = parsed.data;

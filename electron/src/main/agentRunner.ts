@@ -289,6 +289,34 @@ export async function startAgent(
   console.log(`[agent] Corriendo: ${organizationName} → ${branchNames.join(', ')}`);
 }
 
+/**
+ * Arranque con "código de vinculación" (hashed_token de un magic link que
+ * entrega POST /api/desktop/agent-session del ERP). Se canjea aquí con
+ * verifyOtp y el agente obtiene SU PROPIA familia de refresh tokens.
+ *
+ * Antes se recibía el refresh token de la sesión web del navegador embebido
+ * y dos clientes rotaban la misma familia: al reutilizar un token ya rotado
+ * Supabase revocaba la sesión entera y el agente dejaba de latir en silencio.
+ */
+export async function startAgentWithTokenHash(
+  tokenHash: string,
+  organizationId: number,
+  organizationName: string,
+  branchIds: number[],
+  branchNames: string[],
+): Promise<void> {
+  stopAgent();
+  const { data, error } = await Promise.race([
+    getClient().auth.verifyOtp({ token_hash: tokenHash, type: 'magiclink' }),
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout canjeando el código de vinculación')), 10000)),
+  ]);
+  if (error || !data.session?.refresh_token) {
+    throw new Error(`No se pudo canjear el código de vinculación: ${error?.message || 'sin sesión'}`);
+  }
+  // A partir de aquí el refresh token es exclusivo del agente.
+  return startAgent(data.session.refresh_token, organizationId, organizationName, branchIds, branchNames);
+}
+
 export function stopAgent(): void {
   timers.forEach(clearInterval);
   timers.length = 0;

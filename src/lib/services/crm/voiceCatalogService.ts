@@ -10,6 +10,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { ALLOWED_SAMPLE_MIME, MAX_CLONE_SAMPLES, MAX_SAMPLE_BYTES, NAME_MAX, isAllowedSampleMime } from './voiceCloneScript';
 
 export type VoiceProvider = 'elevenlabs' | 'google' | 'amazon' | 'twilio';
 export type VoiceKind = 'library' | 'cloned' | 'designed';
@@ -93,7 +94,10 @@ export async function createVoice(
   }
   if (!input.provider_voice_id?.trim()) throw new Error('Falta el identificador de la voz del proveedor');
   if (!input.name?.trim()) throw new Error('La voz necesita un nombre');
+  // Ronda 4: NAME_MAX también en el servidor (el `maxLength` del input no es una barrera).
+  if (input.name.trim().length > NAME_MAX) throw new Error(`El nombre de la voz no puede pasar de ${NAME_MAX} caracteres`);
 
+  // Solo columnas conocidas: `organization_id` sale SIEMPRE del parámetro (sesión), nunca del input.
   const row: Record<string, unknown> = {
     organization_id: orgId,
     provider: input.provider ?? 'elevenlabs',
@@ -172,9 +176,9 @@ export async function deleteVoice(
 }
 
 /**
- * Importa el catálogo del proveedor a `voices`.
- * ⚠️ NO VERIFICADO: requiere una `ELEVENLABS_API_KEY` real; en este entorno la
- * clave es el marcador de ejemplo y el proveedor devuelve 401.
+ * Importa el catálogo del WORKSPACE del proveedor a `voices` (no la biblioteca
+ * pública: para esa está `voiceLibraryService.searchLibraryVoices`).
+ * Verificado en vivo el 2026-09-14 con clave real (`GET /v1/voices`).
  */
 export async function importElevenLabsVoices(
   supabase: SupabaseClient,
@@ -211,9 +215,11 @@ export async function importElevenLabsVoices(
 
 // ─── Clonado instantáneo de voz (IVC) ────────────────────────────────────────
 
-export const MAX_VOICE_SAMPLE_BYTES = 10 * 1024 * 1024; // 10 MB por muestra
-export const MAX_VOICE_SAMPLES = 5;
-export const ALLOWED_SAMPLE_MIME = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/webm', 'audio/ogg', 'audio/mp4', 'audio/m4a', 'audio/x-m4a'];
+/** 10 MB por muestra: la misma constante que aplica el asistente (una sola fuente). */
+export const MAX_VOICE_SAMPLE_BYTES = MAX_SAMPLE_BYTES;
+export const MAX_VOICE_SAMPLES = MAX_CLONE_SAMPLES;
+/** H1 (ronda 3): la lista blanca vive junto a los candidatos del grabador, en `voiceCloneScript`. */
+export { ALLOWED_SAMPLE_MIME, isAllowedSampleMime };
 
 export interface CloneVoiceInput {
   name: string;
@@ -242,9 +248,12 @@ export interface CloneVoiceInput {
  * D9 · Ley 1581 y política de ElevenLabs: solo se clona la voz propia del dueño o
  * del vendedor, con consentimiento. Sin `consentConfirmed` no se llama al proveedor.
  *
- * ⚠️ NO VERIFICADO EN VIVO: la `ELEVENLABS_API_KEY` de este entorno es el marcador
- * de `.env.example` y el proveedor responde 401. La llamada está escrita con los
- * nombres de parámetro de `docs-elevenlabs.md` pero NO se ha ejecutado de verdad.
+ * Historial: hasta 2026-09-14 esta función NO se había ejecutado de verdad (la
+ * clave era el marcador de `.env.example`). Ese día se ejecutó contra la API real
+ * en el rediseño UX de Voces; el contrato de `POST /v1/voices/add` (multipart con
+ * `name`, `files`, `remove_background_noise`, `labels`) es el que usa el cliente.
+ * Si la cuenta no permite clonar (plan gratuito), el error del proveedor sube con
+ * su `code` y la ruta lo traduce a lenguaje humano.
  */
 export async function cloneVoiceFromSample(
   supabase: SupabaseClient,
@@ -253,6 +262,8 @@ export async function cloneVoiceFromSample(
   createdBy?: string | null
 ): Promise<{ voice: VoiceRow; provider_voice_id: string; requires_verification: boolean }> {
   if (!input.name?.trim()) throw new Error('La voz necesita un nombre');
+  // Antes del proveedor: si fallara en `createVoice`, la voz ya estaría creada allí.
+  if (input.name.trim().length > NAME_MAX) throw new Error(`El nombre de la voz no puede pasar de ${NAME_MAX} caracteres`);
   if (!input.consentConfirmed) {
     throw new Error(
       'Falta el consentimiento por escrito de la persona propietaria de la voz. ' +
@@ -269,7 +280,7 @@ export async function cloneVoiceFromSample(
     if (f.size > MAX_VOICE_SAMPLE_BYTES) {
       throw new Error(`La muestra "${f.filename}" supera los 10 MB`);
     }
-    if (f.type && !ALLOWED_SAMPLE_MIME.includes(f.type.toLowerCase())) {
+    if (!isAllowedSampleMime(f.type)) {
       throw new Error(`Formato de audio no admitido en "${f.filename}": ${f.type}`);
     }
   }
@@ -320,3 +331,10 @@ export async function cloneVoiceFromSample(
     requires_verification: created.requires_verification === true,
   };
 }
+
+/**
+ * Tope del cuerpo entero: 5 muestras × 10 MB más 1 MB de margen para los campos
+ * de texto y los separadores del multipart. Se compara con `content-length`
+ * ANTES de leer nada; un cuerpo sin cabecera sigue acotado por `size` por muestra.
+ */
+export const MAX_CLONE_REQUEST_BYTES = MAX_VOICE_SAMPLES * MAX_VOICE_SAMPLE_BYTES + 1024 * 1024;

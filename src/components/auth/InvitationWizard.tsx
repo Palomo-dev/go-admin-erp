@@ -3,20 +3,33 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { EyeIcon, EyeSlashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { Loader2 } from 'lucide-react';
 import { PhoneInput } from '@/components/ui/phone-input';
 import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
 import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import type { EstadoCuentaInvitacion } from '@/lib/auth/cuentaInvitacion';
+
+export interface InvitationWizardData {
+  id: number;
+  email: string;
+  code: string;
+  role_id: number;
+  organization_id: number;
+  organization_name: string;
+  role_name: string;
+}
 
 interface InvitationWizardProps {
-  inviteData: {
-    id: number;
-    email: string;
-    code: string;
-    role_id: number;
-    organization_id: number;
-    organization_name: string;
-    role_name: string;
-  };
+  inviteData: InvitationWizardData;
+  /**
+   * Estado de la cuenta del correo invitado, decidido por el SERVIDOR
+   * (/api/auth/invite/context). `existente` = ya tiene cuenta en GO Admin
+   * (otra organización): solo confirma, sin contraseña, y solo con sesión
+   * propia. `nueva` / `huerfana` = asistente completo con contraseña.
+   */
+  accountState: EstadoCuentaInvitacion;
+  /** Correo de la sesión activa en el navegador, o null si no hay. */
+  sessionEmail: string | null;
   onComplete: () => void;
 }
 
@@ -28,13 +41,20 @@ interface FormData {
   confirmPassword: string;
 }
 
-export default function InvitationWizard({ inviteData, onComplete }: InvitationWizardProps) {
+export default function InvitationWizard({ inviteData, accountState, sessionEmail, onComplete }: InvitationWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isExistingUser, setIsExistingUser] = useState(false);
+  // Antes se deducía en el navegador (sesión + perfil con nombre). Sin sesión,
+  // a un usuario existente se le trataba como nuevo y se le pedía contraseña.
+  const isExistingUser = accountState === 'existente';
+  const normalizar = (e: string | null | undefined) => (e || '').toLowerCase().trim();
+  const sesionEsDelInvitado = !!sessionEmail && normalizar(sessionEmail) === normalizar(inviteData.email);
+  // Usuario existente sin sesión propia: no se pinta el formulario, se le
+  // manda a iniciar sesión (o a cerrar la ajena) y se vuelve aquí.
+  const [necesitaLogin, setNecesitaLogin] = useState(isExistingUser && !sesionEsDelInvitado);
 
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
@@ -102,22 +122,20 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
     }
   };
 
-  // Detectar si el usuario ya tiene perfil completo (usuario existente)
-  // En ese caso, se omite el step de contraseña y solo se confirma la membresía
+  // Usuario existente con su propia sesión: precargar sus datos del perfil
+  // para que solo tenga que confirmar (RLS: cada uno lee su propio perfil).
   useEffect(() => {
-    const checkExistingProfile = async () => {
+    if (!isExistingUser || !sesionEsDelInvitado) return;
+    const cargarPerfil = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-
         const { data: profile } = await supabase
           .from('profiles')
           .select('first_name, last_name, phone')
           .eq('id', user.id)
           .maybeSingle();
-
-        if (profile && profile.first_name && profile.last_name) {
-          setIsExistingUser(true);
+        if (profile) {
           setFormData(prev => ({
             ...prev,
             firstName: profile.first_name || '',
@@ -126,11 +144,40 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
           }));
         }
       } catch (err) {
-        console.log('No se pudo verificar perfil existente:', err);
+        console.log('No se pudo cargar el perfil existente:', err);
       }
     };
-    checkExistingProfile();
-  }, []);
+    cargarPerfil();
+  }, [isExistingUser, sesionEsDelInvitado]);
+
+  const urlLogin = `/auth/login?redirectTo=${encodeURIComponent(`/auth/invite?invite_code=${inviteData.code}`)}`;
+
+  // Paso 3 y salida. `onComplete` (router.push) es una navegación suave: con
+  // el servidor ocupado se quedaba en "Serás redirigido…" sin cambiar de
+  // página, y además el AppLayout no releía la organización recién activada.
+  // Se hace navegación completa, con botón por si el usuario no quiere esperar.
+  const [saliendo, setSaliendo] = useState(false);
+  const salir = () => {
+    if (saliendo) return;
+    setSaliendo(true);
+    onComplete();
+  };
+  const terminar = () => {
+    setCurrentStep(3);
+    setTimeout(salir, 1500);
+  };
+
+  // Cierra la sesión ajena (solo en este navegador) y lleva al login para
+  // que entre el invitado; al terminar vuelve a esta misma invitación.
+  const irAIniciarSesion = async () => {
+    setIsLoading(true);
+    try {
+      if (sessionEmail) await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // Da igual: el login pedirá credenciales de todos modos.
+    }
+    window.location.href = urlLogin;
+  };
 
   const handleNextStep = () => {
     if (currentStep === 1 && validateStep1()) {
@@ -230,10 +277,7 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
         }
 
         // 4. Completar
-        setCurrentStep(3);
-        setTimeout(() => {
-          onComplete();
-        }, 2000);
+        terminar();
 
       } else {
         // FLUJO SIN SESIÓN (token consumido por Gmail prefetch, o link
@@ -243,9 +287,9 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
         await handleSessionlessFlow();
       }
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error al procesar invitación:', err);
-      setError(err.message || 'Error inesperado al procesar la invitación');
+      setError(err instanceof Error && err.message ? err.message : 'Error inesperado al procesar la invitación');
       setIsLoading(false);
     }
   };
@@ -265,7 +309,6 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
         firstName: formData.firstName,
         lastName: formData.lastName,
         phone: formData.phoneNumber,
-        isExistingUser,
       }),
     });
 
@@ -278,6 +321,14 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
     }
 
     const result = await res.json();
+
+    if (res.status === 409 && result.code === 'CUENTA_EXISTENTE') {
+      // El servidor detectó una cuenta real para este correo: nunca se le
+      // cambia la contraseña desde aquí. Que inicie sesión y vuelva.
+      setIsLoading(false);
+      setNecesitaLogin(true);
+      return;
+    }
 
     if (!res.ok || result.error) {
       console.error('❌ Error en accept-invitation API:', result.error);
@@ -306,19 +357,14 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
       if (loginError || !loginData.session) {
         console.error('❌ [INVITE] Login automático falló:', loginError);
         // Fallback: mandar a login manual
-        setCurrentStep(3);
-        setTimeout(() => { onComplete(); }, 2000);
+        terminar();
       } else {
         console.log('✅ [INVITE] Login automático exitoso:', loginData.user?.email);
-        setCurrentStep(3);
-        setTimeout(() => {
-          onComplete();
-        }, 2000);
+        terminar();
       }
     } catch (loginErr) {
       console.error('❌ [INVITE] Error en login automático:', loginErr);
-      setCurrentStep(3);
-      setTimeout(() => { onComplete(); }, 2000);
+      terminar();
     }
   };
 
@@ -569,6 +615,41 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
     </div>
   );
 
+  const renderLoginRequired = () => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Ya tienes cuenta en GO Admin</h2>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">
+          Has sido invitado a unirte a <span className="font-semibold text-blue-600 dark:text-blue-400">{inviteData.organization_name}</span> como <span className="font-medium">{inviteData.role_name}</span>.
+        </p>
+      </div>
+
+      <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+        <p className="text-sm text-blue-800 dark:text-blue-300">
+          El correo <span className="font-medium">{inviteData.email}</span> ya tiene una cuenta. No necesitas
+          registrarte ni crear otra contraseña: inicia sesión con la que ya tienes y confirmamos tu ingreso a la organización.
+        </p>
+      </div>
+
+      {sessionEmail && (
+        <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-4">
+          <p className="text-sm text-amber-800 dark:text-amber-300">
+            En este navegador hay una sesión abierta como <span className="font-medium">{sessionEmail}</span>.
+            Se cerrará aquí para que puedas entrar con <span className="font-medium">{inviteData.email}</span>.
+          </p>
+        </div>
+      )}
+
+      <button
+        onClick={irAIniciarSesion}
+        disabled={isLoading}
+        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isLoading ? 'Un momento…' : sessionEmail ? `Cerrar sesión e iniciar como ${inviteData.email}` : 'Iniciar sesión para aceptar'}
+      </button>
+    </div>
+  );
+
   const renderStep3 = () => (
     <div className="text-center space-y-6">
       <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30">
@@ -585,10 +666,17 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
           }
         </p>
         <p className="mt-2 text-sm text-gray-500 dark:text-gray-500">
-          Serás redirigido al inicio de sesión en unos segundos...
+          Entrando a <span className="font-medium">{inviteData.organization_name}</span>…
         </p>
       </div>
-      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600 mx-auto"></div>
+      <button
+        onClick={salir}
+        disabled={saliendo}
+        className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 disabled:opacity-70"
+      >
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+        {saliendo ? 'Abriendo la organización…' : 'Entrar ahora'}
+      </button>
     </div>
   );
 
@@ -643,11 +731,17 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
       <AuthSceneBackground />
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="bg-white dark:bg-gray-800 py-6 sm:py-8 px-4 sm:px-6 shadow-xl sm:shadow-2xl rounded-lg sm:rounded-xl border border-gray-100 dark:border-gray-700 sm:px-10">
-          {renderProgressBar()}
+          {necesitaLogin ? (
+            renderLoginRequired()
+          ) : (
+            <>
+              {renderProgressBar()}
 
-          {currentStep === 1 && renderStep1()}
-          {currentStep === 2 && renderStep2()}
-          {currentStep === 3 && renderStep3()}
+              {currentStep === 1 && renderStep1()}
+              {currentStep === 2 && renderStep2()}
+              {currentStep === 3 && renderStep3()}
+            </>
+          )}
         </div>
       </div>
     </div>

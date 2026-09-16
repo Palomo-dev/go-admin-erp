@@ -1988,3 +1988,536 @@ archivo. Preexistente de sesiones anteriores (documentado en CLAUDE.md).
 No arreglar ahora: tocar 1.300 lineas de contenido historico para
 corregir em-dashes es justo el tipo de operacion que ya corrompio este
 archivo dos veces.
+
+### Fase: Motor IA Chat — Ronda 3 (consulta de pedidos) — 2026-09-14
+
+**Reporte del usuario:** "no me da informacion de los pedidos si deberia dar
+informacion de los pedidos."
+
+**Diagnostico (con datos de produccion, ultimos 30 dias):**
+- `getCustomerOrders` buscaba con `email || emailFromChat`: el correo de la
+  conversacion (`visitor_*@widget.local`, ficticio) siempre ganaba al que el
+  cliente escribia en el chat. Y solo consultaba `invoice_sales`, cuando en
+  org 135 el 88% de los pedidos vive en `web_orders` (2.139 web vs 272
+  facturas). Un pedido pendiente, cancelado o expirado —justo por el que un
+  cliente escribe preocupado— era invisible.
+- Impacto medido: 88 de 88 preguntas por un pedido con correo dado en el chat se
+  respondieron sin datos (`context_used.orders = false`).
+- Caso real: una clienta con pedido confirmado y pagado ($51.000, 4 de
+  septiembre, sin entregar) recibio 3 veces "no puedo consultar pedidos" y pidio
+  "asesor humano" 3 veces sin que el bot pudiera derivar.
+
+**Qué se hizo:**
+- Nuevo modulo puro `supabase/functions/_shared/ai-chat/pedidosCliente.ts`
+  (importable por Deno y por Jest): `extraerNumeroDePedido`,
+  `extraerCorreoDelChat`, `correoParaBuscar`, `describirEstadoPedido`,
+  `fechaEnZona`, `formatearPedidosWeb`, `formatearFacturas`.
+- `getCustomerOrders` reescrita con orden de busqueda: 1) numero de pedido
+  escrito (`WO-<org>-XXXX`), 2) correo escrito en el chat sobre `web_orders`,
+  3) facturas por cliente enlazado (`metadata.linked_customer_id`) o por el
+  correo real. El correo del widget nunca se usa.
+- Estados en palabras del cliente: CANCELADO, EXPIRADO (pago no completado),
+  ENTREGADO, EN CAMINO, LISTO, CONFIRMADO EN PREPARACION, PENDIENTE DE PAGO;
+  con tipo de entrega, transportadora y entrega estimada.
+- Fechas en la zona horaria de la organizacion (`organizations.timezone`,
+  cargada con la conversacion), no en UTC: regla canonica de fechas del repo.
+- Prompt: la linea de PEDIDOS decia que el bot NO podia consultar; ahora dice
+  que SI puede y que pida numero de pedido o correo si no tiene datos.
+- 17 tests nuevos en `src/__tests__/services/pedidosClienteIA.test.ts`
+  (pasan con `TZ=UTC` y con la zona local). Guardrails intactos: 138/138.
+
+**Verificacion en produccion (mismo dia, tras desplegar):**
+- Primer despliegue 13:20 UTC. A los 21 segundos, primera respuesta con datos:
+  "La compra asociada al correo … corresponde al pedido WO-135-…, por $70.000.
+  Estado: confirmado y en preparacion. Pago: pagado."
+- Segundo despliegue (modulo compartido + zona horaria) 13:29 UTC: 10 de 10
+  jobs `completed`, 0 fallos; respuestas con pedidos web cancelados por pago
+  fallido y con facturas (`M13050613`) correctamente citadas.
+- Un caso con `orders = false` tras el arreglo se verifico: ese correo no tiene
+  pedidos en `web_orders`; el bot pidio numero de pedido, que es lo correcto.
+
+**Sin cambios de esquema:** no hubo migracion ni rollback en esta ronda.
+
+**Pendiente (sube de prioridad por el caso real):** escalado a humano (Fase 4).
+El cliente pidio "asesor humano" 3 veces y el bot solo pudo remitir a la web.
+Sigue pendiente ademas: validacion de `Origin` y limite por IP en `chat-widget`.
+
+### Fase 0 — Ronda 7 — 2026-09-14 (0.1 aplicado; corrección de SEC-0.a)
+
+**Estado al retomar tras 4 días.** El commit de la firma de Wompi (`c53521d`, sitio) está en
+`origin/main` y desplegado: los logs muestran 0 respuestas 406 en `integration_credentials`
+en 48 h (antes, 18 diarias por la búsqueda en la columna equivocada). El arreglo de `/tracking`
+(0.2) también está desplegado, commiteado por otra persona dentro de `01b8cd2`. Envíos:
+459 → 536 en 4 días. Credenciales rotadas: 0. Credenciales en Vault: 0.
+
+**Bug propio en SEC-0.a, corregido.** 155 webhooks de Wompi procesados en 6 días y **cero
+veredictos de firma registrados**: `integration_events.connection_id` es NOT NULL y
+`logSignatureCheck` lo mandaba en null, heredado del insert original. El insert fallaba en
+silencio, así que no había evidencia para activar `WOMPI_WEBHOOK_ENFORCE_SIGNATURE`.
+Arreglado en el sitio (`828ad44`, sin push): `getEventsSecret` devuelve también la conexión,
+el registro la exige, y `external_event_id` va en null para no chocar con el índice de
+deduplicación (el id de la transacción queda en `payload.transaction_id`). Verificado
+reproduciendo el insert contra la base con la forma exacta del código.
+Lección: había comprobado el CHECK de `status` pero no la nulabilidad de `connection_id`.
+
+**0.1 — APLICADO.** Migración `20260914130000_fase0_1_cerrar_rls_publica_transporte`,
+con `.sql` y rollback versionados según `docs/POLITICA-MIGRACIONES.md`. Ensayada primero
+dentro de `begin … rollback` con las verificaciones incluidas. Quita las 4 políticas
+`*_public_read`, revoca `anon` en las 4 tablas, y reescribe las políticas de pertenencia
+con `(select auth.uid())` y JOIN en vez de subquery anidado, sin cambiar su semántica.
+Verificado con la anon key real: las 4 tablas responden `42501 permission denied`;
+`verify:tracking` sigue OK por service role.
+
+**Deuda declarada.** Las cuatro migraciones anteriores de esta épica (cierre de
+`integration_*`, funciones de Vault, seed de transportadoras, columnas de `products`) se
+aplicaron por MCP sin `.sql` ni rollback, bajo la regla anterior. Pendiente reconstruirlas
+en `supabase/migrations/` y `supabase/rollbacks/`.
+
+Fase 0 restante: **0.5** (consolidar las dos rutas de creación de envío) y aprobar los
+`CLAUDE.md`. Pendiente del usuario: push de `828ad44` en el sitio; rotación de las 16
+credenciales de Wompi; activar el bloqueo cuando haya veredictos `match`.
+
+### GO Assistant — F2 (continuación): compras y traslados — Ronda 1 — 2026-09-14
+
+**Builder.** Dos herramientas nuevas de escritura (`crear_orden_compra`, `crear_traslado`) y dos de
+lectura (`buscar_proveedores`, `listar_sucursales`), en `src/lib/ai/agent/tools/compras.ts` y
+`consulta.ts`. Ambas escrituras: `risk: high`, `write_full`, no disponibles por voz, módulo
+`inventory`; permisos `inventory.create` / `inventory.transfer` (no existe ningún código
+`purchases.*` en `permissions`: verificado por MCP). Decisión de alcance deliberada: la orden nace en
+`draft` y NO recibe mercancía; el traslado nace en `pending` y NO mueve stock (lo confirma el
+destino). Sí se valida stock del origen. El costo lo pone `product_costs` (primero el del proveedor,
+luego el general), nunca el modelo.
+
+**Base.** RPC `assistant_create_purchase_order` y `assistant_create_transfer` (SECURITY INVOKER,
+revoke PUBLIC, grant authenticated/service_role), versionadas en
+`supabase/migrations/20260914110000_go_assistant_f2_compras_y_traslados.sql` + rollback. Trampa:
+`purchase_order_items.subtotal` es GENERATED. Bug preexistente del ERP encontrado al probar:
+`audit_ops_changes()` leía `NEW.branch_id`, que `inventory_transfers` no tiene, y abortaba TODO
+insert de traslados desde cualquier parte del ERP; corregido en
+`20260914100000_fix_audit_ops_changes_branch_id_inexistente.sql` (+ rollback).
+
+**Deshacer (F3).** `cancel_purchase_order` / `cancel_transfer` en `undoService.ts`: cancelan solo
+si el documento sigue en su estado inicial (`draft` / `pending`); nunca borran la fila; si alguien
+ya lo avanzó, `already_advanced` y se remite al módulo.
+
+**Tester.** RPC contra la base real: T1 orden en borrador total 80000 con subtotal generado; T2
+proveedor de otra organización → `SUPPLIER_NOT_IN_ORG`; T3 traslado pendiente con stock de origen
+intacto y auditado; T4 misma sucursal → `SAME_BRANCH`; T5 stock insuficiente → `INSUFFICIENT_STOCK`.
+Todo dentro de DO-blocks con rollback. Jest: `goAssistantF2compras.test.ts` (registro, filtrado por
+nivel/permiso/módulo, parseo, organización del contexto y no de los args, mapa de errores, escape
+de comodines ILIKE, undo = cancelar). Suites GO Assistant: 8/8, 221 tests. `tsc` limpio en
+`src/lib/ai/**` y tests. Actualizados `goAssistantF0` (ahora `update_purchase_order` es el ejemplo
+de "no implementado") y `goAssistantF1`.
+
+**Adjuntos (F4) cerrado end-to-end**, tras la captura del usuario: el panel sube a
+`/api/ai-assistant/attachments` antes de abrir el stream, manda `attachmentIds`, y `/stream`
+valida pertenencia y le indica al modelo que llame a `leer_documento`. `attachmentsEnabled={true}`.
+
+**Lecciones.** (1) El heredoc de bash en este entorno se come `\` y rompe con ciertas comillas de
+SQL: los `.sql` y los `.ts` con regex se escriben con Write/Edit. (2) Un `.sql` "versionado" con
+solo la cabecera es peor que ninguno: hay que leerlo después de escribirlo.
+
+**Pendiente de esta épica.** Carga masiva (Excel/CSV) del §6.3; F5 voz (bloqueada por el despliegue
+del `ws-server`: faltan 4 variables en Railway que solo el usuario puede poner); reconstruir los
+`.sql` de F0/F1 aplicados por MCP sin versionar; `next build` limpio (otra sesión mantiene un dev
+server sobre `.next`); conversión entre monedas (decisión de política de tasa pendiente del
+usuario).
+
+**Calificación (qa-reviewer, propia):** 9.3/10. Descuento por la carga masiva aún ausente y por el
+`.sql` de F0/F1 sin reconstruir.
+
+
+#### Ronda 3 — revisión QA y cierre (mismo día)
+
+- Calificación QA (primera pasada): **7/10**. Hallazgo principal, real y
+  corregido en la misma ronda: el `ilike` por correo no escapaba los comodines
+  de LIKE. `ana_perez@x.com` casaba con `ana.perez@x.com` (otra persona) y
+  `%@gmail.com` devolvía pedidos de cualquier cliente de Gmail. 69 correos
+  reales de `web_orders` llevan `_`. Verificado contra PostgREST: sin escapar,
+  `%@gmail.com` devolvía 5 pedidos; escapado, 0; el correo real escapado sigue
+  encontrando el suyo.
+- Corregido además, de la lista del QA:
+  - Tope de sondeo: más de 2 correos distintos en la misma conversación → se
+    deja de buscar por correo y el contexto le indica al modelo que pida el
+    número de pedido (`decidirCorreoDelChat`).
+  - Fechas en formato largo ("4 de septiembre de 2026"): un modelo podía leer
+    "4/9/2026" como 9 de abril.
+  - Estados verificados en la BD (`status`: expired 3.848, cancelled 679,
+    confirmed 492, pending 1; `payment_status`: failed/paid/pending;
+    `delivery_type`: delivery_own/pickup). Añadido "PAGADO, PENDIENTE DE
+    CONFIRMACIÓN" para pending+paid; tests para shipped/ready/delivered.
+  - Si hay más de 3 pedidos por correo, se avisa y se pide el número en vez de
+    decir "no encuentro".
+  - `maybeSingle` sobre `customers` sustituido por `order + limit(1)` (dos
+    clientes con el mismo correo hacían fallar la búsqueda de facturas).
+  - `esCorreoDelWidget` reutilizada en lugar de repetir `includes`.
+  - Bloque PEDIDOS DEL CLIENTE fuera del encabezado de inventario.
+- Tests: 27/27 (local y `TZ=UTC`). Tercer despliegue 14:32 UTC: 9/9 jobs
+  `completed`, 0 fallos.
+- No aplicado (decisión de producto, documentada en ADR-001 Addendum 4): el
+  QA propuso mostrar solo estado y fecha cuando el cliente da únicamente el
+  correo, reservando importe y número completo para cuando da el número de
+  pedido. Se mantiene el detalle completo por correo: es lo que el negocio
+  necesita hoy y lo que se muestra es de sensibilidad baja (sin dirección ni
+  teléfono). Si el usuario prefiere el modo enmascarado, es un flag en
+  `formatearPedidosWeb`, sin tocar consultas.
+- Calificación estimada tras las correcciones: 9/10. Para 10: prueba de
+  orquestación de `getCustomerOrders` (Deno) y decisión explícita del usuario
+  sobre el nivel de detalle por correo.
+
+### GO Assistant — F2 (§6.3): carga masiva de productos — Ronda 1 — 2026-09-14
+
+**Builder.** Herramienta `cargar_productos_masivo` (`src/lib/ai/agent/tools/cargaMasiva.ts`): CSV o
+Excel adjunto (`attachment_id`) o filas dictadas (`rows`, máx. 100). Interpretar el archivo es
+DETERMINISTA y gratis: `xlsx` + reconocimiento de cabeceras humanas ("Código de barras", "Precio
+venta", "Existencias"…) + números colombianos ("12.000", "1.234,50", "$ 12.000"). No pasa por
+ningún modelo. Política de duplicados explícita y dicha en la tarjeta: SKU → código de barras →
+nombre normalizado. `stock_mode`: `add` (entra mercancía, por defecto) o `set` (conteo: se ajusta la
+diferencia). Tope `bulk_max_rows` de la organización (default 500), comprobado en Node y en la RPC.
+
+**Base.** RPC `assistant_bulk_load_products` (`20260914140000_go_assistant_f2_carga_masiva_productos.sql`
++ rollback), transaccional, SECURITY INVOKER, revoke PUBLIC. No duplica lógica: cada fila nueva
+pasa por `assistant_create_product`; el stock de los existentes entra como AJUSTE documentado por
+`assistant_create_adjustment` (con movimiento y asiento), no como UPDATE a `stock_levels`; los
+precios por `assistant_set_product_price`. Devuelve productos creados, ajustes y precios previos para
+deshacer.
+
+**Deshacer (F3).** `undo_bulk_load`: compensa, no borra. Precios al anterior; ajustes revertidos con el
+ajuste CONTRARIO (rastro doble, que es lo correcto); productos nuevos eliminados solo sin
+movimientos, si no, inactivos. Fallos parciales se reportan como `partial` con detalle.
+
+**UI.** La tarjeta de confirmación NO pintaba `preview.lines/warnings/totals` de las herramientas del
+agente (solo `fields` del catálogo viejo): "producto 51814 × 3" no permitía confirmar con criterio.
+`PendingAction.preview` nuevo, `streamClient` lo sanea, `ActionConfirmationForm` lo pinta, y
+`assistant/BulkPreviewTable.tsx` (react-virtuoso, solo lectura, problemáticas arriba con motivo).
+`/stream` sugiere `cargar_productos_masivo` cuando el adjunto es una hoja y `leer_documento` si no.
+
+**Tester.** RPC contra la base real en DO-block con rollback: T1 crear + actualizar(add) con precio y
+ajuste `gain`; T2 `set` con ajuste `loss` de la diferencia; T3 tope → `TOO_MANY_ROWS`; T4 todo o nada
+(producto de otra organización en la fila 2 → no queda la fila 1); T5 SKU duplicado → `SKU_TAKEN`.
+Cero residuos. Jest `goAssistantF2cargaMasiva.test.ts`: 27 tests (números, cabeceras, duplicados,
+args, organización del contexto, tope sin llamar a la RPC, mapa de errores, undo compensatorio).
+Suites GO Assistant: 9/9, 249 tests. `tsc` y ESLint limpios en lo tocado.
+
+**No verificado en navegador.** El dev server de :3000 (de otra sesión) devuelve `Not Found` para
+sus propios chunks (`.next` en reconstrucción): la página queda en blanco antes de llegar al
+asistente. No lo reinicio yo. Pendiente: smoke test con un CSV real cuando ese servidor esté sano.
+
+**Calificación (qa-reviewer, propia):** 9.4/10. Falta el smoke test en navegador y el `.sql` de
+F0/F1 sin reconstruir.
+
+### GO Assistant — F5 (audio entra y sale) + deuda de migraciones — Ronda 1 — 2026-09-14
+
+**Alcance, según el propio plan (§5.5.2, nota final):** el `ws-server` no está desplegado para el
+dominio del ERP (faltan 4 variables en Railway que solo el usuario puede poner), así que F5 se
+corta en "audio entra y sale" y la voz en vivo queda tras `voice_enabled`. No se bloquea F5 entera.
+
+**Builder.**
+- `/api/ai-assistant/transcribe`: deja de cablear Whisper. Usa `transcribeWithFallback` (cadena STT
+  del ERP: ElevenLabs Scribe v2 → Gemini → OpenAI, por `provider_configs`), cobra DESPUÉS y por
+  duración (1 crédito/min, mín. 1), devuelve `confidence`, `provider`, `durationSeconds`. Acepta
+  `audio/webm;codecs=opus` (antes el `;codecs` lo tumbaba con 415). Errores con código estable
+  (`STT_NOT_CONFIGURED` 501, `STT_UNAVAILABLE` 503, `STT_FAILED` 502).
+- `/api/ai-assistant/tts` (nuevo): la respuesta en audio con ElevenLabs `eleven_flash_v2_5`, SOLO
+  si `ai_assistant_settings.tts_enabled`; voz de `tts_voice_id` → voz por defecto de la org
+  (`voices`) → neutra en español; `voice_id` validado antes de ir a la URL; markdown → texto
+  decible (`src/lib/ai/assistant/tts.ts`); cobro después, 1 crédito/500 caracteres.
+- Panel: botón "Responder en audio" (preferencia en localStorage; si la org no lo tiene, se
+  desactiva solo con el motivo), lectura automática de la respuesta, "Escuchar"/parar por mensaje.
+- Composer: si la confianza de la nota de voz es < 0.7, aviso "revisa el texto antes de enviarlo";
+  nota vacía y errores también se dicen, no se tragan en consola.
+
+**Deuda de migraciones cerrada.** Las 7 migraciones del asistente aplicadas por MCP sin versionar
+(F0 ×4, F1 ×2, moneda F2) se reconstruyeron en `supabase/migrations/` desde
+`supabase_migrations.schema_migrations.statements` — byte a byte, md5 verificado — con su rollback
+en `supabase/rollbacks/`. Las 11 migraciones `go_assistant_*` tienen ya ambos archivos.
+
+**Tester.** `goAssistantF5.test.ts`: texto decible, orden saldo→proveedor→cobro en ambas rutas,
+`tts_enabled` y validación de `voice_id`, exports válidos del route. Guardrails 11–14 siguen verdes
+con las rutas nuevas. Suites GO Assistant: 9/9, 197 tests (+ guardrails 60). `tsc` y ESLint limpios.
+
+**Pendiente.** Voz en vivo (`/assistant-voice` en `ws-server.ts`) cuando el usuario ponga las
+variables y autorice el redeploy. Smoke test en navegador (dev server de otra sesión roto).
+Conversión entre monedas (decisión de tasa del usuario). `next build` limpio.
+
+**Calificación (qa-reviewer, propia):** 9.3/10 para lo entregable sin infraestructura.
+
+### GO Assistant — conversión entre monedas — Ronda 1 — 2026-09-15
+
+**Decisión del usuario:** tasa del día de **openexchangerates**, la que el cron del ERP ya guarda en
+`currency_rates` (base USD, 10 monedas, al día). Sin tasas fijas por organización.
+
+**Builder.** `convertAmount()` en `orgCurrency.ts` (pasa por USD; sin tasa ese día usa la última
+anterior y lo marca `stale`; la fecha la pone el llamador en la zona de la organización —nunca
+`toISOString()`—). Herramienta de lectura `convertir_moneda` (`tools/moneda.ts`): sin `to`
+convierte a la moneda de la organización; devuelve importe, tasa, fecha y origen. Regla en el
+prompt: un importe en otra moneda se convierte ANTES de proponer cualquier escritura y se dice la
+tasa; todo se registra en la moneda de la organización.
+
+**Tester.** Valores de referencia comprobados contra la tabla real del 2026-09-15 (20 USD =
+62 091,1638 COP; 100 EUR = 358 237,5424 COP). `goAssistantMoneda.test.ts`: 11 tests (ida, vuelta,
+cruce por USD, stale, misma moneda, sin tasa, fecha inválida, registro, parseo, mensaje en español).
+ESLint limpio.
+
+**Calificación (qa-reviewer, propia):** 9.5/10.
+
+### Fase 0 — Ronda 8 — 2026-09-15 (0.5 aplicado: una sola ruta de creación de envío)
+
+**Qué había.** Dos implementaciones independientes insertaban en `shipments` para el mismo
+pedido web: `deliveryIntegrationService.createShipmentFromWebOrder` (confirmación manual
+desde el POS, cliente de navegador) y un INSERT inline en `webOrderServerConfirmation.ts`
+(auto-confirmación por pago y cron, service role). Formatos de guía incompatibles
+(`TRK<base36>` vs `TRK-<epoch>-<rand>`), campos distintos en cada una, ninguna creaba
+`shipment_items`, y una carrera real: check-then-insert sin transacción ni constraint único.
+
+**Qué hay ahora.**
+- Una función, `createShipmentFromWebOrder(webOrder, { client, customerId, timezone })`.
+  El cliente se inyecta: la ruta manual usa el del navegador (por defecto), la automática le
+  pasa su service role. Superconjunto de campos: fecha estimada y evento `created` (de la
+  manual) + país, `state_code` y metadata de entrega (de la automática). Crea
+  `shipment_items` desde `web_order.items`. Errores en items/evento no abortan la
+  confirmación.
+- `webOrderServerConfirmation.ts` ya no tiene INSERT propio: llama a la función con su
+  cliente y el `customerId` resuelto (que puede diferir de `order.customer_id`).
+- `getShipmentByWebOrderId` pasa de `.single()` a `.maybeSingle()` sobre el más reciente.
+- Migración `20260915090000_fase0_5_indice_unico_envio_por_pedido_web` (`.sql` + rollback):
+  índice único parcial `(source_type, source_id) WHERE source_type='web_order'`. Ensayado
+  en `begin … rollback`; 493 envíos web, 0 duplicados. Ante el 23505 la función devuelve el
+  envío que ganó la carrera en vez de lanzar.
+- Formato de guía unificado: los envíos web nuevos salen con `TRK<base36>` (el de
+  `generateTrackingNumber`, compartido con el POS). Los existentes conservan el suyo; el
+  rastreo busca por valor exacto, así que no afecta a ninguno.
+
+**Regla de fechas, dos arreglos.** `expected_delivery_date` usaba
+`toISOString().split('T')[0]` (prohibido: corre el día). Ahora `toPlainDate(fecha, tz)` con
+la zona de la organización. Y en `getAvailableDrivers`, la vigencia de licencia se comparaba
+contra el día UTC; ahora `todayInTz(tz)`, lo que además usa el parámetro `organizationId`
+que el lint marcaba como sin usar.
+
+**Verificación.**
+- Test nuevo `deliveryIntegration.webOrderShipment.test.ts`, 11 casos con cliente falso:
+  superconjunto de campos, `shipment_items`, evento, `customerId` inyectado vs del pedido,
+  idempotencia, carrera 23505 (devuelve el ganador sin crear items ni evento), otros errores
+  se propagan, rechaza `pickup`, fecha en zona de la org (`03:30Z` del 16 → `2026-09-15` en
+  Bogotá), sin fecha → null, y `getShipmentByWebOrderId` con `order+limit+maybeSingle`.
+- `webOrderStock.test.ts` (ruta B con cliente falso): 13/13 con la llamada nueva.
+- `guardrails.test.ts`: pasa. Total de los tres: 90/90.
+- `next lint` limpio en los tres archivos tocados (incluidos 4 hallazgos preexistentes que
+  la regla "deja limpio lo que toques" obliga a arreglar).
+- `tsc` con heap suficiente: 0 errores de código. Quedan 3 `TS6053` a `.next/types/` que
+  son restos del `.next` corrupto de otra sesión, no código.
+
+**Limitación deliberada.** El índice único impide envíos parciales (un pedido en dos
+guías). Hoy no se hace. Documentado en la migración con la forma de levantarlo.
+
+**Nota para GO-4.** En la ruta automática el envío se crea en el paso 8 y la fecha estimada
+del pedido se calcula en el paso 9, así que `expected_delivery_date` queda null para los
+pedidos nuevos. No se cambió el orden en esta ronda (no regresión); al implementar GO-4
+conviene crear el envío después del cálculo, o actualizarlo.
+
+**Fase 0: completa en lo que depende de código.** Pendiente del usuario: push de `828ad44`
+(sitio) y de los commits del ERP; rotación de credenciales de Wompi; aprobar los
+`CLAUDE.md`; y la deuda de los 4 `.sql` + rollbacks de las migraciones de las rondas 1-5.
+
+### Fase 0 — Ronda 9 — 2026-09-15 — CIERRE DE LA FASE 0
+
+Estado de cada punto del plan aprobado el 2026-09-09:
+
+| Punto | Estado | Dónde |
+|---|---|---|
+| SEC-0.a firma de webhook Wompi | **desplegado**; corrección del registro de veredictos en `828ad44` (sitio, sin push) | sitio |
+| SEC-0.b integration_credentials / connections / connectors | **aplicado** 2026-09-09; `.sql` + rollback en `61ef1037` | BD + ERP |
+| SEC-0.b organization_payment_methods | **aplicado** 2026-09-15 tras leer el fuente de `chat-widget` (usa service role); `9863486d` | BD + ERP |
+| SEC-0.c rotación / abuso / notificación | **del usuario**; sin cambios (0 credenciales rotadas) | — |
+| 0.0 CLAUDE.md ERP | **hecho** (lo creó el usuario a partir del borrador) | ERP |
+| 0.0 CLAUDE.md sitio | **hecho**, `b91cdf6` | sitio |
+| 0.1 RLS pública de transporte | **aplicado** `275efe1a`; verificado con anon key real (42501 en las 4); `get_advisors` sin hallazgos nuevos | BD + ERP |
+| 0.2 /tracking | **desplegado** (dentro de `01b8cd2`); `verify:tracking` OK | sitio |
+| 0.2 tipos de transporte en `types/database.ts` | **hecho con plan B**, `b91cdf6` (ver hallazgo abajo) | sitio |
+| 0.3 credenciales → Vault (funciones, servicio, endpoint, diálogo, select de proveedor) | **completo en código** (rondas 2 y 6); sin credencial real guardada todavía | BD + ERP |
+| 0.4 seed de proveedores y transportadoras | **aplicado**; `.sql` + rollback en `61ef1037` | BD + ERP |
+| 0.5 una sola ruta de creación de envío + índice único | **aplicado** `3cffad75`; 11 tests nuevos | BD + ERP |
+| 0.6 peso y dimensiones de producto | **aplicado**; `.sql` + rollback en `61ef1037` | BD + ERP |
+| Deuda de `.sql` de las rondas 1-5 | **pagada** `61ef1037` | ERP |
+
+**Hallazgo del sitio, para un issue aparte.** `types/database.ts` está declarado como
+`interface` y ninguna tabla lleva `Relationships`; supabase-js 2.107 exige ambas cosas
+(`Schema = Database['public'] extends GenericSchema ? … : never`). Resultado: el `Database`
+a mano resuelve a `never` para TODAS las tablas y ningún `select` se ha comprobado nunca —
+es la razón de los 72 `as any` de `queries.ts` y de que `sender_city` compilara. Al
+corregir la declaración aparecen **202 errores de tipo** (155 en `queries.ts`, 14 en
+`api/transport/fares`, 7 en `api/transport/tickets`, 4 en `webhooks/bold`…). Evidencia
+guardada. Es un proyecto del repo, no de GO-1: se aplicó el plan B (tablas de transporte
+declaradas en la forma correcta, `as any` conservados con el motivo al lado, compuerta
+real = `verify-tracking.mjs`).
+
+**Compuertas finales.** ERP: `tsc` 0 errores de código, `jest` 90/90 en lo relacionado,
+`lint` limpio en lo tocado, `next build` OK. Sitio: `tsc` 0, `next build` OK,
+`verify:tracking` OK.
+
+**Pendiente del usuario (no de código):** push de `828ad44` y `b91cdf6` (sitio) y de
+`275efe1a`, `3cffad75`, `61ef1037`, `9863486d` (ERP); rotación de las 16 credenciales de
+Wompi; activar `WOMPI_WEBHOOK_ENFORCE_SIGNATURE=true` cuando haya veredictos `match`;
+probar el diálogo de credenciales con una sesión de admin contra una transportadora
+sembrada; pedir acceso de API a las cuatro transportadoras (plazo más largo de la épica).
+
+**Fase 0: cerrada.** Siguiente: plan mode para Fase 1.
+
+
+---
+
+## Objetivo: POS de doble pantalla (pantalla del cliente) — inicio 2026-09-15
+
+> Plan: `docs/pos-doble-pantalla/PLAN.md`. Ciclo `/loop` con builder → tester → qa-reviewer,
+> rondas hasta ≥ 9,5 (máximo 3 por parte antes de escalar). Las calificaciones y el feedback
+> de cada ronda se anexan abajo; esta tabla se edita en sitio.
+
+## Fases — POS doble pantalla
+| Fase | Parte | Estado | Ronda actual | Última calificación | Responsable |
+|------|-------|--------|---------------|----------------------|-------------|
+| F0 Espejo local | A · Protocolo, proyección del carrito y transporte BroadcastChannel (con tests) | en_revision | 3 | 7.8 (r2); r3 sin QA, tester 7 | qa-reviewer |
+| F0 Espejo local | B · Emisión desde posService y CheckoutDialog (efectivo/tarjeta/QR sin imagen) | pendiente | 0 | - | builder |
+| F0 Espejo local | C · Ruta `/pos-display` con estados Reposo/Pedido/Cobro/Gracias/Conectando y marca | pendiente | 0 | - | builder |
+| F0 Espejo local | D · Indicador y botón en el POS, tarjeta "Pantalla del cliente" en Configuración › POS (interruptor maestro) | pendiente | 0 | - | builder |
+| F0 Espejo local | Integración · pruebas de extremo a extremo de la fase | pendiente | 0 | - | tester |
+| F1 Electron 2ª pantalla | displayWindow, IPC, persistencia, monitores que van y vienen, atajo de salida | pendiente | 0 | - | builder |
+| F2 Terminal, ajustes, propina y QR | pos_terminals, tarjeta completa de ajustes, estado Propina, Cobro·QR con imagen | pendiente | 0 | - | builder |
+| F3 Pantalla en otro dispositivo | SupabaseBroadcastTransport, emparejamiento, rutas /api/pos/display/* | pendiente | 0 | - | builder |
+| F4 Calificación y reposo con promociones | pos_display_feedback, calificación, reposo con promociones | pendiente | 0 | - | builder |
+
+## Historial de rondas — POS doble pantalla
+
+
+### Fase: Motor IA Chat — Ronda 4 (tallas y catálogos grandes) — 2026-09-15
+
+**Reporte del usuario (capturas de una tienda de calzado, org 137):** el bot
+decía "no tenemos talla 40" y "no puedo confirmar talla 39" para unos tenis
+que existen en 7.5, 8, 8.5, 9 y 9.5 US; y ante "las zapatillas diesel q
+precio" respondía "no encuentro las zapatillas Diesel" teniendo 6 modelos.
+
+**Diagnóstico (con la BD):**
+1. `buscar_productos` tardaba **19,1 s** en esa organización (16.551
+   productos activos) cuando un token era de categoría ("calzado"): los tres
+   LATERAL de precio/imagen/stock se evaluaban para ~300 raíces antes del
+   LIMIT y filtraban por `coalesce(parent_product_id, id) = raiz`, sin índice.
+   PostgREST la cancelaba a los 8 s (`statement_timeout` de `authenticator`)
+   y el bot seguía sin productos: `context_used.products = false`.
+2. El modelo nunca veía las variantes: solo "Disponible en 5 presentaciones".
+   Sin la lista de tallas no podía ni confirmar ni convertir.
+3. El prompt de visión pedía "marca, modelo" pensando en electrodomésticos;
+   con la captura de la ficha devolvió palabras genéricas ("producto", "par",
+   "marca") y la búsqueda no encontró nada.
+
+**Qué se hizo:**
+- Migración `20260915140000_buscador_variantes_y_rendimiento` (+ rollback):
+  `buscar_productos` v3 recorta a `p_limite` ANTES de los laterales y usa
+  `p2.id = raiz OR p2.parent_product_id = raiz` (PK + `idx_products_parent_id`).
+  Mismo caso: **19.096 ms → 386 ms**. Resultados idénticos en orgs 135, 128.
+- Nueva RPC `variantes_de_productos(p_org, p_ids, p_max)`: variantes activas
+  con atributos, stock y precio, en orden natural de talla ("7.5 US" antes que
+  "10 US"). Revocada a `anon`.
+- Módulo puro `_shared/ai-chat/variantesCatalogo.ts`: `resumirVariantes`
+  ("Tamaño disponibles: 7.5 US (100), 8 US (AGOTADA), …"), `esAtributoDeTalla`
+  (distingue "Tamaño: 8 US" de "Tamaño: 100 ml") y `GUIA_TALLAS`.
+- El contexto del bot ahora lleva la lista de variantes bajo cada producto (en
+  la búsqueda normal y cuando el cliente elige entre tarjetas anteriores) y,
+  SOLO si hay tallas, la guía de conversión aproximada US → Colombia/EU
+  (hombre, mujer, niños) con reglas: la lista es la única verdad, convertir y
+  ofrecer la equivalente y las vecinas, decir "aproximado", nunca inventar.
+  Si la organización escribe su propia tabla en `ai_settings.system_rules`,
+  el prompt le dice al modelo que esa manda.
+- Prompt de visión: transcribir literalmente nombre, marca, modelo, talla y
+  SKU de capturas de fichas de producto; 8 palabras clave en vez de 5.
+- Tests: 9 nuevos (`variantesCatalogoIA.test.ts`); guardrails y pedidos en
+  verde (109/109 en el lote).
+
+**Verificación:** RPC probadas con el producto real (5 tallas, stock 100 c/u,
+precio 73.000). Despliegue de la función a las 21:1x UTC. Pendiente de tráfico
+real para confirmar `products = true` en org 137 con "diesel".
+
+**Decisión de producto pendiente:** la tabla de equivalencias por defecto es
+aproximada (US 8 → CO 40, US 8.5 → 40.5/41). Cada tienda puede sobreescribirla
+en "Reglas del sistema" de la configuración de IA.
+
+#### Ronda 4 — segunda prueba del usuario (mismo día, 23:34 UTC)
+
+- "Tiene zapatillas diésel?" → `products = true` con 6 tarjetas: el arreglo de
+  rendimiento funciona en producción.
+- "Que tienes talla 40?" → `keywords = ["talla"]`, `products = false`: la
+  pregunta de seguimiento no nombra ningún producto, la búsqueda nueva no
+  encontraba nada y el hilo se perdía (el bot: "no tengo información de talla
+  40"). Las variantes estaban a un paso, en las tarjetas anteriores.
+- Arreglo: `pareceSeguimientoDeVariante` (talla/tamaño/color/medida/
+  presentación, o un número o letra de talla en frase corta) reutiliza las
+  tarjetas del mensaje anterior con sus variantes reales, igual que cuando el
+  cliente elige un producto. 2 tests nuevos (41/41 en intención).
+- El usuario también pidió "tamaños o medidas o unidades de medida": en la
+  tienda de hogar (org 135) el 84% de las descripciones traen medidas y el bot
+  no veía ninguna. `extraerMedidas` saca los fragmentos con número+unidad de la
+  descripción (cm, ml, litros, kg, oz, pulgadas…), respetando decimales, y se
+  añade bajo cada producto como "Medidas/capacidad (de la descripción)". 3 tests.
+- Desplegado 23:5x UTC. Pendiente de que el usuario repita la prueba de talla.
+
+#### Ronda 4 — tercera prueba del usuario (23:50 UTC): "Tienes talla 40 en calzado?"
+
+- Respuesta del bot: "Por ahora no tenemos calzado disponible". `products = true`,
+  0 tarjetas, 2.500 tokens de prompt.
+- Causa (reconstruida con los 20 mensajes de la conversación): el atajo de
+  seguimiento recién añadido se disparó porque 3 mensajes antes había tarjetas
+  de ropa Adidas, y sustituyó la búsqueda nueva por esas tarjetas. El modelo
+  recibió pantalonetas con tallas S/M/L y, preguntado por calzado 40, contestó
+  que no había calzado. Error mío de diseño: el seguimiento no puede ganar a
+  un mensaje que nombra algo del catálogo.
+- Segunda causa: `presentaciones` subestima (solo cuenta variantes que
+  puntuaron; con un token de categoría las variantes no puntúan porque no
+  tienen categoría), así que usarlo como puerta para pedir variantes dejaba
+  sin tallas a productos que sí las tienen.
+- Arreglo: la búsqueda nueva siempre corre; las tarjetas anteriores solo se
+  heredan si la búsqueda vuelve vacía Y el mensaje parece seguimiento
+  ("Que tienes talla 40?" → sin palabras de catálogo → hereda los Diesel con
+  sus tallas; "talla 40 en calzado" → búsqueda por calzado). Las variantes se
+  piden para todos los productos encontrados.
+- Verificado contra la BD: "calzado" → 6 productos en 872 ms y 29 variantes
+  con talla y stock listadas bajo cada uno.
+- Límite conocido: con una palabra de categoría ("calzado") los 1.137 zapatos
+  empatan a 2,5 y salen los 6 primeros por id (mujer y niño). Falta
+  desempatar por talla pedida, novedad o ventas. Anotado como pendiente.
+
+### Fase: F0 Parte A (protocolo, proyeccion, transporte) — Ronda 1 — 2026-09-15
+- Calificacion QA: 6.9/10 (requiere-nueva-ronda)
+- Calificacion Tester: 6/10 (97/103 casos; 6 fallos)
+- Que se hizo: protocol.ts, projection.ts, transport.ts, terminal.ts, index.ts y 4 archivos de tests en src/__tests__/pos-display/.
+- Que falta / feedback recibido:
+  1. [alto] DisplayLine.total leia item.total en vez de qty x unitPrice bruto (contrato de protocol.ts).
+  2. [medio] resolveTaxIncluded priorizaba cart.tax_included y no coincidia con calculateCartTotals de posService.
+  3. [medio] Dos pestañas de /app/pos comparten terminalId y canal: hace falta instanceId en el sobre.
+  4. [bajo] Orden del spread del sobre permitia que un draft pisara v/seq/terminalId.
+  5. [bajo] resolveTaxIncluded sin proteccion Array.isArray; interfaz sin startHeartbeat/stopHeartbeat; seq no entero aceptado.
+- Proxima accion: ronda 2 del builder con la lista anterior.
+
+### Fase: F0 Parte A — Ronda 2 — 2026-09-15
+- Calificacion QA: 7.8/10 (requiere-nueva-ronda)
+- Calificacion Tester: 7/10 (205/207 casos; 2 fallos). El tester añadio qa-projection-edge, qa-transport-edge y qa-protocol-terminal-edge.
+- Que se hizo: atendidos los 7 puntos de la ronda 1 (instanceId en el sobre, spread invertido, validacion de seq entero, heartbeat en la interfaz).
+- Que falta / feedback recibido:
+  1. [alto] BroadcastChannelReceiver no reinicia highestSeq al cambiar de instanceId (adopcion sin hello y liberacion por bye): descarta mensajes validos del nuevo emisor.
+  2. [medio] Los mensajes de subida no llevan destinatario: con dos pestañas responde la equivocada. Añadir toInstanceId opcional.
+  3. [bajo] round2 por linea rompe la promesa de que las lineas suman el subtotal.
+  4. [bajo] tax_included debe evaluarse truthy (Boolean), coherente con posService.
+  5. [bajo] postMessage sin try/catch (DataCloneError); isDisplayStateShape deja pasar thanks/tip vacios.
+- Para el 10: JSDoc de modifiers[].extraPrice como informativo; distinguir bye de silencio (lastByeAt); deduplicar hello repetido.
+- Proxima accion: ronda 3 del builder (en curso al momento del traspaso). Si no llega a 9.5, escalar segun loop.md.
+
+### Fase: F0 Parte A — Ronda 3 — 2026-09-15 (DETENIDA por el usuario antes de la QA)
+- Calificacion QA: sin calificar (el qa-reviewer estaba corriendo cuando se detuvo el flujo)
+- Calificacion Tester: 7/10 (el tester reporto 252/255; tras las ultimas correcciones del builder la suite queda en 11 suites / 179 tests / 0 fallos, eslint limpio)
+- Que se hizo: atendidos los 6 puntos de QA r2 y los 5 del tester r2. setActiveInstance() unico en el receptor reinicia highestSeq al cambiar de instancia (adopcion y bye); toInstanceId en subida; sin round2 por linea; tax_included truthy; postMessage con try/catch; JSDoc de isDisplayStateShape con garantias explicitas. Tests nuevos: tester-r3-projection-protocol, tester-r3-transport.
+- Que falta / feedback del tester r3 (sin QA que lo priorice):
+  1. [medio] projectCartForDisplay lanza TypeError si items o modifiers traen null (carritos viejos de localStorage): normalizar con filtros antes de proyectar.
+  2. [medio] BroadcastChannelReceiver no puede soltar la instancia activa si la pestaña muere sin bye: need_snapshot sigue yendo a una instancia muerta. Liberar la instancia al entrar en Conectando (sin heartbeat 3 s).
+  3. [medio] Carrera al abrir la pantalla con dos pestañas de /app/pos: el need_snapshot inicial va sin destinatario y gana el ultimo hello (puede ser la pestaña en segundo plano). Definir regla: adoptar la instancia cuyo hello llegue con sessionOpen=true o la mas reciente por seq, y documentarla.
+  4. [bajo] projectLine copia item.id sin normalizar (undefined en carritos viejos): generar id estable si falta.
+  5. [bajo] Un bye de instancia desconocida sin instancia activa se adopta y libera en el mismo mensaje y llega a la UI: ignorarlo.
+  6. [bajo] Divergencias respecto al PLAN §8 pendientes de llevar al plan: instanceId obligatorio en DownEnvelope, toInstanceId opcional en UpEnvelope, publish() recibe DownMessageDraft, startHeartbeat/stopHeartbeat en la interfaz.
+- Estado: Parte A queda en en_revision con 3 rondas consumidas y sin nota final >= 9.5. Segun loop.md no se lanza una 4a ronda a ciegas: el siguiente agente debe (a) correr un qa-reviewer sobre el codigo tal como quedo, o (b) atender los 6 puntos de arriba en una ronda de cierre autorizada por el usuario, y luego seguir con B, C y D.
+- Bloqueo raiz: ninguno tecnico. Las tres rondas convergieron (6.9 -> 7.8 -> tester 7 con hallazgos ya solo medios/bajos); lo que falta es una ronda de cierre corta, no un rediseño.

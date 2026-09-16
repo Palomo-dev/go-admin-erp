@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { isOrgAdmin } from '@/lib/utils/rbac';
 
@@ -60,7 +61,7 @@ export async function POST(
     throw err;
   }
 
-  const parsed = linkSchema.safeParse(await request.json().catch(() => null));
+  const parsed = linkSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
   if (!parsed.success) {
     return NextResponse.json(
       { success: false, error: 'Body inválido', issues: parsed.error.issues },

@@ -11,15 +11,24 @@
  *   google     new GoogleGenAI({apiKey}).models.list()
  *   meta       GET graph/v22.0/{phone_number_id}?fields=display_phone_number
  * Devuelve { ok, latencyMs, detail } (detalle saneado, sin secretos).
- * Rate limit: 5/min/org (en memoria por instancia).
+ *
+ * Con `source: 'env'` (credenciales de la plataforma) la respuesta es solo
+ * { ok, source, latencyMs }: el detalle de la cuenta (nombre y estado de la
+ * cuenta Twilio, dominios de Resend, plan y consumo de ElevenLabs, nombre
+ * verificado en Meta) pertenece a la plataforma, no al tenant (QA r1 medio 14).
+ * Rate limit: 5/min/org con `checkRateLimit` (memoria por instancia; en
+ * serverless cada lambda cuenta aparte — riesgo aceptado en FASE-00 §11
+ * hasta que exista almacén compartido).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { isOrgAdmin } from '@/lib/utils/rbac';
 import { PROVIDER_CATEGORIES, type ProviderCategory } from '@/lib/crm/providerCatalog';
 import { getProviderCredentials } from '@/lib/services/providerCredentials.server';
+import { checkRateLimit } from '@/lib/security/rateLimit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -31,19 +40,6 @@ const bodySchema = z.object({
 
 const RATE_LIMIT = 5;
 const RATE_WINDOW_MS = 60_000;
-const hits = new Map<number, number[]>();
-
-function rateLimited(orgId: number): boolean {
-  const now = Date.now();
-  const arr = (hits.get(orgId) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
-  if (arr.length >= RATE_LIMIT) {
-    hits.set(orgId, arr);
-    return true;
-  }
-  arr.push(now);
-  hits.set(orgId, arr);
-  return false;
-}
 
 function sanitize(msg: string, secrets: string[]): string {
   let out = msg.slice(0, 300);
@@ -141,13 +137,16 @@ export async function POST(request: NextRequest) {
   if (!isOrgAdmin(ctx)) {
     return NextResponse.json({ ok: false, detail: 'Solo administradores' }, { status: 403 });
   }
-  if (rateLimited(ctx.organizationId)) {
-    return NextResponse.json({ ok: false, detail: 'Demasiadas pruebas; espera un minuto' }, { status: 429 });
-  }
-
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  // QA r2 bajo 5: el body se valida ANTES de consumir cupo del rate limit;
+  // cinco bodies mal formados no deben bloquear al admin un minuto.
+  const parsed = bodySchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
   if (!parsed.success) {
     return NextResponse.json({ ok: false, detail: 'Body inválido' }, { status: 400 });
+  }
+
+  const rl = await checkRateLimit(`providers:test:org:${ctx.organizationId}`, { limit: RATE_LIMIT, windowMs: RATE_WINDOW_MS });
+  if (!rl.allowed) {
+    return NextResponse.json({ ok: false, detail: 'Demasiadas pruebas; espera un minuto' }, { status: 429 });
   }
 
   const cfg = await getProviderCredentials(ctx.organizationId, parsed.data.category, parsed.data.provider);
@@ -156,17 +155,21 @@ export async function POST(request: NextRequest) {
   }
 
   const secrets = Object.values(cfg.credentials);
+  // Credenciales de la plataforma: el tenant solo sabe si funcionan, no de quién son.
+  const platformOnly = cfg.source === 'env';
   const started = Date.now();
   try {
     const result = await runTest(cfg.provider, cfg.credentials);
+    const detail = platformOnly ? (result.ok ? 'Conexión de la plataforma operativa' : 'La plataforma no pudo conectar') : sanitize(result.detail, secrets);
     return NextResponse.json(
-      { ...result, provider: cfg.provider, source: cfg.source, latencyMs: Date.now() - started, detail: sanitize(result.detail, secrets) },
+      { ok: result.ok, provider: cfg.provider, source: cfg.source, latencyMs: Date.now() - started, detail },
       { status: result.ok ? 200 : 502 },
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Error desconocido';
+    const detail = platformOnly ? 'La plataforma no pudo conectar' : sanitize(msg, secrets);
     return NextResponse.json(
-      { ok: false, provider: cfg.provider, source: cfg.source, latencyMs: Date.now() - started, detail: sanitize(msg, secrets) },
+      { ok: false, provider: cfg.provider, source: cfg.source, latencyMs: Date.now() - started, detail },
       { status: 502 },
     );
   }

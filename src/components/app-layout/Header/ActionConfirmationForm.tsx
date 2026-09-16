@@ -17,6 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/utils/Utils';
 import type { ActionFieldDef, PendingAction } from '@/lib/ai/assistant/clientTypes';
+import BulkPreviewTable from './assistant/BulkPreviewTable';
 
 interface ActionConfirmationFormProps {
   action: PendingAction;
@@ -232,7 +233,49 @@ export default function ActionConfirmationForm({
         </div>
       )}
 
-      <div className="p-4 space-y-4">
+      {/* Lo que la herramienta calculó: nombres y precios reales, avisos,
+          totales y —en carga masiva— la tabla. Sin esto la tarjeta diría
+          "producto 51814 × 3", que no permite confirmar con criterio. */}
+      {action.preview && (action.preview.lines.length > 0 || action.preview.warnings.length > 0 || action.preview.bulk) && (
+        <div className="px-4 py-3 space-y-3 border-b border-gray-100 dark:border-gray-800">
+          {action.preview.lines.length > 0 && (
+            <dl className="text-sm space-y-1">
+              {action.preview.lines.map((line, i) => (
+                <div key={`${line.label}-${i}`} className="flex justify-between gap-3">
+                  <dt className="text-gray-600 dark:text-gray-400 truncate">{line.label}</dt>
+                  <dd className="text-gray-900 dark:text-gray-100 text-right tabular-nums">{line.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {action.preview.totals && Object.keys(action.preview.totals).length > 0 && (
+            <dl className="text-sm space-y-0.5 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
+              {Object.entries(action.preview.totals).map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-3">
+                  <dt className="text-gray-600 dark:text-gray-400">{k}</dt>
+                  <dd className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {action.preview.bulk && <BulkPreviewTable bulk={action.preview.bulk} />}
+          {action.preview.warnings.length > 0 && (
+            <ul className="space-y-1" aria-label="Avisos">
+              {action.preview.warnings.map((w, i) => (
+                <li key={i} className="flex gap-2 text-xs text-amber-800 dark:text-amber-300">
+                  <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <span>{w}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!action.preview.reversible && (
+            <p className="text-xs text-red-700 dark:text-red-400 font-medium">Esta acción no se puede deshacer desde el chat.</p>
+          )}
+        </div>
+      )}
+
+      <div className={cn('p-4 space-y-4', fields.length === 0 && 'hidden')}>
         {fields.map((field) => (
           <div key={field.name} className="space-y-1.5">
             <Label htmlFor={field.name} className="text-sm font-medium text-gray-700 dark:text-gray-300">

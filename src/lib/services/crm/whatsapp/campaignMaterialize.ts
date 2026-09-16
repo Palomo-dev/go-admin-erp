@@ -161,6 +161,17 @@ async function duplicateSet(orgId: number, campaignId: string, templateId: strin
   return set;
 }
 
+/**
+ * Coste estimado de la campaña (USD) a partir de la tarifa del país por
+ * defecto de la organización. Antes el país era `'57'` cableado —el último
+ * «57» de la fase— y una organización mexicana veía el precio colombiano.
+ * Sigue siendo una estimación: el precio real lo fija Meta por destinatario.
+ */
+export async function estimateCampaignCost(p: { provider: 'meta' | 'twilio' | 'baileys'; category: HsmCategory | null; isTemplate: boolean; pending: number; defaultCountry: string }): Promise<number | null> {
+  const cost = await estimateMessageCost({ provider: p.provider, category: p.category, recipient: p.defaultCountry, windowOpen: false, isTemplate: p.isTemplate });
+  return cost.unit_cost_usd === null ? null : Number((cost.unit_cost_usd * p.pending).toFixed(4));
+}
+
 export async function materializeCampaign(orgId: number, id: string, supabase: SupabaseClient, service: SupabaseClient = getServiceClient(), now: Date = new Date()): Promise<MaterializeResult> {
   const c: Campaign = await requireCampaign(orgId, id, supabase);
   if (!['draft', 'scheduled'].includes(c.effective_status)) throw new WhatsAppError('NOT_EDITABLE', 'Solo se materializan campañas en borrador o programadas', 409);
@@ -247,11 +258,7 @@ export async function materializeCampaign(orgId: number, id: string, supabase: S
     }
 
     const skipped = Object.values(byReason).reduce((a, b) => a + b, 0);
-    let estimated: number | null = null;
-    if (channel === 'whatsapp') {
-      const cost = await estimateMessageCost({ provider, category, recipient: '57', windowOpen: false, isTemplate: !!c.template_id });
-      estimated = cost.unit_cost_usd === null ? null : Number((cost.unit_cost_usd * pending).toFixed(4));
-    }
+    const estimated = channel === 'whatsapp' ? await estimateCampaignCost({ provider, category, isTemplate: !!c.template_id, pending, defaultCountry }) : null;
     const total = keep.size + rows.length;
     await patchCampaignStats(id, {
       state: null,

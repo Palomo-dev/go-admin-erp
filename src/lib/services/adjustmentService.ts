@@ -416,56 +416,88 @@ class AdjustmentService {
 
       const items = (adjustment.adjustment_items || []).filter(item => (item.difference || 0) !== 0);
 
+      // Validar costo en ajustes positivos (entradas de stock)
+      const entriesWithoutCost = items.filter(
+        item => (item.difference || 0) > 0 && (!item.unit_cost || item.unit_cost <= 0)
+      );
+      if (entriesWithoutCost.length > 0) {
+        throw new Error(
+          `Hay ${entriesWithoutCost.length} ajuste(s) de entrada sin costo. ` +
+          `El costo es obligatorio para entradas de stock, de lo contrario ` +
+          `el kardex y la contabilidad quedan incompletos.`
+        );
+      }
+
       // Procesar todos los items en paralelo
       await Promise.all(items.map(async (item) => {
         const difference = item.difference || 0;
 
-        // 1. Crear movimiento de stock
-        await supabase
-          .from('stock_movements')
-          .insert({
-            organization_id: organizationId,
-            branch_id: adjustment.branch_id,
-            product_id: item.product_id,
-            lot_id: item.lot_id || null,
-            direction: difference > 0 ? 'in' : 'out',
-            qty: Math.abs(difference),
-            unit_cost: item.unit_cost || 0,
-            source: 'adjustment',
-            source_id: adjustmentId.toString(),
-            note: `Ajuste: ${adjustment.type} - ${adjustment.reason}`,
-            updated_by: userId
+        if (difference > 0) {
+          // Entrada de stock: usar RPC atómica
+          const { error: rpcError } = await supabase.rpc('fn_register_stock_entry', {
+            p_entries: [{
+              organization_id: organizationId,
+              branch_id: adjustment.branch_id,
+              product_id: item.product_id,
+              qty: Math.abs(difference),
+              unit_cost: item.unit_cost || 0,
+              source: 'adjustment',
+              source_id: adjustmentId.toString(),
+              note: `Ajuste: ${adjustment.type} - ${adjustment.reason}`,
+              updated_by: userId,
+            }],
           });
 
-        // 2. Upsert stock_levels (una sola llamada en lugar de select + update/insert)
-        const { data: existingStock } = await supabase
-          .from('stock_levels')
-          .select('id, qty_on_hand')
-          .eq('branch_id', adjustment.branch_id)
-          .eq('product_id', item.product_id)
-          .is('lot_id', item.lot_id || null)
-          .limit(1)
-          .maybeSingle();
-
-        if (existingStock) {
-          await supabase
-            .from('stock_levels')
-            .update({
-              qty_on_hand: item.quantity,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existingStock.id);
+          if (rpcError) throw rpcError;
         } else {
+          // Salida de stock: mantener lógica existente
+          // 1. Crear movimiento de stock
           await supabase
-            .from('stock_levels')
+            .from('stock_movements')
             .insert({
-              product_id: item.product_id,
+              organization_id: organizationId,
               branch_id: adjustment.branch_id,
-              qty_on_hand: item.quantity,
-              qty_reserved: 0,
-              avg_cost: item.unit_cost || 0,
-              min_level: 0
+              product_id: item.product_id,
+              lot_id: item.lot_id || null,
+              direction: 'out',
+              qty: Math.abs(difference),
+              unit_cost: item.unit_cost || 0,
+              source: 'adjustment',
+              source_id: adjustmentId.toString(),
+              note: `Ajuste: ${adjustment.type} - ${adjustment.reason}`,
+              updated_by: userId
             });
+
+          // 2. Actualizar stock_levels
+          const { data: existingStock } = await supabase
+            .from('stock_levels')
+            .select('id, qty_on_hand')
+            .eq('branch_id', adjustment.branch_id)
+            .eq('product_id', item.product_id)
+            .is('lot_id', item.lot_id || null)
+            .limit(1)
+            .maybeSingle();
+
+          if (existingStock) {
+            await supabase
+              .from('stock_levels')
+              .update({
+                qty_on_hand: item.quantity,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingStock.id);
+          } else {
+            await supabase
+              .from('stock_levels')
+              .insert({
+                product_id: item.product_id,
+                branch_id: adjustment.branch_id,
+                qty_on_hand: item.quantity,
+                qty_reserved: 0,
+                avg_cost: item.unit_cost || 0,
+                min_level: 0
+              });
+          }
         }
 
         // 3. Procesar seriales para productos con trazabilidad

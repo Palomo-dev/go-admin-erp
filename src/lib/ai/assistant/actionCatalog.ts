@@ -331,7 +331,8 @@ export const ACTION_CATALOG: Readonly<Record<AIActionType, ActionDefinition>> = 
     minLevel: 'write_full',
     requiredModule: 'inventory',
     available: false,
-    unavailableReason: PENDING_F2('crear órdenes de compra'),
+    unavailableReason:
+      'Para crear una orden de compra uso la herramienta `crear_orden_compra`, no esta accion.',
     fields: [],
   },
   update_purchase_order: {
@@ -368,7 +369,8 @@ export const ACTION_CATALOG: Readonly<Record<AIActionType, ActionDefinition>> = 
     minLevel: 'write_full',
     requiredModule: 'inventory',
     available: false,
-    unavailableReason: PENDING_F2('hacer traslados entre sucursales'),
+    unavailableReason:
+      'Para un traslado entre sucursales uso la herramienta `crear_traslado`, no esta accion.',
     fields: [],
   },
 };

@@ -225,7 +225,7 @@ class OpportunitiesService {
         *,
         customer:customers(id, full_name, email, phone),
         stage:stages(id, name, position, probability, color, pipeline_id),
-        pipeline:pipelines(id, name, goal_amount, goal_period, goal_currency)
+        pipeline:pipelines(id, name, goal_amount, goal_period, goal_currency, pipeline_type)
       `)
       .eq('id', id)
       .single();

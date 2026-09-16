@@ -6,6 +6,7 @@ import { readLog } from './crashReporter';
 import { getIconImage } from './icon';
 
 let tray: Tray | null = null;
+let refreshTimer: NodeJS.Timeout | null = null;
 
 export function createTray(mainWindow: BrowserWindow): Tray {
   const icon = getIconImage() ?? nativeImage.createEmpty();
@@ -63,7 +64,8 @@ export function createTray(mainWindow: BrowserWindow): Tray {
   };
 
   refreshMenu();
-  setInterval(refreshMenu, 15_000);
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(refreshMenu, 15_000);
 
   tray.on('double-click', () => {
     mainWindow.show();
@@ -74,6 +76,10 @@ export function createTray(mainWindow: BrowserWindow): Tray {
 }
 
 export function destroyTray(): void {
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
   if (tray) {
     tray.destroy();
     tray = null;

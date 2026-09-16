@@ -21,14 +21,25 @@ describe('parseTemplateStatusUpdate (webhook message_template_status_update)', (
   });
   test('applyTemplateStatusUpdate: PAUSED actualiza status y pausa campañas sending', async () => {
     const updates: Record<string, unknown>[] = [];
-    const { sb } = makeSupabase({
+    const { sb, calls } = makeSupabase({
       templates: (ops) => (has(ops, 'update') ? (updates.push({ templates: opArg(ops, 'update') }), { data: null }) : { data: [{ id: 'tpl-1', organization_id: 7, metadata: { status: 'APPROVED' } }] }),
       campaigns: (ops) => (has(ops, 'update') ? (updates.push({ campaigns: opArg(ops, 'update') }), { data: null }) : { data: [{ id: 'camp-1', statistics: { state: null } }] }),
     });
-    const r = await applyTemplateStatusUpdate({ event: 'PAUSED', message_template_id: '555', message_template_name: null, message_template_language: null, reason: 'LOW_QUALITY', quality_score: null, field: 'message_template_status_update' }, 'waba-1', sb);
+    // F0-SEC r3 (H2): el 4.º argumento son las organizaciones autorizadas (dueñas del WABA que firmó).
+    const r = await applyTemplateStatusUpdate({ event: 'PAUSED', message_template_id: '555', message_template_name: null, message_template_language: null, reason: 'LOW_QUALITY', quality_score: null, field: 'message_template_status_update' }, 'waba-1', sb, [7]);
     expect(r).toEqual({ updated: 1, paused_campaigns: 1 });
+    const select = calls.find((c) => c.table === 'templates' && has(c.ops, 'select'))!;
+    expect(has(select.ops, 'in', 'organization_id')).toBe(true);
+    expect(opArg<number[]>(select.ops, 'in', 1)).toEqual([7]);
     expect((updates[0].templates as { metadata: Record<string, unknown> }).metadata).toMatchObject({ status: 'PAUSED', paused_reason: 'LOW_QUALITY' });
     expect((updates[1].campaigns as { statistics: Record<string, unknown> }).statistics).toMatchObject({ state: 'paused', template_paused: true });
+  });
+  test('applyTemplateStatusUpdate sin organizaciones autorizadas → no consulta nada (fail-closed, H2)', async () => {
+    const { sb, calls } = makeSupabase({});
+    const update = { event: 'DISABLED' as const, message_template_id: '555', message_template_name: null, message_template_language: null, reason: null, quality_score: null, field: 'message_template_status_update' as const };
+    await expect(applyTemplateStatusUpdate(update, 'waba-1', sb, [])).resolves.toEqual({ updated: 0, paused_campaigns: 0 });
+    await expect(applyTemplateStatusUpdate(update, 'waba-1', sb, [0, -1, 1.5, NaN])).resolves.toEqual({ updated: 0, paused_campaigns: 0 });
+    expect(calls).toHaveLength(0);
   });
 });
 

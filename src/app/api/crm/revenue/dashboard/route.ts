@@ -1,31 +1,34 @@
-import { NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { NextRequest } from 'next/server';
+import { getServerOrgContext, requireOrgAdmin } from '@/lib/utils/orgContext';
 import { getRevenueDashboard } from '@/lib/services/crm/revenueOsService';
+import { jsonOk, resolveRequestRange, revenueRouteError } from '@/lib/services/crm/revenueOs/routeSupport';
 
 /**
- * GET /api/crm/revenue/dashboard — Dashboard completo de Revenue OS.
+ * GET /api/crm/revenue/dashboard?start=YYYY-MM-DD&end=YYYY-MM-DD — panel Revenue OS.
  *
- * Agrega en una sola respuesta:
- * - Revenue metrics (últimos 12 meses)
- * - Pipeline funnel (actual)
- * - Cohort retention (últimos 24 meses)
- * - KPIs calculados: MRR, ARR, ARPA, Win rate, Sales cycle, Pipeline value, Comisiones
+ * Rango por defecto: últimos 12 meses en la zona horaria de la organización
+ * (fin exclusivo). Validación: formato, `end ≥ start`, máximo 36 meses (400).
+ * La organización sale de la sesión. Un fallo de RPC responde 502 con el
+ * nombre de la función, nunca `[]`. `can_edit_inputs` (admin de la org,
+ * resuelto en servidor) le dice a la UI si mostrar el formulario de insumos.
  */
-export async function GET() {
+
+function canEditInputs(ctx: Parameters<typeof requireOrgAdmin>[0]): boolean {
+  try {
+    requireOrgAdmin(ctx);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function GET(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const dashboard = await getRevenueDashboard(ctx.organizationId, ctx.supabase);
-
-    return NextResponse.json({ success: true, data: dashboard }, { status: 200 });
+    const { timezone, range } = await resolveRequestRange(ctx, request);
+    const dashboard = await getRevenueDashboard(ctx.organizationId, range, timezone, ctx.supabase);
+    return jsonOk(dashboard, { can_edit_inputs: canEditInputs(ctx) });
   } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Revenue Dashboard] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return revenueRouteError(error, 'CRM Revenue Dashboard');
   }
 }

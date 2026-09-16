@@ -1,95 +1,134 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw } from 'lucide-react';
-import { TableSkeleton } from '@/components/common/PageSkeletons';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
-import { cn } from '@/utils/Utils';
+/**
+ * /app/finanzas/comisiones (F13): resumen del filtro, filtros arriba, selección
+ * múltiple con barra de acciones (pagar en lote · rechazar · clawback) y tabla
+ * con enlace al origen. Todo el I/O pasa por `useComisiones` → rutas de API.
+ */
 
+import { useMemo, useRef, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { toast } from '@/components/ui/use-toast';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
+import { useOrgCurrency } from '@/lib/hooks/useOrgCurrency';
+import { useOrgMembers } from '@/lib/hooks/useOrgMembers';
+import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
+import { describeError } from '@/lib/utils/errorMessage';
+import type { CommissionRow } from '@/lib/services/crm/commissionAdminService';
+import { cn, formatCurrency } from '@/utils/Utils';
 import {
-  ComisionesHeader,
-  ComisionesStats,
+  ClawbackDialog,
   ComisionesFilters,
+  ComisionesHeader,
   ComisionesList,
+  ComisionesSummary,
+  ComisionesToolbar,
+  useComisiones,
 } from '@/components/finanzas/comisiones';
-import {
-  commissionsService,
-  type Commission,
-  type CommissionStats,
-  type CommissionFilters,
-} from '@/lib/services/commissionsService';
+import { activeFilterCount } from '@/components/finanzas/comisiones/comisionesModel';
+import { REFRESH_BUTTON_ID, commissionFocusFallback } from '@/components/finanzas/comisiones/comisionesFocus';
 
 export default function ComisionesPage() {
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
-  const [commissions, setCommissions] = useState<Commission[]>([]);
-  const [stats, setStats] = useState<CommissionStats>({
-    total: 0,
-    accrued: 0,
-    paid: 0,
-    cancelled: 0,
-    totalAccruedAmount: 0,
-    totalPaidAmount: 0,
-    byType: [],
-    bySource: [],
-  });
-  const [filters, setFilters] = useState<CommissionFilters>({
-    status: 'all',
-    commission_type: 'all',
-    source_type: 'all',
-  });
+  const state = useComisiones();
+  const currency = useOrgCurrency();
+  const { members } = useOrgMembers();
+  const [clawbackRow, setClawbackRow] = useState<CommissionRow | null>(null);
+  const [payRow, setPayRow] = useState<CommissionRow | null>(null);
+  // Foco tras confirmar (brief §4): el botón «Pagar» de la fila desaparece al pagarla;
+  // el fallback va a la fila siguiente → «Actualizar» → «Seleccionar todas».
+  const actedRef = useRef<string[]>([]);
+  const focusFallback = useMemo(() => commissionFocusFallback(() => actedRef.current), []);
+  const onPayDialogClose = useReturnFocus(payRow !== null, focusFallback);
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  const payOne = async (row: CommissionRow) => {
+    actedRef.current = [row.id];
     try {
-      const [commissionsData, statsData] = await Promise.all([
-        commissionsService.getCommissions(filters),
-        commissionsService.getStats(filters),
-      ]);
-      setCommissions(commissionsData);
-      setStats(statsData);
-    } catch (error: any) {
-      console.error('Error cargando comisiones:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las comisiones',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
+      toast({ title: await state.payMany([row.id]) });
+    } catch (err) {
+      toast({ title: 'No se pudo pagar', description: describeError(err), variant: 'destructive' });
     }
-  }, [filters, toast]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+    <div className="min-h-screen space-y-4 bg-gray-50 p-4 sm:space-y-6 sm:p-6 lg:p-8 dark:bg-gray-900">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <ComisionesHeader />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={loadData}
-          disabled={isLoading}
-          className="h-8 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
-        >
-          <RefreshCw className={cn('h-4 w-4 mr-1', isLoading && 'animate-spin')} />
+        <Button id={REFRESH_BUTTON_ID} variant="outline" size="sm" onClick={() => state.reload()} disabled={state.loading} className="h-8">
+          <RefreshCw className={cn('mr-1 h-4 w-4', state.loading && 'animate-spin')} aria-hidden="true" />
           Actualizar
         </Button>
       </div>
 
-      <ComisionesStats stats={stats} isLoading={isLoading} />
+      <ComisionesSummary
+        summary={state.summary}
+        others={state.summaryOthers}
+        currency={state.currency || currency}
+        loading={state.loading}
+        unavailable={state.error !== null && state.rows.length === 0}
+      />
 
-      <ComisionesFilters filters={filters} onChange={setFilters} />
+      <ComisionesFilters filters={state.filters} onChange={state.setFilters} members={members} canManage={state.canManage} />
 
-      {isLoading ? (
-        <TableSkeleton columns={10} rows={5} />
-      ) : (
-        <ComisionesList commissions={commissions} isLoading={isLoading} onRefresh={loadData} />
+      {state.error && (
+        <Alert variant="destructive">
+          <AlertTitle>No se pudieron cargar las comisiones</AlertTitle>
+          <AlertDescription>
+            {state.error} · Se muestra la última lista conocida.{' '}
+            <button type="button" onClick={() => state.reload()} className="underline">Reintentar</button>
+          </AlertDescription>
+        </Alert>
       )}
+
+      {state.canManage && <ComisionesToolbar state={state} currency={currency} />}
+
+      {state.loading && state.rows.length === 0 ? (
+        <TableSkeleton columns={8} rows={5} />
+      ) : (
+        <ComisionesList
+          rows={state.rows}
+          currency={currency}
+          canManage={state.canManage}
+          selected={state.selected}
+          onToggle={state.toggle}
+          onToggleAll={state.toggleAll}
+          onPayOne={setPayRow}
+          onClawbackOne={setClawbackRow}
+          hasActiveFilters={activeFilterCount(state.filters) > 0}
+        />
+      )}
+
+      <ConfirmDialog
+        open={payRow !== null}
+        onOpenChange={(o) => !o && setPayRow(null)}
+        onCloseAutoFocus={onPayDialogClose}
+        title={payRow ? `¿Pagar ${formatCurrency(Number(payRow.commission_amount), payRow.currency || currency)} a ${payRow.payee_name || 'sin nombre'}?` : ''}
+        description="La comisión pasará a pagada con la fecha de hoy. Solo se paga si sigue pendiente."
+        confirmLabel="Sí, pagar"
+        loading={state.busy}
+        onConfirm={async () => {
+          if (payRow) await payOne(payRow);
+        }}
+      />
+
+      <ClawbackDialog
+        open={clawbackRow !== null}
+        onOpenChange={(o) => !o && setClawbackRow(null)}
+        commission={clawbackRow}
+        currency={currency}
+        busy={state.busy}
+        focusFallback={focusFallback}
+        onConfirm={async (id, reason) => {
+          actedRef.current = [id];
+          try {
+            toast({ title: await state.clawbackOne(id, reason) });
+          } catch (err) {
+            toast({ title: 'No se pudo revertir', description: describeError(err), variant: 'destructive' });
+          }
+        }}
+      />
     </div>
   );
 }

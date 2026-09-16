@@ -1,0 +1,65 @@
+-- 20260915100000_revoke_six_critical_functions.sql
+-- F-sec: documentar 6 revokes aplicados directamente en produccion
+-- por brechas activas (2026-09-15). Esta migracion es documental:
+-- NO re-aplica los cambios (ya estan en produccion).
+--
+-- Brechas cerradas:
+-- 1. execute_sql(text)           — RCE como postgres (lectura/escritura total)
+-- 2. reset_user_password(uuid,text) — reseteo de password de cualquier cuenta
+-- 3. execute_alert_condition(text,int) — SQL dinamico EXECUTE como postgres
+-- 4. test_alert_condition(text,int)    — wrapper del anterior
+-- 5. set_config(text,text)          — fijar cualquier GUC como anon
+-- 6. set_org_context(bigint)        — falsificar app.org_id como anon
+-- 7. set_session_org_id(int)        — falsificar app.current_org_id como anon
+--
+-- ACLs resultantes verificados:
+--   execute_sql, reset_user_password, execute_alert_condition,
+--   test_alert_condition -> postgres=X/postgres | service_role=X/postgres
+--   set_config, set_org_context, set_session_org_id
+--                         -> postgres=X/postgres | authenticated=X/postgres
+--                                                | service_role=X/postgres
+--
+-- Prueba negativa confirmada como anon en reset_user_password:
+--   ERROR 42501: permission denied for function reset_user_password
+--
+-- NOTA: authenticated conserva set_config/set_org_context/set_session_org_id
+-- porque el frontend (go-admin-erp) las invoca por RPC desde servicios
+-- client-side (checkoutService, aiSettingsService, etc.). Sin embargo,
+-- esto es un riesgo residual: ver analisis de politicas RLS con
+-- current_setting en el reporte de auditoria (punto 2 del commit).
+--
+-- Cambios ya aplicados en produccion. No re-aplicar.
+-- revoke execute on function public.execute_sql(sql_query text)
+--   from public, anon, authenticated;
+-- grant execute on function public.execute_sql(sql_query text)
+--   to postgres, service_role;
+--
+-- revoke execute on function public.reset_user_password(uuid, text)
+--   from public, anon, authenticated;
+-- grant execute on function public.reset_user_password(uuid, text)
+--   to postgres, service_role;
+--
+-- revoke execute on function public.execute_alert_condition(text, integer)
+--   from public, anon, authenticated;
+-- grant execute on function public.execute_alert_condition(text, integer)
+--   to postgres, service_role;
+--
+-- revoke execute on function public.test_alert_condition(text, integer)
+--   from public, anon, authenticated;
+-- grant execute on function public.test_alert_condition(text, integer)
+--   to postgres, service_role;
+--
+-- revoke execute on function public.set_config(text, text)
+--   from public, anon;
+-- grant execute on function public.set_config(text, text)
+--   to postgres, authenticated, service_role;
+--
+-- revoke execute on function public.set_org_context(bigint)
+--   from public, anon;
+-- grant execute on function public.set_org_context(bigint)
+--   to postgres, authenticated, service_role;
+--
+-- revoke execute on function public.set_session_org_id(integer)
+--   from public, anon;
+-- grant execute on function public.set_session_org_id(integer)
+--   to postgres, authenticated, service_role;

@@ -1,0 +1,31 @@
+-- ============================================================
+-- ROLLBACK de 20260909044626_crm_v4_f00_29_fix_customer_channel_identity_trigger
+-- ============================================================
+-- Escrito el 2026-09-15 (F0-DB ronda 3, B1); justificación corregida en la
+-- ronda 4 (R2): la versión anterior SÍ es recuperable.
+--
+-- NO-OP DELIBERADO. La versión anterior inmediata de
+-- fn_update_customer_channel_identity está en
+-- supabase_migrations.schema_migrations versión 20260110211238
+-- (`trigger_customer_channel_identities_omnicanal`, statements[1],
+-- 2 296 caracteres, md5 331454f6319a2d32234a551e34140f76,
+-- sha256 ab8b175c1debe069a70501c5fbf22911986ad0349927c2f74bd907620cd53c61).
+-- Entre esa versión y f00_29 nadie más redefinió la función; después de
+-- f00_29 solo la toca el REVOKE EXECUTE de f00_35.
+--
+-- Se deja fuera A PROPÓSITO porque era defectuosa: escribía identity_type =
+-- channels.type (valor que el CHECK de customer_channel_identities rechaza)
+-- y usaba external_message_id como identidad, con lo que el CHECK revertía
+-- el INSERT de TODO mensaje entrante. Restaurarla bloquea de nuevo la entrada
+-- de mensajes de todas las organizaciones. Quien necesite reconstruirla
+-- (p. ej. para un entorno aislado) puede leerla con
+--   select statements[1] from supabase_migrations.schema_migrations
+--    where version = '20260110211238';
+-- y decidir con criterio; no se automatiza aquí.
+-- No se hace DROP: el trigger trg_update_customer_channel_identity sigue
+-- apuntando a la función.
+--
+-- SOBRE LOS DATOS: no toca datos.
+-- ============================================================
+
+select 1;

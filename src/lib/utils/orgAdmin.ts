@@ -9,24 +9,35 @@
  * Se extrae aquí para que la regla siga teniendo UNA sola definición:
  * `orgContext.ts` la re-exporta y nadie la reimplementa.
  *
- * La regla es la misma del resto del ERP (ver `src/lib/utils/rbac.ts` y
- * `branchService.ts`): `organization_members.is_super_admin`, o el rol
- * 'Super Admin' / 'Admin de organización' (role_id 1 / 2).
+ * Regla dura 6 (CLAUDE.md): los permisos se resuelven en el servidor y NUNCA a
+ * partir del nombre de un rol. Hasta F0-SEC r1 aquí también contaba el nombre
+ * (`'Super Admin' | 'Admin de organización'`): un rol personalizado con ese
+ * nombre y `role_id` 99 obtenía admin. Ahora la decisión síncrona es solo por
+ * `organization_members.is_super_admin` o por `role_id` ∈ `ORG_ADMIN_ROLE_IDS`
+ * (verificados en `roles` el 2026-09-15: 1 = Super Admin, 2 = Admin de
+ * organización), igual que `src/lib/utils/rbac.ts`.
+ *
+ * Los cargos (`job_positions`) con permiso también cuentan, pero eso requiere
+ * consultar la base (`check_user_permission`): lo hace
+ * `hasOrgAdminOrPermission` / `requireOrgAdminOrPermission` en `orgContext.ts`,
+ * con `ORG_ADMIN_PERMISSION_CODE` como permiso equivalente a admin.
  */
 
 export const ORG_ADMIN_ROLE_IDS = [1, 2];
-export const ORG_ADMIN_ROLE_NAMES = ['Super Admin', 'Admin de organización'];
+
+/**
+ * Permiso que equivale a "administrador de la organización" cuando lo concede
+ * un cargo o un rol distinto de 1/2 (`permissions.code`, módulo `admin`).
+ */
+export const ORG_ADMIN_PERMISSION_CODE = 'admin.full_access';
 
 export interface OrgAdminShape {
   isSuperAdmin: boolean;
-  roleName: string;
   roleId: number;
+  /** Se acepta por compatibilidad de tipos; NO participa en la decisión. */
+  roleName?: string;
 }
 
 export function isOrgAdminLike(member: OrgAdminShape): boolean {
-  return (
-    member.isSuperAdmin === true ||
-    ORG_ADMIN_ROLE_NAMES.includes(member.roleName) ||
-    ORG_ADMIN_ROLE_IDS.includes(member.roleId)
-  );
+  return member.isSuperAdmin === true || ORG_ADMIN_ROLE_IDS.includes(member.roleId);
 }

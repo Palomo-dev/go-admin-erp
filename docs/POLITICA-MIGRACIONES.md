@@ -73,3 +73,26 @@ es la versión viva de `fn_sync_status_from_stage`. Los de seeds/backfills (`f00
 `f00_24`, `f00_31`, `f06_01`) advierten que no restauran datos. Para migraciones futuras: el `.sql` se
 escribe ANTES de aplicar; la reconstrucción posterior solo es posible mientras
 `schema_migrations.statements` conserve el texto.
+
+## Integración GitHub ↔ Supabase (branching): debe estar DESACTIVADA
+
+El proyecto tiene conectada la app de GitHub de Supabase con *branching* (rama
+`main` creada el 2026-09-11). En cada push a `main` el check «Supabase Preview»
+salía `skipped`; con el tag `v0.2.0` (2026-09-16) intentó **aprovisionar una
+rama de base de datos para el tag** y falló en 4 s («Failed to provision branch
+project»). No es un fallo del push ni de los workflows del repo.
+
+No hay que «arreglarlo» sino apagarlo, por dos razones:
+1. Las migraciones se aplican SOLO por el MCP (`apply_migration`); los `.sql`
+   de `supabase/migrations/` son la copia documental + rollback. La historia de
+   `supabase_migrations.schema_migrations` (1 718 versiones) no coincide con los
+   151 archivos locales (hay versiones repetidas y un `00000000000000_baseline`),
+   así que un `supabase db push` automático desde GitHub intentaría reaplicar
+   migraciones en producción.
+2. Las ramas de vista previa cuestan cómputo y se crearían por cada tag de
+   release del escritorio.
+
+Cómo apagarlo (dashboard, no hay API por MCP): Supabase → proyecto
+`jgmgphmzusbluqhuqihj` → **Branches** (o Project Settings → Integrations →
+GitHub) → *Disable branching* / desmarcar *Automatic branching* y
+*Supabase changes on push*. Con eso el check desaparece de los commits.

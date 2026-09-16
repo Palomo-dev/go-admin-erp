@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ExternalLink, MonitorX } from 'lucide-react';
+import { ExternalLink, MonitorX, Power } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -22,6 +22,8 @@ import {
   openCustomerDisplay,
 } from '@/lib/pos/display/openDisplay';
 import { useCustomerDisplayPresence } from './useCustomerDisplayPresence';
+import { ConfiguracionService } from '@/components/pos/configuracion/configuracionService';
+import { applyPosDisplaySettings } from '@/lib/pos/display/posDisplay';
 
 /**
  * Indicador de la pantalla del cliente en la cabecera del POS (PLAN §5.1).
@@ -30,9 +32,12 @@ import { useCustomerDisplayPresence } from './useCustomerDisplayPresence';
  * la presencia que ve el emisor de la caja (señal de la pantalla en los
  * últimos 3 s). Al pulsarlo, un menú con «Abrir pantalla del cliente» y
  * «Cerrar». Si la caja no emite, el menú dice por qué según `reason`:
- * apagada en Configuración (etiqueta que manda al interruptor), entorno sin
- * BroadcastChannel (etiqueta propia: Configuración no lo arregla) o aún
- * cargando el interruptor (sin etiqueta: todavía no se sabe).
+ * apagada en Configuración (etiqueta que manda al interruptor; solo cuando la
+ * caché del interruptor existe y dice apagado), entorno sin BroadcastChannel
+ * (etiqueta propia: Configuración no lo arregla) o aún cargando (sin
+ * etiqueta: sin caché del interruptor, o con la caché encendida y el emisor
+ * todavía sin arrancar, porque este indicador monta antes de que la página
+ * resuelva la moneda base y llame a `startPosDisplay`).
  *
  * Los avisos van por el `useToast` de shadcn, el único Toaster que monta el
  * layout (el `toast` de sonner no tiene Toaster y no se ve). El aviso de
@@ -78,7 +83,29 @@ export function CustomerDisplayIndicator({ className }: { className?: string }) 
     }
   }, [t, toast]);
 
-  const label = connected ? t('indicator.connected') : t('indicator.disconnected');
+  // Si el interruptor está apagado, el botón lo dice en claro: «Sin pantalla» hacía
+  // creer que el problema era la ventana, cuando lo que faltaba era activarla.
+  const label = connected
+    ? t('indicator.connected')
+    : reason === 'disabled'
+      ? t('indicator.disabled')
+      : t('indicator.disconnected');
+  const [enabling, setEnabling] = useState(false);
+  const handleEnableAndOpen = useCallback(async () => {
+    setEnabling(true);
+    try {
+      await ConfiguracionService.saveCustomerDisplayConfig({ enabled: true });
+      // La caja de esta ventana aplica el interruptor y se anuncia; las demás lo reciben por `storage`.
+      applyPosDisplaySettings();
+      toast({ title: t('toast.enabled') });
+      await handleOpen();
+    } catch (err) {
+      console.error('No se pudo activar la pantalla del cliente:', err);
+      toast({ title: t('toast.enableError'), variant: 'destructive' });
+    } finally {
+      setEnabling(false);
+    }
+  }, [handleOpen, t, toast]);
   // 'loading' (o emitiendo): sin etiqueta. Solo se afirma «desactivada» cuando el interruptor ya se leyó y está apagado.
   const notEmittingLabel =
     reason === 'disabled' ? t('indicator.notEmitting') : reason === 'unsupported' ? t('indicator.unsupported') : null;
@@ -115,6 +142,12 @@ export function CustomerDisplayIndicator({ className }: { className?: string }) 
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
           </>
+        )}
+        {reason === 'disabled' && (
+          <DropdownMenuItem onSelect={() => void handleEnableAndOpen()} disabled={enabling} className="gap-2 cursor-pointer">
+            <Power className="h-4 w-4" aria-hidden="true" />
+            {t('menu.enableAndOpen')}
+          </DropdownMenuItem>
         )}
         <DropdownMenuItem onSelect={() => void handleOpen()} className="gap-2 cursor-pointer">
           <ExternalLink className="h-4 w-4" aria-hidden="true" />

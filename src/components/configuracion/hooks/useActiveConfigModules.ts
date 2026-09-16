@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useActiveModules } from '@/hooks/useActiveModules';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { isDesktop } from '@/lib/utils/desktop';
 import { CONFIG_MODULES, type ConfigModule } from '../config/configModulesRegistry';
 
 interface UseActiveConfigModulesReturn {
@@ -18,6 +19,7 @@ export function useActiveConfigModules(): UseActiveConfigModulesReturn {
 
   const availableModules = useMemo(() => {
     return CONFIG_MODULES.filter((mod) => {
+      if (mod.desktopOnly && !isDesktop()) return false;
       if (mod.isCore) return true;
       if (!organizationStatus) return false;
       return organizationStatus.active_modules.includes(mod.moduleCode);

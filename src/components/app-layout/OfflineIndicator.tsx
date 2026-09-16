@@ -7,6 +7,7 @@ import { desktopReportsConnectivity, isDesktop, isDesktopOnline, onDesktopConnec
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useDesktopCatalog } from '@/lib/offline/useDesktopCatalog';
+import { useOfflineData } from '@/lib/offline/useOfflineData';
 
 /**
  * Indicador de estado offline/online. Es la ÚNICA fuente del banner offline
@@ -44,6 +45,8 @@ export function OfflineIndicator() {
     if (isDesktop()) setCatalogOrgId(getOrganizationId() || null);
   }, []);
   const catalog = useDesktopCatalog(catalogOrgId);
+  // Fase 4C: réplica local genérica (todos los módulos); misma cadencia que el catálogo.
+  const replica = useOfflineData(catalogOrgId);
 
   const refreshSalesOutbox = useCallback(async () => {
     if (!isDesktop()) return;
@@ -212,6 +215,14 @@ export function OfflineIndicator() {
   } else if (catalog.isDesktop) {
     catalogLabel = 'catálogo local: sin replicar';
   }
+  let replicaLabel: string | null = null;
+  if (replica.isDesktop && replica.status && !replica.status.isEmpty) {
+    const at = replica.status.replicatedAt ? new Date(replica.status.replicatedAt) : null;
+    const when = at ? (toDate(at) === getToday() ? formatTime(at) : formatDateTime(at)) : '—';
+    replicaLabel = `datos locales actualizados ${when}`;
+  } else if (replica.isDesktop) {
+    replicaLabel = 'datos locales: sin replicar';
+  }
 
   return (
     <div
@@ -244,15 +255,16 @@ export function OfflineIndicator() {
           : 'Sin sincronización registrada en este equipo'}
       </span>
       {catalogLabel && <span className="text-xs text-gray-800/90">· {catalogLabel}</span>}
+      {replicaLabel && <span className="text-xs text-gray-800/90">· {replicaLabel}</span>}
       {catalog.isDesktop && isOnline && (
         <button
           type="button"
           onClick={() => catalog.replicateNow()}
-          disabled={catalog.replicating}
+          disabled={catalog.replicating || replica.replicating}
           className="ml-1 inline-flex items-center gap-1 px-3 py-1 bg-gray-900 text-white rounded-md text-xs hover:bg-gray-800 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
         >
-          <RefreshCw className={`h-3 w-3 ${catalog.replicating ? 'animate-spin' : ''}`} aria-hidden="true" />
-          {catalog.replicating ? 'Actualizando catálogo...' : 'Actualizar catálogo ahora'}
+          <RefreshCw className={`h-3 w-3 ${catalog.replicating || replica.replicating ? 'animate-spin' : ''}`} aria-hidden="true" />
+          {catalog.replicating || replica.replicating ? 'Sincronizando datos...' : 'Sincronizar datos ahora'}
         </button>
       )}
       {isOnline && queueCount > 0 && (

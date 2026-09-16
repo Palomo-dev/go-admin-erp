@@ -10,6 +10,18 @@ export interface DesktopConfig {
   branchIds?: number[];
   branchNames?: string[];
   encryptedRefreshToken?: string;
+  /**
+   * Pantalla del cliente del POS (ventana secundaria). `enabled` = abrirla
+   * sola al arrancar y reabrirla si su monitor vuelve; `displayId` = monitor
+   * elegido (id de `screen.getAllDisplays()`), o null para elegir el
+   * secundario automáticamente.
+   */
+  posDisplay?: PosDisplayConfig;
+}
+
+export interface PosDisplayConfig {
+  enabled: boolean;
+  displayId: number | null;
 }
 
 const CONFIG_PATH = (): string => path.join(app.getPath('userData'), 'config.json');

@@ -87,6 +87,36 @@ export interface DesktopUpdateState {
  * Los métodos son opcionales porque un cliente puede tener una versión antigua
  * instalada: siempre hay que comprobar su existencia antes de invocarlos.
  */
+export interface DesktopDisplayInfo {
+  id: number;
+  label: string;
+  isPrimary: boolean;
+  bounds: { x: number; y: number; width: number; height: number };
+}
+
+export interface DesktopPosDisplayStatus {
+  open: boolean;
+  displayId: number | null;
+}
+
+export interface DesktopPosDisplayBridge {
+  send?: (payload: unknown) => void;
+  onMessage?: (handler: (payload: unknown) => void) => () => void;
+  /**
+   * Abre la ventana de la pantalla del cliente. `origin` es el de la ventana
+   * del POS que llama (window.location.origin): la hija carga `${origin}/pos-display`
+   * en la misma session/partition. `displayId` elige monitor; sin él, el
+   * secundario si existe.
+   */
+  open?: (opts?: { origin?: string; displayId?: number }) => Promise<{ ok: boolean; reason?: string }>;
+  close?: () => Promise<void>;
+  status?: () => Promise<DesktopPosDisplayStatus>;
+  /** Aviso cuando la ventana de la pantalla abre o cierra ('pos-display:status'). */
+  onStatus?: (handler: (status: DesktopPosDisplayStatus) => void) => () => void;
+  listDisplays?: () => Promise<DesktopDisplayInfo[]>;
+  setEnabled?: (enabled: boolean, displayId?: number) => Promise<void>;
+}
+
 export interface GoAdminDesktopBridge {
   // Agente
   startAgent?: (
@@ -133,6 +163,22 @@ export interface GoAdminDesktopBridge {
 
   // Ventana
   reload?: () => Promise<boolean>;
+
+  /**
+   * Pantalla del cliente del POS (docs/pos-doble-pantalla/PLAN.md §9).
+   * Contrato acordado con el proceso principal:
+   * - `send`/`onMessage`: un solo relay simétrico ('pos-display:message') con
+   *   semántica de BroadcastChannel (quien envía no se recibe; los demás
+   *   renderers sí). El payload es { channel, data } structured-clonable; el
+   *   filtrado por `channel` lo hace el adaptador web (desktopChannel.ts).
+   *   No depende del origen ni de la red: enlaza offline y aunque la ventana
+   *   del POS y la de la pantalla carguen orígenes distintos (localhost vs
+   *   127.0.0.1).
+   * - `open`/`close`/`status`/`listDisplays`/`setEnabled`: ventana hija con la
+   *   misma session/partition, en el monitor secundario a pantalla completa
+   *   si existe. Solo existe en Desktop >= 0.2.1.
+   */
+  posDisplay?: DesktopPosDisplayBridge;
 
   // Versión y actualizaciones
   version?: () => Promise<string>;

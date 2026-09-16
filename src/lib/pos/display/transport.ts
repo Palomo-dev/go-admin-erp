@@ -205,7 +205,23 @@ function assertTerminalId(terminalId: unknown): asserts terminalId is string {
   }
 }
 
-function openChannel(terminalId: string): BroadcastChannel {
+/**
+ * Lo mínimo que el transporte necesita de un canal. BroadcastChannel lo cumple
+ * tal cual; en Go Admin Desktop se inyecta un canal sobre el relay del proceso
+ * principal (desktopChannel.ts) con la misma forma, para que toda la lógica de
+ * sobre, seq, adopción y presencia sea idéntica en los dos casos.
+ */
+export interface DisplayChannel {
+  postMessage(msg: unknown): void;
+  onmessage: ((event: { data: unknown }) => void) | null;
+  close(): void;
+}
+
+/** Fábrica de canal inyectable: `(terminalId) => DisplayChannel`. */
+export type DisplayChannelFactory = (terminalId: string) => DisplayChannel;
+
+function openChannel(terminalId: string, factory?: DisplayChannelFactory): DisplayChannel {
+  if (factory) return factory(terminalId);
   if (!isBroadcastChannelSupported()) {
     throw new Error('BroadcastChannel no está disponible en este entorno');
   }
@@ -228,7 +244,7 @@ function unrefTimer(timer: ReturnType<typeof setInterval> | ReturnType<typeof se
  * como overlay, contra PLAN §5.5 («nunca un error modal por la pantalla»).
  * El seq ya consumido queda como hueco, inocuo para el receptor.
  */
-function postSafely(channel: BroadcastChannel, msg: DownMessage | UpMessage): void {
+function postSafely(channel: DisplayChannel, msg: DownMessage | UpMessage): void {
   try {
     channel.postMessage(msg);
   } catch (err) {
@@ -251,6 +267,8 @@ function dispatch<T>(handlers: Set<Listener<T>>, msg: T): void {
 
 export interface BroadcastChannelTransportOptions {
   terminalId: string;
+  /** Canal alternativo (p. ej. el relay de escritorio). Por defecto, BroadcastChannel. */
+  channelFactory?: DisplayChannelFactory;
   /** Solo para pruebas: reloj inyectable para el `at` del latido y para `lastDisplaySeenAt`. */
   now?: () => number;
   heartbeatIntervalMs?: number;
@@ -275,7 +293,7 @@ export interface BroadcastChannelTransportOptions {
 export class BroadcastChannelTransport implements DisplayTransport {
   readonly terminalId: string;
   readonly instanceId: string;
-  private readonly channel: BroadcastChannel;
+  private readonly channel: DisplayChannel;
   private readonly upHandlers = new Set<Listener<UpMessage>>();
   private readonly now: () => number;
   private readonly heartbeatIntervalMs: number;
@@ -290,8 +308,8 @@ export class BroadcastChannelTransport implements DisplayTransport {
     this.instanceId = options.__testInstanceId ?? generateTerminalId();
     this.now = options.now ?? (() => Date.now());
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? HEARTBEAT_INTERVAL_MS;
-    this.channel = openChannel(this.terminalId);
-    this.channel.onmessage = (event: MessageEvent<unknown>) => this.receive(event.data);
+    this.channel = openChannel(this.terminalId, options.channelFactory);
+    this.channel.onmessage = (event: { data: unknown }) => this.receive(event.data);
   }
 
   /** Último seq emitido (0 si aún no se ha publicado nada). */
@@ -377,6 +395,8 @@ export class BroadcastChannelTransport implements DisplayTransport {
 
 export interface BroadcastChannelReceiverOptions {
   terminalId: string;
+  /** Canal alternativo (p. ej. el relay de escritorio). Por defecto, BroadcastChannel. */
+  channelFactory?: DisplayChannelFactory;
   /** Solo para pruebas: reloj inyectable para `lastReceivedAt` y la ventana de elección. */
   now?: () => number;
   /** Silencio tras el cual se suelta la activa. 0 desactiva el watchdog. Por defecto STALE_AFTER_MS. */
@@ -430,7 +450,7 @@ function isBetterHello(candidate: AdoptedHello, current: AdoptedHello | null): b
  */
 export class BroadcastChannelReceiver implements DisplayReceiver {
   readonly terminalId: string;
-  private readonly channel: BroadcastChannel;
+  private readonly channel: DisplayChannel;
   private readonly downHandlers = new Set<Listener<DownMessage>>();
   private readonly now: () => number;
   private readonly staleAfterMs: number;
@@ -458,8 +478,8 @@ export class BroadcastChannelReceiver implements DisplayReceiver {
     this.staleAfterMs = options.staleAfterMs ?? STALE_AFTER_MS;
     this.adoptionWindowMs = options.adoptionWindowMs ?? ADOPTION_WINDOW_MS;
     this.presenceIntervalMs = options.presenceIntervalMs ?? HEARTBEAT_INTERVAL_MS;
-    this.channel = openChannel(this.terminalId);
-    this.channel.onmessage = (event: MessageEvent<unknown>) => this.receive(event.data);
+    this.channel = openChannel(this.terminalId, options.channelFactory);
+    this.channel.onmessage = (event: { data: unknown }) => this.receive(event.data);
   }
 
   /** Mayor seq aceptado de la instancia activa (-1 si aún no ha llegado nada o tras soltarla). */

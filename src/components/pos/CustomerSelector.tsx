@@ -16,6 +16,7 @@ import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvat
 import { POSService } from '@/lib/services/posService';
 import { useOrganization, getCurrentBranchIdWithFallback } from '@/lib/hooks/useOrganization';
 import { ClienteFormDialog } from '@/components/shared/form-dialogs';
+import { OfflineCustomerDialog } from './OfflineCustomerDialog';
 import { Customer, CustomerFilter } from './types';
 import { supabase } from '@/lib/supabase/config';
 
@@ -54,6 +55,8 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showCustomerList, setShowCustomerList] = useState(false);
+  // Fase 4D (Desktop sin red): registro rápido local en vez del formulario completo.
+  const [showOfflineCreate, setShowOfflineCreate] = useState(false);
   const isMobile = useMediaQuery('(max-width: 640px)');
 
   // Buscar clientes Y espacios ocupados
@@ -64,6 +67,14 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
       if (!organization?.id) {
         setOccupiedSpaces([]);
         setIsLoading(false);
+        return;
+      }
+
+      // Fase 4D: sin red en Desktop solo hay catálogo local (sin reservas ni
+      // contactos de empresa, que necesitan Supabase).
+      if (POSService.usesLocalCatalog()) {
+        setOccupiedSpaces([]);
+        setCustomers(await POSService.searchCustomers({ search: term.trim() || undefined, status: 'active' }));
         return;
       }
 
@@ -374,6 +385,11 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                           {customer.customer_type === 'company' && (
                             <Building2 className="h-3 w-3 text-blue-500 dark:text-blue-400 shrink-0" />
                           )}
+                          {customer.pending_sync && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-400 text-amber-700 dark:text-amber-300 shrink-0">
+                              Pendiente de sincronizar
+                            </Badge>
+                          )}
                         </div>
                         {customer.customer_type === 'company' && (customer as any).primary_contact_name && (
                           <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal">
@@ -409,7 +425,8 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
       {/* Botón para crear nuevo cliente */}
       <Button
         onClick={() => {
-          setShowCreateDialog(true);
+          if (POSService.usesLocalCatalog()) setShowOfflineCreate(true);
+          else setShowCreateDialog(true);
           setShowCustomerList(false);
         }}
         className="w-full justify-start dark:bg-blue-600 dark:hover:bg-blue-700 bg-blue-600 hover:bg-blue-700 transition-colors"
@@ -439,6 +456,11 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                   <h3 className="font-semibold text-base dark:text-white text-gray-900 break-words whitespace-normal">
                     {selectedCustomer.full_name}
                   </h3>
+                  {selectedCustomer.pending_sync && (
+                    <Badge variant="outline" className="mt-1 text-[10px] px-1.5 py-0 border-amber-400 text-amber-700 dark:text-amber-300">
+                      Pendiente de sincronizar
+                    </Badge>
+                  )}
                   
                   <div className="mt-1 space-y-1">
                     {selectedCustomer.email && (
@@ -551,6 +573,9 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
           )}
         </div>
       )}
+
+      {/* Fase 4D: Desktop sin red → registro rápido local */}
+      <OfflineCustomerDialog open={showOfflineCreate} onOpenChange={setShowOfflineCreate} onCreated={handleCustomerCreated} />
 
       {/* Diálogo compartido: reutiliza el formulario COMPLETO de cliente */}
       {organization?.id && (

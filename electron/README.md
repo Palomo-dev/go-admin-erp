@@ -106,6 +106,58 @@ tengan el icono correcto.
 3. `mainWindow.ts` (ventana principal + splash) y `tray.ts` usan `getIconImage()`
    y pasan un `NativeImage` a la opción `icon` en vez de un string de ruta.
 
+## Pantalla del cliente
+
+Ventana secundaria del POS (`/pos-display`) que muestra al cliente el ticket en
+curso. En escritorio la crea el **proceso principal** y la mensajería va por
+IPC, no por `BroadcastChannel`: enlaza siempre, sin internet y aunque la caja y
+la pantalla vivan en orígenes distintos (servidor Next embebido en
+`localhost:<puerto>` vs. `127.0.0.1`).
+
+Archivos: `src/main/posDisplayIpc.ts` (canales IPC y validación),
+`src/main/windows/posDisplayWindow.ts` (ventana, monitores, atajo, apertura
+automática), `src/main/broadcast.ts` (`broadcastExcept`), `src/preload/index.ts`
+(`window.goAdminDesktop.posDisplay`). Prueba manual:
+`scripts/smoke-pos-display.md`.
+
+### API expuesta (`window.goAdminDesktop.posDisplay`)
+
+| Método | Canal IPC | Qué hace |
+|---|---|---|
+| `send(payload)` | `pos-display:message` (`send`, síncrono) | Reenvía `{ channel, data }` tal cual a **todos los demás** renderers (el emisor no se recibe: semántica `BroadcastChannel`). Se descarta si no es un objeto con `channel: string`. |
+| `onMessage(handler) → unsubscribe` | `pos-display:message` | Recibe lo que publican los demás. La baja quita solo ese listener; puede haber varios a la vez. |
+| `open(opts?)` | `pos-display:open` | Abre la pantalla. `opts` puede ser `{ origin?, displayId? }` o un `displayId` numérico. Sin `origin`, usa el de la web que llama (`event.sender.getURL()`); nunca una URL cableada. Devuelve `{ ok, reason? }`. Si ya está abierta, la trae al frente y devuelve `{ ok: true }`. |
+| `close()` | `pos-display:close` | Cierra la pantalla. |
+| `status()` | `pos-display:status` | `{ open, displayId }` (`displayId` = monitor a pantalla completa; `null` en modo ventana o cerrada). |
+| `listDisplays()` | `pos-display:list-displays` | `[{ id, label, isPrimary, bounds }]` de `screen.getAllDisplays()`. |
+| `setEnabled(enabled, displayId?)` | `pos-display:set-enabled` | Persiste `posDisplay: { enabled, displayId }` en `config.json` (escritura atómica). `displayId` omitido conserva el guardado; `null` vuelve a «automático». Solo persiste: abrir y cerrar lo decide la web con `open()`/`close()`. |
+| `onStatus(handler) → unsubscribe` | evento `pos-display:status` | `{ open, displayId }` cada vez que la pantalla abre o cierra (extra, opcional). |
+
+Validación en el proceso principal: `origin` debe ser `http(s)` e interno
+(`isInternalUrl`: la URL cargada, `app.goadmin.io` o el servidor embebido),
+`displayId` entero ≥ 0, `enabled` booleano, `payload` objeto. Todo lo demás se
+rechaza con `{ ok: false, reason }` o con una excepción en el `invoke`.
+
+### Ventana y monitores
+
+- Misma `session` y mismas `webPreferences` (mismo preload `preload/index.js`)
+  que la vista de la web: comparte cookies, `localStorage` e IndexedDB con la
+  caja y tiene `window.goAdminDesktop`.
+- Carga `${origin}/pos-display`. Enlaces externos al navegador del sistema
+  (`installExternalLinkGuards`, el mismo helper que la vista principal).
+- Elección de monitor (`pickDisplay`, función pura): el `displayId` pedido si
+  existe; si no, el primer monitor no principal; si solo hay uno, ventana
+  normal 1280×800. Con monitor: `fullscreen`, sin marco, fuera de la barra de
+  tareas, y se muestra con `showInactive()` para no robar el foco de la caja.
+- Nunca hay dos ventanas. Se cierra al cerrar u ocultar la ventana principal,
+  al salir de la app, si su monitor desaparece (`display-removed`) y con el
+  atajo global **Ctrl+Shift+D** (se desregistra en `will-quit`).
+- Apertura automática: si `posDisplay.enabled` y (si hay `displayId`) el
+  monitor está conectado, se abre sola cuando la web principal termina de
+  cargar una URL interna, al volver a mostrar la ventana principal y al
+  conectar un monitor (`display-added`). Usa el origen real de la web
+  principal.
+
 ## Relación con el repo principal
 
 - **Vercel** solo lee `package.json` del raíz — **nunca** toca `electron/`.

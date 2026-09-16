@@ -1921,16 +1921,20 @@
       "disconnected": "No display",
       "ariaLabel": "Customer display",
       "notEmitting": "Disabled in Settings › POS › Customer display",
-      "unsupported": "This browser does not support the customer display (no BroadcastChannel). Update it or use the desktop app."
+      "unsupported": "This browser does not support the customer display (no BroadcastChannel). Update it or use the desktop app.",
+      "disabled": "Display off"
     },
     "menu": {
       "open": "Open customer display",
-      "close": "Close"
+      "close": "Close",
+      "enableAndOpen": "Turn on and open customer display"
     },
     "toast": {
       "dragHint": "Drag the window to the customer screen and press F11",
       "popupBlocked": "The browser blocked the pop-up window. Allow pop-ups for this site and try again.",
-      "closeFromOpener": "It cannot be closed from here: close it from its own window. If this register opened it before reloading, “Open” recovers it."
+      "closeFromOpener": "It cannot be closed from here: close it from its own window. If this register opened it before reloading, “Open” recovers it.",
+      "enabled": "Customer display turned on",
+      "enableError": "Could not turn on the customer display"
     },
     "config": {
       "title": "Customer display",
@@ -1985,6 +1989,7 @@
       "paid": "Total paid"
     },
     "fullscreen": "Full screen",
-    "poweredBy": "GO Admin"
+    "poweredBy": "GO Admin",
+    "connectingHint": "If it does not connect, turn on the customer display at the register: Settings › POS › Customer display"
   }
 }

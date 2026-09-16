@@ -20,6 +20,9 @@
 import { supabase } from '@/lib/supabase/config';
 import { isDesktop } from '@/lib/utils/desktop';
 import { isAppOnline } from '@/lib/utils/offlineCache';
+import { getStorageImageUrl } from '@/lib/utils/storageImageUrl';
+import { restorePendingCustomersToCatalog } from './customersOutbox';
+import { warmMediaCache, type FetchLike, type WarmMediaCacheResult } from './mediaCache';
 import {
   CATALOG_STORES,
   getCatalogStatus,
@@ -67,6 +70,14 @@ export interface ReplicateCatalogOptions {
   client?: CatalogClient;
   /** Se llama tras cada store replicado (progreso para la UI). */
   onProgress?: (store: CatalogStoreName, count: number) => void;
+  /**
+   * Fase 4D: precalentar la caché de medios (`goadmin-media`) con la imagen
+   * primaria de cada producto al terminar, en segundo plano. Por defecto sí
+   * en Desktop; los tests lo apagan o inyectan `fetchImpl`.
+   */
+  warmMedia?: boolean;
+  fetchImpl?: FetchLike;
+  imageUrl?: (storagePath: string) => string;
 }
 
 interface PageResult<T> {
@@ -165,7 +176,7 @@ export function isCatalogReplicating(): boolean {
   return replicationInFlight !== null;
 }
 
-async function runReplication({ organizationId, client = supabase, onProgress }: ReplicateCatalogOptions): Promise<CatalogStatus> {
+async function runReplication({ organizationId, client = supabase, onProgress, warmMedia, fetchImpl, imageUrl }: ReplicateCatalogOptions): Promise<CatalogStatus> {
   if (!isCatalogAvailable()) throw new Error('IndexedDB no disponible: no se puede replicar el catálogo');
   if (!organizationId) throw new Error('Sin organización activa: no se puede replicar el catálogo');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -195,6 +206,7 @@ async function runReplication({ organizationId, client = supabase, onProgress }:
   report('products', await products.finish());
 
   // 3. Tablas hijas por product_id, en trozos de 500 ids.
+  const collectedImages: Array<{ storage_path: string }> = [];
   const prices = new StoreWriter('product_prices', org);
   const images = new StoreWriter('product_images', org);
   const taxRelations = new StoreWriter('product_tax_relations', org);
@@ -209,7 +221,9 @@ async function runReplication({ organizationId, client = supabase, onProgress }:
       await db.from('product_images').select('id, product_id, storage_path, is_primary, display_order').in('product_id', ids).order('display_order'),
       'product_images',
     );
-    await images.write(pickPrimaryImages(imageRows).map((r) => ({ ...r, organization_id: org })));
+    const primaryImages = pickPrimaryImages(imageRows);
+    await images.write(primaryImages.map((r) => ({ ...r, organization_id: org })));
+    collectedImages.push(...primaryImages.map((r) => ({ storage_path: r.storage_path })));
 
     const taxRows = unwrap<Omit<CatalogProductTaxRelation, 'organization_id'>>(
       await db.from('product_tax_relations').select('product_id, tax_id').in('product_id', ids),
@@ -253,6 +267,13 @@ async function runReplication({ organizationId, client = supabase, onProgress }:
     CUSTOMERS_LIMIT,
   );
   report('customers', await customers.finish());
+  // Fase 4D: la poda retiró los clientes creados sin red que aún no están en
+  // Supabase; se vuelven a poner (con `pending_sync`) para que el POS los vea.
+  try {
+    await restorePendingCustomersToCatalog(org);
+  } catch (err) {
+    console.warn('[catálogo] No se pudieron restaurar los clientes pendientes:', err);
+  }
 
   // 7. Métodos de pago activos, con el nombre del catálogo global.
   const paymentMethods = new StoreWriter('payment_methods', org);
@@ -295,7 +316,27 @@ async function runReplication({ organizationId, client = supabase, onProgress }:
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(CATALOG_REPLICATED_EVENT, { detail: status }));
   }
+  // Fase 4D: imágenes en segundo plano, sin retener la replicación.
+  if (warmMedia ?? isDesktop()) {
+    const urls = new Set(collectedImages.map((r) => (imageUrl ?? getStorageImageUrl)(r.storage_path)).filter(Boolean));
+    void warmProductImages(urls, fetchImpl);
+  }
   return status;
+}
+
+/**
+ * Precalienta `goadmin-media` con las URLs públicas de las imágenes primarias
+ * del catálogo. Lotes de 2, cede el hilo entre lotes y se detiene si se va
+ * la red. Nunca lanza: un fallo aquí no afecta al catálogo.
+ */
+export async function warmProductImages(urls: Set<string>, fetchImpl?: FetchLike): Promise<WarmMediaCacheResult | null> {
+  if (urls.size === 0) return null;
+  try {
+    return await warmMediaCache(urls, { fetchImpl, concurrency: 2, shouldContinue: () => isAppOnline() });
+  } catch (err) {
+    console.warn('[catálogo] Precalentado de imágenes fallido:', err);
+    return null;
+  }
 }
 
 /** Una imagen por producto: la primaria o, si no hay, la de menor `display_order`. */

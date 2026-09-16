@@ -30,6 +30,7 @@ import {
 } from './settings';
 import { getOrCreateLocalTerminalId } from './terminal';
 import { BroadcastChannelTransport, isBroadcastChannelSupported, type DisplayTransport } from './transport';
+import { isDisplayTransportAvailable, resolveDisplayChannelFactory } from './desktopChannel';
 
 export { isBroadcastChannelSupported };
 
@@ -54,8 +55,14 @@ let instance: DisplayEmitter | null = null;
 let unsubscribeSettingsChanges: (() => void) | null = null;
 
 function createBrowserTransport(): DisplayTransport | null {
-  if (typeof window === 'undefined' || !isBroadcastChannelSupported()) return null;
-  return new BroadcastChannelTransport({ terminalId: getOrCreateLocalTerminalId() });
+  if (typeof window === 'undefined' || !isDisplayTransportAvailable()) return null;
+  // En Go Admin Desktop el canal va por el relay del proceso principal (enlaza
+  // sin red y aunque las ventanas carguen orígenes distintos); en el navegador,
+  // BroadcastChannel. La lógica del transporte es la misma en ambos casos.
+  return new BroadcastChannelTransport({
+    terminalId: getOrCreateLocalTerminalId(),
+    channelFactory: resolveDisplayChannelFactory(),
+  });
 }
 
 function defaultChangeSource(): SettingsChangeSource | null {
@@ -74,20 +81,26 @@ function defaultChangeStorage(): SettingsChangeStorage | null {
 /**
  * Lo que el indicador necesita saber además del emisor para explicar por qué
  * NO emite (presence.ts `reason`): si el interruptor de la organización
- * activa ya se cargó (caché de settings.ts) y si este entorno tiene
- * BroadcastChannel. Sin organización todavía cuenta como «cargando».
+ * activa ya se cargó (caché de settings.ts), qué valor tiene (para que una
+ * caché ENCENDIDA con el emisor aún sin arrancar cuente como «cargando» y no
+ * como «apagada») y si este entorno tiene BroadcastChannel. Sin organización
+ * todavía cuenta como «cargando».
  */
 export function getPosDisplayEnvironment(): DisplayPresenceEnvironment {
   let settingsLoaded = false;
+  let enabled = false;
   try {
     const orgId = getOrganizationId();
     settingsLoaded = hasCustomerDisplaySettingsCache(orgId);
+    enabled = isCustomerDisplayEnabled(orgId);
   } catch {
     settingsLoaded = false; // la organización activa no se pudo leer (storage bloqueado): no se sabe
+    enabled = false;
   }
   return {
     settingsLoaded,
-    transportSupported: typeof window !== 'undefined' && isBroadcastChannelSupported(),
+    enabled,
+    transportSupported: typeof window !== 'undefined' && isDisplayTransportAvailable(),
   };
 }
 
@@ -200,6 +213,18 @@ let startGeneration = 0;
 export async function startPosDisplay(options: StartPosDisplayOptions): Promise<DisplayEmitter> {
   const emitter = getPosDisplayEmitter();
   const generation = ++startGeneration;
+
+  // La identidad de esta caja (pos_terminal_id) se crea SIEMPRE al abrir el POS,
+  // esté o no encendido el interruptor maestro. Antes solo se creaba al abrir el
+  // transporte (interruptor encendido), y una pantalla abierta con el interruptor
+  // apagado no encontraba caja y decía «abra el punto de venta» aunque estuviera
+  // abierto. Con identidad, la pantalla puede decir la verdad: «conectando… active
+  // la pantalla del cliente en Configuración › POS».
+  try {
+    if (typeof window !== 'undefined') getOrCreateLocalTerminalId();
+  } catch {
+    // storage bloqueado: el transporte lo volverá a intentar al arrancar
+  }
 
   // El listener se registra ANTES de la carga: si otra ventana guarda el
   // interruptor mientras la consulta está en vuelo (que responde con el valor

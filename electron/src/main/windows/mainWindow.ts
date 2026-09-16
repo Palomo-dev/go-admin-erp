@@ -52,7 +52,7 @@ const ZOOM_STEP = 0.1;
  * arrancó (build no empaquetado, error), se cae a la web remota como antes.
  * En desarrollo solo se usa el local con `GOADMIN_DESKTOP_LOCAL_WEB=1`.
  */
-function getLoadUrl(): string {
+export function getLoadUrl(): string {
   const localUrl = webServer.shouldUseLocalWeb() ? webServer.getUrl() : null;
   if (localUrl) return localUrl;
   return app.isPackaged ? WEB_APP_URL : DEV_URL;
@@ -177,7 +177,7 @@ function getToolbarHtmlPath(): string {
   return path.join(__dirname, '..', '..', 'renderer', 'toolbar', 'index.html');
 }
 
-function getPreloadPath(name: 'index' | 'toolbar'): string {
+export function getPreloadPath(name: 'index' | 'toolbar'): string {
   return path.join(__dirname, '..', '..', 'preload', `${name}.js`);
 }
 
@@ -277,14 +277,9 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
     wc.session.setCertificateVerifyProc((_req, cb) => cb(0));
   }
 
-  // ── Seguridad: el preload expone window.goAdminDesktop en este webContents.
-  // Si la vista navegara a un dominio externo, ese sitio heredaría el bridge
-  // (impresión, autostart, configuración). Se bloquea y se abre en el navegador.
-  wc.on('will-navigate', (event, url) => {
-    if (isInternalUrl(url, loadUrl)) return;
-    event.preventDefault();
-    shell.openExternal(url).catch(() => {});
-  });
+  // Seguridad: bloquear navegaciones y ventanas hacia dominios externos
+  // (heredarían window.goAdminDesktop). Compartido con la pantalla del cliente.
+  installExternalLinkGuards(wc, loadUrl);
 
   // ── Estado de navegación → barra ──
   const pushNav = () => broadcast('toolbar:nav-state', getNavState());
@@ -330,31 +325,6 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
   unsubscribeConnectivity?.();
   unsubscribeConnectivity = onConnectivityChange((online) => {
     if (online && showingOfflineScreen) reloadApp();
-  });
-
-  wc.setWindowOpenHandler(({ url }) => {
-    // about:blank se usa para ventanas de impresión (window.open('', '_blank'))
-    // que generan el diálogo de impresión del navegador. Sin esto, reimprimir
-    // desde el POS no muestra el diálogo.
-    if (url === 'about:blank' || isInternalUrl(url, loadUrl)) {
-      // CRÍTICO: la vista de la web tiene sandbox: false. Por defecto, las
-      // ventanas hijas se crean sandboxed, lo que hace que window.open() retorne
-      // null (mismatch de sandbox entre opener e hija) y el diálogo de impresión
-      // nunca aparece. Se debe heredar sandbox: false para que la hija comparta
-      // el proceso del opener y window.open() funcione.
-      return {
-        action: 'allow',
-        overrideBrowserWindowOptions: {
-          webPreferences: {
-            sandbox: false,
-            nodeIntegration: false,
-            contextIsolation: true,
-          },
-        },
-      };
-    }
-    shell.openExternal(url).catch(() => {});
-    return { action: 'deny' };
   });
 
   // Tema: aplicar ahora y seguir al sistema.
@@ -494,7 +464,7 @@ export function zoomReset(): void {
  * este proceso). Todo lo
  * demás lo bloquea `will-navigate` y se abre en el navegador del sistema.
  */
-function isInternalUrl(url: string, loadUrl: string): boolean {
+export function isInternalUrl(url: string, loadUrl: string): boolean {
   try {
     const target = new URL(url);
     const base = new URL(loadUrl);
@@ -504,6 +474,48 @@ function isInternalUrl(url: string, loadUrl: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Guardas de seguridad de un webContents que lleva el preload de la web
+ * (`window.goAdminDesktop`): la vista principal y la pantalla del cliente.
+ *
+ * - `will-navigate`: si la página navegara a un dominio externo, ese sitio
+ *   heredaría el bridge (impresión, agente, configuración). Se bloquea y se
+ *   abre en el navegador del sistema.
+ * - `setWindowOpenHandler`: los enlaces externos van al navegador. Se permite
+ *   `about:blank` porque las ventanas de impresión (`window.open('', '_blank')`)
+ *   lo usan para mostrar el diálogo de impresión; sin esto reimprimir desde el
+ *   POS no muestra nada.
+ *
+ * CRÍTICO: la vista de la web tiene `sandbox: false`. Por defecto las ventanas
+ * hijas se crean sandboxed, lo que hace que `window.open()` devuelva null
+ * (desajuste de sandbox entre opener e hija). Se hereda `sandbox: false` para
+ * que la hija comparta el proceso del opener y `window.open()` funcione.
+ */
+export function installExternalLinkGuards(wc: WebContents, loadUrl: string): void {
+  wc.on('will-navigate', (event, url) => {
+    if (isInternalUrl(url, loadUrl)) return;
+    event.preventDefault();
+    shell.openExternal(url).catch(() => {});
+  });
+
+  wc.setWindowOpenHandler(({ url }) => {
+    if (url === 'about:blank' || isInternalUrl(url, loadUrl)) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          webPreferences: {
+            sandbox: false,
+            nodeIntegration: false,
+            contextIsolation: true,
+          },
+        },
+      };
+    }
+    shell.openExternal(url).catch(() => {});
+    return { action: 'deny' };
+  });
 }
 
 function loadApp(url: string): void {

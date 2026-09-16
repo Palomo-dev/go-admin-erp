@@ -2,6 +2,35 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 console.log('[preload] Cargando preload script...');
 
+/**
+ * Opciones de `posDisplay.open`. La web puede llamar `open(displayId?)` (forma
+ * del tipo `DesktopPosDisplayBridge` del ERP) u `open({ origin?, displayId? })`;
+ * el proceso principal acepta ambas. Sin `origin`, usa el de la web que llama.
+ * Tipos locales a propósito: el preload no importa nada del ERP.
+ */
+type PosDisplayOpenOptions = { origin?: string; displayId?: number | null } | number;
+
+/**
+ * Suscripción a un canal IPC que devuelve SU baja (quita solo ese listener).
+ * A diferencia de `onConnectivity`/`onUpdateState`, que hacen
+ * `removeAllListeners`, aquí puede haber varios suscriptores a la vez (varios
+ * canales de terminal sobre el mismo relé) y cada uno se da de baja solo.
+ */
+function subscribe(channel: string, handler: (payload: unknown) => void): () => void {
+  if (typeof handler !== 'function') throw new TypeError('handler debe ser una función');
+  const listener = (_e: Electron.IpcRendererEvent, payload: unknown) => {
+    try {
+      handler(payload);
+    } catch (err) {
+      console.error(`[preload] handler de ${channel} lanzó:`, err);
+    }
+  };
+  ipcRenderer.on(channel, listener);
+  return () => {
+    ipcRenderer.removeListener(channel, listener);
+  };
+}
+
 try {
   contextBridge.exposeInMainWorld('goAdminDesktop', {
   // Agente
@@ -50,6 +79,25 @@ try {
 
   // Ventana
   reload: () => ipcRenderer.invoke('app:reload'),
+
+  // Pantalla del cliente del POS (ventana secundaria + relé de mensajes por
+  // IPC: funciona sin internet y entre orígenes; ver main/posDisplayIpc.ts).
+  posDisplay: {
+    /** Publica `{ channel, data }` a todos los demás renderers (no vuelve al emisor). Síncrono. */
+    send: (payload: unknown) => {
+      ipcRenderer.send('pos-display:message', payload);
+    },
+    /** Recibe lo que publican los demás renderers. Devuelve la baja. */
+    onMessage: (handler: (payload: unknown) => void) => subscribe('pos-display:message', handler),
+    open: (opts?: PosDisplayOpenOptions) => ipcRenderer.invoke('pos-display:open', opts),
+    close: () => ipcRenderer.invoke('pos-display:close'),
+    status: () => ipcRenderer.invoke('pos-display:status'),
+    listDisplays: () => ipcRenderer.invoke('pos-display:list-displays'),
+    setEnabled: (enabled: boolean, displayId?: number | null) =>
+      ipcRenderer.invoke('pos-display:set-enabled', enabled, displayId),
+    /** `{ open, displayId }` cada vez que la pantalla abre o cierra. Devuelve la baja. */
+    onStatus: (handler: (status: unknown) => void) => subscribe('pos-display:status', handler),
+  },
 
   // Versión y actualizaciones
   version: () => ipcRenderer.invoke('app:version'),

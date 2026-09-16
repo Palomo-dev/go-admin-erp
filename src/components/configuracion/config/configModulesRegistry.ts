@@ -14,6 +14,7 @@ import {
   Dumbbell,
   Bell,
   Globe,
+  HardDrive,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -24,6 +25,8 @@ export interface ConfigModule {
   description: string;
   icon: LucideIcon;
   isCore?: boolean;
+  /** Solo se muestra dentro de Go Admin Desktop (`isDesktop()`). */
+  desktopOnly?: boolean;
 }
 
 export const CONFIG_MODULES: ConfigModule[] = [
@@ -134,6 +137,15 @@ export const CONFIG_MODULES: ConfigModule[] = [
     title: 'Notificaciones',
     description: 'Preferencias de canales de notificación',
     icon: Bell,
+  },
+  {
+    id: 'datos-offline',
+    moduleCode: 'general',
+    title: 'Datos sin conexión',
+    description: 'Copia local para trabajar sin internet en Go Admin Desktop',
+    icon: HardDrive,
+    isCore: true,
+    desktopOnly: true,
   },
 ];
 

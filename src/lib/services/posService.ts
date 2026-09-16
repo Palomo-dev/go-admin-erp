@@ -7,7 +7,8 @@ import { stockMovementService } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
-import { enqueueOfflineSale, shouldCheckoutOffline } from '@/lib/offline/salesOutbox';
+import { enqueueOfflineSale, shouldCheckoutOffline, newLocalUuid } from '@/lib/offline/salesOutbox';
+import { enqueueOfflineCustomer, findLocalCustomerDuplicate, type OfflineCustomerPayload } from '@/lib/offline/customersOutbox';
 import { posOfflineReads } from '@/lib/offline/posOfflineReads';
 import { isDesktop } from '@/lib/utils/desktop';
 import { isAppOnline } from '@/lib/utils/offlineCache';
@@ -29,15 +30,8 @@ import {
   HoldWithDebtResult
 } from '../../components/pos/types';
 
-// Función para obtener URL de imagen desde storage path usando el cliente de supabase
-const getStorageImageUrl = (storagePath: string): string => {
-  if (!storagePath) return '';
-  const bucket = (storagePath.startsWith('products/') || storagePath.startsWith('productos/')) ? 'product-images' : 'organization_images';
-  const { data } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(storagePath);
-  return data?.publicUrl || '';
-};
+// URL pública de una imagen de Storage (compartida con el replicador del catálogo, fase 4D).
+import { getStorageImageUrl } from '@/lib/utils/storageImageUrl';
 
 export class POSService {
   /**
@@ -770,13 +764,14 @@ export class POSService {
   }
 
   static async createCustomer(customerData: Partial<Customer>): Promise<Customer> {
+    // Fase 4D (Desktop sin red): id generado aquí, catálogo local + outbox.
+    if (this.usesLocalCatalog()) return this.createCustomerOffline(customerData);
     try {
       // Mapear los campos del formulario a la estructura de la base de datos
       const insertData = {
         organization_id: this.organizationId,
         branch_id: await this.getBranchId(),
-        first_name: customerData.full_name?.split(' ')[0] || '',
-        last_name: customerData.full_name?.split(' ').slice(1).join(' ') || '',
+        ...this.splitCustomerName(customerData),
         email: customerData.email,
         phone: customerData.phone,
         // Solo usar identification_type y identification_number (doc_type y doc_number son columnas generadas)
@@ -812,6 +807,64 @@ export class POSService {
       console.error('Error creating customer:', error);
       throw error;
     }
+  }
+
+  /** `first_name`/`last_name` explícitos si vienen; si no, se parte `full_name` (comportamiento histórico). */
+  private static splitCustomerName(customerData: Partial<Customer>): { first_name: string; last_name: string } {
+    if (customerData.first_name !== undefined || customerData.last_name !== undefined) {
+      return { first_name: (customerData.first_name ?? '').trim(), last_name: (customerData.last_name ?? '').trim() };
+    }
+    const parts = (customerData.full_name ?? '').trim().split(/\s+/).filter(Boolean);
+    return { first_name: parts[0] || '', last_name: parts.slice(1).join(' ') };
+  }
+
+  /**
+   * Cliente sin red (Desktop, fase 4D). `customers.id` es `uuid` (verificado
+   * por MCP), así que el id se genera aquí con `crypto.randomUUID()`. La fila
+   * entra en el catálogo local con `pending_sync` y en el outbox de clientes;
+   * `customersSync` la inserta al volver la red, antes que las ventas que la
+   * referencien. No emite ningún fetch.
+   *
+   * Duplicados: mismos UNIQUE que Postgres (documento o email por
+   * organización) comprobados contra el catálogo local. Si ya existe, se
+   * lanza un error claro con el nombre del cliente existente.
+   */
+  private static async createCustomerOffline(customerData: Partial<Customer>): Promise<Customer> {
+    const organizationId = this.organizationId;
+    const branchId = getCurrentBranchId() ?? null;
+    const doc = customerData.doc_number?.trim() || null;
+    const email = customerData.email?.trim() || null;
+    const duplicate = await findLocalCustomerDuplicate(organizationId, { identification_number: doc, email });
+    if (duplicate) {
+      const byDoc = !!doc && (duplicate.identification_number ?? '').trim().toLocaleLowerCase() === doc.toLocaleLowerCase();
+      throw new Error(`Ya existe un cliente con ese ${byDoc ? 'documento' : 'email'}: ${duplicate.full_name ?? duplicate.id}`);
+    }
+    const name = this.splitCustomerName(customerData);
+    if (!name.first_name && !name.last_name) throw new Error('El nombre del cliente es obligatorio');
+    const isCompany = customerData.customer_type === 'company';
+    const payload: OfflineCustomerPayload = {
+      organization_id: organizationId,
+      branch_id: branchId,
+      first_name: name.first_name,
+      last_name: name.last_name,
+      email,
+      phone: customerData.phone?.trim() || null,
+      identification_type: customerData.doc_type || null,
+      identification_number: doc,
+      address: customerData.address?.trim() || null,
+      customer_type: isCompany ? 'company' : 'person',
+      company_name: isCompany ? customerData.full_name?.trim() || null : null,
+      roles: customerData.roles || ['cliente', 'huesped'],
+      tags: customerData.tags || [],
+      preferences: customerData.preferences || {},
+      fiscal_responsibilities: ['R-99-PN'],
+      fiscal_municipality_id: customerData.fiscal_municipality_id || null,
+      metadata: { ...(customerData.country ? { country: customerData.country } : {}), created_offline: true },
+      created_at: new Date().toISOString(),
+    };
+    const row = await enqueueOfflineCustomer(payload, newLocalUuid());
+    console.log(`Cliente ${row.id} creado sin conexión (pendiente de sincronizar)`);
+    return row as unknown as Customer;
   }
 
   // ===============================
@@ -1087,15 +1140,19 @@ export class POSService {
       cart.customer_id = customerId;
 
       if (customerId) {
-        // Obtener datos del cliente
-        const { data: customer, error } = await supabase
-          .from('customers')
-          .select('*')
-          .eq('id', customerId)
-          .single();
+        // Obtener datos del cliente (fase 4D: del catálogo local sin red)
+        if (this.usesLocalCatalog()) {
+          cart.customer = (await posOfflineReads.getCustomerById(this.organizationId, customerId)) as unknown as Customer;
+        } else {
+          const { data: customer, error } = await supabase
+            .from('customers')
+            .select('*')
+            .eq('id', customerId)
+            .single();
 
-        if (error) throw error;
-        cart.customer = customer;
+          if (error) throw error;
+          cart.customer = customer;
+        }
       } else {
         cart.customer = undefined;
       }

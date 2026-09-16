@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import {
   Eye,
@@ -12,7 +11,6 @@ import {
   RotateCcw,
   CheckCircle,
   Clock,
-  AlertCircle
 } from 'lucide-react';
 import {
   Table,
@@ -35,7 +33,6 @@ import {
 import { SaleWithDetails } from './types';
 import { formatCurrency } from '@/utils/Utils';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { cn } from '@/utils/Utils';
 import { CopyableId } from '@/components/common/CopyableId';
 
 interface VentasTableProps {
@@ -87,6 +84,14 @@ export function VentasTable({
           <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800/30 dark:text-gray-400 border-0">
             <Clock className="h-3 w-3 mr-1" />
             Expirada
+          </Badge>
+        );
+      // Desktop (fase 4B/4C): venta hecha sin red, guardada en el outbox local.
+      case 'pending_sync':
+        return (
+          <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-0">
+            <Clock className="h-3 w-3 mr-1" />
+            Pendiente de sincronizar
           </Badge>
         );
       default:

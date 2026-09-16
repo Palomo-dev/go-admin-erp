@@ -7,15 +7,20 @@
  *  - Fuera del Desktop devuelve `isDesktop: false` y no hace nada (ni abre
  *    IndexedDB ni escucha eventos): la web no cambia.
  *  - En Desktop arranca la replicación al montar (POS e inicio) y cada 10
- *    minutos con red (`startCatalogReplication`), sigue el estado de
- *    conexión y expone `replicateNow()` para el botón «Actualizar catálogo».
+ *    minutos con red, sigue el estado de conexión y expone `replicateNow()`
+ *    para el botón «Actualizar catálogo».
+ *
+ * Desde la fase 4C la cadencia es ÚNICA: `startOfflineReplication` replica
+ * en el mismo tick el catálogo del POS (4A) y la réplica genérica de todos
+ * los módulos (`offlineReplicator.ts`), y «Actualizar ahora» hace ambas.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { isDesktop } from '@/lib/utils/desktop';
 import { isAppOnline } from '@/lib/utils/offlineCache';
 import { getCatalogStatus, type CatalogStatus } from './catalogStore';
-import { CATALOG_REPLICATED_EVENT, isCatalogReplicating, replicateCatalog, startCatalogReplication } from './catalogReplicator';
+import { CATALOG_REPLICATED_EVENT, isCatalogReplicating } from './catalogReplicator';
+import { isOfflineReplicating, replicateAllOffline, startOfflineReplication } from './offlineReplicator';
 
 export interface DesktopCatalogState {
   isDesktop: boolean;
@@ -61,8 +66,8 @@ export function useDesktopCatalog(organizationId: number | null | undefined): De
     window.addEventListener('goadmin:offline', onOffline);
     window.addEventListener(CATALOG_REPLICATED_EVENT, onReplicated);
 
-    setReplicating(isCatalogReplicating());
-    const stop = startCatalogReplication(organizationId);
+    setReplicating(isCatalogReplicating() || isOfflineReplicating());
+    const stop = startOfflineReplication(organizationId);
 
     return () => {
       window.removeEventListener('goadmin:online', onOnline);
@@ -81,7 +86,8 @@ export function useDesktopCatalog(organizationId: number | null | undefined): De
     setReplicating(true);
     setError(null);
     try {
-      setStatus(await replicateCatalog({ organizationId }));
+      await replicateAllOffline({ organizationId });
+      setStatus(await getCatalogStatus(organizationId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo actualizar el catálogo');
     } finally {

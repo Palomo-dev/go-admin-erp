@@ -1921,16 +1921,20 @@
       "disconnected": "Sin pantalla",
       "ariaLabel": "Pantalla del cliente",
       "notEmitting": "Desactivada en Configuración › POS › Pantalla del cliente",
-      "unsupported": "Este navegador no admite la pantalla del cliente (sin BroadcastChannel). Actualícelo o use la aplicación de escritorio."
+      "unsupported": "Este navegador no admite la pantalla del cliente (sin BroadcastChannel). Actualícelo o use la aplicación de escritorio.",
+      "disabled": "Pantalla desactivada"
     },
     "menu": {
       "open": "Abrir pantalla del cliente",
-      "close": "Cerrar"
+      "close": "Cerrar",
+      "enableAndOpen": "Activar y abrir pantalla del cliente"
     },
     "toast": {
       "dragHint": "Arrastre la ventana a la pantalla del cliente y pulse F11",
       "popupBlocked": "El navegador bloqueó la ventana emergente. Permita ventanas emergentes para este sitio y vuelva a intentarlo.",
-      "closeFromOpener": "No se puede cerrar desde aquí: ciérrela desde su propia ventana. Si esta caja la abrió antes de recargar, «Abrir» la recupera."
+      "closeFromOpener": "No se puede cerrar desde aquí: ciérrela desde su propia ventana. Si esta caja la abrió antes de recargar, «Abrir» la recupera.",
+      "enabled": "Pantalla del cliente activada",
+      "enableError": "No se pudo activar la pantalla del cliente"
     },
     "config": {
       "title": "Pantalla del cliente",
@@ -1985,6 +1989,7 @@
       "paid": "Total pagado"
     },
     "fullscreen": "Pantalla completa",
-    "poweredBy": "GO Admin"
+    "poweredBy": "GO Admin",
+    "connectingHint": "Si no conecta, active la pantalla del cliente en la caja: Configuración › POS › Pantalla del cliente"
   }
 }

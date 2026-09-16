@@ -261,6 +261,31 @@ explícito.
    [HECHO 2026-09-16 — banner de `OfflineIndicator` con el conteo, bandeja
    `VentasPendientesDialog` con detalle, recibo y ticket marcados «Pendiente de sincronizar»]
 
+8. Lectura offline de TODOS los módulos (no solo el POS): inventario, finanzas, compras,
+   clientes, proveedores, caja... sin tocar cada servicio.
+   [HECHO 2026-09-16 — fase 4C: réplica genérica en IndexedDB `goadmin-replica` (un store
+   por tabla del manifiesto `replicationManifest.ts`, 45 tablas verificadas por MCP, ventana
+   de 12 meses en transaccionales, incremental por `updated_at`), replicador único con el
+   catálogo del POS (al iniciar y cada 10 min; completa con poda cada 2 h), resolutor PostgREST local
+   (`postgrestLocal.ts`: select/alias/embeds 1–3 niveles, filtros, or/and, order, range,
+   count, single) enganchado en `offlineCache.resolveOfflineDataRequest`: sin red, GET a tabla
+   replicada → local → caché por URL → 503. RPC con equivalente local (`rpcLocal.ts`) y ventas
+   del outbox visibles como `pending_sync`. UI: Configuración → Datos sin conexión, aviso
+   «Estás viendo datos locales del hh:mm». Ver docs/desktop/FASE-4C-LECTURA-OFFLINE-GENERICA.md.]
+
+9. Cliente en el carrito e imágenes sin red (lo que el dueño encontró probando 4A/4B: «Error al
+   asignar cliente al carrito», no se podía registrar un cliente y las miniaturas no cargaban).
+   [HECHO 2026-09-16 — fase 4D: `setCartCustomer` lee del catálogo local sin red (cero
+   consultas); «Crear nuevo cliente» sin red abre un formulario rápido que genera el `uuid` en
+   el cliente, guarda en `goadmin-catalog` con `pending_sync` y encola en
+   `customersOutbox.ts` (`goadmin-outbox › customers`, 5 intentos → `needs_review`, nunca se
+   borra); `customersSync.ts` los inserta ANTES que las ventas al reconectar, idempotente por id
+   y con remapeo si Supabase ya tenía ese documento/email (las ventas pendientes pasan al id
+   real). Imágenes: caché de medios `mediaCache.ts` (IndexedDB `goadmin-media`, 80 MB total,
+   300 KB por imagen, LRU) que el replicador precalienta en segundo plano con la imagen primaria
+   de cada producto, y hook `useCachedImage` (tarjetas del POS y miniatura del carrito) que sin
+   red sirve un `blob:` local. Ver docs/desktop/FASE-4D-CLIENTES-E-IMAGENES-OFFLINE.md.]
+
 Criterio de aceptación: apagar el WiFi, hacer 10 ventas con impresión de ticket, cerrar la app,
 volver a abrirla todavía sin internet (las ventas deben seguir ahí), encender el WiFi y verificar
 que las 10 ventas llegan a Supabase exactamente una vez.

@@ -21,7 +21,6 @@ import {
   Activity,
   ClipboardList,
   Tag,
-  Megaphone,
   User,
   Briefcase,
   Clock,
@@ -80,7 +79,6 @@ import {
   Factory,
   QrCode,
   ShieldCheck,
-  HeartPulse,
 } from 'lucide-react';
 import { OrganizationSelectorWrapper } from './OrganizationSelectorWrapper';
 import { supabase } from '@/lib/supabase/config';
@@ -131,6 +129,7 @@ const IncomingCallToast = dynamic(() => retryImport(() => import('@/components/v
 import { BranchProvider } from '@/lib/context/BranchContext';
 import { NavigationProgress } from './NavigationProgress';
 import { OfflineIndicator } from './OfflineIndicator';
+import { LocalDataNotice } from '@/components/offline/LocalDataNotice';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { jobPositionModuleAccessService } from '@/lib/services/jobPositionModuleAccessService';
 import { getModuleCodeByHref } from '@/lib/config/modulePages';
@@ -1226,7 +1225,8 @@ export const AppLayout = ({
             .limit(1)
             .maybeSingle();
           if (member?.organization_id && member?.organizations) {
-            const org = member.organizations as any;
+            // PostgREST devuelve el embed como objeto (FK muchos-a-uno).
+            const org = member.organizations as unknown as { id: number; name?: string | null; subdomain?: string | null };
             const orgIdStr = org.id.toString();
             // Persistir para futuras cargas. guardarOrganizacionActiva escribe
             // todas las claves y cookies, y ya emite 'organization-changed'.
@@ -1552,6 +1552,8 @@ export const AppLayout = ({
         {/* Contenido principal con scroll */}
         <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 overscroll-contain min-w-0">
           <div className="h-full min-w-0 w-full">
+            {/* Desktop sin red (fase 4C): «Estás viendo datos locales del hh:mm» en todos los módulos. */}
+            <LocalDataNotice className="mx-4 mt-3 sm:mx-6 lg:mx-8" />
             {subscriptionChecked ? children : (
               <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-full">
                 <PageHeaderSkeleton />

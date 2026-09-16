@@ -15,7 +15,8 @@
  */
 
 import { useEffect, useState } from 'react';
-import { BroadcastChannelReceiver, isBroadcastChannelSupported } from '@/lib/pos/display/transport';
+import { BroadcastChannelReceiver } from '@/lib/pos/display/transport';
+import { isDisplayTransportAvailable, resolveDisplayChannelFactory } from '@/lib/pos/display/desktopChannel';
 import { TERMINAL_ID_STORAGE_KEY, readLocalTerminalId } from '@/lib/pos/display/terminal';
 import { INITIAL_LINK_SNAPSHOT, readCapabilities, startDisplayLink, type DisplayLinkSnapshot } from './displayLink';
 
@@ -52,7 +53,9 @@ function useLocalTerminalId(): string | null {
 
 export function useDisplayReceiver(): DisplayReceiverSnapshot {
   const terminalId = useLocalTerminalId();
-  const [supported] = useState<boolean>(() => isBroadcastChannelSupported());
+  // Relay de escritorio (Go Admin Desktop) o BroadcastChannel (navegador): el
+  // receptor es el mismo, solo cambia el tubo (desktopChannel.ts).
+  const [supported] = useState<boolean>(() => isDisplayTransportAvailable());
   const [snapshot, setSnapshot] = useState<DisplayLinkSnapshot>(INITIAL_LINK_SNAPSHOT);
 
   useEffect(() => {
@@ -60,7 +63,7 @@ export function useDisplayReceiver(): DisplayReceiverSnapshot {
 
     let receiver: BroadcastChannelReceiver;
     try {
-      receiver = new BroadcastChannelReceiver({ terminalId });
+      receiver = new BroadcastChannelReceiver({ terminalId, channelFactory: resolveDisplayChannelFactory() });
     } catch (error) {
       console.warn('[pos-display] no se pudo abrir el receptor', error);
       return;

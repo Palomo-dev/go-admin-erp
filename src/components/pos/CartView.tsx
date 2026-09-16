@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabase/config';
 import { Cart, Sale, SaleItem, Customer } from './types';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { TaxSummary } from './TaxSummary';
+import { CachedProductImage } from './CachedProductImage';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { toast } from 'sonner';
 import DetalleFactura from '@/components/finanzas/facturas-venta/id/DetalleFactura';
@@ -611,19 +612,15 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                         <div className="flex items-start gap-2 flex-1 min-w-0 pr-2">
                           {/* Imagen del producto */}
                           <div className="shrink-0">
-                            {productImage ? (
-                              <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                <img
-                                  src={productImage}
-                                  alt={item.product.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                                <Package className="h-5 w-5 text-gray-400" />
-                              </div>
-                            )}
+                            <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                              <CachedProductImage
+                                src={productImage}
+                                alt={item.product.name}
+                                mode="thumb"
+                                className="w-full h-full object-cover"
+                                fallback={<Package className="h-5 w-5 text-gray-400" />}
+                              />
+                            </div>
                           </div>
 
                           <div className="flex-1 min-w-0">

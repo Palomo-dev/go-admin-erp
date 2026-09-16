@@ -94,12 +94,25 @@ export interface DesktopDisplayInfo {
   bounds: { x: number; y: number; width: number; height: number };
 }
 
+export interface DesktopPosDisplayStatus {
+  open: boolean;
+  displayId: number | null;
+}
+
 export interface DesktopPosDisplayBridge {
   send?: (payload: unknown) => void;
   onMessage?: (handler: (payload: unknown) => void) => () => void;
-  open?: (displayId?: number) => Promise<{ ok: boolean; reason?: string }>;
+  /**
+   * Abre la ventana de la pantalla del cliente. `origin` es el de la ventana
+   * del POS que llama (window.location.origin): la hija carga `${origin}/pos-display`
+   * en la misma session/partition. `displayId` elige monitor; sin él, el
+   * secundario si existe.
+   */
+  open?: (opts?: { origin?: string; displayId?: number }) => Promise<{ ok: boolean; reason?: string }>;
   close?: () => Promise<void>;
-  status?: () => Promise<{ open: boolean; displayId: number | null }>;
+  status?: () => Promise<DesktopPosDisplayStatus>;
+  /** Aviso cuando la ventana de la pantalla abre o cierra ('pos-display:status'). */
+  onStatus?: (handler: (status: DesktopPosDisplayStatus) => void) => () => void;
   listDisplays?: () => Promise<DesktopDisplayInfo[]>;
   setEnabled?: (enabled: boolean, displayId?: number) => Promise<void>;
 }

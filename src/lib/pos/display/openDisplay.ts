@@ -43,7 +43,14 @@ export const CUSTOMER_DISPLAY_HINT_STORAGE_KEY = 'pos_display_hint_shown';
 
 /** Lo que el puente de escritorio expondrá en F1 (`pos-display:open` / `pos-display:close`). */
 export interface NativePosDisplayApi {
-  open(): unknown;
+  /**
+   * `origin` es el de ESTA ventana del POS: en escritorio la web corre en un
+   * Next embebido y el proceso principal debe cargar `${origin}/pos-display`
+   * con la misma session, no una URL cableada (localhost vs 127.0.0.1 no
+   * comparten BroadcastChannel; con el relay del proceso principal da igual,
+   * pero la marca y el localStorage del terminal sí dependen del origen).
+   */
+  open(opts?: { origin?: string; displayId?: number }): unknown;
   close?(): unknown;
 }
 
@@ -161,12 +168,30 @@ export function __resetCustomerDisplayWindowForTests(): void {
   displayWindow = null;
 }
 
+/**
+ * Origen de la ventana del POS que abre la pantalla, para que el proceso
+ * principal cargue exactamente el mismo (`${origin}/pos-display`). Con una
+ * ventana inyectada sin `location` (pruebas) o sin `window` (SSR) devuelve
+ * undefined y el puente decide.
+ */
+function currentOrigin(win: DisplayWindowOpener | null | undefined): string | undefined {
+  try {
+    const candidate = (win === undefined ? (typeof window !== 'undefined' ? window : null) : win) as
+      | { location?: { origin?: unknown } }
+      | null;
+    const origin = candidate?.location?.origin;
+    return typeof origin === 'string' && origin.length > 0 ? origin : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function openCustomerDisplay(deps: OpenCustomerDisplayDeps = {}): Promise<OpenCustomerDisplayResult> {
   const nativeApi = deps.nativeApi === undefined ? resolveNativePosDisplayApi() : deps.nativeApi;
   if (nativeApi) {
     try {
       // `await` cubre tanto un puente síncrono como uno que devuelva promesa (IPC de F1).
-      await nativeApi.open();
+      await nativeApi.open({ origin: currentOrigin(deps.win) });
       return { via: 'electron' };
     } catch (err) {
       // El puente falló: se sigue por el camino web, que en Electron abre una ventana normal (F0).

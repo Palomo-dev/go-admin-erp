@@ -2,55 +2,73 @@
 
 Origen: `docs/ROADMAP-DESKTOP.md` §Fase 3 y
 `docs/AUDITORIA-DESKTOP-OFFLINE-UI-INSTALADOR.md` §1 y §5 (opción B2).
-Última actualización: 2026-09-16 00:55 (congelación de `main` para commit).
+Última actualización: 2026-09-16 (cierre de la fase: paquete, arranque y prueba sin red verificados; ver §0 y §7).
 
 ## 0. Estado real
 
-### Hecho (en el árbol, compila)
+Última actualización: 2026-09-16 (sesión de cierre de la fase; ver §7).
 
-- `next.config.js`: `output: 'standalone'` **solo si `NEXT_DIST_DIR` está definida** (la exporta
-  `build-web.js`) y `distDir: process.env.NEXT_DIST_DIR || '.next'`. Sin la variable, `next build`
-  y Vercel siguen exactamente igual (ni standalone ni otro directorio).
+### Hecho (en el árbol, compila, probado)
+
+- `next.config.js`: `output: 'standalone'` y `experimental.preloadEntriesOnStart: false`
+  **solo si `NEXT_DIST_DIR` está definida** (la exporta `build-web.js`) y
+  `distDir: process.env.NEXT_DIST_DIR || '.next'`. Sin la variable, `next build` y Vercel siguen
+  exactamente igual.
 - `electron/scripts/build-web.js`: `next build` aislado en `.next-desktop` + copia a
   `electron/resources/web/` + `.env` solo con `NEXT_PUBLIC_*` (allow-list) + defaults de
   producción para `NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_SELLERS_URL`.
 - `electron/src/main/webServer.ts`: `start()` / `stop()` / `getUrl()`, `utilityProcess.fork`,
-  puerto estable 47800 persistido (reintento con los siguientes si está ocupado), evento `ready`
-  al primer `GET /` que responde, `GATE_COOKIE_SECRET` persistido, reinicio automático si el
-  hijo muere, logs a `userData/agent.log`.
+  **puerto de casa** 47800 persistido (se reintenta 3 s si está ocupado y nunca se sobreescribe;
+  §2.3), evento `ready` al primer `GET /` que responde, `GATE_COOKIE_SECRET` persistido, reinicio
+  automático si el hijo muere, logs a `userData/agent.log`.
 - `electron/src/main/index.ts`: arranque **antes** de crear la ventana (splash visible, cierre de
   seguridad a 45 s), parada en `before-quit`, recarga de la vista tras `restarted`.
 - `electron/src/main/windows/mainWindow.ts`: `getLoadUrl()` → URL local si el servidor arrancó;
-  `isInternalUrl()` acepta `127.0.0.1:<puerto>`; `will-navigate` y `setWindowOpenHandler` la usan.
-- `electron/src/main/crashReporter.ts`: `appendLog` escribe a disco (debounce 2 s) y con `
-`.
+  `isInternalUrl()` acepta `localhost:<puerto>` y `127.0.0.1:<puerto>`; `will-navigate` y
+  `setWindowOpenHandler` la usan.
+- `electron/src/main/connectivity.ts`: el cambio ONLINE/OFFLINE también va a `agent.log`.
+- `electron/src/main/store.ts`: `config.json` se escribe de forma atómica (temporal + `rename`) y
+  un archivo corrupto se aparta en vez de fallar en cada lectura (§7, hallazgo 4).
+- `electron/src/main/devCapture.ts`: el recorte de pantalla solo se hace si la ventana tiene el
+  foco (§7, hallazgo 5).
 - `electron/electron-builder.yml`: `extraResources: resources/web → web`. `electron/.gitignore`
-  excluye `resources/web/`; `.gitignore` raíz excluye `.next-desktop/` (y se le quitaron dos
-  líneas con bytes NUL que lo hacían «binario» para git).
-- `tsconfig.json`: `include` añade `.next-desktop/types/**/*.ts` (lo escribe Next en cada build;
-  sin él lo reescribiría cada vez con otro formato).
+  excluye `resources/web/`; `.gitignore` raíz excluye `.next-desktop/`.
+- `tsconfig.json`: `include` añade `.next-desktop/types/**/*.ts`.
 - `electron/package.json`: scripts `build:web` y `build:web:copy`.
-- Verificado: `cd electron && npx tsc -p .` limpio; `node scripts/build-web.js` completa el
-  `next build` (ver «Evidencia»).
+- **Paquete `--dir` verificado**: `resources/web/server.js` va fuera del `app.asar` (§7).
+- **Arranque del `.exe`**: `GET http://127.0.0.1:47800/auth/login` → 200,
+  `GET http://localhost:47800/` → 307 a `/auth/login` (§7).
+- **Prueba sin red** (`--host-resolver-rules`, §5): la ventana carga el login desde el servidor
+  local, `connectivity` declara OFFLINE, la navegación a `/app/pos` se queda dentro de la ventana
+  (§7). Captura: `docs/desktop/evidencia/fase-3/offline-login-exe.png`.
+- **Instalador NSIS**: `GoAdminERP-Setup-0.1.3.exe` 136,9 MB + `.blockmap` 143 KB (§6).
+- `electron/src/main/webLauncher.ts` (nuevo): envoltorio del `server.js` en el utilityProcess
+  que cierra el hijo si el main muere de golpe (§2.3, §7.2 hallazgo 2).
 
 ### Pendiente
 
-- `npm run package:dir` con `resources/web` presente y arranque del `.exe` (`curl
-  http://127.0.0.1:47800/auth/login` → 200). No se llegó por la congelación: el `next build`
-  tardó 28 min en el primer intento (murió por un `next build` ajeno en `.next`) y otros ~45 min
-  en el segundo, aislado.
-- Prueba sin red (`--host-resolver-rules`, §5) navegando `/app/pos`, `/app/inventario`,
-  `/app/crm` con datos cacheados, y su evidencia.
-- `npm run package` (NSIS): tamaño del instalador y `.blockmap`.
-- Estado de la fila «Fase 3» en `docs/ROADMAP-DESKTOP.md` (sigue en «Pendiente»).
+- **Criterio de aceptación completo del roadmap** («apagar el WiFi y navegar entre `/app/pos`,
+  `/app/inventario` y `/app/crm` viendo los datos visitados con conexión»): requiere una sesión
+  iniciada en el perfil del desktop. En esta sesión no había credenciales de un usuario de prueba,
+  así que se verificó todo lo que no depende de la sesión (servidor local, middleware, redirección
+  al login, navegación interna, modo offline del main). Queda para quien tenga un usuario de
+  pruebas: iniciar sesión con red, visitar los tres módulos, desconectar el WiFi y repetir.
+- Login con Google desde el desktop (§3): añadir `http://localhost:47800/auth/callback` a las
+  redirecciones permitidas de Supabase Auth.
+- Unificar las claves de Supabase hardcodeadas en `electron/src/main/constants.ts` con
+  `resources/web/.env` (auditoría §4.5).
 
-### ¿Se puede commitear `electron/**` y `next.config.js` tal cual?
+### Cómo se construyó el paquete de esta sesión (y por qué desde una instantánea)
 
-Sí. `npm run build` del desktop (`sync:agent` + `tsc` + `copy:renderer`) no depende de
-`resources/web`; `electron-builder` empaqueta igual sin esa carpeta (`extraResources` con origen
-inexistente no rompe) y la app cae a `https://app.goadmin.io`. `next build` del ERP no cambia:
-`distDir` solo varía si alguien exporta `NEXT_DIST_DIR`. `resources/web/` y `.next-desktop/` están
-ignorados por git.
+`main` estaba en obras durante toda la sesión (cuatro sesiones más escribiendo en el mismo
+árbol): `npm run build:web` sobre el árbol de trabajo falló tres veces por causas ajenas —una
+ruta-sonda temporal de otra sesión (`zz-sonda-tester-r3`), dos rutas con un `import {` a medio
+escribir, y `wonCloseSteps.ts` importando `renewalService` → `sequenceService` → `twilio` dentro
+de un componente cliente—, y `HEAD` (`e3972da7`) tenía committeadas las dos rutas rotas. El build
+que se empaquetó salió de una instantánea limpia (`git archive HEAD` + `next.config.js` de esta
+sesión + esas dos rutas tal como quedaron reparadas en el árbol), con `node_modules` enlazado por
+junction. Es el mismo `build-web.js`; solo cambia la raíz. Cuando `main` vuelva a compilar,
+`npm run build:web` normal produce lo mismo.
 
 ## 1. Qué problema resuelve
 
@@ -70,7 +88,7 @@ sin red.
 
 ```
 Go Admin ERP.exe (main de Electron)
- ├─ webServer.start()  ──utilityProcess.fork──▶  resources/web/server.js  (Next standalone)
+ ├─ webServer.start()  ──utilityProcess.fork──▶  dist/main/webLauncher.js ──require──▶ resources/web/server.js  (Next standalone)
  │       │                                          escucha 127.0.0.1:47800
  │       └─ espera al primer GET / que responda (≤ 30 s), luego crea la ventana
  ├─ BrowserWindow  (barra propia, fase 2)
@@ -153,21 +171,36 @@ Singleton `webServer` con:
 
 Decisiones:
 
-- **Proceso hijo: `utilityProcess.fork(server.js)`**, no `child_process` con
-  `ELECTRON_RUN_AS_NODE=1` + `process.execPath`. Usa el Node embebido de
-  Electron (no hace falta un `node.exe` aparte ni depende del PATH), Electron
-  mata al hijo si el main muere, y `stdio: 'pipe'` permite volcar su salida al
-  log del main. Se borra `ELECTRON_RUN_AS_NODE` del entorno del hijo por si el
-  main la heredara.
-- **Puerto estable: `PREFERRED_PORT = 47800`, persistido en
-  `userData/web-server.json`.** El origen incluye el puerto; si cambiara en
-  cada arranque, cada apertura sería «un navegador nuevo» sin sesión ni cache
-  offline. Orden de prueba: puerto persistido → 47800..47809 → uno del sistema.
-  Cada candidato se reserva un instante con `net.createServer().listen()`
-  antes de arrancar; si el arranque falla (p. ej. alguien tomó el puerto entre
-  la reserva y el `listen` de Next) se prueba el siguiente. Un timeout de 30 s
-  no se reintenta con otro puerto (no lo arreglaría). Si el puerto cambia
-  respecto al persistido se deja un `AVISO` en el log.
+- **Proceso hijo: `utilityProcess.fork(webLauncher.js)`**, no `child_process`
+  con `ELECTRON_RUN_AS_NODE=1` + `process.execPath`. Usa el Node embebido de
+  Electron (no hace falta un `node.exe` aparte ni depende del PATH) y
+  `stdio: 'pipe'` permite volcar su salida al log del main. Se borra
+  `ELECTRON_RUN_AS_NODE` del entorno del hijo por si el main la heredara.
+  `webLauncher.js` (en `dist/main`, dentro del asar; el utilityProcess lo
+  carga sin problema) hace `require(resources/web/server.js)` y **vigila al
+  main** con `process.kill(pid, 0)` cada segundo: Electron no siempre mata al
+  hijo enseguida cuando el main muere de golpe (en la prueba siguió
+  escuchando 5-15 s), y ese huérfano obligaba al siguiente arranque a cambiar
+  de puerto (§7.2, hallazgo 2).
+- **Puerto de casa: `PREFERRED_PORT = 47800`, persistido en
+  `userData/web-server.json` la primera vez que arranca bien y nunca
+  sobreescrito.** El origen incluye el puerto; si cambiara entre arranques,
+  cada apertura sería «un navegador nuevo» sin sesión ni cache offline. Orden
+  de prueba: puerto de casa → 47800..47809 → uno del sistema. Cada candidato
+  se reserva un instante con `net.createServer().listen()` antes de arrancar;
+  si el arranque falla (p. ej. alguien tomó el puerto entre la reserva y el
+  `listen` de Next) se prueba el siguiente. Un timeout de 30 s no se reintenta
+  con otro puerto (no lo arreglaría).
+  - El puerto de casa se **reintenta durante 3 s** (6 × 500 ms) si está
+    ocupado. Motivo real (§7, hallazgo 2): si el main muere de golpe (crash,
+    `Stop-Process`, apagado), Electron mata al `server.js` hijo al cerrar el
+    job object, pero tarda unos segundos; el siguiente arranque lo encontraba
+    escuchando, saltaba a 47801 y —con la política anterior— persistía 47801:
+    el origen cambiaba para siempre.
+  - Si aun así hay que arrancar en otro puerto, se deja un `AVISO` en el log y
+    **no se persiste**: el siguiente arranque vuelve a intentar el de casa. Si
+    el de casa está ocupado de forma permanente por otro programa, el orden de
+    candidatos es fijo y se acaba siempre en el mismo puerto alternativo.
 - **La ventana carga `localhost`, el servidor escucha en `127.0.0.1`.**
   `NextURL` (`next/dist/server/web/next-url.js`) reescribe `127.0.0.1` y
   `[::1]` a `localhost` en `request.url` del middleware, así que toda
@@ -197,6 +230,18 @@ Decisiones:
 - Otras variables del hijo: `HOSTNAME=127.0.0.1`, `PORT`,
   `NODE_ENV=production`, `NEXT_TELEMETRY_DISABLED=1`,
   `GOADMIN_DESKTOP_EMBEDDED=1` (marca para la web, hoy sin uso).
+- **Sin precarga de rutas al arrancar** (`experimental.preloadEntriesOnStart:
+  false`, solo en el build del desktop). Con el default, el servidor de
+  producción de Next evalúa nada más arrancar los manifests de todas las
+  páginas y API routes (`unstable_preloadEntries` → `loadComponentsImpl`) en
+  el hilo principal, y el primer request —la ventana cargando el login— se
+  queda detrás: perfilado con el inspector el 2026-09-16, 26 s de 28 s del
+  primer request eran esa precarga (`vm.Script`, `deepFreeze`, `require` de
+  rutas como `api/crm/webhooks/elevenlabs`). Medido en el standalone
+  empaquetado: primer `GET /app/pos` 10-43 s con precarga, 0,17 s sin ella;
+  las rutas se cargan en su primer uso (0,2-0,4 s cada una). En Vercel el
+  proceso vive horas y la precarga amortiza; en el desktop arranca en cada
+  apertura. Ver §7, hallazgo 1.
 
 ### 2.4 Ventana — `windows/mainWindow.ts` e `index.ts`
 
@@ -269,20 +314,29 @@ Las claves de Supabase también existen hardcodeadas en
 
 ```powershell
 cd electron
-npm run build:web        # next build (10-20 min) + copia a resources/web + .env público
+npm run build:web        # next build (7-15 min con el árbol en calma) + copia a resources/web + .env público
 npm run package:dir      # tsc + copy:renderer + electron-builder --dir → release/win-unpacked
 & "release\win-unpacked\Go Admin ERP.exe"
-curl.exe -s -o NUL -w "%{http_code}" http://localhost:47800/auth/login   # → 200
+curl.exe -s -o NUL -w "%{http_code}" http://127.0.0.1:47800/auth/login   # → 200
+curl.exe -s -o NUL -w "%{http_code}" http://localhost:47800/             # → 307 (a /auth/login)
 npm run package          # instalador NSIS + .blockmap en release/
 ```
 
-Prueba sin red sin tocar adaptadores: arrancar el `.exe` con reglas de
-resolución de nombres de Chromium, que afectan al renderer **y** al
-health-check del main (`net.fetch`), así que la app entra en modo offline de
-verdad (`isAppOnline() === false`):
+Para cerrar la app desde un script: `Stop-Process` sobre el PID del main (el
+que no tiene padre `Go Admin ERP.exe`), nunca por nombre. Con `agent.log`
+en `%APPDATA%\go-admin-desktop\agent.log` se ve el arranque del servidor
+(`[web:stdout] ✓ Ready in …`, `[webServer] Servidor Next listo en …`) y el
+estado de red (`[connectivity] Estado: OFFLINE`).
+
+### Prueba sin red sin tocar adaptadores
+
+Arrancar el `.exe` con reglas de resolución de nombres de Chromium: todo
+falla salvo el loopback. Afectan al renderer **y** al health-check del main
+(`net.fetch`), así que la app entra en modo offline de verdad
+(`isAppOnline() === false`, pill «Sin conexión» en la barra):
 
 ```powershell
-& "release\win-unpacked\Go Admin ERP.exe" --host-resolver-rules="MAP app.goadmin.io ~NOTFOUND, MAP *.supabase.co ~NOTFOUND, MAP *.goadmin.io ~NOTFOUND"
+& "release\win-unpacked\Go Admin ERP.exe" --host-resolver-rules="MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE localhost"
 ```
 
 No afecta al proceso hijo de Next (Node usa su propio DNS), así que el gate
@@ -290,14 +344,32 @@ del middleware sí puede llegar a Supabase en esta simulación; su camino sin
 red está cubierto por código (`catch` + presupuesto de 2,5 s) y por la cookie
 `ga_gate` persistida. La prueba definitiva es desconectar el WiFi.
 
+### Ver y capturar la ventana sin tocar el escritorio
+
+Añadiendo `--remote-debugging-port=9333` al `.exe`, `http://127.0.0.1:9333/json`
+lista los targets (la barra `toolbar/index.html`, la web en `localhost:47800/…`
+y su service worker `sw.js`) y por el websocket de cada uno se puede leer
+`document.title`, `location.href`, cookies, y guardar un PNG con
+`Page.captureScreenshot`. Es lo que se usó para la evidencia de §7: captura
+solo el contenido de la app, nunca otras ventanas. (`devCapture.ts` sigue
+siendo solo para desarrollo, y su recorte de pantalla ya exige que la
+ventana tenga el foco.)
+
 ## 6. Tamaño y actualizaciones diferenciales
 
-Ver «Evidencia». El instalador crece (antes 84 MB) por `resources/web`
-(`node_modules` trazados + `.next/server` + `.next/static`). El `.blockmap`
-sigue generándose (`nsis.differentialPackage: true`), así que las
-actualizaciones descargan solo los bloques que cambian; como
-`resources/web` va sin comprimir dentro del NSIS 7z por bloques, un cambio
-de la web se traduce en descargar los chunks nuevos, no los 200+ MB.
+Medido el 2026-09-16 con `npx electron-builder --win` (7,5 min):
+
+| Artefacto | Antes (0.1.3 sin web, 2026-09-15) | Ahora (0.1.3 con web) |
+|---|---|---|
+| `release/win-unpacked/` | 283 MB | **616 MB** (`resources/web` = 333 MB: `node_modules` trazados 62,6 MB, `.next-desktop/server` 229,5 MB, `.next-desktop/static` 39,7 MB, `public` 0,2 MB) |
+| `GoAdminERP-Setup-0.1.3.exe` | 84,0 MB (84 043 458 B) | **136,9 MB** (136 941 934 B) |
+| `GoAdminERP-Setup-0.1.3.exe.blockmap` | 88 KB | **143 KB** |
+
+El instalador crece 53 MB (la web comprime bien: 333 MB → ~53 MB en el 7z
+del NSIS). El `.blockmap` sigue generándose (`nsis.differentialPackage: true`),
+así que las actualizaciones descargan solo los bloques que cambian; un cambio
+de la web se traduce en descargar los chunks nuevos, no el instalador entero.
+`latest.yml` se regenera con el `sha512` y `size` nuevos.
 
 ## 7. Evidencia (2026-09-15/16)
 
@@ -314,7 +386,7 @@ node --check scripts/build-web.js  → OK
  ✓ Compiled successfully in 28.5min
    Collecting page data ...
 Error: Cannot find module '../../../../../webpack-runtime.js'
-Require stack: .next\serverpppp\crmctividades\[id]\page.js
+Require stack: .next\server\app\app\crm\actividades\[id]\page.js
 > Build error occurred  [Error: Failed to collect page data for /app/crm/actividades/[id]]
 ```
 Causa: a las 23:40:54 otro proceso `npx next build` (otra sesión) recreó `.next`.
@@ -362,6 +434,146 @@ Es decir: el `server.js` empaquetado sirve documento, middleware y chunks
 estáticos desde disco. El `Location` con `localhost` es el motivo de §2.3
 («La ventana carga `localhost`»).
 
-**No ejecutado todavía** (congelación de `main`): `npm run package:dir`,
-arranque del `.exe`, prueba con `--host-resolver-rules`, `npm run package`
-(tamaño y `.blockmap`). Ver §0 «Pendiente».
+**Lo anterior quedó pendiente por la congelación de `main`; se cerró en la sesión siguiente (§7.2).**
+
+## 7.2 Evidencia del cierre (2026-09-16, 00:40 → 03:00)
+
+Todo con el árbol en `main`, sin ramas ni commits. Tiempos en UTC salvo que se diga otra cosa.
+
+### Reproducción del `next build` con exit `-1`
+
+`node scripts/build-web.js` había terminado el 2026-09-16 00:02 con el resumen completo, el
+standalone íntegro y **código 4294967295 (0xFFFFFFFF, «-1»)** mientras otras dos sesiones
+corrían builds y tests en la misma máquina. Reproducido con el mismo `spawnSync` (mismo `env`,
+`npx.cmd next build`, `NEXT_DIST_DIR=.next-desktop`) con el árbol en calma:
+
+```
+[repro] inicio 2026-09-16T05:44:10Z
+ ✓ Compiled successfully in 6.8min
+ƒ Middleware  37.3 kB
+[repro] fin 2026-09-16T05:58:23Z status=0 signal=null duracion=14.2 min
+[repro] standalone/server.js existe=true
+```
+
+**Causa real: el `-1` no lo produce Next.** `next build` termina siempre con
+`process.exit(0)` explícito (`node_modules/next/dist/bin/next`, línea 89:
+`mod.nextBuild(...).then(() => process.exit(0))`); un fallo suyo sale con 1, y un OOM de Node
+con 134 / 0xC0000409. `0xFFFFFFFF` es el código con el que `.NET Process.Kill()` —lo que usa
+`Stop-Process` de PowerShell— llama a `TerminateProcess(handle, -1)` (`taskkill /F` y
+`process.kill` de Node usan 1). Es decir: el proceso fue matado desde fuera, con casi total
+seguridad por un `Stop-Process -Name node` (o `Get-Process node | Stop-Process`) de otra sesión,
+en la ventana entre imprimir el resumen y salir (Next cierra los workers y vacía telemetría ahí,
+y en Windows tarda segundos). Encaja con que el standalone quedara íntegro. De ahí la regla de esta
+sesión: **nunca matar `node` por nombre**; solo el PID que uno lanzó.
+
+Con el árbol en calma el build tarda 14-17 min (6,8-10 min de compilación). Los 28 y 41 min de la
+noche anterior eran contención con los otros builds.
+
+### Empaquetado `--dir`
+
+```
+npm run package:dir                → exit 0, 2 min (3 min la primera vez por @electron/rebuild)
+release/win-unpacked/resources/    app.asar (14,9 MB) · app.asar.unpacked/ · web/
+release/win-unpacked/resources/web/  .env · .next-desktop/ · node_modules/ · public/ · server.js · src/  (333 MB)
+npx asar list app.asar | grep '^\\web'   → 0 entradas  (el server.js de Next NO está en el asar)
+cut -d= -f1 resources/web/.env           → solo las 11 NEXT_PUBLIC_* de la allow-list
+```
+
+### Arranque del `.exe` con red
+
+`Start-Process "release\win-unpacked\Go Admin ERP.exe"` (PID anotado; se cierra con
+`Stop-Process -Id <pid>` del main, nunca por nombre).
+
+```
+agent.log:  [web:stdout] ▲ Next.js 15.5.7 - Local: http://127.0.0.1:47800
+            [web:stdout] ✓ Ready in 3.9s
+            [webServer] Servidor Next listo en http://localhost:47800
+curl 127.0.0.1:47800/auth/login  → 200 (7 s tras lanzar el .exe)
+curl localhost:47800/            → 307 Location=http://localhost:47800/auth/login
+curl localhost:47800/app/pos     → 307 Location=http://localhost:47800/auth/login?redirectTo=%2Fapp%2Fpos
+web-server.json                  → { "port": 47800, "gateSecret": "<64 hex>" }
+```
+
+### Prueba sin red (`--host-resolver-rules`, paquete definitivo)
+
+```
+"Go Admin ERP.exe" --remote-debugging-port=9333 --host-resolver-rules="MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE localhost"
+```
+
+| Instante (desde el lanzamiento) | Qué |
+|---|---|
+| +3,4 s | `[webServer] Servidor Next listo en http://localhost:47800` (`Ready in 255 ms`) |
+| +3,5 s | la vista pide `GET /` → 307 → `GET /auth/login` → 200 (trazado con CDP `Network.*`) |
+| +5,5 s | `load` del login. `document.title` = «GO Admin ERP», `readyState` = complete |
+| +17 s | `[connectivity] Estado: OFFLINE` (2 fallos × 15 s del health-check, ahora también en `agent.log`) |
+
+- Captura de la vista (CDP `Page.captureScreenshot`, solo el contenido de la app):
+  `docs/desktop/evidencia/fase-3/offline-login-exe.png`.
+- **`isInternalUrl` mantiene la navegación dentro**: `Page.navigate` a
+  `http://localhost:47800/app/pos` → la vista queda en
+  `http://localhost:47800/auth/login?redirectTo=%2Fapp%2Fpos` (el middleware redirige; la
+  ventana no se abre fuera ni muestra la pantalla offline):
+  `docs/desktop/evidencia/fase-3/offline-app-pos-redirige-login-exe.png`.
+- Sin `did-fail-load`, sin `[mainWindow] Error cargando`, sin pantalla «Sin conexión» de
+  respaldo. Los targets de CDP son la barra (`toolbar/index.html`), la web y su service worker
+  (`sw.js`, que solo cachea estáticos).
+- La misma prueba con el paquete anterior (build de las 00:02, con precarga de rutas) también
+  cargó el login local, pero 16-25 s después de que el servidor estuviera listo (hallazgo 1).
+- Cierre limpio comprobado en el modo desarrollo (`electron .` con `GOADMIN_DESKTOP_LOCAL_WEB=1`):
+  `[webServer] Parando el servidor Next` → `El servidor Next terminó (código 0)`.
+
+### Hallazgos y arreglos (todos en `electron/**` salvo el 1)
+
+1. **Primer request de 10-43 s** (el peor caso, con el disco frío). Con `curl` contra el
+   `server.js` empaquetado, arrancado a mano en otro puerto: primer `GET /app/pos` 13-43 s, el
+   segundo 0,2 s; el tiempo de CPU del proceso subía 13 s durante ese request. Perfil con el
+   inspector (`Profiler.start` en el primer request): 26 174 ms de 27 828 ms en
+   `loadComponentsImpl` ← `unstable_preloadEntries` (`next-server.js:576`), es decir, la
+   precarga de **todas** las rutas al arrancar (`vm.Script`, `deepFreeze`, `require` de
+   `app/api/crm/webhooks/elevenlabs/route.js`, `app/api/ai-assistant/chat/route.js`, …), en el
+   hilo principal. Arreglo: `experimental.preloadEntriesOnStart: false` solo con
+   `NEXT_DIST_DIR` (`next.config.js`). Con el `server.js` resultante: primer `GET /app/pos`
+   0,17 s, `/auth/login` 0,22 s, siguientes 0,01-0,06 s; en el `.exe`, login visible 2 s después
+   de «listo».
+2. **Cambio de origen tras una muerte abrupta del main.** Matando el main con `Stop-Process`,
+   el `server.js` hijo seguía escuchando en 47800 durante 5-15 s; el siguiente arranque saltaba
+   a 47801 **y lo persistía**: el origen cambiaba para siempre (`AVISO: el puerto cambió de 47800
+   a 47801`). Arreglos: (a) `webLauncher.ts`, envoltorio del `server.js` en el utilityProcess
+   que vigila al main (`process.kill(pid, 0)` cada 1 s) y se cierra si desaparece — tras matar
+   el main, el puerto estaba libre en < 1 s y el relanzamiento inmediato arrancó en 47800;
+   (b) el puerto de casa se reintenta 3 s si está ocupado; (c) nunca se sobreescribe el puerto
+   persistido (§2.3). Verificado: con un huérfano vivo el log dice `Puerto 47800 ocupado; se
+   espera hasta 3 s…` y, si no se libera, `AVISO: el puerto de casa 47800 está ocupado; esta
+   sesión corre en 47801 (… no se persistirá)`, y `web-server.json` sigue en 47800.
+3. **`[connectivity] Estado: OFFLINE` solo salía por consola**: ahora también en `agent.log`.
+4. **`config.json` corrupto en el perfil de pruebas**: 276 bytes todo NUL (NTFS reserva el tamaño
+   antes de volcar; un apagado o crash en mitad de `writeFileSync` lo deja así). Cada lectura
+   fallaba con el mismo stack trace (`[store] No se pudo leer config.json: SyntaxError`) y se
+   perdían vinculación y refresh token. `store.ts`: escritura atómica (temporal + `fsync` +
+   `rename`) y cuarentena del archivo ilegible (`config.json.corrupto-<fecha>`) con un único
+   aviso.
+5. **`devCapture.ts` capturó una ventana ajena.** En el modo de captura de desarrollo, con la
+   ventana de la app sin foco (Windows no deja robar el foco a un proceso en segundo plano), el
+   respaldo «recorte de pantalla» guardó la ventana que estaba delante —un navegador del usuario
+   con una página de verificación en dos pasos— en `docs/desktop/evidencia/`. Se borró en el
+   acto y el recorte ahora exige `win.isFocused()`; si no, pasa al respaldo que solo captura el
+   contenido propio. Las capturas de esta fase se hicieron por CDP (§5).
+6. `resources/app-update.yml` no existe en el paquete `--dir` (`Error: ENOENT … app-update.yml`
+   en consola): esperado, lo genera solo el instalador NSIS; el updater lo ignora.
+
+### Cosas que NO son de esta fase pero se vieron
+
+- `next build` en el árbol de trabajo falló tres veces por trabajo en curso de otras sesiones
+  (§0); `HEAD` `e3972da7` tiene dos rutas con `import {` roto (`crm/health/[customerId]`,
+  `crm/onboarding/templates`) que en el árbol ya están reparadas sin commitear. Y otra sesión
+  hizo `git stash` del árbol completo (74 archivos, incluidos los de esta fase) para commitear;
+  se recuperaron solo los cinco archivos de esta fase con `git checkout stash@{0} -- …`. Más
+  tarde esa misma sesión hizo `git add -A` y el `next.config.js` de esta fase (`preloadEntriesOnStart`)
+  viajó en su commit `5c4150f4`; el resto de `electron/**` y estos docs siguen sin commitear, como
+  se pidió.
+- Un `next build` con `node_modules` enlazado por junction desde otra carpeta produce un
+  standalone de 1,25 GB: el trazado de archivos copia `node_modules` entero. Con la carpeta real,
+  333 MB.
+- La web registra un service worker en `localhost:47800` (`public/sw.js`, solo estáticos). Y
+  la página de login carga Stripe.js en iframes de `js.stripe.com`; sin red simplemente no
+  cargan.

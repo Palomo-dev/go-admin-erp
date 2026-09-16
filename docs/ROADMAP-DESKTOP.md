@@ -8,7 +8,7 @@ Decisiones tomadas: offline vía **servidor Next embebido**, y **POS local-first
 | 0 | Quick wins y bugs críticos | 2-3 días | **Hecha** |
 | 1 | Instalador + firma de código | 3-5 días | Pendiente |
 | 2 | UI nativa | 4-6 días | Pendiente |
-| 3 | Offline real: Next embebido en 127.0.0.1 | 1-2 semanas | Pendiente |
+| 3 | Offline real: Next embebido en 127.0.0.1 | 1-2 semanas | **Hecha** (2026-09-16; queda la prueba con sesión y datos cacheados, ver abajo) |
 | 4 | POS local-first + impresión local | 6-10 semanas | Pendiente |
 
 Las fases 1, 2 y 3 son independientes entre sí y se pueden llevar en paralelo.
@@ -137,6 +137,17 @@ se lee bien sin tocar el zoom.
 ## Fase 3 — Offline real: servidor Next embebido
 
 Esta es la que hace que la app **abra y navegue sin internet**.
+
+[HECHO 2026-09-16 — ver `docs/desktop/FASE-3-NEXT-EMBEBIDO.md`. Verificado con el paquete
+`release/win-unpacked`: `server.js` de Next fuera del asar, `GET 127.0.0.1:47800/auth/login` → 200,
+`GET localhost:47800/` → 307; con `--host-resolver-rules="MAP * ~NOTFOUND, EXCLUDE 127.0.0.1,
+EXCLUDE localhost"` (todo DNS roto salvo loopback) la ventana carga el login desde el servidor
+local, el main declara OFFLINE y `/app/pos` se queda dentro de la ventana (redirige al login).
+Captura en `docs/desktop/evidencia/fase-3/`. Hallazgo importante: el standalone de Next precarga
+todas las rutas al arrancar y el primer request tardaba 10-40 s; el build del desktop lleva
+`experimental.preloadEntriesOnStart: false` (0,2 s). **Queda** el criterio de aceptación con
+sesión: iniciar sesión con red, visitar `/app/pos`, `/app/inventario` y `/app/crm`, apagar el WiFi
+y repetir; en esta sesión no había credenciales de un usuario de pruebas.]
 
 ### Prompt listo para pegar
 

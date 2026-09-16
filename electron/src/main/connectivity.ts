@@ -1,6 +1,7 @@
 import { app, net } from 'electron';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './constants';
 import { broadcast } from './broadcast';
+import { appendLog } from './crashReporter';
 
 /**
  * Monitor de conectividad real.
@@ -74,6 +75,9 @@ function setOnline(next: boolean): void {
   if (next === online) return;
   online = next;
   console.log(`[connectivity] Estado: ${online ? 'ONLINE' : 'OFFLINE'}`);
+  // También a userData/agent.log: sin esto, diagnosticar "la app no entró en
+  // modo offline" en una instalación exigía arrancarla desde una consola.
+  appendLog(`[connectivity] Estado: ${online ? 'ONLINE' : 'OFFLINE'}`);
   for (const cb of listeners) {
     try {
       cb(online);

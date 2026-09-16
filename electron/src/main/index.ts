@@ -12,6 +12,8 @@ import { createTray, destroyTray } from './tray';
 import { initUpdater, stopUpdater } from './updater';
 import { registerIpcHandlers } from './ipc';
 import { registerToolbarIpc } from './toolbarIpc';
+import { registerPosDisplayIpc } from './posDisplayIpc';
+import { initPosDisplay, shutdownPosDisplay } from './windows/posDisplayWindow';
 import { installAppMenu } from './menu';
 import { initDevCapture } from './devCapture';
 import { tryAutoStart, stopAgent, markOffline } from './agentRunner';
@@ -64,6 +66,8 @@ if (!gotLock) {
 
     registerIpcHandlers();
     registerToolbarIpc();
+    // Pantalla del cliente del POS: relé de mensajes + ventana secundaria.
+    registerPosDisplayIpc();
     // Menú en español (aceleradores + popup del botón «⋯» de la barra).
     installAppMenu();
 
@@ -93,6 +97,9 @@ if (!gotLock) {
 
     const mainWindow = createMainWindow();
     createTray(mainWindow);
+    // Con la ventana ya creada: apertura automática si está habilitada,
+    // seguimiento de monitores y atajo global Ctrl+Shift+D.
+    initPosDisplay();
 
     initUpdater(mainWindow);
 
@@ -118,6 +125,7 @@ if (!gotLock) {
       // CRÍTICO: sin esto, mainWindow.on('close') hace preventDefault() y
       // Electron cancela la secuencia de quit: la app nunca se cierra.
       prepareQuit();
+      shutdownPosDisplay();
       stopUpdater();
       stopConnectivity();
       await markOffline();
@@ -128,6 +136,12 @@ if (!gotLock) {
       destroyTray();
       app.quit();
     }
+  });
+
+  // globalShortcut debe soltarse antes de salir; shutdownPosDisplay ya lo
+  // hace en before-quit, esto cubre salidas que no pasan por ahí.
+  app.on('will-quit', () => {
+    shutdownPosDisplay();
   });
 
   app.on('window-all-closed', () => {

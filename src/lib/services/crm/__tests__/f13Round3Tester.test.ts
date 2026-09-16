@@ -52,7 +52,11 @@ import { POST as rejectRoute } from '@/app/api/crm/commissions/[id]/reject/route
 import { POST as bulkPayRoute } from '@/app/api/crm/commissions/bulk-pay/route';
 import { GET as listTargetsRoute, POST as createTargetRoute } from '@/app/api/crm/sales-targets/route';
 import { PATCH as patchTargetRoute } from '@/app/api/crm/sales-targets/[id]/route';
-import { GET as dashboardRoute } from '@/app/api/crm/seller-dashboard/route';
+import { GET as dashboardGet } from '@/app/api/crm/seller-dashboard/route';
+// La ruta no lee la petición (ni query ni body): la firma real es GET(). El doble
+// acepta la petición para dejar constancia de que el `organization_id` de la query
+// se ignora por construcción.
+const dashboardRoute = (_req: Request) => dashboardGet();
 
 const C = (id: string, org: number, extra: Row = {}): Row => ({
   id, organization_id: org, branch_id: null, commission_type: 'salesperson', source_type: 'invoice_sale', source_id: `inv-${id}`, source_item_id: null,

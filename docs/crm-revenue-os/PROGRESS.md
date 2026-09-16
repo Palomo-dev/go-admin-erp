@@ -15,9 +15,9 @@
 | DOC-F6/F8 — Agente IA + motor de automatizaciones (documentos) | `FASE-06-AGENTE-IA-VOZ.md`, `FASE-08-AUTOMATIZACIONES-SECUENCIAS.md` | en_progreso | 1 | - | builder |
 | F0 — Fundaciones, seguridad, cola y scheduler (implementación) | `FASE-00-FUNDACIONES.md` | en_progreso | 1 | - | 4 builders |
 | F0-DB — Migraciones F0 vía MCP (CHECKs, activities/messages/customers cols, bucket, outbound_jobs, crm_events, contact_consents, provider_pricing, user_comm_preferences, RPCs de cola, cron inactivo, seeds, realtime) | `FASE-00-FUNDACIONES.md` §3 | APROBADA | 4 | **9,5/10** (3 migraciones pendientes de aplicar por el dueño) | builder DB |
-| F0-SEC — Seguridad y contexto multi-tenant (orgContext, firmas fail-closed, IDORs, auth IA, verify rate-limit, ws-server auth, enums.ts, guardrails) | `FASE-00-FUNDACIONES.md` §4/§7 | en_progreso | 3 | A+B tester r2 **6/10** → r3 en curso; C+D en construcción | builder SEC |
-| F0-JOBS — Cola/outbox: runner `/api/crm/jobs/run`, registry de handlers, crm_event dispatcher, vercel cron respaldo, JobsMonitor | `FASE-00-FUNDACIONES.md` §4.4 | en_progreso | 4 | QA r3 **8,2/10** → r4 en curso; decisión humana pendiente (permiso de cola) | builder JOBS |
-| F0-REG — Registry de proveedores, credenciales server-only, pricing/aiCost, config UI (Proveedores e IA, Créditos), nav CRM, deps npm, .env.example, Dockerfile ws | `FASE-00-FUNDACIONES.md` §4.1-4.2/§5 | en_progreso | 3 | QA r2 **8,9/10** → r3 en curso | builder REG |
+| F0-SEC — Seguridad y contexto multi-tenant (orgContext, firmas fail-closed, IDORs, auth IA, verify rate-limit, ws-server auth, enums.ts, guardrails) | `FASE-00-FUNDACIONES.md` §4/§7 | en_progreso | 3 | A+B r3 y C+D PARADAS a medias (ver handoff) | builder SEC |
+| F0-JOBS — Cola/outbox: runner `/api/crm/jobs/run`, registry de handlers, crm_event dispatcher, vercel cron respaldo, JobsMonitor | `FASE-00-FUNDACIONES.md` §4.4 | en_revision | 4 | builder r4 hecho; tester r4 PARADO; decisión pendiente (`crm.jobs.view`) | builder JOBS |
+| F0-REG — Registry de proveedores, credenciales server-only, pricing/aiCost, config UI (Proveedores e IA, Créditos), nav CRM, deps npm, .env.example, Dockerfile ws | `FASE-00-FUNDACIONES.md` §4.1-4.2/§5 | en_progreso | 3 | QA r2 **8,9/10** → r3 PARADA a medias | builder REG |
 | F2 — Pipeline profesional: objeciones y discovery en la superficie del vendedor (implementación) | `FASE-02-PIPELINE-PROFESIONAL.md` | APROBADA | 3 | **9.6/10** | builder F2 |
 | F3 — Telefonía en pipeline/oportunidad + grabación (implementación) | `FASE-03-TELEFONIA-CRM.md` | APROBADA | 8 | **9.6/10** | builder ZONA VOZ |
 | F4 — Transcripción, análisis IA y actividad automática (implementación) | `FASE-04-TRANSCRIPCION-ANALISIS-IA.md` | APROBADA | 7 | **9.6/10** | builder F4 |
@@ -136,6 +136,14 @@
 
 ### Fase: F0-DB — Ronda 4 evaluada por QA — **APROBADA 9,5/10** — 2026-09-15
 - Veredicto `rondas/F0-DB-qa-r4.md`: 0 críticos/altos en toda la fase; rollback f00_30 md5 = `20260901202059`; f00_36/f00_37/limpieza aún no en `schema_migrations` (pendientes del dueño). Trazabilidad 1,8 por la entrada duplicada de «Ronda 3 construida» (constructor y orquestador la escribieron a la vez): ya consolidada en una sola con nota. Para el 10: aplicar las 3 migraciones y pasar `get_advisors` sin hallazgos; versionar `20260909052947` (F9); `commCreditsService` (F16); test de contrato anti-credenciales/nombres en `.sql`; advertencia f00_35 en rollbacks 32/33; concurrencia de `fn_claim_jobs`.
+
+### Fase: F0-JOBS — Ronda 4 construida — 2026-09-15
+- (1) `findByClientRequestId` propaga `error` → `JobRetryableError('idempotency_check_failed')` sin envío; `retried_from` de la raíz; migración **PENDIENTE** `20260915234000_crm_v4_f00_42_idx_messages_client_request_id.sql` (índice parcial `is not null`). (2) `signal` antes de cada efecto en whatsapp/email (guarda nueva de `email_message_id` por org); `transcribe` solo al entrar (documentado: ninguna función de efecto admite señal). (3) `jobsService` con `STAGE_MANAGER_ROLE_IDS` + `hasOrgAdminOrPermission('admin.full_access')` fail-closed. (4) reintento de `fn_complete_job` a 300 ms acotado por deadline; `exhausted()` antes de cada consulta; sin mínimo 1 s; retirada la promesa de `pending_org_ids`. 166/166 en ambas zonas, guardrails 76/76, tsc 0. FASE-00 §4.4/§12/§13 r4. Informe: `rondas/F0-JOBS-builder-r4.md`. Tester r4 lanzado.
+
+### PARADA TOTAL ordenada por el dueño — 2026-09-15 ~19:35
+- Detenidos en seco: tester F0-JOBS r4 (al empezar el dry-run de la migración 42), builders F0-REG r3, F0-SEC-AB r3 y F0-SEC-CD (los tres **sin informe**, con cambios a medias en el árbol). Estado exacto por agente, archivos tocados y cómo retomar: `docs/HANDOFF-2026-09-15.md` §1 «Parada total». `tsc` al parar: 6 errores (1 de esta obra: `webhookTemplateStatus.test.ts:28`).
+- Commiteado antes de parar (todo en `main`, sin push): `fda2f93d` inicio, `a804f0fb` invitaciones, `8579a510` visitantes en vivo, `e817d175` aviso a la tienda, `2bf8f45d` impresión + fase 0 desktop, `d3f250c1` F0-DB aprobada (56 migraciones reconstruidas, 3 pendientes, docs).
+- Estado final de la sesión: F0-DB **APROBADA 9,5**; F0-JOBS en_revision r4 (builder hecho, tester pendiente); F0-REG r3 y F0-SEC A+B r3 / C+D a medias. 9 migraciones pendientes de aplicar (lista en el handoff §2); decisión pendiente del dueño sobre el permiso de la cola (`crm.jobs.view`).
 
 
 ### Fase: F2 — Pipeline profesional — Ronda 1 construida — 2026-09-15

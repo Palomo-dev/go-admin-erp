@@ -74,19 +74,25 @@ function defaultChangeStorage(): SettingsChangeStorage | null {
 /**
  * Lo que el indicador necesita saber además del emisor para explicar por qué
  * NO emite (presence.ts `reason`): si el interruptor de la organización
- * activa ya se cargó (caché de settings.ts) y si este entorno tiene
- * BroadcastChannel. Sin organización todavía cuenta como «cargando».
+ * activa ya se cargó (caché de settings.ts), qué valor tiene (para que una
+ * caché ENCENDIDA con el emisor aún sin arrancar cuente como «cargando» y no
+ * como «apagada») y si este entorno tiene BroadcastChannel. Sin organización
+ * todavía cuenta como «cargando».
  */
 export function getPosDisplayEnvironment(): DisplayPresenceEnvironment {
   let settingsLoaded = false;
+  let enabled = false;
   try {
     const orgId = getOrganizationId();
     settingsLoaded = hasCustomerDisplaySettingsCache(orgId);
+    enabled = isCustomerDisplayEnabled(orgId);
   } catch {
     settingsLoaded = false; // la organización activa no se pudo leer (storage bloqueado): no se sabe
+    enabled = false;
   }
   return {
     settingsLoaded,
+    enabled,
     transportSupported: typeof window !== 'undefined' && isBroadcastChannelSupported(),
   };
 }
@@ -200,6 +206,18 @@ let startGeneration = 0;
 export async function startPosDisplay(options: StartPosDisplayOptions): Promise<DisplayEmitter> {
   const emitter = getPosDisplayEmitter();
   const generation = ++startGeneration;
+
+  // La identidad de esta caja (pos_terminal_id) se crea SIEMPRE al abrir el POS,
+  // esté o no encendido el interruptor maestro. Antes solo se creaba al abrir el
+  // transporte (interruptor encendido), y una pantalla abierta con el interruptor
+  // apagado no encontraba caja y decía «abra el punto de venta» aunque estuviera
+  // abierto. Con identidad, la pantalla puede decir la verdad: «conectando… active
+  // la pantalla del cliente en Configuración › POS».
+  try {
+    if (typeof window !== 'undefined') getOrCreateLocalTerminalId();
+  } catch {
+    // storage bloqueado: el transporte lo volverá a intentar al arrancar
+  }
 
   // El listener se registra ANTES de la carga: si otra ventana guarda el
   // interruptor mientras la consulta está en vuelo (que responde con el valor

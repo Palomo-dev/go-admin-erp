@@ -1813,16 +1813,20 @@
       "disconnected": "Sem tela",
       "ariaLabel": "Tela do cliente",
       "notEmitting": "Desativada em Configurações › PDV › Tela do cliente",
-      "unsupported": "Este navegador não suporta a tela do cliente (sem BroadcastChannel). Atualize-o ou use o aplicativo para computador."
+      "unsupported": "Este navegador não suporta a tela do cliente (sem BroadcastChannel). Atualize-o ou use o aplicativo para computador.",
+      "disabled": "Tela desativada"
     },
     "menu": {
       "open": "Abrir tela do cliente",
-      "close": "Fechar"
+      "close": "Fechar",
+      "enableAndOpen": "Ativar e abrir tela do cliente"
     },
     "toast": {
       "dragHint": "Arraste a janela para a tela do cliente e pressione F11",
       "popupBlocked": "O navegador bloqueou a janela pop-up. Permita pop-ups para este site e tente novamente.",
-      "closeFromOpener": "Não é possível fechar daqui: feche-a pela sua própria janela. Se este caixa a abriu antes de recarregar, “Abrir” a recupera."
+      "closeFromOpener": "Não é possível fechar daqui: feche-a pela sua própria janela. Se este caixa a abriu antes de recarregar, “Abrir” a recupera.",
+      "enabled": "Tela do cliente ativada",
+      "enableError": "Não foi possível ativar a tela do cliente"
     },
     "config": {
       "title": "Tela do cliente",
@@ -1877,6 +1881,7 @@
       "paid": "Total pago"
     },
     "fullscreen": "Tela cheia",
-    "poweredBy": "GO Admin"
+    "poweredBy": "GO Admin",
+    "connectingHint": "Se não conectar, ative a tela do cliente no caixa: Configuração › POS › Tela do cliente"
   }
 }

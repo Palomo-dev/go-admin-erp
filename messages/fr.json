@@ -1813,16 +1813,20 @@
       "disconnected": "Sans écran",
       "ariaLabel": "Écran client",
       "notEmitting": "Désactivé dans Configuration › POS › Écran client",
-      "unsupported": "Ce navigateur ne prend pas en charge l'écran client (pas de BroadcastChannel). Mettez-le à jour ou utilisez l'application de bureau."
+      "unsupported": "Ce navigateur ne prend pas en charge l'écran client (pas de BroadcastChannel). Mettez-le à jour ou utilisez l'application de bureau.",
+      "disabled": "Écran désactivé"
     },
     "menu": {
       "open": "Ouvrir l'écran client",
-      "close": "Fermer"
+      "close": "Fermer",
+      "enableAndOpen": "Activer et ouvrir l’écran client"
     },
     "toast": {
       "dragHint": "Faites glisser la fenêtre vers l'écran client et appuyez sur F11",
       "popupBlocked": "Le navigateur a bloqué la fenêtre contextuelle. Autorisez les fenêtres contextuelles pour ce site et réessayez.",
-      "closeFromOpener": "Impossible de fermer depuis ici : fermez-le depuis sa propre fenêtre. Si cette caisse l'a ouvert avant de recharger, « Ouvrir » le récupère."
+      "closeFromOpener": "Impossible de fermer depuis ici : fermez-le depuis sa propre fenêtre. Si cette caisse l'a ouvert avant de recharger, « Ouvrir » le récupère.",
+      "enabled": "Écran client activé",
+      "enableError": "Impossible d’activer l’écran client"
     },
     "config": {
       "title": "Écran client",
@@ -1877,6 +1881,7 @@
       "paid": "Total payé"
     },
     "fullscreen": "Plein écran",
-    "poweredBy": "GO Admin"
+    "poweredBy": "GO Admin",
+    "connectingHint": "S’il ne se connecte pas, activez l’écran client sur la caisse : Configuration › POS › Écran client"
   }
 }

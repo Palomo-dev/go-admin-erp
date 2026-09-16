@@ -170,6 +170,12 @@ export function ConnectingView({ brand, hasTerminal }: { brand: DisplayBrand; ha
       <BrandLogo brand={brand} className="h-[calc(var(--pd-logo)*2)] w-[calc(var(--pd-logo)*2)] text-[length:var(--pd-logo)]" />
       <p className="text-[length:var(--pd-heading)] font-semibold uppercase tracking-wide text-neutral-900">{brand.name}</p>
       <p className="text-[length:var(--pd-line)] text-neutral-600">{hasTerminal ? t('connecting') : t('noTerminal')}</p>
+      {hasTerminal && (
+        // Con identidad de caja pero sin señal, la causa habitual es el interruptor
+        // maestro apagado en la caja (por defecto lo está) o el POS cerrado. Se dice
+        // en pequeño para que el cajero sepa qué tocar sin que el cliente lo sufra.
+        <p className="mt-2 text-[length:calc(var(--pd-line)*0.7)] text-neutral-500">{t('connectingHint')}</p>
+      )}
     </Centered>
   );
 }

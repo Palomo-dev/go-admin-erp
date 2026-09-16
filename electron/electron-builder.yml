@@ -11,18 +11,19 @@ directories:
   output: release
   buildResources: build
 
-# Releases en un repositorio propio y público, separado del código: el
+# Releases en GitHub Releases del repositorio de código (público): el
 # auto-update (electron-updater) descarga latest.yml y el .exe de aquí sin
-# token. Lo publica .github/workflows/desktop-release.yml.
+# token, y el workflow publica con el GITHUB_TOKEN del propio repo. Lo publica
+# .github/workflows/desktop-release.yml al empujar un tag vX.Y.Z.
 #
-# TRANSICIÓN: las instalaciones 0.1.x llevan embebido un app-update.yml que
-# apunta al repo de código (Palomo-dev/go-admin-erp). El workflow sube la
-# misma release a los dos repositorios hasta que esas instalaciones se
-# actualicen; después se puede dejar solo este.
+# Pendiente (opcional): mover las releases a un repo propio
+# (Palomo-dev/go-admin-desktop-releases) cuando exista y haya un PAT con
+# `contents: write` como secret DESKTOP_RELEASES_TOKEN; hasta entonces las
+# instalaciones 0.1.x y 0.2.x buscan actualizaciones aquí.
 publish:
   provider: github
   owner: Palomo-dev
-  repo: go-admin-desktop-releases
+  repo: go-admin-erp
   releaseType: release
 
 win:

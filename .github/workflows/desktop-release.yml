@@ -7,14 +7,13 @@ name: Desktop Release
 # 2. Empaqueta con electron-builder (NSIS + .blockmap + latest.yml).
 # 3. Firma si hay credenciales en los secrets: .pfx (CSC_LINK / CSC_KEY_PASSWORD)
 #    o Azure Trusted Signing (AZURE_*). Sin secrets, publica sin firmar.
-# 4. Publica en Palomo-dev/go-admin-desktop-releases (repo público de releases)
-#    y, mientras queden instalaciones 0.1.x apuntando al repo de código, también
-#    en Palomo-dev/go-admin-erp (ver electron/electron-builder.yml → publish).
+# 4. Publica en GitHub Releases de este mismo repositorio (público) con el
+#    GITHUB_TOKEN del workflow (ver electron/electron-builder.yml → publish):
+#    el asset versionado + .blockmap + latest.yml para electron-updater y una
+#    copia estable GoAdminERP-Setup.exe para el botón de descarga del ERP.
 #
 # Secrets esperados (Settings → Secrets → Actions):
-#   DESKTOP_RELEASES_TOKEN  PAT con permiso `contents: write` sobre
-#                           go-admin-desktop-releases (GITHUB_TOKEN no alcanza
-#                           a otro repositorio).
+#   (ninguno obligatorio)
 #   CSC_LINK, CSC_KEY_PASSWORD                       (certificado .pfx, opcional)
 #   AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET,
 #   AZURE_TRUSTED_SIGNING_ENDPOINT, AZURE_TRUSTED_SIGNING_ACCOUNT,
@@ -48,6 +47,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: |
+            package-lock.json
             print-agent/package-lock.json
             electron/package-lock.json
 
@@ -71,6 +71,37 @@ jobs:
         working-directory: electron
         run: npm ci
 
+      # Web embebida (fase 3): el instalador lleva el build standalone de Next
+      # en resources/web para funcionar sin internet. Solo variables PÚBLICAS
+      # (NEXT_PUBLIC_*, las mismas que ya viajan en el bundle de app.goadmin.io);
+      # se definen como Variables del repositorio (Settings → Secrets and
+      # variables → Actions → Variables). Sin ellas el paso falla a propósito:
+      # un instalador sin web embebida no sirve para el modo offline.
+      - name: Instalar dependencias del ERP
+        run: npm ci
+
+      - name: Construir la web embebida (Next standalone)
+        working-directory: electron
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_SELLERS_URL: ${{ vars.NEXT_PUBLIC_SELLERS_URL }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ vars.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+          NEXT_PUBLIC_META_APP_ID: ${{ vars.NEXT_PUBLIC_META_APP_ID }}
+          NEXT_PUBLIC_WHATSAPP_CONFIG_ID: ${{ vars.NEXT_PUBLIC_WHATSAPP_CONFIG_ID }}
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: |
+          if (-not $env:NEXT_PUBLIC_SUPABASE_URL -or -not $env:NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+            Write-Error 'Faltan las Variables del repositorio NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY (Settings → Secrets and variables → Actions → Variables).'
+            exit 1
+          }
+          npm run build:web
+          if (-not (Test-Path 'resources/web/server.js')) { Write-Error 'build:web no dejó resources/web/server.js'; exit 1 }
+
       # Trusted Signing: la librería (dlib) viene en el paquete NuGet
       # Microsoft.Trusted.Signing.Client. Solo se descarga si hay credenciales.
       - name: Preparar Azure Trusted Signing
@@ -86,8 +117,8 @@ jobs:
         working-directory: electron
         env:
           # Publicación: electron-builder sube el .exe, el .blockmap y latest.yml
-          # al repo configurado en electron-builder.yml (go-admin-desktop-releases).
-          GH_TOKEN: ${{ secrets.DESKTOP_RELEASES_TOKEN }}
+          # al repo configurado en electron-builder.yml (este mismo).
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Firma .pfx (electron-builder la aplica sola si existen estas dos)
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
@@ -110,21 +141,27 @@ jobs:
           if (-not (Test-Path 'latest.yml')) { Write-Error 'Falta latest.yml'; exit 1 }
           if (-not (Get-ChildItem -Filter '*.blockmap')) { Write-Error 'Falta el .blockmap (actualizaciones diferenciales)'; exit 1 }
           if (-not (Test-Path 'win-unpacked/resources/app.asar.unpacked/build/icon.ico')) { Write-Error 'Falta build/icon.ico desempaquetado'; exit 1 }
+          if (-not (Test-Path 'win-unpacked/resources/web/server.js')) { Write-Error 'El paquete no lleva la web embebida (resources/web)'; exit 1 }
           Get-Content latest.yml
+          # Copia con nombre ESTABLE para el botón «Descargar Go Admin Desktop»
+          # del ERP (…/releases/latest/download/GoAdminERP-Setup.exe): el asset
+          # versionado sigue siendo el que usa electron-updater (latest.yml).
+          $setup = Get-ChildItem -Filter 'GoAdminERP-Setup-*.exe' | Select-Object -First 1
+          Copy-Item $setup.FullName 'GoAdminERP-Setup.exe'
 
-      # Transición: las instalaciones 0.1.x buscan actualizaciones en el repo de
-      # código. Se sube la misma release ahí hasta que todas hayan migrado.
-      - name: Publicar también en el repo de código (transición 0.1.x)
+      # electron-builder ya creó la release con los assets versionados; aquí se
+      # añade la copia estable (y se reintenta cualquier asset que faltara).
+      - name: Subir la copia estable GoAdminERP-Setup.exe a la release
         if: startsWith(github.ref, 'refs/tags/v')
         working-directory: electron/release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $tag = "${{ github.ref_name }}"
-          $assets = Get-ChildItem | Where-Object { $_.Name -match '^GoAdminERP-Setup-.*\.(exe|exe\.blockmap)$' -or $_.Name -eq 'latest.yml' } | ForEach-Object { $_.FullName }
+          $assets = Get-ChildItem | Where-Object { $_.Name -match '^GoAdminERP-Setup(-.*)?\.(exe|exe\.blockmap)$' -or $_.Name -eq 'latest.yml' } | ForEach-Object { $_.FullName }
           gh release view $tag --repo ${{ github.repository }} 2>$null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo ${{ github.repository }} --title "Go Admin Desktop $tag" --notes "Publicado desde desktop-release.yml. Release canónica: https://github.com/Palomo-dev/go-admin-desktop-releases/releases/tag/$tag" $assets
+            gh release create $tag --repo ${{ github.repository }} --title "Go Admin Desktop $tag" --notes "Publicado desde desktop-release.yml." $assets
           } else {
             gh release upload $tag --repo ${{ github.repository }} --clobber $assets
           }
@@ -134,7 +171,7 @@ jobs:
         with:
           name: go-admin-desktop-${{ github.ref_name }}
           path: |
-            electron/release/GoAdminERP-Setup-*.exe
+            electron/release/GoAdminERP-Setup*.exe
             electron/release/GoAdminERP-Setup-*.exe.blockmap
             electron/release/latest.yml
           if-no-files-found: error

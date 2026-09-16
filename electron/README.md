@@ -66,16 +66,19 @@ su `.blockmap` (actualizaciones diferenciales) y `latest.yml`.
 
 1. Subir `version` en `electron/package.json` (el workflow aborta si el tag no coincide).
 2. `git tag vX.Y.Z && git push origin vX.Y.Z`.
-3. `.github/workflows/desktop-release.yml` compila en `windows-latest`, firma si hay
-   credenciales y publica en **Palomo-dev/go-admin-desktop-releases** (repositorio público
-   de releases, separado del código; es de donde descarga `electron-updater`). Mientras
-   queden instalaciones 0.1.x —que buscan actualizaciones en el repo de código— sube la
-   misma release también ahí.
+3. `.github/workflows/desktop-release.yml` compila en `windows-latest`: instala el ERP,
+   construye la web embebida (`npm run build:web`, fase 3), empaqueta, firma si hay
+   credenciales y publica en **GitHub Releases de este repositorio** con el `GITHUB_TOKEN`:
+   `GoAdminERP-Setup-<versión>.exe` + `.blockmap` + `latest.yml` (para `electron-updater`)
+   y la copia estable `GoAdminERP-Setup.exe` que descarga el botón «Descargar Go Admin
+   Desktop» del ERP (`…/releases/latest/download/GoAdminERP-Setup.exe`).
 
-Secrets del workflow: `DESKTOP_RELEASES_TOKEN` (PAT con `contents: write` sobre el repo de
-releases) y, para firmar, `CSC_LINK` + `CSC_KEY_PASSWORD` (certificado .pfx) **o** las
-variables `AZURE_*` de Azure Trusted Signing (ver `electron-builder.config.js`). Nunca hay
-credenciales en el repositorio; sin ellas el .exe sale sin firmar y SmartScreen avisará.
+Variables del repositorio (Settings → Secrets and variables → Actions → *Variables*), solo
+públicas: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (obligatorias) y las
+demás `NEXT_PUBLIC_*` del allowlist de `scripts/build-web.js`. Secrets solo para firmar:
+`CSC_LINK` + `CSC_KEY_PASSWORD` (certificado .pfx) **o** las variables `AZURE_*` de Azure
+Trusted Signing (ver `electron-builder.config.js`). Nunca hay credenciales de servidor en el
+repositorio ni en el instalador; sin firma el .exe sale sin firmar y SmartScreen avisará.
 
 Decisión congelada: instalación **por usuario** (`perMachine: false`, `asInvoker`, sin UAC).
 El instalador detecta y desinstala la 0.1.0 instalada para todos los usuarios

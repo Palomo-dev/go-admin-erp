@@ -138,10 +138,16 @@ export interface Sale {
   tax_total: number;
   discount_total: number;
   balance: number;
-  status: 'pending' | 'completed' | 'cancelled' | 'expired';
+  /** `pending_sync`: venta provisional guardada en el outbox del Desktop (fase 4B), aún no está en Supabase. */
+  status: 'pending' | 'completed' | 'cancelled' | 'expired' | 'pending_sync';
   payment_status: 'pending' | 'paid' | 'partial' | 'refunded';
   sale_date: string;
   invoice_number?: string;
+  sale_number?: string;
+  /** true si la venta salió del outbox offline y todavía no se reprodujo en Supabase. */
+  pending_sync?: boolean;
+  /** Número local `OFF-<sucursal>-<n>` impreso en el ticket mientras la venta está pendiente. */
+  receipt_number_local?: string;
   payment_method?: string;
   notes?: string;
   created_at: string;
@@ -266,6 +272,18 @@ export interface CheckoutData {
   driver_id?: string;
   shipping_fee?: number;
   serial_selections?: Record<number, number[]>;
+  /**
+   * Id de la venta generado en el cliente (`crypto.randomUUID()`), Desktop
+   * fase 4B. Si ya existe una venta con ese id en la organización, `checkout`
+   * devuelve la existente y completa solo lo que falte (idempotencia).
+   */
+  saleId?: string;
+  /** Instante real de la venta (ISO). Al reproducir un sobre offline conserva la fecha original. */
+  createdAt?: string;
+  /** Usuario que hizo la venta. Al reproducir un sobre offline evita atribuirla a quien sincroniza. */
+  userId?: string;
+  /** true cuando `salesSync` reproduce un sobre: nunca vuelve a encolarse en el outbox. */
+  replayFromOutbox?: boolean;
 }
 
 // Para impuestos

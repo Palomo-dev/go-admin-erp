@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { wasOpenedHidden } from '../autostart';
 import { APP_NAME, WEB_APP_URL } from '../constants';
-import { getIconImage } from '../icon';
+import { getWindowIcon } from '../icon';
 import { isOnline, onConnectivityChange, checkNow } from '../connectivity';
 import { webServer } from '../webServer';
 import { TOOLBAR_HEIGHT, applyTheme, getThemeColors, watchTheme } from '../theme';
@@ -130,7 +130,7 @@ function saveWindowState(): void {
 
 // ── Splash screen ──
 function createSplashWindow(): BrowserWindow {
-  const iconImage = getIconImage();
+  const windowIcon = getWindowIcon();
   const theme = getThemeColors();
   splashWindow = new BrowserWindow({
     width: 420,
@@ -141,7 +141,7 @@ function createSplashWindow(): BrowserWindow {
     alwaysOnTop: true,
     skipTaskbar: true,
     show: true,
-    ...(iconImage ? { icon: iconImage } : {}),
+    ...(windowIcon ? { icon: windowIcon } : {}),
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
   const splashHtml = `data:text/html;charset=utf-8,${encodeURIComponent(`
@@ -204,7 +204,7 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
   const positionIsVisible = isPositionVisible(saved.x, saved.y, width, height);
   const zoomFactor = clampZoom(saved.zoomFactor ?? DEFAULT_ZOOM);
 
-  const iconImage = getIconImage();
+  const windowIcon = getWindowIcon();
   mainWindow = new BrowserWindow({
     width,
     height,
@@ -213,7 +213,7 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
     minHeight: 700,
     show: false,
     title: APP_NAME,
-    ...(iconImage ? { icon: iconImage } : {}),
+    ...(windowIcon ? { icon: windowIcon } : {}),
     // Barra de título propia: la dibuja renderer/toolbar; los botones de
     // ventana siguen siendo nativos (Window Controls Overlay).
     titleBarStyle: 'hidden',

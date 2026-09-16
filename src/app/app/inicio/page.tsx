@@ -35,6 +35,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { usePermissionContext } from '@/hooks/usePermissionContext';
 import { STAGE_MANAGER_ROLE_IDS } from '@/lib/services/crm/stagePermissions';
 import { EmployeeDashboard } from '@/components/inicio/EmployeeDashboard';
+import { useDesktopCatalog } from '@/lib/offline/useDesktopCatalog';
 
 function InicioContent() {
   const searchParams = useSearchParams() ?? new URLSearchParams();
@@ -46,6 +47,9 @@ function InicioContent() {
   const t = useTranslations('home');
   const locale = useLocale();
   const { context: permContext, resolvedOrganizationId } = usePermissionContext(organization?.id);
+  // Go Admin Desktop (fase 4A): replicar el catálogo del POS al entrar al inicio.
+  // Fuera del Desktop el hook no hace nada.
+  useDesktopCatalog(organization?.id);
 
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

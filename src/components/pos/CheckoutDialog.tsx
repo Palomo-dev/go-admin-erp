@@ -47,6 +47,8 @@ import { useMobileNative } from '@/hooks/useMobileNative';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { resolveCashReceived, toDisplayPayment } from '@/lib/pos/display/payment';
+import { isDesktop } from '@/lib/utils/desktop';
+import { newSaleId, ticketSaleNumber } from '@/lib/offline/salesOutbox';
 
 interface CheckoutDialogProps {
   cart: Cart;
@@ -885,10 +887,20 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // Validar stock de ingredientes para productos compuestos
       const branchId = cart.branch_id;
       if (branchId && cart.items.length > 0) {
-        const stockCheck = await validateCompositeStock(
-          cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity })),
-          branchId
-        );
+        let stockCheck: Awaited<ReturnType<typeof validateCompositeStock>>;
+        try {
+          stockCheck = await validateCompositeStock(
+            cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity })),
+            branchId
+          );
+        } catch (stockCheckError) {
+          // Desktop sin red (fase 4B): la receta puede no estar en caché. La
+          // comprobación es previa y orientativa; no debe impedir la venta.
+          // En navegador se conserva el comportamiento de siempre.
+          if (!isDesktop()) throw stockCheckError;
+          console.warn('[checkout] No se pudo validar stock de ingredientes (sin red):', stockCheckError);
+          stockCheck = { ok: true };
+        }
         if (!stockCheck.ok && stockCheck.message) {
           // Reemplazo de window.confirm por AlertDialog controlado.
           // Se pausa el flujo con una promesa que se resuelve al confirmar/cancelar.
@@ -954,11 +966,19 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         driver_id: deliveryType === 'delivery_own' ? (selectedDriverId || undefined) : undefined,
         shipping_fee: shippingFee > 0 ? shippingFee : undefined,
         serial_selections: hasSerialItems && serialSelectionsComplete ? serialSelections : undefined,
+        // Desktop (fase 4B): id y fecha generados en el cliente. Con red la
+        // venta se inserta con ese id; sin red va al outbox y se reproduce con
+        // el mismo id (idempotente). En navegador no se envían: nada cambia.
+        ...(isDesktop() ? { saleId: newSaleId(), createdAt: new Date().toISOString() } : {}),
       };
 
-      const sale = onProcessPayment 
+      const sale = onProcessPayment
         ? await onProcessPayment(checkoutData)
         : await POSService.checkout(checkoutData);
+      const isPendingSync = sale.pending_sync === true;
+      if (isPendingSync) {
+        toast.warning(`Sin conexión: venta ${sale.receipt_number_local} guardada en este equipo. Se sincronizará al volver la red.`);
+      }
       setCompletedSale(sale);
       setShowReceipt(true);
       saleConfirmedRef.current = true;
@@ -979,7 +999,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         }));
         PrintJobsService.enqueueSaleTicket(cart.branch_id, {
           saleId: sale.id,
-          saleNumber: (sale as any).sale_number,
+          // Offline: número local + «Pendiente de sincronizar» en el papel.
+          saleNumber: ticketSaleNumber(sale),
           customerName: customerData?.full_name,
           customerDocType: customerData?.doc_type,
           customerDocNumber: customerData?.doc_number,
@@ -1049,7 +1070,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       }
 
       // Crear shipment si es delivery propio
-      if (deliveryType === 'delivery_own' && deliveryAddress) {
+      // Sin red no hay venta en la BD todavía: el envío no puede crearse.
+      if (deliveryType === 'delivery_own' && deliveryAddress && isPendingSync) {
+        toast.warning('Sin conexión: el envío a domicilio debe crearse manualmente cuando la venta se sincronice.');
+      }
+      if (deliveryType === 'delivery_own' && deliveryAddress && !isPendingSync) {
         try {
           const { deliveryIntegrationService } = await import('@/lib/services/deliveryIntegrationService');
           await deliveryIntegrationService.createShipmentFromPOSSale({
@@ -1118,7 +1143,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       }
 
       // Enviar a Factus (factura electrónica) si el toggle está activado
-      if (sendToFactus) {
+      if (sendToFactus && isPendingSync) {
+        toast.warning('Sin conexión: la factura electrónica se podrá enviar a DIAN desde Facturación cuando la venta se sincronice.');
+      }
+      if (sendToFactus && !isPendingSync) {
         try {
           // Buscar la invoice_sales creada durante el checkout
           const { data: invoiceSale } = await supabase
@@ -1476,7 +1504,15 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
               <p className="text-sm sm:text-base dark:text-gray-400 text-gray-600">
                 Venta #{completedSale.id.slice(-8)} procesada exitosamente
               </p>
-              
+              {completedSale.pending_sync && (
+                <p
+                  role="status"
+                  className="mt-2 inline-block rounded-md bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-300"
+                >
+                  Pendiente de sincronizar · {completedSale.receipt_number_local}
+                </p>
+              )}
+
               <div className="bg-gray-100 dark:bg-gray-800 p-3 sm:p-4 rounded-lg mt-3 sm:mt-4 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm sm:text-base dark:text-gray-400 text-gray-600">Total:</span>

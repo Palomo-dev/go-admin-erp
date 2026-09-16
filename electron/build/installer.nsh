@@ -63,6 +63,19 @@
       Abort
     ${EndIf}
   ${EndIf}
+  ; Accesos directos huérfanos "para todos los usuarios" (build 0.1.0) cuyo
+  ; destino ya no existe. Windows agrupa la app en la barra de tareas por su
+  ; AppUserModelId (io.goadmin.desktop) y toma el icono del acceso directo del
+  ; menú Inicio que lo declara: si ese .lnk apunta a un .exe borrado, la barra
+  ; muestra una hoja en blanco en vez del logo aunque la app esté bien
+  ; instalada. Borrado en el mejor esfuerzo: sin permisos de administrador no
+  ; se puede y no pasa nada (Delete no falla).
+  SetShellVarContext all
+  IfFileExists "$PROGRAMFILES64\Go Admin ERP\Go Admin Desktop\Go Admin ERP.exe" +4 0
+    Delete "$SMPROGRAMS\Go Admin ERP\Go Admin ERP.lnk"
+    RMDir "$SMPROGRAMS\Go Admin ERP"
+    Delete "$DESKTOP\Go Admin ERP.lnk"
+  SetShellVarContext current
 !macroend
 
 ; =============================================================================

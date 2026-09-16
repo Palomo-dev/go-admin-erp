@@ -27,6 +27,8 @@ import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 import { AperturaCajaDialog } from '@/components/pos/cajas/AperturaCajaDialog';
 import { CierreCajaDialog } from '@/components/pos/cajas/CierreCajaDialog';
+import { VentasPendientesDialog } from '@/components/pos/VentasPendientesDialog';
+import { startSalesSync } from '@/lib/offline/salesSync';
 import { CajasService } from '@/components/pos/cajas/CajasService';
 import { useBlindCloseMode } from '@/components/pos/cajas/useBlindCloseMode';
 import type { CashSession } from '@/components/pos/cajas/types';
@@ -140,6 +142,12 @@ export default function POSPage() {
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Desktop (fase 4B): reproducir las ventas hechas sin conexión al abrir el
+  // POS con red y cada vez que vuelva la conectividad real. No-op en navegador.
+  useEffect(() => {
+    return startSalesSync();
   }, []);
 
   // Suscripción realtime a cash_sessions para que el estado de caja
@@ -572,6 +580,9 @@ export default function POSPage() {
                 ) : (
                   <AperturaCajaDialog onSessionOpened={handleSessionOpened} />
                 )}
+
+                {/* Ventas sin conexión pendientes de sincronizar (solo Desktop, fase 4B) */}
+                <VentasPendientesDialog />
 
                 {/* Hora */}
                 <div className="hidden xs:flex items-center space-x-1.5 sm:space-x-2">

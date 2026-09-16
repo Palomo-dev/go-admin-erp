@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Product, Category, PaginatedResponse } from './types';
 import { POSService } from '@/lib/services/posService';
@@ -9,7 +9,6 @@ import {
   Search,
   Package,
   ShoppingCart,
-  Filter,
   X,
   ChevronLeft,
   ChevronRight,
@@ -18,8 +17,6 @@ import {
   ChevronUp,
   ChevronDown,
   Scan,
-  Tag,
-  Percent,
   Star,
   Flame,
   ChefHat
@@ -28,7 +25,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/use-toast';
-import { SearchSelect } from '@/components/ui/search-select';
 import { cn, formatCurrency } from '@/utils/Utils';
 import Image from 'next/image';
 import { BarcodeScanner } from '@/components/ui/barcode-scanner';
@@ -45,11 +41,41 @@ import {
 } from '@/components/ui/dialog';
 import { recipeService, type ProductRecipe } from '@/lib/services/recipeService';
 import { useBranch } from '@/lib/context/BranchContext';
+import { LocalCatalogNotice } from './LocalCatalogNotice';
+import { isCatalogNotReplicatedError } from '@/lib/offline/posOfflineReads';
 
 interface ProductSearchProps {
   onProductSelect: (product: Product, modifiers?: SelectedModifier[]) => void;
   selectedProducts?: Product[];
 }
+
+/** Producto tal como lo devuelve `POSService.getProductsPaginated` para el grid. */
+type PosGridProduct = Product & {
+  has_variants?: boolean;
+  variant_count?: number;
+  has_modifiers?: boolean;
+  compare_price?: number | null;
+  categories?: Category | null;
+  station?: string | null;
+  variant_data?: unknown;
+};
+
+/**
+ * Variante elegida en `VariantSelectorDialog`: el diálogo la tipa con lo
+ * mínimo (id, sku, nombre, precio, variant_data) pero la fila trae todos
+ * los campos del producto, que se preservan al enviarla al carrito.
+ */
+type SelectedVariant = {
+  id: number;
+  sku: string;
+  name: string;
+  price: number | null;
+  variant_data: Record<string, string>;
+  image?: string | null;
+  categories?: Category | null;
+  category?: Category | null;
+  station?: string | null;
+};
 
 export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   const { branchFilter } = useBranch();
@@ -111,10 +137,12 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       setProductsData(result);
     } catch (error) {
       console.error('Error loading products:', error);
-      setError('Error al cargar productos');
+      // Desktop sin red y sin catálogo replicado: el mensaje útil, no el genérico.
+      const sinCatalogo = isCatalogNotReplicatedError(error);
+      setError(sinCatalogo ? (error as Error).message : 'Error al cargar productos');
       toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los productos',
+        title: sinCatalogo ? 'Sin catálogo local' : 'Error',
+        description: sinCatalogo ? (error as Error).message : 'No se pudieron cargar los productos',
         variant: 'destructive'
       });
     } finally {
@@ -164,14 +192,12 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   }, [loadCategories]);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
     // Reset page to 1 when search or filter changes
     if (productsData.page !== 1) {
       setProductsData(prev => ({ ...prev, page: 1 }));
     }
 
-    timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       loadProducts(1);
     }, 300);
 
@@ -217,7 +243,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   };
 
   // Manejar selección de producto (con o sin variantes)
-  const handleProductClick = (product: any) => {
+  const handleProductClick = (product: PosGridProduct) => {
     // Si el producto está agotado, no permitir agregarlo
     if (product.is_out_of_stock) {
       toast({
@@ -228,7 +254,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       return;
     }
     // Si el producto tiene variantes o modificadores configurados, abrir el selector
-    if ((product.has_variants && product.variant_count > 0) || product.has_modifiers) {
+    if ((product.has_variants && (product.variant_count ?? 0) > 0) || product.has_modifiers) {
       setSelectedParentProduct(product);
       setShowVariantDialog(true);
     } else {
@@ -238,9 +264,9 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   };
 
   // Manejar selección de variante (y sus modificadores) desde el diálogo
-  const handleVariantSelect = (variant: any, modifiers: SelectedModifier[] = []) => {
+  const handleVariantSelect = (variant: SelectedVariant, modifiers: SelectedModifier[] = []) => {
     // Heredar categoría y datos de preparación del producto padre si la variante no los trae
-    const parent = selectedParentProduct as any;
+    const parent = selectedParentProduct as PosGridProduct | null;
     const inheritedCategory = variant.categories || variant.category || parent?.categories || parent?.category || null;
     const inheritedStation = variant.station || inheritedCategory?.station || parent?.station || null;
     // Construir nombre legible de la variante desde variant_data (ej: "iPhone 16 Pro Max (256 GB)")
@@ -248,18 +274,19 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     const enrichedVariant = {
       ...variant,
       name: displayName,
-      category: inheritedCategory,
+      category: inheritedCategory ?? undefined,
       categories: inheritedCategory,
       station: inheritedStation,
     };
-    onProductSelect(enrichedVariant, modifiers);
+    // La variante lleva la fila completa del producto (ver SelectedVariant).
+    onProductSelect(enrichedVariant as unknown as Product, modifiers);
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
   };
 
   // Ver la receta vinculada a un producto (abre un diálogo con ingredientes y rendimiento).
   // No agrega el producto al carrito: es solo consulta desde el grid del POS.
-  const handleViewRecipe = async (product: any, e: React.MouseEvent) => {
+  const handleViewRecipe = async (product: PosGridProduct, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!product.recipe_id) return;
     try {
@@ -287,11 +314,11 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
     // Optimistic: invertir is_favorite en el estado local
     const prevData = productsData.data;
-    const product = prevData.find((p: any) => p.id === productId);
+    const product = prevData.find((p: Product) => p.id === productId);
     const wasFavorite = product?.is_favorite ?? false;
     setProductsData(prev => ({
       ...prev,
-      data: prev.data.map((p: any) =>
+      data: prev.data.map((p: Product) =>
         p.id === productId ? { ...p, is_favorite: !wasFavorite } : p
       ),
     }));
@@ -302,7 +329,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       // Sincronizar con el valor real devuelto por el service (por si hubo race condition)
       setProductsData(prev => ({
         ...prev,
-        data: prev.data.map((p: any) =>
+        data: prev.data.map((p: Product) =>
           p.id === productId ? { ...p, is_favorite: isNowFavorite } : p
         ),
       }));
@@ -313,11 +340,11 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
           : 'El producto ya no se priorizará.',
         duration: 1800,
       });
-    } catch (error) {
+    } catch {
       // Revertir optimistic update
       setProductsData(prev => ({
         ...prev,
-        data: prev.data.map((p: any) =>
+        data: prev.data.map((p: Product) =>
           p.id === productId ? { ...p, is_favorite: wasFavorite } : p
         ),
       }));
@@ -342,6 +369,8 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       {/* Header con filtros mejorado - RESPONSIVE */}
       <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-950 dark:to-gray-900 shrink-0">
         <CardHeader className="p-3 sm:p-4 pb-3">
+          {/* Desktop: estado del catálogo local (solo renderiza en Go Admin Desktop) */}
+          <LocalCatalogNotice className="mb-2" />
           {/* Buscador prominente - siempre primero en móvil */}
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500 dark:text-blue-400 h-4 w-4 sm:h-5 sm:w-5" />
@@ -543,7 +572,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                 "grid gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6 lg:mb-0 lg:content-start lg:overflow-y-auto",
                 gridSize === 'large' ? "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
               )}>
-                {productsData.data.map((product: any) => (
+                {productsData.data.map((product: PosGridProduct) => (
                   <Card 
                     key={product.id}
                     className={cn(
@@ -608,19 +637,19 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       )}
                       
                       {/* Badge de variantes (debajo del descuento si existe) */}
-                      {product.has_variants && product.variant_count > 0 && (
+                      {product.has_variants && (product.variant_count ?? 0) > 0 && (
                         <Badge 
                           className={cn(
                             "absolute right-2 bg-purple-600 text-white hover:bg-purple-700 text-[0.6rem] sm:text-xs z-10",
                             product.compare_price && Number(product.compare_price) > Number(product.price) ? "top-8 sm:top-9" : "top-2"
                           )}
                         >
-                          {product.variant_count} var.
+                          {product.variant_count ?? 0} var.
                         </Badge>
                       )}
 
                       {/* Badge de personalización (producto simple con modificadores) */}
-                      {(!product.has_variants || product.variant_count === 0) && product.has_modifiers && (
+                      {(!product.has_variants || (product.variant_count ?? 0) === 0) && product.has_modifiers && (
                         <Badge
                           className={cn(
                             "absolute right-2 bg-amber-600 text-white hover:bg-amber-700 text-[0.6rem] sm:text-xs z-10",
@@ -721,7 +750,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                         size="sm" 
                         className={cn(
                           "w-full text-white h-7 sm:h-8 text-xs sm:text-sm",
-                          product.has_variants && product.variant_count > 0
+                          product.has_variants && (product.variant_count ?? 0) > 0
                             ? "bg-purple-600 hover:bg-purple-700"
                             : product.has_modifiers
                             ? "bg-amber-600 hover:bg-amber-700"
@@ -738,7 +767,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                           gridSize === 'large' ? "h-3 w-3 sm:h-4 sm:w-4" : "h-3 w-3"
                         )} />
                         <span className="hidden xs:inline">
-                          {(product.has_variants && product.variant_count > 0) || product.has_modifiers ? 'Elegir' : 'Agregar'}
+                          {(product.has_variants && (product.variant_count ?? 0) > 0) || product.has_modifiers ? 'Elegir' : 'Agregar'}
                         </span>
                         <span className="inline xs:hidden">+</span>
                       </Button>

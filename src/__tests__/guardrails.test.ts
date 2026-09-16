@@ -1270,6 +1270,33 @@ describe('F0 Guardarraíles', () => {
     });
   });
 
+  // === Pantalla del cliente: los totales llevan el id del carrito ===
+  // Bug visto en el escritorio 0.2.1 (2026-09-16): al completar una venta el
+  // POS elimina el carrito cobrado y activa el siguiente. `handleTotalsChange`
+  // de CartView cambia de identidad (depende de cart.id) y el efecto de
+  // TaxSummary reenvía sus totales VIEJOS con el id NUEVO; el emisor confía en
+  // el id y la pantalla mostraba «TOTAL $ 12.750» sobre un carrito de $ 0.
+  // Corrección: TaxSummary etiqueta cada cálculo con el carrito que lo
+  // produjo y cancela los cálculos asíncronos superados; CartView ignora
+  // totales de otro carrito y retira el override con subtotal 0.
+  describe('Pantalla del cliente: TaxSummary etiqueta los totales con su carrito y CartView los filtra', () => {
+    const taxSummary = readFile(path.join(SRC_ROOT, 'components', 'pos', 'TaxSummary.tsx'));
+    const cartView = readFile(path.join(SRC_ROOT, 'components', 'pos', 'CartView.tsx'));
+
+    test('TaxSummary: onTotalsChange lleva cartId y el cálculo asíncrono se cancela al cambiar de carrito', () => {
+      expect(taxSummary).toMatch(/onTotalsChange\?\s*:\s*\(totals:\s*\{[^}]*cartId:\s*string[^}]*\}\)\s*=>\s*void/);
+      expect(taxSummary).toMatch(/let\s+cancelled\s*=\s*false/);
+      expect(taxSummary).toMatch(/if\s*\(\s*cancelled\s*\)\s*return/);
+      // El id se captura al empezar el efecto y viaja en cada setCalculatedTotals.
+      expect(taxSummary.match(/setCalculatedTotals\s*\(\s*\{[^}]*cartId[^}]*\}\s*\)/gs)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    });
+
+    test('CartView: ignora totales de otro carrito y retira el override con subtotal 0', () => {
+      expect(cartView).toMatch(/if\s*\(\s*totals\.cartId\s*!==\s*cartId\s*\)\s*return/);
+      expect(cartView).toMatch(/setTotals\s*\(\s*cartId\s*,\s*null\s*\)/);
+    });
+  });
+
   // === Caso 16: callbacks de onAuthStateChange nunca son async ===
   // auth-js 2.69 hace `await` de los callbacks de onAuthStateChange DENTRO
   // del lock global de sesión (_notifyAllSubscribers corre con lockAcquired =

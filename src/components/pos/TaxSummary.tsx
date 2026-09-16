@@ -45,7 +45,8 @@ interface TaxSummaryProps {
   taxIncluded: boolean;
   onTaxIncludedChange: (included: boolean) => void;
   onAppliedTaxesChange?: (taxIds: string[]) => void;
-  onTotalsChange?: (totals: { subtotal: number; totalTaxAmount: number; finalTotal: number }) => void;
+  /** `cartId` es el carrito con el que se calcularon: el padre debe ignorar totales de otro carrito (ver CartView). */
+  onTotalsChange?: (totals: { subtotal: number; totalTaxAmount: number; finalTotal: number; cartId: string }) => void;
   className?: string;
 }
 
@@ -66,7 +67,8 @@ export function TaxSummary({
   const [calculatedTotals, setCalculatedTotals] = useState({
     subtotal: 0,
     totalTaxAmount: 0,
-    finalTotal: 0
+    finalTotal: 0,
+    cartId: cart.id
   });
 
   // Cargar impuestos de la organización
@@ -104,10 +106,15 @@ export function TaxSummary({
 
   // Calcular desglose de impuestos usando la utilidad
   useEffect(() => {
+    // El cálculo es asíncrono: si el carrito cambia a mitad (cobro que
+    // elimina el carrito y activa otro), el resultado viejo no debe pisar al
+    // nuevo ni salir etiquetado con el id del carrito nuevo.
+    let cancelled = false;
+    const cartId = cart.id;
     const calculateTaxBreakdown = async () => {
       if (cart.items.length === 0 || organizationTaxes.length === 0) {
         setTaxBreakdown([]);
-        setCalculatedTotals({ subtotal: 0, totalTaxAmount: 0, finalTotal: 0 });
+        setCalculatedTotals({ subtotal: 0, totalTaxAmount: 0, finalTotal: 0, cartId });
         return;
       }
 
@@ -219,18 +226,23 @@ export function TaxSummary({
         }
       }
       
+      if (cancelled) return;
       // Actualizar estados
       setHasProductSpecificTaxes(hasProductTaxes);
       setTaxBreakdown(Object.values(combinedBreakdown));
       setCalculatedTotals({
         subtotal: Math.round(combinedSubtotal * 100) / 100,
         totalTaxAmount: Math.round(combinedTaxAmount * 100) / 100,
-        finalTotal: Math.round(combinedFinalTotal * 100) / 100
+        finalTotal: Math.round(combinedFinalTotal * 100) / 100,
+        cartId
       });
     };
 
     calculateTaxBreakdown();
-  }, [cart.items, organizationTaxes, appliedTaxes, taxIncluded]);
+    return () => {
+      cancelled = true;
+    };
+  }, [cart.id, cart.items, organizationTaxes, appliedTaxes, taxIncluded]);
 
   // Comunicar totales al padre cuando cambien
   useEffect(() => {

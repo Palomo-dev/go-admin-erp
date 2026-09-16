@@ -68,14 +68,23 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
 
   // Totales que ve el cajero (TaxSummary, con `tax_excluded` por línea y el
   // override de organization_taxes) → pantalla del cliente (PLAN §8: la
-  // pantalla repite lo que el recibo repetirá). Con subtotal 0 TaxSummary
-  // aún no ha cargado los impuestos: no se envía nada y la pantalla usa los
-  // totales del carrito.
+  // pantalla repite lo que el recibo repetirá).
+  //
+  // Al cambiar de carrito (cobro que lo elimina y activa el siguiente) este
+  // callback cambia de identidad y TaxSummary reenvía sus totales VIEJOS
+  // antes de recalcular: sin la comprobación de `cartId` la pantalla
+  // mostraba el total de la venta anterior sobre el carrito nuevo. Con
+  // subtotal 0 (impuestos aún sin cargar, o carrito a $0) se retira el
+  // override y la pantalla usa los totales del propio carrito.
   const cartId = cart.id;
   const cartDiscountTotal = cart.discount_total;
   const handleTotalsChange = useCallback(
-    (totals: { subtotal: number; totalTaxAmount: number; finalTotal: number }) => {
-      if (!(totals.subtotal > 0)) return;
+    (totals: { subtotal: number; totalTaxAmount: number; finalTotal: number; cartId: string }) => {
+      if (totals.cartId !== cartId) return;
+      if (!(totals.subtotal > 0)) {
+        getPosDisplayEmitter().setTotals(cartId, null);
+        return;
+      }
       getPosDisplayEmitter().setTotals(cartId, {
         discountTotal: cartDiscountTotal,
         taxTotal: totals.totalTaxAmount,

@@ -229,7 +229,20 @@ function openChannel(terminalId: string, factory?: DisplayChannelFactory): Displ
   // En Node el canal mantiene vivo el proceso; en el navegador `unref` no existe.
   const maybeUnref = channel as BroadcastChannel & { unref?: () => void };
   if (typeof maybeUnref.unref === 'function') maybeUnref.unref();
-  return channel;
+  // BroadcastChannel cumple la forma en tiempo de ejecución, pero su `onmessage`
+  // declara `this: BroadcastChannel` y `MessageEvent`, que con strictFunctionTypes
+  // no es asignable al tipo más estrecho de DisplayChannel: se adapta explícitamente.
+  const adapted: DisplayChannel = {
+    postMessage: (msg) => channel.postMessage(msg),
+    get onmessage() {
+      return channel.onmessage as DisplayChannel['onmessage'];
+    },
+    set onmessage(handler) {
+      channel.onmessage = handler;
+    },
+    close: () => channel.close(),
+  };
+  return adapted;
 }
 
 function unrefTimer(timer: ReturnType<typeof setInterval> | ReturnType<typeof setTimeout>): void {

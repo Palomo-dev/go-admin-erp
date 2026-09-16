@@ -969,8 +969,8 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
             // Crear stock inicial
             if (variant.stock && Array.isArray(variant.stock)) {
               const newVariantEntries = variant.stock
-                .filter(stockItem => stockItem.branch_id && Number(stockItem.qty_on_hand) > 0)
-                .map(stockItem => ({
+                .filter((stockItem: { branch_id?: number | null; qty_on_hand?: number | string | null }) => stockItem.branch_id && Number(stockItem.qty_on_hand) > 0)
+                .map((stockItem: { branch_id?: number | null; qty_on_hand?: number | string | null }) => ({
                   organization_id,
                   branch_id: stockItem.branch_id,
                   product_id: newVariant.id,

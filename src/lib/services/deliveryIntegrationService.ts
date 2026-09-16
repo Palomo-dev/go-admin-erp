@@ -658,7 +658,9 @@ class DeliveryIntegrationService {
     };
 
     // Filtrar solo conductores de la organización
-    return ((data || []) as DriverRow[])
+    // El tipo generado del select con embeds no es asignable a DriverRow directamente:
+    // se pasa por unknown a propósito (misma forma en runtime, verificada abajo).
+    return ((data || []) as unknown as DriverRow[])
       .filter((driver) => {
         const memberId = driver.employment?.organization_member?.id;
         if (!memberId) return false;
@@ -679,7 +681,7 @@ class DeliveryIntegrationService {
             photo_url: profile.avatar_url || '',
           } : null,
         };
-      }) as DeliveryDriver[];
+      }) as unknown as DeliveryDriver[];
   }
 
   /**

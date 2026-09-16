@@ -22,8 +22,10 @@ import { isDesktop } from '@/lib/utils/desktop';
 import { isAppOnline } from '@/lib/utils/offlineCache';
 
 export const OUTBOX_DB_NAME = 'goadmin-outbox';
-export const OUTBOX_DB_VERSION = 1;
+/** v2 (fase 4D): store `customers` para los clientes creados sin red. */
+export const OUTBOX_DB_VERSION = 2;
 export const OUTBOX_SALES_STORE = 'sales';
+export const OUTBOX_CUSTOMERS_STORE = 'customers';
 /** Intentos de reproducción antes de pasar el sobre a revisión. */
 export const MAX_ATTEMPTS = 5;
 /** Días que se conserva un sobre ya sincronizado. */
@@ -82,7 +84,12 @@ export interface OfflineSaleContext {
 
 let dbInstance: IDBDatabase | null = null;
 
-function openOutbox(): Promise<IDBDatabase> {
+/**
+ * Conexión compartida a `goadmin-outbox`. La usa también `customersOutbox.ts`
+ * (mismo archivo IndexedDB, store distinto): una sola versión y un solo
+ * `onupgradeneeded` para los dos stores.
+ */
+export function openOutbox(): Promise<IDBDatabase> {
   if (dbInstance) return Promise.resolve(dbInstance);
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
@@ -105,6 +112,11 @@ function openOutbox(): Promise<IDBDatabase> {
         store.createIndex('status', 'status', { unique: false });
         store.createIndex('created_at', 'created_at', { unique: false });
       }
+      if (!db.objectStoreNames.contains(OUTBOX_CUSTOMERS_STORE)) {
+        const store = db.createObjectStore(OUTBOX_CUSTOMERS_STORE, { keyPath: 'id' });
+        store.createIndex('status', 'status', { unique: false });
+        store.createIndex('created_at', 'created_at', { unique: false });
+      }
     };
   });
 }
@@ -121,7 +133,7 @@ export function __resetOutboxForTests(): void {
   dbInstance = null;
 }
 
-function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
+export function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -177,6 +189,32 @@ export async function updateOutboxSale(
   await requestToPromise(store.put(next));
   notifyChanged();
   return next;
+}
+
+/**
+ * Fase 4D: un cliente creado sin red resultó existir ya en Supabase (mismo
+ * documento o email en la organización), así que su id local se sustituye
+ * por el del servidor en todos los sobres que aún no se reprodujeron.
+ * Devuelve cuántos sobres cambiaron. Los `synced` no se tocan.
+ */
+export async function remapOutboxSalesCustomer(localCustomerId: string, serverCustomerId: string): Promise<number> {
+  if (localCustomerId === serverCustomerId) return 0;
+  const db = await openOutbox();
+  const tx = db.transaction(OUTBOX_SALES_STORE, 'readwrite');
+  const store = tx.objectStore(OUTBOX_SALES_STORE);
+  const all = (await requestToPromise(store.getAll())) as OutboxSaleRecord[];
+  let changed = 0;
+  for (const record of all) {
+    if (record.status === 'synced') continue;
+    const cart = record.envelope.checkout.cart;
+    if (cart.customer_id !== localCustomerId) continue;
+    cart.customer_id = serverCustomerId;
+    if (cart.customer) cart.customer = { ...cart.customer, id: serverCustomerId, pending_sync: false };
+    await requestToPromise(store.put({ ...record, updated_at: new Date().toISOString() }));
+    changed++;
+  }
+  if (changed > 0) notifyChanged();
+  return changed;
 }
 
 /** Ventas que aún no llegaron a Supabase (`pending` + `syncing`). */
@@ -249,6 +287,11 @@ export function shouldCheckoutOffline(): boolean {
 }
 
 export function newSaleId(): string {
+  return newLocalUuid();
+}
+
+/** UUID v4 generado en el cliente (ventas y, desde la fase 4D, clientes). */
+export function newLocalUuid(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }

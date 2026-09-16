@@ -345,6 +345,22 @@ export async function searchCustomers(organizationId: number, search: string | u
     .slice(0, term ? 20 : 50);
 }
 
+/** Mensaje único para «ese cliente no está en el catálogo local». */
+export const CUSTOMER_NOT_IN_CATALOG_MESSAGE = 'Sin conexión: el cliente no está en el catálogo local. Búscalo en el selector o créalo de nuevo.';
+
+/**
+ * Equivalente offline de `SELECT * FROM customers WHERE id = ?` en
+ * `POSService.setCartCustomer` (fase 4D). Incluye los creados sin red
+ * (`pending_sync`). Lanza si no está: el POS no debe asignar al carrito un
+ * cliente que no puede mostrar.
+ */
+export async function getCustomerById(organizationId: number, customerId: string): Promise<CatalogCustomer> {
+  await requireCatalog(organizationId);
+  const row = await getCatalogRow('customers', customerId);
+  if (!row || row.organization_id !== organizationId) throw new Error(CUSTOMER_NOT_IN_CATALOG_MESSAGE);
+  return row;
+}
+
 // ── Métodos de pago, monedas e impuestos ──
 
 /** Filas crudas de `organization_payment_methods` (posService las mapea). */
@@ -385,6 +401,7 @@ export const posOfflineReads = {
   getCategories,
   getCategoryRanking,
   searchCustomers,
+  getCustomerById,
   getPaymentMethodRows,
   getCurrencyRows,
   getOrganizationTaxes,

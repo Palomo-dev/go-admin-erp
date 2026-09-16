@@ -13,7 +13,13 @@
  * `catalogReplicator.ts`.
  *
  * Solo tiene sentido en Desktop; en navegador nada lo abre.
+ *
+ * La capa IndexedDB (apertura versionada, promesas sobre peticiones y
+ * transacciones, claves compuestas) es la genérica de `offlineDb.ts`
+ * (fase 4C): aquí solo queda la forma de las filas del POS.
  */
+
+import { closeIdb, keyToString, openIdb, requestToPromise, txDone, KEY_SEP, type IdbStoreDef } from './offlineDb';
 
 export const CATALOG_DB_NAME = 'goadmin-catalog';
 export const CATALOG_DB_VERSION = 1;
@@ -38,7 +44,7 @@ export type CatalogStoreName = (typeof CATALOG_STORES)[number];
 const META_STORE = 'meta';
 
 /** Definición de cada store: clave e índices. Todos llevan `by_org`. */
-const STORE_DEFS: Record<CatalogStoreName, { keyPath: string | string[]; indexes: Array<{ name: string; keyPath: string | string[] }> }> = {
+const STORE_DEFS: Record<CatalogStoreName, IdbStoreDef> = {
   products: {
     keyPath: 'id',
     indexes: [
@@ -174,6 +180,11 @@ export interface CatalogCustomer {
   fiscal_municipality_id: string | null;
   created_at: string | null;
   updated_at: string | null;
+  /**
+   * Fase 4D: true si el cliente se creó sin red y aún no está en Supabase
+   * (vive en `customersOutbox`). Las filas replicadas no traen el campo.
+   */
+  pending_sync?: boolean;
 }
 
 /** Misma forma que la fila de `organization_payment_methods` con el join. */
@@ -266,77 +277,29 @@ export interface CatalogStatus {
   stores: Partial<Record<CatalogStoreName, { replicated_at: number; count: number }>>;
 }
 
-// ── Apertura ──
-
-let dbPromise: Promise<IDBDatabase> | null = null;
+// ── Apertura (capa genérica de offlineDb.ts) ──
 
 export function isCatalogAvailable(): boolean {
   return typeof indexedDB !== 'undefined';
 }
 
+/** Stores del catálogo con el índice `by_org` que llevan todos. */
+function catalogStoreDefs(): Record<string, IdbStoreDef> {
+  const defs: Record<string, IdbStoreDef> = {};
+  for (const name of CATALOG_STORES) {
+    const def = STORE_DEFS[name];
+    defs[name] = { keyPath: def.keyPath, indexes: [{ name: 'by_org', keyPath: 'organization_id' }, ...def.indexes] };
+  }
+  return defs;
+}
+
 function openCatalogDB(): Promise<IDBDatabase> {
-  if (dbPromise) return dbPromise;
-  dbPromise = new Promise((resolve, reject) => {
-    if (!isCatalogAvailable()) {
-      reject(new Error('IndexedDB no disponible'));
-      return;
-    }
-    const request = indexedDB.open(CATALOG_DB_NAME, CATALOG_DB_VERSION);
-    request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error('goadmin-catalog bloqueada por otra pestaña'));
-    request.onsuccess = () => {
-      const db = request.result;
-      db.onversionchange = () => {
-        db.close();
-        dbPromise = null;
-      };
-      resolve(db);
-    };
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      for (const name of CATALOG_STORES) {
-        if (db.objectStoreNames.contains(name)) continue;
-        const def = STORE_DEFS[name];
-        const store = db.createObjectStore(name, { keyPath: def.keyPath });
-        store.createIndex('by_org', 'organization_id');
-        for (const idx of def.indexes) store.createIndex(idx.name, idx.keyPath);
-      }
-      if (!db.objectStoreNames.contains(META_STORE)) {
-        db.createObjectStore(META_STORE, { keyPath: 'key' });
-      }
-    };
-  });
-  dbPromise.catch(() => {
-    dbPromise = null;
-  });
-  return dbPromise;
+  return openIdb(CATALOG_DB_NAME, CATALOG_DB_VERSION, catalogStoreDefs(), META_STORE);
 }
 
 /** Cierra la conexión (tests y cambio de versión). */
-export async function closeCatalogDB(): Promise<void> {
-  if (!dbPromise) return;
-  try {
-    const db = await dbPromise;
-    db.close();
-  } catch {
-    // ya cerrada
-  }
-  dbPromise = null;
-}
-
-function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function txDone(tx: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(tx.error ?? new Error('Transacción abortada'));
-  });
+export function closeCatalogDB(): Promise<void> {
+  return closeIdb(CATALOG_DB_NAME);
 }
 
 // ── Escritura (la usa el replicador) ──
@@ -348,6 +311,14 @@ export async function putCatalogRows<S extends CatalogStoreName>(store: S, rows:
   const tx = db.transaction(store, 'readwrite');
   const os = tx.objectStore(store);
   for (const row of rows) os.put(row);
+  await txDone(tx);
+}
+
+/** Borra una fila por clave primaria (fase 4D: remapeo de un cliente local al id del servidor). */
+export async function deleteCatalogRow(store: CatalogStoreName, key: IDBValidKey): Promise<void> {
+  const db = await openCatalogDB();
+  const tx = db.transaction(store, 'readwrite');
+  tx.objectStore(store).delete(key);
   await txDone(tx);
 }
 
@@ -373,13 +344,7 @@ export async function pruneCatalogRows(store: CatalogStoreName, organizationId: 
   return removed;
 }
 
-/** Separador de claves compuestas (U+241F, símbolo imprimible): no aparece en ids ni códigos. */
-const KEY_SEP = '␟';
-
-/** Serializa una clave (simple o compuesta) para compararla en `pruneCatalogRows`. */
-export function keyToString(key: IDBValidKey): string {
-  return Array.isArray(key) ? key.map(String).join(KEY_SEP) : String(key);
-}
+export { keyToString };
 
 /** Clave primaria de una fila según la definición del store. */
 export function rowKey<S extends CatalogStoreName>(store: S, row: CatalogRowMap[S]): string {

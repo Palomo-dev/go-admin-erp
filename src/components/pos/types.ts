@@ -73,6 +73,8 @@ export interface Customer {
   customer_type?: string;
   first_name?: string;
   last_name?: string;
+  /** Fase 4D (Desktop): creado sin red y aún no sincronizado con Supabase. */
+  pending_sync?: boolean;
 }
 
 export interface CartItemModifier {

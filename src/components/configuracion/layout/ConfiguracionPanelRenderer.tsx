@@ -79,6 +79,12 @@ const WebsiteConfigPanel = dynamic(() => import('../panels/sitioweb/WebsiteConfi
   ssr: false,
 });
 
+// Fase 4C (Desktop): réplica local para leer todos los módulos sin internet.
+const DatosOfflinePanel = dynamic(() => import('../panels/datos-offline/DatosOfflinePanel').then((m) => m.DatosOfflinePanel), {
+  loading: () => <LoadingSkeleton />,
+  ssr: false,
+});
+
 function LoadingSkeleton() {
   return (
     <div className="space-y-6">
@@ -113,6 +119,7 @@ const PANEL_MAP: Record<string, React.ComponentType> = {
   pos: POSConfigPanel,
   chat: ChatConfigPanel,
   crm: CRMConfigPanel,
+  'datos-offline': DatosOfflinePanel,
 };
 
 interface ConfiguracionPanelRendererProps {

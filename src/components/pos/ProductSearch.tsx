@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/use-toast';
 import { cn, formatCurrency } from '@/utils/Utils';
-import Image from 'next/image';
+import { CachedProductImage } from './CachedProductImage';
 import { BarcodeScanner } from '@/components/ui/barcode-scanner';
 import { VariantSelectorDialog, type SelectedModifier } from './VariantSelectorDialog';
 import { resolveVariantDisplayName } from '@/utils/variantUtils';
@@ -588,27 +588,26 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       "relative bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center overflow-hidden",
                       gridSize === 'large' ? "h-28 sm:h-36 md:h-48 lg:h-40" : "h-24 sm:h-32 lg:h-32"
                     )}>
-                      {product.image && product.image.startsWith('http') ? (
-                        <Image
-                          src={product.image}
-                          alt={product.name}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-200"
-                          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-gray-400 dark:text-gray-600">
-                          <ImageIcon className={cn(
-                            "mb-2",
-                            gridSize === 'large' ? "h-12 w-12" : "h-8 w-8"
-                          )} />
-                          {gridSize === 'large' && (
-                            <span className="text-xs text-center px-2">
-                              Sin imagen
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      <CachedProductImage
+                        src={product.image}
+                        alt={product.name}
+                        mode="card"
+                        className="object-cover group-hover:scale-105 transition-transform duration-200"
+                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                        fallback={
+                          <div className="flex flex-col items-center justify-center text-gray-400 dark:text-gray-600">
+                            <ImageIcon className={cn(
+                              "mb-2",
+                              gridSize === 'large' ? "h-12 w-12" : "h-8 w-8"
+                            )} />
+                            {gridSize === 'large' && (
+                              <span className="text-xs text-center px-2">
+                                Sin imagen
+                              </span>
+                            )}
+                          </div>
+                        }
+                      />
                       
                       {/* Badge de categoría */}
                       {product.category && (

@@ -15,6 +15,11 @@
  *
  * Se dispara al volver la conectividad real del Desktop
  * (`onDesktopConnectivity`) y al abrir el POS con red (`startSalesSync`).
+ *
+ * Fase 4D: los clientes creados sin red (`customersOutbox`) se sincronizan
+ * ANTES que las ventas, y una venta cuyo cliente aún no esté en Supabase se
+ * salta (sin consumir intentos) hasta que lo esté; si el cliente quedó en
+ * `needs_review`, la venta falla con ese motivo.
  */
 
 import { POSService } from '@/lib/services/posService';
@@ -27,6 +32,7 @@ import {
   updateOutboxSale,
   type OutboxSaleRecord,
 } from './salesOutbox';
+import { ensureCustomerSynced, syncPendingCustomers } from './customersSync';
 
 export interface SalesSyncResult {
   synced: number;
@@ -64,6 +70,20 @@ async function replayOne(record: OutboxSaleRecord, now: number): Promise<'synced
   await updateOutboxSale(record.id, { status: 'syncing' });
   try {
     const { checkout } = record.envelope;
+    // Fase 4D: el cliente creado sin red debe existir antes que la venta.
+    const customerState = await ensureCustomerSynced(checkout.cart.customer_id);
+    if (customerState.kind === 'needs_review') {
+      throw new Error(`El cliente de la venta requiere revisión y no se pudo crear: ${customerState.lastError ?? 'sin detalle'}`);
+    }
+    if (customerState.kind === 'pending') {
+      // Sin consumir intentos de la venta: se reintenta cuando el cliente entre.
+      await updateOutboxSale(record.id, { status: 'pending', last_error: `Esperando al cliente pendiente de sincronizar (${customerState.lastError ?? 'reintentando'})` });
+      return 'failed';
+    }
+    if (customerState.kind === 'synced' && customerState.serverId !== checkout.cart.customer_id) {
+      // Remapeado por `customersSync`; el sobre en disco ya cambió, aquí solo esta copia.
+      checkout.cart.customer_id = customerState.serverId;
+    }
     await POSService.checkout({
       ...checkout,
       saleId: record.id,
@@ -104,6 +124,13 @@ async function replayOne(record: OutboxSaleRecord, now: number): Promise<'synced
 async function runSync(options: SalesSyncOptions): Promise<SalesSyncResult> {
   const now = options.now ? options.now() : Date.now();
   const result: SalesSyncResult = { synced: 0, failed: 0, needsReview: 0, skipped: 0 };
+
+  // Fase 4D: primero los clientes creados sin red; las ventas los referencian.
+  try {
+    await syncPendingCustomers({ now: () => now });
+  } catch (err) {
+    console.warn('[salesSync] No se pudieron sincronizar los clientes pendientes:', err);
+  }
 
   // `syncing` huérfanos: la app se cerró a mitad de una reproducción anterior.
   // El checkout es idempotente por id, así que se vuelven a intentar.

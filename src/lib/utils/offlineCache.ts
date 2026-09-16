@@ -230,12 +230,62 @@ export async function setCachedRpcResponse(fnName: string, body: string, data: s
 }
 
 /**
+ * Réplica local genérica (fase 4C, `src/lib/offline/`): resuelve un
+ * `GET /rest/v1/<tabla>` sobre las filas replicadas en IndexedDB si la
+ * tabla está en el manifiesto y ya se replicó. Devuelve null si no aplica
+ * (tabla ajena, sin replicar, sintaxis no soportada, sin organización) o
+ * si algo falla: el llamador sigue con la caché por URL. Import dinámico
+ * para no cargar el motor en el navegador ni crear ciclos con `config.ts`.
+ */
+async function resolveFromLocalReplica(url: string, method: string, headers: Record<string, string>): Promise<Response | null> {
+  try {
+    const [{ resolveLocalPostgrest, restTableFromUrl }, { indexedDbDataSource, getStoredOrganizationId }, { isReplicatedTable }, { withOutboxRows }] = await Promise.all([
+      import('@/lib/offline/postgrestLocal'),
+      import('@/lib/offline/offlineDb'),
+      import('@/lib/offline/replicationManifest'),
+      import('@/lib/offline/outboxVirtualRows'),
+    ]);
+    const table = restTableFromUrl(url);
+    if (!table || !isReplicatedTable(table)) return null;
+    const organizationId = getStoredOrganizationId();
+    if (!organizationId) return null;
+    // `sales`/`sale_items` incluyen las ventas del outbox (4B) aún sin sincronizar.
+    return await resolveLocalPostgrest({ url, method, headers }, organizationId, withOutboxRows(indexedDbDataSource));
+  } catch (err) {
+    console.warn('[offline] Réplica local no disponible, se usa la caché por URL:', err);
+    return null;
+  }
+}
+
+/**
+ * RPC de lectura con equivalente local (`src/lib/offline/rpcLocal.ts`):
+ * se calcula sobre la réplica en vez de depender de haber llamado antes
+ * con el mismo body. Null si no hay resolutor o no se puede.
+ */
+async function resolveFromLocalRpc(fnName: string, body: string): Promise<Response | null> {
+  try {
+    const [{ resolveLocalRpc }, { indexedDbDataSource, getStoredOrganizationId }] = await Promise.all([
+      import('@/lib/offline/rpcLocal'),
+      import('@/lib/offline/offlineDb'),
+    ]);
+    const organizationId = getStoredOrganizationId();
+    if (!organizationId) return null;
+    return await resolveLocalRpc(fnName, body, organizationId, indexedDbDataSource);
+  } catch (err) {
+    console.warn('[offline] RPC local no disponible, se usa la caché por body:', err);
+    return null;
+  }
+}
+
+/**
  * Decide qué hacer con una petición de datos cuando el Desktop está sin red.
  * Es el único punto de decisión del interceptor de `config.ts`:
  *
- *  - `GET`: se sirve de caché por URL; si no hay, `503 Offline`.
- *  - `POST /rest/v1/rpc/<fn>`: se trata como LECTURA. Se sirve de caché por
- *    `rpc:<fn>:<hash del body>`; si no hay, `503 Offline`. **Nunca se encola**:
+ *  - `GET`/`HEAD`: tabla replicada (fase 4C) → réplica local; si no, caché
+ *    por URL; si no hay, `503 Offline`.
+ *  - `POST /rest/v1/rpc/<fn>`: se trata como LECTURA. Primero un equivalente
+ *    local sobre la réplica si existe (fase 4C, `rpcLocal.ts`); si no, la
+ *    caché por `rpc:<fn>:<hash del body>`; si no hay, `503 Offline`. **Nunca se encola**:
  *    una RPC no es una acción de negocio reproducible y encolarla es lo que
  *    llenaba el contador de «acciones pendientes» con lecturas.
  *  - Resto (`POST/PATCH/PUT/DELETE` REST): se encola en `action-queue` y se
@@ -255,7 +305,12 @@ export async function resolveOfflineDataRequest(args: {
       headers: { 'Content-Type': 'application/json' },
     });
 
-  if (method === 'GET') {
+  if (method === 'GET' || method === 'HEAD') {
+    // Fase 4C: tabla del manifiesto → réplica local PRIMERO (cualquier
+    // consulta, se haya pedido antes o no); si no se puede resolver
+    // (tabla sin replicar, sintaxis no soportada) → caché por URL → 503.
+    const local = await resolveFromLocalReplica(url, method, headers);
+    if (local) return local;
     const cached = await getCachedResponse(url, method);
     return cached ? new Response(cached.data, { status: cached.status, headers: offlineHeaders }) : noData();
   }
@@ -263,6 +318,8 @@ export async function resolveOfflineDataRequest(args: {
   const rpcName = getRpcFunctionName(url);
   if (rpcName !== null) {
     if (method === 'POST' && isCacheableRpc(rpcName)) {
+      const local = await resolveFromLocalRpc(rpcName, body);
+      if (local) return local;
       const cached = await getCachedRpcResponse(rpcName, body);
       if (cached) return new Response(cached.data, { status: cached.status, headers: offlineHeaders });
     }

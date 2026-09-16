@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { syncRenewalsForOrg, type RenewalSyncOrgResult } from '@/lib/services/crm/renewalService';
+import { enrollInSequence } from '@/lib/services/crm/sequenceService';
 import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
 import { listCrmActiveOrgIds } from '../scheduledOrgs';
 import type { JobLogger } from '../types';
@@ -10,7 +11,9 @@ import type { JobLogger } from '../types';
  * `syncRenewalsForOrg`, que crea/refresca las renovaciones de forma
  * idempotente (una por contrato, hitos como tareas, `closed_at` obligatorio).
  * La zona horaria sale de `organizations.timezone` (fallback
- * `DEFAULT_TIMEZONE`), nunca cableada.
+ * `DEFAULT_TIMEZONE`), nunca cableada. La inscripción en la secuencia de
+ * renovación (F8) se inyecta desde aquí (`enroll: enrollInSequence`): el
+ * servicio no importa `sequenceService` porque también lo carga el navegador.
  */
 
 export interface RenewalsSyncOrgResult extends RenewalSyncOrgResult {
@@ -75,7 +78,7 @@ export async function runRenewalsSync(
     }
     const timezone = timezones.get(orgId) ?? DEFAULT_TIMEZONE;
     try {
-      const r = await syncRenewalsForOrg(orgId, sb, { now, timezone });
+      const r = await syncRenewalsForOrg(orgId, sb, { now, timezone, enroll: enrollInSequence });
       out.by_org.push({ ...r, timezone });
       out.created += r.created;
       out.updated += r.updated;
@@ -83,7 +86,7 @@ export async function runRenewalsSync(
       if (r.errors.length) log.warn('renewals_sync_org_errors', { org_id: orgId, errors: r.errors.slice(0, 5) });
     } catch (err) {
       const message = (err instanceof Error ? err.message : String(err)).slice(0, 500);
-      out.by_org.push({ org_id: orgId, scanned: 0, created: 0, updated: 0, skipped: 0, errors: [message], timezone });
+      out.by_org.push({ org_id: orgId, scanned: 0, created: 0, updated: 0, skipped: 0, enrolled: 0, errors: [message], timezone });
       out.errors += 1;
       log.error('renewals_sync_org_failed', { org_id: orgId, error: message });
     }

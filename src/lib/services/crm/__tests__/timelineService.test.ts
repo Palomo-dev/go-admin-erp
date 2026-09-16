@@ -70,6 +70,9 @@ describe('timelineService v2', () => {
     expect(decodeCursor(c)).toEqual({ at: T(10), id: uuid(1) });
     expect(decodeCursor(`${T(10)}|${uuid(1)}`)).toEqual({ at: T(10), id: uuid(1) });
     expect(decodeCursor('no-valido')).toBeNull();
+    // id con sintaxis de filtro PostgREST → cursor rechazado (no puede escapar del `or=`)
+    expect(decodeCursor(`${T(10)}|abc),organization_id.eq.121,and(id.lt.x`)).toBeNull();
+    expect(decodeCursor(`${T(10)}|x"y`)).toBeNull();
   });
 
   test('página 1: merge ordenado, dedupe de calls/stage_history por activity y WhatsApp agrupado', async () => {

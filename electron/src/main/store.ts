@@ -15,21 +15,60 @@ export interface DesktopConfig {
 const CONFIG_PATH = (): string => path.join(app.getPath('userData'), 'config.json');
 
 export function loadConfig(): DesktopConfig {
+  const file = CONFIG_PATH();
+  let raw: string;
   try {
-    if (fs.existsSync(CONFIG_PATH())) {
-      return JSON.parse(fs.readFileSync(CONFIG_PATH(), 'utf-8'));
-    }
+    if (!fs.existsSync(file)) return {};
+    raw = fs.readFileSync(file, 'utf-8');
   } catch (err) {
     console.warn('[store] No se pudo leer config.json:', err);
+    return {};
   }
-  return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as DesktopConfig) : {};
+  } catch (err) {
+    // Archivo corrupto. El caso visto en la práctica (2026-09-16) es un
+    // config.json del tamaño correcto pero lleno de bytes NUL: NTFS reserva
+    // el tamaño antes de volcar los datos y un apagado/crash en medio de
+    // writeFileSync deja el archivo así. Se aparta con un sufijo (por si hay
+    // que recuperar algo) y se sigue con una configuración vacía, para que
+    // cada lectura no vuelva a fallar con el mismo stack trace.
+    const quarantined = `${file}.corrupto-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    console.warn(`[store] config.json ilegible (${err instanceof Error ? err.message : String(err)}); se aparta a ${path.basename(quarantined)}`);
+    try {
+      fs.renameSync(file, quarantined);
+    } catch (renameErr) {
+      console.warn('[store] No se pudo apartar config.json:', renameErr);
+    }
+    return {};
+  }
+}
+
+/**
+ * Escritura atómica: se escribe a un temporal y se renombra encima. Un
+ * apagado o crash en mitad de un writeFileSync directo dejaba config.json
+ * con el tamaño correcto y todo NUL (ver loadConfig), y con él se perdían la
+ * vinculación del agente y el refresh token cifrado.
+ */
+function writeConfigAtomic(config: DesktopConfig): void {
+  const file = CONFIG_PATH();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.${process.pid}.tmp`;
+  const fd = fs.openSync(tmp, 'w');
+  try {
+    fs.writeSync(fd, JSON.stringify(config, null, 2));
+    fs.fsyncSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
+  fs.renameSync(tmp, file);
 }
 
 export function saveConfig(partial: Partial<DesktopConfig>): DesktopConfig {
   const current = loadConfig();
   const updated = { ...current, ...partial };
-  fs.mkdirSync(path.dirname(CONFIG_PATH()), { recursive: true });
-  fs.writeFileSync(CONFIG_PATH(), JSON.stringify(updated, null, 2));
+  writeConfigAtomic(updated);
   return updated;
 }
 
@@ -72,7 +111,7 @@ export function clearRefreshToken(): void {
   const cfg = loadConfig();
   delete cfg.encryptedRefreshToken;
   try {
-    fs.writeFileSync(CONFIG_PATH(), JSON.stringify(cfg, null, 2));
+    writeConfigAtomic(cfg);
   } catch (err) {
     console.warn('[store] No se pudo limpiar el refresh token:', err);
   }

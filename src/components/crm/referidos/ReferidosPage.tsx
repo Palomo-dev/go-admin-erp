@@ -30,7 +30,7 @@ import { RegisterReferralDialog } from './RegisterReferralDialog';
 import { useReferrals } from './useReferrals';
 
 export function ReferidosPage() {
-  const { referrals, programs, requests, currency, loading, loaded, error, reload, register, transition, markPaid, convert, saveProgram, deleteProgram } = useReferrals();
+  const { referrals, programs, requests, currency, canManage, loading, loaded, error, reload, register, transition, markPaid, convert, saveProgram, deleteProgram } = useReferrals();
   const [filters, setFilters] = useState<ReferralListFilters>(EMPTY_REFERRAL_FILTERS);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [preset, setPreset] = useState<{ id: string; name: string } | null>(null);
@@ -166,7 +166,7 @@ export function ReferidosPage() {
 
         <RegisterReferralDialog open={registerOpen} preset={preset} programs={programs} currency={currency} onOpenChange={setRegisterOpen} onRegister={register} returnFocusFallback={fallback} />
         <ConvertReferralDialog open={convertTarget !== null} referral={convertTarget} onOpenChange={(o) => { if (!o) setConvertTarget(null); }} onConvert={convert} returnFocusFallback={fallback} />
-        <ReferralProgramsSheet open={programsOpen} programs={programs} currency={currency} onOpenChange={setProgramsOpen} onSave={saveProgram} onDelete={deleteProgram} returnFocusFallback={() => programsButtonRef.current} />
+        <ReferralProgramsSheet open={programsOpen} programs={programs} currency={currency} canManage={canManage} onOpenChange={setProgramsOpen} onSave={saveProgram} onDelete={deleteProgram} returnFocusFallback={() => programsButtonRef.current} />
         <ConfirmDialog
           open={rejectTarget !== null}
           onOpenChange={(o) => { if (!o) setRejectTarget(null); }}

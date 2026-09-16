@@ -57,7 +57,8 @@ function seed(): FakeDb {
         { id: 'inv-1', organization_id: 120, number: 'FACT-0001', total: 6800000, balance: 5000000, status: 'partial', currency: 'COP', customer_id: 'c-1', opportunity_id: 'op-1', salesperson_id: null, commission_rate: null, commission_type: null },
         { id: 'inv-9', organization_id: 121, number: 'FACT-0009', total: 5, balance: 5, status: 'issued', currency: 'COP', customer_id: 'c-9', opportunity_id: 'op-9', salesperson_id: null, commission_rate: null, commission_type: null },
       ],
-      payments: [],
+      // Pago previo de 1.800.000: el fake recalcula el saldo como el trigger real (total − Σ pagos completed); sin él, 6.800.000 − 5.000.000 no cuadra.
+      payments: [{ id: 'pay-seed', organization_id: 120, source: 'invoice_sales', source_id: 'inv-1', status: 'completed', amount: 1800000, currency: 'COP', reference: 'anticipo-seed', method: 'cash' }],
       accounts_receivable: [{ id: 'ar-1', organization_id: 120, invoice_id: 'inv-1', balance: 5000000, status: 'partial' }],
       commissions: [],
       integration_connections: [],
@@ -95,6 +96,8 @@ function instrumented() {
 }
 
 beforeEach(() => { db = seed(); });
+/** Pagos hechos por la prueba (sin el anticipo de la semilla). */
+const newPayments = () => db.rows.payments.filter((p) => p.reference !== 'anticipo-seed');
 
 describe('T-A Webhook de Stripe (hostil)', () => {
   const env = { STRIPE_SECRET_KEY: PLATFORM_SK, STRIPE_CRM_WEBHOOK_SECRET: PLATFORM_WH };
@@ -136,7 +139,7 @@ describe('T-A Webhook de Stripe (hostil)', () => {
     await processStripeWebhook(stripeEvent('e5'), `sig:${PLATFORM_WH}`, deps);
     const second = await processStripeWebhook(stripeEvent('e5'), `sig:${PLATFORM_WH}`, deps);
     expect(second.body).toMatchObject({ applied: true, idempotent: true });
-    expect(db.rows.payments).toHaveLength(1);
+    expect(newPayments()).toHaveLength(1);
   });
 
   it('A6 replay CONCURRENTE del mismo event.id → una sola fila (el índice único parcial `uq_payments_org_stripe_reference` corta la carrera)', async () => {
@@ -179,8 +182,8 @@ describe('T-A Webhook de Stripe (hostil)', () => {
     const later = await processStripeWebhook(JSON.stringify({ id: 'e7b', type: 'checkout.session.async_payment_succeeded', data: { object: { id: 'cs_e7', payment_status: 'paid', amount_total: 500000000, currency: 'cop', metadata: { organization_id: '120', quotation_id: 'q-1' } } } }), `sig:${PLATFORM_WH}`, deps);
     expect(later.status).toBe(200);
     expect(later.body).toMatchObject({ applied: true, invoice_status: 'paid' });
-    expect(db.rows.payments).toHaveLength(1);
-    expect(db.rows.payments[0]).toMatchObject({ reference: 'stripe:e7b', amount: 5000000 });
+    expect(newPayments()).toHaveLength(1);
+    expect(newPayments()[0]).toMatchObject({ reference: 'stripe:e7b', amount: 5000000 });
   });
 
   it('A7b evento firmado que no es de checkout (payment_intent.succeeded) → 200 ignored sin escrituras', async () => {
@@ -213,7 +216,7 @@ describe('T-A Webhook de Stripe (hostil)', () => {
       const out = await processStripeWebhook(stripeEvent('e10', { currency: 'usd', amount_total: 100 }), `sig:${PLATFORM_WH}`, deps);
       expect(out.status).toBe(200);
       expect(out.body).toMatchObject({ applied: false, reason: 'currency_mismatch' });
-      expect(db.rows.payments).toHaveLength(0);
+      expect(newPayments()).toHaveLength(0);
       expect(errSpy).toHaveBeenCalled();
       const acts = systemActivities();
       expect(acts).toHaveLength(1);
@@ -242,7 +245,7 @@ describe('T-A Webhook de Stripe (hostil)', () => {
       const out = await processStripeWebhook(stripeEvent('e12', { amount_total: 680000000 }), `sig:${PLATFORM_WH}`, deps);
       expect(out.status).toBe(200);
       expect(out.body).toMatchObject({ success: false, applied: false, reason: 'not_applied' });
-      expect(db.rows.payments).toHaveLength(0);
+      expect(newPayments()).toHaveLength(0);
       expect(errSpy).toHaveBeenCalled();
       const acts = systemActivities();
       expect(acts).toHaveLength(1);
@@ -272,7 +275,7 @@ describe('T-A Webhook de Stripe (hostil)', () => {
       const deps = { serviceClient: createFakeSupabase(db) as never, adapter, env };
       const full = await processStripeWebhook(stripeEvent('e14', { payment_link: 'plink_x' }), `sig:${PLATFORM_WH}`, deps);
       expect(full.body).toMatchObject({ applied: true, invoice_status: 'paid', payment_link_deactivated: false });
-      expect(db.rows.payments).toHaveLength(1);
+      expect(newPayments()).toHaveLength(1);
       expect(errSpy).toHaveBeenCalled();
     } finally {
       errSpy.mockRestore();
@@ -307,7 +310,7 @@ describe('T-B registerCrmPayment con el fake', () => {
     expect(r).toMatchObject({ success: true, invoice_status: 'partial', idempotent: false });
     expect(db.rows.invoice_sales[0]).toMatchObject({ balance: 4000000, status: 'partial' });
     expect(db.rows.accounts_receivable[0]).toMatchObject({ balance: 4000000, status: 'partial' });
-    expect(db.rows.payments[0]).toMatchObject({ source: 'invoice_sales', source_id: 'inv-1', status: 'completed', reference: 'stripe:b1' });
+    expect(newPayments()[0]).toMatchObject({ source: 'invoice_sales', source_id: 'inv-1', status: 'completed', reference: 'stripe:b1' });
   });
 
   it('B3 dos registros concurrentes con la misma reference stripe: → uno inserta, el otro recibe success:true, idempotent:true, duplicate:true sin tocar factura ni cartera', async () => {

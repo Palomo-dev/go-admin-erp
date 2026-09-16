@@ -43,7 +43,7 @@ function splitTopLevel(select: string): string[] {
   return parts.map((p) => p.trim()).filter(Boolean);
 }
 
-type Row = Record<string, any>;
+type Row = Record<string, unknown>;
 type Predicate = (row: Row) => boolean;
 
 /** Evalúa un término de PostgREST del tipo `columna.operador.valor`. */
@@ -59,9 +59,9 @@ function evalTerm(term: string, row: Row): boolean {
     case 'is':
       return raw === 'null' ? value == null : value === (raw === 'true');
     case 'gt':
-      return value != null && new Date(value).getTime() > new Date(raw).getTime();
+      return value != null && new Date(String(value)).getTime() > new Date(raw).getTime();
     case 'lt':
-      return value != null && new Date(value).getTime() < new Date(raw).getTime();
+      return value != null && new Date(String(value)).getTime() < new Date(raw).getTime();
     case 'eq':
       return String(value) === raw;
     default:
@@ -83,6 +83,7 @@ function makeAdmin() {
       let error: PostgrestError | null = null;
       const predicates: Predicate[] = [];
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- builder encadenable del doble
       const builder: any = {
         select(select: string) {
           selectSpy(select);
@@ -123,7 +124,7 @@ type OtpArgs = {
   options: { emailRedirectTo: string; data: Record<string, unknown> };
 };
 
-const signInWithOtp = jest.fn(async (_args: OtpArgs) => ({ error: null }));
+const signInWithOtp = jest.fn<Promise<{ error: null }>, [OtpArgs]>(async () => ({ error: null }));
 
 jest.mock('@/lib/supabase/admin', () => ({
   getSupabaseAdmin: () => makeAdmin(),
@@ -247,13 +248,14 @@ describe('POST /api/auth/invite/resend', () => {
   });
 
   it('cae al texto por defecto si el join no trae nombre, en ambas formas', async () => {
+    // F0-pulido: sin IP el cubo `unknown` admite 1 (limit 5 / 10); IP propia por llamada.
     inviteRow!.organizations = [{}];
-    await POST(req(BODY));
+    await POST(req(BODY, { 'x-forwarded-for': ipUnica() }));
     expect(signInWithOtp.mock.calls[0][0].options.data.organization_name).toBe('la organización');
 
     signInWithOtp.mockClear();
     inviteRow!.organizations = null;
-    await POST(req(BODY));
+    await POST(req(BODY, { 'x-forwarded-for': ipUnica() }));
     expect(signInWithOtp.mock.calls[0][0].options.data.organization_name).toBe('la organización');
   });
 

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     const ctx = await getServerOrgContext();
     const { id } = await params;
     const { searchParams } = new URL(request.url);
-    rejectForeignOrganization(TAG, searchParams.get('organization_id'), ctx);
+    rejectForeignOrganization(TAG, null, ctx, request);
     const result = await getPartnerDeals(id, ctx.organizationId, ctx.supabase, {
       deal_type: searchParams.get('deal_type') || undefined,
       commission_status: searchParams.get('commission_status') || undefined,
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     const ctx = await getServerOrgContext();
     const { id } = await params;
     const body = await readJson(request);
-    rejectForeignOrganization(TAG, body.organization_id, ctx);
+    rejectForeignOrganization(TAG, body, ctx, request);
     const parsed = validateDealInput(body);
     if (!parsed.ok) return validationFail(parsed.errors);
     const result = await registerPartnerDeal(id, ctx.organizationId, parsed.value, ctx.supabase);

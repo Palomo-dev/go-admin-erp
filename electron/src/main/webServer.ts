@@ -25,14 +25,17 @@ import { appendLog, flushLog } from './crashReporter';
  * localStorage, cookies e IndexedDB (la cache offline y la sesión) viven por
  * origen, y el origen incluye el puerto. Si el puerto cambiara entre
  * arranques, cada apertura de la app sería un "navegador nuevo" sin sesión
- * ni datos. Por eso el puerto se elige una vez y se persiste en
- * userData/web-server.json; solo se cambia si ese puerto está ocupado.
+ * ni datos. Por eso el puerto se elige una vez, se persiste en
+ * userData/web-server.json (el "puerto de casa") y no se vuelve a cambiar:
+ * si un arranque lo encuentra ocupado, esa sesión corre en otro puerto pero
+ * el siguiente arranque vuelve a intentar el de casa.
  *
  * CÓMO
  * ----
- * `utilityProcess.fork(server.js)` corre el servidor con el Node embebido de
- * Electron (sin `ELECTRON_RUN_AS_NODE` ni ejecutable aparte) y Electron mata
- * el hijo si el main muere. Los logs del hijo van al log del main
+ * `utilityProcess.fork(webLauncher.js)` corre el servidor con el Node
+ * embebido de Electron (sin `ELECTRON_RUN_AS_NODE` ni ejecutable aparte);
+ * el envoltorio carga `server.js` y vigila al main para cerrarse si este
+ * muere de golpe. Los logs del hijo van al log del main
  * (userData/agent.log). Se espera a que responda al primer `GET /` (hasta
  * 30 s) antes de dar la URL. Si el hijo muere con la app abierta, se
  * reintenta el arranque y se emite `exit` para que la ventana recargue.
@@ -71,6 +74,17 @@ export const LOCAL_WEB_URL_HOST = 'localhost';
  */
 export const PREFERRED_PORT = 47800;
 const PORT_CANDIDATES = 10;
+/**
+ * Si el puerto "de casa" (el persistido, o el preferido la primera vez) está
+ * ocupado, se reintenta durante unos segundos antes de pasar al siguiente.
+ * Cubre el caso real de un `server.js` huérfano de la sesión anterior: si el
+ * main murió de golpe (crash, Stop-Process, apagado), Electron mata al hijo
+ * al cerrar el job object pero tarda unos segundos, y mientras tanto sigue
+ * escuchando. Sin esta espera la app arrancaba en 47801 y cambiaba de origen
+ * (visto el 2026-09-16 en la prueba de fase 3).
+ */
+const HOME_PORT_RETRIES = 6;
+const HOME_PORT_RETRY_MS = 500;
 const READY_TIMEOUT_MS = 30_000;
 const READY_POLL_MS = 250;
 const STOP_TIMEOUT_MS = 5_000;
@@ -91,7 +105,10 @@ type WebServerEvents = {
 
 /** Estado persistido entre arranques (userData/web-server.json). */
 interface PersistedState {
-  /** Último puerto en el que arrancó bien: se reutiliza para mantener el origen. */
+  /**
+   * Puerto de casa: el primero en el que arrancó bien esta instalación. Se
+   * intenta siempre primero y no se sobreescribe (ver doStart).
+   */
   port?: number;
   /**
    * Secreto con el que el middleware firma la cookie `ga_gate` (cache del
@@ -176,11 +193,14 @@ class WebServer extends EventEmitter {
 
     let lastError: Error | null = null;
     const tried = new Set<number>();
+    // Puerto "de casa": el persistido o, la primera vez, el preferido. Es el
+    // único que se reintenta si está ocupado (ver HOME_PORT_RETRIES).
+    const homePort = state.port ?? PREFERRED_PORT;
 
     for (const candidate of portCandidates(state.port)) {
       if (tried.has(candidate)) continue;
       tried.add(candidate);
-      const port = await tryReservePort(candidate);
+      const port = await this.reservePortWithRetry(candidate, candidate === homePort);
       if (port === null) {
         this.log(`Puerto ${candidate} ocupado; se prueba el siguiente`);
         continue;
@@ -189,13 +209,18 @@ class WebServer extends EventEmitter {
         await this.spawnAndWait(serverJs, webRoot, port, packagedEnv, gateSecret);
         this.port = port;
         const url = this.getUrl()!;
-        if (state.port !== port) {
+        if (!state.port) {
+          // Primera vez: este pasa a ser el puerto de casa de la instalación.
           writeState({ ...readState(), port });
-          if (state.port) {
-            this.log(
-              `AVISO: el puerto cambió de ${state.port} a ${port}: el origen es otro y la sesión/cache offline anteriores no serán visibles`
-            );
-          }
+        } else if (state.port !== port) {
+          // El puerto de casa estaba ocupado. NO se persiste el nuevo: si se
+          // hiciera, un huérfano o una colisión puntual cambiarían el origen
+          // para siempre (otra sesión, otra cache offline). En el próximo
+          // arranque se vuelve a intentar el de casa; si sigue ocupado, el
+          // orden de candidatos es fijo y se acaba en el mismo puerto.
+          this.log(
+            `AVISO: el puerto de casa ${state.port} está ocupado; esta sesión corre en ${port} (otro origen: la sesión/cache offline de ${state.port} no se ven y esta no se persistirá)`
+          );
         }
         this.log(`Servidor Next listo en ${url}`);
         this.emit('ready', url);
@@ -214,6 +239,23 @@ class WebServer extends EventEmitter {
     const error = lastError ?? new Error('No se encontró ningún puerto libre para el servidor Next');
     this.emit('error', error);
     throw error;
+  }
+
+  /**
+   * Reserva el puerto; si es el de casa y está ocupado, insiste unos segundos
+   * (huérfano de la sesión anterior que aún no ha muerto).
+   */
+  private async reservePortWithRetry(candidate: number, isHome: boolean): Promise<number | null> {
+    const attempts = isHome && candidate !== 0 ? HOME_PORT_RETRIES : 1;
+    for (let i = 0; i < attempts; i++) {
+      const port = await tryReservePort(candidate);
+      if (port !== null) return port;
+      if (i === 0 && attempts > 1) {
+        this.log(`Puerto ${candidate} ocupado; se espera hasta ${(attempts * HOME_PORT_RETRY_MS) / 1000} s a que se libere`);
+      }
+      if (i < attempts - 1) await sleep(HOME_PORT_RETRY_MS);
+    }
+    return null;
   }
 
   private spawnAndWait(
@@ -236,11 +278,17 @@ class WebServer extends EventEmitter {
         // Marca para que el código de la web pueda distinguir el servidor
         // embebido si algún día lo necesita.
         GOADMIN_DESKTOP_EMBEDDED: '1',
+        // Para webLauncher.ts: qué cargar y a quién vigilar.
+        GOADMIN_WEB_SERVER_JS: serverJs,
+        GOADMIN_PARENT_PID: String(process.pid),
       };
       // Que el hijo no herede la marca de "modo Node" si el main la tuviera.
       delete env.ELECTRON_RUN_AS_NODE;
 
-      const child = utilityProcess.fork(serverJs, [], {
+      // Se arranca a través de webLauncher.js (dist/main), que hace
+      // require(server.js) y cierra el hijo si el main desaparece; ver ese
+      // archivo para el porqué.
+      const child = utilityProcess.fork(path.join(__dirname, 'webLauncher.js'), [], {
         cwd,
         env,
         stdio: 'pipe',
@@ -307,6 +355,7 @@ class WebServer extends EventEmitter {
   async stop(): Promise<void> {
     this.stopping = true;
     try {
+      if (this.child) this.log('Parando el servidor Next');
       await this.killChild();
       flushLog();
     } finally {
@@ -374,6 +423,10 @@ function writeState(state: PersistedState): void {
   } catch (err) {
     console.warn('[webServer] No se pudo guardar web-server.json:', err);
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ── Puertos ──

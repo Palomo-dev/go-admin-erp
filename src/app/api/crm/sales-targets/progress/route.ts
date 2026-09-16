@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     const sp = new URL(request.url).searchParams;
-    rejectForeignOrganization('CRM Sales Targets Progress', sp.get('organization_id'), ctx);
+    rejectForeignOrganization('CRM Sales Targets Progress', null, ctx, request);
     const userId = sp.get('user_id');
     const period = sp.get('period') || 'monthly';
     if (!userId) return jsonFail(400, 'Parámetro requerido: user_id', { field: 'user_id' });

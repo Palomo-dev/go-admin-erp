@@ -462,8 +462,24 @@ export interface StartOnboardingResult {
   already_existed: boolean;
 }
 
-/** Pipeline `onboarding` de la organización; lo crea con `ONBOARDING_STAGES` si no existe. */
-export async function getOrCreateOnboardingPipelineServer(orgId: number, sb: SupabaseClient): Promise<string> {
+/** Opciones aditivas (deuda D1): el cierre «al ganar» de F10 aporta sucursal y autor de la hija. */
+export interface StartOnboardingOptions extends ServerOpts {
+  /** `opportunities.branch_id` de la hija (nullable en BD). */
+  branchId?: number | null;
+  /** `opportunities.created_by` de la hija. */
+  createdBy?: string | null;
+}
+
+/** El pipeline de onboarding no está listo (sin etapas): el llamador decide si omite o falla. Nunca hubo escrituras. */
+export class OnboardingPipelineError extends Error {
+  constructor(public readonly reason: 'no_stages', message: string) {
+    super(message);
+    this.name = 'OnboardingPipelineError';
+  }
+}
+
+/** Id del pipeline `onboarding` de la organización, o null si no lo tiene (sin crearlo). */
+export async function findOnboardingPipelineId(orgId: number, sb: SupabaseClient): Promise<string | null> {
   const { data: existing, error: readErr } = await sb
     .from('pipelines')
     .select('id')
@@ -472,7 +488,13 @@ export async function getOrCreateOnboardingPipelineServer(orgId: number, sb: Sup
     .limit(1)
     .maybeSingle();
   if (readErr) throw new Error(`pipeline de onboarding: ${readErr.message}`);
-  if (existing) return (existing as { id: string }).id;
+  return existing ? (existing as { id: string }).id : null;
+}
+
+/** Pipeline `onboarding` de la organización; lo crea con `ONBOARDING_STAGES` si no existe. */
+export async function getOrCreateOnboardingPipelineServer(orgId: number, sb: SupabaseClient): Promise<string> {
+  const existingId = await findOnboardingPipelineId(orgId, sb);
+  if (existingId) return existingId;
 
   const { data: pipeline, error } = await sb
     .from('pipelines')
@@ -498,13 +520,15 @@ export async function getOrCreateOnboardingPipelineServer(orgId: number, sb: Sup
  *    en la primera etapa — idempotente por (org, parent, pipeline);
  * 4) crea la instancia + pasos desde la plantilla activa por defecto —
  *    idempotente por oportunidad hija.
- * Lanza `Error` con mensaje claro; nunca escribe si falla la validación.
+ * Lanza `Error` con mensaje claro (`OnboardingPipelineError` si el pipeline no
+ * tiene etapas); nunca escribe si falla la validación. `opts.branchId` y
+ * `opts.createdBy` viajan a la hija (deuda D1: el cierre de F10 los aporta).
  */
 export async function startOnboardingForWonOpportunity(
   orgId: number,
   opportunityId: string,
   sb: SupabaseClient,
-  opts: ServerOpts = {},
+  opts: StartOnboardingOptions = {},
 ): Promise<StartOnboardingResult> {
   const { data: parent, error: pErr } = await sb
     .from('opportunities')
@@ -544,7 +568,9 @@ export async function startOnboardingForWonOpportunity(
       .limit(1)
       .maybeSingle();
     if (sErr) throw new Error(`startOnboarding: ${sErr.message}`);
-    if (!firstStage) throw new Error('startOnboarding: el pipeline de onboarding no tiene etapas');
+    if (!firstStage) throw new OnboardingPipelineError('no_stages', 'startOnboarding: el pipeline de onboarding no tiene etapas');
+    // Tester D1/D2 (2026-09-16): la plantilla se comprueba ANTES de escribir la hija; sin ella quedaba una hija huérfana sin instancia.
+    if (!pickDefaultTemplate(await getOnboardingTemplatesServer(orgId, sb))) throw new Error('startOnboarding: la organización no tiene ninguna plantilla de onboarding activa');
 
     const { data: customer } = await sb
       .from('customers')
@@ -570,6 +596,8 @@ export async function startOnboardingForWonOpportunity(
         status: 'open',
         parent_opportunity_id: parentRow.id,
         salesperson_id: parentRow.salesperson_id ?? null,
+        ...(opts.branchId != null ? { branch_id: opts.branchId } : {}),
+        ...(opts.createdBy ? { created_by: opts.createdBy } : {}),
         metadata: { type: 'onboarding', parent_opportunity_id: parentRow.id },
       })
       .select('id')

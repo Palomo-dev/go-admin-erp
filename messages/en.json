@@ -1914,5 +1914,77 @@
       "errorNotFound": "Could not get opportunity information",
       "errorNoKey": "AI configuration not available"
     }
+  },
+  "posCustomerDisplay": {
+    "indicator": {
+      "connected": "Customer display connected",
+      "disconnected": "No display",
+      "ariaLabel": "Customer display",
+      "notEmitting": "Disabled in Settings › POS › Customer display",
+      "unsupported": "This browser does not support the customer display (no BroadcastChannel). Update it or use the desktop app."
+    },
+    "menu": {
+      "open": "Open customer display",
+      "close": "Close"
+    },
+    "toast": {
+      "dragHint": "Drag the window to the customer screen and press F11",
+      "popupBlocked": "The browser blocked the pop-up window. Allow pop-ups for this site and try again.",
+      "closeFromOpener": "It cannot be closed from here: close it from its own window. If this register opened it before reloading, “Open” recovers it."
+    },
+    "config": {
+      "title": "Customer display",
+      "subtitle": "Second screen facing the customer",
+      "description": "A second screen facing the customer shows the order summary, the payment status and the store brand. The register remains the only source of truth: the display only mirrors it.",
+      "masterSwitch": "Customer display",
+      "masterOn": "Enabled: registers broadcast the order to the customer display",
+      "masterOff": "Disabled: registers broadcast nothing",
+      "openNow": "Open now",
+      "openNowHint": "Opens the display in a separate window. On desktop it is placed on the second monitor automatically; in the browser drag it to the other screen and press F11.",
+      "saved": "Customer display updated",
+      "savedOn": "Registers will start broadcasting without reloading",
+      "savedOff": "Registers will stop broadcasting",
+      "saveError": "The customer display settings could not be saved",
+      "loadError": "The customer display settings could not be loaded",
+      "disabledNotice": "You can open the display to test it, but it will not show the order until the switch is enabled.",
+      "comingSoon": "On-screen tips, ratings, tax breakdown and idle mode arrive in phase 2."
+    }
+  },
+  "posDisplay": {
+    "welcome": "Welcome",
+    "cashier": "Served by {name}",
+    "connecting": "Connecting to the register…",
+    "noTerminal": "Open the point of sale on this computer to link the display",
+    "updateRequired": "Please update the display",
+    "updateRequiredHint": "The register uses a different version. Reload this window.",
+    "unsupported": "This browser cannot show the customer display",
+    "qty": "{qty} ×",
+    "andMore": "and {count} more",
+    "taxExcludedLine": "tax exempt",
+    "lineDiscount": "Discount",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "discountWithLabel": "Discount ({label})",
+    "taxIncluded": "Tax included",
+    "taxes": "Taxes",
+    "taxMixed": "Taxes (partly included)",
+    "total": "Total",
+    "payment": {
+      "cash": "Cash payment",
+      "received": "Received",
+      "change": "Change",
+      "card": "Card payment",
+      "cardWith": "Card payment · {provider}",
+      "cardInstructions": "Follow the instructions on the card terminal",
+      "qr": "QR payment",
+      "qrWith": "Paying with {provider}",
+      "qrInstructions": "Follow the cashier’s instructions"
+    },
+    "thanks": {
+      "title": "Thank you for your purchase",
+      "paid": "Total paid"
+    },
+    "fullscreen": "Full screen",
+    "poweredBy": "GO Admin"
   }
 }

@@ -12,7 +12,8 @@
  *    secreto de 32 chars pero de relleno.
  *  - Rate limit: clave por IP + por organización combinadas, XFF con varios
  *    saltos (el primero manda: es el que controla el cliente si el proxy
- *    APPENDA), TOCTOU con `persistentCount` (legado) frente al store atómico.
+ *    APPENDA), camino en memoria síncrono frente al store atómico (el
+ *    `persistentCount` legado con TOCTOU se retiró en F0-SEC C+D r3).
  *
  * Sin credenciales reales: todos los valores son inventados.
  */
@@ -235,11 +236,7 @@ describe('rate limit · por IP y por organización combinados', () => {
     expect((await checkRateLimit('ip:', opts)).allowed).toBe(true);
   });
 
-  test('ANOTADO (bajo): con `persistentCount` (legado, async) dos peticiones simultáneas pasan ambas con limit 1 (TOCTOU en memoria)', async () => {
-    const legacy = { limit: 1, windowMs: 60_000, persistentCount: async () => { await new Promise((r) => setTimeout(r, 5)); return 0; } };
-    const [a, b] = await Promise.all([checkRateLimit('toctou', legacy), checkRateLimit('toctou', legacy)]);
-    expect([a.allowed, b.allowed]).toEqual([true, true]);
-    // Sin `persistentCount` el camino es síncrono y la segunda ya ve la primera.
+  test('CERRADO en F0-SEC C+D r3: `persistentCount` (legado, con TOCTOU) se retiró; el camino en memoria es síncrono y la segunda ya ve la primera', async () => {
     const [c, d] = await Promise.all([checkRateLimit('sync', { limit: 1, windowMs: 60_000 }), checkRateLimit('sync', { limit: 1, windowMs: 60_000 })]);
     expect([c.allowed, d.allowed]).toEqual([true, false]);
   });

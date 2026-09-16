@@ -17,9 +17,29 @@
  *   DESPUÉS del borrador, así un draft que traiga esas claves no lo pisa.
  * - La interfaz expone `startHeartbeat()`/`stopHeartbeat()`: la caja no debe
  *   depender de la clase concreta para latir.
- * Lo que PLAN §8 aún no menciona y este archivo añade (para llevarlo al plan
- * al cerrar la fase): la ventana de elección, el watchdog de silencio,
- * `releaseActiveInstance()` y los getters `lastByeAt` / `lastStaleAt`.
+ * - `announce(hello, state)`: publica hello y state en ese orden y en la
+ *   misma vuelta. El orden importa: el receptor solo adopta una instancia
+ *   nueva por su `hello`, así que un `state` publicado antes del `hello` se
+ *   descarta (regla 3) y la pantalla se queda con el carrito de la instancia
+ *   anterior hasta el siguiente state. Tras relevar (foco, recarga) y al
+ *   responder a need_snapshot, la caja usa announce(), no dos publish().
+ * - Presencia pantalla → caja (PLAN §5.1, indicador verde/gris): el receptor
+ *   emite `display_alive` cada HEARTBEAT_INTERVAL_MS con startPresence() y
+ *   `display_bye` al cerrar; el transporte expone `lastDisplaySeenAt`
+ *   (instante del último display_alive o need_snapshot aceptado; null tras
+ *   display_bye). La caja pinta verde si now − lastDisplaySeenAt <
+ *   STALE_AFTER_MS. Los mensajes de presencia van a TODAS las pestañas de la
+ *   terminal, sin `toInstanceId`: la pantalla existe para la caja física.
+ *   Una pantalla por terminal en F0: con dos, el `display_bye` de una deja
+ *   `lastDisplaySeenAt` en null hasta el siguiente `display_alive` de la otra
+ *   (≤ 1 s); el indicador parpadea en gris ese instante y vuelve a verde.
+ * - Versión incompatible: un sobre de esta terminal con `v ≠ PROTOCOL_VERSION`
+ *   se descarta, pero el receptor lo anota en `incompatibleVersionAt` /
+ *   `incompatibleVersionCount` para que la pantalla diga «Actualice la
+ *   pantalla» en vez de quedarse en «Conectando» para siempre.
+ * Lo que PLAN §8 detalla a partir de este archivo: la ventana de elección, el
+ * watchdog de silencio, `releaseActiveInstance()` y los getters `lastByeAt` /
+ * `lastStaleAt`.
  *
  * Regla de producto — «la última caja que saluda es la que proyecta»:
  * en web es habitual abrir /app/pos en dos pestañas; comparten terminalId
@@ -59,8 +79,12 @@
 
 import {
   PROTOCOL_VERSION,
+  UP_PRESENCE_TYPES,
   isDownMessage,
+  isIncompatibleEnvelope,
   isUpMessage,
+  type DisplayCapabilities,
+  type DisplayState,
   type DownMessage,
   type DownMessageDraft,
   type UpMessage,
@@ -68,20 +92,37 @@ import {
 } from './protocol';
 import { generateTerminalId } from './terminal';
 
+/** Borrador del `hello` que publica la caja (el transporte pone el sobre). */
+export type HelloDraft = Extract<DownMessageDraft, { t: 'hello' }>;
+
 /** Lado caja: emite el estado y recibe intenciones de la pantalla. */
 export interface DisplayTransport {
   /**
    * Publica un mensaje de bajada. Nunca lanza: un fallo al serializar o
    * publicar se registra con console.warn y se traga, para que el flujo de
    * venta no dependa de la pantalla (PLAN §5.5).
+   *
+   * Orden hello → state: el receptor solo adopta una instancia nueva por su
+   * `hello`; un `state` de una instancia que aún no saludó se descarta. Tras
+   * relevar (foco, recarga) o al responder a need_snapshot usar announce(),
+   * que publica ambos en el orden correcto y en la misma vuelta.
    */
   publish(msg: DownMessageDraft): void;
+  /** Publica `hello` y a continuación `state`, en ese orden, en la misma vuelta de eventos. */
+  announce(hello: HelloDraft, state: DisplayState): void;
   /** Solo entrega intenciones dirigidas a esta instancia (o sin destinatario). */
   onUp(handler: (msg: UpMessage) => void): () => void;
   /** Latido periódico (HEARTBEAT_INTERVAL_MS). Idempotente. */
   startHeartbeat(): void;
   stopHeartbeat(): void;
   close(): void;
+  /**
+   * Instante (reloj del transporte) del último `display_alive` o
+   * `need_snapshot` aceptado; null si nunca hubo pantalla o tras su
+   * `display_bye`. La caja pinta «pantalla conectada» si
+   * now − lastDisplaySeenAt < STALE_AFTER_MS.
+   */
+  readonly lastDisplaySeenAt: number | null;
 }
 
 /** Lado pantalla: recibe el estado y devuelve intenciones a la caja. */
@@ -100,7 +141,15 @@ export interface DisplayReceiver {
    * dirigido a una pestaña que quizá murió sin `bye`.
    */
   releaseActiveInstance(): void;
-  close(): void;
+  /**
+   * Presencia hacia la caja: emite `display_alive` cada HEARTBEAT_INTERVAL_MS
+   * con las capacidades de la pantalla (PLAN §4.4). Idempotente: una segunda
+   * llamada solo actualiza las capacidades (p. ej. tras un resize).
+   */
+  startPresence(capabilities: DisplayCapabilities): void;
+  stopPresence(): void;
+  /** Detiene la presencia, emite `display_bye` (salvo `sayBye: false`) y cierra el canal. */
+  close(sayBye?: boolean): void;
   /** Instancia de caja que se sigue; null hasta oír la primera o tras soltarla. */
   readonly activeInstanceId: string | null;
   /** Mayor seq aceptado de la instancia activa (-1 sin instancia). */
@@ -111,6 +160,15 @@ export interface DisplayReceiver {
   readonly lastByeAt: number | null;
   /** Instante en que el watchdog soltó la activa por silencio: la caja desapareció sin avisar. */
   readonly lastStaleAt: number | null;
+  /**
+   * Instante del último sobre de ESTA terminal con `v ≠ PROTOCOL_VERSION`
+   * (descartado); null si nunca llegó uno. La Parte C muestra «Actualice la
+   * pantalla» si es reciente (< STALE_AFTER_MS) y no hay mensajes válidos
+   * (`lastReceivedAt` null o más antiguo).
+   */
+  readonly incompatibleVersionAt: number | null;
+  /** Cuántos sobres de otra versión se han descartado desde que se abrió el receptor. */
+  readonly incompatibleVersionCount: number;
 }
 
 /** Intervalo del latido de la caja. La pantalla pasa a "Conectando" a los 3 s sin latido. */
@@ -133,6 +191,18 @@ export function displayChannelName(terminalId: string): string {
 
 export function isBroadcastChannelSupported(): boolean {
   return typeof BroadcastChannel === 'function';
+}
+
+/**
+ * Un terminalId vacío abriría el canal «pos-display:» y nadie aceptaría esos
+ * mensajes (los guards exigen terminalId no vacío): la caja publicaría al
+ * vacío sin ninguna señal. Mejor fallar al construir, donde la Parte B/C lo
+ * ve en el acto.
+ */
+function assertTerminalId(terminalId: unknown): asserts terminalId is string {
+  if (typeof terminalId !== 'string' || terminalId.length === 0) {
+    throw new Error('[pos-display] terminalId vacío');
+  }
 }
 
 function openChannel(terminalId: string): BroadcastChannel {
@@ -181,11 +251,17 @@ function dispatch<T>(handlers: Set<Listener<T>>, msg: T): void {
 
 export interface BroadcastChannelTransportOptions {
   terminalId: string;
-  /** Solo para pruebas: reloj inyectable para el `at` del latido. */
+  /** Solo para pruebas: reloj inyectable para el `at` del latido y para `lastDisplaySeenAt`. */
   now?: () => number;
   heartbeatIntervalMs?: number;
-  /** Solo para pruebas: fija el instanceId en vez de generarlo. */
-  instanceId?: string;
+  /**
+   * SOLO PARA PRUEBAS: fija el instanceId en vez de generarlo. NUNCA
+   * persistir un instanceId (ni en localStorage ni en sessionStorage): el
+   * receptor deduplica por seq dentro de una instancia, y una ventana
+   * recargada con el mismo id arranca en seq 1 y queda muda hasta superar
+   * el seq de la anterior. En producción cada construcción genera el suyo.
+   */
+  __testInstanceId?: string;
 }
 
 /**
@@ -205,11 +281,13 @@ export class BroadcastChannelTransport implements DisplayTransport {
   private readonly heartbeatIntervalMs: number;
   private seq = 0;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private displaySeenAt: number | null = null;
   private closed = false;
 
   constructor(options: BroadcastChannelTransportOptions) {
+    assertTerminalId(options.terminalId);
     this.terminalId = options.terminalId;
-    this.instanceId = options.instanceId ?? generateTerminalId();
+    this.instanceId = options.__testInstanceId ?? generateTerminalId();
     this.now = options.now ?? (() => Date.now());
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? HEARTBEAT_INTERVAL_MS;
     this.channel = openChannel(this.terminalId);
@@ -225,6 +303,11 @@ export class BroadcastChannelTransport implements DisplayTransport {
     return this.closed;
   }
 
+  /** Ver DisplayTransport.lastDisplaySeenAt. */
+  get lastDisplaySeenAt(): number | null {
+    return this.displaySeenAt;
+  }
+
   publish(draft: DownMessageDraft): void {
     if (this.closed) return;
     this.seq += 1;
@@ -238,6 +321,12 @@ export class BroadcastChannelTransport implements DisplayTransport {
       instanceId: this.instanceId,
     } as DownMessage;
     postSafely(this.channel, msg);
+  }
+
+  /** hello y luego state, en la misma vuelta: así el receptor adopta la instancia antes de ver su carrito. */
+  announce(hello: HelloDraft, state: DisplayState): void {
+    this.publish(hello);
+    this.publish({ t: 'state', state });
   }
 
   onUp(handler: Listener<UpMessage>): () => void {
@@ -279,6 +368,9 @@ export class BroadcastChannelTransport implements DisplayTransport {
     if (data.terminalId !== this.terminalId) return;
     // Intención dirigida a otra instancia (otra pestaña de la misma caja): no es para esta.
     if (data.toInstanceId !== undefined && data.toInstanceId !== this.instanceId) return;
+    // Presencia de la pantalla: cualquier señal suya cuenta; su despedida la borra.
+    if (data.t === 'display_alive' || data.t === 'need_snapshot') this.displaySeenAt = this.now();
+    else if (data.t === 'display_bye') this.displaySeenAt = null;
     dispatch(this.upHandlers, data);
   }
 }
@@ -291,6 +383,8 @@ export interface BroadcastChannelReceiverOptions {
   staleAfterMs?: number;
   /** Duración de la ventana de elección tras un need_snapshot sin destinatario. Por defecto ADOPTION_WINDOW_MS. */
   adoptionWindowMs?: number;
+  /** Intervalo de `display_alive`. Por defecto HEARTBEAT_INTERVAL_MS. */
+  presenceIntervalMs?: number;
 }
 
 /** Lo que el receptor recuerda del hello con el que adoptó la instancia activa (null si la adoptó por otro mensaje). */
@@ -341,22 +435,29 @@ export class BroadcastChannelReceiver implements DisplayReceiver {
   private readonly now: () => number;
   private readonly staleAfterMs: number;
   private readonly adoptionWindowMs: number;
+  private readonly presenceIntervalMs: number;
+  private presenceTimer: ReturnType<typeof setInterval> | null = null;
+  private presenceCapabilities: DisplayCapabilities | null = null;
   private instanceId: string | null = null;
   private adoptedHello: AdoptedHello | null = null;
   private highestSeq = -1;
   private receivedAt: number | null = null;
   private byeAt: number | null = null;
   private staleAt: number | null = null;
+  private incompatibleAt: number | null = null;
+  private incompatibleCount = 0;
   /** Fin de la ventana de elección (reloj `now`); null si no hay ventana abierta. */
   private electionUntil: number | null = null;
   private staleTimer: ReturnType<typeof setTimeout> | null = null;
   private closed = false;
 
   constructor(options: BroadcastChannelReceiverOptions) {
+    assertTerminalId(options.terminalId);
     this.terminalId = options.terminalId;
     this.now = options.now ?? (() => Date.now());
     this.staleAfterMs = options.staleAfterMs ?? STALE_AFTER_MS;
     this.adoptionWindowMs = options.adoptionWindowMs ?? ADOPTION_WINDOW_MS;
+    this.presenceIntervalMs = options.presenceIntervalMs ?? HEARTBEAT_INTERVAL_MS;
     this.channel = openChannel(this.terminalId);
     this.channel.onmessage = (event: MessageEvent<unknown>) => this.receive(event.data);
   }
@@ -386,6 +487,20 @@ export class BroadcastChannelReceiver implements DisplayReceiver {
     return this.staleAt;
   }
 
+  /**
+   * Ver DisplayReceiver.incompatibleVersionAt. La Parte C muestra «Actualice
+   * la pantalla» si es reciente y no hay mensajes válidos; un sobre de otra
+   * versión nunca se entrega ni adopta.
+   */
+  get incompatibleVersionAt(): number | null {
+    return this.incompatibleAt;
+  }
+
+  /** Ver DisplayReceiver.incompatibleVersionCount. */
+  get incompatibleVersionCount(): number {
+    return this.incompatibleCount;
+  }
+
   get isClosed(): boolean {
     return this.closed;
   }
@@ -405,6 +520,13 @@ export class BroadcastChannelReceiver implements DisplayReceiver {
     // ganaría y la activa cambiaría sola). Sin instancia activa no se estampa
     // y responde cualquiera: es justo lo que necesita la pantalla recién abierta.
     const msg = { ...draft, v: PROTOCOL_VERSION, terminalId: this.terminalId } as UpMessage;
+    // La presencia (display_alive / display_bye) no es una intención: va a
+    // todas las pestañas de la terminal para que cada una pinte su indicador.
+    if (UP_PRESENCE_TYPES.has(msg.t)) {
+      delete msg.toInstanceId;
+      postSafely(this.channel, msg);
+      return;
+    }
     // Un need_snapshot solo va dirigido a una activa CONFIRMADA por su hello.
     // Una adoptada por latido o state es provisional: la pantalla recién
     // abierta suele oír el latido de la primera pestaña que late (quizá la que
@@ -428,8 +550,28 @@ export class BroadcastChannelReceiver implements DisplayReceiver {
     };
   }
 
-  close(): void {
+  /** Ver DisplayReceiver.startPresence. Idempotente: no duplica el intervalo; sí actualiza las capacidades. */
+  startPresence(capabilities: DisplayCapabilities): void {
     if (this.closed) return;
+    this.presenceCapabilities = { ...capabilities };
+    if (this.presenceTimer !== null) return;
+    this.presenceTimer = setInterval(() => this.sendAlive(), this.presenceIntervalMs);
+    unrefTimer(this.presenceTimer);
+    // El primer «estoy» sale ya: la caja no debería esperar un intervalo entero para ponerse en verde.
+    this.sendAlive();
+  }
+
+  stopPresence(): void {
+    if (this.presenceTimer === null) return;
+    clearInterval(this.presenceTimer);
+    this.presenceTimer = null;
+  }
+
+  /** Detiene la presencia, se despide (`display_bye`, salvo `sayBye: false`) y cierra el canal. */
+  close(sayBye = true): void {
+    if (this.closed) return;
+    this.stopPresence();
+    if (sayBye) this.send({ t: 'display_bye' });
     this.closed = true;
     this.disarmWatchdog();
     this.downHandlers.clear();
@@ -437,8 +579,22 @@ export class BroadcastChannelReceiver implements DisplayReceiver {
     this.channel.close();
   }
 
+  private sendAlive(): void {
+    if (this.closed || this.presenceCapabilities === null) return;
+    this.send({ t: 'display_alive', at: this.now(), capabilities: this.presenceCapabilities });
+  }
+
   private receive(data: unknown): void {
-    if (this.closed || !isDownMessage(data)) return;
+    if (this.closed) return;
+    if (!isDownMessage(data)) {
+      // Se descarta igual, pero si es de esta terminal y de otra versión del
+      // protocolo se anota: la UI puede pedir actualizar en vez de esperar.
+      if (isIncompatibleEnvelope(data, this.terminalId)) {
+        this.incompatibleAt = this.now();
+        this.incompatibleCount += 1;
+      }
+      return;
+    }
     if (data.terminalId !== this.terminalId) return;
 
     const sameInstance = data.instanceId === this.instanceId;

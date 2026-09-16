@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, ReceiptText, Send, ChefHat, Clock, CheckCircle, Check, StickyNote, Tag } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, ReceiptText, Send, ChefHat, CheckCircle, Check, StickyNote, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { POSService } from '@/lib/services/posService';
@@ -16,9 +15,10 @@ import { PrintService } from '@/lib/services/printService';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import KitchenService from '@/lib/services/kitchenService';
 import { supabase } from '@/lib/supabase/config';
-import { Cart, CartItem, Sale, SaleItem, Customer } from './types';
+import { Cart, Sale, SaleItem, Customer } from './types';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { TaxSummary } from './TaxSummary';
+import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { toast } from 'sonner';
 import DetalleFactura from '@/components/finanzas/facturas-venta/id/DetalleFactura';
 
@@ -64,6 +64,25 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
       console.error('Error persistiendo applied_tax_ids:', err)
     );
   };
+
+  // Totales que ve el cajero (TaxSummary, con `tax_excluded` por línea y el
+  // override de organization_taxes) → pantalla del cliente (PLAN §8: la
+  // pantalla repite lo que el recibo repetirá). Con subtotal 0 TaxSummary
+  // aún no ha cargado los impuestos: no se envía nada y la pantalla usa los
+  // totales del carrito.
+  const cartId = cart.id;
+  const cartDiscountTotal = cart.discount_total;
+  const handleTotalsChange = useCallback(
+    (totals: { subtotal: number; totalTaxAmount: number; finalTotal: number }) => {
+      if (!(totals.subtotal > 0)) return;
+      getPosDisplayEmitter().setTotals(cartId, {
+        discountTotal: cartDiscountTotal,
+        taxTotal: totals.totalTaxAmount,
+        total: totals.finalTotal,
+      });
+    },
+    [cartId, cartDiscountTotal],
+  );
   
   // Estados para Hold with Debt
   const [showHoldWithDebtDialog, setShowHoldWithDebtDialog] = useState(false);
@@ -288,7 +307,18 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
       toast.success('¡Deuda registrada exitosamente!', {
         description: `Factura ${result.invoice.number} por ${formatCurrency(result.invoice.total)}`
       });
-      
+
+      // Pantalla del cliente: la venta a crédito ya se facturó → «Gracias»
+      // con el total de la FACTURA (el mismo que el toast de arriba): con
+      // líneas «excluir impuesto» u override de organization_taxes,
+      // invoice.total (calculateCartTaxesComplete) difiere de cart.total y
+      // la pantalla debe repetir la cifra del recibo (PLAN §4.3). Number()
+      // porque el total viene de la fila de invoice_sales (numeric → puede
+      // llegar como string); si no es un número finito el emisor cae al
+      // total proyectado. A los 8 s el emisor pasa a reposo (un carrito con
+      // deuda no se proyecta como pedido pendiente). El emisor nunca lanza.
+      getPosDisplayEmitter().setMode('thanks', { total: Number(result.invoice.total) || cart.total });
+
       // Actualizar carrito
       onCartUpdate(result.cart);
       
@@ -952,6 +982,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                 taxIncluded={taxIncluded}
                 onTaxIncludedChange={handleTaxIncludedChange}
                 onAppliedTaxesChange={handleAppliedTaxesChange}
+                onTotalsChange={handleTotalsChange}
                 className="-mx-1"
               />
 

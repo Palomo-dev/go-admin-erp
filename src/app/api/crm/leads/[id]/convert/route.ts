@@ -48,7 +48,7 @@ export async function POST(
     } catch {
       // Body vacío es válido
     }
-    readOrgBody(ctx, body);
+    readOrgBody(ctx, body, { request });
 
     // 1. Obtener el lead y verificar que pertenece a la org y es record_type='lead'
     const { data: lead, error: leadError } = await ctx.supabase

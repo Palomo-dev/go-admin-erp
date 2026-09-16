@@ -13,7 +13,7 @@ import { RelatedNotFoundError } from '@/lib/services/crm/activityService';
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext(request);
-    const parsed = meetingInputSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
+    const parsed = meetingInputSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null), { request }));
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });
     }

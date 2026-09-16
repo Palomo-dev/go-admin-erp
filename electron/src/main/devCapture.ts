@@ -62,7 +62,15 @@ async function captureWindow(win: BrowserWindow, file: string): Promise<void> {
 
   // 2) Pantalla completa recortada a los límites de la ventana. Sigue siendo
   //    la ventana real compuesta (incluye el overlay de controles nativos).
-  const screenSources = await desktopCapturer.getSources({
+  //    SOLO si la ventana tiene el foco: Windows no deja robar el foco a un
+  //    proceso en segundo plano, y si otra ventana quedó delante el recorte
+  //    se la lleva a ella (el 2026-09-16 capturó un navegador ajeno con
+  //    datos personales, y eso iba a parar a docs/). Si no hay foco se pasa
+  //    al respaldo 3, que solo captura el contenido propio.
+  if (!win.isFocused()) {
+    console.log('[devCapture] La ventana no tiene el foco: se omite el recorte de pantalla (podría capturar otra ventana)');
+  }
+  const screenSources = !win.isFocused() ? [] : await desktopCapturer.getSources({
     types: ['screen'],
     thumbnailSize: {
       width: Math.round(display.size.width * scale),

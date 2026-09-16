@@ -89,11 +89,15 @@ function healthDb(): FakeDb {
 beforeEach(() => {
   ctxState.orgId = ORG;
   ctxState.db = null;
+  // Las rutas de health usan el reloj real y las semillas están ancladas a NOW:
+  // sin fijar la fecha, el snapshot «de hace 1 h» vence a las 24 h y la suite se
+  // ponía roja sola al día siguiente (2026-09-16). Solo se dobla `Date`.
+  jest.useFakeTimers({ now: NOW, doNotFake: ['setTimeout', 'setImmediate', 'setInterval', 'clearTimeout', 'clearInterval', 'clearImmediate', 'nextTick', 'queueMicrotask'] });
   jest.clearAllMocks();
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
 });
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => { jest.useRealTimers(); jest.restoreAllMocks(); });
 
 // ─── 1. Un solo score ───────────────────────────────────────────────────────
 describe('1. un solo score: config sobre la RPC en Recalcular, Medir ahora y cron', () => {

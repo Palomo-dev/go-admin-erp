@@ -17,8 +17,8 @@ import {
   formatPhoneE164,
   WHATSAPP_CREDENTIAL_KEYS,
 } from './whatsappCloudConfig';
-import { applyTemplateStatusUpdate, parseTemplateStatusUpdate } from '@/lib/services/crm/whatsapp/webhookTemplateStatus';
-import { normalizeMetaId } from './webhookAuthorization';
+import { applyTemplateStatusUpdate, parseTemplateStatusUpdate, templateEventKey } from '@/lib/services/crm/whatsapp/webhookTemplateStatus';
+import { isTemplateField, normalizeMetaId } from './webhookAuthorization';
 import { extractInboundText, handleWhatsAppInbound, inboundContentType } from '@/lib/services/crm/whatsapp/inboundService';
 import { applyMessageEventToCampaign } from '@/lib/services/crm/whatsapp/campaignEvents';
 import { defaultCountryOf, findCustomerIdByPhone, getOrgSettings, normalizePhoneDigits } from '@/lib/services/crm/whatsapp/channelService';
@@ -44,6 +44,15 @@ import type {
  * un inbound perdido desactiva la ventana de 24 h, el opt-out por palabra
  * clave y la atribución de respuestas a campañas.
  */
+/** Opciones de `processWebhookPayload` (F0-SEC r4, H4). */
+export interface ProcessWebhookOptions {
+  /**
+   * Organizaciones autorizadas por la firma (plan con ámbito `channel`).
+   * `undefined` = ámbito global, sin intersección. `[]` = ninguna (fail-closed).
+   */
+  authorizedOrganizationIds?: number[];
+}
+
 export class WhatsAppInboundPersistError extends Error {
   code = 'INBOUND_NOT_PERSISTED';
   externalMessageId: string;
@@ -385,10 +394,20 @@ class WhatsAppCloudService {
    * Los mensajes que no se puedan PERSISTIR no se silencian: se procesa el
    * resto del lote y al final se lanza un error con todos los fallos, para que
    * la ruta del webhook devuelva 5xx y Meta reintente.
+   *
+   * F0-SEC r4 (H4, regla 6 de `webhookAuthorization.ts`): `opts.authorizedOrganizationIds`
+   * son las organizaciones que el plan de autorización resolvió para el secreto
+   * que firmó (ámbito `channel`). Todo lo que el servicio resuelva por su
+   * cuenta (WABA de la entrada para plantillas, `phone_number_id` para
+   * mensajes) se INTERSECA con ellas; lo que quede fuera se descarta y se
+   * registra. `undefined` = ámbito global (app de la plataforma): sin
+   * intersección, como hasta r3. Un array vacío autoriza a nadie (fail-closed).
    */
-  async processWebhookPayload(payload: WhatsAppWebhookPayload): Promise<void> {
+  async processWebhookPayload(payload: WhatsAppWebhookPayload, opts: ProcessWebhookOptions = {}): Promise<void> {
     const supabase = getSupabaseAdmin();
     const failures: string[] = [];
+    const authorized = opts.authorizedOrganizationIds === undefined ? null : new Set(opts.authorizedOrganizationIds);
+    const isAuthorized = (organizationId: number): boolean => authorized === null || authorized.has(organizationId);
 
     for (const entry of payload.entry ?? []) {
       // F0-SEC r3 (H1/H2): los identificadores de Meta se normalizan con la
@@ -401,8 +420,10 @@ class WhatsAppCloudService {
       let wabaOrganizationIds: number[] | null = null;
 
       for (const change of entry?.changes ?? []) {
-        // F16 (B15): estado/calidad de plantillas HSM → templates.metadata
-        if (change.field === 'message_template_status_update' || change.field === 'message_template_quality_update') {
+        // F16 (B15): estado/calidad de plantillas HSM → templates.metadata.
+        // Los `field` de plantilla se resuelven SIEMPRE por el WABA de la
+        // entrada (H4): un `metadata.phone_number_id` en el value ni se mira.
+        if (isTemplateField(change.field)) {
           const update = parseTemplateStatusUpdate(change.field, change.value);
           if (!update) continue;
           // H2: la actualización se aplica SOLO a las organizaciones cuyo canal
@@ -418,7 +439,20 @@ class WhatsAppCloudService {
             console.warn('[WhatsApp Webhook] template update descartado: el WABA de la entrada no resuelve a ningún canal', { field: change.field, wabaId });
             continue;
           }
-          const r = await applyTemplateStatusUpdate(update, wabaId, supabase, wabaOrganizationIds);
+          // H4: WABA ∩ autorizadas por la firma. Lo que el plan no autorizó no se toca.
+          const targetOrganizationIds = wabaOrganizationIds.filter(isAuthorized);
+          if (targetOrganizationIds.length === 0) {
+            console.warn('[WhatsApp Webhook] template update descartado: el WABA de la entrada no pertenece a ninguna organización autorizada por la firma', {
+              field: change.field,
+              wabaId,
+              wabaOrganizationIds,
+              authorizedOrganizationIds: opts.authorizedOrganizationIds,
+            });
+            continue;
+          }
+          // Idempotencia (replay de un cuerpo firmado): clave por `entry.time` si viene.
+          const eventKey = templateEventKey(update, (entry as { time?: unknown })?.time);
+          const r = await applyTemplateStatusUpdate(update, wabaId, supabase, targetOrganizationIds, eventKey);
           console.log('[WhatsApp Webhook] template update', { field: change.field, event: update.event, name: update.message_template_name, ...r });
           continue;
         }
@@ -432,6 +466,15 @@ class WhatsAppCloudService {
         const channelInfo = await this.findChannelByPhoneNumberId(phoneNumberId);
         if (!channelInfo) {
           console.warn(`[WhatsApp Webhook] Canal no encontrado para phone_number_id: ${phoneNumberId}`);
+          continue;
+        }
+        // H4: el canal del número tiene que ser de una organización autorizada por la firma.
+        if (!isAuthorized(channelInfo.organizationId)) {
+          console.warn('[WhatsApp Webhook] mensajes descartados: el canal del phone_number_id no pertenece a ninguna organización autorizada por la firma', {
+            phoneNumberId,
+            organizationId: channelInfo.organizationId,
+            authorizedOrganizationIds: opts.authorizedOrganizationIds,
+          });
           continue;
         }
 

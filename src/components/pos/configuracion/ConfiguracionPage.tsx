@@ -24,10 +24,12 @@ import {
   Search,
   Printer,
   Monitor,
+  MonitorSmartphone,
   Wallet,
   Clock,
   Users,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { formatCurrency, formatPercent } from '@/utils/Utils';
 import { SearchSelect } from '@/components/ui/search-select';
 import { cn } from '@/utils/Utils';
@@ -65,6 +67,7 @@ import {
   CargosModal,
   ImpresionesModal,
   AgenteModal,
+  PantallaClienteModal,
 } from './ConfigModals';
 
 export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) {
@@ -101,6 +104,8 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
   const [showCargos, setShowCargos] = useState(false);
   const [showImpresiones, setShowImpresiones] = useState(false);
   const [showAgente, setShowAgente] = useState(false);
+  const [showPantallaCliente, setShowPantallaCliente] = useState(false);
+  const tPantallaCliente = useTranslations('posCustomerDisplay.config');
 
   const loadData = useCallback(async (showRefresh = false) => {
     if (showRefresh) {
@@ -527,6 +532,22 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
                 <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 transition-colors shrink-0" />
               </div>
             </button>
+
+            {/* Pantalla del cliente (POS de doble pantalla, Fase 0: interruptor maestro + Abrir ahora) */}
+            <button type="button" onClick={() => setShowPantallaCliente(true)} className="text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group w-full">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg shrink-0">
+                    <MonitorSmartphone className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 dark:text-white break-words">{tPantallaCliente('title')}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 break-words">{tPantallaCliente('subtitle')}</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-emerald-600 transition-colors shrink-0" />
+              </div>
+            </button>
           </div>
         </CardContent>
       </Card>
@@ -951,6 +972,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
       <CargosModal open={showCargos} onOpenChange={setShowCargos} />
       <ImpresionesModal open={showImpresiones} onOpenChange={setShowImpresiones} />
       <AgenteModal open={showAgente} onOpenChange={setShowAgente} />
+      <PantallaClienteModal open={showPantallaCliente} onOpenChange={setShowPantallaCliente} />
     </div>
   );
 }

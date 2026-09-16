@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     if (err instanceof OrgContextError) return NextResponse.json({ success: false, error: err.message }, { status: err.statusCode });
     throw err;
   }
-  const parsed = bodySchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
+  const parsed = bodySchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null), { request }));
   if (!parsed.success) return NextResponse.json({ success: false, error: 'Body inválido', issues: parsed.error.issues }, { status: 400 });
 
   const rl = await checkRateLimits([{ key: `consent-preview:${ctx.userId}`, opts: { limit: 10, windowMs: 60_000 } }]);

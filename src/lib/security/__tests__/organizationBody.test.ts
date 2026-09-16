@@ -8,6 +8,7 @@
 import { OrgContextError } from '@/lib/utils/orgContextError';
 import {
   claimedOrganizationIn,
+  claimedOrganizationsIn,
   FOREIGN_ORGANIZATION_CODE,
   foreignOrganizationInBody,
   ORG_BODY_KEYS,
@@ -75,6 +76,24 @@ describe('readOrgBody sobre un body ya parseado', () => {
     expect(() => readOrgBody(ctx, new URLSearchParams('orgId=9'))).toThrow(OrgContextError);
   });
 
+  test('se evalúan TODAS las claves: una propia (o vacía) delante no tapa a un alias ajeno (QA C+D r2 §3)', () => {
+    expect(() => readOrgBody(ctx, { organization_id: 7, organizationId: 9 })).toThrow(OrgContextError);
+    expect(warn.mock.calls[0][1]).toMatchObject({ key: 'organizationId', body: 9 });
+    expect(() => readOrgBody(ctx, { organization_id: '', orgId: 9 })).toThrow(OrgContextError);
+    expect(() => readOrgBody(ctx, { organization_id: '   ', org_id: '9' })).toThrow(OrgContextError);
+    // ParamsLike: `organization_id=` presente pero vacío no es una declaración.
+    expect(() => readOrgBody(ctx, new URLSearchParams('organization_id=&orgId=999'))).toThrow(OrgContextError);
+    const fd = new FormData();
+    fd.set('organization_id', '7');
+    fd.set('org_id', '999');
+    expect(() => readOrgBody(ctx, fd)).toThrow(OrgContextError);
+    // Todas propias o vacías → pasa.
+    warn.mockClear();
+    expect(readOrgBody(ctx, new URLSearchParams('organization_id=&orgId=7'))).toBeInstanceOf(URLSearchParams);
+    expect(readOrgBody(ctx, { organization_id: 7, organizationId: '7', orgId: '', org_id: null })).toBeTruthy();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
   test('un doble con solo get() (tests de otras fases) también se inspecciona', () => {
     const fake = { get: (k: string) => (k === 'organization_id' ? '9' : null), getAll: () => [] };
     expect(() => readOrgBody(ctx, fake)).toThrow(OrgContextError);
@@ -83,6 +102,69 @@ describe('readOrgBody sobre un body ya parseado', () => {
   test('el valor ajeno se registra recortado (nunca objetos ni cadenas largas enteras)', () => {
     expect(() => readOrgBody(ctx, { organization_id: 'x'.repeat(500) })).toThrow(OrgContextError);
     expect(String(warn.mock.calls[0][1].body).length).toBeLessThanOrEqual(64);
+  });
+});
+
+describe('readOrgBody sobre un body ya parseado con { request } (deuda C de F0-SEC)', () => {
+  // La ruta parseó el JSON por su cuenta (para su propio 400) y ya consumió el
+  // body: la única forma de que la query string se compruebe es pasar la
+  // petición original en las opciones. Mismo código que la sobrecarga con `Request`.
+  test('query ajena + body propio → 403 where: query (la query se evalúa ANTES que el body)', async () => {
+    const request = jsonReq({ organization_id: 7, name: 'x' }, 'http://localhost/api/crm/x?organization_id=9');
+    const body = await request.json();
+    const err = await expect403(() => readOrgBody(ctx, body, { request, route: 'crm/x' }));
+    expect(err.message).toBe('Organización no permitida');
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][1]).toMatchObject({ where: 'query', key: 'organization_id', session: 7, body: '9', route: 'crm/x', userId: 'u-1' });
+  });
+
+  test('query propia + body ajeno → 403 where: body', async () => {
+    const request = jsonReq({ orgId: 9 }, 'http://localhost/api/crm/x?organization_id=7');
+    const body = await request.json();
+    await expect403(() => readOrgBody(ctx, body, { request }));
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][1]).toMatchObject({ where: 'body', key: 'orgId', body: 9 });
+  });
+
+  test('query ajena Y body ajeno → un solo 403, el de la query (se lanza en la primera ajena)', async () => {
+    const request = jsonReq({ organization_id: 9 }, 'http://localhost/api/crm/x?orgId=9');
+    const body = await request.json();
+    await expect403(() => readOrgBody(ctx, body, { request }));
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][1]).toMatchObject({ where: 'query', key: 'orgId' });
+  });
+
+  test('query propia (o sin organización) + body propio → devuelve el MISMO body, sin registro', async () => {
+    const request = jsonReq({ organization_id: '7', name: 'x' }, 'http://localhost/api/crm/x?organization_id=7&page=2');
+    const body = await request.json();
+    expect(readOrgBody(ctx, body, { request })).toBe(body);
+    const form = new FormData();
+    form.set('audio', 'blob');
+    expect(readOrgBody(ctx, form, { request: jsonReq(undefined, 'http://localhost/api/crm/x?page=2') })).toBe(form);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  test('clave repetida en la query (`?organization_id=7&organization_id=9`): la segunda ajena también → 403', async () => {
+    const request = jsonReq({}, 'http://localhost/api/crm/x?organization_id=7&organization_id=9');
+    const body = await request.json();
+    await expect403(() => readOrgBody(ctx, body, { request }));
+    expect(warn.mock.calls[0][1]).toMatchObject({ where: 'query', body: '9' });
+  });
+
+  test('sin opts (o sin `request`) ⇒ comportamiento anterior: solo se mira el body, la query no', async () => {
+    const request = jsonReq({ name: 'x' }, 'http://localhost/api/crm/x?organization_id=9');
+    const body = await request.json();
+    expect(readOrgBody(ctx, body)).toBe(body);
+    expect(readOrgBody(ctx, body, { route: 'crm/x' })).toBe(body);
+    expect(warn).not.toHaveBeenCalled();
+    await expect403(() => readOrgBody(ctx, { organization_id: 9 }, { route: 'crm/x' }));
+    expect(warn.mock.calls[0][1]).toMatchObject({ where: 'body' });
+  });
+
+  test('basta con `{ url }`: un doble sin url válida (o relativa) no rompe y solo inspecciona el body', () => {
+    expect(() => readOrgBody(ctx, { a: 1 }, { request: { url: 'http://localhost/x?org_id=9' } })).toThrow(OrgContextError);
+    expect(readOrgBody(ctx, { a: 1 }, { request: { url: '/x?org_id=9' } })).toEqual({ a: 1 });
+    expect(readOrgBody(ctx, { a: 1 }, { request: { url: undefined as unknown as string } })).toEqual({ a: 1 });
   });
 });
 
@@ -102,6 +184,13 @@ describe('readOrgBody sobre una Request', () => {
     const e = await expect403(readOrgBody(ctx, new Request('http://localhost/api/crm/x/1?organization_id=9', { method: 'DELETE' })));
     expect(e.code).toBe(FOREIGN_ORGANIZATION_CODE);
     expect(warn.mock.calls[0][1]).toMatchObject({ where: 'query', key: 'organization_id' });
+  });
+
+  test('clave repetida en la QUERY: la segunda ocurrencia ajena también → 403 (tester C+D r3; QA r3 «B»)', async () => {
+    const e = await expect403(readOrgBody(ctx, new Request('http://localhost/api/crm/x/1?organization_id=7&organization_id=9', { method: 'DELETE' })));
+    expect(e.code).toBe(FOREIGN_ORGANIZATION_CODE);
+    expect(warn.mock.calls[0][1]).toMatchObject({ where: 'query', key: 'organization_id' });
+    await expect(readOrgBody(ctx, new Request('http://localhost/api/crm/x/1?organization_id=7&organization_id=7', { method: 'DELETE' }))).resolves.toEqual({});
   });
 
   test('JSON mal formado → 400 INVALID_JSON (OrgContextError, la ruta lo convierte)', async () => {
@@ -148,10 +237,21 @@ describe('predicados puros', () => {
     expect(foreignOrganizationInBody('abc', 7)).toBe('abc');
   });
 
-  test('claimedOrganizationIn devuelve la primera clave presente', () => {
+  test('claimedOrganizationIn devuelve la primera clave presente con valor no vacío', () => {
     expect(claimedOrganizationIn({ orgId: 3, organization_id: 4 })).toEqual({ key: 'organization_id', value: 4 });
     expect(claimedOrganizationIn({ org_id: 5 })).toEqual({ key: 'org_id', value: 5 });
     expect(claimedOrganizationIn({ organization_id: undefined })).toBeNull();
+    expect(claimedOrganizationIn({ organization_id: '', orgId: 5 })).toEqual({ key: 'orgId', value: 5 });
     expect(claimedOrganizationIn(undefined)).toBeNull();
+  });
+
+  test('claimedOrganizationsIn devuelve todas las claves con valor, en el orden de ORG_BODY_KEYS', () => {
+    expect(claimedOrganizationsIn({ orgId: 3, organization_id: 4, org_id: '', organizationId: null })).toEqual([
+      { key: 'organization_id', value: 4 },
+      { key: 'orgId', value: 3 },
+    ]);
+    expect(claimedOrganizationsIn(new URLSearchParams('organization_id=&orgId=9'))).toEqual([{ key: 'orgId', value: '9' }]);
+    expect(claimedOrganizationsIn([{ organization_id: 9 }])).toEqual([]);
+    expect(claimedOrganizationsIn(null)).toEqual([]);
   });
 });

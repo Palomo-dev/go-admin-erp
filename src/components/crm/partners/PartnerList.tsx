@@ -78,9 +78,12 @@ export function PartnerList({ partners, canManage, onEdit, onDeals, onDelete }: 
                 <Button id={partnerButtonId(p.id, 'deals')} type="button" size="sm" className="bg-blue-600 text-white hover:bg-blue-700" onClick={() => onDeals(p)}>
                   <Handshake className="mr-1.5 h-4 w-4" aria-hidden="true" /> Deals
                 </Button>
-                <Button id={partnerButtonId(p.id, 'edit')} type="button" size="sm" variant="outline" onClick={() => onEdit(p)}>
-                  <Pencil className="mr-1.5 h-4 w-4" aria-hidden="true" /> Editar
-                </Button>
+                {/* F12-misc: PATCH exige admin/manager; a un Empleado el botón solo le daría un 403. */}
+                {canManage && (
+                  <Button id={partnerButtonId(p.id, 'edit')} type="button" size="sm" variant="outline" onClick={() => onEdit(p)}>
+                    <Pencil className="mr-1.5 h-4 w-4" aria-hidden="true" /> Editar
+                  </Button>
+                )}
                 {canManage && (
                   <Button id={partnerButtonId(p.id, 'delete')} type="button" size="icon" variant="ghost" className="ml-auto text-red-700 hover:text-red-800 dark:text-red-300" aria-label={`Eliminar partner ${p.name}`} onClick={() => onDelete(p)}>
                     <Trash2 className="h-4 w-4" aria-hidden="true" />

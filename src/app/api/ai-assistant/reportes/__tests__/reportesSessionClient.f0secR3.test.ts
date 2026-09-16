@@ -29,9 +29,15 @@ const SESSION_CLIENT = { rpc: sessionRpc, from: jest.fn() };
 
 jest.mock('@/lib/utils/orgContext', () => ({
   getServerOrgContext: async () => ({ organizationId: 7, userId: 'user-1', supabase: SESSION_CLIENT }),
-  OrgContextError: class OrgContextError extends Error { code = 'X'; statusCode = 401; },
+  // r4: el error real, para que el 403 de `readOrgBody` (organización ajena) llegue como tal y no como 500.
+  OrgContextError: jest.requireActual('@/lib/utils/orgContextError').OrgContextError,
 }));
 jest.mock('@/lib/supabase/config', () => ({ supabase: { rpc: browserRpc, from: jest.fn() } }));
+// r4: la lista blanca de módulos sale del servidor con el cliente de sesión.
+const getActiveModules = jest.fn(async (_orgId: number, _client: unknown) => [{ code: 'crm' }]);
+jest.mock('@/lib/services/moduleManagementService', () => ({
+  moduleManagementService: { getActiveModules: (orgId: number, client: unknown) => getActiveModules(orgId, client) },
+}));
 jest.mock('@/lib/services/aiCreditsService', () => ({
   checkAICredits: async () => ({ allowed: true }),
   estimateCredits: () => 1,
@@ -59,6 +65,7 @@ beforeEach(() => {
   browserRpc.mockClear();
   process.env.OPENAI_API_KEY = 'sk-test-clave-de-prueba-no-real';
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  jest.spyOn(console, 'warn').mockImplementation(() => undefined);
 });
 afterEach(() => jest.restoreAllMocks());
 afterAll(() => { if (originalKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = originalKey; });
@@ -73,10 +80,15 @@ function post(body: unknown) {
 
 describe('POST /api/ai-assistant/reportes ejecuta el reporte con el cliente de SESIÓN', () => {
   test('fn_reporte_crm_funnel corre con ctx.supabase y la organización de la sesión; el cliente browser no se toca', async () => {
+    // r4: un `context.organizationId` ajeno ya no se sobrescribe en silencio: 403 (ver testerR3.f0sec).
+    const foreign = await post({ message: 'x', conversationHistory: [], context: { organizationId: 999 }, periodoActual: periodo, modulosActivos: ['crm'] });
+    expect(foreign.status).toBe(403);
+    expect(sessionRpc).not.toHaveBeenCalled();
+
     const res = await post({
       message: 'muéstrame el funnel',
       conversationHistory: [],
-      context: { organizationId: 999, organizationName: 'x', branchId: null },
+      context: { organizationId: 7, organizationName: 'x', branchId: null },
       periodoActual: periodo,
       modulosActivos: ['crm'],
     });

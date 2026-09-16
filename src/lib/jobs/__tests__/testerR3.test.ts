@@ -52,7 +52,7 @@ import { DRAIN_SCHEDULE, VERCEL_SCHEDULE_KINDS } from '../schedule';
 import { JobRetryableError, type JobContext, type OutboundJob } from '../types';
 import { canRetryJobs, canViewJobs, retryJob } from '@/lib/services/crm/jobsService';
 import { whatsappJobClientRequestId } from '../handlers/whatsapp';
-import { STAGE_MANAGER_ROLE_IDS } from '@/lib/services/crm/stagePermissions';
+import { ORG_ADMIN_ROLE_IDS } from '@/lib/utils/orgAdmin';
 
 const log = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -387,21 +387,36 @@ describe('tester r3 — fechas por zona de la organización (N-7)', () => {
   });
 });
 
-describe('tester r3 — canViewJobs frente al criterio del resto del CRM', () => {
+describe('tester r3 (volteado en r5) — canViewJobs/canRetryJobs frente al criterio del resto del CRM', () => {
   const base = { isSuperAdmin: false, roleName: 'x', roleId: 0 };
+  /** `check_user_permission` por código; lo que no esté en `grants` ⇒ false. */
+  const withSession = (roleId: number, grants: Record<string, boolean>, roleName = 'x') => ({
+    ...base,
+    roleId,
+    roleName,
+    userId: 'user-uuid',
+    organizationId: 105,
+    supabase: { rpc: jest.fn(async (_fn: string, args: { p_permission_code: string }) => ({ data: grants[args.p_permission_code] === true, error: null })) } as unknown as SupabaseClient,
+  });
 
   // Sin `userId`/`organizationId`/`supabase` en el contexto no hay sesión completa:
-  // solo decide el criterio síncrono (super admin / role_id) y la RPC no se llama.
-  it('coincide con STAGE_MANAGER_ROLE_IDS (1, 2, 5) para todos los role_id del sistema (1..5) y para un id desconocido (r4: USA la constante, no una copia)', async () => {
+  // solo decide el criterio síncrono (super admin / rol 1/2) y la RPC no se llama.
+  it('sin sesión completa coincide con ORG_ADMIN_ROLE_IDS (1, 2) para todos los role_id del sistema (1..5) y un id desconocido: ya no hay lista de roles propia (r5)', async () => {
     for (const roleId of [1, 2, 3, 4, 5, 9]) {
-      expect(await canViewJobs({ ...base, roleId })).toBe(STAGE_MANAGER_ROLE_IDS.includes(roleId));
+      expect(await canViewJobs({ ...base, roleId })).toBe(ORG_ADMIN_ROLE_IDS.includes(roleId));
+      expect(await canRetryJobs({ ...base, roleId })).toBe(ORG_ADMIN_ROLE_IDS.includes(roleId));
     }
     expect(await canViewJobs({ ...base, roleId: 9, isSuperAdmin: true })).toBe(true);
   });
 
-  it('un Empleado (4) sin cargo con admin.full_access queda fuera y un Manager (5) ve pero NO reintenta', async () => {
-    expect(await canViewJobs({ ...base, roleId: 4, roleName: 'Empleado' })).toBe(false);
-    expect(await canRetryJobs({ ...base, roleId: 5, roleName: 'Manager' })).toBe(false);
+  it('un Empleado (4) sin cargo con crm.jobs.view queda fuera; un Manager (5) ve Y reintenta porque la BD (f00_45) le concede crm.jobs.retry (decisión del dueño, r5)', async () => {
+    expect(await canViewJobs(withSession(4, {}, 'Empleado'))).toBe(false);
+    const manager = withSession(5, { 'crm.jobs.view': true, 'crm.jobs.retry': true }, 'Manager');
+    expect(await canViewJobs(manager)).toBe(true);
+    expect(await canRetryJobs(manager)).toBe(true);
+    // El rol 5 NO decide por sí mismo: si un cargo le niega crm.jobs.view, no ve.
+    expect(await canViewJobs(withSession(5, {}, 'Manager'))).toBe(false);
+    expect(await canRetryJobs(withSession(5, {}, 'Manager'))).toBe(false);
   });
 
   it('regla 6: el NOMBRE "Admin de organización" con role_id 9 NO concede ni ver ni reintentar (hueco cerrado por F0-SEC r1 en orgAdmin.ts)', async () => {

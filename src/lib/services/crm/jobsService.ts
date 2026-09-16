@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { hasOrgAdminOrPermission, type ServerOrgContext } from '@/lib/utils/orgContext';
-import { STAGE_MANAGER_ROLE_IDS } from './stagePermissions';
 import { enqueueJob } from '@/lib/jobs/enqueue';
 import { DRAIN_INTERVAL_MIN } from '@/lib/jobs/schedule';
 import { JOB_STATUSES, isJobKind, type JobKind, type JobStatus, type OutboundJob } from '@/lib/jobs/types';
@@ -17,26 +16,55 @@ import { JOB_STATUSES, isJobKind, type JobKind, type JobStatus, type OutboundJob
 export const PAYLOAD_PREVIEW_CHARS = 500;
 
 /**
- * Permisos de la cola (F0-JOBS r4, QA r3 punto 3). Un solo criterio, el del
- * resto del CRM, sin constantes propias:
+ * Permisos de la cola (F0-JOBS r5; migración `crm_v4_f00_45`). Dos códigos
+ * propios en `permissions` (módulo `crm`, categoría `jobs`) y UN solo criterio,
+ * el del resto del CRM, sin listas de roles ni nombres de rol:
  *
- *  - Reintentar (`canRetryJobs`): `hasOrgAdminOrPermission(ctx)` — super
- *    admin, `role_id` ∈ `ORG_ADMIN_ROLE_IDS` (1, 2) o, consultando
- *    `check_user_permission` con el usuario y la organización DE LA SESIÓN, el
- *    permiso `admin.full_access` concedido por rol o por cargo
- *    (`job_position_permissions`). Un error de la RPC deniega (fail-closed).
- *  - Ver la cola (`canViewJobs`): lo anterior ∪ `STAGE_MANAGER_ROLE_IDS`
- *    (1, 2, 5: la misma jefatura comercial que contratos, comisiones, F12 y el
- *    dashboard; `stagePermissions.ts`). Manager (5) ve sin consultar la RPC.
+ *  - `canViewJobs(ctx)`  = `hasOrgAdminOrPermission(ctx, 'crm.jobs.view')`
+ *  - `canRetryJobs(ctx)` = `resolveJobsPermissions(ctx).canRetry`
+ *    (= `view` Y `retry`, ambos por `hasOrgAdminOrPermission`; ver contrato)
+ *
+ * `hasOrgAdminOrPermission` (orgContext.ts) concede sin consulta al super
+ * admin y a `role_id` ∈ `ORG_ADMIN_ROLE_IDS` (1, 2) —un cargo no puede negar
+ * la cola a un administrador, igual que en `withOrg({admin:true})`— y para el
+ * resto llama a `check_user_permission(user, org, código)` con el usuario y la
+ * organización DE LA SESIÓN: rol (`role_permissions`) o cargo
+ * (`job_position_permissions`, con precedencia). Un error de la RPC deniega
+ * (fail-closed) y aquí además se captura cualquier excepción del cliente.
+ *
+ * Roles por defecto (BD, `f00_45`): `crm.jobs.view` y `crm.jobs.retry`
+ * concedidos a 1, 2 y **5 (Manager)**. Decisión del orquestador, autorizada
+ * por el dueño (2026-09-16, QA r4 hallazgo 1, opción B): el Manager SÍ puede
+ * reintentar. Reintentar un job `dead|failed` es idempotente (reutiliza el
+ * `dedupe_key` y la clave `job:{raíz}` de `whatsapp`) y de bajo riesgo, y la
+ * jefatura comercial que ve la cola debe poder destrabarla; un cargo puede
+ * negárselo con precedencia. No hay `f00_46`.
+ *
+ * Contrato (r5 cierre, QA r5 N-1, fail-closed): reintentar exige AMBOS
+ * códigos, `crm.jobs.view` Y `crm.jobs.retry`. Un cargo que niega `view`
+ * cierra la cola entera aunque el rol conceda `retry`. Por eso
+ * `resolveJobsPermissions` consulta PRIMERO `crm.jobs.view`: si es `false`
+ * corta con `{ canView:false, canRetry:false }` (una sola RPC) y solo si es
+ * `true` consulta `crm.jobs.retry` (dos RPC, en ese orden). `GET /api/crm/jobs`
+ * y `POST /api/crm/jobs/[id]/retry` la llaman UNA vez por petición (punto
+ * único): el GET usa `canView` para el 403 y `canRetry` en la respuesta; el
+ * retry usa `canRetry`.
  *
  * Regla 6 (CLAUDE.md): todo sale de `getServerOrgContext` (`role_id`,
  * `is_super_admin`, `user_id`, `organization_id`); `roleName` NO participa.
- * Decisión provisional del orquestador: no existe un código de permiso propio
- * (`crm.jobs.view`) en `permissions`; hasta que el dueño lo cree, un cargo
- * solo entra con `admin.full_access` (mismo criterio que `withOrg({admin})`).
+ * Sin sesión completa (`userId`/`organizationId`/`supabase`) no hay RPC y solo
+ * decide el criterio síncrono (super admin o rol 1/2).
  */
+export const JOBS_VIEW_PERMISSION = 'crm.jobs.view';
+export const JOBS_RETRY_PERMISSION = 'crm.jobs.retry';
+
 export type JobsPermissionContext = Pick<ServerOrgContext, 'roleId' | 'isSuperAdmin'> &
   Partial<Pick<ServerOrgContext, 'userId' | 'organizationId' | 'supabase' | 'roleName'>>;
+
+export interface JobsPermissions {
+  canView: boolean;
+  canRetry: boolean;
+}
 
 /** Adapta el contexto parcial al sujeto que espera `hasOrgAdminOrPermission` (sin sesión completa ⇒ solo el criterio síncrono). */
 function permissionSubject(ctx: JobsPermissionContext): Parameters<typeof hasOrgAdminOrPermission>[0] {
@@ -49,13 +77,35 @@ function permissionSubject(ctx: JobsPermissionContext): Parameters<typeof hasOrg
   };
 }
 
-export async function canRetryJobs(ctx: JobsPermissionContext): Promise<boolean> {
-  return hasOrgAdminOrPermission(permissionSubject(ctx));
+/** Fail-closed también ante una excepción del cliente (no solo ante `{ error }` de la RPC). */
+async function hasJobsPermission(ctx: JobsPermissionContext, code: string): Promise<boolean> {
+  try {
+    return await hasOrgAdminOrPermission(permissionSubject(ctx), code);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn('[jobsService] permiso no resuelto; se deniega', { code, organizationId: ctx.organizationId, message });
+    return false;
+  }
 }
 
 export async function canViewJobs(ctx: JobsPermissionContext): Promise<boolean> {
-  if (ctx.isSuperAdmin === true || STAGE_MANAGER_ROLE_IDS.includes(ctx.roleId)) return true;
-  return hasOrgAdminOrPermission(permissionSubject(ctx));
+  return hasJobsPermission(ctx, JOBS_VIEW_PERMISSION);
+}
+
+/** Reintentar exige `view` Y `retry` (ver cabecera): delega en `resolveJobsPermissions`. */
+export async function canRetryJobs(ctx: JobsPermissionContext): Promise<boolean> {
+  return (await resolveJobsPermissions(ctx)).canRetry;
+}
+
+/**
+ * Resuelve los dos permisos UNA sola vez por petición, en orden `[view, retry]`
+ * y con cortocircuito: `crm.jobs.view` en `false` ⇒ `{ canView:false,
+ * canRetry:false }` con una sola RPC; en `true` ⇒ se consulta `crm.jobs.retry`
+ * (dos RPC). Fail-closed: cualquier fallo ⇒ todo `false`.
+ */
+export async function resolveJobsPermissions(ctx: JobsPermissionContext): Promise<JobsPermissions> {
+  if (!(await canViewJobs(ctx))) return { canView: false, canRetry: false };
+  return { canView: true, canRetry: await hasJobsPermission(ctx, JOBS_RETRY_PERMISSION) };
 }
 
 /**

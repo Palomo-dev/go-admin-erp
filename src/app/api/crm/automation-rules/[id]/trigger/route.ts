@@ -30,7 +30,7 @@ export async function POST(
     } catch {
       // Sin body — ejecución sin oportunidad asociada.
     }
-    readOrgBody(ctx, body);
+    readOrgBody(ctx, body, { request });
 
     const opportunityId = typeof body.opportunity_id === 'string' ? body.opportunity_id : null;
 

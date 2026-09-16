@@ -3,15 +3,15 @@
  * F0-SEC r2 · sub-partes C+D · tester (ronda 2). Organizaciones ficticias
  * (120 = sesión, 999 = ajena). Informe: docs/crm-revenue-os/rondas/F0-SEC-CD-tester-r2.md
  *
- * Verde = contrato cumplido. `it.failing` = hueco abierto que documenta el
- * informe; cuando el constructor lo cierre, el test pasa a rojo por «ya no
- * falla» y hay que quitar el `.failing` (rojo antes, verde después).
+ * Verde = contrato cumplido. Los 6 `it.failing` de r2 (C1-a, C1-b, C3-a, C4-a,
+ * C4-b, D1-a) los cerró el constructor en r3 y quedan como tests normales
+ * marcados «CERRADO r3» (rojo antes, verde después).
  *
  *  - C1  `readOrgBody`: intentos de esquive (alias, «7» vs 7, query, formatos).
  *  - C2  `getServerOrgContext`: sesión sin organización y header/cookie.
  *  - C3  admin por id/permiso, nunca por nombre; RPC de permisos.
- *  - C4  rutas reales: `ai-assistant/{attachments,transcribe}` convierten el 403
- *        del punto único en 400 (hueco).
+ *  - C4  rutas reales: `ai-assistant/{attachments,transcribe}` responden 403
+ *        (no 400) a una organización ajena en el multipart.
  *  - D1  rate limit: concurrencia, reinicio de instancia, store `db` sin RPC.
  *  - D2  ws token: `jti` de un solo uso.
  */
@@ -127,11 +127,13 @@ describe('C1 · readOrgBody: intentos de esquive', () => {
     expect(readOrgBody(ctx, { organization_id: '' })).toEqual({ organization_id: '' });
     expect(warn).not.toHaveBeenCalled();
   });
-  it.failing('HUECO C1-a: organization_id propio + organizationId ajeno → debería ser 403 (hoy solo se mira la PRIMERA clave presente)', () => {
+  test('CERRADO r3 (C1-a): organization_id propio + organizationId ajeno → 403 (se evalúan TODAS las claves)', () => {
     expect403(() => readOrgBody(ctx, { organization_id: SESSION, organizationId: FOREIGN }));
+    expect(warn.mock.calls[0][1]).toMatchObject({ key: 'organizationId', body: FOREIGN });
   });
-  it.failing('HUECO C1-b: organization_id "" + orgId ajeno → debería ser 403 (hoy la clave vacía tapa al alias)', () => {
+  test('CERRADO r3 (C1-b): organization_id "" + orgId ajeno → 403 (la clave vacía cuenta como ausente por clave)', () => {
     expect403(() => readOrgBody(ctx, { organization_id: '', orgId: FOREIGN }));
+    expect(warn.mock.calls[0][1]).toMatchObject({ key: 'orgId', body: FOREIGN });
   });
   test('documentado: solo se inspecciona el nivel raíz (data.organization_id y arrays no se miran)', () => {
     expect(readOrgBody(ctx, { data: { organization_id: FOREIGN } })).toEqual({ data: { organization_id: FOREIGN } });
@@ -164,13 +166,17 @@ describe('C1 · readOrgBody: intentos de esquive', () => {
     expect(await readOrgBody(ctx, jsonReq('http://x/api', '123'))).toBe(123);
     expect(await readOrgBody(ctx, jsonReq('http://x/api', '[{"organization_id":999}]'))).toEqual([{ organization_id: FOREIGN }]);
   });
-  test('documentado: la sobrecarga síncrona no ve la query, y un body ya consumido devuelve {} sin mirar lo que traía', async () => {
+  test('CERRADO (deuda C): la sobrecarga síncrona ve la query si recibe { request }; sin la opción sigue sin verla; un body ya consumido devuelve {} sin mirar lo que traía', async () => {
     const r1 = jsonReq('http://x/api?organization_id=999', { a: 1 });
-    expect(readOrgBody(ctx, await r1.json())).toEqual({ a: 1 });
+    const parsed = await r1.json();
+    expect(readOrgBody(ctx, parsed)).toEqual({ a: 1 });
+    expect(warn).not.toHaveBeenCalled();
+    await expect403(() => readOrgBody(ctx, parsed, { request: r1, route: 'teams' }));
+    expect(warn.mock.calls[0][1]).toMatchObject({ where: 'query', key: 'organization_id', body: '999', route: 'teams' });
     const r2 = jsonReq('http://x/api', { organization_id: FOREIGN });
     await r2.json();
     expect(await readOrgBody(ctx, r2)).toEqual({});
-    expect(warn).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledTimes(1);
   });
   test('registro: nunca vuelca objetos ni cadenas largas; __proto__ no concede', () => {
     expect403(() => readOrgBody(ctx, { organization_id: 'x'.repeat(500) }));
@@ -261,9 +267,10 @@ describe('C3 · admin por id / permiso, nunca por nombre', () => {
     expect(await hasOrgAdminOrPermission(base, '')).toBe(false);
     expect(called).toBe(1);
   });
-  it.failing('HUECO C3-a: RPC que LANZA (red caída) debería contar como denegado (fail-closed); hoy la promesa rechaza y withOrg responde 500', async () => {
+  test('CERRADO r3 (C3-a): RPC que LANZA (red caída) cuenta como denegado (fail-closed) y se registra; nunca 500', async () => {
     rpcImpl = async () => { throw new Error('fetch failed'); };
     expect(await hasOrgAdminOrPermission(base)).toBe(false);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/check_user_permission lanzó; se deniega/), expect.objectContaining({ organizationId: 5, message: 'fetch failed' }));
   });
 });
 
@@ -283,22 +290,26 @@ describe('C4 · rutas multipart del asistente', () => {
     return new NextRequest(`http://localhost${url}`, { method: 'POST', body: fd });
   };
 
-  it.failing('HUECO C4-a: POST /api/ai-assistant/transcribe con organization_id ajeno responde 400 «Petición mal formada» en vez de 403', async () => {
+  test('CERRADO r3 (C4-a): POST /api/ai-assistant/transcribe con organization_id ajeno → 403 FOREIGN_ORGANIZATION (antes 400 «Petición mal formada»)', async () => {
     const { POST } = await import('@/app/api/ai-assistant/transcribe/route');
     const res = await POST(multipart('/api/ai-assistant/transcribe', { audio: new Blob([new Uint8Array(4)], { type: 'audio/webm' }), organization_id: '999' }));
     expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: 'FOREIGN_ORGANIZATION' });
   });
-  it.failing('HUECO C4-b: POST /api/ai-assistant/attachments con orgId ajeno responde 400 «multipart/form-data» en vez de 403', async () => {
+  test('CERRADO r3 (C4-b): POST /api/ai-assistant/attachments con orgId ajeno → 403 FOREIGN_ORGANIZATION (antes 400 «multipart/form-data»)', async () => {
     const { POST } = await import('@/app/api/ai-assistant/attachments/route');
     const res = await POST(multipart('/api/ai-assistant/attachments', { file: new Blob([new Uint8Array(4)], { type: 'image/png' }), orgId: '999' }));
     expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: 'FOREIGN_ORGANIZATION' });
   });
-  test('en ambas rutas el rechazo SÍ se registra y la transcripción no se ejecuta (la mitad «registro» del contrato se cumple)', async () => {
+  test('en ambas rutas el rechazo se registra y la transcripción no se ejecuta; un cuerpo que no es multipart sigue siendo 400', async () => {
     const { POST } = await import('@/app/api/ai-assistant/transcribe/route');
     const res = await POST(multipart('/api/ai-assistant/transcribe', { audio: new Blob([new Uint8Array(4)], { type: 'audio/webm' }), organization_id: '999' }));
-    expect(res.status).toBe(400);
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/organization_id ajeno/), expect.objectContaining({ session: SESSION, body: '999' }));
+    expect(res.status).toBe(403);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/organization_id ajeno/), expect.objectContaining({ session: SESSION, body: '999', route: 'ai-assistant/transcribe' }));
     expect(transcribeWithFallback).not.toHaveBeenCalled();
+    const notMultipart = new NextRequest('http://localhost/api/ai-assistant/transcribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    expect((await POST(notMultipart)).status).toBe(400);
   });
 });
 
@@ -326,9 +337,11 @@ describe('D1 · rateLimit: concurrencia, reinicio, store', () => {
     const rs = await Promise.all([1, 2, 3, 4, 5].map(() => checkRateLimit('k', OPTS)));
     expect(rs.filter((r) => r.allowed)).toHaveLength(3);
   });
-  it.failing('HUECO D1-a: con persistentCount (legado) hay un await entre proyección y registro: 5 concurrentes con limit 3 deberían dejar pasar 3 (hoy pasan 5)', async () => {
+  test('CERRADO r3 (D1-a): `persistentCount` (legado, con carrera) ya no existe en RateLimitOptions; sin él no hay await antes de registrar', async () => {
     const pc = async () => { await new Promise((r) => setTimeout(r, 5)); return 0; };
-    const rs = await Promise.all([1, 2, 3, 4, 5].map(() => checkRateLimit('k2', { ...OPTS, persistentCount: pc })));
+    // @ts-expect-error — opción retirada (QA C+D r2 §4: un solo mecanismo persistente, el store atómico).
+    const legacy: Parameters<typeof checkRateLimit>[1] = { ...OPTS, persistentCount: pc };
+    const rs = await Promise.all([1, 2, 3, 4, 5].map(() => checkRateLimit('k2', legacy)));
     expect(rs.filter((r) => r.allowed)).toHaveLength(3);
   });
   test('store atómico con latencia: 5 concurrentes con limit 3 → 3 pasan y el store cuenta 3', async () => {

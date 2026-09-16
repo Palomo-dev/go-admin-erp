@@ -14,7 +14,9 @@
  * - `readOrgBody(ctx, bodyYaParseado)` — misma decisión sobre un objeto,
  *   `FormData` o `URLSearchParams` que la ruta ya leyó (por ejemplo dentro de
  *   un `try/catch` propio que convierte el JSON inválido en 400). Devuelve el
- *   mismo valor, para poder envolver: `schema.safeParse(readOrgBody(ctx, raw))`.
+ *   mismo valor, para poder envolver: `schema.safeParse(readOrgBody(ctx, raw,
+ *   { request }))`. Con `{ request }` comprueba también la query string, antes
+ *   del body; sin ella solo mira el body (deuda C de F0-SEC, cerrada).
  * - `foreignOrganizationInBody(claimed, sessionOrg)` — el predicado puro
  *   original (nació en `voiceLibrary.ts`, F13 r2 lo movió aquí). Se conserva
  *   con su firma porque F12/F13 (`rejectForeignOrganization`) y Voces lo usan;
@@ -55,11 +57,21 @@ export interface OrgBodyContext {
 export interface ReadOrgBodyOptions {
   /** Etiqueta para el registro (ruta o servicio). */
   route?: string;
+  /**
+   * Petición original. Solo la usa la sobrecarga síncrona: comprueba la query
+   * string (`?organization_id=999`) ANTES del body ya parseado, con el mismo
+   * código que la sobrecarga con `Request`. Sin ella, la sobrecarga síncrona
+   * solo ve el body (deuda C de F0-SEC, cerrada 2026-09-16); por eso el
+   * guardarraíl 5 exige `{ request }` en todo handler de `crm/**` y
+   * `ai-assistant/**` que parsee el body por su cuenta.
+   */
+  request?: Pick<Request, 'url'>;
 }
 
 /** `FormData`, `URLSearchParams` o un doble de test con solo `get()`. */
 interface ParamsLike {
   get(name: string): unknown;
+  getAll?(name: string): unknown[];
   has?(name: string): boolean;
 }
 
@@ -80,25 +92,53 @@ function isRequestLike(value: unknown): value is Request {
   return typeof v.json === 'function' || typeof v.text === 'function';
 }
 
+export interface ClaimedOrganization {
+  key: string;
+  value: unknown;
+}
+
+/** `null`, `undefined`, `''` o solo espacios cuentan como «no declarada» para ESA clave. */
+function isBlank(value: unknown): boolean {
+  return value == null || (typeof value === 'string' && value.trim() === '');
+}
+
 /**
- * Primer par clave/valor de organización presente en un objeto, `FormData` o
- * `URLSearchParams`. `null` si no declara ninguna.
+ * TODOS los pares clave/valor de organización con valor no vacío en un objeto,
+ * `FormData` o `URLSearchParams`, en el orden de `ORG_BODY_KEYS`. Vacío si no
+ * declara ninguna.
+ *
+ * Se evalúan todas las claves y no solo la primera: `{organization_id: 120,
+ * organizationId: 999}` y `{organization_id: '', orgId: 999}` esquivaban el 403
+ * porque la primera clave presente «ganaba» (tester F0-SEC C+D r2, fallo 3).
  */
-export function claimedOrganizationIn(source: unknown): { key: string; value: unknown } | null {
-  if (source == null) return null;
+export function claimedOrganizationsIn(source: unknown): ClaimedOrganization[] {
+  if (source == null) return [];
+  const found: ClaimedOrganization[] = [];
   if (isParamsLike(source)) {
     for (const key of ORG_BODY_KEYS) {
-      const present = typeof source.has === 'function' ? source.has(key) : source.get(key) != null;
-      if (present) return { key, value: source.get(key) };
+      // Todas las repeticiones de la clave (`?organization_id=120&organization_id=999`):
+      // `get()` solo devuelve la primera (tester C+D r3, fallo bajo; QA r3 «B»).
+      // Unión de `getAll()` y `get()` (un doble puede implementar solo uno): fail-closed.
+      const values = new Set<unknown>([...(typeof source.getAll === 'function' ? source.getAll(key) : []), source.get(key)]);
+      for (const value of values) if (!isBlank(value)) found.push({ key, value });
     }
-    return null;
+    return found;
   }
-  if (typeof source !== 'object' || Array.isArray(source)) return null;
+  if (typeof source !== 'object' || Array.isArray(source)) return [];
   const obj = source as Record<string, unknown>;
   for (const key of ORG_BODY_KEYS) {
-    if (Object.prototype.hasOwnProperty.call(obj, key) && obj[key] != null) return { key, value: obj[key] };
+    if (Object.prototype.hasOwnProperty.call(obj, key) && !isBlank(obj[key])) found.push({ key, value: obj[key] });
   }
-  return null;
+  return found;
+}
+
+/**
+ * Primer par clave/valor de organización con valor no vacío. `null` si no
+ * declara ninguna. Azúcar sobre `claimedOrganizationsIn` (se conserva por los
+ * tests que lo importan); la decisión de 403 mira todas las claves.
+ */
+export function claimedOrganizationIn(source: unknown): ClaimedOrganization | null {
+  return claimedOrganizationsIn(source)[0] ?? null;
 }
 
 /** El valor ajeno tal cual si es escalar corto; recortado si es una cadena larga (nunca objetos enteros al log). */
@@ -107,24 +147,32 @@ function loggable(value: unknown): unknown {
   return String(value).slice(0, 64);
 }
 
+/** Cualquier clave presente con una organización distinta ⇒ registro + 403 (se lanza en la primera ajena). */
 function assertNotForeign<T>(ctx: OrgBodyContext, source: T, opts: ReadOrgBodyOptions | undefined, where: 'body' | 'query'): T {
-  const claimed = claimedOrganizationIn(source);
-  if (!claimed) return source;
-  const foreign = foreignOrganizationInBody(claimed.value, ctx.organizationId);
-  if (foreign === null) return source;
-  console.warn(`[orgBody] ${claimed.key} ajeno en la petición (${where}) → 403`, {
-    route: opts?.route ?? null,
-    where,
-    key: claimed.key,
-    session: ctx.organizationId,
-    body: loggable(foreign),
-    userId: ctx.userId ?? null,
-  });
-  throw new OrgContextError(FOREIGN_ORGANIZATION_MESSAGE, 403, FOREIGN_ORGANIZATION_CODE);
+  for (const claimed of claimedOrganizationsIn(source)) {
+    const foreign = foreignOrganizationInBody(claimed.value, ctx.organizationId);
+    if (foreign === null) continue;
+    console.warn(`[orgBody] ${claimed.key} ajeno en la petición (${where}) → 403`, {
+      route: opts?.route ?? null,
+      where,
+      key: claimed.key,
+      session: ctx.organizationId,
+      body: loggable(foreign),
+      userId: ctx.userId ?? null,
+    });
+    throw new OrgContextError(FOREIGN_ORGANIZATION_MESSAGE, 403, FOREIGN_ORGANIZATION_CODE);
+  }
+  return source;
 }
 
-async function readFromRequest<T>(ctx: OrgBodyContext, req: Request, opts?: ReadOrgBodyOptions): Promise<T> {
-  // 1. Query string (DELETE y PATCH sin body suelen llevar los filtros ahí).
+/**
+ * Query string de la petición (DELETE y PATCH sin body suelen llevar los
+ * filtros ahí): organización ajena ⇒ 403 `where: 'query'`. Es el MISMO código
+ * para las dos sobrecargas (con `Request` y con `{ request }` en las opciones):
+ * no hay una segunda lectura de la query en ninguna ruta. Una `url` que no
+ * parsea (doble de test sin `url`) no se inspecciona.
+ */
+function assertQueryNotForeign(ctx: OrgBodyContext, req: Pick<Request, 'url'>, opts: ReadOrgBodyOptions | undefined): void {
   let url: URL | null = null;
   try {
     url = typeof req.url === 'string' ? new URL(req.url) : null;
@@ -132,6 +180,11 @@ async function readFromRequest<T>(ctx: OrgBodyContext, req: Request, opts?: Read
     url = null;
   }
   if (url) assertNotForeign(ctx, url.searchParams, opts, 'query');
+}
+
+async function readFromRequest<T>(ctx: OrgBodyContext, req: Request, opts?: ReadOrgBodyOptions): Promise<T> {
+  // 1. Query string.
+  assertQueryNotForeign(ctx, req, opts);
 
   // 2. Body. Si la ruta ya lo consumió, debe pasar el objeto parseado a la
   //    sobrecarga síncrona; aquí no hay nada que leer.
@@ -175,7 +228,9 @@ async function readFromRequest<T>(ctx: OrgBodyContext, req: Request, opts?: Read
  *   hay body; 400 `INVALID_JSON` si es JSON mal formado; la query también se
  *   comprueba).
  * - Con un valor ya parseado (objeto, `FormData`, `URLSearchParams`, `null`):
- *   devuelve ese mismo valor, síncronamente.
+ *   devuelve ese mismo valor, síncronamente. Con `{ request }` en las opciones
+ *   comprueba además la query string de esa petición, ANTES del body (mismo
+ *   orden que la sobrecarga con `Request`); sin ella, solo el body.
  *
  * En ambos casos, organización ajena → `console.warn` + `OrgContextError(403,
  * 'FOREIGN_ORGANIZATION')`.
@@ -187,5 +242,8 @@ export function readOrgBody<T = any>(ctx: OrgBodyContext, request: Request, opts
 export function readOrgBody<T>(ctx: OrgBodyContext, body: T, opts?: ReadOrgBodyOptions): T;
 export function readOrgBody<T>(ctx: OrgBodyContext, source: Request | T, opts?: ReadOrgBodyOptions): Promise<T> | T {
   if (isRequestLike(source)) return readFromRequest<T>(ctx, source, opts);
+  // Sobrecarga síncrona: primero la query de la petición original (si la ruta
+  // la pasa), después el body ya parseado. Deuda C de F0-SEC.
+  if (opts?.request) assertQueryNotForeign(ctx, opts.request, opts);
   return assertNotForeign(ctx, source as T, opts, 'body');
 }

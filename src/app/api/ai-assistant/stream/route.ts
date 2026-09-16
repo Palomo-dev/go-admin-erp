@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     return errorStream('Petición mal formada.', 'BAD_REQUEST');
   }
   try {
-    readOrgBody(ctx, body);
+    readOrgBody(ctx, body, { request });
   } catch (err) {
     if (err instanceof OrgContextError) {
       return new Response(JSON.stringify({ error: err.message, code: err.code }), {

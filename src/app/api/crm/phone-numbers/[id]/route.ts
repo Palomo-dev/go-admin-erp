@@ -40,7 +40,7 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    const raw = (readOrgBody(ctx, await request.json().catch(() => ({})))) as Record<string, unknown>;
+    const raw = (readOrgBody(ctx, await request.json().catch(() => ({})), { request })) as Record<string, unknown>;
     // F3: solo label/assigned_user_id/is_primary/is_active (e164/provider_sid vienen de Twilio).
     const body: PhoneNumberUpdateInput = {};
     for (const k of ALLOWED_PATCH_KEYS) if (raw[k] !== undefined) (body as Record<string, unknown>)[k] = raw[k];

@@ -20,9 +20,13 @@
 --     antes con Intl.supportedValuesOf y muestra el error de la BD si llega.
 --
 -- La función del trigger no es SECURITY DEFINER (no eleva nada;
--- pg_timezone_names es legible por cualquier rol) y no necesita EXECUTE
--- explícito: la ejecuta el trigger como owner de la tabla. Coste: una lectura
--- del catálogo (~1 200 filas) por cada escritura de `timezone`, que es rara.
+-- pg_timezone_names es legible por cualquier rol). Corre con el rol que hace
+-- el UPDATE (`authenticated` desde el navegador); no necesita EXECUTE
+-- explícito porque Postgres no lo comprueba al disparar un trigger y los
+-- privilegios por defecto de `public` ya lo conceden (QA r3: la redacción
+-- anterior decía «como owner de la tabla», que es inexacta). Coste: una
+-- lectura del catálogo (~1 200 filas) por cada escritura de `timezone`, que
+-- es rara.
 --
 -- Idempotente: CREATE OR REPLACE + DROP TRIGGER IF EXISTS. No toca datos.
 -- Rollback: supabase/rollbacks/20260915235500_crm_v4_f00_44_organizations_timezone_valida_rollback.sql

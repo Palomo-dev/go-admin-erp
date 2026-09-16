@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { OrgContextError, type ServerOrgContext } from '@/lib/utils/orgContext';
-import { foreignOrganizationInBody } from '@/lib/security/organizationBody';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { CommissionTransitionError, canManageCommissions } from './commissionTransitions';
 import { DataSourceError } from './salesTargetService';
 
@@ -21,13 +21,11 @@ export function requireTeamManager(ctx: Pick<ServerOrgContext, 'roleId' | 'isSup
 /**
  * Regla dura 5: si el body (o el query) trae `organization_id` de OTRA
  * organización, 403 y se registra; la misma organización se ignora. Una sola
- * implementación (`foreignOrganizationInBody`, compartida con Voces y F10).
+ * implementación (`readOrgBody`, el punto único de F0-SEC).
  */
-export function rejectForeignOrganization(tag: string, claimed: unknown, ctx: Pick<ServerOrgContext, 'organizationId'>): void {
-  const foreign = foreignOrganizationInBody(claimed, ctx.organizationId);
-  if (foreign === null) return;
-  console.warn(`[${tag}] organization_id ajeno en la petición`, { session: ctx.organizationId, body: foreign });
-  throw new OrgContextError('Organización no permitida', 403, 'FOREIGN_ORGANIZATION');
+export function rejectForeignOrganization(tag: string, body: unknown, ctx: Pick<ServerOrgContext, 'organizationId' | 'userId'>, request?: Pick<Request, 'url'>): void {
+  // Azúcar sobre el punto único `readOrgBody` (body completo + query). Deuda C de F0-SEC, 2026-09-16.
+  readOrgBody(ctx, body, { route: tag, request });
 }
 
 export function jsonOk<T>(data: T, extra: Record<string, unknown> = {}, status = 200) {

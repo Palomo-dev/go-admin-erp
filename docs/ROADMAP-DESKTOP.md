@@ -8,7 +8,7 @@ Decisiones tomadas: offline vía **servidor Next embebido**, y **POS local-first
 | 0 | Quick wins y bugs críticos | 2-3 días | **Hecha** |
 | 1 | Instalador + firma de código | 3-5 días | Pendiente |
 | 2 | UI nativa | 4-6 días | Pendiente |
-| 3 | Offline real: Next embebido en 127.0.0.1 | 1-2 semanas | Pendiente |
+| 3 | Offline real: Next embebido en 127.0.0.1 | 1-2 semanas | **Hecha** (2026-09-16; queda la prueba con sesión y datos cacheados, ver abajo) |
 | 4 | POS local-first + impresión local | 6-10 semanas | Pendiente |
 
 Las fases 1, 2 y 3 son independientes entre sí y se pueden llevar en paralelo.
@@ -138,6 +138,17 @@ se lee bien sin tocar el zoom.
 
 Esta es la que hace que la app **abra y navegue sin internet**.
 
+[HECHO 2026-09-16 — ver `docs/desktop/FASE-3-NEXT-EMBEBIDO.md`. Verificado con el paquete
+`release/win-unpacked`: `server.js` de Next fuera del asar, `GET 127.0.0.1:47800/auth/login` → 200,
+`GET localhost:47800/` → 307; con `--host-resolver-rules="MAP * ~NOTFOUND, EXCLUDE 127.0.0.1,
+EXCLUDE localhost"` (todo DNS roto salvo loopback) la ventana carga el login desde el servidor
+local, el main declara OFFLINE y `/app/pos` se queda dentro de la ventana (redirige al login).
+Captura en `docs/desktop/evidencia/fase-3/`. Hallazgo importante: el standalone de Next precarga
+todas las rutas al arrancar y el primer request tardaba 10-40 s; el build del desktop lleva
+`experimental.preloadEntriesOnStart: false` (0,2 s). **Queda** el criterio de aceptación con
+sesión: iniciar sesión con red, visitar `/app/pos`, `/app/inventario` y `/app/crm`, apagar el WiFi
+y repetir; en esta sesión no había credenciales de un usuario de pruebas.]
+
 ### Prompt listo para pegar
 
 ```
@@ -214,21 +225,41 @@ explícito.
 2. Base de datos local en el proceso main: better-sqlite3 expuesto por IPC (o PGlite en el
    renderer si prefieres SQL idéntico al de Postgres). Esquema mínimo: sales, sale_items,
    payments, inventory_movements, cash_sessions, y el catálogo de productos/precios replicado.
+   [HECHO 2026-09-16 — variante IndexedDB en el renderer (`goadmin-catalog`, 12 stores con
+   índices por organización/sucursal/producto) para el catálogo; las lecturas del POS se
+   resuelven sobre él sin red. Ver docs/desktop/FASE-4A-LECTURA-OFFLINE.md. Las tablas de
+   venta (sales, payments, …) quedan para la fase 4B / outbox.]
 
 3. IDs UUID v7 generados en cliente para toda operación de venta. Esto da idempotencia natural:
    reenviar el mismo sobre dos veces no duplica nada.
+   [HECHO 2026-09-16 — UUID v4 (`crypto.randomUUID`) como `sales.id`; `POSService.checkout`
+   acepta `saleId`/`createdAt` y completa sin duplicar si la venta ya existe.
+   Ver docs/desktop/FASE-4B-VENTA-OFFLINE.md]
 
 4. Outbox por operación de negocio, no por petición HTTP. Una venta es un sobre atómico
    (cabecera + líneas + pagos + movimientos de inventario) que se sincroniza entero vía una RPC
    de Postgres transaccional, o no se sincroniza.
+   [PARCIAL 2026-09-16 — outbox por venta (`src/lib/offline/salesOutbox.ts`, IndexedDB
+   `goadmin-outbox`) reproducido con `POSService.checkout` idempotente; sin RPC atómica: una
+   reproducción puede quedar a medias y el reintento la completa. Las tablas de venta ya no pasan
+   por la cola HTTP genérica.]
 
 5. NUNCA borrar una operación tras N reintentos. Moverla a una bandeja "requiere revisión"
    visible para el administrador, con el error y el payload completo.
+   [HECHO 2026-09-16 — 5 intentos con backoff → `needs_review`; bandeja «Sin conexión» en la
+   cabecera del POS con error, «Reintentar» y «Exportar sobre»]
 
 6. Replicación del catálogo al iniciar sesión y en background: productos, precios, impuestos,
    categorías, clientes frecuentes, métodos de pago, sucursal y configuración de impresoras.
+   [HECHO 2026-09-16 — `src/lib/offline/catalogReplicator.ts`: al entrar al POS y a
+   /app/inicio y cada 10 min con red, por lotes de 500; además las RPC de lectura
+   (`pos_product_ranking`, …) se cachean por función + hash del body y NUNCA se encolan
+   (eran las «acciones pendientes» fantasma). Configuración de impresoras: ya cubierta por
+   `desktopLocalCache.ts` (impresión local). Ver docs/desktop/FASE-4A-LECTURA-OFFLINE.md.]
 
 7. UI: estado claro de "operando sin conexión — N ventas pendientes de sincronizar", con detalle.
+   [HECHO 2026-09-16 — banner de `OfflineIndicator` con el conteo, bandeja
+   `VentasPendientesDialog` con detalle, recibo y ticket marcados «Pendiente de sincronizar»]
 
 Criterio de aceptación: apagar el WiFi, hacer 10 ventas con impresión de ticket, cerrar la app,
 volver a abrirla todavía sin internet (las ventas deben seguir ahí), encender el WiFi y verificar

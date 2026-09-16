@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
-    const body: unknown = readOrgBody(ctx, await request.json().catch(() => null));
+    const body: unknown = readOrgBody(ctx, await request.json().catch(() => null), { request });
     // R13: identificadores con forma fija, nombre ≤120, descripción ≤500, idioma ISO o nada.
     const input = sanitizeAddLibraryInput(body);
     if (!input) {

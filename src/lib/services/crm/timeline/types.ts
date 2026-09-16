@@ -216,6 +216,9 @@ export function decodeCursor(cursor: string): { at: string; id: string } | null 
   const at = raw.slice(0, idx);
   const id = raw.slice(idx + 1);
   if (!at || !id || Number.isNaN(Date.parse(at))) return null;
+  // El id viaja crudo dentro de un `or=(…)` de PostgREST (`cursorFilter`): solo uuid o entero,
+  // nunca comas, paréntesis ni comillas que permitan añadir condiciones al filtro.
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return null;
   return { at, id };
 }
 

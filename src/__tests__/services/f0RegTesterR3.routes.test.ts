@@ -9,9 +9,8 @@
  *     sigue funcionando; `organization_id` ajeno en el body NUNCA sustituye a
  *     la de sesión en el upsert.
  *   - POST /api/crm/config/providers/test: misma org en el body → funciona;
- *     org ajena → debería ser 403 (HUECO: `readOrgBody` lanza fuera de todo
- *     `try` → la ruta revienta con la excepción sin manejar → 500 de Next;
- *     `it.failing` hasta que se envuelva como en el PUT).
+ *     org ajena → 403 FOREIGN_ORGANIZATION sin rate limit ni credenciales
+ *     (hueco de r3 cerrado en r4: `readOrgBody` envuelto como en el PUT).
  *   - GET /api/crm/config/credits: la RPC falla con 22023 también con UTC →
  *     500 controlado (2 llamadas, mensaje genérico, sin filtrar el de Postgres).
  * `OrgContextError` es la clase REAL (módulo hoja) para que el `instanceof`
@@ -28,6 +27,7 @@ const estado = {
   upserts: [] as Array<{ orgId: number; input: any }>,
   rateLimited: false,
   rateLimitCalls: 0,
+  credentialCalls: 0,
 };
 const rpcCalls: Array<{ name: string; args: any }> = [];
 
@@ -41,7 +41,7 @@ jest.mock('@/lib/security/rateLimit', () => ({
   checkRateLimit: async () => { estado.rateLimitCalls += 1; return { allowed: !estado.rateLimited, remaining: 4, resetAt: new Date(), count: 1 }; },
 }));
 jest.mock('@/lib/services/providerCredentials.server', () => ({
-  getProviderCredentials: async () => ({ provider: 'internal', source: 'org', isActive: true, credentials: {}, settings: {}, priority: 10 }),
+  getProviderCredentials: async () => { estado.credentialCalls += 1; return { provider: 'internal', source: 'org', isActive: true, credentials: {}, settings: {}, priority: 10 }; },
   listProviderConfigsSafe: async () => [],
   upsertProviderConfig: async (orgId: number, input: any) => { estado.upserts.push({ orgId, input }); return { id: 'x', ...input, configured: false }; },
   ProviderValidationError: class ProviderValidationError extends Error { status = 422; },
@@ -85,6 +85,7 @@ beforeEach(() => {
   estado.upserts = [];
   estado.rateLimited = false;
   estado.rateLimitCalls = 0;
+  estado.credentialCalls = 0;
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
 });
@@ -128,14 +129,13 @@ describe('POST /api/crm/config/providers/test — organización en el body', () 
     expect(await res.json()).toMatchObject({ ok: true, provider: 'internal' });
   });
 
-  // HUECO (medio): `readOrgBody(ctx, body)` en test/route.ts:142 lanza
-  // `OrgContextError(403)` fuera de cualquier try/catch → la ruta revienta con
-  // una excepción sin manejar (Next responde 500 genérico), no con el 403 que
-  // promete el informe del builder («body con otra org → 403»). El PUT de
-  // providers/route.ts sí lo envuelve. Pasa a verde al envolverlo igual.
-  it.failing('HUECO: body con otra organización → 403 (hoy: excepción sin manejar → 500)', async () => {
+  // Cerrado en r4 (QA r3 punto 1): `readOrgBody(ctx, body)` va dentro de un
+  // try/catch que convierte `OrgContextError(403)` en respuesta, como en el
+  // PUT de providers/route.ts. Antes escapaba como excepción sin manejar (500).
+  it('body con otra organización → 403 FOREIGN_ORGANIZATION (cerrado en r4)', async () => {
     const res = await postTest(req('/api/crm/config/providers/test', 'POST', { category: 'calendar', organization_id: 999 }));
     expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ ok: false, detail: 'Organización no permitida' });
   });
 
   // QA r2 punto 5, probado CONTANDO llamadas: el test de r2 («400 sin consumir
@@ -149,8 +149,12 @@ describe('POST /api/crm/config/providers/test — organización en el body', () 
     expect(estado.rateLimitCalls).toBe(1);
   });
 
-  it('la excepción que escapa es OrgContextError(403, FOREIGN_ORGANIZATION) — evidencia del hueco anterior', async () => {
-    await expect(postTest(req('/api/crm/config/providers/test', 'POST', { category: 'calendar', orgId: 999 }))).rejects.toMatchObject({ name: 'OrgContextError', statusCode: 403, code: 'FOREIGN_ORGANIZATION' });
+  it('org ajena (orgId): ya no escapa ninguna excepción; 0 rate limit, 0 credenciales y console.warn registrado', async () => {
+    const res = await postTest(req('/api/crm/config/providers/test', 'POST', { category: 'calendar', orgId: 999 }));
+    expect(res.status).toBe(403);
+    expect(estado.rateLimitCalls).toBe(0);
+    expect(estado.credentialCalls).toBe(0);
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('ajeno'), expect.objectContaining({ session: 7, body: 999, key: 'orgId' }));
   });
 });
 

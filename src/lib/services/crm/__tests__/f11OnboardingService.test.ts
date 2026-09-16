@@ -14,7 +14,9 @@ jest.mock('@/lib/utils/orgId', () => ({ getOrganizationId: () => 120 }));
 import {
   completeOnboardingInstance,
   createOnboardingInstance,
+  findOnboardingPipelineId,
   OnboardingIncompleteError,
+  OnboardingPipelineError,
   startOnboardingForWonOpportunity,
   updateOnboardingInstanceStatus,
   updateOnboardingStep,
@@ -202,5 +204,25 @@ describe('startOnboardingForWonOpportunity — firma para F10', () => {
     expect(st).toHaveLength(7);
     expect(st.filter((s) => s.is_won).map((s) => s.position)).toEqual([7]);
     expect(writesTo(db, 'pipelines', 'insert')[0].rows[0]).toMatchObject({ organization_id: ORG, pipeline_type: 'onboarding' });
+  });
+  it('deuda D1: branchId y createdBy viajan a la hija; sin ellos no se escriben (retrocompatible)', async () => {
+    const db = fixtures();
+    await startOnboardingForWonOpportunity(ORG, 'won-a', sb(db), { now: NOW, branchId: 7, createdBy: 'u-owner' });
+    expect(writesTo(db, 'opportunities', 'insert')[0].rows[0]).toMatchObject({ branch_id: 7, created_by: 'u-owner', metadata: { type: 'onboarding' } });
+    const db2 = fixtures();
+    await startOnboardingForWonOpportunity(ORG, 'won-a', sb(db2), { now: NOW });
+    const child = writesTo(db2, 'opportunities', 'insert')[0].rows[0];
+    expect('branch_id' in child).toBe(false);
+    expect('created_by' in child).toBe(false);
+  });
+  it('deuda D1: pipeline sin etapas → OnboardingPipelineError(no_stages) sin escrituras; findOnboardingPipelineId no crea nada', async () => {
+    const db = fixtures();
+    db.rows.stages = db.rows.stages.filter((s) => s.pipeline_id !== 'pl-onb-120');
+    await expect(startOnboardingForWonOpportunity(ORG, 'won-a', sb(db), { now: NOW })).rejects.toBeInstanceOf(OnboardingPipelineError);
+    await expect(startOnboardingForWonOpportunity(ORG, 'won-a', sb(db), { now: NOW })).rejects.toMatchObject({ reason: 'no_stages' });
+    expect(db.writes).toHaveLength(0);
+    expect(await findOnboardingPipelineId(ORG, sb(db))).toBe('pl-onb-120');
+    expect(await findOnboardingPipelineId(999, sb(db))).toBeNull();
+    expect(db.writes).toHaveLength(0);
   });
 });

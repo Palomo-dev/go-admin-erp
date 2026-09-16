@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     const ctx = await getServerOrgContext();
     requireTeamManager(ctx);
     const body = await readJson(request);
-    rejectForeignOrganization('CRM Sales Targets POST', body.organization_id, ctx);
+    rejectForeignOrganization('CRM Sales Targets POST', body, ctx, request);
     const userId = typeof body.user_id === 'string' ? body.user_id : '';
     if (!userId) return jsonFail(400, 'Falta user_id', { field: 'user_id' });
     const v = validateQuotaInput(body);

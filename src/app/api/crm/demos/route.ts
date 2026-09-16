@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     const body = await readJson(request);
-    const forbidden = foreignOrgResponse('CRM Demos POST', body, ctx.organizationId);
+    const forbidden = foreignOrgResponse('CRM Demos POST', body, ctx, request);
     if (forbidden) return forbidden;
     const v = validateCreateDemo(body);
     if (!v.ok) return NextResponse.json({ success: false, error: v.error }, { status: 400 });

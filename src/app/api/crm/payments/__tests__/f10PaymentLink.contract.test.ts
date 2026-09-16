@@ -6,7 +6,9 @@
  */
 import { createFakeSupabase, type FakeDb, type Row } from '@/lib/services/crm/__tests__/f10FakeSupabase';
 
-class FakeOrgContextError extends Error { statusCode = 401; code = 'UNAUTHORIZED'; }
+const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
+// Extiende la clase real: `readOrgBody` (punto único) lanza la real y las rutas hacen `instanceof`.
+class FakeOrgContextError extends RealOrgContextError { statusCode = 401; code = 'UNAUTHORIZED'; }
 let db: FakeDb;
 const PLATFORM_SK = 'sk_test_51platformkey_abcdefghijklmnop';
 const PLATFORM_WH = 'whsec_platform_0123456789abcdef';
@@ -20,14 +22,18 @@ function seed(): FakeDb {
       quotations: [
         { id: 'q-1', organization_id: 120, number: 'COT-0001', opportunity_id: 'op-1', converted_invoice_id: 'inv-1', payment_link_url: null, currency: 'COP', total: 6800000 },
         { id: 'q-2', organization_id: 120, number: 'COT-0002', opportunity_id: 'op-2', converted_invoice_id: null, payment_link_url: null, currency: 'COP', total: 100 },
-        { id: 'q-3', organization_id: 120, number: 'COT-0003', opportunity_id: 'op-3', converted_invoice_id: 'inv-1', payment_link_url: 'https://buy.stripe.com/ya-existe', currency: 'COP', total: 6800000 },
+        { id: 'q-3', organization_id: 120, number: 'COT-0003', opportunity_id: 'op-3', converted_invoice_id: 'inv-1', payment_link_url: 'https://buy.stripe.com/ya-existe', payment_link_amount: 5000000, payment_link_id: 'plink_existente', currency: 'COP', total: 6800000 },
+        // Deuda B1: enlace vigente cuyo importe (5 000 000) ya no coincide con el saldo (inv-4: 3 000 000) → se regenera.
+        { id: 'q-4', organization_id: 120, number: 'COT-0004', opportunity_id: 'op-4', converted_invoice_id: 'inv-4', payment_link_url: 'https://buy.stripe.com/viejo', payment_link_amount: 5000000, payment_link_id: 'plink_viejo', currency: 'COP', total: 6800000 },
         { id: 'q-9', organization_id: 121, number: 'COT-0009', opportunity_id: 'op-9', converted_invoice_id: 'inv-9', payment_link_url: null, currency: 'COP', total: 5 },
       ],
       invoice_sales: [
         { id: 'inv-1', organization_id: 120, number: 'FACT-0001', total: 6800000, balance: 5000000, status: 'partial', currency: 'COP', customer_id: 'c-1', opportunity_id: 'op-1', salesperson_id: null, commission_rate: null, commission_type: null },
+        { id: 'inv-4', organization_id: 120, number: 'FACT-0004', total: 6800000, balance: 3000000, status: 'partial', currency: 'COP', customer_id: 'c-1', opportunity_id: 'op-4', salesperson_id: null, commission_rate: null, commission_type: null },
         { id: 'inv-9', organization_id: 121, number: 'FACT-0009', total: 5, balance: 5, status: 'issued', currency: 'COP', customer_id: 'c-9', opportunity_id: 'op-9', salesperson_id: null, commission_rate: null, commission_type: null },
       ],
-      payments: [],
+      // Pago previo de 1.800.000: el fake recalcula el saldo como el trigger real (total − Σ pagos completed); sin él, 6.800.000 − 5.000.000 no cuadra.
+      payments: [{ id: 'pay-seed', organization_id: 120, source: 'invoice_sales', source_id: 'inv-1', status: 'completed', amount: 1800000, currency: 'COP', reference: 'anticipo-seed', method: 'cash' }],
       accounts_receivable: [{ id: 'ar-1', organization_id: 120, invoice_id: 'inv-1', balance: 5000000, status: 'partial' }],
       commissions: [],
       integration_connections: [],
@@ -37,12 +43,13 @@ function seed(): FakeDb {
 }
 
 jest.mock('@/lib/utils/orgContext', () => ({
-  OrgContextError: FakeOrgContextError,
+  OrgContextError: RealOrgContextError, // la clase real: `readOrgBody` lanza la real y las rutas hacen `instanceof`
   getServerOrgContext: jest.fn(async () => ({ organizationId: 120, userId: 'u-1', roleId: 2, roleName: 'x', isSuperAdmin: false, organizationName: 'Org', supabase: createFakeSupabase(db) })),
 }));
 jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: () => createFakeSupabase(db) }));
 
 const linkCalls: Array<{ secretKey: string; input: Record<string, unknown> }> = [];
+const deactivations: Array<{ secretKey: string; id: string }> = [];
 jest.mock('@/lib/services/crm/stripePaymentLinkService', () => {
   const actual = jest.requireActual('@/lib/services/crm/stripePaymentLinkService');
   const fakeAdapter = {
@@ -54,6 +61,7 @@ jest.mock('@/lib/services/crm/stripePaymentLinkService', () => {
       if (signature !== `sig:${webhookSecret}`) throw new Error('firma inválida');
       return JSON.parse(rawBody);
     }),
+    deactivatePaymentLink: jest.fn(async (secretKey: string, id: string) => { deactivations.push({ secretKey, id }); }),
   };
   return { ...actual, stripeAdapter: fakeAdapter };
 });
@@ -77,6 +85,7 @@ function stripeEvent(id: string, over: Record<string, unknown> = {}, meta: Recor
 beforeEach(() => {
   db = seed();
   linkCalls.length = 0;
+  deactivations.length = 0;
   delete process.env.STRIPE_SECRET_KEY;
   delete process.env.STRIPE_CRM_WEBHOOK_SECRET;
 });
@@ -106,7 +115,20 @@ describe('GET/POST /api/crm/payments/link', () => {
     expect(linkCalls[0].input).toMatchObject({ amountMinor: 500000000, currency: 'COP', metadata: { organization_id: '120', quotation_id: 'q-1', invoice_id: 'inv-1' } });
     const upd = writesTo('quotations').find((w) => w.op === 'update');
     expect(upd?.filters).toMatchObject({ id: 'q-1', organization_id: 120 });
-    expect(upd?.row).toMatchObject({ payment_link_url: 'https://buy.stripe.com/test_fake' });
+    expect(upd?.row).toMatchObject({ payment_link_url: 'https://buy.stripe.com/test_fake', payment_link_amount: 5000000, payment_link_id: 'plink_1' });
+  });
+
+  it('deuda B1: enlace vigente con importe distinto del saldo → 201, el anterior se desactiva por su id con la clave usada y se guardan url/importe/id nuevos', async () => {
+    process.env.STRIPE_SECRET_KEY = PLATFORM_SK;
+    const res = await linkPost(req('POST', '/api/crm/payments/link', { quotation_id: 'q-4' }));
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.data).toMatchObject({ reused: false, amount: 3000000, previous_link_deactivated: true });
+    expect(deactivations).toEqual([{ secretKey: PLATFORM_SK, id: 'plink_viejo' }]);
+    expect(linkCalls[0].input).toMatchObject({ amountMinor: 300000000 });
+    const upd = writesTo('quotations').find((w) => w.op === 'update');
+    expect(upd?.filters).toMatchObject({ id: 'q-4', organization_id: 120 });
+    expect(upd?.row).toMatchObject({ payment_link_url: 'https://buy.stripe.com/test_fake', payment_link_amount: 3000000, payment_link_id: 'plink_1' });
   });
 
   it('las credenciales de la organización tienen prioridad sobre la plataforma', async () => {

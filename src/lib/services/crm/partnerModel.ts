@@ -131,18 +131,26 @@ export function filterPartners(list: PartnerView[], f: PartnerListFilters): Part
   });
 }
 
-/** Dinero con la moneda dada; sin moneda, la cifra sola (nunca se inventa una). */
+/**
+ * Dinero con la moneda dada; sin moneda, la cifra sola (nunca se inventa una).
+ * Entero → sin decimales; con fracción → dos decimales fijos («250.000,50»,
+ * nunca «250.000,5»). Se redondea a centésimas antes de decidir.
+ */
 export function formatMoney(value: number | string | null | undefined, currency: string | null): string {
   const n = Number(value);
-  const amount = Number.isFinite(n) ? n : 0;
+  // `toFixed` redondea sobre el decimal exacto (sin el error de `n * 100`) y no pierde
+  // precisión con cifras ≥ 1e21; el `+ 0` convierte el `-0` de «-0.001» en 0 («$ 0», no «-$ 0»).
+  const amount = Number.isFinite(n) ? Number(n.toFixed(2)) + 0 : 0;
+  const digits = Number.isInteger(amount) ? 0 : 2;
+  const opts = { minimumFractionDigits: digits, maximumFractionDigits: digits };
   if (currency) {
     try {
-      return new Intl.NumberFormat('es-CO', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount);
+      return new Intl.NumberFormat('es-CO', { style: 'currency', currency, ...opts }).format(amount);
     } catch {
-      return `${new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(amount)} ${currency}`;
+      return `${new Intl.NumberFormat('es-CO', opts).format(amount)} ${currency}`;
     }
   }
-  return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(amount);
+  return new Intl.NumberFormat('es-CO', opts).format(amount);
 }
 
 export function formatRate(rate: number | string | null | undefined): string {

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     requireTeamManager(ctx);
     const { id } = await params;
     const body = await readJson(request);
-    rejectForeignOrganization('CRM Commissions Clawback', body.organization_id, ctx);
+    rejectForeignOrganization('CRM Commissions Clawback', body, ctx, request);
     const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
     if (!reason) return jsonFail(400, 'Falta el motivo del clawback (reason)', { field: 'reason' });
     const commission = await clawbackCommission(id, ctx.organizationId, reason, ctx.supabase, ctx.userId);

@@ -43,7 +43,8 @@ function seed(): FakeDb {
         { id: 'inv-1', organization_id: 120, number: 'FACT-0001', total: 6800000, balance: 5000000, status: 'partial', currency: 'COP', customer_id: 'c-1', opportunity_id: 'op-1', salesperson_id: null, commission_rate: null, commission_type: null },
         { id: 'inv-9', organization_id: 121, number: 'FACT-0009', total: 5, balance: 5, status: 'issued', currency: 'COP', customer_id: 'c-9', opportunity_id: 'op-9', salesperson_id: null, commission_rate: null, commission_type: null },
       ],
-      payments: [],
+      // Pago previo de 1.800.000: el fake recalcula el saldo como el trigger real (total − Σ pagos completed); sin él, 6.800.000 − 5.000.000 no cuadra.
+      payments: [{ id: 'pay-seed', organization_id: 120, source: 'invoice_sales', source_id: 'inv-1', status: 'completed', amount: 1800000, currency: 'COP', reference: 'anticipo-seed', method: 'cash' }],
       accounts_receivable: [{ id: 'ar-1', organization_id: 120, invoice_id: 'inv-1', balance: 5000000, status: 'partial' }],
       commissions: [],
       integration_connections: [],
@@ -60,6 +61,8 @@ function seed(): FakeDb {
       quotation_items: [],
       pipelines: [{ id: 'p-onb', organization_id: 120, pipeline_type: 'onboarding' }],
       stages: [{ id: 's-onb-1', pipeline_id: 'p-onb', position: 1 }],
+      // D1/D2 (2026-09-16): el paso «onboarding» delega en F11, que exige una plantilla activa.
+      onboarding_templates: [{ id: 'tpl-120', organization_id: 120, name: 'Estándar', steps: [{ day: 0, key: 'kickoff', owner: 'vendor', title: 'Kickoff' }], default_duration_days: 30, is_active: true }],
       tasks: [],
       contract_signatures: [
         { id: 'ct-1', organization_id: 120, opportunity_id: 'op-1', quotation_id: 'q-1', provider: 'documenso', provider_document_id: 'doc-120', status: 'sent', signers: [{ name: 'A', email: 'a@example.com' }] },
@@ -88,6 +91,8 @@ const invoice = () => db.rows.invoice_sales.find((i) => i.id === 'inv-1')!;
 const manual = (amount: number, reference: string, currency = 'COP') => ({ invoice_id: 'inv-1', amount, currency, method: 'cash', reference });
 
 beforeEach(() => { db = seed(); jest.clearAllMocks(); });
+/** Pagos hechos por la prueba (sin el anticipo de la semilla). */
+const newPayments = () => db.rows.payments.filter((p) => p.reference !== 'anticipo-seed');
 
 describe('T2-A Pago manual por registerCrmPayment (misma función que usa POST /api/crm/payments/register)', () => {
   it('A1 (r4) importe NEGATIVO → rechazado con code INVALID_AMOUNT / 400, sin escrituras y saldo intacto', async () => {
@@ -103,7 +108,7 @@ describe('T2-A Pago manual por registerCrmPayment (misma función que usa POST /
       expect(r).toMatchObject({ success: false, code: 'INVALID_AMOUNT', http_status: 400 });
     }
     expect(db.writes).toEqual([]);
-    expect(db.rows.payments).toHaveLength(0);
+    expect(newPayments()).toHaveLength(0);
   });
 
   it('A3 (r4) moneda distinta a la de la factura (USD sobre COP) → CURRENCY_MISMATCH / 400; minúsculas (cop) coinciden', async () => {
@@ -111,14 +116,18 @@ describe('T2-A Pago manual por registerCrmPayment (misma función que usa POST /
     expect(r).toMatchObject({ success: false, code: 'CURRENCY_MISMATCH', http_status: 400 });
     expect(String(r.message)).toMatch(/USD/);
     expect(String(r.message)).toMatch(/COP/);
-    expect(db.rows.payments).toHaveLength(0);
+    expect(newPayments()).toHaveLength(0);
     expect(Number(invoice().balance)).toBe(5000000);
     const ok = await registerCrmPayment(120, manual(100, 'ref-cop', 'cop'), client());
     expect(ok.success).toBe(true);
-    expect(db.rows.payments[0]).toMatchObject({ currency: 'COP', amount: 100 });
+    expect(newPayments()[0]).toMatchObject({ currency: 'COP', amount: 100 });
   });
 
-  it.failing('A4 dos pagos concurrentes con referencias DISTINTAS por el saldo completo → el segundo debe rechazarse; hoy ambos pasan la comprobación de saldo y la factura queda en negativo', async () => {
+  // Deuda A4 cerrada (2026-09-16): `it.failing` invertido. `registerCrmPayment`
+  // delega en la RPC `fn_register_crm_payment` (bloqueo de la factura con
+  // FOR UPDATE); el fake la ejecuta serializada. Detalle en
+  // `f10RegisterPaymentRpc.test.ts`.
+  it('A4 dos pagos concurrentes con referencias DISTINTAS por el saldo completo → solo uno aplica; el otro se rechaza por saldo y la factura queda en 0', async () => {
     const [a, b] = await Promise.all([
       registerCrmPayment(120, manual(5000000, 'manual-a'), client()),
       registerCrmPayment(120, manual(5000000, 'stripe:evt_b'), client()),
@@ -143,15 +152,19 @@ describe('T2-A Pago manual por registerCrmPayment (misma función que usa POST /
 describe('T2-B Enlace de pago y webhook', () => {
   const link = () => createPaymentLinkForQuotation(120, 'q-1', client(), { serviceClient: client(), adapter: fakeAdapter, readiness: { configured: true, source: 'platform', secretKey: PLATFORM_SK, webhookSecret: PLATFORM_WH, missing: [] } });
 
-  it.failing('B1 enlace creado por 5.000.000, abono manual deja el saldo en 3.000.000 → el enlace guardado cobra de más; debe regenerarse o rechazarse, hoy se reutiliza (reused:true) declarando el saldo nuevo', async () => {
+  // Deuda B1 cerrada (2026-09-16): `it.failing` invertido. Contrato nuevo:
+  // el servicio persiste `payment_link_amount`/`payment_link_id` y solo
+  // reutiliza si el saldo de la factura coincide; si cambió, desactiva el
+  // anterior por su id y crea uno nuevo (`f10PaymentLinkAmount.test.ts`).
+  it('B1 enlace creado por 5.000.000, abono manual deja el saldo en 3.000.000 → se regenera por el saldo nuevo (reused:false) en vez de reutilizar el de 5.000.000', async () => {
     const first = await link();
     expect(first?.reused).toBe(false);
     expect((fakeAdapter.createPaymentLink as jest.Mock).mock.calls[0][1].amountMinor).toBe(500000000);
     await registerCrmPayment(120, manual(2000000, 'abono-1'), client());
     const second = await link();
-    // Lo honesto: un enlace nuevo por 3.000.000 (o 409). Lo que pasa: reused:true con la URL del enlace de 5.000.000.
     expect(second?.reused).toBe(false);
     expect((fakeAdapter.createPaymentLink as jest.Mock).mock.calls[1]?.[1].amountMinor).toBe(300000000);
+    expect(db.rows.quotations.find((q) => q.id === 'q-1')).toMatchObject({ payment_link_amount: 3000000, payment_link_id: 'plink_1' });
   });
 
   it('B2 el webhook con el enlace viejo (5.000.000 > saldo 3.000.000) no aplica y deja actividad system: el dinero queda en Stripe (comportamiento documentado, sigue siendo un riesgo operativo)', async () => {
@@ -172,7 +185,7 @@ describe('T2-B Enlace de pago y webhook', () => {
     ]);
     expect([a.status, b.status]).toEqual([200, 200]);
     expect([a.body.applied, b.body.applied].filter(Boolean)).toHaveLength(1);
-    expect(db.rows.payments).toHaveLength(1);
+    expect(newPayments()).toHaveLength(1);
     expect(db.writes.filter((w) => w.table === 'invoice_sales' && w.op === 'update')).toHaveLength(1);
     expect(db.writes.filter((w) => w.table === 'accounts_receivable' && w.op === 'update')).toHaveLength(1);
     expect(Number(invoice().balance)).toBe(0);
@@ -183,7 +196,7 @@ describe('T2-B Enlace de pago y webhook', () => {
     const out = await processStripeWebhook(stripeEvent('evt_x', {}, { organization_id: '121' }), `sig:${PLATFORM_WH}`, { serviceClient: client(), adapter: fakeAdapter, env: { STRIPE_SECRET_KEY: PLATFORM_SK, STRIPE_CRM_WEBHOOK_SECRET: PLATFORM_WH } });
     expect(out.status).toBe(200);
     expect(out.body.applied).toBe(false);
-    expect(db.rows.payments).toHaveLength(0);
+    expect(newPayments()).toHaveLength(0);
   });
 
   it('B5 amount_total negativo, cero o decimal → 400 sin escrituras (no 200 ignorado: es un cuerpo inválido)', async () => {
@@ -241,24 +254,29 @@ describe('T2-D Pasos del cierre «al ganar» (wonCloseSteps) — idempotencia e 
     accrueCommission: async () => null,
   });
 
-  it.failing('D1 ejecutar «onboarding» dos veces (modal reabierto) crea DOS oportunidades hijas; F11 expone startOnboardingForWonOpportunity idempotente y nadie la llama', async () => {
+  // D1/D2 invertidos el 2026-09-16: `executeOnboarding`/`executeRenewal` delegan en
+  // `startOnboardingForWonOpportunity`/`scheduleRenewal` de F11 (idempotentes).
+  it('D1 ejecutar «onboarding» dos veces (modal reabierto) deja UNA sola oportunidad hija', async () => {
     await executeOnboarding(opp(), deps());
-    await executeOnboarding(opp(), deps());
+    const msg = await executeOnboarding(opp(), deps());
     expect(db.rows.opportunities.filter((o) => o.parent_opportunity_id === 'op-1')).toHaveLength(1);
+    expect(msg).toContain('no se duplicó');
   });
 
-  it('D1b el paso «onboarding» de F10 no crea instancia ni pasos de onboarding (onboarding_instances): la pestaña «Onboarding» de F11 queda vacía tras ganar', async () => {
+  it('D1b el paso «onboarding» crea la instancia de onboarding de F11 (la pestaña «Onboarding» ya no queda vacía)', async () => {
     await executeOnboarding(opp(), deps());
-    expect(db.rows.onboarding_instances ?? []).toHaveLength(0);
+    expect(db.rows.onboarding_instances ?? []).toHaveLength(1);
   });
 
-  it.failing('D2 ejecutar «renovación» dos veces crea 12 tareas; y con ciclo de 1 mes los hitos 120/90/60 quedan con vencimiento en el PASADO (F11 renewalService ya sabe omitirlos)', async () => {
+  it('D2 ejecutar «renovación» dos veces deja una sola renovación, cero tareas manuales y ningún hito en el pasado', async () => {
     await executeRenewal(opp(), deps());
     await executeRenewal(opp(), deps());
-    const tasks = db.rows.tasks.filter((t) => t.type === 'renovacion');
-    expect(tasks).toHaveLength(6);
+    expect(db.rows.tasks.filter((t) => t.type === 'renovacion')).toHaveLength(0);
+    expect(db.rows.opportunities.filter((o) => o.deal_type === 'renewal')).toHaveLength(1);
+    const milestones = db.rows.tasks.filter((t) => t.type === 'renewal_milestone');
+    expect(milestones.length).toBeGreaterThan(0);
     const now = Date.parse('2026-09-15T20:00:00.000Z');
-    expect(tasks.filter((t) => Date.parse(String(t.due_date)) < now)).toHaveLength(0);
+    expect(milestones.filter((t) => Date.parse(String(t.due_date)) <= now)).toHaveLength(0);
   });
 
   it('D3 el paso «referido» fija la tarea a +30 días con la fecha en la zona de la organización', async () => {

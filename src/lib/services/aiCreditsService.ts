@@ -9,16 +9,23 @@
  *     del plan (extraída de `checkAICredits` en F0-REG r2 para que
  *     `chargeAiCredits` la reutilice: 27 orgs con CRM no tenían fila y recibían
  *     500 en vez de 402). Desde r3 cubre también la fila «vacía» creada desde
- *     el navegador (`credits_reset_at IS NULL`) y delega en la RPC única
- *     `fn_provision_ai_settings` (migración crm_v4_f00_43); el código de aquí
- *     es el respaldo mientras la 43 no esté aplicada.
- *   - `getAIFeaturesForOrganization`: cupo del plan. Con la 43 aplicada lo
- *     responde `fn_ai_plan_quota` (la misma que usan el trigger de
- *     suscripciones y el cron mensual); sin ella, la regla equivalente en Node.
- *     Regla consolidada (QA r2 bajo 6): `custom_config.ai_credits` o
+ *     el navegador (`credits_reset_at IS NULL`). UNA sola fuente: la RPC
+ *     `fn_provision_ai_settings` (migración crm_v4_f00_43, atómica e
+ *     idempotente). F0-pulido (qa r4 REG «para el 10» 1): el respaldo en Node
+ *     (`ensureAiSettingsFallback`, `insert` + `update … is null`) se retiró
+ *     porque la 43 está en producción (verificado por MCP el 2026-09-16:
+ *     `fn_provision_ai_settings`, `fn_ai_plan_quota` y `fn_resolve_timezone`
+ *     en `pg_proc`). Solo cubría «función ausente» (PGRST202/42883), nunca
+ *     errores transitorios: un fallo de red en la RPC fallaba igual en las
+ *     consultas del respaldo. Ahora RPC ausente o rota → `Error` → el
+ *     llamador (`chargeAiCredits`) responde 402, nunca inventa saldo.
+ *   - `getAIFeaturesForOrganization`: cupo del plan = `fn_ai_plan_quota`
+ *     (la misma que usan el trigger de suscripciones y el cron mensual).
+ *     Regla (QA r2 bajo 6, hoy solo en SQL): `custom_config.ai_credits` o
  *     `.aiCredits` si es numérico (incluido 0) → ese valor; si no,
- *     `plans.ai_credits_monthly`; sin suscripción → 0 (antes Node daba 10 000
- *     a una org sin suscripción o con dos suscripciones: `.single()` fallaba).
+ *     `plans.ai_credits_monthly`; sin suscripción → 0. El respaldo en Node
+ *     (`planQuotaFallback`) también se retiró: RPC rota → cupo 0 y `error`
+ *     (fail-closed, igual que hacía el respaldo cuando SU consulta fallaba).
  *   - `consumeAICredits`: débito sin costo en USD; `@deprecated`, solo para los
  *     llamadores V3 que aún no migraron a `withAiCharge`.
  *   - `withAICreditsCheck`: `@deprecated`; delega en `withAiCharge` (cobro
@@ -59,93 +66,38 @@ interface PlanAIFeatures {
 const DEFAULT_PLAN_MODEL = 'gpt-4o-mini'; // = default de plans.ai_model; solo si el plan no lo trae
 const DEFAULT_PLAN_MAX_TOKENS = 1000;
 
-/** PostgREST: la función no existe todavía (migración 43 sin aplicar). */
-function isMissingFunction(error: { code?: string; message?: string } | null | undefined): boolean {
-  if (!error) return false;
-  if (error.code === 'PGRST202' || error.code === '42883') return true;
-  return /could not find the function|function .* does not exist/i.test(error.message ?? '');
-}
-
 const toInt = (v: unknown, fallback: number): number => {
   const n = typeof v === 'number' ? v : Number(v);
   return Number.isFinite(n) ? Math.round(n) : fallback;
 };
 
-/** `custom_config.ai_credits` o `.aiCredits` como entero no negativo, o null. */
-function customConfigCredits(cc: unknown): number | null {
-  if (!cc || typeof cc !== 'object') return null;
-  const rec = cc as Record<string, unknown>;
-  for (const key of ['ai_credits', 'aiCredits']) {
-    const raw = rec[key];
-    if (raw === undefined || raw === null || raw === '') continue;
-    const txt = String(raw).trim();
-    if (/^[0-9]{1,9}$/.test(txt)) return Number(txt);
-  }
-  return null;
-}
-
-interface SubscriptionQuotaRow {
-  plan_id: number | null;
-  status: string | null;
-  metadata: { custom_config?: unknown } | null;
-  created_at: string | null;
-  plans: { ai_credits_monthly?: number | null; ai_credits_max_rollover?: number | null; ai_model?: string | null; ai_max_tokens?: number | null } | null;
-}
-
-/**
- * Cupo del plan en Node — respaldo de `fn_ai_plan_quota` (mig. 43) con la
- * MISMA regla. Una sola consulta (suscripción + plan embebido); si la org
- * tiene varias suscripciones se toma la activa/en prueba más reciente.
- */
-async function planQuotaFallback(organizationId: number, supabase: SupabaseClient): Promise<PlanAIFeatures> {
-  const none: PlanAIFeatures = { aiCreditsMonthly: 0, aiCreditsMaxRollover: 0, aiModel: DEFAULT_PLAN_MODEL, aiMaxTokens: DEFAULT_PLAN_MAX_TOKENS };
-  const { data, error } = await supabase
-    .from('subscriptions')
-    .select('plan_id, status, metadata, created_at, plans:plan_id(ai_credits_monthly, ai_credits_max_rollover, ai_model, ai_max_tokens)')
-    .eq('organization_id', organizationId)
-    .order('created_at', { ascending: false })
-    .limit(5);
-  if (error) {
-    // Sin cupo conocido no se regala saldo: 0 (antes: 10 000 por defecto).
-    console.error('[aiCredits] No se pudo leer la suscripción:', error.message);
-    return none;
-  }
-  const rows = (data ?? []) as unknown as SubscriptionQuotaRow[];
-  const sub = rows.find((r) => r.status === 'active' || r.status === 'trialing') ?? rows[0];
-  if (!sub) return none;
-  // PostgREST devuelve la relación como objeto (FK única) aunque el tipo diga array.
-  const plan = (Array.isArray(sub.plans) ? sub.plans[0] : sub.plans) as SubscriptionQuotaRow['plans'];
-  const custom = customConfigCredits(sub.metadata?.custom_config);
-  const monthly = custom ?? Math.max(0, toInt(plan?.ai_credits_monthly, 0));
-  return {
-    aiCreditsMonthly: monthly,
-    aiCreditsMaxRollover: custom != null ? Math.min(custom * 2, 100_000) : Math.max(0, toInt(plan?.ai_credits_max_rollover, 0)),
-    aiModel: plan?.ai_model || DEFAULT_PLAN_MODEL,
-    aiMaxTokens: toInt(plan?.ai_max_tokens, DEFAULT_PLAN_MAX_TOKENS),
-  };
-}
+/** Cupo «desconocido»: 0 créditos y defaults de modelo. Nunca se regala saldo. */
+const NO_QUOTA: PlanAIFeatures = { aiCreditsMonthly: 0, aiCreditsMaxRollover: 0, aiModel: DEFAULT_PLAN_MODEL, aiMaxTokens: DEFAULT_PLAN_MAX_TOKENS };
 
 /**
  * Obtiene las características de IA según el plan de la organización.
- * Fuente única: RPC `fn_ai_plan_quota` (mig. 43). Mientras no exista, la
- * regla equivalente en Node (`planQuotaFallback`).
+ * Fuente única: RPC `fn_ai_plan_quota` (mig. 43, en producción). Si la RPC
+ * falla o devuelve algo sin `monthly` numérico → cupo 0 (`NO_QUOTA`) y
+ * `console.error`: sin cupo conocido no se regala saldo. No hay respaldo en
+ * Node (F0-pulido): la regla vive una sola vez, en SQL.
  */
 async function getAIFeaturesForOrganization(organizationId: number, supabase: SupabaseClient = getSupabaseClient()): Promise<PlanAIFeatures> {
   const { data, error } = await supabase.rpc('fn_ai_plan_quota', { p_org: organizationId });
-  if (!error) {
-    const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null | undefined;
-    if (row && typeof row === 'object' && Number.isFinite(Number(row.monthly))) {
-      return {
-        aiCreditsMonthly: Math.max(0, toInt(row.monthly, 0)),
-        aiCreditsMaxRollover: Math.max(0, toInt(row.max_rollover, 0)),
-        aiModel: typeof row.model === 'string' && row.model ? row.model : DEFAULT_PLAN_MODEL,
-        aiMaxTokens: toInt(row.max_tokens, DEFAULT_PLAN_MAX_TOKENS),
-      };
-    }
-  } else if (!isMissingFunction(error)) {
-    console.error('[aiCredits] fn_ai_plan_quota falló:', error.message);
+  if (error) {
+    console.error('[aiCredits] fn_ai_plan_quota falló; cupo 0 (fail-closed):', error.message);
+    return NO_QUOTA;
   }
-  return planQuotaFallback(organizationId, supabase);
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null | undefined;
+  if (!row || typeof row !== 'object' || !Number.isFinite(Number(row.monthly))) {
+    console.error('[aiCredits] fn_ai_plan_quota devolvió un valor sin `monthly` numérico; cupo 0 (fail-closed)', { organizationId });
+    return NO_QUOTA;
+  }
+  return {
+    aiCreditsMonthly: Math.max(0, toInt(row.monthly, 0)),
+    aiCreditsMaxRollover: Math.max(0, toInt(row.max_rollover, 0)),
+    aiModel: typeof row.model === 'string' && row.model ? row.model : DEFAULT_PLAN_MODEL,
+    aiMaxTokens: toInt(row.max_tokens, DEFAULT_PLAN_MAX_TOKENS),
+  };
 }
 
 export interface EnsuredAiSettings {
@@ -158,22 +110,6 @@ export interface EnsuredAiSettings {
   aiMaxTokens: number;
 }
 
-interface AiSettingsRow {
-  credits_remaining: number | null;
-  credits_reset_at: string | null;
-  model: string | null;
-  max_tokens: number | null;
-}
-
-function toEnsured(row: AiSettingsRow | null | undefined, flags: { created: boolean; provisioned: boolean }): EnsuredAiSettings {
-  return {
-    ...flags,
-    credits_remaining: Math.max(0, toInt(row?.credits_remaining, 0)),
-    aiModel: row?.model ?? DEFAULT_PLAN_MODEL,
-    aiMaxTokens: toInt(row?.max_tokens, DEFAULT_PLAN_MAX_TOKENS),
-  };
-}
-
 /**
  * Garantiza que la organización tenga fila `ai_settings` PROVISIONADA:
  *   - sin fila → se crea con el cupo mensual del plan;
@@ -182,92 +118,34 @@ function toEnsured(row: AiSettingsRow | null | undefined, flags: { created: bool
  *     comportamiento: nace con 0 créditos) → se le asigna
  *     `greatest(saldo, cupo)` y `credits_reset_at = now()` (QA r2 medio 1);
  *   - fila ya provisionada → se devuelve tal cual.
- * Usa service role (la columna de saldo no es escribible por sesión desde la
- * migración crm_v4_f00_38). Devuelve el saldo resultante; el llamador decide
- * si alcanza. Si la lectura falla, lanza: no se inventa un saldo.
+ * Todo eso lo hace la RPC `fn_provision_ai_settings` (mig. 43, atómica e
+ * idempotente, service role: la columna de saldo no es escribible por sesión
+ * desde la migración crm_v4_f00_38). Devuelve el saldo resultante; el
+ * llamador decide si alcanza.
  *
- * Fuente única: RPC `fn_provision_ai_settings` (mig. 43, atómica e
- * idempotente). Mientras no esté aplicada, el respaldo en Node hace lo mismo
- * con `insert` (23505 → releer) y `update … is('credits_reset_at', null)`
- * (0 filas → releer): dos peticiones concurrentes no provisionan dos veces.
+ * Fail-closed: RPC con error (incluida «función ausente») o respuesta sin
+ * `credits_remaining` numérico → `Error`. Nunca se inventa un saldo ni se
+ * cae a una segunda implementación (F0-pulido: el respaldo en Node se retiró
+ * con la 43 en producción; ver cabecera).
  *
  * `client` es inyectable para tests y para que `aiCostService` reutilice su
  * propio cliente en la misma petición.
  */
 export async function ensureAiSettings(organizationId: number, client?: SupabaseClient): Promise<EnsuredAiSettings> {
   const supabase = client ?? getSupabaseClient();
-  const viaRpc = await provisionViaRpc(organizationId, supabase);
-  if (viaRpc) return viaRpc;
-  return ensureAiSettingsFallback(organizationId, supabase, 0);
-}
-
-async function provisionViaRpc(organizationId: number, supabase: SupabaseClient): Promise<EnsuredAiSettings | null> {
   const { data, error } = await supabase.rpc('fn_provision_ai_settings', { p_org: organizationId });
-  if (error) {
-    if (isMissingFunction(error)) return null; // migración 43 sin aplicar → respaldo en Node
-    throw new Error(`fn_provision_ai_settings: ${error.message}`);
-  }
+  if (error) throw new Error(`fn_provision_ai_settings: ${error.message}`);
   const row = data as Record<string, unknown> | null | undefined;
-  if (!row || typeof row !== 'object' || !Number.isFinite(Number(row.credits_remaining))) return null;
-  return toEnsured(
-    { credits_remaining: toInt(row.credits_remaining, 0), credits_reset_at: null, model: typeof row.model === 'string' ? row.model : null, max_tokens: toInt(row.max_tokens, DEFAULT_PLAN_MAX_TOKENS) },
-    { created: row.created === true, provisioned: row.provisioned === true },
-  );
-}
-
-async function ensureAiSettingsFallback(organizationId: number, supabase: SupabaseClient, attempt: number): Promise<EnsuredAiSettings> {
-  const { data: existing, error } = await supabase
-    .from('ai_settings')
-    .select('credits_remaining, credits_reset_at, model, max_tokens')
-    .eq('organization_id', organizationId)
-    .maybeSingle();
-  if (error) throw new Error(`ai_settings: ${error.message}`);
-  const row = existing as AiSettingsRow | null;
-
-  if (row && row.credits_reset_at != null) {
-    return toEnsured(row, { created: false, provisioned: false });
+  if (!row || typeof row !== 'object' || !Number.isFinite(Number(row.credits_remaining))) {
+    throw new Error('fn_provision_ai_settings: respuesta sin credits_remaining numérico');
   }
-
-  const aiFeatures = await getAIFeaturesForOrganization(organizationId, supabase);
-  const initialCredits = Math.max(0, Math.round(aiFeatures.aiCreditsMonthly || 0));
-  const now = new Date().toISOString();
-
-  if (!row) {
-    const { error: insertError } = await supabase.from('ai_settings').insert({
-      organization_id: organizationId,
-      credits_remaining: initialCredits,
-      credits_reset_at: now,
-      provider: 'openai',
-      model: aiFeatures.aiModel,
-      max_tokens: aiFeatures.aiMaxTokens,
-      is_active: true,
-    });
-    if (insertError) {
-      // Carrera benigna: otra petición creó la fila entre el select y el insert.
-      if (insertError.code === '23505' && attempt < 2) return ensureAiSettingsFallback(organizationId, supabase, attempt + 1);
-      throw new Error(`ai_settings insert: ${insertError.message}`);
-    }
-    return { created: true, provisioned: true, credits_remaining: initialCredits, aiModel: aiFeatures.aiModel, aiMaxTokens: aiFeatures.aiMaxTokens };
-  }
-
-  // Fila sin provisionar: el filtro `is('credits_reset_at', null)` hace la
-  // escritura idempotente frente a dos peticiones concurrentes.
-  const { data: updated, error: updateError } = await supabase
-    .from('ai_settings')
-    .update({
-      credits_remaining: Math.max(Math.max(0, toInt(row.credits_remaining, 0)), initialCredits),
-      credits_reset_at: now,
-      updated_at: now,
-    })
-    .eq('organization_id', organizationId)
-    .is('credits_reset_at', null)
-    .select('credits_remaining, credits_reset_at, model, max_tokens')
-    .maybeSingle();
-  if (updateError) throw new Error(`ai_settings provision: ${updateError.message}`);
-  if (updated) return toEnsured(updated as AiSettingsRow, { created: false, provisioned: true });
-  // 0 filas: otra petición la provisionó entre el select y el update → releer.
-  if (attempt < 2) return ensureAiSettingsFallback(organizationId, supabase, attempt + 1);
-  throw new Error('ai_settings: no se pudo provisionar la fila');
+  return {
+    created: row.created === true,
+    provisioned: row.provisioned === true,
+    credits_remaining: Math.max(0, toInt(row.credits_remaining, 0)),
+    aiModel: typeof row.model === 'string' && row.model ? row.model : DEFAULT_PLAN_MODEL,
+    aiMaxTokens: toInt(row.max_tokens, DEFAULT_PLAN_MAX_TOKENS),
+  };
 }
 
 /**

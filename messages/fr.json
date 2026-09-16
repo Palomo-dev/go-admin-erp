@@ -1806,5 +1806,77 @@
     "signOut": "Se déconnecter",
     "profilePhoto": "Photo de profil",
     "user": "Utilisateur"
+  },
+  "posCustomerDisplay": {
+    "indicator": {
+      "connected": "Écran client connecté",
+      "disconnected": "Sans écran",
+      "ariaLabel": "Écran client",
+      "notEmitting": "Désactivé dans Configuration › POS › Écran client",
+      "unsupported": "Ce navigateur ne prend pas en charge l'écran client (pas de BroadcastChannel). Mettez-le à jour ou utilisez l'application de bureau."
+    },
+    "menu": {
+      "open": "Ouvrir l'écran client",
+      "close": "Fermer"
+    },
+    "toast": {
+      "dragHint": "Faites glisser la fenêtre vers l'écran client et appuyez sur F11",
+      "popupBlocked": "Le navigateur a bloqué la fenêtre contextuelle. Autorisez les fenêtres contextuelles pour ce site et réessayez.",
+      "closeFromOpener": "Impossible de fermer depuis ici : fermez-le depuis sa propre fenêtre. Si cette caisse l'a ouvert avant de recharger, « Ouvrir » le récupère."
+    },
+    "config": {
+      "title": "Écran client",
+      "subtitle": "Second écran tourné vers le client",
+      "description": "Un second écran tourné vers le client affiche le récapitulatif de la commande, l'état du paiement et la marque du commerce. La caisse reste la seule source de vérité : l'écran ne fait que refléter.",
+      "masterSwitch": "Écran client",
+      "masterOn": "Activé : les caisses diffusent la commande vers l'écran client",
+      "masterOff": "Désactivé : les caisses ne diffusent rien",
+      "openNow": "Ouvrir maintenant",
+      "openNowHint": "Ouvre l'écran dans une fenêtre séparée. Sur le bureau il se place seul sur le second moniteur ; dans le navigateur faites-le glisser vers l'autre écran et appuyez sur F11.",
+      "saved": "Écran client mis à jour",
+      "savedOn": "Les caisses commenceront à diffuser sans recharger",
+      "savedOff": "Les caisses cesseront de diffuser",
+      "saveError": "La configuration de l'écran client n'a pas pu être enregistrée",
+      "loadError": "La configuration de l'écran client n'a pas pu être chargée",
+      "disabledNotice": "L'écran peut être ouvert pour le tester, mais il n'affichera pas la commande tant que l'interrupteur n'est pas activé.",
+      "comingSoon": "Pourboire à l'écran, évaluation, détail des taxes et mode veille arrivent en phase 2."
+    }
+  },
+  "posDisplay": {
+    "welcome": "Bienvenue",
+    "cashier": "Servi par {name}",
+    "connecting": "Connexion à la caisse…",
+    "noTerminal": "Ouvrez le point de vente sur cet ordinateur pour relier l’écran",
+    "updateRequired": "Veuillez mettre à jour l’écran",
+    "updateRequiredHint": "La caisse utilise une autre version. Rechargez cette fenêtre.",
+    "unsupported": "Ce navigateur ne peut pas afficher l’écran client",
+    "qty": "{qty} ×",
+    "andMore": "et {count} de plus",
+    "taxExcludedLine": "hors taxe",
+    "lineDiscount": "Remise",
+    "subtotal": "Sous-total",
+    "discount": "Remise",
+    "discountWithLabel": "Remise ({label})",
+    "taxIncluded": "TVA incluse",
+    "taxes": "Taxes",
+    "taxMixed": "Taxes (en partie incluses)",
+    "total": "Total",
+    "payment": {
+      "cash": "Paiement en espèces",
+      "received": "Reçu",
+      "change": "Monnaie",
+      "card": "Paiement par carte",
+      "cardWith": "Paiement par carte · {provider}",
+      "cardInstructions": "Suivez les instructions du terminal de paiement",
+      "qr": "Paiement par QR",
+      "qrWith": "Paiement avec {provider}",
+      "qrInstructions": "Suivez les instructions du caissier"
+    },
+    "thanks": {
+      "title": "Merci pour votre achat",
+      "paid": "Total payé"
+    },
+    "fullscreen": "Plein écran",
+    "poweredBy": "GO Admin"
   }
 }

@@ -8,12 +8,18 @@
  *  - Tipos raros de `phone_number_id` (float, negativo, booleano, objeto,
  *    array, 2^53+1 como número JSON crudo, 1e400) dentro de la entrada de A.
  *  - H2 con `entry.id` de B, desconocido y ausente.
- *  - H4 (NUEVA): una `message_template_status_update` de B que ADEMÁS trae
- *    `value.metadata.phone_number_id` de A. El plan resuelve la `change` por el
- *    número (A) y la conserva; la entrada se reconstruye con `id = waba-b`, y
- *    el procesamiento resuelve las organizaciones de la plantilla por el WABA
- *    de la entrada, no por el número. Resultado: la plantilla de B se pausa con
- *    la firma de A. Los casos H4 van en `test.failing` (rojo = hueco abierto).
+ *  - H4 (tester r3; CERRADO en el builder r4): una `message_template_status_update`
+ *    de B que ADEMÁS trae `value.metadata.phone_number_id` de A. Hasta r3 el
+ *    plan resolvía la `change` por el número (A) y la conservaba con
+ *    `id = waba-b`, y el procesamiento aplicaba la plantilla por el WABA de B:
+ *    la plantilla de B se pausaba con la firma de A. Ahora los `field` de
+ *    plantilla NUNCA se resuelven por número: con `metadata.phone_number_id`
+ *    la `change` se descarta como anomalía (`phone_number_on_template_change`),
+ *    sin consultar la base; y la ruta entrega al servicio las organizaciones
+ *    que autorizó (`authorizedOrganizationIds`) para que interseque.
+ *  - Coherencia número ↔ WABA (r4): un `messages` de A bajo un `entry.id` que
+ *    resuelve a B → 403 `mixed_channels`.
+ *  - Rate limit por IP (r4): la 121.ª petición en un minuto → 429 sin consultar.
  *  - Firmas con el secreto de otro canal o con el global sobre un payload de
  *    canal; canal global + canal propio en el mismo payload.
  *  - Replay del mismo payload firmado (la ruta no lo impide: lo documenta).
@@ -40,7 +46,8 @@ jest.mock('svix', () => ({ Webhook: class { verify(): void { /* no se usa */ } }
 
 type Change = { field: string; value: Record<string, unknown> };
 type Payload = { entry: Array<{ id?: unknown; changes: Change[] }> };
-const processWebhookPayload = jest.fn<Promise<void>, [Payload]>(async () => undefined);
+type ProcessOpts = { authorizedOrganizationIds?: number[] } | undefined;
+const processWebhookPayload = jest.fn<Promise<void>, [Payload, ProcessOpts]>(async () => undefined);
 const lookups: string[] = [];
 jest.mock('@/lib/services/integrations/whatsapp', () => ({
   whatsappCloudService: {
@@ -57,11 +64,13 @@ jest.mock('@/lib/services/integrations/whatsapp', () => ({
       lookups.push(`waba:${String(wabaId)}:${typeof wabaId}`);
       return Object.values(CHANNELS).filter((c) => c.wabaId === String(wabaId)).map((c) => ({ channelId: c.channelId, organizationId: c.organizationId }));
     },
-    processWebhookPayload: (payload: Payload) => processWebhookPayload(payload),
+    processWebhookPayload: (payload: Payload, opts?: ProcessOpts) => processWebhookPayload(payload, opts),
   },
 }));
 
 import { POST } from '../route';
+import { MAX_LOOKUPS } from '@/lib/services/integrations/whatsapp/webhookAuthorization';
+import { _resetRateLimits } from '@/lib/security/rateLimit';
 
 function messagesChange(phoneNumberId: unknown): Change {
   return {
@@ -83,8 +92,8 @@ const templateChangeOfB = (extraValue: Record<string, unknown> = {}): Change => 
 function sign(body: string, secret: string): string {
   return `sha256=${crypto.createHmac('sha256', secret).update(body, 'utf8').digest('hex')}`;
 }
-function postRaw(raw: string, secret: string | null, signatureOverride?: string): Promise<Response> {
-  const headers: Record<string, string> = { 'content-type': 'application/json' };
+function postRaw(raw: string, secret: string | null, signatureOverride?: string, ip = '203.0.113.7'): Promise<Response> {
+  const headers: Record<string, string> = { 'content-type': 'application/json', 'x-forwarded-for': ip };
   if (signatureOverride !== undefined) headers['x-hub-signature-256'] = signatureOverride;
   else if (secret) headers['x-hub-signature-256'] = sign(raw, secret);
   return POST(new NextRequest('http://localhost/api/integrations/whatsapp/webhook', { method: 'post', headers, body: raw }));
@@ -107,6 +116,7 @@ let warnSpy: jest.SpyInstance;
 beforeEach(() => {
   processWebhookPayload.mockClear();
   lookups.length = 0;
+  _resetRateLimits();
   process.env.META_APP_SECRET = GLOBAL;
   delete process.env.WHATSAPP_APP_SECRET;
   warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -202,33 +212,101 @@ describe('fallo 2 (H2) del tester r2 · plantilla de B dentro de la entrada de A
   });
 });
 
-describe('H4 (NUEVO) · plantilla de B con el phone_number_id de A dentro del value: el plan resuelve por número, el procesamiento por WABA', () => {
+describe('H4 (tester r3, cerrado en r4) · plantilla de B con el phone_number_id de A dentro del value', () => {
   // Un webhook real de plantilla no trae `metadata.phone_number_id`; el
-  // atacante (org 7, con su propio app_secret) lo añade para que la `change`
-  // resuelva a SU canal. La entrada conserva `id = waba-b`, y
-  // `processWebhookPayload` resuelve las organizaciones de la plantilla por ese
-  // WABA → `applyTemplateStatusUpdate(..., [8])` pausa la plantilla de B.
-  test.failing('entry.id = waba-b + plantilla de B con metadata.phone_number_id = pn-a, firmado por A → NO debe llegar al procesamiento con el WABA de B', async () => {
+  // atacante (org 7, con su propio app_secret) lo añadía para que la `change`
+  // resolviera a SU canal mientras la entrada conservaba `id = waba-b`.
+  test('entry.id = waba-b + plantilla de B con metadata.phone_number_id = pn-a, firmado por A → NO debe llegar al procesamiento con el WABA de B', async () => {
     const res = await post(payloadOf({ id: 'waba-b', changes: [templateChangeOfB({ metadata: { phone_number_id: 'pn-a' } })] }), SECRET_A);
-    // Esperado (seguro): 403 mixed_channels o descarte de la change.
     const reachedB = forwardedChanges().some((f) => f.entryId === 'waba-b' && (f.change.value as { message_template_id?: string }).message_template_id === TPL_B_ID);
     expect(res.status === 403 || !reachedB).toBe(true);
   });
 
-  test('evidencia del hueco: hoy responde 200 y entrega la plantilla de B al procesamiento con entry.id = waba-b (sin consultar el WABA)', async () => {
+  test('r4: la change es una anomalía → se descarta SIN consultar la base; sin cambios resolubles el plan cae al global y la firma de A no vale → 403 invalid_signature', async () => {
     const res = await post(payloadOf({ id: 'waba-b', changes: [templateChangeOfB({ metadata: { phone_number_id: 'pn-a' } })] }), SECRET_A);
-    expect(res.status).toBe(200);
-    expect(lookups).toEqual(['phone:pn-a:string']);
-    expect(forwardedChanges()).toEqual([expect.objectContaining({ entryId: 'waba-b' })]);
-    expect(forwardedTemplateIds()).toEqual([TPL_B_ID]);
-    expect(warnSpy.mock.calls.find((c) => String(c[0]).includes('Cambios descartados'))).toBeUndefined();
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe('invalid_signature');
+    expect(lookups).toEqual([]);
+    expect(processWebhookPayload).not.toHaveBeenCalled();
   });
 
-  test('variante con quality_update: mismo camino', async () => {
+  test('r4: la misma anomalía firmada por la app de la plataforma → 200, pero la change se descarta y se registra (phone_number_on_template_change); nada llega con waba-b', async () => {
+    const res = await post(payloadOf({ id: 'waba-b', changes: [templateChangeOfB({ metadata: { phone_number_id: 'pn-a' } })] }), GLOBAL);
+    expect(res.status).toBe(200);
+    expect(forwardedTemplateIds()).toEqual([]);
+    const dropped = warnSpy.mock.calls.find((c) => String(c[0]).includes('Cambios descartados'))?.[1] as { scope: string; droppedChanges: Array<{ reason: string }> };
+    expect(dropped.scope).toBe('global');
+    expect(dropped.droppedChanges).toEqual([expect.objectContaining({ entryIndex: 0, changeIndex: 0, reason: 'phone_number_on_template_change' })]);
+  });
+
+  test('r4: la plantilla LEGÍTIMA (sin metadata) bajo waba-a firmada por A → 200 y el servicio recibe authorizedOrganizationIds = [7]', async () => {
+    const tplA = { field: 'message_template_status_update', value: { event: 'PAUSED', message_template_id: 'meta-tpl-of-org-7' } };
+    const res = await post(payloadOf({ id: 'waba-a', changes: [tplA] }), SECRET_A);
+    expect(res.status).toBe(200);
+    expect(lookups).toEqual(['waba:waba-a:string']);
+    expect(processWebhookPayload).toHaveBeenCalledTimes(1);
+    expect(processWebhookPayload.mock.calls[0][1]).toEqual({ authorizedOrganizationIds: [7] });
+  });
+
+  test('r4: bajo el ámbito global el servicio recibe authorizedOrganizationIds = undefined (sin intersección)', async () => {
+    const res = await post(payloadOf({ id: 'waba-g', changes: [messagesChange('pn-g')] }), GLOBAL);
+    expect(res.status).toBe(200);
+    expect(processWebhookPayload.mock.calls[0][1]).toEqual({ authorizedOrganizationIds: undefined });
+  });
+
+  test('variante con quality_update: mismo camino (descarte sin consulta, 403 con la firma de A)', async () => {
     const quality: Change = { field: 'message_template_quality_update', value: { message_template_id: TPL_B_ID, new_quality_score: 'RED', metadata: { phone_number_id: 'pn-a' } } };
     const res = await post(payloadOf({ id: 'waba-b', changes: [quality] }), SECRET_A);
+    expect(res.status).toBe(403);
+    expect(lookups).toEqual([]);
+    expect(processWebhookPayload).not.toHaveBeenCalled();
+  });
+
+  test('variante con un field de plantilla futuro (message_template_components_update) con número inyectado: también se descarta', async () => {
+    const future: Change = { field: 'message_template_components_update', value: { message_template_id: TPL_B_ID, metadata: { phone_number_id: 'pn-a' } } };
+    const res = await post(payloadOf({ id: 'waba-b', changes: [future] }), SECRET_A);
+    expect(res.status).toBe(403);
+    expect(lookups).toEqual([]);
+  });
+});
+
+describe('r4 · coherencia número ↔ WABA de la entrada (regla general)', () => {
+  test('messages de pn-a (A) bajo entry.id = waba-b (B), firmado por A → 403 mixed_channels; nada se procesa', async () => {
+    const res = await post(payloadOf({ id: 'waba-b', changes: [messagesChange('pn-a')] }), SECRET_A);
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe('mixed_channels');
+    expect(lookups).toEqual(['phone:pn-a:string', 'waba:waba-b:string']);
+    expect(processWebhookPayload).not.toHaveBeenCalled();
+  });
+
+  test('messages de pn-a bajo su propio WABA (waba-a) → 200 (coherente)', async () => {
+    const res = await post(payloadOf({ id: 'waba-a', changes: [messagesChange('pn-a')] }), SECRET_A);
     expect(res.status).toBe(200);
-    expect(forwardedChanges()).toEqual([expect.objectContaining({ entryId: 'waba-b' })]);
+    expect(forwardedPhoneIds()).toEqual(['pn-a']);
+  });
+
+  test('messages de pn-a bajo un WABA desconocido → 200: un WABA que no resuelve no contradice al número', async () => {
+    const res = await post(payloadOf({ id: 'waba-zz', changes: [messagesChange('pn-a')] }), SECRET_A);
+    expect(res.status).toBe(200);
+    expect(forwardedPhoneIds()).toEqual(['pn-a']);
+  });
+
+  test('messages de pn-a bajo un WABA cuyo único canal es OTRO número de la MISMA organización sin app_secret → 200 (mismo tenant: coherente)', async () => {
+    CHANNELS['pn-a3'] = { channelId: 'ch-a3', organizationId: 7, appSecret: null, wabaId: 'waba-a3' };
+    try {
+      const res = await post(payloadOf({ id: 'waba-a3', changes: [messagesChange('pn-a')] }), SECRET_A);
+      expect(res.status).toBe(200);
+      expect(forwardedPhoneIds()).toEqual(['pn-a']);
+    } finally {
+      delete CHANNELS['pn-a3'];
+    }
+  });
+
+  test('messages de pn-g (canal de la plataforma) bajo entry.id = waba-a (secreto propio de A) → 403 mixed_channels con cualquiera de los dos secretos', async () => {
+    const body = payloadOf({ id: 'waba-a', changes: [messagesChange('pn-g')] });
+    expect((await post(body, GLOBAL)).status).toBe(403);
+    expect((await post(body, SECRET_A)).status).toBe(403);
+    expect(processWebhookPayload).not.toHaveBeenCalled();
   });
 });
 
@@ -285,19 +363,51 @@ describe('firmas con otro secreto, ámbito global y replay', () => {
 });
 
 describe('coste antes de la firma y límites', () => {
-  test('26 identificadores distintos → 403 too_many_channels SIN consultar la base', async () => {
-    const changes = Array.from({ length: 26 }, (_, i) => messagesChange(`pn-${i}`));
+  test(`${MAX_LOOKUPS + 1} identificadores distintos → 403 too_many_channels SIN consultar la base`, async () => {
+    const changes = Array.from({ length: MAX_LOOKUPS + 1 }, (_, i) => messagesChange(`pn-${i}`));
     const res = await post(payloadOf({ id: 'waba-a', changes }), SECRET_A);
     expect(res.status).toBe(403);
     expect((await res.json()).error).toBe('too_many_channels');
     expect(lookups).toEqual([]);
   });
 
-  test('OBSERVADO: 25 números desconocidos con firma basura → 25 consultas a la base ANTES del 403 (sin rate limit en la ruta)', async () => {
-    const changes = Array.from({ length: 25 }, (_, i) => messagesChange(`pn-${i}`));
+  test('r4: MAX_LOOKUPS es 10; 9 números desconocidos + el WABA con firma basura → 10 consultas como máximo ANTES del 403', async () => {
+    expect(MAX_LOOKUPS).toBe(10);
+    const changes = Array.from({ length: MAX_LOOKUPS - 1 }, (_, i) => messagesChange(`pn-${i}`));
     const res = await postRaw(JSON.stringify(payloadOf({ id: 'waba-a', changes })), null, 'sha256=' + '0'.repeat(64));
     expect(res.status).toBe(403);
-    expect(lookups.filter((l) => l.startsWith('phone:'))).toHaveLength(25);
+    expect(lookups.filter((l) => l.startsWith('phone:'))).toHaveLength(MAX_LOOKUPS - 1);
+    expect(lookups.length).toBeLessThanOrEqual(MAX_LOOKUPS);
+  });
+
+  test('r4: 10 números desconocidos + 1 WABA = 11 identificadores → too_many_channels sin consultar', async () => {
+    const changes = Array.from({ length: MAX_LOOKUPS }, (_, i) => messagesChange(`pn-${i}`));
+    const res = await postRaw(JSON.stringify(payloadOf({ id: 'waba-a', changes })), null, 'sha256=' + '0'.repeat(64));
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe('too_many_channels');
+    expect(lookups).toEqual([]);
+  });
+
+  test('r4: rate limit por IP: la 121.ª petición en la ventana → 429 con Retry-After y SIN consultar la base ni procesar', async () => {
+    const raw = JSON.stringify(payloadOf({ id: 'waba-a', changes: [messagesChange('pn-a')] }));
+    const sig = sign(raw, SECRET_A);
+    for (let i = 0; i < 120; i++) expect((await postRaw(raw, null, sig, '198.51.100.9')).status).toBe(200);
+    lookups.length = 0;
+    processWebhookPayload.mockClear();
+    const res = await postRaw(raw, null, sig, '198.51.100.9');
+    expect(res.status).toBe(429);
+    expect((await res.json()).error).toBe('rate_limited');
+    expect(Number(res.headers.get('retry-after'))).toBeGreaterThanOrEqual(1);
+    expect(lookups).toEqual([]);
+    expect(processWebhookPayload).not.toHaveBeenCalled();
+    // Otra IP no comparte el cubo.
+    expect((await postRaw(raw, null, sig, '198.51.100.10')).status).toBe(200);
+  });
+
+  test('r4: el 429 va ANTES de parsear el JSON: un cuerpo inválido tras el límite también recibe 429', async () => {
+    for (let i = 0; i < 120; i++) await postRaw('{}', null, 'sha256=' + '0'.repeat(64), '198.51.100.11');
+    const res = await postRaw('no-json', null, undefined, '198.51.100.11');
+    expect(res.status).toBe(429);
   });
 
   test('el mismo id repetido 25 veces se consulta UNA vez (memoización)', async () => {

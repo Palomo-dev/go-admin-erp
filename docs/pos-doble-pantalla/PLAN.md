@@ -85,10 +85,23 @@ ventana Electron secundaria, y la configuración de la pantalla.
 ### 3.2 Transporte: local primero, remoto como extensión
 
 ```ts
+// Firma real (src/lib/pos/display/transport.ts). El transporte es dueño del
+// sobre: publish() recibe un borrador y él añade v, seq, terminalId, instanceId.
 interface DisplayTransport {
-  publish(msg: DownMessage): void;
+  publish(msg: DownMessageDraft): void;
+  announce(hello: HelloDraft, state: DisplayState): void; // hello y luego state, misma vuelta
   onUp(handler: (msg: UpMessage) => void): () => void;
+  startHeartbeat(): void;
+  stopHeartbeat(): void;
   close(): void;
+}
+interface DisplayReceiver {
+  send(msg: UpMessageDraft): void;
+  onDown(handler: (msg: DownMessage) => void): () => void;
+  releaseActiveInstance(): void;
+  close(): void;
+  // getters: activeInstanceId, lastSeq, lastReceivedAt, lastByeAt, lastStaleAt,
+  //          incompatibleVersionAt, incompatibleVersionCount
 }
 ```
 
@@ -498,6 +511,34 @@ esto es el resumen para quien construya B, C y D):
 - `DisplayLine.total` es `qty × unitPrice` **bruto** (antes de descuento), sin
   redondeo por línea, para que las líneas sumen exactamente el `subtotal`. Los
   `modifiers[].extraPrice` son informativos: ya van dentro de `unitPrice`.
+- **Totales: la fuente de verdad es el motor que ve el cajero.** En el POS
+  conviven tres cálculos (`posService.calculateCartTotals`, `TaxSummary` con
+  `calculateCartTaxes`, y `CheckoutDialog`), y el cajero mira `TaxSummary`, que
+  honra `item.tax_excluded` (botón "Excluir impuesto") y el override de
+  `organization_taxes`. Por eso `DisplayCart.subtotal` es siempre Σ de líneas
+  brutas, y la Parte B pasa `{ discountTotal, taxTotal, total }` calculados con
+  `calculateCartTaxes` como *override* a `projectCartForDisplay`. Sin override
+  se usan los campos del `Cart`. Cada `DisplayLine` lleva `taxExcluded` y
+  `taxIncluded`; `DisplayCart.taxIncluded` es "alguna línea incluida" y con
+  carrito mixto la pantalla mira las líneas.
+- **Variantes:** `DisplayLine.variant` trae los pares de `product.variant_data`
+  (Talla: M, Color: Azul) para pintarlos como badges igual que `CartView`.
+- **Presencia pantalla → caja:** la pantalla emite `display_alive` (cada 1 s,
+  con `capabilities`) y `display_bye` al cerrar; el transporte de la caja
+  expone `lastDisplaySeenAt` y de ahí sale el indicador verde/gris de §5.1.
+  Limitación de F0: una pantalla por terminal (con dos, el `bye` de una deja
+  el indicador en gris ≤ 1 s).
+- **Adopción de instancia:** la pantalla sigue a una instancia. Ventana de
+  elección de 500 ms tras `need_snapshot`: releva un `hello` solo si es
+  estrictamente mejor (`sessionOpen` primero, luego `seq` mayor). Watchdog de
+  3 s sin mensajes: suelta la instancia (`lastStaleAt`) para que el siguiente
+  `need_snapshot` no vaya a una pestaña muerta; `releaseActiveInstance()` lo
+  hace a demanda al entrar en *Conectando*.
+- **Versión incompatible:** un sobre con `v ≠ 1` se descarta pero deja
+  `incompatibleVersionAt`; la pantalla muestra "Actualice la pantalla" si es
+  reciente y no llegan mensajes válidos.
+- **`hello → state` es un contrato:** tras relevar a otra instancia se usa
+  `announce(hello, state)` para que el receptor no descarte el primer `state`.
 
 Reglas:
 - `state` se emite **coalescido**: los cambios en una misma vuelta de eventos

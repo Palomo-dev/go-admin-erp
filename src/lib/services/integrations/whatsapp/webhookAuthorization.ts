@@ -43,11 +43,28 @@
  *    canales sin app_secret propio (o con uno de relleno) resuelven aquí.
  *
  * Reglas:
- *  1. Cada `change` se resuelve a un conjunto de ámbitos: por su
- *     `value.metadata.phone_number_id` si lo trae y, si no lo trae (estado y
- *     calidad de plantillas), por el WABA `entry.id` →
- *     `credentials.business_account_id`. Un `phone_number_id` presente pero de
- *     tipo inválido no resuelve a nada (y no se consulta).
+ *  1. Cada `change` se resuelve a un conjunto de ámbitos SEGÚN SU `field`
+ *     (F0-SEC r4, H4 del tester r3):
+ *     - `message_template_*` (estado y calidad de plantillas): SIEMPRE por el
+ *       WABA `entry.id` → `credentials.business_account_id`, nunca por
+ *       `value.metadata.phone_number_id`. Meta no envía `metadata` en esos
+ *       cambios; si viene, es una anomalía y la `change` se DESCARTA con motivo
+ *       `phone_number_on_template_change` (en todo ámbito, también el global)
+ *       y se registra. Antes, un número de A inyectado en una plantilla de B
+ *       hacía que el plan la autorizase por el número y el procesamiento la
+ *       aplicase por el WABA de B: la plantilla de B se pausaba con la firma de A.
+ *     - cualquier otro `field`: por su `phone_number_id` si lo trae; si no lo
+ *       trae, por el WABA `entry.id`. Un `phone_number_id` presente pero de tipo
+ *       inválido no resuelve a nada (y no se consulta).
+ *     Regla general de coherencia (`entry_waba_mismatch`): si una `change`
+ *     resuelve por número y el `entry.id` de su entrada resuelve a canales que
+ *     NO comparten ni el ámbito ni la organización del número, la `change`
+ *     carga con los dos ámbitos y el payload entero cae en la regla 2 (403
+ *     `mixed_channels`): un WABA de B con un número de A es, por definición,
+ *     un payload mezclado. Un WABA que no resuelve a nadie no contradice al
+ *     número (el canal puede no tener `business_account_id` guardado), y un
+ *     WABA de la MISMA organización tampoco (dos números del mismo WABA, uno
+ *     con app_secret propio y otro sin él, son un solo tenant).
  *  2. La unión de ámbitos de todos los cambios tiene que tener tamaño <= 1.
  *     Dos secretos distintos, o un secreto de canal más el global → 403.
  *  3. Con ámbito `channel`, los cambios que no resuelven a ningún canal se
@@ -56,12 +73,19 @@
  *     suyos ni siquiera dentro de una entrada que también trae los suyos. Una
  *     entrada que se queda sin cambios se descarta entera.
  *  4. Con ámbito `global` (o sin ningún cambio resoluble), se verifica con
- *     `META_APP_SECRET` y se procesan todas las entradas: las firmó la app de
- *     la plataforma, y el procesamiento ya ignora los números desconocidos y
- *     los WABAs sin canal (`applyTemplateStatusUpdate` exige organización).
+ *     `META_APP_SECRET` y se procesan todas las entradas salvo las anómalas
+ *     (`phone_number_on_template_change`): las firmó la app de la plataforma, y
+ *     el procesamiento ya ignora los números desconocidos y los WABAs sin canal
+ *     (`applyTemplateStatusUpdate` exige organización).
  *  5. Más de `MAX_LOOKUPS` identificadores distintos en un solo payload → 403
- *     `too_many_channels` (Meta agrupa de pocos en pocos; miles de ids es abuso
- *     contra la base, no un webhook).
+ *     `too_many_channels` (Meta agrupa de pocos en pocos; decenas de ids es
+ *     abuso contra la base, no un webhook). Cuentan los `phone_number_id` y los
+ *     WABAs de las entradas con algún cambio resoluble.
+ *  6. Lo que el plan autorizó viaja al procesamiento: la ruta pasa
+ *     `plan.organizationIds` (ámbito `channel`) a
+ *     `processWebhookPayload(payload, { authorizedOrganizationIds })`, que
+ *     interseca con ellas lo que resuelva por su cuenta. El servicio nunca
+ *     decide la organización por un dato que el plan no autorizó.
  *
  * Módulo puro: la resolución contra la base se inyecta (`WebhookChannelResolver`)
  * para poder probar los casos multi-organización sin Supabase.
@@ -87,7 +111,23 @@ export type DroppedChangeReason =
   | 'invalid_phone_number_id'
   | 'unknown_phone_number'
   | 'missing_waba'
-  | 'unknown_waba';
+  | 'unknown_waba'
+  /** F0-SEC r4 (H4): cambio de plantilla con `metadata.phone_number_id`: Meta nunca lo envía; se descarta en todo ámbito. */
+  | 'phone_number_on_template_change';
+
+/**
+ * Motivos que descartan la `change` en TODO ámbito, también bajo la app de la
+ * plataforma (regla 4): son anomalías de forma, no cambios que «no resuelven».
+ */
+const DROP_IN_ANY_SCOPE: ReadonlySet<DroppedChangeReason> = new Set<DroppedChangeReason>(['malformed_change', 'phone_number_on_template_change']);
+
+/** Prefijo de los `field` de plantilla (estado, calidad, y los que Meta añada con el mismo prefijo). */
+const TEMPLATE_FIELD_PREFIX = 'message_template_';
+
+/** `true` para los `field` de plantilla. La comparte el procesamiento (regla 6). */
+export function isTemplateField(field: unknown): boolean {
+  return typeof field === 'string' && field.startsWith(TEMPLATE_FIELD_PREFIX);
+}
 
 export interface DroppedChange {
   entryIndex: number;
@@ -114,7 +154,13 @@ export type WebhookAuthPlan =
       organizationIds: number[];
     };
 
-export const MAX_LOOKUPS = 25;
+/**
+ * F0-SEC r4 (qa r3 §4): 10 identificadores distintos por payload. Un webhook
+ * real de Meta trae una entrada con uno o pocos cambios de un mismo WABA; el
+ * presupuesto acota lo que una petición sin firma válida puede costar en
+ * consultas antes del 403 (además del rate limit por IP de la ruta).
+ */
+export const MAX_LOOKUPS = 10;
 
 /**
  * Identificador de Meta (`phone_number_id`, `entry.id` = WABA) normalizado a
@@ -138,7 +184,7 @@ function scopeOf(channel: ResolvedChannel): string {
 
 type ChangeShape = {
   present: false;
-  reason: 'malformed_change';
+  reason: 'malformed_change' | 'phone_number_on_template_change';
 } | {
   present: true;
   /** `phone_number_id` normalizado; `null` si no viene (cambio de WABA) o `'invalid'` si viene con tipo inválido. */
@@ -146,12 +192,22 @@ type ChangeShape = {
   phoneInvalid: boolean;
 };
 
+/**
+ * Forma de una `change` a efectos de autorización. Los cambios de plantilla
+ * (`message_template_*`) NUNCA se describen por número (H4): si traen
+ * `metadata.phone_number_id` —Meta no lo envía ahí— se descartan como anomalía.
+ */
 function describeChange(change: unknown): ChangeShape {
   if (!change || typeof change !== 'object') return { present: false, reason: 'malformed_change' };
   const value = (change as { value?: unknown }).value;
   const metadata = value && typeof value === 'object' ? (value as { metadata?: unknown }).metadata : undefined;
   const raw = metadata && typeof metadata === 'object' ? (metadata as { phone_number_id?: unknown }).phone_number_id : undefined;
-  if (raw === undefined || raw === null) return { present: true, phoneNumberId: null, phoneInvalid: false };
+  const phonePresent = raw !== undefined && raw !== null;
+  if (isTemplateField((change as { field?: unknown }).field)) {
+    if (phonePresent) return { present: false, reason: 'phone_number_on_template_change' };
+    return { present: true, phoneNumberId: null, phoneInvalid: false };
+  }
+  if (!phonePresent) return { present: true, phoneNumberId: null, phoneInvalid: false };
   const id = normalizeMetaId(raw);
   return { present: true, phoneNumberId: id, phoneInvalid: id === null };
 }
@@ -191,9 +247,11 @@ export async function planWebhookAuthorization(
     const wabaId = normalizeMetaId((entry as { id?: unknown })?.id);
     for (const change of changesOf(entry)) {
       const shape = describeChange(change);
-      if (!shape.present) continue;
+      if (!shape.present || shape.phoneInvalid) continue;
       if (shape.phoneNumberId !== null) distinctPhoneIds.add(shape.phoneNumberId);
-      else if (!shape.phoneInvalid && wabaId) distinctWabaIds.add(wabaId);
+      // El WABA se consulta para los cambios sin número (los resuelve) y para
+      // los que sí lo traen (regla 1, coherencia número ↔ WABA de la entrada).
+      if (wabaId) distinctWabaIds.add(wabaId);
     }
   }
   if (distinctPhoneIds.size + distinctWabaIds.size > MAX_LOOKUPS) {
@@ -203,6 +261,10 @@ export async function planWebhookAuthorization(
   // Resolver una vez por id (memoizado) y anotar cada CAMBIO.
   const phoneCache = new Map<string, ResolvedChannel | null>();
   const wabaCache = new Map<string, ResolvedChannel[]>();
+  const channelsOfWaba = async (id: string): Promise<ResolvedChannel[]> => {
+    if (!wabaCache.has(id)) wabaCache.set(id, await resolver.byBusinessAccountId(id));
+    return wabaCache.get(id) ?? [];
+  };
   const resolutions: ChangeResolution[] = [];
   for (let entryIndex = 0; entryIndex < entries.length; entryIndex++) {
     const entry = entries[entryIndex];
@@ -225,14 +287,29 @@ export async function planWebhookAuthorization(
         if (!phoneCache.has(id)) phoneCache.set(id, await resolver.byPhoneNumberId(id));
         const ch = phoneCache.get(id);
         if (ch) {
-          scopes.add(scopeOf(ch));
+          const phoneScope = scopeOf(ch);
+          scopes.add(phoneScope);
           organizationIds.add(ch.organizationId);
+          // Regla 1 (coherencia): el WABA de la entrada, si resuelve, tiene que
+          // compartir ámbito u organización con el número. Si no, la `change`
+          // carga con los dos ámbitos y el payload cae en la regla 2
+          // (`mixed_channels`).
+          if (wabaId) {
+            const wabaChannels = await channelsOfWaba(wabaId);
+            const coherent = wabaChannels.length === 0
+              || wabaChannels.some((wc) => scopeOf(wc) === phoneScope || wc.organizationId === ch.organizationId);
+            if (!coherent) {
+              for (const wc of wabaChannels) {
+                scopes.add(scopeOf(wc));
+                organizationIds.add(wc.organizationId);
+              }
+            }
+          }
         } else reason = 'unknown_phone_number';
       } else if (!wabaId) {
         reason = 'missing_waba';
       } else {
-        if (!wabaCache.has(wabaId)) wabaCache.set(wabaId, await resolver.byBusinessAccountId(wabaId));
-        const channels = wabaCache.get(wabaId) ?? [];
+        const channels = await channelsOfWaba(wabaId);
         for (const ch of channels) {
           scopes.add(scopeOf(ch));
           organizationIds.add(ch.organizationId);
@@ -287,15 +364,18 @@ export async function planWebhookAuthorization(
     }
     // Regla 4: bajo la plataforma se conserva todo lo que sea un cambio con forma
     // de cambio (el procesamiento ignora lo que no resuelve). Las entradas
-    // vacías o malformadas no aportan nada y no se cuentan como descartes.
-    const rebuilt = rebuild((r) => r.reason !== 'malformed_change');
+    // vacías o malformadas no aportan nada y no se cuentan como descartes; las
+    // anomalías de forma (H4) sí se descartan y se registran.
+    const rebuilt = rebuild((r) => r.reason === null || !DROP_IN_ANY_SCOPE.has(r.reason));
     return {
       kind: 'verify',
       scope: 'global',
       secret: globalSecret,
       entries: rebuilt.entries,
       droppedEntryIndexes: [],
-      droppedChanges: [],
+      droppedChanges: resolutions
+        .filter((r) => r.reason === 'phone_number_on_template_change')
+        .map((r) => ({ entryIndex: r.entryIndex, changeIndex: r.changeIndex, reason: 'phone_number_on_template_change' as const })),
       organizationIds: Array.from(new Set(resolutions.flatMap((r) => Array.from(r.organizationIds)))),
     };
   }

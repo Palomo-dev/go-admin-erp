@@ -32,7 +32,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     } catch {
       /* body vacío */
     }
-    readOrgBody(ctx, body);
+    readOrgBody(ctx, body, { request });
     const force = body.force === true;
     const provider = normalizeSttProvider(body.provider) ?? null;
     const sync = request.nextUrl.searchParams.get('sync') === '1';

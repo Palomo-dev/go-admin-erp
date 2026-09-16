@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     const body = await readJson(request);
-    const forbidden = foreignOrgResponse('CRM ROI POST', body, ctx.organizationId);
+    const forbidden = foreignOrgResponse('CRM ROI POST', body, ctx, request);
     if (forbidden) return forbidden;
     const inputs = sanitizeInputs(body?.inputs);
     if (!inputs) {

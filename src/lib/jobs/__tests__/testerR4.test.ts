@@ -8,10 +8,11 @@
  *  - Permisos en las RUTAS (`GET /api/crm/jobs`, `POST …/retry`) con
  *    `getServerOrgContext` mockeado y `check_user_permission` mockeada:
  *    rol 4 sin permiso ⇒ 403, RPC con error ⇒ 403, con permiso ⇒ 200/`canRetry`,
- *    Manager ve pero no reintenta; contexto parcial (sin `userId`) ⇒ sin RPC.
+ *    Manager ve y reintenta solo si la BD le concede `crm.jobs.*` (r5);
+ *    contexto parcial (sin `userId`) ⇒ sin RPC.
  *  - `hasOrgAdminOrPermission`: solo `data === true` concede.
  *  - Presupuesto F11: la primera tarea consume el total ⇒ la segunda ni arranca.
- *  - `maintenance` con presupuesto total ya agotado: residuo documentado.
+ *  - `maintenance` con presupuesto total ya agotado: no arranca (N-3, r5).
  *  - `email`: abort previo + id ajeno ⇒ ninguna consulta.
  *
  * Corre en `TZ=UTC` y `TZ=America/Bogota`. Sin datos reales.
@@ -44,6 +45,7 @@ jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: jest.fn(()
 
 import { sendWhatsApp } from '@/lib/services/crm/whatsapp/outboundService';
 import { dispatchScheduledEmail } from '@/lib/services/crm/email/sendService';
+import { getServiceClient } from '@/lib/supabase/server-service';
 import { runMaintenance } from '../handlers/maintenance';
 import { runHealthRecalculate } from '../scheduled/healthRecalculate';
 import { runRenewalsSync } from '../scheduled/renewalsSync';
@@ -209,14 +211,34 @@ describe('tester r4 — permisos en las rutas (check_user_permission mockeada)',
     new NextRequest('http://localhost/api/crm/jobs/0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f/retry', { method: 'POST', body: '{}', headers: { 'content-type': 'application/json' } });
   const params = { params: Promise.resolve({ id: '0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f' }) };
 
-  it('Empleado (4) sin admin.full_access ⇒ GET 403 y POST retry 403; la RPC se consultó con el usuario/org de la sesión', async () => {
-    const rpc = jest.fn(async () => ({ data: false, error: null }));
+  /** `check_user_permission` por código; lo que no esté en `grants` ⇒ false. */
+  const rpcByCode = (grants: Record<string, boolean>): jest.Mock =>
+    jest.fn(async (_fn: string, args: { p_permission_code: string }) => ({ data: grants[args.p_permission_code] === true, error: null }));
+  const codesAsked = (rpc: jest.Mock) =>
+    rpc.mock.calls.filter((c: unknown[]) => c[0] === 'check_user_permission').map((c: unknown[]) => (c[1] as { p_permission_code: string }).p_permission_code);
+  /** Service client cuya cola está vacía: si el permiso pasa, `retryJob` responde 404. */
+  const emptyServiceSb = () => ({
+    from: () => {
+      const chain: Record<string, unknown> = {};
+      for (const m of ['select', 'eq']) chain[m] = () => chain;
+      chain.maybeSingle = async () => ({ data: null, error: null });
+      return chain;
+    },
+  });
+
+  it('Empleado (4) sin crm.jobs.* ⇒ GET 403 y POST retry 403; la RPC se consultó con el usuario/org de la sesión y los códigos propios (nunca admin.full_access)', async () => {
+    const rpc = rpcByCode({});
     (getServerOrgContext as jest.Mock).mockResolvedValue(session(4, rpc));
     const g = await jobsGet(getReq());
     expect(g.status).toBe(403);
+    expect(await g.json()).toMatchObject({ error: 'Requiere permiso crm.jobs.view' });
     const r = await retryPost(retryReq(), params);
     expect(r.status).toBe(403);
-    expect(rpc).toHaveBeenCalledWith('check_user_permission', { p_user_id: 'user-uuid', p_organization_id: 105, p_permission_code: 'admin.full_access' });
+    expect(await r.json()).toMatchObject({ error: 'Requiere permisos crm.jobs.view y crm.jobs.retry' });
+    expect(rpc).toHaveBeenCalledWith('check_user_permission', { p_user_id: 'user-uuid', p_organization_id: 105, p_permission_code: 'crm.jobs.view' });
+    // r5 cierre: `view=false` corta; `crm.jobs.retry` no se pregunta en ninguna de las dos rutas (1 RPC por petición).
+    expect(codesAsked(rpc)).toEqual(['crm.jobs.view', 'crm.jobs.view']);
+    expect(codesAsked(rpc)).not.toContain('admin.full_access');
   });
 
   it('Empleado (4) con la RPC en error ⇒ 403 en ambas (fail-closed), nunca 500', async () => {
@@ -226,37 +248,71 @@ describe('tester r4 — permisos en las rutas (check_user_permission mockeada)',
     expect((await retryPost(retryReq(), params)).status).toBe(403);
   });
 
-  it('Empleado (4) con admin.full_access por cargo ⇒ GET 200 con canRetry:true', async () => {
-    const rpc = jest.fn(async () => ({ data: true, error: null }));
+  it('Empleado (4) con SOLO crm.jobs.retry por cargo ⇒ GET 403 y POST retry 403 con UNA sola RPC (view): no ve ⇒ no reintenta (r5 cierre, QA r5 hallazgo 3)', async () => {
+    const rpc = rpcByCode({ 'crm.jobs.retry': true });
+    (getServerOrgContext as jest.Mock).mockResolvedValue(session(4, rpc));
+    const g = await jobsGet(getReq());
+    expect(g.status).toBe(403);
+    expect(codesAsked(rpc)).toEqual(['crm.jobs.view']);
+    expect((await retryPost(retryReq(), params)).status).toBe(403);
+    expect(codesAsked(rpc)).toEqual(['crm.jobs.view', 'crm.jobs.view']);
+    expect(getServiceClient).not.toHaveBeenCalled();
+  });
+
+  it('Empleado (4) con crm.jobs.view y crm.jobs.retry por cargo ⇒ GET 200 con canRetry:true (dos RPC: view y luego retry); POST retry pasa el permiso', async () => {
+    const rpc = rpcByCode({ 'crm.jobs.view': true, 'crm.jobs.retry': true });
     (getServerOrgContext as jest.Mock).mockResolvedValue(session(4, rpc));
     const g = await jobsGet(getReq());
     expect(g.status).toBe(200);
     expect(await g.json()).toMatchObject({ success: true, canRetry: true, total: 0 });
+    expect(codesAsked(rpc)).toEqual(['crm.jobs.view', 'crm.jobs.retry']);
+    (getServiceClient as jest.Mock).mockReturnValueOnce(emptyServiceSb());
+    expect((await retryPost(retryReq(), params)).status).toBe(404); // llegó a retryJob: la cola simulada está vacía
   });
 
-  it('Manager (5) ⇒ GET 200 con canRetry:false y POST retry 403 (la RPC dice false)', async () => {
-    const rpc = jest.fn(async () => ({ data: false, error: null }));
-    (getServerOrgContext as jest.Mock).mockResolvedValue(session(5, rpc));
+  it('Empleado (4) con crm.jobs.view pero sin crm.jobs.retry ⇒ GET 200 con canRetry:false (dos RPC: view y luego retry) y POST retry 403', async () => {
+    const rpc = rpcByCode({ 'crm.jobs.view': true });
+    (getServerOrgContext as jest.Mock).mockResolvedValue(session(4, rpc));
     const g = await jobsGet(getReq());
     expect(g.status).toBe(200);
     expect(await g.json()).toMatchObject({ success: true, canRetry: false });
+    expect(codesAsked(rpc)).toEqual(['crm.jobs.view', 'crm.jobs.retry']);
     expect((await retryPost(retryReq(), params)).status).toBe(403);
   });
 
+  it('Manager (5) con los dos códigos por rol (f00_45) ⇒ GET 200 con canRetry:true y POST retry pasa el permiso (decisión del dueño, r5)', async () => {
+    const rpc = rpcByCode({ 'crm.jobs.view': true, 'crm.jobs.retry': true });
+    (getServerOrgContext as jest.Mock).mockResolvedValue(session(5, rpc));
+    const g = await jobsGet(getReq());
+    expect(g.status).toBe(200);
+    expect(await g.json()).toMatchObject({ success: true, canRetry: true });
+    (getServiceClient as jest.Mock).mockReturnValueOnce(emptyServiceSb());
+    expect((await retryPost(retryReq(), params)).status).toBe(404);
+  });
+
+  it('Manager (5) con un cargo que niega crm.jobs.view y crm.jobs.retry ⇒ 403 en ambas: ser rol 5 no concede nada por sí mismo', async () => {
+    const rpc = rpcByCode({});
+    (getServerOrgContext as jest.Mock).mockResolvedValue(session(5, rpc));
+    expect((await jobsGet(getReq())).status).toBe(403);
+    expect((await retryPost(retryReq(), params)).status).toBe(403);
+    expect(rpc).toHaveBeenCalled();
+  });
+
   it('rol 9 llamado "Super Admin" sin is_super_admin ni permiso ⇒ 403 en ambas (regla 6: el nombre no concede)', async () => {
-    const rpc = jest.fn(async () => ({ data: false, error: null }));
+    const rpc = rpcByCode({});
     (getServerOrgContext as jest.Mock).mockResolvedValue(session(9, rpc, { roleName: 'Super Admin' }));
     expect((await jobsGet(getReq())).status).toBe(403);
     expect((await retryPost(retryReq(), params)).status).toBe(403);
   });
 
-  it('contexto parcial (sin userId/organizationId): rol 4 ⇒ false SIN consultar la RPC; rol 5 ve; rol 2 reintenta', async () => {
+  it('contexto parcial (sin userId/organizationId): rol 4 y rol 5 ⇒ false SIN consultar la RPC (fail-closed); rol 2 reintenta', async () => {
     const rpc = jest.fn(async () => ({ data: true, error: null }));
     const partial = (roleId: number) => ({ roleId, isSuperAdmin: false, supabase: { rpc } as unknown as SupabaseClient });
     expect(await canViewJobs(partial(4))).toBe(false);
     expect(await canRetryJobs(partial(4))).toBe(false);
+    expect(await canViewJobs(partial(5))).toBe(false);
+    expect(await canRetryJobs(partial(5))).toBe(false);
     expect(rpc).not.toHaveBeenCalled();
-    expect(await canViewJobs(partial(5))).toBe(true);
     expect(await canRetryJobs(partial(2))).toBe(true);
   });
 
@@ -271,11 +327,19 @@ describe('tester r4 — permisos en las rutas (check_user_permission mockeada)',
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it('GET con cargo: la RPC se consulta dos veces por petición (canViewJobs + canRetryJobs) — observación, no fallo', async () => {
-    const rpc: jest.Mock = jest.fn(async () => ({ data: true, error: null }));
-    (getServerOrgContext as jest.Mock).mockResolvedValue(session(4, rpc));
+  it('GET con cargo: la RPC se consulta como máximo 2 veces por petición y exactamente 1 cuando crm.jobs.view es false (N-2 cerrado en r5; r5 cierre: view primero)', async () => {
+    const retryOnly = rpcByCode({ 'crm.jobs.retry': true });
+    (getServerOrgContext as jest.Mock).mockResolvedValue(session(4, retryOnly));
     await jobsGet(getReq());
-    expect(rpc.mock.calls.filter((c: unknown[]) => c[0] === 'check_user_permission')).toHaveLength(2);
+    expect(codesAsked(retryOnly)).toEqual(['crm.jobs.view']);
+    const viewOnly = rpcByCode({ 'crm.jobs.view': true });
+    (getServerOrgContext as jest.Mock).mockResolvedValue(session(4, viewOnly));
+    await jobsGet(getReq());
+    expect(codesAsked(viewOnly)).toHaveLength(2);
+    const none = rpcByCode({});
+    (getServerOrgContext as jest.Mock).mockResolvedValue(session(4, none));
+    await jobsGet(getReq());
+    expect(codesAsked(none)).toEqual(['crm.jobs.view']);
   });
 });
 
@@ -318,16 +382,26 @@ describe('tester r4 — presupuesto (T-3/T-4)', () => {
     expect(runRenewalsSync).toHaveBeenCalledTimes(1);
   });
 
-  it('RESIDUO (bajo): maintenance con totalBudgetMs 0 sí arranca (timer mínimo de 250 ms) — el productor no comprueba exhausted() antes del primer paso', async () => {
+  it('N-3 (cerrado en r5): maintenance con totalBudgetMs 0 NO arranca ⇒ {ok:false, ms:0, error:budget_exhausted} sin llamar a runMaintenance ni esperar los 250 ms', async () => {
     (runMaintenance as jest.Mock).mockImplementation(async (_sb: unknown, _log: unknown, signal: AbortSignal) => {
       await new Promise<void>((resolve) => signal.addEventListener('abort', () => resolve()));
       return { jobs_deleted: 0 };
     });
     const t0 = Date.now();
     const out = await runScheduledKinds({ kinds: ['maintenance'], budgetMs: 20_000, totalBudgetMs: 0, worker: 't', supabase: sbEmpty() });
+    expect(runMaintenance).not.toHaveBeenCalled();
+    expect(out.maintenance).toEqual({ ok: false, ms: 0, error: 'budget_exhausted' });
+    expect(Date.now() - t0).toBeLessThan(200);
+  });
+
+  it('maintenance con presupuesto positivo pero por debajo de 250 ms sigue arrancando con el timer mínimo (el mínimo no se tocó en r5)', async () => {
+    (runMaintenance as jest.Mock).mockImplementation(async (_sb: unknown, _log: unknown, signal: AbortSignal) => {
+      await new Promise<void>((resolve) => signal.addEventListener('abort', () => resolve()));
+      return { jobs_deleted: 0 };
+    });
+    const out = await runScheduledKinds({ kinds: ['maintenance'], budgetMs: 20_000, totalBudgetMs: 100, worker: 't', supabase: sbEmpty() });
     expect(runMaintenance).toHaveBeenCalledTimes(1);
     expect(out.maintenance?.ok).toBe(true);
-    expect(Date.now() - t0).toBeGreaterThanOrEqual(240);
   });
 });
 

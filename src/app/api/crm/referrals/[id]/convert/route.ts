@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const ctx = await getServerOrgContext();
     const { id } = await params;
     const body = await readJson(request);
-    rejectForeignOrganization(TAG, body.organization_id, ctx);
+    rejectForeignOrganization(TAG, body, ctx, request);
     const customerId = text(body.customer_id);
     if (customerId && !isUuid(customerId)) {
       return jsonFail(400, 'customer_id no es un identificador válido', { code: 'VALIDATION' });

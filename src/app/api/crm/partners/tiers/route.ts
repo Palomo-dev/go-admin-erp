@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { getPartnerTiers, createPartnerTier } from '@/lib/services/crm/partnerService';
 import { validateTierInput } from '@/lib/services/crm/f12Validation';
-import { jsonOk, readJson, rejectForeignOrganization, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
+import { jsonOk, readJson, rejectForeignOrganization, requirePartnerManager, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
 
 const TAG = 'CRM Partner Tiers';
 
@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     const body = await readJson(request);
-    rejectForeignOrganization(TAG, body.organization_id, ctx);
+    rejectForeignOrganization(TAG, body, ctx, request);
+    requirePartnerManager(ctx); // crear configuración exige el mismo rol que editarla/borrarla
     const parsed = validateTierInput(body, { partial: false });
     if (!parsed.ok) return validationFail(parsed.errors);
     const v = parsed.value;

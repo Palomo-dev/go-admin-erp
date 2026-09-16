@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json({ success: false, error: 'Cuerpo JSON inválido' }, { status: 400 });
     }
-    readOrgBody(ctx, body);
+    readOrgBody(ctx, body, { request });
 
     const result = await createLeadWithCustomer(
       { organizationId: ctx.organizationId, userId: ctx.userId, supabase: ctx.supabase },

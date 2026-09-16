@@ -74,7 +74,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ success: false, error: STAGE_MANAGER_REQUIRED }, { status: 403 });
     }
     const { id } = await params;
-    const parsed = patchSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
+    const parsed = patchSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null), { request }));
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });
     }

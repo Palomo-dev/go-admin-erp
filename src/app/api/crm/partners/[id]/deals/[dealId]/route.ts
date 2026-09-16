@@ -18,7 +18,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const ctx = await getServerOrgContext();
     const { id, dealId } = await params;
     const body = await readJson(request);
-    rejectForeignOrganization(TAG, body.organization_id, ctx);
+    rejectForeignOrganization(TAG, body, ctx, request);
     requirePartnerManager(ctx);
     const deal = await transitionPartnerDeal(dealId, id, ctx.organizationId, body.commission_status, ctx.supabase);
     return jsonOk(deal);

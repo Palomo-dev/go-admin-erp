@@ -37,7 +37,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const { id } = await params;
     if (!isSafeId(id)) return NextResponse.json({ success: false, error: 'Id inválido' }, { status: 400 });
     const body = await readJson(request);
-    const forbidden = foreignOrgResponse('CRM Proposals PATCH', body, ctx.organizationId);
+    const forbidden = foreignOrgResponse('CRM Proposals PATCH', body, ctx, request);
     if (forbidden) return forbidden;
     const validation = validateSectionsInput(body?.sections);
     if (!validation.ok) return NextResponse.json({ success: false, error: validation.error }, { status: 400 });

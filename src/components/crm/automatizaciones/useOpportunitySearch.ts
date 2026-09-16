@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { likePattern } from '@/lib/utils/postgrestFilters';
 
 export interface OpportunityHit {
   id: string;
@@ -33,11 +34,6 @@ interface Row {
 
 function first<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
-}
-
-/** Escapa los comodines de `ilike` para que «%» o «_» del usuario no filtren de más. */
-function likePattern(query: string): string {
-  return `%${query.replace(/[%_\\]/g, (m) => `\\${m}`)}%`;
 }
 
 export function useOpportunitySearch(query: string, enabled: boolean) {

@@ -30,7 +30,7 @@ export async function POST(
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
     const { id } = await params;
-    const body = readOrgBody(ctx, await request.json().catch(() => ({})));
+    const body = readOrgBody(ctx, await request.json().catch(() => ({})), { request });
 
     if (!body?.opportunity_id && !body?.customer_id) {
       return NextResponse.json(

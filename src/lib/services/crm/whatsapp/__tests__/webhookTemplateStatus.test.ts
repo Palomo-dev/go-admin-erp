@@ -1,4 +1,4 @@
-import { parseTemplateStatusUpdate, applyTemplateStatusUpdate } from '../webhookTemplateStatus';
+import { parseTemplateStatusUpdate, applyTemplateStatusUpdate, templateEventKey, templateEventTime, lastWebhookTimeKey } from '../webhookTemplateStatus';
 import { isOptOutKeyword, isOptInKeyword, normalizeKeyword } from '../consent';
 import { extractInboundText, inboundContentType } from '../inboundService';
 import { makeSupabase, has, opArg } from './mockSupabase';
@@ -40,6 +40,72 @@ describe('parseTemplateStatusUpdate (webhook message_template_status_update)', (
     await expect(applyTemplateStatusUpdate(update, 'waba-1', sb, [])).resolves.toEqual({ updated: 0, paused_campaigns: 0 });
     await expect(applyTemplateStatusUpdate(update, 'waba-1', sb, [0, -1, 1.5, NaN])).resolves.toEqual({ updated: 0, paused_campaigns: 0 });
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe('F0-pulido · replay fuera de orden (entry.time monotónico por campo)', () => {
+  const status = (event: 'PAUSED' | 'APPROVED' | 'DISABLED', extra: Partial<Parameters<typeof applyTemplateStatusUpdate>[0]> = {}) =>
+    ({ event, message_template_id: '555', message_template_name: null, message_template_language: null, reason: null, quality_score: null, field: 'message_template_status_update' as const, ...extra });
+  const key = (event: 'PAUSED' | 'APPROVED' | 'DISABLED', time: number) => templateEventKey({ field: 'message_template_status_update', event }, time);
+
+  test('templateEventTime lee el time de la clave; null sin clave o con clave rara', () => {
+    expect(templateEventTime(key('PAUSED', 1700000000))).toBe(1700000000);
+    expect(templateEventTime('message_template_status_update:PAUSED:0')).toBe(0);
+    expect(templateEventTime(null)).toBeNull();
+    expect(templateEventTime('message_template_status_update:PAUSED')).toBeNull();
+    expect(templateEventTime('message_template_status_update:PAUSED:1e9')).toBeNull();
+    expect(templateEventTime('x:' + '9'.repeat(17))).toBeNull();
+  });
+
+  test('lastWebhookTimeKey: una columna por campo', () => {
+    expect(lastWebhookTimeKey('message_template_status_update')).toBe('last_webhook_time');
+    expect(lastWebhookTimeKey('message_template_quality_update')).toBe('last_quality_webhook_time');
+  });
+
+  test('PAUSED@t1 con last_webhook_time = t2 > t1 → se ignora (updated 0, sin update ni campañas) y se registra', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { sb, calls } = makeSupabase({
+      templates: () => ({ data: [{ id: 'tpl-1', organization_id: 7, metadata: { status: 'APPROVED', last_webhook_event: key('APPROVED', 1700000060), last_webhook_time: 1700000060 } }] }),
+      campaigns: () => ({ data: [{ id: 'camp-1', statistics: { state: null } }] }),
+    });
+    const r = await applyTemplateStatusUpdate(status('PAUSED'), 'waba-1', sb, [7], key('PAUSED', 1700000000));
+    expect(r).toEqual({ updated: 0, paused_campaigns: 0 });
+    expect(calls.filter((c) => has(c.ops, 'update'))).toHaveLength(0);
+    expect(calls.filter((c) => c.table === 'campaigns')).toHaveLength(0);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('fuera de orden'), expect.objectContaining({ templateId: 'tpl-1', organizationId: 7, eventTime: 1700000000, lastApplied: 1700000060 }));
+    warn.mockRestore();
+  });
+
+  test('time igual al último aplicado con OTRA clave → se aplica; time mayor → se aplica y avanza last_webhook_time', async () => {
+    const updates: Record<string, unknown>[] = [];
+    const mk = (lastTime: number) => makeSupabase({
+      templates: (ops) => (has(ops, 'update') ? (updates.push(opArg(ops, 'update') as Record<string, unknown>), { data: null }) : { data: [{ id: 'tpl-1', organization_id: 7, metadata: { status: 'PAUSED', last_webhook_event: key('PAUSED', lastTime), last_webhook_time: lastTime } }] }),
+      campaigns: () => ({ data: [] }),
+    });
+    await expect(applyTemplateStatusUpdate(status('APPROVED'), 'waba-1', mk(1700000000).sb, [7], key('APPROVED', 1700000000))).resolves.toEqual({ updated: 1, paused_campaigns: 0 });
+    expect((updates[0].metadata as Record<string, unknown>).last_webhook_time).toBe(1700000000);
+    await expect(applyTemplateStatusUpdate(status('DISABLED'), 'waba-1', mk(1700000000).sb, [7], key('DISABLED', 1700000120))).resolves.toEqual({ updated: 1, paused_campaigns: 0 });
+    expect((updates[1].metadata as Record<string, unknown>).last_webhook_time).toBe(1700000120);
+  });
+
+  test('last_webhook_time basura ("ayer", -1, objeto) no bloquea: se aplica y se sobreescribe con un entero; sin clave no se escribe', async () => {
+    for (const junk of ['ayer', -1, { $gt: 0 }, null]) {
+      const updates: Record<string, unknown>[] = [];
+      const { sb } = makeSupabase({
+        templates: (ops) => (has(ops, 'update') ? (updates.push(opArg(ops, 'update') as Record<string, unknown>), { data: null }) : { data: [{ id: 'tpl-1', organization_id: 7, metadata: { status: 'APPROVED', last_webhook_time: junk } }] }),
+        campaigns: () => ({ data: [] }),
+      });
+      await expect(applyTemplateStatusUpdate(status('PAUSED'), 'waba-1', sb, [7], key('PAUSED', 5))).resolves.toEqual({ updated: 1, paused_campaigns: 0 });
+      expect((updates[0].metadata as Record<string, unknown>).last_webhook_time).toBe(5);
+    }
+    const updates: Record<string, unknown>[] = [];
+    const { sb } = makeSupabase({
+      templates: (ops) => (has(ops, 'update') ? (updates.push(opArg(ops, 'update') as Record<string, unknown>), { data: null }) : { data: [{ id: 'tpl-1', organization_id: 7, metadata: { status: 'APPROVED', last_webhook_time: 1700000060 } }] }),
+      campaigns: () => ({ data: [] }),
+    });
+    await expect(applyTemplateStatusUpdate(status('PAUSED'), 'waba-1', sb, [7], null)).resolves.toEqual({ updated: 1, paused_campaigns: 0 });
+    expect((updates[0].metadata as Record<string, unknown>).last_webhook_time).toBe(1700000060);
+    expect((updates[0].metadata as Record<string, unknown>).status).toBe('PAUSED');
   });
 });
 

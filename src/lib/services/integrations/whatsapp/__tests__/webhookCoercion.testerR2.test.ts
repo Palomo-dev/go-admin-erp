@@ -105,7 +105,9 @@ describe('planWebhookAuthorization · granularidad entrada vs change', () => {
     const r = resolver();
     const entry = { id: 'waba-zz', changes: [msg('pn-a'), msg({ $gt: 0 }), msg(true), msg(12.5)] } as unknown as WhatsAppWebhookEntry;
     const plan = await planWebhookAuthorization({ object: 'whatsapp_business_account', entry: [entry] }, r, null);
-    expect(r.calls).toEqual(['phone:pn-a']);
+    // r4: los tipos inutilizables siguen sin consultarse; la consulta del WABA
+    // de la entrada es la comprobación de coherencia número ↔ WABA (regla 1).
+    expect(r.calls).toEqual(['phone:pn-a', 'waba:waba-zz']);
     expect(plan).toMatchObject({ kind: 'verify', scope: 'channel', droppedChanges: [
       { entryIndex: 0, changeIndex: 1, reason: 'invalid_phone_number_id' },
       { entryIndex: 0, changeIndex: 2, reason: 'invalid_phone_number_id' },

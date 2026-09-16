@@ -1,5 +1,5 @@
 import { createClient, type Provider } from '@supabase/supabase-js'
-import { isAppOnline, getCachedResponse, setCachedResponse, queueAction, setOnline } from '@/lib/utils/offlineCache'
+import { isAppOnline, getCachedForRequest, cacheFreshResponse, isCacheableRequest, resolveOfflineDataRequest, setOnline } from '@/lib/utils/offlineCache'
 
 // Extrae la referencia del proyecto de la URL de Supabase
 export const getProjectRef = () => {
@@ -361,6 +361,8 @@ export const createSupabaseClient = () => {
         const isDataRequest = urlString.includes('/rest/v1/');
         const isTokenRefreshRequest = isAuthRequest && urlString.includes('grant_type=refresh_token');
         const method = (options?.method || 'GET').toUpperCase();
+        // Body como texto (solo string: el SDK de Supabase siempre manda JSON serializado).
+        const requestBody = typeof options?.body === 'string' ? options.body : '';
 
         // ── BLOQUEO AGRESIVO: si el refresh token es inválido, NO dejar que
         // la petición HTTP salga. Retornar una respuesta sintética 400 inmediata.
@@ -409,39 +411,22 @@ export const createSupabaseClient = () => {
           }
 
           if (!isAuthRequest) {
-
-          // GET: servir de cache si estamos offline
-          if (method === 'GET') {
-            const cached = await getCachedResponse(urlString, method);
-            if (cached) {
-              return new Response(cached.data, {
-                status: cached.status,
-                headers: { 'Content-Type': 'application/json', 'X-Offline-Cache': 'true' },
-              });
-            }
-            return new Response(JSON.stringify({ data: null, error: { message: 'Offline: no cached data' } }), {
-              status: 503,
-              headers: { 'Content-Type': 'application/json' },
-            });
-          }
-
-          // POST/PATCH/PUT/DELETE: encolar si estamos offline
-          if (method !== 'GET') {
-            const bodyStr = options?.body ? (typeof options.body === 'string' ? options.body : '') : '';
-            const headers: Record<string, string> = {};
+            // Datos sin red (fase 4A): GET por URL, RPC de lectura por
+            // función + hash del body (nunca se encola), resto REST a la
+            // cola. La decisión vive en offlineCache.resolveOfflineDataRequest.
+            const offlineHeaders: Record<string, string> = {};
             if (options?.headers) {
               const h = options.headers as Record<string, string>;
               for (const [k, v] of Object.entries(h)) {
-                headers[k] = v;
+                offlineHeaders[k] = v;
               }
             }
-            await queueAction({ url: urlString, method, headers, body: bodyStr });
-            window.dispatchEvent(new CustomEvent('goadmin:action-queued'));
-            return new Response(JSON.stringify({ data: null, error: null, offline: true, queued: true }), {
-              status: 202,
-              headers: { 'Content-Type': 'application/json' },
+            return resolveOfflineDataRequest({
+              url: urlString,
+              method,
+              body: requestBody,
+              headers: offlineHeaders,
             });
-          }
           } // fin if (!isAuthRequest)
         }
 
@@ -543,12 +528,12 @@ export const createSupabaseClient = () => {
               // Cachear respuestas GET exitosas en desktop app:
               // - Offline: inmediatamente (para fallback de timeout)
               // - Online: diferido con requestIdleCallback para no afectar latencia
-              if (isDesktopApp && method === 'GET' && response.ok && !isAuthRequest) {
+              if (isDesktopApp && response.ok && !isAuthRequest && isCacheableRequest(urlString, method)) {
                 const cloned = response.clone();
                 const doCache = () => {
                   cloned.text().then(text => {
                     if (text && text.length > 0 && text.length < 500_000) {
-                      setCachedResponse(urlString, method, text, response.status);
+                      cacheFreshResponse({ url: urlString, method, body: requestBody, text, status: response.status });
                     }
                   }).catch(() => {});
                 };
@@ -572,9 +557,9 @@ export const createSupabaseClient = () => {
               if (isTimeout && useOfflineLogic) {
                 console.log('[fetch] Timeout en desktop app offline, usando cache como fallback');
 
-                if (method === 'GET' && !isAuthRequest) {
+                if (!isAuthRequest) {
                   try {
-                    const cached = await getCachedResponse(urlString, method);
+                    const cached = await getCachedForRequest(urlString, method, requestBody);
                     if (cached) {
                       return resolve(new Response(cached.data, {
                         status: cached.status,
@@ -594,9 +579,9 @@ export const createSupabaseClient = () => {
               }
 
               // Último intento fallido: intentar cache para GET en desktop offline
-              if (useOfflineLogic && method === 'GET' && !isAuthRequest) {
+              if (useOfflineLogic && !isAuthRequest) {
                 try {
-                  const cached = await getCachedResponse(urlString, method);
+                  const cached = await getCachedForRequest(urlString, method, requestBody);
                   if (cached) {
                     return resolve(new Response(cached.data, {
                       status: cached.status,

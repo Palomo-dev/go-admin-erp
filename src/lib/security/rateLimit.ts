@@ -10,22 +10,33 @@
  *   claves de la petición y registra el hit solo si todas caben
  *   (`fn_rate_limit_hit`, tabla `rate_limit_buckets`; implementación en
  *   `rateLimitStore.ts`). Las rutas que lo necesitan lo pasan en `opts.store`.
- * - `persistentCount` (legado, por clave): cuántos hits hubo antes de este en la
- *   ventana, p. ej. contando en una tabla de negocio. Se combina por `max`.
+ *
+ * Ya NO existe `persistentCount` (contador legado por clave, inyectable): nunca
+ * tuvo consumidor, y como se resolvía con un `await` entre la proyección en
+ * memoria y el registro, N peticiones concurrentes proyectaban todas `count = 1`
+ * (tester F0-SEC C+D r2, fallo 4). Un solo mecanismo persistente: el `store`
+ * atómico (regla 7). El camino en memoria es síncrono de punta a punta.
  *
  * Semántica (F0-SEC r2, sub-parte D):
- * - FAIL-CLOSED. Clave vacía, `limit` inválido, `windowMs <= 0`/NaN, un
- *   `persistentCount` que lanza o un `store` que falla → BLOQUEADO y registrado.
- *   Antes, `persistentCount` que lanzaba caía en silencio al contador en memoria
- *   (tester r1, sonda P7).
+ * - FAIL-CLOSED. Clave vacía, `limit` inválido, `windowMs <= 0`/NaN o un
+ *   `store` que falla → BLOQUEADO y registrado.
  * - EVALUAR TODO, LUEGO REGISTRAR. `checkRateLimits` comprueba todas las claves
  *   y solo si todas caben registra el hit en todas. Antes incrementaba `ip` y
  *   `user` aunque `to` bloqueara: una ráfaga a un número bloqueado agotaba el
  *   cupo del usuario para otros números. Consecuencia: una petición bloqueada
  *   NO consume cupo (ventana fija: `resetAt` no se mueve).
- * - `getClientIp` sin cabeceras de proxy devuelve `'unknown'`: todos los
- *   clientes sin proxy comparten ese cubo. En Vercel/Railway siempre hay
- *   `x-forwarded-for`; en local, el límite por IP es compartido a propósito.
+ * - `getClientIp` sin cabeceras de proxy devuelve `UNKNOWN_CLIENT_IP`
+ *   (`'unknown'`): todos los clientes sin proxy comparten ese cubo. En
+ *   Vercel/Railway siempre hay `x-forwarded-for`; en local, el límite por IP
+ *   es compartido a propósito.
+ * - CUBO `unknown` FAIL-CLOSED RAZONABLE (F0-pulido, qa r4 A+B §3 bajo 3): una
+ *   clave que termina en `:unknown` (todas las claves por IP son
+ *   `<ruta>:ip:<ip>`) no usa `limit` sino `unknownClientLimit`, y si no se
+ *   pasa, `max(1, floor(limit / 10))`. Así, si un despliegue pierde la
+ *   cabecera, el cubo compartido se agota diez veces antes y el problema se
+ *   ve (un `console.warn` por proceso, la primera vez) en vez de dejar un
+ *   cubo laxo que todos comparten. No se bloquea del todo: en local y en
+ *   tests no hay proxy y las rutas tienen que seguir respondiendo.
  *
  * Uso:
  *   const rl = await checkRateLimits([{ key: `verify:ip:${ip}`, opts: LIMIT }], { store: getRateLimitStore() });
@@ -38,11 +49,12 @@ export interface RateLimitOptions {
   /** Tamaño de ventana en ms (default 10 min). */
   windowMs?: number;
   /**
-   * Contador persistente opcional (legado, por clave): devuelve cuántos hits
-   * hubo para la clave en la ventana ANTES de este. Se combina por `max` con
-   * el contador en memoria. Si lanza, la petición se BLOQUEA.
+   * Límite del cubo compartido `unknown` (clave terminada en `:unknown`, es
+   * decir, `getClientIp` no encontró cabecera de IP). Default:
+   * `max(1, floor(limit / 10))`. Debe ser un entero > 0 y ≤ `limit`; si no,
+   * se ignora y rige el default (nunca más laxo que `limit`).
    */
-  persistentCount?: (key: string, since: Date) => Promise<number>;
+  unknownClientLimit?: number;
 }
 
 export interface RateLimitResult {
@@ -90,6 +102,36 @@ interface Bucket {
 const DEFAULT_WINDOW_MS = 10 * 60 * 1000;
 const buckets = new Map<string, Bucket>();
 
+/** Valor que devuelve `getClientIp` cuando no hay cabecera de IP. */
+export const UNKNOWN_CLIENT_IP = 'unknown';
+const UNKNOWN_SUFFIX = `:${UNKNOWN_CLIENT_IP}`;
+/** Divisor del límite para el cubo `unknown` cuando no se pasa `unknownClientLimit`. */
+export const UNKNOWN_CLIENT_LIMIT_DIVISOR = 10;
+let unknownBucketWarned = false;
+
+/** `true` si la clave pertenece al cubo compartido sin IP (`…:ip:unknown`). */
+export function isUnknownClientKey(key: string): boolean {
+  return key.endsWith(UNKNOWN_SUFFIX);
+}
+
+/**
+ * Límite efectivo de una clave: el de `opts`, salvo para el cubo `unknown`,
+ * que usa `unknownClientLimit` (si es válido y no supera `limit`) o
+ * `max(1, floor(limit / UNKNOWN_CLIENT_LIMIT_DIVISOR))`. Puro.
+ */
+export function effectiveLimit(key: string, opts: RateLimitOptions): number {
+  if (!isUnknownClientKey(key) || !validLimit(opts.limit)) return opts.limit;
+  const custom = opts.unknownClientLimit;
+  if (custom !== undefined && Number.isInteger(custom) && custom > 0 && custom <= opts.limit) return custom;
+  return Math.max(1, Math.floor(opts.limit / UNKNOWN_CLIENT_LIMIT_DIVISOR));
+}
+
+function warnUnknownBucketOnce(key: string, limit: number): void {
+  if (unknownBucketWarned) return;
+  unknownBucketWarned = true;
+  console.warn('[rateLimit] petición sin cabecera de IP (x-forwarded-for / x-real-ip / cf-connecting-ip): cubo compartido "unknown" con límite reducido. Revisa el proxy si esto pasa en producción.', { key, limit });
+}
+
 /** Limpieza perezosa para que el Map no crezca sin límite. */
 function sweep(now: number, windowMs: number): void {
   if (buckets.size < 5000) return;
@@ -130,34 +172,21 @@ export async function checkRateLimits(
     if (!e.key) return blocked(e.key, e.opts.limit, new Date(now + (windowMs ?? DEFAULT_WINDOW_MS)));
     if (windowMs === null) return blocked(e.key, e.opts.limit, new Date(now));
     if (!validLimit(e.opts.limit)) return blocked(e.key, e.opts.limit, new Date(now + windowMs));
+    const limit = effectiveLimit(e.key, e.opts);
+    if (limit !== e.opts.limit) warnUnknownBucketOnce(e.key, limit);
     const b = buckets.get(e.key);
     const fresh = !b || now - b.windowStart >= windowMs;
     const windowStart = fresh ? now : (b as Bucket).windowStart;
     const count = (fresh ? 0 : (b as Bucket).count) + 1;
-    projected.push({ key: e.key, limit: e.opts.limit, windowMs, windowStart, count });
+    projected.push({ key: e.key, limit, windowMs, windowStart, count });
   }
 
   for (const p of projected) {
     if (p.count > p.limit) return blocked(p.key, p.limit, new Date(p.windowStart + p.windowMs), p.count);
   }
 
-  // 2. Contadores persistentes por clave (legado). Lanzar = bloquear.
-  for (let i = 0; i < entries.length; i++) {
-    const fn = entries[i].opts.persistentCount;
-    if (!fn) continue;
-    const p = projected[i];
-    let persisted: number;
-    try {
-      persisted = await fn(p.key, new Date(p.windowStart));
-    } catch (err) {
-      console.error('[rateLimit] persistentCount falló; se bloquea (fail-closed)', { key: p.key, message: err instanceof Error ? err.message : String(err) });
-      return blocked(p.key, p.limit, new Date(p.windowStart + p.windowMs));
-    }
-    p.count = Math.max(p.count, (Number.isFinite(persisted) ? persisted : Number.POSITIVE_INFINITY) + 1);
-    if (p.count > p.limit) return blocked(p.key, p.limit, new Date(p.windowStart + p.windowMs), Number.isFinite(p.count) ? p.count : undefined);
-  }
-
-  // 3. Backend atómico (todas las claves a la vez). Fallar = bloquear.
+  // 2. Backend atómico (todas las claves a la vez). Fallar = bloquear. Es el
+  //    único `await` del camino, y el store ya es atómico por sí mismo.
   if (options.store) {
     let hits: RateLimitStoreHit[];
     try {
@@ -181,7 +210,7 @@ export async function checkRateLimits(
     }
   }
 
-  // 4. Todas caben: registrar en memoria.
+  // 3. Todas caben: registrar en memoria.
   let worst: RateLimitResult | null = null;
   for (const p of projected) {
     sweep(now, p.windowMs);
@@ -217,15 +246,17 @@ export async function checkRateLimit(
 
 /**
  * Extrae la IP del cliente de los headers habituales (Vercel / proxies).
- * Sin ninguno devuelve `'unknown'`: cubo compartido (ver cabecera).
+ * Sin ninguno devuelve `UNKNOWN_CLIENT_IP`: cubo compartido con límite
+ * reducido (ver cabecera y `effectiveLimit`).
  */
 export function getClientIp(req: Request): string {
   const xff = req.headers.get('x-forwarded-for');
   if (xff) return xff.split(',')[0].trim();
-  return req.headers.get('x-real-ip') || req.headers.get('cf-connecting-ip') || 'unknown';
+  return req.headers.get('x-real-ip') || req.headers.get('cf-connecting-ip') || UNKNOWN_CLIENT_IP;
 }
 
 /** Solo para tests. */
 export function _resetRateLimits(): void {
   buckets.clear();
+  unknownBucketWarned = false;
 }

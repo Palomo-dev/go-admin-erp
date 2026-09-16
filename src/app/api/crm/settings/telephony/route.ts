@@ -84,7 +84,7 @@ export async function PATCH(request: NextRequest) {
   if (!isOrgAdmin(ctx) && !ctx.isSuperAdmin) {
     return NextResponse.json({ success: false, error: 'Solo un administrador puede cambiar la telefonía' }, { status: 403 });
   }
-  const parsed = telephonyPatchSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
+  const parsed = telephonyPatchSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null), { request }));
   if (!parsed.success) {
     return NextResponse.json({ success: false, error: 'Body inválido', issues: parsed.error.issues }, { status: 400 });
   }

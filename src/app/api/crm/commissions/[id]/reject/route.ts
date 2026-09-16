@@ -14,7 +14,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     requireTeamManager(ctx);
     const { id } = await params;
     const body = await readJson(request);
-    rejectForeignOrganization('CRM Commissions Reject', body.organization_id, ctx);
+    rejectForeignOrganization('CRM Commissions Reject', body, ctx, request);
     const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
     if (!reason) return jsonFail(400, 'Falta el motivo del rechazo (reason)', { field: 'reason' });
     const commission = await rejectCommission(id, ctx.organizationId, reason, ctx.supabase, ctx.userId);

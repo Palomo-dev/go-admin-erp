@@ -447,6 +447,8 @@ CREATE POLICY st_write_by_role ON public.sales_targets
 -- lectura: pertenencia (como hoy) o, más estricto, user_id = auth.uid() para rol 4
 ```
 
+**Aplicada el 2026-09-16** como `20260916040000_f13_sales_targets_rls_por_rol` (+ rollback): `st_insert`/`st_update`/`st_delete` exigen rol 1, 2 o 5 (o `is_super_admin`), alineado con `STAGE_MANAGER_ROLE_IDS`; `st_select` sigue por pertenencia. Verificado en `pg_policies` tras aplicar; la tabla tenía 0 filas.
+
 ---
 
 ## 6. Pruebas

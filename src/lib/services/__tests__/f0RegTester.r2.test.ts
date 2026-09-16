@@ -435,15 +435,23 @@ describe('ensureAiSettings — fila creada desde el navegador sin cupo', () => {
   // (`AISettingsService.createSettings`, sesión): nace con credits_remaining = 0
   // (default de columna) y credits_reset_at NULL. En r2 `ensureAiSettings` la
   // veía «existente» y devolvía 0 → 402 hasta el cron del día 1. En r3 la fila
-  // con credits_reset_at NULL cuenta como no provisionada: se le asigna el cupo
-  // del plan con `update … is('credits_reset_at', null)` (idempotente) y se
-  // reintenta el cobro una vez. El fake es con estado: el RPC de cobro mira el
-  // saldo real de la fila y la migración 43 se simula ausente (PGRST202).
-  it('fila existente con saldo 0 y credits_reset_at NULL → provisiona el cupo del plan y cobra (era it.failing en r2)', async () => {
+  // con credits_reset_at NULL cuenta como no provisionada y se reintenta el
+  // cobro una vez. F0-pulido: la provisión la hace SOLO la RPC
+  // `fn_provision_ai_settings` (mig. 43, en producción); el respaldo en Node
+  // (`update … is('credits_reset_at', null)` + `subscriptions`) se retiró. El
+  // fake simula en `row` lo que la RPC hace en SQL; leer `subscriptions` o
+  // escribir `ai_settings` desde Node es un fallo.
+  const provisionRpc = (row: Record<string, unknown>, monthly: number) => {
+    const provisioned = row.credits_reset_at == null;
+    if (provisioned) Object.assign(row, { credits_remaining: Math.max(Number(row.credits_remaining) || 0, monthly), credits_reset_at: '2026-09-15T00:00:00Z' });
+    return { data: { created: false, provisioned, credits_remaining: row.credits_remaining, model: row.model, max_tokens: row.max_tokens, monthly, source: 'plan' }, error: null };
+  };
+
+  it('fila existente con saldo 0 y credits_reset_at NULL → la RPC provisiona el cupo del plan y se cobra (era it.failing en r2)', async () => {
     const row: Record<string, unknown> = { organization_id: 7, credits_remaining: 0, credits_reset_at: null, model: 'm', max_tokens: 500 };
     const { sb, calls } = fakeDb({
       rpc: (n, args) => {
-        if (n === 'fn_provision_ai_settings' || n === 'fn_ai_plan_quota') return { data: null, error: { code: 'PGRST202', message: 'Could not find the function' } };
+        if (n === 'fn_provision_ai_settings') return provisionRpc(row, 500);
         if (n !== 'decrement_ai_credits') return { data: true, error: null };
         const remaining = Number(row.credits_remaining);
         if (remaining < args.p_cost) return { data: false, error: null };
@@ -452,66 +460,40 @@ describe('ensureAiSettings — fila creada desde el navegador sin cupo', () => {
       },
     });
     const origFrom = sb.from;
-    const updates: Array<{ patch: Record<string, unknown>; col: string; v: unknown }> = [];
     sb.from = (table: string) => {
       if (table === 'ai_settings') {
         return {
           select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { ...row }, error: null }) }) }),
-          insert: () => { throw new Error('no debe insertar: la fila existe'); },
-          update: (patch: Record<string, unknown>) => ({
-            eq: () => ({
-              is: (col: string, v: unknown) => {
-                updates.push({ patch, col, v });
-                const applies = col === 'credits_reset_at' && v === null && row.credits_reset_at == null;
-                if (applies) Object.assign(row, patch);
-                return { select: () => ({ maybeSingle: async () => ({ data: applies ? { ...row } : null, error: null }) }) };
-              },
-            }),
-          }),
+          insert: () => { throw new Error('no debe insertar desde Node: provisiona la RPC'); },
+          update: () => { throw new Error('no debe actualizar desde Node: provisiona la RPC'); },
         };
       }
-      if (table === 'subscriptions') {
-        const sub = { plan_id: 1, status: 'active', metadata: {}, created_at: '2026-01-01T00:00:00Z', plans: { ai_credits_monthly: 500, ai_credits_max_rollover: 1000, ai_model: 'm', ai_max_tokens: 4000 } };
-        const q: any = { select: () => q, eq: () => q, order: () => q, limit: () => q, then: (r: any) => r({ data: [sub], error: null }) };
-        return q;
-      }
+      if (table === 'subscriptions' || table === 'plans') throw new Error(`no debe consultar ${table}: la RPC es la fuente`);
       return origFrom(table);
     };
     __setAiCostClientFactory(() => sb);
     await expect(chargeAiCredits({ orgId: 7, actionType: 'x', model: 'm', units: 1, credits: 1 })).resolves.toMatchObject({ credits: 1, previousBalance: 500 });
-    expect(updates).toEqual([expect.objectContaining({ col: 'credits_reset_at', v: null, patch: expect.objectContaining({ credits_remaining: 500 }) })]);
     expect(row.credits_remaining).toBe(499);
+    expect(row.credits_reset_at).not.toBeNull();
     expect(calls.filter((c) => c.type === 'rpc' && c.name === 'decrement_ai_credits')).toHaveLength(2);
-    // Segundo cobro: la fila ya está provisionada → ni update ni RPC de provisión.
+    expect(calls.filter((c) => c.type === 'rpc' && c.name === 'fn_provision_ai_settings')).toHaveLength(1);
+    // Segundo cobro: la fila ya está provisionada → ni RPC de provisión.
     await chargeAiCredits({ orgId: 7, actionType: 'x', model: 'm', units: 1, credits: 1 });
-    expect(updates).toHaveLength(1);
+    expect(calls.filter((c) => c.type === 'rpc' && c.name === 'fn_provision_ai_settings')).toHaveLength(1);
     expect(row.credits_remaining).toBe(498);
   });
 
-  it('dos peticiones concurrentes sobre la fila sin provisionar: una provisiona, la otra relee (update de 0 filas) y ninguna duplica el cupo', async () => {
+  it('dos peticiones concurrentes sobre la fila sin provisionar: la RPC es atómica (una provisiona, la otra relee) y Node no escribe nada', async () => {
     const row: Record<string, unknown> = { organization_id: 7, credits_remaining: 0, credits_reset_at: null, model: 'm', max_tokens: 500 };
     let applied = 0;
     const sb: any = {
-      rpc: async (n: string) => (n === 'fn_provision_ai_settings' || n === 'fn_ai_plan_quota' ? { data: null, error: { code: 'PGRST202', message: 'Could not find the function' } } : { data: true, error: null }),
-      from: (table: string) => {
-        if (table === 'ai_settings') {
-          return {
-            select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { ...row }, error: null }) }) }),
-            update: (patch: Record<string, unknown>) => ({
-              eq: () => ({
-                is: () => {
-                  const applies = row.credits_reset_at == null;
-                  if (applies) { Object.assign(row, patch); applied += 1; }
-                  return { select: () => ({ maybeSingle: async () => ({ data: applies ? { ...row } : null, error: null }) }) };
-                },
-              }),
-            }),
-          };
-        }
-        const sub = { plan_id: 1, status: 'trialing', metadata: {}, created_at: '2026-01-01T00:00:00Z', plans: { ai_credits_monthly: 500, ai_credits_max_rollover: 1000, ai_model: 'm', ai_max_tokens: 4000 } };
-        const q: any = { select: () => q, eq: () => q, order: () => q, limit: () => q, then: (r: any) => r({ data: [sub], error: null }) };
-        return q;
+      rpc: async (n: string) => {
+        if (n !== 'fn_provision_ai_settings') return { data: true, error: null };
+        const r = provisionRpc(row, 500);
+        if (r.data.provisioned) applied += 1;
+        return r;
       },
+      from: (table: string) => { throw new Error(`no debe consultar ${table}: la RPC es la fuente`); },
     };
     const { ensureAiSettings } = await import('@/lib/services/aiCreditsService');
     const [a, b] = await Promise.all([ensureAiSettings(7, sb), ensureAiSettings(7, sb)]);
@@ -520,5 +502,14 @@ describe('ensureAiSettings — fila creada desde el navegador sin cupo', () => {
     expect(a.credits_remaining).toBe(500);
     expect(b.credits_remaining).toBe(500);
     expect(row.credits_remaining).toBe(500);
+  });
+
+  it('F0-pulido: RPC ausente (PGRST202) → ensureAiSettings lanza y NO cae a un respaldo en Node', async () => {
+    const sb: any = {
+      rpc: async () => ({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.fn_provision_ai_settings' } }),
+      from: (table: string) => { throw new Error(`no debe consultar ${table}: sin respaldo en Node`); },
+    };
+    const { ensureAiSettings } = await import('@/lib/services/aiCreditsService');
+    await expect(ensureAiSettings(7, sb)).rejects.toThrow(/fn_provision_ai_settings: Could not find the function/);
   });
 });

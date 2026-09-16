@@ -5,6 +5,8 @@ import { CloudOff, RefreshCw } from 'lucide-react';
 import { isMobile, getMobilePlugin, safeAddListener } from '@/lib/utils/mobile';
 import { desktopReportsConnectivity, isDesktop, isDesktopOnline, onDesktopConnectivity } from '@/lib/utils/desktop';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useDesktopCatalog } from '@/lib/offline/useDesktopCatalog';
 
 /**
  * Indicador de estado offline/online. Es la ÚNICA fuente del banner offline
@@ -31,7 +33,36 @@ export function OfflineIndicator() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
+  // Fase 4B: ventas del POS guardadas en el outbox (Desktop) que aún no
+  // llegaron a Supabase, y las que fallaron 5 veces y esperan revisión.
+  const [pendingSales, setPendingSales] = useState(0);
+  const [salesNeedingReview, setSalesNeedingReview] = useState(0);
   const { formatTime, formatDateTime, getToday, toDate } = useFormatDate();
+  // Fase 4A: catálogo local del POS (solo Desktop; fuera devuelve isDesktop=false).
+  const [catalogOrgId, setCatalogOrgId] = useState<number | null>(null);
+  useEffect(() => {
+    if (isDesktop()) setCatalogOrgId(getOrganizationId() || null);
+  }, []);
+  const catalog = useDesktopCatalog(catalogOrgId);
+
+  const refreshSalesOutbox = useCallback(async () => {
+    if (!isDesktop()) return;
+    try {
+      const { countPendingSales, countSalesNeedingReview } = await import('@/lib/offline/salesOutbox');
+      setPendingSales(await countPendingSales());
+      setSalesNeedingReview(await countSalesNeedingReview());
+    } catch {
+      // Silenciar
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isDesktop()) return;
+    refreshSalesOutbox();
+    const onOutboxChanged = () => refreshSalesOutbox();
+    window.addEventListener('goadmin:sales-outbox-changed', onOutboxChanged);
+    return () => window.removeEventListener('goadmin:sales-outbox-changed', onOutboxChanged);
+  }, [refreshSalesOutbox]);
 
   const refreshLastSync = useCallback(async () => {
     try {
@@ -164,7 +195,7 @@ export function OfflineIndicator() {
     refreshLastSync();
   };
 
-  if (!showBanner && queueCount === 0) return null;
+  if (!showBanner && queueCount === 0 && pendingSales === 0 && salesNeedingReview === 0) return null;
 
   // Solo la hora si la última sincronización fue hoy (en la zona de la
   // organización); fecha y hora si fue otro día.
@@ -172,6 +203,14 @@ export function OfflineIndicator() {
   if (lastSyncAt) {
     const syncDate = new Date(lastSyncAt);
     lastSyncLabel = toDate(syncDate) === getToday() ? formatTime(syncDate) : formatDateTime(syncDate);
+  }
+  let catalogLabel: string | null = null;
+  if (catalog.isDesktop && catalog.status && !catalog.status.isEmpty) {
+    const at = catalog.status.replicatedAt ? new Date(catalog.status.replicatedAt) : null;
+    const when = at ? (toDate(at) === getToday() ? formatTime(at) : formatDateTime(at)) : '—';
+    catalogLabel = `catálogo local: ${catalog.status.productsCount} productos · actualizado ${when}`;
+  } else if (catalog.isDesktop) {
+    catalogLabel = 'catálogo local: sin replicar';
   }
 
   return (
@@ -188,12 +227,34 @@ export function OfflineIndicator() {
             ({queueCount} acción{queueCount !== 1 ? 'es' : ''} pendiente{queueCount !== 1 ? 's' : ''})
           </span>
         )}
+        {pendingSales > 0 && (
+          <span className="ml-2 text-xs font-semibold">
+            — {pendingSales} venta{pendingSales !== 1 ? 's' : ''} pendiente{pendingSales !== 1 ? 's' : ''} de sincronizar
+          </span>
+        )}
+        {salesNeedingReview > 0 && (
+          <span className="ml-2 text-xs font-semibold text-red-900">
+            — {salesNeedingReview} venta{salesNeedingReview !== 1 ? 's' : ''} requiere{salesNeedingReview !== 1 ? 'n' : ''} revisión (detalle en el POS)
+          </span>
+        )}
       </span>
       <span className="text-xs text-gray-800/90">
         {lastSyncLabel
           ? `Última sincronización correcta: ${lastSyncLabel}`
           : 'Sin sincronización registrada en este equipo'}
       </span>
+      {catalogLabel && <span className="text-xs text-gray-800/90">· {catalogLabel}</span>}
+      {catalog.isDesktop && isOnline && (
+        <button
+          type="button"
+          onClick={() => catalog.replicateNow()}
+          disabled={catalog.replicating}
+          className="ml-1 inline-flex items-center gap-1 px-3 py-1 bg-gray-900 text-white rounded-md text-xs hover:bg-gray-800 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+        >
+          <RefreshCw className={`h-3 w-3 ${catalog.replicating ? 'animate-spin' : ''}`} aria-hidden="true" />
+          {catalog.replicating ? 'Actualizando catálogo...' : 'Actualizar catálogo ahora'}
+        </button>
+      )}
       {isOnline && queueCount > 0 && (
         <button
           type="button"

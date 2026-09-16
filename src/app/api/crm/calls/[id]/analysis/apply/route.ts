@@ -35,7 +35,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     } catch {
       /* body vacío */
     }
-    readOrgBody(ctx, raw);
+    readOrgBody(ctx, raw, { request });
     const parsed = bodySchema.safeParse(raw ?? {});
     if (!parsed.success) return NextResponse.json({ success: false, error: 'Body inválido', details: parsed.error.flatten() }, { status: 400 });
     const { analysisId: bodyAnalysisId, ignore_gate } = parsed.data;

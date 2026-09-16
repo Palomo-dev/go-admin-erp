@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     const body = await readJson(request);
-    const forbidden = foreignOrgResponse('CRM Proposals POST', body, ctx.organizationId);
+    const forbidden = foreignOrgResponse('CRM Proposals POST', body, ctx, request);
     if (forbidden) return forbidden;
     const opportunityId = body?.opportunity_id;
     if (!isSafeId(opportunityId)) {

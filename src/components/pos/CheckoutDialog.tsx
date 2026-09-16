@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User, ShoppingCart, Wallet, Plus, Trash2, X, Percent, Truck, MapPin, Phone, Navigation, UserCircle, Clock, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +45,10 @@ import { SerialSelectorDialog } from '@/components/pos/SerialSelectorDialog';
 import { QrPaymentDialog } from '@/components/shared/QrPaymentDialog';
 import { useMobileNative } from '@/hooks/useMobileNative';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
+import { resolveCashReceived, toDisplayPayment } from '@/lib/pos/display/payment';
+import { isDesktop } from '@/lib/utils/desktop';
+import { newSaleId, ticketSaleNumber } from '@/lib/offline/salesOutbox';
 
 interface CheckoutDialogProps {
   cart: Cart;
@@ -192,6 +196,64 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const remaining = Math.max(0, cartTotal - totalPaid);
   const change = Math.max(0, totalPaid - cartTotal);
   const canComplete = totalPaid >= cartTotal;
+
+  // Pantalla del cliente (PLAN §4.2 «Cobro» y §12 Fase 0). Mientras el
+  // cobro está abierto se proyecta el estado según el ÚLTIMO medio elegido:
+  // efectivo → total/recibido/cambio en vivo; tarjeta → «siga las
+  // instrucciones del datáfono»; QR → el medio, sin imagen hasta F2. Al
+  // confirmar la venta pasa a «Gracias» (el emisor vuelve a reposo a los 8 s)
+  // y al cancelar vuelve a «Pedido». Nunca bloquea ni lanza: el emisor traga
+  // sus propios errores.
+  //
+  // «Recibido» y «cambio» solo se muestran cuando el cajero ha editado el
+  // importe de ESA entrada en efectivo (`touchedIds`, por id de entrada):
+  // cada entrada se pre-rellena con el importe pendiente (la primera con el
+  // total; «Agregar pago» con el resto) y, sin esta guarda, el cliente vería
+  // «Recibido: $TOTAL · Cambio: $0» antes de entregar nada. Con pagos mixtos
+  // el recibido es solo el efectivo tecleado (resolveCashReceived): teclear
+  // la tarjeta no convierte en «recibido» un efectivo pre-rellenado.
+  const saleConfirmedRef = useRef(false);
+  const [touchedIds, setTouchedIds] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (!open || showReceipt) return;
+    const last = payments[payments.length - 1];
+    const methodCode = last?.method ?? 'cash';
+    const methodName = paymentMethods.find((pm) => pm.code === methodCode)?.name ?? null;
+    const received = resolveCashReceived(payments, touchedIds);
+    getPosDisplayEmitter().setPayment(
+      toDisplayPayment({
+        methodCode,
+        methodName,
+        total: cartTotal,
+        received,
+        change: received === null ? null : change,
+      }),
+    );
+  }, [open, showReceipt, payments, paymentMethods, cartTotal, change, touchedIds]);
+
+  useEffect(() => {
+    if (open) {
+      saleConfirmedRef.current = false;
+      setTouchedIds(new Set());
+      return;
+    }
+    // Cerrado sin vender: la pantalla vuelve al pedido. Tras una venta el
+    // emisor ya está en «Gracias» y se deja que su temporizador lo resuelva.
+    if (!saleConfirmedRef.current) getPosDisplayEmitter().setMode('order');
+  }, [open]);
+
+  // Desmontaje con el modal abierto (el cajero navega a /app/pos desde mesas
+  // o nueva venta con el cobro a medias): el efecto [open] no llega a correr
+  // con open=false, así que se limpia aquí. Tras una venta se respeta
+  // «Gracias». El emisor ignora la llamada si la caja no está arrancada.
+  const wasSaleConfirmed = () => saleConfirmedRef.current;
+  useEffect(
+    () => () => {
+      if (!wasSaleConfirmed()) getPosDisplayEmitter().setMode('order');
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al desmontar; la ref se lee en ese momento
+    [],
+  );
 
   // Cargar métodos de pago, moneda e impuestos
   useEffect(() => {
@@ -755,6 +817,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   };
 
   const updatePayment = (id: string, field: 'method' | 'amount', value: string | number) => {
+    // A partir de aquí la pantalla del cliente muestra recibido y cambio en vivo para ESTA entrada.
+    if (field === 'amount') setTouchedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
     setPayments(payments.map(payment =>
       payment.id === id
         ? { ...payment, [field]: field === 'amount' ? Number(value) || 0 : value }
@@ -823,10 +887,20 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // Validar stock de ingredientes para productos compuestos
       const branchId = cart.branch_id;
       if (branchId && cart.items.length > 0) {
-        const stockCheck = await validateCompositeStock(
-          cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity })),
-          branchId
-        );
+        let stockCheck: Awaited<ReturnType<typeof validateCompositeStock>>;
+        try {
+          stockCheck = await validateCompositeStock(
+            cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity })),
+            branchId
+          );
+        } catch (stockCheckError) {
+          // Desktop sin red (fase 4B): la receta puede no estar en caché. La
+          // comprobación es previa y orientativa; no debe impedir la venta.
+          // En navegador se conserva el comportamiento de siempre.
+          if (!isDesktop()) throw stockCheckError;
+          console.warn('[checkout] No se pudo validar stock de ingredientes (sin red):', stockCheckError);
+          stockCheck = { ok: true };
+        }
         if (!stockCheck.ok && stockCheck.message) {
           // Reemplazo de window.confirm por AlertDialog controlado.
           // Se pausa el flujo con una promesa que se resuelve al confirmar/cancelar.
@@ -892,13 +966,23 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         driver_id: deliveryType === 'delivery_own' ? (selectedDriverId || undefined) : undefined,
         shipping_fee: shippingFee > 0 ? shippingFee : undefined,
         serial_selections: hasSerialItems && serialSelectionsComplete ? serialSelections : undefined,
+        // Desktop (fase 4B): id y fecha generados en el cliente. Con red la
+        // venta se inserta con ese id; sin red va al outbox y se reproduce con
+        // el mismo id (idempotente). En navegador no se envían: nada cambia.
+        ...(isDesktop() ? { saleId: newSaleId(), createdAt: new Date().toISOString() } : {}),
       };
 
-      const sale = onProcessPayment 
+      const sale = onProcessPayment
         ? await onProcessPayment(checkoutData)
         : await POSService.checkout(checkoutData);
+      const isPendingSync = sale.pending_sync === true;
+      if (isPendingSync) {
+        toast.warning(`Sin conexión: venta ${sale.receipt_number_local} guardada en este equipo. Se sincronizará al volver la red.`);
+      }
       setCompletedSale(sale);
       setShowReceipt(true);
+      saleConfirmedRef.current = true;
+      getPosDisplayEmitter().setMode('thanks', { total: cartTotal });
 
       // Haptic feedback de venta exitosa (no-op en web)
       hapticNotification('success');
@@ -915,7 +999,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         }));
         PrintJobsService.enqueueSaleTicket(cart.branch_id, {
           saleId: sale.id,
-          saleNumber: (sale as any).sale_number,
+          // Offline: número local + «Pendiente de sincronizar» en el papel.
+          saleNumber: ticketSaleNumber(sale),
           customerName: customerData?.full_name,
           customerDocType: customerData?.doc_type,
           customerDocNumber: customerData?.doc_number,
@@ -985,7 +1070,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       }
 
       // Crear shipment si es delivery propio
-      if (deliveryType === 'delivery_own' && deliveryAddress) {
+      // Sin red no hay venta en la BD todavía: el envío no puede crearse.
+      if (deliveryType === 'delivery_own' && deliveryAddress && isPendingSync) {
+        toast.warning('Sin conexión: el envío a domicilio debe crearse manualmente cuando la venta se sincronice.');
+      }
+      if (deliveryType === 'delivery_own' && deliveryAddress && !isPendingSync) {
         try {
           const { deliveryIntegrationService } = await import('@/lib/services/deliveryIntegrationService');
           await deliveryIntegrationService.createShipmentFromPOSSale({
@@ -1054,7 +1143,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       }
 
       // Enviar a Factus (factura electrónica) si el toggle está activado
-      if (sendToFactus) {
+      if (sendToFactus && isPendingSync) {
+        toast.warning('Sin conexión: la factura electrónica se podrá enviar a DIAN desde Facturación cuando la venta se sincronice.');
+      }
+      if (sendToFactus && !isPendingSync) {
         try {
           // Buscar la invoice_sales creada durante el checkout
           const { data: invoiceSale } = await supabase
@@ -1412,7 +1504,15 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
               <p className="text-sm sm:text-base dark:text-gray-400 text-gray-600">
                 Venta #{completedSale.id.slice(-8)} procesada exitosamente
               </p>
-              
+              {completedSale.pending_sync && (
+                <p
+                  role="status"
+                  className="mt-2 inline-block rounded-md bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-300"
+                >
+                  Pendiente de sincronizar · {completedSale.receipt_number_local}
+                </p>
+              )}
+
               <div className="bg-gray-100 dark:bg-gray-800 p-3 sm:p-4 rounded-lg mt-3 sm:mt-4 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm sm:text-base dark:text-gray-400 text-gray-600">Total:</span>

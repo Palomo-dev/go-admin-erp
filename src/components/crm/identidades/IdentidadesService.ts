@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
 import type { ChannelIdentity, DuplicateGroup, IdentityFilters, MergeResult } from './types';
 
 class IdentidadesService {
@@ -18,7 +19,9 @@ class IdentidadesService {
 
     // Filtro de búsqueda
     if (filters.search) {
-      query = query.or(`email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,full_name.ilike.%${filters.search}%`);
+      // Término entrecomillado (helper único): comas, paréntesis o comillas no rompen el `or`.
+      const filter = ilikeAnyOf(['email', 'phone', 'full_name'], filters.search);
+      if (filter) query = query.or(filter);
     }
 
     const { data: customers, error } = await query.limit(300);

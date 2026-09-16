@@ -135,23 +135,49 @@ export interface CreateLinkResult {
   invoice_id: string;
   amount: number;
   currency: string;
+  /** Solo al regenerar: `true`/`false` según Stripe aceptara `active:false` del enlace anterior; `null` si no había id que desactivar. */
+  previous_link_deactivated?: boolean | null;
+}
+
+/** Columnas del enlace en `quotations` (migración 20260916030000: `payment_link_amount`, `payment_link_id`). */
+export const PAYMENT_LINK_CLEARED = { payment_link_url: null, payment_link_amount: null, payment_link_id: null } as const;
+
+/** Desactiva un Payment Link (`active:false`) sin propagar el fallo: el enlace viejo cobraría de más, pero nunca bloquea el flujo. */
+async function deactivateLinkBestEffort(adapter: StripeAdapter, secretKey: string, paymentLinkId: string, ctx: Record<string, unknown>): Promise<boolean> {
+  if (!adapter.deactivatePaymentLink) {
+    console.error('[stripe payment link] adaptador sin deactivatePaymentLink: el enlace anterior sigue activo', { ...ctx, link: paymentLinkId });
+    return false;
+  }
+  try {
+    await adapter.deactivatePaymentLink(secretKey, paymentLinkId);
+    return true;
+  } catch (err) {
+    console.error('[stripe payment link] no se pudo desactivar el Payment Link', { ...ctx, link: paymentLinkId, error: err instanceof Error ? err.message : String(err) });
+    return false;
+  }
 }
 
 /**
  * Crea (o reutiliza) el Payment Link de una cotización de la organización.
  * Requiere `converted_invoice_id` con saldo > 0; el importe es el SALDO de la
- * factura (no el total de la cotización). Guarda `quotations.payment_link_url`.
+ * factura (no el total de la cotización). Persiste `payment_link_url`,
+ * `payment_link_amount` (saldo con el que se creó) y `payment_link_id`.
+ * Reutiliza solo si el saldo actual coincide con `payment_link_amount`; si
+ * cambió (abono manual, nota crédito) o el enlace es heredado sin importe,
+ * desactiva el anterior por su id (mejor esfuerzo) y crea uno nuevo.
  */
 export async function createPaymentLinkForQuotation(orgId: number, quotationId: string, userSupabase: SupabaseClient, deps: CreateLinkDeps): Promise<CreateLinkResult | null> {
   const { data: quot } = await userSupabase
     .from('quotations')
-    .select('id, number, opportunity_id, converted_invoice_id, payment_link_url, currency, total')
+    .select('id, number, opportunity_id, converted_invoice_id, payment_link_url, payment_link_amount, payment_link_id, currency, total')
     .eq('id', quotationId)
     .eq('organization_id', orgId)
     .maybeSingle();
   if (!quot) return null;
-  const q = quot as { id: string; number: string; opportunity_id: string | null; converted_invoice_id: string | null; payment_link_url: string | null; currency: string; total: number };
+  const q = quot as { id: string; number: string; opportunity_id: string | null; converted_invoice_id: string | null; payment_link_url: string | null; payment_link_amount: number | string | null; payment_link_id: string | null; currency: string; total: number };
   if (!q.converted_invoice_id) throw new InvoiceRequiredError();
+  // Instantánea del enlace vigente: la escritura final exige que siga siendo este (dos peticiones a la vez crearían dos enlaces activos).
+  const previous = { url: q.payment_link_url, id: q.payment_link_id };
 
   const { data: inv } = await userSupabase
     .from('invoice_sales')
@@ -166,21 +192,41 @@ export async function createPaymentLinkForQuotation(orgId: number, quotationId: 
     throw new Error('La factura no tiene saldo pendiente');
   }
   const currency = (invoice.currency || q.currency || 'COP').toUpperCase();
-  if (q.payment_link_url) return { url: q.payment_link_url, reused: true, invoice_id: invoice.id, amount: balance, currency };
+  // `numeric` llega como texto por PostgREST: se compara como número. Un enlace
+  // heredado (url sin importe) no se puede validar y se regenera.
+  const storedAmount = q.payment_link_amount == null ? null : Number(q.payment_link_amount);
+  if (previous.url && storedAmount !== null && storedAmount === balance) {
+    return { url: previous.url, reused: true, invoice_id: invoice.id, amount: balance, currency };
+  }
 
   const readiness = deps.readiness ?? (await getStripeReadiness(orgId, deps.serviceClient));
   if (!readiness.configured || !readiness.secretKey) throw new PaymentNotConfiguredError(readiness.missing);
 
   const adapter = deps.adapter ?? stripeAdapter;
+  let previousDeactivated: boolean | null = null;
+  if (previous.url && previous.id) {
+    previousDeactivated = await deactivateLinkBestEffort(adapter, readiness.secretKey, previous.id, { organization: orgId, quotation: q.id, reason: 'saldo cambiado', stored_amount: storedAmount, balance });
+  }
   const link = await adapter.createPaymentLink(readiness.secretKey, {
     amountMinor: majorToMinor(balance, currency),
     currency,
     name: `Factura ${invoice.number} · Propuesta ${q.number}`,
     metadata: { organization_id: String(orgId), quotation_id: q.id, invoice_id: invoice.id, opportunity_id: q.opportunity_id ?? '' },
   });
-  const { error } = await userSupabase.from('quotations').update({ payment_link_url: link.url, updated_at: new Date().toISOString() }).eq('id', q.id).eq('organization_id', orgId);
+  const update = userSupabase
+    .from('quotations')
+    .update({ payment_link_url: link.url, payment_link_amount: balance, payment_link_id: link.id, updated_at: new Date().toISOString() })
+    .eq('id', q.id)
+    .eq('organization_id', orgId);
+  // Guarda optimista: solo si el enlace vigente sigue siendo el que leímos (tester B1: dos POST a la vez dejaban dos enlaces activos).
+  const { data: saved, error } = await (previous.id ? update.eq('payment_link_id', previous.id) : update.is('payment_link_id', null)).select('id');
   if (error) throw new Error(`Enlace creado en Stripe pero no se pudo guardar: ${error.message}`);
-  return { url: link.url, reused: false, invoice_id: invoice.id, amount: balance, currency };
+  if (!saved?.length) {
+    await deactivateLinkBestEffort(adapter, readiness.secretKey, link.id, { organization: orgId, quotation: q.id, reason: 'carrera: otra petición guardó un enlace antes' });
+    throw new Error('El enlace de pago se estaba creando en otra petición: vuelve a consultarlo');
+  }
+  const out: CreateLinkResult = { url: link.url, reused: false, invoice_id: invoice.id, amount: balance, currency };
+  return previous.url ? { ...out, previous_link_deactivated: previousDeactivated } : out;
 }
 
 // ─── Webhook ─────────────────────────────────────────────────────────────────
@@ -303,8 +349,8 @@ export async function processStripeWebhook(rawBody: string, signature: string | 
     return { status: 401, body: { success: false, error: 'La organización del evento no coincide con la que verificó la firma' } };
   }
 
-  const { data: quot } = await deps.serviceClient.from('quotations').select('id, converted_invoice_id, opportunity_id').eq('id', p.quotationId).eq('organization_id', p.organizationId).maybeSingle();
-  const q = quot as { converted_invoice_id?: string | null; opportunity_id?: string | null } | null;
+  const { data: quot } = await deps.serviceClient.from('quotations').select('id, converted_invoice_id, opportunity_id, payment_link_id').eq('id', p.quotationId).eq('organization_id', p.organizationId).maybeSingle();
+  const q = quot as { converted_invoice_id?: string | null; opportunity_id?: string | null; payment_link_id?: string | null } | null;
   const invoiceId = q?.converted_invoice_id ?? p.invoiceId;
   const ctx = { orgId: p.organizationId, opportunityId: q?.opportunity_id ?? null, eventId: p.eventId, amount: p.amount, currency: p.currency, quotationId: p.quotationId };
   if (!quot || !invoiceId) {
@@ -337,15 +383,15 @@ export async function processStripeWebhook(rawBody: string, signature: string | 
     return { status: 200, body: { success: true, applied: false, reason: 'duplicate', idempotent: true, event_id: p.eventId } };
   }
 
+  // Factura pagada: se desactiva el enlace por el id PERSISTIDO al crearlo
+  // (`session.payment_link` solo como respaldo de enlaces heredados) y se
+  // limpian las columnas: el enlace ya no sirve y no debe reutilizarse.
   let linkDeactivated: boolean | null = null;
-  if (result.invoice_status === 'paid' && p.paymentLinkId && adapter.deactivatePaymentLink) {
-    try {
-      await adapter.deactivatePaymentLink(verifyingKey, p.paymentLinkId);
-      linkDeactivated = true;
-    } catch (err) {
-      linkDeactivated = false;
-      console.error('[stripe webhook] no se pudo desactivar el Payment Link', { event: p.eventId, link: p.paymentLinkId, error: err instanceof Error ? err.message : String(err) });
-    }
+  if (result.invoice_status === 'paid') {
+    const linkId = q?.payment_link_id ?? p.paymentLinkId;
+    if (linkId) linkDeactivated = await deactivateLinkBestEffort(adapter, verifyingKey, linkId, { event: p.eventId, organization: p.organizationId, quotation: p.quotationId });
+    const { error: clearError } = await deps.serviceClient.from('quotations').update({ ...PAYMENT_LINK_CLEARED, updated_at: nowIso }).eq('id', p.quotationId).eq('organization_id', p.organizationId);
+    if (clearError) console.error('[stripe webhook] no se pudo limpiar el enlace de la cotización', { event: p.eventId, quotation: p.quotationId, error: clearError.message });
   }
   return {
     status: 200,

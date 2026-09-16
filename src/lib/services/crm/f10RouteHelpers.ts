@@ -1,20 +1,30 @@
 /**
  * F10 — helpers comunes de las rutas de propuesta/contrato/pago/demo.
  * Regla dura 5: la organización sale de la sesión; si el body trae otra → 403
- * y se registra (`foreignOrganizationInBody`, la misma decisión que Voces).
+ * y se registra (`readOrgBody`, el punto único de F0-SEC).
  */
 
 import { NextResponse } from 'next/server';
 import { OrgContextError } from '@/lib/utils/orgContext';
-import { foreignOrganizationInBody } from '@/lib/services/crm/voiceLibrary';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { STAGE_MANAGER_ROLE_IDS } from '@/lib/services/crm/stagePermissions';
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 
-export function foreignOrgResponse(tag: string, body: unknown, sessionOrg: number): NextResponse | null {
-  const claimed = foreignOrganizationInBody((body as { organization_id?: unknown } | null)?.organization_id, sessionOrg);
-  if (claimed === null) return null;
-  console.warn(`[${tag}] organization_id ajeno en el body`, { session: sessionOrg, body: claimed });
-  return NextResponse.json({ success: false, error: 'Organización no permitida' }, { status: 403 });
+/**
+ * Azúcar sobre el punto único `readOrgBody` para las rutas que responden su
+ * propio JSON: body ya parseado (todas las claves de organización) y query
+ * string → 403 registrado. Deuda C de F0-SEC (2026-09-16).
+ */
+export function foreignOrgResponse(tag: string, body: unknown, ctx: { organizationId: number; userId?: string | null }, request?: Pick<Request, 'url'>): NextResponse | null {
+  try {
+    readOrgBody(ctx, body, { route: tag, request });
+    return null;
+  } catch (error) {
+    if (error instanceof OrgContextError && error.statusCode === 403) {
+      return NextResponse.json({ success: false, error: 'Organización no permitida' }, { status: 403 });
+    }
+    throw error;
+  }
 }
 
 /** Error de negocio tipado del servicio: lleva `statusCode` (400/409…) y opcionalmente `code`. */

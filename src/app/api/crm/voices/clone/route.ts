@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       return bad(`La petición pesa demasiado: como máximo ${MAX_VOICE_SAMPLES} muestras de 10 MB cada una`);
     }
 
-    const form = readOrgBody(ctx, await request.formData());
+    const form = readOrgBody(ctx, await request.formData(), { request });
     const name = String(form.get('name') || '').trim();
     const consent = String(form.get('consent') || '') === 'true';
     const entries = form.getAll('samples').filter((f): f is File => f instanceof File);

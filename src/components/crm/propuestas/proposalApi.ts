@@ -75,7 +75,7 @@ export const contractApi = {
     call<ContractRow>('/api/crm/contracts', { method: 'POST', body: JSON.stringify(body) }),
 };
 
-export interface PaymentStatus { configured: boolean; source: string | null; missing: string[]; payment_link_url: string | null; invoice: { id: string; number: string; balance: number; status: string; currency: string } | null }
+export interface PaymentStatus { configured: boolean; source: string | null; missing: string[]; payment_link_url: string | null; /** B1: había enlace pero su importe ya no es el saldo; el GET lo oculta y el POST lo regenera. */ payment_link_stale?: boolean; invoice: { id: string; number: string; balance: number; status: string; currency: string } | null }
 
 export const paymentApi = {
   status: (quotationId: string) => call<PaymentStatus>(`/api/crm/payments/link?quotation_id=${encodeURIComponent(quotationId)}`),

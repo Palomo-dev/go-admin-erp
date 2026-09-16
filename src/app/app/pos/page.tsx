@@ -10,7 +10,9 @@ import { CustomerSelector } from '@/components/pos/CustomerSelector';
 import { CartView } from '@/components/pos/CartView';
 import { CartTabs } from '@/components/pos/CartTabs';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
+import { CustomerDisplayIndicator } from '@/components/pos/display/CustomerDisplayIndicator';
 import { POSService } from '@/lib/services/posService';
+import { getPosDisplayEmitter, resolveDisplayCurrency, startPosDisplay, stopPosDisplay } from '@/lib/pos/display/posDisplay';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
@@ -25,6 +27,8 @@ import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 import { AperturaCajaDialog } from '@/components/pos/cajas/AperturaCajaDialog';
 import { CierreCajaDialog } from '@/components/pos/cajas/CierreCajaDialog';
+import { VentasPendientesDialog } from '@/components/pos/VentasPendientesDialog';
+import { startSalesSync } from '@/lib/offline/salesSync';
 import { CajasService } from '@/components/pos/cajas/CajasService';
 import { useBlindCloseMode } from '@/components/pos/cajas/useBlindCloseMode';
 import type { CashSession } from '@/components/pos/cajas/types';
@@ -56,6 +60,12 @@ export default function POSPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           setCurrentUserId(user.id);
+          // Nombre del cajero para la cabecera de la pantalla del cliente (PLAN §4.3).
+          getUserName(user.id)
+            .then((name) => {
+              if (name) getPosDisplayEmitter().setSession({ cashier: { name } });
+            })
+            .catch(() => undefined);
           const { data: memberData } = await supabase
             .from('organization_members')
             .select('is_super_admin, role_id, roles(name)')
@@ -89,10 +99,55 @@ export default function POSPage() {
     }
   }, [organization, branchFilter, branchLoading]);
 
+  // Pantalla del cliente (PLAN §12 Fase 0): un emisor por ventana de caja.
+  // Arranca con la organización y su moneda; al salir del POS se despide
+  // (`bye`) para que la pantalla pase a «Conectando». Si el interruptor
+  // maestro está apagado, startPosDisplay no abre ningún transporte. La
+  // moneda no condiciona el arranque: si la consulta falla se emite en COP.
+  // `isCancelled` cubre la salida del POS mientras startPosDisplay aún carga
+  // el interruptor: sin ella, el arranque diferido reabriría transporte y
+  // latido en una página que ya no existe.
+  useEffect(() => {
+    const orgId = organization?.id;
+    if (!orgId) return;
+    let cancelled = false;
+    resolveDisplayCurrency(() => POSService.getBaseCurrency())
+      .then((currency) => {
+        if (cancelled) return;
+        return startPosDisplay({ organizationId: orgId, currency, isCancelled: () => cancelled });
+      })
+      .catch((err) => console.warn('[pos-display] no se pudo arrancar el emisor:', err));
+    // Con dos pestañas de /app/pos la pantalla sigue a la última que saluda:
+    // al recuperar el foco esta pestaña vuelve a presentarse (PLAN §8).
+    const onFocus = () => getPosDisplayEmitter().reannounce();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') onFocus();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+      stopPosDisplay();
+    };
+  }, [organization?.id]);
+
+  // Caja abierta/cerrada y cajero: viajan en `hello` (PLAN §8).
+  useEffect(() => {
+    getPosDisplayEmitter().setSession({ sessionOpen: !!cashSession });
+  }, [cashSession]);
+
   // Reloj en tiempo real: actualiza la hora mostrada en el header cada segundo
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Desktop (fase 4B): reproducir las ventas hechas sin conexión al abrir el
+  // POS con red y cada vez que vuelva la conectividad real. No-op en navegador.
+  useEffect(() => {
+    return startSalesSync();
   }, []);
 
   // Suscripción realtime a cash_sessions para que el estado de caja
@@ -435,6 +490,13 @@ export default function POSPage() {
   // Obtener carrito activo
   const activeCart = carts.find(cart => cart.id === activeCartId);
 
+  // La pestaña que el cajero tiene delante es lo que ve el cliente. Las
+  // mutaciones las avisa posService al guardar; aquí se cubre el cambio de
+  // pestaña y la eliminación (el emisor deduplica si ambos avisan lo mismo).
+  useEffect(() => {
+    getPosDisplayEmitter().setActiveCart(activeCart ?? null);
+  }, [activeCart]);
+
   // Estados de carga
   if (orgLoading || branchLoading || (isLoading && carts.length === 0)) {
     return (
@@ -519,6 +581,9 @@ export default function POSPage() {
                   <AperturaCajaDialog onSessionOpened={handleSessionOpened} />
                 )}
 
+                {/* Ventas sin conexión pendientes de sincronizar (solo Desktop, fase 4B) */}
+                <VentasPendientesDialog />
+
                 {/* Hora */}
                 <div className="hidden xs:flex items-center space-x-1.5 sm:space-x-2">
                   <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 dark:text-gray-400 text-gray-500 shrink-0" />
@@ -526,7 +591,10 @@ export default function POSPage() {
                     {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
-                
+
+                {/* Pantalla del cliente: punto verde/gris + menú abrir/cerrar (PLAN pos-doble-pantalla §5.1) */}
+                <CustomerDisplayIndicator />
+
                 {/* Badges - Compactos en móvil */}
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <Badge 

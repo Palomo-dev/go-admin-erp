@@ -30,7 +30,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const ctx = await getServerOrgContext();
     const { id } = await params;
     const body = await readJson(request);
-    rejectForeignOrganization(TAG, body.organization_id, ctx);
+    rejectForeignOrganization(TAG, body, ctx, request);
     const parsed = validateReferralPatch(body);
     if (!parsed.ok) return validationFail(parsed.errors);
     const referral = await updateReferral(id, ctx.organizationId, parsed.value, ctx.supabase);

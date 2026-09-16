@@ -131,7 +131,7 @@ export function PartnersPage() {
         )}
 
         <PartnerEditor open={editorOpen} partner={editing} tiers={tiers} onOpenChange={setEditorOpen} onSave={savePartner} returnFocusFallback={fallback} />
-        <TierEditor open={tiersOpen} tiers={tiers} onOpenChange={setTiersOpen} onSave={saveTier} onDelete={deleteTier} returnFocusFallback={() => tiersButtonRef.current} />
+        <TierEditor open={tiersOpen} tiers={tiers} canManage={canManage} onOpenChange={setTiersOpen} onSave={saveTier} onDelete={deleteTier} returnFocusFallback={() => tiersButtonRef.current} />
         <PartnerDealList open={dealsPartner !== null} partner={dealsPartner} canManage={canManage} onOpenChange={(o) => { if (!o) setDealsTarget(null); }} loadDeals={loadDeals} onRegister={registerDeal} onTransition={transitionDeal} returnFocusFallback={fallback} />
         <ConfirmDialog
           open={deleteTarget !== null}

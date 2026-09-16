@@ -19,8 +19,13 @@ interface DownloadDesktopDialogProps {
 
 /**
  * URL de descarga del instalador de Go Admin Desktop.
- * Apunta a "latest" en GitHub Releases: siempre descarga la última versión
- * publicada sin necesidad de actualizar esta constante.
+ * Apunta a "latest" en GitHub Releases del repositorio público de releases
+ * (Palomo-dev/go-admin-desktop-releases): siempre descarga la última versión
+ * publicada sin necesidad de actualizar esta constante. `GoAdminERP-Setup.exe`
+ * es la copia con nombre estable que sube .github/workflows/desktop-release.yml
+ * junto al asset versionado (`GoAdminERP-Setup-<versión>.exe`) que usa el
+ * auto-update. Mientras el repo de releases no tenga token, la misma copia
+ * estable existe en el repo de código (transición 0.1.x).
  */
 const DOWNLOAD_URL: string | null =
   'https://github.com/Palomo-dev/go-admin-erp/releases/latest/download/GoAdminERP-Setup.exe';

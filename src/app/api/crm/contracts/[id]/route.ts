@@ -33,7 +33,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { id } = await params;
     const body = await readJson(request);
     if (!body) return NextResponse.json({ success: false, error: 'Cuerpo JSON inválido' }, { status: 400 });
-    const forbidden = foreignOrgResponse('CRM Contracts PATCH', body, ctx.organizationId);
+    const forbidden = foreignOrgResponse('CRM Contracts PATCH', body, ctx, request);
     if (forbidden) return forbidden;
 
     const status = body.status;

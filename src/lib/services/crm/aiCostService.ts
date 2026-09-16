@@ -28,7 +28,7 @@
  *   deduct_comm_credits(p_org_id integer, p_channel text, p_amount integer) -> boolean
  *   fn_ai_usage_month(p_org, p_since, p_tz) -> jsonb (migración crm_v4_f00_39)
  *   fn_provision_ai_settings(p_org) -> jsonb (migración crm_v4_f00_43; la usa
- *     `ensureAiSettings`, con respaldo en Node mientras no esté aplicada)
+ *     `ensureAiSettings`; única fuente, sin respaldo en Node desde F0-pulido)
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -101,7 +101,11 @@ export interface ChargeAiInput {
   unitSku?: string;
   /** provider de provider_pricing (default: inferido del sku/modelo → 'openai'). */
   provider?: string;
-  /** Créditos a debitar. Default: max(1, ceil(units / 1000)). */
+  /**
+   * Créditos a debitar. Default: max(1, ceil(units / 1000)). Si viene
+   * informado debe redondear a >= 1: un valor < 0,5 (p. ej. 0.4) lanza
+   * `RangeError` en vez de cobrar 0 y dejar un log gratuito (QA r3 punto 4).
+   */
   credits?: number;
   userId?: string | null;
   metadata?: Record<string, unknown>;
@@ -215,6 +219,12 @@ async function assertWithinBudget(sb: SupabaseClient, orgId: number, estimatedUs
 export async function chargeAiCredits(input: ChargeAiInput): Promise<ChargeAiResult> {
   assertValidCredits(input.units, 'unidades');
   const credits = assertValidCredits(input.credits ?? defaultCreditsForUnits(input.units), 'créditos de IA');
+  // QA r3 punto 4: un `credits` explícito que redondea a 0 (0.4, 0) no es un
+  // cobro; sin esta guarda el RPC recibía p_cost 0 (true, no-op) y quedaba un
+  // log de 0 créditos. Los llamadores actuales garantizan >= 1 por sí mismos.
+  if (input.credits != null && credits < 1) {
+    throw new RangeError(`créditos de IA: mínimo 1 (recibido ${String(input.credits)})`);
+  }
   const sb = await resolveClient();
   const provider = input.provider ?? inferProvider(input.model);
 
@@ -231,8 +241,8 @@ export async function chargeAiCredits(input: ChargeAiInput): Promise<ChargeAiRes
   let outcome = await callDecrement(sb, input.orgId, credits);
   if (!outcome.ok && (outcome.missingRow || outcome.unprovisioned)) {
     // Auto-provisión con el cupo del plan (una sola fuente: RPC
-    // `fn_provision_ai_settings`, mig. 43, con respaldo en Node en
-    // `ensureAiSettings`) y un único reintento. Cubre la fila ausente y la
+    // `fn_provision_ai_settings`, mig. 43, vía `ensureAiSettings`; RPC ausente
+    // o rota → lanza → 402) y un único reintento. Cubre la fila ausente y la
     // fila «vacía» creada desde el navegador (credits_reset_at NULL). Si
     // tampoco así hay saldo: 402, no 500.
     try {

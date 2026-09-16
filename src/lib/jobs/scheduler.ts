@@ -145,17 +145,25 @@ export async function runScheduledKinds(opts: RunScheduledOptions): Promise<Sche
   }
 
   if (opts.kinds.includes('maintenance')) {
-    const started = Date.now();
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), Math.max(250, remainingFor(opts.budgetMs)));
-    try {
-      const result = await runMaintenance(sb, log, controller.signal);
-      out.maintenance = { ok: true, ms: Date.now() - started, result };
-    } catch (err) {
-      out.maintenance = { ok: false, ms: Date.now() - started, error: errorMessage(err) };
-      log.error('maintenance_failed', { error: out.maintenance.error });
-    } finally {
-      clearTimeout(timer);
+    // r5 (N-3): con el total ya agotado, `maintenance` no arranca (antes recibía
+    // 250 ms igualmente). Con presupuesto positivo, el mínimo de 250 ms se mantiene.
+    const remaining = remainingFor(opts.budgetMs);
+    if (remaining <= 0) {
+      out.maintenance = { ok: false, ms: 0, error: 'budget_exhausted' };
+      log.warn('maintenance_skipped', { reason: 'budget_exhausted' });
+    } else {
+      const started = Date.now();
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), Math.max(250, remaining));
+      try {
+        const result = await runMaintenance(sb, log, controller.signal);
+        out.maintenance = { ok: true, ms: Date.now() - started, result };
+      } catch (err) {
+        out.maintenance = { ok: false, ms: Date.now() - started, error: errorMessage(err) };
+        log.error('maintenance_failed', { error: out.maintenance.error });
+      } finally {
+        clearTimeout(timer);
+      }
     }
   }
 

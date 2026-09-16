@@ -31,10 +31,23 @@ export interface DisplayModifier {
   extraPrice: number;
 }
 
+/** Un par atributo/valor de `product.variant_data` (p. ej. Talla: M). */
+export interface DisplayVariantAttribute {
+  attr: string;
+  value: string;
+}
+
 export interface DisplayLine {
   /** `CartItem.id`; si el carrito no lo trae, un id derivado estable (`linea:<product_id>:<índice>`). */
   id: string;
+  /** `product.name` tal cual (en la BD una variante se llama «Padre - Variante N»). */
   name: string;
+  /**
+   * Pares de `product.variant_data` con valor no vacío, en el orden de la
+   * BD, para pintarlos como badges igual que CartView y el recibo
+   * («Camiseta» + Talla: M, Color: Azul). null si el producto no es variante.
+   */
+  variant: DisplayVariantAttribute[] | null;
   qty: number;
   /** Precio unitario que ve el cliente: ya incluye el extra de los modificadores. */
   unitPrice: number;
@@ -49,6 +62,18 @@ export interface DisplayLine {
   /** Descuento de la línea en importe; null si no hay. */
   discount: number | null;
   note: string | null;
+  /**
+   * `CartItem.tax_excluded`: el cajero pulsó «Excluir impuesto de este
+   * producto» (CartView). El recibo y TaxSummary no cobran impuesto en esta
+   * línea; la pantalla debe poder decirlo («sin IVA») y no sumarle nada.
+   */
+  taxExcluded: boolean;
+  /**
+   * `CartItem.tax_included`: el precio de ESTA línea ya lleva el impuesto.
+   * Con carrito mixto (unas incluidas, otras no) `DisplayCart.taxIncluded`
+   * no basta y la Parte C decide por línea.
+   */
+  taxIncluded: boolean;
 }
 
 /** Proyección del Cart: lo que la pantalla necesita, nada más. Sin `product` completo. */
@@ -56,12 +81,17 @@ export interface DisplayCart {
   id: string;
   currency: string;
   lines: DisplayLine[];
+  /** Σ `line.total` (bruto, qty × unitPrice), siempre; nunca `cart.subtotal` ni un override. */
   subtotal: number;
   discountTotal: number;
   /** Motivo del descuento (cupón/promoción) si se conoce; null si no. */
   discountLabel: string | null;
   taxTotal: number;
-  /** true → "IVA incluido"; false → impuesto sumado aparte, como en el recibo. */
+  /**
+   * true si ALGUNA línea lleva impuesto incluido (regla de
+   * calculateCartTotals); con carrito mixto la Parte C debe mirar las líneas
+   * (`DisplayLine.taxIncluded`).
+   */
   taxIncluded: boolean;
   total: number;
   /** Línea que acaba de cambiar, para el resaltado de 600 ms. */
@@ -118,10 +148,24 @@ export type UpMessage =
   | (UpEnvelope & { t: 'tip_selected'; cartId: string; kind: TipKind; value: number })
   /** Solo avisa al cajero; no confirma ningún pago. */
   | (UpEnvelope & { t: 'qr_paid_claim'; cartId: string })
-  | (UpEnvelope & { t: 'rating'; saleId: string | null; rating: Rating });
+  | (UpEnvelope & { t: 'rating'; saleId: string | null; rating: Rating })
+  /**
+   * Presencia de la pantalla (PLAN §5.1: «punto verde: pantalla conectada /
+   * gris: sin pantalla»). La pantalla lo emite cada HEARTBEAT_INTERVAL_MS
+   * mientras está abierta; la caja pinta verde si el último `display_alive`
+   * (o `need_snapshot`) tiene menos de STALE_AFTER_MS. No es una intención:
+   * la caja no responde nada. Va a TODAS las instancias de la terminal (sin
+   * `toInstanceId`): la pantalla existe para la caja física, no para una
+   * pestaña concreta.
+   */
+  | (UpEnvelope & { t: 'display_alive'; at: number; capabilities: DisplayCapabilities })
+  /** La pantalla se cierra a propósito: la caja pone el indicador en gris sin esperar el silencio. */
+  | (UpEnvelope & { t: 'display_bye' });
 
 export type UpMessageType = UpMessage['t'];
 export type TipSelectedMessage = Extract<UpMessage, { t: 'tip_selected' }>;
+/** Mensajes de subida que hablan de presencia, no de intención: nunca van dirigidos a una instancia. */
+export const UP_PRESENCE_TYPES: ReadonlySet<UpMessageType> = new Set<UpMessageType>(['display_alive', 'display_bye']);
 
 // ---------------------------------------------------------------------------
 // Estado completo que ve la pantalla
@@ -153,7 +197,28 @@ export interface DownEnvelope {
 }
 
 export type DownMessage =
-  | (DownEnvelope & { t: 'hello'; cashier: { name: string } | null; sessionOpen: boolean })
+  | (DownEnvelope & {
+      t: 'hello';
+      /**
+       * Organización de la caja que habla. La pantalla comprueba que la marca
+       * que pinta (logo, colores) es la de esta organización y no la de otra
+       * sesión que compartió el mismo `pos_terminal_id` (la clave de
+       * localStorage no va por organización: ver terminal.ts).
+       */
+      organizationId: number;
+      cashier: { name: string } | null;
+      sessionOpen: boolean;
+      /**
+       * Moneda de la caja (ISO 4217, la misma que `cart.currency`). Opcional y
+       * aditivo (ronda 4): `thanks` y `payment` no llevan carrito, y una
+       * pantalla recién abierta durante «Gracias» no tiene ninguno previo del
+       * que recordarla; como el `hello` siempre precede al `state`
+       * (announce), la pantalla la conoce antes de pintar cualquier importe
+       * (PLAN §4.1.3 «nunca miente»). isDownMessage no la exige: un emisor
+       * anterior sin este campo sigue siendo válido.
+       */
+      currency?: string;
+    })
   | (DownEnvelope & { t: 'state'; state: DisplayState })
   | (DownEnvelope & { t: 'heartbeat'; at: number })
   | (DownEnvelope & { t: 'bye' });
@@ -178,7 +243,14 @@ export type UpMessageDraft = DistributiveOmit<UpMessage, keyof UpEnvelope>;
 // ---------------------------------------------------------------------------
 
 const DOWN_TYPES: ReadonlySet<string> = new Set<DownMessageType>(['hello', 'state', 'heartbeat', 'bye']);
-const UP_TYPES: ReadonlySet<string> = new Set<UpMessageType>(['need_snapshot', 'tip_selected', 'qr_paid_claim', 'rating']);
+const UP_TYPES: ReadonlySet<string> = new Set<UpMessageType>([
+  'need_snapshot',
+  'tip_selected',
+  'qr_paid_claim',
+  'rating',
+  'display_alive',
+  'display_bye',
+]);
 const DISPLAY_MODES: ReadonlySet<string> = new Set<DisplayMode>(['idle', 'order', 'payment', 'tip', 'thanks', 'closed']);
 const TIP_KINDS: ReadonlySet<string> = new Set<TipKind>(['percent', 'amount', 'none']);
 const PAYMENT_METHODS: ReadonlySet<string> = new Set<DisplayPayment['method']>(['cash', 'card', 'qr']);
@@ -195,9 +267,37 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
 }
 
+/** Id de organización tal como lo guarda la BD: entero positivo. */
+function isOrganizationId(value: unknown): value is number {
+  return isFiniteNumber(value) && Number.isInteger(value) && value > 0;
+}
+
+function isCapabilities(value: unknown): value is DisplayCapabilities {
+  return isRecord(value) && typeof value.touch === 'boolean' && isFiniteNumber(value.width) && isFiniteNumber(value.height);
+}
+
 /** Cabecera común: versión conocida y terminal identificada. */
 function hasEnvelope(value: unknown): value is { v: ProtocolVersion; t: string; terminalId: string } & Record<string, unknown> {
   return isRecord(value) && value.v === PROTOCOL_VERSION && typeof value.t === 'string' && isNonEmptyString(value.terminalId);
+}
+
+/**
+ * Versión declarada en un sobre (`v`), sin validar nada más. null si no hay
+ * sobre o `v` no es un número finito. Sirve para distinguir «otra versión del
+ * protocolo» (una caja actualizada hablando con una pantalla vieja, o al
+ * revés) de «basura»: el receptor cuenta lo primero en `incompatibleVersionAt`
+ * para que la pantalla pueda decir «Actualice la pantalla» (PLAN §8).
+ */
+export function readEnvelopeVersion(value: unknown): number | null {
+  if (!isRecord(value)) return null;
+  return isFiniteNumber(value.v) ? value.v : null;
+}
+
+/** ¿Es un sobre de esta terminal con una versión del protocolo distinta de la actual? */
+export function isIncompatibleEnvelope(value: unknown, terminalId: string): boolean {
+  if (!isRecord(value) || value.terminalId !== terminalId) return false;
+  const version = readEnvelopeVersion(value);
+  return version !== null && version !== PROTOCOL_VERSION;
 }
 
 /**
@@ -260,6 +360,7 @@ export function isDownMessage(value: unknown): value is DownMessage {
   switch (value.t as DownMessageType) {
     case 'hello':
       return (
+        isOrganizationId(value.organizationId) &&
         typeof value.sessionOpen === 'boolean' &&
         (value.cashier === null || (isRecord(value.cashier) && typeof value.cashier.name === 'string'))
       );
@@ -279,15 +380,12 @@ export function isUpMessage(value: unknown): value is UpMessage {
   if (value.toInstanceId !== undefined && !isNonEmptyString(value.toInstanceId)) return false;
 
   switch (value.t as UpMessageType) {
-    case 'need_snapshot': {
-      const caps = value.capabilities;
-      return (
-        isRecord(caps) &&
-        typeof caps.touch === 'boolean' &&
-        isFiniteNumber(caps.width) &&
-        isFiniteNumber(caps.height)
-      );
-    }
+    case 'need_snapshot':
+      return isCapabilities(value.capabilities);
+    case 'display_alive':
+      return isFiniteNumber(value.at) && isCapabilities(value.capabilities);
+    case 'display_bye':
+      return true;
     case 'tip_selected':
       return (
         isNonEmptyString(value.cartId) &&

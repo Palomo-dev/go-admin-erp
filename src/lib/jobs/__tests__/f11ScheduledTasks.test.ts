@@ -11,7 +11,9 @@ import { createFakeSupabase, makeDb, writesTo, type FakeDb, type Row } from '@/l
 
 jest.mock('@/lib/supabase/config', () => ({ supabase: {} }));
 jest.mock('@/lib/utils/orgId', () => ({ getOrganizationId: () => 120 }));
-jest.mock('@/lib/services/crm/sequenceService', () => ({ enrollInSequence: jest.fn() }));
+jest.mock('@/lib/services/crm/sequenceService', () => ({ enrollInSequence: jest.fn(async () => ({ id: 'enr-1', created: true, reason: null, steps: 1, first_run_at: null, status: 'active' })) }));
+
+import { enrollInSequence } from '@/lib/services/crm/sequenceService';
 
 import { runHealthRecalculate } from '../scheduled/healthRecalculate';
 import { runRenewalsSync } from '../scheduled/renewalsSync';
@@ -183,5 +185,31 @@ describe('runRenewalsSync', () => {
     db.nextReadError = { table: 'organization_modules', error: { code: '57014', message: 'timeout orgs' } };
     const out = await runRenewalsSync(sb(db), NOW, log);
     expect(out).toMatchObject({ orgs: 0, error: 'timeout orgs' });
+  });
+
+  // Ronda 2 D1/D2 (H1): la inscripción en la secuencia se inyecta desde el servidor (`enroll: enrollInSequence`);
+  // una renovación creada desde el modal (sin inscripción) queda inscrita en la siguiente pasada del cron.
+  it('inyecta enrollInSequence: una renovación existente sin inscripción se inscribe (org, secuencia, oportunidad, source=renewal) y se cuenta en enrolled', async () => {
+    const db = fixtures();
+    db.rows.organizations = [{ id: 120, timezone: 'America/Bogota' }, { id: 130, timezone: null }, { id: 140, timezone: null }];
+    db.rows.pipelines = [{ id: 'pl-120', organization_id: 120, pipeline_type: 'renewal' }];
+    db.rows.stages = [{ id: 'st-120', pipeline_id: 'pl-120', position: 1 }];
+    db.rows.customers = [{ id: 'cu', organization_id: 120, full_name: 'Cliente' }];
+    db.rows.opportunities = [
+      { id: 'won-120', organization_id: 120, status: 'won', customer_id: 'cu', amount: 10, currency: 'COP', salesperson_id: null, billing_cycle_months: 12, closed_at: '2026-09-01T03:00:00Z' },
+      { id: 'ren-120', organization_id: 120, status: 'open', customer_id: 'cu', deal_type: 'renewal', parent_opportunity_id: 'won-120', pipeline_id: 'pl-120', stage_id: 'st-120', next_contact_at: null },
+    ];
+    db.rows.sequences = [{ id: 'seq-120', organization_id: 120, is_active: true, trigger_type: 'event', trigger_config: { event: 'renewal_scheduled' }, template_key: null }];
+    db.rows.sequence_enrollments = [];
+    db.rows.tasks = [];
+    const out = await runRenewalsSync(sb(db), NOW, log);
+    expect(out.created).toBe(0);
+    expect(enrollInSequence).toHaveBeenCalledTimes(1);
+    const call = (enrollInSequence as jest.Mock).mock.calls[0] as unknown[];
+    expect(call.slice(0, 3)).toEqual([120, 'seq-120', 'ren-120']);
+    expect(call[4]).toMatchObject({ customerId: 'cu', source: 'renewal' });
+    expect(out.by_org.find((o) => o.org_id === 120)).toMatchObject({ enrolled: 1, errors: [] });
+    // una org que falla entera sigue devolviendo la forma completa del resultado (con enrolled)
+    expect(out.by_org.find((o) => o.org_id === 130)).toMatchObject({ scanned: 0, created: 0, updated: 0, skipped: 0, enrolled: 0 });
   });
 });

@@ -17,10 +17,12 @@
  * código de estado.
  */
 
-class FakeOrgContextError extends Error {
+const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
+// Extiende la clase real: `readOrgBody` (punto único) lanza la real y las rutas hacen `instanceof`.
+class FakeOrgContextError extends RealOrgContextError {
   statusCode: number;
   constructor(message: string, statusCode = 401) {
-    super(message);
+    super(message, statusCode);
     this.statusCode = statusCode;
   }
 }
@@ -84,7 +86,7 @@ function fakeSupabase() {
 }
 
 jest.mock('@/lib/utils/orgContext', () => ({
-  OrgContextError: FakeOrgContextError,
+  OrgContextError: RealOrgContextError, // la clase real: `readOrgBody` lanza la real y las rutas hacen `instanceof`
   getServerOrgContext: jest.fn(async () => ({
     organizationId: 7,
     userId: 'u-1',

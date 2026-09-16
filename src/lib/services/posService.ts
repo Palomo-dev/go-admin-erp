@@ -6,6 +6,11 @@ import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService'
 import { stockMovementService } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
+import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
+import { enqueueOfflineSale, shouldCheckoutOffline } from '@/lib/offline/salesOutbox';
+import { posOfflineReads } from '@/lib/offline/posOfflineReads';
+import { isDesktop } from '@/lib/utils/desktop';
+import { isAppOnline } from '@/lib/utils/offlineCache';
 import {
   Product,
   Customer,
@@ -58,6 +63,17 @@ export class POSService {
 
   private static lastOrganizationId: number | null = null;
   private static branchId: number | null = null;
+
+  /**
+   * Fase 4A (Desktop): true cuando la app corre en Go Admin Desktop y el
+   * health-check del proceso principal dice que NO hay red. Es el único
+   * interruptor por el que las lecturas del POS pasan a resolverse sobre el
+   * catálogo local (`posOfflineReads`) en vez de contra Supabase. Fuera del
+   * Desktop siempre es false: la web no cambia.
+   */
+  static usesLocalCatalog(): boolean {
+    return isDesktop() && !isAppOnline();
+  }
 
   // Obtener branch_id dinámicamente (con detección de cambio de sucursal)
   private static async getBranchId(): Promise<number> {
@@ -201,6 +217,14 @@ export class POSService {
       const currentBranchId = branchFilter !== undefined
         ? branchFilter
         : await this.getBranchId();
+
+      // Desktop sin red: catálogo local (fase 4A). Mismo contrato de salida.
+      if (this.usesLocalCatalog()) {
+        return posOfflineReads.getProductsPaginated(
+          { organizationId: this.organizationId, branchId: currentBranchId, page, limit, search, category_id, status, includeVariants },
+          getStorageImageUrl,
+        );
+      }
 
       // === Ranking vía RPC: ordena por (is_favorite DESC, sales_count_90d DESC, id ASC) ===
       // La función pos_product_ranking devuelve los product_ids ya ordenados + total +
@@ -505,6 +529,9 @@ export class POSService {
 
   // Obtener variantes de un producto padre
   static async getProductVariants(parentProductId: number) {
+    if (this.usesLocalCatalog()) {
+      return posOfflineReads.getProductVariants(this.organizationId, parentProductId, getStorageImageUrl);
+    }
     try {
       const { data, error } = await supabase
         .from('products')
@@ -583,6 +610,7 @@ export class POSService {
   }
 
   static async getCategories() {
+    if (this.usesLocalCatalog()) return posOfflineReads.getCategories(this.organizationId);
     try {
       const { data, error } = await supabase
         .from('categories')
@@ -606,6 +634,7 @@ export class POSService {
   static async getCategoryRanking(): Promise<
     Record<number, { is_favorite: boolean; sales_count_90d: number }>
   > {
+    if (this.usesLocalCatalog()) return posOfflineReads.getCategoryRanking(this.organizationId);
     try {
       const { data, error } = await supabase.rpc('pos_category_ranking', {
         p_org_id: this.organizationId,
@@ -647,6 +676,9 @@ export class POSService {
   }
 
   static async getProductByBarcode(barcode: string): Promise<Product | null> {
+    if (this.usesLocalCatalog()) {
+      return (await posOfflineReads.getProductByBarcode(this.organizationId, barcode)) as unknown as Product | null;
+    }
     try {
       const { data, error } = await supabase
         .from('products')
@@ -710,6 +742,9 @@ export class POSService {
   // CLIENTES
   // ===============================
   static async searchCustomers(filter: CustomerFilter): Promise<Customer[]> {
+    if (this.usesLocalCatalog()) {
+      return (await posOfflineReads.searchCustomers(this.organizationId, filter.search)) as unknown as Customer[];
+    }
     try {
       let query = supabase
         .from('customers')
@@ -1189,7 +1224,8 @@ export class POSService {
     notes?: string;
   }): Promise<{
     cart: Cart;
-    invoice: any;
+    /** Resumen de la factura a crédito. `total` es el recalculado por calculateCartTaxesComplete (puede diferir de cart.total). */
+    invoice: { id: string; number: string; total: number; due_date: string | null; status: string };
     accountReceivable: any;
   }> {
     try {
@@ -1563,6 +1599,14 @@ export class POSService {
   // CHECKOUT Y VENTAS
   // ===============================
   static async checkout(checkoutData: CheckoutData): Promise<Sale> {
+    // ── Desktop sin conexión real (fase 4B): la venta va al outbox ──
+    // No se emite ningún fetch: el sobre completo queda en IndexedDB y se
+    // reproduce con este mismo método al volver la red (`salesSync.ts`).
+    // En navegador `shouldCheckoutOffline()` es siempre false.
+    if (!checkoutData.replayFromOutbox && shouldCheckoutOffline()) {
+      return this.checkoutOffline(checkoutData);
+    }
+
     try {
       const { cart, payments } = checkoutData;
 
@@ -1690,7 +1734,33 @@ export class POSService {
       const isDebtCheckout = !!(cart.sale_id && cart.invoice_id);
       let saleData: any;
 
-      if (isDebtCheckout) {
+      // ── Idempotencia por id de cliente (fase 4B) ──
+      // Si el POS trajo `saleId` y esa venta ya existe en la organización
+      // (reproducción repetida de un sobre offline, o un intento anterior que
+      // murió a mitad), se reutiliza y cada bloque hijo comprueba por
+      // `sale_id` qué existe antes de insertar. Sin `saleId` (navegador) no
+      // se hace ninguna consulta extra.
+      let resumingExisting = false;
+      const clientSaleId = !isDebtCheckout && checkoutData.saleId ? checkoutData.saleId : null;
+      const saleTimestamp = checkoutData.createdAt || new Date().toISOString();
+      if (clientSaleId) {
+        const { data: existingSale, error: existingError } = await supabase
+          .from('sales')
+          .select('*')
+          .eq('id', clientSaleId)
+          .eq('organization_id', cart.organization_id)
+          .maybeSingle();
+        if (existingError) throw existingError;
+        if (existingSale) {
+          console.log(`♻️ Venta ${clientSaleId} ya existe: se completa lo que falte sin duplicar`);
+          saleData = existingSale;
+          resumingExisting = true;
+        }
+      }
+
+      if (resumingExisting) {
+        // Nada que insertar en `sales`: ya está.
+      } else if (isDebtCheckout) {
         console.log(`💰 Checkout de deuda existente - sale_id: ${cart.sale_id}, invoice_id: ${cart.invoice_id}`);
         const { data: updatedSale, error: saleError } = await supabase
           .from('sales')
@@ -1717,10 +1787,12 @@ export class POSService {
         const { data: newSale, error: saleError } = await supabase
           .from('sales')
           .insert({
+            // Id generado en el cliente (fase 4B); sin él, lo pone la BD.
+            ...(clientSaleId ? { id: clientSaleId, created_at: saleTimestamp } : {}),
             organization_id: cart.organization_id,
             branch_id: getCurrentBranchId(),
             customer_id: cart.customer_id,
-            user_id: (await supabase.auth.getUser()).data.user?.id,
+            user_id: checkoutData.userId || (await supabase.auth.getUser()).data.user?.id,
             subtotal: effectiveSubtotal,
             tax_total: effectiveTaxTotal,
             discount_total: effectiveDiscount,
@@ -1730,7 +1802,7 @@ export class POSService {
             payment_status: checkoutData.total_paid >= finalTotal ? 'paid' : 'partial',
             tax_included: checkoutData.tax_included || false,
             tax_breakdown: checkoutData.tax_breakdown || null,
-            sale_date: new Date().toISOString(),
+            sale_date: saleTimestamp,
             salesperson_id: checkoutData.salesperson_id || null,
             commission_rate: checkoutData.commission_rate || 0,
             commission_type: checkoutData.commission_type || 'none',
@@ -1740,16 +1812,48 @@ export class POSService {
           .select()
           .single();
 
-        if (saleError) throw saleError;
-        saleData = newSale;
+        if (saleError) {
+          // 23505: otra reproducción insertó el mismo id entre el SELECT y el
+          // INSERT. Se toma la existente y se sigue en modo "completar".
+          if (clientSaleId && (saleError as { code?: string }).code === '23505') {
+            const { data: raced } = await supabase
+              .from('sales')
+              .select('*')
+              .eq('id', clientSaleId)
+              .eq('organization_id', cart.organization_id)
+              .maybeSingle();
+            if (!raced) throw saleError;
+            saleData = raced;
+            resumingExisting = true;
+          } else {
+            throw saleError;
+          }
+        } else {
+          saleData = newSale;
+        }
       }
+
+      // Al completar una venta existente, cada bloque hijo pregunta por
+      // `sale_id` antes de insertar. Fuera de ese modo no cuesta ninguna
+      // consulta (devuelve false sin ir a la BD).
+      const childExists = async (table: string, filters: Record<string, string | number>): Promise<boolean> => {
+        if (!resumingExisting) return false;
+        const { count, error } = await supabase
+          .from(table)
+          .select('id', { count: 'exact', head: true })
+          .match(filters);
+        if (error) throw error;
+        return (count || 0) > 0;
+      };
 
       // Registrar el uso de las promociones aplicadas (contador que muestra la
       // pantalla de promociones). Solo en ventas nuevas: el checkout de deuda
       // ya contó cuando se creó la venta. RPC atómica (usage_count + 1 en un
       // UPDATE), filtrada por organización; con RLS, el cajero debe ser miembro
       // activo. Es estadística: si falla, se registra y la venta sigue.
-      if (!isDebtCheckout && promocionesUsadas.length > 0) {
+      // Al completar una venta existente no se vuelve a contar (no hay forma
+      // de saber si ya se contó): límite documentado de la fase 4B.
+      if (!isDebtCheckout && !resumingExisting && promocionesUsadas.length > 0) {
         const { error: promoUsageError } = await supabase.rpc('increment_promotion_usage', {
           p_organization_id: cart.organization_id,
           p_promotion_ids: promocionesUsadas,
@@ -1760,7 +1864,8 @@ export class POSService {
       }
 
       // Crear registro de comisión si aplica
-      if (checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0 && checkoutData.commission_type !== 'none') {
+      if (checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0 && checkoutData.commission_type !== 'none'
+          && !(await childExists('commissions', { source_type: 'sale', source_id: saleData.id }))) {
         try {
           const { data: profileData } = await supabase
             .from('profiles')
@@ -1802,7 +1907,8 @@ export class POSService {
       }
 
       // Crear los items de venta (solo si no es checkout de deuda - ya fueron creados)
-      if (!isDebtCheckout) {
+      const saleItemsAlreadyExist = await childExists('sale_items', { sale_id: saleData.id });
+      if (!isDebtCheckout && !saleItemsAlreadyExist) {
         const saleItems = cart.items.map((item, itemIdx) => {
           const notesObj: Record<string, any> = { product_name: item.product?.name };
           if (item.notes) notesObj.extra = item.notes;
@@ -1831,7 +1937,9 @@ export class POSService {
       }
 
       // Descontar stock por cada item vendido (solo si no es deuda - ya fue descontado)
-      if (!isDebtCheckout) {
+      // Al completar una venta existente, los movimientos ya registrados con
+      // source='sale' y source_id=<venta> marcan que este paso se hizo.
+      if (!isDebtCheckout && !(await childExists('stock_movements', { source: 'sale', source_id: saleData.id }))) {
         try {
         const fallbackBranchId = getCurrentBranchIdWithFallback();
         if (!fallbackBranchId) {
@@ -1853,7 +1961,9 @@ export class POSService {
           console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
         }
 
-        // Vender seriales si hay productos serializados con seriales seleccionados
+        // Vender seriales si hay productos serializados con seriales seleccionados.
+        // Va atado al descuento de stock: al completar una venta cuyo stock
+        // ya se descontó, los seriales ya se marcaron como vendidos.
         if (checkoutData.serial_selections) {
           try {
             const serialUserId = await getCurrentUserId();
@@ -1891,7 +2001,25 @@ export class POSService {
       let invoiceData: any = null;
       let invoiceError: any = null;
 
-      if (isDebtCheckout) {
+      // Al completar una venta existente: si ya tiene factura, se reutiliza
+      // (no se consume otro consecutivo).
+      let existingInvoice: Record<string, unknown> | null = null;
+      if (resumingExisting) {
+        const { data: foundInvoice, error: foundInvoiceError } = await supabase
+          .from('invoice_sales')
+          .select('*')
+          .eq('sale_id', saleData.id)
+          .eq('organization_id', cart.organization_id)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (foundInvoiceError) throw foundInvoiceError;
+        existingInvoice = foundInvoice;
+      }
+
+      if (existingInvoice) {
+        invoiceData = existingInvoice;
+      } else if (isDebtCheckout) {
         // Actualizar factura existente de la deuda
         const { data: updatedInvoice, error: updateInvError } = await supabase
           .from('invoice_sales')
@@ -1932,8 +2060,8 @@ export class POSService {
             customer_id: cart.customer_id,
             sale_id: saleData.id,
             number: invoiceNumber,
-            issue_date: new Date().toISOString(),
-            due_date: new Date().toISOString(),
+            issue_date: saleTimestamp,
+            due_date: saleTimestamp,
             currency: baseCurrency.code,
             subtotal: effectiveSubtotal,
             tax_total: effectiveTaxTotal,
@@ -1973,11 +2101,35 @@ export class POSService {
       // balance correcto y dejando la factura como 'paid' con saldo pendiente.
       const currentUser = await supabase.auth.getUser();
       const userId = currentUser.data.user?.id;
-      
+
+      // Al completar una venta existente: los pagos se insertan uno a uno, así
+      // que un intento anterior pudo dejar solo algunos. Se cuentan los que ya
+      // hay (por factura o por venta) y se insertan únicamente los que faltan,
+      // en el mismo orden.
+      let paymentsAlreadyInserted = 0;
+      if (resumingExisting) {
+        const paymentFilters = invoiceData && !invoiceError
+          ? { source: 'invoice_sales', source_id: String(invoiceData.id) }
+          : { source: 'sale', source_id: String(saleData.id) };
+        const { count: paymentCount, error: paymentCountError } = await supabase
+          .from('payments')
+          .select('id', { count: 'exact', head: true })
+          .match(paymentFilters);
+        if (paymentCountError) throw paymentCountError;
+        paymentsAlreadyInserted = paymentCount || 0;
+      }
+
       const changeAmount = checkoutData.change || 0;
       let changeAssigned = false;
+      let paymentIndex = 0;
       for (const payment of payments) {
         if (payment.amount > 0) {
+          const alreadyInserted = paymentIndex < paymentsAlreadyInserted;
+          paymentIndex++;
+          // El cambio se asigna al primer pago en efectivo, exista ya o no.
+          const takesChange = !changeAssigned && changeAmount > 0 && payment.method === 'cash';
+          if (takesChange) changeAssigned = true;
+          if (alreadyInserted) continue;
           const paymentData: any = {
             organization_id: cart.organization_id,
             branch_id: getCurrentBranchId(), // Usar branch_id actual del usuario
@@ -1985,12 +2137,9 @@ export class POSService {
             method: payment.method,
             currency: baseCurrency.code,
             status: 'completed',
-            change_amount: (!changeAssigned && changeAmount > 0 && payment.method === 'cash') ? changeAmount : 0,
+            change_amount: takesChange ? changeAmount : 0,
           };
-          if (!changeAssigned && changeAmount > 0 && payment.method === 'cash') {
-            changeAssigned = true;
-          }
-          
+
           // Asociar con la factura si existe, sino con la venta
           if (invoiceData && !invoiceError) {
             paymentData.source = 'invoice_sales';
@@ -2026,7 +2175,8 @@ export class POSService {
       }
 
       // Crear los invoice_items basados en cart.items (solo si no es deuda - ya existen)
-      if (invoiceData && !invoiceError && !isDebtCheckout) {
+      if (invoiceData && !invoiceError && !isDebtCheckout
+          && !(await childExists('invoice_items', { invoice_id: invoiceData.id }))) {
         try {
           // Obtener información de productos para las descripciones
           const productIds = cart.items.map(item => item.product_id).filter(id => id);
@@ -2098,7 +2248,8 @@ export class POSService {
       }
 
       // Si hay balance pendiente, crear cuenta por cobrar (solo si no es deuda - ya existe)
-      if (saleData.balance > 0 && cart.customer_id && !isDebtCheckout) {
+      if (saleData.balance > 0 && cart.customer_id && !isDebtCheckout
+          && !(await childExists('accounts_receivable', { sale_id: saleData.id }))) {
         const { error: arError } = await supabase
           .from('accounts_receivable')
           .insert({
@@ -2115,7 +2266,8 @@ export class POSService {
       }
 
       // Guardar propina si existe
-      if (checkoutData.tip_amount && checkoutData.tip_amount > 0) {
+      if (checkoutData.tip_amount && checkoutData.tip_amount > 0
+          && !(await childExists('tips', { sale_id: saleData.id }))) {
         const tipPayment = payments.find(p => p.amount > 0);
         const tipData = {
           organization_id: cart.organization_id,
@@ -2154,11 +2306,71 @@ export class POSService {
     }
   }
 
+  /**
+   * Venta sin conexión (Desktop fase 4B): guarda el sobre en el outbox local
+   * y devuelve una venta provisional con el mismo id que tendrá en Supabase.
+   * No emite ningún fetch. El carrito se cierra igual que en línea (y la
+   * pantalla del cliente recibe el mismo `onCartsSaved`).
+   *
+   * El cobro de una deuda (`cart.sale_id` + `cart.invoice_id`) actualiza una
+   * venta que ya existe en la BD y no es reproducible por id: requiere red.
+   */
+  private static async checkoutOffline(checkoutData: CheckoutData): Promise<Sale> {
+    const { cart } = checkoutData;
+    if (cart.sale_id && cart.invoice_id) {
+      throw new Error('Sin conexión: el cobro de una deuda pendiente necesita internet. La venta no se guardó.');
+    }
+    const branchId = cart.branch_id || getCurrentBranchId();
+    if (!branchId) {
+      throw new Error('Sin conexión: no hay sucursal seleccionada. La venta no se guardó.');
+    }
+    // getSession() lee el almacenamiento local; getUser() iría a la red.
+    let userId: string | null = null;
+    try {
+      userId = (await supabase.auth.getSession()).data.session?.user?.id ?? null;
+    } catch {
+      userId = null;
+    }
+    const sale = await enqueueOfflineSale(checkoutData, {
+      organizationId: cart.organization_id || this.organizationId,
+      branchId,
+      userId,
+    });
+    await this.removeCart(cart.id);
+    console.log(`📴 Venta ${sale.id} guardada sin conexión como ${sale.receipt_number_local}`);
+    return sale;
+  }
+
   // ===============================
   // MÉTODOS DE PAGO Y MONEDAS
   // ===============================
+  /** Fila de `organization_payment_methods` (con el nombre del join) → `PaymentMethod`. */
+  private static mapPaymentMethodRow(method: {
+    payment_method_code: string;
+    is_active: boolean | null;
+    settings: Record<string, unknown> | null;
+    payment_methods?: { name: string } | null;
+  }): PaymentMethod {
+    return {
+      id: method.payment_method_code,
+      name: method.payment_methods?.name || method.payment_method_code,
+      code: method.payment_method_code,
+      type: method.payment_method_code === 'cash' ? 'cash' :
+            method.payment_method_code === 'card' ? 'card' : 'digital',
+      is_active: method.is_active ?? true,
+      settings: method.settings ?? undefined,
+      icon: this.getPaymentMethodIcon(method.payment_method_code),
+      color: (typeof method.settings?.color === 'string' ? method.settings.color : undefined) || this.getPaymentMethodColor(method.payment_method_code)
+    };
+  }
+
   static async getPaymentMethods(): Promise<PaymentMethod[]> {
     try {
+      // Desktop sin red: mismas filas desde el catálogo local, mismo mapeo.
+      if (this.usesLocalCatalog()) {
+        return (await posOfflineReads.getPaymentMethodRows(this.organizationId)).map((m) => this.mapPaymentMethodRow(m));
+      }
+
       const { data, error } = await supabase
         .from('organization_payment_methods')
         .select(`
@@ -2174,17 +2386,7 @@ export class POSService {
 
       if (error) throw error;
       
-      return data?.map((method: any) => ({
-        id: method.payment_method_code,
-        name: method.payment_methods?.name || method.payment_method_code,
-        code: method.payment_method_code,
-        type: method.payment_method_code === 'cash' ? 'cash' : 
-              method.payment_method_code === 'card' ? 'card' : 'digital',
-        is_active: method.is_active,
-        settings: method.settings,
-        icon: this.getPaymentMethodIcon(method.payment_method_code),
-        color: method.settings?.color || this.getPaymentMethodColor(method.payment_method_code)
-      })) || [];
+      return (data || []).map((method) => this.mapPaymentMethodRow(method as unknown as Parameters<typeof POSService.mapPaymentMethodRow>[0])) || [];
     } catch (error) {
       console.error('Error getting payment methods:', error);
       // Fallback a métodos básicos
@@ -2204,10 +2406,13 @@ export class POSService {
         throw new Error('Organization ID not found');
       }
       
+      // Desktop sin red: mismas filas (forma de la RPC) desde el catálogo local.
       // Usar SQL query manual en lugar de la sintaxis de Supabase join
-      const { data, error } = await supabase.rpc('get_organization_currencies', {
-        p_organization_id: orgId
-      });
+      const { data, error } = this.usesLocalCatalog()
+        ? { data: await posOfflineReads.getCurrencyRows(orgId), error: null }
+        : await supabase.rpc('get_organization_currencies', {
+            p_organization_id: orgId
+          });
 
       if (error) {
         console.error('RPC error:', error);
@@ -2223,7 +2428,7 @@ export class POSService {
         ];
       }
       
-      return data.map((curr: any) => ({
+      return (data as Array<{ code: string; name?: string | null; symbol?: string | null; decimals?: number | null; is_base?: boolean | null }>).map((curr) => ({
         code: curr.code,
         name: curr.name || curr.code,
         symbol: curr.symbol || '$',
@@ -2259,6 +2464,9 @@ export class POSService {
   // MÉTODOS AUXILIARES
   // ===============================
   static async getProductById(productId: number): Promise<Product | null> {
+    if (this.usesLocalCatalog()) {
+      return (await posOfflineReads.getProductById(this.organizationId, productId)) as unknown as Product | null;
+    }
     try {
       const { data, error } = await supabase
         .from('products')
@@ -2477,6 +2685,7 @@ export class POSService {
   // MÉTODOS DE IMPUESTOS
   // ===============================
   static async getOrganizationTaxes(): Promise<any[]> {
+    if (this.usesLocalCatalog()) return posOfflineReads.getOrganizationTaxes(this.organizationId);
     try {
       const { data, error } = await supabase
         .from('organization_taxes')
@@ -2494,6 +2703,7 @@ export class POSService {
   }
 
   static async getProductTaxes(productId: number): Promise<any[]> {
+    if (this.usesLocalCatalog()) return posOfflineReads.getProductTaxes(this.organizationId, productId);
     try {
       // Primero obtener las relaciones de impuestos del producto
       const { data: relations, error: relationsError } = await supabase
@@ -2544,7 +2754,7 @@ export class POSService {
   }
 
   private static saveCartToStorage(cart: Cart): void {
-    const carts = JSON.parse(localStorage.getItem(`pos_carts_${this.organizationId}`) || '[]');
+    const carts: Cart[] = JSON.parse(localStorage.getItem(`pos_carts_${this.organizationId}`) || '[]');
     const existingIndex = carts.findIndex((c: Cart) => c.id === cart.id);
     
     if (existingIndex >= 0) {
@@ -2553,11 +2763,18 @@ export class POSService {
       carts.push(cart);
     }
     
-    localStorage.setItem(`pos_carts_${this.organizationId}`, JSON.stringify(carts));
+    this.saveCartsToStorage(carts);
   }
 
+  /**
+   * ÚNICO punto de escritura de `pos_carts_<org>`: por aquí pasan todas las
+   * mutaciones del carrito (agregar, quitar, cantidad, descuento, impuesto,
+   * cliente, espera, activar, cobrar). Tras guardar se avisa a la pantalla
+   * del cliente (PLAN §12 Fase 0); el aviso nunca lanza ni afecta a la venta.
+   */
   private static saveCartsToStorage(carts: Cart[]): void {
     localStorage.setItem(`pos_carts_${this.organizationId}`, JSON.stringify(carts));
+    getPosDisplayEmitter().onCartsSaved(carts);
   }
 
   private static async removeCart(cartId: string): Promise<void> {

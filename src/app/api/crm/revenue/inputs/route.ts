@@ -29,7 +29,7 @@ export async function PUT(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
-    const body = readOrgBody(ctx, await readJson(request));
+    const body = readOrgBody(ctx, await readJson(request), { request });
     const patch = validateRevenueInputs(body);
     const saved = await saveRevenueInputs(ctx.organizationId, patch, ctx.supabase);
     return jsonOk(saved);

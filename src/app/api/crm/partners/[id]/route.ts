@@ -3,6 +3,7 @@ import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { deletePartner, getPartnerById, updatePartner } from '@/lib/services/crm/partnerService';
 import { validatePartnerInput } from '@/lib/services/crm/f12Validation';
 import { jsonFail, jsonOk, readJson, rejectForeignOrganization, requirePartnerManager, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
+import { readOrgBody } from '@/lib/security/organizationBody';
 
 const TAG = 'CRM Partners';
 type Params = { params: Promise<{ id: string }> };
@@ -20,13 +21,14 @@ export async function GET(_request: NextRequest, { params }: Params) {
   }
 }
 
-/** PATCH /api/crm/partners/[id] — edición parcial (409 correo de otro partner; 404 tier o partner ajeno). */
+/** PATCH /api/crm/partners/[id] — solo admin/manager (por id de rol); edición parcial (409 correo de otro partner; 404 tier o partner ajeno). */
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
     const ctx = await getServerOrgContext();
     const { id } = await params;
     const body = await readJson(request);
-    rejectForeignOrganization(TAG, body.organization_id, ctx);
+    rejectForeignOrganization(TAG, body, ctx, request);
+    requirePartnerManager(ctx);
     const parsed = validatePartnerInput(body, { partial: true });
     if (!parsed.ok) return validationFail(parsed.errors);
     const partner = await updatePartner(id, ctx.organizationId, parsed.value, ctx.supabase);
@@ -38,9 +40,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 }
 
 /** DELETE /api/crm/partners/[id] — solo admin/manager (por id de rol). Sus deals se borran en cascada (FK). */
-export async function DELETE(_request: NextRequest, { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: Params) {
   try {
     const ctx = await getServerOrgContext();
+    // Regla dura 5 (b): sin body, pero la query podría traer otra organización.
+    await readOrgBody(ctx, request);
     requirePartnerManager(ctx);
     const { id } = await params;
     const deleted = await deletePartner(id, ctx.organizationId, ctx.supabase);

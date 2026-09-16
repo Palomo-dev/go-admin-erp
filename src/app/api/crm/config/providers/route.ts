@@ -89,7 +89,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'JSON inválido' }, { status: 400 });
   }
   try {
-    readOrgBody(ctx, body);
+    readOrgBody(ctx, body, { request });
   } catch (err) {
     const res = orgError(err);
     if (res) return res;

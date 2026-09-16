@@ -245,7 +245,11 @@ describe('F0 Guardarraíles', () => {
      *           o sus envoltorios `rejectForeignOrganization(` (F12/F13),
      *           `foreignOrgResponse(` (F10) o `foreignOrganizationInBody(`.
      *     La llamada puede vivir en un helper LOCAL del archivo que el handler
-     *     invoque. Quedan fuera automáticamente los handlers de cron
+     *     invoque. Y si es la sobrecarga síncrona (`readOrgBody(ctx, body)`,
+     *     porque la ruta parseó el JSON/FormData para su propio 400), debe
+     *     llevar `{ request }` para que la query string también se compruebe
+     *     (deuda C de F0-SEC); basta con que el mismo handler tenga además
+     *     `readOrgBody(ctx, request)`. Quedan fuera automáticamente los handlers de cron
      *     (`withCron(` / `verifyCronSecret(`) y los webhooks firmados
      *     (`verify*` de `webhookSignatures`, `constructEvent`, documenso): ahí
      *     no hay sesión y la organización sale de la firma o de la fila.
@@ -262,12 +266,6 @@ describe('F0 Guardarraíles', () => {
       // punto único. Cambio exacto por archivo en
       // docs/crm-revenue-os/rondas/F0-SEC-CD-builder-r2.md §(b). Sus POST/PATCH con
       // body ya usan `rejectForeignOrganization`; faltan los DELETE/POST sin body.
-      ['app/api/crm/health/[customerId]/route.ts', 'F11: POST sin lectura de body → añadir `await readOrgBody(ctx, request)`'],
-      ['app/api/crm/onboarding/templates/route.ts', 'F11: POST → `readOrgBody(ctx, request)` en vez de request.json()'],
-      ['app/api/crm/partners/[id]/route.ts', 'F12: DELETE sin body → `await readOrgBody(ctx, request)`'],
-      ['app/api/crm/partners/tiers/[id]/route.ts', 'F12: DELETE sin body → idem'],
-      ['app/api/crm/payments/register/route.ts', 'F10: POST → `readOrgBody(ctx, request)` en vez de request.json()'],
-      ['app/api/crm/referrals/programs/[id]/route.ts', 'F12: DELETE sin body → idem'],
     ]);
 
     const ALLOWLIST = new Set<string>([
@@ -334,10 +332,31 @@ describe('F0 Guardarraíles', () => {
     ];
     const SESSION_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withWhatsAppRoute)\s*\(/;
     const CRON_RE = /\b(withCron|verifyCronSecret)\s*\(/;
-    const WEBHOOK_RE = /\b(verifyTwilioWebhook|verifyTwilioRequest|verifyMetaSignature|verifyResendWebhook|constructEvent|verifyDocumensoWebhook|verifyElevenLabsWebhook)\s*\(|webhooks\.constructEvent|isPlaceholderCredential/;
+    // Solo verificaciones de FIRMA. `isPlaceholderCredential` no lo es: mencionarla
+    // eximía al handler del contrato (tester r2, mutación M17).
+    const WEBHOOK_RE = /\b(verifyTwilioWebhook|verifyTwilioRequest|verifyMetaSignature|verifyResendWebhook|constructEvent|verifyDocumensoWebhook|verifyElevenLabsWebhook)\s*\(|webhooks\.constructEvent/;
     const FOREIGN_RE = /\b(readOrgBody|rejectForeignOrganization|foreignOrgResponse|foreignOrganizationInBody)(?:<[^>]*>)?\s*\(/;
+    // Deuda C de F0-SEC (cerrada 2026-09-16): la sobrecarga síncrona
+    // `readOrgBody(ctx, bodyYaParseado)` solo mira la query string si recibe
+    // `{ request }` en las opciones. Un handler estricto que la use sin esa
+    // opción deja pasar `?organization_id=999` (37 rutas lo hacían), salvo que
+    // en el mismo handler ya haya `readOrgBody(ctx, request)`, que sí la mira.
+    const REQUEST_ARG_RE = /^_?(?:req|request|nextReq|nextRequest)$/;
+    const READ_ORG_BODY_CALL_RE = /\breadOrgBody(?:<[^>]*>)?\s*\(/g;
+    const OPTS_REQUEST_RE = /[{,]\s*request\s*[:,}]/;
     const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
     const HANDLER_RE = /^export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE)\b/;
+    // Reexportaciones `export { POST } from '…'` / `export { handler as POST } from '…'`:
+    // el cuerpo vive en otro archivo y este guardarraíl no lo ve (tester C+D r3,
+    // mutante G7b; QA r3 «A»). En ámbito estricto se prohíben salvo hacia `crm/webhooks/`.
+    const REEXPORT_RE = /^export\s*\{[^}]*\b(GET|POST|PUT|PATCH|DELETE)\b[^}]*\}\s*from\s*['"]([^'"]+)['"]/gm;
+    function reexportsHandlers(content: string): string[] {
+      const targets: string[] = [];
+      let rx: RegExpExecArray | null;
+      REEXPORT_RE.lastIndex = 0;
+      while ((rx = REEXPORT_RE.exec(content))) if (!/crm\/webhooks\//.test(rx[2])) targets.push(rx[2]);
+      return targets;
+    }
     const TOP_LEVEL_RE = /^(export\s|async function |function |const |let |type |interface )/;
 
     type Handler = { method: string; text: string };
@@ -362,22 +381,86 @@ describe('F0 Guardarraíles', () => {
       });
     }
 
-    /** Nombres de funciones/constantes locales cuyo cuerpo contiene `re`. */
-    function localHelpersMatching(content: string, re: RegExp): string[] {
-      const names: string[] = [];
+    /**
+     * Nombres de funciones/constantes locales cuyo cuerpo contiene `re`.
+     *
+     * El cuerpo de un helper acaba en la SIGUIENTE LÍNEA DE NIVEL SUPERIOR
+     * (`TOP_LEVEL_RE`, la misma técnica que `splitHandlers`), no en la siguiente
+     * declaración que case con `declRe`. Antes, como `export async function
+     * POST` no casa con `declRe`, un `function fail()` declarado antes de los
+     * handlers «contenía» el `readOrgBody` de todos ellos y cualquier handler
+     * que llamara a `fail(` pasaba sin `readOrgBody` propio: 15 handlers ciegos
+     * (tester r2 fallo 2, QA r2 §2, mutación M18).
+     */
+    function localHelperBodies(content: string): Array<{ name: string; text: string }> {
+      const bodies: Array<{ name: string; text: string }> = [];
       const declRe = /^(?:async\s+)?function\s+(\w+)\s*\(|^const\s+(\w+)\s*=\s*(?:async\s*)?(?:\(|function)/gm;
+      const nextTopLevel = new RegExp(TOP_LEVEL_RE.source.replace('^', '\\n'));
       const decls: Array<{ name: string; start: number }> = [];
       let m: RegExpExecArray | null;
       while ((m = declRe.exec(content))) decls.push({ name: m[1] ?? m[2], start: m.index });
       decls.forEach((d, i) => {
-        const end = i + 1 < decls.length ? decls[i + 1].start : content.length;
-        if (re.test(content.slice(d.start, end))) names.push(d.name);
+        let end = i + 1 < decls.length ? decls[i + 1].start : content.length;
+        const next = content.slice(d.start + 1, end).search(nextTopLevel);
+        if (next >= 0) end = d.start + 1 + next;
+        bodies.push({ name: d.name, text: content.slice(d.start, end) });
       });
-      return names;
+      return bodies;
+    }
+
+    function localHelpersMatching(content: string, re: RegExp): string[] {
+      return localHelperBodies(content).filter((h) => re.test(h.text)).map((h) => h.name);
     }
 
     function usesHelper(handler: Handler, helpers: string[]): boolean {
       return helpers.some((h) => new RegExp(`\\b${h}\\s*\\(|\\b${h}\\b\\s*[;,)]`).test(handler.text));
+    }
+
+    /** Argumentos de nivel superior de la llamada que empieza en `open` (índice del `(`). */
+    function callArgs(text: string, open: number): string[] {
+      let depth = 0;
+      let cur = '';
+      const args: string[] = [];
+      for (let i = open; i < text.length; i++) {
+        const c = text[i];
+        if ('({['.includes(c)) depth++;
+        if (')}]'.includes(c)) depth--;
+        if (i === open) continue;
+        if (depth === 0) {
+          if (cur.trim()) args.push(cur.trim());
+          return args;
+        }
+        if (c === ',' && depth === 1) {
+          args.push(cur.trim());
+          cur = '';
+        } else cur += c;
+      }
+      return args;
+    }
+
+    /**
+     * Llamadas a la sobrecarga síncrona `readOrgBody(ctx, bodyYaParseado)` que
+     * NO pasan `{ request }` y, por tanto, no ven la query string. Devuelve las
+     * llamadas ofensoras salvo que el mismo texto ya tenga una llamada con la
+     * `Request` (`readOrgBody(ctx, request)`), que sí la comprueba.
+     */
+    function syncReadsWithoutQuery(text: string): string[] {
+      const offending: string[] = [];
+      let sawRequestOverload = false;
+      let m: RegExpExecArray | null;
+      READ_ORG_BODY_CALL_RE.lastIndex = 0;
+      while ((m = READ_ORG_BODY_CALL_RE.exec(text))) {
+        const open = m.index + m[0].length - 1;
+        const args = callArgs(text, open);
+        if (args.length < 2) continue;
+        if (REQUEST_ARG_RE.test(args[1])) {
+          sawRequestOverload = true;
+          continue;
+        }
+        if (args.length >= 3 && OPTS_REQUEST_RE.test(args[2])) continue;
+        offending.push(text.slice(m.index, open + 1) + args.join(', ') + ')');
+      }
+      return sawRequestOverload ? [] : offending;
     }
 
     /** Reconoce `export const POST = handle;` / `withCron(handle)` / `withOrg(handler)`: el cuerpo real es el helper. */
@@ -390,6 +473,44 @@ describe('F0 Guardarraíles', () => {
       const rest = content.slice(start + 1);
       const next = rest.search(TOP_LEVEL_RE.source.replace('^', '\\n'));
       return handler.text + '\n' + (next >= 0 ? rest.slice(0, next) : rest);
+    }
+
+    /**
+     * Métodos de escritura del archivo que incumplen: en ámbito estricto, los que
+     * no tienen sesión O no llaman al punto único (salvo cron/webhook) O llaman a
+     * la sobrecarga síncrona sin `{ request }` (la query quedaría sin mirar); en
+     * legacy, los que leen la organización del body sin sesión en ese mismo handler.
+     */
+    function offendingHandlers(content: string, strict: boolean): string[] {
+      const handlers = splitHandlers(content).map((h) => ({ ...h, text: inlineAliases(h, content) }));
+      const helperBodies = localHelperBodies(content);
+      const sessionHelpers = localHelpersMatching(content, SESSION_RE);
+      const foreignHelpers = localHelpersMatching(content, FOREIGN_RE);
+      const cronHelpers = localHelpersMatching(content, CRON_RE);
+      const webhookHelpers = localHelpersMatching(content, WEBHOOK_RE);
+      const offenders: string[] = [];
+
+      for (const h of handlers) {
+        if (!WRITE_METHODS.has(h.method)) continue;
+        const hasSession = SESSION_RE.test(h.text) || usesHelper(h, sessionHelpers);
+        const isCron = CRON_RE.test(h.text) || usesHelper(h, cronHelpers);
+        const isWebhook = WEBHOOK_RE.test(h.text) || usesHelper(h, webhookHelpers);
+        const hasForeign = FOREIGN_RE.test(h.text) || usesHelper(h, foreignHelpers);
+
+        if (strict) {
+          if (isCron || isWebhook) continue;
+          // El handler más los helpers locales con `readOrgBody` que invoca:
+          // la sobrecarga síncrona sin `{ request }` puede vivir en cualquiera.
+          const usedHelpers = helperBodies.filter((b) => foreignHelpers.includes(b.name) && usesHelper(h, [b.name]));
+          const effective = [h.text, ...usedHelpers.map((b) => b.text)].join('\n');
+          const syncWithoutQuery = syncReadsWithoutQuery(effective).length > 0;
+          if (!hasSession || !hasForeign || syncWithoutQuery) offenders.push(h.method);
+          continue;
+        }
+        const usesBodyOrg = BODY_ORG_PATTERNS.some((p) => p.test(h.text));
+        if (usesBodyOrg && !hasSession) offenders.push(h.method);
+      }
+      return offenders;
     }
 
     const strictViolations: string[] = [];
@@ -413,32 +534,14 @@ describe('F0 Guardarraíles', () => {
           if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue;
           throw err;
         }
-        const handlers = splitHandlers(content).map((h) => ({ ...h, text: inlineAliases(h, content) }));
         const strict = /^app\/api\/(crm|ai-assistant)\//.test(relPath);
         // `crm/webhooks/**` no tiene sesión por diseño: la organización sale de la
         // firma (Stripe `constructEvent`, Documenso, ElevenLabs) o de la fila.
         // Que verifiquen firma lo vigila el guardarraíl 7 y la sub-parte A.
         if (/^app\/api\/crm\/webhooks\//.test(relPath)) continue;
-        const sessionHelpers = localHelpersMatching(content, SESSION_RE);
-        const foreignHelpers = localHelpersMatching(content, FOREIGN_RE);
-        const cronHelpers = localHelpersMatching(content, CRON_RE);
-        const webhookHelpers = localHelpersMatching(content, WEBHOOK_RE);
-
-        for (const h of handlers) {
-          if (!WRITE_METHODS.has(h.method)) continue;
-          const hasSession = SESSION_RE.test(h.text) || usesHelper(h, sessionHelpers);
-          const isCron = CRON_RE.test(h.text) || usesHelper(h, cronHelpers);
-          const isWebhook = WEBHOOK_RE.test(h.text) || usesHelper(h, webhookHelpers);
-          const hasForeign = FOREIGN_RE.test(h.text) || usesHelper(h, foreignHelpers);
-
-          if (strict) {
-            if (isCron || isWebhook) continue;
-            if (!hasSession || !hasForeign) strictOffenders.add(relPath);
-            continue;
-          }
-          const usesBodyOrg = BODY_ORG_PATTERNS.some((p) => p.test(h.text));
-          if (usesBodyOrg && !hasSession) legacyOffenders.add(relPath);
-        }
+        if (strict && reexportsHandlers(content).length > 0) strictOffenders.add(relPath);
+        if (offendingHandlers(content, strict).length === 0) continue;
+        (strict ? strictOffenders : legacyOffenders).add(relPath);
       }
 
       for (const f of strictOffenders) if (!STRICT_ALLOWLIST.has(f)) strictViolations.push(f);
@@ -447,9 +550,9 @@ describe('F0 Guardarraíles', () => {
       for (const f of ALLOWLIST) if (!legacyOffenders.has(f)) legacyStale.push(f);
     });
 
-    test('todo handler de escritura de crm/** y ai-assistant/** resuelve la org por sesión Y llama a readOrgBody (403 ante org ajena)', () => {
+    test('todo handler de escritura de crm/** y ai-assistant/** resuelve la org por sesión Y llama a readOrgBody (403 ante org ajena, también en la query)', () => {
       if (strictViolations.length > 0) {
-        console.error('handlers POST/PUT/PATCH/DELETE sin sesión o sin readOrgBody:\n' + strictViolations.sort().join('\n'));
+        console.error('handlers POST/PUT/PATCH/DELETE sin sesión, sin readOrgBody o con la sobrecarga síncrona sin { request }:\n' + strictViolations.sort().join('\n'));
       }
       expect(strictViolations.sort()).toEqual([]);
     });
@@ -494,6 +597,111 @@ describe('F0 Guardarraíles', () => {
       expect(SESSION_RE.test(handlers[0].text)).toBe(false);
       expect(CRON_RE.test(handlers[0].text)).toBe(true);
       expect(SESSION_RE.test(handlers[1].text)).toBe(true);
+    });
+
+    test('un helper local declarado antes de los handlers no «presta» su readOrgBody: el DELETE sin llamada propia es ofensor (tester r2 fallo 2, M18)', () => {
+      const sample = [
+        "function fail(msg: string) {",
+        "  return Response.json({ error: msg }, { status: 400 });",
+        "}",
+        "",
+        "export async function POST(request: Request) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  const body = await readOrgBody(ctx, request);",
+        "  if (!body.name) return fail('name');",
+        "  return Response.json({ ok: true });",
+        "}",
+        "",
+        "export async function DELETE(request: Request) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  if (!ctx) return fail('ctx');",
+        "  return Response.json({ ok: true });",
+        "}",
+      ].join('\n');
+      // `fail` termina en la siguiente línea de nivel superior: NO contiene el readOrgBody del POST.
+      expect(localHelpersMatching(sample, FOREIGN_RE)).toEqual([]);
+      expect(offendingHandlers(sample, true)).toEqual(['DELETE']);
+      // Y un helper que SÍ llama al punto único sigue cubriendo a quien lo invoca
+      // (con `{ request }`: desde la deuda C, la síncrona sin la opción es ofensora).
+      const viaHelper = sample.replace("function fail(msg: string) {", "function fail(msg: string) {\n  readOrgBody(ctx, msg, { request });");
+      expect(localHelpersMatching(viaHelper, FOREIGN_RE)).toEqual(['fail']);
+      expect(offendingHandlers(viaHelper, true)).toEqual([]);
+    });
+
+    test('mencionar isPlaceholderCredential( no exime del contrato: no es una verificación de firma (tester r2, M17)', () => {
+      const sample = [
+        "export async function POST(request: Request) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  if (isPlaceholderCredential('x')) return Response.json({}, { status: 500 });",
+        "  return Response.json({ ok: true });",
+        "}",
+      ].join('\n');
+      expect(offendingHandlers(sample, true)).toEqual(['POST']);
+      expect(offendingHandlers(sample.replace("getServerOrgContext(request);", "getServerOrgContext(request);\n  await readOrgBody(ctx, request);"), true)).toEqual([]);
+    });
+
+    test('la sobrecarga síncrona readOrgBody(ctx, body) sin { request } no ve la query: ofensor en ámbito estricto (deuda C de F0-SEC)', () => {
+      const sample = [
+        "export async function POST(request: NextRequest) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  const body = await request.json().catch(() => null);",
+        "  readOrgBody(ctx, body);",
+        "  return Response.json({ ok: true });",
+        "}",
+        "",
+        "export async function PATCH(request: NextRequest) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  const parsed = schema.safeParse(readOrgBody(ctx, await request.json().catch(() => null), { request }));",
+        "  return Response.json({ ok: parsed.success });",
+        "}",
+        "",
+        "export async function PUT(request: NextRequest) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  const form = readOrgBody(ctx, await request.formData(), { route: 'x', request: request });",
+        "  return Response.json({ ok: !!form });",
+        "}",
+        "",
+        "export async function DELETE(request: NextRequest) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  await readOrgBody(ctx, request);",
+        "  readOrgBody(ctx, { a: 1 });",
+        "  return Response.json({ ok: true });",
+        "}",
+      ].join('\n');
+      // POST: sin `{ request }` → ofensor. PATCH y PUT: con la opción (sola o tras
+      // `route`) → cumplen. DELETE: la síncrona sin opción queda cubierta por la
+      // llamada con la Request del mismo handler.
+      expect(syncReadsWithoutQuery(sample.split('\n\n')[0])).toEqual(['readOrgBody(ctx, body)']);
+      expect(offendingHandlers(sample, true)).toEqual(['POST']);
+      expect(offendingHandlers(sample.replace('readOrgBody(ctx, body);', 'readOrgBody(ctx, body, { request });'), true)).toEqual([]);
+      // Fuera del ámbito estricto no aplica (legacy solo mira org-del-body sin sesión).
+      expect(offendingHandlers(sample, false)).toEqual([]);
+      // Un helper local que llama a la síncrona sin `{ request }` contagia al handler que lo usa.
+      const viaHelper = [
+        "function guard(ctx: OrgBodyContext, raw: unknown) {",
+        "  return readOrgBody(ctx, raw);",
+        "}",
+        "",
+        "export async function POST(request: NextRequest) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  const body = guard(ctx, await request.json().catch(() => null));",
+        "  return Response.json({ ok: !!body });",
+        "}",
+      ].join('\n');
+      expect(offendingHandlers(viaHelper, true)).toEqual(['POST']);
+      expect(offendingHandlers(viaHelper.replace('readOrgBody(ctx, raw)', 'readOrgBody(ctx, raw, { request })'), true)).toEqual([]);
+      // La genérica y el alias `req` también se reconocen.
+      expect(syncReadsWithoutQuery("readOrgBody<Body>(ctx, parsed)")).toEqual(['readOrgBody<Body>(ctx, parsed)']);
+      expect(syncReadsWithoutQuery("await readOrgBody(ctx, req); readOrgBody(ctx, parsed)")).toEqual([]);
+      expect(syncReadsWithoutQuery("readOrgBody(ctx, parsed, { request: req })")).toEqual([]);
+    });
+
+    test('una reexportación de handler oculta el cuerpo al guardarraíl: prohibida en ámbito estricto salvo hacia crm/webhooks/ (tester r3, G7b)', () => {
+      expect(reexportsHandlers("export { POST } from '../otra/route';")).toEqual(['../otra/route']);
+      expect(reexportsHandlers("export { handler as DELETE, GET } from '@/app/api/crm/x/route';")).toEqual(['@/app/api/crm/x/route']);
+      expect(reexportsHandlers("export { POST } from '@/app/api/crm/webhooks/stripe/route';")).toEqual([]);
+      expect(reexportsHandlers("export { dynamic } from './config';")).toEqual([]);
+      expect(reexportsHandlers("export async function POST(request: Request) { return Response.json({}); }")).toEqual([]);
     });
   });
 
@@ -773,7 +981,7 @@ describe('F0 Guardarraíles', () => {
   // === Caso 13: GO Assistant — lista negra de acciones (§9.4) ===
   describe('13. GO Assistant: el catálogo no registra acciones prohibidas', () => {
     test('ninguna acción del catálogo está en la lista negra', () => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { ALL_ACTION_TYPES, FORBIDDEN_ACTIONS } = require('@/lib/ai/assistant/actionCatalog');
       const forbidden = new Set<string>(FORBIDDEN_ACTIONS);
       const offenders = (ALL_ACTION_TYPES as string[]).filter((t) => forbidden.has(t));
@@ -781,7 +989,7 @@ describe('F0 Guardarraíles', () => {
     });
 
     test('la lista negra cubre organización, roles, plan y credenciales', () => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { FORBIDDEN_ACTIONS } = require('@/lib/ai/assistant/actionCatalog');
       const list = FORBIDDEN_ACTIONS as string[];
       for (const must of [
@@ -1144,7 +1352,7 @@ describe('F0 Guardarraíles', () => {
       for (const file of scopes.flatMap((d) => walkDir(d)).filter((f) => !isExcluded(f))) {
         if (rel(file) === 'lib/jobs/schedule.ts') continue;
         const content = stripAllComments(readFile(file));
-        if (/(['"`])(\*\/\d+|\d+ \d+|\*) \* \* \* \*/.test(content) || /cada minuto|≤1 min|cada 2 minutos/.test(content)) {
+        if (/(['"`])(\*\/\d+|\d+ \d+|\*) \* \* \* \*\1/.test(content) || /cada minuto|≤1 min|cada 2 minutos/.test(content)) {
           offenders.push(rel(file));
         }
       }
@@ -1245,5 +1453,45 @@ describe('F0 Guardarraíles', () => {
         expect(src).toMatch(/\.from\(\s*['"]integration_connections['"]\s*\)[^;]*?\.eq\(\s*['"]status['"]\s*,\s*INTEGRATION_CONNECTION_USABLE_STATUS\s*\)/);
       }
     });
+  });
+});
+
+// === Caso 21: ningún fuente .ts/.tsx bajo src/ lleva bytes de control ===
+//
+// F0-SEC r4 (qa r3 §6). Un test del tester r3 llevaba un NUL (0x00) literal
+// dentro de una cadena en vez de `\u0000`: `file` lo reportaba como `data`,
+// `grep` como «Binary file … matches» y `git diff` como «Binary files differ».
+// Es la misma clase de problema que dejó `PROGRESS.md` inutilizable el
+// 2026-09-10 (CLAUDE.md §Ciclo /loop: backticks dentro de una cadena entre
+// comillas dobles de PowerShell se convierten en NUL, VT o BEL). Este mismo
+// archivo llevaba un 0x01 en un regex del caso JOBS (donde tenía que ir `\1`),
+// lo que dejaba muerta la guarda de cron strings: se corrigió en la misma ronda.
+//
+// Se revisa TODO `src/` (tests incluidos: el ofensor era un test) y se leen los
+// bytes crudos, no el texto decodificado. Cualquier carácter que un fuente
+// necesite se escribe como secuencia de escape (`\u0000`, `\x1b`), nunca en
+// crudo. Sin allow-list: no hay ningún motivo legítimo para un byte de control.
+describe('21. Ningún .ts/.tsx bajo src/ contiene bytes de control (< 0x20 salvo \\t, \\n, \\r)', () => {
+  jest.setTimeout(60000);
+  const CONTROL_BYTE = /[\x00-\x08\x0B\x0C\x0E-\x1F]/;
+
+  test('el detector reconoce NUL, SOH, BEL, VT y ESC y tolera \\t, \\n, \\r', () => {
+    for (const bad of ['\x00', '\x01', '\x07', '\x0B', '\x1B']) expect(CONTROL_BYTE.test(`a${bad}b`)).toBe(true);
+    expect(CONTROL_BYTE.test('a\tb\nc\r\n')).toBe(false);
+    expect(CONTROL_BYTE.test('\\u0000 como secuencia de escape')).toBe(false);
+  });
+
+  test('ningún archivo fuente (tests incluidos) lleva bytes de control en crudo', () => {
+    const offenders: string[] = [];
+    for (const file of walkDir(SRC_ROOT)) {
+      // latin1: un byte → un carácter, sin decodificar UTF-8 (no interesa el texto, sino los bytes).
+      const raw = fs.readFileSync(file).toString('latin1');
+      const m = CONTROL_BYTE.exec(raw);
+      if (m) {
+        const line = raw.slice(0, m.index).split('\n').length;
+        offenders.push(`${rel(file)}:${line} (0x${raw.charCodeAt(m.index).toString(16).padStart(2, '0')})`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });

@@ -20,6 +20,7 @@ import {
   type DurationSource,
   type RecordingStatus,
 } from '@/lib/crm/enums';
+import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
 
 export type { CallDirection, CallMode, CallStatus, BridgeMode, DurationSource, RecordingStatus };
 export type AnsweredBy = 'human' | 'machine' | 'fax' | 'unknown';
@@ -248,8 +249,8 @@ export async function getCalls(
     query = query.eq('metadata->>disposition_outcome', filters.outcome);
   }
   if (filters?.q) {
-    const q = filters.q.replace(/[%,()]/g, '');
-    query = query.or(`to_number.ilike.%${q}%,from_number.ilike.%${q}%`);
+    const filter = ilikeAnyOf(['to_number', 'from_number'], filters.q);
+    if (filter) query = query.or(filter);
   }
   if (filters?.from_date) {
     query = query.gte('started_at', filters.from_date);
@@ -647,8 +648,8 @@ export async function listCallsWithRelations(
   if (filters?.provider_call_sid) query = query.eq('provider_call_sid', filters.provider_call_sid);
   if (filters?.outcome) query = query.eq('metadata->>disposition_outcome', filters.outcome);
   if (filters?.q) {
-    const q = filters.q.replace(/[%,()]/g, '');
-    query = query.or(`to_number.ilike.%${q}%,from_number.ilike.%${q}%`);
+    const filter = ilikeAnyOf(['to_number', 'from_number'], filters.q);
+    if (filter) query = query.or(filter);
   }
   if (filters?.from_date) query = query.gte('started_at', filters.from_date);
   if (filters?.to_date) query = query.lte('started_at', filters.to_date);

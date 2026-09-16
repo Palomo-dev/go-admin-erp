@@ -6,7 +6,8 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
-import InvitationWizard from '@/components/auth/InvitationWizard';
+import InvitationWizard, { type InvitationWizardData } from '@/components/auth/InvitationWizard';
+import type { EstadoCuentaInvitacion } from '@/lib/auth/cuentaInvitacion';
 import { useTranslations } from 'next-intl';
 import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
 
@@ -26,10 +27,11 @@ function InviteContent() {
   console.log('🔍 URL completa:', typeof window !== 'undefined' ? window.location.href : 'SSR');
   
 
-  const [inviteData, setInviteData] = useState<any>(null);
+  const [inviteData, setInviteData] = useState<InvitationWizardData | null>(null);
+  const [accountState, setAccountState] = useState<EstadoCuentaInvitacion>('nueva');
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   
   console.log('✅ Componente renderizando');
@@ -64,65 +66,40 @@ function InviteContent() {
     console.log('Avanzo code:', inviteCode);  
     
     try {
-      // PASO 1: Validar código de invitación
+      // PASO 1: Validar la invitación y saber, desde el SERVIDOR, si el correo
+      // invitado ya tiene cuenta. Antes se deducía aquí con la sesión y el
+      // perfil, y sin sesión (enlace copiado, token consumido por el correo)
+      // a un usuario existente se le pedía registrarse con contraseña nueva.
       setLoadingMessage(t('validating'));
-      const { data: inviteData, error: inviteError } = await supabase
-        .rpc('validate_invitation_by_code', {
-          invitation_code: inviteCode
-        });
-      
-      console.log('Resultado de validación:', { inviteData, inviteError });
-      
-      if (inviteError) {
-        console.log('Error validando invitación - Error:', inviteError);
-        setError(t('errorValidating', { message: inviteError.message }));
-        setIsLoading(false);
-        return;
-      }
-      
-      if (!inviteData || inviteData.length === 0) {
-        console.log('Invite data:', inviteData);
-        console.log('Error validando invitación - No se encontró invitación válida para código:', inviteCode);
+      const res = await fetch(`/api/auth/invite/context?code=${encodeURIComponent(inviteCode)}`, {
+        cache: 'no-store',
+      });
+      const contexto = await res.json().catch(() => null);
+
+      if (res.status === 404) {
         setError(t('invalidOrExpired'));
         setIsLoading(false);
         return;
       }
-      
-      const invitation = inviteData[0]; // La función devuelve un array
-      const invitationData = {
-        id: invitation.id,
-        email: invitation.email,
-        code: invitation.code,
-        role_id: invitation.role_id,
-        organization_id: invitation.organization_id,
-        organization_name: invitation.organization_name || 'Organización',
-        role_name: invitation.role_name || 'Usuario'
-      };
-      
-      // PASO 2: Verificar si ya hay sesión activa (viene de verifyOtp tras clic en email)
-      setLoadingMessage(t('autoSignIn'));
-      console.log('Verificando sesión activa...');
-      
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (session && session.user && !sessionError) {
-        console.log('Sesión activa encontrada para usuario:', session.user.email);
-        setInviteData(invitationData);
-        setIsLoggedIn(true);
+      if (!res.ok || !contexto?.invitation) {
+        setError(t('errorValidating', { message: contexto?.error || `HTTP ${res.status}` }));
         setIsLoading(false);
         return;
       }
-      
-      // Si no hay sesión, mostrar el wizard directamente.
-      // El wizard usa un API server-side (admin key) para crear el usuario
-      // y setear la contraseña SIN necesidad de verifyOtp ni email de
-      // verificación. Esto elimina el problema de Gmail prefetch que consume
-      // los tokens antes de que el usuario haga clic.
-      console.log('No hay sesión activa. Mostrando wizard directamente (flujo sin sesión)...');
+
+      const invitationData = contexto.invitation;
+
+      // PASO 2: Sesión activa en el navegador (viene de verifyOtp tras el clic
+      // en el correo, o es la de otro usuario). El asistente decide con ella.
+      setLoadingMessage(t('autoSignIn'));
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Sesión activa:', session?.user?.email ?? 'ninguna', '| cuenta invitada:', contexto.account_state);
+
+      setSessionEmail(session?.user?.email ?? null);
+      setAccountState(contexto.account_state);
       setInviteData(invitationData);
-      setIsLoggedIn(false); // No hay sesión, pero el wizard funciona sin ella
       setIsLoading(false);
-      
+
     } catch (err) {
       console.log('Error en el proceso de validación y login:', err);
       setError(t('errorProcessing'));
@@ -191,9 +168,14 @@ function InviteContent() {
     return (
       <InvitationWizard
         inviteData={inviteData}
+        accountState={accountState}
+        sessionEmail={sessionEmail}
         onComplete={() => {
-          // El wizard ya hizo login automático. Ir directo a la app.
-          router.push('/app/inicio');
+          // Navegación completa, no router.push: la organización activa acaba
+          // de cambiar (cookies + localStorage) y el AppLayout debe releerla;
+          // además, con el servidor ocupado, la navegación suave se quedaba
+          // colgada en el paso "Completado" sin cambiar de página.
+          window.location.assign('/app/inicio');
         }}
       />
     );

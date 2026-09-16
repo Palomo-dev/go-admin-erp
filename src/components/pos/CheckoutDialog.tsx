@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User, ShoppingCart, Wallet, Plus, Trash2, X, Percent, Truck, MapPin, Phone, Navigation, UserCircle, Clock, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +45,8 @@ import { SerialSelectorDialog } from '@/components/pos/SerialSelectorDialog';
 import { QrPaymentDialog } from '@/components/shared/QrPaymentDialog';
 import { useMobileNative } from '@/hooks/useMobileNative';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
+import { resolveCashReceived, toDisplayPayment } from '@/lib/pos/display/payment';
 
 interface CheckoutDialogProps {
   cart: Cart;
@@ -192,6 +194,64 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const remaining = Math.max(0, cartTotal - totalPaid);
   const change = Math.max(0, totalPaid - cartTotal);
   const canComplete = totalPaid >= cartTotal;
+
+  // Pantalla del cliente (PLAN §4.2 «Cobro» y §12 Fase 0). Mientras el
+  // cobro está abierto se proyecta el estado según el ÚLTIMO medio elegido:
+  // efectivo → total/recibido/cambio en vivo; tarjeta → «siga las
+  // instrucciones del datáfono»; QR → el medio, sin imagen hasta F2. Al
+  // confirmar la venta pasa a «Gracias» (el emisor vuelve a reposo a los 8 s)
+  // y al cancelar vuelve a «Pedido». Nunca bloquea ni lanza: el emisor traga
+  // sus propios errores.
+  //
+  // «Recibido» y «cambio» solo se muestran cuando el cajero ha editado el
+  // importe de ESA entrada en efectivo (`touchedIds`, por id de entrada):
+  // cada entrada se pre-rellena con el importe pendiente (la primera con el
+  // total; «Agregar pago» con el resto) y, sin esta guarda, el cliente vería
+  // «Recibido: $TOTAL · Cambio: $0» antes de entregar nada. Con pagos mixtos
+  // el recibido es solo el efectivo tecleado (resolveCashReceived): teclear
+  // la tarjeta no convierte en «recibido» un efectivo pre-rellenado.
+  const saleConfirmedRef = useRef(false);
+  const [touchedIds, setTouchedIds] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (!open || showReceipt) return;
+    const last = payments[payments.length - 1];
+    const methodCode = last?.method ?? 'cash';
+    const methodName = paymentMethods.find((pm) => pm.code === methodCode)?.name ?? null;
+    const received = resolveCashReceived(payments, touchedIds);
+    getPosDisplayEmitter().setPayment(
+      toDisplayPayment({
+        methodCode,
+        methodName,
+        total: cartTotal,
+        received,
+        change: received === null ? null : change,
+      }),
+    );
+  }, [open, showReceipt, payments, paymentMethods, cartTotal, change, touchedIds]);
+
+  useEffect(() => {
+    if (open) {
+      saleConfirmedRef.current = false;
+      setTouchedIds(new Set());
+      return;
+    }
+    // Cerrado sin vender: la pantalla vuelve al pedido. Tras una venta el
+    // emisor ya está en «Gracias» y se deja que su temporizador lo resuelva.
+    if (!saleConfirmedRef.current) getPosDisplayEmitter().setMode('order');
+  }, [open]);
+
+  // Desmontaje con el modal abierto (el cajero navega a /app/pos desde mesas
+  // o nueva venta con el cobro a medias): el efecto [open] no llega a correr
+  // con open=false, así que se limpia aquí. Tras una venta se respeta
+  // «Gracias». El emisor ignora la llamada si la caja no está arrancada.
+  const wasSaleConfirmed = () => saleConfirmedRef.current;
+  useEffect(
+    () => () => {
+      if (!wasSaleConfirmed()) getPosDisplayEmitter().setMode('order');
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al desmontar; la ref se lee en ese momento
+    [],
+  );
 
   // Cargar métodos de pago, moneda e impuestos
   useEffect(() => {
@@ -755,6 +815,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   };
 
   const updatePayment = (id: string, field: 'method' | 'amount', value: string | number) => {
+    // A partir de aquí la pantalla del cliente muestra recibido y cambio en vivo para ESTA entrada.
+    if (field === 'amount') setTouchedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
     setPayments(payments.map(payment =>
       payment.id === id
         ? { ...payment, [field]: field === 'amount' ? Number(value) || 0 : value }
@@ -899,6 +961,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         : await POSService.checkout(checkoutData);
       setCompletedSale(sale);
       setShowReceipt(true);
+      saleConfirmedRef.current = true;
+      getPosDisplayEmitter().setMode('thanks', { total: cartTotal });
 
       // Haptic feedback de venta exitosa (no-op en web)
       hapticNotification('success');

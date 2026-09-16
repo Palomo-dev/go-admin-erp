@@ -1914,5 +1914,77 @@
       "errorNotFound": "No se pudo obtener información de la oportunidad",
       "errorNoKey": "Configuración de IA no disponible"
     }
+  },
+  "posCustomerDisplay": {
+    "indicator": {
+      "connected": "Pantalla del cliente conectada",
+      "disconnected": "Sin pantalla",
+      "ariaLabel": "Pantalla del cliente",
+      "notEmitting": "Desactivada en Configuración › POS › Pantalla del cliente",
+      "unsupported": "Este navegador no admite la pantalla del cliente (sin BroadcastChannel). Actualícelo o use la aplicación de escritorio."
+    },
+    "menu": {
+      "open": "Abrir pantalla del cliente",
+      "close": "Cerrar"
+    },
+    "toast": {
+      "dragHint": "Arrastre la ventana a la pantalla del cliente y pulse F11",
+      "popupBlocked": "El navegador bloqueó la ventana emergente. Permita ventanas emergentes para este sitio y vuelva a intentarlo.",
+      "closeFromOpener": "No se puede cerrar desde aquí: ciérrela desde su propia ventana. Si esta caja la abrió antes de recargar, «Abrir» la recupera."
+    },
+    "config": {
+      "title": "Pantalla del cliente",
+      "subtitle": "Segunda pantalla mirando al comprador",
+      "description": "Una segunda pantalla mirando al comprador muestra el resumen del pedido, el estado del cobro y la marca del comercio. La caja sigue siendo la única fuente de verdad: la pantalla solo refleja.",
+      "masterSwitch": "Pantalla del cliente",
+      "masterOn": "Activada: las cajas emiten el pedido a la pantalla del cliente",
+      "masterOff": "Desactivada: las cajas no emiten nada",
+      "openNow": "Abrir ahora",
+      "openNowHint": "Abre la pantalla en una ventana aparte. En el escritorio se coloca sola en el segundo monitor; en el navegador arrástrela a la otra pantalla y pulse F11.",
+      "saved": "Pantalla del cliente actualizada",
+      "savedOn": "Las cajas empezarán a emitir sin recargar",
+      "savedOff": "Las cajas dejarán de emitir",
+      "saveError": "No se pudo guardar la configuración de la pantalla del cliente",
+      "loadError": "No se pudo cargar la configuración de la pantalla del cliente",
+      "disabledNotice": "La pantalla se puede abrir para probarla, pero no mostrará el pedido hasta activar el interruptor.",
+      "comingSoon": "Propina en pantalla, calificación, desglose de impuestos y modo reposo llegan en la fase 2."
+    }
+  },
+  "posDisplay": {
+    "welcome": "Bienvenido",
+    "cashier": "Le atiende {name}",
+    "connecting": "Conectando con la caja…",
+    "noTerminal": "Abra el punto de venta en este equipo para enlazar la pantalla",
+    "updateRequired": "Actualice la pantalla",
+    "updateRequiredHint": "La caja usa una versión distinta. Recargue esta ventana.",
+    "unsupported": "Este navegador no puede mostrar la pantalla del cliente",
+    "qty": "{qty} ×",
+    "andMore": "y {count} más",
+    "taxExcludedLine": "sin IVA",
+    "lineDiscount": "Descuento",
+    "subtotal": "Subtotal",
+    "discount": "Descuento",
+    "discountWithLabel": "Descuento ({label})",
+    "taxIncluded": "IVA incluido",
+    "taxes": "Impuestos",
+    "taxMixed": "Impuestos (parte incluida)",
+    "total": "Total",
+    "payment": {
+      "cash": "Pago en efectivo",
+      "received": "Recibido",
+      "change": "Cambio",
+      "card": "Pago con tarjeta",
+      "cardWith": "Pago con tarjeta · {provider}",
+      "cardInstructions": "Siga las instrucciones del datáfono",
+      "qr": "Pago con QR",
+      "qrWith": "Pago con {provider}",
+      "qrInstructions": "Siga las instrucciones del cajero"
+    },
+    "thanks": {
+      "title": "Gracias por su compra",
+      "paid": "Total pagado"
+    },
+    "fullscreen": "Pantalla completa",
+    "poweredBy": "GO Admin"
   }
 }

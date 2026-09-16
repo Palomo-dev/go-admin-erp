@@ -1,5 +1,13 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { notifyCustomerDisplaySettingsChanged } from '@/lib/pos/display/posDisplay';
+import {
+  DEFAULT_CUSTOMER_DISPLAY_SETTINGS,
+  POS_CUSTOMER_DISPLAY_KEY,
+  parseCustomerDisplaySettings,
+  primeCustomerDisplaySettings,
+  type CustomerDisplaySettings,
+} from '@/lib/pos/display/settings';
 
 export interface PaymentMethod {
   code: string;
@@ -14,7 +22,7 @@ export interface OrganizationPaymentMethod {
   organization_id: number;
   payment_method_code: string;
   is_active: boolean;
-  settings: Record<string, any>;
+  settings: Record<string, unknown>;
   payment_methods?: PaymentMethod;
 }
 
@@ -471,5 +479,76 @@ export class ConfiguracionService {
       });
 
     if (error) throw error;
+  }
+
+  // Fila cruda de `pos_customer_display` de la organización de la sesión.
+  // PROPAGA el error de Supabase: quien guarda la usa para el merge y debe
+  // abortar si no pudo leer (si continuara con {} borraría las claves de la
+  // Fase 2: propina, calificación, reposo…). Sin fila: {}.
+  private static async readCustomerDisplayRow(): Promise<Record<string, unknown>> {
+    const orgId = getOrganizationId();
+
+    const { data, error } = await supabase
+      .from('organization_settings')
+      .select('settings')
+      .eq('organization_id', orgId)
+      .eq('key', POS_CUSTOMER_DISPLAY_KEY)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return data?.settings && typeof data.settings === 'object' && !Array.isArray(data.settings)
+      ? (data.settings as Record<string, unknown>)
+      : {};
+  }
+
+  // Obtener ajustes de la pantalla del cliente (PLAN pos-doble-pantalla §5.2).
+  // Devuelve además el JSON crudo para que la UI conserve las claves que la
+  // Fase 2 añadirá y que aún no edita. La CARGA de la tarjeta degrada a los
+  // valores por defecto si la lectura falla; el guardado no (ver arriba).
+  static async getCustomerDisplayConfig(): Promise<{ settings: CustomerDisplaySettings; raw: Record<string, unknown> }> {
+    try {
+      const raw = await this.readCustomerDisplayRow();
+      return { settings: parseCustomerDisplaySettings(raw), raw };
+    } catch (error) {
+      console.error('Error obteniendo configuración de la pantalla del cliente:', error);
+      return { settings: { ...DEFAULT_CUSTOMER_DISPLAY_SETTINGS }, raw: {} };
+    }
+  }
+
+  // Guardar ajustes de la pantalla del cliente. Mismo upsert/onConflict que
+  // operating_hours y el resto de claves de esta página; sin ruta de API.
+  // La lectura previa va SIN catch: si falla, se lanza antes del upsert y la
+  // fila no se toca (la tarjeta revierte el interruptor y avisa).
+  // Las claves `undefined` del Partial se ignoran (conservan el valor de la
+  // fila): un spread con undefined pisaría el `true` leído y el JSON
+  // perdería la clave. Importa desde la Fase 2, cuando el Partial crece.
+  static async saveCustomerDisplayConfig(config: Partial<CustomerDisplaySettings>): Promise<CustomerDisplaySettings> {
+    const orgId = getOrganizationId();
+    const raw = await this.readCustomerDisplayRow();
+    const patch = Object.fromEntries(Object.entries(config).filter(([, value]) => value !== undefined));
+    const merged = { ...raw, ...parseCustomerDisplaySettings(raw), ...patch };
+
+    const { error } = await supabase
+      .from('organization_settings')
+      .upsert({
+        organization_id: orgId,
+        key: POS_CUSTOMER_DISPLAY_KEY,
+        settings: merged,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'organization_id,key',
+      });
+
+    if (error) throw error;
+    const saved = parseCustomerDisplaySettings(merged);
+    // La caché de esta ventana se fija con lo recién escrito, sin releer: una
+    // relectura que fallara cachearía «apagado» sobre un `true` que acaba de
+    // guardarse, y la caja (misma ventana por navegación SPA) arrancaría apagada.
+    primeCustomerDisplaySettings(orgId, saved);
+    // Las cajas abiertas en OTRAS ventanas de este navegador releen el interruptor
+    // por el evento `storage`; la de esta ventana aplica la caché con applyPosDisplaySettings() desde la tarjeta.
+    notifyCustomerDisplaySettingsChanged();
+    return saved;
   }
 }

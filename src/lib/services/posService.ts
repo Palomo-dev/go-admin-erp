@@ -6,6 +6,7 @@ import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService'
 import { stockMovementService } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
+import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import {
   Product,
   Customer,
@@ -1189,7 +1190,8 @@ export class POSService {
     notes?: string;
   }): Promise<{
     cart: Cart;
-    invoice: any;
+    /** Resumen de la factura a crédito. `total` es el recalculado por calculateCartTaxesComplete (puede diferir de cart.total). */
+    invoice: { id: string; number: string; total: number; due_date: string | null; status: string };
     accountReceivable: any;
   }> {
     try {
@@ -2544,7 +2546,7 @@ export class POSService {
   }
 
   private static saveCartToStorage(cart: Cart): void {
-    const carts = JSON.parse(localStorage.getItem(`pos_carts_${this.organizationId}`) || '[]');
+    const carts: Cart[] = JSON.parse(localStorage.getItem(`pos_carts_${this.organizationId}`) || '[]');
     const existingIndex = carts.findIndex((c: Cart) => c.id === cart.id);
     
     if (existingIndex >= 0) {
@@ -2553,11 +2555,18 @@ export class POSService {
       carts.push(cart);
     }
     
-    localStorage.setItem(`pos_carts_${this.organizationId}`, JSON.stringify(carts));
+    this.saveCartsToStorage(carts);
   }
 
+  /**
+   * ÚNICO punto de escritura de `pos_carts_<org>`: por aquí pasan todas las
+   * mutaciones del carrito (agregar, quitar, cantidad, descuento, impuesto,
+   * cliente, espera, activar, cobrar). Tras guardar se avisa a la pantalla
+   * del cliente (PLAN §12 Fase 0); el aviso nunca lanza ni afecta a la venta.
+   */
   private static saveCartsToStorage(carts: Cart[]): void {
     localStorage.setItem(`pos_carts_${this.organizationId}`, JSON.stringify(carts));
+    getPosDisplayEmitter().onCartsSaved(carts);
   }
 
   private static async removeCart(cartId: string): Promise<void> {

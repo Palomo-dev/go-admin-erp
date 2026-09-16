@@ -1806,5 +1806,77 @@
     "signOut": "Sair",
     "profilePhoto": "Foto de perfil",
     "user": "Usuário"
+  },
+  "posCustomerDisplay": {
+    "indicator": {
+      "connected": "Tela do cliente conectada",
+      "disconnected": "Sem tela",
+      "ariaLabel": "Tela do cliente",
+      "notEmitting": "Desativada em Configurações › PDV › Tela do cliente",
+      "unsupported": "Este navegador não suporta a tela do cliente (sem BroadcastChannel). Atualize-o ou use o aplicativo para computador."
+    },
+    "menu": {
+      "open": "Abrir tela do cliente",
+      "close": "Fechar"
+    },
+    "toast": {
+      "dragHint": "Arraste a janela para a tela do cliente e pressione F11",
+      "popupBlocked": "O navegador bloqueou a janela pop-up. Permita pop-ups para este site e tente novamente.",
+      "closeFromOpener": "Não é possível fechar daqui: feche-a pela sua própria janela. Se este caixa a abriu antes de recarregar, “Abrir” a recupera."
+    },
+    "config": {
+      "title": "Tela do cliente",
+      "subtitle": "Segunda tela voltada para o comprador",
+      "description": "Uma segunda tela voltada para o comprador mostra o resumo do pedido, o status do pagamento e a marca da loja. O caixa continua sendo a única fonte de verdade: a tela apenas reflete.",
+      "masterSwitch": "Tela do cliente",
+      "masterOn": "Ativada: os caixas transmitem o pedido para a tela do cliente",
+      "masterOff": "Desativada: os caixas não transmitem nada",
+      "openNow": "Abrir agora",
+      "openNowHint": "Abre a tela em uma janela separada. No desktop ela é colocada sozinha no segundo monitor; no navegador arraste-a para a outra tela e pressione F11.",
+      "saved": "Tela do cliente atualizada",
+      "savedOn": "Os caixas começarão a transmitir sem recarregar",
+      "savedOff": "Os caixas deixarão de transmitir",
+      "saveError": "Não foi possível salvar a configuração da tela do cliente",
+      "loadError": "Não foi possível carregar a configuração da tela do cliente",
+      "disabledNotice": "A tela pode ser aberta para teste, mas não mostrará o pedido até ativar o interruptor.",
+      "comingSoon": "Gorjeta na tela, avaliação, detalhamento de impostos e modo de espera chegam na fase 2."
+    }
+  },
+  "posDisplay": {
+    "welcome": "Bem-vindo",
+    "cashier": "Atendido por {name}",
+    "connecting": "Conectando ao caixa…",
+    "noTerminal": "Abra o ponto de venda neste computador para vincular a tela",
+    "updateRequired": "Atualize a tela",
+    "updateRequiredHint": "O caixa usa uma versão diferente. Recarregue esta janela.",
+    "unsupported": "Este navegador não consegue mostrar a tela do cliente",
+    "qty": "{qty} ×",
+    "andMore": "e mais {count}",
+    "taxExcludedLine": "sem imposto",
+    "lineDiscount": "Desconto",
+    "subtotal": "Subtotal",
+    "discount": "Desconto",
+    "discountWithLabel": "Desconto ({label})",
+    "taxIncluded": "Impostos incluídos",
+    "taxes": "Impostos",
+    "taxMixed": "Impostos (parte incluída)",
+    "total": "Total",
+    "payment": {
+      "cash": "Pagamento em dinheiro",
+      "received": "Recebido",
+      "change": "Troco",
+      "card": "Pagamento com cartão",
+      "cardWith": "Pagamento com cartão · {provider}",
+      "cardInstructions": "Siga as instruções da maquininha",
+      "qr": "Pagamento com QR",
+      "qrWith": "Pagamento com {provider}",
+      "qrInstructions": "Siga as instruções do operador de caixa"
+    },
+    "thanks": {
+      "title": "Obrigado pela sua compra",
+      "paid": "Total pago"
+    },
+    "fullscreen": "Tela cheia",
+    "poweredBy": "GO Admin"
   }
 }

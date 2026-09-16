@@ -1,6 +1,7 @@
 'use client';
 
 import { lazy, Suspense } from 'react';
+import { useTranslations } from 'next-intl';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   Dialog,
@@ -25,6 +26,9 @@ const ImpresionesPage = lazy(() =>
 );
 const DesktopAgentPanel = lazy(() =>
   import('./agente-impresion/DesktopAgentPanel').then((m) => ({ default: m.DesktopAgentPanel })),
+);
+const PantallaClienteContent = lazy(() =>
+  import('./pantalla-cliente/PantallaClienteContent').then((m) => ({ default: m.PantallaClienteContent })),
 );
 
 function ModalSkeleton() {
@@ -87,6 +91,16 @@ export function AgenteModal({ open, onOpenChange }: { open: boolean; onOpenChang
   return (
     <ConfigModal open={open} onOpenChange={onOpenChange} title="Agente de Impresión">
       <DesktopAgentPanel embedded />
+    </ConfigModal>
+  );
+}
+
+/** Pantalla del cliente (POS de doble pantalla, Fase 0): interruptor maestro y «Abrir ahora». */
+export function PantallaClienteModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const t = useTranslations('posCustomerDisplay.config');
+  return (
+    <ConfigModal open={open} onOpenChange={onOpenChange} title={t('title')}>
+      <PantallaClienteContent embedded />
     </ConfigModal>
   );
 }

@@ -8,6 +8,26 @@
  *
  * Cuando F2 formalice la terminal, este id local pasa a ser el fallback para
  * cajas sin terminal registrada; la clave y la función se mantienen.
+ *
+ * Contrato de la clave `pos_terminal_id` (para F2 y cualquier instalador):
+ * - `pos_terminal_id` es EXCLUSIVA de UUID RFC 4122. `generateTerminalId`
+ *   produce v4; `isTerminalId` acepta cualquier versión (v1, v4, v5…) para
+ *   no invalidar ids ya guardados. Cualquier otro valor («caja-1», un código
+ *   legible, vacío, con espacios) se trata como ausente y
+ *   getOrCreateLocalTerminalId lo sobrescribe con un UUID nuevo: la
+ *   identidad cambia y una pantalla ya abierta con el id anterior deja de
+ *   oír a la caja. F2 debe MIGRAR (leer el UUID, registrarlo en
+ *   `pos_terminals`, conservarlo aquí) y nunca escribir otro formato en esta
+ *   clave. El código legible («Caja 1») va en `pos_terminals.code`, no aquí.
+ * - La clave es por perfil de navegador, NO por organización (a diferencia
+ *   de `pos_carts_<orgId>`): una máquina = una caja. Si en la misma máquina
+ *   se entra con otra organización, la terminal es la misma; por eso `hello`
+ *   lleva `organizationId` y la pantalla comprueba que la marca que pinta es
+ *   la de la caja que le habla.
+ * - Dos pestañas que crean el id a la vez (ambas leen null antes de que
+ *   ninguna escriba) se quedan con ids distintos y solo el último escrito es
+ *   el que leerá la pantalla; es una carrera del primer arranque y F2 la
+ *   cierra al registrar la terminal.
  */
 
 export const TERMINAL_ID_STORAGE_KEY = 'pos_terminal_id';
@@ -23,11 +43,12 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 /** Id efímero cuando no hay storage (SSR, modo privado con storage bloqueado). Estable durante la vida del módulo. */
 let ephemeralTerminalId: string | null = null;
 
+/** UUID RFC 4122 de cualquier versión (ver contrato de la clave en la cabecera). */
 export function isTerminalId(value: unknown): value is string {
   return typeof value === 'string' && UUID_PATTERN.test(value);
 }
 
-/** UUID v4. Usa crypto.randomUUID si existe; si no, getRandomValues; si no, Math.random (último recurso). */
+/** UUID v4 (RFC 4122). Usa crypto.randomUUID si existe; si no, getRandomValues; si no, Math.random (último recurso). */
 export function generateTerminalId(): string {
   const cryptoObj = globalThis.crypto as Crypto | undefined;
   if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {

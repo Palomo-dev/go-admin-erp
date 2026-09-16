@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest, NextFetchEvent } from 'next/server';
-import { decodeJwt } from 'jose';
+import { decodeJwt, type JWTPayload } from 'jose';
 import {
   edgeSelect,
   edgePatch,
@@ -80,7 +80,7 @@ function safeEqual(a: string, b: string): boolean {
  * El refresh lo maneja exclusivamente el client-side (auth-manager.ts).
  * Esto elimina race conditions por refresh token rotation.
  */
-async function getValidatedSession(authCookie: any) {
+async function getValidatedSession(authCookie: { value: string }) {
   try {
     const tokenData = JSON.parse(authCookie.value);
     const { access_token, refresh_token } = tokenData;
@@ -91,7 +91,7 @@ async function getValidatedSession(authCookie: any) {
     }
     
     // Decodificar el JWT sin verificar firma (solo para obtener payload/exp)
-    let payload: any = null;
+    let payload: JWTPayload;
     try {
       payload = decodeJwt(access_token);
     } catch {
@@ -128,7 +128,7 @@ async function getValidatedSession(authCookie: any) {
     
     return { session: null, isAuthenticated: false, isExpired: false, newCookieValue: null };
     
-  } catch (error) {
+  } catch {
     // Error parseando JSON → cookie corrupta
     return { session: null, isAuthenticated: false, isExpired: false, newCookieValue: null };
   }
@@ -842,6 +842,12 @@ async function handleRouteProtection(
   const isPublicRoute = (
     pathname.startsWith('/auth/') ||
     pathname === '/auth' ||
+    // /pos-display: pantalla del cliente del POS (docs/pos-doble-pantalla/PLAN.md §1 y §11).
+    // Es un espejo sin datos propios: el carrito le llega por BroadcastChannel
+    // desde la caja y la marca degrada a vacío si no puede leerse. Pública a
+    // propósito para que una sesión caída nunca ponga un login frente al cliente.
+    pathname === '/pos-display' ||
+    pathname.startsWith('/pos-display/') ||
     pathname.includes('/_next/') ||
     pathname.includes('/auth/v1/') // API de Supabase
   );

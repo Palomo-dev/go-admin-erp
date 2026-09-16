@@ -7,8 +7,9 @@
  *   - Punto 1 (auto-provisión de la fila «vacía»): camino por RPC 43
  *     (`fn_provision_ai_settings`) sin respaldo en Node; RPC presente pero
  *     rota (42501) → 402 y NUNCA se cae al respaldo; RPC que devuelve basura
- *     → sí se cae al respaldo; org inexistente → 402 con un solo RPC de
- *     cobro; `credits_remaining` en texto desde la RPC.
+ *     → 402 (F0-pulido: antes caía al respaldo en Node, retirado con la 43 en
+ *     producción); org inexistente → 402 con un solo RPC de cobro;
+ *     `credits_remaining` en texto desde la RPC.
  *   - Punto 2 (zona horaria): `22023` sin «time zone» en el mensaje no se
  *     reintenta; `22023` con mensaje vacío sí; segundo `22023` también con
  *     UTC → error controlado (2 llamadas); zona en minúsculas (`utc`) sí
@@ -16,11 +17,10 @@
  *     longitud, no-string) y el hueco ICU vs IANA (`it.failing`).
  *   - Punto 4 (simetría del reembolso): `-0`, `-Infinity`, 0 → sin RPC;
  *     RPC que devuelve `false` → `false` sin fila `:refund` y sin dedupe.
- *   - Punto 6 (una sola regla del cupo): el respaldo en Node aplica la
- *     regla de `fn_ai_plan_quota` (custom_config 0 gana al plan; camelCase;
- *     suscripción cancelada más reciente NO gana a la activa; sin
- *     suscripción → 0) y documenta la única divergencia conocida (decimal
- *     `10000.0`).
+ *   - Punto 6 (una sola regla del cupo): F0-pulido — la regla vive SOLO en
+ *     SQL (`fn_ai_plan_quota`, mig. 43). El bloque que verificaba la regla
+ *     duplicada en Node se sustituye por: RPC ausente/rota → sin
+ *     `subscriptions`, sin `insert`/`update`, y `ensureAiSettings` lanza.
  *   - Bordes del cobro: `credits` fraccionario < 0,5 se redondea a 0 y el
  *     RPC recibe `p_cost: 0` (llamada gratis, documentado); `units`
  *     negativas → RangeError antes de leer precio.
@@ -48,7 +48,8 @@ interface Call { type: 'rpc' | 'insert' | 'update' | 'select'; name: string; arg
  * Cliente falso con ESTADO para `ai_settings` (una fila o ninguna) y con
  * `rpc` configurable. `decrement_ai_credits` mira el saldo real de la fila;
  * `fn_provision_ai_settings` / `fn_ai_plan_quota` se resuelven con
- * `opts.provisionRpc` / `opts.quotaRpc` (por defecto: «no existe», PGRST202).
+ * `opts.provisionRpc` / `opts.quotaRpc` (por defecto: «no existe», PGRST202,
+ * que desde F0-pulido significa «lanza», no «respaldo en Node»).
  */
 function fakeDb(opts: {
   row?: Record<string, unknown> | null;
@@ -167,16 +168,19 @@ describe('QA r2 punto 1 — fila «vacía» provisionada por la RPC fn_provision
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('auto-provisionar'), expect.stringContaining('permission denied'));
   });
 
-  it('RPC presente que devuelve basura (null / sin credits_remaining) → respaldo en Node con la regla del cupo', async () => {
+  it('RPC presente que devuelve basura (null / sin credits_remaining) → 402 sin respaldo en Node (F0-pulido: antes caía a la regla del cupo en Node)', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     const { sb, calls, state } = fakeDb({
       row: { organization_id: 7, credits_remaining: 0, credits_reset_at: null, model: 'm', max_tokens: 500 },
       provisionRpc: () => ({ data: { created: 'sí' }, error: null }),
       subscriptions: [{ plan_id: 1, status: 'active', metadata: {}, created_at: '2026-01-01T00:00:00Z', plans: { ai_credits_monthly: 300, ai_credits_max_rollover: 0, ai_model: 'm', ai_max_tokens: 1000 } }],
     });
     __setAiCostClientFactory(() => sb);
-    await expect(charge()).resolves.toMatchObject({ credits: 1 });
-    expect(calls.filter((c) => c.type === 'update' && c.name === 'ai_settings')).toHaveLength(1);
-    expect(state.row!.credits_remaining).toBe(299);
+    await expect(charge()).rejects.toMatchObject({ name: 'InsufficientCreditsError', status: 402 });
+    expect(calls.filter((c) => c.type === 'update' || c.type === 'insert')).toHaveLength(0);
+    expect(calls.filter((c) => c.type === 'select' && c.name === 'subscriptions')).toHaveLength(0);
+    expect(state.row!.credits_remaining).toBe(0);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('auto-provisionar'), expect.stringContaining('credits_remaining'));
   });
 
   it('org inexistente según la RPC (created=false, provisioned=false, credits_remaining 0) → 402 y un solo RPC de cobro', async () => {
@@ -206,54 +210,53 @@ describe('QA r2 punto 1 — fila «vacía» provisionada por la RPC fn_provision
   });
 });
 
-// ───────────── 2. QA r2 punto 6: una sola regla del cupo (respaldo Node = fn_ai_plan_quota) ─────────────
+// ───────────── 2. QA r2 punto 6 → F0-pulido: una sola regla del cupo, SOLO en SQL ─────────────
 
-describe('QA r2 punto 6 — el respaldo en Node aplica la MISMA regla que fn_ai_plan_quota', () => {
+describe('F0-pulido — sin respaldo en Node: la regla del cupo vive solo en fn_ai_plan_quota / fn_provision_ai_settings', () => {
   const plan = { ai_credits_monthly: 500, ai_credits_max_rollover: 1000, ai_model: 'm', ai_max_tokens: 4000 };
-  const provision = async (subscriptions: Array<Record<string, unknown>>) => {
-    const { sb, state } = fakeDb({ row: null, subscriptions });
+  const subscriptions = [{ plan_id: 1, status: 'active', metadata: { custom_config: { ai_credits: 0 } }, created_at: '2026-01-01', plans: plan }];
+
+  it('RPC de provisión ausente (PGRST202) → ensureAiSettings lanza con el mensaje de la RPC; ni subscriptions, ni insert, ni update', async () => {
+    const { sb, calls } = fakeDb({ row: null, subscriptions });
+    await expect(ensureAiSettings(7, sb)).rejects.toThrow(/^fn_provision_ai_settings: Could not find the function/);
+    expect(calls.filter((c) => c.type === 'rpc').map((c) => c.name)).toEqual(['fn_provision_ai_settings']);
+    expect(calls.filter((c) => c.type === 'select' || c.type === 'insert' || c.type === 'update')).toHaveLength(0);
+  });
+
+  it('42883 (function does not exist, sin PostgREST) → también lanza; nunca fue «transitorio»', async () => {
+    const { sb, calls } = fakeDb({ row: null, subscriptions, provisionRpc: () => ({ data: null, error: { code: '42883', message: 'function fn_provision_ai_settings(integer) does not exist' } }) });
+    await expect(ensureAiSettings(7, sb)).rejects.toThrow(/does not exist/);
+    expect(calls.filter((c) => c.type !== 'rpc')).toHaveLength(0);
+  });
+
+  it('cobro con la RPC ausente → 402 (InsufficientCreditsError), un solo decrement, y la fila sigue sin existir', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { sb, calls, state } = fakeDb({ row: null, subscriptions });
+    __setAiCostClientFactory(() => sb);
+    await expect(charge()).rejects.toMatchObject({ name: 'InsufficientCreditsError', status: 402 });
+    expect(calls.filter((c) => c.type === 'rpc').map((c) => c.name)).toEqual(['decrement_ai_credits', 'fn_provision_ai_settings']);
+    expect(calls.filter((c) => c.type === 'select' && c.name === 'subscriptions')).toHaveLength(0);
+    expect(state.row).toBeNull();
+  });
+
+  it('la RPC manda aunque subscriptions diga otra cosa: custom_config 0 en la tabla no se mira; el cupo es el que devuelve la RPC', async () => {
+    const { sb, calls } = fakeDb({
+      row: null,
+      subscriptions,
+      provisionRpc: () => ({ data: { created: true, provisioned: true, credits_remaining: 250, model: 'm', max_tokens: 800, monthly: 250, source: 'custom_config' }, error: null }),
+    });
     const ensured = await ensureAiSettings(7, sb);
-    return { ensured, state };
-  };
-
-  it('custom_config.ai_credits = 0 (entero, incluido 0) gana al plan → cupo 0', async () => {
-    const { ensured } = await provision([{ plan_id: 1, status: 'active', metadata: { custom_config: { ai_credits: 0 } }, created_at: '2026-01-01', plans: plan }]);
-    expect(ensured.credits_remaining).toBe(0);
+    expect(ensured).toEqual({ created: true, provisioned: true, credits_remaining: 250, aiModel: 'm', aiMaxTokens: 800 });
+    expect(calls.filter((c) => c.type === 'select' && c.name === 'subscriptions')).toHaveLength(0);
   });
 
-  it('custom_config.aiCredits (camelCase) también cuenta; como texto " 100 " se recorta', async () => {
-    const a = await provision([{ plan_id: 1, status: 'active', metadata: { custom_config: { aiCredits: 250 } }, created_at: '2026-01-01', plans: plan }]);
-    expect(a.ensured.credits_remaining).toBe(250);
-    const b = await provision([{ plan_id: 1, status: 'active', metadata: { custom_config: { ai_credits: ' 100 ' } }, created_at: '2026-01-01', plans: plan }]);
-    expect(b.ensured.credits_remaining).toBe(100);
-  });
-
-  it('valores que no son entero (negativo, booleano, "1e4", 10 dígitos) se ignoran → plan', async () => {
-    for (const bad of [-5, true, '1e4', '1234567890', 'mucho']) {
-      const { ensured } = await provision([{ plan_id: 1, status: 'active', metadata: { custom_config: { ai_credits: bad } }, created_at: '2026-01-01', plans: plan }]);
-      expect(ensured.credits_remaining).toBe(500);
+  it('respuesta de la RPC con credits_remaining negativo o no numérico: negativo → 0 (nunca saldo negativo); no numérico → lanza', async () => {
+    const neg = fakeDb({ row: null, provisionRpc: () => ({ data: { created: true, provisioned: true, credits_remaining: -5, model: 'm', max_tokens: 800 }, error: null }) });
+    await expect(ensureAiSettings(7, neg.sb)).resolves.toMatchObject({ credits_remaining: 0 });
+    for (const bad of [null, [], 'x', { created: true }, { credits_remaining: 'muchos' }]) {
+      const { sb } = fakeDb({ row: null, provisionRpc: () => ({ data: bad, error: null }) });
+      await expect(ensureAiSettings(7, sb)).rejects.toThrow(/respuesta sin credits_remaining numérico/);
     }
-  });
-
-  it('suscripción cancelada más reciente NO gana a la activa más antigua (orden: activa/en prueba primero)', async () => {
-    const { ensured } = await provision([
-      { plan_id: 2, status: 'canceled', metadata: {}, created_at: '2026-09-01', plans: { ...plan, ai_credits_monthly: 9999 } },
-      { plan_id: 1, status: 'active', metadata: {}, created_at: '2026-01-01', plans: plan },
-    ]);
-    expect(ensured.credits_remaining).toBe(500);
-  });
-
-  it('sin suscripción → 0 (ya no 10 000); sin ninguna activa → la más reciente', async () => {
-    const none = await provision([]);
-    expect(none.ensured.credits_remaining).toBe(0);
-    const canceled = await provision([{ plan_id: 2, status: 'canceled', metadata: {}, created_at: '2026-09-01', plans: { ...plan, ai_credits_monthly: 40 } }]);
-    expect(canceled.ensured.credits_remaining).toBe(40);
-  });
-
-  it('DIVERGENCIA documentada: un decimal `10000.0` en custom_config es "10000" para Node (String) y "10000.0" para jsonb ->> (no cumple ^[0-9]{1,9}$ → plan). Hoy 0 filas así en BD.', async () => {
-    const { ensured } = await provision([{ plan_id: 1, status: 'active', metadata: { custom_config: { ai_credits: 10000.0 } }, created_at: '2026-01-01', plans: plan }]);
-    // Node: 10000 (custom). SQL: 500 (plan). Se deja constancia; cuando la 43 esté aplicada solo manda SQL.
-    expect(ensured.credits_remaining).toBe(10000);
   });
 });
 

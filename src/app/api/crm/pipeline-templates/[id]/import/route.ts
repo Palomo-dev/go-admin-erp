@@ -49,7 +49,7 @@ export async function POST(
     } catch {
       // Body vacío es válido
     }
-    readOrgBody(ctx, body);
+    readOrgBody(ctx, body, { request });
 
     const pipelineName = body.pipelineName || template.label;
     const setAsDefault = body.setAsDefault ?? false;

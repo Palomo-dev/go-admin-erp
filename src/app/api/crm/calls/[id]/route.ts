@@ -75,7 +75,7 @@ export async function PATCH(
     throw err;
   }
 
-  const parsed = callPatchSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
+  const parsed = callPatchSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null), { request }));
   if (!parsed.success) {
     return NextResponse.json({ success: false, error: 'Body inválido', issues: parsed.error.issues }, { status: 400 });
   }

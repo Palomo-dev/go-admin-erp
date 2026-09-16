@@ -61,7 +61,7 @@ export async function POST(
     throw err;
   }
 
-  const parsed = linkSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
+  const parsed = linkSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null), { request }));
   if (!parsed.success) {
     return NextResponse.json(
       { success: false, error: 'Body inválido', issues: parsed.error.issues },

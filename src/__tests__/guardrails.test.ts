@@ -245,7 +245,11 @@ describe('F0 Guardarraíles', () => {
      *           o sus envoltorios `rejectForeignOrganization(` (F12/F13),
      *           `foreignOrgResponse(` (F10) o `foreignOrganizationInBody(`.
      *     La llamada puede vivir en un helper LOCAL del archivo que el handler
-     *     invoque. Quedan fuera automáticamente los handlers de cron
+     *     invoque. Y si es la sobrecarga síncrona (`readOrgBody(ctx, body)`,
+     *     porque la ruta parseó el JSON/FormData para su propio 400), debe
+     *     llevar `{ request }` para que la query string también se compruebe
+     *     (deuda C de F0-SEC); basta con que el mismo handler tenga además
+     *     `readOrgBody(ctx, request)`. Quedan fuera automáticamente los handlers de cron
      *     (`withCron(` / `verifyCronSecret(`) y los webhooks firmados
      *     (`verify*` de `webhookSignatures`, `constructEvent`, documenso): ahí
      *     no hay sesión y la organización sale de la firma o de la fila.
@@ -332,6 +336,14 @@ describe('F0 Guardarraíles', () => {
     // eximía al handler del contrato (tester r2, mutación M17).
     const WEBHOOK_RE = /\b(verifyTwilioWebhook|verifyTwilioRequest|verifyMetaSignature|verifyResendWebhook|constructEvent|verifyDocumensoWebhook|verifyElevenLabsWebhook)\s*\(|webhooks\.constructEvent/;
     const FOREIGN_RE = /\b(readOrgBody|rejectForeignOrganization|foreignOrgResponse|foreignOrganizationInBody)(?:<[^>]*>)?\s*\(/;
+    // Deuda C de F0-SEC (cerrada 2026-09-16): la sobrecarga síncrona
+    // `readOrgBody(ctx, bodyYaParseado)` solo mira la query string si recibe
+    // `{ request }` en las opciones. Un handler estricto que la use sin esa
+    // opción deja pasar `?organization_id=999` (37 rutas lo hacían), salvo que
+    // en el mismo handler ya haya `readOrgBody(ctx, request)`, que sí la mira.
+    const REQUEST_ARG_RE = /^_?(?:req|request|nextReq|nextRequest)$/;
+    const READ_ORG_BODY_CALL_RE = /\breadOrgBody(?:<[^>]*>)?\s*\(/g;
+    const OPTS_REQUEST_RE = /[{,]\s*request\s*[:,}]/;
     const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
     const HANDLER_RE = /^export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE)\b/;
     // Reexportaciones `export { POST } from '…'` / `export { handler as POST } from '…'`:
@@ -380,8 +392,8 @@ describe('F0 Guardarraíles', () => {
      * que llamara a `fail(` pasaba sin `readOrgBody` propio: 15 handlers ciegos
      * (tester r2 fallo 2, QA r2 §2, mutación M18).
      */
-    function localHelpersMatching(content: string, re: RegExp): string[] {
-      const names: string[] = [];
+    function localHelperBodies(content: string): Array<{ name: string; text: string }> {
+      const bodies: Array<{ name: string; text: string }> = [];
       const declRe = /^(?:async\s+)?function\s+(\w+)\s*\(|^const\s+(\w+)\s*=\s*(?:async\s*)?(?:\(|function)/gm;
       const nextTopLevel = new RegExp(TOP_LEVEL_RE.source.replace('^', '\\n'));
       const decls: Array<{ name: string; start: number }> = [];
@@ -391,13 +403,64 @@ describe('F0 Guardarraíles', () => {
         let end = i + 1 < decls.length ? decls[i + 1].start : content.length;
         const next = content.slice(d.start + 1, end).search(nextTopLevel);
         if (next >= 0) end = d.start + 1 + next;
-        if (re.test(content.slice(d.start, end))) names.push(d.name);
+        bodies.push({ name: d.name, text: content.slice(d.start, end) });
       });
-      return names;
+      return bodies;
+    }
+
+    function localHelpersMatching(content: string, re: RegExp): string[] {
+      return localHelperBodies(content).filter((h) => re.test(h.text)).map((h) => h.name);
     }
 
     function usesHelper(handler: Handler, helpers: string[]): boolean {
       return helpers.some((h) => new RegExp(`\\b${h}\\s*\\(|\\b${h}\\b\\s*[;,)]`).test(handler.text));
+    }
+
+    /** Argumentos de nivel superior de la llamada que empieza en `open` (índice del `(`). */
+    function callArgs(text: string, open: number): string[] {
+      let depth = 0;
+      let cur = '';
+      const args: string[] = [];
+      for (let i = open; i < text.length; i++) {
+        const c = text[i];
+        if ('({['.includes(c)) depth++;
+        if (')}]'.includes(c)) depth--;
+        if (i === open) continue;
+        if (depth === 0) {
+          if (cur.trim()) args.push(cur.trim());
+          return args;
+        }
+        if (c === ',' && depth === 1) {
+          args.push(cur.trim());
+          cur = '';
+        } else cur += c;
+      }
+      return args;
+    }
+
+    /**
+     * Llamadas a la sobrecarga síncrona `readOrgBody(ctx, bodyYaParseado)` que
+     * NO pasan `{ request }` y, por tanto, no ven la query string. Devuelve las
+     * llamadas ofensoras salvo que el mismo texto ya tenga una llamada con la
+     * `Request` (`readOrgBody(ctx, request)`), que sí la comprueba.
+     */
+    function syncReadsWithoutQuery(text: string): string[] {
+      const offending: string[] = [];
+      let sawRequestOverload = false;
+      let m: RegExpExecArray | null;
+      READ_ORG_BODY_CALL_RE.lastIndex = 0;
+      while ((m = READ_ORG_BODY_CALL_RE.exec(text))) {
+        const open = m.index + m[0].length - 1;
+        const args = callArgs(text, open);
+        if (args.length < 2) continue;
+        if (REQUEST_ARG_RE.test(args[1])) {
+          sawRequestOverload = true;
+          continue;
+        }
+        if (args.length >= 3 && OPTS_REQUEST_RE.test(args[2])) continue;
+        offending.push(text.slice(m.index, open + 1) + args.join(', ') + ')');
+      }
+      return sawRequestOverload ? [] : offending;
     }
 
     /** Reconoce `export const POST = handle;` / `withCron(handle)` / `withOrg(handler)`: el cuerpo real es el helper. */
@@ -414,11 +477,13 @@ describe('F0 Guardarraíles', () => {
 
     /**
      * Métodos de escritura del archivo que incumplen: en ámbito estricto, los que
-     * no tienen sesión O no llaman al punto único (salvo cron/webhook); en legacy,
-     * los que leen la organización del body sin sesión en ese mismo handler.
+     * no tienen sesión O no llaman al punto único (salvo cron/webhook) O llaman a
+     * la sobrecarga síncrona sin `{ request }` (la query quedaría sin mirar); en
+     * legacy, los que leen la organización del body sin sesión en ese mismo handler.
      */
     function offendingHandlers(content: string, strict: boolean): string[] {
       const handlers = splitHandlers(content).map((h) => ({ ...h, text: inlineAliases(h, content) }));
+      const helperBodies = localHelperBodies(content);
       const sessionHelpers = localHelpersMatching(content, SESSION_RE);
       const foreignHelpers = localHelpersMatching(content, FOREIGN_RE);
       const cronHelpers = localHelpersMatching(content, CRON_RE);
@@ -434,7 +499,12 @@ describe('F0 Guardarraíles', () => {
 
         if (strict) {
           if (isCron || isWebhook) continue;
-          if (!hasSession || !hasForeign) offenders.push(h.method);
+          // El handler más los helpers locales con `readOrgBody` que invoca:
+          // la sobrecarga síncrona sin `{ request }` puede vivir en cualquiera.
+          const usedHelpers = helperBodies.filter((b) => foreignHelpers.includes(b.name) && usesHelper(h, [b.name]));
+          const effective = [h.text, ...usedHelpers.map((b) => b.text)].join('\n');
+          const syncWithoutQuery = syncReadsWithoutQuery(effective).length > 0;
+          if (!hasSession || !hasForeign || syncWithoutQuery) offenders.push(h.method);
           continue;
         }
         const usesBodyOrg = BODY_ORG_PATTERNS.some((p) => p.test(h.text));
@@ -480,9 +550,9 @@ describe('F0 Guardarraíles', () => {
       for (const f of ALLOWLIST) if (!legacyOffenders.has(f)) legacyStale.push(f);
     });
 
-    test('todo handler de escritura de crm/** y ai-assistant/** resuelve la org por sesión Y llama a readOrgBody (403 ante org ajena)', () => {
+    test('todo handler de escritura de crm/** y ai-assistant/** resuelve la org por sesión Y llama a readOrgBody (403 ante org ajena, también en la query)', () => {
       if (strictViolations.length > 0) {
-        console.error('handlers POST/PUT/PATCH/DELETE sin sesión o sin readOrgBody:\n' + strictViolations.sort().join('\n'));
+        console.error('handlers POST/PUT/PATCH/DELETE sin sesión, sin readOrgBody o con la sobrecarga síncrona sin { request }:\n' + strictViolations.sort().join('\n'));
       }
       expect(strictViolations.sort()).toEqual([]);
     });
@@ -551,8 +621,9 @@ describe('F0 Guardarraíles', () => {
       // `fail` termina en la siguiente línea de nivel superior: NO contiene el readOrgBody del POST.
       expect(localHelpersMatching(sample, FOREIGN_RE)).toEqual([]);
       expect(offendingHandlers(sample, true)).toEqual(['DELETE']);
-      // Y un helper que SÍ llama al punto único sigue cubriendo a quien lo invoca.
-      const viaHelper = sample.replace("function fail(msg: string) {", "function fail(msg: string) {\n  readOrgBody(ctx, msg);");
+      // Y un helper que SÍ llama al punto único sigue cubriendo a quien lo invoca
+      // (con `{ request }`: desde la deuda C, la síncrona sin la opción es ofensora).
+      const viaHelper = sample.replace("function fail(msg: string) {", "function fail(msg: string) {\n  readOrgBody(ctx, msg, { request });");
       expect(localHelpersMatching(viaHelper, FOREIGN_RE)).toEqual(['fail']);
       expect(offendingHandlers(viaHelper, true)).toEqual([]);
     });
@@ -567,6 +638,62 @@ describe('F0 Guardarraíles', () => {
       ].join('\n');
       expect(offendingHandlers(sample, true)).toEqual(['POST']);
       expect(offendingHandlers(sample.replace("getServerOrgContext(request);", "getServerOrgContext(request);\n  await readOrgBody(ctx, request);"), true)).toEqual([]);
+    });
+
+    test('la sobrecarga síncrona readOrgBody(ctx, body) sin { request } no ve la query: ofensor en ámbito estricto (deuda C de F0-SEC)', () => {
+      const sample = [
+        "export async function POST(request: NextRequest) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  const body = await request.json().catch(() => null);",
+        "  readOrgBody(ctx, body);",
+        "  return Response.json({ ok: true });",
+        "}",
+        "",
+        "export async function PATCH(request: NextRequest) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  const parsed = schema.safeParse(readOrgBody(ctx, await request.json().catch(() => null), { request }));",
+        "  return Response.json({ ok: parsed.success });",
+        "}",
+        "",
+        "export async function PUT(request: NextRequest) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  const form = readOrgBody(ctx, await request.formData(), { route: 'x', request: request });",
+        "  return Response.json({ ok: !!form });",
+        "}",
+        "",
+        "export async function DELETE(request: NextRequest) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  await readOrgBody(ctx, request);",
+        "  readOrgBody(ctx, { a: 1 });",
+        "  return Response.json({ ok: true });",
+        "}",
+      ].join('\n');
+      // POST: sin `{ request }` → ofensor. PATCH y PUT: con la opción (sola o tras
+      // `route`) → cumplen. DELETE: la síncrona sin opción queda cubierta por la
+      // llamada con la Request del mismo handler.
+      expect(syncReadsWithoutQuery(sample.split('\n\n')[0])).toEqual(['readOrgBody(ctx, body)']);
+      expect(offendingHandlers(sample, true)).toEqual(['POST']);
+      expect(offendingHandlers(sample.replace('readOrgBody(ctx, body);', 'readOrgBody(ctx, body, { request });'), true)).toEqual([]);
+      // Fuera del ámbito estricto no aplica (legacy solo mira org-del-body sin sesión).
+      expect(offendingHandlers(sample, false)).toEqual([]);
+      // Un helper local que llama a la síncrona sin `{ request }` contagia al handler que lo usa.
+      const viaHelper = [
+        "function guard(ctx: OrgBodyContext, raw: unknown) {",
+        "  return readOrgBody(ctx, raw);",
+        "}",
+        "",
+        "export async function POST(request: NextRequest) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  const body = guard(ctx, await request.json().catch(() => null));",
+        "  return Response.json({ ok: !!body });",
+        "}",
+      ].join('\n');
+      expect(offendingHandlers(viaHelper, true)).toEqual(['POST']);
+      expect(offendingHandlers(viaHelper.replace('readOrgBody(ctx, raw)', 'readOrgBody(ctx, raw, { request })'), true)).toEqual([]);
+      // La genérica y el alias `req` también se reconocen.
+      expect(syncReadsWithoutQuery("readOrgBody<Body>(ctx, parsed)")).toEqual(['readOrgBody<Body>(ctx, parsed)']);
+      expect(syncReadsWithoutQuery("await readOrgBody(ctx, req); readOrgBody(ctx, parsed)")).toEqual([]);
+      expect(syncReadsWithoutQuery("readOrgBody(ctx, parsed, { request: req })")).toEqual([]);
     });
 
     test('una reexportación de handler oculta el cuerpo al guardarraíl: prohibida en ámbito estricto salvo hacia crm/webhooks/ (tester r3, G7b)', () => {

@@ -11,7 +11,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   try {
     const ctx = await getServerOrgContext(request);
     const { id } = await params;
-    const parsed = meetingPatchSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
+    const parsed = meetingPatchSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null), { request }));
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });
     }

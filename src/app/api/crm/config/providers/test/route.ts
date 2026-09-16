@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
   // convierte en respuesta (QA r3 punto 1: antes escapaba como 500 de Next).
   const body: unknown = await request.json().catch(() => null);
   try {
-    readOrgBody(ctx, body);
+    readOrgBody(ctx, body, { request });
   } catch (err) {
     if (err instanceof OrgContextError) {
       return NextResponse.json({ ok: false, detail: err.message }, { status: err.statusCode });

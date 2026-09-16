@@ -57,7 +57,18 @@
 --      aceptaba el catálogo (minúsculas, abreviaturas como EST) y además las
 --      especificaciones POSIX que Postgres entiende; el nombre devuelto ya no
 --      se canoniza en mayúsculas, lo cual no afecta a `by_day` (Postgres no
---      distingue mayúsculas en `at time zone`). EXECUTE: revocado a
+--      distingue mayúsculas en `at time zone`). LÍMITE CONOCIDO (F0-pulido,
+--      qa r4 REG obs. 3; nota, no cambio): en una especificación POSIX el
+--      signo va INVERTIDO respecto a ISO — `at time zone '+05:30'` y
+--      `'UTC+5'` significan 5 h al OESTE de Greenwich, y `Etc/GMT+5` es
+--      UTC−5 —, así que un `p_tz` así no falla pero corta el día calendario
+--      en la zona contraria. Hoy es inalcanzable: `organizations.timezone`
+--      solo admite nombres de `pg_timezone_names` (trigger de la 44) y Node
+--      valida antes con `isSupportedTimeZone`, que rechaza offsets y
+--      `Etc/GMT±N`. Si algún día `p_tz` llegara de otra fuente, añadir en
+--      el helper `if v !~ '^[A-Za-z]' then return 'UTC'` antes del
+--      `perform` (o comparar contra `pg_timezone_names` una vez por
+--      llamada). EXECUTE: revocado a
 --      public/anon/authenticated y concedido a service_role, igual que las
 --      demás. Decisión: hoy solo la invoca `fn_ai_usage_month` (SECURITY
 --      DEFINER del owner `postgres`, que ejecuta el helper como owner sin

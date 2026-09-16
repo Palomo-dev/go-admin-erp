@@ -166,13 +166,17 @@ describe('C1 · readOrgBody: intentos de esquive', () => {
     expect(await readOrgBody(ctx, jsonReq('http://x/api', '123'))).toBe(123);
     expect(await readOrgBody(ctx, jsonReq('http://x/api', '[{"organization_id":999}]'))).toEqual([{ organization_id: FOREIGN }]);
   });
-  test('documentado: la sobrecarga síncrona no ve la query, y un body ya consumido devuelve {} sin mirar lo que traía', async () => {
+  test('CERRADO (deuda C): la sobrecarga síncrona ve la query si recibe { request }; sin la opción sigue sin verla; un body ya consumido devuelve {} sin mirar lo que traía', async () => {
     const r1 = jsonReq('http://x/api?organization_id=999', { a: 1 });
-    expect(readOrgBody(ctx, await r1.json())).toEqual({ a: 1 });
+    const parsed = await r1.json();
+    expect(readOrgBody(ctx, parsed)).toEqual({ a: 1 });
+    expect(warn).not.toHaveBeenCalled();
+    await expect403(() => readOrgBody(ctx, parsed, { request: r1, route: 'teams' }));
+    expect(warn.mock.calls[0][1]).toMatchObject({ where: 'query', key: 'organization_id', body: '999', route: 'teams' });
     const r2 = jsonReq('http://x/api', { organization_id: FOREIGN });
     await r2.json();
     expect(await readOrgBody(ctx, r2)).toEqual({});
-    expect(warn).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledTimes(1);
   });
   test('registro: nunca vuelca objetos ni cadenas largas; __proto__ no concede', () => {
     expect403(() => readOrgBody(ctx, { organization_id: 'x'.repeat(500) }));

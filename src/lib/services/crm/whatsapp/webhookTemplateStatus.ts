@@ -15,6 +15,17 @@
  * `metadata.last_webhook_event`; una fila que ya lleva esa misma clave se
  * salta (un cuerpo firmado capturado y reenviado no vuelve a pausar campañas).
  * Sin `entry.time` no hay clave y se aplica como siempre.
+ *
+ * F0-pulido (qa r4 §3 bajo 1, replay FUERA DE ORDEN): la clave por evento no
+ * bastaba: `PAUSED@t1 → APPROVED@t2 → PAUSED@t1` (el mismo cuerpo de t1
+ * capturado y reenviado) volvía a pausar. Ahora se guarda además el último
+ * `entry.time` aplicado POR CAMPO (`metadata.last_webhook_time` para
+ * `message_template_status_update`, `metadata.last_quality_webhook_time` para
+ * `message_template_quality_update`) y un evento con `time` MENOR que el
+ * aplicado se ignora y se registra con `console.warn`. Un `time` igual con
+ * otra clave se aplica (dos cambios del mismo lote de Meta comparten `time`);
+ * la misma clave sigue saltándose (idempotencia de r4 intacta). Los dos campos
+ * conviven: un `quality_update@t1` tardío no bloquea un `status_update@t2`.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -65,6 +76,31 @@ export function templateEventKey(update: Pick<TemplateStatusUpdate, 'field' | 'e
   return `${update.field}:${update.event}:${time}`;
 }
 
+/**
+ * `entry.time` (segundos, entero no negativo) contenido en una clave de
+ * `templateEventKey`; `null` si la clave es `null` o no termina en dígitos.
+ * Puro. Es el único sitio que sabe leer la clave: el llamador no cambia.
+ */
+export function templateEventTime(eventKey: string | null): number | null {
+  if (eventKey === null) return null;
+  const m = /:(\d{1,16})$/.exec(eventKey);
+  if (!m) return null;
+  const t = Number(m[1]);
+  return Number.isSafeInteger(t) ? t : null;
+}
+
+/** Columna de `metadata` con el último `entry.time` aplicado, por campo. */
+export function lastWebhookTimeKey(field: TemplateStatusUpdate['field']): 'last_webhook_time' | 'last_quality_webhook_time' {
+  return field === 'message_template_quality_update' ? 'last_quality_webhook_time' : 'last_webhook_time';
+}
+
+/** `metadata.<lastWebhookTimeKey>` como entero no negativo, o `null` si no hay o es basura. */
+function readLastWebhookTime(meta: Record<string, unknown>, field: TemplateStatusUpdate['field']): number | null {
+  const raw = meta[lastWebhookTimeKey(field)];
+  const n = typeof raw === 'number' ? raw : typeof raw === 'string' && /^\d{1,16}$/.test(raw) ? Number(raw) : NaN;
+  return Number.isSafeInteger(n) && n >= 0 ? n : null;
+}
+
 export async function applyTemplateStatusUpdate(
   update: TemplateStatusUpdate,
   wabaId: string | null,
@@ -84,12 +120,30 @@ export async function applyTemplateStatusUpdate(
   } else return { updated: 0, paused_campaigns: 0 };
 
   const { data: rows } = await q.limit(10);
+  const eventTime = templateEventTime(eventKey);
   let updated = 0;
   let pausedCampaigns = 0;
   for (const r of (rows ?? []) as Array<{ id: string; organization_id: number; metadata: Record<string, unknown> | null }>) {
     const meta = { ...(r.metadata ?? {}) } as Record<string, unknown>;
     // Replay del mismo evento (misma clave ya aplicada): se salta la fila.
     if (eventKey !== null && meta.last_webhook_event === eventKey) continue;
+    // Replay FUERA DE ORDEN: `entry.time` anterior al último aplicado para este
+    // campo → se ignora y se registra (qa r4 §3 bajo 1). Monotónico por campo.
+    if (eventTime !== null) {
+      const lastApplied = readLastWebhookTime(meta, update.field);
+      if (lastApplied !== null && eventTime < lastApplied) {
+        console.warn('[WhatsApp Webhook] template update ignorado: entry.time anterior al último aplicado (replay fuera de orden)', {
+          templateId: r.id,
+          organizationId: r.organization_id,
+          field: update.field,
+          event: update.event,
+          eventTime,
+          lastApplied,
+        });
+        continue;
+      }
+      meta[lastWebhookTimeKey(update.field)] = eventTime;
+    }
     if (eventKey !== null) meta.last_webhook_event = eventKey;
     if (update.field === 'message_template_quality_update') {
       meta.quality_score = update.quality_score;

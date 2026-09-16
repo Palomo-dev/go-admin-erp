@@ -27,7 +27,7 @@ const CHANNELS: Record<string, Channel> = {
 // svix es solo ESM y jest (CJS) no lo carga; la ruta no lo usa (mismo doble que en security/__tests__).
 jest.mock('svix', () => ({ Webhook: class { verify(): void { /* no se usa aquí */ } } }));
 
-const processWebhookPayload = jest.fn(async (_payload: { entry: Array<{ id: string }> }) => undefined);
+const processWebhookPayload = jest.fn<Promise<undefined>, [{ entry: Array<{ id: string }> }]>(async () => undefined);
 jest.mock('@/lib/services/integrations/whatsapp', () => ({
   whatsappCloudService: {
     findChannelByPhoneNumberId: async (id: string) => {
@@ -45,6 +45,7 @@ jest.mock('@/lib/services/integrations/whatsapp', () => ({
 }));
 
 import { POST } from '../route';
+import { _resetRateLimits } from '@/lib/security/rateLimit';
 
 function entryFor(phoneNumberId: string, wabaId = `waba-${phoneNumberId.slice(-1)}`) {
   return {
@@ -83,6 +84,8 @@ let errorSpy: jest.SpyInstance;
 const originalGlobal = process.env.META_APP_SECRET;
 beforeEach(() => {
   processWebhookPayload.mockClear();
+  // F0-pulido: sin cabecera de IP las peticiones comparten el cubo `unknown` (12/min); cada test parte de cero.
+  _resetRateLimits();
   process.env.META_APP_SECRET = GLOBAL;
   delete process.env.WHATSAPP_APP_SECRET;
   warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);

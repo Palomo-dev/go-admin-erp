@@ -451,11 +451,19 @@ describe('S5 · ai-assistant/{attachments,transcribe}: 403 con code por cada ali
     expect(await ra.json()).toMatchObject({ code: 'BAD_REQUEST' });
   });
 
-  test('DOCUMENTADO (bajo): ?organization_id=999 en la query de estas rutas NO se inspecciona (sobrecarga síncrona sobre el FormData ya leído)', async () => {
+  test('CERRADO (deuda C): ?organization_id=999 en la query de estas rutas → 403 { code } y warn where: query (sobrecarga síncrona con { request })', async () => {
     const t = await import('@/app/api/ai-assistant/transcribe/route');
     const res = await t.POST(multipart('/api/ai-assistant/transcribe', {}, `?organization_id=${FOREIGN}`));
-    expect(res.status).toBe(400); // llega a «audio requerido»: no hubo 403 ni registro
-    expect(warn).not.toHaveBeenCalled();
+    expect(res.status).toBe(403); // antes llegaba a «audio requerido» (400) sin registro
+    expect(await res.json()).toEqual({ error: 'Organización no permitida', code: 'FOREIGN_ORGANIZATION' });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('organization_id ajeno'), expect.objectContaining({ where: 'query', route: 'ai-assistant/transcribe', session: SESSION, body: String(FOREIGN) }));
+    const a = await import('@/app/api/ai-assistant/attachments/route');
+    const ra = await a.POST(multipart('/api/ai-assistant/attachments', { file: png() }, `?orgId=${FOREIGN}`));
+    expect(ra.status).toBe(403);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('orgId ajeno'), expect.objectContaining({ where: 'query', route: 'ai-assistant/attachments' }));
+    // La query PROPIA no estorba: sigue llegando a la validación del formulario.
+    const ok = await t.POST(multipart('/api/ai-assistant/transcribe', {}, `?organization_id=${SESSION}`));
+    expect(ok.status).toBe(400);
   });
 
   test('DOCUMENTADO (bajo): el rechazo 403 consume un hit del rate limit por usuario (el límite se evalúa antes de leer el formulario)', async () => {

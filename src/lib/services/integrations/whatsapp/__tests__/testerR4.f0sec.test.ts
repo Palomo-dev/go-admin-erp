@@ -11,9 +11,10 @@
  *  - Mensajes de un canal no autorizado se saltan SIN insertar; los de uno
  *    autorizado en el mismo lote sí se procesan.
  *  - Replay por `entry.time`: mismo cuerpo N veces → 1 aplicación; replay
- *    tardío fuera de orden (PAUSED@t1 tras APPROVED@t2) se re-aplica (ANOTADO,
- *    bajo: la clave es por evento, no por «último aplicado ≥»); `time` como
- *    string decimal cuenta; con espacios cuenta; `'1e9'`, `Infinity`, `-0` no.
+ *    tardío fuera de orden (PAUSED@t1 tras APPROVED@t2) SE IGNORA y se
+ *    registra (F0-pulido: `metadata.last_webhook_time` monotónico por campo;
+ *    antes ANOTADO como bajo); `time` como string decimal cuenta; con espacios
+ *    cuenta; `'1e9'`, `Infinity`, `-0` no.
  *  - `templateEventKey` distingue field y event; dos plantillas distintas con el
  *    mismo `time` se aplican las dos.
  *
@@ -261,14 +262,44 @@ describe('replay por entry.time · bordes', () => {
     expect((templates.find((t) => t.id === 'tpl-8b')!.metadata as Row).status).toBe('DISABLED');
   });
 
-  test('ANOTADO (bajo): replay FUERA DE ORDEN — PAUSED@t1 aplicado, luego APPROVED@t2, y se reenvía el PAUSED@t1 capturado → se vuelve a aplicar (la clave es del último evento, no un «≥ último time»)', async () => {
+  test('F0-pulido (antes ANOTADO): replay FUERA DE ORDEN — PAUSED@t1 aplicado, luego APPROVED@t2, y se reenvía el PAUSED@t1 capturado → se IGNORA (time < último aplicado), se registra y la campaña no se vuelve a pausar', async () => {
+    const warn = console.warn as jest.Mock; // ya espiado en beforeEach
     await whatsappCloudService.processWebhookPayload(body(1700000000, { event: 'PAUSED' }), { authorizedOrganizationIds: [8] });
     await whatsappCloudService.processWebhookPayload(body(1700000060, { event: 'APPROVED' }), { authorizedOrganizationIds: [8] });
     expect(statusB()).toBe('APPROVED');
+    expect((templates[0].metadata as Row).last_webhook_time).toBe(1700000060);
     (campaigns[0].statistics as Row).state = 'running';
+    updates.length = 0;
     await whatsappCloudService.processWebhookPayload(body(1700000000, { event: 'PAUSED' }), { authorizedOrganizationIds: [8] });
+    expect(statusB()).toBe('APPROVED');
+    expect((campaigns[0].statistics as Row).state).toBe('running');
+    expect(updates).toEqual([]);
+    expect((templates[0].metadata as Row).last_webhook_time).toBe(1700000060);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('fuera de orden'), expect.objectContaining({ templateId: 'tpl-8', eventTime: 1700000000, lastApplied: 1700000060 }));
+    // Un evento POSTERIOR sí se aplica: la monotonía no congela la plantilla.
+    await whatsappCloudService.processWebhookPayload(body(1700000120, { event: 'PAUSED' }), { authorizedOrganizationIds: [8] });
     expect(statusB()).toBe('PAUSED');
     expect((campaigns[0].statistics as Row).state).toBe('paused');
+  });
+
+  test('F0-pulido: el tiempo es POR CAMPO — un quality_update@t1 tardío no queda bloqueado por un status_update@t2, y viceversa', async () => {
+    await whatsappCloudService.processWebhookPayload(body(1700000060, { event: 'APPROVED' }), { authorizedOrganizationIds: [8] });
+    await whatsappCloudService.processWebhookPayload(payloadOf({ id: 'waba-b', time: 1700000000, changes: [{ field: 'message_template_quality_update', value: { message_template_id: TPL_B, new_quality_score: 'RED' } }] }), { authorizedOrganizationIds: [8] });
+    expect((templates[0].metadata as Row).quality_score).toBe('RED');
+    expect((templates[0].metadata as Row).last_quality_webhook_time).toBe(1700000000);
+    expect((templates[0].metadata as Row).last_webhook_time).toBe(1700000060);
+    // Y un quality_update ANTERIOR al ya aplicado (t0 < t1) sí se ignora.
+    await whatsappCloudService.processWebhookPayload(payloadOf({ id: 'waba-b', time: 1699999999, changes: [{ field: 'message_template_quality_update', value: { message_template_id: TPL_B, new_quality_score: 'GREEN' } }] }), { authorizedOrganizationIds: [8] });
+    expect((templates[0].metadata as Row).quality_score).toBe('RED');
+  });
+
+  test('F0-pulido: mismo time con otra clave (dos cambios del mismo lote) se aplica; sin entry.time no se compara ni se escribe last_webhook_time', async () => {
+    await whatsappCloudService.processWebhookPayload(body(1700000000, { event: 'PAUSED' }), { authorizedOrganizationIds: [8] });
+    await whatsappCloudService.processWebhookPayload(body(1700000000, { event: 'APPROVED' }), { authorizedOrganizationIds: [8] });
+    expect(statusB()).toBe('APPROVED');
+    await whatsappCloudService.processWebhookPayload(body(undefined, { event: 'DISABLED' }), { authorizedOrganizationIds: [8] });
+    expect(statusB()).toBe('DISABLED');
+    expect((templates[0].metadata as Row).last_webhook_time).toBe(1700000000);
   });
 
   test('la clave se escribe con applyTemplateStatusUpdate directo y la segunda llamada devuelve updated 0', async () => {

@@ -105,6 +105,69 @@ describe('readOrgBody sobre un body ya parseado', () => {
   });
 });
 
+describe('readOrgBody sobre un body ya parseado con { request } (deuda C de F0-SEC)', () => {
+  // La ruta parseó el JSON por su cuenta (para su propio 400) y ya consumió el
+  // body: la única forma de que la query string se compruebe es pasar la
+  // petición original en las opciones. Mismo código que la sobrecarga con `Request`.
+  test('query ajena + body propio → 403 where: query (la query se evalúa ANTES que el body)', async () => {
+    const request = jsonReq({ organization_id: 7, name: 'x' }, 'http://localhost/api/crm/x?organization_id=9');
+    const body = await request.json();
+    const err = await expect403(() => readOrgBody(ctx, body, { request, route: 'crm/x' }));
+    expect(err.message).toBe('Organización no permitida');
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][1]).toMatchObject({ where: 'query', key: 'organization_id', session: 7, body: '9', route: 'crm/x', userId: 'u-1' });
+  });
+
+  test('query propia + body ajeno → 403 where: body', async () => {
+    const request = jsonReq({ orgId: 9 }, 'http://localhost/api/crm/x?organization_id=7');
+    const body = await request.json();
+    await expect403(() => readOrgBody(ctx, body, { request }));
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][1]).toMatchObject({ where: 'body', key: 'orgId', body: 9 });
+  });
+
+  test('query ajena Y body ajeno → un solo 403, el de la query (se lanza en la primera ajena)', async () => {
+    const request = jsonReq({ organization_id: 9 }, 'http://localhost/api/crm/x?orgId=9');
+    const body = await request.json();
+    await expect403(() => readOrgBody(ctx, body, { request }));
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][1]).toMatchObject({ where: 'query', key: 'orgId' });
+  });
+
+  test('query propia (o sin organización) + body propio → devuelve el MISMO body, sin registro', async () => {
+    const request = jsonReq({ organization_id: '7', name: 'x' }, 'http://localhost/api/crm/x?organization_id=7&page=2');
+    const body = await request.json();
+    expect(readOrgBody(ctx, body, { request })).toBe(body);
+    const form = new FormData();
+    form.set('audio', 'blob');
+    expect(readOrgBody(ctx, form, { request: jsonReq(undefined, 'http://localhost/api/crm/x?page=2') })).toBe(form);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  test('clave repetida en la query (`?organization_id=7&organization_id=9`): la segunda ajena también → 403', async () => {
+    const request = jsonReq({}, 'http://localhost/api/crm/x?organization_id=7&organization_id=9');
+    const body = await request.json();
+    await expect403(() => readOrgBody(ctx, body, { request }));
+    expect(warn.mock.calls[0][1]).toMatchObject({ where: 'query', body: '9' });
+  });
+
+  test('sin opts (o sin `request`) ⇒ comportamiento anterior: solo se mira el body, la query no', async () => {
+    const request = jsonReq({ name: 'x' }, 'http://localhost/api/crm/x?organization_id=9');
+    const body = await request.json();
+    expect(readOrgBody(ctx, body)).toBe(body);
+    expect(readOrgBody(ctx, body, { route: 'crm/x' })).toBe(body);
+    expect(warn).not.toHaveBeenCalled();
+    await expect403(() => readOrgBody(ctx, { organization_id: 9 }, { route: 'crm/x' }));
+    expect(warn.mock.calls[0][1]).toMatchObject({ where: 'body' });
+  });
+
+  test('basta con `{ url }`: un doble sin url válida (o relativa) no rompe y solo inspecciona el body', () => {
+    expect(() => readOrgBody(ctx, { a: 1 }, { request: { url: 'http://localhost/x?org_id=9' } })).toThrow(OrgContextError);
+    expect(readOrgBody(ctx, { a: 1 }, { request: { url: '/x?org_id=9' } })).toEqual({ a: 1 });
+    expect(readOrgBody(ctx, { a: 1 }, { request: { url: undefined as unknown as string } })).toEqual({ a: 1 });
+  });
+});
+
 describe('readOrgBody sobre una Request', () => {
   test('JSON con organización ajena → 403 y el body no se devuelve', async () => {
     await expect403(readOrgBody(ctx, jsonReq({ organization_id: 9 })));

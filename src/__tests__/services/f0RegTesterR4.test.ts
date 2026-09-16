@@ -10,15 +10,15 @@
  *     `getProviderCredentials`; misma org en cualquier forma → 200; body
  *     inválido (JSON roto, array, texto, null) → 400 sin consumir cupo; sin
  *     sesión → 401; no admin → 403 antes de mirar el body; 429 después de
- *     validar y antes de leer credenciales. HUECO documentado (bajo): la
- *     sobrecarga síncrona `readOrgBody(ctx, body)` NO mira la query string
- *     (`?organization_id=999` pasa); la org efectiva sigue siendo la de
- *     sesión, así que no es un salto de tenant.
+ *     validar y antes de leer credenciales. El hueco documentado en r4 (la
+ *     sobrecarga síncrona `readOrgBody(ctx, body)` no miraba la query string)
+ *     quedó CERRADO como deuda C de F0-SEC el 2026-09-16: con `{ request }`
+ *     `?organization_id=999` → 403 `where: 'query'`.
  *   - `isSupportedTimeZone`: enlaces IANA que ICU canoniza (verificados uno a
  *     uno en `pg_timezone_names` por MCP el 2026-09-16), los 417 canónicos de
  *     ICU (todos en `pg_timezone_names`), y lo que sigue rechazado
  *     (abreviaturas, `Etc/*`, offsets, minúsculas, espacios, 3+ niveles
- *     inventados). `Etc/UTC` → false queda documentado (observación).
+ *     inventados). `Etc/UTC` → true desde F0-pulido (antes observación).
  *   - `chargeAiCredits` con `credits` explícito 0,49 / 0,5 / NaN / -1 / '3' /
  *     Infinity / -0 y con `credits` ausente o `null` (default).
  *   - `useCalendarSettings.saveSettings` (QA r3 punto 5) sin DOM: se inyecta
@@ -227,18 +227,22 @@ describe('POST /api/crm/config/providers/test — organización ajena en el body
     await expect(postTest(jsonReq({ category: 'calendar' }))).rejects.toBeInstanceOf(TypeError);
   });
 
-  // HUECO (bajo, documentado): la ruta usa la sobrecarga síncrona
-  // `readOrgBody(ctx, body)` sobre el JSON ya leído, que solo mira el body;
-  // la query string solo se comprueba en la sobrecarga con `Request`. Como la
-  // ruta no lee nada de la query, la org efectiva sigue siendo la de sesión.
-  // Mismo patrón en el PUT de providers/route.ts y en ~35 rutas más (F0-SEC).
-  it.failing('HUECO (bajo): ?organization_id=999 en la query con body limpio → hoy 200 (se esperaría 403)', async () => {
+  // CERRADO (deuda C de F0-SEC, 2026-09-16): la ruta usa la sobrecarga síncrona
+  // `readOrgBody(ctx, body, { request })` sobre el JSON ya leído; con
+  // `{ request }` la query string se comprueba ANTES del body, con el mismo
+  // código que la sobrecarga con `Request`. Mismo cambio en el PUT de
+  // providers/route.ts y en las otras 35 rutas del patrón.
+  it('?organization_id=999 en la query con body limpio → 403 { ok:false, detail } sin rate limit ni credenciales', async () => {
     const res = await postTest(jsonReq({ category: 'calendar' }, `${PATH}?organization_id=999`));
     expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ ok: false, detail: 'Organización no permitida' });
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('organization_id ajeno'), expect.objectContaining({ where: 'query', session: 7, body: '999' }));
+    expect(estado.rateLimitCalls).toBe(0);
+    expect(estado.credentialCalls).toBe(0);
   });
 
-  it('evidencia del hueco anterior: la query ajena no cambia la org (200, prueba ejecutada con la org de sesión, sin warn)', async () => {
-    const res = await postTest(jsonReq({ category: 'calendar' }, `${PATH}?organization_id=999`));
+  it('la query PROPIA (?organization_id=7) o sin organización no estorba: 200 sin warn', async () => {
+    const res = await postTest(jsonReq({ category: 'calendar' }, `${PATH}?organization_id=7&x=1`));
     expect(res.status).toBe(200);
     expect(console.warn).not.toHaveBeenCalled();
   });
@@ -273,12 +277,16 @@ describe('isSupportedTimeZone — enlaces IANA que ICU canoniza a otro nombre', 
     for (const tz of malos) expect([tz, isSupportedTimeZone(tz)]).toEqual([tz, false]);
   });
 
-  // Observación (no fallo): `UTC` se acepta por caso especial, pero `Etc/UTC`
-  // (canónico IANA, en pg_timezone_names) cae en la rama Region/City y su
-  // resolución (`UTC`) no está en el set de ICU. Dirección segura.
-  it('DOCUMENTADO: Etc/UTC → false aunque Postgres lo conozca (UTC sí → true)', () => {
+  // F0-pulido (qa r4 REG obs. 1): `Etc/UTC` (canónico IANA, en
+  // pg_timezone_names) se acepta por caso especial junto a `UTC`; caía en la
+  // rama Region/City y su resolución (`UTC`) no está en el set de ICU.
+  // Los demás `Etc/*` (signo POSIX invertido) siguen fuera.
+  it('F0-pulido: Etc/UTC → true (como UTC); Etc/GMT, Etc/GMT+0, Etc/Universal, etc/utc y Etc/UTC con espacios → false', () => {
     expect(isSupportedTimeZone('UTC')).toBe(true);
-    expect(isSupportedTimeZone('Etc/UTC')).toBe(false);
+    expect(isSupportedTimeZone('Etc/UTC')).toBe(true);
+    for (const tz of ['Etc/GMT', 'Etc/GMT+0', 'Etc/GMT-0', 'Etc/Universal', 'Etc/Zulu', 'etc/utc', 'Etc/utc', ' Etc/UTC', 'Etc/UTC ', 'Etc/UTC\n']) {
+      expect([tz, isSupportedTimeZone(tz)]).toEqual([tz, false]);
+    }
   });
 
   it('un enlace aceptado siempre resuelve a un canónico del set (la rama nueva no acepta nada que ICU no conozca)', () => {

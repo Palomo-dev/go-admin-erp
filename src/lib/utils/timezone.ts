@@ -41,7 +41,11 @@ function supportedTimeZoneSet(): Set<string> | null {
  * abreviaturas (`US/Eastern`, `EST`, `america/bogota`) que Postgres no
  * siempre reconoce, y `fn_ai_usage_month` / `at time zone` fallarían con
  * `22023`. Se exige pertenencia exacta a `Intl.supportedValuesOf('timeZone')`
- * (más `UTC`, que ICU no lista). Donde `supportedValuesOf` no exista
+ * (más `UTC` y su canónico IANA `Etc/UTC`, que ICU no lista: F0-pulido,
+ * qa r4 REG obs. 1; ambos están en `pg_timezone_names`). Los demás `Etc/*`
+ * (`Etc/GMT+5`, `Etc/GMT`) siguen rechazados: el signo de `Etc/GMT±N` es
+ * POSIX (invertido respecto a ISO) y nadie debería guardar eso a mano. Donde
+ * `supportedValuesOf` no exista
  * (navegadores antiguos) se cae a la comprobación de `DateTimeFormat`; la
  * BD tiene además el trigger `trg_validate_org_timezone` (migración
  * crm_v4_f00_44) contra `pg_timezone_names`.
@@ -72,7 +76,7 @@ export function isSupportedTimeZone(tz: unknown): tz is string {
   } catch {
     return false;
   }
-  if (tz === 'UTC') return true;
+  if (tz === 'UTC' || tz === 'Etc/UTC') return true;
   const set = supportedTimeZoneSet();
   if (!set) return true;
   if (set.has(tz)) return true;

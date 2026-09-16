@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     throw err;
   }
 
-  const parsed = createSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
+  const parsed = createSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null), { request }));
   if (!parsed.success) {
     return NextResponse.json({ success: false, error: 'Body inválido', issues: parsed.error.issues }, { status: 400 });
   }

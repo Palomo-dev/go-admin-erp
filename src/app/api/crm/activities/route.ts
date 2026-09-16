@@ -18,7 +18,7 @@ import {
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext(request);
-    const json = readOrgBody(ctx, await request.json().catch(() => null));
+    const json = readOrgBody(ctx, await request.json().catch(() => null), { request });
     const parsed = activityInputSchema.safeParse(json);
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });

@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
   // 403 FOREIGN_ORGANIZATION registrado (regla dura 5), no un 400 «mal formado»
   // (QA F0-SEC C+D r2, §1).
   try {
-    form = readOrgBody(ctx, form, { route: 'ai-assistant/attachments' });
+    form = readOrgBody(ctx, form, { route: 'ai-assistant/attachments', request });
   } catch (err) {
     if (err instanceof OrgContextError) {
       return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });

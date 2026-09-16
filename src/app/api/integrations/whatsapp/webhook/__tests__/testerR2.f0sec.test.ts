@@ -47,7 +47,7 @@ const CHANNELS: Record<string, Channel> = {
 jest.mock('svix', () => ({ Webhook: class { verify(): void { /* no se usa aquí */ } } }));
 
 type Payload = { entry: Array<{ id?: string; changes: Array<{ field: string; value: Record<string, unknown> }> }> };
-const processWebhookPayload = jest.fn(async (_payload: Payload) => undefined);
+const processWebhookPayload = jest.fn<Promise<undefined>, [Payload]>(async () => undefined);
 const lookups: string[] = [];
 jest.mock('@/lib/services/integrations/whatsapp', () => ({
   whatsappCloudService: {
@@ -70,6 +70,7 @@ jest.mock('@/lib/services/integrations/whatsapp', () => ({
 }));
 
 import { POST } from '../route';
+import { _resetRateLimits } from '@/lib/security/rateLimit';
 
 function messagesChange(phoneNumberId: unknown) {
   return {
@@ -109,6 +110,8 @@ const originalGlobal = process.env.META_APP_SECRET;
 beforeEach(() => {
   processWebhookPayload.mockClear();
   lookups.length = 0;
+  // F0-pulido: sin cabecera de IP las peticiones comparten el cubo `unknown` (12/min); cada test parte de cero.
+  _resetRateLimits();
   process.env.META_APP_SECRET = GLOBAL;
   delete process.env.WHATSAPP_APP_SECRET;
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);

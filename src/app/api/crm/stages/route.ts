@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     if (!canManageStages(ctx)) {
       return NextResponse.json({ success: false, error: STAGE_MANAGER_REQUIRED }, { status: 403 });
     }
-    const parsed = createSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
+    const parsed = createSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null), { request }));
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });
     }
@@ -120,7 +120,7 @@ export async function PUT(request: NextRequest) {
     if (!canManageStages(ctx)) {
       return NextResponse.json({ success: false, error: STAGE_MANAGER_REQUIRED }, { status: 403 });
     }
-    const parsed = reorderSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
+    const parsed = reorderSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null), { request }));
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });
     }

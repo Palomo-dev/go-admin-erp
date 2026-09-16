@@ -24,7 +24,7 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const form = readOrgBody(ctx, await request.formData());
+    const form = readOrgBody(ctx, await request.formData(), { request });
     const file = (form.get('file') ?? form.get('audio')) as File | null;
     if (!file || typeof file === 'string') return NextResponse.json({ error: 'Archivo de audio requerido' }, { status: 400 });
     // Tope real de la cadena STT de la org (tester r2 nº 7), no un número fijo.

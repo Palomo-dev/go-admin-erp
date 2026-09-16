@@ -301,12 +301,17 @@ describe('rate limit por IP · bordes', () => {
     expect((await postRaw(raw, null, { 'x-forwarded-for': '198.51.100.23, 198.51.100.22' }, sig)).status).toBe(200);
   });
 
-  test('ANOTADO (bajo): sin x-forwarded-for, x-real-ip ni cf-connecting-ip todas las peticiones comparten el cubo "unknown"', async () => {
+  test('F0-pulido (antes ANOTADO): sin x-forwarded-for, x-real-ip ni cf-connecting-ip todas las peticiones comparten el cubo "unknown", acotado a 12/min (unknownClientLimit) y no a 120', async () => {
     const { raw, sig } = legit();
     const headers = { 'content-type': 'application/json', 'x-hub-signature-256': sig };
     const send = () => POST(new NextRequest('http://localhost/api/integrations/whatsapp/webhook', { method: 'post', headers, body: raw }));
-    for (let i = 0; i < 120; i++) expect((await send()).status).toBe(200);
-    expect((await send()).status).toBe(429);
+    for (let i = 0; i < 12; i++) expect((await send()).status).toBe(200);
+    const res = await send();
+    expect(res.status).toBe(429);
+    expect(Number(res.headers.get('Retry-After'))).toBeGreaterThanOrEqual(1);
+    // El aviso de cubo sin IP salió una vez, y una IP real conserva su cubo de 120.
+    expect((console.warn as jest.Mock).mock.calls.filter((c) => String(c[0]).includes('sin cabecera de IP'))).toHaveLength(1);
+    expect((await postRaw(raw, null, { 'x-forwarded-for': '198.51.100.99' }, sig)).status).toBe(200);
   });
 
   test('el 429 no lee el cuerpo: request.text() sigue disponible después (la ruta no lo consumió)', async () => {

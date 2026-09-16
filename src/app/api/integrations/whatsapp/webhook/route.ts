@@ -68,8 +68,21 @@ function globalAppSecret(): string | null {
  * podía costar consultas sin tope. Meta reintenta con backoff, y 120/min por IP
  * cubre de sobra un WABA activo. Clave separada del resto (`wa_webhook:ip:`).
  * (No se exporta: un route.ts solo puede exportar handlers y config de Next.)
+ *
+ * Límites conocidos (F0-pulido, qa r4 A+B §3 bajo 3):
+ * - El cubo es POR IP DE EGRESO, y Meta envía los webhooks de TODOS los WABA
+ *   desde un conjunto pequeño de IPs: varias organizaciones comparten cubo.
+ *   El 429 va antes de la firma, así que un tercero solo puede agotar el cubo
+ *   de Meta si comparte su IP (`console.warn` de abajo: vigilarlo las primeras
+ *   semanas; si salta con tráfico legítimo, subir `limit` o pasar a
+ *   `RATE_LIMIT_STORE=db`, no quitar el límite).
+ * - Sin cabecera de IP (`x-forwarded-for` / `x-real-ip` / `cf-connecting-ip`)
+ *   todas las peticiones caen en el cubo `unknown`, que `rateLimit.ts` acota a
+ *   `unknownClientLimit` (aquí 12/min) en vez de 120: fail-closed razonable.
+ *   En Vercel la cabecera siempre viene; si el aviso `[rateLimit] petición sin
+ *   cabecera de IP` aparece en producción, el proxy está mal configurado.
  */
-const WEBHOOK_RATE_LIMIT = { limit: 120, windowMs: 60_000 } as const;
+const WEBHOOK_RATE_LIMIT = { limit: 120, windowMs: 60_000, unknownClientLimit: 12 } as const;
 
 // POST: Recibir mensajes y status updates
 // F0 (C3 msg): firma X-Hub-Signature-256 verificada SIEMPRE (fail-closed) sobre el raw body.

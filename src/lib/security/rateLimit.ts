@@ -25,9 +25,18 @@
  *   `user` aunque `to` bloqueara: una ráfaga a un número bloqueado agotaba el
  *   cupo del usuario para otros números. Consecuencia: una petición bloqueada
  *   NO consume cupo (ventana fija: `resetAt` no se mueve).
- * - `getClientIp` sin cabeceras de proxy devuelve `'unknown'`: todos los
- *   clientes sin proxy comparten ese cubo. En Vercel/Railway siempre hay
- *   `x-forwarded-for`; en local, el límite por IP es compartido a propósito.
+ * - `getClientIp` sin cabeceras de proxy devuelve `UNKNOWN_CLIENT_IP`
+ *   (`'unknown'`): todos los clientes sin proxy comparten ese cubo. En
+ *   Vercel/Railway siempre hay `x-forwarded-for`; en local, el límite por IP
+ *   es compartido a propósito.
+ * - CUBO `unknown` FAIL-CLOSED RAZONABLE (F0-pulido, qa r4 A+B §3 bajo 3): una
+ *   clave que termina en `:unknown` (todas las claves por IP son
+ *   `<ruta>:ip:<ip>`) no usa `limit` sino `unknownClientLimit`, y si no se
+ *   pasa, `max(1, floor(limit / 10))`. Así, si un despliegue pierde la
+ *   cabecera, el cubo compartido se agota diez veces antes y el problema se
+ *   ve (un `console.warn` por proceso, la primera vez) en vez de dejar un
+ *   cubo laxo que todos comparten. No se bloquea del todo: en local y en
+ *   tests no hay proxy y las rutas tienen que seguir respondiendo.
  *
  * Uso:
  *   const rl = await checkRateLimits([{ key: `verify:ip:${ip}`, opts: LIMIT }], { store: getRateLimitStore() });
@@ -39,6 +48,13 @@ export interface RateLimitOptions {
   limit: number;
   /** Tamaño de ventana en ms (default 10 min). */
   windowMs?: number;
+  /**
+   * Límite del cubo compartido `unknown` (clave terminada en `:unknown`, es
+   * decir, `getClientIp` no encontró cabecera de IP). Default:
+   * `max(1, floor(limit / 10))`. Debe ser un entero > 0 y ≤ `limit`; si no,
+   * se ignora y rige el default (nunca más laxo que `limit`).
+   */
+  unknownClientLimit?: number;
 }
 
 export interface RateLimitResult {
@@ -86,6 +102,36 @@ interface Bucket {
 const DEFAULT_WINDOW_MS = 10 * 60 * 1000;
 const buckets = new Map<string, Bucket>();
 
+/** Valor que devuelve `getClientIp` cuando no hay cabecera de IP. */
+export const UNKNOWN_CLIENT_IP = 'unknown';
+const UNKNOWN_SUFFIX = `:${UNKNOWN_CLIENT_IP}`;
+/** Divisor del límite para el cubo `unknown` cuando no se pasa `unknownClientLimit`. */
+export const UNKNOWN_CLIENT_LIMIT_DIVISOR = 10;
+let unknownBucketWarned = false;
+
+/** `true` si la clave pertenece al cubo compartido sin IP (`…:ip:unknown`). */
+export function isUnknownClientKey(key: string): boolean {
+  return key.endsWith(UNKNOWN_SUFFIX);
+}
+
+/**
+ * Límite efectivo de una clave: el de `opts`, salvo para el cubo `unknown`,
+ * que usa `unknownClientLimit` (si es válido y no supera `limit`) o
+ * `max(1, floor(limit / UNKNOWN_CLIENT_LIMIT_DIVISOR))`. Puro.
+ */
+export function effectiveLimit(key: string, opts: RateLimitOptions): number {
+  if (!isUnknownClientKey(key) || !validLimit(opts.limit)) return opts.limit;
+  const custom = opts.unknownClientLimit;
+  if (custom !== undefined && Number.isInteger(custom) && custom > 0 && custom <= opts.limit) return custom;
+  return Math.max(1, Math.floor(opts.limit / UNKNOWN_CLIENT_LIMIT_DIVISOR));
+}
+
+function warnUnknownBucketOnce(key: string, limit: number): void {
+  if (unknownBucketWarned) return;
+  unknownBucketWarned = true;
+  console.warn('[rateLimit] petición sin cabecera de IP (x-forwarded-for / x-real-ip / cf-connecting-ip): cubo compartido "unknown" con límite reducido. Revisa el proxy si esto pasa en producción.', { key, limit });
+}
+
 /** Limpieza perezosa para que el Map no crezca sin límite. */
 function sweep(now: number, windowMs: number): void {
   if (buckets.size < 5000) return;
@@ -126,11 +172,13 @@ export async function checkRateLimits(
     if (!e.key) return blocked(e.key, e.opts.limit, new Date(now + (windowMs ?? DEFAULT_WINDOW_MS)));
     if (windowMs === null) return blocked(e.key, e.opts.limit, new Date(now));
     if (!validLimit(e.opts.limit)) return blocked(e.key, e.opts.limit, new Date(now + windowMs));
+    const limit = effectiveLimit(e.key, e.opts);
+    if (limit !== e.opts.limit) warnUnknownBucketOnce(e.key, limit);
     const b = buckets.get(e.key);
     const fresh = !b || now - b.windowStart >= windowMs;
     const windowStart = fresh ? now : (b as Bucket).windowStart;
     const count = (fresh ? 0 : (b as Bucket).count) + 1;
-    projected.push({ key: e.key, limit: e.opts.limit, windowMs, windowStart, count });
+    projected.push({ key: e.key, limit, windowMs, windowStart, count });
   }
 
   for (const p of projected) {
@@ -198,15 +246,17 @@ export async function checkRateLimit(
 
 /**
  * Extrae la IP del cliente de los headers habituales (Vercel / proxies).
- * Sin ninguno devuelve `'unknown'`: cubo compartido (ver cabecera).
+ * Sin ninguno devuelve `UNKNOWN_CLIENT_IP`: cubo compartido con límite
+ * reducido (ver cabecera y `effectiveLimit`).
  */
 export function getClientIp(req: Request): string {
   const xff = req.headers.get('x-forwarded-for');
   if (xff) return xff.split(',')[0].trim();
-  return req.headers.get('x-real-ip') || req.headers.get('cf-connecting-ip') || 'unknown';
+  return req.headers.get('x-real-ip') || req.headers.get('cf-connecting-ip') || UNKNOWN_CLIENT_IP;
 }
 
 /** Solo para tests. */
 export function _resetRateLimits(): void {
   buckets.clear();
+  unknownBucketWarned = false;
 }

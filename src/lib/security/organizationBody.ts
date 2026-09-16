@@ -14,7 +14,9 @@
  * - `readOrgBody(ctx, bodyYaParseado)` — misma decisión sobre un objeto,
  *   `FormData` o `URLSearchParams` que la ruta ya leyó (por ejemplo dentro de
  *   un `try/catch` propio que convierte el JSON inválido en 400). Devuelve el
- *   mismo valor, para poder envolver: `schema.safeParse(readOrgBody(ctx, raw))`.
+ *   mismo valor, para poder envolver: `schema.safeParse(readOrgBody(ctx, raw,
+ *   { request }))`. Con `{ request }` comprueba también la query string, antes
+ *   del body; sin ella solo mira el body (deuda C de F0-SEC, cerrada).
  * - `foreignOrganizationInBody(claimed, sessionOrg)` — el predicado puro
  *   original (nació en `voiceLibrary.ts`, F13 r2 lo movió aquí). Se conserva
  *   con su firma porque F12/F13 (`rejectForeignOrganization`) y Voces lo usan;
@@ -55,6 +57,15 @@ export interface OrgBodyContext {
 export interface ReadOrgBodyOptions {
   /** Etiqueta para el registro (ruta o servicio). */
   route?: string;
+  /**
+   * Petición original. Solo la usa la sobrecarga síncrona: comprueba la query
+   * string (`?organization_id=999`) ANTES del body ya parseado, con el mismo
+   * código que la sobrecarga con `Request`. Sin ella, la sobrecarga síncrona
+   * solo ve el body (deuda C de F0-SEC, cerrada 2026-09-16); por eso el
+   * guardarraíl 5 exige `{ request }` en todo handler de `crm/**` y
+   * `ai-assistant/**` que parsee el body por su cuenta.
+   */
+  request?: Pick<Request, 'url'>;
 }
 
 /** `FormData`, `URLSearchParams` o un doble de test con solo `get()`. */
@@ -154,8 +165,14 @@ function assertNotForeign<T>(ctx: OrgBodyContext, source: T, opts: ReadOrgBodyOp
   return source;
 }
 
-async function readFromRequest<T>(ctx: OrgBodyContext, req: Request, opts?: ReadOrgBodyOptions): Promise<T> {
-  // 1. Query string (DELETE y PATCH sin body suelen llevar los filtros ahí).
+/**
+ * Query string de la petición (DELETE y PATCH sin body suelen llevar los
+ * filtros ahí): organización ajena ⇒ 403 `where: 'query'`. Es el MISMO código
+ * para las dos sobrecargas (con `Request` y con `{ request }` en las opciones):
+ * no hay una segunda lectura de la query en ninguna ruta. Una `url` que no
+ * parsea (doble de test sin `url`) no se inspecciona.
+ */
+function assertQueryNotForeign(ctx: OrgBodyContext, req: Pick<Request, 'url'>, opts: ReadOrgBodyOptions | undefined): void {
   let url: URL | null = null;
   try {
     url = typeof req.url === 'string' ? new URL(req.url) : null;
@@ -163,6 +180,11 @@ async function readFromRequest<T>(ctx: OrgBodyContext, req: Request, opts?: Read
     url = null;
   }
   if (url) assertNotForeign(ctx, url.searchParams, opts, 'query');
+}
+
+async function readFromRequest<T>(ctx: OrgBodyContext, req: Request, opts?: ReadOrgBodyOptions): Promise<T> {
+  // 1. Query string.
+  assertQueryNotForeign(ctx, req, opts);
 
   // 2. Body. Si la ruta ya lo consumió, debe pasar el objeto parseado a la
   //    sobrecarga síncrona; aquí no hay nada que leer.
@@ -206,7 +228,9 @@ async function readFromRequest<T>(ctx: OrgBodyContext, req: Request, opts?: Read
  *   hay body; 400 `INVALID_JSON` si es JSON mal formado; la query también se
  *   comprueba).
  * - Con un valor ya parseado (objeto, `FormData`, `URLSearchParams`, `null`):
- *   devuelve ese mismo valor, síncronamente.
+ *   devuelve ese mismo valor, síncronamente. Con `{ request }` en las opciones
+ *   comprueba además la query string de esa petición, ANTES del body (mismo
+ *   orden que la sobrecarga con `Request`); sin ella, solo el body.
  *
  * En ambos casos, organización ajena → `console.warn` + `OrgContextError(403,
  * 'FOREIGN_ORGANIZATION')`.
@@ -218,5 +242,8 @@ export function readOrgBody<T = any>(ctx: OrgBodyContext, request: Request, opts
 export function readOrgBody<T>(ctx: OrgBodyContext, body: T, opts?: ReadOrgBodyOptions): T;
 export function readOrgBody<T>(ctx: OrgBodyContext, source: Request | T, opts?: ReadOrgBodyOptions): Promise<T> | T {
   if (isRequestLike(source)) return readFromRequest<T>(ctx, source, opts);
+  // Sobrecarga síncrona: primero la query de la petición original (si la ruta
+  // la pasa), después el body ya parseado. Deuda C de F0-SEC.
+  if (opts?.request) assertQueryNotForeign(ctx, opts.request, opts);
   return assertNotForeign(ctx, source as T, opts, 'body');
 }

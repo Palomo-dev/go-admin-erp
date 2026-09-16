@@ -60,7 +60,7 @@ export async function PATCH(request: NextRequest) {
     } catch {
       body = {};
     }
-    readOrgBody(ctx, body);
+    readOrgBody(ctx, body, { request });
 
     if (typeof body.enrollment_id !== 'string' || body.enrollment_id.length === 0) {
       return NextResponse.json({ success: false, error: 'Falta enrollment_id' }, { status: 400 });

@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Subir archivo via multipart/form-data ───────────────────────────
-    const formData = readOrgBody(ctx, await request.formData());
+    const formData = readOrgBody(ctx, await request.formData(), { request });
     const file = formData.get('file') as File | null;
     const name = formData.get('name') as string | null;
     const relatedType = formData.get('related_type') as string | null;

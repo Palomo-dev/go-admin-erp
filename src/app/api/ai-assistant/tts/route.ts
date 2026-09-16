@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Petición mal formada.' }, { status: 400 });
   }
   try {
-    readOrgBody(ctx, body);
+    readOrgBody(ctx, body, { request });
   } catch (err) {
     if (err instanceof OrgContextError) return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
     throw err;

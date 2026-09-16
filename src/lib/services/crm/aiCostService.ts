@@ -28,7 +28,7 @@
  *   deduct_comm_credits(p_org_id integer, p_channel text, p_amount integer) -> boolean
  *   fn_ai_usage_month(p_org, p_since, p_tz) -> jsonb (migración crm_v4_f00_39)
  *   fn_provision_ai_settings(p_org) -> jsonb (migración crm_v4_f00_43; la usa
- *     `ensureAiSettings`, con respaldo en Node mientras no esté aplicada)
+ *     `ensureAiSettings`; única fuente, sin respaldo en Node desde F0-pulido)
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -241,8 +241,8 @@ export async function chargeAiCredits(input: ChargeAiInput): Promise<ChargeAiRes
   let outcome = await callDecrement(sb, input.orgId, credits);
   if (!outcome.ok && (outcome.missingRow || outcome.unprovisioned)) {
     // Auto-provisión con el cupo del plan (una sola fuente: RPC
-    // `fn_provision_ai_settings`, mig. 43, con respaldo en Node en
-    // `ensureAiSettings`) y un único reintento. Cubre la fila ausente y la
+    // `fn_provision_ai_settings`, mig. 43, vía `ensureAiSettings`; RPC ausente
+    // o rota → lanza → 402) y un único reintento. Cubre la fila ausente y la
     // fila «vacía» creada desde el navegador (credits_reset_at NULL). Si
     // tampoco así hay saldo: 402, no 500.
     try {

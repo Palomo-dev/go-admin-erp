@@ -6,7 +6,9 @@
  *  - si el RPC devuelve false → InsufficientCreditsError y NO se llama al proveedor;
  *  - si el proveedor falla → reembolso (RPC dedicada, idempotente por logId);
  *  - cost_amount real desde provider_pricing en columna y metadata del log;
- *  - org sin fila ai_settings → auto-provisión con el cupo del plan + reintento;
+ *  - org sin fila ai_settings → auto-provisión con el cupo del plan + reintento
+ *    (F0-pulido: SOLO por la RPC `fn_provision_ai_settings`; el respaldo en
+ *    Node que consultaba `subscriptions` se retiró con la mig. 43 en producción);
  *  - presupuesto mensual (§8) → BudgetExceededError (402, budget_exceeded);
  *  - chargeCommCredits usa deduct_comm_credits + comm_usage_logs.
  */
@@ -59,13 +61,17 @@ function fakeDb(opts: { rpcResult?: boolean | ((name: string, args: any) => bool
 }
 
 /**
- * `subscriptions` con el plan embebido, como lo consulta `planQuotaFallback`
- * (una sola consulta: select → eq → order → limit → await).
+ * F0-pulido: `subscriptions` y `plans` ya no se consultan desde Node; la única
+ * fuente del cupo es `fn_provision_ai_settings` (SQL). Cualquier lectura de
+ * esas tablas en estos tests es un fallo.
  */
-function subscriptionsTable(plan: { code: string; ai_credits_monthly: number; ai_credits_max_rollover: number; ai_model: string; ai_max_tokens: number }, custom?: Record<string, unknown>) {
-  const row = { plan_id: 1, status: 'active', metadata: { custom_config: custom ?? null }, created_at: '2026-01-01T00:00:00Z', plans: plan };
-  const q: any = { select: () => q, eq: () => q, order: () => q, limit: () => q, then: (r: any) => r({ data: [row], error: null }) };
-  return q;
+function forbidPlanTables(sb: any) {
+  const origFrom = sb.from;
+  sb.from = (table: string) => {
+    if (table === 'subscriptions' || table === 'plans') throw new Error(`no debe consultar ${table}: la RPC es la fuente`);
+    return origFrom(table);
+  };
+  return origFrom;
 }
 
 beforeEach(() => clearPricingCache());
@@ -111,121 +117,97 @@ describe('chargeAiCredits', () => {
 
   // QA r1 alto 4: 27 orgs con CRM no tenían fila en ai_settings y recibían 500.
   // Con la fila ausente se auto-provisiona con el cupo del plan y se reintenta
-  // UNA vez; si el plan no da cupo, 402.
-  it('org sin fila: auto-provisiona con el cupo del plan y reintenta el RPC una sola vez', async () => {
+  // UNA vez; si el plan no da cupo, 402. F0-pulido: la provisión es SOLO la
+  // RPC `fn_provision_ai_settings` (mig. 43); el doble simula en `row` lo que
+  // la RPC hace en SQL. Sin `insert`/`update` desde Node y sin `subscriptions`.
+  function provisionDb(quota: { monthly: number; model?: string; max_tokens?: number }, initial: Record<string, unknown> | null) {
     const { sb, calls } = fakeDb({ rpcResult: true });
-    let hasRow = false;
-    let rpcCalls = 0;
+    const state: { row: Record<string, unknown> | null } = { row: initial };
+    let decrements = 0;
     sb.rpc = async (name: string, args: any) => {
       calls.push({ type: 'rpc', name, args });
+      if (name === 'fn_provision_ai_settings') {
+        const created = state.row === null;
+        const provisioned = created || state.row!.credits_reset_at == null;
+        if (created) state.row = { organization_id: 7, credits_remaining: quota.monthly, credits_reset_at: '2026-09-15T00:00:00Z', model: quota.model ?? 'gpt-5.6-luna', max_tokens: quota.max_tokens ?? 4000 };
+        else if (provisioned) Object.assign(state.row!, { credits_remaining: Math.max(Number(state.row!.credits_remaining) || 0, quota.monthly), credits_reset_at: '2026-09-15T00:00:00Z' });
+        return { data: { created, provisioned, credits_remaining: state.row!.credits_remaining, model: state.row!.model, max_tokens: state.row!.max_tokens, monthly: quota.monthly, source: 'plan' }, error: null };
+      }
       if (name !== 'decrement_ai_credits') return { data: true, error: null };
-      rpcCalls += 1;
-      return hasRow ? { data: true, error: null } : { data: false, error: null };
+      decrements += 1;
+      const remaining = state.row ? Number(state.row.credits_remaining) : 0;
+      if (!state.row || remaining < args.p_cost) return { data: false, error: null };
+      state.row.credits_remaining = remaining - args.p_cost;
+      return { data: true, error: null };
     };
-    const origFrom = sb.from;
+    const origFrom = forbidPlanTables(sb);
     sb.from = (table: string) => {
       if (table === 'ai_settings') {
         return {
-          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: hasRow ? { organization_id: 7, credits_remaining: 500, credits_reset_at: '2026-09-15T00:00:00Z' } : null, error: null }) }) }),
-          insert: (row: any) => { calls.push({ type: 'insert', name: table, args: row }); hasRow = true; return { then: (r: any) => r({ data: null, error: null }) }; },
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: state.row ? { ...state.row } : null, error: null }) }) }),
+          insert: () => { throw new Error('no debe insertar desde Node: provisiona la RPC'); },
+          update: () => { throw new Error('no debe actualizar desde Node: provisiona la RPC'); },
         };
       }
-      if (table === 'subscriptions') return subscriptionsTable({ code: 'pro', ai_credits_monthly: 500, ai_credits_max_rollover: 1000, ai_model: 'gpt-5.6-luna', ai_max_tokens: 4000 });
       return origFrom(table);
     };
     __setAiCostClientFactory(() => sb);
+    return { sb, calls, state, decrements: () => decrements };
+  }
 
+  it('org sin fila: fn_provision_ai_settings crea la fila con el cupo del plan y se reintenta el cobro una sola vez', async () => {
+    const db = provisionDb({ monthly: 500 }, null);
     const r = await chargeAiCredits({ orgId: 7, actionType: 'x', model: 'm', units: 1, credits: 2 });
     expect(r.credits).toBe(2);
-    expect(rpcCalls).toBe(2);
-    const provisioned = calls.find((c) => c.type === 'insert' && c.name === 'ai_settings')!;
-    expect(provisioned.args).toMatchObject({ organization_id: 7, credits_remaining: 500, is_active: true });
+    expect(db.decrements()).toBe(2);
+    expect(db.calls.filter((c) => c.type === 'rpc').map((c) => c.name)).toEqual(['decrement_ai_credits', 'fn_provision_ai_settings', 'decrement_ai_credits']);
+    expect(db.calls.filter((c) => c.type === 'insert' && c.name === 'ai_settings')).toHaveLength(0);
+    expect(db.state.row).toMatchObject({ organization_id: 7, credits_remaining: 498 });
     // Saldo previo = saldo tras el cobro + créditos: alimenta credits_before/after y p_previous.
-    expect(r.previousBalance).toBe(502);
+    expect(r.previousBalance).toBe(500);
   });
 
-  it('org sin fila y plan sin cupo → InsufficientCreditsError (402), sin segundo RPC', async () => {
-    const { sb, calls } = fakeDb({ rpcResult: false });
-    const origFrom = sb.from;
-    sb.from = (table: string) => {
-      if (table === 'ai_settings') {
-        return {
-          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
-          insert: (row: any) => { calls.push({ type: 'insert', name: table, args: row }); return { then: (r: any) => r({ data: null, error: null }) }; },
-        };
-      }
-      if (table === 'subscriptions') return subscriptionsTable({ code: 'free', ai_credits_monthly: 0, ai_credits_max_rollover: 0, ai_model: 'gpt-5.6-luna', ai_max_tokens: 500 });
-      return origFrom(table);
-    };
-    __setAiCostClientFactory(() => sb);
+  it('org sin fila y plan sin cupo → InsufficientCreditsError (402), sin segundo RPC de cobro', async () => {
+    const db = provisionDb({ monthly: 0 }, null);
     await expect(chargeAiCredits({ orgId: 7, actionType: 'x', model: 'm', units: 1 })).rejects.toBeInstanceOf(InsufficientCreditsError);
-    expect(calls.filter((c) => c.type === 'rpc' && c.name === 'decrement_ai_credits')).toHaveLength(1);
+    expect(db.decrements()).toBe(1);
+    expect(db.state.row).toMatchObject({ credits_remaining: 0 });
   });
 
   // QA r2 medio 1: la fila creada desde el navegador (`/app/chat/ia/configuracion`
   // solo escribe columnas de comportamiento) nace con 0 créditos y
-  // credits_reset_at NULL. Antes `ensureAiSettings` la daba por provisionada y
-  // el cobro respondía 402 hasta el cron del día 1.
-  function unprovisionedRowDb(plan: { ai_credits_monthly: number; ai_credits_max_rollover: number }) {
-    const { sb, calls } = fakeDb({ rpcResult: true });
-    const row: Record<string, unknown> = { organization_id: 7, credits_remaining: 0, credits_reset_at: null, model: 'gpt-5.6-luna', max_tokens: 500 };
-    let decrements = 0;
-    sb.rpc = async (name: string, args: any) => {
-      calls.push({ type: 'rpc', name, args });
-      if (name === 'fn_provision_ai_settings' || name === 'fn_ai_plan_quota') {
-        return { data: null, error: { code: 'PGRST202', message: 'Could not find the function' } }; // mig. 43 sin aplicar
-      }
-      if (name !== 'decrement_ai_credits') return { data: true, error: null };
-      decrements += 1;
-      const remaining = Number(row.credits_remaining);
-      if (remaining < args.p_cost) return { data: false, error: null };
-      row.credits_remaining = remaining - args.p_cost;
-      return { data: true, error: null };
-    };
-    const updates: any[] = [];
-    const origFrom = sb.from;
-    sb.from = (table: string) => {
-      if (table === 'ai_settings') {
-        return {
-          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { ...row }, error: null }) }) }),
-          insert: () => { throw new Error('no debe insertar: la fila existe'); },
-          update: (patch: any) => ({
-            eq: () => ({
-              is: (col: string, v: unknown) => {
-                updates.push({ patch, col, v });
-                const applies = col === 'credits_reset_at' && v === null && row.credits_reset_at == null;
-                if (applies) Object.assign(row, patch);
-                return { select: () => ({ maybeSingle: async () => ({ data: applies ? { ...row } : null, error: null }) }) };
-              },
-            }),
-          }),
-        };
-      }
-      if (table === 'subscriptions') return subscriptionsTable({ code: 'pro', ai_model: 'gpt-5.6-luna', ai_max_tokens: 4000, ...plan });
-      return origFrom(table);
-    };
-    __setAiCostClientFactory(() => sb);
-    return { sb, calls, row, updates, decrements: () => decrements };
-  }
-
-  it('fila con credits_reset_at NULL y plan con cupo → provisiona (update … is(credits_reset_at, null)) y cobra', async () => {
-    const db = unprovisionedRowDb({ ai_credits_monthly: 500, ai_credits_max_rollover: 1000 });
+  // credits_reset_at NULL. La RPC le asigna greatest(saldo, cupo) y fecha.
+  it('fila con credits_reset_at NULL y plan con cupo → la RPC provisiona y se cobra en el reintento', async () => {
+    const db = provisionDb({ monthly: 500 }, { organization_id: 7, credits_remaining: 0, credits_reset_at: null, model: 'gpt-5.6-luna', max_tokens: 500 });
     const r = await chargeAiCredits({ orgId: 7, actionType: 'x', model: 'm', units: 1, credits: 2 });
     expect(r.credits).toBe(2);
     expect(db.decrements()).toBe(2); // false → provisión → un único reintento
-    expect(db.updates).toHaveLength(1);
-    expect(db.updates[0]).toMatchObject({ col: 'credits_reset_at', v: null, patch: { credits_remaining: 500 } });
-    expect(typeof db.updates[0].patch.credits_reset_at).toBe('string');
-    expect(db.row.credits_remaining).toBe(498);
+    expect(db.state.row!.credits_remaining).toBe(498);
+    expect(db.state.row!.credits_reset_at).not.toBeNull();
     expect(r.previousBalance).toBe(500);
   });
 
   it('fila con credits_reset_at NULL y plan sin cupo → 402, un solo RPC de cobro, y la fila queda provisionada con 0', async () => {
-    const db = unprovisionedRowDb({ ai_credits_monthly: 0, ai_credits_max_rollover: 0 });
+    const db = provisionDb({ monthly: 0 }, { organization_id: 7, credits_remaining: 0, credits_reset_at: null, model: 'gpt-5.6-luna', max_tokens: 500 });
     await expect(chargeAiCredits({ orgId: 7, actionType: 'x', model: 'm', units: 1 })).rejects.toBeInstanceOf(InsufficientCreditsError);
     expect(db.decrements()).toBe(1);
-    expect(db.row.credits_remaining).toBe(0);
-    expect(db.row.credits_reset_at).not.toBeNull(); // no se vuelve a intentar en cada cobro
+    expect(db.state.row!.credits_remaining).toBe(0);
+    expect(db.state.row!.credits_reset_at).not.toBeNull(); // no se vuelve a intentar en cada cobro
+  });
+
+  it('F0-pulido: RPC fn_provision_ai_settings AUSENTE (PGRST202) → 402, sin respaldo en Node (ni subscriptions, ni insert, ni update)', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const db = provisionDb({ monthly: 500 }, null);
+    db.sb.rpc = async (name: string, args: any) => {
+      db.calls.push({ type: 'rpc', name, args });
+      if (name === 'fn_provision_ai_settings') return { data: null, error: { code: 'PGRST202', message: 'Could not find the function public.fn_provision_ai_settings' } };
+      return { data: false, error: null };
+    };
+    await expect(chargeAiCredits({ orgId: 7, actionType: 'x', model: 'm', units: 1 })).rejects.toMatchObject({ name: 'InsufficientCreditsError', status: 402 });
+    expect(db.calls.filter((c) => c.type === 'rpc').map((c) => c.name)).toEqual(['decrement_ai_credits', 'fn_provision_ai_settings']);
+    expect(db.calls.filter((c) => c.type === 'insert')).toHaveLength(0);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('auto-provisionar'), expect.stringContaining('fn_provision_ai_settings'));
+    warn.mockRestore();
   });
 
   it('con la migración 43 aplicada usa fn_provision_ai_settings y no toca subscriptions', async () => {

@@ -18,6 +18,7 @@ import {
   WHATSAPP_CREDENTIAL_KEYS,
 } from './whatsappCloudConfig';
 import { applyTemplateStatusUpdate, parseTemplateStatusUpdate } from '@/lib/services/crm/whatsapp/webhookTemplateStatus';
+import { normalizeMetaId } from './webhookAuthorization';
 import { extractInboundText, handleWhatsAppInbound, inboundContentType } from '@/lib/services/crm/whatsapp/inboundService';
 import { applyMessageEventToCampaign } from '@/lib/services/crm/whatsapp/campaignEvents';
 import { defaultCountryOf, findCustomerIdByPhone, getOrgSettings, normalizePhoneDigits } from '@/lib/services/crm/whatsapp/channelService';
@@ -389,21 +390,42 @@ class WhatsAppCloudService {
     const supabase = getSupabaseAdmin();
     const failures: string[] = [];
 
-    for (const entry of payload.entry) {
-      for (const change of entry.changes) {
+    for (const entry of payload.entry ?? []) {
+      // F0-SEC r3 (H1/H2): los identificadores de Meta se normalizan con la
+      // MISMA función que el plan de autorización (`normalizeMetaId`): un
+      // `phone_number_id` numérico o un WABA de tipo raro nunca llega a un
+      // filtro PostgREST por coerción implícita.
+      const wabaId = normalizeMetaId(entry?.id);
+      // Organizaciones dueñas del WABA de esta entrada (se resuelve una vez, y
+      // solo si hay un cambio de plantilla que lo necesite).
+      let wabaOrganizationIds: number[] | null = null;
+
+      for (const change of entry?.changes ?? []) {
         // F16 (B15): estado/calidad de plantillas HSM → templates.metadata
         if (change.field === 'message_template_status_update' || change.field === 'message_template_quality_update') {
           const update = parseTemplateStatusUpdate(change.field, change.value);
-          if (update) {
-            const r = await applyTemplateStatusUpdate(update, entry.id ?? null, supabase);
-            console.log('[WhatsApp Webhook] template update', { field: change.field, event: update.event, name: update.message_template_name, ...r });
+          if (!update) continue;
+          // H2: la actualización se aplica SOLO a las organizaciones cuyo canal
+          // tiene este WABA. Sin WABA resoluble no hay organización → se descarta:
+          // `meta_template_id` es único en Meta pero aquí no puede autorizar
+          // por sí solo un cambio en plantillas de otra organización.
+          if (wabaOrganizationIds === null) {
+            wabaOrganizationIds = wabaId
+              ? Array.from(new Set((await this.findChannelsByBusinessAccountId(wabaId)).map((c) => c.organizationId)))
+              : [];
           }
+          if (wabaOrganizationIds.length === 0) {
+            console.warn('[WhatsApp Webhook] template update descartado: el WABA de la entrada no resuelve a ningún canal', { field: change.field, wabaId });
+            continue;
+          }
+          const r = await applyTemplateStatusUpdate(update, wabaId, supabase, wabaOrganizationIds);
+          console.log('[WhatsApp Webhook] template update', { field: change.field, event: update.event, name: update.message_template_name, ...r });
           continue;
         }
         if (change.field !== 'messages') continue;
 
         const value = change.value;
-        const phoneNumberId = value.metadata?.phone_number_id;
+        const phoneNumberId = normalizeMetaId(value?.metadata?.phone_number_id);
         if (!phoneNumberId) continue;
 
         // Encontrar canal por phone_number_id

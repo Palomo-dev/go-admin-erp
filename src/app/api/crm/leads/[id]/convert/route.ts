@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { isOrgAdmin } from '@/lib/utils/rbac';
 import StageGateService from '@/lib/services/crm/stageGateService';
 
@@ -47,6 +48,7 @@ export async function POST(
     } catch {
       // Body vacío es válido
     }
+    readOrgBody(ctx, body);
 
     // 1. Obtener el lead y verificar que pertenece a la org y es record_type='lead'
     const { data: lead, error: leadError } = await ctx.supabase

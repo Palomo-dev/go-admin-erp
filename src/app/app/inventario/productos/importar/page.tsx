@@ -1008,6 +1008,40 @@ export default function ImportarProductosPage() {
 
     let skippedCount = 0;
 
+    // Validación previa: si alguna fila trae stock sin costo, abortar antes de escribir nada
+    const stockWithoutCost: Array<{ row: number; sku: string; stock: number }> = [];
+    for (let i = 0; i < previewData.length; i++) {
+      const row = previewData[i];
+      const stockRow = stockMap.get(row.sku);
+      const finalStock = stockRow ? stockRow.stock : (row.stock || 0);
+      const finalCost = stockRow?.unitCost || row.cost;
+      if (finalStock > 0 && (!finalCost || finalCost <= 0)) {
+        stockWithoutCost.push({ row: i + 1, sku: row.sku || '', stock: finalStock });
+      }
+    }
+    if (stockWithoutCost.length > 0) {
+      toast({
+        title: 'Importación cancelada',
+        description: `${stockWithoutCost.length} fila(s) tienen stock sin costo. Corrija el archivo y reintente. Fila ${stockWithoutCost[0].row}: SKU "${stockWithoutCost[0].sku}" con ${stockWithoutCost[0].stock} unidades.`,
+        variant: 'destructive',
+      });
+      setImporting(false);
+      setStep('preview');
+      return;
+    }
+
+    // Array para recolectar entradas de stock (se procesan atómicamente al final)
+    const stockEntries: Array<{
+      organization_id: number;
+      branch_id: number;
+      product_id: number;
+      qty: number;
+      unit_cost: number;
+      source: string;
+      source_id: string | null;
+      note: string;
+    }> = [];
+
     // Ordenar filas: productos padre primero, luego variantes, luego el resto
     // Esto asegura que los productos padre existan antes de que se procesen sus variantes
     const sortedIndices = updatedRows
@@ -1348,14 +1382,17 @@ export default function ImportarProductosPage() {
           }
         }
 
-        // Insertar stock_level si hay stock (solo para productos nuevos)
+        // Recolectar entrada de stock para la RPC (se procesa al final del bucle)
         if (finalStock > 0 && wasInsert) {
-          await supabase.from('stock_levels').insert({
-            product_id: productId,
+          stockEntries.push({
+            organization_id: orgId,
             branch_id: branchId,
-            qty_on_hand: finalStock,
-            min_level: row.minLevel || 0,
-            avg_cost: finalCost || 0,
+            product_id: productId,
+            qty: finalStock,
+            unit_cost: finalCost || 0,
+            source: 'initial',
+            source_id: null,
+            note: 'Stock inicial (import CSV)',
           });
         }
 
@@ -1569,6 +1606,28 @@ export default function ImportarProductosPage() {
         errors: errorCount,
         pending: updatedRows.length - successCount - errorCount,
       });
+    }
+
+    // Procesar entradas de stock atómicamente vía RPC
+    if (stockEntries.length > 0) {
+      const batchId = `csv-import-${orgId}-${Date.now()}`;
+      const { data: stockResult, error: stockError } = await supabase.rpc('fn_register_stock_entry', {
+        p_entries: stockEntries,
+        p_batch_id: batchId,
+      });
+
+      if (stockError) {
+        console.error('Error RPC fn_register_stock_entry:', stockError);
+        toast({
+          title: 'Error al registrar stock',
+          description: `Los productos se crearon pero el stock no se registró: ${stockError.message}. Reintente la importación o cargue el stock manualmente.`,
+          variant: 'destructive',
+        });
+        errorCount += stockEntries.length;
+      } else if (stockResult?.skipped) {
+        // Batch ya procesado (idempotencia)
+        console.log('Stock batch ya procesado:', batchId);
+      }
     }
 
     setImporting(false);

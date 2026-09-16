@@ -11,15 +11,9 @@
 import { NextRequest } from 'next/server';
 import { fakeSupabase, makeDb, seed, ORG, OTHER, U, type FakeDb } from './f12Fake';
 
-class FakeOrgContextError extends Error {
-  statusCode: number;
-  code: string;
-  constructor(message: string, statusCode = 401, code = 'X') {
-    super(message);
-    this.statusCode = statusCode;
-    this.code = code;
-  }
-}
+// F0-SEC r2: `readOrgBody` (módulo hoja) lanza la clase REAL de `OrgContextError`;
+// el mock expone esa misma clase para que el `instanceof` de las rutas la reconozca.
+const { OrgContextError: FakeOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
 
 let db: FakeDb;
 const session = { roleId: 4, isSuperAdmin: false, roleName: 'Empleado' };
@@ -86,8 +80,14 @@ describe('POST /api/crm/leads tras la extracción a leadCreateService', () => {
     expect(b.status).toBe(500);
   });
 
-  it('organization_id del body se ignora: el cliente y el lead nacen en la organización de la sesión', async () => {
-    const { status, body } = await json(await leadsPost(req('/api/crm/leads', 'POST', { organization_id: OTHER, name: 'Lead', new_customer: { full_name: 'Nuevo Cliente', phone: '3001112233' } })));
+  it('organization_id AJENO en el body → 403 y nada escrito (F0-SEC r2, regla dura 5 vía readOrgBody; antes se ignoraba)', async () => {
+    const { status } = await json(await leadsPost(req('/api/crm/leads', 'POST', { organization_id: OTHER, name: 'Lead', new_customer: { full_name: 'Nuevo Cliente', phone: '3001112233' } })));
+    expect(status).toBe(403);
+    expect(db.writes.filter((w) => w.op === 'insert')).toEqual([]);
+  });
+
+  it('organization_id IGUAL al de la sesión en el body no es un ataque: el cliente y el lead nacen en la organización de la sesión', async () => {
+    const { status, body } = await json(await leadsPost(req('/api/crm/leads', 'POST', { organization_id: ORG, name: 'Lead', new_customer: { full_name: 'Nuevo Cliente', phone: '3001112233' } })));
     expect(status).toBe(201);
     const customer = db.writes.find((w) => w.table === 'customers' && w.op === 'insert')!.payload as Record<string, unknown>;
     const opp = db.writes.find((w) => w.table === 'opportunities' && w.op === 'insert')!.payload as Record<string, unknown>;

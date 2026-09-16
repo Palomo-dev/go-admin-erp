@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { withWhatsAppRoute, readJson } from '@/lib/services/crm/whatsapp/http';
+import { withWhatsAppRoute } from '@/lib/services/crm/whatsapp/http';
 import { sendWhatsApp } from '@/lib/services/crm/whatsapp/outboundService';
 import { checkRateLimit } from '@/lib/security/rateLimit';
 import { parseWith, zSendBody } from '@/lib/services/crm/whatsapp/schemas';
 import type { SendWhatsAppInput } from '@/lib/services/crm/whatsapp/types';
 
+import { readOrgBody } from '@/lib/security/organizationBody';
 /**
  * POST /api/crm/whatsapp/send (FASE-16 §4.1) — envío individual desde el CRM.
  * Body: { customerId?, opportunityId?, conversationId?, channelId?,
@@ -20,7 +21,7 @@ export const runtime = 'nodejs';
 export const POST = withWhatsAppRoute(async (ctx, req) => {
   const rl = await checkRateLimit(`wa_send:${ctx.organizationId}:${ctx.userId}`, { limit: 30, windowMs: 60_000 });
   if (!rl.allowed) return NextResponse.json({ error: 'Demasiados envíos por minuto; usa una campaña para envíos masivos', code: 'RATE_LIMITED' }, { status: 429 });
-  const b = parseWith(zSendBody, await readJson<unknown>(req));
+  const b = parseWith(zSendBody, await readOrgBody<unknown>(ctx, req));
   const input: SendWhatsAppInput = {
     orgId: ctx.organizationId,
     channelId: b.channelId ?? b.channel_id ?? null,

@@ -113,11 +113,24 @@ describe('handler whatsapp — idempotente por clientRequestId (N-4)', () => {
 
 describe('handlers email y transcribe — signal advisory', () => {
   const sb = {} as SupabaseClient;
+  // r4: el envío programado comprueba `email_messages` (id + organization_id) antes de despachar.
+  const emailSb = (filters: Record<string, unknown>[] = []) =>
+    ({
+      from: (table: string) => {
+        const chain: Record<string, unknown> = {};
+        chain.select = () => chain;
+        chain.eq = (col: string, v: unknown) => { filters.push({ [col]: v }); return chain; };
+        chain.maybeSingle = async () => ({ data: table === 'email_messages' ? { id: 'em-1' } : null, error: null });
+        return chain;
+      },
+    }) as unknown as SupabaseClient;
 
-  it('email: signal abortada ⇒ JobRetryableError y dispatchScheduledEmail no se invoca; sin abortar, envía', async () => {
+  it('email: signal abortada ⇒ JobRetryableError y dispatchScheduledEmail no se invoca; sin abortar, envía (tras comprobar la pertenencia a la org)', async () => {
     await expect(emailJobHandler(ctx(makeJob('email', { email_message_id: 'em-1' }), sb, aborted()))).rejects.toBeInstanceOf(JobRetryableError);
     expect(dispatchScheduledEmail).not.toHaveBeenCalled();
-    await expect(emailJobHandler(ctx(makeJob('email', { email_message_id: 'em-1' }), sb))).resolves.toEqual({ sent: true, email_message_id: 'em-1' });
+    const filters: Record<string, unknown>[] = [];
+    await expect(emailJobHandler(ctx(makeJob('email', { email_message_id: 'em-1' }), emailSb(filters)))).resolves.toEqual({ sent: true, email_message_id: 'em-1' });
+    expect(filters).toEqual([{ id: 'em-1' }, { organization_id: 105 }]);
   });
 
   it('transcribe: signal abortada ⇒ JobRetryableError antes de cobrar créditos', async () => {

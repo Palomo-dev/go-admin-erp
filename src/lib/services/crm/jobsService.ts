@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { isOrgAdminContext, type ServerOrgContext } from '@/lib/utils/orgContext';
+import { hasOrgAdminOrPermission, type ServerOrgContext } from '@/lib/utils/orgContext';
+import { STAGE_MANAGER_ROLE_IDS } from './stagePermissions';
 import { enqueueJob } from '@/lib/jobs/enqueue';
 import { DRAIN_INTERVAL_MIN } from '@/lib/jobs/schedule';
 import { JOB_STATUSES, isJobKind, type JobKind, type JobStatus, type OutboundJob } from '@/lib/jobs/types';
@@ -16,26 +17,45 @@ import { JOB_STATUSES, isJobKind, type JobKind, type JobStatus, type OutboundJob
 export const PAYLOAD_PREVIEW_CHARS = 500;
 
 /**
- * Roles (tabla `roles`, verificada 2026-09-08: 1 Super Admin, 2 Admin de
- * organización, 3 Cliente, 4 Empleado, 5 Manager).
- *  - Reintentar: admin de la org (`isOrgAdminContext`, criterio único del repo).
- *  - Ver la cola: admin o Manager (tester r1 F-7; §4.1 "admin/manager").
+ * Permisos de la cola (F0-JOBS r4, QA r3 punto 3). Un solo criterio, el del
+ * resto del CRM, sin constantes propias:
  *
- * F0-JOBS r3 (QA r2 F-6): el permiso se decide por `role_id` resuelto en el
- * servidor (`getServerOrgContext`), NUNCA por el nombre del rol (regla 6 de
- * CLAUDE.md): un rol personalizado llamado «Gerente» con `role_id` 9 no ve la
- * cola, y el `role_id` 5 la ve se llame como se llame.
+ *  - Reintentar (`canRetryJobs`): `hasOrgAdminOrPermission(ctx)` — super
+ *    admin, `role_id` ∈ `ORG_ADMIN_ROLE_IDS` (1, 2) o, consultando
+ *    `check_user_permission` con el usuario y la organización DE LA SESIÓN, el
+ *    permiso `admin.full_access` concedido por rol o por cargo
+ *    (`job_position_permissions`). Un error de la RPC deniega (fail-closed).
+ *  - Ver la cola (`canViewJobs`): lo anterior ∪ `STAGE_MANAGER_ROLE_IDS`
+ *    (1, 2, 5: la misma jefatura comercial que contratos, comisiones, F12 y el
+ *    dashboard; `stagePermissions.ts`). Manager (5) ve sin consultar la RPC.
+ *
+ * Regla 6 (CLAUDE.md): todo sale de `getServerOrgContext` (`role_id`,
+ * `is_super_admin`, `user_id`, `organization_id`); `roleName` NO participa.
+ * Decisión provisional del orquestador: no existe un código de permiso propio
+ * (`crm.jobs.view`) en `permissions`; hasta que el dueño lo cree, un cargo
+ * solo entra con `admin.full_access` (mismo criterio que `withOrg({admin})`).
  */
-const MANAGER_ROLE_ID = 5;
+export type JobsPermissionContext = Pick<ServerOrgContext, 'roleId' | 'isSuperAdmin'> &
+  Partial<Pick<ServerOrgContext, 'userId' | 'organizationId' | 'supabase' | 'roleName'>>;
 
-type RoleCtx = Pick<ServerOrgContext, 'roleName' | 'roleId' | 'isSuperAdmin'>;
-
-export function canRetryJobs(ctx: RoleCtx): boolean {
-  return isOrgAdminContext(ctx as ServerOrgContext);
+/** Adapta el contexto parcial al sujeto que espera `hasOrgAdminOrPermission` (sin sesión completa ⇒ solo el criterio síncrono). */
+function permissionSubject(ctx: JobsPermissionContext): Parameters<typeof hasOrgAdminOrPermission>[0] {
+  return {
+    roleId: ctx.roleId,
+    isSuperAdmin: ctx.isSuperAdmin === true,
+    userId: ctx.userId ?? '',
+    organizationId: ctx.organizationId ?? 0,
+    supabase: ctx.supabase as SupabaseClient,
+  };
 }
 
-export function canViewJobs(ctx: RoleCtx): boolean {
-  return canRetryJobs(ctx) || ctx.roleId === MANAGER_ROLE_ID;
+export async function canRetryJobs(ctx: JobsPermissionContext): Promise<boolean> {
+  return hasOrgAdminOrPermission(permissionSubject(ctx));
+}
+
+export async function canViewJobs(ctx: JobsPermissionContext): Promise<boolean> {
+  if (ctx.isSuperAdmin === true || STAGE_MANAGER_ROLE_IDS.includes(ctx.roleId)) return true;
+  return hasOrgAdminOrPermission(permissionSubject(ctx));
 }
 
 /**
@@ -213,10 +233,14 @@ export async function retryJob(
   }
 
   const dedupeKey = job.dedupe_key ?? `job:${job.id}:retry:${job.attempts}`;
+  // `retried_from` apunta SIEMPRE al job raíz (r4, tester r3 T-2 bis): un retry
+  // de un retry hereda la raíz, así la clave de idempotencia de `whatsapp`
+  // (`job:{raíz}`) es la misma en todas las generaciones.
+  const retriedFrom = typeof job.payload?.retried_from === 'string' && job.payload.retried_from ? job.payload.retried_from : job.id;
   const newId = await enqueueJob({
     organizationId: orgId,
     kind: job.kind,
-    payload: { ...job.payload, retried_from: job.id },
+    payload: { ...job.payload, retried_from: retriedFrom },
     dedupeKey,
     maxAttempts: job.max_attempts,
     supabase: serviceSb,

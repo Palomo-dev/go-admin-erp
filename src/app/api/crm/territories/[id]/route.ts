@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { isOrgAdmin } from '@/lib/utils/rbac';
 import { updateTerritory, deleteTerritory } from '@/lib/services/crm/salesStructureService';
 
@@ -21,7 +22,7 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     const territory = await updateTerritory(id, ctx.organizationId, body, ctx.supabase);
 
@@ -50,11 +51,12 @@ export async function PATCH(
  * DELETE /api/crm/territories/[id] — Elimina un territory.
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const ctx = await getServerOrgContext();
+    await readOrgBody(ctx, request);
 
     if (!isOrgAdmin(ctx)) {
       return NextResponse.json(

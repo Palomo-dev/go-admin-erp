@@ -13,13 +13,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   createVoice,
   updateVoice,
   importElevenLabsVoices,
 } from '@/lib/services/crm/voiceCatalogService';
 import { getAccountCapabilities, listVoicesEnriched, removeVoice } from '@/lib/services/crm/voiceLibraryService';
-import { describeLibraryError, foreignOrganizationInBody } from '@/lib/services/crm/voiceLibrary';
+import { describeLibraryError } from '@/lib/services/crm/voiceLibrary';
 import { ElevenLabsError } from '@/lib/services/integrations/elevenlabs/voiceCloneClient';
 import { getServiceClient } from '@/lib/supabase/server-service';
 
@@ -29,12 +30,6 @@ export const runtime = 'nodejs';
  * Regla dura 5 (CLAUDE.md): la organización sale de la sesión. Si el body trae
  * otra, 403 y se registra; la misma no es un ataque y se ignora (nunca se usa).
  */
-function foreignOrg(method: string, body: unknown, sessionOrg: number): NextResponse | null {
-  const claimed = foreignOrganizationInBody((body as { organization_id?: unknown } | null)?.organization_id, sessionOrg);
-  if (claimed === null) return null;
-  console.warn(`[voices] ${method} con organization_id ajeno en el body`, { session: sessionOrg, body: claimed });
-  return NextResponse.json({ success: false, error: 'Organización no permitida' }, { status: 403 });
-}
 
 function fail(error: unknown) {
   if (error instanceof OrgContextError) {
@@ -67,9 +62,7 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
-    const body = await request.json();
-    const forbidden = foreignOrg('POST', body, ctx.organizationId);
-    if (forbidden) return forbidden;
+    const body = await readOrgBody(ctx, request);
 
     if (body?.action === 'import_elevenlabs') {
       const result = await importElevenLabsVoices(ctx.supabase, ctx.organizationId);
@@ -85,6 +78,7 @@ export async function POST(request: NextRequest) {
     const data = await createVoice(ctx.supabase, ctx.organizationId, body, ctx.userId);
     return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (error) {
+    if (error instanceof OrgContextError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     if (error instanceof Error && /consentimiento|Falta|necesita|caracteres/i.test(error.message)) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
@@ -96,9 +90,7 @@ export async function PATCH(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
-    const body = await request.json();
-    const forbidden = foreignOrg('PATCH', body, ctx.organizationId);
-    if (forbidden) return forbidden;
+    const body = await readOrgBody(ctx, request);
     if (!body?.id) return NextResponse.json({ success: false, error: 'Falta id' }, { status: 400 });
     const { id, ...rest } = body;
     const data = await updateVoice(ctx.supabase, ctx.organizationId, id, rest);
@@ -111,6 +103,7 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
+    await readOrgBody(ctx, request);
     requireOrgAdmin(ctx);
     const id = request.nextUrl.searchParams.get('id');
     if (!id) return NextResponse.json({ success: false, error: 'Falta id' }, { status: 400 });

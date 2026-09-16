@@ -4,15 +4,14 @@
  * `Set` de ids ejecutados (N-8) y sus bordes (fallo de `fn_release_job` en el
  * repetido, repetido en el MISMO lote, `sawRepeat` no corta los demás).
  *
- * Los casos `it.failing` documentan huecos: pasan mientras el hueco exista y
- * fallan («expected to fail») cuando el builder lo cierre, para que se vuelvan
- * `it` normales.
+ * r4 (builder): el caso «reintento INMEDIATO» (T-6) pasó a esperar la espera
+ * `COMPLETE_RETRY_DELAY_MS` entre los dos intentos de `fn_complete_job`.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 jest.mock('../handlers', () => ({}));
 
-import { runJobs } from '../runner';
+import { COMPLETE_RETRY_DELAY_MS, runJobs } from '../runner';
 import { clearJobHandlers, registerJobHandler } from '../registry';
 import { JobRetryableError, type OutboundJob } from '../types';
 
@@ -139,9 +138,7 @@ describe('tester r3 — complete_failed (N-4)', () => {
     expect(summary).toMatchObject({ completeFailed: 1, failed: 0, done: 0 });
   });
 
-  it('el reintento de fn_complete_job es INMEDIATO (sin espera): un fallo transitorio de red de >0 ms se cierra como failed terminal', async () => {
-    // Hueco de diseño (bajo): el reintento único no espera nada; un blip de red
-    // que dura unos ms convierte un job exitoso en `failed` terminal.
+  it('el reintento de fn_complete_job espera COMPLETE_RETRY_DELAY_MS (r4, T-6): un blip de red de unos ms ya no cierra el job como failed terminal; si persiste, sigue siendo un solo fn_fail_job', async () => {
     registerJobHandler('noop', async () => ({ ok: 1 }));
     const t: number[] = [];
     const { sb, calls } = makeSupabase([[makeJob({ id: 'a', kind: 'noop' })]], (fn) => {
@@ -151,7 +148,8 @@ describe('tester r3 — complete_failed (N-4)', () => {
     });
     const summary = await runJobs({ supabase: sb, worker: 'w' });
     expect(byFn(calls, 'fn_complete_job')).toHaveLength(2);
-    expect(t[1] - t[0]).toBeLessThan(50);
+    expect(t[1] - t[0]).toBeGreaterThanOrEqual(COMPLETE_RETRY_DELAY_MS - 5);
+    expect(byFn(calls, 'fn_fail_job')).toHaveLength(1);
     expect(summary.failed).toBe(1);
   });
 });

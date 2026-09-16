@@ -143,15 +143,12 @@ describe('tester r3 — whatsapp idempotente de verdad (findByClientRequestId re
     expect(out).toMatchObject({ message_id: 'm-new' });
   });
 
-  it('HUECO: si la consulta de idempotencia FALLA (timeout de BD), findByClientRequestId traga el error y devuelve null ⇒ se envía otra vez', async () => {
+  it('si la consulta de idempotencia FALLA (timeout de BD) ⇒ JobRetryableError y sendWhatsApp NO se invoca (r4: fail-closed, nunca «no enviado»)', async () => {
     const { sb, rows } = makeMessagesStore({ failSelect: true });
     rows.push({ id: 'm-prev', conversation_id: 'c', organization_id: 105, direction: 'outbound', created_at: new Date().toISOString(), client_request_id: 'job:job-1' });
     (sendWhatsApp as jest.Mock).mockResolvedValue({ message_id: 'm-dup', conversation_id: 'c', activity_id: null });
-    const out = await whatsappJobHandler(ctx(makeJob('whatsapp', { message_request: req }), sb));
-    // Comportamiento actual (documentado): el fallo de lectura se interpreta como "no enviado".
-    expect(sendWhatsApp).toHaveBeenCalledTimes(1);
-    expect(out).toMatchObject({ message_id: 'm-dup' });
-    // Lo esperable: JobRetryableError (reintentar la comprobación), nunca un segundo envío.
+    await expect(whatsappJobHandler(ctx(makeJob('whatsapp', { message_request: req }), sb))).rejects.toMatchObject({ name: 'JobRetryableError', message: expect.stringMatching(/^idempotency_check_failed: .*statement timeout/) });
+    expect(sendWhatsApp).not.toHaveBeenCalled();
   });
 
   it('HUECO: la ventana de idempotencia es de 7 días: un retry manual del job a los 8 días vuelve a enviar', async () => {
@@ -165,7 +162,7 @@ describe('tester r3 — whatsapp idempotente de verdad (findByClientRequestId re
 });
 
 describe('tester r3 — retry de un retry (cadena retried_from)', () => {
-  it('HUECO: retryJob sobreescribe retried_from con el id del job intermedio ⇒ la clave whatsapp de la 2ª generación es job:{job-2}, no job:{job-1}', async () => {
+  it('retry de un retry conserva la raíz: retried_from = job-1 en la 3.ª generación y la clave whatsapp sigue siendo job:{job-1} (r4)', async () => {
     const rpc = jest.fn(async () => ({ data: 'job-3', error: null }));
     const job2 = {
       id: 'job-2', organization_id: 105, kind: 'whatsapp' as const, payload: { message_request: { orgId: 105 }, retried_from: 'job-1' }, status: 'failed' as const,
@@ -180,16 +177,16 @@ describe('tester r3 — retry de un retry (cadena retried_from)', () => {
     });
     await retryJob({ rpc, from } as unknown as SupabaseClient, 105, 'job-2', 'admin');
     const payload = (rpc.mock.calls[0] as unknown[])[1] as { p_payload: Record<string, unknown> };
-    expect(payload.p_payload.retried_from).toBe('job-2'); // se pierde la raíz job-1
-    expect(whatsappJobClientRequestId('job-3', {}, payload.p_payload)).toBe('job:job-2');
-    // Si job-1 fue el que envió (p. ej. complete_failed) y job-2 falló por otra causa, job-3 busca otra clave y vuelve a enviar.
+    expect(payload.p_payload.retried_from).toBe('job-1'); // la raíz se hereda, no el intermedio
+    expect(whatsappJobClientRequestId('job-3', {}, payload.p_payload)).toBe('job:job-1');
+    // Si job-1 fue el que envió (p. ej. complete_failed) y job-2 falló por otra causa, job-3 encuentra el mensaje de job-1 y salta.
   });
 });
 
 describe('tester r3 — signal a MITAD del handler (no solo al entrar)', () => {
   const req = { orgId: 105, customerId: 'cu-1', text: 'hola' };
 
-  it.failing('whatsapp: abort mientras se consulta la clave ⇒ debería NO llamar a sendWhatsApp (hoy sí lo llama)', async () => {
+  it('whatsapp: abort mientras se consulta la clave ⇒ JobRetryableError y sendWhatsApp NO se invoca (r4: segundo punto de decisión)', async () => {
     const controller = new AbortController();
     (findByClientRequestId as jest.Mock).mockImplementation(async () => { controller.abort(); await sleep(5); return null; });
     (sendWhatsApp as jest.Mock).mockResolvedValue({ message_id: 'm', conversation_id: 'c', activity_id: null });
@@ -205,15 +202,26 @@ describe('tester r3 — signal a MITAD del handler (no solo al entrar)', () => {
     expect(input.signal).toBeUndefined();
   });
 
-  it.failing('email: abort justo antes de dispatchScheduledEmail (tras la comprobación inicial) ⇒ debería no enviar (hoy envía)', async () => {
+  it('email: abort durante la comprobación de pertenencia (tras la inicial, antes de dispatchScheduledEmail) ⇒ JobRetryableError y NO envía (r4)', async () => {
     const controller = new AbortController();
-    (dispatchScheduledEmail as jest.Mock).mockImplementation(async () => {
-      // El handler ya pasó su única comprobación de `signal`; el abort llega durante el envío.
-      expect(controller.signal.aborted).toBe(true);
-      return { sent: true };
-    });
-    queueMicrotask(() => controller.abort());
-    await expect(emailJobHandler(ctx(makeJob('email', { email_message_id: 'em-1' }), {} as SupabaseClient, controller.signal))).rejects.toBeInstanceOf(JobRetryableError);
+    // r4: el handler comprueba `email_messages` (id + organization_id) antes del
+    // envío y vuelve a mirar `signal` después; el abort llega durante esa consulta.
+    const sb = {
+      from: (table: string) => {
+        const chain: Record<string, unknown> = {};
+        chain.select = () => chain;
+        chain.eq = () => chain;
+        chain.maybeSingle = async () => {
+          controller.abort();
+          await sleep(5);
+          return { data: table === 'email_messages' ? { id: 'em-1' } : null, error: null };
+        };
+        return chain;
+      },
+    } as unknown as SupabaseClient;
+    (dispatchScheduledEmail as jest.Mock).mockResolvedValue({ sent: true });
+    await expect(emailJobHandler(ctx(makeJob('email', { email_message_id: 'em-1' }), sb, controller.signal))).rejects.toBeInstanceOf(JobRetryableError);
+    expect(dispatchScheduledEmail).not.toHaveBeenCalled();
   });
 
   it('transcribe: runTranscribePipeline no recibe el signal (una transcripción en curso no se cancela)', async () => {
@@ -275,18 +283,25 @@ describe('tester r3 — presupuesto del productor (N-1)', () => {
     expect(out.enqueued).toBeLessThan(15);
   });
 
-  it('HUECO: con presupuesto 0 y signal YA abortada el productor sigue haciendo las 3 consultas (comm_settings, call_recordings, organizations) antes de mirar el corte', async () => {
+  it('con presupuesto 0 y signal YA abortada el productor NO hace ninguna consulta (r4, T-3): queries = []', async () => {
     const { sb, queries, rpc } = makeProducerSb(orgs, { selectMs: 30 });
     const controller = new AbortController();
     controller.abort();
     const out = await enqueueRecordingCleanup(sb, new Date('2026-09-15T08:30:00Z'), makeJobLogger({ worker: 't' }), { signal: controller.signal, budgetMs: 0 });
     expect(rpc).not.toHaveBeenCalled();
-    expect(out).toMatchObject({ enqueued: 0, truncated: true, pending_org_ids: orgs });
-    // Comportamiento actual: 3 round-trips (≥ 60 ms aquí, ~200 ms en producción) con presupuesto 0.
-    expect(queries).toEqual(['comm_settings', 'call_recordings', 'organizations']);
+    expect(out).toMatchObject({ enqueued: 0, orgs: 0, truncated: true, reason: 'budget_exhausted' });
+    expect(out.pending_org_ids).toBeUndefined(); // sin consultar no se sabe qué orgs quedaron fuera
+    expect(queries).toEqual([]);
   });
 
-  it('HUECO: cada tarea F11 recibe al menos 1 000 ms aunque totalBudgetMs esté agotado ⇒ el productor puede pasarse ~2 s del total', async () => {
+  it('con presupuesto 0 y signal SIN abortar: el reloj propio corta antes de consultar (T-3)', async () => {
+    const { sb, queries } = makeProducerSb(orgs);
+    const out = await enqueueRecordingCleanup(sb, new Date('2026-09-15T08:30:00Z'), makeJobLogger({ worker: 't' }), { signal: new AbortController().signal, budgetMs: 0 });
+    expect(out).toMatchObject({ enqueued: 0, truncated: true, reason: 'budget_exhausted' });
+    expect(queries).toEqual([]);
+  });
+
+  it('las tareas F11 NO reciben un mínimo de 1 000 ms: con totalBudgetMs agotado se saltan con reason budget_exhausted y el productor termina en < 500 ms (r4, T-4)', async () => {
     registerJobHandler('recording_cleanup', async () => ({}));
     (runMaintenance as jest.Mock).mockImplementation(async (_sb: unknown, _log: unknown, signal: AbortSignal) => {
       await new Promise<void>((resolve) => signal.addEventListener('abort', () => resolve()));
@@ -303,13 +318,16 @@ describe('tester r3 — presupuesto del productor (N-1)', () => {
     const out = await runScheduledKinds({ kinds: ['maintenance', 'recording_cleanup', 'health_recalculate', 'renewals_sync'], budgetMs: 20_000, taskBudgetMs: 12_000, totalBudgetMs: 300, worker: 't', supabase: sb });
     const elapsed = Date.now() - t0;
     expect(out.maintenance?.ok).toBe(true);
-    expect(out.health_recalculate?.ok).toBe(true);
-    expect(out.renewals_sync?.ok).toBe(true);
-    // total 300 ms ⇒ maintenance ≈ 300, luego cada tarea recibe max(1000, ≤0) = 1000 ⇒ ≈ 2 300 ms.
-    expect(elapsed).toBeGreaterThan(2_000);
+    // total 300 ms ⇒ maintenance ≈ 300 y lo demás ni arranca (antes: max(1000, ≤0) por tarea ⇒ ≈ 2 300 ms).
+    expect(out.recording_cleanup).toMatchObject({ enqueued: 0, truncated: true, reason: 'budget_exhausted' });
+    expect(out.health_recalculate).toEqual({ ok: false, ms: 0, error: 'budget_exhausted', reason: 'budget_exhausted' });
+    expect(out.renewals_sync).toEqual({ ok: false, ms: 0, error: 'budget_exhausted', reason: 'budget_exhausted' });
+    expect(runHealthRecalculate).not.toHaveBeenCalled();
+    expect(runRenewalsSync).not.toHaveBeenCalled();
+    expect(elapsed).toBeLessThan(500);
   });
 
-  it('HUECO: pending_org_ids no se persiste y la selección va por id ascendente ⇒ con truncado recurrente las mismas orgs (ids altos) nunca se encolan («van primero al día siguiente» no es cierto)', async () => {
+  it('comportamiento aceptado (r4, T-5): pending_org_ids NO se persiste y la selección va por id ascendente ⇒ con truncado recurrente las mismas orgs quedan fuera; la promesa «van primero al día siguiente» se retiró de docs/ruta', async () => {
     const run = async () => {
       const { sb } = makeProducerSb(orgs, { enqueueMs: 15 });
       return enqueueRecordingCleanup(sb, new Date('2026-09-15T08:30:00Z'), makeJobLogger({ worker: 't' }), { signal: new AbortController().signal, budgetMs: 90 });
@@ -372,23 +390,23 @@ describe('tester r3 — fechas por zona de la organización (N-7)', () => {
 describe('tester r3 — canViewJobs frente al criterio del resto del CRM', () => {
   const base = { isSuperAdmin: false, roleName: 'x', roleId: 0 };
 
-  it('coincide con STAGE_MANAGER_ROLE_IDS (1, 2, 5) para todos los role_id del sistema (1..5) y para un id desconocido', () => {
+  // Sin `userId`/`organizationId`/`supabase` en el contexto no hay sesión completa:
+  // solo decide el criterio síncrono (super admin / role_id) y la RPC no se llama.
+  it('coincide con STAGE_MANAGER_ROLE_IDS (1, 2, 5) para todos los role_id del sistema (1..5) y para un id desconocido (r4: USA la constante, no una copia)', async () => {
     for (const roleId of [1, 2, 3, 4, 5, 9]) {
-      expect(canViewJobs({ ...base, roleId })).toBe(STAGE_MANAGER_ROLE_IDS.includes(roleId));
+      expect(await canViewJobs({ ...base, roleId })).toBe(STAGE_MANAGER_ROLE_IDS.includes(roleId));
     }
-    expect(canViewJobs({ ...base, roleId: 9, isSuperAdmin: true })).toBe(true);
+    expect(await canViewJobs({ ...base, roleId: 9, isSuperAdmin: true })).toBe(true);
   });
 
-  it('un Empleado (4) con "cargo" que tuviera permiso de ver jobs queda fuera: el criterio es solo role_id/is_super_admin (consistente con el resto del CRM: nadie lee job_position_permissions en servidor)', () => {
-    expect(canViewJobs({ ...base, roleId: 4, roleName: 'Empleado' })).toBe(false);
-    expect(canRetryJobs({ ...base, roleId: 5, roleName: 'Manager' })).toBe(false);
+  it('un Empleado (4) sin cargo con admin.full_access queda fuera y un Manager (5) ve pero NO reintenta', async () => {
+    expect(await canViewJobs({ ...base, roleId: 4, roleName: 'Empleado' })).toBe(false);
+    expect(await canRetryJobs({ ...base, roleId: 5, roleName: 'Manager' })).toBe(false);
   });
 
-  it('HUECO (regla 6): por la vía canónica isOrgAdminLike, el NOMBRE "Admin de organización" con role_id 9 sigue concediendo ver Y reintentar', () => {
-    // No es un fallo del builder de JOBS (usa el helper canónico del repo), pero
-    // contradice el comentario «NUNCA por el nombre del rol» de jobsService.ts:24-27.
-    expect(canViewJobs({ ...base, roleId: 9, roleName: 'Admin de organización' })).toBe(true);
-    expect(canRetryJobs({ ...base, roleId: 9, roleName: 'Admin de organización' })).toBe(true);
+  it('regla 6: el NOMBRE "Admin de organización" con role_id 9 NO concede ni ver ni reintentar (hueco cerrado por F0-SEC r1 en orgAdmin.ts)', async () => {
+    expect(await canViewJobs({ ...base, roleId: 9, roleName: 'Admin de organización' })).toBe(false);
+    expect(await canRetryJobs({ ...base, roleId: 9, roleName: 'Admin de organización' })).toBe(false);
   });
 });
 

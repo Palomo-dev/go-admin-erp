@@ -60,8 +60,12 @@ describe('F1 — registro de herramientas', () => {
     // al modelo sería prometer lo que no se puede cumplir.
     const registry = getRegistry();
     expect(registry.has('create_order')).toBe(false);
+    // Compras y traslados existen, pero como herramientas del agente
+    // (`crear_orden_compra`, `crear_traslado`), no como acciones de catálogo.
     expect(registry.has('create_purchase_order')).toBe(false);
     expect(registry.has('create_stock_transfer')).toBe(false);
+    expect(registry.has('crear_orden_compra')).toBe(true);
+    expect(registry.has('crear_traslado')).toBe(true);
   });
 
   it('ninguna herramienta registrada está en la lista negra (§9.4)', () => {

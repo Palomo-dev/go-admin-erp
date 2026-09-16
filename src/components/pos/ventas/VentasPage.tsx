@@ -20,12 +20,14 @@ import { VentasTable } from './VentasTable';
 import { VentasFilters } from './VentasFilters';
 import { SaleWithDetails, SalesFilter } from './types';
 import { PrintService } from '@/lib/services/printService';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 export function VentasPage() {
   const router = useRouter();
   const { organization, isLoading: orgLoading } = useOrganization();
   const { branchFilter } = useBranch();
+  const { timezone } = useOrgTimezone();
   const [sales, setSales] = useState<SaleWithDetails[]>([]);
   const [totalSales, setTotalSales] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -96,7 +98,9 @@ export function VentasPage() {
           branch,
           Array.isArray((fullSale as any).tax_breakdown) && (fullSale as any).tax_breakdown.length > 0
             ? (fullSale as any).tax_breakdown
-            : undefined
+            : undefined,
+          undefined,
+          timezone,
         );
       }
     } catch (error) {

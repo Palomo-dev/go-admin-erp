@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getDiscoveryData,
   saveDiscoveryData,
@@ -67,7 +68,7 @@ export async function PUT(
   try {
     const ctx = await getServerOrgContext();
     const { opportunityId } = await params;
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     if (!body || typeof body !== 'object') {
       return NextResponse.json(

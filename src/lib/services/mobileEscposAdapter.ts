@@ -24,6 +24,7 @@ import type {
   SaleTicketPrintPayload,
   KitchenTicketPrintPayload,
 } from '@printing/types';
+import { formatDateTimeInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 // ============================================================================
 // Constantes ESC/POS
@@ -297,7 +298,7 @@ export function buildSaleTicket(
   }
 
   // Fecha
-  b.text(`Fecha: ${new Date(payload.createdAt).toLocaleString('es-CO')}`).newline();
+  b.text(`Fecha: ${formatDateTimeInTz(payload.createdAt, payload.timezone, { locale: 'es-CO' })}`).newline();
   b.separator();
 
   // Items
@@ -418,7 +419,7 @@ export function buildKitchenTicket(
 
   // Estación
   b.bold(true).text(`Estacion: ${payload.station}`).newline().bold(false);
-  b.text(`Hora: ${new Date(payload.createdAt).toLocaleTimeString('es-CO')}`).newline();
+  b.text(`Hora: ${formatTimeInTz(payload.createdAt, payload.timezone)}`).newline();
   b.text(`Ticket #: ${payload.ticketId}`).newline();
   b.separator();
 
@@ -478,7 +479,7 @@ export function buildPreCuenta(
     b.center().text(`Mozo: ${payload.serverName}`).newline();
   }
 
-  b.text(`Fecha: ${new Date(payload.createdAt).toLocaleString('es-CO')}`).newline();
+  b.text(`Fecha: ${formatDateTimeInTz(payload.createdAt, payload.timezone, { locale: 'es-CO' })}`).newline();
   b.separator();
 
   // Items sin precios detallados (pre-cuenta simple)

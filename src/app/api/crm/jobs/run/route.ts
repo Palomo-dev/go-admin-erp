@@ -62,7 +62,12 @@ const SCHEDULED_BUDGET_MS = 20_000;
  * `PRODUCER_BUDGET_MS = TOTAL − MIN_DRAIN` (48 s); cada paso recibe como
  * máximo lo que quede. `maxDuration = 60`. Con ~70 ms por ida y vuelta
  * iad1↔us-west-1 y ~5 llamadas por organización caben ~30–40 orgs por pasada;
- * las que no quepan salen en `pending_org_ids` y van primero al día siguiente.
+ * las que no quepan salen en `pending_org_ids` (solo en el log y en la
+ * respuesta: NO se persisten; r4, tester r3 T-5). Al día siguiente el productor
+ * vuelve a seleccionar por grabaciones vencidas, en el mismo orden (id asc):
+ * si el truncado se repitiera a diario, las mismas orgs quedarían fuera. Hoy
+ * (1 org con grabaciones, ~600 caben en 48 s) no ocurre; la rotación o la
+ * persistencia queda para F0-JOBS r5 (N-1b).
  */
 const TASK_BUDGET_MS = 12_000;
 const PRODUCER_BUDGET_MS = TOTAL_BUDGET_MS - MIN_DRAIN_MS;

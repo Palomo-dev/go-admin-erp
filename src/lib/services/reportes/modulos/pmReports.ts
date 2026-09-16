@@ -3,7 +3,13 @@
 // Consultas directas a Supabase para tareas y performance
 // ============================================================
 
-import { supabase } from '@/lib/supabase/config';
+import { supabase as browserSupabase } from '@/lib/supabase/config';
+import type { ReportesClient } from '../types';
+// F0-SEC r3 (tester r2, fallo 3): `fetch` acepta el cliente de Supabase por
+// parámetro. En el navegador (app/reportes) cae al cliente browser con la sesión
+// del usuario; en el servidor (asistente de reportes) el route handler pasa el
+// cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
+// corren como `authenticated` miembro y nunca como `anon`.
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -22,8 +28,9 @@ export const pmReports: ReportDefinition[] = [
     descripcion: 'Distribución de tareas por estado y proyecto',
     categoria: 'sistema',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db
         .from('tasks')
         .select('id, status, project_id, created_at')
         .eq('organization_id', orgId)
@@ -62,8 +69,9 @@ export const pmReports: ReportDefinition[] = [
     descripcion: 'Horas estimadas vs reales, hitos completados',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db
         .from('projects')
         .select('id, name, status, start_date, end_date')
         .eq('organization_id', orgId);

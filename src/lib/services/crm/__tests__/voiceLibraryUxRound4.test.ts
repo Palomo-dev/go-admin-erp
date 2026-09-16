@@ -40,10 +40,9 @@ jest.mock('@/lib/services/integrations/elevenlabs/voiceCloneClient', () => {
 const mockCtx = { organizationId: 120, userId: 'user-1', supabase: {} as SupabaseClient, roleName: 'Admin de organización', roleId: 2 };
 const mockRequireOrgAdmin = jest.fn();
 jest.mock('@/lib/utils/orgContext', () => {
-  class OrgContextError extends Error {
-    statusCode = 401;
-    code = 'UNAUTHORIZED';
-  }
+  // F0-SEC r2: `readOrgBody` (módulo hoja) lanza la clase REAL; el mock expone esa
+  // misma clase para que el `instanceof` de las rutas la reconozca.
+  const { OrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
   return {
     OrgContextError,
     getServerOrgContext: jest.fn(async () => mockCtx),
@@ -63,7 +62,8 @@ jest.mock('@/lib/services/crm/voiceLibraryService', () => ({
 jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: () => ({}) }));
 
 import { NextRequest } from 'next/server';
-import { POST as clonePost, MAX_CLONE_REQUEST_BYTES } from '@/app/api/crm/voices/clone/route';
+import { POST as clonePost } from '@/app/api/crm/voices/clone/route';
+import { MAX_CLONE_REQUEST_BYTES } from '@/lib/services/crm/voiceCatalogService';
 import { POST as voicesPost, PATCH as voicesPatch, DELETE as voicesDelete } from '@/app/api/crm/voices/route';
 import { POST as libraryPost } from '@/app/api/crm/voices/library/route';
 import { cloneVoiceFromSample, createVoice, updateVoice, MAX_VOICE_SAMPLE_BYTES, isAllowedSampleMime } from '@/lib/services/crm/voiceCatalogService';

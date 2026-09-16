@@ -1,14 +1,35 @@
 /**
- * Rate limiter simple (ventana fija) para endpoints sensibles (verify/*).
+ * Rate limiter de ventana fija para endpoints sensibles (verify/*, invite/resend,
+ * asistente IA).
  *
- * - Nivel 1: memoria por instancia (Map). Suficiente contra abuso básico y
- *   cero dependencias. En serverless cada instancia tiene su propio contador.
- * - Nivel 2 (opcional, persistente): contador en `comm_usage_logs` u otra
- *   tabla, inyectado vía `persistentCount` para no acoplar este módulo a BD.
+ * Niveles:
+ * - Nivel 1, memoria por instancia (Map). Cero dependencias; en serverless cada
+ *   instancia tiene su propio contador, así que el límite efectivo es
+ *   `limit × instancias`. Sirve como primera barrera barata.
+ * - Nivel 2, persistente y atómico (`RateLimitStore`): una RPC evalúa TODAS las
+ *   claves de la petición y registra el hit solo si todas caben
+ *   (`fn_rate_limit_hit`, tabla `rate_limit_buckets`; implementación en
+ *   `rateLimitStore.ts`). Las rutas que lo necesitan lo pasan en `opts.store`.
+ * - `persistentCount` (legado, por clave): cuántos hits hubo antes de este en la
+ *   ventana, p. ej. contando en una tabla de negocio. Se combina por `max`.
+ *
+ * Semántica (F0-SEC r2, sub-parte D):
+ * - FAIL-CLOSED. Clave vacía, `limit` inválido, `windowMs <= 0`/NaN, un
+ *   `persistentCount` que lanza o un `store` que falla → BLOQUEADO y registrado.
+ *   Antes, `persistentCount` que lanzaba caía en silencio al contador en memoria
+ *   (tester r1, sonda P7).
+ * - EVALUAR TODO, LUEGO REGISTRAR. `checkRateLimits` comprueba todas las claves
+ *   y solo si todas caben registra el hit en todas. Antes incrementaba `ip` y
+ *   `user` aunque `to` bloqueara: una ráfaga a un número bloqueado agotaba el
+ *   cupo del usuario para otros números. Consecuencia: una petición bloqueada
+ *   NO consume cupo (ventana fija: `resetAt` no se mueve).
+ * - `getClientIp` sin cabeceras de proxy devuelve `'unknown'`: todos los
+ *   clientes sin proxy comparten ese cubo. En Vercel/Railway siempre hay
+ *   `x-forwarded-for`; en local, el límite por IP es compartido a propósito.
  *
  * Uso:
- *   const rl = await checkRateLimit(`verify:ip:${ip}`, { limit: 5, windowMs: 600_000 });
- *   if (!rl.allowed) return 429
+ *   const rl = await checkRateLimits([{ key: `verify:ip:${ip}`, opts: LIMIT }], { store: getRateLimitStore() });
+ *   if (!rl.allowed) return 429 (Retry-After desde rl.resetAt)
  */
 
 export interface RateLimitOptions {
@@ -17,9 +38,9 @@ export interface RateLimitOptions {
   /** Tamaño de ventana en ms (default 10 min). */
   windowMs?: number;
   /**
-   * Contador persistente opcional: devuelve cuántos hits hubo para la clave
-   * en la ventana (p. ej. consultando la BD). Se suma al contador en memoria
-   * solo si es mayor (no se duplica).
+   * Contador persistente opcional (legado, por clave): devuelve cuántos hits
+   * hubo para la clave en la ventana ANTES de este. Se combina por `max` con
+   * el contador en memoria. Si lanza, la petición se BLOQUEA.
    */
   persistentCount?: (key: string, since: Date) => Promise<number>;
 }
@@ -29,6 +50,36 @@ export interface RateLimitResult {
   remaining: number;
   resetAt: Date;
   count: number;
+}
+
+export interface RateLimitEntry {
+  key: string;
+  opts: RateLimitOptions;
+}
+
+export interface RateLimitStoreEntry {
+  key: string;
+  limit: number;
+  windowMs: number;
+}
+
+export interface RateLimitStoreHit {
+  key: string;
+  /** Hits en la ventana INCLUIDO este (si se registró) o el que habría sido. */
+  count: number;
+  resetAt: Date;
+}
+
+/**
+ * Backend persistente. `hit` debe ser atómico sobre todas las claves: si alguna
+ * excede su límite, NO registra ninguna y devuelve los recuentos proyectados.
+ */
+export interface RateLimitStore {
+  hit(entries: RateLimitStoreEntry[]): Promise<RateLimitStoreHit[]>;
+}
+
+export interface CheckRateLimitsOptions {
+  store?: RateLimitStore | null;
 }
 
 interface Bucket {
@@ -47,66 +98,127 @@ function sweep(now: number, windowMs: number): void {
   }
 }
 
+function blocked(key: string, limit: number, resetAt: Date, count?: number): RateLimitResult & { blockedKey: string } {
+  const fallback = Number.isFinite(limit) ? Math.max(limit, 0) : 0;
+  return { allowed: false, remaining: 0, resetAt, count: count ?? fallback, blockedKey: key };
+}
+
+function validWindow(windowMs: number | undefined): number | null {
+  const w = windowMs ?? DEFAULT_WINDOW_MS;
+  return Number.isFinite(w) && w > 0 ? w : null;
+}
+
+function validLimit(limit: number): boolean {
+  return Number.isFinite(limit) && limit > 0;
+}
+
 /**
- * Registra un hit para `key` y devuelve si está permitido.
- * Fail-closed frente a claves vacías (se cuenta como bloqueado).
+ * Comprueba varias claves; bloquea si cualquiera excede su límite. Solo cuando
+ * TODAS caben registra el hit (memoria y, si hay, `store`).
  */
-export async function checkRateLimit(key: string, opts: RateLimitOptions): Promise<RateLimitResult> {
-  const windowMs = opts.windowMs ?? DEFAULT_WINDOW_MS;
+export async function checkRateLimits(
+  entries: RateLimitEntry[],
+  options: CheckRateLimitsOptions = {}
+): Promise<RateLimitResult & { blockedKey?: string }> {
   const now = Date.now();
-  if (!key) {
-    return { allowed: false, remaining: 0, resetAt: new Date(now + windowMs), count: opts.limit };
-  }
-  // F0-SEC r2 (sonda P7): una ventana de 0 ms (o negativa/NaN) reiniciaba el
-  // cubo en cada hit y el límite nunca bloqueaba. Es un error de configuración,
-  // no una forma de desactivar el límite: se bloquea (fail-closed).
-  if (!Number.isFinite(windowMs) || windowMs <= 0) {
-    return { allowed: false, remaining: 0, resetAt: new Date(now), count: opts.limit };
+  if (entries.length === 0) return { allowed: true, remaining: Infinity, resetAt: new Date(now), count: 0 };
+
+  // 1. Validación (fail-closed) + proyección en memoria, sin mutar todavía.
+  const projected: Array<{ key: string; limit: number; windowMs: number; windowStart: number; count: number }> = [];
+  for (const e of entries) {
+    const windowMs = validWindow(e.opts.windowMs);
+    if (!e.key) return blocked(e.key, e.opts.limit, new Date(now + (windowMs ?? DEFAULT_WINDOW_MS)));
+    if (windowMs === null) return blocked(e.key, e.opts.limit, new Date(now));
+    if (!validLimit(e.opts.limit)) return blocked(e.key, e.opts.limit, new Date(now + windowMs));
+    const b = buckets.get(e.key);
+    const fresh = !b || now - b.windowStart >= windowMs;
+    const windowStart = fresh ? now : (b as Bucket).windowStart;
+    const count = (fresh ? 0 : (b as Bucket).count) + 1;
+    projected.push({ key: e.key, limit: e.opts.limit, windowMs, windowStart, count });
   }
 
-  sweep(now, windowMs);
-
-  let bucket = buckets.get(key);
-  if (!bucket || now - bucket.windowStart >= windowMs) {
-    bucket = { count: 0, windowStart: now };
-    buckets.set(key, bucket);
+  for (const p of projected) {
+    if (p.count > p.limit) return blocked(p.key, p.limit, new Date(p.windowStart + p.windowMs), p.count);
   }
-  bucket.count += 1;
 
-  let count = bucket.count;
-  if (opts.persistentCount) {
+  // 2. Contadores persistentes por clave (legado). Lanzar = bloquear.
+  for (let i = 0; i < entries.length; i++) {
+    const fn = entries[i].opts.persistentCount;
+    if (!fn) continue;
+    const p = projected[i];
+    let persisted: number;
     try {
-      const persisted = await opts.persistentCount(key, new Date(bucket.windowStart));
-      // El contador persistente ya incluye hits previos; el actual aún no está persistido.
-      count = Math.max(count, persisted + 1);
-    } catch {
-      // Si la BD falla, nos quedamos con el contador en memoria.
+      persisted = await fn(p.key, new Date(p.windowStart));
+    } catch (err) {
+      console.error('[rateLimit] persistentCount falló; se bloquea (fail-closed)', { key: p.key, message: err instanceof Error ? err.message : String(err) });
+      return blocked(p.key, p.limit, new Date(p.windowStart + p.windowMs));
+    }
+    p.count = Math.max(p.count, (Number.isFinite(persisted) ? persisted : Number.POSITIVE_INFINITY) + 1);
+    if (p.count > p.limit) return blocked(p.key, p.limit, new Date(p.windowStart + p.windowMs), Number.isFinite(p.count) ? p.count : undefined);
+  }
+
+  // 3. Backend atómico (todas las claves a la vez). Fallar = bloquear.
+  if (options.store) {
+    let hits: RateLimitStoreHit[];
+    try {
+      hits = await options.store.hit(projected.map((p) => ({ key: p.key, limit: p.limit, windowMs: p.windowMs })));
+    } catch (err) {
+      console.error('[rateLimit] store persistente falló; se bloquea (fail-closed)', { keys: projected.map((p) => p.key), message: err instanceof Error ? err.message : String(err) });
+      const p = projected[0];
+      return blocked(p.key, p.limit, new Date(p.windowStart + p.windowMs));
+    }
+    for (const p of projected) {
+      const h = hits.find((x) => x.key === p.key);
+      if (!h) {
+        console.error('[rateLimit] el store no devolvió la clave; se bloquea (fail-closed)', { key: p.key });
+        return blocked(p.key, p.limit, new Date(p.windowStart + p.windowMs));
+      }
+      p.count = Math.max(p.count, h.count);
+      if (h.resetAt instanceof Date && !Number.isNaN(h.resetAt.getTime())) {
+        p.windowStart = Math.min(p.windowStart, h.resetAt.getTime() - p.windowMs);
+      }
+      if (p.count > p.limit) return blocked(p.key, p.limit, new Date(p.windowStart + p.windowMs), p.count);
     }
   }
 
-  const allowed = count <= opts.limit;
-  return {
-    allowed,
-    remaining: Math.max(0, opts.limit - count),
-    resetAt: new Date(bucket.windowStart + windowMs),
-    count,
-  };
-}
-
-/** Comprueba varias claves; bloquea si cualquiera excede su límite. */
-export async function checkRateLimits(
-  entries: Array<{ key: string; opts: RateLimitOptions }>
-): Promise<RateLimitResult & { blockedKey?: string }> {
-  let worst: RateLimitResult & { blockedKey?: string } | null = null;
-  for (const e of entries) {
-    const r = await checkRateLimit(e.key, e.opts);
-    if (!r.allowed) return { ...r, blockedKey: e.key };
+  // 4. Todas caben: registrar en memoria.
+  let worst: RateLimitResult | null = null;
+  for (const p of projected) {
+    sweep(now, p.windowMs);
+    const b = buckets.get(p.key);
+    if (!b || now - b.windowStart >= p.windowMs) {
+      buckets.set(p.key, { count: 1, windowStart: now });
+    } else {
+      b.count += 1;
+    }
+    const r: RateLimitResult = {
+      allowed: true,
+      remaining: Math.max(0, p.limit - p.count),
+      resetAt: new Date(p.windowStart + p.windowMs),
+      count: p.count,
+    };
     if (!worst || r.remaining < worst.remaining) worst = r;
   }
-  return worst ?? { allowed: true, remaining: Infinity, resetAt: new Date(), count: 0 };
+  return worst as RateLimitResult;
 }
 
-/** Extrae la IP del cliente de los headers habituales (Vercel / proxies). */
+/**
+ * Registra un hit para `key` y devuelve si está permitido. Azúcar sobre
+ * `checkRateLimits` con una sola clave.
+ */
+export async function checkRateLimit(
+  key: string,
+  opts: RateLimitOptions,
+  options: CheckRateLimitsOptions = {}
+): Promise<RateLimitResult> {
+  const r = await checkRateLimits([{ key, opts }], options);
+  return { allowed: r.allowed, remaining: r.remaining, resetAt: r.resetAt, count: r.count };
+}
+
+/**
+ * Extrae la IP del cliente de los headers habituales (Vercel / proxies).
+ * Sin ninguno devuelve `'unknown'`: cubo compartido (ver cabecera).
+ */
 export function getClientIp(req: Request): string {
   const xff = req.headers.get('x-forwarded-for');
   if (xff) return xff.split(',')[0].trim();

@@ -31,7 +31,10 @@ import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
  *    (`organizations.timezone`, N-7): el productor corre una vez al día, así
  *    que sigue siendo un singleton diario por org. El bucle de encolado tiene
  *    presupuesto y `signal`: al agotarse devuelve `truncated:true` y
- *    `pending_org_ids` (las recoge el día siguiente). Mientras el handler sea
+ *    `pending_org_ids`. r4 (T-5): esa lista NO se persiste; el día siguiente
+ *    se vuelve a seleccionar por grabaciones vencidas en el mismo orden (id
+ *    asc), así que un truncado recurrente dejaría fuera a las mismas orgs.
+ *    Con presupuesto 0 o señal abortada no se consulta nada (T-3). Mientras el handler sea
  *    el placeholder de F0 NO se encola nada; `reason = 'handler_not_registered'`.
  *
  *  - `health_recalculate` y `renewals_sync` (F11) → tareas EN PROCESO por
@@ -60,11 +63,17 @@ export interface RecordingCleanupEnqueueResult {
   pending_org_ids?: number[];
 }
 
+/**
+ * Tarea F11 no completada: error real o, con `reason: 'budget_exhausted'`, ni
+ * siquiera arrancó porque el total ya estaba agotado (r4, tester r3 T-4).
+ */
+export type TaskFailure = { ok: false; ms: number; error: string; reason?: 'budget_exhausted' };
+
 export interface ScheduledRunResult {
   maintenance?: { ok: true; ms: number; result: MaintenanceResult } | { ok: false; ms: number; error: string };
   recording_cleanup?: RecordingCleanupEnqueueResult;
-  health_recalculate?: { ok: true; ms: number; result: HealthRecalcResult } | { ok: false; ms: number; error: string };
-  renewals_sync?: { ok: true; ms: number; result: RenewalsSyncResult } | { ok: false; ms: number; error: string };
+  health_recalculate?: { ok: true; ms: number; result: HealthRecalcResult } | TaskFailure;
+  renewals_sync?: { ok: true; ms: number; result: RenewalsSyncResult } | TaskFailure;
 }
 
 export interface RunScheduledOptions {
@@ -169,19 +178,34 @@ export async function runScheduledKinds(opts: RunScheduledOptions): Promise<Sche
   // F11: tareas en proceso con presupuesto propio (r2) o, si no se indica, a partes iguales.
   const tasks = opts.kinds.filter(isScheduledTask);
   if (tasks.length > 0) {
-    // r3: nunca más de lo que quede del total (con un mínimo para que la tarea
-    // devuelva `pending_org_ids` en vez de morir a mitad de una org).
-    const perTask = Math.max(1_000, remainingFor(opts.taskBudgetMs ?? Math.floor(opts.budgetMs / tasks.length)));
+    // r3: nunca más de lo que quede del total. r4 (T-4): sin mínimo de 1 s por
+    // tarea; con el total agotado la tarea NO arranca (`reason: 'budget_exhausted'`)
+    // y el presupuesto se recalcula ANTES de cada tarea, no una vez para todas.
+    const taskCap = opts.taskBudgetMs ?? Math.floor(opts.budgetMs / tasks.length);
+    const budgetFor = () => Math.max(0, remainingFor(taskCap));
+    const exhaustedTask = (): TaskFailure => ({ ok: false, ms: 0, error: 'budget_exhausted', reason: 'budget_exhausted' });
     const now = opts.now ?? new Date();
     if (tasks.includes('health_recalculate')) {
-      // La tarea mide su propio presupuesto (reloj real) además de la señal: al agotarse
-      // devuelve `pending_org_ids` en vez de cortar a mitad de una organización.
-      out.health_recalculate = await runTimed(perTask, (signal) => runHealthRecalculate(sb, now, log, signal, { budgetMs: perTask }));
-      if (!out.health_recalculate.ok) log.error('health_recalculate_failed', { error: out.health_recalculate.error });
+      const perTask = budgetFor();
+      if (perTask <= 0) {
+        out.health_recalculate = exhaustedTask();
+        log.warn('health_recalculate_skipped', { reason: 'budget_exhausted' });
+      } else {
+        // La tarea mide su propio presupuesto (reloj real) además de la señal: al agotarse
+        // devuelve `pending_org_ids` en vez de cortar a mitad de una organización.
+        out.health_recalculate = await runTimed(perTask, (signal) => runHealthRecalculate(sb, now, log, signal, { budgetMs: perTask }));
+        if (!out.health_recalculate.ok) log.error('health_recalculate_failed', { error: out.health_recalculate.error });
+      }
     }
     if (tasks.includes('renewals_sync')) {
-      out.renewals_sync = await runTimed(perTask, (signal) => runRenewalsSync(sb, now, log, signal));
-      if (!out.renewals_sync.ok) log.error('renewals_sync_failed', { error: out.renewals_sync.error });
+      const perTask = budgetFor();
+      if (perTask <= 0) {
+        out.renewals_sync = exhaustedTask();
+        log.warn('renewals_sync_skipped', { reason: 'budget_exhausted' });
+      } else {
+        out.renewals_sync = await runTimed(perTask, (signal) => runRenewalsSync(sb, now, log, signal));
+        if (!out.renewals_sync.ok) log.error('renewals_sync_failed', { error: out.renewals_sync.error });
+      }
     }
   }
 
@@ -227,6 +251,10 @@ export async function enqueueRecordingCleanup(
   const deadlineAt = started + Math.max(0, budget.budgetMs);
   const exhausted = () => budget.signal.aborted || Date.now() >= deadlineAt;
 
+  // r4 (tester r3 T-3): con el presupuesto agotado (o la señal ya abortada) no
+  // se hace NINGUNA consulta; antes se gastaban 3 round-trips para nada.
+  if (exhausted()) return { enqueued: 0, orgs: 0, ms: Date.now() - started, truncated: true, reason: 'budget_exhausted' };
+
   const selected = await selectOrgsWithExpiredRecordings(sb, now ?? new Date());
   if (selected.error) {
     log.error('recording_cleanup_orgs_failed', { error: selected.error });
@@ -234,6 +262,7 @@ export async function enqueueRecordingCleanup(
   }
   const orgIds = selected.orgIds;
   if (orgIds.length === 0) return { enqueued: 0, orgs: 0, ms: Date.now() - started, reason: 'no_expired_recordings' };
+  if (exhausted()) return { enqueued: 0, orgs: orgIds.length, ms: Date.now() - started, truncated: true, pending_org_ids: orgIds, reason: 'budget_exhausted' };
 
   let timezones = new Map<number, string>();
   try {

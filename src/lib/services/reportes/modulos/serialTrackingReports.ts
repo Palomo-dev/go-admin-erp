@@ -3,7 +3,13 @@
 // Reportes: trazabilidad-producto, ventas-serial, garantias-reporte, seriales-proveedor
 // ============================================================
 
-import { supabase } from '@/lib/supabase/config';
+import { supabase as browserSupabase } from '@/lib/supabase/config';
+import type { ReportesClient } from '../types';
+// F0-SEC r3 (tester r2, fallo 3): `fetch` acepta el cliente de Supabase por
+// parámetro. En el navegador (app/reportes) cae al cliente browser con la sesión
+// del usuario; en el servidor (asistente de reportes) el route handler pasa el
+// cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
+// corren como `authenticated` miembro y nunca como `anon`.
 import { getOrgDateRange } from '@/lib/utils/timezone';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
@@ -59,12 +65,13 @@ export const serialTrackingReports: ReportDefinition[] = [
     descripcion: 'Seriales recibidos, proveedor, costo, estado actual y ubicación por producto',
     categoria: 'operativo',
     periodosSugeridos: ['mensual', 'trimestral'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('serial_numbers')
         .select(`
           id, serial, status, cost_at_purchase, received_date,
@@ -137,7 +144,8 @@ export const serialTrackingReports: ReportDefinition[] = [
     descripcion: 'Seriales vendidos: producto, cliente, vendedor, canal, precio y fecha',
     categoria: 'comercial',
     periodosSugeridos: ['mensual', 'trimestral'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -146,7 +154,7 @@ export const serialTrackingReports: ReportDefinition[] = [
       // (la restricción `serial_numbers_sold_by_user_id_fkey` ni siquiera
       // existe), así que el embebido devolvía PGRST200 y el informe entero
       // fallaba. El vendedor se resuelve con una segunda consulta por id.
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('serial_numbers')
         .select(`
           id, serial, sale_date, sale_channel, price_at_sale, sold_by_user_id,
@@ -167,7 +175,7 @@ export const serialTrackingReports: ReportDefinition[] = [
       ) as string[];
       const emailPorUsuario = new Map<string, string>();
       if (vendedorIds.length > 0) {
-        const { data: perfiles, error: perfilesError } = await supabase
+        const { data: perfiles, error: perfilesError } = await db
           .from('profiles')
           .select('id, email')
           .in('id', vendedorIds);
@@ -238,12 +246,13 @@ export const serialTrackingReports: ReportDefinition[] = [
     descripcion: 'Reclamos de garantía: tipo de resolución, monto y tiempo de resolución',
     categoria: 'operativo',
     periodosSugeridos: ['mensual', 'trimestral'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('warranty_claims')
         .select(`
           id, claim_date, claim_reason, status, resolution_type,
@@ -331,12 +340,13 @@ export const serialTrackingReports: ReportDefinition[] = [
     descripcion: 'Seriales comprados, costo total, vendidos y devueltos por proveedor',
     categoria: 'operativo',
     periodosSugeridos: ['mensual', 'trimestral'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('serial_numbers')
         .select(`
           id, status, cost_at_purchase,

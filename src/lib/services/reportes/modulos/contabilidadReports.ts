@@ -3,7 +3,13 @@
 // Llama a las RPCs: fn_reporte_estado_resultados, fn_reporte_balance_general, fn_reporte_presupuesto_vs_real
 // ============================================================
 
-import { supabase } from '@/lib/supabase/config';
+import { supabase as browserSupabase } from '@/lib/supabase/config';
+import type { ReportesClient } from '../types';
+// F0-SEC r3 (tester r2, fallo 3): `fetch` acepta el cliente de Supabase por
+// parámetro. En el navegador (app/reportes) cae al cliente browser con la sesión
+// del usuario; en el servidor (asistente de reportes) el route handler pasa el
+// cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
+// corren como `authenticated` miembro y nunca como `anon`.
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -22,8 +28,9 @@ export const contabilidadReports: ReportDefinition[] = [
     descripcion: 'Ingresos, costos y gastos → utilidad neta del período',
     categoria: 'contable',
     periodosSugeridos: ['mensual', 'trimestral', 'anual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase.rpc('fn_reporte_estado_resultados', {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db.rpc('fn_reporte_estado_resultados', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
         p_to: `${periodo.fechaFin}T23:59:59Z`,
@@ -58,8 +65,9 @@ export const contabilidadReports: ReportDefinition[] = [
     descripcion: 'Activo, pasivo y patrimonio a la fecha de corte',
     categoria: 'contable',
     periodosSugeridos: ['mensual', 'trimestral', 'anual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase.rpc('fn_reporte_balance_general', {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db.rpc('fn_reporte_balance_general', {
         p_organization_id: orgId,
         p_as_of: periodo.fechaFin,
       });
@@ -92,8 +100,9 @@ export const contabilidadReports: ReportDefinition[] = [
     descripcion: 'Comparativo de presupuestos contra ejecución real',
     categoria: 'contable',
     periodosSugeridos: ['mensual', 'trimestral'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase.rpc('fn_reporte_presupuesto_vs_real', {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db.rpc('fn_reporte_presupuesto_vs_real', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
         p_to: `${periodo.fechaFin}T23:59:59Z`,

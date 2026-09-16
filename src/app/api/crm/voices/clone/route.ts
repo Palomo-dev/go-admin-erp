@@ -40,27 +40,17 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
-import {
-  cloneVoiceFromSample,
-  isAllowedSampleMime,
-  MAX_VOICE_SAMPLE_BYTES,
-  MAX_VOICE_SAMPLES,
-} from '@/lib/services/crm/voiceCatalogService';
+import { readOrgBody } from '@/lib/security/organizationBody';
+import { cloneVoiceFromSample, isAllowedSampleMime, MAX_VOICE_SAMPLE_BYTES, MAX_VOICE_SAMPLES, MAX_CLONE_REQUEST_BYTES } from '@/lib/services/crm/voiceCatalogService';
 import { buildConsentEvidence, measuredDurationError, NAME_MAX, sanitizeConsentAt } from '@/lib/services/crm/voiceCloneScript';
 import { measureAudioDurationSeconds } from '@/lib/services/crm/audioDuration';
-import { describeLibraryError, foreignOrganizationInBody } from '@/lib/services/crm/voiceLibrary';
+import { describeLibraryError } from '@/lib/services/crm/voiceLibrary';
 import { ElevenLabsError } from '@/lib/services/integrations/elevenlabs/voiceCloneClient';
 
 export const runtime = 'nodejs';
 /** Subir varias muestras de audio puede pasar de los 10 s por defecto. */
 export const maxDuration = 60;
 
-/**
- * Tope del cuerpo entero: 5 muestras × 10 MB más 1 MB de margen para los campos
- * de texto y los separadores del multipart. Se compara con `content-length`
- * ANTES de leer nada; un cuerpo sin cabecera sigue acotado por `size` por muestra.
- */
-export const MAX_CLONE_REQUEST_BYTES = MAX_VOICE_SAMPLES * MAX_VOICE_SAMPLE_BYTES + 1024 * 1024;
 
 const bad = (error: string, status = 400) => NextResponse.json({ success: false, error }, { status });
 
@@ -94,14 +84,7 @@ export async function POST(request: NextRequest) {
       return bad(`La petición pesa demasiado: como máximo ${MAX_VOICE_SAMPLES} muestras de 10 MB cada una`);
     }
 
-    const form = await request.formData();
-    // Regla dura 5: la organización sale de la sesión; un body con otra → 403 y se registra.
-    const bodyOrg = foreignOrganizationInBody(form.get('organization_id'), ctx.organizationId);
-    if (bodyOrg !== null) {
-      console.warn('[voices/clone] POST con organization_id ajeno en el body', { session: ctx.organizationId, body: bodyOrg });
-      return bad('Organización no permitida', 403);
-    }
-
+    const form = readOrgBody(ctx, await request.formData());
     const name = String(form.get('name') || '').trim();
     const consent = String(form.get('consent') || '') === 'true';
     const entries = form.getAll('samples').filter((f): f is File => f instanceof File);

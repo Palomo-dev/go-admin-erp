@@ -3,7 +3,13 @@
 // Consultas directas a Supabase para ocupación, ingresos y housekeeping
 // ============================================================
 
-import { supabase } from '@/lib/supabase/config';
+import { supabase as browserSupabase } from '@/lib/supabase/config';
+import type { ReportesClient } from '../types';
+// F0-SEC r3 (tester r2, fallo 3): `fetch` acepta el cliente de Supabase por
+// parámetro. En el navegador (app/reportes) cae al cliente browser con la sesión
+// del usuario; en el servidor (asistente de reportes) el route handler pasa el
+// cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
+// corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
@@ -23,13 +29,14 @@ export const pmsReports: ReportDefinition[] = [
     descripcion: 'Tasa de ocupación, ADR y RevPAR del período',
     categoria: 'operativo',
     periodosSugeridos: ['semanal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       // Filtrar spaces por branch_id cuando branchId != null
-      let spacesQuery = supabase.from('spaces').select('id, status').eq('organization_id', orgId);
+      let spacesQuery = db.from('spaces').select('id, status').eq('organization_id', orgId);
       spacesQuery = applyBranchFilter(spacesQuery, branchId);
       const { data: spaces } = await spacesQuery;
 
-      let reservationsQuery = supabase
+      let reservationsQuery = db
         .from('reservations')
         .select('id, checkin, checkout, status, total_estimated')
         .eq('organization_id', orgId)
@@ -73,8 +80,9 @@ export const pmsReports: ReportDefinition[] = [
     descripcion: 'Ingresos por habitaciones, servicios y folios',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      let foliosQuery = supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      let foliosQuery = db
         .from('folios')
         .select('id, balance, status, created_at, reservations!inner(organization_id)')
         .eq('reservations.organization_id', orgId)
@@ -116,15 +124,16 @@ export const pmsReports: ReportDefinition[] = [
     descripcion: 'Tareas de limpieza: pendientes, completadas y tiempos',
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       // Obtener spaceIds de la sucursal (o todas) para filtrar housekeeping_tasks
-      let spacesQuery = supabase.from('spaces').select('id').eq('organization_id', orgId);
+      let spacesQuery = db.from('spaces').select('id').eq('organization_id', orgId);
       spacesQuery = applyBranchFilter(spacesQuery, branchId);
       const { data: orgSpaces } = await spacesQuery;
       const spaceIds = (orgSpaces ?? []).map((s: Record<string, unknown>) => s.id);
 
       const { data, error } = spaceIds.length > 0
-        ? await supabase
+        ? await db
             .from('housekeeping_tasks')
             .select('id, status, assigned_to, task_date, created_at')
             .in('space_id', spaceIds)

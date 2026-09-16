@@ -1,5 +1,6 @@
-import { BrowserWindow, net } from 'electron';
+import { app, net } from 'electron';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './constants';
+import { broadcast } from './broadcast';
 
 /**
  * Monitor de conectividad real.
@@ -17,6 +18,18 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from './constants';
 const CHECK_INTERVAL_MS = 15_000;
 const CHECK_TIMEOUT_MS = 8_000;
 const FAILURES_TO_GO_OFFLINE = 2;
+
+/**
+ * URL del health-check. Solo en desarrollo se puede sustituir con la variable
+ * de entorno GOADMIN_HEALTHCHECK_URL para simular una caída (p. ej.
+ * `http://127.0.0.1:9/`) y ver cómo reacciona la barra sin apagar la red.
+ * En la app empaquetada se ignora.
+ */
+function getHealthcheckUrl(): string {
+  const override = process.env.GOADMIN_HEALTHCHECK_URL;
+  if (!app.isPackaged && override) return override;
+  return `${SUPABASE_URL}/rest/v1/`;
+}
 
 let online = true;
 let consecutiveFailures = 0;
@@ -42,7 +55,7 @@ async function probe(): Promise<boolean> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), CHECK_TIMEOUT_MS);
   try {
-    const res = await net.fetch(`${SUPABASE_URL}/rest/v1/`, {
+    const res = await net.fetch(getHealthcheckUrl(), {
       method: 'HEAD',
       headers: { apikey: SUPABASE_ANON_KEY },
       signal: controller.signal,
@@ -68,9 +81,8 @@ function setOnline(next: boolean): void {
       console.error('[connectivity] Error en listener:', err);
     }
   }
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) win.webContents.send('connectivity:state', online);
-  }
+  // Llega a la barra (webContents de la ventana) y a la web (WebContentsView).
+  broadcast('connectivity:state', online);
 }
 
 export async function checkNow(): Promise<boolean> {

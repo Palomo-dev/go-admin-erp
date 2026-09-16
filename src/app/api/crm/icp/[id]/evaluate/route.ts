@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { assignICPBand } from '@/lib/services/crm/icpService';
 
 /**
@@ -14,7 +15,7 @@ export async function POST(
   try {
     const ctx = await getServerOrgContext();
     const { id: _profileId } = await params;
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     if (!body?.customer_id) {
       return NextResponse.json(

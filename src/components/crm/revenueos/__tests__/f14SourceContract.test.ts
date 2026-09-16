@@ -101,7 +101,9 @@ describe('Organización y errores en las rutas', () => {
     const src = read(`${ROUTE_DIR}/inputs/route.ts`);
     expect(src).toMatch(/requireOrgAdmin\(ctx\)/);
     expect(src).toMatch(/403/);
-    expect(src).toMatch(/body\.organization_id/);
+    // Regla 5 por el punto único de F0-SEC (readOrgBody: 403 + registro si el body
+    // trae otra organización) o por la comprobación local previa.
+    expect(src).toMatch(/readOrgBody\(|body\.organization_id/);
   });
 });
 

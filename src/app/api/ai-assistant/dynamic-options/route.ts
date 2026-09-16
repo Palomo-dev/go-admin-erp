@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { checkRateLimit } from '@/lib/security/rateLimit';
 
 /**
@@ -13,6 +14,7 @@ export async function POST(request: NextRequest) {
   let ctx;
   try {
     ctx = await getServerOrgContext(request);
+    await readOrgBody(ctx, request);
   } catch (err) {
     if (err instanceof OrgContextError) {
       return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });

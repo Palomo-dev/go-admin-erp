@@ -27,6 +27,8 @@
  *   refund_ai_credits(p_org_id integer, p_amount integer[, p_previous integer]) -> boolean
  *   deduct_comm_credits(p_org_id integer, p_channel text, p_amount integer) -> boolean
  *   fn_ai_usage_month(p_org, p_since, p_tz) -> jsonb (migración crm_v4_f00_39)
+ *   fn_provision_ai_settings(p_org) -> jsonb (migración crm_v4_f00_43; la usa
+ *     `ensureAiSettings`, con respaldo en Node mientras no esté aplicada)
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -129,19 +131,37 @@ function inferProvider(model: string): string {
 /** Mensaje del RPC anterior a la migración 39 cuando la org no tiene fila. */
 const MISSING_ROW_RE = /ai_settings no encontrada/i;
 
-type DecrementOutcome = { ok: true } | { ok: false; missingRow: boolean };
+type DecrementOutcome =
+  | { ok: true }
+  | {
+      ok: false;
+      /** No hay fila en ai_settings. */
+      missingRow: boolean;
+      /**
+       * Hay fila pero `credits_reset_at IS NULL`: la creó el navegador
+       * (`/app/chat/ia/configuracion`, solo columnas de comportamiento) y nunca
+       * recibió el cupo del plan. QA r2 medio 1.
+       */
+      unprovisioned: boolean;
+    };
 
 async function callDecrement(sb: SupabaseClient, orgId: number, credits: number): Promise<DecrementOutcome> {
   const { data: ok, error } = await sb.rpc('decrement_ai_credits', { p_org_id: orgId, p_cost: credits });
   if (error) {
-    if (MISSING_ROW_RE.test(error.message ?? '')) return { ok: false, missingRow: true };
+    if (MISSING_ROW_RE.test(error.message ?? '')) return { ok: false, missingRow: true, unprovisioned: false };
     throw new Error(`decrement_ai_credits falló: ${error.message}`);
   }
   if (ok) return { ok: true };
   // Con la migración 39 el RPC devuelve false también sin fila: una sola
-  // consulta para distinguir "sin saldo" de "sin fila" (QA r1 alto 4).
-  const { data: row } = await sb.from('ai_settings').select('organization_id').eq('organization_id', orgId).maybeSingle();
-  return { ok: false, missingRow: !row };
+  // consulta para distinguir "sin saldo" de "sin fila" (QA r1 alto 4) y de
+  // "fila sin provisionar" (QA r2 medio 1).
+  const { data: row } = await sb
+    .from('ai_settings')
+    .select('organization_id, credits_reset_at')
+    .eq('organization_id', orgId)
+    .maybeSingle();
+  if (!row) return { ok: false, missingRow: true, unprovisioned: false };
+  return { ok: false, missingRow: false, unprovisioned: (row as { credits_reset_at?: string | null }).credits_reset_at == null };
 }
 
 /**
@@ -209,13 +229,16 @@ export async function chargeAiCredits(input: ChargeAiInput): Promise<ChargeAiRes
   await assertWithinBudget(sb, input.orgId, costAmount ?? 0);
 
   let outcome = await callDecrement(sb, input.orgId, credits);
-  if (!outcome.ok && outcome.missingRow) {
-    // Auto-provisión con el cupo del plan (compartida con checkAICredits) y un
-    // único reintento. Si tampoco así hay fila o saldo: 402, no 500.
+  if (!outcome.ok && (outcome.missingRow || outcome.unprovisioned)) {
+    // Auto-provisión con el cupo del plan (una sola fuente: RPC
+    // `fn_provision_ai_settings`, mig. 43, con respaldo en Node en
+    // `ensureAiSettings`) y un único reintento. Cubre la fila ausente y la
+    // fila «vacía» creada desde el navegador (credits_reset_at NULL). Si
+    // tampoco así hay saldo: 402, no 500.
     try {
       const { ensureAiSettings } = await import('@/lib/services/aiCreditsService');
       const ensured = await ensureAiSettings(input.orgId, sb);
-      outcome = ensured.credits_remaining > 0 ? await callDecrement(sb, input.orgId, credits) : { ok: false, missingRow: false };
+      outcome = ensured.credits_remaining > 0 ? await callDecrement(sb, input.orgId, credits) : { ok: false, missingRow: false, unprovisioned: false };
     } catch (err) {
       console.warn('[aiCost] No se pudo auto-provisionar ai_settings:', err instanceof Error ? err.message : err);
       throw new InsufficientCreditsError('ai', 'la organización no tiene configuración de IA');
@@ -327,8 +350,11 @@ export async function refundAiCredits(input: {
   /** Saldo antes del cobro; permite a la RPC no recortar por debajo de él. */
   previousBalance?: number | null;
 }): Promise<boolean> {
-  if (!Number.isFinite(input.credits)) return false;
-  const credits = Math.max(0, Math.round(input.credits));
+  // QA r2 bajo 4: simetría con el cobro. Un negativo o NaN por aquí no es
+  // «nada que reembolsar», es un error del llamador: RangeError, no `true`.
+  // (Antes: negativo → 0 → `true` silencioso.) La RPC de la 39 devuelve
+  // `false` con NULL/negativo por la misma razón.
+  const credits = assertValidCredits(input.credits, 'créditos de IA a reembolsar');
   if (credits === 0) return true;
   const sb = await resolveClient();
 

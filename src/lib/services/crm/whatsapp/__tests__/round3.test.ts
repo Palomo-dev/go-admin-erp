@@ -383,18 +383,28 @@ describe('F16 r3 · F-13 · cambiar channel_id invalida la materialización', ()
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('F16 r3 · el body con organization_id se RECHAZA (no se ignora)', () => {
+  // F0-SEC r2: la decisión ya no vive en los esquemas (`noOrgInBody` se retiró:
+  // regla dura 7, una sola implementación). La aplica `readOrgBody` en la ruta,
+  // ANTES de validar: organización ajena → 403 + registro (probado sobre
+  // `POST /api/crm/whatsapp/send` en
+  // `src/app/api/__tests__/orgBodyRoutes.f0sec.test.ts`). Al esquema le llega
+  // el body ya comprobado y descarta la clave como desconocida.
   const body = {
     name: 'Masivo', channel: 'whatsapp', channel_id: UUID_A, template_id: null, content: 'hola',
     audience: { source: 'manual', customer_ids: [UUID_B] },
     throttle_mps: 5, respect_allowed_hours: true, purpose: 'utility',
   };
 
-  it('createCampaign con organization_id en el body falla la validación', () => {
-    expect(zCreateCampaignBody.safeParse({ ...body, organization_id: 999 }).success).toBe(false);
+  it('createCampaign con organization_id en el body: el esquema ya no decide (lo hizo readOrgBody antes) y descarta la clave', () => {
+    const r = zCreateCampaignBody.safeParse({ ...body, organization_id: 999 });
+    expect(r.success).toBe(true);
+    expect(r.success && 'organization_id' in r.data).toBe(false);
   });
 
-  it('send con orgId en el body falla la validación', () => {
-    expect(zSendBody.safeParse({ customerId: UUID_B, channelId: UUID_A, text: 'hola', orgId: 7 }).success).toBe(false);
+  it('send con orgId en el body: idem', () => {
+    const r = zSendBody.safeParse({ customerId: UUID_B, channelId: UUID_A, text: 'hola', orgId: 7 });
+    expect(r.success).toBe(true);
+    expect(r.success && 'orgId' in r.data).toBe(false);
   });
 
   it('un body limpio sigue pasando', () => {

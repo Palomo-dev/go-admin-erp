@@ -20,6 +20,15 @@ import { WhatsAppError, type SendWhatsAppInput } from '@/lib/services/crm/whatsa
  * `retried_from`) encuentra el `messages` ya creado y devuelve
  * `{skipped:true, reason:'already_sent'}` SIN llamar a `sendWhatsApp`.
  * `sendWhatsApp` repite la comprobación antes de descontar créditos.
+ *
+ * r4 (tester r3 T-1/T-2):
+ *  - La comprobación de idempotencia es fail-closed: si la consulta falla
+ *    (timeout, red) se lanza `JobRetryableError('idempotency_check_failed')`
+ *    y NO se envía; el backoff de `fn_fail_job` repite la comprobación.
+ *  - `signal` se recomprueba antes de cada efecto (al entrar y justo antes de
+ *    `sendWhatsApp`). `sendWhatsApp` no admite `signal` (F16): un abort DURANTE
+ *    el envío no lo cancela; lo cubre la clave `client_request_id` en la
+ *    siguiente ejecución. Contrato honesto en FASE-00 §4.4.
  */
 export function whatsappJobClientRequestId(jobId: string, req: Pick<SendWhatsAppInput, 'clientRequestId'>, payload: Record<string, unknown>): string {
   if (typeof req.clientRequestId === 'string' && req.clientRequestId) return req.clientRequestId;
@@ -36,11 +45,19 @@ export const whatsappJobHandler: JobHandler = async ({ job, supabase, orgId, log
   if (signal.aborted) throw new JobRetryableError('aborted antes del envío');
 
   const clientRequestId = whatsappJobClientRequestId(job.id, req, job.payload ?? {});
-  const previo = await findByClientRequestId(orgId, clientRequestId, supabase);
+  let previo: Awaited<ReturnType<typeof findByClientRequestId>>;
+  try {
+    previo = await findByClientRequestId(orgId, clientRequestId, supabase);
+  } catch (err) {
+    // Sin saber si ya se envió, no se envía (T-2): se reintenta la comprobación.
+    throw new JobRetryableError(`idempotency_check_failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
   if (previo) {
     log.info('whatsapp_scheduled_already_sent', { message_id: previo.id, client_request_id: clientRequestId });
     return { skipped: true, reason: 'already_sent', message_id: previo.id, conversation_id: previo.conversation_id };
   }
+  // Segundo punto de decisión (T-1): el abort pudo llegar durante la consulta.
+  if (signal.aborted) throw new JobRetryableError('aborted tras la comprobación de idempotencia');
 
   try {
     const r = await sendWhatsApp({ ...req, orgId, clientRequestId, scheduledAt: null, force: true }, supabase, supabase);

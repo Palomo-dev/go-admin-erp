@@ -8,15 +8,10 @@
 
 import { createFakeSupabase, type FakeDb, type Row } from '@/lib/services/crm/revenueOs/__tests__/revenueOsFakeSupabase';
 
-class FakeOrgContextError extends Error {
-  statusCode: number;
-  code: string;
-  constructor(message: string, statusCode = 401, code = 'UNAUTHORIZED') {
-    super(message);
-    this.statusCode = statusCode;
-    this.code = code;
-  }
-}
+// F0-SEC r2: `readOrgBody` (módulo hoja) lanza la clase REAL de `OrgContextError`,
+// así que el mock de orgContext expone esa misma clase para que el `instanceof`
+// de la ruta la reconozca (antes era una clase falsa local).
+const { OrgContextError: FakeOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
 
 let db: FakeDb;
 const session = { roleId: 2, userId: 'u-admin', isSuperAdmin: false };

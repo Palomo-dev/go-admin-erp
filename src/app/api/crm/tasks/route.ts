@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { assertRelatedBelongsToOrg, RelatedNotFoundError } from '@/lib/services/crm/activityService';
 import { TASK_PRIORITIES } from '@/lib/crm/enums';
 
@@ -23,7 +24,7 @@ const schema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext(request);
-    const parsed = schema.safeParse(await request.json().catch(() => null));
+    const parsed = schema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });
     }

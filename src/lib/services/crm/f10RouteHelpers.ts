@@ -7,6 +7,8 @@
 import { NextResponse } from 'next/server';
 import { OrgContextError } from '@/lib/utils/orgContext';
 import { foreignOrganizationInBody } from '@/lib/services/crm/voiceLibrary';
+import { STAGE_MANAGER_ROLE_IDS } from '@/lib/services/crm/stagePermissions';
+import type { ServerOrgContext } from '@/lib/utils/orgContext';
 
 export function foreignOrgResponse(tag: string, body: unknown, sessionOrg: number): NextResponse | null {
   const claimed = foreignOrganizationInBody((body as { organization_id?: unknown } | null)?.organization_id, sessionOrg);
@@ -51,3 +53,16 @@ export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 export function isSafeId(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= 64 && /^[A-Za-z0-9_-]+$/.test(value);
 }
+
+/**
+ * Decisión F10 r2: marcar «signed» A MANO (sin proveedor ni webhook) solo lo
+ * puede hacer un admin/manager de la organización, resuelto por ID de rol en
+ * el servidor (`STAGE_MANAGER_ROLE_IDS`, el mismo criterio que las etapas),
+ * nunca por nombre ni por un valor del cliente. Queda actividad `system` con
+ * `manual_signed_by` en la oportunidad. Los demás estados manuales
+ * (viewed/declined/expired) siguen abiertos a cualquier miembro.
+ */
+export function canManualSign(ctx: Pick<ServerOrgContext, 'roleId' | 'isSuperAdmin'>): boolean {
+  return ctx.isSuperAdmin === true || STAGE_MANAGER_ROLE_IDS.includes(ctx.roleId);
+}
+

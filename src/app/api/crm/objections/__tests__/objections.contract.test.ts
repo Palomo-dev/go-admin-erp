@@ -11,10 +11,10 @@
  * rediseño, donde la capa I/O quedó sin prueba).
  */
 
-class FakeOrgContextError extends Error {
-  statusCode = 401;
-  code = 'UNAUTHORIZED';
-}
+// F0-SEC r2: `readOrgBody` (módulo hoja) lanza la clase REAL de `OrgContextError`,
+// así que el mock de orgContext expone esa misma clase para que el `instanceof`
+// de la ruta la reconozca (antes era una clase falsa local).
+const { OrgContextError: FakeOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
 
 type Row = Record<string, unknown>;
 

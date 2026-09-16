@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { withWhatsAppRoute, readJson } from '@/lib/services/crm/whatsapp/http';
+import { withWhatsAppRoute } from '@/lib/services/crm/whatsapp/http';
 import { getOrgSettings, listChannels, saveOrgSettings, getChannelCredentials } from '@/lib/services/crm/whatsapp/channelService';
 import { metaMessagingLimit } from '@/lib/services/crm/whatsapp/templateProvider';
 import { isOrgAdminContext } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { parseWith, zSettingsBody } from '@/lib/services/crm/whatsapp/schemas';
 import type { WhatsAppOrgSettings } from '@/lib/services/crm/whatsapp/types';
 
@@ -31,7 +32,7 @@ export const GET = withWhatsAppRoute(async (ctx, req) => {
 });
 
 export const PUT = withWhatsAppRoute(async (ctx, req) => {
-  const b = parseWith(zSettingsBody, await readJson<unknown>(req)) as Partial<WhatsAppOrgSettings>;
+  const b = parseWith(zSettingsBody, await readOrgBody<unknown>(ctx, req)) as Partial<WhatsAppOrgSettings>;
   const patch: Partial<WhatsAppOrgSettings> = {};
   if (b.default_channel_id !== undefined) {
     if (b.default_channel_id) {

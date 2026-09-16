@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getSequences, createSequence, validateSequenceInput } from '@/lib/services/crm/sequenceService';
 import { getSequenceStats, type SequenceStats } from '@/lib/services/crm/sequenceStats';
 
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     if (!body?.name) {
       return NextResponse.json({ success: false, error: 'Falta el campo obligatorio: name' }, { status: 400 });

@@ -14,8 +14,10 @@ import { twilioVerifyService } from '@/lib/services/integrations/twilio';
 import { formatE164 } from '@/lib/services/integrations/twilio/twilioConfig';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit';
+import { getRateLimitStore } from '@/lib/security/rateLimitStore';
 import { getServiceClient } from '@/lib/supabase/server-service';
 
+/** 5 / 10 min por IP, usuario y destino (cifra única: FASE-00 §7 y §7.1). Persistente y atómico con RATE_LIMIT_STORE=db; si el store falla, se bloquea. */
 const VERIFY_LIMIT = { limit: 5, windowMs: 10 * 60 * 1000 };
 
 export async function POST(request: NextRequest) {
@@ -50,7 +52,7 @@ export async function POST(request: NextRequest) {
       { key: `verify:check:ip:${ip}`, opts: VERIFY_LIMIT },
       { key: `verify:check:user:${ctx.userId}`, opts: VERIFY_LIMIT },
       { key: `verify:check:to:${e164}`, opts: VERIFY_LIMIT },
-    ]);
+    ], { store: getRateLimitStore() });
     if (!rl.allowed) {
       return NextResponse.json(
         { error: 'Demasiados intentos. Intenta de nuevo en unos minutos.' },

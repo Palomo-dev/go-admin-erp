@@ -91,13 +91,32 @@ export function isMissingFunctionError(error: { code?: string; message?: string 
   return /could not find the function|function .* does not exist/i.test(error.message ?? '');
 }
 
+/**
+ * Postgres no reconoce la zona horaria (`22023 time zone "X" not recognized`).
+ * Intl (ICU) y `pg_timezone_names` no comparten catálogo: una zona válida
+ * para Node puede no serlo para la BD. Con la migración 39 editada en r3 la
+ * RPC ya la resuelve a UTC por sí misma; esta detección cubre la versión
+ * anterior de la función y cualquier otra RPC que reciba `p_tz`.
+ */
+export function isUnknownTimeZoneError(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  if (error.code === '22023') return /time zone/i.test(error.message ?? '') || !error.message;
+  return /time zone ".*" not recognized/i.test(error.message ?? '');
+}
+
 const num = (v: unknown): number => {
   const n = typeof v === 'number' ? v : Number(v);
   return Number.isFinite(n) ? n : 0;
 };
 
 export async function getAiUsageMonth(sb: SupabaseClient, orgId: number, since: string, tz: string): Promise<AiUsageMonth> {
-  const { data, error } = await sb.rpc('fn_ai_usage_month', { p_org: orgId, p_since: since, p_tz: tz });
+  let { data, error } = await sb.rpc('fn_ai_usage_month', { p_org: orgId, p_since: since, p_tz: tz });
+  if (error && tz !== 'UTC' && isUnknownTimeZoneError(error)) {
+    // QA r2 medio 2: nunca 500 por una zona que Postgres no reconozca. Un solo
+    // reintento con UTC; `since` ya viene calculado en la zona de la org.
+    console.warn(`[aiUsageStats] Postgres no reconoce la zona "${tz}" (org ${orgId}); reintento con UTC`);
+    ({ data, error } = await sb.rpc('fn_ai_usage_month', { p_org: orgId, p_since: since, p_tz: 'UTC' }));
+  }
   if (!error && data && typeof data === 'object') {
     const d = data as Record<string, unknown>;
     const byModel = Array.isArray(d.by_model) ? (d.by_model as Record<string, unknown>[]) : [];

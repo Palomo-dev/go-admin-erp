@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { isOrgAdmin } from '@/lib/utils/rbac';
 import {
   updateVertical,
@@ -42,7 +43,7 @@ export async function PATCH(
       );
     }
 
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
     if (!body || typeof body !== 'object') {
       return NextResponse.json(
         { success: false, error: 'Cuerpo de la petición inválido' },
@@ -93,11 +94,12 @@ export async function PATCH(
  * Requiere rol admin/owner.
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const ctx = await getServerOrgContext();
+    await readOrgBody(ctx, request);
 
     if (!isOrgAdmin(ctx)) {
       return NextResponse.json(

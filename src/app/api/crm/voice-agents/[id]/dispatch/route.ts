@@ -17,6 +17,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { dispatchAgentCall, VoiceDispatchBlocked } from '@/lib/services/crm/voiceAgentService';
 
 export const runtime = 'nodejs';
@@ -29,7 +30,7 @@ export async function POST(
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
     const { id } = await params;
-    const body = await request.json().catch(() => ({}));
+    const body = readOrgBody(ctx, await request.json().catch(() => ({})));
 
     if (!body?.opportunity_id && !body?.customer_id) {
       return NextResponse.json(

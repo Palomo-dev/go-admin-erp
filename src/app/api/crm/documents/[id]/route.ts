@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getDocument,
   updateDocument,
@@ -51,7 +52,7 @@ export async function PATCH(
   try {
     const ctx = await getServerOrgContext();
     const { id } = await params;
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     const document = await updateDocument(id, ctx.organizationId, body, ctx.supabase);
 
@@ -80,11 +81,12 @@ export async function PATCH(
  * DELETE /api/crm/documents/[id] — Elimina documento (archivo + registro).
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const ctx = await getServerOrgContext();
+    await readOrgBody(ctx, request);
     const { id } = await params;
 
     await deleteDocument(id, ctx.organizationId, ctx.supabase);

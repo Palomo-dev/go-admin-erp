@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getDocuments,
   uploadDocument,
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     // ─── Crear carpeta via JSON ──────────────────────────────────────────
     if (contentType.includes('application/json')) {
-      const body = await request.json();
+      const body = await readOrgBody(ctx, request);
 
       if (body?.action === 'create_folder') {
         if (!body?.name) {
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Subir archivo via multipart/form-data ───────────────────────────
-    const formData = await request.formData();
+    const formData = readOrgBody(ctx, await request.formData());
     const file = formData.get('file') as File | null;
     const name = formData.get('name') as string | null;
     const relatedType = formData.get('related_type') as string | null;

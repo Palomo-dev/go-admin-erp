@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
+import { readOrgBody } from '@/lib/security/organizationBody';
 /**
  * API Route - Resume discovery/llamadas de una oportunidad del CRM.
  *
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
     const { opportunityId } = body as { opportunityId?: string };
 
     if (!opportunityId) {
@@ -81,6 +82,7 @@ export async function POST(request: NextRequest) {
     const result = summarizeWithRules(context);
     return NextResponse.json(result);
   } catch (error: unknown) {
+    if (error instanceof OrgContextError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     const message = error instanceof Error ? error.message : 'Error desconocido';
     console.error('Error en /api/crm/ia/discovery-summary:', message);
     return NextResponse.json({ error: message }, { status: 500 });

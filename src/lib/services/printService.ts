@@ -575,13 +575,14 @@ export class PrintService {
     cashier?: CashierInfo,
     branch?: BranchInfo,
     taxLines?: TaxLine[],
-    deliveryInfo?: DeliveryInfo
+    deliveryInfo?: DeliveryInfo,
+    timezone?: string,
   ): void {
     if (this.canPrint()) {
-      this.printTicket(sale, saleItems, customer, payments, business, cashier, branch, taxLines, deliveryInfo);
+      this.printTicket(sale, saleItems, customer, payments, business, cashier, branch, taxLines, deliveryInfo, timezone);
     } else {
       // Fallback: descargar como HTML
-      this.downloadTicket(sale, saleItems, customer, payments, business, cashier, branch, taxLines, deliveryInfo);
+      this.downloadTicket(sale, saleItems, customer, payments, business, cashier, branch, taxLines, deliveryInfo, timezone);
       alert('La impresión directa no está disponible. El ticket se descargará como archivo HTML.');
     }
   }

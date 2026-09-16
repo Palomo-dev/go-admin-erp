@@ -21,7 +21,8 @@ import { runMaintenance } from '../handlers/maintenance';
 import { runHealthRecalculate } from '../scheduled/healthRecalculate';
 import { runRenewalsSync } from '../scheduled/renewalsSync';
 import { clearJobHandlers, registerJobHandler } from '../registry';
-import { hasScheduledKinds, runScheduledKinds } from '../scheduler';
+import { enqueueRecordingCleanup, hasScheduledKinds, runScheduledKinds } from '../scheduler';
+import { makeJobLogger } from '../runner';
 
 /**
  * r3: el productor lee `comm_settings` (activas), `call_recordings` (vencidas)
@@ -200,16 +201,30 @@ describe('runScheduledKinds', () => {
     expect(elapsed).toBeLessThan(2_500);
   });
 
-  it('totalBudgetMs agotado por maintenance ⇒ el encolado recibe 0 ms: no encola nada, truncated con todas las orgs pendientes', async () => {
+  it('totalBudgetMs agotado por maintenance ⇒ el encolado recibe 0 ms: no consulta ni encola nada, truncated con reason budget_exhausted (r4, T-3)', async () => {
     registerJobHandler('recording_cleanup', async () => ({}));
     (runMaintenance as jest.Mock).mockImplementationOnce(async () => {
       await new Promise((r) => setTimeout(r, 300));
       return { jobs_deleted: 0 };
     });
-    const { sb, rpc } = makeSupabase([105, 106]);
+    const { sb, rpc, from } = makeSupabase([105, 106]);
     const out = await runScheduledKinds({ kinds: ['maintenance', 'recording_cleanup'], budgetMs: 5_000, totalBudgetMs: 250, worker: 'w', supabase: sb });
     expect(out.maintenance?.ok).toBe(true);
-    expect(out.recording_cleanup).toMatchObject({ enqueued: 0, orgs: 2, truncated: true, pending_org_ids: [105, 106] });
+    expect(out.recording_cleanup).toMatchObject({ enqueued: 0, orgs: 0, truncated: true, reason: 'budget_exhausted' });
+    expect(from).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('presupuesto agotado tras seleccionar las orgs (antes de cargar zonas) ⇒ truncated con pending_org_ids = todas y sin consultar organizations', async () => {
+    registerJobHandler('recording_cleanup', async () => ({}));
+    const queries: Query[] = [];
+    const { sb, rpc } = makeSupabase([105, 106], { queries });
+    const controller = new AbortController();
+    // La señal se aborta durante la selección (primer round-trip).
+    const sbAborting = { ...sb, from: (table: string) => { controller.abort(); return (sb.from as (t: string) => unknown)(table); } } as unknown as typeof sb;
+    const out = await enqueueRecordingCleanup(sbAborting, new Date('2026-09-15T08:30:00Z'), makeJobLogger({ worker: 'w' }), { signal: controller.signal, budgetMs: 60_000 });
+    expect(out).toMatchObject({ enqueued: 0, orgs: 2, truncated: true, pending_org_ids: [105, 106], reason: 'budget_exhausted' });
+    expect(queries.map((q) => q.table)).toEqual(['comm_settings', 'call_recordings']);
     expect(rpc).not.toHaveBeenCalled();
   });
 });

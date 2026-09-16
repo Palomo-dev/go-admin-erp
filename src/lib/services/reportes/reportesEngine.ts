@@ -3,19 +3,23 @@
 // Orquesta la ejecución de reportes individuales y cierres consolidados
 // ============================================================
 
-import type { PeriodoCierre, ReportData, ReportDefinition } from './types';
+import type { PeriodoCierre, ReportData, ReportDefinition, ReportesClient } from './types';
 import { getReporteById, getReportesVisibles } from './reportesCatalogo';
 
 /**
  * Ejecuta un reporte individual por su ID.
  * Busca la definición en el catálogo y llama su función `fetch`.
  * @param branchId Filtro de sucursal opcional (null = Todas las sucursales)
+ * @param client Cliente de Supabase con sesión (F0-SEC r3). Obligatorio desde
+ *   el servidor: sin él, `fetch` usa el cliente browser, que en un route
+ *   handler no tiene sesión y ejecutaría las RPC como `anon`.
  */
 export async function ejecutarReporte(
   reportId: string,
   orgId: number,
   periodo: PeriodoCierre,
   branchId?: number | null,
+  client?: ReportesClient,
 ): Promise<ReportData> {
   const def = getReporteById(reportId);
 
@@ -24,7 +28,7 @@ export async function ejecutarReporte(
   }
 
   try {
-    const data = await def.fetch(orgId, periodo, branchId);
+    const data = await def.fetch(orgId, periodo, branchId, client);
     return data;
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Error desconocido';
@@ -48,6 +52,7 @@ export async function ejecutarCierre(
   activeModuleCodes: string[],
   concurrencyLimit: number = 4,
   branchId?: number | null,
+  client?: ReportesClient,
 ): Promise<{ resultados: ReportData[]; errores: { reportId: string; titulo: string; error: string }[] }> {
   const modulosVisibles = getReportesVisibles(activeModuleCodes);
   const todasDefiniciones: ReportDefinition[] = modulosVisibles.flatMap((m) => m.reportes);
@@ -61,7 +66,7 @@ export async function ejecutarCierre(
 
     const promesas = lote.map(async (def) => {
       try {
-        const data = await def.fetch(orgId, periodo, branchId);
+        const data = await def.fetch(orgId, periodo, branchId, client);
         return { ok: true as const, data };
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'Error desconocido';
@@ -93,6 +98,7 @@ export async function ejecutarReportesSeleccionados(
   periodo: PeriodoCierre,
   concurrencyLimit: number = 4,
   branchId?: number | null,
+  client?: ReportesClient,
 ): Promise<{ resultados: ReportData[]; errores: { reportId: string; titulo: string; error: string }[] }> {
   const resultados: ReportData[] = [];
   const errores: { reportId: string; titulo: string; error: string }[] = [];
@@ -106,7 +112,7 @@ export async function ejecutarReportesSeleccionados(
         return { ok: false as const, error: 'Reporte no encontrado', reportId, titulo: reportId };
       }
       try {
-        const data = await def.fetch(orgId, periodo, branchId);
+        const data = await def.fetch(orgId, periodo, branchId, client);
         return { ok: true as const, data };
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'Error desconocido';

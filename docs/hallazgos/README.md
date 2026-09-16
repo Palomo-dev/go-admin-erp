@@ -53,6 +53,7 @@ vive fuera del repo, en `docs/auditoria-finanzas/` (ignorado por `.gitignore`).
 | [F-38](F-38.md) | Carga masiva de inventario no deja rastro (sin stock_movements) | Bloqueante | Documentado | Fase 2 |
 | [F-39](F-39.md) | Fuga cross-tenant en políticas sin filtro de organización | Alta | Documentado | Fase 2 |
 | [F-40](F-40.md) | ImportLeadsCsv inserta columna GENERADA y no setea customer_type | Media | Documentado | Fase 2 |
+| [F-41](F-41.md) | stock_levels y stock_movements son dos fuentes de verdad que ya divergieron | Alta (deuda estructural) | Documentado | Fase 3c |
 
 ## Notas
 

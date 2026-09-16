@@ -168,3 +168,28 @@ export function decidirBusquedaCatalogo(texto: string): DecisionBusqueda {
   }
   return { buscar: true, motivo: 'consulta_de_producto', tokens };
 }
+
+/**
+ * ¿El cliente esta preguntando por una talla, color, medida o presentacion de
+ * lo que ya se le mostro? "Que tienes talla 40?", "en 39?", "hay en rojo?",
+ * "el de 100 ml", "y en XL?". Estas palabras no nombran nada del catalogo, asi
+ * que una busqueda nueva no encuentra nada y el hilo se perdia: el bot decia
+ * "no tengo informacion de talla 40" con las tallas a un paso.
+ */
+export function pareceSeguimientoDeVariante(texto: string): boolean {
+  const n = normalizar(texto);
+  if (!n) return false;
+  const palabras = n.split(' ').filter(Boolean);
+  // Un seguimiento es corto: una frase larga con producto propio es otra consulta.
+  if (palabras.length > 8) return false;
+  const atributo = /\b(talla|tallas|tamano|tamanos|numero|medida|medidas|color|colores|presentacion|presentaciones|capacidad|litros?|mililitros|ml|cm|cc|onzas?|oz|kg|gramos|gr)\b/;
+  const tallaLetra = /\b(xxs|xs|s|m|l|xl|xxl|2xl|3xl|4xl)\b/;
+  const colorComun = /\b(negro|negra|negros|blanco|blanca|blancos|rojo|roja|azul|azules|verde|gris|beige|cafe|marron|rosa|rosado|morado|amarillo|naranja|dorado|plateado|crema)\b/;
+  const numero = /\b\d{1,3}([.,]\d)?\b/;
+  if (atributo.test(n)) return true;
+  // "en 39?", "y 40?", "el 8.5?": numero solo, con una o dos palabras de apoyo.
+  if (numero.test(n) && palabras.length <= 4) return true;
+  if (tallaLetra.test(n) && palabras.length <= 4) return true;
+  if (colorComun.test(n) && palabras.length <= 5) return true;
+  return false;
+}

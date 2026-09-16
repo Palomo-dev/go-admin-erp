@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { checkRateLimit } from '@/lib/security/rateLimit';
 import { loadMessages } from '@/lib/ai/agent/conversationStore';
 
@@ -98,6 +99,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   let ctx;
   try {
     ctx = await getServerOrgContext(request);
+    await readOrgBody(ctx, request);
   } catch (err) {
     if (err instanceof OrgContextError) {
       return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });

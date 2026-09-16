@@ -23,6 +23,8 @@
  * 18. `vercel.json` ↔ `src/lib/jobs/schedule.ts`: los crons de `/api/crm/jobs/run`
  *     son exactamente el drenaje total (`*\/DRAIN_INTERVAL_MIN`) y las claves de
  *     `VERCEL_SCHEDULE_KINDS`; ningún otro archivo cablea la cadencia.
+ * 20. Ningún archivo de src/ filtra `integration_connections` por
+ *     `status = 'active'`: el CHECK real es draft|connected|paused|error|revoked.
  */
 
 import * as fs from 'fs';
@@ -222,17 +224,54 @@ describe('F0 Guardarraíles', () => {
   });
 
   // === Caso 5: organizationId del body sin getServerOrgContext ===
-  describe('5. Ningún route.ts toma organizationId del body sin getServerOrgContext', () => {
+  describe('5. Rutas de escritura: la organización sale de la sesión y un body ajeno responde 403', () => {
     /**
-     * Deuda legacy conocida (NO CRM): rutas anteriores a F0 que aún leen el org
-     * del body/query con otra autenticación (Bearer + getUser, Stripe, cron,
-     * webhooks firmados propios). Cada fase que las toque debe migrarlas y
-     * quitarlas de esta lista. Prohibido añadir rutas nuevas.
+     * F0-SEC r2 (sub-parte C): el guardarraíl pasó de comparar a NIVEL DE
+     * ARCHIVO («aparece org en body» vs «aparece getServerOrgContext») a
+     * comprobar cada HANDLER EXPORTADO (`export async function POST` /
+     * `export const POST = withOrg(`…). Antes, un `POST` que leyera la
+     * organización del body pasaba solo porque el `GET` del mismo archivo
+     * tenía sesión (tester F0-SEC r1, fallo 6: `crm/renewals/sync`).
+     *
+     * Dos ámbitos:
+     *
+     * (A) ESTRICTO — `crm/**` y `ai-assistant/**`. Todo handler POST/PUT/PATCH/
+     *     DELETE debe cumplir las dos mitades de la regla dura 5:
+     *       (a) resolver la organización por sesión en el propio handler
+     *           (`withOrg(`, `getServerOrgContext(`, `getServerOrgContextFor(`,
+     *           `withWhatsAppRoute(`), y
+     *       (b) llamar al punto único que convierte una organización ajena en
+     *           403 + registro: `readOrgBody(` (`@/lib/security/organizationBody`)
+     *           o sus envoltorios `rejectForeignOrganization(` (F12/F13),
+     *           `foreignOrgResponse(` (F10) o `foreignOrganizationInBody(`.
+     *     La llamada puede vivir en un helper LOCAL del archivo que el handler
+     *     invoque. Quedan fuera automáticamente los handlers de cron
+     *     (`withCron(` / `verifyCronSecret(`) y los webhooks firmados
+     *     (`verify*` de `webhookSignatures`, `constructEvent`, documenso): ahí
+     *     no hay sesión y la organización sale de la firma o de la fila.
+     *     `STRICT_ALLOWLIST`: rutas que todavía no cumplen (b), con motivo.
+     *     Prohibido añadir entradas nuevas sin motivo; quitar cuando se migren.
+     *
+     * (B) LEGACY — resto de `src/app/api`: si un handler lee la organización
+     *     del body/query, ese MISMO handler debe tener el contexto de sesión.
+     *     `ALLOWLIST` = deuda anterior a F0 (Bearer + getUser, Stripe, cron,
+     *     webhooks propios). Cada fase que las toque debe migrarlas y quitarlas.
      */
+    const STRICT_ALLOWLIST = new Map<string, string>([
+      // Propiedad de la sesión F10–F13 (2026-09-15): handlers que aún no llaman al
+      // punto único. Cambio exacto por archivo en
+      // docs/crm-revenue-os/rondas/F0-SEC-CD-builder-r2.md §(b). Sus POST/PATCH con
+      // body ya usan `rejectForeignOrganization`; faltan los DELETE/POST sin body.
+      ['app/api/crm/health/[customerId]/route.ts', 'F11: POST sin lectura de body → añadir `await readOrgBody(ctx, request)`'],
+      ['app/api/crm/onboarding/templates/route.ts', 'F11: POST → `readOrgBody(ctx, request)` en vez de request.json()'],
+      ['app/api/crm/partners/[id]/route.ts', 'F12: DELETE sin body → `await readOrgBody(ctx, request)`'],
+      ['app/api/crm/partners/tiers/[id]/route.ts', 'F12: DELETE sin body → idem'],
+      ['app/api/crm/payments/register/route.ts', 'F10: POST → `readOrgBody(ctx, request)` en vez de request.json()'],
+      ['app/api/crm/referrals/programs/[id]/route.ts', 'F12: DELETE sin body → idem'],
+    ]);
+
     const ALLOWLIST = new Set<string>([
       'app/api/categorias/reglas/route.ts',
-      'app/api/crm/health/recalculate/route.ts', // cron fail-closed con verifyCronSecret; body.organization_id solo acota la pasada (F11)
-      'app/api/crm/voice-agents/campaigns/run/route.ts', // cron fail-closed (F6 lo migra a withCron)
       'app/api/dian/lookup/route.ts',
       'app/api/domains/purchase/route.ts',
       'app/api/integrations/meta/setup/route.ts',
@@ -261,7 +300,6 @@ describe('F0 Guardarraíles', () => {
       'app/api/integrations/meta/oauth/authorize/route.ts',
       'app/api/integrations/meta/product-sync/route.ts',
       'app/api/integrations/open-finance/consents/route.ts',
-      'app/api/integrations/open-finance/consents/stats/route.ts',
       'app/api/integrations/open-finance/links/route.ts',
       'app/api/integrations/open-finance/refresh-balances/route.ts',
       'app/api/integrations/open-finance/sync/route.ts',
@@ -294,37 +332,168 @@ describe('F0 Guardarraíles', () => {
       /\{[^}]*\b(organizationId|organization_id|orgId)\b[^}]*\}\s*=\s*(await\s+)?(request|req)\.json\(\)/,
       /\{[^}]*\b(organizationId|organization_id|orgId)\b[^}]*\}\s*=\s*body\b/,
     ];
+    const SESSION_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withWhatsAppRoute)\s*\(/;
+    const CRON_RE = /\b(withCron|verifyCronSecret)\s*\(/;
+    const WEBHOOK_RE = /\b(verifyTwilioWebhook|verifyTwilioRequest|verifyMetaSignature|verifyResendWebhook|constructEvent|verifyDocumensoWebhook|verifyElevenLabsWebhook)\s*\(|webhooks\.constructEvent|isPlaceholderCredential/;
+    const FOREIGN_RE = /\b(readOrgBody|rejectForeignOrganization|foreignOrgResponse|foreignOrganizationInBody)(?:<[^>]*>)?\s*\(/;
+    const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+    const HANDLER_RE = /^export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE)\b/;
+    const TOP_LEVEL_RE = /^(export\s|async function |function |const |let |type |interface )/;
 
-    const violations: string[] = [];
-    const staleAllowlist: string[] = [];
+    type Handler = { method: string; text: string };
+
+    /** Divide un route.ts (sin comentarios) en sus handlers exportados. */
+    function splitHandlers(content: string): Handler[] {
+      const lines = content.split(/\r?\n/);
+      const starts: Array<{ line: number; method: string }> = [];
+      lines.forEach((l, i) => {
+        const m = HANDLER_RE.exec(l);
+        if (m) starts.push({ line: i, method: m[1] });
+      });
+      return starts.map(({ line, method }, k) => {
+        let end = k + 1 < starts.length ? starts[k + 1].line : lines.length;
+        for (let t = line + 1; t < end; t++) {
+          if (TOP_LEVEL_RE.test(lines[t])) {
+            end = t;
+            break;
+          }
+        }
+        return { method, text: lines.slice(line, end).join('\n') };
+      });
+    }
+
+    /** Nombres de funciones/constantes locales cuyo cuerpo contiene `re`. */
+    function localHelpersMatching(content: string, re: RegExp): string[] {
+      const names: string[] = [];
+      const declRe = /^(?:async\s+)?function\s+(\w+)\s*\(|^const\s+(\w+)\s*=\s*(?:async\s*)?(?:\(|function)/gm;
+      const decls: Array<{ name: string; start: number }> = [];
+      let m: RegExpExecArray | null;
+      while ((m = declRe.exec(content))) decls.push({ name: m[1] ?? m[2], start: m.index });
+      decls.forEach((d, i) => {
+        const end = i + 1 < decls.length ? decls[i + 1].start : content.length;
+        if (re.test(content.slice(d.start, end))) names.push(d.name);
+      });
+      return names;
+    }
+
+    function usesHelper(handler: Handler, helpers: string[]): boolean {
+      return helpers.some((h) => new RegExp(`\\b${h}\\s*\\(|\\b${h}\\b\\s*[;,)]`).test(handler.text));
+    }
+
+    /** Reconoce `export const POST = handle;` / `withCron(handle)` / `withOrg(handler)`: el cuerpo real es el helper. */
+    function inlineAliases(handler: Handler, content: string): string {
+      const alias = /=\s*(?:\w+\()?\s*(\w+)\s*\)?\s*;?\s*$/.exec(handler.text.split('\n')[0]);
+      if (!alias) return handler.text;
+      const helperRe = new RegExp(`^(?:async\\s+)?function\\s+${alias[1]}\\s*\\(|^const\\s+${alias[1]}\\s*=`, 'm');
+      const start = content.search(helperRe);
+      if (start < 0) return handler.text;
+      const rest = content.slice(start + 1);
+      const next = rest.search(TOP_LEVEL_RE.source.replace('^', '\\n'));
+      return handler.text + '\n' + (next >= 0 ? rest.slice(0, next) : rest);
+    }
+
+    const strictViolations: string[] = [];
+    const strictStale: string[] = [];
+    const legacyViolations: string[] = [];
+    const legacyStale: string[] = [];
 
     beforeAll(() => {
-      const routes = walkDir(path.join(SRC_ROOT, 'app', 'api'))
-        .filter((f) => !isExcluded(f) && /route\.ts$/.test(f));
-      const offenders = new Set<string>();
+      const apiRoot = path.join(SRC_ROOT, 'app', 'api');
+      const routes = walkDir(apiRoot).filter((f) => !isExcluded(f) && /route\.ts$/.test(f));
+      const strictOffenders = new Set<string>();
+      const legacyOffenders = new Set<string>();
+
       for (const file of routes) {
-        const content = stripAllComments(readFile(file));
-        const usesBodyOrg = BODY_ORG_PATTERNS.some((p) => p.test(content));
-        if (!usesBodyOrg) continue;
-        const hasCtx = /getServerOrgContext|withOrg\(/.test(content);
-        if (!hasCtx) offenders.add(rel(file));
+        const relPath = rel(file);
+        let content: string;
+        try {
+          content = stripAllComments(readFile(file));
+        } catch (err) {
+          // Archivos transitorios de otros agentes (tester r1, fallo 14): saltar, no caer.
+          if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue;
+          throw err;
+        }
+        const handlers = splitHandlers(content).map((h) => ({ ...h, text: inlineAliases(h, content) }));
+        const strict = /^app\/api\/(crm|ai-assistant)\//.test(relPath);
+        // `crm/webhooks/**` no tiene sesión por diseño: la organización sale de la
+        // firma (Stripe `constructEvent`, Documenso, ElevenLabs) o de la fila.
+        // Que verifiquen firma lo vigila el guardarraíl 7 y la sub-parte A.
+        if (/^app\/api\/crm\/webhooks\//.test(relPath)) continue;
+        const sessionHelpers = localHelpersMatching(content, SESSION_RE);
+        const foreignHelpers = localHelpersMatching(content, FOREIGN_RE);
+        const cronHelpers = localHelpersMatching(content, CRON_RE);
+        const webhookHelpers = localHelpersMatching(content, WEBHOOK_RE);
+
+        for (const h of handlers) {
+          if (!WRITE_METHODS.has(h.method)) continue;
+          const hasSession = SESSION_RE.test(h.text) || usesHelper(h, sessionHelpers);
+          const isCron = CRON_RE.test(h.text) || usesHelper(h, cronHelpers);
+          const isWebhook = WEBHOOK_RE.test(h.text) || usesHelper(h, webhookHelpers);
+          const hasForeign = FOREIGN_RE.test(h.text) || usesHelper(h, foreignHelpers);
+
+          if (strict) {
+            if (isCron || isWebhook) continue;
+            if (!hasSession || !hasForeign) strictOffenders.add(relPath);
+            continue;
+          }
+          const usesBodyOrg = BODY_ORG_PATTERNS.some((p) => p.test(h.text));
+          if (usesBodyOrg && !hasSession) legacyOffenders.add(relPath);
+        }
       }
-      for (const f of offenders) if (!ALLOWLIST.has(f)) violations.push(f);
-      for (const f of ALLOWLIST) if (!offenders.has(f)) staleAllowlist.push(f);
+
+      for (const f of strictOffenders) if (!STRICT_ALLOWLIST.has(f)) strictViolations.push(f);
+      for (const f of STRICT_ALLOWLIST.keys()) if (!strictOffenders.has(f)) strictStale.push(f);
+      for (const f of legacyOffenders) if (!ALLOWLIST.has(f)) legacyViolations.push(f);
+      for (const f of ALLOWLIST) if (!legacyOffenders.has(f)) legacyStale.push(f);
     });
 
-    test('rutas CRM/IA/mensajería resuelven la org por sesión', () => {
-      if (violations.length > 0) {
-        console.error('route.ts con org del body sin getServerOrgContext:\n' + violations.join('\n'));
+    test('todo handler de escritura de crm/** y ai-assistant/** resuelve la org por sesión Y llama a readOrgBody (403 ante org ajena)', () => {
+      if (strictViolations.length > 0) {
+        console.error('handlers POST/PUT/PATCH/DELETE sin sesión o sin readOrgBody:\n' + strictViolations.sort().join('\n'));
       }
-      expect(violations).toEqual([]);
+      expect(strictViolations.sort()).toEqual([]);
     });
 
-    test('la allow-list no contiene entradas obsoletas (ya migradas)', () => {
-      if (staleAllowlist.length > 0) {
-        console.error('Quitar de ALLOWLIST (ya no usan org del body):\n' + staleAllowlist.join('\n'));
+    test('la allow-list estricta no contiene entradas obsoletas (ya adoptaron readOrgBody)', () => {
+      if (strictStale.length > 0) {
+        console.error('Quitar de STRICT_ALLOWLIST (ya cumplen):\n' + strictStale.join('\n'));
       }
-      expect(staleAllowlist).toEqual([]);
+      expect(strictStale).toEqual([]);
+    });
+
+    test('fuera del CRM, ningún handler toma la organización del body sin sesión en ese mismo handler', () => {
+      if (legacyViolations.length > 0) {
+        console.error('handlers con org del body sin getServerOrgContext:\n' + legacyViolations.join('\n'));
+      }
+      expect(legacyViolations).toEqual([]);
+    });
+
+    test('la allow-list legacy no contiene entradas obsoletas (ya migradas)', () => {
+      if (legacyStale.length > 0) {
+        console.error('Quitar de ALLOWLIST (ya no usan org del body):\n' + legacyStale.join('\n'));
+      }
+      expect(legacyStale).toEqual([]);
+    });
+
+    test('el divisor por handler distingue un POST cron de un GET con sesión en el mismo archivo (fallo 6 del tester r1)', () => {
+      const sample = [
+        "export async function POST(request: Request) {",
+        "  verifyCronSecret(request);",
+        "  const body = await request.json();",
+        "  const org = body.organization_id;",
+        "  return Response.json({ org });",
+        "}",
+        "",
+        "export async function GET() {",
+        "  const ctx = await getServerOrgContext();",
+        "  return Response.json({ ctx });",
+        "}",
+      ].join('\n');
+      const handlers = splitHandlers(sample);
+      expect(handlers.map((h) => h.method)).toEqual(['POST', 'GET']);
+      expect(SESSION_RE.test(handlers[0].text)).toBe(false);
+      expect(CRON_RE.test(handlers[0].text)).toBe(true);
+      expect(SESSION_RE.test(handlers[1].text)).toBe(true);
     });
   });
 
@@ -448,7 +617,7 @@ describe('F0 Guardarraíles', () => {
     const ALLOWLIST = new Map<string, string>([
       ['app/api/webhooks/facebook/[channelId]/route.ts', 'metaMessagingService.verifySignature (X-Hub-Signature-256)'],
       ['app/api/webhooks/instagram/[channelId]/route.ts', 'metaMessagingService.verifySignature (X-Hub-Signature-256)'],
-      ['app/api/email/webhook/route.ts', 'svix inline en emailService.handleEmailWebhook (F7 lo migra a verifyResendWebhook)'],
+      ['app/api/email/webhook/route.ts', 'verifyResendWebhook se llama dentro de crm/email/webhookService.ts (F7), no en la ruta; la ruta solo importa webhookErrorResponse/WebhookError'],
     ]);
 
     const violations: string[] = [];
@@ -1024,6 +1193,57 @@ describe('F0 Guardarraíles', () => {
       const body = src.slice(src.indexOf('export async function withAICreditsCheck'));
       expect(body).toMatch(/return withAiCharge\(/);
       expect(body).not.toMatch(/consumeAICredits\(/);
+    });
+  });
+  // === Caso 20: integration_connections nunca se filtra por 'active' ===
+  //
+  // Seis webhooks (mercadopago, meta ×2, paypal, payu, stripe) buscaban su
+  // conexión con `.eq('status', 'active')`. Verificado por MCP el 2026-09-15:
+  // el CHECK `integration_connections_status_check` admite solo
+  // draft|connected|paused|error|revoked, y las conexiones reales están en
+  // `connected`. Ninguna de esas rutas encontraba jamás la conexión: el
+  // proveedor recibía `verified: false` y nadie se enteraba.
+  //
+  // El único estado utilizable vive en `INTEGRATION_CONNECTION_USABLE_STATUS`
+  // (`src/lib/integrations/connectionStatus.ts`). F10 definió antes
+  // `STRIPE_CONNECTION_USABLE_STATUS` en el CRM; las dos deben seguir iguales.
+  //
+  // OJO: `integration_credentials.status` SÍ admite 'active'
+  // (active|expired|revoked|rotating). Esta guarda es solo para
+  // `integration_connections`, dentro de una misma sentencia (sin `;` en medio).
+  describe('20. Ningún archivo filtra integration_connections por status = active', () => {
+    const pattern = /\.from\(\s*['"]integration_connections['"]\s*\)[^;]*?\.eq\(\s*['"]status['"]\s*,\s*['"]active['"]\s*\)/;
+
+    test('ningún archivo de src/ (ni ws-server.ts) usa el estado inexistente', () => {
+      const offenders = walkDir(SRC_ROOT)
+        .filter((f) => !isExcluded(f))
+        .filter((f) => pattern.test(stripAllComments(readFile(f))))
+        .map(rel);
+      const ws = path.join(REPO_ROOT, 'ws-server.ts');
+      if (fs.existsSync(ws) && pattern.test(stripAllComments(readFile(ws)))) offenders.push('ws-server.ts');
+      expect(offenders).toEqual([]);
+    });
+
+    test('la constante compartida es connected y coincide con la del CRM (F10)', () => {
+      const shared = stripAllComments(readFile(path.join(SRC_ROOT, 'lib/integrations/connectionStatus.ts')));
+      expect(shared).toMatch(/INTEGRATION_CONNECTION_USABLE_STATUS(?::\s*IntegrationConnectionStatus)?\s*=\s*'connected'/);
+      const crm = stripAllComments(readFile(path.join(SRC_ROOT, 'lib/services/crm/stripePaymentLinkService.ts')));
+      expect(crm).toMatch(/STRIPE_CONNECTION_USABLE_STATUS\s*=\s*'connected'/);
+    });
+
+    test('los seis handlers corregidos usan la constante compartida', () => {
+      const routes = [
+        'app/api/integrations/mercadopago/webhook/route.ts',
+        'app/api/integrations/meta/product-sync/route.ts',
+        'app/api/integrations/meta/webhook/route.ts',
+        'app/api/integrations/paypal/webhook/route.ts',
+        'app/api/integrations/payu/webhook/route.ts',
+        'app/api/integrations/stripe/webhook/route.ts',
+      ];
+      for (const r of routes) {
+        const src = stripAllComments(readFile(path.join(SRC_ROOT, r)));
+        expect(src).toMatch(/\.from\(\s*['"]integration_connections['"]\s*\)[^;]*?\.eq\(\s*['"]status['"]\s*,\s*INTEGRATION_CONNECTION_USABLE_STATUS\s*\)/);
+      }
     });
   });
 });

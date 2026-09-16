@@ -223,4 +223,120 @@ export const consultarStock: ToolDefinition<ConsultarStockArgs> = {
   },
 };
 
-export const CONSULTA_TOOLS = [buscarProductos, consultarStock];
+interface BuscarProveedoresArgs {
+  consulta: string;
+}
+
+/**
+ * Sin esta herramienta, `crear_orden_compra` obliga al usuario a dictar el
+ * identificador numérico del proveedor. Búsqueda simple por nombre o NIT: los
+ * proveedores de una organización se cuentan por decenas, no por miles.
+ */
+export const buscarProveedores: ToolDefinition<BuscarProveedoresArgs> = {
+  name: 'buscar_proveedores',
+  description:
+    'Busca proveedores de la organización por nombre o NIT. Úsala antes de crear una orden de compra: nunca inventes un supplier_id.',
+  parameters: {
+    type: 'object',
+    properties: {
+      consulta: { type: 'string', description: 'Nombre (o parte) o NIT del proveedor. Vacío para listar los primeros.' },
+    },
+    required: ['consulta'],
+    additionalProperties: false,
+  },
+  risk: 'low',
+  permissions: ['inventory.view', 'inventory_management'],
+  minLevel: 'read',
+  requiredModule: 'inventory',
+  availableInVoice: true,
+
+  parseArgs(raw: unknown): BuscarProveedoresArgs | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const q = (raw as Record<string, unknown>).consulta;
+    return { consulta: typeof q === 'string' ? q.trim().slice(0, 80) : '' };
+  },
+
+  async preview(): Promise<ToolPreview> {
+    return READ_PREVIEW;
+  },
+
+  async execute(ctx: ToolContext, args: BuscarProveedoresArgs): Promise<ToolResult> {
+    let query = ctx.supabase
+      .from('suppliers')
+      .select('id, name, nit, contact, phone, email')
+      .eq('organization_id', ctx.organizationId)
+      .order('name', { ascending: true })
+      .limit(10);
+    if (args.consulta) {
+      // `%` y `_` son comodines de ILIKE: se escapan para que "100%" no
+      // busque "cualquier cosa".
+      const safe = args.consulta.replace(/[%_\\]/g, (c) => `\\${c}`);
+      query = query.or(`name.ilike.%${safe}%,nit.ilike.%${safe}%`);
+    }
+    const { data, error } = await query;
+    if (error) {
+      return { ok: false, errorCode: 'query_error', message: `No pude buscar proveedores: ${error.message}` };
+    }
+    const rows = (data ?? []) as Array<{
+      id: number;
+      name: string;
+      nit: string | null;
+      contact: string | null;
+      phone: string | null;
+      email: string | null;
+    }>;
+    return {
+      ok: true,
+      message:
+        rows.length === 0
+          ? `No encontré proveedores que coincidan con "${args.consulta}".`
+          : `${rows.length} proveedor${rows.length === 1 ? '' : 'es'} encontrado${rows.length === 1 ? '' : 's'}.`,
+      data: { proveedores: rows.map((r) => ({ id: r.id, nombre: r.name, nit: r.nit, contacto: r.contact })) },
+    };
+  },
+};
+
+/** Las sucursales activas, para traslados y para saber dónde registrar. */
+export const listarSucursales: ToolDefinition<Record<string, never>> = {
+  name: 'listar_sucursales',
+  description:
+    'Lista las sucursales activas de la organización con su identificador. Úsala antes de un traslado: nunca inventes un branch_id.',
+  parameters: { type: 'object', properties: {}, additionalProperties: false },
+  risk: 'low',
+  permissions: [],
+  minLevel: 'read',
+  requiredModule: null,
+  availableInVoice: true,
+
+  parseArgs(): Record<string, never> {
+    return {};
+  },
+
+  async preview(): Promise<ToolPreview> {
+    return READ_PREVIEW;
+  },
+
+  async execute(ctx: ToolContext): Promise<ToolResult> {
+    const { data, error } = await ctx.supabase
+      .from('branches')
+      .select('id, name, is_main, city')
+      .eq('organization_id', ctx.organizationId)
+      .eq('is_active', true)
+      .order('is_main', { ascending: false })
+      .order('name', { ascending: true });
+    if (error) {
+      return { ok: false, errorCode: 'query_error', message: `No pude leer las sucursales: ${error.message}` };
+    }
+    const rows = (data ?? []) as Array<{ id: number; name: string; is_main: boolean | null; city: string | null }>;
+    return {
+      ok: true,
+      message: `${rows.length} sucursal${rows.length === 1 ? '' : 'es'} activa${rows.length === 1 ? '' : 's'}.`,
+      data: {
+        sucursales: rows.map((r) => ({ id: r.id, nombre: r.name, principal: Boolean(r.is_main), ciudad: r.city })),
+        actual: ctx.branchId,
+      },
+    };
+  },
+};
+
+export const CONSULTA_TOOLS = [buscarProductos, consultarStock, buscarProveedores, listarSucursales];

@@ -16,6 +16,7 @@ import { makeSupabase } from '@/lib/services/crm/whatsapp/__tests__/mockSupabase
 jest.mock('@/lib/utils/orgContext', () => ({
   getServerOrgContext: async () => ({ organizationId: 7, userId: 'user-1', memberId: 3, role: 'admin', supabase: {} }),
   requireOrgAdmin: () => undefined,
+  requireOrgAdminOrPermission: async () => undefined, // F0-SEC r2: withWhatsAppRoute({ admin }) usa la variante con permiso
   isOrgAdminContext: () => true,
   OrgContextError: class OrgContextError extends Error { code = 'X'; statusCode = 401; },
 }));

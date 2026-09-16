@@ -290,3 +290,24 @@ export interface ShipmentGuidePrintPayload {
 
   notes?: string;
 }
+
+/**
+ * Tipo de trabajo tal como lo acepta `printToDevice`: los documentos de
+ * `TicketKind` mas la apertura de cajon, que no imprime nada.
+ */
+export type PrintJobType = TicketKind | 'open_cash_drawer';
+
+/**
+ * Sobre que el POS envia al agente local por `POST /print` (Go Admin Desktop:
+ * `window.goAdminDesktop.printRaw(printerId, sobre)` -> IPC -> discovery server).
+ *
+ * Viaja la fila completa de `printers` porque el agente no puede consultarla
+ * en Supabase cuando no hay internet: el POS ya la tiene resuelta (de red o
+ * de su cache offline) y es la misma que usaria el agente para un
+ * `print_jobs`. El agente sigue siendo quien da formato al ticket.
+ */
+export interface LocalPrintRequest<TPrinter = unknown, TPayload = unknown> {
+  jobType: PrintJobType;
+  printer: TPrinter;
+  payload: TPayload;
+}

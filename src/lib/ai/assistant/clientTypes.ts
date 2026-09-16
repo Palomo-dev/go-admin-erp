@@ -22,6 +22,46 @@ export interface PendingAction {
   fields: ActionFieldDef[];
   /** ISO. Pasada esta hora la propuesta ya no se puede confirmar. */
   expiresAt: string;
+  /**
+   * Lo que la herramienta calculó para que el usuario confirme con criterio:
+   * líneas con nombres reales, avisos, totales y, en carga masiva, la tabla.
+   * Solo lo traen las acciones del agente; las del catálogo viejo van con
+   * `fields`.
+   */
+  preview?: ActionPreview;
+}
+
+export interface ActionPreviewLine {
+  label: string;
+  value: string;
+  confidence?: number;
+}
+
+export interface BulkPreviewRow {
+  n: number;
+  estado: 'nuevo' | 'existente' | 'error';
+  nombre: string;
+  sku: string | null;
+  barcode: string | null;
+  precio: number | null;
+  costo: number | null;
+  stock: number | null;
+  coincide: 'sku' | 'barcode' | 'nombre' | null;
+  motivo: string | null;
+}
+
+export interface ActionPreview {
+  lines: ActionPreviewLine[];
+  warnings: string[];
+  totals?: Record<string, string>;
+  reversible: boolean;
+  bulk?: {
+    total: number;
+    nuevos: number;
+    duplicados: number;
+    conErrores: number;
+    rows: BulkPreviewRow[];
+  };
 }
 
 export interface DynamicOptions {

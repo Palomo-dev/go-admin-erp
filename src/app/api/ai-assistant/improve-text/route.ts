@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { consumeAICredits } from '@/lib/services/aiCreditsService';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
+import { readOrgBody } from '@/lib/security/organizationBody';
 export const dynamic = 'force-dynamic';
 
 function getOpenAIClient(): OpenAI {
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
   const organizationId = ctx.organizationId;
 
   try {
-    const { productName, currentDescription, type, spaceType, zone, services } = await request.json();
+    const { productName, currentDescription, type, spaceType, zone, services } = await readOrgBody(ctx, request);
 
     if (!productName) {
       return NextResponse.json(
@@ -118,6 +119,7 @@ Responde SOLO con las notas, sin explicaciones adicionales.`;
 
     return NextResponse.json({ improvedText });
   } catch (error: any) {
+    if (error instanceof OrgContextError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     console.error('Error mejorando texto:', error);
     return NextResponse.json(
       { error: error.message || 'Error mejorando texto' },

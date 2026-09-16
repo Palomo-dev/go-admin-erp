@@ -3,7 +3,13 @@
 // Llama a las RPCs: fn_reporte_cxc_aging, fn_reporte_cxp_aging, fn_reporte_flujo_efectivo, fn_reporte_impuestos
 // ============================================================
 
-import { supabase } from '@/lib/supabase/config';
+import { supabase as browserSupabase } from '@/lib/supabase/config';
+import type { ReportesClient } from '../types';
+// F0-SEC r3 (tester r2, fallo 3): `fetch` acepta el cliente de Supabase por
+// parámetro. En el navegador (app/reportes) cae al cliente browser con la sesión
+// del usuario; en el servidor (asistente de reportes) el route handler pasa el
+// cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
+// corren como `authenticated` miembro y nunca como `anon`.
 import { getOrgDateRange } from '@/lib/utils/timezone';
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
@@ -29,8 +35,9 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Facturas vencidas agrupadas por cliente y antigüedad',
     categoria: 'financiero',
     periodosSugeridos: ['diario'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      let query = supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      let query = db
         .from('accounts_receivable')
         .select('id, customer_id, invoice_id, amount, balance, due_date, days_overdue, status, branch_id, discount_amount, created_at, customers(first_name, last_name, customer_type, company_name)')
         .eq('organization_id', orgId)
@@ -45,7 +52,7 @@ export const finanzasReports: ReportDefinition[] = [
       const rawData = data ?? [];
 
       const branchIds = [...new Set(rawData.map((r: Record<string, unknown>) => Number(r.branch_id)).filter(Boolean))];
-      const { data: sucursales } = await supabase
+      const { data: sucursales } = await db
         .from('branches')
         .select('id, name')
         .in('id', branchIds);
@@ -137,8 +144,9 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Aging de cartera: corriente, 1-30, 31-60, 61-90, +90 días',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase.rpc('fn_reporte_cxc_aging', {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db.rpc('fn_reporte_cxc_aging', {
         p_organization_id: orgId,
         p_as_of: periodo.fechaFin,
         p_branch_id: branchId ?? null,
@@ -161,7 +169,7 @@ export const finanzasReports: ReportDefinition[] = [
         rango: bucketLabel[String(b.bucket ?? '')] ?? String(b.bucket ?? '—'),
       }));
 
-      let detalleQuery = supabase
+      let detalleQuery = db
         .from('accounts_receivable')
         .select('id, customer_id, amount, balance, due_date, days_overdue, status, customers(first_name, last_name, customer_type, company_name)')
         .eq('organization_id', orgId)
@@ -251,8 +259,9 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Aging de cuentas por pagar al proveedor',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase.rpc('fn_reporte_cxp_aging', {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db.rpc('fn_reporte_cxp_aging', {
         p_organization_id: orgId,
         p_as_of: periodo.fechaFin,
         p_branch_id: branchId ?? null,
@@ -275,7 +284,7 @@ export const finanzasReports: ReportDefinition[] = [
         rango: bucketLabel[String(b.bucket ?? '')] ?? String(b.bucket ?? '—'),
       }));
 
-      let detalleQuery = supabase
+      let detalleQuery = db
         .from('accounts_payable')
         .select('id, supplier_id, invoice_id, amount, balance, due_date, days_overdue, status, branch_id, suppliers(name)')
         .eq('organization_id', orgId)
@@ -289,7 +298,7 @@ export const finanzasReports: ReportDefinition[] = [
       const rawData = detalleData ?? [];
 
       const branchIds = [...new Set(rawData.map((r: Record<string, unknown>) => Number(r.branch_id)).filter(Boolean))];
-      const { data: sucursales } = await supabase
+      const { data: sucursales } = await db
         .from('branches')
         .select('id, name')
         .in('id', branchIds);
@@ -387,12 +396,13 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Flujo operativo, inversión y financiación del período',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await supabase.rpc('fn_reporte_flujo_efectivo', {
+      const { data, error } = await db.rpc('fn_reporte_flujo_efectivo', {
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
@@ -430,12 +440,13 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'IVA generado, IVA descontable y retenciones del período',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await supabase.rpc('fn_reporte_impuestos', {
+      const { data, error } = await db.rpc('fn_reporte_impuestos', {
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
@@ -470,8 +481,9 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Proyección de liquidez basada en CxC y CxP pendientes',
     categoria: 'financiero',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      let cxcQuery = supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      let cxcQuery = db
         .from('accounts_receivable')
         .select('balance, due_date')
         .eq('organization_id', orgId)
@@ -479,7 +491,7 @@ export const finanzasReports: ReportDefinition[] = [
       cxcQuery = applyBranchFilter(cxcQuery, branchId);
       const { data: cxc } = await cxcQuery;
 
-      let cxpQuery = supabase
+      let cxpQuery = db
         .from('accounts_payable')
         .select('balance, due_date')
         .eq('organization_id', orgId)
@@ -516,12 +528,13 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Gastos por categoría y sucursal',
     categoria: 'financiero',
     periodosSugeridos: ['quincenal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      let gastosQuery = supabase
+      let gastosQuery = db
         .from('journal_lines')
         .select('account_code, debit_base, credit_base, description, journal_entries!inner(entry_date, branch_id)')
         .eq('organization_id', orgId)
@@ -568,12 +581,13 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Resumen de facturas electrónicas emitidas y estado DIAN',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      let facturacionQuery = supabase
+      let facturacionQuery = db
         .from('invoice_sales')
         .select('id, subtotal, tax_total, total, balance, status, document_type, issue_date')
         .eq('organization_id', orgId)
@@ -591,7 +605,7 @@ export const finanzasReports: ReportDefinition[] = [
       })) as Record<string, unknown>[];
 
       const invoiceIds = rawData.map((f) => f.id);
-      const { data: jobsData } = await supabase
+      const { data: jobsData } = await db
         .from('electronic_invoicing_jobs')
         .select('invoice_id, status, cufe, provider, processed_at, error_message')
         .in('invoice_id', invoiceIds)
@@ -714,12 +728,13 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Margen por producto: ingreso vs costo',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await supabase.rpc('fn_reporte_rotacion_inventario', {
+      const { data, error } = await db.rpc('fn_reporte_rotacion_inventario', {
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
@@ -753,12 +768,13 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Ingresos, costos y margen por sucursal',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await supabase.rpc('fn_reporte_ventas_resumen', {
+      const { data, error } = await db.rpc('fn_reporte_ventas_resumen', {
         p_organization_id: orgId,
         p_from: start,
         p_to: end,

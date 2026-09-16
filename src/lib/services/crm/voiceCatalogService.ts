@@ -331,3 +331,10 @@ export async function cloneVoiceFromSample(
     requires_verification: created.requires_verification === true,
   };
 }
+
+/**
+ * Tope del cuerpo entero: 5 muestras × 10 MB más 1 MB de margen para los campos
+ * de texto y los separadores del multipart. Se compara con `content-length`
+ * ANTES de leer nada; un cuerpo sin cabecera sigue acotado por `size` por muestra.
+ */
+export const MAX_CLONE_REQUEST_BYTES = MAX_VOICE_SAMPLES * MAX_VOICE_SAMPLE_BYTES + 1024 * 1024;

@@ -183,14 +183,19 @@ export const SETTING_FIELDS: Partial<Record<`${ProviderCategory}:${string}`, Set
  * Se exige que el resto sea UNIFORME (no basta con "contiene una racha"), para
  * no marcar como ejemplo una clave real que termine en una racha de ceros —
  * caso ya cubierto por `providerConfigContract.tester`.
+ *
+ * F0-SEC r3 (tester r2, hueco 4): el relleno `=`/`==` final de base64 se quita
+ * antes de comprobar la uniformidad. `AAAA…A=` (base64 de 32 bytes cero, el
+ * ejemplo típico de la documentación) es relleno igual que `AAAA…A`.
  */
 function isFillerCredential(v: string): boolean {
+  const unpadded = v.replace(/={1,2}$/, '');
   // El prefijo de proveedor puede ser `SK`, `AP`, `sk-`, `re_`, `whsec_`…
-  const body = v.replace(/^[A-Za-z]{0,8}[-_.]?/, '');
+  const body = unpadded.replace(/^[A-Za-z]{0,8}[-_.]?/, '');
   if (body.length >= 6 && /^(.)\1*$/.test(body)) return true;
   // Relleno corto sin prefijo ('0000', 'xxxx'): un solo carácter repetido ≥ 4
   // veces nunca es una credencial (QA r1 bajo 18).
-  return v.length >= 4 && /^(.)\1*$/.test(v);
+  return unpadded.length >= 4 && /^(.)\1*$/.test(unpadded);
 }
 
 /**
@@ -216,6 +221,21 @@ const PLACEHOLDER_PREFIXES = [
   'cambia-esto', 'cambiame', 'cambia-me', 'genera-uno', 'generate-', 'todo-', 'todo_', 'fixme',
   'example-', 'example_', 'dummy-', 'dummy_', 'placeholder-', 'placeholder_',
 ];
+
+/**
+ * Marcas de relleno que lo son en CUALQUIER posición (F0-SEC r3, tester r2
+ * hueco 5: `1234changeme5678` pasaba). Son secuencias que un secreto aleatorio
+ * real no contiene: aparecer dentro del valor ya lo delata.
+ */
+const PLACEHOLDER_ANYWHERE = ['changeme', 'change-me', 'change_me', 'replaceme', 'replace-me', 'replace_me', 'cambia-esto', 'cambiame'];
+
+/**
+ * Valor compuesto SOLO por palabras de relleno, pegadas o separadas por
+ * `-`/`_`/`.` (F0-SEC r3, tester r2 hueco 5): `undefinedundefined`,
+ * `undefined-undefined`, `null_null`, `secret.secret`. Es lo que produce una
+ * plantilla mal interpolada (`${A}${B}` con las dos sin definir).
+ */
+const PLACEHOLDER_WORDS_ONLY = new RegExp(`^(?:(?:${Array.from(PLACEHOLDER_WORDS).join('|')})[-_.]?){2,}$`);
 
 /**
  * Detecta valores de ejemplo de `.env.example` (p. ej. `your-...`, `sk-your...`,
@@ -250,6 +270,8 @@ export function isPlaceholderCredential(value: unknown): boolean {
   const word = lower.replace(/^[a-z]{0,8}[-_.]?/, '');
   if (PLACEHOLDER_WORDS.has(lower) || PLACEHOLDER_WORDS.has(word)) return true;
   if (PLACEHOLDER_PREFIXES.some((p) => lower.startsWith(p) || word.startsWith(p))) return true;
+  if (PLACEHOLDER_ANYWHERE.some((p) => lower.includes(p))) return true;
+  if (PLACEHOLDER_WORDS_ONLY.test(lower) || PLACEHOLDER_WORDS_ONLY.test(word)) return true;
   if (isFillerCredential(v)) return true;
   return false;
 }

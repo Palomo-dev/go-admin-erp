@@ -1,8 +1,9 @@
 -- F0-SEC r2 (sub-parte D) — límite de tasa persistente y atómico.
 --
--- ESTADO: PENDIENTE DE APLICAR (no se ejecutó por el MCP en la ronda que la
--- escribió). Orden de despliegue: aplicar esta migración → poner
--- RATE_LIMIT_STORE=db en Vercel → desplegar. Sin la migración, el código sigue
+-- ESTADO: APLICADA el 2026-09-16 por el MCP (crm_v4_f0sec_rate_limit_buckets),
+-- dry-run funcional previo verde (2 claves, 2.ª llamada bloqueada sin registrar
+-- la 1.ª). Orden de despliegue restante: poner RATE_LIMIT_STORE=db en Vercel →
+-- desplegar. Sin la migración, el código sigue
 -- en modo memoria (por instancia) y lo avisa una vez por proceso.
 --
 -- Qué resuelve: `twilio/verify/{send,check}` e `invite/resend` limitaban solo en

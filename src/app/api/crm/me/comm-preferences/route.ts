@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
 
 export const runtime = 'nodejs';
@@ -74,7 +75,7 @@ export async function PATCH(request: NextRequest) {
     if (err instanceof OrgContextError) return NextResponse.json({ success: false, error: err.message }, { status: err.statusCode });
     throw err;
   }
-  const parsed = patchSchema.safeParse(await request.json().catch(() => null));
+  const parsed = patchSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
   if (!parsed.success) return NextResponse.json({ success: false, error: 'Body inválido', issues: parsed.error.issues }, { status: 400 });
 
   const sb = getServiceClient();

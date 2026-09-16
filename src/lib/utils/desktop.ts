@@ -176,6 +176,78 @@ export async function getDesktopVersion(): Promise<string | null> {
 }
 
 /**
+ * Conectividad real vista desde el Desktop.
+ *
+ * `navigator.onLine` solo dice "hay un adaptador con enlace": con WiFi
+ * conectado y router sin internet devuelve true y cada consulta a Supabase
+ * se queda esperando timeouts. El proceso principal hace un health-check con
+ * histéresis contra Supabase (`connectivity.ts`) y lo expone en `isOnline()`.
+ *
+ * Fuera del Desktop, o con un Desktop antiguo sin el método, se cae a
+ * `navigator.onLine` (o true en SSR) para no cambiar el comportamiento.
+ */
+export async function isDesktopOnline(): Promise<boolean> {
+  const bridge = getDesktopBridge();
+  if (!bridge?.isOnline) {
+    return typeof navigator === 'undefined' ? true : navigator.onLine;
+  }
+  try {
+    return await bridge.isOnline();
+  } catch {
+    return typeof navigator === 'undefined' ? true : navigator.onLine;
+  }
+}
+
+type ConnectivityListener = (online: boolean) => void;
+const connectivityListeners = new Set<ConnectivityListener>();
+let bridgeConnectivitySubscribed = false;
+
+/**
+ * Suscripción a los cambios de conectividad real del Desktop
+ * (`connectivity:state`, emitido por `electron/src/main/connectivity.ts`).
+ *
+ * El preload registra UN solo listener (`onConnectivity` hace
+ * `removeAllListeners` antes de suscribir), así que si dos módulos de la web
+ * llamaran a `window.goAdminDesktop.onConnectivity()` el segundo pisaría al
+ * primero. Este helper se suscribe al bridge una sola vez y reparte el evento
+ * a todos los interesados (`offlineCache.ts`, `OfflineIndicator.tsx`).
+ *
+ * Devuelve la función para darse de baja. Fuera del Desktop, o con un
+ * Desktop antiguo sin `onConnectivity`, no hace nada y devuelve un no-op:
+ * el llamador debe caer a `window` `online`/`offline` si lo necesita.
+ */
+export function onDesktopConnectivity(listener: ConnectivityListener): () => void {
+  const bridge = getDesktopBridge();
+  if (!bridge?.onConnectivity) return () => {};
+  connectivityListeners.add(listener);
+  if (!bridgeConnectivitySubscribed) {
+    bridgeConnectivitySubscribed = true;
+    bridge.onConnectivity((online) => {
+      for (const l of connectivityListeners) {
+        try {
+          l(online);
+        } catch (err) {
+          console.error('[desktop] Error en listener de conectividad:', err);
+        }
+      }
+    });
+  }
+  return () => {
+    connectivityListeners.delete(listener);
+  };
+}
+
+/**
+ * true si el Desktop instalado emite conectividad real por el bridge. Cuando
+ * es true, `navigator.onLine` NO debe usarse como fuente de verdad: con WiFi
+ * enlazado y sin internet devuelve true.
+ */
+export function desktopReportsConnectivity(): boolean {
+  const bridge = getDesktopBridge();
+  return typeof bridge?.onConnectivity === 'function' && typeof bridge?.isOnline === 'function';
+}
+
+/**
  * Comprueba si el Desktop instalado soporta una capacidad concreta del bridge.
  * Evita romper la web cuando el cliente tiene un .exe anterior.
  */

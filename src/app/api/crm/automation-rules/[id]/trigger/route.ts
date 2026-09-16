@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { executeAutomationRule, testRunAutomationRule } from '@/lib/services/crm/automationService';
 
 /**
@@ -29,6 +30,7 @@ export async function POST(
     } catch {
       // Sin body — ejecución sin oportunidad asociada.
     }
+    readOrgBody(ctx, body);
 
     const opportunityId = typeof body.opportunity_id === 'string' ? body.opportunity_id : null;
 

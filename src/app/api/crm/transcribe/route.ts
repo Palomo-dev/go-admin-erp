@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { createManualCallWithAudio, ManualCallError, resolveManualAudioMaxBytes, audioTooLargeMessage, readRecordingDeclaration, MANUAL_DECLARATION_REQUIRED_ERROR } from '@/lib/services/crm/manualCallService';
 import { MANUAL_RECORDING_DECLARATION_TEXT } from '@/lib/services/crm/consentService';
@@ -23,7 +24,7 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const form = await request.formData();
+    const form = readOrgBody(ctx, await request.formData());
     const file = (form.get('file') ?? form.get('audio')) as File | null;
     if (!file || typeof file === 'string') return NextResponse.json({ error: 'Archivo de audio requerido' }, { status: 400 });
     // Tope real de la cadena STT de la org (tester r2 nº 7), no un número fijo.

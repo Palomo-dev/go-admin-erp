@@ -7,9 +7,12 @@
   "main": "dist/main/index.js",
   "scripts": {
     "sync:agent": "node scripts/sync-agent.js",
-    "dev": "npm run sync:agent && tsc -p . && electron .",
-    "dev:watch": "npm run sync:agent && tsc -p . --watch & electron .",
-    "build": "npm run sync:agent && tsc -p .",
+    "copy:renderer": "node scripts/copy-renderer.js",
+    "dev": "npm run sync:agent && tsc -p . && npm run copy:renderer && electron .",
+    "dev:watch": "npm run sync:agent && npm run copy:renderer && tsc -p . --watch & electron .",
+    "build": "npm run sync:agent && tsc -p . && npm run copy:renderer",
+    "build:web": "node scripts/build-web.js",
+    "build:web:copy": "node scripts/build-web.js --skip-next-build",
     "package": "npm run build && electron-builder --win",
     "package:dir": "npm run build && electron-builder --win --dir"
   },

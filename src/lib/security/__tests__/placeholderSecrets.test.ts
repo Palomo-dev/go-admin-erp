@@ -7,7 +7,7 @@
  * Bloques:
  *  - P1: `isPlaceholderCredential` reconoce el relleno (incl. `changeme`).
  *  - P2–P5: cron, Meta, Resend y token del ws-server RECHAZAN un secreto de relleno.
- *  - P6/P7: bordes de `wsSessionToken` y `rateLimit` (documentan el comportamiento;
+ *  - P6/P7: bordes de `wsSessionToken` y `rateLimit` (sub-parte D cambió dos expectativas de P7: fail-closed y evaluar-antes-de-registrar;
  *    los casos que la sub-parte D cambie deben actualizarse allí).
  *  - P8: `foreignOrganizationInBody`.
  *
@@ -79,15 +79,17 @@ describe('P6 wsSessionToken bordes', () => {
 });
 describe('P7 rateLimit bordes', () => {
   beforeEach(() => _resetRateLimits());
-  test('persistentCount lanza → fail-open', async () => expect((await checkRateLimit('k1', { limit: 1, persistentCount: async () => { throw new Error('db'); } })).allowed).toBe(true));
+  // F0-SEC r2 sub-parte D: antes era fail-open (documentado en r1); ahora un contador persistente que lanza BLOQUEA.
+  test('persistentCount lanza → BLOQUEA (fail-closed)', async () => expect((await checkRateLimit('k1', { limit: 1, persistentCount: async () => { throw new Error('db'); } })).allowed).toBe(false));
   test('persistentCount 100 → bloquea', async () => expect((await checkRateLimit('k2', { limit: 5, persistentCount: async () => 100 })).allowed).toBe(false));
   test('limit 0 / -1 / NaN → bloquea', async () => { for (const l of [0, -1, Number.NaN]) expect((await checkRateLimit('k' + l, { limit: l })).allowed).toBe(false); });
   test('windowMs 0 → bloquea al segundo hit', async () => { const o = { limit: 1, windowMs: 0 }; await checkRateLimit('k6', o); expect((await checkRateLimit('k6', o)).allowed).toBe(false); }); // ROJO en r1
-  test('checkRateLimits consume claves previas', async () => {
+  // F0-SEC r2 sub-parte D: antes 'a' gastaba su hit aunque 'b' bloqueara; ahora se evalúan todas y solo entonces se registra.
+  test('checkRateLimits NO consume claves previas cuando una posterior bloquea', async () => {
     await checkRateLimit('b', { limit: 1 });
     const r = await checkRateLimits([{ key: 'a', opts: { limit: 1 } }, { key: 'b', opts: { limit: 1 } }]);
     expect(r.blockedKey).toBe('b');
-    expect((await checkRateLimit('a', { limit: 1 })).allowed).toBe(false); // 'a' ya gastó su hit
+    expect((await checkRateLimit('a', { limit: 1 })).allowed).toBe(true); // 'a' sigue intacta
   });
   test('getClientIp', () => {
     expect(getClientIp(new Request('https://x.test', { headers: { 'x-forwarded-for': ' 1.2.3.4 , 5.6.7.8' } }))).toBe('1.2.3.4');

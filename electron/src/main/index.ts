@@ -1,12 +1,24 @@
 import { app, BrowserWindow, session } from 'electron';
-import { createMainWindow, getMainWindow, createSplashWindow, closeSplash, prepareQuit } from './windows/mainWindow';
+import {
+  createMainWindow,
+  getMainWindow,
+  getWebContents,
+  createSplashWindow,
+  closeSplash,
+  prepareQuit,
+  reloadCurrent,
+} from './windows/mainWindow';
 import { createTray, destroyTray } from './tray';
 import { initUpdater, stopUpdater } from './updater';
 import { registerIpcHandlers } from './ipc';
+import { registerToolbarIpc } from './toolbarIpc';
+import { installAppMenu } from './menu';
+import { initDevCapture } from './devCapture';
 import { tryAutoStart, stopAgent, markOffline } from './agentRunner';
 import { wasOpenedHidden } from './autostart';
 import { initCrashReporter } from './crashReporter';
 import { initConnectivity, stopConnectivity } from './connectivity';
+import { webServer } from './webServer';
 
 let quitting = false;
 
@@ -25,7 +37,8 @@ app.on('open-url', (_event, url) => {
   if (win) {
     win.show();
     win.focus();
-    win.webContents.send('deep-link', url);
+    // La web vive en el WebContentsView, no en win.webContents (que es la barra).
+    getWebContents()?.send('deep-link', url);
   }
 });
 
@@ -50,12 +63,32 @@ if (!gotLock) {
     session.defaultSession.setSpellCheckerEnabled(false);
 
     registerIpcHandlers();
+    registerToolbarIpc();
+    // Menú en español (aceleradores + popup del botón «⋯» de la barra).
+    installAppMenu();
 
     // Splash screen mientras carga
     if (!wasOpenedHidden()) {
       createSplashWindow();
-      // Safety: cerrar splash después de 15 segundos sin importar qué
-      setTimeout(() => closeSplash(), 15000);
+      // Safety: cerrar splash pasado un tiempo sin importar qué. Cubre el
+      // arranque del servidor Next embebido (hasta 30 s) más la carga.
+      setTimeout(() => closeSplash(), 45000);
+    }
+
+    // ── Fase 3: servidor Next embebido ──
+    // Arranca ANTES de crear la ventana (el splash sigue visible) para que
+    // getLoadUrl() ya conozca el puerto. Si falla, se registra y la ventana
+    // carga https://app.goadmin.io como hasta ahora: nunca se bloquea el
+    // arranque de la app por esto.
+    if (webServer.shouldUseLocalWeb()) {
+      try {
+        await webServer.start();
+      } catch (err) {
+        console.error('[index] No se pudo arrancar el servidor Next embebido; se usa la web remota:', err);
+      }
+      // Si el servidor cae con la app abierta, webServer lo reinicia solo;
+      // cuando vuelve a responder se recarga la vista (misma ruta si se puede).
+      webServer.on('restarted', () => reloadCurrent());
     }
 
     const mainWindow = createMainWindow();
@@ -65,8 +98,11 @@ if (!gotLock) {
 
     const started = await tryAutoStart();
     if (started) {
-      mainWindow.webContents.send('agent:autostarted');
+      getWebContents()?.send('agent:autostarted');
     }
+
+    // Solo desarrollo: capturas automáticas de la UI si GOADMIN_UI_CAPTURE está definida.
+    initDevCapture(mainWindow);
 
     // closeSplash ya se llamó en ready-to-show; esto es fallback
     closeSplash();
@@ -86,6 +122,9 @@ if (!gotLock) {
       stopConnectivity();
       await markOffline();
       stopAgent();
+      // Parar el servidor Next embebido: si quedara vivo, el puerto seguiría
+      // ocupado y el proceso hijo sobreviviría al cierre de la app.
+      await webServer.stop();
       destroyTray();
       app.quit();
     }

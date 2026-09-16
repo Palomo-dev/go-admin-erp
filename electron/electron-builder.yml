@@ -87,3 +87,12 @@ files:
 # de Windows que resuelven el icono de la ventana/taskbar.
 asarUnpack:
   - build/icon.ico
+
+# Web (build standalone de Next) fuera del asar: server.js necesita leer
+# archivos reales del disco (chunks, node_modules, .next/static, public).
+# La genera `npm run build:web` (scripts/build-web.js) en resources/web/ y
+# el paquete la deja en resources/web/ junto al app.asar. Si no existe, el
+# paquete se construye igual y la app cae a https://app.goadmin.io.
+extraResources:
+  - from: resources/web
+    to: web

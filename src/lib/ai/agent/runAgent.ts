@@ -83,6 +83,18 @@ function stepLabel(toolName: string): string {
   const labels: Record<string, string> = {
     buscar_productos: 'Buscando en el catálogo…',
     consultar_stock: 'Consultando existencias…',
+    buscar_proveedores: 'Buscando proveedores…',
+    listar_sucursales: 'Consultando tus sucursales…',
+    convertir_moneda: 'Consultando la tasa de cambio…',
+    leer_documento: 'Leyendo el documento…',
+    registrar_venta: 'Preparando la venta…',
+    crear_ajuste_inventario: 'Preparando el ajuste…',
+    crear_orden_compra: 'Preparando la orden de compra…',
+    crear_traslado: 'Preparando el traslado…',
+    cargar_productos_masivo: 'Leyendo el listado y comparándolo con tu catálogo…',
+    estado_configuracion: 'Revisando tu configuración…',
+    listar_modulos_activos: 'Consultando tus módulos…',
+    explicar_configuracion: 'Revisando la configuración…',
   };
   return labels[toolName] ?? 'Preparando la acción…';
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { isOrgAdmin } from '@/lib/utils/rbac';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { getCall, getCallRecordings } from '@/lib/services/crm/callManagementService';
@@ -74,7 +75,7 @@ export async function PATCH(
     throw err;
   }
 
-  const parsed = callPatchSchema.safeParse(await request.json().catch(() => null));
+  const parsed = callPatchSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
   if (!parsed.success) {
     return NextResponse.json({ success: false, error: 'Body inválido', issues: parsed.error.issues }, { status: 400 });
   }

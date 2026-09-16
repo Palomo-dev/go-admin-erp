@@ -1,23 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, type ServerOrgContext } from '@/lib/utils/orgContext';
-import { STAGE_MANAGER_ROLE_IDS } from '@/lib/services/crm/stagePermissions';
-import { failResponse, foreignOrgResponse, readJson } from '@/lib/services/crm/f10RouteHelpers';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
+import { canManualSign, failResponse, foreignOrgResponse, readJson } from '@/lib/services/crm/f10RouteHelpers';
 import { ContractConflictError, getContract, updateContractStatus, type ContractStatus } from '@/lib/services/crm/contractService';
 import { CONTRACT_STATUSES, isContractStatus } from '@/lib/services/crm/contractStateMachine';
 
 export const runtime = 'nodejs';
-
-/**
- * Decisión F10 r2: marcar «signed» A MANO (sin proveedor ni webhook) solo lo
- * puede hacer un admin/manager de la organización, resuelto por ID de rol en
- * el servidor (`STAGE_MANAGER_ROLE_IDS`, el mismo criterio que las etapas),
- * nunca por nombre ni por un valor del cliente. Queda actividad `system` con
- * `manual_signed_by` en la oportunidad. Los demás estados manuales
- * (viewed/declined/expired) siguen abiertos a cualquier miembro.
- */
-export function canManualSign(ctx: Pick<ServerOrgContext, 'roleId' | 'isSuperAdmin'>): boolean {
-  return ctx.isSuperAdmin === true || STAGE_MANAGER_ROLE_IDS.includes(ctx.roleId);
-}
 
 /**
  * GET /api/crm/contracts/[id] — Obtiene un contrato por ID.

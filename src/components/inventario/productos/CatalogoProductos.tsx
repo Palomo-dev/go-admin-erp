@@ -76,7 +76,20 @@ const CatalogoProductos: React.FC = () => {
   // Carga híbrida: primera página rápida vía RPC + carga completa en background
   const [backgroundLoading, setBackgroundLoading] = useState<boolean>(false);
   const [fastTotalCount, setFastTotalCount] = useState<number | null>(null);
-  const backgroundAbortRef = useRef<{ cancelled: boolean } | null>(null);
+  // El abort token incluye una promesa que se resuelve al terminar la carga
+  // completa en background. Permite que handleExportar espere a que TODOS los
+  // productos estén cargados antes de exportar (sin esto, exportaría solo lo
+  // cargado hasta el momento del clic, ej. la primera página de 1000).
+  const backgroundAbortRef = useRef<{
+    cancelled: boolean;
+    donePromise?: Promise<void>;
+    resolveDone?: () => void;
+  } | null>(null);
+  // Ref espejo de `productos` para leer el valor más reciente dentro de
+  // handlers async tras un await (el closure captura el valor al momento del
+  // render, no después de que el await libere).
+  const productosRef = useRef<Producto[]>([]);
+  productosRef.current = productos;
 
 
   // Carga híbrida — Primera carga rápida vía RPC server-side
@@ -493,8 +506,12 @@ const CatalogoProductos: React.FC = () => {
     // Cancelar carga en background anterior si aún está corriendo
     if (backgroundAbortRef.current) {
       backgroundAbortRef.current.cancelled = true;
+      // Liberar a cualquier handler que esté esperando la carga anterior
+      backgroundAbortRef.current.resolveDone?.();
     }
-    const abortToken = { cancelled: false };
+    let resolveDone: () => void = () => {};
+    const donePromise = new Promise<void>((resolve) => { resolveDone = resolve; });
+    const abortToken = { cancelled: false, donePromise, resolveDone };
     backgroundAbortRef.current = abortToken;
 
     (async () => {
@@ -512,6 +529,7 @@ const CatalogoProductos: React.FC = () => {
         setBackgroundLoading(false);
         setFastTotalCount(null); // ya tenemos todos, no necesitamos el total parcial
       }
+      resolveDone(); // liberar a handleExportar si está esperando
     })();
   }, [organization?.id, branchFilter, filters, refreshKey, fetchProductosFast, fetchProductos]);
 
@@ -866,7 +884,19 @@ const CatalogoProductos: React.FC = () => {
   );
 
   const handleExportar = async () => {
-    if (productos.length === 0) {
+    // Si la carga completa en background sigue corriendo, esperar a que termine
+    // para no exportar un subconjunto parcial (ej: solo la primera página de 1000).
+    if (backgroundAbortRef.current?.donePromise) {
+      setActionLoading(true);
+      await backgroundAbortRef.current.donePromise;
+      setActionLoading(false);
+    }
+
+    // Usar la ref para leer el valor más reciente tras el await (el closure
+    // captura `productos` al momento del render, no después del await).
+    const productosActuales = productosRef.current;
+
+    if (productosActuales.length === 0) {
       toast({ title: 'Sin productos', description: 'No hay productos para exportar.' });
       return;
     }
@@ -876,7 +906,7 @@ const CatalogoProductos: React.FC = () => {
       return;
     }
 
-    const productIds = productos.map(p => Number(p.id)).filter(id => !isNaN(id));
+    const productIds = productosActuales.map(p => Number(p.id)).filter(id => !isNaN(id));
 
     const { data: modGroups } = await supabase
       .from('product_modifier_groups')
@@ -966,7 +996,7 @@ const CatalogoProductos: React.FC = () => {
 
     const rows: string[][] = [];
 
-    productos.forEach((p) => {
+    productosActuales.forEach((p) => {
       rows.push(formatProductRow(p, '', !p.parent_product_id));
 
       if (p.children && p.children.length > 0) {
@@ -998,7 +1028,7 @@ const CatalogoProductos: React.FC = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    toast({ title: 'Exportación exitosa', description: `Se exportaron ${productos.length} productos.` });
+    toast({ title: 'Exportación exitosa', description: `Se exportaron ${productosActuales.length} productos.` });
   };
 
   const handleExportarFacebook = async () => {

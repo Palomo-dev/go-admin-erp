@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getRoiCalculators, createRoiCalculator } from '@/lib/services/crm/roiService';
 
 /**
@@ -31,7 +32,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     if (!body?.name || !body?.inputs || !body?.formula || !body?.outputs) {
       return NextResponse.json(

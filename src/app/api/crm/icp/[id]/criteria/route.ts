@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getICPCriteria,
   createICPCriterion,
@@ -43,7 +44,7 @@ export async function POST(
   try {
     const ctx = await getServerOrgContext();
     const { id } = await params;
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
     if (!body?.field_key || !body?.operator) {
       return NextResponse.json(

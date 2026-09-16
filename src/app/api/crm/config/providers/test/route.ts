@@ -24,6 +24,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { isOrgAdmin } from '@/lib/utils/rbac';
 import { PROVIDER_CATEGORIES, type ProviderCategory } from '@/lib/crm/providerCatalog';
 import { getProviderCredentials } from '@/lib/services/providerCredentials.server';
@@ -136,14 +137,16 @@ export async function POST(request: NextRequest) {
   if (!isOrgAdmin(ctx)) {
     return NextResponse.json({ ok: false, detail: 'Solo administradores' }, { status: 403 });
   }
+  // QA r2 bajo 5: el body se valida ANTES de consumir cupo del rate limit;
+  // cinco bodies mal formados no deben bloquear al admin un minuto.
+  const parsed = bodySchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
+  if (!parsed.success) {
+    return NextResponse.json({ ok: false, detail: 'Body inválido' }, { status: 400 });
+  }
+
   const rl = await checkRateLimit(`providers:test:org:${ctx.organizationId}`, { limit: RATE_LIMIT, windowMs: RATE_WINDOW_MS });
   if (!rl.allowed) {
     return NextResponse.json({ ok: false, detail: 'Demasiadas pruebas; espera un minuto' }, { status: 429 });
-  }
-
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) {
-    return NextResponse.json({ ok: false, detail: 'Body inválido' }, { status: 400 });
   }
 
   const cfg = await getProviderCredentials(ctx.organizationId, parsed.data.category, parsed.data.provider);

@@ -13,7 +13,7 @@ import type WebSocket from 'ws';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { buildVoiceAgentPrompt, type VoiceAgentContext } from './voiceAgentPrompts';
 import { VOICE_AGENT_TOOLS, executeToolCall } from './voiceAgentTools';
-import { verifyWsSessionToken, type WsSessionClaims } from '@/lib/security/wsSessionToken';
+import { consumeWsSessionJti, verifyWsSessionToken, type WsSessionClaims } from '@/lib/security/wsSessionToken';
 // F6: cuando la llamada trae `agentId`, el cerebro es el del agente del CRM
 // (voice_agents + stage_agents), no el recepcionista de hotel.
 import {
@@ -149,6 +149,13 @@ export function handleConversationRelayConnection(ws: WebSocket, upgradeClaims?:
           const claims = verifyWsSessionToken(message.customParameters?.token);
           if (!claims || (upgradeClaims && upgradeClaims.orgId !== claims.orgId)) {
             console.warn('[CR] setup rechazado: token de sesión inválido/expirado o incoherente');
+            ws.close(1008, 'unauthorized');
+            return;
+          }
+          // F0-SEC r2: un token vale para UNA sesión. El mismo `jti` en un segundo
+          // `setup` (handshake capturado y repetido dentro del TTL) se rechaza.
+          if (!consumeWsSessionJti(claims)) {
+            console.warn('[CR] setup rechazado: token de sesión reutilizado o sin jti', { orgId: claims.orgId, callSid: claims.callSid ?? null });
             ws.close(1008, 'unauthorized');
             return;
           }

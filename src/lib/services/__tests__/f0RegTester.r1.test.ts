@@ -292,10 +292,12 @@ describe('refundAiCredits — idempotencia', () => {
     expect(ops.filter((o) => o.kind === 'rpc' && o.table === 'refund_ai_credits')).toHaveLength(1);
   });
 
-  it('reembolso con créditos negativos no llama al RPC (no debita disfrazado)', async () => {
+  // r3 (QA r2 bajo 4): antes devolvía `true` sin hacer nada; ahora es un
+  // RangeError como en el cobro. Sigue sin llegar al RPC.
+  it('reembolso con créditos negativos → RangeError sin RPC (no debita disfrazado)', async () => {
     const { sb, ops } = fakeCostDb();
     __setAiCostClientFactory(() => sb);
-    expect(await refundAiCredits({ orgId: 7, credits: -5, actionType: 'x' })).toBe(true);
+    await expect(refundAiCredits({ orgId: 7, credits: -5, actionType: 'x' })).rejects.toBeInstanceOf(RangeError);
     expect(ops).toHaveLength(0);
   });
 

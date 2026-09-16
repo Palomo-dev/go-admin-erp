@@ -3,7 +3,13 @@
 // Llama a la RPC: fn_reporte_roles_auditoria + consultas directas
 // ============================================================
 
-import { supabase } from '@/lib/supabase/config';
+import { supabase as browserSupabase } from '@/lib/supabase/config';
+import type { ReportesClient } from '../types';
+// F0-SEC r3 (tester r2, fallo 3): `fetch` acepta el cliente de Supabase por
+// parámetro. En el navegador (app/reportes) cae al cliente browser con la sesión
+// del usuario; en el servidor (asistente de reportes) el route handler pasa el
+// cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
+// corren como `authenticated` miembro y nunca como `anon`.
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -22,8 +28,9 @@ export const rolesReports: ReportDefinition[] = [
     descripcion: 'Distribución de usuarios por rol y permisos',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db
         .from('organization_members')
         .select('id, role_id, is_active, roles!inner(name)')
         .eq('organization_id', orgId);
@@ -62,8 +69,9 @@ export const rolesReports: ReportDefinition[] = [
     descripcion: 'Cambios de permisos y roles en el período',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase.rpc('fn_reporte_roles_auditoria', {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db.rpc('fn_reporte_roles_auditoria', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
         p_to: `${periodo.fechaFin}T23:59:59Z`,

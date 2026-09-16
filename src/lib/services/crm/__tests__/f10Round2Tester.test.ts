@@ -29,7 +29,7 @@ import { createPaymentLinkForQuotation, processStripeWebhook, type StripeAdapter
 import { markProposalSent, generateProposal, ProposalConvertedError } from '@/lib/services/crm/proposalServerService';
 import { updateContractStatus } from '@/lib/services/crm/contractService';
 import { executeOnboarding, executeRenewal, executeReferral, type OpportunityData, type WonCloseDeps } from '@/lib/services/crm/wonCloseSteps';
-import { canManualSign } from '@/app/api/crm/contracts/[id]/route';
+import { canManualSign } from '@/lib/services/crm/f10RouteHelpers';
 
 function seed(): FakeDb {
   return {

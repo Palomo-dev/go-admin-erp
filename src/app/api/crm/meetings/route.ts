@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { createMeeting, meetingInputSchema } from '@/lib/services/crm/meetingsService';
 import { RelatedNotFoundError } from '@/lib/services/crm/activityService';
 
@@ -12,7 +13,7 @@ import { RelatedNotFoundError } from '@/lib/services/crm/activityService';
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext(request);
-    const parsed = meetingInputSchema.safeParse(await request.json().catch(() => null));
+    const parsed = meetingInputSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });
     }

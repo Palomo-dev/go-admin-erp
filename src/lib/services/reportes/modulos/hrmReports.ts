@@ -3,7 +3,13 @@
 // Consultas directas a Supabase para nómina, productividad y comisiones
 // ============================================================
 
-import { supabase } from '@/lib/supabase/config';
+import { supabase as browserSupabase } from '@/lib/supabase/config';
+import type { ReportesClient } from '../types';
+// F0-SEC r3 (tester r2, fallo 3): `fetch` acepta el cliente de Supabase por
+// parámetro. En el navegador (app/reportes) cae al cliente browser con la sesión
+// del usuario; en el servidor (asistente de reportes) el route handler pasa el
+// cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
+// corren como `authenticated` miembro y nunca como `anon`.
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -22,8 +28,9 @@ export const hrmReports: ReportDefinition[] = [
     descripcion: 'Pagos, deducciones y costos employer del período',
     categoria: 'personas',
     periodosSugeridos: ['quincenal'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db
         .from('payroll_periods')
         .select('id, period_start, period_end, status, total_gross, total_net, total_deductions')
         .eq('organization_id', orgId)
@@ -62,8 +69,9 @@ export const hrmReports: ReportDefinition[] = [
     descripcion: 'Horas trabajadas, ausencias y productividad por departamento',
     categoria: 'personas',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db
         .from('shift_assignments')
         .select('id, employment_id, work_date, status, actual_start_time, actual_end_time')
         .eq('organization_id', orgId)
@@ -112,8 +120,9 @@ export const hrmReports: ReportDefinition[] = [
     descripcion: 'Comisiones calculadas por vendedor y producto',
     categoria: 'personas',
     periodosSugeridos: ['quincenal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db
         .from('sales')
         .select('salesperson_id, user_id, commission_rate, commission_type, total, sale_date')
         .eq('organization_id', orgId)

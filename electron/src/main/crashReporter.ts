@@ -37,11 +37,28 @@ export function initCrashReporter(): void {
   console.log('[crashReporter] Inicializado');
 }
 
+let flushTimer: NodeJS.Timeout | null = null;
+const FLUSH_DEBOUNCE_MS = 2_000;
+
+/**
+ * Añade una línea al log del main (userData/agent.log). Se escribe a disco
+ * con un pequeño retraso (o de inmediato en flushLog(), que llama
+ * before-quit y los crashes) para no bloquear el hilo principal por cada
+ * línea que emite el servidor Next embebido.
+ */
 export function appendLog(message: string): void {
-  const line = `[${new Date().toISOString()}] ${message}`;
+  const line = `[${new Date().toISOString()}] ${message}
+`;
   logBuffer.push(line);
   if (logBuffer.length > MAX_LOG_LINES) {
     logBuffer = logBuffer.slice(-MAX_LOG_LINES);
+  }
+  if (!flushTimer) {
+    flushTimer = setTimeout(() => {
+      flushTimer = null;
+      flushLog();
+    }, FLUSH_DEBOUNCE_MS);
+    flushTimer.unref?.();
   }
 }
 

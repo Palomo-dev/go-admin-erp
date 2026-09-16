@@ -9,6 +9,9 @@ const config = {
   setupFiles: ['<rootDir>/jest.setup.tz.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    // Tipos y helpers de impresión compartidos con el print-agent (tsconfig `paths`).
+    '^@printing$': '<rootDir>/print-agent/src/printing/index.ts',
+    '^@printing/(.*)$': '<rootDir>/print-agent/src/printing/$1',
     // F7: sanitize-html trae htmlparser2@12 (solo ESM, jest CJS no lo carga);
     // solo usa `Parser`, que existe igual en htmlparser2@8 (CJS, top-level).
     '^htmlparser2$': '<rootDir>/node_modules/htmlparser2/lib/index.js',

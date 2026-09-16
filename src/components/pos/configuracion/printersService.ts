@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { isDesktop, isDesktopOnline } from '@/lib/utils/desktop';
+import { readDesktopCache, writeDesktopCache } from '@/lib/utils/desktopLocalCache';
 
 export type PrinterConnectionType = 'usb' | 'network' | 'bluetooth' | 'system' | 'raw_spooler';
 export type PrinterStation = 'hot_kitchen' | 'cold_kitchen' | 'bar' | 'cashier' | 'all';
@@ -190,10 +192,42 @@ export class PrintersService {
   /**
    * Obtiene la(s) impresora(s) activas asignadas a una estación específica,
    * para una sucursal dada. Usado por el flujo de impresión automática de comandas.
+   *
+   * En Go Admin Desktop la última respuesta buena se guarda por
+   * organización/sucursal/estación: si el Desktop informa de que no hay
+   * conectividad real, o la consulta falla, se devuelve esa copia para que el
+   * POS pueda seguir imprimiendo por el agente local sin internet.
    */
   static async getPrintersByStation(branchId: number, station: PrinterStation): Promise<Printer[]> {
     const orgId = getOrganizationId();
+    const cacheKey = `printers-by-station:${orgId}:${branchId}:${station}`;
+    const desktop = isDesktop();
 
+    if (desktop && !(await isDesktopOnline())) {
+      const cached = readDesktopCache<Printer[]>(cacheKey);
+      if (cached) return cached;
+      // Sin copia local no queda otra que intentarlo: el interceptor de
+      // fetch servirá la caché de IndexedDB si navigator.onLine es false.
+    }
+
+    try {
+      const printers = await this.fetchPrintersByStation(orgId, branchId, station);
+      if (desktop) writeDesktopCache(cacheKey, printers);
+      return printers;
+    } catch (error) {
+      const cached = desktop ? readDesktopCache<Printer[]>(cacheKey) : null;
+      if (!cached) throw error;
+      console.warn('[printers] Supabase no respondió; usando impresoras de la caché local del Desktop', {
+        branchId,
+        station,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return cached;
+    }
+  }
+
+  /** Consulta a Supabase tal cual se hacía antes de la caché del Desktop. */
+  private static async fetchPrintersByStation(orgId: number, branchId: number, station: PrinterStation): Promise<Printer[]> {
     // 1. Buscar impresoras asignadas a esta estación para la sucursal específica (o global)
     const { data, error } = await supabase
       .from('printer_station_assignments')

@@ -15,6 +15,9 @@ import { hasAnyPermission, levelAtLeast, type AssistantCapabilities } from '@/li
 import { catalogTools } from './catalogTools';
 import { CONSULTA_TOOLS } from './tools/consulta';
 import { VENTAS_TOOLS } from './tools/ventas';
+import { COMPRAS_TOOLS } from './tools/compras';
+import { CARGA_MASIVA_TOOLS } from './tools/cargaMasiva';
+import { MONEDA_TOOLS } from './tools/moneda';
 import { DOCUMENTOS_TOOLS } from './tools/documentos';
 import { NAVEGACION_TOOLS } from './tools/navegacion';
 import type { ToolDefinition } from './types';
@@ -39,6 +42,9 @@ function buildRegistry(): Map<string, ToolDefinition<never>> {
   const all = [
     ...(CONSULTA_TOOLS as unknown as Array<ToolDefinition<never>>),
     ...(VENTAS_TOOLS as unknown as Array<ToolDefinition<never>>),
+    ...(COMPRAS_TOOLS as unknown as Array<ToolDefinition<never>>),
+    ...(CARGA_MASIVA_TOOLS as unknown as Array<ToolDefinition<never>>),
+    ...(MONEDA_TOOLS as unknown as Array<ToolDefinition<never>>),
     ...(DOCUMENTOS_TOOLS as unknown as Array<ToolDefinition<never>>),
     ...(NAVEGACION_TOOLS as unknown as Array<ToolDefinition<never>>),
     ...(catalogTools() as unknown as Array<ToolDefinition<never>>),

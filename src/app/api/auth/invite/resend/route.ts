@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit';
+import { getRateLimitStore } from '@/lib/security/rateLimitStore';
 import { resolveSelfOrigin } from '@/lib/security/requestOrigin';
 
 /**
@@ -13,7 +14,9 @@ import { resolveSelfOrigin } from '@/lib/security/requestOrigin';
  * Seguridad — la ruta es PÚBLICA (excluida del middleware en src/middleware.ts)
  * y cada petición dispara un correo vía signInWithOtp:
  * - Rate limit por IP y por correo destino: sin él se puede bombardear a un
- *   destinatario o agotar la cuota de envío del proyecto.
+ *   destinatario o agotar la cuota de envío del proyecto. Con
+ *   `RATE_LIMIT_STORE=db` el contador es persistente y atómico entre
+ *   instancias (F0-SEC r2); si el backend falla, se bloquea (fail-closed).
  * - Respuesta uniforme: siempre 200 con el mismo mensaje, exista o no la
  *   invitación y falle o no el envío. Antes se devolvía 404 "No hay
  *   invitaciones pendientes" y 200 en el caso bueno, lo que permitía
@@ -79,7 +82,7 @@ export async function POST(request: Request) {
     const rl = await checkRateLimits([
       { key: `invite:resend:ip:${ip}`, opts: IP_LIMIT },
       { key: `invite:resend:email:${normalizedEmail}`, opts: EMAIL_LIMIT },
-    ]);
+    ], { store: getRateLimitStore() });
     if (!rl.allowed) {
       const retryAfter = Math.max(1, Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000));
       console.warn('Reenvío bloqueado por rate limit:', rl.blockedKey, 'ip:', ip);

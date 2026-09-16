@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { createLeadWithCustomer, type CreateLeadBody } from '@/lib/services/crm/leadCreateService';
 
 /**
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json({ success: false, error: 'Cuerpo JSON inválido' }, { status: 400 });
     }
+    readOrgBody(ctx, body);
 
     const result = await createLeadWithCustomer(
       { organizationId: ctx.organizationId, userId: ctx.userId, supabase: ctx.supabase },

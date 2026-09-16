@@ -5,19 +5,29 @@
  *   activa. Orden de resolución de la org:
  *     1. header `X-Organization-Id`
  *     2. cookie `goadmin_org_id` (o la legacy `org_id`)
+ *        — si header y cookie vienen los dos y NO coinciden → 403
+ *          `ORG_AMBIGUOUS` y se registra (F0-SEC r2): un cliente coherente
+ *          nunca manda dos organizaciones distintas en la misma petición.
  *     3. `profiles.last_org_id`
  *     4. si el usuario tiene EXACTAMENTE una membresía activa, esa
  *     5. si no → 400 `ORG_AMBIGUOUS`
  *   En todos los casos se verifica que el usuario sea miembro activo de la org
  *   elegida (403 si no).
+ * - `readOrgBody(ctx, request | body)`: regla dura 5 (b). Si el body o la
+ *   query traen otra organización → registro + 403 `FOREIGN_ORGANIZATION`.
+ *   Vive en `@/lib/security/organizationBody` (módulo hoja) y aquí se
+ *   re-exporta; toda ruta de escritura debe llamarlo (guardarraíl 5).
  * - `getServerOrgContextFor(organizationId)`: misma comprobación de sesión y
  *   membresía activa, pero para una org que ya salió de un recurso del
  *   servidor (p. ej. la invitación de un código), no de la petición.
  * - `resolveOrgFromExternal(identifier, kind)`: para webhooks (sin sesión);
- *   usa el cliente service-role y `.maybeSingle()`.
+ *   usa el cliente service-role. Si el identificador pertenece a más de una
+ *   organización → 409 `ORG_AMBIGUOUS` y registro (nunca «la primera»).
  * - `requireOrgAdmin(ctx)`: mismo criterio que `src/lib/utils/rbac.ts`
- *   (`isOrgAdmin`: roleName 'Super Admin' | 'Admin de organización' o role_id 1|2,
- *   además de `organization_members.is_super_admin`).
+ *   (`organization_members.is_super_admin` o role_id 1|2; NUNCA por nombre).
+ * - `requireOrgAdminOrPermission(ctx, code?)`: lo anterior o, si no, el
+ *   permiso `admin.full_access` resuelto en la base con `check_user_permission`
+ *   (rol + cargo, precedencia del cargo). Es lo que usa `withOrg({admin})`.
  * - `withOrg(handler)` / `withCron(handler)`: wrappers para route handlers.
  */
 
@@ -26,7 +36,19 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServerUserClient } from '@/lib/supabase/server-user';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { verifyCronSecret, WebhookError } from '@/lib/security/webhookSignatures';
-import { isOrgAdminLike } from './orgAdmin';
+import { isOrgAdminLike, ORG_ADMIN_PERMISSION_CODE } from './orgAdmin';
+import { OrgContextError } from './orgContextError';
+
+export { OrgContextError } from './orgContextError';
+export {
+  readOrgBody,
+  claimedOrganizationIn,
+  foreignOrganizationInBody,
+  ORG_BODY_KEYS,
+  FOREIGN_ORGANIZATION_CODE,
+  type OrgBodyContext,
+  type ReadOrgBodyOptions,
+} from '@/lib/security/organizationBody';
 
 export interface ServerOrgContext {
   userId: string;
@@ -39,17 +61,6 @@ export interface ServerOrgContext {
   /** organization_members.id del usuario en la org activa (bigint) */
   memberId: number | null;
   supabase: SupabaseClient;
-}
-
-export class OrgContextError extends Error {
-  statusCode: number;
-  code: string;
-  constructor(message: string, statusCode: number, code?: string) {
-    super(message);
-    this.statusCode = statusCode;
-    this.code = code ?? (statusCode === 401 ? 'UNAUTHENTICATED' : statusCode === 403 ? 'FORBIDDEN' : 'BAD_REQUEST');
-    this.name = 'OrgContextError';
-  }
 }
 
 export const ORG_HEADER = 'x-organization-id';
@@ -97,8 +108,16 @@ function parseOrgId(value: string | null | undefined): number | null {
 /**
  * Lee la org solicitada del header o la cookie. `req` es opcional: sin él se
  * usa `headers()`/`cookies()` de next/headers.
+ *
+ * F0-SEC r2: si el header y la cookie traen organizaciones DISTINTAS no se
+ * elige una (antes ganaba el header en silencio): es una petición incoherente
+ * —dos pestañas con organizaciones distintas, un cliente mal cableado o un
+ * intento de colar una organización por el header— y se responde 403
+ * `ORG_AMBIGUOUS` dejando rastro. La cookie legacy `org_id` solo se compara
+ * cuando no existe `goadmin_org_id` (las dos las escribe el mismo cliente con
+ * el mismo valor).
  */
-async function getRequestedOrgId(req?: Request): Promise<number | null> {
+async function getRequestedOrgId(req?: Request, userId?: string): Promise<number | null> {
   let headerValue: string | null = null;
   if (req) {
     headerValue = req.headers.get(ORG_HEADER);
@@ -111,14 +130,38 @@ async function getRequestedOrgId(req?: Request): Promise<number | null> {
     }
   }
   const fromHeader = parseOrgId(headerValue);
-  if (fromHeader) return fromHeader;
 
+  let fromCookie: number | null = null;
   try {
     const cookieStore = await cookies();
-    return (
+    fromCookie =
       parseOrgId(cookieStore.get(ORG_COOKIE)?.value) ??
-      parseOrgId(cookieStore.get(ORG_COOKIE_LEGACY)?.value)
+      parseOrgId(cookieStore.get(ORG_COOKIE_LEGACY)?.value);
+  } catch {
+    fromCookie = null;
+  }
+
+  if (fromHeader && fromCookie && fromHeader !== fromCookie) {
+    console.warn('[orgContext] header y cookie declaran organizaciones distintas', {
+      header: fromHeader,
+      cookie: fromCookie,
+      userId: userId ?? null,
+      path: safePath(req),
+    });
+    throw new OrgContextError(
+      'La organización del header y la de la cookie no coinciden',
+      403,
+      'ORG_AMBIGUOUS'
     );
+  }
+
+  return fromHeader ?? fromCookie;
+}
+
+function safePath(req?: Request): string | null {
+  if (!req) return null;
+  try {
+    return new URL(req.url).pathname;
   } catch {
     return null;
   }
@@ -202,7 +245,7 @@ export async function getServerOrgContext(req?: Request): Promise<ServerOrgConte
       .eq('is_active', true);
 
   // 1-2. Header / cookie
-  const requested = await getRequestedOrgId(req);
+  const requested = await getRequestedOrgId(req, user.id);
   if (requested) {
     return contextForOrg(supabase, user, requested);
   }
@@ -239,24 +282,55 @@ export async function getServerOrgContext(req?: Request): Promise<ServerOrgConte
 // ─── Admin ───────────────────────────────────────────────────────────────────
 
 /**
- * Criterio de admin del repo (ver `src/lib/utils/rbac.ts` y `branchService.ts:111-119`):
- * `organization_members.is_super_admin`, o rol 'Super Admin' / 'Admin de organización'
- * (role_id 1 / 2).
+ * Criterio de admin del repo (ver `src/lib/utils/rbac.ts` y `branchService.ts`):
+ * `organization_members.is_super_admin` o role_id 1 / 2. Nunca por el nombre
+ * del rol (regla dura 6).
  *
  * La regla vive en `orgAdmin.ts` (módulo hoja, sin dependencias) para que un
  * módulo ligero pueda usarla sin arrastrar este archivo entero —y con él
  * `webhookSignatures` → `svix`, que es ESM puro y rompe Jest. Aquí solo se
  * re-exporta: sigue habiendo UNA definición.
  */
-export { ORG_ADMIN_ROLE_IDS, ORG_ADMIN_ROLE_NAMES } from './orgAdmin';
+export { ORG_ADMIN_ROLE_IDS, ORG_ADMIN_PERMISSION_CODE } from './orgAdmin';
 
 export function isOrgAdminContext(ctx: ServerOrgContext): boolean {
   return isOrgAdminLike(ctx);
 }
 
-/** Lanza OrgContextError(403) si el usuario no es admin de la org activa. */
+/** Lanza OrgContextError(403) si el usuario no es admin de la org activa (síncrono: super admin o rol 1/2). */
 export function requireOrgAdmin(ctx: ServerOrgContext): void {
   if (!isOrgAdminContext(ctx)) {
+    throw new OrgContextError('Requiere rol de administrador de la organización', 403, 'ADMIN_REQUIRED');
+  }
+}
+
+type PermissionSubject = Pick<ServerOrgContext, 'userId' | 'organizationId' | 'roleId' | 'isSuperAdmin' | 'supabase'>;
+
+/**
+ * ¿Tiene `code` (por defecto `admin.full_access`) en la organización activa?
+ * Primero el criterio síncrono (super admin o rol 1/2, sin consulta); si no,
+ * `check_user_permission(user, org, code)` —rol + cargo, con precedencia del
+ * cargo— con el usuario y la organización DE LA SESIÓN, nunca del cliente.
+ * Un error de la RPC cuenta como "no" (fail-closed) y se registra.
+ */
+export async function hasOrgAdminOrPermission(ctx: PermissionSubject, code: string = ORG_ADMIN_PERMISSION_CODE): Promise<boolean> {
+  if (isOrgAdminLike(ctx)) return true;
+  if (!code || !ctx.userId || !ctx.organizationId) return false;
+  const { data, error } = await ctx.supabase.rpc('check_user_permission', {
+    p_user_id: ctx.userId,
+    p_organization_id: ctx.organizationId,
+    p_permission_code: code,
+  });
+  if (error) {
+    console.warn('[orgContext] check_user_permission falló; se deniega', { code, organizationId: ctx.organizationId, message: error.message });
+    return false;
+  }
+  return data === true;
+}
+
+/** Como `requireOrgAdmin`, pero los cargos/roles con el permiso también pasan. */
+export async function requireOrgAdminOrPermission(ctx: PermissionSubject, code: string = ORG_ADMIN_PERMISSION_CODE): Promise<void> {
+  if (!(await hasOrgAdminOrPermission(ctx, code))) {
     throw new OrgContextError('Requiere rol de administrador de la organización', 403, 'ADMIN_REQUIRED');
   }
 }
@@ -300,23 +374,40 @@ export async function resolveOrgFromExternal(
     throw new OrgContextError(`Identificador vacío para ${identifierType}`, 404, 'ORG_UNRESOLVED');
   }
 
+  // F0-SEC r2: `phone_numbers.e164` y `email_domains.domain` son únicos POR
+  // organización, no globalmente. Con `.limit(1).maybeSingle()` la organización
+  // resuelta era arbitraria si dos registraban el mismo valor. Se piden 2 filas:
+  // si vuelven 2 → 409 `ORG_AMBIGUOUS` y registro. La unicidad global (índice)
+  // la decide la fase dueña de cada tabla (F3 teléfonos, F7 dominios).
   const { data, error } = await serviceClient
     .from(table)
     .select('organization_id')
     .eq(column, identifier)
-    .limit(1)
-    .maybeSingle();
+    .limit(2);
 
-  const organizationId = (data as { organization_id?: number } | null)?.organization_id;
-  if (error || !organizationId) {
+  const rows = (data as Array<{ organization_id?: number }> | null) ?? [];
+  const distinct = Array.from(new Set(rows.map((r) => r.organization_id).filter((id): id is number => typeof id === 'number' && id > 0)));
+  if (error || distinct.length === 0) {
     throw new OrgContextError(
       `No se pudo resolver la organización desde ${identifierType}`,
       404,
       'ORG_UNRESOLVED'
     );
   }
+  if (distinct.length > 1) {
+    console.warn('[orgContext] identificador externo resuelve a varias organizaciones', {
+      identifierType,
+      identifier: String(identifier).slice(0, 64),
+      organizations: distinct,
+    });
+    throw new OrgContextError(
+      `El identificador ${identifierType} pertenece a más de una organización`,
+      409,
+      'ORG_AMBIGUOUS'
+    );
+  }
 
-  return { organizationId, serviceClient };
+  return { organizationId: distinct[0], serviceClient };
 }
 
 // ─── Wrappers para route handlers ───────────────────────────────────────────
@@ -328,7 +419,13 @@ export function jsonError(status: number, code: string, message?: string): Respo
   });
 }
 
-type RouteParams = { params: Promise<Record<string, string>> } | undefined;
+// Debe aceptar el `RouteContext` que Next genera para los handlers (`params`
+// puede traer string | string[] | undefined en segmentos catch-all): si el tipo
+// es más estrecho, el chequeo de tipos de `next build` (.next/types) falla.
+// El segundo argumento del handler exportado debe ser OBLIGATORIO y sin `undefined`:
+// Next infiere `SecondArg` con `[any, infer T]` y un parámetro opcional lo convierte
+// en `T | undefined`, que no satisface `RouteContext`.
+type RouteParams = { params: Promise<Record<string, string | string[] | undefined>> };
 
 export type OrgRouteHandler = (
   ctx: ServerOrgContext,
@@ -338,13 +435,15 @@ export type OrgRouteHandler = (
 
 /**
  * Envuelve un handler exigiendo sesión + org activa. Convierte
- * `OrgContextError` en 401/403/400 JSON. `opts.admin` exige rol admin.
+ * `OrgContextError` en 401/403/400 JSON. `opts.admin` exige admin
+ * (`requireOrgAdminOrPermission`: super admin, rol 1/2 o el permiso
+ * `admin.full_access` por rol/cargo).
  */
 export function withOrg(handler: OrgRouteHandler, opts?: { admin?: boolean }) {
-  return async (req: Request, routeParams?: RouteParams): Promise<Response> => {
+  return async (req: Request, routeParams: RouteParams): Promise<Response> => {
     try {
       const ctx = await getServerOrgContext(req);
-      if (opts?.admin) requireOrgAdmin(ctx);
+      if (opts?.admin) await requireOrgAdminOrPermission(ctx);
       return await handler(ctx, req, routeParams);
     } catch (err) {
       if (err instanceof OrgContextError) return jsonError(err.statusCode, err.code, err.message);
@@ -360,7 +459,7 @@ export type CronRouteHandler = (req: Request, routeParams?: RouteParams) => Prom
  * (fail-closed: sin CRON_SECRET => 401).
  */
 export function withCron(handler: CronRouteHandler) {
-  return async (req: Request, routeParams?: RouteParams): Promise<Response> => {
+  return async (req: Request, routeParams: RouteParams): Promise<Response> => {
     try {
       verifyCronSecret(req);
     } catch (err) {

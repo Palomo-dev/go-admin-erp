@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { isOrgAdmin } from '@/lib/utils/rbac';
 import { PROVIDER_CATEGORIES, type ProviderCategory } from '@/lib/crm/providerCatalog';
 import {
@@ -86,6 +87,13 @@ export async function PUT(request: NextRequest) {
     body = await request.json();
   } catch {
     return NextResponse.json({ success: false, error: 'JSON inválido' }, { status: 400 });
+  }
+  try {
+    readOrgBody(ctx, body);
+  } catch (err) {
+    const res = orgError(err);
+    if (res) return res;
+    throw err;
   }
   const parsed = putSchema.safeParse(body);
   if (!parsed.success) {

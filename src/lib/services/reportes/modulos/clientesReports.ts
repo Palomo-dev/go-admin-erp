@@ -3,7 +3,13 @@
 // Llama a la RPC: fn_reporte_clientes_crecimiento + consultas directas
 // ============================================================
 
-import { supabase } from '@/lib/supabase/config';
+import { supabase as browserSupabase } from '@/lib/supabase/config';
+import type { ReportesClient } from '../types';
+// F0-SEC r3 (tester r2, fallo 3): `fetch` acepta el cliente de Supabase por
+// parámetro. En el navegador (app/reportes) cae al cliente browser con la sesión
+// del usuario; en el servidor (asistente de reportes) el route handler pasa el
+// cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
+// corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import { getDateRange, getOrgDateRange } from '@/lib/utils/timezone';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
@@ -24,7 +30,8 @@ export const clientesReports: ReportDefinition[] = [
     descripcion: 'Nuevos clientes, total acumulado y crecimiento',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -34,13 +41,13 @@ export const clientesReports: ReportDefinition[] = [
       const baseEq: Record<string, unknown> = { organization_id: orgId };
 
       const { count: totalAcumulado } = await applyBranchFilter(
-        supabase.from('customers').select('*', { count: 'exact', head: true }).match(baseEq),
+        db.from('customers').select('*', { count: 'exact', head: true }).match(baseEq),
         branchId
       ).lte('created_at', end);
 
       // Nuevos en el período seleccionado
       const { count: nuevosEnPeriodo } = await applyBranchFilter(
-        supabase.from('customers').select('*', { count: 'exact', head: true }).match(baseEq),
+        db.from('customers').select('*', { count: 'exact', head: true }).match(baseEq),
         branchId
       ).gte('created_at', start).lte('created_at', end);
 
@@ -75,7 +82,7 @@ export const clientesReports: ReportDefinition[] = [
         const { start: mesStart, end: mesEnd } = getDateRange(mesInicioStr, mesFinStr, tz);
 
         return applyBranchFilter(
-          supabase
+          db
             .from('customers')
             .select('*', { count: 'exact', head: true })
             .match(baseEq),
@@ -147,14 +154,15 @@ export const clientesReports: ReportDefinition[] = [
     descripcion: 'Distribución por tipo (persona/empresa), ciudad, segmento',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       // Conteos exactos con head:true (evita el límite de 1000 filas)
       const baseEq = { 'organization_id': orgId } as Record<string, unknown>;
 
       const [totalRes, personRes, companyRes] = await Promise.all([
-        applyBranchFilter(supabase.from('customers').select('*', { count: 'exact', head: true }).match(baseEq), branchId),
-        applyBranchFilter(supabase.from('customers').select('*', { count: 'exact', head: true }).match({ ...baseEq, customer_type: 'person' }), branchId),
-        applyBranchFilter(supabase.from('customers').select('*', { count: 'exact', head: true }).match({ ...baseEq, customer_type: 'company' }), branchId),
+        applyBranchFilter(db.from('customers').select('*', { count: 'exact', head: true }).match(baseEq), branchId),
+        applyBranchFilter(db.from('customers').select('*', { count: 'exact', head: true }).match({ ...baseEq, customer_type: 'person' }), branchId),
+        applyBranchFilter(db.from('customers').select('*', { count: 'exact', head: true }).match({ ...baseEq, customer_type: 'company' }), branchId),
       ]);
 
       const total = totalRes.count ?? 0;
@@ -193,12 +201,13 @@ export const clientesReports: ReportDefinition[] = [
     descripcion: 'Clientes por volumen de compras y valor',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      let ventasQuery = supabase
+      let ventasQuery = db
         .from('sales')
         .select('customer_id, total, customers!inner(first_name, last_name, customer_type, company_name)')
         .eq('organization_id', orgId)

@@ -16,6 +16,7 @@ import {
   isMissingFunctionError,
   getAiUsageMonth,
   getCommUsageMonth,
+  isUnknownTimeZoneError,
   FALLBACK_ROW_LIMIT,
 } from '@/lib/services/crm/aiUsageStatsService';
 
@@ -111,6 +112,40 @@ describe('getAiUsageMonth', () => {
   it('un error de la RPC que no sea "no existe" se propaga (no se enmascara con el respaldo)', async () => {
     const { sb } = fakeSb({ rpc: () => ({ data: null, error: { code: '57014', message: 'statement timeout' } }) });
     await expect(getAiUsageMonth(sb, 7, '2026-09-01T00:00:00.000Z', 'UTC')).rejects.toThrow(/fn_ai_usage_month/);
+  });
+
+  // QA r2 medio 2: Intl (ICU) y pg_timezone_names no son el mismo catálogo.
+  // Una zona válida para Node pero no para Postgres no puede dar 500.
+  it('22023 (zona no reconocida por Postgres) → reintento con UTC, 2 llamadas al RPC, mismo p_since', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { sb, rpcCalls } = fakeSb({
+      rpc: (_n, args) =>
+        args.p_tz === 'UTC'
+          ? { data: { spent_usd: 2, spent_credits: 4, rows: 1, by_model: [], by_day: [{ day: '2026-09-15', credits: 4, cost_usd: 2 }] }, error: null }
+          : { data: null, error: { code: '22023', message: 'time zone "Marte/Fobos" not recognized' } },
+    });
+    const r = await getAiUsageMonth(sb, 7, '2026-09-01T00:00:00.000-05:00', 'Marte/Fobos');
+    expect(r).toMatchObject({ source: 'rpc', spent_usd: 2, spent_credits: 4 });
+    expect(rpcCalls).toHaveLength(2);
+    expect(rpcCalls[0].args).toEqual({ p_org: 7, p_since: '2026-09-01T00:00:00.000-05:00', p_tz: 'Marte/Fobos' });
+    expect(rpcCalls[1].args).toEqual({ p_org: 7, p_since: '2026-09-01T00:00:00.000-05:00', p_tz: 'UTC' });
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it('22023 con la zona ya en UTC no reintenta: se propaga (no es un problema de zona)', async () => {
+    const { sb, rpcCalls } = fakeSb({ rpc: () => ({ data: null, error: { code: '22023', message: 'time zone "UTC" not recognized' } }) });
+    await expect(getAiUsageMonth(sb, 7, '2026-09-01T00:00:00.000Z', 'UTC')).rejects.toThrow(/fn_ai_usage_month/);
+    expect(rpcCalls).toHaveLength(1);
+  });
+
+  it('isUnknownTimeZoneError reconoce 22023 y el mensaje de Postgres, y nada más', () => {
+    expect(isUnknownTimeZoneError({ code: '22023', message: 'time zone "X" not recognized' })).toBe(true);
+    expect(isUnknownTimeZoneError({ message: 'time zone "X" not recognized' })).toBe(true);
+    expect(isUnknownTimeZoneError({ code: '22023', message: 'invalid value for parameter' })).toBe(false);
+    expect(isUnknownTimeZoneError({ code: '57014', message: 'statement timeout' })).toBe(false);
+    expect(isUnknownTimeZoneError({ code: 'PGRST202', message: 'Could not find the function' })).toBe(false);
+    expect(isUnknownTimeZoneError(null)).toBe(false);
   });
 });
 

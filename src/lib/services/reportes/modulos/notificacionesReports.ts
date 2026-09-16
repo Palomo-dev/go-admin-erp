@@ -3,7 +3,13 @@
 // Llama a la RPC: fn_reporte_notificaciones_enviadas + consultas directas
 // ============================================================
 
-import { supabase } from '@/lib/supabase/config';
+import { supabase as browserSupabase } from '@/lib/supabase/config';
+import type { ReportesClient } from '../types';
+// F0-SEC r3 (tester r2, fallo 3): `fetch` acepta el cliente de Supabase por
+// parámetro. En el navegador (app/reportes) cae al cliente browser con la sesión
+// del usuario; en el servidor (asistente de reportes) el route handler pasa el
+// cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
+// corren como `authenticated` miembro y nunca como `anon`.
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -22,8 +28,9 @@ export const notificacionesReports: ReportDefinition[] = [
     descripcion: 'Volumen de notificaciones por canal y estado',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase.rpc('fn_reporte_notificaciones_enviadas', {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db.rpc('fn_reporte_notificaciones_enviadas', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
         p_to: `${periodo.fechaFin}T23:59:59Z`,
@@ -53,8 +60,9 @@ export const notificacionesReports: ReportDefinition[] = [
     descripcion: 'Apertura y CTR por canal y tipo',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db
         .from('notifications')
         .select('id, channel, read_at, created_at')
         .eq('organization_id', orgId)
@@ -102,8 +110,9 @@ export const notificacionesReports: ReportDefinition[] = [
     descripcion: 'Notificaciones agrupadas por módulo origen',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db
         .from('notifications')
         .select('id, payload, created_at')
         .eq('organization_id', orgId)

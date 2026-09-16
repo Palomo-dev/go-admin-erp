@@ -2375,7 +2375,7 @@ sembrada; pedir acceso de API a las cuatro transportadoras (plazo más largo de 
 ## Fases — POS doble pantalla
 | Fase | Parte | Estado | Ronda actual | Última calificación | Responsable |
 |------|-------|--------|---------------|----------------------|-------------|
-| F0 Espejo local | A · Protocolo, proyección del carrito y transporte BroadcastChannel (con tests) | pendiente | 0 | - | builder |
+| F0 Espejo local | A · Protocolo, proyección del carrito y transporte BroadcastChannel (con tests) | en_revision | 3 | 7.8 (r2); r3 sin QA, tester 7 | qa-reviewer |
 | F0 Espejo local | B · Emisión desde posService y CheckoutDialog (efectivo/tarjeta/QR sin imagen) | pendiente | 0 | - | builder |
 | F0 Espejo local | C · Ruta `/pos-display` con estados Reposo/Pedido/Cobro/Gracias/Conectando y marca | pendiente | 0 | - | builder |
 | F0 Espejo local | D · Indicador y botón en el POS, tarjeta "Pantalla del cliente" en Configuración › POS (interruptor maestro) | pendiente | 0 | - | builder |
@@ -2457,3 +2457,67 @@ en "Reglas del sistema" de la configuración de IA.
   descripción (cm, ml, litros, kg, oz, pulgadas…), respetando decimales, y se
   añade bajo cada producto como "Medidas/capacidad (de la descripción)". 3 tests.
 - Desplegado 23:5x UTC. Pendiente de que el usuario repita la prueba de talla.
+
+#### Ronda 4 — tercera prueba del usuario (23:50 UTC): "Tienes talla 40 en calzado?"
+
+- Respuesta del bot: "Por ahora no tenemos calzado disponible". `products = true`,
+  0 tarjetas, 2.500 tokens de prompt.
+- Causa (reconstruida con los 20 mensajes de la conversación): el atajo de
+  seguimiento recién añadido se disparó porque 3 mensajes antes había tarjetas
+  de ropa Adidas, y sustituyó la búsqueda nueva por esas tarjetas. El modelo
+  recibió pantalonetas con tallas S/M/L y, preguntado por calzado 40, contestó
+  que no había calzado. Error mío de diseño: el seguimiento no puede ganar a
+  un mensaje que nombra algo del catálogo.
+- Segunda causa: `presentaciones` subestima (solo cuenta variantes que
+  puntuaron; con un token de categoría las variantes no puntúan porque no
+  tienen categoría), así que usarlo como puerta para pedir variantes dejaba
+  sin tallas a productos que sí las tienen.
+- Arreglo: la búsqueda nueva siempre corre; las tarjetas anteriores solo se
+  heredan si la búsqueda vuelve vacía Y el mensaje parece seguimiento
+  ("Que tienes talla 40?" → sin palabras de catálogo → hereda los Diesel con
+  sus tallas; "talla 40 en calzado" → búsqueda por calzado). Las variantes se
+  piden para todos los productos encontrados.
+- Verificado contra la BD: "calzado" → 6 productos en 872 ms y 29 variantes
+  con talla y stock listadas bajo cada uno.
+- Límite conocido: con una palabra de categoría ("calzado") los 1.137 zapatos
+  empatan a 2,5 y salen los 6 primeros por id (mujer y niño). Falta
+  desempatar por talla pedida, novedad o ventas. Anotado como pendiente.
+
+### Fase: F0 Parte A (protocolo, proyeccion, transporte) — Ronda 1 — 2026-09-15
+- Calificacion QA: 6.9/10 (requiere-nueva-ronda)
+- Calificacion Tester: 6/10 (97/103 casos; 6 fallos)
+- Que se hizo: protocol.ts, projection.ts, transport.ts, terminal.ts, index.ts y 4 archivos de tests en src/__tests__/pos-display/.
+- Que falta / feedback recibido:
+  1. [alto] DisplayLine.total leia item.total en vez de qty x unitPrice bruto (contrato de protocol.ts).
+  2. [medio] resolveTaxIncluded priorizaba cart.tax_included y no coincidia con calculateCartTotals de posService.
+  3. [medio] Dos pestañas de /app/pos comparten terminalId y canal: hace falta instanceId en el sobre.
+  4. [bajo] Orden del spread del sobre permitia que un draft pisara v/seq/terminalId.
+  5. [bajo] resolveTaxIncluded sin proteccion Array.isArray; interfaz sin startHeartbeat/stopHeartbeat; seq no entero aceptado.
+- Proxima accion: ronda 2 del builder con la lista anterior.
+
+### Fase: F0 Parte A — Ronda 2 — 2026-09-15
+- Calificacion QA: 7.8/10 (requiere-nueva-ronda)
+- Calificacion Tester: 7/10 (205/207 casos; 2 fallos). El tester añadio qa-projection-edge, qa-transport-edge y qa-protocol-terminal-edge.
+- Que se hizo: atendidos los 7 puntos de la ronda 1 (instanceId en el sobre, spread invertido, validacion de seq entero, heartbeat en la interfaz).
+- Que falta / feedback recibido:
+  1. [alto] BroadcastChannelReceiver no reinicia highestSeq al cambiar de instanceId (adopcion sin hello y liberacion por bye): descarta mensajes validos del nuevo emisor.
+  2. [medio] Los mensajes de subida no llevan destinatario: con dos pestañas responde la equivocada. Añadir toInstanceId opcional.
+  3. [bajo] round2 por linea rompe la promesa de que las lineas suman el subtotal.
+  4. [bajo] tax_included debe evaluarse truthy (Boolean), coherente con posService.
+  5. [bajo] postMessage sin try/catch (DataCloneError); isDisplayStateShape deja pasar thanks/tip vacios.
+- Para el 10: JSDoc de modifiers[].extraPrice como informativo; distinguir bye de silencio (lastByeAt); deduplicar hello repetido.
+- Proxima accion: ronda 3 del builder (en curso al momento del traspaso). Si no llega a 9.5, escalar segun loop.md.
+
+### Fase: F0 Parte A — Ronda 3 — 2026-09-15 (DETENIDA por el usuario antes de la QA)
+- Calificacion QA: sin calificar (el qa-reviewer estaba corriendo cuando se detuvo el flujo)
+- Calificacion Tester: 7/10 (el tester reporto 252/255; tras las ultimas correcciones del builder la suite queda en 11 suites / 179 tests / 0 fallos, eslint limpio)
+- Que se hizo: atendidos los 6 puntos de QA r2 y los 5 del tester r2. setActiveInstance() unico en el receptor reinicia highestSeq al cambiar de instancia (adopcion y bye); toInstanceId en subida; sin round2 por linea; tax_included truthy; postMessage con try/catch; JSDoc de isDisplayStateShape con garantias explicitas. Tests nuevos: tester-r3-projection-protocol, tester-r3-transport.
+- Que falta / feedback del tester r3 (sin QA que lo priorice):
+  1. [medio] projectCartForDisplay lanza TypeError si items o modifiers traen null (carritos viejos de localStorage): normalizar con filtros antes de proyectar.
+  2. [medio] BroadcastChannelReceiver no puede soltar la instancia activa si la pestaña muere sin bye: need_snapshot sigue yendo a una instancia muerta. Liberar la instancia al entrar en Conectando (sin heartbeat 3 s).
+  3. [medio] Carrera al abrir la pantalla con dos pestañas de /app/pos: el need_snapshot inicial va sin destinatario y gana el ultimo hello (puede ser la pestaña en segundo plano). Definir regla: adoptar la instancia cuyo hello llegue con sessionOpen=true o la mas reciente por seq, y documentarla.
+  4. [bajo] projectLine copia item.id sin normalizar (undefined en carritos viejos): generar id estable si falta.
+  5. [bajo] Un bye de instancia desconocida sin instancia activa se adopta y libera en el mismo mensaje y llega a la UI: ignorarlo.
+  6. [bajo] Divergencias respecto al PLAN §8 pendientes de llevar al plan: instanceId obligatorio en DownEnvelope, toInstanceId opcional en UpEnvelope, publish() recibe DownMessageDraft, startHeartbeat/stopHeartbeat en la interfaz.
+- Estado: Parte A queda en en_revision con 3 rondas consumidas y sin nota final >= 9.5. Segun loop.md no se lanza una 4a ronda a ciegas: el siguiente agente debe (a) correr un qa-reviewer sobre el codigo tal como quedo, o (b) atender los 6 puntos de arriba en una ronda de cierre autorizada por el usuario, y luego seguir con B, C y D.
+- Bloqueo raiz: ninguno tecnico. Las tres rondas convergieron (6.9 -> 7.8 -> tester 7 con hallazgos ya solo medios/bajos); lo que falta es una ronda de cierre corta, no un rediseño.

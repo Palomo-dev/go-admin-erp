@@ -62,9 +62,9 @@ function globalAppSecret(): string | null {
 
 // POST: Recibir mensajes y status updates
 // F0 (C3 msg): firma X-Hub-Signature-256 verificada SIEMPRE (fail-closed) sobre el raw body.
-// F0-SEC r2: autorización POR ENTRADA. La firma cubre el cuerpo entero y la
-// calcula UNA app de Meta, así que todas las `entry[*]` tienen que pertenecer
-// al mismo secreto (el del canal, o el global de la plataforma). Un payload que
+// F0-SEC r2/r3: autorización POR CAMBIO. La firma cubre el cuerpo entero y la
+// calcula UNA app de Meta, así que todos los `entry[*].changes[*]` tienen que
+// pertenecer al mismo secreto (el del canal, o el global de la plataforma). Un payload que
 // mezcle canales de secretos distintos se rechaza ENTERO con 403 `mixed_channels`:
 // nunca una organización procesa entradas de otra. La decisión y las reglas
 // están documentadas en `webhookAuthorization.ts`.
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid_signature' }, { status: 403 });
   }
 
-  // 1. Resolver a qué secreto pertenece CADA entrada y exigir que coincidan.
+  // 1. Resolver a qué secreto pertenece CADA cambio y exigir que coincidan.
   const plan = await planWebhookAuthorization(payload, channelResolver, globalAppSecret());
   if (plan.kind === 'reject') {
     console.warn(`[WhatsApp Webhook] Rechazado (${plan.code}): ${plan.detail}`);
@@ -103,10 +103,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true, ignored: true }, { status: 200 });
   }
 
-  if (plan.droppedEntryIndexes.length > 0) {
-    console.warn('[WhatsApp Webhook] Entradas descartadas: no resuelven a ningún canal del secreto que firmó.', {
+  // F0-SEC r3 (H1/H2): el descarte es POR CAMBIO. Un `phone_number_id` o un
+  // WABA que no resuelve al secreto que firmó se queda fuera aunque comparta
+  // entrada con cambios legítimos; se registra para que un intento de
+  // inyección entre organizaciones se vea en el log.
+  if (plan.droppedChanges.length > 0) {
+    console.warn('[WhatsApp Webhook] Cambios descartados: no resuelven a ningún canal del secreto que firmó.', {
       scope: plan.scope,
       organizationIds: plan.organizationIds,
+      droppedChanges: plan.droppedChanges,
       droppedEntryIndexes: plan.droppedEntryIndexes,
     });
   }

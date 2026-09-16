@@ -3,7 +3,13 @@
 // Llama a las RPCs: fn_reporte_crm_funnel, fn_reporte_crm_ranking_vendedores
 // ============================================================
 
-import { supabase } from '@/lib/supabase/config';
+import { supabase as browserSupabase } from '@/lib/supabase/config';
+import type { ReportesClient } from '../types';
+// F0-SEC r3 (tester r2, fallo 3): `fetch` acepta el cliente de Supabase por
+// parámetro. En el navegador (app/reportes) cae al cliente browser con la sesión
+// del usuario; en el servidor (asistente de reportes) el route handler pasa el
+// cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
+// corren como `authenticated` miembro y nunca como `anon`.
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -22,8 +28,9 @@ export const crmReports: ReportDefinition[] = [
     descripcion: 'Oportunidades por etapa, conversión entre etapas y forecast',
     categoria: 'comercial',
     periodosSugeridos: ['semanal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase.rpc('fn_reporte_crm_funnel', {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db.rpc('fn_reporte_crm_funnel', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
         p_to: `${periodo.fechaFin}T23:59:59Z`,
@@ -55,8 +62,9 @@ export const crmReports: ReportDefinition[] = [
     descripcion: 'Proyección de ingresos por probabilidad de cierre',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase.rpc('fn_reporte_crm_funnel', {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db.rpc('fn_reporte_crm_funnel', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
         p_to: `${periodo.fechaFin}T23:59:59Z`,
@@ -97,8 +105,9 @@ export const crmReports: ReportDefinition[] = [
     descripcion: 'Performance de vendedores por oportunidades y monto cerrado',
     categoria: 'comercial',
     periodosSugeridos: ['quincenal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase.rpc('fn_reporte_crm_ranking_vendedores', {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db.rpc('fn_reporte_crm_ranking_vendedores', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
         p_to: `${periodo.fechaFin}T23:59:59Z`,
@@ -130,8 +139,9 @@ export const crmReports: ReportDefinition[] = [
     descripcion: 'Llamadas, reuniones, emails y visitas del período',
     categoria: 'comercial',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db
         .from('activities')
         .select('activity_type, created_at')
         .eq('organization_id', orgId)
@@ -170,8 +180,9 @@ export const crmReports: ReportDefinition[] = [
     descripcion: 'Performance de campañas: contactos, conversión, ROI',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db
         .from('campaigns')
         .select('id, name, status, channel, created_at')
         .eq('organization_id', orgId)
@@ -203,8 +214,9 @@ export const crmReports: ReportDefinition[] = [
     descripcion: 'Crecimiento, segmentación y valor por cliente',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
-      const { data, error } = await supabase.rpc('fn_reporte_clientes_crecimiento', {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { data, error } = await db.rpc('fn_reporte_clientes_crecimiento', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
         p_to: `${periodo.fechaFin}T23:59:59Z`,

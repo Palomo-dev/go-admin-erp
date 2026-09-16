@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getEnrollments,
   resumeEnrollment,
@@ -59,6 +60,7 @@ export async function PATCH(request: NextRequest) {
     } catch {
       body = {};
     }
+    readOrgBody(ctx, body);
 
     if (typeof body.enrollment_id !== 'string' || body.enrollment_id.length === 0) {
       return NextResponse.json({ success: false, error: 'Falta enrollment_id' }, { status: 400 });
@@ -83,6 +85,7 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
+    await readOrgBody(ctx, request);
     requireOrgAdmin(ctx);
     const enrollmentId = request.nextUrl.searchParams.get('enrollment_id');
     if (!enrollmentId) {

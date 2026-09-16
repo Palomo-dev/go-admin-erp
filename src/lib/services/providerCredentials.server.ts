@@ -7,7 +7,10 @@
  * único archivo que cambia: `readCredentials` / `writeCredentials`.
  *
  * Orden de resolución (F0 §2.4): fila propia de la org (credenciales reales,
- * sin placeholders) → fallback env global → 'none'.
+ * sin placeholders) → fallback env global → 'none'. La clave propia gana
+ * siempre, aunque otro proveedor de la misma categoría tenga menor `priority`
+ * (QA r1 medio 8): primera pasada buscando `source: 'org'`, segunda con el
+ * fallback env por prioridad.
  */
 
 import { getServiceClient, assertServerOnly } from '@/lib/supabase/server-service';
@@ -16,6 +19,7 @@ import {
   type ProviderCategory,
   SUPPORTED_PROVIDERS,
   CREDENTIAL_FIELDS,
+  SETTING_FIELDS,
   hasRequiredCredentials,
   isPlaceholderCredential,
 } from '@/lib/crm/providerCatalog';
@@ -66,9 +70,10 @@ async function readRows(orgId: number, category?: ProviderCategory): Promise<Pro
 
 /**
  * Credenciales + settings efectivos para (org, categoría[, proveedor]).
- * - Fila activa de la org con credenciales reales → source 'org'.
- * - Fila activa sin credenciales propias (seed) → settings de la fila +
- *   credenciales del fallback env del mismo proveedor → source 'env'.
+ * - Primera pasada: fila activa de la org con credenciales reales → source 'org'
+ *   (gana aunque tenga peor `priority` que un proveedor sembrado sin claves).
+ * - Segunda pasada: fila activa sin credenciales propias (seed) → settings de la
+ *   fila + credenciales del fallback env del mismo proveedor → source 'env'.
  * - Sin fila → fallback env por defecto de la categoría.
  */
 export async function getProviderCredentials(
@@ -80,12 +85,17 @@ export async function getProviderCredentials(
 
   for (const row of rows) {
     const own = sanitizeCredentials(row.credentials);
-    const settings = { ...defaultSettings(category, row.provider), ...(row.settings ?? {}) };
     if (Object.keys(own).length > 0 && hasRequiredCredentials(row.provider, own)) {
+      const settings = { ...defaultSettings(category, row.provider), ...(row.settings ?? {}) };
       return { provider: row.provider, credentials: own, settings, isActive: true, priority: row.priority, source: 'org' };
     }
+  }
+
+  for (const row of rows) {
     const envFb = resolveEnvFallback(category, row.provider);
     if (envFb.isActive) {
+      const own = sanitizeCredentials(row.credentials);
+      const settings = { ...defaultSettings(category, row.provider), ...(row.settings ?? {}) };
       return { ...envFb, credentials: { ...envFb.credentials, ...own }, settings, priority: row.priority };
     }
   }
@@ -105,12 +115,18 @@ export async function getProviderSettings(
 
 /**
  * Lista segura para la UI (sin valores de credenciales). Si la org no tiene
- * filas, intenta el seed `fn_seed_provider_configs` (DB F0 M9) y relee; si el
- * RPC no existe aún, devuelve las filas virtuales derivadas del catálogo.
+ * filas y `opts.seed` es true (solo administradores: un GET de un miembro no
+ * debe escribir), intenta el seed `fn_seed_provider_configs` (DB F0 M9) y
+ * relee; si el RPC no existe aún o no se siembra, devuelve las filas
+ * virtuales derivadas del catálogo.
  */
-export async function listProviderConfigsSafe(orgId: number, category?: ProviderCategory): Promise<ProviderConfigSafe[]> {
+export async function listProviderConfigsSafe(
+  orgId: number,
+  category?: ProviderCategory,
+  opts: { seed?: boolean } = { seed: true },
+): Promise<ProviderConfigSafe[]> {
   let rows = await readRows(orgId, category);
-  if (rows.length === 0 && !category) {
+  if (rows.length === 0 && !category && opts.seed !== false) {
     const { error } = await client().rpc('fn_seed_provider_configs', { p_org: orgId });
     if (!error) rows = await readRows(orgId);
   }
@@ -169,10 +185,72 @@ export class ProviderValidationError extends Error {
   }
 }
 
+/** Tamaño máximo del JSON de `settings` (QA r1 medio 9). */
+export const MAX_SETTINGS_BYTES = 4096;
+const MAX_SETTING_TEXT = 500;
+
+/**
+ * Valida `settings` contra `SETTING_FIELDS[category:provider]` (QA r1 medio 9):
+ * clave desconocida → 422; `select` → valor dentro de `options`; `number` →
+ * finito y dentro de `[min, max]`; `boolean` → booleano; `text` → string de
+ * ≤ 500 caracteres. `null` borra la clave (se acepta para cualquier campo).
+ * Devuelve el objeto saneado. Antes un `conversation_model: 'gpt-99-inventado'`
+ * se guardaba y fallaba después en el proveedor, no en el guardado.
+ */
+export function validateProviderSettings(
+  category: ProviderCategory,
+  provider: string,
+  settings: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  if (!settings) return {};
+  if (JSON.stringify(settings).length > MAX_SETTINGS_BYTES) {
+    throw new ProviderValidationError(`settings supera ${MAX_SETTINGS_BYTES} bytes`);
+  }
+  const fields = SETTING_FIELDS[`${category}:${provider}`] ?? [];
+  const byKey = new Map(fields.map((f) => [f.key, f]));
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(settings)) {
+    const field = byKey.get(key);
+    if (!field) throw new ProviderValidationError(`Ajuste '${key}' no válido para '${category}:${provider}'`);
+    if (value === null) {
+      out[key] = null;
+      continue;
+    }
+    switch (field.type) {
+      case 'select':
+        if (typeof value !== 'string' || !(field.options ?? []).includes(value)) {
+          throw new ProviderValidationError(`Ajuste '${key}': valor '${String(value)}' fuera de las opciones`);
+        }
+        break;
+      case 'number': {
+        const n = typeof value === 'number' ? value : Number(value);
+        if (typeof value === 'boolean' || (typeof value === 'string' && value.trim() === '') || !Number.isFinite(n)) {
+          throw new ProviderValidationError(`Ajuste '${key}': debe ser numérico`);
+        }
+        if ((field.min != null && n < field.min) || (field.max != null && n > field.max)) {
+          throw new ProviderValidationError(`Ajuste '${key}': fuera de rango [${field.min ?? 'sin mínimo'}, ${field.max ?? 'sin máximo'}]`);
+        }
+        out[key] = n;
+        continue;
+      }
+      case 'boolean':
+        if (typeof value !== 'boolean') throw new ProviderValidationError(`Ajuste '${key}': debe ser booleano`);
+        break;
+      case 'text':
+        if (typeof value !== 'string' || value.length > MAX_SETTING_TEXT) {
+          throw new ProviderValidationError(`Ajuste '${key}': texto de máximo ${MAX_SETTING_TEXT} caracteres`);
+        }
+        break;
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
 /**
  * Upsert de (org, category, provider). Las credenciales se fusionan con las
- * existentes (solo se sobreescriben las claves enviadas). Valida proveedor y
- * claves contra el catálogo. Devuelve el shape seguro.
+ * existentes (solo se sobreescriben las claves enviadas). Valida proveedor,
+ * claves y `settings` contra el catálogo. Devuelve el shape seguro.
  */
 export async function upsertProviderConfig(orgId: number, input: UpsertProviderInput): Promise<ProviderConfigSafe> {
   const allowed = SUPPORTED_PROVIDERS[input.category];
@@ -183,6 +261,7 @@ export async function upsertProviderConfig(orgId: number, input: UpsertProviderI
   for (const k of Object.keys(input.credentials ?? {})) {
     if (!allowedKeys.has(k)) throw new ProviderValidationError(`Credencial '${k}' no válida para '${input.provider}'`);
   }
+  const validSettings = validateProviderSettings(input.category, input.provider, input.settings);
 
   const sb = client();
   const { data: existing } = await sb
@@ -198,7 +277,11 @@ export async function upsertProviderConfig(orgId: number, input: UpsertProviderI
     if (v === null || v === '' || isPlaceholderCredential(v)) delete mergedCreds[k];
     else mergedCreds[k] = v.trim();
   }
-  const mergedSettings = { ...((existing?.settings as Record<string, unknown>) ?? {}), ...(input.settings ?? {}) };
+  const mergedSettings: Record<string, unknown> = { ...((existing?.settings as Record<string, unknown>) ?? {}) };
+  for (const [k, v] of Object.entries(validSettings)) {
+    if (v === null) delete mergedSettings[k];
+    else mergedSettings[k] = v;
+  }
 
   const payload = {
     organization_id: orgId,

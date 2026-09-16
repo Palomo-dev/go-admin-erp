@@ -3,6 +3,8 @@
 // Estructura unificada para todos los reportes de los 19 módulos
 // ============================================================
 
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 /** Períodos de cierre soportados */
 export type TipoCierre =
   | 'diario'
@@ -67,6 +69,15 @@ export type CategoriaReporte =
   | 'personas'
   | 'sistema';
 
+/**
+ * Cliente de Supabase con el que se ejecuta un reporte (F0-SEC r3, tester r2
+ * fallo 3). En el navegador es el cliente browser con la sesión del usuario; en
+ * un route handler es el cliente de sesión de `getServerOrgContext()`. Nunca el
+ * service role: las RPC `fn_reporte_*` exigen `auth.uid()` miembro de la
+ * organización y rechazan al service role a propósito.
+ */
+export type ReportesClient = SupabaseClient;
+
 /** Definición (catálogo) de un reporte disponible */
 export interface ReportDefinition {
   id: string;
@@ -75,7 +86,7 @@ export interface ReportDefinition {
   descripcion: string;
   categoria: CategoriaReporte;
   periodosSugeridos: TipoCierre[];
-  fetch: (orgId: number, periodo: PeriodoCierre, branchId?: number | null) => Promise<ReportData>;
+  fetch: (orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient) => Promise<ReportData>;
 }
 
 /** Agrupación de reportes por módulo para la UI */

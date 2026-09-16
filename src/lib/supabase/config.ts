@@ -7,6 +7,23 @@ export const getProjectRef = () => {
   return supabaseUrl.split('.')[0].replace('https://', '');
 }
 
+/**
+ * Atributo `domain` de las cookies de sesión.
+ *
+ * En producción se comparten entre subdominios (`.goadmin.io`). Pero la app
+ * de escritorio sirve esta misma build de producción desde
+ * `http://127.0.0.1:<puerto>` (servidor Next embebido, fase 3 del desktop):
+ * ahí una cookie con `domain=.goadmin.io` la rechaza el navegador en
+ * silencio, el middleware nunca ve la sesión y el login entra en bucle. Solo
+ * se fija el dominio cuando la página vive de verdad bajo goadmin.io.
+ */
+const getCookieDomain = (): string => {
+  if (process.env.NODE_ENV !== 'production') return '';
+  if (typeof window === 'undefined') return '; domain=.goadmin.io';
+  const host = window.location.hostname;
+  return host === 'goadmin.io' || host.endsWith('.goadmin.io') ? '; domain=.goadmin.io' : '';
+}
+
 // Función para obtener el valor de una cookie
 const getCookie = (name: string): string | null => {
   if (typeof document === 'undefined') return null;
@@ -27,7 +44,7 @@ const setCookie = (name: string, value: string, maxAge: number = 604800) => {
   
   const isAuthCookie = name.includes('-auth-token');
   const isProduction = process.env.NODE_ENV === 'production';
-  const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
+  const cookieDomain = getCookieDomain();
   const encodedValue = encodeURIComponent(value);
   
   // Limpiar chunks anteriores si existían (incluir Secure para que el borrado funcione)
@@ -72,7 +89,7 @@ const removeCookie = (name: string) => {
   
   const isAuthCookie = name.includes('-auth-token');
   const isProduction = process.env.NODE_ENV === 'production';
-  const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
+  const cookieDomain = getCookieDomain();
   const secureFlag = isProduction ? ';Secure' : '';
   
   document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${secureFlag}${cookieDomain}`;
@@ -262,8 +279,7 @@ export const createSupabaseClient = () => {
             
             // También guardar en cookies para que el middleware pueda leerlo
             const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-            const isProduction = process.env.NODE_ENV === 'production';
-            const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
+            const cookieDomain = getCookieDomain();
             const encodedValue = encodeURIComponent(value);
             
             // Limpiar chunks anteriores si existían (incluir Secure para que el borrado funcione)
@@ -320,8 +336,7 @@ export const createSupabaseClient = () => {
             // IMPORTANTE: Si las cookies se setearon con Secure, la eliminación
             // también debe incluir Secure. Si no, el navegador ignora el borrado
             // y la cookie persiste → bucle infinito de 403 al leer token inválido.
-            const isProduction = process.env.NODE_ENV === 'production';
-            const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
+            const cookieDomain = getCookieDomain();
             const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
             document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${secureFlag}${cookieDomain}`;
             // Limpiar chunks .0, .1, .2...
@@ -368,8 +383,12 @@ export const createSupabaseClient = () => {
         }
 
         // ── Offline cache solo en desktop app ──
+        // En Desktop la conectividad la decide el health-check del proceso
+        // principal (window.goAdminDesktop.onConnectivity → offlineCache), no
+        // navigator.onLine, que devuelve true con WiFi enlazado y sin internet.
+        // Fuera del Desktop isAppOnline() cae a navigator.onLine.
         const isDesktopApp = typeof window !== 'undefined' && 'goAdminDesktop' in window;
-        const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+        const isOnline = isDesktopApp ? isAppOnline() : (typeof navigator !== 'undefined' ? navigator.onLine : true);
         const useOfflineLogic = isDesktopApp && !isOnline;
         if (useOfflineLogic) {
           // ── Auth offline: servir sesión desde localStorage ──
@@ -434,7 +453,7 @@ export const createSupabaseClient = () => {
         // getSession()/getUser() y el resto de auth no llevan timeout propio
         // para no impedir que el SDK restaure una sesión válida durante un
         // cambio de organización. Toda la lógica de offline solo se activa
-        // cuando navigator.onLine === false.
+        // en Desktop y cuando isAppOnline() === false (conectividad real).
         // isOnline y useOfflineLogic ya fueron declarados arriba.
 
         return new Promise((resolve, reject) => {
@@ -486,8 +505,7 @@ export const createSupabaseClient = () => {
                     localStorage.removeItem(storageKey);
                     localStorage.removeItem('sb-session-cache');
                     // Limpiar cookies chunked
-                    const isProd = process.env.NODE_ENV === 'production';
-                    const domain = isProd ? '; domain=.goadmin.io' : '';
+                    const domain = getCookieDomain();
                     const secure = window.location.protocol === 'https:' ? '; Secure' : '';
                     document.cookie = `${storageKey}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${secure}${domain}`;
                     for (let i = 0; i < 20; i++) {
@@ -675,8 +693,7 @@ export const ensureSessionSynced = async (): Promise<boolean> => {
     // Guardar en cookies con soporte de chunks para tokens grandes
     const cookieValue = encodeURIComponent(JSON.stringify(sessionToken));
     const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
+    const cookieDomain = getCookieDomain();
     
     // Limpiar cookie simple y chunks anteriores
     document.cookie = `${storageKey}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${cookieDomain}`;

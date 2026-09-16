@@ -54,6 +54,13 @@ const DEFAULT_DEADLINE_MS = 50_000;
 const DEFAULT_JOB_TIMEOUT_MS = 30_000;
 /** Margen mínimo para intentar un job más antes del deadline. */
 const MIN_REMAINING_MS = 1_500;
+/**
+ * Espera entre los dos intentos de `fn_complete_job` (r4, tester r3 T-6): un
+ * blip de red de milisegundos no debe convertir un job exitoso en `failed`
+ * terminal. Solo se espera si queda presupuesto para ello.
+ */
+export const COMPLETE_RETRY_DELAY_MS = 300;
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export function makeWorkerId(): string {
   let host = 'worker';
@@ -381,6 +388,7 @@ export async function runJobs(opts: RunJobsOptions = {}): Promise<RunJobsSummary
         let acknowledged: boolean | null = null;
         let completeError = '';
         for (let attempt = 0; attempt < 2 && acknowledged === null; attempt++) {
+          if (attempt > 0 && deadlineAt - Date.now() > COMPLETE_RETRY_DELAY_MS) await sleep(COMPLETE_RETRY_DELAY_MS);
           try {
             acknowledged = await completeJob(sb, job, worker, resultObj);
           } catch (err) {

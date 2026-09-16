@@ -12,7 +12,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
-import { describeLibraryError, foreignOrganizationInBody, sanitizeAddLibraryInput } from '@/lib/services/crm/voiceLibrary';
+import { readOrgBody } from '@/lib/security/organizationBody';
+import { describeLibraryError, sanitizeAddLibraryInput } from '@/lib/services/crm/voiceLibrary';
 import { addLibraryVoiceToCatalog, searchLibraryVoices } from '@/lib/services/crm/voiceLibraryService';
 import { ElevenLabsError } from '@/lib/services/integrations/elevenlabs/voiceCloneClient';
 
@@ -55,13 +56,7 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     requireOrgAdmin(ctx);
-    const body: unknown = await request.json().catch(() => null);
-    // Regla dura 5: un body con otra organización → 403 y se registra (ronda 4: faltaba aquí).
-    const bodyOrg = foreignOrganizationInBody((body as { organization_id?: unknown } | null)?.organization_id, ctx.organizationId);
-    if (bodyOrg !== null) {
-      console.warn('[voices/library] POST con organization_id ajeno en el body', { session: ctx.organizationId, body: bodyOrg });
-      return NextResponse.json({ success: false, error: 'Organización no permitida' }, { status: 403 });
-    }
+    const body: unknown = readOrgBody(ctx, await request.json().catch(() => null));
     // R13: identificadores con forma fija, nombre ≤120, descripción ≤500, idioma ISO o nada.
     const input = sanitizeAddLibraryInput(body);
     if (!input) {

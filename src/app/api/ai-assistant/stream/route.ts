@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getAssistantCapabilities } from '@/lib/ai/assistant/capabilities';
 import { checkAICredits } from '@/lib/services/aiCreditsService';
 import { checkRateLimit } from '@/lib/security/rateLimit';
@@ -84,11 +85,27 @@ export async function POST(request: NextRequest) {
     return errorStream('Vas muy rápido. Espera unos segundos y vuelve a intentarlo.', 'RATE_LIMITED');
   }
 
-  let body: { message?: unknown; conversationId?: unknown; context?: Record<string, unknown> };
+  let body: {
+    message?: unknown;
+    conversationId?: unknown;
+    context?: Record<string, unknown>;
+    attachmentIds?: unknown;
+  };
   try {
     body = await request.json();
   } catch {
     return errorStream('Petición mal formada.', 'BAD_REQUEST');
+  }
+  try {
+    readOrgBody(ctx, body);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return new Response(JSON.stringify({ error: err.message, code: err.code }), {
+        status: err.statusCode,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    throw err;
   }
 
   const message = typeof body.message === 'string' ? body.message.trim() : '';
@@ -145,11 +162,50 @@ export async function POST(request: NextRequest) {
           .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content as string }))
           .slice(-20);
 
+        // Adjuntos del turno. Se validan contra la organización (la RLS ya lo
+        // hace, pero aquí además se descartan ids que no existan) y se le
+        // enseñan al modelo como DATO: "hay un documento con este id", para que
+        // llame a `leer_documento`. El contenido del documento nunca entra al
+        // prompt por aquí — eso lo hace la herramienta, entre delimitadores.
+        const attachmentIds = Array.isArray(body.attachmentIds)
+          ? (body.attachmentIds as unknown[]).filter((v): v is string => typeof v === 'string').slice(0, 10)
+          : [];
+        let attachmentNote = '';
+        if (attachmentIds.length > 0) {
+          const { data: adjuntos } = await ctx.supabase
+            .from('ai_attachments')
+            .select('id, kind, mime, bytes')
+            .eq('organization_id', ctx.organizationId)
+            .in('id', attachmentIds);
+          const validos = (adjuntos ?? []) as Array<{ id: string; kind: string; mime: string; bytes: number }>;
+          if (validos.length > 0) {
+            const lista = validos
+              .map((a) => `- attachment_id: ${a.id} (${a.kind}, ${a.mime}, ${Math.round(a.bytes / 1024)} KB)`)
+              .join('\n');
+            const cuantos = validos.length === 1 ? 'un documento' : `${validos.length} documentos`;
+            // Un CSV/Excel casi siempre es un listado para cargar; una foto o un
+            // PDF, un documento para leer. Se le sugiere la herramienta, no se
+            // le impone: el usuario puede querer otra cosa con el mismo archivo.
+            const hayHoja = validos.some((a) => a.kind === 'spreadsheet');
+            const consejo = hayHoja
+              ? 'Si es un listado de productos para cargar al inventario, usa cargar_productos_masivo con su attachment_id; si es una factura u otro documento, usa leer_documento.'
+              : 'Para leerlo usa la herramienta leer_documento con su attachment_id.';
+            attachmentNote = `\n\n[El usuario adjuntó ${cuantos}. ${consejo}\n${lista}]`;
+            // Se enlazan a la conversación para poder retomarla con sus adjuntos.
+            await ctx.supabase
+              .from('ai_attachments')
+              .update({ conversation_id: conversation.id })
+              .in('id', validos.map((a) => a.id))
+              .is('conversation_id', null);
+          }
+        }
+
         await appendMessage(ctx.supabase, {
           conversationId: conversation.id,
           organizationId: ctx.organizationId,
           role: 'user',
           content: message,
+          contentJson: attachmentIds.length > 0 ? { attachmentIds } : {},
         });
         if (conversation.isNew) await ensureTitle(ctx.supabase, conversation.id, message);
 
@@ -189,7 +245,7 @@ export async function POST(request: NextRequest) {
         const result = await runAgent({
           systemPrompt,
           history,
-          message,
+          message: message + attachmentNote,
           ctx: toolCtx,
           settings,
           emit: send,

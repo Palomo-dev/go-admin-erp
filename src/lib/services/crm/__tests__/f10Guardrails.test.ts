@@ -160,7 +160,10 @@ describe('F10 guardarraíles', () => {
   it('contracts/[id] pasa por f10RouteHelpers y decide «signed» a mano por id de rol', () => {
     const src = read('src/app/api/crm/contracts/[id]/route.ts');
     expect(src).toMatch(/foreignOrgResponse\(/);
-    expect(src).toMatch(/STAGE_MANAGER_ROLE_IDS/);
+    // La decisión por id de rol vive en f10RouteHelpers.canManualSign (la ruta no puede
+    // exportar nada que no sea handler: lo exige el chequeo de tipos de `next build`).
+    expect(src).toMatch(/canManualSign\(/);
+    expect(read('src/lib/services/crm/f10RouteHelpers.ts')).toMatch(/STAGE_MANAGER_ROLE_IDS/);
     expect(src).not.toMatch(/roleName/);
   });
 });

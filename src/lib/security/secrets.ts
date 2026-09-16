@@ -93,12 +93,27 @@ export function readRealSecret(name: string, opts: RealSecretOptions = {}): stri
   for (const envName of candidates) {
     const raw = process.env[envName];
     const problem = secretProblem(raw, opts.min);
-    if (problem === null) return raw as string;
+    if (problem === null) {
+      // F0-SEC r3 (tester r2, sonda): si la principal existe pero es relleno o
+      // corta y se está usando un alias, que el log lo diga: hoy funciona por
+      // el alias y mañana, al retirarlo, dejará de funcionar sin aviso.
+      if (envName !== name && firstProblem !== 'missing') reportAliasOnce(name, envName, firstProblem);
+      return raw as string;
+    }
     // Un alias ausente no tapa el motivo real de la principal.
     if (envName === name || (firstProblem === 'missing' && problem !== 'missing')) firstProblem = problem;
   }
   reportOnce(name, firstProblem);
   return null;
+}
+
+/** Aviso (una vez por proceso) de que la principal está mal y el valor viene de un alias. Nunca imprime el valor. */
+function reportAliasOnce(name: string, alias: string, problem: SecretProblem): void {
+  const key = `${name}:alias:${alias}`;
+  if (reported.has(key)) return;
+  reported.add(key);
+  const detail = problem === 'placeholder' ? 'tiene un valor de relleno' : 'es demasiado corta';
+  console.warn(`[security/secrets] ${name} ${detail}; se está usando el alias ${alias}. Corrige ${name}: el alias es legacy.`);
 }
 
 /**

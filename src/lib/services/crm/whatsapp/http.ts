@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError, requireOrgAdmin, type ServerOrgContext } from '@/lib/utils/orgContext';
+import { getServerOrgContext, OrgContextError, requireOrgAdminOrPermission, type ServerOrgContext } from '@/lib/utils/orgContext';
 import { WhatsAppError } from './types';
 
 export function whatsappErrorResponse(err: unknown): NextResponse {
@@ -28,7 +28,8 @@ export function withWhatsAppRoute(handler: WaHandler, opts: { admin?: boolean } 
   return async (req: Request, route: Params): Promise<Response> => {
     try {
       const ctx = await getServerOrgContext(req);
-      if (opts.admin) requireOrgAdmin(ctx);
+      // F0-SEC r2: admin por id de rol o por permiso (`admin.full_access`), nunca por nombre.
+      if (opts.admin) await requireOrgAdminOrPermission(ctx);
       const params = route?.params ? await route.params : {};
       return await handler(ctx, req, params);
     } catch (err) {
@@ -37,6 +38,12 @@ export function withWhatsAppRoute(handler: WaHandler, opts: { admin?: boolean } 
   };
 }
 
+/**
+ * @deprecated F0-SEC r2: las rutas leen el body con `readOrgBody(ctx, req)`
+ * (`@/lib/security/organizationBody`), que además aplica la regla dura 5 (b):
+ * organización ajena en el body o la query → 403 + registro. Se conserva solo
+ * para llamadores fuera de las rutas; no usar en rutas nuevas.
+ */
 export async function readJson<T = Record<string, unknown>>(req: Request): Promise<T> {
   try {
     return (await req.json()) as T;

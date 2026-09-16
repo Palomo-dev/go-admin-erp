@@ -78,6 +78,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('printing:usb', () => fetchLocalJson(`http://127.0.0.1:${DISCOVERY_PORT}/usb`));
   ipcMain.handle('printing:bluetooth', () => fetchLocalJson(`http://127.0.0.1:${DISCOVERY_PORT}/bluetooth`));
 
+  // Impresión local directa del POS (Go Admin Desktop sin internet):
+  // printRaw(printerId, { jobType, printer, payload }) -> POST /print del
+  // discovery server -> printToDevice(). El agente responde JSON también en
+  // 400/500, así que se conserva su `error` en vez de reducirlo a "HTTP 500".
   ipcMain.handle('printing:print-raw', async (_e, printerId: string, payload: unknown) => {
     try {
       const response = await fetch(`http://127.0.0.1:${DISCOVERY_PORT}/print`, {
@@ -85,8 +89,11 @@ export function registerIpcHandlers(): void {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ printerId, payload }),
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.json();
+      const body = (await response.json().catch(() => null)) as { success?: boolean; error?: string } | null;
+      if (!response.ok) {
+        return { success: false, error: body?.error || `HTTP ${response.status}` };
+      }
+      return body ?? { success: false, error: 'Respuesta vacía del agente local' };
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }

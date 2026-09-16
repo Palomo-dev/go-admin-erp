@@ -146,7 +146,8 @@ describe('multi-organización (fallo 3 del tester r1)', () => {
     expect(res.status).toBe(200);
     const arg = processWebhookPayload.mock.calls[0][0];
     expect(arg.entry.map((e) => e.id)).toEqual(['waba-a']);
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('descartadas'), expect.objectContaining({ droppedEntryIndexes: [1] }));
+    // r3: el aviso es por CAMBIO (H1/H2) y sigue indicando la entrada que quedó vacía.
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('descartados'), expect.objectContaining({ droppedEntryIndexes: [1], droppedChanges: [{ entryIndex: 1, changeIndex: 0, reason: 'unknown_waba' }] }));
   });
 
   test('payload de A y B firmado con el secreto de B → 403 igualmente (ninguna de las dos lo procesa)', async () => {

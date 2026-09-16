@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { updateObjection, deleteObjection } from '@/lib/services/crm/objectionService';
 
 /**
@@ -12,13 +13,8 @@ export async function PATCH(
   try {
     const ctx = await getServerOrgContext();
     const { id } = await params;
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
-    // Regla dura 5: la organización sale de la sesión; un body con otra → 403 y se registra.
-    if (body?.organization_id != null && Number(body.organization_id) !== ctx.organizationId) {
-      console.warn('[CRM Objections] PATCH con organization_id ajeno en el body', { session: ctx.organizationId, body: body.organization_id });
-      return NextResponse.json({ success: false, error: 'Organización no permitida' }, { status: 403 });
-    }
 
     // Solo las columnas editables: ni id, ni organization_id, ni fechas del body.
     const { title, category, detection_signals, recommended_response, discovery_questions, related_case_studies, vertical_id, is_active, sort_order } = body ?? {};
@@ -54,11 +50,12 @@ export async function PATCH(
  * DELETE /api/crm/objections/[id] — Elimina una objection.
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const ctx = await getServerOrgContext();
+    await readOrgBody(ctx, request);
     const { id } = await params;
 
     await deleteObjection(id, ctx.organizationId, ctx.supabase);

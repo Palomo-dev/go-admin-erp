@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getOpportunityObjections,
   addOpportunityObjection,
@@ -47,13 +48,8 @@ export async function POST(
   try {
     const ctx = await getServerOrgContext();
     const { opportunityId } = await params;
-    const body = await request.json();
+    const body = await readOrgBody(ctx, request);
 
-    // Regla dura 5: la organización sale de la sesión; un body con otra → 403 y se registra.
-    if (body?.organization_id != null && Number(body.organization_id) !== ctx.organizationId) {
-      console.warn('[CRM Objections Opportunity] POST con organization_id ajeno en el body', { session: ctx.organizationId, body: body.organization_id });
-      return NextResponse.json({ success: false, error: 'Organización no permitida' }, { status: 403 });
-    }
 
     // Si viene resolveId en el body, resolver en lugar de vincular
     if (body?.resolveId) {

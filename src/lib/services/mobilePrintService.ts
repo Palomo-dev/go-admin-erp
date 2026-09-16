@@ -35,6 +35,8 @@ import type {
   KitchenTicketPrintPayload,
 } from '@printing/types';
 import type { PaperWidth } from '@printing/paper';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getOrganizationTimezone } from './organizationTimezoneService';
 
 // ============================================================================
 // Constantes
@@ -382,11 +384,22 @@ export async function printTestPage(deviceId: string): Promise<PrintResult> {
   }
 
   try {
+    // Resolver el timezone de la organizacion, igual que hace printJobsService.
+    // No hardcodear 'America/Bogota': el que copie este bloque como plantilla
+    // va a replicar el literal.
+    let timezone = 'America/Bogota';
+    try {
+      timezone = await getOrganizationTimezone(getOrganizationId());
+    } catch {
+      // En test o sin org cargada, cae al fallback.
+    }
+
     const testPayload: SaleTicketPrintPayload = {
       saleId: 'test',
       saleNumber: 'PRUEBA-001',
       title: 'PAGINA DE PRUEBA',
       createdAt: new Date().toISOString(),
+      timezone,
       items: [
         { productName: 'Producto de prueba 1', quantity: 1, unitPrice: 1000, total: 1000 },
         { productName: 'Producto de prueba 2', quantity: 2, unitPrice: 2500, total: 5000 },

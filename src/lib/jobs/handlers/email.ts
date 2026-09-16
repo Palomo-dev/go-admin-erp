@@ -16,6 +16,13 @@ import { isEmailError } from '@/lib/services/crm/email/types';
  * no está `pending` o tiene `provider_message_id`, y `sendPendingBatch` salta
  * las ya enviadas; un reintento nunca repite un envío. `signal`: el timeout
  * del runner es advisory, así que no se inicia un envío ya abortado.
+ *
+ * r4 (tester r3 T-1): en el envío programado el handler comprueba primero que
+ * `email_message_id` pertenezca a `orgId` (el payload nunca decide la org;
+ * `dispatchScheduledEmail` busca solo por id) y vuelve a mirar `signal` justo
+ * antes del efecto. Ni `dispatchScheduledEmail` ni `sendPendingBatch` admiten
+ * `signal` (F7): un abort DURANTE el envío no lo cancela; lo cubre el estado
+ * de la fila (`status_sent` / `provider_message_id`) en la siguiente ejecución.
  */
 export const emailJobHandler: JobHandler = async ({ job, supabase, orgId, log, signal }) => {
   const p = job.payload ?? {};
@@ -43,6 +50,19 @@ export const emailJobHandler: JobHandler = async ({ job, supabase, orgId, log, s
     }
     const id = String(p.email_message_id ?? '');
     if (!id) throw new JobFatalError('payload.email_message_id requerido');
+    const { data: owned, error: ownedErr } = await supabase
+      .from('email_messages')
+      .select('id')
+      .eq('id', id)
+      .eq('organization_id', orgId)
+      .maybeSingle();
+    if (ownedErr) throw new JobRetryableError(`email_messages: ${ownedErr.message}`);
+    if (!owned) {
+      log.warn('email_scheduled_not_found', { email_message_id: id });
+      return { skipped: true, reason: 'not_found' };
+    }
+    // Segundo punto de decisión (T-1): el abort pudo llegar durante la comprobación.
+    if (signal.aborted) throw new JobRetryableError('aborted antes de dispatchScheduledEmail');
     const r = await dispatchScheduledEmail(id, supabase);
     if (!r.sent) return { skipped: true, reason: r.reason };
     return { sent: true, email_message_id: id };

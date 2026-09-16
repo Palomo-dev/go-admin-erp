@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '@/lib/supabase/config'
 import { useOrganization } from '@/lib/hooks/useOrganization'
 import { useBranch } from '@/lib/context/BranchContext'
+import { avisarCambioCatalogo } from '@/lib/services/website/avisarCambioCatalogo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Loader2, Save, X } from 'lucide-react'
@@ -178,6 +179,19 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
       return false
     }
 
+    // Validar costo cuando hay stock inicial
+    const hasStockWithoutCost = formData.stock_inicial.some(
+      stock => stock.qty_on_hand > 0 && (!formData.cost || formData.cost <= 0)
+    )
+    if (hasStockWithoutCost) {
+      toast({
+        title: "Error de validación",
+        description: "No puede cargar stock inicial sin costo. El costo es obligatorio cuando hay cantidad en inventario, de lo contrario el kardex y la contabilidad quedan incompletos.",
+        variant: "destructive"
+      })
+      return false
+    }
+
     return true
   }
 
@@ -340,33 +354,35 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
           ...formData.stock_inicial.map(stock => stock.branch_id),
         ]))
 
-        const stockLevels = branchIds.map(bId => {
-          const inicial = initialByBranch.get(bId)
-          return {
-            product_id: product.id,
-            branch_id: bId,
-            qty_on_hand: inicial?.qty_on_hand ?? 0,
-            min_level: inicial?.min_level ?? 0,
-            avg_cost: formData.cost || 0
-          }
-        })
+        // Crear stock_levels solo para sucursales que quedan en 0 (sin movimiento)
+        const zeroStockLevels = branchIds
+          .map(bId => {
+            const inicial = initialByBranch.get(bId)
+            return {
+              product_id: product.id,
+              branch_id: bId,
+              qty_on_hand: inicial?.qty_on_hand ?? 0,
+              min_level: inicial?.min_level ?? 0,
+              avg_cost: formData.cost || 0
+            }
+          })
+          .filter(sl => sl.qty_on_hand === 0)
 
-        if (stockLevels.length > 0) {
+        if (zeroStockLevels.length > 0) {
           const { error: stockError } = await supabase
             .from('stock_levels')
-            .insert(stockLevels)
+            .insert(zeroStockLevels)
 
           if (stockError) throw stockError
         }
 
-        // Crear movimientos de inventario
-        const movements = formData.stock_inicial
+        // Registrar entradas de stock atómicamente vía RPC (stock_levels + stock_movements)
+        const stockEntries = formData.stock_inicial
           .filter(stock => stock.qty_on_hand > 0)
           .map(stock => ({
             organization_id: organization.id,
             branch_id: stock.branch_id,
             product_id: product.id,
-            direction: 'in',
             qty: stock.qty_on_hand,
             unit_cost: stock.avg_cost,
             source: 'initial',
@@ -374,12 +390,12 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
             note: 'Stock inicial'
           }))
 
-        if (movements.length > 0) {
-          const { error: movementError } = await supabase
-            .from('stock_movements')
-            .insert(movements)
-          
-          if (movementError) throw movementError
+        if (stockEntries.length > 0) {
+          const { error: rpcError } = await supabase.rpc('fn_register_stock_entry', {
+            p_entries: stockEntries,
+          })
+
+          if (rpcError) throw rpcError
         }
       }
 
@@ -597,6 +613,9 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
           variant: "destructive"
         })
       }
+
+      // La tienda web cachea el catálogo 30 s: que el producto nuevo se vea ya.
+      avisarCambioCatalogo()
 
       toast({
         title: "✅ Producto creado",

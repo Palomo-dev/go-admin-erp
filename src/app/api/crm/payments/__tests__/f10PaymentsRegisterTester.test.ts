@@ -8,7 +8,9 @@
  */
 import { createFakeSupabase, type FakeDb } from '@/lib/services/crm/__tests__/f10FakeSupabase';
 
-class FakeOrgContextError extends Error { statusCode = 401; code = 'UNAUTHORIZED'; }
+const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
+// Extiende la clase real: `readOrgBody` (punto único) lanza la real y las rutas hacen `instanceof`.
+class FakeOrgContextError extends RealOrgContextError { statusCode = 401; code = 'UNAUTHORIZED'; }
 let db: FakeDb;
 
 function seed(): FakeDb {
@@ -27,7 +29,7 @@ function seed(): FakeDb {
 }
 
 jest.mock('@/lib/utils/orgContext', () => ({
-  OrgContextError: FakeOrgContextError,
+  OrgContextError: RealOrgContextError, // la clase real: `readOrgBody` lanza la real y las rutas hacen `instanceof`
   getServerOrgContext: jest.fn(async () => ({ organizationId: 120, userId: 'u-1', roleId: 4, roleName: 'x', isSuperAdmin: false, organizationName: 'Org', supabase: createFakeSupabase(db) })),
 }));
 
@@ -53,7 +55,8 @@ describe('POST /api/crm/payments/register', () => {
     expect(db.writes).toEqual([]);
   });
 
-  it.failing('regla 5: organization_id ajeno en el body → 403 como en el resto de rutas de la fase; hoy se ignora en silencio y se escribe', async () => {
+  // Invertido el 2026-09-16: la ruta usa `readOrgBody` (commit 328f1f73).
+  it('regla 5: organization_id ajeno en el body → 403 como en el resto de rutas de la fase', async () => {
     const res = await POST(req({ invoice_id: 'inv-1', amount: 10, currency: 'COP', reference: 'r', organization_id: 121 }));
     expect(res.status).toBe(403);
     expect(db.writes).toEqual([]);

@@ -8,11 +8,13 @@
 
 import { createFakeSupabase, type FakeDb, type Row } from './f13FakeSupabase';
 
-class FakeOrgContextError extends Error {
+const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
+// Extiende la clase real: `readOrgBody` (punto único) lanza la real y las rutas hacen `instanceof`.
+class FakeOrgContextError extends RealOrgContextError {
   statusCode: number;
   code: string;
   constructor(message: string, statusCode = 401, code = 'UNAUTHORIZED') {
-    super(message);
+    super(message, statusCode, code);
     this.statusCode = statusCode;
     this.code = code;
   }
@@ -22,7 +24,7 @@ let db: FakeDb;
 const session = { roleId: 2, userId: 'u-admin', isSuperAdmin: false, organizationId: 120 };
 
 jest.mock('@/lib/utils/orgContext', () => ({
-  OrgContextError: FakeOrgContextError,
+  OrgContextError: RealOrgContextError, // la clase real: `readOrgBody` lanza la real y las rutas hacen `instanceof`
   requireOrgAdmin: jest.fn(),
   getServerOrgContext: jest.fn(async () => ({
     organizationId: session.organizationId,
@@ -96,10 +98,11 @@ describe('R2T-1 — regla dura 5: una sola implementación y valores raros', () 
 
   it('rejectForeignOrganization: «120» (texto) pasa sin registrar; «121» lanza 403 FOREIGN_ORGANIZATION y registra', () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-    expect(() => rejectForeignOrganization('T', '120', { organizationId: 120 })).not.toThrow();
+    // Deuda C de F0-SEC (2026-09-16): el envoltorio recibe el body completo y delega en `readOrgBody`.
+    expect(() => rejectForeignOrganization('T', { organization_id: '120' }, { organizationId: 120, userId: 'u-1' })).not.toThrow();
     expect(warn).not.toHaveBeenCalled();
-    expect(() => rejectForeignOrganization('T', '121', { organizationId: 120 })).toThrow(expect.objectContaining({ statusCode: 403, code: 'FOREIGN_ORGANIZATION' }));
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('[T]'), expect.objectContaining({ session: 120, body: '121' }));
+    expect(() => rejectForeignOrganization('T', { organization_id: '121' }, { organizationId: 120, userId: 'u-1' })).toThrow(expect.objectContaining({ statusCode: 403, code: 'FOREIGN_ORGANIZATION' }));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('organization_id ajeno'), expect.objectContaining({ route: 'T', session: 120, body: '121' }));
   });
 
   it('progress GET con ?organization_id=121 → 403 y NO escribe achieved_amount; con 120 → 200 y escribe acotado', async () => {

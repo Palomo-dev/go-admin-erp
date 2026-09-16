@@ -11,7 +11,9 @@
  * filtrar— cambia el payload y la prueba muere (tester r2 T8/T9, regla dura 5).
  */
 
-class FakeOrgContextError extends Error {
+const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
+// Extiende la clase real: `readOrgBody` (punto único) lanza la real y las rutas hacen `instanceof`.
+class FakeOrgContextError extends RealOrgContextError {
   statusCode = 401;
   code = 'UNAUTHORIZED';
 }
@@ -64,7 +66,7 @@ function fakeSupabase() {
 jest.mock('@/lib/services/crm/emailService', () => ({ sendEmail: jest.fn() }));
 
 jest.mock('@/lib/utils/orgContext', () => ({
-  OrgContextError: FakeOrgContextError,
+  OrgContextError: RealOrgContextError, // la clase real: `readOrgBody` lanza la real y las rutas hacen `instanceof`
   requireOrgAdmin: jest.fn(),
   getServerOrgContext: jest.fn(async () => ({ organizationId: 120, userId: 'u-1', supabase: fakeSupabase() })),
 }));

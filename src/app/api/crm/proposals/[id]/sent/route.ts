@@ -17,7 +17,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { id } = await params;
     if (!isSafeId(id)) return NextResponse.json({ success: false, error: 'Id inválido' }, { status: 400 });
     const body = await readJson(request);
-    const forbidden = foreignOrgResponse('CRM Proposals sent', body, ctx.organizationId);
+    const forbidden = foreignOrgResponse('CRM Proposals sent', body, ctx, request);
     if (forbidden) return forbidden;
     const emailMessageId = isSafeId(body?.email_message_id) ? (body!.email_message_id as string) : null;
     const result = await markProposalSent(ctx.organizationId, id, ctx.supabase, { userId: ctx.userId, emailMessageId });

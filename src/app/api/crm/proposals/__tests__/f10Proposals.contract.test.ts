@@ -5,10 +5,12 @@
  */
 import { createFakeSupabase, type FakeDb, type Row } from '@/lib/services/crm/__tests__/f10FakeSupabase';
 
-class FakeOrgContextError extends Error {
+const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
+// Extiende la clase real: `readOrgBody` (punto único) lanza la real y las rutas hacen `instanceof`.
+class FakeOrgContextError extends RealOrgContextError {
   statusCode: number;
   code: string;
-  constructor(message: string, statusCode = 401, code = 'UNAUTHORIZED') { super(message); this.statusCode = statusCode; this.code = code; }
+  constructor(message: string, statusCode = 401, code = 'UNAUTHORIZED') { super(message, statusCode, code); this.statusCode = statusCode; this.code = code; }
 }
 
 let db: FakeDb;
@@ -51,7 +53,7 @@ function seed(): FakeDb {
 }
 
 jest.mock('@/lib/utils/orgContext', () => ({
-  OrgContextError: FakeOrgContextError,
+  OrgContextError: RealOrgContextError, // la clase real: `readOrgBody` lanza la real y las rutas hacen `instanceof`
   getServerOrgContext: jest.fn(async () => ({ organizationId: 120, userId: 'u-admin', roleId: 2, roleName: 'x', isSuperAdmin: false, organizationName: 'Org 120', supabase: createFakeSupabase(db) })),
 }));
 jest.mock('@/lib/services/organizationTimezoneService', () => ({ getOrganizationTimezone: jest.fn(async () => 'America/Bogota') }));

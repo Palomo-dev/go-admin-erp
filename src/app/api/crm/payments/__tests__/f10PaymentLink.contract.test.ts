@@ -6,7 +6,9 @@
  */
 import { createFakeSupabase, type FakeDb, type Row } from '@/lib/services/crm/__tests__/f10FakeSupabase';
 
-class FakeOrgContextError extends Error { statusCode = 401; code = 'UNAUTHORIZED'; }
+const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
+// Extiende la clase real: `readOrgBody` (punto único) lanza la real y las rutas hacen `instanceof`.
+class FakeOrgContextError extends RealOrgContextError { statusCode = 401; code = 'UNAUTHORIZED'; }
 let db: FakeDb;
 const PLATFORM_SK = 'sk_test_51platformkey_abcdefghijklmnop';
 const PLATFORM_WH = 'whsec_platform_0123456789abcdef';
@@ -41,7 +43,7 @@ function seed(): FakeDb {
 }
 
 jest.mock('@/lib/utils/orgContext', () => ({
-  OrgContextError: FakeOrgContextError,
+  OrgContextError: RealOrgContextError, // la clase real: `readOrgBody` lanza la real y las rutas hacen `instanceof`
   getServerOrgContext: jest.fn(async () => ({ organizationId: 120, userId: 'u-1', roleId: 2, roleName: 'x', isSuperAdmin: false, organizationName: 'Org', supabase: createFakeSupabase(db) })),
 }));
 jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: () => createFakeSupabase(db) }));

@@ -8,11 +8,13 @@
 import { NextRequest } from 'next/server';
 import { fakeSupabase, makeDb, seed, ORG, OTHER, U, type FakeDb } from './f12Fake';
 
-class FakeOrgContextError extends Error {
+const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
+// Extiende la clase real: `readOrgBody` (punto único) lanza la real y las rutas hacen `instanceof`.
+class FakeOrgContextError extends RealOrgContextError {
   statusCode: number;
   code: string;
   constructor(message: string, statusCode = 401, code = 'X') {
-    super(message);
+    super(message, statusCode, code);
     this.statusCode = statusCode;
     this.code = code;
   }
@@ -22,7 +24,7 @@ let db: FakeDb;
 const session = { roleId: 4, isSuperAdmin: false };
 
 jest.mock('@/lib/utils/orgContext', () => ({
-  OrgContextError: FakeOrgContextError,
+  OrgContextError: RealOrgContextError, // la clase real: `readOrgBody` lanza la real y las rutas hacen `instanceof`
   getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: 'u-1', roleId: session.roleId, roleName: 'Empleado', isSuperAdmin: session.isSuperAdmin, supabase: fakeSupabase(db) })),
 }));
 

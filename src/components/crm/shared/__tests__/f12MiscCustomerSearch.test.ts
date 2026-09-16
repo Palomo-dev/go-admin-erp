@@ -43,7 +43,8 @@ function runHook(query: string, enabled: boolean) {
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const hook = useCustomerSearch(query, enabled);
-    return { hook, setCalls, cleanup };
+    // TS no ve la asignación dentro del callback de `useEffect` y estrecharía a `undefined`.
+    return { hook, setCalls, cleanup: cleanup as (() => void) | undefined };
   } finally {
     internals.H = prev;
   }
@@ -98,7 +99,8 @@ describe('useCustomerSearch — filtro `or` de PostgREST', () => {
     const { cleanup } = runHook('ana', true);
     await jest.advanceTimersByTimeAsync(100);
     expect(calls).toHaveLength(0);
-    if (typeof cleanup === 'function') cleanup();
+    const stop = cleanup;
+    if (typeof stop === 'function') stop();
     await jest.advanceTimersByTimeAsync(500);
     expect(calls).toHaveLength(0);
   });

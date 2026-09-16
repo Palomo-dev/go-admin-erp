@@ -27,7 +27,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const ctx = await getServerOrgContext();
     const { id } = await params;
     const body = await readJson(request);
-    rejectForeignOrganization(TAG, body.organization_id, ctx);
+    rejectForeignOrganization(TAG, body, ctx, request);
     requirePartnerManager(ctx);
     const parsed = validatePartnerInput(body, { partial: true });
     if (!parsed.ok) return validationFail(parsed.errors);

@@ -3,7 +3,7 @@
  *
  * - La organización sale de la sesión (`getServerOrgContext`); si el body o el
  *   query traen `organization_id` de OTRA organización → 403 y se registra
- *   (regla dura 5), con el helper único `foreignOrganizationInBody`.
+ *   (regla dura 5), con el punto único `readOrgBody`.
  * - Quien aprueba/paga/rechaza una comisión de partner o borra un partner
  *   debe ser admin o manager, resuelto en servidor POR ID DE ROL
  *   (`STAGE_MANAGER_ROLE_IDS`), nunca por nombre ni por un valor del cliente.
@@ -13,7 +13,7 @@
 
 import { NextResponse } from 'next/server';
 import { OrgContextError, type ServerOrgContext } from '@/lib/utils/orgContext';
-import { foreignOrganizationInBody } from '@/lib/security/organizationBody';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { STAGE_MANAGER_ROLE_IDS } from './stagePermissions';
 import { ReferralTransitionError } from './referralStateMachine';
 import { CommissionTransitionError } from './partnerCommission';
@@ -36,11 +36,13 @@ export function requirePartnerManager(ctx: Pick<ServerOrgContext, 'roleId' | 'is
 }
 
 /** Regla dura 5: `organization_id` ajeno en body/query → 403 + registro. */
-export function rejectForeignOrganization(tag: string, claimed: unknown, ctx: Pick<ServerOrgContext, 'organizationId'>): void {
-  const foreign = foreignOrganizationInBody(claimed, ctx.organizationId);
-  if (foreign === null) return;
-  console.warn(`[${tag}] organization_id ajeno en la petición`, { session: ctx.organizationId, body: foreign });
-  throw new OrgContextError('Organización no permitida', 403, 'FOREIGN_ORGANIZATION');
+/**
+ * Azúcar sobre el punto único `readOrgBody`: body ya parseado (todas las
+ * claves de organización) y query string de la petición → 403 registrado.
+ * Deuda C de F0-SEC (2026-09-16): antes solo miraba `body.organization_id`.
+ */
+export function rejectForeignOrganization(tag: string, body: unknown, ctx: Pick<ServerOrgContext, 'organizationId' | 'userId'>, request?: Pick<Request, 'url'>): void {
+  readOrgBody(ctx, body, { route: tag, request });
 }
 
 export function jsonOk<T>(data: T, extra: Record<string, unknown> = {}, status = 200) {

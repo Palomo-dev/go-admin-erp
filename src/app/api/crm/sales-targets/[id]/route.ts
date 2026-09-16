@@ -17,7 +17,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     requireTeamManager(ctx);
     const { id } = await params;
     const body = await readJson(request);
-    rejectForeignOrganization('CRM Sales Targets PATCH', body.organization_id, ctx);
+    rejectForeignOrganization('CRM Sales Targets PATCH', body, ctx, request);
     const existing = await getSalesTargetById(id, ctx.organizationId, ctx.supabase);
     if (!existing) return jsonFail(404, 'Cuota no encontrada en esta organización');
     const v = validateQuotaPatch(body, {
@@ -43,7 +43,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const ctx = await getServerOrgContext();
     requireTeamManager(ctx);
     const { id } = await params;
-    rejectForeignOrganization('CRM Sales Targets DELETE', (await readJson(request)).organization_id, ctx);
+    rejectForeignOrganization('CRM Sales Targets DELETE', await readJson(request), ctx, request);
     await deleteSalesTarget(id, ctx.organizationId, ctx.supabase);
     return jsonOk({ id });
   } catch (error) {

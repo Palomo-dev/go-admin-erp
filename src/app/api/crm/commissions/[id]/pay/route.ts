@@ -13,7 +13,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   try {
     const ctx = await getServerOrgContext();
     requireTeamManager(ctx);
-    rejectForeignOrganization('CRM Commissions Pay', (await readJson(request)).organization_id, ctx);
+    rejectForeignOrganization('CRM Commissions Pay', await readJson(request), ctx, request);
     const { id } = await params;
     const commission = await payCommission(id, ctx.organizationId, ctx.supabase, ctx.userId);
     if (!commission) return jsonFail(404, 'Comisión no encontrada en esta organización');

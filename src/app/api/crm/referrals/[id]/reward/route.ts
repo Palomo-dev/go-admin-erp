@@ -15,7 +15,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const ctx = await getServerOrgContext();
     const { id } = await params;
     const body = await readJson(request);
-    rejectForeignOrganization(TAG, body.organization_id, ctx);
+    rejectForeignOrganization(TAG, body, ctx, request);
     const referral = await markRewardPaid(id, ctx.organizationId, ctx.supabase);
     return jsonOk(referral);
   } catch (error) {

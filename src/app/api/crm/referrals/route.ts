@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     const { searchParams } = new URL(request.url);
-    rejectForeignOrganization(TAG, searchParams.get('organization_id'), ctx);
+    rejectForeignOrganization(TAG, null, ctx, request);
     const rewardPaid = searchParams.get('reward_paid');
     const result = await getReferrals(ctx.organizationId, ctx.supabase, {
       status: searchParams.get('status') || undefined,
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     const body = await readJson(request);
-    rejectForeignOrganization(TAG, body.organization_id, ctx);
+    rejectForeignOrganization(TAG, body, ctx, request);
     const parsed = validateReferralInput(body);
     if (!parsed.ok) return validationFail(parsed.errors);
     const referral = await createReferral(ctx.organizationId, parsed.value, ctx.supabase);

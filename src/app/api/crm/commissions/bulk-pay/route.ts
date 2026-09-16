@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const ctx = await getServerOrgContext();
     requireTeamManager(ctx);
     const body = await readJson(request);
-    rejectForeignOrganization('CRM Commissions Bulk Pay', body.organization_id, ctx);
+    rejectForeignOrganization('CRM Commissions Bulk Pay', body, ctx, request);
     const ids = Array.isArray(body.commission_ids) ? body.commission_ids.filter((x): x is string => typeof x === 'string' && x.length > 0) : [];
     if (ids.length === 0) return jsonFail(400, 'Falta commission_ids (array no vacío de ids)', { field: 'commission_ids' });
     if (ids.length > MAX_BULK) return jsonFail(400, `Máximo ${MAX_BULK} comisiones por lote`, { field: 'commission_ids' });

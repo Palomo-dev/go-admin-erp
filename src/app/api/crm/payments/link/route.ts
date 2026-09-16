@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
     const body = await readJson(request);
-    const forbidden = foreignOrgResponse('CRM Payments link POST', body, ctx.organizationId);
+    const forbidden = foreignOrgResponse('CRM Payments link POST', body, ctx, request);
     if (forbidden) return forbidden;
     if (!isSafeId(body?.quotation_id)) return NextResponse.json({ success: false, error: 'Falta quotation_id' }, { status: 400 });
     const result = await createPaymentLinkForQuotation(ctx.organizationId, body!.quotation_id as string, ctx.supabase, { serviceClient: getServiceClient(), adapter: stripeAdapter });

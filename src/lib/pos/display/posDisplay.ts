@@ -30,6 +30,7 @@ import {
 } from './settings';
 import { getOrCreateLocalTerminalId } from './terminal';
 import { BroadcastChannelTransport, isBroadcastChannelSupported, type DisplayTransport } from './transport';
+import { isDisplayTransportAvailable, resolveDisplayChannelFactory } from './desktopChannel';
 
 export { isBroadcastChannelSupported };
 
@@ -54,8 +55,14 @@ let instance: DisplayEmitter | null = null;
 let unsubscribeSettingsChanges: (() => void) | null = null;
 
 function createBrowserTransport(): DisplayTransport | null {
-  if (typeof window === 'undefined' || !isBroadcastChannelSupported()) return null;
-  return new BroadcastChannelTransport({ terminalId: getOrCreateLocalTerminalId() });
+  if (typeof window === 'undefined' || !isDisplayTransportAvailable()) return null;
+  // En Go Admin Desktop el canal va por el relay del proceso principal (enlaza
+  // sin red y aunque las ventanas carguen orígenes distintos); en el navegador,
+  // BroadcastChannel. La lógica del transporte es la misma en ambos casos.
+  return new BroadcastChannelTransport({
+    terminalId: getOrCreateLocalTerminalId(),
+    channelFactory: resolveDisplayChannelFactory(),
+  });
 }
 
 function defaultChangeSource(): SettingsChangeSource | null {
@@ -93,7 +100,7 @@ export function getPosDisplayEnvironment(): DisplayPresenceEnvironment {
   return {
     settingsLoaded,
     enabled,
-    transportSupported: typeof window !== 'undefined' && isBroadcastChannelSupported(),
+    transportSupported: typeof window !== 'undefined' && isDisplayTransportAvailable(),
   };
 }
 

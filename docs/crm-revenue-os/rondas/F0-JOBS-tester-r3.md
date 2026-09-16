@@ -157,7 +157,7 @@ Nada de prueba quedó en el árbol salvo los dos tests nuevos (abajo); scripts d
 | `TZ=UTC npx jest src/lib/jobs` | 14 suites / **147** tests verdes |
 | `TZ=America/Bogota npx jest src/lib/jobs` | 14 suites / **147** tests verdes |
 | `npx jest src/__tests__/guardrails.test.ts` | **73/73** (caso 18: 4/4) |
-| `NODE_OPTIONS=--max-old-space-size=8192 npx tsc --noEmit -p tsconfig.json \| grep -E "lib/jobs\|crm/jobs\|JobsMonitor\|JobsTable"` | **0 líneas** (0 errores en JOBS) |
+| `NODE_OPTIONS=--max-old-space-size=8192 npx tsc --noEmit -p tsconfig.json \| grep -E "lib/jobs\|crm/jobs\|JobsMonitor\|JobsTable"` | **0 errores en JOBS**; compilación completa (sin OOM), 5 errores ajenos preexistentes (`FormularioEdicionProducto.tsx` ×2, `f13Round3Tester.test.ts` ×2, `deliveryIntegrationService.ts`) |
 | BD `cron.job` 17/18/19 | `active=false` los tres; 17 `* * * * *` sin body; 18 `*/5` `campaign_batch`; 19 `30 8` `recording_cleanup,maintenance` — idéntico a lo que asume el rollback |
 | BD `outbound_jobs` por status | `done` 475 (último `created_at` 2026-09-15 23:22 UTC), `failed` 6 (org 125, 2026-09-10), 0 `queued|running|dead` |
 | BD 2026-09-15 | `recording_cleanup` **84** `done` (código r2 desplegado, aún no r3), `crm_event` 4 |

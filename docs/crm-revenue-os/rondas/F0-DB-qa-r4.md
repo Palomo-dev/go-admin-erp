@@ -1,0 +1,43 @@
+# F0-DB — Veredicto del qa-reviewer — Ronda 4 (cierre de fase)
+
+Fecha: 2026-09-15 · Insumos: `rondas/F0-DB-tester-r4.md` (9,6/10; 26 casos, 24 pasan), `rondas/F0-DB-builder-r4.md`, `rondas/F0-DB-qa-r3.md` (R1–R4), `docs/crm-revenue-os/PROGRESS.md` (entradas «F0-DB — Ronda 1..4»), `docs/POLITICA-MIGRACIONES.md`.
+Comprobaciones propias: solo `SELECT` vía MCP sobre `jgmgphmzusbluqhuqihj` (`supabase_migrations.schema_migrations`) y lectura del repositorio. Nada aplicado. Las organizaciones se citan solo por id. Este veredicto evalúa **toda la fase F0-DB** (rondas 1–4), no solo la ronda corta.
+
+## Calificación: 9,5/10
+
+Desglose por dimensión (2 puntos cada una):
+
+| Dimensión | Nota | Por qué |
+|---|---|---|
+| 1. Funcionalidad completa | 1,9 | P1–P8 (rondas 1–2) y B1–B7 (ronda 3) cerrados; R1–R3 de la ronda 4 hechos exactamente como se pidió. 56 pares `.sql` + rollback reconstruidos e idénticos a `schema_migrations`; tres migraciones nuevas (`f00_36`, `f00_37`, limpieza) con rollback verificado. Lo único abierto es la puerta humana: aplicar las tres por MCP y pasar `get_advisors`. No es un atajo del builder, pero la fase no está «en producción» hasta que ocurra. |
+| 2. Robustez | 1,9 | Idempotencia probada dos veces (md5 igual tras segunda ejecución), rollbacks que devuelven el baseline exacto en transacción abortada, tope de liberaciones con backoff 30→900 s y `dead` en la 10.ª, guarda de pertenencia en `fn_can_contact` con el supuesto `auth.role()`/`request.jwt.claims` ya documentado en el `comment on`. Resta lo que arrastra desde la ronda 1: concurrencia real de `fn_claim_jobs` con dos workers y un `opted_out` real en `contact_consents`. |
+| 3. Consistencia con el sistema | 2,0 | Cumple `POLITICA-MIGRACIONES` en todos los artefactos: MCP + `.sql` + rollback en el mismo commit, cabeceras uniformes con fuente y hashes, patrón `(select auth.uid())` de f00_13, `search_path` fijo, ACL intactas, 0 credenciales y 0 nombres de cliente en 171+5 archivos. La única desviación (rollback de f00_30 sin `begin;/commit;`) está justificada en cabecera: permite la comprobación byte a byte y el MCP ya envuelve en transacción. |
+| 4. Resultados del tester | 1,9 | Ronda 4: 24/26, 0 críticos, 0 altos, 2 bajos (1 cosmético ya corregido, 1 del orquestador). Acumulado de la fase: cada ronda verificó con método independiente del builder (sha256 + longitud, dry-run en `DO … RAISE EXCEPTION` con sha256 del texto ejecutado). Verificación propia de hoy: `tail -n +28 rollback_f00_30 \| md5sum` = `3fa918f68f5a41b73b98186322d6de9a` = `md5(statements[1])` de `20260901202059` (1 282 caracteres); `20260110211238` = `331454f6…40f76` (2 296); las versiones `20260915230000/231000/232000` **no** están en `schema_migrations` (siguen pendientes, como declara el builder). |
+| 5. Documentación / trazabilidad | 1,8 | Cuatro informes por rol y ronda, cabeceras que permiten repetir la comprobación sin leer el informe, FASE-00 §3 alineada con la política, «Saldado el 2026-09-15» con las citas reales. Pero R4 sigue sin hacerse: `PROGRESS.md` conserva **dos** entradas «F0-DB — Ronda 3 construida» (L59 y L99) sin nota que las remita entre sí, y la entrada del tester r4 (L134) afirma que el duplicado «se eliminó; queda una sola», lo que no coincide con el archivo (`git diff` solo borra las 3 filas de la tabla de fases). |
+
+### Fortalezas
+- **B1 es reproducible por cualquiera**: 56/56 cuerpos idénticos a `schema_migrations`, verificados tres veces con métodos distintos (md5 del builder, sha256 + longitud del tester, md5 propio del QA). Los rollbacks de f00_29 y f00_30 ya no descansan en una premisa falsa: el de f00_30 es byte a byte la versión anterior y advierte en cabecera que sobre la viva (`20260909052947`, F9-31) reintroduciría comisiones con `win_data = NULL`; el de f00_29 es no-op a propósito y cita la fuente exacta para reconstruirlo con criterio.
+- Las tres migraciones pendientes cierran hallazgos reales del QA r2 (`ai_usage_logs` con `with_check = true` para cualquier organización; `fn_can_contact` como oráculo entre organizaciones; jobs huérfanos sin tope de liberaciones) y **sus rollbacks restauran el baseline exacto** dentro de la misma transacción, incluida la columna `outbound_jobs.releases`.
+- Los 15 escritores de `*_usage_logs` rastreados hasta la ruta antes de revocar INSERT; la retención `failed|dead` demostrada existente y fijada con test; el fallback del runner replica la regla SQL con test de 12 liberaciones.
+- Disciplina de datos sensibles sostenida en las cuatro rondas: barrido de credenciales (12 patrones) y de `organizations.name` hecho dentro de la base, sin que ningún nombre toque disco; el comentario de la org 2 retirado (B7).
+- El tester r4 comprobó que el texto ejecutado en cada dry-run es el archivo del repositorio (sha256 del literal = sha256 del `.sql`), no una transcripción: cierra la brecha «lo que se probó no es lo que se aplicará».
+
+### Problemas encontrados (ordenados por severidad)
+1. **[bajo] R4 sigue abierta y `PROGRESS.md` la da por cerrada con una afirmación que no coincide con el archivo.** `grep -n "F0-DB — Ronda 3 construida" docs/crm-revenue-os/PROGRESS.md` → L59 y L99, contenido distinto, sin nota cruzada; L134 dice que el duplicado «se eliminó», pero `git diff` solo borra las 3 filas de la tabla de fases. Esperado: una línea bajo L99 «(entrada duplicada de L59, escrita a la vez por las dos sesiones; vale la primera; se conserva por la regla de solo anexar)» y corregir la frase de L134 en una entrada nueva, sin borrar nada. Va al orquestador, no al builder.
+2. **[bajo] Rollbacks de `f00_32` y `f00_33` sin advertencia de orden respecto a `f00_35`** (que revocó EXECUTE sobre las funciones que estos rollbacks recrean). Tienen advertencia de que la versión anterior falla con 42804, pero no de que ejecutar el rollback tras f00_35 puede dejar la ACL en un estado distinto al previo. Pendiente desde el QA r3; no bloquea.
+3. **[bajo, fuera de F0-DB — zona F9] `20260909052947_fn_sync_status_from_stage_requiere_datos_de_cierre` aplicada sin `.sql` ni rollback en el repo**, siendo posterior a la política. Verificado hoy: existe en `schema_migrations` (3 270 caracteres) y `ls supabase/migrations | grep 20260909052947` = 0. Mientras no exista, la advertencia de orden del rollback de f00_30 remite a una versión que solo vive en la base.
+4. **[bajo, fuera de F0-DB — zona Twilio/F16] `commCreditsService.ts` importa el cliente de navegador en servidor** (`/api/integrations/twilio/credits` responde 404). No es regresión de f00_36; el guardrail 6 no lo detecta.
+5. **[bajo, puerta humana] Las tres migraciones siguen sin aplicar.** Orden recomendado por el tester: `f00_36` → `f00_37` → limpieza (independientes entre sí), y después `get_advisors(performance)` sobre `ai_usage_logs`, `comm_usage_logs` y `call_recordings`. Hasta entonces, `ai_usage_logs` sigue admitiendo INSERT de `anon`/`authenticated` para cualquier organización (hallazgo del QA r2). Se aprueba la fase porque el artefacto está completo y verificado; la aplicación es una decisión del dueño, no del ciclo.
+
+### Qué falta para el 10
+- Aplicar `f00_36` → `f00_37` → limpieza por MCP y pasar `get_advisors(security)` y `get_advisors(performance)` **sin hallazgos nuevos** sobre `ai_usage_logs`, `comm_usage_logs`, `call_recordings` y `outbound_jobs`; anotar en `PROGRESS.md` la fecha y el md5 de `pg_get_functiondef(fn_can_contact)` tras aplicar.
+- Versionar `20260909052947` con su `.sql` y rollback (zona F9) para que la advertencia de orden del rollback de f00_30 apunte a un archivo del repositorio.
+- Cerrar `commCreditsService` en F16 y ampliar el guardrail 6 para que detecte `@/lib/supabase/config` importado desde `src/lib/services/**` usados en servidor.
+- Test de contrato en `npx jest` que lea `supabase/migrations/*.sql` y `supabase/rollbacks/*.sql` y falle ante un patrón de credencial o un nombre de `organizations.name` (el barrido sigue siendo manual, ronda tras ronda; los nombres deben leerse por MCP en el test, nunca persistirse).
+- Ejecutar en transacción abortada los 56 rollbacks de B1 (hoy solo 29/30/32/33/35 y seeds se revisaron por lectura, y 30 en dry-run) y añadir a 32/33 la advertencia de orden respecto a f00_35.
+- Concurrencia real de `fn_claim_jobs` con dos workers (`SKIP LOCKED`) y `contact_consents` con un `opted_out` real para `fn_can_contact`.
+- Cosmética de `fn_release_job`: al morir por tope deja `run_at = now() + 900 s` en el job `dead`; confunde en `v_outbound_jobs_failed`.
+- Resolver R4 en `PROGRESS.md` como se pidió (nota, no borrado) y corregir la afirmación de L134.
+
+### Veredicto
+aprobado

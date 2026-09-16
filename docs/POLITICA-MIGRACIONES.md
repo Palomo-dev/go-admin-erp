@@ -58,3 +58,18 @@ Migraciones versionadas sin su rollback correspondiente (2026-09-09):
 
 `supabase/migrations/00000000000000_baseline_schema.sql` es el volcado del esquema completo y no
 tiene rollback por naturaleza; sirve de referencia, no se aplica.
+
+Saldado el 2026-09-15 (F0-DB ronda 3): las 55 migraciones `crm_v4_*` y `crm_customer_lifecycle_ladder`
+que se aplicaron por MCP sin dejar archivo se reconstruyeron desde
+`supabase_migrations.schema_migrations` (cuerpo byte a byte, md5 verificado) con su rollback.
+Rollbacks con limitación explícita (documentada en cada archivo; corregida el 2026-09-15 en la ronda 4
+tras la verificación del tester y del QA): `crm_v4_f00_29` es un no-op **a propósito**: la versión
+anterior de `fn_update_customer_channel_identity` sí es recuperable (`schema_migrations` versión
+`20260110211238`, 2 296 caracteres) pero se omite porque era defectuosa y revertía todo INSERT entrante
+en `messages`; el archivo cita la fuente para reconstruirla con criterio. `crm_v4_f00_30` lleva el
+cuerpo **exacto** de la versión anterior (`schema_migrations` versión `20260901202059`, sha256 en el
+archivo) y una advertencia de orden: solo es válido si antes se revierte `20260909052947` (F9-31), que
+es la versión viva de `fn_sync_status_from_stage`. Los de seeds/backfills (`f00_04`, `f00_07`, `f00_21`,
+`f00_24`, `f00_31`, `f06_01`) advierten que no restauran datos. Para migraciones futuras: el `.sql` se
+escribe ANTES de aplicar; la reconstrucción posterior solo es posible mientras
+`schema_migrations.statements` conserve el texto.

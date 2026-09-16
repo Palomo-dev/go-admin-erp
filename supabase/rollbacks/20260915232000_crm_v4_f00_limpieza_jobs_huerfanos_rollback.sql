@@ -1,0 +1,12 @@
+-- Rollback de crm_v4_f00_limpieza_jobs_huerfanos.
+--
+-- ESTE ROLLBACK NO RESTAURA DATOS. La migración es un DELETE de 6 filas de
+-- outbound_jobs (jobs `crm_event` en `failed` cuyo evento ya no existía). No hay
+-- estructura que revertir y las filas borradas no se pueden reconstruir desde
+-- aquí: eran registros terminales de pruebas de F0-JOBS (org 125, 2026-09-10)
+-- sin ningún dato de negocio asociado, y su evento de origen ya había sido
+-- borrado antes. Si hiciera falta recuperarlas, la única vía es un backup PITR
+-- anterior a la aplicación.
+--
+-- No-op deliberado.
+select 1;

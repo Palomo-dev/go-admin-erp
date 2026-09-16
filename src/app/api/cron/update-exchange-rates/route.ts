@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { actualizarTasasDeCambioGlobal } from '@/lib/services/openexchangerates';
+import { getServiceClient } from '@/lib/supabase/server-service';
 
 /**
  * API Route para actualización automática de tasas de cambio
@@ -49,7 +50,8 @@ export async function GET(request: NextRequest) {
     console.log('📅 Fecha/Hora:', new Date().toISOString());
     
     // 2. Ejecutar actualización de tasas
-    const result = await actualizarTasasDeCambioGlobal();
+    // Cron sin sesión: service role (catálogo global `currency_rates`, sin organización).
+    const result = await actualizarTasasDeCambioGlobal(getServiceClient());
     
     const executionTime = Date.now() - startTime;
     

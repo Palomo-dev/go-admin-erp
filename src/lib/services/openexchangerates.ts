@@ -11,6 +11,7 @@
  */
 
 import { supabase } from '@/lib/supabase/config';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Fechas faltantes identificadas en la base de datos
 const FECHAS_FALTANTES = [
@@ -326,9 +327,13 @@ export async function guardarTasasDeCambio(
   date?: Date,
   source: string = 'openexchangerates',
   api_timestamp?: number,
-  base_currency_code: string = 'USD'
+  base_currency_code: string = 'USD',
+  client?: SupabaseClient
 ) {
-  const { supabase } = await import('@/lib/supabase/config');
+  // Desde el cron no hay sesión: se recibe el cliente (service role) por parámetro.
+  // `currency_rates` es un catálogo global sin organización; en el navegador se
+  // sigue usando el cliente de sesión.
+  const supabase = client ?? (await import('@/lib/supabase/config')).supabase;
   
   try {
     // Formatear fecha para la base de datos en formato YYYY-MM-DD
@@ -625,7 +630,7 @@ export async function actualizarTasasDeCambio(orgId: number, fecha?: Date) {
  * Actualiza las tasas de cambio para todas las monedas del catálogo global
  * @returns Resultado con métricas de la operación global y propiedades para compatibilidad
  */
-export async function actualizarTasasDeCambioGlobal(): Promise<{
+export async function actualizarTasasDeCambioGlobal(client?: SupabaseClient): Promise<{
   // Propiedades para compatibilidad con código existente
   success: boolean; // Añadimos success para tipos correctos
   timestamp?: number;
@@ -633,7 +638,7 @@ export async function actualizarTasasDeCambioGlobal(): Promise<{
   base_currency?: string;
   message?: string;
 }> {
-  const { supabase } = await import('@/lib/supabase/config');
+  const supabase = client ?? (await import('@/lib/supabase/config')).supabase;
   try {
     console.log('Iniciando actualización de tasas de cambio globales');
     
@@ -689,7 +694,8 @@ export async function actualizarTasasDeCambioGlobal(): Promise<{
       date,
       'openexchangerates',
       exchangeRatesData.timestamp,
-      'USD'
+      'USD',
+      client
     );
     
     // Actualizar contador para estadísticas

@@ -104,6 +104,20 @@ export function useCalendarSettings({
     setError(null);
 
     try {
+      // Sincronizar organizations.timezone (fuente de verdad canónica para
+      // fn_today_for_org) ANTES que organization_settings (QA r3 punto 5): el
+      // trigger de BD rechaza zonas fuera de pg_timezone_names (22023) y, si
+      // lo hace, no debe quedar ya guardada la zona en calendar_settings.
+      // Antes el error se tragaba y la UI decía «guardado».
+      if (settings.timezone) {
+        const { error: tzError } = await supabase
+          .from('organizations')
+          .update({ timezone: settings.timezone })
+          .eq('id', organizationId);
+        if (tzError) throw new Error(`Zona horaria rechazada: ${tzError.message}`);
+        invalidateTimezoneCache(organizationId);
+      }
+
       // Verificar si ya existe la configuración
       const { data: existing } = await supabase
         .from('organization_settings')
@@ -135,18 +149,6 @@ export function useCalendarSettings({
           });
 
         if (insertError) throw insertError;
-      }
-
-      // Sincronizar organizations.timezone (fuente de verdad canonica para fn_today_for_org)
-      if (settings.timezone) {
-        const { error: tzError } = await supabase
-          .from('organizations')
-          .update({ timezone: settings.timezone })
-          .eq('id', organizationId);
-        // El trigger de BD rechaza zonas fuera de pg_timezone_names (22023):
-        // antes el error se tragaba y la UI decía «guardado».
-        if (tzError) throw new Error(`Zona horaria rechazada: ${tzError.message}`);
-        invalidateTimezoneCache(organizationId);
       }
 
       setOriginalSettings(settings);

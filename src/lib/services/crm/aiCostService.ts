@@ -101,7 +101,11 @@ export interface ChargeAiInput {
   unitSku?: string;
   /** provider de provider_pricing (default: inferido del sku/modelo → 'openai'). */
   provider?: string;
-  /** Créditos a debitar. Default: max(1, ceil(units / 1000)). */
+  /**
+   * Créditos a debitar. Default: max(1, ceil(units / 1000)). Si viene
+   * informado debe redondear a >= 1: un valor < 0,5 (p. ej. 0.4) lanza
+   * `RangeError` en vez de cobrar 0 y dejar un log gratuito (QA r3 punto 4).
+   */
   credits?: number;
   userId?: string | null;
   metadata?: Record<string, unknown>;
@@ -215,6 +219,12 @@ async function assertWithinBudget(sb: SupabaseClient, orgId: number, estimatedUs
 export async function chargeAiCredits(input: ChargeAiInput): Promise<ChargeAiResult> {
   assertValidCredits(input.units, 'unidades');
   const credits = assertValidCredits(input.credits ?? defaultCreditsForUnits(input.units), 'créditos de IA');
+  // QA r3 punto 4: un `credits` explícito que redondea a 0 (0.4, 0) no es un
+  // cobro; sin esta guarda el RPC recibía p_cost 0 (true, no-op) y quedaba un
+  // log de 0 créditos. Los llamadores actuales garantizan >= 1 por sí mismos.
+  if (input.credits != null && credits < 1) {
+    throw new RangeError(`créditos de IA: mínimo 1 (recibido ${String(input.credits)})`);
+  }
   const sb = await resolveClient();
   const provider = input.provider ?? inferProvider(input.model);
 

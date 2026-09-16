@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,9 +35,8 @@ export async function GET(request: NextRequest) {
       .from('customers')
       .select('id, first_name, last_name, phone, email')
       .eq('organization_id', ctx.organizationId)
-      .or(
-        `first_name.ilike.%${q}%,last_name.ilike.%${q}%,phone.ilike.%${q}%`
-      )
+      // Helper único (F12-misc): término entrecomillado, comas/paréntesis no rompen el `or`.
+      .or(ilikeAnyOf(['first_name', 'last_name', 'phone'], q))
       .limit(limit);
 
     if (error) {

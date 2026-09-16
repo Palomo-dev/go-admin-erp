@@ -23,13 +23,15 @@ interface Props {
   open: boolean;
   programs: ReferralProgram[];
   currency: string | null;
+  /** F12-misc: `can_manage` del GET de programas (misma función que partners); un Empleado solo lee. */
+  canManage: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (payload: ProgramFormPayload, id?: string) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
   returnFocusFallback: () => HTMLElement | null;
 }
 
-export function ReferralProgramsSheet({ open, programs, currency, onOpenChange, onSave, onDelete, returnFocusFallback }: Props) {
+export function ReferralProgramsSheet({ open, programs, currency, canManage, onOpenChange, onSave, onDelete, returnFocusFallback }: Props) {
   const [editing, setEditing] = useState<ReferralProgram | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ReferralProgram | null>(null);
@@ -40,8 +42,8 @@ export function ReferralProgramsSheet({ open, programs, currency, onOpenChange, 
   useEffect(() => {
     if (!open) return;
     setEditing(null);
-    setCreating(programs.length === 0);
-  }, [open, programs.length]);
+    setCreating(canManage && programs.length === 0);
+  }, [open, canManage, programs.length]);
 
   const save = async (payload: ProgramFormPayload, id?: string) => {
     await onSave(payload, id);
@@ -71,11 +73,13 @@ export function ReferralProgramsSheet({ open, programs, currency, onOpenChange, 
         <div className="space-y-4 px-6 py-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{programs.length} programa{programs.length === 1 ? '' : 's'}</h3>
-            <Button ref={newButtonRef} type="button" size="sm" variant={creating ? 'secondary' : 'outline'} onClick={() => { setEditing(null); setCreating(true); }}>
-              <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Nuevo programa
-            </Button>
+            {canManage && (
+              <Button ref={newButtonRef} type="button" size="sm" variant={creating ? 'secondary' : 'outline'} onClick={() => { setEditing(null); setCreating(true); }}>
+                <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Nuevo programa
+              </Button>
+            )}
           </div>
-          {creating && (
+          {canManage && creating && (
             <section aria-label="Nuevo programa" className="rounded-xl border border-blue-200 bg-white p-4 dark:border-blue-900 dark:bg-gray-900">
               <ReferralProgramForm program={null} currency={currency} idPrefix="program-new" onSave={save} onCancel={() => setCreating(false)} />
             </section>
@@ -95,16 +99,19 @@ export function ReferralProgramsSheet({ open, programs, currency, onOpenChange, 
                         {p.is_active ? 'Activo' : 'Inactivo'}
                       </p>
                     </div>
-                    <div className="flex shrink-0 gap-1">
-                      <Button type="button" size="sm" variant={isEditing ? 'secondary' : 'outline'} aria-expanded={isEditing} onClick={() => { setCreating(false); setEditing(isEditing ? null : p); }}>
-                        {isEditing ? 'Cerrar' : 'Editar'}
-                      </Button>
-                      <Button type="button" size="icon" variant="ghost" aria-label={`Eliminar programa ${p.name}`} className="text-red-700 hover:text-red-800 dark:text-red-300" onClick={() => setDeleteTarget(p)}>
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      </Button>
-                    </div>
+                    {/* F12-misc: PATCH/DELETE de programa exige admin/manager; a un Empleado los botones solo le darían un 403. */}
+                    {canManage && (
+                      <div className="flex shrink-0 gap-1">
+                        <Button type="button" size="sm" variant={isEditing ? 'secondary' : 'outline'} aria-expanded={isEditing} onClick={() => { setCreating(false); setEditing(isEditing ? null : p); }}>
+                          {isEditing ? 'Cerrar' : 'Editar'}
+                        </Button>
+                        <Button type="button" size="icon" variant="ghost" aria-label={`Eliminar programa ${p.name}`} className="text-red-700 hover:text-red-800 dark:text-red-300" onClick={() => setDeleteTarget(p)}>
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  {isEditing && (
+                  {canManage && isEditing && (
                     <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
                       <ReferralProgramForm program={p} currency={currency} idPrefix={`program-${p.id}`} onSave={save} onCancel={() => setEditing(null)} />
                     </div>

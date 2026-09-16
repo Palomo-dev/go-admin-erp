@@ -10,14 +10,16 @@
  *   claves de la petición y registra el hit solo si todas caben
  *   (`fn_rate_limit_hit`, tabla `rate_limit_buckets`; implementación en
  *   `rateLimitStore.ts`). Las rutas que lo necesitan lo pasan en `opts.store`.
- * - `persistentCount` (legado, por clave): cuántos hits hubo antes de este en la
- *   ventana, p. ej. contando en una tabla de negocio. Se combina por `max`.
+ *
+ * Ya NO existe `persistentCount` (contador legado por clave, inyectable): nunca
+ * tuvo consumidor, y como se resolvía con un `await` entre la proyección en
+ * memoria y el registro, N peticiones concurrentes proyectaban todas `count = 1`
+ * (tester F0-SEC C+D r2, fallo 4). Un solo mecanismo persistente: el `store`
+ * atómico (regla 7). El camino en memoria es síncrono de punta a punta.
  *
  * Semántica (F0-SEC r2, sub-parte D):
- * - FAIL-CLOSED. Clave vacía, `limit` inválido, `windowMs <= 0`/NaN, un
- *   `persistentCount` que lanza o un `store` que falla → BLOQUEADO y registrado.
- *   Antes, `persistentCount` que lanzaba caía en silencio al contador en memoria
- *   (tester r1, sonda P7).
+ * - FAIL-CLOSED. Clave vacía, `limit` inválido, `windowMs <= 0`/NaN o un
+ *   `store` que falla → BLOQUEADO y registrado.
  * - EVALUAR TODO, LUEGO REGISTRAR. `checkRateLimits` comprueba todas las claves
  *   y solo si todas caben registra el hit en todas. Antes incrementaba `ip` y
  *   `user` aunque `to` bloqueara: una ráfaga a un número bloqueado agotaba el
@@ -37,12 +39,6 @@ export interface RateLimitOptions {
   limit: number;
   /** Tamaño de ventana en ms (default 10 min). */
   windowMs?: number;
-  /**
-   * Contador persistente opcional (legado, por clave): devuelve cuántos hits
-   * hubo para la clave en la ventana ANTES de este. Se combina por `max` con
-   * el contador en memoria. Si lanza, la petición se BLOQUEA.
-   */
-  persistentCount?: (key: string, since: Date) => Promise<number>;
 }
 
 export interface RateLimitResult {
@@ -141,23 +137,8 @@ export async function checkRateLimits(
     if (p.count > p.limit) return blocked(p.key, p.limit, new Date(p.windowStart + p.windowMs), p.count);
   }
 
-  // 2. Contadores persistentes por clave (legado). Lanzar = bloquear.
-  for (let i = 0; i < entries.length; i++) {
-    const fn = entries[i].opts.persistentCount;
-    if (!fn) continue;
-    const p = projected[i];
-    let persisted: number;
-    try {
-      persisted = await fn(p.key, new Date(p.windowStart));
-    } catch (err) {
-      console.error('[rateLimit] persistentCount falló; se bloquea (fail-closed)', { key: p.key, message: err instanceof Error ? err.message : String(err) });
-      return blocked(p.key, p.limit, new Date(p.windowStart + p.windowMs));
-    }
-    p.count = Math.max(p.count, (Number.isFinite(persisted) ? persisted : Number.POSITIVE_INFINITY) + 1);
-    if (p.count > p.limit) return blocked(p.key, p.limit, new Date(p.windowStart + p.windowMs), Number.isFinite(p.count) ? p.count : undefined);
-  }
-
-  // 3. Backend atómico (todas las claves a la vez). Fallar = bloquear.
+  // 2. Backend atómico (todas las claves a la vez). Fallar = bloquear. Es el
+  //    único `await` del camino, y el store ya es atómico por sí mismo.
   if (options.store) {
     let hits: RateLimitStoreHit[];
     try {
@@ -181,7 +162,7 @@ export async function checkRateLimits(
     }
   }
 
-  // 4. Todas caben: registrar en memoria.
+  // 3. Todas caben: registrar en memoria.
   let worst: RateLimitResult | null = null;
   for (const p of projected) {
     sweep(now, p.windowMs);

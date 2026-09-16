@@ -27,8 +27,10 @@ export function canManagePartners(ctx: Pick<ServerOrgContext, 'roleId' | 'isSupe
   return ctx.isSuperAdmin === true || STAGE_MANAGER_ROLE_IDS.includes(ctx.roleId);
 }
 
+/** 403 + registro (solo el id de rol, nunca el nombre ni el usuario) si no es admin/manager. */
 export function requirePartnerManager(ctx: Pick<ServerOrgContext, 'roleId' | 'isSuperAdmin'>): void {
   if (!canManagePartners(ctx)) {
+    console.warn('[F12] rol sin permiso de gestión de partners/programas → 403', { roleId: ctx.roleId });
     throw new OrgContextError('Requiere rol de administrador o manager de la organización', 403, 'MANAGER_REQUIRED');
   }
 }

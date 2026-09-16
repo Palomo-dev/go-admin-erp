@@ -21,13 +21,14 @@ export async function GET(_request: NextRequest, { params }: Params) {
   }
 }
 
-/** PATCH /api/crm/partners/[id] — edición parcial (409 correo de otro partner; 404 tier o partner ajeno). */
+/** PATCH /api/crm/partners/[id] — solo admin/manager (por id de rol); edición parcial (409 correo de otro partner; 404 tier o partner ajeno). */
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
     const ctx = await getServerOrgContext();
     const { id } = await params;
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body.organization_id, ctx);
+    requirePartnerManager(ctx);
     const parsed = validatePartnerInput(body, { partial: true });
     if (!parsed.ok) return validationFail(parsed.errors);
     const partner = await updatePartner(id, ctx.organizationId, parsed.value, ctx.supabase);

@@ -4,6 +4,7 @@ import type { WhatsAppWebhookPayload } from '@/lib/services/integrations/whatsap
 import { planWebhookAuthorization, type ResolvedChannel, type WebhookChannelResolver } from '@/lib/services/integrations/whatsapp/webhookAuthorization';
 import { verifyMetaSignature } from '@/lib/security/webhookSignatures';
 import { readRealSecret } from '@/lib/security/secrets';
+import { checkRateLimit, getClientIp } from '@/lib/security/rateLimit';
 
 export const runtime = 'nodejs';
 
@@ -60,6 +61,16 @@ function globalAppSecret(): string | null {
   return readRealSecret('META_APP_SECRET', { aliases: ['WHATSAPP_APP_SECRET'] });
 }
 
+/**
+ * F0-SEC r4 (qa r3 §4): límite por IP ANTES de planificar. El plan consulta la
+ * base (hasta `MAX_LOOKUPS` identificadores) con el payload aún sin verificar
+ * —inevitable: el secreto sale del payload—, así que una IP sin firma válida
+ * podía costar consultas sin tope. Meta reintenta con backoff, y 120/min por IP
+ * cubre de sobra un WABA activo. Clave separada del resto (`wa_webhook:ip:`).
+ * (No se exporta: un route.ts solo puede exportar handlers y config de Next.)
+ */
+const WEBHOOK_RATE_LIMIT = { limit: 120, windowMs: 60_000 } as const;
+
 // POST: Recibir mensajes y status updates
 // F0 (C3 msg): firma X-Hub-Signature-256 verificada SIEMPRE (fail-closed) sobre el raw body.
 // F0-SEC r2/r3: autorización POR CAMBIO. La firma cubre el cuerpo entero y la
@@ -69,6 +80,16 @@ function globalAppSecret(): string | null {
 // nunca una organización procesa entradas de otra. La decisión y las reglas
 // están documentadas en `webhookAuthorization.ts`.
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request);
+  const rl = await checkRateLimit(`wa_webhook:ip:${ip}`, WEBHOOK_RATE_LIMIT);
+  if (!rl.allowed) {
+    console.warn('[WhatsApp Webhook] Rate limit por IP superado. Rechazado.', { ip, resetAt: rl.resetAt.toISOString() });
+    return NextResponse.json(
+      { error: 'rate_limited' },
+      { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000))) } },
+    );
+  }
+
   let rawBody: string;
   let payload: WhatsAppWebhookPayload;
   try {
@@ -106,9 +127,11 @@ export async function POST(request: NextRequest) {
   // F0-SEC r3 (H1/H2): el descarte es POR CAMBIO. Un `phone_number_id` o un
   // WABA que no resuelve al secreto que firmó se queda fuera aunque comparta
   // entrada con cambios legítimos; se registra para que un intento de
-  // inyección entre organizaciones se vea en el log.
+  // inyección entre organizaciones se vea en el log. F0-SEC r4 (H4): también
+  // bajo el ámbito global se descartan (y registran) las anomalías de forma
+  // (`phone_number_on_template_change`).
   if (plan.droppedChanges.length > 0) {
-    console.warn('[WhatsApp Webhook] Cambios descartados: no resuelven a ningún canal del secreto que firmó.', {
+    console.warn('[WhatsApp Webhook] Cambios descartados: no resuelven a ningún canal del secreto que firmó o son anómalos.', {
       scope: plan.scope,
       organizationIds: plan.organizationIds,
       droppedChanges: plan.droppedChanges,
@@ -121,8 +144,17 @@ export async function POST(request: NextRequest) {
   // que un inbound que no se podía guardar (trigger de identidades) se perdía
   // en silencio y Meta nunca lo reintentaba. Son 1-3 INSERT por webhook, muy
   // por debajo del margen de Meta.
+  //
+  // F0-SEC r4 (H4): el servicio recibe ADEMÁS las organizaciones que el plan
+  // autorizó para el secreto que firmó; todo lo que resuelva por su cuenta
+  // (WABA de la entrada, `phone_number_id`) se interseca con ellas. Bajo el
+  // ámbito global no hay intersección (`undefined`): la app de la plataforma
+  // firma para todos sus canales.
   try {
-    await whatsappCloudService.processWebhookPayload({ ...payload, entry: plan.entries });
+    await whatsappCloudService.processWebhookPayload(
+      { ...payload, entry: plan.entries },
+      { authorizedOrganizationIds: plan.scope === 'channel' ? plan.organizationIds : undefined },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[WhatsApp Webhook] Error procesando payload:', message);

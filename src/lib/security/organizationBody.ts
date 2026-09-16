@@ -60,6 +60,7 @@ export interface ReadOrgBodyOptions {
 /** `FormData`, `URLSearchParams` o un doble de test con solo `get()`. */
 interface ParamsLike {
   get(name: string): unknown;
+  getAll?(name: string): unknown[];
   has?(name: string): boolean;
 }
 
@@ -80,25 +81,53 @@ function isRequestLike(value: unknown): value is Request {
   return typeof v.json === 'function' || typeof v.text === 'function';
 }
 
+export interface ClaimedOrganization {
+  key: string;
+  value: unknown;
+}
+
+/** `null`, `undefined`, `''` o solo espacios cuentan como «no declarada» para ESA clave. */
+function isBlank(value: unknown): boolean {
+  return value == null || (typeof value === 'string' && value.trim() === '');
+}
+
 /**
- * Primer par clave/valor de organización presente en un objeto, `FormData` o
- * `URLSearchParams`. `null` si no declara ninguna.
+ * TODOS los pares clave/valor de organización con valor no vacío en un objeto,
+ * `FormData` o `URLSearchParams`, en el orden de `ORG_BODY_KEYS`. Vacío si no
+ * declara ninguna.
+ *
+ * Se evalúan todas las claves y no solo la primera: `{organization_id: 120,
+ * organizationId: 999}` y `{organization_id: '', orgId: 999}` esquivaban el 403
+ * porque la primera clave presente «ganaba» (tester F0-SEC C+D r2, fallo 3).
  */
-export function claimedOrganizationIn(source: unknown): { key: string; value: unknown } | null {
-  if (source == null) return null;
+export function claimedOrganizationsIn(source: unknown): ClaimedOrganization[] {
+  if (source == null) return [];
+  const found: ClaimedOrganization[] = [];
   if (isParamsLike(source)) {
     for (const key of ORG_BODY_KEYS) {
-      const present = typeof source.has === 'function' ? source.has(key) : source.get(key) != null;
-      if (present) return { key, value: source.get(key) };
+      // Todas las repeticiones de la clave (`?organization_id=120&organization_id=999`):
+      // `get()` solo devuelve la primera (tester C+D r3, fallo bajo; QA r3 «B»).
+      // Unión de `getAll()` y `get()` (un doble puede implementar solo uno): fail-closed.
+      const values = new Set<unknown>([...(typeof source.getAll === 'function' ? source.getAll(key) : []), source.get(key)]);
+      for (const value of values) if (!isBlank(value)) found.push({ key, value });
     }
-    return null;
+    return found;
   }
-  if (typeof source !== 'object' || Array.isArray(source)) return null;
+  if (typeof source !== 'object' || Array.isArray(source)) return [];
   const obj = source as Record<string, unknown>;
   for (const key of ORG_BODY_KEYS) {
-    if (Object.prototype.hasOwnProperty.call(obj, key) && obj[key] != null) return { key, value: obj[key] };
+    if (Object.prototype.hasOwnProperty.call(obj, key) && !isBlank(obj[key])) found.push({ key, value: obj[key] });
   }
-  return null;
+  return found;
+}
+
+/**
+ * Primer par clave/valor de organización con valor no vacío. `null` si no
+ * declara ninguna. Azúcar sobre `claimedOrganizationsIn` (se conserva por los
+ * tests que lo importan); la decisión de 403 mira todas las claves.
+ */
+export function claimedOrganizationIn(source: unknown): ClaimedOrganization | null {
+  return claimedOrganizationsIn(source)[0] ?? null;
 }
 
 /** El valor ajeno tal cual si es escalar corto; recortado si es una cadena larga (nunca objetos enteros al log). */
@@ -107,20 +136,22 @@ function loggable(value: unknown): unknown {
   return String(value).slice(0, 64);
 }
 
+/** Cualquier clave presente con una organización distinta ⇒ registro + 403 (se lanza en la primera ajena). */
 function assertNotForeign<T>(ctx: OrgBodyContext, source: T, opts: ReadOrgBodyOptions | undefined, where: 'body' | 'query'): T {
-  const claimed = claimedOrganizationIn(source);
-  if (!claimed) return source;
-  const foreign = foreignOrganizationInBody(claimed.value, ctx.organizationId);
-  if (foreign === null) return source;
-  console.warn(`[orgBody] ${claimed.key} ajeno en la petición (${where}) → 403`, {
-    route: opts?.route ?? null,
-    where,
-    key: claimed.key,
-    session: ctx.organizationId,
-    body: loggable(foreign),
-    userId: ctx.userId ?? null,
-  });
-  throw new OrgContextError(FOREIGN_ORGANIZATION_MESSAGE, 403, FOREIGN_ORGANIZATION_CODE);
+  for (const claimed of claimedOrganizationsIn(source)) {
+    const foreign = foreignOrganizationInBody(claimed.value, ctx.organizationId);
+    if (foreign === null) continue;
+    console.warn(`[orgBody] ${claimed.key} ajeno en la petición (${where}) → 403`, {
+      route: opts?.route ?? null,
+      where,
+      key: claimed.key,
+      session: ctx.organizationId,
+      body: loggable(foreign),
+      userId: ctx.userId ?? null,
+    });
+    throw new OrgContextError(FOREIGN_ORGANIZATION_MESSAGE, 403, FOREIGN_ORGANIZATION_CODE);
+  }
+  return source;
 }
 
 async function readFromRequest<T>(ctx: OrgBodyContext, req: Request, opts?: ReadOrgBodyOptions): Promise<T> {

@@ -78,12 +78,22 @@ describe('GET /api/crm/partners', () => {
 });
 
 describe('POST /api/crm/partners', () => {
+  // F12-misc r2: crear partners/tiers/programas exige admin/manager por id de rol (como PATCH/DELETE).
+  it('403 MANAGER_REQUIRED para un Empleado (rol 4); nada se escribe', async () => {
+    session.roleId = 4;
+    const { status, body } = await json(await listPost(req('/api/crm/partners', 'POST', { name: 'X', email: 'x@example.com' })));
+    expect(status).toBe(403);
+    expect(body.code).toBe('MANAGER_REQUIRED');
+    expect(db.writes).toEqual([]);
+  });
   it('400 sin nombre/correo o correo mal formado', async () => {
+    session.roleId = 5; // F12-misc r2: crear exige admin/manager
     expect((await listPost(req('/api/crm/partners', 'POST', {}))).status).toBe(400);
     expect((await listPost(req('/api/crm/partners', 'POST', { name: 'X', email: 'x' }))).status).toBe(400);
     expect(db.writes).toEqual([]);
   });
   it('409 si el correo ya existe en la organización (sin distinguir mayúsculas); el de la 121 no cuenta', async () => {
+    session.roleId = 5; // F12-misc r2: crear exige admin/manager
     const dup = await json(await listPost(req('/api/crm/partners', 'POST', { name: 'Otro', email: 'CARLOS@example.com' })));
     expect(dup.status).toBe(409);
     expect(dup.body.code).toBe('DUPLICATE_EMAIL');
@@ -92,15 +102,18 @@ describe('POST /api/crm/partners', () => {
     expect(other.status).toBe(201);
   });
   it('404 si el tier es de otra organización', async () => {
+    session.roleId = 5; // F12-misc r2: crear exige admin/manager
     expect((await listPost(req('/api/crm/partners', 'POST', { name: 'X', email: 'x@y.co', tier_id: U(97) }))).status).toBe(404);
     expect(db.writes).toEqual([]);
   });
   it('403 y registro con organization_id ajeno', async () => {
+    session.roleId = 5; // F12-misc r2: crear exige admin/manager
     expect((await listPost(req('/api/crm/partners', 'POST', { name: 'X', email: 'x@y.co', organization_id: OTHER }))).status).toBe(403);
     expect(console.warn).toHaveBeenCalled();
     expect(db.writes).toEqual([]);
   });
   it('201 en la organización de la sesión; sin tasa propia queda 0 (= hereda del tier)', async () => {
+    session.roleId = 5; // F12-misc r2: crear exige admin/manager
     const { status, body } = await json(await listPost(req('/api/crm/partners', 'POST', { name: ' Nueva ', email: ' NUEVA@example.com ', tier_id: U(61) })));
     expect(status).toBe(201);
     expect(body.data).toMatchObject({ organization_id: ORG, name: 'Nueva', email: 'nueva@example.com', tier_id: U(61), commission_rate: 0, is_active: true });
@@ -108,14 +121,15 @@ describe('POST /api/crm/partners', () => {
 });
 
 describe('/api/crm/partners/[id]', () => {
-  it('GET/PATCH/DELETE de un partner ajeno -> 404 (DELETE con rol manager)', async () => {
+  it('GET/PATCH/DELETE de un partner ajeno -> 404 (PATCH y DELETE con rol manager)', async () => {
     expect((await oneGet(req(`/api/crm/partners/${U(98)}`), params({ id: U(98) }))).status).toBe(404);
-    expect((await onePatch(req(`/api/crm/partners/${U(98)}`, 'PATCH', { name: 'Z' }), params({ id: U(98) }))).status).toBe(404);
     session.roleId = 5;
+    expect((await onePatch(req(`/api/crm/partners/${U(98)}`, 'PATCH', { name: 'Z' }), params({ id: U(98) }))).status).toBe(404);
     expect((await oneDelete(req(`/api/crm/partners/${U(98)}`, 'DELETE'), params({ id: U(98) }))).status).toBe(404);
     expect(db.tables.partners.some((p) => p.id === U(98))).toBe(true);
   });
-  it('PATCH con el correo de otro partner -> 409; con su propio correo -> 200', async () => {
+  it('PATCH con el correo de otro partner -> 409; con su propio correo -> 200 (rol manager)', async () => {
+    session.roleId = 5; // F12-misc: PATCH exige admin/manager por id de rol, igual que DELETE.
     expect((await onePatch(req(`/api/crm/partners/${U(71)}`, 'PATCH', { email: 'carlos@example.com' }), params({ id: U(71) }))).status).toBe(409);
     const { status, body } = await json(await onePatch(req(`/api/crm/partners/${U(70)}`, 'PATCH', { email: 'carlos@example.com', commission_rate: 0 }), params({ id: U(70) })));
     expect(status).toBe(200);
@@ -124,9 +138,15 @@ describe('/api/crm/partners/[id]', () => {
     const w = db.writes.find((x) => x.table === 'partners' && x.op === 'update')!;
     expect(w.filters).toEqual(expect.arrayContaining([{ kind: 'eq', key: 'organization_id', value: ORG }]));
   });
-  it('PATCH con body vacío -> 400; organization_id ajeno -> 403', async () => {
+  it('PATCH con body vacío -> 400 (manager); organization_id ajeno -> 403; Empleado (4) -> 403 MANAGER_REQUIRED', async () => {
+    session.roleId = 5;
     expect((await onePatch(req(`/api/crm/partners/${U(70)}`, 'PATCH', {}), params({ id: U(70) }))).status).toBe(400);
     expect((await onePatch(req(`/api/crm/partners/${U(70)}`, 'PATCH', { name: 'Z', organization_id: OTHER }), params({ id: U(70) }))).status).toBe(403);
+    session.roleId = 4;
+    const { status, body } = await json(await onePatch(req(`/api/crm/partners/${U(70)}`, 'PATCH', { name: 'Z' }), params({ id: U(70) })));
+    expect(status).toBe(403);
+    expect(body.code).toBe('MANAGER_REQUIRED');
+    expect(db.writes).toHaveLength(0);
   });
   it('DELETE exige admin/manager por id de rol: Empleado (4) -> 403 aunque su rol se llame Admin; Manager (5) -> 200', async () => {
     session.roleId = 4;
@@ -143,28 +163,41 @@ describe('/api/crm/partners/[id]', () => {
 });
 
 describe('/api/crm/partners/tiers', () => {
+  it('POST con rol Empleado -> 403 MANAGER_REQUIRED sin escrituras', async () => {
+    session.roleId = 4;
+    expect((await tiersPost(req('/api/crm/partners/tiers', 'POST', { name: 'Z' }))).status).toBe(403);
+    expect(db.writes).toEqual([]);
+  });
   it('GET solo los de la organización, ordenados por exigencia', async () => {
     const { body } = await json(await tiersGet());
     expect((body.data as Array<Record<string, unknown>>).map((t) => t.name)).toEqual(['Bronce', 'Plata', 'Oro']);
   });
   it('POST valida y responde 409 ante el UNIQUE (org, name)', async () => {
+    session.roleId = 5; // F12-misc r2: crear exige admin/manager
     expect((await tiersPost(req('/api/crm/partners/tiers', 'POST', { name: 'X', min_deals: -1 }))).status).toBe(400);
     db.errors['partner_tiers:insert'] = { code: '23505', message: 'duplicate key value violates unique constraint "partner_tiers_organization_id_name_key"' };
     expect((await tiersPost(req('/api/crm/partners/tiers', 'POST', { name: 'Oro' }))).status).toBe(409);
   });
   it('POST organization_id ajeno -> 403; válido -> 201 con beneficios recortados', async () => {
+    session.roleId = 5; // F12-misc r2: crear exige admin/manager
     expect((await tiersPost(req('/api/crm/partners/tiers', 'POST', { name: 'Y', organization_id: OTHER }))).status).toBe(403);
     const { status, body } = await json(await tiersPost(req('/api/crm/partners/tiers', 'POST', { name: 'Platino', min_deals: '20', min_revenue: 100000000, commission_rate: 25, benefits: [' Cuenta dedicada ', ''] })));
     expect(status).toBe(201);
     expect(body.data).toMatchObject({ organization_id: ORG, name: 'Platino', min_deals: 20, commission_rate: 25, benefits: ['Cuenta dedicada'] });
   });
-  it('PATCH de un tier ajeno -> 404; propio -> 200', async () => {
+  it('PATCH de un tier: Empleado (4) -> 403; manager: ajeno -> 404, propio -> 200', async () => {
+    expect((await tierPatch(req(`/api/crm/partners/tiers/${U(61)}`, 'PATCH', { commission_rate: 16 }), params({ id: U(61) }))).status).toBe(403);
+    session.roleId = 5; // F12-misc: PATCH de tier exige admin/manager por id de rol.
     expect((await tierPatch(req(`/api/crm/partners/tiers/${U(97)}`, 'PATCH', { commission_rate: 1 }), params({ id: U(97) }))).status).toBe(404);
     const { status, body } = await json(await tierPatch(req(`/api/crm/partners/tiers/${U(61)}`, 'PATCH', { commission_rate: 16 }), params({ id: U(61) })));
     expect(status).toBe(200);
     expect((body.data as Record<string, unknown>).commission_rate).toBe(16);
   });
-  it('DELETE de un tier en uso -> 409 TIER_IN_USE; libre -> 200; ajeno -> 404', async () => {
+  it('DELETE de un tier: Empleado (4) -> 403; manager: en uso -> 409 TIER_IN_USE; libre -> 200; ajeno -> 404', async () => {
+    // F12-misc (tester): DELETE exige el mismo rol que PATCH (un Empleado no podía editar un tier pero sí borrarlo).
+    expect((await tierDelete(req(`/api/crm/partners/tiers/${U(62)}`, 'DELETE'), params({ id: U(62) }))).status).toBe(403);
+    expect(db.tables.partner_tiers.some((t) => t.id === U(62))).toBe(true);
+    session.roleId = 5;
     const used = await json(await tierDelete(req(`/api/crm/partners/tiers/${U(60)}`, 'DELETE'), params({ id: U(60) })));
     expect(used.status).toBe(409);
     expect(used.body.code).toBe('TIER_IN_USE');

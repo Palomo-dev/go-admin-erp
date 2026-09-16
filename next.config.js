@@ -30,6 +30,16 @@ const nextConfig = {
   experimental: {
     workerThreads: false,
     cpus: 1,
+    // Solo en el build del desktop: el servidor standalone NO precarga todas
+    // las rutas al arrancar. Con el default (true) `next-server` evalúa los
+    // manifests de las ~cientos de páginas y API routes en el hilo principal
+    // nada más arrancar (`unstable_preloadEntries`), y el primer request
+    // —la ventana del desktop cargando el login— espera 10-40 s de CPU
+    // (perfilado el 2026-09-16: `loadComponentsImpl` 26 s de 28 s). Con
+    // false cada ruta se carga en su primer uso (0,2 s) y el servidor
+    // embebido responde en <1 s desde el arranque. En Vercel no cambia nada:
+    // allí el proceso vive mucho y la precarga amortiza.
+    ...(process.env.NEXT_DIST_DIR ? { preloadEntriesOnStart: false } : {}),
   },
   // Desactivar source maps en build para reducir memoria
   productionBrowserSourceMaps: false,

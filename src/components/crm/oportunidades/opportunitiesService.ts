@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId as getOrgId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { applyBranchFilterInclusive } from '@/lib/services/branchFilterHelper';
 import { DEFAULT_TIMEZONE, toPlainDate } from '@/lib/utils/timezone';
+import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
 import {
   Opportunity,
   OpportunityFilters,
@@ -116,17 +117,10 @@ class OpportunitiesService {
         query = query.eq('branch_id', branchId);
       }
 
-      const cleaned = term.trim();
-      if (cleaned) {
-        // `or` de PostgREST: las comas separan condiciones, así que un término
-        // con coma rompería el filtro. Se escapan coma y paréntesis.
-        const safe = cleaned.replace(/[,()]/g, ' ').trim();
-        if (safe) {
-          query = query.or(
-            `full_name.ilike.%${safe}%,email.ilike.%${safe}%,phone.ilike.%${safe}%`
-          );
-        }
-      }
+      // `or` de PostgREST: el helper único entrecomilla el término, así que
+      // comas, paréntesis o comillas no rompen el filtro y el texto no se mutila.
+      const filter = ilikeAnyOf(['full_name', 'email', 'phone'], term);
+      if (filter) query = query.or(filter);
 
       const { data, error } = await query.order('full_name').limit(limit);
 

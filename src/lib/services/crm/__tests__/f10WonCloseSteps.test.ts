@@ -4,9 +4,16 @@
  * `WonCloseModal`). Cubre las mutaciones M52/M53 del tester (tareas
  * `renovacion`/`referido`, `opportunity_id` en la factura), la comisión ya
  * devengada por el trigger y la retirada del paso «stock» (tabla `inventory`
- * inexistente).
+ * inexistente). Deuda D2: «renovación» delega en F11 (`scheduleRenewal`);
+ * la integración real con el doble está en `f10WonCloseF11.test.ts`.
  */
 import { createFakeSupabase, type FakeDb } from '@/lib/services/crm/__tests__/f10FakeSupabase';
+
+// wonCloseSteps importa los servicios F11 (→ cliente de navegador y secuencias): sin red ni env.
+jest.mock('@/lib/supabase/config', () => ({ supabase: {} }));
+jest.mock('@/lib/utils/orgId', () => ({ getOrganizationId: () => 120 }));
+jest.mock('@/lib/services/crm/sequenceService', () => ({ enrollInSequence: jest.fn() }));
+
 import {
   buildInitialSteps,
   executeCommission,
@@ -73,18 +80,25 @@ describe('pasos del modal', () => {
     expect(d3.calls.convert).toEqual([]);
   });
 
-  it('renovación: 6 tareas type=renovacion en la organización, prioridad por cercanía, y metadata de la oportunidad solo en la org 120 (M52)', async () => {
-    const out = await executeRenewal(opp, deps());
-    const tasks = db.writes.filter((w) => w.table === 'tasks' && w.op === 'insert').map((w) => w.row!);
-    expect(tasks).toHaveLength(6);
-    for (const t of tasks) expect(t).toMatchObject({ organization_id: 120, type: 'renovacion', status: 'open', related_to_type: 'opportunity', related_to_id: 'op-1', assigned_to: 'u-seller', customer_id: 'c-1' });
-    expect(tasks.map((t) => t.priority)).toEqual(['med', 'med', 'med', 'high', 'high', 'high']);
-    expect(tasks.map((t) => String(t.title))).toEqual([120, 90, 60, 30, 15, 7].map((d) => `Renovación Plan anual — hito ${d}d`));
-    expect(out).toMatch(/Hitos creados: 6 \(renovación: 15\/09\/2027\)/);
+  it('renovación (D2): delega en scheduleRenewal de F11 con la org del contexto y el instante del cierre; no inserta tareas a mano y la metadata de la oportunidad se escribe solo en la org 120 (M52)', async () => {
+    const schedule = jest.fn<ReturnType<NonNullable<WonCloseDeps['scheduleRenewal']>>, Parameters<NonNullable<WonCloseDeps['scheduleRenewal']>>>(async () => ({
+      renewal_opportunity_id: 'ren-1', parent_opportunity_id: 'op-1', customer_id: 'c-1', renewal_date: '2027-09-15T15:00:00.000Z', next_contact_at: '2027-05-18T15:00:00.000Z' as string | null,
+      tasks_created: 6, already_existed: false, updated: false, sequence_enrollment_id: null, sequence_error: null,
+    }));
+    const d = deps({ scheduleRenewal: schedule });
+    const out = await executeRenewal(opp, d);
+    expect(schedule).toHaveBeenCalledTimes(1);
+    // r2: sucursal del contexto y created_by de la oportunidad viajan a la renovación (como en la hija de onboarding); nunca `enroll` desde el navegador
+    expect(schedule.mock.calls[0]).toEqual([120, 'op-1', 12, d.supabase, { now: NOW, timezone: 'America/Bogota', closedAtFallback: NOW, branchId: 7, createdBy: 'u-owner' }]);
+    expect(db.writes.filter((w) => w.table === 'tasks')).toEqual([]);
+    expect(out).toBe('Hitos creados: 6 (renovación: 15/09/2027)');
     const upd = db.writes.find((w) => w.table === 'opportunities' && w.op === 'update');
     expect(upd?.filters).toMatchObject({ id: 'op-1', organization_id: 120 });
     expect(upd?.row).toMatchObject({ metadata: { foo: 'bar', billing_cycle_months: 12, renewal_date: '2027-09-15T15:00:00.000Z' } });
     expect(db.rows.opportunities[1].metadata).toBeNull(); // la fila señuelo de la org 121 no se tocó
+    // segunda apertura del modal: F11 responde «ya existía» y el paso no lanza ni duplica
+    schedule.mockResolvedValueOnce({ renewal_opportunity_id: 'ren-1', parent_opportunity_id: 'op-1', customer_id: 'c-1', renewal_date: '2027-09-15T15:00:00.000Z', next_contact_at: null, tasks_created: 0, already_existed: true, updated: false, sequence_enrollment_id: null, sequence_error: null });
+    expect(await executeRenewal(opp, d)).toBe('Renovación ya programada (15/09/2027) — no se duplicó');
   });
 
   it('renovación sin ciclo → se omite sin escribir', async () => {

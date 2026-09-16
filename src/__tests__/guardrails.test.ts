@@ -328,10 +328,23 @@ describe('F0 Guardarraíles', () => {
     ];
     const SESSION_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withWhatsAppRoute)\s*\(/;
     const CRON_RE = /\b(withCron|verifyCronSecret)\s*\(/;
-    const WEBHOOK_RE = /\b(verifyTwilioWebhook|verifyTwilioRequest|verifyMetaSignature|verifyResendWebhook|constructEvent|verifyDocumensoWebhook|verifyElevenLabsWebhook)\s*\(|webhooks\.constructEvent|isPlaceholderCredential/;
+    // Solo verificaciones de FIRMA. `isPlaceholderCredential` no lo es: mencionarla
+    // eximía al handler del contrato (tester r2, mutación M17).
+    const WEBHOOK_RE = /\b(verifyTwilioWebhook|verifyTwilioRequest|verifyMetaSignature|verifyResendWebhook|constructEvent|verifyDocumensoWebhook|verifyElevenLabsWebhook)\s*\(|webhooks\.constructEvent/;
     const FOREIGN_RE = /\b(readOrgBody|rejectForeignOrganization|foreignOrgResponse|foreignOrganizationInBody)(?:<[^>]*>)?\s*\(/;
     const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
     const HANDLER_RE = /^export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE)\b/;
+    // Reexportaciones `export { POST } from '…'` / `export { handler as POST } from '…'`:
+    // el cuerpo vive en otro archivo y este guardarraíl no lo ve (tester C+D r3,
+    // mutante G7b; QA r3 «A»). En ámbito estricto se prohíben salvo hacia `crm/webhooks/`.
+    const REEXPORT_RE = /^export\s*\{[^}]*\b(GET|POST|PUT|PATCH|DELETE)\b[^}]*\}\s*from\s*['"]([^'"]+)['"]/gm;
+    function reexportsHandlers(content: string): string[] {
+      const targets: string[] = [];
+      let rx: RegExpExecArray | null;
+      REEXPORT_RE.lastIndex = 0;
+      while ((rx = REEXPORT_RE.exec(content))) if (!/crm\/webhooks\//.test(rx[2])) targets.push(rx[2]);
+      return targets;
+    }
     const TOP_LEVEL_RE = /^(export\s|async function |function |const |let |type |interface )/;
 
     type Handler = { method: string; text: string };
@@ -356,15 +369,28 @@ describe('F0 Guardarraíles', () => {
       });
     }
 
-    /** Nombres de funciones/constantes locales cuyo cuerpo contiene `re`. */
+    /**
+     * Nombres de funciones/constantes locales cuyo cuerpo contiene `re`.
+     *
+     * El cuerpo de un helper acaba en la SIGUIENTE LÍNEA DE NIVEL SUPERIOR
+     * (`TOP_LEVEL_RE`, la misma técnica que `splitHandlers`), no en la siguiente
+     * declaración que case con `declRe`. Antes, como `export async function
+     * POST` no casa con `declRe`, un `function fail()` declarado antes de los
+     * handlers «contenía» el `readOrgBody` de todos ellos y cualquier handler
+     * que llamara a `fail(` pasaba sin `readOrgBody` propio: 15 handlers ciegos
+     * (tester r2 fallo 2, QA r2 §2, mutación M18).
+     */
     function localHelpersMatching(content: string, re: RegExp): string[] {
       const names: string[] = [];
       const declRe = /^(?:async\s+)?function\s+(\w+)\s*\(|^const\s+(\w+)\s*=\s*(?:async\s*)?(?:\(|function)/gm;
+      const nextTopLevel = new RegExp(TOP_LEVEL_RE.source.replace('^', '\\n'));
       const decls: Array<{ name: string; start: number }> = [];
       let m: RegExpExecArray | null;
       while ((m = declRe.exec(content))) decls.push({ name: m[1] ?? m[2], start: m.index });
       decls.forEach((d, i) => {
-        const end = i + 1 < decls.length ? decls[i + 1].start : content.length;
+        let end = i + 1 < decls.length ? decls[i + 1].start : content.length;
+        const next = content.slice(d.start + 1, end).search(nextTopLevel);
+        if (next >= 0) end = d.start + 1 + next;
         if (re.test(content.slice(d.start, end))) names.push(d.name);
       });
       return names;
@@ -384,6 +410,37 @@ describe('F0 Guardarraíles', () => {
       const rest = content.slice(start + 1);
       const next = rest.search(TOP_LEVEL_RE.source.replace('^', '\\n'));
       return handler.text + '\n' + (next >= 0 ? rest.slice(0, next) : rest);
+    }
+
+    /**
+     * Métodos de escritura del archivo que incumplen: en ámbito estricto, los que
+     * no tienen sesión O no llaman al punto único (salvo cron/webhook); en legacy,
+     * los que leen la organización del body sin sesión en ese mismo handler.
+     */
+    function offendingHandlers(content: string, strict: boolean): string[] {
+      const handlers = splitHandlers(content).map((h) => ({ ...h, text: inlineAliases(h, content) }));
+      const sessionHelpers = localHelpersMatching(content, SESSION_RE);
+      const foreignHelpers = localHelpersMatching(content, FOREIGN_RE);
+      const cronHelpers = localHelpersMatching(content, CRON_RE);
+      const webhookHelpers = localHelpersMatching(content, WEBHOOK_RE);
+      const offenders: string[] = [];
+
+      for (const h of handlers) {
+        if (!WRITE_METHODS.has(h.method)) continue;
+        const hasSession = SESSION_RE.test(h.text) || usesHelper(h, sessionHelpers);
+        const isCron = CRON_RE.test(h.text) || usesHelper(h, cronHelpers);
+        const isWebhook = WEBHOOK_RE.test(h.text) || usesHelper(h, webhookHelpers);
+        const hasForeign = FOREIGN_RE.test(h.text) || usesHelper(h, foreignHelpers);
+
+        if (strict) {
+          if (isCron || isWebhook) continue;
+          if (!hasSession || !hasForeign) offenders.push(h.method);
+          continue;
+        }
+        const usesBodyOrg = BODY_ORG_PATTERNS.some((p) => p.test(h.text));
+        if (usesBodyOrg && !hasSession) offenders.push(h.method);
+      }
+      return offenders;
     }
 
     const strictViolations: string[] = [];
@@ -407,32 +464,14 @@ describe('F0 Guardarraíles', () => {
           if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue;
           throw err;
         }
-        const handlers = splitHandlers(content).map((h) => ({ ...h, text: inlineAliases(h, content) }));
         const strict = /^app\/api\/(crm|ai-assistant)\//.test(relPath);
         // `crm/webhooks/**` no tiene sesión por diseño: la organización sale de la
         // firma (Stripe `constructEvent`, Documenso, ElevenLabs) o de la fila.
         // Que verifiquen firma lo vigila el guardarraíl 7 y la sub-parte A.
         if (/^app\/api\/crm\/webhooks\//.test(relPath)) continue;
-        const sessionHelpers = localHelpersMatching(content, SESSION_RE);
-        const foreignHelpers = localHelpersMatching(content, FOREIGN_RE);
-        const cronHelpers = localHelpersMatching(content, CRON_RE);
-        const webhookHelpers = localHelpersMatching(content, WEBHOOK_RE);
-
-        for (const h of handlers) {
-          if (!WRITE_METHODS.has(h.method)) continue;
-          const hasSession = SESSION_RE.test(h.text) || usesHelper(h, sessionHelpers);
-          const isCron = CRON_RE.test(h.text) || usesHelper(h, cronHelpers);
-          const isWebhook = WEBHOOK_RE.test(h.text) || usesHelper(h, webhookHelpers);
-          const hasForeign = FOREIGN_RE.test(h.text) || usesHelper(h, foreignHelpers);
-
-          if (strict) {
-            if (isCron || isWebhook) continue;
-            if (!hasSession || !hasForeign) strictOffenders.add(relPath);
-            continue;
-          }
-          const usesBodyOrg = BODY_ORG_PATTERNS.some((p) => p.test(h.text));
-          if (usesBodyOrg && !hasSession) legacyOffenders.add(relPath);
-        }
+        if (strict && reexportsHandlers(content).length > 0) strictOffenders.add(relPath);
+        if (offendingHandlers(content, strict).length === 0) continue;
+        (strict ? strictOffenders : legacyOffenders).add(relPath);
       }
 
       for (const f of strictOffenders) if (!STRICT_ALLOWLIST.has(f)) strictViolations.push(f);
@@ -488,6 +527,54 @@ describe('F0 Guardarraíles', () => {
       expect(SESSION_RE.test(handlers[0].text)).toBe(false);
       expect(CRON_RE.test(handlers[0].text)).toBe(true);
       expect(SESSION_RE.test(handlers[1].text)).toBe(true);
+    });
+
+    test('un helper local declarado antes de los handlers no «presta» su readOrgBody: el DELETE sin llamada propia es ofensor (tester r2 fallo 2, M18)', () => {
+      const sample = [
+        "function fail(msg: string) {",
+        "  return Response.json({ error: msg }, { status: 400 });",
+        "}",
+        "",
+        "export async function POST(request: Request) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  const body = await readOrgBody(ctx, request);",
+        "  if (!body.name) return fail('name');",
+        "  return Response.json({ ok: true });",
+        "}",
+        "",
+        "export async function DELETE(request: Request) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  if (!ctx) return fail('ctx');",
+        "  return Response.json({ ok: true });",
+        "}",
+      ].join('\n');
+      // `fail` termina en la siguiente línea de nivel superior: NO contiene el readOrgBody del POST.
+      expect(localHelpersMatching(sample, FOREIGN_RE)).toEqual([]);
+      expect(offendingHandlers(sample, true)).toEqual(['DELETE']);
+      // Y un helper que SÍ llama al punto único sigue cubriendo a quien lo invoca.
+      const viaHelper = sample.replace("function fail(msg: string) {", "function fail(msg: string) {\n  readOrgBody(ctx, msg);");
+      expect(localHelpersMatching(viaHelper, FOREIGN_RE)).toEqual(['fail']);
+      expect(offendingHandlers(viaHelper, true)).toEqual([]);
+    });
+
+    test('mencionar isPlaceholderCredential( no exime del contrato: no es una verificación de firma (tester r2, M17)', () => {
+      const sample = [
+        "export async function POST(request: Request) {",
+        "  const ctx = await getServerOrgContext(request);",
+        "  if (isPlaceholderCredential('x')) return Response.json({}, { status: 500 });",
+        "  return Response.json({ ok: true });",
+        "}",
+      ].join('\n');
+      expect(offendingHandlers(sample, true)).toEqual(['POST']);
+      expect(offendingHandlers(sample.replace("getServerOrgContext(request);", "getServerOrgContext(request);\n  await readOrgBody(ctx, request);"), true)).toEqual([]);
+    });
+
+    test('una reexportación de handler oculta el cuerpo al guardarraíl: prohibida en ámbito estricto salvo hacia crm/webhooks/ (tester r3, G7b)', () => {
+      expect(reexportsHandlers("export { POST } from '../otra/route';")).toEqual(['../otra/route']);
+      expect(reexportsHandlers("export { handler as DELETE, GET } from '@/app/api/crm/x/route';")).toEqual(['@/app/api/crm/x/route']);
+      expect(reexportsHandlers("export { POST } from '@/app/api/crm/webhooks/stripe/route';")).toEqual([]);
+      expect(reexportsHandlers("export { dynamic } from './config';")).toEqual([]);
+      expect(reexportsHandlers("export async function POST(request: Request) { return Response.json({}); }")).toEqual([]);
     });
   });
 
@@ -767,7 +854,7 @@ describe('F0 Guardarraíles', () => {
   // === Caso 13: GO Assistant — lista negra de acciones (§9.4) ===
   describe('13. GO Assistant: el catálogo no registra acciones prohibidas', () => {
     test('ninguna acción del catálogo está en la lista negra', () => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { ALL_ACTION_TYPES, FORBIDDEN_ACTIONS } = require('@/lib/ai/assistant/actionCatalog');
       const forbidden = new Set<string>(FORBIDDEN_ACTIONS);
       const offenders = (ALL_ACTION_TYPES as string[]).filter((t) => forbidden.has(t));
@@ -775,7 +862,7 @@ describe('F0 Guardarraíles', () => {
     });
 
     test('la lista negra cubre organización, roles, plan y credenciales', () => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { FORBIDDEN_ACTIONS } = require('@/lib/ai/assistant/actionCatalog');
       const list = FORBIDDEN_ACTIONS as string[];
       for (const must of [
@@ -1138,7 +1225,7 @@ describe('F0 Guardarraíles', () => {
       for (const file of scopes.flatMap((d) => walkDir(d)).filter((f) => !isExcluded(f))) {
         if (rel(file) === 'lib/jobs/schedule.ts') continue;
         const content = stripAllComments(readFile(file));
-        if (/(['"`])(\*\/\d+|\d+ \d+|\*) \* \* \* \*/.test(content) || /cada minuto|≤1 min|cada 2 minutos/.test(content)) {
+        if (/(['"`])(\*\/\d+|\d+ \d+|\*) \* \* \* \*\1/.test(content) || /cada minuto|≤1 min|cada 2 minutos/.test(content)) {
           offenders.push(rel(file));
         }
       }
@@ -1239,5 +1326,45 @@ describe('F0 Guardarraíles', () => {
         expect(src).toMatch(/\.from\(\s*['"]integration_connections['"]\s*\)[^;]*?\.eq\(\s*['"]status['"]\s*,\s*INTEGRATION_CONNECTION_USABLE_STATUS\s*\)/);
       }
     });
+  });
+});
+
+// === Caso 21: ningún fuente .ts/.tsx bajo src/ lleva bytes de control ===
+//
+// F0-SEC r4 (qa r3 §6). Un test del tester r3 llevaba un NUL (0x00) literal
+// dentro de una cadena en vez de `\u0000`: `file` lo reportaba como `data`,
+// `grep` como «Binary file … matches» y `git diff` como «Binary files differ».
+// Es la misma clase de problema que dejó `PROGRESS.md` inutilizable el
+// 2026-09-10 (CLAUDE.md §Ciclo /loop: backticks dentro de una cadena entre
+// comillas dobles de PowerShell se convierten en NUL, VT o BEL). Este mismo
+// archivo llevaba un 0x01 en un regex del caso JOBS (donde tenía que ir `\1`),
+// lo que dejaba muerta la guarda de cron strings: se corrigió en la misma ronda.
+//
+// Se revisa TODO `src/` (tests incluidos: el ofensor era un test) y se leen los
+// bytes crudos, no el texto decodificado. Cualquier carácter que un fuente
+// necesite se escribe como secuencia de escape (`\u0000`, `\x1b`), nunca en
+// crudo. Sin allow-list: no hay ningún motivo legítimo para un byte de control.
+describe('21. Ningún .ts/.tsx bajo src/ contiene bytes de control (< 0x20 salvo \\t, \\n, \\r)', () => {
+  jest.setTimeout(60000);
+  const CONTROL_BYTE = /[\x00-\x08\x0B\x0C\x0E-\x1F]/;
+
+  test('el detector reconoce NUL, SOH, BEL, VT y ESC y tolera \\t, \\n, \\r', () => {
+    for (const bad of ['\x00', '\x01', '\x07', '\x0B', '\x1B']) expect(CONTROL_BYTE.test(`a${bad}b`)).toBe(true);
+    expect(CONTROL_BYTE.test('a\tb\nc\r\n')).toBe(false);
+    expect(CONTROL_BYTE.test('\\u0000 como secuencia de escape')).toBe(false);
+  });
+
+  test('ningún archivo fuente (tests incluidos) lleva bytes de control en crudo', () => {
+    const offenders: string[] = [];
+    for (const file of walkDir(SRC_ROOT)) {
+      // latin1: un byte → un carácter, sin decodificar UTF-8 (no interesa el texto, sino los bytes).
+      const raw = fs.readFileSync(file).toString('latin1');
+      const m = CONTROL_BYTE.exec(raw);
+      if (m) {
+        const line = raw.slice(0, m.index).split('\n').length;
+        offenders.push(`${rel(file)}:${line} (0x${raw.charCodeAt(m.index).toString(16).padStart(2, '0')})`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });

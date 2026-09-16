@@ -76,9 +76,20 @@ export async function POST(request: NextRequest) {
 
   let formData: FormData;
   try {
-    formData = readOrgBody(ctx, await request.formData());
+    formData = await request.formData();
   } catch {
     return NextResponse.json({ error: 'Petición mal formada.' }, { status: 400 });
+  }
+  // Fuera del try del parseo: una organización ajena en el formulario es un
+  // 403 FOREIGN_ORGANIZATION registrado (regla dura 5), no un 400 «mal formada»
+  // (QA F0-SEC C+D r2, §1).
+  try {
+    formData = readOrgBody(ctx, formData, { route: 'ai-assistant/transcribe' });
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+    }
+    throw err;
   }
   const audioFile = formData.get('audio') as File | null;
   const languageRaw = formData.get('language');

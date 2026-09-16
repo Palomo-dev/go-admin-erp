@@ -7,6 +7,8 @@
  *   - POST /api/crm/whatsapp/send      (`withWhatsAppRoute` + zod `parseWith`)
  *   - POST /api/crm/activities         (`getServerOrgContext` + `.catch(() => null)`)
  *   - DELETE /api/crm/teams/[id]       (sin body: la organización ajena viaja en la query)
+ *   - POST /api/ai-assistant/{attachments,transcribe} (multipart: el 403 ya no
+ *     se convierte en 400 dentro del `try` del `formData()` — QA C+D r2 §1)
  *
  * Contrato (regla dura 5 b): organización ajena en body o query → 403
  * `FOREIGN_ORGANIZATION`, `console.warn` estructurado y NINGUNA escritura. Sin
@@ -55,16 +57,30 @@ jest.mock('@/lib/ai/assistant/actionGuard', () => ({ evaluateAction: jest.fn(() 
 jest.mock('@/lib/ai/assistant/actionCatalog', () => ({ getActionDefinition: jest.fn(), getActionSchema: jest.fn(), sanitizeActionFields: jest.fn() }));
 jest.mock('@/lib/security/rateLimit', () => ({ checkRateLimit: jest.fn(async () => ({ allowed: true, remaining: 9, resetAt: new Date(), count: 1 })) }));
 
+// Rutas multipart del asistente: se doblan créditos y la cadena STT.
+jest.mock('@/lib/services/aiCreditsService', () => ({ checkAICredits: jest.fn(async () => ({ allowed: true, balance: 100 })) }));
+jest.mock('@/lib/services/crm/aiCostService', () => ({ chargeAiCredits: jest.fn(async () => ({ ok: true })) }));
+const transcribeWithFallback = jest.fn(async () => ({ result: { text: 'hola', segments: [], duration_seconds: 1, model: 'm', cost_usd: 0 }, provider: 'x', fellBack: false }));
+jest.mock('@/lib/services/crm/stt', () => ({ SttChainError: class extends Error {}, transcribeWithFallback: (...a: unknown[]) => transcribeWithFallback(...(a as [])) }));
+
 import { NextRequest } from 'next/server';
 import { POST as chatPost } from '../ai-assistant/chat/route';
 import { POST as sendPost } from '../crm/whatsapp/send/route';
 import { POST as activitiesPost } from '../crm/activities/route';
 import { DELETE as teamDelete } from '../crm/teams/[id]/route';
+import { POST as attachmentsPost } from '../ai-assistant/attachments/route';
+import { POST as transcribePost } from '../ai-assistant/transcribe/route';
 
 const UUID = '11111111-1111-4111-8111-111111111111';
 
 function json(url: string, method: string, body: unknown): NextRequest {
   return new NextRequest(`http://localhost${url}`, { method, body: JSON.stringify(body), headers: { 'content-type': 'application/json' } });
+}
+
+function multipart(url: string, fields: Record<string, string | Blob>): NextRequest {
+  const fd = new FormData();
+  for (const [k, v] of Object.entries(fields)) fd.append(k, v);
+  return new NextRequest(`http://localhost${url}`, { method: 'POST', body: fd });
 }
 
 let warn: jest.SpyInstance;
@@ -147,5 +163,48 @@ describe('DELETE /api/crm/teams/[id] (sin body)', () => {
     const res = await teamDelete(new NextRequest('http://localhost/api/crm/teams/team-1', { method: 'DELETE' }), params);
     expect(res.status).toBe(200);
     expect(deleteSalesTeam).toHaveBeenCalledWith('team-1', 120, expect.anything());
+  });
+});
+
+describe('POST /api/ai-assistant/transcribe (multipart)', () => {
+  const audio = new Blob([new Uint8Array(4)], { type: 'audio/webm' });
+  test('organization_id ajeno en el formulario → 403 FOREIGN_ORGANIZATION, registro y la cadena STT no se llama (antes: 400 «Petición mal formada»)', async () => {
+    const res = await transcribePost(multipart('/api/ai-assistant/transcribe', { audio, organization_id: '999' }));
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: 'FOREIGN_ORGANIZATION' });
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/organization_id ajeno/), expect.objectContaining({ session: 120, body: '999', route: 'ai-assistant/transcribe' }));
+    expect(transcribeWithFallback).not.toHaveBeenCalled();
+  });
+
+  test('la misma organización (orgId) no es 403; un cuerpo que no es multipart sigue siendo 400', async () => {
+    // Sin `audio` la ruta corta en 400 FILE antes de tocar servicios: basta para probar que el 403 no salta.
+    const res = await transcribePost(multipart('/api/ai-assistant/transcribe', { orgId: '120' }));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: expect.stringMatching(/audio/i) });
+    expect(warn).not.toHaveBeenCalledWith(expect.stringMatching(/ajeno/), expect.anything());
+    const notMultipart = new NextRequest('http://localhost/api/ai-assistant/transcribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    expect((await transcribePost(notMultipart)).status).toBe(400);
+  });
+});
+
+describe('POST /api/ai-assistant/attachments (multipart)', () => {
+  const file = new Blob([new Uint8Array(4)], { type: 'image/png' });
+  test('orgId ajeno en el formulario → 403 FOREIGN_ORGANIZATION y registro (antes: 400 «multipart/form-data»)', async () => {
+    const res = await attachmentsPost(multipart('/api/ai-assistant/attachments', { file, orgId: '999' }));
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: 'FOREIGN_ORGANIZATION' });
+    // En multipart el valor llega como cadena: '999', no 999.
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/orgId ajeno/), expect.objectContaining({ session: 120, body: '999', userId: 'u-1', route: 'ai-assistant/attachments' }));
+  });
+
+  test('la misma organización no es 403 (sin archivo → 400 FILE_REQUIRED); un cuerpo que no es multipart → 400 BAD_REQUEST', async () => {
+    const res = await attachmentsPost(multipart('/api/ai-assistant/attachments', { organization_id: '120' }));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: 'FILE_REQUIRED' });
+    expect(warn).not.toHaveBeenCalledWith(expect.stringMatching(/ajeno/), expect.anything());
+    const notMultipart = new NextRequest('http://localhost/api/ai-assistant/attachments', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    const bad = await attachmentsPost(notMultipart);
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toMatchObject({ code: 'BAD_REQUEST' });
   });
 });

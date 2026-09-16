@@ -310,24 +310,30 @@ describe('QA r2 punto 2 — getAiUsageMonth y 22023', () => {
 });
 
 describe('isSupportedTimeZone — lo que se puede ESCRIBIR en organizations.timezone', () => {
-  it('acepta las 7 opciones del selector, UTC y un nombre canónico; rechaza alias, abreviaturas, minúsculas, vacío, >64 chars y no-string', () => {
+  it('acepta las 7 opciones del selector, UTC y un nombre canónico; rechaza abreviaturas, minúsculas, vacío, >64 chars y no-string', () => {
     for (const ok of ['America/Bogota', 'America/Mexico_City', 'America/Lima', 'America/Buenos_Aires', 'America/Santiago', 'America/New_York', 'Europe/Madrid', 'UTC']) {
       expect(isSupportedTimeZone(ok)).toBe(true);
     }
-    for (const bad of ['US/Eastern', 'EST', 'america/bogota', 'Marte/Fobos', '', ' America/Bogota', 'A'.repeat(65), 5, null, undefined, {}]) {
+    for (const bad of ['EST', 'america/bogota', 'Marte/Fobos', '', ' America/Bogota', 'A'.repeat(65), 5, null, undefined, {}]) {
       expect(isSupportedTimeZone(bad)).toBe(false);
     }
   });
 
-  // HUECO (bajo): `Intl.supportedValuesOf('timeZone')` devuelve los nombres
-  // canónicos de ICU, no los de IANA. En Node 22 (ICU 76) lista
-  // `America/Buenos_Aires` y `Asia/Calcutta`, y NO `America/Argentina/Buenos_Aires`
-  // ni `Asia/Kolkata`, que son los canónicos de IANA y los que Postgres
-  // prefiere. El selector actual (7 opciones) no lo pisa; un selector más
-  // amplio o un valor tecleado sí. Pasa a verde cuando el helper acepte
-  // también los canónicos de IANA (p. ej. resolviendo con
-  // `Intl.DateTimeFormat(...).resolvedOptions().timeZone`).
-  it.failing('HUECO: el nombre canónico IANA America/Argentina/Buenos_Aires se rechaza aunque Postgres lo reconozca', () => {
+  // r4 (QA r3 punto 3): decisión documentada en timezone.ts. `US/Eastern` se
+  // ACEPTA: tiene forma Region/City, ICU lo resuelve a America/New_York (en el
+  // set) y está en pg_timezone_names, así que el trigger de la 44 lo admite.
+  // `EST` sigue rechazado (sin barra) aunque Postgres lo conozca.
+  it('enlaces IANA que ICU canoniza a otro nombre: Asia/Kolkata y US/Eastern → true; EST → false', () => {
+    expect(isSupportedTimeZone('Asia/Kolkata')).toBe(true);
+    expect(isSupportedTimeZone('US/Eastern')).toBe(true);
+    expect(isSupportedTimeZone('EST')).toBe(false);
+  });
+
+  // Cerrado en r4 (QA r3 punto 3): `Intl.supportedValuesOf('timeZone')`
+  // devuelve los canónicos de ICU (`America/Buenos_Aires`, `Asia/Calcutta`),
+  // no los de IANA. El helper acepta ahora la forma Region/City cuyo
+  // `resolvedOptions().timeZone` esté en el set.
+  it('el nombre canónico IANA America/Argentina/Buenos_Aires se acepta (ICU lo resuelve a America/Buenos_Aires)', () => {
     expect(isSupportedTimeZone('America/Argentina/Buenos_Aires')).toBe(true);
   });
 });
@@ -376,14 +382,17 @@ describe('chargeAiCredits — bordes de importe', () => {
     expect(calls).toHaveLength(0);
   });
 
-  it('DOCUMENTADO (bajo): credits 0.4 se redondea a 0 → el RPC recibe p_cost 0 (true, no-op) y la llamada sale gratis con log de 0 créditos', async () => {
+  it('cerrado en r4 (QA r3 punto 4): credits explícito 0.4 o 0 → RangeError sin RPC ni log; 0.5 redondea a 1 y se cobra', async () => {
     const { sb, calls, state } = fakeDb();
     __setAiCostClientFactory(() => sb);
-    const out = await charge({ credits: 0.4 });
-    expect(out.credits).toBe(0);
-    expect(calls.find((c) => c.type === 'rpc' && c.name === 'decrement_ai_credits')!.args.p_cost).toBe(0);
+    await expect(charge({ credits: 0.4 })).rejects.toBeInstanceOf(RangeError);
+    await expect(charge({ credits: 0 })).rejects.toBeInstanceOf(RangeError);
+    expect(calls.filter((c) => c.type === 'rpc' && c.name === 'decrement_ai_credits')).toHaveLength(0);
+    expect(calls.filter((c) => c.type === 'insert' && c.name === 'ai_usage_logs')).toHaveLength(0);
     expect(state.row!.credits_remaining).toBe(90);
-    expect(calls.find((c) => c.type === 'insert' && c.name === 'ai_usage_logs')!.args.credits_consumed).toBe(0);
+    const out = await charge({ credits: 0.5 });
+    expect(out.credits).toBe(1);
+    expect(state.row!.credits_remaining).toBe(89);
   });
 
   it('el RPC de cobro falla con un error que no es «sin fila» → Error (500 controlado por la ruta), nunca 402 disfrazado', async () => {

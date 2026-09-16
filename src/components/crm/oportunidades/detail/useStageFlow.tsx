@@ -55,8 +55,12 @@ export function useStageFlow(opportunityId: string, opportunityName: string | un
 
   const onWonConfirmed = async () => {
     setWonDialog(false);
-    if (wonStage) { await change(wonStage, { won_data: opts?.currentWinData ?? {} }); setWonStage(null); }
-    else if (opts?.wonFallback) { await opts.wonFallback(); onApplied(); }
+    if (wonStage) {
+      // Si el PATCH no aplicó (gate, error, needs_won de nuevo), `handle` ya avisó; no se abre el
+      // cierre «al ganar» sobre una oportunidad que no está ganada (tester D1/D2, r2).
+      if (!(await change(wonStage, { won_data: opts?.currentWinData ?? {} }))) return;
+      setWonStage(null);
+    } else if (opts?.wonFallback) { await opts.wonFallback(); onApplied(); }
     setWonClose(true);
   };
 

@@ -3,8 +3,9 @@
  *  1. `findByClientRequestId` fail-closed (propaga `error`), handler `whatsapp`
  *     ⇒ `JobRetryableError` sin envío, `retried_from` estable, migración 42.
  *  2. `signal` recomprobada antes de cada efecto (whatsapp/email).
- *  3. Permisos: `STAGE_MANAGER_ROLE_IDS` + `hasOrgAdminOrPermission`
- *     (`check_user_permission` mockeada, fail-closed).
+ *  3. Permisos (volteado en r5): `crm.jobs.view` / `crm.jobs.retry` por
+ *     `hasOrgAdminOrPermission` (`check_user_permission` mockeada, fail-closed);
+ *     sin `STAGE_MANAGER_ROLE_IDS`.
  *  4. Espera entre los dos intentos de `fn_complete_job` (solo si queda
  *     presupuesto); productor sin consultas con presupuesto 0.
  *
@@ -34,8 +35,7 @@ import { emailJobHandler } from '../handlers/email';
 import { clearJobHandlers, registerJobHandler } from '../registry';
 import { COMPLETE_RETRY_DELAY_MS, runJobs } from '../runner';
 import { JobRetryableError, type JobContext, type OutboundJob } from '../types';
-import { canRetryJobs, canViewJobs, retryJob } from '@/lib/services/crm/jobsService';
-import { STAGE_MANAGER_ROLE_IDS } from '@/lib/services/crm/stagePermissions';
+import { canRetryJobs, canViewJobs, JOBS_RETRY_PERMISSION, JOBS_VIEW_PERMISSION, resolveJobsPermissions, retryJob } from '@/lib/services/crm/jobsService';
 import { ORG_ADMIN_PERMISSION_CODE } from '@/lib/utils/orgAdmin';
 
 const log = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
@@ -195,7 +195,7 @@ describe('r4 · 2 — signal antes de cada efecto', () => {
   });
 });
 
-describe('r4 · 3 — permisos: STAGE_MANAGER_ROLE_IDS + hasOrgAdminOrPermission (check_user_permission mockeada)', () => {
+describe('r4 · 3 (volteado en r5) — permisos por código: crm.jobs.view / crm.jobs.retry (check_user_permission mockeada)', () => {
   const session = (roleId: number, rpc: jest.Mock, extra: Record<string, unknown> = {}) => ({
     roleId,
     roleName: 'x',
@@ -205,19 +205,26 @@ describe('r4 · 3 — permisos: STAGE_MANAGER_ROLE_IDS + hasOrgAdminOrPermission
     supabase: { rpc } as unknown as SupabaseClient,
     ...extra,
   });
+  /** `check_user_permission` por código: lo que no esté en `grants` ⇒ false. */
+  const rpcByCode = (grants: Record<string, boolean>) =>
+    jest.fn(async (_fn: string, args: { p_permission_code: string }) => ({ data: grants[args.p_permission_code] === true, error: null }));
+  const codesAsked = (rpc: jest.Mock) => rpc.mock.calls.map((c: unknown[]) => (c[1] as { p_permission_code: string }).p_permission_code);
 
-  it('Empleado (4) con admin.full_access por cargo ⇒ ve Y reintenta; la RPC recibe usuario y org DE LA SESIÓN', async () => {
-    const rpc = jest.fn(async () => ({ data: true, error: null }));
+  it('Empleado (4) con crm.jobs.view y crm.jobs.retry por cargo ⇒ ve Y reintenta; la RPC recibe usuario y org DE LA SESIÓN y los códigos propios, nunca admin.full_access', async () => {
+    const rpc = rpcByCode({ [JOBS_VIEW_PERMISSION]: true, [JOBS_RETRY_PERMISSION]: true });
     const ctx4 = session(4, rpc);
     expect(await canViewJobs(ctx4)).toBe(true);
     expect(await canRetryJobs(ctx4)).toBe(true);
-    expect(rpc).toHaveBeenCalledTimes(2);
-    expect(rpc).toHaveBeenCalledWith('check_user_permission', { p_user_id: 'user-uuid', p_organization_id: 105, p_permission_code: ORG_ADMIN_PERMISSION_CODE });
-    expect(ORG_ADMIN_PERMISSION_CODE).toBe('admin.full_access');
+    expect(rpc).toHaveBeenCalledTimes(3); // view (canViewJobs) + [view, retry] (canRetryJobs = view ∧ retry, r5 cierre)
+    expect(rpc).toHaveBeenCalledWith('check_user_permission', { p_user_id: 'user-uuid', p_organization_id: 105, p_permission_code: 'crm.jobs.view' });
+    expect(rpc).toHaveBeenCalledWith('check_user_permission', { p_user_id: 'user-uuid', p_organization_id: 105, p_permission_code: 'crm.jobs.retry' });
+    expect(codesAsked(rpc)).not.toContain(ORG_ADMIN_PERMISSION_CODE);
+    expect(JOBS_VIEW_PERMISSION).toBe('crm.jobs.view');
+    expect(JOBS_RETRY_PERMISSION).toBe('crm.jobs.retry');
   });
 
-  it('Empleado (4) sin el permiso ⇒ ni ve ni reintenta; RPC con error ⇒ false (fail-closed) y console.warn', async () => {
-    const no = jest.fn(async () => ({ data: false, error: null }));
+  it('Empleado (4) sin los permisos ⇒ ni ve ni reintenta; RPC con error ⇒ false (fail-closed) y console.warn', async () => {
+    const no = rpcByCode({});
     expect(await canViewJobs(session(4, no))).toBe(false);
     expect(await canRetryJobs(session(4, no))).toBe(false);
     const warn = console.warn as jest.Mock;
@@ -229,18 +236,33 @@ describe('r4 · 3 — permisos: STAGE_MANAGER_ROLE_IDS + hasOrgAdminOrPermission
     expect(String(warn.mock.calls[0][0])).toMatch(/check_user_permission/);
   });
 
-  it('Manager (5) ve SIN llamar a la RPC y NO reintenta si la RPC dice false', async () => {
-    const rpc = jest.fn(async () => ({ data: false, error: null }));
-    const ctx5 = session(5, rpc);
-    expect(await canViewJobs(ctx5)).toBe(true);
-    expect(rpc).not.toHaveBeenCalled();
-    expect(await canRetryJobs(ctx5)).toBe(false);
-    expect(rpc).toHaveBeenCalledTimes(1);
-    expect(STAGE_MANAGER_ROLE_IDS).toContain(5);
+  it('Manager (5): ve y reintenta SOLO porque la BD (f00_45) le concede los dos códigos; un cargo que los niega lo deja fuera aunque sea rol 5', async () => {
+    const granted = rpcByCode({ [JOBS_VIEW_PERMISSION]: true, [JOBS_RETRY_PERMISSION]: true });
+    expect(await canViewJobs(session(5, granted))).toBe(true);
+    expect(granted).toHaveBeenCalledTimes(1); // rol 5 NO entra por el criterio síncrono: siempre consulta la BD
+    expect(await canRetryJobs(session(5, granted))).toBe(true);
+    expect(granted).toHaveBeenCalledTimes(3); // canRetryJobs = view ∧ retry (r5 cierre): dos RPC más, [view, retry]
+    expect(codesAsked(granted)).toEqual(['crm.jobs.view', 'crm.jobs.view', 'crm.jobs.retry']);
+    const denied = rpcByCode({});
+    expect(await canViewJobs(session(5, denied))).toBe(false);
+    expect(await canRetryJobs(session(5, denied))).toBe(false);
+    expect(await resolveJobsPermissions(session(5, denied))).toEqual({ canView: false, canRetry: false });
   });
 
-  it('roles 1/2 y super admin: sin RPC; rol 9 llamado "Admin de organización" sin permiso concedido ⇒ false (regla 6)', async () => {
-    const rpc = jest.fn(async () => ({ data: false, error: null }));
+  it('cargo que concede crm.jobs.view y niega crm.jobs.retry ⇒ ve sin reintentar (dos RPC en resolveJobsPermissions: view primero, luego retry)', async () => {
+    const rpc = rpcByCode({ [JOBS_VIEW_PERMISSION]: true });
+    expect(await resolveJobsPermissions(session(4, rpc))).toEqual({ canView: true, canRetry: false });
+    expect(codesAsked(rpc)).toEqual(['crm.jobs.view', 'crm.jobs.retry']);
+  });
+
+  it('r5 cierre (canRetry = view ∧ retry): con SOLO crm.jobs.retry concedido, resolveJobsPermissions deniega ambos con UNA sola RPC (view) y no pregunta retry', async () => {
+    const rpc = rpcByCode({ [JOBS_RETRY_PERMISSION]: true });
+    expect(await resolveJobsPermissions(session(4, rpc))).toEqual({ canView: false, canRetry: false });
+    expect(codesAsked(rpc)).toEqual(['crm.jobs.view']);
+  });
+
+  it('roles 1/2 y super admin: sin RPC (un cargo no puede negarles la cola); rol 9 llamado "Admin de organización" sin permiso concedido ⇒ false (regla 6)', async () => {
+    const rpc = rpcByCode({});
     for (const roleId of [1, 2]) {
       expect(await canViewJobs(session(roleId, rpc))).toBe(true);
       expect(await canRetryJobs(session(roleId, rpc))).toBe(true);
@@ -252,18 +274,24 @@ describe('r4 · 3 — permisos: STAGE_MANAGER_ROLE_IDS + hasOrgAdminOrPermission
     expect(rpc).toHaveBeenCalledTimes(2); // sí se consulta el permiso: el nombre no decide, la BD sí
   });
 
-  it('el código de JOBS no cablea ids de rol ni nombres: usa STAGE_MANAGER_ROLE_IDS y hasOrgAdminOrPermission', () => {
+  it('el código de JOBS no cablea ids de rol ni nombres ni listas: usa los códigos crm.jobs.* con hasOrgAdminOrPermission; la GET resuelve una vez y el retry usa resolveJobsPermissions(ctx).canRetry', () => {
     const src = fs.readFileSync(path.join(process.cwd(), 'src', 'lib', 'services', 'crm', 'jobsService.ts'), 'utf8');
     expect(src).not.toMatch(/MANAGER_ROLE_ID\b/);
+    expect(src).not.toMatch(/STAGE_MANAGER_ROLE_IDS/);
     expect(src).not.toMatch(/roleId === \d/);
     expect(src).not.toMatch(/roleName ===/);
-    expect(src).toMatch(/STAGE_MANAGER_ROLE_IDS\.includes\(ctx\.roleId\)/);
-    expect(src).toMatch(/hasOrgAdminOrPermission\(/);
-    for (const route of ['route.ts', path.join('[id]', 'retry', 'route.ts')]) {
-      const r = fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'api', 'crm', 'jobs', route), 'utf8');
-      expect(r).toMatch(/await can(View|Retry)Jobs\(ctx\)/);
-      expect(r).not.toMatch(/[^t] can(View|Retry)Jobs\(ctx\)/); // ninguna llamada sin await
-    }
+    expect(src).not.toMatch(/ORG_ADMIN_PERMISSION_CODE|admin\.full_access'/);
+    expect(src).toMatch(/JOBS_VIEW_PERMISSION = 'crm\.jobs\.view'/);
+    expect(src).toMatch(/JOBS_RETRY_PERMISSION = 'crm\.jobs\.retry'/);
+    expect(src).toMatch(/hasOrgAdminOrPermission\(permissionSubject\(ctx\), code\)/);
+    const get = fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'api', 'crm', 'jobs', 'route.ts'), 'utf8');
+    expect(get).toMatch(/await resolveJobsPermissions\(ctx\)/);
+    expect(get.match(/resolveJobsPermissions\(ctx\)/g)).toHaveLength(1); // una sola resolución por petición
+    expect(get).not.toMatch(/can(View|Retry)Jobs\(/);
+    const retry = fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'api', 'crm', 'jobs', '[id]', 'retry', 'route.ts'), 'utf8');
+    expect(retry).toMatch(/\(await resolveJobsPermissions\(ctx\)\)\.canRetry/); // r5 cierre: punto único, view ∧ retry
+    expect(retry.match(/\(await resolveJobsPermissions\(ctx\)\)/g)).toHaveLength(1); // una sola resolución por petición (la cabecera la menciona sin `await`)
+    expect(retry).not.toMatch(/can(View|Retry)Jobs\(|hasOrgAdminOrPermission\(|hasJobsPermission\(/); // nada que consulte solo `retry`
   });
 });
 

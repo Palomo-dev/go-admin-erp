@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
-import { canRetryJobs, canViewJobs, getJobStats, listJobs, listRecentFailed, parseKind, parseStatus } from '@/lib/services/crm/jobsService';
+import { getJobStats, listJobs, listRecentFailed, parseKind, parseStatus, resolveJobsPermissions } from '@/lib/services/crm/jobsService';
 
 /**
  * GET /api/crm/jobs — observabilidad de la cola de la org (FASE-00 §4.1).
  *
  * Auth: sesión (`getServerOrgContext(request)`: header `X-Organization-Id` o
- * cookie `goadmin_org_id`); org SIEMPRE de sesión. Rol (r4): super admin, rol
- * 1/2/5 (`STAGE_MANAGER_ROLE_IDS`) o cargo/rol con `admin.full_access`
- * resuelto en la BD (`check_user_permission`); 403 en otro caso.
+ * cookie `goadmin_org_id`); org SIEMPRE de sesión. Permiso (r5): super admin,
+ * rol 1/2 o rol/cargo con `crm.jobs.view` resuelto en la BD
+ * (`check_user_permission`, fail-closed); 403 en otro caso. Los dos permisos
+ * (`crm.jobs.view`, `crm.jobs.retry`) se resuelven UNA vez por petición con
+ * `resolveJobsPermissions` (orden `[view, retry]`; `view` en `false` corta con una sola RPC).
  * Query: `?status=queued|running|done|failed|dead&kind=&page=&pageSize=`
  * Respuesta: `{ success, items, total, page, pageSize, stats, recentFailed, canRetry }`
  * (`payload_preview` redactado: solo `*_id`, `kind`, `campaign_id`, `event_type`…).
@@ -18,8 +20,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext(request);
-    if (!(await canViewJobs(ctx))) {
-      return NextResponse.json({ success: false, error: 'Requiere rol administrador o manager' }, { status: 403 });
+    const permissions = await resolveJobsPermissions(ctx);
+    if (!permissions.canView) {
+      return NextResponse.json({ success: false, error: 'Requiere permiso crm.jobs.view' }, { status: 403 });
     }
     const sp = request.nextUrl.searchParams;
     const status = parseStatus(sp.get('status'));
@@ -38,7 +41,7 @@ export async function GET(request: NextRequest) {
       listRecentFailed(ctx.supabase, ctx.organizationId, 50),
     ]);
 
-    return NextResponse.json({ success: true, ...list, stats, recentFailed, canRetry: await canRetryJobs(ctx) }, { status: 200 });
+    return NextResponse.json({ success: true, ...list, stats, recentFailed, canRetry: permissions.canRetry }, { status: 200 });
   } catch (error: unknown) {
     if (error instanceof OrgContextError) {
       return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });

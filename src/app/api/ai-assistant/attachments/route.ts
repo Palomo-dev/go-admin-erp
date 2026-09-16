@@ -101,12 +101,23 @@ export async function POST(request: NextRequest) {
 
   let form: FormData;
   try {
-    form = readOrgBody(ctx, await request.formData());
+    form = await request.formData();
   } catch {
     return NextResponse.json(
       { error: 'La subida tiene que ser multipart/form-data.', code: 'BAD_REQUEST' },
       { status: 400 }
     );
+  }
+  // Fuera del try del parseo: una organización ajena en el formulario es un
+  // 403 FOREIGN_ORGANIZATION registrado (regla dura 5), no un 400 «mal formado»
+  // (QA F0-SEC C+D r2, §1).
+  try {
+    form = readOrgBody(ctx, form, { route: 'ai-assistant/attachments' });
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+    }
+    throw err;
   }
 
   const file = form.get('file');

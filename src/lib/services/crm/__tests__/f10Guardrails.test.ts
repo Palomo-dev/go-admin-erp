@@ -151,7 +151,13 @@ describe('F10 guardarraíles', () => {
     expect(fn).toMatch(/invoiceCurrency !== p\.currency/);
     expect(fn).toMatch(/reason: 'duplicate'/);
     expect(fn.indexOf('recordRejection(')).toBeGreaterThan(0);
-    expect(fn).toMatch(/deactivatePaymentLink\(verifyingKey, p\.paymentLinkId\)/);
+    // Deuda B1 (2026-09-16): la desactivación usa el id PERSISTIDO al crear el
+    // enlace (`quotations.payment_link_id`); `session.payment_link` queda solo
+    // como respaldo de enlaces heredados. Al quedar pagada se limpian las columnas.
+    expect(fn).toMatch(/const linkId = q\?\.payment_link_id \?\? p\.paymentLinkId;/);
+    expect(fn).toMatch(/deactivateLinkBestEffort\(adapter, verifyingKey, linkId,/);
+    expect(fn).toMatch(/\.update\(\{ \.\.\.PAYMENT_LINK_CLEARED,/);
+    expect(svc).toMatch(/PAYMENT_LINK_CLEARED = \{ payment_link_url: null, payment_link_amount: null, payment_link_id: null \}/);
     expect(svc).toMatch(/restrictions: \{ completed_sessions: \{ limit: 1 \} \}/);
     expect(svc).toMatch(/active: false/);
     expect(read('src/lib/services/crm/paymentEvents.ts')).toMatch(/'checkout\.session\.async_payment_succeeded'/);

@@ -329,6 +329,7 @@ describe('producto', () => {
   });
 
   it('partners: correo repetido con distinta capitalización -> 409 DUPLICATE_EMAIL; nada se escribe', async () => {
+    session.roleId = 5; // F12-misc r2: crear partners exige admin/manager
     const { status, body } = await json(await partnersPost(req('/api/crm/partners', 'POST', { name: 'Otro', email: 'CARLOS@Example.COM' })));
     expect(status).toBe(409);
     expect(body.code).toBe('DUPLICATE_EMAIL');

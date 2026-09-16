@@ -390,7 +390,7 @@ describe('renovación: concurrencia, tz, hitos, secuencia', () => {
 
   test('secuencia F8: prefiere trigger event=renewal_scheduled sobre template_key, ignora inactivas; enrollInSequence recibe la org y source=renewal', async () => {
     const db = renDb();
-    const r = await scheduleRenewal(ORG, 'won-a', 12, sb(db), { now: NOW });
+    const r = await scheduleRenewal(ORG, 'won-a', 12, sb(db), { now: NOW, enroll: enrollInSequence });
     expect(enrollInSequence).toHaveBeenCalledTimes(1);
     expect(enrollInSequence).toHaveBeenCalledWith(ORG, 'seq-evt', r.renewal_opportunity_id, expect.anything(), { customerId: 'cust-a', source: 'renewal' });
     expect(pickRenewalSequence(db.rows.sequences.filter((s) => s.id !== 'seq-evt') as never[])).toMatchObject({ id: 'seq-tpl' });
@@ -399,13 +399,13 @@ describe('renovación: concurrencia, tz, hitos, secuencia', () => {
   test('si la secuencia falla, la renovación y las tareas se conservan y el error queda en el resultado (y en errors[] del sync)', async () => {
     (enrollInSequence as jest.Mock).mockRejectedValueOnce(new Error('fn_enroll_in_sequence: boom'));
     const db = renDb();
-    const r = await scheduleRenewal(ORG, 'won-a', 12, sb(db), { now: NOW });
+    const r = await scheduleRenewal(ORG, 'won-a', 12, sb(db), { now: NOW, enroll: enrollInSequence });
     expect(r.sequence_error).toMatch(/boom/);
     expect(db.rows.opportunities.filter((o) => o.deal_type === 'renewal')).toHaveLength(1);
     expect(db.rows.tasks).toHaveLength(6);
     (enrollInSequence as jest.Mock).mockRejectedValueOnce(new Error('boom2'));
     const db2 = renDb();
-    const s = await syncRenewalsForOrg(ORG, sb(db2), { now: NOW });
+    const s = await syncRenewalsForOrg(ORG, sb(db2), { now: NOW, enroll: enrollInSequence });
     expect(s).toMatchObject({ scanned: 1, created: 1 });
     expect(s.errors[0]).toMatch(/secuencia de renovación: boom2/);
   });

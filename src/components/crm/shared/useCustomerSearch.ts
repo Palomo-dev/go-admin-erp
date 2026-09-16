@@ -11,17 +11,13 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
 
 export interface CustomerHit {
   id: string;
   full_name: string | null;
   email: string | null;
   phone: string | null;
-}
-
-/** Escapa los comodines de `ilike` para que «%» o «_» del usuario no filtren de más. */
-export function likePattern(query: string): string {
-  return `%${query.replace(/[%_\\]/g, (m) => `\\${m}`)}%`;
 }
 
 export function useCustomerSearch(query: string, enabled: boolean) {
@@ -46,9 +42,10 @@ export function useCustomerSearch(query: string, enabled: boolean) {
         .eq('organization_id', orgId)
         .order('updated_at', { ascending: false })
         .limit(8);
-      // Coma y paréntesis son sintaxis del filtro `or` de PostgREST: se neutralizan.
-      const q = query.replace(/[,()]/g, ' ').trim();
-      if (q) req = req.or(`full_name.ilike.${likePattern(q)},email.ilike.${likePattern(q)}`);
+      // Helper único: el término va entrecomillado, así que comas, paréntesis o
+      // comillas del usuario no rompen el filtro `or` de PostgREST (PGRST100).
+      const filter = ilikeAnyOf(['full_name', 'email'], query);
+      if (filter) req = req.or(filter);
       const { data, error: err } = await req;
       if (cancelled) return;
       if (err) {

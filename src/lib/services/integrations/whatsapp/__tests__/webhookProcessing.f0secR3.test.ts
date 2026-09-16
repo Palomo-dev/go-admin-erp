@@ -10,10 +10,16 @@
  *    WABA resoluble, se descarta: `applyTemplateStatusUpdate` ni se llama.
  *  - H1: el `phone_number_id` pasa por `normalizeMetaId` antes de tocar
  *    PostgREST: un número se consulta como string; un objeto no se consulta.
+ *  - H4 (r4): `authorizedOrganizationIds` del plan. Plantillas: se aplican a
+ *    `wabaOrgs ∩ authorized`; vacío → no se llama a `applyTemplateStatusUpdate`.
+ *    Mensajes: un canal fuera de las autorizadas se salta con aviso. Sin la
+ *    opción (ámbito global) no hay intersección. Mutación esperada muerta:
+ *    quitar la intersección.
  */
 jest.mock('@supabase/supabase-js', () => ({ createClient: () => ({}) }));
 jest.mock('@/lib/services/crm/whatsapp/webhookTemplateStatus', () => ({
   parseTemplateStatusUpdate: jest.requireActual('@/lib/services/crm/whatsapp/webhookTemplateStatus').parseTemplateStatusUpdate,
+  templateEventKey: jest.requireActual('@/lib/services/crm/whatsapp/webhookTemplateStatus').templateEventKey,
   applyTemplateStatusUpdate: jest.fn(async () => ({ updated: 1, paused_campaigns: 0 })),
 }));
 
@@ -66,6 +72,54 @@ describe('H2 · plantillas: solo las organizaciones dueñas del WABA', () => {
     expect(byWaba).toHaveBeenCalledWith('9001');
     expect(applyMock).toHaveBeenCalledTimes(2);
     expect(applyMock.mock.calls[0][3]).toEqual([9]);
+  });
+});
+
+describe('H4 (r4) · authorizedOrganizationIds: el servicio interseca lo que resuelve con lo que el plan autorizó', () => {
+  test('authorizedOrganizationIds = [7] + WABA de [8] → applyTemplateStatusUpdate NO se llama y se registra', async () => {
+    await whatsappCloudService.processWebhookPayload(payloadOf({ id: 'waba-b', changes: [tpl] }), { authorizedOrganizationIds: [7] });
+    expect(byWaba).toHaveBeenCalledWith('waba-b');
+    expect(applyMock).not.toHaveBeenCalled();
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('ninguna organización autorizada'),
+      expect.objectContaining({ wabaId: 'waba-b', wabaOrganizationIds: [8], authorizedOrganizationIds: [7] }),
+    );
+  });
+
+  test('authorizedOrganizationIds = [8, 9] + WABA de [8] → se aplica exactamente a la intersección [8]', async () => {
+    await whatsappCloudService.processWebhookPayload(payloadOf({ id: 'waba-b', changes: [tpl] }), { authorizedOrganizationIds: [8, 9] });
+    expect(applyMock).toHaveBeenCalledTimes(1);
+    expect(applyMock.mock.calls[0][3]).toEqual([8]);
+  });
+
+  test('ámbito global (sin opción) → sin intersección: se aplica a las organizaciones del WABA', async () => {
+    await whatsappCloudService.processWebhookPayload(payloadOf({ id: 'waba-b', changes: [tpl] }));
+    expect(applyMock).toHaveBeenCalledTimes(1);
+    expect(applyMock.mock.calls[0][3]).toEqual([8]);
+  });
+
+  test('authorizedOrganizationIds = [] → nadie está autorizado (fail-closed): no se aplica', async () => {
+    await whatsappCloudService.processWebhookPayload(payloadOf({ id: 'waba-b', changes: [tpl] }), { authorizedOrganizationIds: [] });
+    expect(applyMock).not.toHaveBeenCalled();
+  });
+
+  test('un field de plantilla con metadata.phone_number_id se resuelve por el WABA de la entrada (el número ni se consulta)', async () => {
+    const tplWithPhone = { ...tpl, value: { ...tpl.value, metadata: { phone_number_id: 'pn-a' } } };
+    await whatsappCloudService.processWebhookPayload(payloadOf({ id: 'waba-b', changes: [tplWithPhone] }), { authorizedOrganizationIds: [7] });
+    expect(byPhone).not.toHaveBeenCalled();
+    expect(byWaba).toHaveBeenCalledWith('waba-b');
+    expect(applyMock).not.toHaveBeenCalled();
+  });
+
+  test('messages: el canal del número pertenece a una organización NO autorizada → se salta con aviso, sin insertar', async () => {
+    byPhone.mockImplementation(async () => ({ channelId: 'ch-b', organizationId: 8 }));
+    const msg = { field: 'messages', value: { messaging_product: 'whatsapp', metadata: { display_phone_number: '57300', phone_number_id: 'pn-b' }, messages: [{ from: '5730000', id: 'wamid.x', timestamp: '1', type: 'text', text: { body: 'hola' } }] } };
+    await whatsappCloudService.processWebhookPayload(payloadOf({ id: 'waba-b', changes: [msg] }), { authorizedOrganizationIds: [7] });
+    expect(byPhone).toHaveBeenCalledWith('pn-b');
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('mensajes descartados'),
+      expect.objectContaining({ phoneNumberId: 'pn-b', organizationId: 8, authorizedOrganizationIds: [7] }),
+    );
   });
 });
 

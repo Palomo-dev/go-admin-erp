@@ -7,10 +7,18 @@
  * existe: regla dura 3) y la comisión se salta con mensaje honesto cuando el
  * trigger de BD `fn_create_commission_on_opportunity_won` ya la devengó
  * (`useStageFlow` cambia la etapa ANTES de abrir el modal).
+ *
+ * Deuda D1/D2: «onboarding» y «renovación» delegan en F11
+ * (`startOnboardingForWonOpportunity`, `scheduleRenewal`): idempotentes por los
+ * índices únicos parciales de la BD (un 23505 = «ya existía»), con instancia y
+ * pasos de onboarding, y sin hitos de renovación en el pasado. Aquí no se
+ * inserta ninguna oportunidad ni tarea de renovación (regla dura 7).
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CommissionAccrualResult } from '@/lib/services/crm/commissionService';
+import { findOnboardingPipelineId, OnboardingPipelineError, startOnboardingForWonOpportunity } from '@/lib/services/crm/onboardingService';
+import { scheduleRenewal, SEQUENCE_ENROLL_DEFERRED } from '@/lib/services/crm/renewalService';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { toPlainDate } from '@/lib/utils/timezone';
 
@@ -53,9 +61,11 @@ export interface WonCloseDeps {
   getLatestProposal: (opportunityId: string) => Promise<{ id: string; branch_id: number | null } | null>;
   convertToInvoice: (quotationId: string, orgId: number, branchId: number, opportunityId: string) => Promise<string>;
   accrueCommission: (opportunityId: string, salespersonId: string, baseAmount: number) => Promise<CommissionAccrualResult | null>;
+  /** F11 (deuda D1). Opcional: por defecto el servicio real; las pruebas lo doblan. */
+  startOnboarding?: typeof startOnboardingForWonOpportunity;
+  /** F11 (deuda D2). Opcional: por defecto el servicio real; las pruebas lo doblan. */
+  scheduleRenewal?: typeof scheduleRenewal;
 }
-
-export const RENEWAL_MILESTONES = [120, 90, 60, 30, 15, 7];
 
 export function buildInitialSteps(): CloseStep[] {
   return [
@@ -133,55 +143,64 @@ export async function executeReservations(opp: OpportunityData, deps: WonCloseDe
   return `Reservas creadas: ${created}`;
 }
 
+/**
+ * Onboarding (D1): delega en F11. Política de F10 que se conserva: sin pipeline
+ * de onboarding NO se crea (F11 lo crearía); sin cliente o sin etapas se omite;
+ * sin sucursal se lanza. El resto —hija idempotente por
+ * `uq_opportunities_one_onboarding_child_per_parent`, instancia y pasos— es F11.
+ */
 export async function executeOnboarding(opp: OpportunityData, deps: WonCloseDeps): Promise<string> {
   const orgId = requireOrg(deps);
-  const { data: onboardingPipeline } = await deps.supabase.from('pipelines').select('id').eq('organization_id', orgId).eq('pipeline_type', 'onboarding').limit(1).maybeSingle();
-  if (!onboardingPipeline) return 'Sin pipeline de onboarding — se omitió oportunidad hija';
-  const pipelineId = (onboardingPipeline as { id: string }).id;
-  const { data: firstStage } = await deps.supabase.from('stages').select('id').eq('pipeline_id', pipelineId).order('position', { ascending: true }).limit(1).maybeSingle();
-  if (!firstStage) return 'Sin etapas en pipeline de onboarding — se omitió';
+  if (!(await findOnboardingPipelineId(orgId, deps.supabase))) return 'Sin pipeline de onboarding — se omitió oportunidad hija';
+  if (!opp.customer_id) return 'Sin cliente — se omitió onboarding';
   const latestProposal = await deps.getLatestProposal(opp.id);
   const onboardingBranchId = deps.contextBranchId ?? latestProposal?.branch_id ?? null;
   if (!onboardingBranchId) throw new Error('No se puede crear el onboarding: selecciona una sucursal concreta o asegúrate de que la oportunidad tenga una propuesta con sucursal asignada.');
-  const { data: childOpp, error } = await deps.supabase
-    .from('opportunities')
-    .insert({
-      organization_id: orgId, branch_id: onboardingBranchId, pipeline_id: pipelineId, stage_id: (firstStage as { id: string }).id, customer_id: opp.customer_id,
-      name: `Onboarding - ${opp.name}`, amount: 0, currency: opp.currency, status: 'open', source: 'won_close', parent_opportunity_id: opp.id,
-      created_by: opp.created_by, salesperson_id: opp.salesperson_id, next_contact_at: new Date((deps.now?.() ?? new Date()).getTime() + 48 * 60 * 60 * 1000).toISOString(),
-    })
-    .select('id')
-    .single();
-  if (error) throw error;
-  return `Onboarding creado: ${(childOpp as { id: string }).id.substring(0, 8)}...`;
+  const start = deps.startOnboarding ?? startOnboardingForWonOpportunity;
+  try {
+    const r = await start(orgId, opp.id, deps.supabase, { now: deps.now?.() ?? new Date(), branchId: onboardingBranchId, createdBy: opp.created_by });
+    const id = r.onboarding_opportunity_id.substring(0, 8);
+    if (r.already_existed) return `Onboarding ya existía: ${id} — no se duplicó`;
+    return `Onboarding creado: ${id} (${r.steps_created} pasos)`;
+  } catch (err) {
+    if (err instanceof OnboardingPipelineError) return 'Sin etapas en pipeline de onboarding — se omitió';
+    throw err;
+  }
 }
 
+/**
+ * Renovación (D2): delega en F11 (`scheduleRenewal`): una oportunidad
+ * `deal_type='renewal'` por contrato (`uq_opportunities_one_renewal_per_parent`)
+ * y solo los hitos futuros como tareas `renewal_milestone`. El vencimiento sale
+ * de `closed_at` (trigger); si aún no está escrito, del instante del cierre.
+ * `metadata.renewal_date` del padre se conserva para el detalle de la oportunidad.
+ * La renovación lleva la sucursal del contexto y el `created_by` de la oportunidad,
+ * como la hija de onboarding. Aquí NO se pasa `enroll` (esto corre en el navegador):
+ * la secuencia de renovación la inscribe `renewals_sync` en el servidor (H1, r2).
+ */
 export async function executeRenewal(opp: OpportunityData, deps: WonCloseDeps): Promise<string> {
   const orgId = requireOrg(deps);
   if (!opp.billing_cycle_months || opp.billing_cycle_months <= 0) return 'Sin billing_cycle_months — se omitió renovación';
-  const renewalDate = deps.now?.() ?? new Date();
-  renewalDate.setMonth(renewalDate.getMonth() + opp.billing_cycle_months);
-  const renewalIso = renewalDate.toISOString();
-  const renewalLabel = formatPlainDate(toPlainDate(renewalDate, deps.timezone));
-  // La tabla `tasks` no tiene branch_id (verificado en esquema): la sucursal se infiere vía related_to_id → opportunity.
-  let created = 0;
-  for (const daysBefore of RENEWAL_MILESTONES) {
-    const milestoneDate = new Date(renewalDate);
-    milestoneDate.setDate(milestoneDate.getDate() - daysBefore);
-    const { error } = await deps.supabase.from('tasks').insert({
-      organization_id: orgId, title: `Renovación ${opp.name} — hito ${daysBefore}d`,
-      description: `Recordatorio de renovación a ${daysBefore} días del vencimiento (${renewalLabel}). Contactar al cliente para confirmar renovación.`,
-      due_date: milestoneDate.toISOString(), assigned_to: opp.salesperson_id || opp.created_by, priority: daysBefore <= 30 ? 'high' : 'med', type: 'renovacion', status: 'open',
-      related_to_id: opp.id, related_to_type: 'opportunity', customer_id: opp.customer_id, created_by: opp.created_by,
-    });
-    if (!error) created++;
-  }
-  await deps.supabase
+  if (!opp.customer_id) return 'Sin cliente — se omitió renovación';
+  const now = deps.now?.() ?? new Date();
+  const schedule = deps.scheduleRenewal ?? scheduleRenewal;
+  const r = await schedule(orgId, opp.id, opp.billing_cycle_months, deps.supabase, {
+    now, timezone: deps.timezone, closedAtFallback: now, branchId: deps.contextBranchId, createdBy: opp.created_by,
+  });
+  const { error } = await deps.supabase
     .from('opportunities')
-    .update({ metadata: { ...(opp.metadata || {}), renewal_date: renewalIso, billing_cycle_months: opp.billing_cycle_months } })
+    .update({ metadata: { ...(opp.metadata || {}), renewal_date: r.renewal_date, billing_cycle_months: opp.billing_cycle_months } })
     .eq('id', opp.id)
     .eq('organization_id', orgId);
-  return `Hitos creados: ${created} (renovación: ${renewalLabel})`;
+  if (error) throw error;
+  const renewalLabel = formatPlainDate(toPlainDate(new Date(r.renewal_date), deps.timezone));
+  if (r.already_existed) return `Renovación ya programada (${renewalLabel}) — no se duplicó`;
+  // Tester D1/D2: F11 no lanza si la secuencia de renovación no se inscribe; el paso lo dice en vez de tragárselo.
+  // Desde el navegador la inscripción queda diferida al sync del servidor (no es un fallo).
+  const seqNote = r.sequence_error === SEQUENCE_ENROLL_DEFERRED
+    ? ` · secuencia de renovación: ${r.sequence_error}`
+    : r.sequence_error ? ` · secuencia de renovación no inscrita: ${r.sequence_error}` : '';
+  return `Hitos creados: ${r.tasks_created} (renovación: ${renewalLabel})${seqNote}`;
 }
 
 export async function executeReferral(opp: OpportunityData, deps: WonCloseDeps): Promise<string> {

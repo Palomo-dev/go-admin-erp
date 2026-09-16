@@ -3,7 +3,7 @@ import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { getReferralPrograms, createReferralProgram } from '@/lib/services/crm/referralsService';
 import { validateProgramInput } from '@/lib/services/crm/f12Validation';
 import { getOrgBaseCurrency } from '@/lib/services/crm/salesTargetService';
-import { jsonOk, readJson, rejectForeignOrganization, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
+import { canManagePartners, jsonOk, readJson, rejectForeignOrganization, requirePartnerManager, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
 
 const TAG = 'CRM Referral Programs';
 
@@ -12,6 +12,8 @@ const TAG = 'CRM Referral Programs';
  * solo activos) y `currency`: moneda base de la organización
  * (`organization_currencies.is_base`, helper único de F13) o `null` si no
  * está configurada; la interfaz pinta la recompensa sin símbolo y lo dice.
+ * `can_manage` (misma función que partners, regla dura 7) dice si la sesión
+ * puede crear/editar/borrar programas.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -21,7 +23,7 @@ export async function GET(request: NextRequest) {
       getReferralPrograms(ctx.organizationId, ctx.supabase, { activeOnly: searchParams.get('active') === 'true' }),
       getOrgBaseCurrency(ctx.organizationId, ctx.supabase),
     ]);
-    return jsonOk(programs, { currency });
+    return jsonOk(programs, { currency, can_manage: canManagePartners(ctx) });
   } catch (error) {
     return routeError(error, TAG);
   }
@@ -37,6 +39,7 @@ export async function POST(request: NextRequest) {
     const ctx = await getServerOrgContext();
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body.organization_id, ctx);
+    requirePartnerManager(ctx); // crear configuración exige el mismo rol que editarla/borrarla
     const parsed = validateProgramInput(body, { partial: false });
     if (!parsed.ok) return validationFail(parsed.errors);
     const v = parsed.value;

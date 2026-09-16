@@ -1,5 +1,5 @@
 /// <reference types="jest" />
-import { checkRateLimit, checkRateLimits, getClientIp, _resetRateLimits } from '../rateLimit';
+import { checkRateLimit, checkRateLimits, getClientIp, _resetRateLimits, type RateLimitOptions } from '../rateLimit';
 
 describe('rateLimit', () => {
   beforeEach(() => _resetRateLimits());
@@ -35,12 +35,11 @@ describe('rateLimit', () => {
     expect((await checkRateLimit('', { limit: 5 })).allowed).toBe(false);
   });
 
-  test('contador persistente se combina (max)', async () => {
-    const r = await checkRateLimit('p', { limit: 5, persistentCount: async () => 4 });
-    expect(r.count).toBe(5);
-    expect(r.allowed).toBe(true);
-    const r2 = await checkRateLimit('p', { limit: 5, persistentCount: async () => 5 });
-    expect(r2.allowed).toBe(false);
+  test('`persistentCount` (legado) ya no existe: el único mecanismo persistente es el `store` atómico (F0-SEC C+D r3)', async () => {
+    // @ts-expect-error — la opción se retiró de RateLimitOptions; ts-jest (diagnósticos activos) lo comprueba.
+    const legacy: RateLimitOptions = { limit: 5, persistentCount: async () => 4 };
+    // Y en tiempo de ejecución se ignora: cuenta solo la memoria.
+    expect((await checkRateLimit('p', legacy)).count).toBe(1);
   });
 
   test('checkRateLimits bloquea si cualquiera excede', async () => {
@@ -72,16 +71,9 @@ describe('rateLimit · sub-parte D', () => {
   });
   afterEach(() => error.mockRestore());
 
-  test('persistentCount que lanza → BLOQUEA y registra (antes caía en memoria: fail-open)', async () => {
-    const r = await checkRateLimit('p', { limit: 5, persistentCount: async () => { throw new Error('db caída'); } });
-    expect(r.allowed).toBe(false);
-    expect(error).toHaveBeenCalledWith(expect.stringMatching(/fail-closed/), expect.objectContaining({ key: 'p' }));
-    // y no dejó rastro en memoria: la siguiente (con la BD sana) es la primera de la ventana
-    expect((await checkRateLimit('p', { limit: 5, persistentCount: async () => 0 })).count).toBe(1);
-  });
-
-  test('persistentCount que devuelve NaN → bloquea', async () => {
-    expect((await checkRateLimit('n', { limit: 5, persistentCount: async () => Number.NaN })).allowed).toBe(false);
+  test('sin store, el camino en memoria es síncrono: 5 concurrentes con limit 3 → exactamente 3 (sin el await del `persistentCount` retirado)', async () => {
+    const rs = await Promise.all([1, 2, 3, 4, 5].map(() => checkRateLimit('conc', { limit: 3, windowMs: 60_000 })));
+    expect(rs.filter((r) => r.allowed)).toHaveLength(3);
   });
 
   test('checkRateLimits evalúa TODAS las claves antes de registrar: una bloqueada no consume las demás', async () => {

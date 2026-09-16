@@ -79,9 +79,13 @@ describe('P6 wsSessionToken bordes', () => {
 });
 describe('P7 rateLimit bordes', () => {
   beforeEach(() => _resetRateLimits());
-  // F0-SEC r2 sub-parte D: antes era fail-open (documentado en r1); ahora un contador persistente que lanza BLOQUEA.
-  test('persistentCount lanza → BLOQUEA (fail-closed)', async () => expect((await checkRateLimit('k1', { limit: 1, persistentCount: async () => { throw new Error('db'); } })).allowed).toBe(false));
-  test('persistentCount 100 → bloquea', async () => expect((await checkRateLimit('k2', { limit: 5, persistentCount: async () => 100 })).allowed).toBe(false));
+  // F0-SEC r2 sub-parte D: `persistentCount` que lanzaba pasó de fail-open a fail-closed; r3 lo RETIRÓ
+  // (sin consumidor y con carrera). Su papel lo cubre el `store` atómico: `rateLimit.test.ts` «sub-parte D».
+  test('persistentCount ya no forma parte de RateLimitOptions', async () => {
+    // @ts-expect-error — opción retirada (F0-SEC C+D r3); ts-jest lo comprueba en compilación.
+    const legacy: Parameters<typeof checkRateLimit>[1] = { limit: 1, persistentCount: async () => 100 };
+    expect((await checkRateLimit('k2', legacy)).allowed).toBe(true); // se ignora: cuenta solo la memoria
+  });
   test('limit 0 / -1 / NaN → bloquea', async () => { for (const l of [0, -1, Number.NaN]) expect((await checkRateLimit('k' + l, { limit: l })).allowed).toBe(false); });
   test('windowMs 0 → bloquea al segundo hit', async () => { const o = { limit: 1, windowMs: 0 }; await checkRateLimit('k6', o); expect((await checkRateLimit('k6', o)).allowed).toBe(false); }); // ROJO en r1
   // F0-SEC r2 sub-parte D: antes 'a' gastaba su hit aunque 'b' bloqueara; ahora se evalúan todas y solo entonces se registra.

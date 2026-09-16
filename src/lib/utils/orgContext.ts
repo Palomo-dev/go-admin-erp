@@ -43,6 +43,7 @@ export { OrgContextError } from './orgContextError';
 export {
   readOrgBody,
   claimedOrganizationIn,
+  claimedOrganizationsIn,
   foreignOrganizationInBody,
   ORG_BODY_KEYS,
   FOREIGN_ORGANIZATION_CODE,
@@ -316,11 +317,21 @@ type PermissionSubject = Pick<ServerOrgContext, 'userId' | 'organizationId' | 'r
 export async function hasOrgAdminOrPermission(ctx: PermissionSubject, code: string = ORG_ADMIN_PERMISSION_CODE): Promise<boolean> {
   if (isOrgAdminLike(ctx)) return true;
   if (!code || !ctx.userId || !ctx.organizationId) return false;
-  const { data, error } = await ctx.supabase.rpc('check_user_permission', {
-    p_user_id: ctx.userId,
-    p_organization_id: ctx.organizationId,
-    p_permission_code: code,
-  });
+  // Una RPC que LANZA (red caída, timeout del cliente) también es «no»: sin el
+  // try, la promesa rechazada subía hasta `withOrg` como 500 sin registro
+  // (tester F0-SEC C+D r2, fallo 5).
+  let data: unknown;
+  let error: { message: string } | null;
+  try {
+    ({ data, error } = await ctx.supabase.rpc('check_user_permission', {
+      p_user_id: ctx.userId,
+      p_organization_id: ctx.organizationId,
+      p_permission_code: code,
+    }));
+  } catch (err) {
+    console.warn('[orgContext] check_user_permission lanzó; se deniega', { code, organizationId: ctx.organizationId, message: err instanceof Error ? err.message : String(err) });
+    return false;
+  }
   if (error) {
     console.warn('[orgContext] check_user_permission falló; se deniega', { code, organizationId: ctx.organizationId, message: error.message });
     return false;

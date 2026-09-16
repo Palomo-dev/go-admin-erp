@@ -1,7 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/utils/orgId';
-import { enrollInSequence } from '@/lib/services/crm/sequenceService';
 import {
   buildRenewalPlan,
   milestoneTaskTitle,
@@ -10,6 +9,11 @@ import {
   RenewalPlanError,
   type RenewalSequenceCandidate,
 } from './renewalMilestones';
+
+// Este módulo lo carga el navegador (`WonCloseModal` → `wonCloseSteps`). NO debe importar
+// —ni estática ni dinámicamente— el módulo de secuencias: arrastra correo, webhooks, twilio y el
+// service role al bundle del cliente (H1 del tester D1/D2, 2026-09-16: `next build` fallaba con
+// «Can't resolve 'net'»). La inscripción en la secuencia se INYECTA (`ScheduleRenewalOptions.enroll`).
 
 /**
  * Servicio CRM de renovaciones (FASE-11 §3.1).
@@ -58,10 +62,39 @@ export interface ScheduledRenewalResult {
   sequence_error: string | null;
 }
 
+/**
+ * Inscripción en la secuencia de renovación (F8). Misma firma que
+ * `enrollInSequence` del módulo de secuencias (F8); la aportan SOLO los llamadores de
+ * servidor (`renewals_sync`, `POST /api/crm/renewals/sync`). El navegador no la
+ * tiene: la renovación se crea igual y la inscribe el siguiente sync.
+ */
+export type EnrollRenewalFn = (
+  orgId: number,
+  sequenceId: string,
+  renewalOppId: string,
+  sb: SupabaseClient,
+  extra: { customerId: string; source: 'renewal' },
+) => Promise<{ id: string }>;
+
+/** `sequence_error` cuando hay secuencia de renovación pero el llamador no aportó `enroll` (navegador). */
+export const SEQUENCE_ENROLL_DEFERRED = 'la inscribe la sincronización diaria del servidor';
+
 export interface ScheduleRenewalOptions {
   now?: Date;
   /** Zona de la organización (día calendario de `expected_close_date`). */
   timezone?: string;
+  /**
+   * Instante de cierre a usar SOLO si `closed_at` aún es null (deuda D2: el
+   * cierre «al ganar» de F10 se ejecuta en el mismo instante en que el trigger
+   * lo escribe). `syncRenewalsForOrg` no lo usa: sin `closed_at` sigue fallando.
+   */
+  closedAtFallback?: Date;
+  /** Servidor: `enrollInSequence` del módulo de secuencias (F8). Sin ella no se inscribe (ver `SEQUENCE_ENROLL_DEFERRED`). */
+  enroll?: EnrollRenewalFn;
+  /** `opportunities.branch_id` de la renovación (nullable en BD). Sin él se hereda el del contrato padre. */
+  branchId?: number | null;
+  /** `opportunities.created_by` de la renovación (nullable en BD). */
+  createdBy?: string | null;
 }
 
 export interface RenewalSyncOrgResult {
@@ -70,6 +103,8 @@ export interface RenewalSyncOrgResult {
   created: number;
   updated: number;
   skipped: number;
+  /** Inscripciones en la secuencia de renovación hechas en esta pasada (nuevas y existentes sin inscripción). */
+  enrolled: number;
   errors: string[];
 }
 
@@ -77,15 +112,17 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface ParentRow {
   id: string;
+  status?: string | null;
   customer_id: string | null;
   amount: number | null;
   currency: string | null;
   closed_at: string | null;
   salesperson_id: string | null;
   billing_cycle_months: number | null;
+  branch_id?: number | null;
 }
 
-const PARENT_COLUMNS = 'id, customer_id, amount, currency, closed_at, salesperson_id, billing_cycle_months';
+const PARENT_COLUMNS = 'id, status, customer_id, amount, currency, closed_at, salesperson_id, billing_cycle_months, branch_id';
 
 /** Pipeline `renewal` de la organización; lo crea con sus etapas si no existe. */
 export async function getOrCreateRenewalPipelineServer(orgId: number, sb: SupabaseClient): Promise<string> {
@@ -162,11 +199,22 @@ async function refreshNextContact(
   return { next: nextIso, updated: true };
 }
 
+/**
+ * Inscribe la renovación en la secuencia de renovación de la organización (si la hay).
+ * `onlyIfMissing`: renovación ya existente → se salta si `sequence_enrollments` ya tiene
+ * una fila para (organización, secuencia, oportunidad) en CUALQUIER estado. No basta
+ * con «viva» (active|paused): una inscripción completed/exited también cuenta, porque
+ * reinscribirla en cada sync reenviaría la secuencia entera a diario.
+ * (Esquema verificado por MCP el 2026-09-16: `status` CHECK active|paused|completed|exited,
+ * índice único parcial `idx_enroll_active_unique (sequence_id, opportunity_id)` sobre vivas.)
+ */
 async function enrollRenewalSequence(
   orgId: number,
   renewalOppId: string,
   customerId: string,
   sb: SupabaseClient,
+  enroll: EnrollRenewalFn | undefined,
+  onlyIfMissing: boolean,
 ): Promise<{ id: string | null; error: string | null }> {
   const { data, error } = await sb
     .from('sequences')
@@ -177,8 +225,21 @@ async function enrollRenewalSequence(
   if (error) return { id: null, error: `secuencias: ${error.message}` };
   const seq = pickRenewalSequence((data ?? []) as RenewalSequenceCandidate[]);
   if (!seq) return { id: null, error: null };
+  if (!enroll) return { id: null, error: SEQUENCE_ENROLL_DEFERRED };
+  if (onlyIfMissing) {
+    const { data: existing, error: exErr } = await sb
+      .from('sequence_enrollments')
+      .select('id')
+      .eq('organization_id', orgId)
+      .eq('sequence_id', seq.id)
+      .eq('opportunity_id', renewalOppId)
+      .limit(1)
+      .maybeSingle();
+    if (exErr) return { id: null, error: `inscripciones: ${exErr.message}` };
+    if (existing) return { id: null, error: null };
+  }
   try {
-    const r = await enrollInSequence(orgId, seq.id, renewalOppId, sb, { customerId, source: 'renewal' });
+    const r = await enroll(orgId, seq.id, renewalOppId, sb, { customerId, source: 'renewal' });
     return { id: r.id, error: null };
   } catch (err) {
     return { id: null, error: err instanceof Error ? err.message : String(err) };
@@ -206,7 +267,12 @@ export async function scheduleRenewal(
     .maybeSingle();
   if (parentError) throw new Error(`scheduleRenewal: ${parentError.message}`);
   if (!parentRow) throw new Error(`scheduleRenewal: oportunidad ${parentOppId} no encontrada en la organización`);
-  return scheduleRenewalForParent(orgId, parentRow as ParentRow, billingCycleMonths, sb, now, opts.timezone);
+  const parent = parentRow as ParentRow;
+  // Tester D1/D2 (2026-09-16): solo se programa la renovación de una GANADA. Sin esta guarda, el
+  // `closedAtFallback` convertía en «contrato» una oportunidad abierta (PATCH de etapa fallido) o perdida.
+  if (parent.status !== 'won') throw new RenewalPlanError(`scheduleRenewal: la oportunidad ${parentOppId} no está ganada`);
+  const closedAt = parent.closed_at ?? opts.closedAtFallback?.toISOString() ?? null;
+  return scheduleRenewalForParent(orgId, { ...parent, closed_at: closedAt }, billingCycleMonths, sb, now, opts);
 }
 
 async function scheduleRenewalForParent(
@@ -215,8 +281,9 @@ async function scheduleRenewalForParent(
   billingCycleMonths: number,
   sb: SupabaseClient,
   now: Date,
-  timezone: string | undefined,
+  opts: Pick<ScheduleRenewalOptions, 'timezone' | 'enroll' | 'branchId' | 'createdBy'>,
 ): Promise<ScheduledRenewalResult> {
+  const timezone = opts.timezone;
   if (!parent.customer_id) throw new RenewalPlanError(`La oportunidad ${parent.id} no tiene cliente`);
   // El plan se calcula ANTES de cualquier escritura: closed_at null → error claro y sin efectos.
   const plan = buildRenewalPlan({ closedAt: parent.closed_at, billingCycleMonths, now, timezone });
@@ -235,6 +302,11 @@ async function scheduleRenewalForParent(
   if (existing) {
     const row = existing as { id: string; next_contact_at: string | null };
     const { next, updated } = await refreshNextContact(orgId, row, now, sb);
+    // Ronda 2 (H1): una renovación creada desde el modal (navegador, sin `enroll`) no quedó inscrita;
+    // el servidor la inscribe aquí si aún no tiene inscripción. Sin `enroll` no se consulta nada.
+    const seq = opts.enroll
+      ? await enrollRenewalSequence(orgId, row.id, parent.customer_id, sb, opts.enroll, true)
+      : { id: null, error: null };
     return {
       renewal_opportunity_id: row.id,
       parent_opportunity_id: parent.id,
@@ -244,8 +316,8 @@ async function scheduleRenewalForParent(
       tasks_created: 0,
       already_existed: true,
       updated,
-      sequence_enrollment_id: null,
-      sequence_error: null,
+      sequence_enrollment_id: seq.id,
+      sequence_error: seq.error,
     };
   }
 
@@ -277,6 +349,8 @@ async function scheduleRenewalForParent(
       expected_close_date: plan.expiryPlainDate,
       next_contact_at: plan.nextContactAt ? plan.nextContactAt.toISOString() : null,
       billing_cycle_months: billingCycleMonths,
+      branch_id: opts.branchId ?? parent.branch_id ?? null,
+      created_by: opts.createdBy ?? null,
       metadata: { type: 'renewal', parent_opportunity_id: parent.id, billing_cycle_months: billingCycleMonths, renewal_date: plan.expiryDate.toISOString() },
     })
     .select('id')
@@ -330,7 +404,7 @@ async function scheduleRenewalForParent(
     tasksCreated = (tasks ?? []).length;
   }
 
-  const seq = await enrollRenewalSequence(orgId, renewalOppId, parent.customer_id, sb);
+  const seq = await enrollRenewalSequence(orgId, renewalOppId, parent.customer_id, sb, opts.enroll, false);
 
   return {
     renewal_opportunity_id: renewalOppId,
@@ -358,7 +432,7 @@ export async function syncRenewalsForOrg(
   opts: ScheduleRenewalOptions = {},
 ): Promise<RenewalSyncOrgResult> {
   const now = opts.now ?? new Date();
-  const out: RenewalSyncOrgResult = { org_id: orgId, scanned: 0, created: 0, updated: 0, skipped: 0, errors: [] };
+  const out: RenewalSyncOrgResult = { org_id: orgId, scanned: 0, created: 0, updated: 0, skipped: 0, enrolled: 0, errors: [] };
   const { data, error } = await sb
     .from('opportunities')
     .select(PARENT_COLUMNS)
@@ -374,10 +448,11 @@ export async function syncRenewalsForOrg(
   out.scanned = parents.length;
   for (const parent of parents) {
     try {
-      const r = await scheduleRenewalForParent(orgId, parent, Number(parent.billing_cycle_months), sb, now, opts.timezone);
+      const r = await scheduleRenewalForParent(orgId, parent, Number(parent.billing_cycle_months), sb, now, { timezone: opts.timezone, enroll: opts.enroll });
       if (!r.already_existed) out.created += 1;
       else if (r.updated) out.updated += 1;
       else out.skipped += 1;
+      if (r.sequence_enrollment_id) out.enrolled += 1;
       if (r.sequence_error) out.errors.push(`${parent.id}: secuencia de renovación: ${r.sequence_error}`);
     } catch (err) {
       out.errors.push(`${parent.id}: ${err instanceof Error ? err.message : String(err)}`);

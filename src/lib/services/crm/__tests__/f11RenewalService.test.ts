@@ -16,7 +16,7 @@ jest.mock('@/lib/services/crm/sequenceService', () => ({
 
 import { enrollInSequence } from '@/lib/services/crm/sequenceService';
 import { RenewalPlanError } from '../renewalMilestones';
-import { scheduleRenewal, syncRenewalsForOrg } from '../renewalService';
+import { scheduleRenewal, SEQUENCE_ENROLL_DEFERRED, syncRenewalsForOrg } from '../renewalService';
 
 const NOW = new Date('2026-09-15T12:00:00Z');
 const ORG = 120;
@@ -98,6 +98,23 @@ describe('scheduleRenewal', () => {
     expect(db.writes).toHaveLength(0);
   });
 
+  it('deuda D2: closedAtFallback solo suple un closed_at null (cierre «al ganar» de F10); con closed_at real se ignora y el sync no lo usa', async () => {
+    const db = fixtures();
+    const r = await scheduleRenewal(ORG, 'won-b', 1, sb(db), { now: NOW, timezone: 'America/Bogota', closedAtFallback: NOW });
+    expect(r.already_existed).toBe(false);
+    expect(r.renewal_date).toBe('2026-10-15T12:00:00.000Z'); // NOW + 1 mes en el calendario de Bogotá
+    const due = writesTo(db, 'tasks', 'insert')[0].rows.map((t) => String(t.due_date));
+    expect(due).toEqual(['2026-09-30T12:00:00.000Z', '2026-10-08T12:00:00.000Z']); // 30/60/90/120 ya pasaron; el hito 30 cae en NOW y no es futuro
+    expect(db.rows.opportunities.find((o) => o.id === 'won-b')!.closed_at).toBeNull(); // no se escribe closed_at en la BD
+    // closed_at real (won-a, 2026-09-01) manda sobre el fallback
+    const ra = await scheduleRenewal(ORG, 'won-a', 12, sb(db), { now: NOW, closedAtFallback: new Date('2030-01-01T00:00:00Z') });
+    expect(ra.renewal_date.startsWith('2027-09-01')).toBe(true);
+    // el sync sigue reportando won-b sin closed_at aunque se le pase la opción
+    const db2 = fixtures();
+    const sync = await syncRenewalsForOrg(ORG, sb(db2), { now: NOW, closedAtFallback: NOW });
+    expect(sync.errors.some((e) => e.startsWith('won-b:') && /closed_at/.test(e))).toBe(true);
+  });
+
   it('idempotente: la renovación de won-c ya existe → no crea otra ni tareas; refresca next_contact_at desde las tareas', async () => {
     const db = fixtures();
     const r = await scheduleRenewal(ORG, 'won-c', 3, sb(db), { now: NOW });
@@ -126,28 +143,58 @@ describe('scheduleRenewal', () => {
     expect(r.already_existed).toBe(false);
   });
 
-  it('secuencia de renovación (F8): solo se inscribe si la org tiene una secuencia activa marcada; el señuelo de 121 no cuenta', async () => {
+  it('secuencia de renovación (F8): solo se inscribe si la org tiene una secuencia activa marcada y el llamador aporta `enroll`; el señuelo de 121 no cuenta', async () => {
     const db = fixtures();
-    await scheduleRenewal(ORG, 'won-a', 12, sb(db), { now: NOW });
+    const r0 = await scheduleRenewal(ORG, 'won-a', 12, sb(db), { now: NOW, enroll: enrollInSequence });
     expect(enrollInSequence).not.toHaveBeenCalled();
+    expect(r0.sequence_error).toBeNull(); // sin secuencia de renovación en la org no hay nada que diferir
 
     db.rows.sequences.push({ id: 'seq-120', organization_id: ORG, is_active: true, trigger_type: 'event', trigger_config: { event: 'renewal_scheduled' }, template_key: null });
     db.rows.opportunities.push({ id: 'won-e', organization_id: ORG, status: 'won', customer_id: 'cust-a', amount: 1, currency: 'COP', billing_cycle_months: 12, closed_at: '2026-09-01T00:00:00Z', deal_type: 'new', parent_opportunity_id: null });
-    const r = await scheduleRenewal(ORG, 'won-e', 12, sb(db), { now: NOW });
+    const r = await scheduleRenewal(ORG, 'won-e', 12, sb(db), { now: NOW, enroll: enrollInSequence });
     expect(enrollInSequence).toHaveBeenCalledTimes(1);
     expect((enrollInSequence as jest.Mock).mock.calls[0].slice(0, 3)).toEqual([ORG, 'seq-120', r.renewal_opportunity_id]);
     expect((enrollInSequence as jest.Mock).mock.calls[0][4]).toMatchObject({ customerId: 'cust-a', source: 'renewal' });
     expect(r.sequence_enrollment_id).toBe('enr-seq-120');
+    expect(r.sequence_error).toBeNull();
   });
 
   it('si la secuencia falla, la renovación ya creada se conserva y el error queda en el resultado', async () => {
     const db = fixtures();
     db.rows.sequences.push({ id: 'seq-120', organization_id: ORG, is_active: true, trigger_type: 'event', trigger_config: { event: 'renewal_scheduled' }, template_key: null });
     (enrollInSequence as jest.Mock).mockRejectedValueOnce(new Error('rpc caída'));
-    const r = await scheduleRenewal(ORG, 'won-a', 12, sb(db), { now: NOW });
+    const r = await scheduleRenewal(ORG, 'won-a', 12, sb(db), { now: NOW, enroll: enrollInSequence });
     expect(r.already_existed).toBe(false);
     expect(r.sequence_enrollment_id).toBeNull();
     expect(r.sequence_error).toMatch(/rpc caída/);
+  });
+
+  // Ronda 2 (H1): sin `enroll` (navegador) el servicio NO importa sequenceService: informa que la inscripción queda para el servidor.
+  it('sin `enroll` (navegador) con secuencia de renovación en la org: no se inscribe, sequence_error = SEQUENCE_ENROLL_DEFERRED y la renovación queda creada', async () => {
+    const db = fixtures();
+    db.rows.sequences.push({ id: 'seq-120', organization_id: ORG, is_active: true, trigger_type: 'event', trigger_config: { event: 'renewal_scheduled' }, template_key: null });
+    const r = await scheduleRenewal(ORG, 'won-a', 12, sb(db), { now: NOW });
+    expect(enrollInSequence).not.toHaveBeenCalled();
+    expect(r.already_existed).toBe(false);
+    expect(r.sequence_enrollment_id).toBeNull();
+    expect(r.sequence_error).toBe(SEQUENCE_ENROLL_DEFERRED);
+    expect(writesTo(db, 'opportunities', 'insert')).toHaveLength(1);
+    expect(writesTo(db, 'sequence_enrollments')).toEqual([]);
+  });
+
+  it('branchId/createdBy viajan al INSERT de la renovación; sin ellos hereda branch_id del contrato padre y created_by queda null', async () => {
+    const db = fixtures();
+    await scheduleRenewal(ORG, 'won-a', 12, sb(db), { now: NOW, branchId: 7, createdBy: 'u-owner' });
+    expect(writesTo(db, 'opportunities', 'insert')[0].rows[0]).toMatchObject({ parent_opportunity_id: 'won-a', branch_id: 7, created_by: 'u-owner' });
+
+    const db2 = fixtures();
+    db2.rows.opportunities.find((o) => o.id === 'won-a')!.branch_id = 11;
+    await scheduleRenewal(ORG, 'won-a', 12, sb(db2), { now: NOW });
+    expect(writesTo(db2, 'opportunities', 'insert')[0].rows[0]).toMatchObject({ branch_id: 11, created_by: null });
+
+    const db3 = fixtures(); // padre sin sucursal y sin opción: null explícito (columna nullable en BD, verificada por MCP)
+    await scheduleRenewal(ORG, 'won-a', 12, sb(db3), { now: NOW });
+    expect(writesTo(db3, 'opportunities', 'insert')[0].rows[0]).toMatchObject({ branch_id: null, created_by: null });
   });
 });
 
@@ -195,5 +242,100 @@ describe('syncRenewalsForOrg', () => {
     const r = await syncRenewalsForOrg(ORG, sb(db), { now: NOW, timezone: 'UTC' });
     expect(r.errors[0]).toMatch(/timeout/);
     expect(r.created).toBe(0);
+  });
+
+  // Ronda 2 (H1, sin deuda residual): una renovación creada desde el modal (navegador, sin `enroll`) no queda inscrita;
+  // el sync del servidor la inscribe en la siguiente pasada si no tiene inscripción en la secuencia de renovación.
+  describe('inscripción de renovaciones existentes (already_existed) sin inscripción', () => {
+    const RENEWAL_SEQ = { id: 'seq-120', organization_id: ORG, is_active: true, trigger_type: 'event', trigger_config: { event: 'renewal_scheduled' }, template_key: null };
+    // `clearAllMocks` no retira implementaciones: las de cada caso se devuelven a la del módulo.
+    const DEFAULT_ENROLL = async (_org: number, sequenceId: string) => ({ id: `enr-${sequenceId}`, created: true, reason: null, steps: 2, first_run_at: null, status: 'active' });
+    afterEach(() => (enrollInSequence as jest.Mock).mockImplementation(DEFAULT_ENROLL));
+
+    it('ren-c existe y no tiene inscripción: el sync la inscribe (org 120, seq-120, ren-c, source renewal) y lo cuenta en `enrolled`', async () => {
+      const db = fixtures();
+      db.rows.sequences.push(RENEWAL_SEQ);
+      const r = await syncRenewalsForOrg(ORG, sb(db), { now: NOW, timezone: 'UTC', enroll: enrollInSequence });
+      // won-a (nueva) + ren-c (existente sin inscripción) = 2 inscripciones; won-b falla por closed_at
+      expect(r).toMatchObject({ scanned: 3, created: 1, updated: 1, enrolled: 2, errors: [expect.stringMatching(/won-b.*closed_at/)] });
+      const calls = (enrollInSequence as jest.Mock).mock.calls as unknown[][];
+      const forRenC = calls.find((c) => c[2] === 'ren-c');
+      expect(forRenC).toBeDefined();
+      expect(forRenC!.slice(0, 2)).toEqual([ORG, 'seq-120']);
+      expect(forRenC![4]).toMatchObject({ customerId: 'cust-c', source: 'renewal' });
+    });
+
+    it('con inscripción viva (active o paused) en esa secuencia no se vuelve a inscribir; el filtro lleva organización, oportunidad y secuencia', async () => {
+      for (const status of ['active', 'paused']) {
+        jest.clearAllMocks();
+        const db = fixtures();
+        db.rows.sequences.push(RENEWAL_SEQ);
+        db.rows.sequence_enrollments = [{ id: `enr-${status}`, organization_id: ORG, sequence_id: 'seq-120', opportunity_id: 'ren-c', status }];
+        const r = await syncRenewalsForOrg(ORG, sb(db), { now: NOW, timezone: 'UTC', enroll: enrollInSequence });
+        const calls = (enrollInSequence as jest.Mock).mock.calls as unknown[][];
+        expect(calls.map((c) => c[2])).not.toContain('ren-c');
+        expect(r.enrolled).toBe(1); // solo la nueva de won-a
+      }
+    });
+
+    it('una inscripción terminada (completed/exited) tampoco se repite: reinscribir en cada sync reenviaría la secuencia', async () => {
+      for (const status of ['completed', 'exited']) {
+        jest.clearAllMocks();
+        const db = fixtures();
+        db.rows.sequences.push(RENEWAL_SEQ);
+        db.rows.sequence_enrollments = [{ id: `enr-${status}`, organization_id: ORG, sequence_id: 'seq-120', opportunity_id: 'ren-c', status }];
+        await syncRenewalsForOrg(ORG, sb(db), { now: NOW, timezone: 'UTC', enroll: enrollInSequence });
+        expect(((enrollInSequence as jest.Mock).mock.calls as unknown[][]).map((c) => c[2])).not.toContain('ren-c');
+      }
+    });
+
+    it('la inscripción del señuelo (misma oportunidad y secuencia, org 121) o de otra secuencia no cuenta como existente', async () => {
+      const db = fixtures();
+      db.rows.sequences.push(RENEWAL_SEQ);
+      db.rows.sequence_enrollments = [
+        { id: 'enr-121', organization_id: DECOY, sequence_id: 'seq-120', opportunity_id: 'ren-c', status: 'active' },
+        { id: 'enr-otra', organization_id: ORG, sequence_id: 'seq-otra', opportunity_id: 'ren-c', status: 'active' },
+      ];
+      await syncRenewalsForOrg(ORG, sb(db), { now: NOW, timezone: 'UTC', enroll: enrollInSequence });
+      expect(((enrollInSequence as jest.Mock).mock.calls as unknown[][]).map((c) => c[2])).toContain('ren-c');
+    });
+
+    it('segunda pasada tras inscribir: el doble guarda la inscripción y ya no se repite', async () => {
+      const db = fixtures();
+      db.rows.sequences.push(RENEWAL_SEQ);
+      (enrollInSequence as jest.Mock).mockImplementation(async (org: number, sequenceId: string, oppId: string) => {
+        db.rows.sequence_enrollments ??= [];
+        db.rows.sequence_enrollments.push({ id: `enr-${oppId}`, organization_id: org, sequence_id: sequenceId, opportunity_id: oppId, status: 'active' });
+        return { id: `enr-${oppId}`, created: true, reason: null, steps: 2, first_run_at: null, status: 'active' };
+      });
+      const first = await syncRenewalsForOrg(ORG, sb(db), { now: NOW, timezone: 'UTC', enroll: enrollInSequence });
+      expect(first.enrolled).toBe(2);
+      jest.clearAllMocks();
+      const second = await syncRenewalsForOrg(ORG, sb(db), { now: NOW, timezone: 'UTC', enroll: enrollInSequence });
+      expect(second.enrolled).toBe(0);
+      expect(enrollInSequence).not.toHaveBeenCalled();
+    });
+
+    it('si la inscripción de una existente falla, el sync sigue y lo reporta en errors[] con el id del contrato', async () => {
+      const db = fixtures();
+      db.rows.sequences.push(RENEWAL_SEQ);
+      (enrollInSequence as jest.Mock).mockImplementation(async (_o: number, _s: string, oppId: string) => {
+        if (oppId === 'ren-c') throw new Error('rpc caída');
+        return { id: 'enr-x', created: true, reason: null, steps: 1, first_run_at: null, status: 'active' };
+      });
+      const r = await syncRenewalsForOrg(ORG, sb(db), { now: NOW, timezone: 'UTC', enroll: enrollInSequence });
+      expect(r.created).toBe(1);
+      expect(r.enrolled).toBe(1);
+      expect(r.errors).toEqual(expect.arrayContaining([expect.stringMatching(/^won-c: secuencia de renovación: rpc caída/)]));
+    });
+
+    it('sin `enroll` (fachada de navegador) el sync no toca sequence_enrollments ni sequenceService', async () => {
+      const db = fixtures();
+      db.rows.sequences.push(RENEWAL_SEQ);
+      const r = await syncRenewalsForOrg(ORG, sb(db), { now: NOW, timezone: 'UTC' });
+      expect(enrollInSequence).not.toHaveBeenCalled();
+      expect(r.enrolled).toBe(0);
+      expect(writesTo(db, 'sequence_enrollments')).toEqual([]);
+    });
   });
 });

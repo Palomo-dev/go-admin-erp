@@ -13,6 +13,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
 import {
   CommissionTransitionError,
   buildTransitionPatch,
@@ -78,9 +79,9 @@ function applyFilters<T>(query: T, filters: CommissionListFilters): T {
   if (filters.from) q = q.gte('accrued_at', filters.from);
   if (filters.to) q = q.lt('accrued_at', filters.to);
   if (filters.search) {
-    // Sanear: sin comas ni paréntesis, que son sintaxis del filtro `or` de PostgREST.
-    const term = filters.search.replace(/[,()]/g, ' ').trim();
-    if (term) q = q.or(`payee_name.ilike.%${term}%,notes.ilike.%${term}%`);
+    // Helper único: término entrecomillado, comas y paréntesis ya no son sintaxis del `or`.
+    const filter = ilikeAnyOf(['payee_name', 'notes'], filters.search);
+    if (filter) q = q.or(filter);
   }
   return q as T;
 }

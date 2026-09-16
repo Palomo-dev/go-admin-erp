@@ -24,19 +24,22 @@ export async function GET(request: NextRequest) {
     if (!isSafeId(quotationId)) return NextResponse.json({ success: false, error: 'Falta quotation_id' }, { status: 400 });
     const { data: quot } = await ctx.supabase
       .from('quotations')
-      .select('id, payment_link_url, converted_invoice_id')
+      .select('id, payment_link_url, payment_link_amount, converted_invoice_id')
       .eq('id', quotationId)
       .eq('organization_id', ctx.organizationId)
       .maybeSingle();
     if (!quot) return NextResponse.json({ success: false, error: 'Propuesta no encontrada' }, { status: 404 });
-    const q = quot as { payment_link_url: string | null; converted_invoice_id: string | null };
-    let invoice: { id: string; number: string; balance: number; status: string; currency: string } | null = null;
+    const q = quot as { payment_link_url: string | null; payment_link_amount: number | string | null; converted_invoice_id: string | null };
+    type InvoiceRow = { id: string; number: string; balance: number; status: string; currency: string };
+    let invoice: InvoiceRow | null = null;
     if (q.converted_invoice_id) {
       const { data: inv } = await ctx.supabase.from('invoice_sales').select('id, number, balance, status, currency').eq('id', q.converted_invoice_id).eq('organization_id', ctx.organizationId).maybeSingle();
-      invoice = (inv as typeof invoice) ?? null;
+      invoice = (inv as InvoiceRow | null) ?? null;
     }
     const readiness = await getStripeReadiness(ctx.organizationId, getServiceClient());
-    return NextResponse.json({ success: true, data: { ...publicStripeReadiness(readiness), payment_link_url: q.payment_link_url, invoice } });
+    // Deuda B1: un enlace cuyo importe ya no es el saldo (o heredado sin importe) cobraría de más; no se muestra y la UI ofrece «Crear enlace», cuyo POST lo regenera.
+    const stale = Boolean(q.payment_link_url) && (q.payment_link_amount == null || !invoice || Number(q.payment_link_amount) !== Number(invoice.balance));
+    return NextResponse.json({ success: true, data: { ...publicStripeReadiness(readiness), payment_link_url: stale ? null : q.payment_link_url, payment_link_stale: stale, invoice } });
   } catch (error) {
     return failResponse('CRM Payments link GET', error);
   }
@@ -63,6 +66,9 @@ export async function POST(request: NextRequest) {
     }
     if (error instanceof InvoiceRequiredError || (error instanceof Error && /saldo pendiente/.test(error.message))) {
       return NextResponse.json({ success: false, error: error.message }, { status: 422 });
+    }
+    if (error instanceof Error && /otra petición/.test(error.message)) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 409 });
     }
     return failResponse('CRM Payments link POST', error);
   }

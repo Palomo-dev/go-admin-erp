@@ -5,17 +5,17 @@
  * Verifica que el asistente de reportes ya no depende de `anon`:
  *  - sin sesión → 401 antes de leer el body, sin OpenAI ni RPC;
  *  - `organization_id` ajeno en el body (nivel raíz) → 403 FOREIGN_ORGANIZATION;
- *  - `context.organizationId` ajeno (anidado) → se fuerza el de la sesión y la
- *    RPC corre con él (ANOTADO: no se registra ni devuelve 403 porque
- *    `readOrgBody` solo mira las claves de nivel raíz);
+ *  - `context.organizationId` ajeno (anidado) → 403 FOREIGN_ORGANIZATION y
+ *    registro (builder r4: la ruta pasa `body.context` por la sobrecarga
+ *    síncrona de `readOrgBody`; hasta r3 solo se sobrescribía en silencio);
  *  - la RPC corre SIEMPRE con `ctx.supabase` (sesión), nunca con el browser;
  *  - un error de permiso de la RPC (lo que devolvería la migración B a `anon`)
  *    no se propaga como 500: el asistente contesta con aviso;
- *  - ANOTADO (medio): `modulosActivos` viene del BODY y es la lista blanca de
- *    reportes que el asistente puede ejecutar. Un miembro puede declarar un
- *    módulo que su plan no tiene (p. ej. `hrm`) y el reporte se ejecuta (con
- *    RLS de su organización, pero fuera del plan). Regla dura 6: los permisos
- *    se resuelven en el servidor. Se documenta con test de comportamiento.
+ *  - `modulosActivos` (medio del tester r3, CERRADO en el builder r4): la lista
+ *    blanca de reportes sale del servidor (`moduleManagementService.getActiveModules`
+ *    con el cliente de sesión); el body solo puede restringirla (intersección),
+ *    nunca ampliarla. Un miembro sin `hrm` en su plan que declara `['hrm']` ya
+ *    no ejecuta `hrm-nomina`. Regla dura 6.
  */
 import { NextRequest } from 'next/server';
 
@@ -43,6 +43,12 @@ jest.mock('@/lib/utils/orgContext', () => {
   };
 });
 jest.mock('@/lib/supabase/config', () => ({ supabase: { rpc: browserRpc, from: jest.fn() } }));
+// r4: módulos activos de la organización (servidor). Por defecto la org 7 tiene `crm` y NO `hrm`.
+let serverModules: string[] = ['crm'];
+const getActiveModules = jest.fn<Promise<Array<{ code: string }>>, [number, unknown]>(async () => serverModules.map((code) => ({ code })));
+jest.mock('@/lib/services/moduleManagementService', () => ({
+  moduleManagementService: { getActiveModules: (orgId: number, client: unknown) => getActiveModules(orgId, client) },
+}));
 const checkCredits = jest.fn<Promise<{ allowed: boolean; error?: string }>, [unknown]>(async () => ({ allowed: true }));
 jest.mock('@/lib/services/aiCreditsService', () => ({
   checkAICredits: (orgId: unknown) => checkCredits(orgId),
@@ -62,6 +68,8 @@ beforeEach(() => {
   sessionRpc.mockClear(); browserRpc.mockClear(); chatCreate.mockClear(); checkCredits.mockClear();
   fromCalls.length = 0;
   sessionOrg = 7;
+  serverModules = ['crm'];
+  getActiveModules.mockClear();
   aiReply = 'Aquí va el funnel.\n```report\n{"reportId":"crm-funnel"}\n```';
   process.env.OPENAI_API_KEY = 'sk-test-clave-de-prueba-no-real';
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -94,13 +102,31 @@ describe('sesión y organización', () => {
     expect(sessionRpc).not.toHaveBeenCalled();
   });
 
-  test('context.organizationId ajeno (anidado) → se ignora: la RPC y los créditos usan la organización de la SESIÓN (ANOTADO: sin 403 ni registro)', async () => {
+  test('r4: context.organizationId ajeno (anidado) → 403 FOREIGN_ORGANIZATION con registro, antes de OpenAI, créditos y RPC', async () => {
     const res = await post({ ...base, context: { ...base.context, organizationId: 8 } });
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe('FOREIGN_ORGANIZATION');
+    expect(console.warn).toHaveBeenCalled();
+    expect(chatCreate).not.toHaveBeenCalled();
+    expect(checkCredits).not.toHaveBeenCalled();
+    expect(sessionRpc).not.toHaveBeenCalled();
+    expect(getActiveModules).not.toHaveBeenCalled();
+  });
+
+  test('r4: context.organizationId igual al de la sesión → 200; la RPC y los créditos usan la organización de la SESIÓN', async () => {
+    const res = await post(base);
     expect(res.status).toBe(200);
     expect(checkCredits).toHaveBeenCalledWith(7);
     expect(sessionRpc).toHaveBeenCalledWith('fn_reporte_crm_funnel', expect.objectContaining({ p_organization_id: 7 }));
     expect(browserRpc).not.toHaveBeenCalled();
-    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  test('r4: context.userRole del body no llega al prompt: se sustituye por el rol de la sesión', async () => {
+    await post({ ...base, context: { ...base.context, userRole: 'super-admin-de-todo' } });
+    const sent = (chatCreate.mock.calls[0] as unknown as [{ messages: Array<{ role: string; content: string }> }])[0].messages;
+    const system = sent.find((m) => m.role === 'system')?.content ?? '';
+    expect(system).not.toContain('super-admin-de-todo');
+    expect(system).toContain('Rol: miembro');
   });
 
   test('la RPC devuelve 42501 (lo que vería `anon` tras la migración B) → 200 con aviso, no 500; el browser nunca se toca', async () => {
@@ -122,7 +148,7 @@ describe('sesión y organización', () => {
   });
 });
 
-describe('lista blanca de reportes: viene del body (ANOTADO, medio)', () => {
+describe('lista blanca de reportes: se resuelve en el SERVIDOR (r4; el body solo restringe)', () => {
   test('modulosActivos ["crm"] y el modelo pide hrm-nomina → "no está disponible", sin consultar', async () => {
     aiReply = 'Nómina.\n```report\n{"reportId":"hrm-nomina"}\n```';
     const res = await post(base);
@@ -131,14 +157,54 @@ describe('lista blanca de reportes: viene del body (ANOTADO, medio)', () => {
     expect(fromCalls).toEqual([]);
   });
 
-  test('el MISMO usuario declara modulosActivos ["hrm"] en el body → el reporte de nómina se ejecuta con el cliente de sesión (payroll_periods)', async () => {
+  test('r4: la org 7 NO tiene hrm; el usuario declara modulosActivos ["hrm"] → "no está disponible" y payroll_periods NO se consulta; el plan se lee con el cliente de sesión', async () => {
     aiReply = 'Nómina.\n```report\n{"reportId":"hrm-nomina"}\n```';
     const res = await post({ ...base, modulosActivos: ['hrm'] });
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.reportData?.id).toBe('hrm-nomina');
+    expect(json.reportData).toBeUndefined();
+    expect(String(json.content)).toContain('no está disponible en tus módulos activos');
+    expect(fromCalls).toEqual([]);
+    expect(getActiveModules).toHaveBeenCalledWith(7, SESSION_CLIENT);
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('fuera del plan'), expect.objectContaining({ organizationId: 7, fueraDelPlan: ['hrm'] }));
+  });
+
+  test('r4: la org 7 SÍ tiene hrm y el body lo pide → el reporte de nómina se ejecuta con el cliente de sesión (payroll_periods)', async () => {
+    serverModules = ['crm', 'hrm'];
+    aiReply = 'Nómina.\n```report\n{"reportId":"hrm-nomina"}\n```';
+    const res = await post({ ...base, modulosActivos: ['hrm'] });
+    expect(res.status).toBe(200);
+    expect((await res.json()).reportData?.id).toBe('hrm-nomina');
     expect(fromCalls).toEqual(['payroll_periods']);
     expect(browserRpc).not.toHaveBeenCalled();
+  });
+
+  test('r4: el body RESTRINGE: la org tiene hrm pero el body pide solo ["crm"] → hrm-nomina no disponible', async () => {
+    serverModules = ['crm', 'hrm'];
+    aiReply = 'Nómina.\n```report\n{"reportId":"hrm-nomina"}\n```';
+    const res = await post({ ...base, modulosActivos: ['crm'] });
+    expect(String((await res.json()).content)).toContain('no está disponible en tus módulos activos');
+    expect(fromCalls).toEqual([]);
+  });
+
+  test('r4: sin modulosActivos en el body → se usan todos los del plan (hrm incluido si la org lo tiene)', async () => {
+    serverModules = ['crm', 'hrm'];
+    aiReply = 'Nómina.\n```report\n{"reportId":"hrm-nomina"}\n```';
+    const { modulosActivos: _omit, ...sinModulos } = base;
+    void _omit;
+    const res = await post(sinModulos);
+    expect(res.status).toBe(200);
+    expect((await res.json()).reportData?.id).toBe('hrm-nomina');
+  });
+
+  test('r4: modulosActivos con tipos raros (objeto, números) → no amplía nada ni rompe', async () => {
+    aiReply = 'Nómina.\n```report\n{"reportId":"hrm-nomina"}\n```';
+    for (const raw of [{ hrm: true }, [1, 2], 'hrm', [{ code: 'hrm' }]]) {
+      const res = await post({ ...base, modulosActivos: raw });
+      expect(res.status).toBe(200);
+      expect((await res.json()).reportData).toBeUndefined();
+    }
+    expect(fromCalls).toEqual([]);
   });
 
   test('un reportId inventado por el modelo nunca se ejecuta', async () => {
@@ -151,11 +217,12 @@ describe('lista blanca de reportes: viene del body (ANOTADO, medio)', () => {
 });
 
 describe('validación del body', () => {
-  test('sin message / periodoActual / modulosActivos → 400 sin OpenAI', async () => {
-    for (const b of [{ ...base, message: '' }, { ...base, periodoActual: undefined }, { ...base, modulosActivos: undefined }]) {
+  test('sin message / context / periodoActual → 400 sin OpenAI (r4: modulosActivos ya no es obligatorio)', async () => {
+    for (const b of [{ ...base, message: '' }, { ...base, periodoActual: undefined }, { ...base, context: undefined }]) {
       expect((await post(b)).status).toBe(400);
     }
     expect(chatCreate).not.toHaveBeenCalled();
+    expect((await post({ ...base, modulosActivos: undefined })).status).toBe(200);
   });
 
   test('conversationHistory con role "system" se reenvía tal cual al modelo (ANOTADO, bajo: inyección en el prompt del propio usuario)', async () => {

@@ -5,6 +5,7 @@ import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { makeJobLogger, makeWorkerId } from '@/lib/jobs/runner';
 import { runRenewalsSync, type RenewalsSyncResult } from '@/lib/jobs/scheduled/renewalsSync';
 import { getUpcomingRenewalsServer, syncRenewalsForOrg } from '@/lib/services/crm/renewalService';
+import { enrollInSequence } from '@/lib/services/crm/sequenceService';
 import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
 
 /**
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     if (organizationId) {
       const { data: org } = await sb.from('organizations').select('timezone').eq('id', organizationId).maybeSingle();
       const tz = (org as { timezone?: string | null } | null)?.timezone || DEFAULT_TIMEZONE;
-      const one = await syncRenewalsForOrg(organizationId, sb, { now, timezone: tz });
+      const one = await syncRenewalsForOrg(organizationId, sb, { now, timezone: tz, enroll: enrollInSequence });
       result = { orgs: 1, processed: 1, created: one.created, updated: one.updated, errors: one.errors.length, aborted: false, by_org: [{ ...one, timezone: tz }] };
     } else {
       result = await runRenewalsSync(sb, now, log, controller.signal);

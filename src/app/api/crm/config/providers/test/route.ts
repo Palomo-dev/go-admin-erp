@@ -137,9 +137,21 @@ export async function POST(request: NextRequest) {
   if (!isOrgAdmin(ctx)) {
     return NextResponse.json({ ok: false, detail: 'Solo administradores' }, { status: 403 });
   }
+  // Regla dura 5: la organización sale de la sesión. Si el body trae otra,
+  // `readOrgBody` lanza OrgContextError(403, FOREIGN_ORGANIZATION) y aquí se
+  // convierte en respuesta (QA r3 punto 1: antes escapaba como 500 de Next).
+  const body: unknown = await request.json().catch(() => null);
+  try {
+    readOrgBody(ctx, body);
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ ok: false, detail: err.message }, { status: err.statusCode });
+    }
+    throw err;
+  }
   // QA r2 bajo 5: el body se valida ANTES de consumir cupo del rate limit;
   // cinco bodies mal formados no deben bloquear al admin un minuto.
-  const parsed = bodySchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null)));
+  const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ ok: false, detail: 'Body inválido' }, { status: 400 });
   }

@@ -253,6 +253,12 @@ describe('GET /api/crm/referrals/requests (tareas «pedir referido» de F10)', (
 });
 
 describe('/api/crm/referrals/programs', () => {
+  // F12-misc r2: crear programas exige admin/manager por id de rol (como PATCH/DELETE).
+  it('POST con rol Empleado -> 403 MANAGER_REQUIRED sin escrituras', async () => {
+    session.roleId = 4;
+    expect((await programsPost(req('/api/crm/referrals/programs', 'POST', { name: 'P', reward_type: 'credit', reward_amount: 1, reward_to: 'referrer' }))).status).toBe(403);
+    expect(db.writes).toEqual([]);
+  });
   it('GET lista solo los de la organización y la moneda base (null si no está configurada)', async () => {
     const { body } = await json(await programsGet(req('/api/crm/referrals/programs')));
     expect((body.data as Array<Record<string, unknown>>).map((p) => p.id)).not.toContain(U(92));
@@ -266,23 +272,31 @@ describe('/api/crm/referrals/programs', () => {
     expect(withBase.body.currency).toBe('COP');
   });
   it('POST valida reward_type/reward_to del CHECK', async () => {
+    session.roleId = 5; // F12-misc r2: crear exige admin/manager
     const { status, body } = await json(await programsPost(req('/api/crm/referrals/programs', 'POST', { name: 'P', reward_type: 'points', reward_to: 'both' })));
     expect(status).toBe(400);
     expect(String(body.error)).toMatch(/credit, discount, cash, gift/);
   });
   it('POST con nombre repetido (UNIQUE 23505) -> 409', async () => {
+    session.roleId = 5; // F12-misc r2: crear exige admin/manager
     db.errors['referral_programs:insert'] = { code: '23505', message: 'duplicate key value violates unique constraint "referral_programs_organization_id_name_key"' };
     const { status, body } = await json(await programsPost(req('/api/crm/referrals/programs', 'POST', { name: 'Programa base', reward_type: 'cash', reward_to: 'both', reward_amount: 1 })));
     expect(status).toBe(409);
     expect(body.code).toBe('DUPLICATE');
   });
   it('POST organization_id ajeno -> 403; válido -> 201 en la organización de la sesión', async () => {
+    session.roleId = 5; // F12-misc r2: crear exige admin/manager
     expect((await programsPost(req('/api/crm/referrals/programs', 'POST', { name: 'P', reward_type: 'cash', reward_to: 'both', organization_id: OTHER }))).status).toBe(403);
     const { status, body } = await json(await programsPost(req('/api/crm/referrals/programs', 'POST', { name: 'P', reward_type: 'gift', reward_to: 'referred', reward_amount: '5' })));
     expect(status).toBe(201);
     expect(body.data).toMatchObject({ organization_id: ORG, reward_amount: 5, is_active: true });
   });
-  it('PATCH/DELETE de un programa ajeno -> 404; DELETE propio -> 200', async () => {
+  it('PATCH/DELETE de un programa ajeno -> 404; DELETE propio -> 200 (manager); PATCH y DELETE como Empleado (4) -> 403', async () => {
+    // F12-misc (tester): PATCH exige el mismo rol que DELETE — cambia la recompensa del programa.
+    expect((await programPatch(req(`/api/crm/referrals/programs/${U(11)}`, 'PATCH', { name: 'Z' }), params(U(11)))).status).toBe(403);
+    expect((await programDelete(req(`/api/crm/referrals/programs/${U(11)}`, 'DELETE'), params(U(11)))).status).toBe(403);
+    expect(db.tables.referral_programs.some((p) => p.id === U(11))).toBe(true);
+    session.roleId = 5; // F12-misc: PATCH/DELETE de programa exigen admin/manager por id de rol.
     expect((await programPatch(req(`/api/crm/referrals/programs/${U(92)}`, 'PATCH', { name: 'Z' }), params(U(92)))).status).toBe(404);
     expect((await programDelete(req(`/api/crm/referrals/programs/${U(92)}`, 'DELETE'), params(U(92)))).status).toBe(404);
     expect(db.tables.referral_programs.some((p) => p.id === U(92))).toBe(true);
@@ -290,6 +304,7 @@ describe('/api/crm/referrals/programs', () => {
     expect(db.tables.referral_programs.some((p) => p.id === U(11))).toBe(false);
   });
   it('PATCH con body vacío -> 400; descuento > 100 -> 400', async () => {
+    session.roleId = 5; // F12-misc (tester): PATCH de programa exige admin/manager.
     expect((await programPatch(req(`/api/crm/referrals/programs/${U(10)}`, 'PATCH', {}), params(U(10)))).status).toBe(400);
     expect((await programPatch(req(`/api/crm/referrals/programs/${U(11)}`, 'PATCH', { reward_amount: 150 }), params(U(11)))).status).toBe(400);
   });

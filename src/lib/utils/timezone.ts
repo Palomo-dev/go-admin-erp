@@ -46,20 +46,37 @@ function supportedTimeZoneSet(): Set<string> | null {
  * BD tiene además el trigger `trg_validate_org_timezone` (migración
  * crm_v4_f00_44) contra `pg_timezone_names`.
  *
+ * QA r3 punto 3: `supportedValuesOf` lista los canónicos de ICU, no los de
+ * IANA. En Node 22 / ICU 76 aparece `Asia/Calcutta` y no `Asia/Kolkata`,
+ * `America/Buenos_Aires` y no `America/Argentina/Buenos_Aires`, `Europe/Kiev`
+ * y no `Europe/Kyiv`; Postgres reconoce ambos. Por eso se acepta también un
+ * nombre con forma `Region/City` (1–2 niveles, inicial mayúscula) cuando
+ * `Intl.DateTimeFormat(...).resolvedOptions().timeZone` cae dentro del set:
+ * es un enlace IANA que ICU canoniza a otro nombre. Consecuencias
+ * documentadas: `US/Eastern` → true (está en `pg_timezone_names`; ICU lo
+ * resuelve a `America/New_York`), `EST` → false (sin barra), `america/bogota`
+ * → false (minúscula inicial; la BD lo canonizaría pero la app exige el
+ * nombre exacto). El trigger de la 44 sigue siendo la última palabra.
+ *
  * Para LEER una zona ya guardada sigue valiendo la comprobación laxa
  * (`getOrgTimezoneServer`, `isValidTimezone`): una fila vieja con alias no
  * debe tumbar nada, solo caer al fallback.
  */
+const IANA_REGION_CITY = /^[A-Z][A-Za-z_]+(\/[A-Z][A-Za-z_+-]+){1,2}$/;
+
 export function isSupportedTimeZone(tz: unknown): tz is string {
   if (typeof tz !== 'string' || tz.length === 0 || tz.length > 64) return false;
+  let resolved: string;
   try {
-    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    resolved = new Intl.DateTimeFormat('en-US', { timeZone: tz }).resolvedOptions().timeZone;
   } catch {
     return false;
   }
   if (tz === 'UTC') return true;
   const set = supportedTimeZoneSet();
-  return set ? set.has(tz) : true;
+  if (!set) return true;
+  if (set.has(tz)) return true;
+  return IANA_REGION_CITY.test(tz) && set.has(resolved);
 }
 
 /**

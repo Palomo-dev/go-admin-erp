@@ -4,6 +4,8 @@
  * Estado de la página de referidos (F12). Todo pasa por las rutas de
  * servidor (`/api/crm/referrals/**`): el navegador nunca escribe `referrals`
  * ni `referral_programs`; el estado y la recompensa los decide el servidor.
+ * `canManage` sale de `can_manage` del GET de programas (misma sesión, nunca
+ * por nombre de rol en el cliente).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -44,6 +46,7 @@ export function useReferrals() {
   const [programs, setPrograms] = useState<ReferralProgram[]>([]);
   const [requests, setRequests] = useState<ReferralRequest[]>([]);
   const [currency, setCurrency] = useState<string | null>(null);
+  const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +66,7 @@ export function useReferrals() {
       setReferrals((list.body.data as ReferralView[]) ?? []);
       setPrograms((progs.body.data as ReferralProgram[]) ?? []);
       setCurrency((progs.body.currency as string | null) ?? null);
+      setCanManage(progs.body.can_manage === true);
       // Las tareas de F10 son un complemento: si fallan, la página sigue.
       setRequests(reqs.ok ? ((reqs.body.data as ReferralRequest[]) ?? []) : []);
       loadedOnce.current = true;
@@ -129,5 +133,5 @@ export function useReferrals() {
     await load();
   }, [load]);
 
-  return { referrals, programs, requests, currency, loading, loaded, error, reload: load, register, transition, markPaid, convert, saveProgram, deleteProgram };
+  return { referrals, programs, requests, currency, canManage, loading, loaded, error, reload: load, register, transition, markPaid, convert, saveProgram, deleteProgram };
 }

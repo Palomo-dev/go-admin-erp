@@ -9,6 +9,7 @@ import { readLog, clearLog } from './crashReporter';
 import { isOnline, checkNow } from './connectivity';
 import { reloadApp } from './windows/mainWindow';
 import { openPrintPreview } from './printPreview';
+import { getThemeColors, setThemePreference } from './theme';
 
 export function registerIpcHandlers(): void {
   // ── Agente ──
@@ -152,6 +153,12 @@ export function registerIpcHandlers(): void {
     reloadApp();
     return true;
   });
+
+  // ── Tema (la web manda su claro/oscuro; ver theme.ts) ──
+  // El valor se valida en setThemePreference: cualquier cosa que no sea
+  // light | dark | system se rechaza y el renderer recibe el error.
+  ipcMain.handle('theme:get', () => getThemeColors());
+  ipcMain.handle('theme:set', (_e, theme: unknown) => setThemePreference(theme));
 
   // ── Logs del crash reporter ──
   ipcMain.handle('logs:read', () => readLog());

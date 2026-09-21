@@ -1,6 +1,7 @@
-import { app, BrowserWindow, session } from 'electron';
+import { app, BrowserWindow, session, systemPreferences } from 'electron';
 import {
   createMainWindow,
+  getLoadUrl,
   getMainWindow,
   getWebContents,
   createSplashWindow,
@@ -8,6 +9,8 @@ import {
   prepareQuit,
   reloadCurrent,
 } from './windows/mainWindow';
+import { installPermissionHandlers, resolveAllowedOrigins } from './permissions';
+import { WEB_APP_URL } from './constants';
 import { createTray, destroyTray } from './tray';
 import { initUpdater, stopUpdater } from './updater';
 import { registerIpcHandlers } from './ipc';
@@ -21,6 +24,7 @@ import { wasOpenedHidden } from './autostart';
 import { initCrashReporter } from './crashReporter';
 import { initConnectivity, stopConnectivity } from './connectivity';
 import { webServer } from './webServer';
+import { initTheme } from './theme';
 
 let quitting = false;
 
@@ -69,12 +73,29 @@ if (!gotLock) {
     // Desactivar spellcheck para reducir overhead en inputs
     session.defaultSession.setSpellCheckerEnabled(false);
 
+    // ── Permisos del WebContents (F5/F15-B) ──
+    // Sin esto Electron concede micrófono, cámara, geolocalización, etc. a
+    // cualquier página. Lista blanca (permissions.ts) solo para el origen de
+    // la web; el puerto del servidor embebido se conoce tras `start()`, por
+    // eso los orígenes se resuelven en cada petición. En macOS el micrófono
+    // pasa antes por el prompt del sistema (TCC).
+    installPermissionHandlers(
+      session.defaultSession,
+      () => resolveAllowedOrigins(getLoadUrl(), WEB_APP_URL, webServer.getHosts()),
+      // Solo se invoca en darwin (permissions.ts lo comprueba): en Windows/Linux la API no existe.
+      { askForMicrophone: () => systemPreferences.askForMediaAccess('microphone') },
+    );
+
     registerIpcHandlers();
     registerToolbarIpc();
     // Pantalla del cliente del POS: relé de mensajes + ventana secundaria.
     registerPosDisplayIpc();
     // Menú en español (aceleradores + popup del botón «⋯» de la barra).
     installAppMenu();
+
+    // Tema guardado (el que eligió el usuario en el header de la web) ANTES
+    // del splash y de la ventana: así nacen ya del color correcto.
+    initTheme();
 
     // Splash screen mientras carga
     if (!wasOpenedHidden()) {

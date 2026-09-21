@@ -3,19 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:">
-  <title>Go Admin Desktop</title>
+  <title>GO Admin Desktop</title>
   <link rel="stylesheet" href="toolbar.css">
 </head>
 <body>
   <!--
-    Barra de aplicación de Go Admin Desktop.
+    Barra de aplicación de GO Admin Desktop.
     Se carga por file:// desde dist/renderer/toolbar; nunca desde la web.
     Los botones de ventana (minimizar/maximizar/cerrar) son nativos: los
     dibuja Windows sobre la zona derecha (Window Controls Overlay).
   -->
   <header id="bar" class="bar" role="toolbar" aria-label="Barra de aplicación">
+    <!-- Firma del manual de marca: isotipo (brand-mark.png, lo genera
+         build/brand/generate-assets.py) + «GO Admin» (GO 700, Admin 500). -->
     <div class="brand" aria-hidden="true">
-      <span class="brand-go">GO</span><span class="brand-admin">Admin</span>
+      <img class="brand-mark" src="brand-mark.png" alt="" width="20" height="20" draggable="false">
+      <span class="brand-name"><span class="brand-go">GO</span> <span class="brand-admin">Admin</span></span>
     </div>
 
     <nav class="nav" aria-label="Navegación">

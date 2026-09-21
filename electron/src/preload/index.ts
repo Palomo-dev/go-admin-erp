@@ -98,6 +98,15 @@ try {
   // Ventana
   reload: () => ipcRenderer.invoke('app:reload'),
 
+  // Tema: la web manda su claro/oscuro (interruptor del header, next-themes)
+  // y el main recolorea barra, fondo, splash y pantalla sin conexión
+  // (main/theme.ts). `setTheme` y `getTheme` devuelven el estado
+  // `{ dark, source, background, bar, symbol }`; `onTheme` lo recibe en cada
+  // cambio ('theme:state') y devuelve la baja.
+  setTheme: (theme: 'light' | 'dark' | 'system') => ipcRenderer.invoke('theme:set', theme),
+  getTheme: () => ipcRenderer.invoke('theme:get'),
+  onTheme: (handler: (state: unknown) => void) => subscribe('theme:state', handler),
+
   // Pantalla del cliente del POS (ventana secundaria + relé de mensajes por
   // IPC: funciona sin internet y entre orígenes; ver main/posDisplayIpc.ts).
   posDisplay: {

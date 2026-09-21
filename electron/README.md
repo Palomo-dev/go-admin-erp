@@ -1,4 +1,4 @@
-# Go Admin Desktop (Electron)
+# GO Admin Desktop (Electron)
 
 Aplicación de escritorio para GO Admin ERP. Wrapper de la web + agente de impresión embebido.
 
@@ -108,6 +108,17 @@ tengan el icono correcto.
    ruta según `app.isPackaged` (desarrollo vs. `app.asar.unpacked`).
 3. `mainWindow.ts` (ventana principal + splash) y `tray.ts` usan `getIconImage()`
    y pasan un `NativeImage` a la opción `icon` en vez de un string de ruta.
+
+### Marca: icono, imágenes del instalador y pantallas propias
+
+El icono (`build/icon.ico`, `build/icon.png`), las imágenes NSIS
+(`build/installer-header.bmp` 150×57 e `build/installer-sidebar.bmp` 164×314) y
+el isotipo de la barra, el splash y la pantalla sin conexión
+(`src/renderer/toolbar/brand-mark.png`) los genera
+`build/brand/generate-assets.py` (Python 3 + Pillow) a partir del manual de
+marca v2.0 y de las fuentes Inter de `build/brand/`. No los edites a mano:
+regenera y vuelve a `npm run build`. Textos, colores y decisiones (qué se puede
+renombrar y qué no) en `docs/desktop/MARCA-INSTALADOR.md`.
 
 ## Pantalla del cliente
 

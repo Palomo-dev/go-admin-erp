@@ -2896,9 +2896,19 @@ export class POSService {
     getPosDisplayEmitter().onCartsSaved(carts);
   }
 
-  private static async removeCart(cartId: string): Promise<void> {
-    const carts = await this.getActiveCarts();
-    const filteredCarts = carts.filter(cart => cart.id !== cartId);
+  /**
+   * Descarta un carrito de `pos_carts_<org>`: al cobrar y al cerrar la pestaña
+   * desde la página del POS. Hasta 2026-09-21 la página solo lo quitaba del
+   * estado de React, así que al volver al POS reaparecían todos los carritos
+   * cerrados (32 «activos» con productos en una caja real).
+   *
+   * Se filtra sobre la lista COMPLETA, no sobre `getActiveCarts()`: esa
+   * excluye `hold_with_debt` y `cancelled`, y guardar su resultado los
+   * borraba de paso (getInvoiceForCart y devoluciones los necesitan).
+   */
+  static async removeCart(cartId: string): Promise<void> {
+    const allCarts: Cart[] = JSON.parse(localStorage.getItem(`pos_carts_${this.organizationId}`) || '[]');
+    const filteredCarts = allCarts.filter(cart => cart.id !== cartId);
     this.saveCartsToStorage(filteredCarts);
   }
 

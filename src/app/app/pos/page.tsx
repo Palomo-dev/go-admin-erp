@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { Group as PanelGroup, Panel, Separator as PanelResizeHandle, useDefaultLayout } from 'react-resizable-panels';
 import { ShoppingCart, Users, Settings, Clock, Lock, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,10 @@ import { isDesktop } from '@/lib/utils/desktop';
 import { CajasService } from '@/components/pos/cajas/CajasService';
 import { useBlindCloseMode } from '@/components/pos/cajas/useBlindCloseMode';
 import type { CashSession } from '@/components/pos/cajas/types';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+
+/** Clave de localStorage con el ancho elegido para el panel de carrito/pago. */
+const POS_LAYOUT_ID = 'pos-layout-productos-carrito';
 
 export default function POSPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -48,6 +53,7 @@ export default function POSPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const isFirstLoadRef = useRef(true);
+  const isInitializingRef = useRef(false);
   const [, setLastUpdate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
   const [mobileView, setMobileView] = useState<'products' | 'cart'>('products');
@@ -56,6 +62,15 @@ export default function POSPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isOrgAdmin, setIsOrgAdmin] = useState(false);
   const { showExpected } = useBlindCloseMode();
+  // Escritorio (≥ lg): productos y carrito en paneles redimensionables. El
+  // ancho elegido se recuerda por navegador; doble clic en el divisor lo
+  // restablece. En móvil se conserva la vista de pantalla completa por sección.
+  const isDesktopLayout = useMediaQuery('(min-width: 1024px)');
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+    id: POS_LAYOUT_ID,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    onlySaveAfterUserInteractions: true,
+  });
 
   // Cargar userId y rol del usuario actual
   useEffect(() => {
@@ -245,6 +260,10 @@ export default function POSPage() {
   };
 
   const initializePOS = async () => {
+    // Dos inicializaciones solapadas (StrictMode, cambio de sucursal mientras
+    // carga) con el almacenamiento vacío creaban un carrito cada una.
+    if (isInitializingRef.current) return;
+    isInitializingRef.current = true;
     if (isFirstLoadRef.current) {
       setIsLoading(true);
     }
@@ -265,6 +284,7 @@ export default function POSPage() {
       // Crear carrito por defecto en caso de error
       await createNewCart();
     } finally {
+      isInitializingRef.current = false;
       isFirstLoadRef.current = false;
       setIsLoading(false);
       setIsRefreshing(false);
@@ -297,6 +317,10 @@ export default function POSPage() {
       if (cartToRemove?.kitchen_ticket_id) {
         await KitchenService.markTicketAsDelivered(cartToRemove.kitchen_ticket_id);
       }
+
+      // Borrarlo también de localStorage: si solo sale del estado, vuelve
+      // (con sus productos) en cuanto se navega y se regresa al POS.
+      await POSService.removeCart(cartId);
 
       const updatedCarts = carts.filter(cart => cart.id !== cartId);
       setCarts(updatedCarts);
@@ -649,80 +673,121 @@ export default function POSPage() {
         </Card>
 
         {/* Contenido principal - Layout Responsive */}
-        <div className="flex-1 flex flex-col lg:grid lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 overflow-hidden">
-
-          {/* === MÓVIL: Vista Productos (pantalla completa) === */}
-          <div className={cn(
-            'lg:col-span-3 lg:h-full overflow-hidden lg:overflow-y-auto',
-            mobileView === 'products' ? 'flex-1' : 'hidden lg:block',
-          )}>
-            <ProductSearch 
+        {(() => {
+          const productsPane = (
+            <ProductSearch
               onProductSelect={(product, modifiers) => {
                 handleProductSelect(product, modifiers);
               }}
             />
-          </div>
+          );
 
-          {/* === MÓVIL: Vista Carrito (pantalla completa) / DESKTOP: Sidebar scrollable === */}
-          <div className={cn(
-            'lg:col-span-1 flex flex-col space-y-2 overflow-y-auto lg:h-full pb-20 lg:pb-2 min-h-0',
-            mobileView === 'cart' ? 'flex-1' : 'hidden lg:flex',
-          )}>
-            {/* Botón volver a productos - solo móvil */}
-            <div className="lg:hidden shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setMobileView('products')}
-                className="text-xs dark:text-gray-400 dark:hover:text-white"
-              >
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Seguir comprando
-              </Button>
-            </div>
+          const cartPane = (
+            <>
+              {/* Botón volver a productos - solo móvil */}
+              <div className="lg:hidden shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMobileView('products')}
+                  className="text-xs dark:text-gray-400 dark:hover:text-white"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Seguir comprando
+                </Button>
+              </div>
 
-            {/* Selector de cliente */}
-            <Card className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200 shadow-sm shrink-0">
-              <CardHeader className="p-2 sm:p-3 pb-1.5 sm:pb-2">
-                <CardTitle className="flex items-center space-x-1.5 sm:space-x-2 text-xs sm:text-sm dark:text-white text-gray-900">
-                  <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  <span>Cliente</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-2 sm:p-3 pt-0">
-                <CustomerSelector 
-                  selectedCustomer={activeCart?.customer}
-                  onCustomerSelect={handleCustomerSelect}
-                />
-              </CardContent>
-            </Card>
+              {/* Selector de cliente */}
+              <Card className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200 shadow-sm shrink-0">
+                <CardHeader className="p-2 sm:p-3 pb-1.5 sm:pb-2">
+                  <CardTitle className="flex items-center space-x-1.5 sm:space-x-2 text-xs sm:text-sm dark:text-white text-gray-900">
+                    <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span>Cliente</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-2 sm:p-3 pt-0">
+                  <CustomerSelector
+                    selectedCustomer={activeCart?.customer}
+                    onCustomerSelect={handleCustomerSelect}
+                  />
+                </CardContent>
+              </Card>
 
-            {/* Pestañas de carritos */}
-            <div className="shrink-0">
-              <CartTabs
-                carts={carts}
-                activeCartId={activeCartId}
-                onCartSelect={setActiveCartId}
-                onNewCart={createNewCart}
-                onRemoveCart={removeCart}
-              />
-            </div>
-
-            {/* Vista del carrito activo */}
-            {activeCart && (
+              {/* Pestañas de carritos */}
               <div className="shrink-0">
-                <CartView
-                  cart={activeCart}
-                  onCartUpdate={handleCartUpdate}
-                  onCheckout={handleCheckout}
-                  onHold={handleHoldCart}
-                  onSendComanda={handleSendComanda}
-                  cashSessionActive={!!cashSession}
+                <CartTabs
+                  carts={carts}
+                  activeCartId={activeCartId}
+                  onCartSelect={setActiveCartId}
+                  onNewCart={createNewCart}
+                  onRemoveCart={removeCart}
                 />
               </div>
-            )}
-          </div>
-        </div>
+
+              {/* Vista del carrito activo */}
+              {activeCart && (
+                <div className="shrink-0">
+                  <CartView
+                    cart={activeCart}
+                    onCartUpdate={handleCartUpdate}
+                    onCheckout={handleCheckout}
+                    onHold={handleHoldCart}
+                    onSendComanda={handleSendComanda}
+                    cashSessionActive={!!cashSession}
+                  />
+                </div>
+              )}
+            </>
+          );
+
+          if (isDesktopLayout) {
+            return (
+              <PanelGroup
+                id={POS_LAYOUT_ID}
+                orientation="horizontal"
+                defaultLayout={defaultLayout}
+                onLayoutChanged={onLayoutChanged}
+                className="flex-1 min-h-0"
+              >
+                <Panel id="productos" defaultSize="75%" minSize="35%" className="h-full overflow-y-auto">
+                  {productsPane}
+                </Panel>
+                <PanelResizeHandle
+                  title="Arrastra para ampliar el carrito · doble clic para restablecer"
+                  className="group relative mx-1.5 w-1.5 shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 dark:hover:bg-blue-500 active:bg-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-ew-resize"
+                >
+                  <span className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-1 rounded-full bg-gray-400/60 dark:bg-gray-500/60 group-hover:bg-white/80" />
+                </PanelResizeHandle>
+                <Panel
+                  id="carrito"
+                  defaultSize="25%"
+                  minSize="20%"
+                  maxSize="60%"
+                  className="h-full flex flex-col space-y-2 overflow-y-auto pb-2 min-h-0"
+                >
+                  {cartPane}
+                </Panel>
+              </PanelGroup>
+            );
+          }
+
+          return (
+            <div className="flex-1 flex flex-col gap-2 sm:gap-3 overflow-hidden">
+              {/* === MÓVIL: Vista Productos (pantalla completa) === */}
+              <div className={cn('overflow-hidden', mobileView === 'products' ? 'flex-1' : 'hidden')}>
+                {productsPane}
+              </div>
+
+              {/* === MÓVIL: Vista Carrito (pantalla completa) === */}
+              <div className={cn(
+                'flex flex-col space-y-2 overflow-y-auto pb-20 min-h-0',
+                mobileView === 'cart' ? 'flex-1' : 'hidden',
+              )}>
+                {cartPane}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* === BOTÓN FLOTANTE CARRITO - Solo móvil === */}
         {mobileView === 'products' && (

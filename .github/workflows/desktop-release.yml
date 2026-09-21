@@ -94,6 +94,9 @@ jobs:
           NEXT_PUBLIC_META_APP_ID: ${{ vars.NEXT_PUBLIC_META_APP_ID }}
           NEXT_PUBLIC_WHATSAPP_CONFIG_ID: ${{ vars.NEXT_PUBLIC_WHATSAPP_CONFIG_ID }}
           NODE_OPTIONS: --max-old-space-size=6144
+          # Sin type-check dentro de next build (OOM en el runner de 7 GB);
+          # los tipos ya los vigila CI Web con tsc --noEmit.
+          NEXT_SKIP_TYPECHECK: '1'
         run: |
           if (-not $env:NEXT_PUBLIC_SUPABASE_URL -or -not $env:NEXT_PUBLIC_SUPABASE_ANON_KEY) {
             Write-Error 'Faltan las Variables del repositorio NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY (Settings → Secrets and variables → Actions → Variables).'

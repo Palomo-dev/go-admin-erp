@@ -26,8 +26,13 @@ const nextConfig = {
   typescript: {
     // Auditoría desktop §4.6 [CERRADO 2026-09-21]: el build falla si hay
     // errores de tipos. `tsc --noEmit` está en 0 errores; si vuelve a haber
-    // alguno, ni Vercel ni la web embebida del desktop deben publicarlo.
-    ignoreBuildErrors: false,
+    // alguno, Vercel no debe publicarlo.
+    // Excepción: la web embebida del desktop (NEXT_SKIP_TYPECHECK=1 en
+    // .github/workflows/desktop-release.yml) omite la comprobación DENTRO de
+    // `next build`, porque el chequeo de tipos del repo necesita ~8 GB de heap
+    // y el runner de GitHub tiene 7 GB: el build 0.2.2 murió por OOM (código
+    // 134). Ese build ya pasa por el `tsc` de CI Web y por el gate local.
+    ignoreBuildErrors: process.env.NEXT_SKIP_TYPECHECK === '1',
   },
   // Limitar workers de webpack para evitar OOM en Vercel (8GB RAM).
   // cpus: 1 = solo 1 worker de webpack (en vez de 4 por defecto).

@@ -17,12 +17,17 @@ import { motion, useReducedMotion, AnimatePresence, type HTMLMotionProps } from 
 
 type DivProps = HTMLMotionProps<'div'>;
 
-/** Ficha (condición o acción) que aparece al añadirse y se encoge al quitarse. */
-export const Chip = forwardRef<HTMLDivElement, DivProps>((props, ref) => {
+/**
+ * Ficha (condición o acción) que aparece al añadirse y se encoge al quitarse.
+ * `min-w-0 max-w-full`: como elemento flex, sin esto su mínimo era el ancho
+ * del texto sin cortar y la ficha sobresalía del contenedor en móvil.
+ */
+export const Chip = forwardRef<HTMLDivElement, DivProps>(({ className, ...props }, ref) => {
   const reduced = useReducedMotion();
   return (
     <motion.div
       ref={ref}
+      className={['min-w-0 max-w-full', className].filter(Boolean).join(' ')}
       layout={!reduced}
       initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1, transition: { duration: reduced ? 0 : 0.18 } }}

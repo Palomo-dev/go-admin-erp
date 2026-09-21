@@ -24,7 +24,7 @@ import {
   type RuleFormState,
 } from '@/lib/services/crm/automation/ruleEditorModel';
 import { ActionChipEditor } from './ActionChipEditor';
-import { chipClass } from './SentenceBlock';
+import { CHIP_ICON_CLASS, CHIP_LIST_CLASS, CHIP_TEXT_CLASS, chipClass } from './SentenceBlock';
 import { AnimatePresence, Chip, Expand } from './motion';
 import type { RuleLookups } from './useRuleLookups';
 
@@ -39,7 +39,9 @@ interface Props {
 
 export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChange }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [focusTarget, setFocusTarget] = useState<{ index: number; type: string } | 'add' | null>(null);
+  // Tester UXM-C: tras reordenar por teclado, el editor se vuelve a montar (clave `editor-${selected}`) y el botón
+  // pulsado desaparece; sin esto el foco caía al contenedor de la hoja. `string[]`: el primer id enfocable (no deshabilitado).
+  const [focusTarget, setFocusTarget] = useState<{ index: number; type: string } | 'add' | string[] | null>(null);
   const justAdded = useRef(false);
   const actions = form.actions;
 
@@ -55,7 +57,10 @@ export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChan
   // corre siempre tras el render, también con la ventana ocluida (R-4).
   useEffect(() => {
     if (!focusTarget) return;
-    (focusTarget === 'add' ? document.getElementById('action-add') : firstFieldOf(focusTarget))?.focus();
+    const el = focusTarget === 'add' ? document.getElementById('action-add')
+      : Array.isArray(focusTarget) ? focusTarget.map((id) => document.getElementById(id)).find((e) => e && !(e as HTMLButtonElement).disabled)
+      : firstFieldOf(focusTarget);
+    el?.focus();
     setFocusTarget(null);
   }, [focusTarget]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -84,7 +89,8 @@ export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChan
           Sin acciones la regla no hará nada aunque se dispare. Añade al menos una.
         </p>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className={CHIP_LIST_CLASS}>
+          {/* UX móvil: cada acción es una tarjeta apilada (número + frase que envuelve); en línea desde `sm`. */}
           <AnimatePresence initial={false}>
             {actions.map((action, index) => {
               const open = selected === index;
@@ -97,17 +103,17 @@ export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChan
                     id={`action-chip-${index}`}
                     aria-expanded={open}
                     aria-controls={`action-editor-${index}`}
-                    className={cn(chipClass(open, 'emerald'), warn && 'border-amber-500 dark:border-amber-400')}
+                    className={cn(chipClass(open, 'emerald', true), warn && 'border-amber-500 dark:border-amber-400')}
                     onClick={() => onSelect(open ? null : index)}
                   >
                     <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 px-1 text-xs font-semibold text-white" aria-label={`Acción ${index + 1}`}>
                       {index + 1}
                     </span>
-                    <span className="truncate">{describeAction(action, lookups.humanizer)}</span>
-                    {warn && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-300" aria-label="Revisar" />}
+                    <span className={CHIP_TEXT_CLASS}>{describeAction(action, lookups.humanizer)}</span>
+                    {warn && <AlertTriangle className={cn(CHIP_ICON_CLASS, 'text-amber-700 dark:text-amber-300')} aria-label="Revisar" />}
                     {open
-                      ? <ChevronUp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      : <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
+                      ? <ChevronUp className={CHIP_ICON_CLASS} aria-hidden="true" />
+                      : <ChevronDown className={CHIP_ICON_CLASS} aria-hidden="true" />}
                   </button>
                 </Chip>
               );
@@ -132,6 +138,7 @@ export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChan
                 if (target < 0 || target >= actions.length) return;
                 onChange(moveAction(form, selected, dir));
                 onSelect(target);
+                setFocusTarget([`action-${target}-move-${dir}`, `action-chip-${target}`]);
               }}
               onRemove={() => {
                 onChange(removeAction(form, selected));

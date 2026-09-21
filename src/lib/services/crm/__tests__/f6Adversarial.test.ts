@@ -1525,11 +1525,14 @@ describe('J. Despacho puntual, disparo por etapa y consentimiento (ronda 2)', ()
     expect(runtime).toMatch(/new Set\(\[\.\.\.configuredTools, \.\.\.MANDATORY_TOOLS\]\)/);
 
     // Y la casilla de la UI esta bloqueada.
-    const editor = SRC('src/components/crm/agentes/AgentEditorDialog.tsx');
-    expect(editor).toContain('MANDATORY_TOOLS');
+    // UXM-D (2026-09-21): el editor se partió en pestañas; la casilla vive en
+    // `editor/AgentToolsTab.tsx` y la regla en `editor/useAgentForm.ts`.
+    const editor = SRC('src/components/crm/agentes/editor/AgentToolsTab.tsx');
     expect(editor).toContain('disabled={obligatoria}');
     expect(editor).toContain('Obligatoria por ley');
-    expect(editor).toMatch(/if \(isMandatoryTool\(tool\)\) return;/);
+    const formHook = SRC('src/components/crm/agentes/editor/useAgentForm.ts');
+    expect(formHook).toContain('MANDATORY_TOOLS');
+    expect(formHook).toMatch(/if \(isMandatoryTool\(tool\)\) return tools;/);
   });
 
   test('J7 [CORREGIDO r2] las lecturas sin comprobar error estan cerradas en el runtime y en el handler', () => {

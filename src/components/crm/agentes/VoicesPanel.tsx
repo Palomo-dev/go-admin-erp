@@ -78,24 +78,31 @@ export function VoicesPanel() {
         )}
 
         <Tabs value={view} onValueChange={(v) => setView(v as View)}>
-          <TabsList aria-label="Vistas de voces">
-            <TabsTrigger value="biblioteca" className="gap-1.5">
-              <Library className="h-4 w-4" aria-hidden="true" />
-              Biblioteca
+          {/* UX móvil: tres columnas iguales, icono sobre etiqueta a 375 px (antes `inline-flex` medía 417 px y desbordaba). */}
+          <TabsList aria-label="Vistas de voces" className="grid h-auto w-full grid-cols-3 sm:inline-flex sm:w-auto">
+            <TabsTrigger value="biblioteca" className="min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm">
+              <Library className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="max-w-full truncate">Biblioteca</span>
             </TabsTrigger>
             {/* R10: el lector anuncia «Mis voces, 5 voces», no «Mis voces5». */}
-            <TabsTrigger value="mias" className="gap-1.5" aria-label={voices.length > 0 ? `Mis voces, ${voices.length}` : undefined}>
-              <UserRound className="h-4 w-4" aria-hidden="true" />
-              Mis voces
-              {voices.length > 0 && (
-                <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-xs" aria-hidden="true">
-                  {voices.length}
-                </Badge>
-              )}
+            <TabsTrigger
+              value="mias"
+              className="min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm"
+              aria-label={voices.length > 0 ? `Mis voces, ${voices.length}` : undefined}
+            >
+              <UserRound className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="flex min-w-0 max-w-full items-center gap-1">
+                <span className="truncate">Mis voces</span>
+                {voices.length > 0 && (
+                  <Badge variant="secondary" className="h-4 shrink-0 px-1 text-[10px] sm:h-5 sm:px-1.5 sm:text-xs" aria-hidden="true">
+                    {voices.length}
+                  </Badge>
+                )}
+              </span>
             </TabsTrigger>
-            <TabsTrigger value="clonar" className="gap-1.5">
-              <Mic className="h-4 w-4" aria-hidden="true" />
-              Clonar mi voz
+            <TabsTrigger value="clonar" className="min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm">
+              <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="max-w-full truncate">Clonar mi voz</span>
             </TabsTrigger>
           </TabsList>
 

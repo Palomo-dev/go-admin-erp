@@ -13,10 +13,10 @@
 import React, { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Loader2, Lock, Play, Plus, Square } from "lucide-react";
+import { Check, Loader2, Lock, Plus } from "lucide-react";
 import { splitCardTags, type LibraryVoice } from "@/lib/services/crm/voiceLibrary";
-import { SoundWave } from "@/components/shared/motion/audio";
 import { VoiceAvatar } from "./VoiceAvatar";
+import { VoicePreviewButton } from "./VoicePreviewButton";
 import type { PreviewStatus } from "./useAudioPreview";
 
 interface Props {
@@ -32,7 +32,6 @@ interface Props {
 
 export function VoiceCard({ voice, previewStatus, onPreview, added, adding, onAdd, accountIsFree }: Props) {
   const playing = previewStatus === "playing";
-  const loading = previewStatus === "loading";
   const { headline, tags } = splitCardTags(voice);
   const paid = !voice.free_users_allowed;
   const blocked = paid && accountIsFree === true;
@@ -98,31 +97,18 @@ export function VoiceCard({ voice, previewStatus, onPreview, added, adding, onAd
         </p>
       )}
 
-      <div className="mt-auto flex items-center gap-2 pt-4">
-        <Button
+      {/* UX móvil: dos columnas iguales; «Añadir» ya no se sale por la derecha a 375 px. */}
+      <div className="mt-auto grid grid-cols-2 items-center gap-2 pt-4">
+        <VoicePreviewButton
           ref={previewRef}
-          type="button"
-          size="sm"
-          variant={playing ? "secondary" : "outline"}
-          onClick={() => onPreview(voice)}
-          disabled={!voice.preview_url || loading}
-          aria-pressed={playing}
-          aria-label={playing ? `Detener la muestra de ${voice.name}` : `Escuchar una muestra de ${voice.name}`}
-          className="gap-1.5"
-        >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          ) : playing ? (
-            <Square className="h-3.5 w-3.5" aria-hidden="true" />
-          ) : (
-            <Play className="h-4 w-4" aria-hidden="true" />
-          )}
-          {playing ? "Detener" : "Escuchar"}
-          {playing && <SoundWave active className="text-blue-600 dark:text-blue-400" />}
-        </Button>
+          voiceName={voice.name}
+          status={previewStatus}
+          onToggle={() => onPreview(voice)}
+          disabled={!voice.preview_url}
+        />
 
         {added ? (
-          <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300" role="status">
+          <span className="inline-flex items-center justify-end gap-1 text-xs font-medium text-green-700 dark:text-green-300" role="status">
             <Check className="h-4 w-4" aria-hidden="true" />
             En mis voces
           </span>
@@ -131,7 +117,7 @@ export function VoiceCard({ voice, previewStatus, onPreview, added, adding, onAd
             type="button"
             size="sm"
             variant={paid ? "outline" : "default"}
-            className={`ml-auto gap-1.5 ${paid ? "" : "bg-blue-600 text-white hover:bg-blue-700"}`}
+            className={`min-w-0 gap-1.5 ${paid ? "" : "bg-blue-600 text-white hover:bg-blue-700"}`}
             onClick={() => {
               if (adding) return;
               focusAfterAdd.current = true;
@@ -143,8 +129,8 @@ export function VoiceCard({ voice, previewStatus, onPreview, added, adding, onAd
             aria-label={`Añadir ${voice.name} a mis voces`}
             aria-describedby={paid ? paidNoteId : undefined}
           >
-            {adding ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : paid ? <Lock className="h-4 w-4" aria-hidden="true" /> : <Plus className="h-4 w-4" aria-hidden="true" />}
-            Añadir
+            {adding ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" /> : paid ? <Lock className="h-4 w-4 shrink-0" aria-hidden="true" /> : <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />}
+            <span className="truncate">Añadir</span>
           </Button>
         )}
       </div>

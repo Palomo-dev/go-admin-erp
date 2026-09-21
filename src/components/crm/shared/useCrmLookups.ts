@@ -53,6 +53,12 @@ export interface CrmLookupsState {
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  /**
+   * Oportunidades abiertas de una etapa (cabecera `count`, sin traer filas).
+   * `null` cuando no se pudo contar: el selector no inventa un número.
+   * Opcional (aditivo): los dobles de prueba y los consumidores antiguos no lo traen.
+   */
+  countOpenOpportunities?: (stageId: string) => Promise<number | null>;
 }
 
 /**
@@ -131,7 +137,20 @@ export function useCrmLookups(): CrmLookupsState {
     void reload();
   }, [reload]);
 
-  return { pipelines, stages, sequences, templates, loading, error, reload };
+  const countOpenOpportunities = useCallback(async (stageId: string): Promise<number | null> => {
+    const orgId = getOrganizationId();
+    if (!orgId || orgId <= 0 || !stageId) return null;
+    const { count, error: countError } = await supabase
+      .from('opportunities')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', orgId)
+      .eq('stage_id', stageId)
+      .eq('status', 'open');
+    if (countError) return null;
+    return count ?? null;
+  }, []);
+
+  return { pipelines, stages, sequences, templates, loading, error, reload, countOpenOpportunities };
 }
 
 /**

@@ -135,7 +135,7 @@ export function ReferralProgramForm({ program, currency, idPrefix = 'program', o
         <div>
           <Label htmlFor={id('type')} className="text-xs text-gray-700 dark:text-gray-300">Tipo de recompensa</Label>
           <Select value={s.reward_type} onValueChange={(v) => update({ ...s, reward_type: v })}>
-            <SelectTrigger id={id('type')}><SelectValue /></SelectTrigger>
+            <SelectTrigger id={id('type')} className="text-left [&>span]:line-clamp-1"><SelectValue /></SelectTrigger>
             <SelectContent>{REWARD_TYPES.map((t) => <SelectItem key={t} value={t}>{REWARD_TYPE_LABELS[t]}</SelectItem>)}</SelectContent>
           </Select>
         </div>
@@ -148,7 +148,7 @@ export function ReferralProgramForm({ program, currency, idPrefix = 'program', o
         <div>
           <Label htmlFor={id('to')} className="text-xs text-gray-700 dark:text-gray-300">Recompensa para</Label>
           <Select value={s.reward_to} onValueChange={(v) => update({ ...s, reward_to: v })}>
-            <SelectTrigger id={id('to')}><SelectValue /></SelectTrigger>
+            <SelectTrigger id={id('to')} className="text-left [&>span]:line-clamp-1"><SelectValue /></SelectTrigger>
             <SelectContent>{REWARD_TO.map((t) => <SelectItem key={t} value={t}>{REWARD_TO_LABELS[t]}</SelectItem>)}</SelectContent>
           </Select>
         </div>
@@ -160,7 +160,7 @@ export function ReferralProgramForm({ program, currency, idPrefix = 'program', o
           <AlertDescription>{serverError}</AlertDescription>
         </Alert>
       )}
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2 [&>button]:h-11 sm:[&>button]:h-9">
         {onCancel && <Button type="button" variant="outline" disabled={saving} onClick={onCancel}>Cancelar</Button>}
         <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving}>
           {saving ? 'Guardando…' : submitLabel ?? (program ? 'Guardar cambios' : 'Crear programa')}

@@ -20,6 +20,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { libraryLabel, type LibraryTagKey } from "@/lib/services/crm/voiceLibrary";
 
 export interface VoiceCatalogRow {
   id: string;
@@ -151,3 +152,12 @@ export const VOICE_KIND_LABELS: Record<string, string> = {
   cloned: "Clonada",
   designed: "Diseñada",
 };
+
+const CATALOG_TAG_KEYS: LibraryTagKey[] = ["language", "gender", "age", "accent", "use_case"];
+
+/** Etiquetas legibles (idioma, género, edad, acento, uso) de una voz del catálogo. */
+export function catalogVoiceTags(voice: Pick<VoiceCatalogRow, "labels">): Array<{ key: string; label: string }> {
+  return CATALOG_TAG_KEYS.map((k) => ({ key: k, value: voice.labels?.[k] ?? "" }))
+    .filter((t) => t.value)
+    .map((t) => ({ key: t.key, label: libraryLabel(t.key, t.value) }));
+}

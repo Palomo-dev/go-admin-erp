@@ -12,15 +12,12 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
@@ -35,6 +32,28 @@ import {
   type ObjectionFormState,
 } from '@/lib/services/crm/objectionModel';
 import { CategoryChips, categoryChipId } from './CategoryChips';
+import { ObjectionEditorFooter } from './ObjectionEditorFooter';
+
+/**
+ * Clases de la hoja y del cuerpo (UX móvil, ronda 1; fijadas por
+ * `mobileLayout.test.ts`). La hoja NO desplaza: `overflow-hidden` anula el
+ * `overflow-y-auto` de `sheetVariants` y `h-dvh` el `h-full` (en iOS `100%`
+ * y `100vh` incluyen la barra del navegador; `dvh` la sigue). Solo el cuerpo
+ * (`flex-1 min-h-0 overflow-y-auto`) tiene scroll; el pie queda al fondo.
+ *
+ * Causa raíz del hueco de ~200 px bajo el pie en iPhone: el botón `sr-only`
+ * de envío es `position:absolute` y, con el formulario estático, su bloque
+ * contenedor era la hoja (`fixed`): quedaba en su posición estática, al final
+ * del contenido desbordado del formulario, y hacía a la hoja desplazable
+ * (scrollHeight 842 vs 812 medidos). Al enfocar un campo, el teclado de iOS
+ * desplaza ese contenedor exterior más allá del final y no lo devuelve al
+ * cerrarse: el pie flota y debajo asoma el fondo de la hoja. Con la hoja sin
+ * scroll y el formulario `relative`, el botón queda dentro del cuerpo.
+ */
+export const SHEET_CLASS =
+  'flex h-dvh max-h-dvh w-full flex-col gap-0 overflow-hidden bg-gray-50 p-0 ' +
+  'dark:bg-gray-950 sm:max-w-xl';
+export const BODY_CLASS = 'relative min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4 sm:px-6';
 
 interface Props {
   open: boolean;
@@ -120,9 +139,14 @@ export function ObjectionEditorSheet({
       <SheetContent
         side="right"
         onCloseAutoFocus={onCloseAutoFocus}
-        className="flex w-full flex-col gap-0 bg-gray-50 p-0 dark:bg-gray-950 sm:max-w-xl"
+        className={SHEET_CLASS}
       >
-        <SheetHeader className="border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-900">
+        <SheetHeader
+          className={
+            'shrink-0 border-b border-gray-200 bg-white px-4 py-4 pr-12 text-left ' +
+            'dark:border-gray-800 dark:bg-gray-900 sm:px-6 sm:pr-12'
+          }
+        >
           <SheetTitle className="text-gray-900 dark:text-gray-100">
             {objection ? 'Editar objeción' : 'Nueva objeción'}
           </SheetTitle>
@@ -133,7 +157,7 @@ export function ObjectionEditorSheet({
         </SheetHeader>
 
         <form
-          className="flex-1 space-y-5 overflow-y-auto px-6 py-4"
+          className={BODY_CLASS}
           noValidate
           onSubmit={(e) => {
             e.preventDefault();
@@ -250,37 +274,14 @@ export function ObjectionEditorSheet({
           </button>
         </form>
 
-        <SheetFooter className="gap-3 border-t border-gray-200 bg-white px-6 py-3 dark:border-gray-800 dark:bg-gray-900 sm:justify-between">
-          <div className="flex items-center gap-2 self-center">
-            <Switch
-              id="objection-active"
-              checked={form.is_active}
-              disabled={saving}
-              onCheckedChange={(v) => update({ ...form, is_active: v })}
-            />
-            <Label htmlFor="objection-active" className="text-sm text-gray-900 dark:text-gray-100">
-              {form.is_active ? 'Activa' : 'Inactiva'}
-            </Label>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={saving}
-              onClick={() => onOpenChange(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              className="bg-blue-600 text-white hover:bg-blue-700"
-              disabled={saving}
-              onClick={() => void submit()}
-            >
-              {saving ? 'Guardando…' : objection ? 'Guardar cambios' : 'Crear objeción'}
-            </Button>
-          </div>
-        </SheetFooter>
+        <ObjectionEditorFooter
+          isActive={form.is_active}
+          saving={saving}
+          editing={objection !== null}
+          onActiveChange={(v) => update({ ...form, is_active: v })}
+          onCancel={() => onOpenChange(false)}
+          onSubmit={() => void submit()}
+        />
       </SheetContent>
     </Sheet>
   );

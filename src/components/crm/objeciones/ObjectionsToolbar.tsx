@@ -60,7 +60,7 @@ export function ObjectionsToolbar({ filters, onChange, total, shown, categories 
             onChange={(e) => onChange({ ...filters, query: e.target.value })}
           />
         </div>
-        <div role="group" aria-label="Filtrar por estado" className="flex gap-1">
+        <div role="group" aria-label="Filtrar por estado" className="flex flex-wrap gap-1.5">
           {STATUS.map((s) => (
             <button key={s.value} type="button" aria-pressed={filters.status === s.value} className={chipClass(filters.status === s.value)} onClick={() => onChange({ ...filters, status: s.value })}>
               {s.label}

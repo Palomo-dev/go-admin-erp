@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { EntitySelect } from '@/components/crm/shared/EntitySelect';
+import { cn } from '@/utils/Utils';
 import {
   ACTION_CATALOG,
   ACTIVITY_TYPE_OPTIONS,
@@ -97,7 +98,7 @@ export function ActionChipEditor({ index, total, action, lookups, errors, onPatc
     }
 
     return (
-      <div key={f.key} className={f.kind === 'textarea' ? 'sm:col-span-2' : ''}>
+      <div key={f.key} className={cn('min-w-0', f.kind === 'textarea' && 'sm:col-span-2')}>
         {usesEntity
           ? <span className={`block font-medium ${LABEL_CLASS}`}>{f.label}</span>
           : <Label htmlFor={id(f.key)} className={LABEL_CLASS}>{f.label}</Label>}
@@ -109,9 +110,10 @@ export function ActionChipEditor({ index, total, action, lookups, errors, onPatc
   };
 
   return (
-    <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+    <div className="min-w-0 rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+      {/* UX móvil: el selector de tipo ocupa toda la fila y los botones van debajo; en línea desde `sm`. */}
       <div className="flex flex-wrap items-end gap-2">
-        <div className="min-w-[200px] flex-1">
+        <div className="w-full min-w-0 sm:w-auto sm:min-w-[200px] sm:flex-1">
           <Label htmlFor={id('type')} className={LABEL_CLASS}>Acción {index + 1}</Label>
           <select id={id('type')} className={SELECT_CLASS} value={action.type} aria-describedby={`${id('type')}-hint`} onChange={(e) => onChangeType(e.target.value)}>
             {ACTION_CATALOG.map((c) => (
@@ -121,10 +123,10 @@ export function ActionChipEditor({ index, total, action, lookups, errors, onPatc
           <p id={`${id('type')}-hint`} className="mt-1 text-xs text-gray-600 dark:text-gray-400">{entry?.hint}</p>
         </div>
         <div className="flex items-center gap-0.5">
-          <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label={`Subir la acción ${index + 1}`} disabled={index === 0} onClick={() => onMove('up')}>
+          <Button id={id('move-up')} type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label={`Subir la acción ${index + 1}`} disabled={index === 0} onClick={() => onMove('up')}>
             <ArrowUp className="h-4 w-4" aria-hidden="true" />
           </Button>
-          <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label={`Bajar la acción ${index + 1}`} disabled={index >= total - 1} onClick={() => onMove('down')}>
+          <Button id={id('move-down')} type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label={`Bajar la acción ${index + 1}`} disabled={index >= total - 1} onClick={() => onMove('down')}>
             <ArrowDown className="h-4 w-4" aria-hidden="true" />
           </Button>
           <Button type="button" size="sm" variant="ghost" className="h-8 text-red-700 hover:text-red-800 dark:text-red-300" onClick={onRemove}>

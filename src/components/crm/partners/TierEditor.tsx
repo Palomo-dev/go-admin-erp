@@ -57,7 +57,7 @@ export function TierEditor({ open, tiers, canManage, onOpenChange, onSave, onDel
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="flex w-full flex-col gap-0 overflow-y-auto bg-gray-50 p-0 dark:bg-gray-950 sm:max-w-xl">
-        <SheetHeader className="border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-900">
+        <SheetHeader className="text-left border-b border-gray-200 bg-white px-6 pr-8 py-4 dark:border-gray-800 dark:bg-gray-900">
           <SheetTitle className="text-gray-900 dark:text-gray-100">Tiers de partner</SheetTitle>
           <SheetDescription className="text-gray-600 dark:text-gray-400">Un partner sube de tier automáticamente al registrar un deal si cumple los deals y el revenue mínimos. Nunca baja solo.</SheetDescription>
         </SheetHeader>
@@ -83,7 +83,7 @@ export function TierEditor({ open, tiers, canManage, onOpenChange, onSave, onDel
                 <li key={t.id} className={cn('rounded-xl border bg-white p-4 dark:bg-gray-900', isEditing ? 'border-blue-300 dark:border-blue-800' : 'border-gray-200 dark:border-gray-800')}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-gray-100"><Award className="h-4 w-4 text-amber-700 dark:text-amber-300" aria-hidden="true" />{t.name} · {formatRate(t.commission_rate)}</p>
+                      <p className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-gray-100"><Award className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden="true" />{t.name} · {formatRate(t.commission_rate)}</p>
                       <p className="text-xs text-gray-600 dark:text-gray-400">Desde {t.min_deals} deal{Number(t.min_deals) === 1 ? '' : 's'} y {new Intl.NumberFormat('es-CO').format(Number(t.min_revenue))} de revenue</p>
                       {benefits.length > 0 && <p className="mt-1 text-xs text-gray-700 dark:text-gray-300">{benefits.join(' · ')}</p>}
                     </div>

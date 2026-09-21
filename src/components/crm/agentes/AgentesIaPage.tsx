@@ -5,6 +5,10 @@
  *
  * Cierra C-F6-16 (no había UI). Tres pestañas: Agentes, Voces y Campañas.
  * Todo pasa por rutas con `getServerOrgContext()`: cero organización en el cliente.
+ *
+ * UX móvil (UXM-D): pestañas a tres columnas iguales y CTA a ancho completo a
+ * 375 px; la pestaña es estado controlado para que el editor pueda llevar a
+ * «Voces» desde su estado vacío.
  */
 
 import React, { useCallback, useEffect, useState } from "react";
@@ -51,6 +55,7 @@ export function AgentesIaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<AgentDraft | null>(null);
+  const [tab, setTab] = useState<"agentes" | "voces" | "campanas">("agentes");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -98,35 +103,35 @@ export function AgentesIaPage() {
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Bot className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-          <div>
+    <div className="space-y-5 p-4 md:space-y-6 md:p-6">
+      <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-2">
+          <Bot className="mt-1 h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+          <div className="min-w-0">
             <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Agentes IA de voz</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Quién llama, con qué voz y con qué objetivo. El guion por etapa se configura en el embudo.
             </p>
           </div>
         </div>
-        <Button onClick={() => setEditing({ mode: "create" })}>
+        <Button className="w-full sm:w-auto" onClick={() => setEditing({ mode: "create" })}>
           <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
           Nuevo agente
         </Button>
       </header>
 
-      <Tabs defaultValue="agentes">
-        <TabsList>
-          <TabsTrigger value="agentes">
-            <Bot className="mr-2 h-4 w-4" aria-hidden="true" />
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <TabsList className="grid h-auto w-full grid-cols-3 sm:inline-flex sm:w-auto" aria-label="Secciones">
+          <TabsTrigger value="agentes" className="gap-1.5 px-2 sm:px-3">
+            <Bot className="h-4 w-4 shrink-0" aria-hidden="true" />
             Agentes
           </TabsTrigger>
-          <TabsTrigger value="voces">
-            <Mic className="mr-2 h-4 w-4" aria-hidden="true" />
+          <TabsTrigger value="voces" className="gap-1.5 px-2 sm:px-3">
+            <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />
             Voces
           </TabsTrigger>
-          <TabsTrigger value="campanas">
-            <Megaphone className="mr-2 h-4 w-4" aria-hidden="true" />
+          <TabsTrigger value="campanas" className="gap-1.5 px-2 sm:px-3">
+            <Megaphone className="h-4 w-4 shrink-0" aria-hidden="true" />
             Campañas
           </TabsTrigger>
         </TabsList>
@@ -161,24 +166,24 @@ export function AgentesIaPage() {
           )}
 
           {!loading && !error && agents.length > 0 && (
-            <ul className="grid gap-3 md:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-label="Agentes">
               {agents.map((a) => (
                 <li
                   key={a.id}
-                  className="rounded-lg border border-gray-200 p-4 dark:border-gray-700 dark:bg-gray-900"
+                  className="min-w-0 rounded-lg border border-gray-200 p-4 dark:border-gray-700 dark:bg-gray-900"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{a.name}</p>
+                    <div className="min-w-0">
+                      <p className="break-words font-medium text-gray-900 dark:text-gray-100">{a.name}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         {PURPOSE_LABELS[a.purpose_type] ?? a.purpose_type} · {a.llm_model} · {a.language}
                       </p>
                     </div>
-                    <Badge variant={a.is_active ? "success" : "secondary"}>
+                    <Badge variant={a.is_active ? "success" : "secondary"} className="shrink-0">
                       {a.is_active ? "Activo" : "Inactivo"}
                     </Badge>
                   </div>
-                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  <p className="mt-2 break-all text-xs text-gray-500 dark:text-gray-400">
                     {a.voice_ref_id
                       ? "Voz del catálogo (puede ser la voz clonada del vendedor)"
                       : a.voice_id
@@ -215,6 +220,10 @@ export function AgentesIaPage() {
           onSaved={() => {
             setEditing(null);
             void load();
+          }}
+          onGoToVoices={() => {
+            setEditing(null);
+            setTab("voces");
           }}
         />
       )}

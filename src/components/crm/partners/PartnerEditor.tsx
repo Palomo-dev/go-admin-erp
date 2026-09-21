@@ -94,7 +94,7 @@ export function PartnerEditor({ open, partner, tiers, onOpenChange, onSave, retu
   return (
     <Sheet open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next); }}>
       <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="flex w-full flex-col gap-0 bg-gray-50 p-0 dark:bg-gray-950 sm:max-w-xl">
-        <SheetHeader className="border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-900">
+        <SheetHeader className="text-left border-b border-gray-200 bg-white px-6 pr-8 py-4 dark:border-gray-800 dark:bg-gray-900">
           <SheetTitle className="text-gray-900 dark:text-gray-100">{partner ? `Editar «${partner.name}»` : 'Nuevo partner'}</SheetTitle>
           <SheetDescription className="text-gray-600 dark:text-gray-400">Consultor, integrador o revendedor que trae o cierra deals. Su comisión queda registrada por deal; aquí no se paga nada.</SheetDescription>
         </SheetHeader>
@@ -109,7 +109,7 @@ export function PartnerEditor({ open, partner, tiers, onOpenChange, onSave, retu
             <div>
               <Label htmlFor="partner-tier_id" className="text-xs text-gray-700 dark:text-gray-300">Tier</Label>
               <Select value={form.tier_id || NO_TIER} onValueChange={(v) => update({ ...form, tier_id: v === NO_TIER ? '' : v })}>
-                <SelectTrigger id="partner-tier_id" aria-describedby="partner-tier-hint"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="partner-tier_id" className="text-left [&>span]:line-clamp-1" aria-describedby="partner-tier-hint"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NO_TIER}>Sin tier</SelectItem>
                   {tiers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} · {formatRate(t.commission_rate)}</SelectItem>)}
@@ -132,7 +132,7 @@ export function PartnerEditor({ open, partner, tiers, onOpenChange, onSave, retu
             <Switch id="partner-is_active" checked={form.is_active} disabled={saving} onCheckedChange={(v) => update({ ...form, is_active: v })} />
             <Label htmlFor="partner-is_active" className="text-sm text-gray-900 dark:text-gray-100">{form.is_active ? 'Activo' : 'Inactivo'}</Label>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 [&>button]:h-11 [&>button]:flex-1 sm:[&>button]:h-9 sm:[&>button]:flex-none">
             <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving} onClick={() => void submit()}>
               {saving ? 'Guardando…' : partner ? 'Guardar cambios' : 'Crear partner'}

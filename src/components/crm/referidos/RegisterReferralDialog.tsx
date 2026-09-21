@@ -89,7 +89,7 @@ export function RegisterReferralDialog({ open, preset, programs, currency, onOpe
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next); }}>
       <DialogContent onCloseAutoFocus={onCloseAutoFocus} className="max-h-[90vh] max-w-lg overflow-y-auto bg-white dark:bg-gray-950">
-        <DialogHeader>
+        <DialogHeader className="pr-6 text-left">
           <DialogTitle className="text-gray-900 dark:text-gray-100">Registrar referido</DialogTitle>
           <DialogDescription className="text-gray-600 dark:text-gray-400">Quién recomienda, a quién, y en qué programa. Nace pendiente de contacto.</DialogDescription>
         </DialogHeader>
@@ -126,7 +126,7 @@ export function RegisterReferralDialog({ open, preset, programs, currency, onOpe
           )}
           <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">Registrar</button>
         </form>
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 [&>button]:h-11 sm:[&>button]:h-9">
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving} onClick={() => void submit()}>
             {saving ? 'Registrando…' : 'Registrar referido'}

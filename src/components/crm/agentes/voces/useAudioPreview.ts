@@ -31,6 +31,10 @@ const LOAD_TIMEOUT_MS = 12_000;
 export function useAudioPreview(): AudioPreviewApi {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tester UXM-D: cada `play()` lleva un número de secuencia. Cambiar de voz mientras
+  // la anterior carga hace que `pause()`/`src` rechacen su promesa con AbortError;
+  // sin este guardia, el catch de la PRIMERA voz pisaba el estado de la SEGUNDA.
+  const seqRef = useRef(0);
   const [state, setState] = useState<AudioPreviewState>({ activeId: null, status: "idle", error: null });
 
   const clearTimer = () => {
@@ -78,7 +82,10 @@ export function useAudioPreview(): AudioPreviewApi {
         a.pause();
         setState({ activeId: id, status: "error", error: "La muestra tarda demasiado en cargar. Inténtalo de nuevo." });
       }, LOAD_TIMEOUT_MS);
+      const seq = ++seqRef.current;
       void a.play().catch((err: unknown) => {
+        // Rechazo de una petición ya sustituida (o AbortError por cambiar de voz): no es un error.
+        if (seq !== seqRef.current || (err instanceof DOMException && err.name === "AbortError")) return;
         clearTimer();
         const message = err instanceof Error && err.name === "NotAllowedError"
           ? "El navegador bloqueó el audio: vuelve a pulsar Escuchar."

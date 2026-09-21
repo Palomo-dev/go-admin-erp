@@ -3,15 +3,19 @@
 /**
  * Búsqueda y filtros de la biblioteca de voces, arriba, con chips de filtro
  * activos visibles (brief UX §3, referencia ElevenLabs «Voces › Explorar»).
+ *
+ * UX móvil (UXM-D): a 375 px los tres selectores ya no se apilan ocupando media
+ * pantalla; se pliegan tras un botón «Filtros» (con el número de filtros
+ * activos) y el contador «24 de 7.992 voces» queda junto a la búsqueda.
  */
 
-import React from "react";
+import React, { useState } from "react";
 import { flushSync } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, X } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import {
   GENDER_LABELS,
   LANGUAGE_LABELS,
@@ -67,10 +71,14 @@ export function VoiceLibraryFilters({ filters, onChange, onClear, resultCount, t
     document.getElementById("lib-search")?.focus();
   };
 
+  const selectCount = chips.filter((c) => c.key !== "search").length;
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const countText = totalCount > 0 ? `${resultCount} de ${totalCount.toLocaleString("es-CO")} voces` : "";
+
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto]">
-        <div className="relative">
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
           <Label htmlFor="lib-search" className="sr-only">
             Buscar voz por nombre o descripción
           </Label>
@@ -85,11 +93,35 @@ export function VoiceLibraryFilters({ filters, onChange, onClear, resultCount, t
             autoComplete="off"
           />
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="shrink-0 gap-1.5 md:hidden"
+          aria-expanded={filtersOpen}
+          aria-controls="lib-filter-controls"
+          onClick={() => setFiltersOpen((v) => !v)}
+        >
+          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+          Filtros
+          {selectCount > 0 && (
+            <span className="rounded-full bg-blue-600 px-1.5 text-xs font-semibold text-white" aria-label={selectCount === 1 ? "1 activo" : `${selectCount} activos`}>
+              {selectCount}
+            </span>
+          )}
+        </Button>
+        <span className="hidden shrink-0 text-xs tabular-nums text-gray-600 dark:text-gray-300 md:inline" role="status" aria-live="polite">
+          {countText}
+        </span>
+      </div>
 
+      <div
+        id="lib-filter-controls"
+        className={`${filtersOpen ? "grid" : "hidden"} grid-cols-1 gap-2 md:grid md:grid-cols-3`}
+      >
         <div>
           <Label htmlFor="lib-language" className="sr-only">Idioma</Label>
           <Select value={filters.language || ALL} onValueChange={(v) => onChange("language", v === ALL ? "all" : v)}>
-            <SelectTrigger id="lib-language" className="w-full md:w-[160px]" aria-label="Idioma">
+            <SelectTrigger id="lib-language" className="w-full" aria-label="Idioma">
               <SelectValue placeholder="Idioma" />
             </SelectTrigger>
             <SelectContent>
@@ -104,7 +136,7 @@ export function VoiceLibraryFilters({ filters, onChange, onClear, resultCount, t
         <div>
           <Label htmlFor="lib-gender" className="sr-only">Género de la voz</Label>
           <Select value={filters.gender || ALL} onValueChange={(v) => onChange("gender", v === ALL ? "" : v)}>
-            <SelectTrigger id="lib-gender" className="w-full md:w-[150px]" aria-label="Género de la voz">
+            <SelectTrigger id="lib-gender" className="w-full" aria-label="Género de la voz">
               <SelectValue placeholder="Género" />
             </SelectTrigger>
             <SelectContent>
@@ -119,7 +151,7 @@ export function VoiceLibraryFilters({ filters, onChange, onClear, resultCount, t
         <div>
           <Label htmlFor="lib-usecase" className="sr-only">Caso de uso</Label>
           <Select value={filters.use_case || ALL} onValueChange={(v) => onChange("use_case", v === ALL ? "" : v)}>
-            <SelectTrigger id="lib-usecase" className="w-full md:w-[200px]" aria-label="Caso de uso">
+            <SelectTrigger id="lib-usecase" className="w-full" aria-label="Caso de uso">
               <SelectValue placeholder="Caso de uso" />
             </SelectTrigger>
             <SelectContent>
@@ -164,8 +196,8 @@ export function VoiceLibraryFilters({ filters, onChange, onClear, resultCount, t
         ) : (
           <span>Español primero. Cambia el idioma, el género o el uso para afinar.</span>
         )}
-        <span className="ml-auto tabular-nums" role="status" aria-live="polite">
-          {totalCount > 0 ? `${resultCount} de ${totalCount.toLocaleString("es-CO")} voces` : ""}
+        <span className="ml-auto tabular-nums md:hidden" role="status" aria-live="polite">
+          {countText}
         </span>
       </div>
     </div>

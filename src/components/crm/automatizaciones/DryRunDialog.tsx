@@ -80,8 +80,9 @@ export function DryRunDialog({ open, rule, lookups, onOpenChange, onRun }: Props
       <DialogContent onCloseAutoFocus={onCloseAutoFocus} className="max-h-[90vh] max-w-2xl overflow-y-auto bg-white dark:bg-gray-950">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-            <FlaskConical className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-            Probar en seco «{rule?.name}»
+            <FlaskConical className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+            {/* Tester UXM-C: el nombre va en un `span` con `min-w-0 break-words`; como texto suelto del título flex no encogía y el diálogo ganaba scroll lateral (809 px en 293) a 375 px. */}
+            <span className="min-w-0 break-words">Probar en seco «{rule?.name}»</span>
           </DialogTitle>
           <DialogDescription className="text-gray-600 dark:text-gray-400">
             Elige una oportunidad y verás qué haría la regla con ella. No se envía nada, no se cambia nada y no queda en el historial.
@@ -103,14 +104,15 @@ export function DryRunDialog({ open, rule, lookups, onOpenChange, onRun }: Props
 
           {searchError && <p role="alert" className="text-xs text-red-700 dark:text-red-300">{searchError}</p>}
           <ul aria-label="Resultados de la búsqueda" aria-busy={loading} className="flex flex-wrap gap-2">
-            <li>
+            <li className="min-w-0 max-w-full">
               <button type="button" aria-pressed={selected === null} className={chipClass(selected === null)}
                 onClick={() => { setSelected(null); setSelectedName(null); }}>
                 Sin oportunidad
               </button>
             </li>
+            {/* `min-w-0 max-w-full` en cada `li`: sin esto medía lo que su texto sin cortar y sobresalía en móvil. */}
             {hits.map((h) => (
-              <li key={h.id}>
+              <li key={h.id} className="min-w-0 max-w-full">
                 <button type="button" aria-pressed={selected === h.id} className={chipClass(selected === h.id)}
                   onClick={() => { setSelected(h.id); setSelectedName(h.name); }}>
                   <span className="truncate">{h.name}</span>
@@ -154,7 +156,7 @@ export function DryRunDialog({ open, rule, lookups, onOpenChange, onRun }: Props
                         {t.ok
                           ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" aria-label="Se cumple" />
                           : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-700 dark:text-red-300" aria-label="No se cumple" />}
-                        <span className="text-gray-800 dark:text-gray-200">
+                        <span className="min-w-0 break-words text-gray-800 dark:text-gray-200">
                           {conditionOf(t)}
                           {!t.reason && <span className="text-gray-600 dark:text-gray-400"> — valor real: {actualText(t.actual)}</span>}
                         </span>
@@ -173,7 +175,7 @@ export function DryRunDialog({ open, rule, lookups, onOpenChange, onRun }: Props
                 ) : (
                   <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm text-gray-800 dark:text-gray-200">
                     {result.actions_plan.map((p) => (
-                      <li key={p.index}>
+                      <li key={p.index} className="break-words">
                         {rule.actions[p.index] ? describeAction(rule.actions[p.index], lookups) : String(p.type)}
                         {!p.implemented && <span className="ml-1 text-xs text-amber-800 dark:text-amber-300">(no disponible: fallaría)</span>}
                       </li>

@@ -11,11 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/components/ui/use-toast";
-import { ChevronDown, Copy, Loader2, Play, ShieldCheck, Square, Star, Trash2 } from "lucide-react";
-import { libraryLabel, type LibraryTagKey } from "@/lib/services/crm/voiceLibrary";
-import { SoundWave } from "@/components/shared/motion/audio";
-import { VOICE_KIND_LABELS, type VoiceCatalogRow } from "../useVoiceCatalog";
+import { ChevronDown, Copy, ShieldCheck, Star, Trash2 } from "lucide-react";
+import { VOICE_KIND_LABELS, catalogVoiceTags, type VoiceCatalogRow } from "../useVoiceCatalog";
 import { VoiceAvatar } from "./VoiceAvatar";
+import { VoicePreviewButton } from "./VoicePreviewButton";
 import type { PreviewStatus } from "./useAudioPreview";
 
 export interface AgentLite {
@@ -35,8 +34,6 @@ interface Props {
   onDelete: (voice: VoiceCatalogRow) => void;
 }
 
-const TAG_KEYS: LibraryTagKey[] = ["language", "gender", "age", "accent", "use_case"];
-
 /** `id` del `<article>`: el panel lo enfoca tras borrar la tarjeta vecina (R3). */
 export const myVoiceCardId = (voiceId: string) => `my-voice-${voiceId}`;
 
@@ -51,7 +48,6 @@ async function copyText(label: string, value: string) {
 
 export function MyVoiceCard({ voice, agents, previewStatus, onPreview, onMakeDefault, onAssign, assigning, onDelete }: Props) {
   const playing = previewStatus === "playing";
-  const loading = previewStatus === "loading";
   const [detailsOpen, setDetailsOpen] = useState(false);
   // Ronda 3: «Por defecto» desaparece al predeterminar y el foco caía al body. Se
   // recuerda que el clic salió de aquí y, cuando la fila vuelve ya predeterminada,
@@ -65,9 +61,7 @@ export function MyVoiceCard({ voice, agents, previewStatus, onPreview, onMakeDef
     }
   }, [voice.is_default]);
   const users = agents.filter((a) => a.voice_ref_id === voice.id);
-  const tags = TAG_KEYS.map((k) => ({ key: k, value: voice.labels?.[k] ?? "" }))
-    .filter((t) => t.value)
-    .map((t) => ({ key: t.key, label: libraryLabel(t.key, t.value) }));
+  const tags = catalogVoiceTags(voice);
   const kindLabel = VOICE_KIND_LABELS[voice.kind] ?? voice.kind;
 
   return (
@@ -116,7 +110,7 @@ export function MyVoiceCard({ voice, agents, previewStatus, onPreview, onMakeDef
         </ul>
       )}
 
-      <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+      <p className="mt-3 break-words text-xs text-gray-500 dark:text-gray-400">
         {users.length > 0
           ? `La usan: ${users.map((a) => a.name).join(", ")}`
           : voice.is_default
@@ -137,7 +131,7 @@ export function MyVoiceCard({ voice, agents, previewStatus, onPreview, onMakeDef
             type="button"
             className="inline-flex items-center gap-1 rounded text-xs text-gray-500 hover:text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-gray-400 dark:hover:text-gray-200"
           >
-            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${detailsOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${detailsOpen ? "rotate-180" : ""}`} aria-hidden="true" />
             Detalles técnicos
           </button>
         </CollapsibleTrigger>
@@ -169,21 +163,13 @@ export function MyVoiceCard({ voice, agents, previewStatus, onPreview, onMakeDef
       </Collapsible>
 
       <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
-        <Button
+        <VoicePreviewButton
           ref={previewRef}
-          type="button"
-          size="sm"
-          variant={playing ? "secondary" : "outline"}
-          onClick={() => onPreview(voice)}
-          disabled={loading || voice.provider !== "elevenlabs"}
-          aria-pressed={playing}
-          aria-label={playing ? `Detener la muestra de ${voice.name}` : `Escuchar una muestra de ${voice.name}`}
-          className="gap-1.5"
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : playing ? <Square className="h-3.5 w-3.5" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}
-          {playing ? "Detener" : "Escuchar"}
-          {playing && <SoundWave active className="text-blue-600 dark:text-blue-400" />}
-        </Button>
+          voiceName={voice.name}
+          status={previewStatus}
+          onToggle={() => onPreview(voice)}
+          disabled={voice.provider !== "elevenlabs"}
+        />
 
         {!voice.is_default && (
           <Button
@@ -204,7 +190,7 @@ export function MyVoiceCard({ voice, agents, previewStatus, onPreview, onMakeDef
 
         {agents.length > 0 && (
           <Select value="" disabled={assigning} onValueChange={(agentId) => onAssign(voice, agentId)}>
-            <SelectTrigger className="ml-auto h-8 w-[170px] text-xs" aria-label={`Asignar la voz ${voice.name} a un agente`}>
+            <SelectTrigger className="h-8 w-full text-xs sm:ml-auto sm:w-[170px]" aria-label={`Asignar la voz ${voice.name} a un agente`}>
               <SelectValue placeholder="Asignar a un agente…" />
             </SelectTrigger>
             <SelectContent>

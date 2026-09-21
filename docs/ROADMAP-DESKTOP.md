@@ -6,10 +6,10 @@ Decisiones tomadas: offline vía **servidor Next embebido**, y **POS local-first
 | Fase | Contenido | Esfuerzo | Estado |
 |---|---|---|---|
 | 0 | Quick wins y bugs críticos | 2-3 días | **Hecha** |
-| 1 | Instalador + firma de código | 3-5 días | Pendiente |
-| 2 | UI nativa | 4-6 días | Pendiente |
+| 1 | Instalador + firma de código | 3-5 días | **Hecha** (2026-09-15; instalador NSIS, workflow de release y firma condicional — falta el certificado) |
+| 2 | UI nativa | 4-6 días | **Hecha** (2026-09-16; `docs/desktop/FASE-2-UI-NATIVA.md`) |
 | 3 | Offline real: Next embebido en 127.0.0.1 | 1-2 semanas | **Hecha** (2026-09-16; queda la prueba con sesión y datos cacheados, ver abajo) |
-| 4 | POS local-first + impresión local | 6-10 semanas | Pendiente |
+| 4 | POS local-first + impresión local | 6-10 semanas | **Hecha en 0.2.1** (2026-09-16; 4.1–4.9; queda 4.4 parcial: RPC atómica de checkout) |
 
 Las fases 1, 2 y 3 son independientes entre sí y se pueden llevar en paralelo.
 La fase 4 depende de la 3.

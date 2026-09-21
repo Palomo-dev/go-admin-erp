@@ -16,7 +16,7 @@ const MAX_RONDAS = 3
 const REGLAS = `
 Reglas del repositorio (además del CLAUDE.md que ya tienes):
 - Español de Colombia; nunca el nombre de una organización cliente.
-- Sin .sql: pos_terminals ya tiene pairing_code, pairing_code_expires_at, display_token_hash y display_last_seen_at. Si falta esquema, dilo en pendientes.
+- Sin .sql: el esquema ya existe. public.pos_terminals (identidad: id, organization_id, branch_id, name, code, is_active, display_last_seen_at) es legible por authenticated con RLS. Los secretos van en public.pos_terminal_secrets (terminal_id PK → pos_terminals, organization_id, pairing_code de 6 dígitos con CHECK, pairing_code_expires_at, display_token_hash) que NO tiene permisos para anon ni authenticated: solo se lee/escribe desde rutas de servidor con getServiceClient() tras validar la organización por getServerOrgContext() (o, en /pair y en el heartbeat de la pantalla, tras validar el código/token). Si falta esquema, dilo en pendientes.
 - Todo route handler con sesión empieza por getServerOrgContext() (o withOrg): la organización sale de la sesión, nunca del body. Las rutas de la pantalla remota NO tienen sesión: autentican por token y resuelven la organización DESDE LA TERMINAL (fila de pos_terminals), nunca desde la petición. Usan getServiceClient() solo tras validar el token, y fallan cerrado (401/403) con token ausente, inválido o revocado.
 - Secretos: nada de tokens en claro en la base (solo sha256). El token en claro se devuelve UNA vez al canjear el código. Rate limit del canje: 10 intentos / 15 min por IP (reutiliza la infraestructura de rate limit del repo si existe: busca rate_limit / rateLimit en src/lib).
 - Estas rutas se añaden a la lista de exclusión del middleware (src/middleware.ts, skipPatterns y matcher) igual que /u/ y api/auth: fail-closed por token, no por sesión.
@@ -36,7 +36,7 @@ Contexto verificado:
 const PARTES = {
   A: { nombre: 'A · Rutas de servidor y tokens', alcance: `
 1. POST /api/pos/terminals/[id]/pairing-code (sesión): genera código de 6 dígitos, 5 min, invalida el anterior; solo admin/manager de la organización de la terminal.
-2. POST /api/pos/display/pair (sin sesión, rate-limited): canjea código → token largo aleatorio (32 bytes) devuelto una vez; guarda sha256 en display_token_hash; borra el código. Respuestas 400/404/429 sin filtrar existencia.
+2. POST /api/pos/display/pair (sin sesión, rate-limited): canjea código → token largo aleatorio (32 bytes) devuelto una vez; guarda sha256 en pos_terminal_secrets.display_token_hash; borra el código (pairing_code = null). Respuestas 400/404/429 sin filtrar existencia.
 3. GET /api/pos/display/bootstrap (token): marca (logo, colores, nombre), settings pos_customer_display, locale, moneda, terminalId, y el JWT/credencial de Realtime de corta vida para unirse al canal de ESA terminal. Sin datos de ventas.
 4. POST /api/pos/display/heartbeat (token): display_last_seen_at. POST /api/pos/display/revoke (sesión, admin): borra el hash.
 5. Helper src/lib/pos/display/server/displayAuth.ts: validar token (sha256 constante en tiempo), resolver terminal + organización, y devolver 401 uniforme.
@@ -78,7 +78,7 @@ ${feedback ? `RONDA DE CORRECCIÓN. Lista obligatoria por severidad:\n${feedback
 ${parte !== 'A' ? 'La Parte A (rutas y displayAuth) ya está aprobada: úsala tal cual; cambios solo aditivos.' : ''}
 Al terminar: eslint limpio, jest de pos-display en verde. No declares la parte lista.`, { label: `builder:F3${parte}:r${ronda}`, phase: fase, schema: BUILD_SCHEMA })
     if (!build) break
-    const test = await agent(`Eres el TESTER de la Fase 3, parte ${p.nombre} (ronda ${ronda}). Esta fase es de SEGURIDAD: intenta romperla. Token inválido, revocado, de otra terminal; código caducado o reutilizado; organization_id en el body (debe ignorarse); fuerza bruta del código (rate limit); canal de otra terminal; mensajes con instanceId ajeno; JWT de Realtime caducado. Corre jest de pos-display y guardrails, eslint, tsc filtrado. Verifica que el middleware excluye /api/pos/display/* y que ninguna ruta lee pairing_code/display_token_hash desde el cliente. No arregles: reporta con pasos.
+    const test = await agent(`Eres el TESTER de la Fase 3, parte ${p.nombre} (ronda ${ronda}). Esta fase es de SEGURIDAD: intenta romperla. Token inválido, revocado, de otra terminal; código caducado o reutilizado; organization_id en el body (debe ignorarse); fuerza bruta del código (rate limit); canal de otra terminal; mensajes con instanceId ajeno; JWT de Realtime caducado. Corre jest de pos-display y guardrails, eslint, tsc filtrado. Verifica que el middleware excluye /api/pos/display/* y que ninguna ruta ni componente de navegador toca pos_terminal_secrets (grep -rn pos_terminal_secrets src/ solo debe dar rutas de servidor con service role). No arregles: reporta con pasos.
 ${CONTEXTO}
 Alcance: ${p.alcance}
 Builder dice: ${JSON.stringify(build, null, 2)}`, { label: `tester:F3${parte}:r${ronda}`, phase: fase, schema: TEST_SCHEMA })

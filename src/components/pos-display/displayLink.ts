@@ -43,7 +43,11 @@ export const DISCONNECTED_TO_IDLE_MS = 60_000;
 /** Cada cuánto se repite `need_snapshot` mientras no hay caja o la que hay no ha mandado estado. */
 export const RESNAPSHOT_INTERVAL_MS = 2_000;
 /** Cada cuánto se evalúa la salud de la conexión. */
-export const HEALTH_INTERVAL_MS = 500;
+/**
+ * 250 ms y no 500: el peor caso sin `bye` (caja muerta de golpe) es
+ * STALE_AFTER_MS + un tick, y el PLAN §12 F0 pide Conectando en ≤ 3 s.
+ */
+export const HEALTH_INTERVAL_MS = 250;
 
 export interface DisplayHello {
   organizationId: number;

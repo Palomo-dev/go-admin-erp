@@ -3056,3 +3056,50 @@ con la misma regla `purchase/created`. Pasa igual en el flujo del módulo. Revis
 - Para el 10: [bajo · fuera de la lista] Si `createTransport` lanza (constructor de BroadcastChannel fallando en un contexto restringido) con la caché en true, `openTransport; [bajo · ajeno a la Parte D] `src/__tests__/pos-display/tester-r8-parte-b.test.ts` › «stop() de la caja manda bye…» falló una vez al correr las 29 suites en para; [no probado] Render real en navegador del caso «Slow 3G + navegación SPA a /app/pos + abrir el menú del indicador antes de que resuelva getBaseCurrency» (el men; [bajo · fuera de la lista] `getPosDisplayEnvironment()` evalúa la organización ACTIVA mientras el emisor sigue arrancado para la organización con la que se llam
 - No probado: Render real de /pos-display en navegador (estado Conectando/Reposo sin errores de consola): NO se levantó servidor de Next porque hay un `ne; Verificación manual en navegador del caso «Slow 3G + navegación SPA a /app/pos + pulsar el indicador antes de que resuelva getBaseCurrency»:; `npx tsc --noEmit -p tsconfig.json` completo: devuelve exit 0 con salida VACÍA (síntoma OOM conocido: el proyecto tiene ~190 errores preexis; Hallazgo menor fuera de la lista (no baja nota, para paraElDiez): si `createTransport` LANZA o devuelve null por una causa distinta a «sin B
 - Proxima accion: avanzar
+
+### GO Assistant — preguntas A/B/C/Otro en vez de formularios, y factura de venta — 2026-09-21
+
+**Feedback del dueño:** "prefiero que no uses formulario y mejor haga preguntas, estilo Claude, un
+modal para confirmar datos con respuesta A, B, C u Otro"; y "necesito poder crear factura de ventas".
+
+**Preguntas con opciones.** Herramienta `preguntar_opciones` (`tools/pregunta.ts`): el modelo la
+llama cuando le falta UN dato con pocas respuestas posibles (¿persona o empresa?, ¿qué sucursal?,
+¿cuál de estos productos?, ¿borrador o emitida?, ¿contado o crédito?). No escribe nada:
+`runAgent` intercepta la llamada, emite el evento SSE `question` y PAUSA el turno (sin fila en
+`ai_agent_actions`); la pregunta queda en el historial como texto ("A) … B) … Otro: escríbelo")
+para que el modelo la recuerde. El panel pinta `QuestionCard` con botones A/B/C/D y "Otro: lo
+escribo" (enfoca el composer); tocar una opción la envía como mensaje. Regla en el prompt: una
+pregunta por turno; texto libre se pregunta en prosa. El botón "Formulario completo" de clientes se
+queda como alternativa (es el formulario del módulo, no uno del chat); no se añaden más formularios.
+
+**Factura de venta.** `registrar_factura_venta` + RPC `assistant_register_sales_invoice`
+(`20260921130000`, + rollback): venta (`sales`, source `invoice`, pendiente) con `sale_items`,
+factura `invoice_sales` con consecutivo `FACT-####` (mismo criterio que `generateInvoiceNumber`) y
+`invoice_items`; **borrador por defecto**, como el formulario de Finanzas, o `issue=true` → `issued`
+(CxC y asiento por disparador). Precio del catálogo si no se dicta; IVA por línea. Como el
+formulario del módulo, NO mueve inventario (se avisa en la tarjeta). `buscar_clientes` nueva para
+el `customer_id`. Deshacer = `assistant_void_sales_invoice` (factura y venta a `void`, CxC a cero;
+se niega con pagos).
+
+**Tester (base real, rollback).** Borrador: total = precio catálogo × 2 × 1,19, sin CxC. Emitida:
+CxC 50 000 creada por el disparador, asiento presente, consecutivo +1, stock intacto. Anulación:
+CxC 0, factura y venta `void`. Cliente ajeno → `CUSTOMER_NOT_IN_ORG`. Jest
+`goAssistantPreguntasYFacturaVenta.test.ts` (11): `runAgent` emite `question` y pausa sin acción
+pendiente; escape de comodines en `buscar_clientes`; parseo y RPC de la factura. Suites GO
+Assistant + guardrails: **14/14, 337 tests**. ESLint limpio en lo tocado.
+
+**Hallazgo preexistente:** el formulario de Finanzas → Facturas de venta → Nueva crea la venta y la
+factura sin descontar inventario (solo seriales). La herramienta lo replica; conviene decidir si una
+factura de venta emitida debería mover stock.
+
+### Fase: F0 QA FINAL DE LA FASE — 2026-09-21
+- Calificacion QA: 9.5/10 (aprobado). Rubric: funcionalidad 1,9 · robustez 1,9 · consistencia 1,9 · tests 1,9 · trazabilidad 1,9. Sin críticos ni altos.
+- Evidencia: HEAD 1d8abac4; jest pos-display + guardrails 34 suites / 923 tests verdes; tsc acotado 0 errores propios; eslint limpio en archivos nuevos. Criterios de aceptación del PLAN §12 F0 verificados con archivo:línea (coalescencia rAF+50 ms; bye al parar; need_snapshot → announce completo).
+- Problemas y qué se hizo:
+  1. [medio] Cerrar la pestaña de la caja no emitía `bye` (sin listener de pagehide) y el peor caso era 3,5 s → HECHO: `ensurePagehideStop()` en posDisplay.ts (solo en documentos reales) y `HEALTH_INTERVAL_MS` 500→250 en displayLink.ts.
+  2. [bajo] Micro-ventana teórica en setTotals (override aceptado por cartId con líneas ya cambiadas) → DIFERIDO a F2 Parte A: firmar los totales con ids+qty+descuento de las líneas y descartar si no coincide.
+  3. [bajo] 19 `any` preexistentes en CartView.tsx y warning exhaustive-deps en TaxSummary.tsx:105 → DIFERIDO a propósito (no son de la fase; se limpian cuando F2 toque CartView).
+  4. [bajo] TRASPASO.md: `getPublicBrand` → `getOrganizationBrand`; «Caja cerrada» no existe en F0 → CORREGIDO.
+  5. [bajo] openDisplay.ts aún resuelve `electronAPI` → lo cierra F1 (en curso).
+- Para el 10 / hardware real: táctil (capabilities.touch, sin zoom ni menús), verificar 68cb0fd8 en Desktop 0.2.2 con sandbox, medir <100 ms y ≤3 s con dos ventanas, legibilidad a 1,5 m en 1024×768/1366×768/1920×1080, render sin sesión en ventana privada.
+- Proxima accion: F1 lado web (workflow en curso), luego F2 → F3 → F4.

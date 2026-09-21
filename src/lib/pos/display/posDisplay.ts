@@ -202,6 +202,29 @@ export interface StartPosDisplayOptions {
 let startGeneration = 0;
 
 /**
+ * Cerrar la PESTAÑA o la ventana de la caja no ejecuta el cleanup de React de
+ * /app/pos, así que sin esto la pantalla no recibía `bye` y dependía del
+ * watchdog (hasta 3,5 s). Con `pagehide` se despide en el acto, igual que
+ * hace la pantalla en useDisplayReceiver. Un solo listener por ventana.
+ */
+let pagehideRegistered = false;
+function ensurePagehideStop(): void {
+  // Solo en un documento real: los tests usan `window` falsos que disparan
+  // todos sus listeners con eventos de `storage`, y aquí no hay página que cerrar.
+  if (pagehideRegistered || typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (typeof window.addEventListener !== 'function') return;
+  pagehideRegistered = true;
+  window.addEventListener('pagehide', (event: Event) => {
+    if (event?.type !== 'pagehide') return;
+    try {
+      stopPosDisplay();
+    } catch {
+      // la ventana se está cerrando: nada que hacer
+    }
+  });
+}
+
+/**
  * Arranque desde la página del POS: carga el interruptor (una consulta,
  * cacheada), arranca el emisor y queda a la escucha de cambios del
  * interruptor hechos en otras ventanas. Devuelve el emisor para encadenar
@@ -213,6 +236,7 @@ let startGeneration = 0;
 export async function startPosDisplay(options: StartPosDisplayOptions): Promise<DisplayEmitter> {
   const emitter = getPosDisplayEmitter();
   const generation = ++startGeneration;
+  ensurePagehideStop();
 
   // La identidad de esta caja (pos_terminal_id) se crea SIEMPRE al abrir el POS,
   // esté o no encendido el interruptor maestro. Antes solo se creaba al abrir el

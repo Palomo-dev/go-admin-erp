@@ -86,7 +86,7 @@ lanzar otra ronda a ciegas; así A pasó a 9,7.
 | Fase | Estado | Evidencia |
 |---|---|---|
 | **F0 Espejo local** | **CERRADA en código** — A 9,7 · B 9,8 · C 9,6 · D 9,7 (r5). Commits `17e88b6e`, `7fe4f133`, `13e05fe7`, `3f15d64f`, `68cb0fd8`, `4eb61121`. | `PROGRESS.md` «F0 v4 (ronda 4)»; `npx jest src/__tests__/pos-display` → 34 suites / 832 tests / 0 fallos |
-| F0 · integración + QA final | **Parcial**: el `tester:integracion` dejó `integracion.test.ts` (15 casos, verde) pero el run murió antes de `qa:final`. La integración real se verificó **a mano en Go Admin Desktop 0.2.1** (§4). | `PROGRESS.md` «Prueba de humo en Go Admin Desktop 0.2.1» |
+| F0 · integración + QA final | **Hecho** (2026-09-21): `integracion.test.ts` (15 casos, verde) + QA final **9,5 aprobado** (sin críticos ni altos; ver PROGRESS.md). Integración real verificada **a mano en Go Admin Desktop 0.2.1** (§4). Del QA salieron: `pagehide` → `bye` en la caja y tick de salud a 250 ms (hechos), firma de líneas en `setTotals` y `any` de CartView (diferidos a F2). | `PROGRESS.md` «Prueba de humo en Go Admin Desktop 0.2.1» |
 | F1 Electron en la 2ª pantalla | **Hecho en Electron por la sesión de Desktop** (`a923cc57`, `d884fcd7`, 0.2.1/0.2.2): ventana hija en el monitor secundario, relay IPC, persistencia `posDisplay.{enabled,displayId}`, `Ctrl+Shift+D`, cierre al quitar el monitor. **Falta el lado web** (`workflow-f1.js`, ya re-alcanzado): selector de monitor en la tarjeta de Configuración (`listDisplays`/`setEnabled`), cierre desde el indicador por el puente, estado «abierta sin señal» (status.open y sin `display_alive`), ocultar `FullscreenButton` en escritorio, `grep electronAPI src/` = 0. | `electron/scripts/smoke-pos-display.md` |
 | F2 Terminal, ajustes, propina, QR | Pendiente. Migración `pos_terminals` escrita y verificada contra la base (existen `update_updated_at_column` y `organization_members.is_active`; `pos_terminals` no), **no aplicada**. | `workflow-f2.js` |
 | F3 Otro dispositivo | Pendiente. | `workflow-f3.js` |
@@ -104,7 +104,7 @@ lanzar otra ronda a ciegas; así A pasó a 9,7.
   que «Abrir ahora» siempre enlace).
 - Pantalla con estados *Conectando*, *Reposo*, *Pedido* (con «y N más» en ventanas
   bajas), *Cobro efectivo* (recibido/cambio), *Cobro tarjeta/QR sin imagen*, *Gracias*,
-  *Caja cerrada*; marca de la organización (`organizationService.getPublicBrand`).
+  *Caja cerrada*; marca de la organización (`organizationService.getOrganizationBrand`: solo nombre, logo y color).
 - Indicador en el encabezado del POS con menú «Activar y abrir pantalla del cliente» /
   «Abrir pantalla del cliente» / «Cerrar», estados «Pantalla desactivada» / «Sin
   pantalla» / «Pantalla del cliente conectada».

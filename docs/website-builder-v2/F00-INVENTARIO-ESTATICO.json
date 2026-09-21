@@ -1,0 +1,2359 @@
+{
+  "captured_at_utc": "2026-09-20T03:50:07.535012+00:00",
+  "purpose": "F00-A inventario estático; no certifica producción ni ejecuta red o BD. Solo rutas, líneas y hashes; sin contenido de clientes.",
+  "repositories": {
+    "erp": {
+      "root": "C:\\Users\\USUARIO\\CascadeProjects\\go-admin-erp",
+      "head": "68cb0fd8637ca0083dc137a30f90a62beb6424aa",
+      "scanned_scopes": [
+        "src",
+        "supabase/functions",
+        "scripts"
+      ],
+      "scanned_files": 4496,
+      "lexical_match_files": 15,
+      "lexical_reference_lines": 138,
+      "matches": [
+        {
+          "path": "src/app/app/chat/canales/sitio-web/[id]/page.tsx",
+          "references": [
+            {
+              "line": 96,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 152,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 170,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 218,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 219,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 248,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 249,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 274,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 280,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 281,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 307,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 313,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 314,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 340,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 349,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 350,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 381,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 382,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 473,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": [
+            99
+          ]
+        },
+        {
+          "path": "src/app/organizacion/branding/editor/[pageId]/page.tsx",
+          "references": [
+            {
+              "line": 91,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 840,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "src/components/chat/channels/website/ChannelDetailContent.tsx",
+          "references": [
+            {
+              "line": 84,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 146,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 164,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 212,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 213,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 242,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 243,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 268,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 274,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 275,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 301,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 307,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 308,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 334,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 342,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 343,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 374,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 375,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 472,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": [
+            87
+          ]
+        },
+        {
+          "path": "src/components/organization/branding/BrandingCheckoutTab.tsx",
+          "references": [
+            {
+              "line": 65,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 101,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [
+            68
+          ],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "src/components/organization/branding/editor/fields/EntityField.tsx",
+          "references": [
+            {
+              "line": 393,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 418,
+              "tokens": [
+                "website_pages"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "src/components/organization/branding/editor/fields/types.ts",
+          "references": [
+            {
+              "line": 16,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "src/components/organization/branding/editor/MenuTreeEditor.tsx",
+          "references": [
+            {
+              "line": 48,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 787,
+              "tokens": [
+                "website_pages"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "src/lib/ai/assistant/undoService.ts",
+          "references": [
+            {
+              "line": 116,
+              "tokens": [
+                "website_menu_items"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": [
+            215,
+            293,
+            328
+          ]
+        },
+        {
+          "path": "src/lib/services/branchFilterHelper.ts",
+          "references": [
+            {
+              "line": 28,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "src/lib/services/chatChannelsService.ts",
+          "references": [
+            {
+              "line": 20,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 202,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 246,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [
+            187,
+            196,
+            217,
+            231,
+            240,
+            266,
+            303,
+            345,
+            464,
+            498
+          ],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "src/lib/services/websiteMenuGroupService.ts",
+          "references": [
+            {
+              "line": 118,
+              "tokens": [
+                "website_menus"
+              ]
+            },
+            {
+              "line": 132,
+              "tokens": [
+                "website_menus"
+              ]
+            },
+            {
+              "line": 148,
+              "tokens": [
+                "website_menus"
+              ]
+            },
+            {
+              "line": 171,
+              "tokens": [
+                "website_menus"
+              ]
+            },
+            {
+              "line": 187,
+              "tokens": [
+                "website_menus"
+              ]
+            },
+            {
+              "line": 201,
+              "tokens": [
+                "website_menu_items"
+              ]
+            },
+            {
+              "line": 228,
+              "tokens": [
+                "website_menu_items"
+              ]
+            },
+            {
+              "line": 244,
+              "tokens": [
+                "website_menu_items"
+              ]
+            },
+            {
+              "line": 262,
+              "tokens": [
+                "website_menu_items"
+              ]
+            },
+            {
+              "line": 273,
+              "tokens": [
+                "website_menu_items"
+              ]
+            },
+            {
+              "line": 290,
+              "tokens": [
+                "website_menu_items"
+              ]
+            },
+            {
+              "line": 344,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 362,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 364,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 383,
+              "tokens": [
+                "website_pages"
+              ]
+            }
+          ],
+          "single_lines": [
+            160,
+            217
+          ],
+          "maybe_single_lines": [
+            175,
+            232,
+            277
+          ]
+        },
+        {
+          "path": "src/lib/services/websiteMenuService.ts",
+          "references": [
+            {
+              "line": 178,
+              "tokens": [
+                "website_pages"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "src/lib/services/websitePageBuilderService.ts",
+          "references": [
+            {
+              "line": 2703,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2728,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2753,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 2786,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2802,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2823,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2844,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2857,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2882,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2891,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2910,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2928,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2948,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2954,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 2974,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 2992,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 3005,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 3021,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 3045,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 3058,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 3079,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 3099,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 3114,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 3176,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 3200,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 3240,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 3255,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 3288,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 3435,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 3462,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 3480,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 3494,
+              "tokens": [
+                "website_page_versions"
+              ]
+            },
+            {
+              "line": 3504,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 3525,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 3540,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 3562,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 3569,
+              "tokens": [
+                "website_page_versions"
+              ]
+            },
+            {
+              "line": 3583,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 3608,
+              "tokens": [
+                "website_page_versions"
+              ]
+            },
+            {
+              "line": 3624,
+              "tokens": [
+                "website_page_versions"
+              ]
+            },
+            {
+              "line": 3638,
+              "tokens": [
+                "website_page_versions"
+              ]
+            },
+            {
+              "line": 3646,
+              "tokens": [
+                "website_page_versions"
+              ]
+            },
+            {
+              "line": 3653,
+              "tokens": [
+                "website_page_versions"
+              ]
+            },
+            {
+              "line": 3664,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 3675,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 3683,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 3706,
+              "tokens": [
+                "website_section_presets"
+              ]
+            },
+            {
+              "line": 3723,
+              "tokens": [
+                "website_section_presets"
+              ]
+            },
+            {
+              "line": 3740,
+              "tokens": [
+                "website_section_presets"
+              ]
+            }
+          ],
+          "single_lines": [
+            2731,
+            2810,
+            2826,
+            2870,
+            2885,
+            2951,
+            2963,
+            3061,
+            3268,
+            3451,
+            3507,
+            3514,
+            3577,
+            3611,
+            3667,
+            3678,
+            3696,
+            3732,
+            3765
+          ],
+          "maybe_single_lines": [
+            2795,
+            2851,
+            2901,
+            2914,
+            2978,
+            3180,
+            3249,
+            3757
+          ]
+        },
+        {
+          "path": "src/lib/services/websiteSettingsService.ts",
+          "references": [
+            {
+              "line": 329,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 367,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 377,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 393,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 417,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 429,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 521,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 565,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 598,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 632,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 662,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 694,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 726,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 753,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 776,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 849,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 899,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 928,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 995,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 1026,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [
+            381,
+            420,
+            496
+          ],
+          "maybe_single_lines": [
+            336,
+            373,
+            397,
+            571,
+            603,
+            637,
+            667,
+            699,
+            731,
+            758,
+            785,
+            854,
+            904,
+            943,
+            1003,
+            1034
+          ]
+        },
+        {
+          "path": "supabase/functions/ai-auto-response/index.ts",
+          "references": [
+            {
+              "line": 656,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [
+            352,
+            656,
+            689,
+            734,
+            756,
+            805,
+            830,
+            1758
+          ],
+          "maybe_single_lines": [
+            99,
+            663,
+            778,
+            1026,
+            1291,
+            1635
+          ]
+        }
+      ],
+      "protected_files": [
+        {
+          "path": "src/app/app/organizacion/branding/page.tsx",
+          "sha256": "c585010b935dccb3b9ad59c1ccd5f679bb339550355de5c988f96fed07ca77f0",
+          "bytes": 13536,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "src/app/organizacion/branding/editor/[pageId]/page.tsx",
+          "sha256": "7e0627822d147cbb5104fe70a3fe3e92cc891b8ba267b6daa96541e183315a39",
+          "bytes": 52765,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "src/lib/services/websiteSettingsService.ts",
+          "sha256": "f9073461f8166e219cbd5b3fa9777d2b24942e7ac171530a921e879f5970c0af",
+          "bytes": 40744,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "src/lib/services/websitePageBuilderService.ts",
+          "sha256": "e6330ecb8c798e6ac317f622a9666cfeb246fb27f2dd8750b5bf2327dc93935c",
+          "bytes": 145902,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "src/lib/services/websiteMenuService.ts",
+          "sha256": "d84e6b675abf7c91d19b4db5cfb7d98d85b3a16500cd9cd82bd526b46350261b",
+          "bytes": 9471,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "src/lib/services/websiteMenuGroupService.ts",
+          "sha256": "0b51d96d59a9ea2109dd805854ee8296c21d0293027a3109b0f7fc8b1655366b",
+          "bytes": 12528,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "src/components/organization/branding/editor/EditorPreview.tsx",
+          "sha256": "78266a934869809da6bc98e49171bf41a43ffe0472096db283208f90b150f148",
+          "bytes": 8956,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "src/components/organization/branding/BrandingCheckoutTab.tsx",
+          "sha256": "6987b166a9f313a1efcb583fac366241e128f83f2c01825bf56f7e6de9e1b0e7",
+          "bytes": 21653,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "src/lib/services/website/sectionContract.ts",
+          "sha256": "c8ac20febe4986b13c0dc971d79ebf991abb48d6fb98ddc64aedfb26d7225278",
+          "bytes": 8358,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "src/app/api/website/revalidate/route.ts",
+          "sha256": "d8d278fa4cf64c09439a54e86e63e75035f5859ae28fc44b56276a2ce52b3557",
+          "bytes": 776,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "supabase/functions/ai-auto-response/index.ts",
+          "sha256": "74efe0829fd8b1145ce4e6d8482b4c673d6f87c2108c671b318dd6d2b4815948",
+          "bytes": 93695,
+          "git_status_at_capture": "clean"
+        }
+      ]
+    },
+    "websites": {
+      "root": "C:\\Users\\USUARIO\\goadmin-websites",
+      "head": "b91cdf625189adac99f62bd189284921a18ce5fe",
+      "scanned_scopes": [
+        "app",
+        "components",
+        "lib",
+        "scripts",
+        "middleware.ts",
+        "types"
+      ],
+      "scanned_files": 407,
+      "lexical_match_files": 37,
+      "lexical_reference_lines": 122,
+      "matches": [
+        {
+          "path": "app/[[...slug]]/page.tsx",
+          "references": [
+            {
+              "line": 147,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 149,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 182,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 217,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 263,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 397,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 717,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "app/api/favicon/route.ts",
+          "references": [
+            {
+              "line": 35,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "app/api/reviews/route.ts",
+          "references": [
+            {
+              "line": 104,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [
+            132
+          ],
+          "maybe_single_lines": [
+            91,
+            107
+          ]
+        },
+        {
+          "path": "app/carrito/page.tsx",
+          "references": [
+            {
+              "line": 32,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "app/checkout/page.tsx",
+          "references": [
+            {
+              "line": 95,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 98,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 133,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 134,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [
+            101
+          ],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "app/layout.tsx",
+          "references": [
+            {
+              "line": 27,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "app/mi-cuenta/layout.tsx",
+          "references": [
+            {
+              "line": 19,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "app/pedido/[id]/page.tsx",
+          "references": [
+            {
+              "line": 33,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 34,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "app/productos/[id]/page.tsx",
+          "references": [
+            {
+              "line": 221,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 244,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 270,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 334,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 358,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 360,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 451,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [
+            46
+          ],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/category-detail/CategoryDetailRenderer.tsx",
+          "references": [
+            {
+              "line": 54,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 70,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 78,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 160,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/countdown/CountdownSection.tsx",
+          "references": [
+            {
+              "line": 20,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/gallery/GalleryMasonry.tsx",
+          "references": [
+            {
+              "line": 18,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/hero/HeroFullscreen.tsx",
+          "references": [
+            {
+              "line": 90,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/hero/HeroMinimal.tsx",
+          "references": [
+            {
+              "line": 81,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/hero/HeroSlider.tsx",
+          "references": [
+            {
+              "line": 293,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/hero/HeroSplit.tsx",
+          "references": [
+            {
+              "line": 54,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/hero/HeroVideo.tsx",
+          "references": [
+            {
+              "line": 55,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/map/MapEmbedded.tsx",
+          "references": [
+            {
+              "line": 41,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 44,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/product-detail/ProductDetailRenderer.tsx",
+          "references": [
+            {
+              "line": 59,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 61,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 109,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 216,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 218,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/product-detail/ProductInfo.tsx",
+          "references": [
+            {
+              "line": 93,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 95,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/products/FeaturedProducts.tsx",
+          "references": [
+            {
+              "line": 63,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 68,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/products/FeaturedProductsCarousel.tsx",
+          "references": [
+            {
+              "line": 13,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 20,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/products/ProductsCarousel.tsx",
+          "references": [
+            {
+              "line": 15,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 22,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/products/ProductsGrid.tsx",
+          "references": [
+            {
+              "line": 72,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 81,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/products/ProductsList.tsx",
+          "references": [
+            {
+              "line": 12,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 19,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/sections/retail/OffersGrid.tsx",
+          "references": [
+            {
+              "line": 43,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 50,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/site/CustomScripts.tsx",
+          "references": [
+            {
+              "line": 14,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/site/header/HeaderShared.tsx",
+          "references": [
+            {
+              "line": 24,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/site/OrganizationLayout.tsx",
+          "references": [
+            {
+              "line": 68,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "components/site/SiteHeader.tsx",
+          "references": [
+            {
+              "line": 227,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 356,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "lib/get-org-context.ts",
+          "references": [
+            {
+              "line": 82,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 138,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 142,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [
+            184
+          ],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "lib/outlet/catalog-helpers.ts",
+          "references": [
+            {
+              "line": 40,
+              "tokens": [
+                "website_pages"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "lib/outlet/theme-merge.ts",
+          "references": [
+            {
+              "line": 47,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 58,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 79,
+              "tokens": [
+                "website_settings"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": [
+            64,
+            83
+          ]
+        },
+        {
+          "path": "lib/supabase/queries.ts",
+          "references": [
+            {
+              "line": 231,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 265,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 308,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 704,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 1308,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 1322,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 1331,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 1341,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 1352,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 1371,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 1374,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 1392,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 1406,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 1443,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2529,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2556,
+              "tokens": [
+                "website_menu_items",
+                "website_menus"
+              ]
+            },
+            {
+              "line": 2615,
+              "tokens": [
+                "website_menus"
+              ]
+            },
+            {
+              "line": 2624,
+              "tokens": [
+                "website_menu_items"
+              ]
+            },
+            {
+              "line": 2641,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2693,
+              "tokens": [
+                "website_menus"
+              ]
+            },
+            {
+              "line": 2703,
+              "tokens": [
+                "website_menu_items"
+              ]
+            },
+            {
+              "line": 2720,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 2767,
+              "tokens": [
+                "website_menus"
+              ]
+            },
+            {
+              "line": 2776,
+              "tokens": [
+                "website_menu_items"
+              ]
+            },
+            {
+              "line": 2793,
+              "tokens": [
+                "website_pages"
+              ]
+            }
+          ],
+          "single_lines": [
+            287,
+            734,
+            945,
+            1112,
+            1229,
+            1247,
+            1265,
+            1281,
+            1387,
+            1699,
+            1772,
+            2152,
+            2212,
+            2318,
+            2331,
+            2340,
+            2508,
+            2550,
+            2771
+          ],
+          "maybe_single_lines": [
+            614,
+            795,
+            827,
+            1328,
+            1347,
+            2211,
+            2235
+          ]
+        },
+        {
+          "path": "lib/templates/apply-template.ts",
+          "references": [
+            {
+              "line": 5,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 6,
+              "tokens": [
+                "website_page_sections",
+                "website_pages"
+              ]
+            },
+            {
+              "line": 37,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 70,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 80,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 106,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 133,
+              "tokens": [
+                "website_page_sections"
+              ]
+            }
+          ],
+          "single_lines": [
+            109
+          ],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "lib/templates/presets.ts",
+          "references": [
+            {
+              "line": 5,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 7,
+              "tokens": [
+                "website_page_sections",
+                "website_pages"
+              ]
+            },
+            {
+              "line": 44,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 78,
+              "tokens": [
+                "website_pages"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        },
+        {
+          "path": "types/database.ts",
+          "references": [
+            {
+              "line": 84,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 278,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 352,
+              "tokens": [
+                "website_page_versions"
+              ]
+            },
+            {
+              "line": 373,
+              "tokens": [
+                "website_section_presets"
+              ]
+            },
+            {
+              "line": 397,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 489,
+              "tokens": [
+                "website_menus"
+              ]
+            },
+            {
+              "line": 523,
+              "tokens": [
+                "website_menu_items"
+              ]
+            },
+            {
+              "line": 807,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 808,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 809,
+              "tokens": [
+                "website_pages"
+              ]
+            },
+            {
+              "line": 810,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 819,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 820,
+              "tokens": [
+                "website_menus"
+              ]
+            },
+            {
+              "line": 821,
+              "tokens": [
+                "website_menu_items"
+              ]
+            },
+            {
+              "line": 829,
+              "tokens": [
+                "website_settings"
+              ]
+            },
+            {
+              "line": 837,
+              "tokens": [
+                "website_page_sections"
+              ]
+            },
+            {
+              "line": 843,
+              "tokens": [
+                "website_menu_items"
+              ]
+            }
+          ],
+          "single_lines": [],
+          "maybe_single_lines": []
+        }
+      ],
+      "protected_files": [
+        {
+          "path": "components/site/CheckoutWizard.tsx",
+          "sha256": "74aba5811423da192d713ad0d4faa849bfd38b78d8a5d5aded8c18604a158fcf",
+          "bytes": 70373,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/api/orders/route.ts",
+          "sha256": "b730bbaa6ba1ec59cc545f1131dbdcf97d6b65b8fdfaf12ac9112e4d6e781ef4",
+          "bytes": 19053,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/api/checkout/init/route.ts",
+          "sha256": "13bc2cf258b80056d37ad352294c6a73042526f90f0835bc198bde3a831953e9",
+          "bytes": 31309,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/api/shipping/calculate/route.ts",
+          "sha256": "ca0ff8824b338bc89f21833af47a2f06c075cdd874c12ea751ce45a620621ab1",
+          "bytes": 4857,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/checkout/page.tsx",
+          "sha256": "ffe6ded302a6f881a5d10b54073f01a262bc877e652d01f33ff551bd95bd837f",
+          "bytes": 9353,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/[[...slug]]/page.tsx",
+          "sha256": "87d75f5e313f98773584ed25886087ff7485f5283329238fc702700c88e1793e",
+          "bytes": 41528,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/productos/[id]/page.tsx",
+          "sha256": "efd8d503b8bd91d597d2cf1444682d8a8ead2fce516548b89e85a476344ecbd4",
+          "bytes": 20477,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/categorias/[slug]/page.tsx",
+          "sha256": "2b9e670331401229dac90d4268716d9a269e80232bcc028e52b00e79dbcd6dcd",
+          "bytes": 5039,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/espacios/[id]/page.tsx",
+          "sha256": "2cf0de78f21b095f14d75f5503cb8be3516e28299258b3b5e706e269bd308847",
+          "bytes": 5211,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "components/sections/SectionRenderer.tsx",
+          "sha256": "69809317d90649586160de7a072022b6f5445cac068f1c97664287bbbeac812b",
+          "bytes": 15051,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "components/sections/PreviewBridge.tsx",
+          "sha256": "d5461d29486edab3daa6013e6167e4612402ddda3d0b7b2fbfaacf85c25cb8cf",
+          "bytes": 6164,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "components/sections/PreviewableSections.tsx",
+          "sha256": "aa288814884d1a98fb895ccd733fa99d4e65d28e15f92cab1f04ee2e70e7e332",
+          "bytes": 1594,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "components/site/OrganizationLayout.tsx",
+          "sha256": "665ae983505e1c851731fb830a75ad3f0fd44d729dc1bda63ec4b828a128369f",
+          "bytes": 8834,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "components/site/SiteHeader.tsx",
+          "sha256": "e7bf2710fad490035721f38d1ce18db318ea4bd016edaef7d60ff3dd7d85b1fd",
+          "bytes": 16130,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "components/site/SiteFooter.tsx",
+          "sha256": "fe648ded636e58370c7d013f687fdc478bb218a7a79b1147a9d6ce01d2768628",
+          "bytes": 42548,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "lib/get-org-context.ts",
+          "sha256": "91d85435a326549e83dd053eadd8c3bc98c6c2c183e698186ee0cadc90fe834a",
+          "bytes": 11427,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "lib/outlet/resolver.ts",
+          "sha256": "4fb61ebc54df0033aed9edc2f527aedee93c516b6836116690e00218d8ada450",
+          "bytes": 5183,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "lib/outlet/theme-merge.ts",
+          "sha256": "4b110e502d6d7894c3aa013055783ee528092822ae740c9ea3471f33a58a0926",
+          "bytes": 3901,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "lib/supabase/queries.ts",
+          "sha256": "fe8648e8366c963768fe490c683769180d4633aa8867098f4a0550434b48e6ab",
+          "bytes": 99080,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "lib/supabase/cache.ts",
+          "sha256": "1cf10fbe79f2567cb67734aa346024e59823d1394dc090c28f925fb445329386",
+          "bytes": 5143,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "lib/templates/apply-template.ts",
+          "sha256": "007e1eb54daa59bd87c02bd47dd335e2a1f7fb0ef15b9b615f5a9ddcd0168335",
+          "bytes": 5964,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/api/templates/apply/route.ts",
+          "sha256": "1cf3bdb289fc1eebf0a048b200c3fff751e1138ee6627d3276eec60dfd83c4e1",
+          "bytes": 2395,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/api/revalidate/route.ts",
+          "sha256": "20a688ee2ba46bbf968a629d183dbd0cac6ea39f695730e68a27015d82c54cae",
+          "bytes": 1965,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/api/webhooks/bold/route.ts",
+          "sha256": "3e641eeecacc30030ae194dd30bfb5cf8d909b4351a3e06a6de8d50e156231de",
+          "bytes": 14227,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/api/webhooks/mercadopago/route.ts",
+          "sha256": "0ba5d20bffcd1e709703a92927bd676f3c55d8e263b04899989b2a4976a4af1a",
+          "bytes": 18186,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/api/webhooks/meta/route.ts",
+          "sha256": "b26383bcf81daf048f000141d1086650ccf620eb3dbf15c89fc20d24434b1b9d",
+          "bytes": 9418,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/api/webhooks/paypal/route.ts",
+          "sha256": "7991b65f6992a9f5447d13efca2395eabbbb75ff2c9ae87f76b7e107a0fcf928",
+          "bytes": 21962,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/api/webhooks/payu/route.ts",
+          "sha256": "f47cec1193484e7c0fec58d3977bc50e902635b7d07cc57c3dca4ed61a21eb86",
+          "bytes": 18074,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/api/webhooks/stripe/route.ts",
+          "sha256": "8dd22b2445fc2d825daafcdf9bcc8687438d4843c42f6c094560601c7c63ae28",
+          "bytes": 19988,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/api/webhooks/wompi_co/route.ts",
+          "sha256": "f06716479331f3b443441ba9c27e0b5a146a7ec8d35b04a5101616dce24b3215",
+          "bytes": 21164,
+          "git_status_at_capture": "clean"
+        },
+        {
+          "path": "app/carrito/page.tsx",
+          "sha256": "a73d91227e75307b3b7a77165e499a0385c49bcd4fea9d208b2d4bcd15ad837f",
+          "bytes": 2410,
+          "git_status_at_capture": "clean",
+          "capture_note": "Agregado tras feedback tester de F00-A; hashes originales preservados."
+        }
+      ]
+    }
+  }
+}

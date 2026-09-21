@@ -1,0 +1,3033 @@
+{
+  "description": "Resultados sanitizados de consultas MCP de solo lectura de F00. No contiene contenido de clientes ni copia de datos de negocio.",
+  "project_ref": "jgmgphmzusbluqhuqihj",
+  "source": "MCP Supabase list_tables y execute_sql; conversación de ejecución /loop 2026-09-19 America/Bogota",
+  "limitations": "No es un backup ni certificación del release desplegado. Los resultados corresponden a llamadas distintas; no snapshot transaccional global.",
+  "count_query_results": [
+    { "entity": "website_settings", "total": 84, "scoped": 0 },
+    { "entity": "website_pages", "total": 1064, "scoped": 0 },
+    { "entity": "website_page_sections", "total": 1944, "scoped": 0 },
+    { "entity": "website_menus", "total": 148, "scoped": null },
+    { "entity": "website_menu_items", "total": 830, "scoped": null },
+    { "entity": "website_page_versions", "total": 0, "scoped": null },
+    { "entity": "website_section_presets", "total": 0, "scoped": null }
+  ],
+  "anon_read_check": {
+    "method": "execute_sql MCP, BEGIN READ ONLY, statement_timeout 5000ms, SET LOCAL ROLE anon; agregados de website_pages; COMMIT",
+    "role_checked": "anon",
+    "readable_pages": 1064,
+    "readable_unpublished_pages": 7,
+    "readable_pages_with_draft": 0,
+    "content_exported": false
+  },
+  "storage_check": {
+    "requested_bucket_ids": ["organization-assets", "product-images"],
+    "method": "list_tables storage verbose y SELECT limitado a esos IDs por execute_sql MCP en transacción READ ONLY",
+    "rows": [{"id": "product-images", "public": true, "file_size_limit": 5242880, "allowed_mime_types": ["image/jpeg", "image/png", "image/webp", "image/gif"]}]
+  },
+  "tracking_check": {
+    "method": "Columnas extraídas del fuente getShipmentByTracking; verificadas por list_tables y compiladas mediante execute_sql MCP con WHERE false LIMIT 0",
+    "columns_by_table": {"shipments": 13, "proof_of_delivery": 4, "transport_events": 4},
+    "rows_read_by_table": {"shipments": 0, "proof_of_delivery": 0, "transport_events": 0},
+    "tenant_filter_in_source": true,
+    "single_in_source": false,
+    "http_flow_tested": false
+  },
+  "schema": [
+    {
+      "table": "public.branches",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "organization_id",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "city",
+          "type": "character varying",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "state",
+          "type": "character varying",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "country",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "postal_code",
+          "type": "character varying",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "latitude",
+          "type": "numeric",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "longitude",
+          "type": "numeric",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "phone",
+          "type": "character varying",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "email",
+          "type": "character varying",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "manager_id",
+          "type": "uuid",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "is_main",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "tax_identification",
+          "type": "character varying",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "opening_hours",
+          "type": "jsonb",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "features",
+          "type": "jsonb",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "capacity",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "branch_type",
+          "type": "character varying",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "zone",
+          "type": "character varying",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "branch_code",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "uuid",
+          "type": "uuid",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "municipality_id",
+          "type": "uuid",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "country_code",
+          "type": "character varying",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "state_code",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "is_web_stock_source",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "slug",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "subdomain",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "custom_domain",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "website_logo_url",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "website_cover_url",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "is_web_published",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "branches_manager_id_fkey",
+          "source_table": "public.branches",
+          "source_columns": [
+            "manager_id"
+          ],
+          "target_table": "public.profiles",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "fk_branches_country_name",
+          "source_table": "public.branches",
+          "source_columns": [
+            "country"
+          ],
+          "target_table": "public.countries",
+          "target_columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "branches_organization_id_fkey",
+          "source_table": "public.branches",
+          "source_columns": [
+            "organization_id"
+          ],
+          "target_table": "public.organizations",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "fk_branches_municipality",
+          "source_table": "public.branches",
+          "source_columns": [
+            "municipality_id"
+          ],
+          "target_table": "public.municipalities",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.website_settings",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "organization_id",
+          "type": "integer",
+          "options": [
+            "updatable",
+            "unique"
+          ]
+        },
+        {
+          "name": "template_id",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "theme_mode",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "primary_color",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "secondary_color",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "accent_color",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "background_color",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "text_color",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "font_heading",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "font_body",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_products",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_services",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_gallery",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_testimonials",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_team",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_blog",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_faq",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_contact",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_map",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_social_links",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "enable_reservations",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "enable_online_ordering",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "enable_appointments",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "enable_memberships",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "enable_tickets",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "enable_parking_booking",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "meta_title",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "meta_description",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "meta_keywords",
+          "type": "ARRAY",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "og_image_url",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "social_links",
+          "type": "jsonb",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "business_hours",
+          "type": "jsonb",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "custom_css",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "custom_scripts",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "analytics_id",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "gallery_images",
+          "type": "jsonb",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "testimonials",
+          "type": "jsonb",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "faq_items",
+          "type": "jsonb",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_text",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_links",
+          "type": "jsonb",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "is_published",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "favicon_url",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "google_site_verification",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "bing_site_verification",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "canonical_url",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "header_style",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_style",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "header_cta_text",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "header_cta_url",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_header_cart",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_header_auth",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_topbar",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "logo_position",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "tax_rate",
+          "type": "numeric",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "tax_name",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "tax_included",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "shipping_flat_rate",
+          "type": "numeric",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "free_shipping_threshold",
+          "type": "numeric",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "enable_shipping",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "available_delivery_types",
+          "type": "ARRAY",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "shipping_flat_rate_title",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "shipping_flat_rate_description",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_powered_by",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "logo_height",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "favicon_height",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "countdown_enabled",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "countdown_title",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "countdown_mode",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "countdown_end_date",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "countdown_timezone",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "countdown_reset_hour",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "countdown_show_in_header",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "countdown_show_in_cart",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "countdown_show_in_product",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "countdown_show_in_hero",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_buy_now_button",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "chat_widget_enabled",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "chat_widget_public_key",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "checkout_mode",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "checkout_show_trust_badges",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "checkout_trust_badges",
+          "type": "jsonb",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "checkout_show_stock_warning",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "checkout_stock_warning_threshold",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "checkout_show_payment_logos",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "checkout_show_countdown",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "cart_button_mode",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "cart_button_texts",
+          "type": "jsonb",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "menu_position",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "search_style",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_categories_in_header",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "categories_menu_style",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "mega_menu_columns",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "mobile_menu_style",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "mobile_search_style",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "mobile_show_topbar",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "mobile_sticky_header",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "mobile_breakpoint",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "header_opacity",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "header_bg_color",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "topbar_bg_color",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "nav_bg_color",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "topbar_show_email",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "topbar_show_phone",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "topbar_announcement",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "topbar_contact_position",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "header_menu_id",
+          "type": "uuid",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "header_mega_menu_id",
+          "type": "uuid",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "mobile_footer_style",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "mobile_footer_show_social",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "mobile_footer_show_hours",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_show_categories",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_columns",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_background",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_custom_bg_color",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_show_contact",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_show_hours",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_show_social",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_show_newsletter",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_newsletter_title",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_newsletter_placeholder",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_newsletter_button_text",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "minimal_menu_style",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "cart_icon",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "search_icon",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "auth_icon",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "currency_icon",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "actions_order",
+          "type": "jsonb",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "cta_padding_x",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "cta_padding_y",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "cta_border_radius",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "cta_full_width",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "cta_border_width",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "cta_border_color",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "cta_shadow",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "cta_bg_color",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "cta_text_color",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "cta_margin_top",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "cta_margin_bottom",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "reviews_auto_approve",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_currency_code",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "currency_position",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "branch_id",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "website_settings_header_mega_menu_id_fkey",
+          "source_table": "public.website_settings",
+          "source_columns": [
+            "header_mega_menu_id"
+          ],
+          "target_table": "public.website_menus",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_settings_header_menu_id_fkey",
+          "source_table": "public.website_settings",
+          "source_columns": [
+            "header_menu_id"
+          ],
+          "target_table": "public.website_menus",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_settings_branch_id_fkey",
+          "source_table": "public.website_settings",
+          "source_columns": [
+            "branch_id"
+          ],
+          "target_table": "public.branches",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_settings_organization_id_fkey",
+          "source_table": "public.website_settings",
+          "source_columns": [
+            "organization_id"
+          ],
+          "target_table": "public.organizations",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.website_pages",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "organization_id",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "slug",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "page_type",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_in_header",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "show_in_footer",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "header_order",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_order",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "is_published",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "meta_title",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "meta_description",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "og_image_url",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "parent_page_id",
+          "type": "uuid",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "linked_category_id",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "menu_icon",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "menu_badge",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "draft_content",
+          "type": "jsonb",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "has_unpublished_changes",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "page_settings",
+          "type": "jsonb",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "branch_id",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "website_pages_branch_id_fkey",
+          "source_table": "public.website_pages",
+          "source_columns": [
+            "branch_id"
+          ],
+          "target_table": "public.branches",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_pages_linked_category_id_fkey",
+          "source_table": "public.website_pages",
+          "source_columns": [
+            "linked_category_id"
+          ],
+          "target_table": "public.categories",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_pages_organization_id_fkey",
+          "source_table": "public.website_pages",
+          "source_columns": [
+            "organization_id"
+          ],
+          "target_table": "public.organizations",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_pages_parent_page_id_fkey",
+          "source_table": "public.website_pages",
+          "source_columns": [
+            "parent_page_id"
+          ],
+          "target_table": "public.website_pages",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.website_page_sections",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "page_id",
+          "type": "uuid",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "organization_id",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "section_type",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "section_variant",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "content",
+          "type": "jsonb",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "settings",
+          "type": "jsonb",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "is_visible",
+          "type": "boolean",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "branch_id",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "website_page_sections_page_id_fkey",
+          "source_table": "public.website_page_sections",
+          "source_columns": [
+            "page_id"
+          ],
+          "target_table": "public.website_pages",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_page_sections_branch_id_fkey",
+          "source_table": "public.website_page_sections",
+          "source_columns": [
+            "branch_id"
+          ],
+          "target_table": "public.branches",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_page_sections_organization_id_fkey",
+          "source_table": "public.website_page_sections",
+          "source_columns": [
+            "organization_id"
+          ],
+          "target_table": "public.organizations",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.website_menus",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "organization_id",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "slug",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "location",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_column",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "footer_order",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "header_order",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "updatable"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "website_menus_organization_id_fkey",
+          "source_table": "public.website_menus",
+          "source_columns": [
+            "organization_id"
+          ],
+          "target_table": "public.organizations",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.website_menu_items",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "menu_id",
+          "type": "uuid",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "organization_id",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "item_type",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "page_id",
+          "type": "uuid",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "category_id",
+          "type": "integer",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "custom_label",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "custom_url",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "parent_item_id",
+          "type": "uuid",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "icon",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "badge",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "display_order",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "updatable"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "website_menu_items_parent_item_id_fkey",
+          "source_table": "public.website_menu_items",
+          "source_columns": [
+            "parent_item_id"
+          ],
+          "target_table": "public.website_menu_items",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_menu_items_menu_id_fkey",
+          "source_table": "public.website_menu_items",
+          "source_columns": [
+            "menu_id"
+          ],
+          "target_table": "public.website_menus",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_menu_items_organization_id_fkey",
+          "source_table": "public.website_menu_items",
+          "source_columns": [
+            "organization_id"
+          ],
+          "target_table": "public.organizations",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_menu_items_page_id_fkey",
+          "source_table": "public.website_menu_items",
+          "source_columns": [
+            "page_id"
+          ],
+          "target_table": "public.website_pages",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_menu_items_category_id_fkey",
+          "source_table": "public.website_menu_items",
+          "source_columns": [
+            "category_id"
+          ],
+          "target_table": "public.categories",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.website_page_versions",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "page_id",
+          "type": "uuid",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "organization_id",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "content_snapshot",
+          "type": "jsonb",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "website_page_versions_created_by_fkey",
+          "source_table": "public.website_page_versions",
+          "source_columns": [
+            "created_by"
+          ],
+          "target_table": "public.profiles",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_page_versions_page_id_fkey",
+          "source_table": "public.website_page_versions",
+          "source_columns": [
+            "page_id"
+          ],
+          "target_table": "public.website_pages",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_page_versions_organization_id_fkey",
+          "source_table": "public.website_page_versions",
+          "source_columns": [
+            "organization_id"
+          ],
+          "target_table": "public.organizations",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.website_section_presets",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "organization_id",
+          "type": "integer",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "section_type",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "section_variant",
+          "type": "text",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "content",
+          "type": "jsonb",
+          "options": [
+            "updatable"
+          ]
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "options": [
+            "nullable",
+            "updatable"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "options": [
+            "updatable"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "website_section_presets_created_by_fkey",
+          "source_table": "public.website_section_presets",
+          "source_columns": [
+            "created_by"
+          ],
+          "target_table": "public.profiles",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "website_section_presets_organization_id_fkey",
+          "source_table": "public.website_section_presets",
+          "source_columns": [
+            "organization_id"
+          ],
+          "target_table": "public.organizations",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    }
+  ],
+  "constraints": [
+    {
+      "table_name": "website_menu_items",
+      "constraint_name": "website_menu_items_category_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "website_menu_items",
+      "constraint_name": "website_menu_items_menu_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (menu_id) REFERENCES website_menus(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "website_menu_items",
+      "constraint_name": "website_menu_items_organization_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "website_menu_items",
+      "constraint_name": "website_menu_items_page_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (page_id) REFERENCES website_pages(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "website_menu_items",
+      "constraint_name": "website_menu_items_parent_item_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (parent_item_id) REFERENCES website_menu_items(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "website_menu_items",
+      "constraint_name": "website_menu_items_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "website_menus",
+      "constraint_name": "website_menus_organization_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "website_menus",
+      "constraint_name": "website_menus_organization_id_slug_key",
+      "type": "u",
+      "definition": "UNIQUE (organization_id, slug)"
+    },
+    {
+      "table_name": "website_menus",
+      "constraint_name": "website_menus_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "website_page_sections",
+      "constraint_name": "website_page_sections_branch_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "website_page_sections",
+      "constraint_name": "website_page_sections_organization_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "website_page_sections",
+      "constraint_name": "website_page_sections_page_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (page_id) REFERENCES website_pages(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "website_page_sections",
+      "constraint_name": "website_page_sections_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "website_page_versions",
+      "constraint_name": "website_page_versions_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES profiles(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "website_page_versions",
+      "constraint_name": "website_page_versions_organization_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "website_page_versions",
+      "constraint_name": "website_page_versions_page_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (page_id) REFERENCES website_pages(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "website_page_versions",
+      "constraint_name": "website_page_versions_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "website_pages",
+      "constraint_name": "website_pages_branch_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "website_pages",
+      "constraint_name": "website_pages_linked_category_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (linked_category_id) REFERENCES categories(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "website_pages",
+      "constraint_name": "website_pages_organization_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "website_pages",
+      "constraint_name": "website_pages_organization_id_slug_key",
+      "type": "u",
+      "definition": "UNIQUE (organization_id, slug)"
+    },
+    {
+      "table_name": "website_pages",
+      "constraint_name": "website_pages_page_type_check",
+      "type": "c",
+      "definition": "CHECK ((page_type = ANY (ARRAY['builtin'::text, 'custom'::text, 'product_detail'::text, 'category_detail'::text, 'cart'::text, 'checkout'::text, 'order_confirmation'::text, 'space_detail'::text, 'account'::text])))"
+    },
+    {
+      "table_name": "website_pages",
+      "constraint_name": "website_pages_parent_page_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (parent_page_id) REFERENCES website_pages(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "website_pages",
+      "constraint_name": "website_pages_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "website_section_presets",
+      "constraint_name": "website_section_presets_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES profiles(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "website_section_presets",
+      "constraint_name": "website_section_presets_organization_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "website_section_presets",
+      "constraint_name": "website_section_presets_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "website_settings",
+      "constraint_name": "website_settings_branch_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "website_settings",
+      "constraint_name": "website_settings_checkout_mode_check",
+      "type": "c",
+      "definition": "CHECK ((checkout_mode = ANY (ARRAY['steps'::text, 'one_page'::text])))"
+    },
+    {
+      "table_name": "website_settings",
+      "constraint_name": "website_settings_footer_style_check",
+      "type": "c",
+      "definition": "CHECK ((footer_style = ANY (ARRAY['default'::text, 'minimal'::text, 'centered'::text, 'three_columns'::text])))"
+    },
+    {
+      "table_name": "website_settings",
+      "constraint_name": "website_settings_header_mega_menu_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (header_mega_menu_id) REFERENCES website_menus(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "website_settings",
+      "constraint_name": "website_settings_header_menu_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (header_menu_id) REFERENCES website_menus(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "website_settings",
+      "constraint_name": "website_settings_header_style_check",
+      "type": "c",
+      "definition": "CHECK ((header_style = ANY (ARRAY['default'::text, 'transparent'::text, 'minimal'::text, 'centered'::text, 'split'::text, 'mega'::text])))"
+    },
+    {
+      "table_name": "website_settings",
+      "constraint_name": "website_settings_logo_position_check",
+      "type": "c",
+      "definition": "CHECK ((logo_position = ANY (ARRAY['left'::text, 'center'::text, 'right'::text])))"
+    },
+    {
+      "table_name": "website_settings",
+      "constraint_name": "website_settings_organization_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "website_settings",
+      "constraint_name": "website_settings_organization_id_key",
+      "type": "u",
+      "definition": "UNIQUE (organization_id)"
+    },
+    {
+      "table_name": "website_settings",
+      "constraint_name": "website_settings_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "website_settings",
+      "constraint_name": "website_settings_theme_mode_check",
+      "type": "c",
+      "definition": "CHECK ((theme_mode = ANY (ARRAY['light'::text, 'dark'::text, 'auto'::text])))"
+    },
+    {
+      "table_name": "website_settings",
+      "constraint_name": "website_settings_topbar_contact_position_check",
+      "type": "c",
+      "definition": "CHECK ((topbar_contact_position = ANY (ARRAY['left'::text, 'right'::text])))"
+    }
+  ],
+  "indexes": [
+    {
+      "table_name": "website_page_sections",
+      "index_name": "idx_website_page_sections_branch",
+      "unique_index": false,
+      "valid": true,
+      "definition": "CREATE INDEX idx_website_page_sections_branch ON public.website_page_sections USING btree (branch_id) WHERE (branch_id IS NOT NULL)"
+    },
+    {
+      "table_name": "website_page_sections",
+      "index_name": "idx_website_page_sections_org",
+      "unique_index": false,
+      "valid": true,
+      "definition": "CREATE INDEX idx_website_page_sections_org ON public.website_page_sections USING btree (organization_id)"
+    },
+    {
+      "table_name": "website_page_sections",
+      "index_name": "idx_website_page_sections_page_order",
+      "unique_index": false,
+      "valid": true,
+      "definition": "CREATE INDEX idx_website_page_sections_page_order ON public.website_page_sections USING btree (page_id, sort_order) WHERE (is_visible = true)"
+    },
+    {
+      "table_name": "website_page_sections",
+      "index_name": "website_page_sections_pkey",
+      "unique_index": true,
+      "valid": true,
+      "definition": "CREATE UNIQUE INDEX website_page_sections_pkey ON public.website_page_sections USING btree (id)"
+    },
+    {
+      "table_name": "website_pages",
+      "index_name": "idx_website_pages_footer",
+      "unique_index": false,
+      "valid": true,
+      "definition": "CREATE INDEX idx_website_pages_footer ON public.website_pages USING btree (organization_id, footer_order) WHERE ((show_in_footer = true) AND (is_published = true))"
+    },
+    {
+      "table_name": "website_pages",
+      "index_name": "idx_website_pages_header",
+      "unique_index": false,
+      "valid": true,
+      "definition": "CREATE INDEX idx_website_pages_header ON public.website_pages USING btree (organization_id, header_order) WHERE ((show_in_header = true) AND (is_published = true))"
+    },
+    {
+      "table_name": "website_pages",
+      "index_name": "idx_website_pages_org_branch",
+      "unique_index": false,
+      "valid": true,
+      "definition": "CREATE INDEX idx_website_pages_org_branch ON public.website_pages USING btree (organization_id, branch_id)"
+    },
+    {
+      "table_name": "website_pages",
+      "index_name": "idx_website_pages_org_branch_slug",
+      "unique_index": true,
+      "valid": true,
+      "definition": "CREATE UNIQUE INDEX idx_website_pages_org_branch_slug ON public.website_pages USING btree (organization_id, COALESCE(branch_id, '-1'::integer), slug) WHERE ((slug IS NOT NULL) AND (slug <> ''::text))"
+    },
+    {
+      "table_name": "website_pages",
+      "index_name": "idx_website_pages_org_published",
+      "unique_index": false,
+      "valid": true,
+      "definition": "CREATE INDEX idx_website_pages_org_published ON public.website_pages USING btree (organization_id, is_published)"
+    },
+    {
+      "table_name": "website_pages",
+      "index_name": "idx_website_pages_org_slug_unique",
+      "unique_index": true,
+      "valid": true,
+      "definition": "CREATE UNIQUE INDEX idx_website_pages_org_slug_unique ON public.website_pages USING btree (organization_id, slug) WHERE (branch_id IS NULL)"
+    },
+    {
+      "table_name": "website_pages",
+      "index_name": "idx_website_pages_parent",
+      "unique_index": false,
+      "valid": true,
+      "definition": "CREATE INDEX idx_website_pages_parent ON public.website_pages USING btree (organization_id, parent_page_id)"
+    },
+    {
+      "table_name": "website_pages",
+      "index_name": "website_pages_organization_id_slug_key",
+      "unique_index": true,
+      "valid": true,
+      "definition": "CREATE UNIQUE INDEX website_pages_organization_id_slug_key ON public.website_pages USING btree (organization_id, slug)"
+    },
+    {
+      "table_name": "website_pages",
+      "index_name": "website_pages_pkey",
+      "unique_index": true,
+      "valid": true,
+      "definition": "CREATE UNIQUE INDEX website_pages_pkey ON public.website_pages USING btree (id)"
+    },
+    {
+      "table_name": "website_settings",
+      "index_name": "idx_website_settings_org",
+      "unique_index": false,
+      "valid": true,
+      "definition": "CREATE INDEX idx_website_settings_org ON public.website_settings USING btree (organization_id)"
+    },
+    {
+      "table_name": "website_settings",
+      "index_name": "idx_website_settings_org_branch",
+      "unique_index": true,
+      "valid": true,
+      "definition": "CREATE UNIQUE INDEX idx_website_settings_org_branch ON public.website_settings USING btree (organization_id, COALESCE(branch_id, '-1'::integer))"
+    },
+    {
+      "table_name": "website_settings",
+      "index_name": "idx_website_settings_org_unique",
+      "unique_index": true,
+      "valid": true,
+      "definition": "CREATE UNIQUE INDEX idx_website_settings_org_unique ON public.website_settings USING btree (organization_id) WHERE (branch_id IS NULL)"
+    },
+    {
+      "table_name": "website_settings",
+      "index_name": "idx_website_settings_published",
+      "unique_index": false,
+      "valid": true,
+      "definition": "CREATE INDEX idx_website_settings_published ON public.website_settings USING btree (is_published) WHERE (is_published = true)"
+    },
+    {
+      "table_name": "website_settings",
+      "index_name": "website_settings_organization_id_key",
+      "unique_index": true,
+      "valid": true,
+      "definition": "CREATE UNIQUE INDEX website_settings_organization_id_key ON public.website_settings USING btree (organization_id)"
+    },
+    {
+      "table_name": "website_settings",
+      "index_name": "website_settings_pkey",
+      "unique_index": true,
+      "valid": true,
+      "definition": "CREATE UNIQUE INDEX website_settings_pkey ON public.website_settings USING btree (id)"
+    }
+  ],
+  "inventory": {
+    "branches": {
+      "total": 89,
+      "published": 0
+    },
+    "section_pairs": [
+      {
+        "uses": 47,
+        "section_type": "amenities",
+        "section_variant": "grid"
+      },
+      {
+        "uses": 43,
+        "section_type": "amenities",
+        "section_variant": "icons"
+      },
+      {
+        "uses": 41,
+        "section_type": "booking_cta",
+        "section_variant": "banner"
+      },
+      {
+        "uses": 41,
+        "section_type": "booking_cta",
+        "section_variant": "inline_form"
+      },
+      {
+        "uses": 25,
+        "section_type": "brands",
+        "section_variant": "logos"
+      },
+      {
+        "uses": 2,
+        "section_type": "categories_grid",
+        "section_variant": "default"
+      },
+      {
+        "uses": 25,
+        "section_type": "categories_grid",
+        "section_variant": "grid"
+      },
+      {
+        "uses": 24,
+        "section_type": "categories_grid",
+        "section_variant": "horizontal"
+      },
+      {
+        "uses": 1,
+        "section_type": "categories_grid",
+        "section_variant": "icons"
+      },
+      {
+        "uses": 5,
+        "section_type": "contact_form",
+        "section_variant": "default"
+      },
+      {
+        "uses": 83,
+        "section_type": "contact_form",
+        "section_variant": "split"
+      },
+      {
+        "uses": 34,
+        "section_type": "cta",
+        "section_variant": "banner"
+      },
+      {
+        "uses": 21,
+        "section_type": "cta",
+        "section_variant": "centered"
+      },
+      {
+        "uses": 6,
+        "section_type": "delivery_cta",
+        "section_variant": "banner"
+      },
+      {
+        "uses": 3,
+        "section_type": "demo_cta",
+        "section_variant": "form"
+      },
+      {
+        "uses": 11,
+        "section_type": "faq",
+        "section_variant": "accordion"
+      },
+      {
+        "uses": 3,
+        "section_type": "faq",
+        "section_variant": "two_columns"
+      },
+      {
+        "uses": 25,
+        "section_type": "featured_products",
+        "section_variant": "carousel"
+      },
+      {
+        "uses": 32,
+        "section_type": "featured_products",
+        "section_variant": "grid"
+      },
+      {
+        "uses": 6,
+        "section_type": "features_grid",
+        "section_variant": "alternating"
+      },
+      {
+        "uses": 6,
+        "section_type": "gallery",
+        "section_variant": "grid"
+      },
+      {
+        "uses": 96,
+        "section_type": "gallery",
+        "section_variant": "masonry"
+      },
+      {
+        "uses": 56,
+        "section_type": "hero",
+        "section_variant": "fullscreen"
+      },
+      {
+        "uses": 294,
+        "section_type": "hero",
+        "section_variant": "minimal"
+      },
+      {
+        "uses": 25,
+        "section_type": "hero",
+        "section_variant": "slider"
+      },
+      {
+        "uses": 79,
+        "section_type": "hero",
+        "section_variant": "split"
+      },
+      {
+        "uses": 3,
+        "section_type": "how_it_works",
+        "section_variant": "steps"
+      },
+      {
+        "uses": 7,
+        "section_type": "image_text",
+        "section_variant": "image_right"
+      },
+      {
+        "uses": 9,
+        "section_type": "map",
+        "section_variant": "default"
+      },
+      {
+        "uses": 93,
+        "section_type": "map",
+        "section_variant": "embedded"
+      },
+      {
+        "uses": 27,
+        "section_type": "map",
+        "section_variant": "full_width"
+      },
+      {
+        "uses": 12,
+        "section_type": "menu_preview",
+        "section_variant": "tabs"
+      },
+      {
+        "uses": 25,
+        "section_type": "newsletter",
+        "section_variant": "simple"
+      },
+      {
+        "uses": 21,
+        "section_type": "offers",
+        "section_variant": "grid"
+      },
+      {
+        "uses": 1,
+        "section_type": "parking_availability",
+        "section_variant": "summary"
+      },
+      {
+        "uses": 2,
+        "section_type": "parking_features",
+        "section_variant": "icons"
+      },
+      {
+        "uses": 1,
+        "section_type": "parking_pass_plans",
+        "section_variant": "cards"
+      },
+      {
+        "uses": 2,
+        "section_type": "parking_pricing",
+        "section_variant": "cards"
+      },
+      {
+        "uses": 2,
+        "section_type": "parking_zones",
+        "section_variant": "grid"
+      },
+      {
+        "uses": 28,
+        "section_type": "partners",
+        "section_variant": "logos"
+      },
+      {
+        "uses": 6,
+        "section_type": "pricing_table",
+        "section_variant": "three_columns"
+      },
+      {
+        "uses": 3,
+        "section_type": "products_grid",
+        "section_variant": "default"
+      },
+      {
+        "uses": 55,
+        "section_type": "products_grid",
+        "section_variant": "grid"
+      },
+      {
+        "uses": 48,
+        "section_type": "promo_banners",
+        "section_variant": "grid"
+      },
+      {
+        "uses": 12,
+        "section_type": "reservation_cta",
+        "section_variant": "with_form"
+      },
+      {
+        "uses": 42,
+        "section_type": "room_types",
+        "section_variant": "cards"
+      },
+      {
+        "uses": 42,
+        "section_type": "room_types",
+        "section_variant": "detailed"
+      },
+      {
+        "uses": 48,
+        "section_type": "services_list",
+        "section_variant": "cards"
+      },
+      {
+        "uses": 1,
+        "section_type": "services_list",
+        "section_variant": "grid"
+      },
+      {
+        "uses": 6,
+        "section_type": "specialties",
+        "section_variant": "featured"
+      },
+      {
+        "uses": 132,
+        "section_type": "stats",
+        "section_variant": "counters"
+      },
+      {
+        "uses": 82,
+        "section_type": "team",
+        "section_variant": "grid"
+      },
+      {
+        "uses": 83,
+        "section_type": "testimonials",
+        "section_variant": "carousel"
+      },
+      {
+        "uses": 41,
+        "section_type": "text_block",
+        "section_variant": "centered"
+      },
+      {
+        "uses": 1,
+        "section_type": "text_block",
+        "section_variant": "left"
+      },
+      {
+        "uses": 34,
+        "section_type": "text_block",
+        "section_variant": "two_columns"
+      },
+      {
+        "uses": 41,
+        "section_type": "why_choose_us",
+        "section_variant": "icons"
+      }
+    ],
+    "scope_mismatches": 0
+  }
+}

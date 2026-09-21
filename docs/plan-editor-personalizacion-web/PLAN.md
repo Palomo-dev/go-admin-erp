@@ -1,5 +1,7 @@
 # PLAN — Personalización avanzada del Editor Web + Sitio Público
 
+> **Estado 2026-09-21: antecedente.** F0–F12 implementadas (F2.6 pendiente). Sus decisiones de arquitectura (contrato de estilo, grupos de campos, manifiesto, `postMessage`) se conservan y evolucionan en V2. `sectionContract.test.ts` sigue en rojo por fixture desincronizado: se regenera en la etapa 1 de V2 (ADR-002 D10). El versionado de F12 (`website_page_versions`, 0 filas) se sustituye por revisiones de sitio completo. Gobierna el [plan V2](../website-builder-v2/PLAN-MAESTRO.md) y su [ADR-002](../website-builder-v2/ADR-002-DECISIONES-Y-SECUENCIA.md).
+
 **Módulos implicados:** `app-organ` (branding/editor), `inventario` (categorías/productos), `pos`/`pms` (reservas de mesa), `finanzas` (facturación/AR), repositorio `goadmin-websites`
 **Repositorios:**
 - ERP (editor): `C:\Users\USUARIO\CascadeProjects\go-admin-erp`

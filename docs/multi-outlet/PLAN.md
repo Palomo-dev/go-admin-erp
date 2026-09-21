@@ -1,5 +1,7 @@
 # Plan Multi-Outlet — 1 organización, N negocios publicables
 
+> **Estado 2026-09-21: antecedente.** F0–F6 implementadas y en `main`, pero **inoperantes**: 0 settings y 0 páginas con `branch_id`, 0 sucursales publicadas, los 3 UNIQUE legacy presentes. El DROP de constraints previsto aquí **queda descartado** (ADR-001). Qué se reutiliza, congela o retira de este código está en [ADR-002 D7](../website-builder-v2/ADR-002-DECISIONES-Y-SECUENCIA.md#d7--qué-pasa-con-el-código-multi-outlet-f1f6-que-ya-está-en-main). Gobierna el [plan V2](../website-builder-v2/PLAN-MAESTRO.md) y su [ADR-002](../website-builder-v2/ADR-002-DECISIONES-Y-SECUENCIA.md).
+
 > Fecha: 2026-09-01 (audit profundo completado)
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj`
 > Repos ERP: `C:\Users\USUARIO\CascadeProjects\go-admin-erp`

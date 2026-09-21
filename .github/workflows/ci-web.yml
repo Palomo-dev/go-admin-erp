@@ -38,6 +38,22 @@ jobs:
         # Las reglas de fecha estan en 'warn' para lo no migrado.
         # Cuando P1-3 termine, quitar continue-on-error para que rompa el build.
 
+  typecheck:
+    name: TypeScript (tsc --noEmit)
+    # Compuerta de tipos del repo. Vercel y el build del desktop no la hacen
+    # dentro de `next build` (NEXT_SKIP_TYPECHECK=1): necesita ~8 GB de heap.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx tsc --noEmit -p tsconfig.json
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
   timezone-tests:
     name: Timezone tests (TZ=UTC + TZ=America/Bogota)
     runs-on: ubuntu-latest

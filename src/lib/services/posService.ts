@@ -2,12 +2,14 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId, getCurrentBranchIdWithFallback, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
 import { calculateCartTaxesComplete, getTaxIncludedSetting, formatTaxCalculationForLog, type TaxCalculationItem } from '@/lib/utils/taxCalculations';
+import { resolveLineTax } from '@/lib/services/taxResolver';
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
 import { stockMovementService } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
-import { enqueueOfflineSale, shouldCheckoutOffline, newLocalUuid } from '@/lib/offline/salesOutbox';
+import { enqueueOfflineSale, shouldCheckoutOffline, newLocalUuid, newSaleId } from '@/lib/offline/salesOutbox';
+import { buildCheckoutEnvelope, callCheckoutRpc, isCheckoutRpcAvailable } from '@/lib/offline/checkoutRpc';
 import { enqueueOfflineCustomer, findLocalCustomerDuplicate, type OfflineCustomerPayload } from '@/lib/offline/customersOutbox';
 import { posOfflineReads } from '@/lib/offline/posOfflineReads';
 import { isDesktop } from '@/lib/utils/desktop';
@@ -1733,14 +1735,24 @@ export class POSService {
         const lineNet = lineTotal - itemDiscount;
         const itemTaxIncluded = item.tax_included ?? checkoutTaxIncluded;
 
-        // Si el item no trae tax_rate, resolverlo desde los impuestos del producto
+        // F-42: Resolver impuestos con el resolver único (mismo orden que NuevaFacturaForm
+        // y cotizacionesService): item → product_tax_relations → org default → 0.
         let itemTaxRate = Number(item.tax_rate) || 0;
+        let itemTaxCode: string | null = null;
         if (!itemTaxRate && item.product_id) {
           try {
-            const productTaxes = await this.getProductTaxes(item.product_id);
-            itemTaxRate = productTaxes
-              .filter((rel: any) => rel.organization_taxes?.is_active)
-              .reduce((sum: number, rel: any) => sum + Number(rel.organization_taxes.rate || 0), 0);
+            const resolved = await resolveLineTax({
+              itemTaxRate: item.tax_rate,
+              itemTaxCode: null,
+              productId: item.product_id,
+              organizationId: this.organizationId,
+              taxIncluded: itemTaxIncluded,
+              qty: item.quantity || 1,
+              unitPrice: item.unit_price || 0,
+              discountAmount: itemDiscount,
+            });
+            itemTaxRate = resolved.tax_rate;
+            itemTaxCode = resolved.tax_code;
           } catch (taxErr) {
             console.warn('No se pudieron obtener impuestos del producto', item.product_id, taxErr);
           }
@@ -1791,12 +1803,68 @@ export class POSService {
       const isDebtCheckout = !!(cart.sale_id && cart.invoice_id);
       let saleData: any;
 
-      // ── Idempotencia por id de cliente (fase 4B) ──
-      // Si el POS trajo `saleId` y esa venta ya existe en la organización
-      // (reproducción repetida de un sobre offline, o un intento anterior que
-      // murió a mitad), se reutiliza y cada bloque hijo comprueba por
-      // `sale_id` qué existe antes de insertar. Sin `saleId` (navegador) no
-      // se hace ninguna consulta extra.
+      // commission_amount de la factura (misma fórmula en la RPC y en el respaldo)
+      const invoiceCommissionAmount = checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0
+        ? (checkoutData.commission_method === 'fixed_amount'
+            ? checkoutData.commission_rate
+            : Math.round((effectiveSubtotal > 0 ? effectiveSubtotal : finalTotal) * checkoutData.commission_rate / 100 * 100) / 100)
+        : 0;
+
+      // ── Fase 4E: checkout atómico por RPC ──
+      // Todo lo anterior (promociones, impuestos, totales) se calcula igual;
+      // desde aquí, en vez de N inserts, un solo sobre a `pos_checkout_v1`:
+      // o entra todo o no entra nada, idempotente por `sale_id`. El cobro de
+      // una deuda (`cart.sale_id` + `cart.invoice_id`) actualiza una venta
+      // que ya existe y sigue por el camino de siempre.
+      // Si la RPC no existe en este entorno (PGRST202), `callCheckoutRpc`
+      // devuelve null y se sigue con el respaldo de la fase 4B.
+      if (!isDebtCheckout && isCheckoutRpcAvailable() !== false) {
+        const rpcBranchId = cart.branch_id || getCurrentBranchId();
+        if (!rpcBranchId) {
+          throw new Error('No hay sucursal seleccionada: la venta no se guardó.');
+        }
+        const envelope = buildCheckoutEnvelope({
+          checkout: checkoutData,
+          saleId: checkoutData.saleId || newSaleId(),
+          createdAt: checkoutData.createdAt || new Date().toISOString(),
+          organizationId: cart.organization_id || this.organizationId,
+          branchId: rpcBranchId,
+          userId: checkoutData.userId ?? null,
+          currency: (await this.getBaseCurrency()).code,
+          itemCalcs,
+          subtotal: effectiveSubtotal,
+          taxTotal: effectiveTaxTotal,
+          discountTotal: effectiveDiscount,
+          total: finalTotal,
+          promotionIds: promocionesUsadas,
+          invoiceCommissionAmount,
+        });
+        const rpcResult = await callCheckoutRpc(supabase, envelope);
+        if (rpcResult) {
+          if (rpcResult.warnings.length > 0) {
+            console.warn('[posService] pos_checkout_v1 terminó con avisos (la venta sí se guardó):', rpcResult.warnings);
+          }
+          if (rpcResult.replayed) {
+            console.log(`♻️ Venta ${envelope.sale_id} ya existía: la RPC completó ${rpcResult.completed.length > 0 ? rpcResult.completed.join(', ') : 'nada (ya estaba entera)'}`);
+          }
+          // Mismo cierre de carrito que el camino de siempre (y misma emisión a
+          // la pantalla del cliente desde saveCartsToStorage).
+          await this.removeCart(cart.id);
+          return { ...rpcResult.sale, replayed: rpcResult.replayed };
+        }
+      }
+
+      // ── Respaldo temporal (fase 4B): N inserts desde el cliente ──
+      // Solo se llega aquí si la RPC `pos_checkout_v1` no existe en el
+      // entorno (o en el cobro de una deuda). Se conserva hasta que la
+      // migración esté en producción en todos los entornos; después se
+      // elimina en favor de la RPC.
+      //
+      // Idempotencia por id de cliente: si el POS trajo `saleId` y esa venta
+      // ya existe en la organización (reproducción repetida de un sobre
+      // offline, o un intento anterior que murió a mitad), se reutiliza y
+      // cada bloque hijo comprueba por `sale_id` qué existe antes de
+      // insertar. Sin `saleId` (navegador) no se hace ninguna consulta extra.
       let resumingExisting = false;
       const clientSaleId = !isDebtCheckout && checkoutData.saleId ? checkoutData.saleId : null;
       const saleTimestamp = checkoutData.createdAt || new Date().toISOString();
@@ -2103,12 +2171,6 @@ export class POSService {
       } else {
         // Crear nueva factura (flujo normal)
         const invoiceNumber = await this.generateInvoiceNumber();
-        // Calcular commission_amount para la factura
-        const invoiceCommissionAmount = checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0
-          ? (checkoutData.commission_method === 'fixed_amount'
-              ? checkoutData.commission_rate
-              : Math.round((effectiveSubtotal > 0 ? effectiveSubtotal : finalTotal) * checkoutData.commission_rate / 100 * 100) / 100)
-          : 0;
         const { data: newInvoice, error: newInvError } = await supabase
           .from('invoice_sales')
           .insert({

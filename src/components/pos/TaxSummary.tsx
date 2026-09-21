@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Calculator, Settings, ChevronDown, Check } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { POSService } from '@/lib/services/posService';
-import { Cart, CartItem } from './types';
+import { Cart } from './types';
 import { formatCurrency } from '@/utils/Utils';
 import { 
   calculateCartTaxes, 

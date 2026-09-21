@@ -1,7 +1,10 @@
 # Venta sin conexión en Go Admin Desktop (fase 4B)
 
 Estado: implementado (ROADMAP-DESKTOP §Fase 4, puntos 3, 5 y 7 hechos; punto 4
-parcial: outbox por venta, sin RPC atómica). Cierra el hallazgo 1.8 de
+quedó parcial aquí —outbox por venta, sin RPC atómica— y se completó el
+2026-09-21 en la fase 4E: `docs/desktop/FASE-4E-CHECKOUT-ATOMICO.md`. El
+camino de N inserts descrito abajo sigue en el código como respaldo cuando la
+RPC `pos_checkout_v1` no existe en el entorno). Cierra el hallazgo 1.8 de
 `docs/AUDITORIA-DESKTOP-OFFLINE-UI-INSTALADOR.md` ("la cola de acciones no es
 transaccional") para el POS. Depende de la impresión local (fase 4, punto 1:
 `docs/desktop/IMPRESION-LOCAL-DESKTOP.md`).
@@ -112,7 +115,7 @@ salesSync.syncPendingSales()
 Fuera del modo completar (venta nueva o navegador) no se hace ninguna
 consulta extra: `childExists()` devuelve `false` sin ir a la BD.
 
-## Límites (hasta la RPC atómica del punto 4)
+## Límites del respaldo de N inserts (resueltos por la RPC atómica de la fase 4E)
 
 - **No es atómico.** Una reproducción puede morir a mitad (cierre de la app,
   red que se va). El reintento completa lo que falta; entre medias la venta

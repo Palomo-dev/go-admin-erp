@@ -159,6 +159,14 @@ Si ese repo es privado, `electron-updater` **no puede descargar** sin un token, 
 el .exe no es opción. Debe apuntar a un repo público separado (`go-admin-desktop-releases`) o a
 `provider: generic` sobre S3 / Supabase Storage / Cloudflare R2.
 
+**[VERIFICADO 2026-09-21]** El repo es público y la cadena está completa: `app-update.yml` del
+paquete (`provider: github`, `owner: Palomo-dev`, `repo: go-admin-erp`, sin `publisherName` →
+sin verificación de firma, coherente con `verifyUpdateCodeSignature: false`), feed
+`releases.atom` con `v0.2.1` primero, `latest.yml` de la release `v0.2.1` (`version: 0.2.1`,
+`GoAdminERP-Setup-0.2.1.exe` + `.blockmap` publicados y descargables sin token). Una
+instalación 0.2.0 encuentra la 0.2.1. Nada que arreglar en `updater.ts`; detalle en
+`docs/desktop/HARDENING-2026-09-21.md` §6.
+
 ### 2.7 `Page custom` dentro del `.nsh` incluido
 electron-builder inyecta `installer.nsh` en un punto concreto del script generado. Declarar `Page`
 ahí es frágil: puede quedar en orden incorrecto o duplicarse. Lo soportado son las macros
@@ -175,7 +183,14 @@ automática de `latest.yml`.
   `npx asar list app.asar` y quitar el patrón explícito.
 - `printer@0.4.0` (optionalDependency) es un módulo nativo abandonado desde 2016; no compila contra
   Node 20 / Electron 33. Confirmar si se usa realmente o eliminarlo.
+  **[CERRADO 2026-09-21]** No se instalaba nunca (fallaba el build nativo) y su único uso era un
+  `try { require('printer') }` con fallback a PowerShell. Eliminado de `print-agent/package.json` y
+  `electron/package.json` (y de los lock); el fallback de texto plano de `printViaSystem` pasa al
+  spooler RAW. Ver `docs/desktop/HARDENING-2026-09-21.md` §5.
 - `escpos@3.0.0-alpha.6`: alpha sin mantenimiento desde 2018.
+  **[CERRADO 2026-09-21 — documentado, no migrado]** Sí se usa de verdad (`escpos.Printer` sobre
+  un adaptador propio en `printing/escposBuffer.ts` y `escpos.Network`); alternativa y plan en
+  `HARDENING-2026-09-21.md` §5.
 - Instalador 84 MB / 283 MB desempaquetado: normal para Electron, pero vale la pena activar
   actualizaciones diferenciales (ya se genera `.blockmap`, solo falta no renombrar el artefacto).
 
@@ -223,20 +238,48 @@ La ventana principal y las hijas (`setWindowOpenHandler`) corren sin sandbox, si
 (`window.open('', '_blank')`), pero conviene aislar **solo** la ventana de impresión en lugar de
 bajar el sandbox de toda la app.
 
+**[CERRADO 2026-09-21]** Vista de la web, pantalla del cliente y ventanas hijas con
+`sandbox: true`. `window.open('', '_blank')` + `document.write` + `print()` sigue funcionando
+(con el opener sandboxed las hijas nacen sandboxed y comparten proceso; comprobado con Electron
+33.4.11). Además, IPC `printing:open-preview` (`window.goAdminDesktop.openPrintPreview(html)`)
+que abre una ventana sandboxed y sin preload desde el main. Sin cambios en `src/`. Ver
+`docs/desktop/HARDENING-2026-09-21.md` §1.
+
 ### 4.4 El crash reporter no reporta
 `submitURL: 'https://app.goadmin.io/api/crash-report'` con `uploadToServer: false` → ese endpoint
 nunca recibe nada. Además `appendLog()` **no se llama desde ningún sitio** y `flushLog()` solo en
 excepciones no capturadas: `agent.log` está casi siempre vacío, aunque el tray ofrece "Ver logs".
 Ya hay Sentry en la web (`@sentry/react`); conviene usarlo también en el proceso main.
 
+**[CERRADO 2026-09-21]** `@sentry/electron/main` en el proceso main con el DSN de
+`NEXT_PUBLIC_SENTRY_DSN` (de `resources/web/.env` o del entorno, nunca cableado),
+`release = go-admin-desktop@<versión>`, `uncaughtException`/`unhandledRejection` y minidumps
+nativos subidos a Sentry por su integración (`crashReporter` con `uploadToServer: true` hacia el
+endpoint del DSN). Sin DSN: desactivado en silencio, `crashReporter` local con
+`uploadToServer: false`. `appendLog()` ya se usa desde webServer/connectivity desde la fase 3.
+Ver `HARDENING-2026-09-21.md` §2.
+
 ### 4.5 `SUPABASE_ANON_KEY` hardcodeada en el asar
 `constants.ts`. Es la anon key (pública por diseño), pero deja la app clavada a un proyecto y rotarla
 obliga a publicar un release nuevo.
+
+**[CERRADO 2026-09-21]** `constants.ts` ya no lleva URL ni anon key. `electron/src/main/publicEnv.ts`
+las lee del entorno, de `resources/web/.env` (empaquetado) o, sin empaquetar, de `.env.local`/`.env`
+de la raíz; `agentRunner` y `connectivity` las consumen de ahí y el agente recibe
+`SUPABASE_URL`/`SUPABASE_ANON_KEY` por `process.env`. Sin valores: error claro en el log, el agente
+no arranca (sin borrar el token) y la web abre igual. Ver `HARDENING-2026-09-21.md` §3.
 
 ### 4.6 `next.config.js` con los tipos y el lint desactivados
 `typescript.ignoreBuildErrors: true` y `eslint.ignoreDuringBuilds: true`. La web que carga el
 Electron se despliega aunque tenga errores de tipos. Es la causa probable de varios de los
 `tsconfig.*.tsbuildinfo` sueltos en la raíz del repo.
+
+**[CERRADO 2026-09-21 — parcial]** `typescript.ignoreBuildErrors: false`. El `next build`
+compiló («Compiled successfully») y la comprobación de tipos solo tropezó con páginas que otro
+agente borraba a la vez en `src/app/auth`; `tsc --noEmit` no reporta ningún error en la zona del
+desktop, pero sí 32 en trabajo ajeno sin commitear que, a partir de ahora, harán fallar el
+despliegue hasta corregirse. `eslint.ignoreDuringBuilds` sigue en `true` con comentario honesto:
+miles de `no-explicit-any` preexistentes; queda como deuda. Ver `HARDENING-2026-09-21.md` §4.
 
 ---
 

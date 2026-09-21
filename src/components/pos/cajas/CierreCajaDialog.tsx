@@ -67,6 +67,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
     if (open && !blindModeLoading) {
       loadCashSummary();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, blindModeLoading]);
 
   const loadCashSummary = async () => {
@@ -122,22 +123,11 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
     }
   };
 
-  const handleInputChange = (field: keyof CloseCashSessionData, value: any) => {
+  const handleInputChange = (field: keyof CloseCashSessionData, value: CloseCashSessionData[keyof CloseCashSessionData]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-  };
-
-  const getDifference = (): number => {
-    if (!summary) return 0;
-    return formData.final_amount - summary.expected_amount;
-  };
-
-  const getDifferenceColor = (): string => {
-    const diff = getDifference();
-    if (diff === 0) return 'text-gray-600 dark:text-gray-400';
-    return diff > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
   };
 
   const handleMethodCountChange = (method: string, value: number) => {
@@ -165,12 +155,6 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
   const mask = (value: number | string): string => {
     if (showExpectedBlind) return typeof value === 'number' ? formatCurrency(value) : value;
     return '****';
-  };
-
-  const getMethodDifference = (method: string): number => {
-    const counted = methodCounts[method] || 0;
-    const expected = getMethodExpected(method);
-    return counted - expected;
   };
 
   const getTotalCounted = (): number => {
@@ -205,16 +189,17 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
     setLoading(true);
     try {
       const closedSession = await CajasService.closeSession(formData);
-      toast.success('Caja cerrada exitosamente', {
-        description: showExpectedBlind ? `Diferencia total: ${formatCurrency(Math.abs(getTotalDifference()))}` : 'Caja cerrada'
+      toast.success(closedSession.pending_sync ? 'Caja cerrada sin conexión' : 'Caja cerrada exitosamente', {
+        description: (showExpectedBlind ? `Diferencia total: ${formatCurrency(Math.abs(getTotalDifference()))}` : 'Caja cerrada')
+          + (closedSession.pending_sync ? ' · pendiente de sincronizar (totales con las ventas locales)' : '')
       });
       
       onSessionClosed(closedSession);
       setOpen(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error closing cash session:', error);
       toast.error('Error al cerrar caja', {
-        description: error.message
+        description: (error as Error)?.message
       });
     } finally {
       setLoading(false);

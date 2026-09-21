@@ -24,7 +24,7 @@ Objetivo: que la app deje de parecer un navegador sin barra. Todo lo de esta fas
 ```
 BrowserWindow (titleBarStyle: 'hidden' + titleBarOverlay {color, symbolColor, height: 40})
 ├─ webContents propio  → dist/renderer/toolbar/index.html   (la BARRA, preload/toolbar.js, sandbox: true)
-└─ WebContentsView     → https://app.goadmin.io             (la WEB,   preload/index.js, bounds y=40)
+└─ WebContentsView     → https://app.goadmin.io             (la WEB,   preload/index.js, bounds y=40, sandbox: true desde 2026-09-21)
 ```
 
 - Los botones minimizar/maximizar/cerrar los dibuja Windows (Window Controls Overlay). La barra

@@ -56,8 +56,13 @@ if (!gotLock) {
     }
   });
 
+  // Informe de errores ANTES de `ready` (y solo en la instancia que se queda):
+  // Sentry exige inicializarse antes de `ready` y el crashReporter nativo tiene
+  // que existir antes de que nazca cualquier proceso hijo (renderers, servidor
+  // Next). Sin DSN queda en modo solo-log-local.
+  initCrashReporter();
+
   app.whenReady().then(async () => {
-    initCrashReporter();
     initConnectivity();
 
     // ── Optimizaciones de rendimiento ──

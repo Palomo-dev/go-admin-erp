@@ -1,6 +1,6 @@
-export const SUPABASE_URL = 'https://jgmgphmzusbluqhuqihj.supabase.co';
-export const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbWdwaG16dXNibHVxaHVxaWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwMzQ1MjIsImV4cCI6MjA2MTYxMDUyMn0.yr5TLl2nhevIzNdPnjVkcdn049RB2t2OgqPG0HryVR4';
+// La URL y la anon key de Supabase NO van aquí (auditoría desktop §4.5): se
+// leen en tiempo de ejecución de resources/web/.env o del entorno, ver
+// publicEnv.ts. Así rotar la clave o cambiar de proyecto no exige un release.
 
 export const APP_NAME = 'Go Admin Desktop';
 export const WEB_APP_URL = 'https://app.goadmin.io';

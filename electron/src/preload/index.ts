@@ -10,6 +10,16 @@ console.log('[preload] Cargando preload script...');
  */
 type PosDisplayOpenOptions = { origin?: string; displayId?: number | null } | number;
 
+/** Opciones de `openPrintPreview` (espejo de main/printPreview.ts). */
+type PrintPreviewOptions = {
+  title?: string;
+  width?: number;
+  height?: number;
+  autoPrint?: boolean;
+  silent?: boolean;
+  deviceName?: string;
+};
+
 /**
  * Suscripción a un canal IPC que devuelve SU baja (quita solo ese listener).
  * A diferencia de `onConnectivity`/`onUpdateState`, que hacen
@@ -68,6 +78,14 @@ try {
     ipcRenderer.invoke('printing:print-raw', printerId, payload),
   reprintJob: (jobId: string) => ipcRenderer.invoke('printing:reprint', jobId),
   openCashDrawer: (printerName?: string) => ipcRenderer.invoke('printing:open-cash-drawer', printerName),
+  /**
+   * Abre una ventana de impresión (sandboxed, sin bridge) con `html` y la
+   * deja imprimirse sola, o la imprime el main con `{ autoPrint: true }`.
+   * Sustituto de `window.open('', '_blank')` + `document.write` cuando la web
+   * prefiera no depender de ventanas emergentes. Devuelve `{ success, error? }`.
+   */
+  openPrintPreview: (html: string, opts?: PrintPreviewOptions) =>
+    ipcRenderer.invoke('printing:open-preview', html, opts),
 
   // Conectividad real (comprobación contra Supabase, no navigator.onLine)
   isOnline: () => ipcRenderer.invoke('connectivity:get'),

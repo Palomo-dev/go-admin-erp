@@ -9,7 +9,7 @@ Decisiones tomadas: offline vía **servidor Next embebido**, y **POS local-first
 | 1 | Instalador + firma de código | 3-5 días | **Hecha** (2026-09-15; instalador NSIS, workflow de release y firma condicional — falta el certificado) |
 | 2 | UI nativa | 4-6 días | **Hecha** (2026-09-16; `docs/desktop/FASE-2-UI-NATIVA.md`) |
 | 3 | Offline real: Next embebido en 127.0.0.1 | 1-2 semanas | **Hecha** (2026-09-16; queda la prueba con sesión y datos cacheados, ver abajo) |
-| 4 | POS local-first + impresión local | 6-10 semanas | **Hecha en 0.2.1** (2026-09-16; 4.1–4.9; queda 4.4 parcial: RPC atómica de checkout) |
+| 4 | POS local-first + impresión local | 6-10 semanas | **Hecha** (2026-09-16 en 0.2.1: 4.1–4.9; 4.4 completa el 2026-09-21 con la RPC atómica `pos_checkout_v1`) |
 
 Las fases 1, 2 y 3 son independientes entre sí y se pueden llevar en paralelo.
 La fase 4 depende de la 3.
@@ -239,10 +239,17 @@ explícito.
 4. Outbox por operación de negocio, no por petición HTTP. Una venta es un sobre atómico
    (cabecera + líneas + pagos + movimientos de inventario) que se sincroniza entero vía una RPC
    de Postgres transaccional, o no se sincroniza.
-   [PARCIAL 2026-09-16 — outbox por venta (`src/lib/offline/salesOutbox.ts`, IndexedDB
-   `goadmin-outbox`) reproducido con `POSService.checkout` idempotente; sin RPC atómica: una
-   reproducción puede quedar a medias y el reintento la completa. Las tablas de venta ya no pasan
-   por la cola HTTP genérica.]
+   [HECHO 2026-09-21 — fase 4E: RPC transaccional `public.pos_checkout_v1(p_envelope jsonb)`
+   (migración `20260921100000_pos_checkout_v1_rpc_atomica`, SECURITY DEFINER con guarda de
+   pertenencia, sin `anon`). `POSService.checkout` calcula como siempre y manda el sobre
+   completo en UNA llamada: venta, líneas, stock, factura (consecutivo bajo advisory lock),
+   pagos, líneas de factura, propina y comisión, o nada. Idempotente por `sale_id`
+   (`replayed: true`, completa lo que falte). `salesSync` reproduce cada sobre del outbox con
+   una llamada. Si la RPC no existe (PGRST202) cae al respaldo de N inserts con un aviso por
+   sesión. Ver docs/desktop/FASE-4E-CHECKOUT-ATOMICO.md. Antes (2026-09-16, fase 4B): outbox
+   por venta (`src/lib/offline/salesOutbox.ts`, IndexedDB `goadmin-outbox`) reproducido con
+   `checkout` idempotente pero no atómico; las tablas de venta ya no pasan por la cola HTTP
+   genérica.]
 
 5. NUNCA borrar una operación tras N reintentos. Moverla a una bandeja "requiere revisión"
    visible para el administrador, con el error y el payload completo.
@@ -285,6 +292,23 @@ explícito.
    300 KB por imagen, LRU) que el replicador precalienta en segundo plano con la imagen primaria
    de cada producto, y hook `useCachedImage` (tarjetas del POS y miniatura del carrito) que sin
    red sirve un `blob:` local. Ver docs/desktop/FASE-4D-CLIENTES-E-IMAGENES-OFFLINE.md.]
+
+10. Operar la caja y las escrituras del POS sin internet: apertura/cierre de caja y
+    movimientos de efectivo con el mismo patrón de outbox; la cola HTTP genérica deja de
+    fingir un 202 con `data: null`.
+    [HECHO 2026-09-21 — fase 4F: `cashOutbox.ts` (IndexedDB `goadmin-outbox-cash`,
+    `uuid` generado en el cliente porque `cash_sessions.id`/`cash_movements.id` son serial;
+    id local negativo hasta sincronizar y remapeo al id real por `session_uuid`; estado de
+    «caja abierta» en el meta del catálogo local) y `cashSync.ts` (apertura → movimientos →
+    cierre, idempotente por uuid, 5 fallos → `needs_review`, nunca borra). El cierre sin red
+    calcula el arqueo con réplica + ventas del outbox + movimientos locales. Orquestador
+    `syncOrchestrator.ts` con etapas clientes (10) → caja: aperturas (20) → ventas (30) →
+    caja: movimientos y cierres (40). Cola honesta en `offlineCache.ts`: tablas con outbox
+    propio → 503 `OFFLINE_OUTBOX_TABLE`; solo `product_favorites`, `category_favorites` y
+    `print_jobs` siguen encolándose; el resto → 503 «Sin conexión: esta acción requiere
+    internet» con toast global. Banner con conteos por tipo y bandeja unificada
+    `PendientesSinConexionDialog` (ventas, clientes, caja; reintento y exportación).
+    Ver docs/desktop/FASE-4F-CAJA-OFFLINE.md.]
 
 Criterio de aceptación: apagar el WiFi, hacer 10 ventas con impresión de ticket, cerrar la app,
 volver a abrirla todavía sin internet (las ventas deben seguir ahí), encender el WiFi y verificar

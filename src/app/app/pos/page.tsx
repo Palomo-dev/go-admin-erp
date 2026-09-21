@@ -16,7 +16,7 @@ import { getPosDisplayEmitter, resolveDisplayCurrency, startPosDisplay, stopPosD
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
-import { Product, Customer, Cart, Sale, CartItemModifier } from '@/components/pos/types';
+import { Product, Customer, Cart, Category, CartItemModifier } from '@/components/pos/types';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { StatsSkeleton, CardListSkeleton, PageHeaderSkeleton } from '@/components/common/PageSkeletons';
 import { VentasService, DailySummary } from '@/components/pos/ventas';
@@ -27,8 +27,11 @@ import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 import { AperturaCajaDialog } from '@/components/pos/cajas/AperturaCajaDialog';
 import { CierreCajaDialog } from '@/components/pos/cajas/CierreCajaDialog';
-import { VentasPendientesDialog } from '@/components/pos/VentasPendientesDialog';
+import { PendientesSinConexionDialog } from '@/components/pos/PendientesSinConexionDialog';
 import { startSalesSync } from '@/lib/offline/salesSync';
+import { startOfflineSync } from '@/lib/offline/syncStages';
+import { CASH_OUTBOX_CHANGED_EVENT } from '@/lib/offline/cashOutbox';
+import { isDesktop } from '@/lib/utils/desktop';
 import { CajasService } from '@/components/pos/cajas/CajasService';
 import { useBlindCloseMode } from '@/components/pos/cajas/useBlindCloseMode';
 import type { CashSession } from '@/components/pos/cajas/types';
@@ -38,16 +41,17 @@ export default function POSPage() {
   const { branchFilter, isLoading: branchLoading, selectedBranchId } = useBranch();
   const [carts, setCarts] = useState<Cart[]>([]);
   const [activeCartId, setActiveCartId] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>();
+  // Solo se escribe (el carrito activo es la fuente de verdad del cliente): se conserva el setter.
+  const [, setSelectedCustomer] = useState<Customer | undefined>();
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkoutCart, setCheckoutCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const isFirstLoadRef = useRef(true);
-  const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [, setLastUpdate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
   const [mobileView, setMobileView] = useState<'products' | 'cart'>('products');
-  const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
+  const [, setDailySummary] = useState<DailySummary | null>(null);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isOrgAdmin, setIsOrgAdmin] = useState(false);
@@ -74,7 +78,7 @@ export default function POSPage() {
             .eq('is_active', true)
             .single();
           if (memberData) {
-            const roleName = (memberData.roles as any)?.name?.toLowerCase() || ''
+            const roleName = (memberData.roles as { name?: string } | null)?.name?.toLowerCase() || ''
             const isAdmin = memberData.is_super_admin ||
               roleName.includes('admin') ||
               roleName.includes('owner') ||
@@ -97,6 +101,7 @@ export default function POSPage() {
       initializePOS();
       loadDashboardData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization, branchFilter, branchLoading]);
 
   // Pantalla del cliente (PLAN §12 Fase 0): un emisor por ventana de caja.
@@ -150,6 +155,26 @@ export default function POSPage() {
     return startSalesSync();
   }, []);
 
+  // Desktop (fase 4F): orquestador de sincronización (clientes → caja:
+  // aperturas → ventas → caja: movimientos y cierres) al abrir el POS con
+  // red y al volver la conectividad. No-op en navegador.
+  useEffect(() => {
+    return startOfflineSync();
+  }, []);
+
+  // Desktop (fase 4F): la caja abierta/cerrada sin red vive en el outbox
+  // local; cuando cambia (apertura, cierre, sincronización) se relee.
+  useEffect(() => {
+    if (!isDesktop() || !organization?.id) return;
+    const onCashOutbox = () => {
+      CajasService.getActiveSession()
+        .then((session) => setCashSession(session))
+        .catch((err) => console.error('Error reloading cash session after outbox change:', err));
+    };
+    window.addEventListener(CASH_OUTBOX_CHANGED_EVENT, onCashOutbox);
+    return () => window.removeEventListener(CASH_OUTBOX_CHANGED_EVENT, onCashOutbox);
+  }, [organization?.id]);
+
   // Suscripción realtime a cash_sessions para que el estado de caja
   // (abierta/cerrada) se actualice de inmediato cuando otra pestaña/terminal
   // abre o cierra la caja, igual que /comandas. Debounce de 300ms.
@@ -196,8 +221,10 @@ export default function POSPage() {
   const handleSessionOpened = (session: CashSession) => {
     setCashSession(session);
     loadDashboardData();
-    toast.success('Caja abierta exitosamente', {
-      description: `Monto inicial: ${formatCurrency(session.initial_amount)}`
+    toast.success(session.pending_sync ? 'Caja abierta sin conexión' : 'Caja abierta exitosamente', {
+      description: session.pending_sync
+        ? `Monto inicial: ${formatCurrency(session.initial_amount)} · pendiente de sincronizar`
+        : `Monto inicial: ${formatCurrency(session.initial_amount)}`
     });
   };
 
@@ -211,8 +238,9 @@ export default function POSPage() {
         setCashSession(null);
       });
     loadDashboardData();
-    toast.success('Caja cerrada exitosamente', {
-      description: showExpected ? `Diferencia: ${formatCurrency(Math.abs(session.difference || 0))}` : 'Caja cerrada'
+    toast.success(session.pending_sync ? 'Caja cerrada sin conexión' : 'Caja cerrada exitosamente', {
+      description: (showExpected ? `Diferencia: ${formatCurrency(Math.abs(session.difference || 0))}` : 'Caja cerrada')
+        + (session.pending_sync ? ' · pendiente de sincronizar' : '')
     });
   };
 
@@ -331,7 +359,7 @@ export default function POSPage() {
     setShowCheckout(true);
   };
 
-  const handleCheckoutComplete = async (sale: Sale) => {
+  const handleCheckoutComplete = async () => {
     try {
       // Marcar kitchen_ticket como entregado si existe
       if (checkoutCart?.kitchen_ticket_id) {
@@ -369,8 +397,10 @@ export default function POSPage() {
     if (!cart.branch_id) return;
 
     // Filtrar solo items que requieren preparación
+    // La categoría llega como `category` (tipo del POS) o `categories` (embed de PostgREST).
+    type ProductWithCategory = Product & { categories?: Category | Category[] | null; variant_data?: unknown; station?: string | null };
     const prepItems = cart.items.filter((item) => {
-      const product = item.product as any;
+      const product = item.product as ProductWithCategory | undefined;
       const cat = product?.category || product?.categories;
       const requiresPrep = Array.isArray(cat) ? cat[0]?.requires_preparation : cat?.requires_preparation;
       return requiresPrep === true;
@@ -395,7 +425,7 @@ export default function POSPage() {
 
     // Mapear items para el ticket de cocina
     const ticketItems = prepItems.map((item) => {
-      const product = item.product as any;
+      const product = item.product as ProductWithCategory | undefined;
       const cat = product?.category || product?.categories;
       const station = Array.isArray(cat) ? cat[0]?.station : cat?.station;
       return {
@@ -403,7 +433,7 @@ export default function POSPage() {
         quantity: item.quantity,
         station: station || product?.station || null,
         notes: item.notes || null,
-        variantData: (item.product as any)?.variant_data || null,
+        variantData: (product?.variant_data as Record<string, string> | null | undefined) || null,
         modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
       };
     });
@@ -414,7 +444,7 @@ export default function POSPage() {
 
       // Identificar items nuevos comparando por productName + variantData
       const existingKeys = new Set(
-        existingItems.map((ti: any) =>
+        existingItems.map((ti) =>
           `${ti.product_name}_${ti.quantity}_${JSON.stringify(ti.variant_data)}`
         )
       );
@@ -581,8 +611,8 @@ export default function POSPage() {
                   <AperturaCajaDialog onSessionOpened={handleSessionOpened} />
                 )}
 
-                {/* Ventas sin conexión pendientes de sincronizar (solo Desktop, fase 4B) */}
-                <VentasPendientesDialog />
+                {/* Ventas, clientes y caja sin conexión pendientes de sincronizar (solo Desktop, fases 4B/4D/4F) */}
+                <PendientesSinConexionDialog />
 
                 {/* Hora */}
                 <div className="hidden xs:flex items-center space-x-1.5 sm:space-x-2">

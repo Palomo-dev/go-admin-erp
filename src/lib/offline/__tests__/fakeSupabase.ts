@@ -56,6 +56,23 @@ class FakeBuilder implements PromiseLike<FakeResult> {
     this.op.filters[col] = vals;
     return this;
   }
+  /** Fase 4F (`CajasService`): `.is('branch_id', null)`, rangos de fechas. Se registran como filtros. */
+  is(col: string, val: unknown) {
+    this.op.filters[col] = val;
+    return this;
+  }
+  neq(col: string, val: unknown) {
+    this.op.filters[`${col}.neq`] = val;
+    return this;
+  }
+  gte(col: string, val: unknown) {
+    this.op.filters[`${col}.gte`] = val;
+    return this;
+  }
+  lte(col: string, val: unknown) {
+    this.op.filters[`${col}.lte`] = val;
+    return this;
+  }
   match(filters: Record<string, unknown>) {
     Object.assign(this.op.filters, filters);
     return this;

@@ -2,13 +2,8 @@ import { app, Notification, powerSaveBlocker } from 'electron';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import WebSocket from 'ws';
 import os from 'os';
-import {
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
-  POLL_INTERVAL_MS,
-  HEARTBEAT_INTERVAL_MS,
-  DISCOVERY_PORT,
-} from './constants';
+import { POLL_INTERVAL_MS, HEARTBEAT_INTERVAL_MS, DISCOVERY_PORT } from './constants';
+import { requireSupabaseEnv, PublicEnvMissingError } from './publicEnv';
 import {
   loadConfig,
   saveConfig,
@@ -95,9 +90,11 @@ function scheduleReconnect(): void {
   }, delay);
 }
 
+/** Cliente del agente. Lanza `PublicEnvMissingError` si no hay URL/anon key. */
 function getClient(): SupabaseClient {
   if (!supabase) {
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    const { url, anonKey } = requireSupabaseEnv();
+    supabase = createClient(url, anonKey, {
       auth: { persistSession: false, autoRefreshToken: true },
       realtime: { transport: WebSocket as any },
     });
@@ -105,10 +102,16 @@ function getClient(): SupabaseClient {
   return supabase;
 }
 
+/**
+ * Inyecta en process.env lo que `agent/config.ts` (espejo del print-agent)
+ * exige al cargarse. La URL y la anon key salen de publicEnv (resources/web/.env
+ * o entorno); si faltan, lanza antes de tocar nada.
+ */
 function primeAgentEnv(): void {
   const cfg = loadConfig();
-  process.env.SUPABASE_URL = SUPABASE_URL;
-  process.env.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
+  const { url, anonKey } = requireSupabaseEnv();
+  process.env.SUPABASE_URL = url;
+  process.env.SUPABASE_ANON_KEY = anonKey;
   process.env.AGENT_EMAIL = cfg.email || 'desktop@local';
   process.env.AGENT_PASSWORD = 'unused-in-desktop';
   process.env.AGENT_NAME = cfg.agentName || `Desktop - ${os.hostname()}`;
@@ -371,7 +374,9 @@ export async function tryAutoStart(): Promise<boolean> {
     }
   } catch (err) {
     console.error('[agent] Auto-start falló:', err);
-    clearRefreshToken();
+    // Sin variables públicas el fallo es de la instalación, no del token: se
+    // conserva para que el agente arranque solo cuando se corrija el .env.
+    if (!(err instanceof PublicEnvMissingError)) clearRefreshToken();
   }
   return false;
 }

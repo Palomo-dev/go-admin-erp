@@ -411,23 +411,13 @@ Get-CimInstance Win32_PnPEntity |
 }
 
 /**
- * Lista las impresoras instaladas en el sistema operativo.
- * Intenta primero el paquete nativo `printer`; si no está disponible
- * (no compiló en este equipo), usa PowerShell (Win32_Printer) como fallback.
+ * Lista las impresoras instaladas en el sistema operativo con PowerShell
+ * (Win32_Printer). Antes se intentaba primero el paquete nativo `printer`
+ * (0.4.0, abandonado en 2016): no compila contra Node 20 / Electron 33, así
+ * que nunca llegaba a instalarse y siempre se caía a este camino. Se retiró
+ * de package.json el 2026-09-21 (auditoría desktop §2.9).
  */
 async function listSystemPrinters(): Promise<SystemPrinter[]> {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const nodePrinter = require('printer');
-    const printers = nodePrinter.getPrinters() || [];
-    return printers.map((p: any) => ({
-      name: p.name || 'Desconocida',
-      isDefault: p.isDefault || false,
-    }));
-  } catch {
-    // Módulo nativo no disponible: fallback por sistema operativo
-  }
-
   if (process.platform === 'win32') {
     try {
       return await listWindowsPrinters();

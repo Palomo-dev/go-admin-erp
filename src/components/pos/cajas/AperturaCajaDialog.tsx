@@ -12,7 +12,6 @@ import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/utils/Utils';
 import { CajasService } from './CajasService';
 import type { CashSession, OpenCashSessionData } from './types';
-import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
@@ -27,7 +26,6 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
   const [loading, setLoading] = useState(false);
   const [userName, setUserName] = useState<string>('');
   const [cashMode, setCashMode] = useState<'branch' | 'user'>('branch');
-  const { organization } = useOrganization();
   const { branches, selectedBranchId } = useBranch();
   const [formData, setFormData] = useState<OpenCashSessionData>({
     initial_amount: 100000, // COP 100,000 por defecto
@@ -67,7 +65,7 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
     }
   }, [open, userName]);
 
-  const handleInputChange = (field: keyof OpenCashSessionData, value: any) => {
+  const handleInputChange = (field: keyof OpenCashSessionData, value: OpenCashSessionData[keyof OpenCashSessionData]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -85,8 +83,8 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
     setLoading(true);
     try {
       const session = await CajasService.openSession(formData);
-      toast.success('Caja abierta exitosamente', {
-        description: `Monto inicial: ${formatCurrency(session.initial_amount)}`
+      toast.success(session.pending_sync ? 'Caja abierta sin conexión' : 'Caja abierta exitosamente', {
+        description: `Monto inicial: ${formatCurrency(session.initial_amount)}${session.pending_sync ? ' · pendiente de sincronizar' : ''}`
       });
       
       onSessionOpened(session);
@@ -98,10 +96,10 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
         notes: '',
         scope: 'branch'
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error opening cash session:', error);
       toast.error('Error al abrir caja', {
-        description: error.message
+        description: (error as Error)?.message
       });
     } finally {
       setLoading(false);

@@ -75,7 +75,10 @@ su `.blockmap` (actualizaciones diferenciales) y `latest.yml`.
 
 Variables del repositorio (Settings → Secrets and variables → Actions → *Variables*), solo
 públicas: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (obligatorias) y las
-demás `NEXT_PUBLIC_*` del allowlist de `scripts/build-web.js`. Secrets solo para firmar:
+demás `NEXT_PUBLIC_*` del allowlist de `scripts/build-web.js` (`NEXT_PUBLIC_SENTRY_DSN` activa
+los informes de errores del proceso main; sin él, Sentry queda apagado). Esas mismas variables,
+empaquetadas en `resources/web/.env`, son las que usa el main en tiempo de ejecución
+(`src/main/publicEnv.ts`): no hay URL ni anon key cableadas en el código. Secrets solo para firmar:
 `CSC_LINK` + `CSC_KEY_PASSWORD` (certificado .pfx) **o** las variables `AZURE_*` de Azure
 Trusted Signing (ver `electron-builder.config.js`). Nunca hay credenciales de servidor en el
 repositorio ni en el instalador; sin firma el .exe sale sin firmar y SmartScreen avisará.

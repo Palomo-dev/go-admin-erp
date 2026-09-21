@@ -8,6 +8,8 @@ import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useDesktopCatalog } from '@/lib/offline/useDesktopCatalog';
 import { useOfflineData } from '@/lib/offline/useOfflineData';
+import { OUTBOX_CHANGED_EVENTS, pendingLabel, reviewLabel, totalOf, type OutboxCounts } from '@/lib/offline/outboxCounts';
+import { toast } from 'sonner';
 
 /**
  * Indicador de estado offline/online. Es la ÚNICA fuente del banner offline
@@ -34,10 +36,12 @@ export function OfflineIndicator() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
-  // Fase 4B: ventas del POS guardadas en el outbox (Desktop) que aún no
-  // llegaron a Supabase, y las que fallaron 5 veces y esperan revisión.
-  const [pendingSales, setPendingSales] = useState(0);
-  const [salesNeedingReview, setSalesNeedingReview] = useState(0);
+  // Fases 4B/4D/4F: ventas, clientes y operaciones de caja del outbox
+  // (Desktop) que aún no llegaron a Supabase, y las que fallaron 5 veces y
+  // esperan revisión.
+  const NO_COUNTS: OutboxCounts = { sales: 0, customers: 0, cash: 0 };
+  const [pendingCounts, setPendingCounts] = useState<OutboxCounts>(NO_COUNTS);
+  const [reviewCounts, setReviewCounts] = useState<OutboxCounts>(NO_COUNTS);
   const { formatTime, formatDateTime, getToday, toDate } = useFormatDate();
   // Fase 4A: catálogo local del POS (solo Desktop; fuera devuelve isDesktop=false).
   const [catalogOrgId, setCatalogOrgId] = useState<number | null>(null);
@@ -51,9 +55,10 @@ export function OfflineIndicator() {
   const refreshSalesOutbox = useCallback(async () => {
     if (!isDesktop()) return;
     try {
-      const { countPendingSales, countSalesNeedingReview } = await import('@/lib/offline/salesOutbox');
-      setPendingSales(await countPendingSales());
-      setSalesNeedingReview(await countSalesNeedingReview());
+      const { getOutboxCounts } = await import('@/lib/offline/outboxCounts');
+      const snapshot = await getOutboxCounts();
+      setPendingCounts(snapshot.pending);
+      setReviewCounts(snapshot.needsReview);
     } catch {
       // Silenciar
     }
@@ -63,9 +68,30 @@ export function OfflineIndicator() {
     if (typeof window === 'undefined' || !isDesktop()) return;
     refreshSalesOutbox();
     const onOutboxChanged = () => refreshSalesOutbox();
-    window.addEventListener('goadmin:sales-outbox-changed', onOutboxChanged);
-    return () => window.removeEventListener('goadmin:sales-outbox-changed', onOutboxChanged);
+    for (const ev of OUTBOX_CHANGED_EVENTS) window.addEventListener(ev, onOutboxChanged);
+    return () => {
+      for (const ev of OUTBOX_CHANGED_EVENTS) window.removeEventListener(ev, onOutboxChanged);
+    };
   }, [refreshSalesOutbox]);
+
+  // Fase 4F: una escritura sin red que no tiene outbox propio recibe un 503
+  // honesto; aquí se muestra como toast (una vez por tabla cada pocos segundos).
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isDesktop()) return;
+    const lastShown = new Map<string, number>();
+    const onRejected = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { table?: string | null; message?: string } | undefined;
+      const key = detail?.table ?? '*';
+      const now = Date.now();
+      if ((lastShown.get(key) ?? 0) > now - 5_000) return;
+      lastShown.set(key, now);
+      toast.error(detail?.message || 'Sin conexión: esta acción requiere internet', {
+        description: 'Nada se guardó. Vuelve a intentarlo cuando regrese la conexión.',
+      });
+    };
+    window.addEventListener('goadmin:offline-write-rejected', onRejected);
+    return () => window.removeEventListener('goadmin:offline-write-rejected', onRejected);
+  }, []);
 
   const refreshLastSync = useCallback(async () => {
     try {
@@ -198,7 +224,9 @@ export function OfflineIndicator() {
     refreshLastSync();
   };
 
-  if (!showBanner && queueCount === 0 && pendingSales === 0 && salesNeedingReview === 0) return null;
+  const pendingText = pendingLabel(pendingCounts);
+  const reviewText = reviewLabel(reviewCounts);
+  if (!showBanner && queueCount === 0 && totalOf(pendingCounts) === 0 && totalOf(reviewCounts) === 0) return null;
 
   // Solo la hora si la última sincronización fue hoy (en la zona de la
   // organización); fecha y hora si fue otro día.
@@ -238,14 +266,14 @@ export function OfflineIndicator() {
             ({queueCount} acción{queueCount !== 1 ? 'es' : ''} pendiente{queueCount !== 1 ? 's' : ''})
           </span>
         )}
-        {pendingSales > 0 && (
-          <span className="ml-2 text-xs font-semibold">
-            — {pendingSales} venta{pendingSales !== 1 ? 's' : ''} pendiente{pendingSales !== 1 ? 's' : ''} de sincronizar
+        {pendingText && (
+          <span className="ml-2 text-xs font-semibold" data-testid="offline-pending-counts">
+            — {pendingText}
           </span>
         )}
-        {salesNeedingReview > 0 && (
-          <span className="ml-2 text-xs font-semibold text-red-900">
-            — {salesNeedingReview} venta{salesNeedingReview !== 1 ? 's' : ''} requiere{salesNeedingReview !== 1 ? 'n' : ''} revisión (detalle en el POS)
+        {reviewText && (
+          <span className="ml-2 text-xs font-semibold text-red-900" data-testid="offline-review-counts">
+            — {reviewText}
           </span>
         )}
       </span>

@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency } from '@/utils/Utils';
 import { CajasService } from './CajasService';
@@ -49,7 +48,7 @@ export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDial
     notes: ''
   });
 
-  const handleInputChange = (field: keyof CashMovementData, value: any) => {
+  const handleInputChange = (field: keyof CashMovementData, value: CashMovementData[keyof CashMovementData]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -90,8 +89,8 @@ export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDial
     setLoading(true);
     try {
       const movement = await CajasService.addMovement(formData);
-      toast.success(`${formData.type === 'in' ? 'Ingreso' : 'Egreso'} registrado`, {
-        description: `${formData.concept}: ${formatCurrency(formData.amount)}`
+      toast.success(`${formData.type === 'in' ? 'Ingreso' : 'Egreso'} registrado${movement.pending_sync ? ' sin conexión' : ''}`, {
+        description: `${formData.concept}: ${formatCurrency(formData.amount)}${movement.pending_sync ? ' · pendiente de sincronizar' : ''}`
       });
       
       onMovementAdded(movement);
@@ -105,10 +104,10 @@ export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDial
         notes: ''
       });
       setActiveTab('in');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding movement:', error);
       toast.error('Error al registrar movimiento', {
-        description: error.message
+        description: (error as Error)?.message
       });
     } finally {
       setLoading(false);

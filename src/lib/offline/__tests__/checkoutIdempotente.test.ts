@@ -1,5 +1,9 @@
 /**
- * `POSService.checkout` con id generado en el cliente (fase 4B).
+ * `POSService.checkout` con id generado en el cliente (fase 4B): camino de
+ * RESPALDO de N inserts, que desde la fase 4E solo se usa cuando la RPC
+ * `pos_checkout_v1` no existe en el entorno (aquí el cliente de mentira
+ * responde PGRST202). El camino principal por RPC se prueba en
+ * `checkoutRpc.test.ts`.
  *
  * Contrato que fijan estos tests:
  *   - Desktop sin red: no se emite ninguna operación a Supabase; el sobre va
@@ -13,7 +17,7 @@
  * Datos inventados: organización 120, sucursal 7, usuario `user-cajero`.
  */
 
-import { createFakeSupabase, writesTo, type FakeOp } from './fakeSupabase';
+import { createFakeSupabase, writesTo, type FakeHandler, type FakeOp, type FakeResult } from './fakeSupabase';
 
 const fake = createFakeSupabase(() => ({ data: null }));
 
@@ -53,6 +57,7 @@ import { generateInvoiceNumber } from '@/lib/utils/invoiceUtils';
 import { POSService } from '@/lib/services/posService';
 import type { CheckoutData } from '@/components/pos/types';
 import { __resetOutboxForTests, getOutboxSale, listOutboxSales, ticketSaleNumber } from '../salesOutbox';
+import { __resetCheckoutRpcForTests, POS_CHECKOUT_RPC } from '../checkoutRpc';
 
 const isAppOnlineMock = isAppOnline as jest.Mock;
 const SALE_ID = '22222222-2222-4222-8222-222222222222';
@@ -92,8 +97,17 @@ function makeCheckout(overrides: Partial<CheckoutData> = {}): CheckoutData {
   };
 }
 
+/** La RPC atómica no existe en este entorno: PostgREST responde PGRST202. */
+const RPC_MISSING: FakeResult = { error: { code: 'PGRST202', message: `Could not find the function public.${POS_CHECKOUT_RPC}(p_envelope) in the schema cache` } };
+
+/** Envuelve un handler para que la RPC atómica «no exista» (camino de respaldo). */
+function withRpcMissing(handler: FakeHandler): FakeHandler {
+  return (op: FakeOp) => (op.table === `rpc:${POS_CHECKOUT_RPC}` ? RPC_MISSING : handler(op));
+}
+
 /** Respuesta "todo nuevo": nada existe, cada insert devuelve su fila. */
 function freshDbHandler(op: FakeOp) {
+  if (op.table === `rpc:${POS_CHECKOUT_RPC}`) return RPC_MISSING;
   if (op.action === 'insert') {
     const row = Array.isArray(op.payload) ? op.payload[0] : (op.payload as Record<string, unknown>);
     return { data: { id: (row.id as string) || `${op.table}-new`, ...row, balance: 0, total: 13500 } };
@@ -117,6 +131,7 @@ describe('POSService.checkout — ids de cliente e idempotencia', () => {
   beforeEach(() => {
     freshIndexedDb();
     __resetOutboxForTests();
+    __resetCheckoutRpcForTests();
     fake.reset();
     fake.setHandler(freshDbHandler);
     isAppOnlineMock.mockReturnValue(true);
@@ -137,7 +152,7 @@ describe('POSService.checkout — ids de cliente e idempotencia', () => {
 
     const sale = await POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT }));
 
-    // Ni un insert, ni un select, ni un rpc.
+    // Ni un insert, ni un select, ni un rpc (tampoco la atómica).
     expect(fake.ops).toHaveLength(0);
     expect(sale.id).toBe(SALE_ID);
     expect(sale.status).toBe('pending_sync');
@@ -225,21 +240,21 @@ describe('POSService.checkout — ids de cliente e idempotencia', () => {
     installWindow({ desktop: true });
     const existing = { id: SALE_ID, organization_id: 120, branch_id: 7, total: 13500, balance: 0, status: 'paid' };
     const invoice = { id: 'inv-1', sale_id: SALE_ID, number: 'FACT-000001', balance: 0 };
-    fake.setHandler((op) => {
+    fake.setHandler(withRpcMissing((op) => {
       if (op.table === 'sales' && op.action === 'select') return { data: existing };
       if (op.table === 'invoice_sales' && op.action === 'select') return { data: invoice };
       if (op.countOnly) return { count: 2 };
       if (op.action === 'insert') throw new Error(`No debía insertar en ${op.table}`);
       return { data: null };
-    });
+    }));
 
     const sale = await POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT, replayFromOutbox: true }));
 
     expect(sale).toEqual(existing);
     expect(fake.ops.filter((o) => o.action === 'insert' || o.action === 'update')).toHaveLength(0);
-    // La única RPC permitida es la lectura de monedas; ninguna de escritura
-    // (promociones, stock).
-    expect(fake.ops.filter((o) => o.action === 'rpc' && o.table !== 'rpc:get_organization_currencies')).toHaveLength(0);
+    // Las únicas RPC permitidas son la lectura de monedas y el intento (fallido:
+    // PGRST202) de la atómica; ninguna de escritura (promociones, stock).
+    expect(fake.ops.filter((o) => o.action === 'rpc' && o.table !== 'rpc:get_organization_currencies' && o.table !== `rpc:${POS_CHECKOUT_RPC}`)).toHaveLength(0);
     expect(stockMovementService.decrementOnSale).not.toHaveBeenCalled();
     expect(generateInvoiceNumber).not.toHaveBeenCalled();
   });
@@ -247,7 +262,7 @@ describe('POSService.checkout — ids de cliente e idempotencia', () => {
   test('reproducción que murió tras sale_items y stock: el reintento crea factura, pagos, líneas de factura y propina, sin duplicar', async () => {
     installWindow({ desktop: true });
     const existing = { id: SALE_ID, organization_id: 120, branch_id: 7, total: 13500, balance: 0, status: 'paid' };
-    fake.setHandler((op) => {
+    fake.setHandler(withRpcMissing((op) => {
       if (op.table === 'sales' && op.action === 'select') return { data: existing };
       if (op.table === 'invoice_sales' && op.action === 'select') return { data: null };
       if (op.countOnly) {
@@ -256,7 +271,7 @@ describe('POSService.checkout — ids de cliente e idempotencia', () => {
         return { count: 0 };
       }
       return freshDbHandler(op);
-    });
+    }));
 
     await POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT, replayFromOutbox: true }));
 
@@ -273,7 +288,7 @@ describe('POSService.checkout — ids de cliente e idempotencia', () => {
     installWindow({ desktop: true });
     const existing = { id: SALE_ID, organization_id: 120, branch_id: 7, total: 13500, balance: 0, status: 'paid' };
     const invoice = { id: 'inv-1', sale_id: SALE_ID, number: 'FACT-000001', balance: 0 };
-    fake.setHandler((op) => {
+    fake.setHandler(withRpcMissing((op) => {
       if (op.table === 'sales' && op.action === 'select') return { data: existing };
       if (op.table === 'invoice_sales' && op.action === 'select') return { data: invoice };
       if (op.countOnly) {
@@ -285,7 +300,7 @@ describe('POSService.checkout — ids de cliente e idempotencia', () => {
         return { count: 2 };
       }
       return freshDbHandler(op);
-    });
+    }));
 
     await POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT, replayFromOutbox: true, change: 0 }));
 
@@ -304,7 +319,7 @@ describe('POSService.checkout — ids de cliente e idempotencia', () => {
     seedCarts();
     const existing = { id: SALE_ID, organization_id: 120, branch_id: 7, total: 13500, balance: 0, status: 'paid' };
     let salesSelects = 0;
-    fake.setHandler((op) => {
+    fake.setHandler(withRpcMissing((op) => {
       if (op.table === 'sales' && op.action === 'select') {
         salesSelects++;
         return { data: salesSelects === 1 ? null : existing };
@@ -313,7 +328,7 @@ describe('POSService.checkout — ids de cliente e idempotencia', () => {
       if (op.table === 'invoice_sales' && op.action === 'select') return { data: null };
       if (op.countOnly) return { count: op.table === 'sale_items' || op.table === 'stock_movements' ? 2 : 0 };
       return freshDbHandler(op);
-    });
+    }));
 
     const sale = await POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT, replayFromOutbox: true }));
 

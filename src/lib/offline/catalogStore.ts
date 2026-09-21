@@ -266,6 +266,19 @@ export interface CatalogStoreMeta {
   count: number;
 }
 
+/**
+ * Entrada genérica del store `meta` (fase 4F): estado local que no es una
+ * fila replicada, p. ej. la caja abierta sin red (`cashOutbox.ts`). Se
+ * distingue de `CatalogStoreMeta` por `kind`; `getCatalogStatus` la ignora.
+ */
+export interface CatalogMetaEntry<T = unknown> {
+  key: string;
+  kind: string;
+  organization_id: number;
+  value: T;
+  updated_at: number;
+}
+
 export interface CatalogStatus {
   organization_id: number;
   /** true si `products` no se ha replicado nunca para la organización. */
@@ -361,6 +374,37 @@ export async function setCatalogStoreMeta(store: CatalogStoreName, organizationI
   await txDone(tx);
 }
 
+// ── Meta genérica (fase 4F: estado local de caja) ──
+
+export async function putCatalogMeta<T>(entry: Omit<CatalogMetaEntry<T>, 'updated_at'>): Promise<void> {
+  const db = await openCatalogDB();
+  const tx = db.transaction(META_STORE, 'readwrite');
+  tx.objectStore(META_STORE).put({ ...entry, updated_at: Date.now() } satisfies CatalogMetaEntry<T>);
+  await txDone(tx);
+}
+
+export async function getCatalogMeta<T>(key: string): Promise<CatalogMetaEntry<T> | null> {
+  const db = await openCatalogDB();
+  const tx = db.transaction(META_STORE, 'readonly');
+  const row = (await requestToPromise(tx.objectStore(META_STORE).get(key))) as CatalogMetaEntry<T> | undefined;
+  return row && typeof row.kind === 'string' ? row : null;
+}
+
+/** Entradas genéricas de un `kind` para la organización. */
+export async function listCatalogMeta<T>(kind: string, organizationId: number): Promise<CatalogMetaEntry<T>[]> {
+  const db = await openCatalogDB();
+  const tx = db.transaction(META_STORE, 'readonly');
+  const all = (await requestToPromise(tx.objectStore(META_STORE).getAll())) as Array<CatalogMetaEntry<T> | CatalogStoreMeta>;
+  return all.filter((m): m is CatalogMetaEntry<T> => 'kind' in m && m.kind === kind && m.organization_id === organizationId);
+}
+
+export async function deleteCatalogMeta(key: string): Promise<void> {
+  const db = await openCatalogDB();
+  const tx = db.transaction(META_STORE, 'readwrite');
+  tx.objectStore(META_STORE).delete(key);
+  await txDone(tx);
+}
+
 /** Vacía todo el catálogo (cambio de organización, soporte). */
 export async function clearCatalog(): Promise<void> {
   if (!isCatalogAvailable()) return;
@@ -413,9 +457,11 @@ export async function getCatalogStatus(organizationId: number): Promise<CatalogS
   try {
     const db = await openCatalogDB();
     const tx = db.transaction(META_STORE, 'readonly');
-    const all = (await requestToPromise(tx.objectStore(META_STORE).getAll())) as CatalogStoreMeta[];
+    const all = (await requestToPromise(tx.objectStore(META_STORE).getAll())) as Array<CatalogStoreMeta | CatalogMetaEntry>;
     const status: CatalogStatus = { ...empty, stores: {} };
     for (const meta of all) {
+      // Las entradas genéricas (`kind`, fase 4F) no son stores replicados.
+      if ('kind' in meta || typeof meta.replicated_at !== 'number') continue;
       if (meta.organization_id !== organizationId) continue;
       status.stores[meta.store] = { replicated_at: meta.replicated_at, count: meta.count };
       status.replicatedAt = status.replicatedAt === null ? meta.replicated_at : Math.min(status.replicatedAt, meta.replicated_at);

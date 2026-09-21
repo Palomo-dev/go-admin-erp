@@ -5,7 +5,9 @@
  * - GET: Cachea respuestas en IndexedDB para servir offline
  * - POST /rest/v1/rpc/<fn> (RPC de lectura): se cachea por función + hash del
  *   body y se sirve offline; NUNCA se encola (fase 4A del Desktop)
- * - POST/PATCH/DELETE REST: Encola acciones para sincronizar cuando vuelva la conexión
+ * - POST/PATCH/DELETE REST: solo las tablas reproducibles sin id devuelto se
+ *   encolan (`QUEUEABLE_OFFLINE_WRITE_TABLES`); el resto recibe un 503 claro
+ *   (fase 4F) y las tablas con outbox propio nunca pasan por aquí
  *
  * Solo se activa dentro del app de Electron (desktop).
  */
@@ -135,6 +137,66 @@ export const SALE_TABLES_NOT_QUEUED: ReadonlySet<string> = new Set([
   'tips',
   'commissions',
 ]);
+
+/**
+ * Tablas con outbox propio en el Desktop (fase 4F): ventas (4B), clientes
+ * (4D) y caja (4F). Sin red NUNCA se encolan como peticiones sueltas: el
+ * POS las guarda como operación de negocio completa (`salesOutbox`,
+ * `customersOutbox`, `cashOutbox`). Si otra pantalla llega aquí, recibe un
+ * 503 con código `OFFLINE_OUTBOX_TABLE` y un mensaje claro.
+ */
+export const OUTBOX_TABLES_NOT_QUEUED: ReadonlySet<string> = new Set([
+  ...SALE_TABLES_NOT_QUEUED,
+  'customers',
+  'cash_sessions',
+  'cash_movements',
+]);
+
+/**
+ * Únicas escrituras REST que siguen yendo a `action-queue` sin red (fase
+ * 4F, cola honesta): las que se pueden reproducir tal cual más tarde porque
+ * la UI no necesita el id devuelto ni encadena nada después.
+ *
+ *  - `product_favorites`, `category_favorites`: alternar favorito (insert /
+ *    delete por filtro), idempotente y sin efecto en dinero.
+ *  - `print_jobs`: auditoría de la impresión local (fase 4, punto 1); el
+ *    ticket ya salió por IPC y el registro solo documenta.
+ *
+ * Todo lo demás sin red responde 503 `OFFLINE_WRITE_REQUIRES_NETWORK` con
+ * «Sin conexión: esta acción requiere internet», que el banner muestra como
+ * toast (`goadmin:offline-write-rejected`) en vez de fingir un 202.
+ */
+export const QUEUEABLE_OFFLINE_WRITE_TABLES: ReadonlySet<string> = new Set(['product_favorites', 'category_favorites', 'print_jobs']);
+
+export const OFFLINE_WRITE_REQUIRES_NETWORK_CODE = 'OFFLINE_WRITE_REQUIRES_NETWORK';
+export const OFFLINE_OUTBOX_TABLE_CODE = 'OFFLINE_OUTBOX_TABLE';
+export const OFFLINE_WRITE_REJECTED_EVENT = 'goadmin:offline-write-rejected';
+export const OFFLINE_WRITE_REQUIRES_NETWORK_MESSAGE = 'Sin conexión: esta acción requiere internet';
+
+export interface OfflineWriteRejectedDetail {
+  table: string | null;
+  method: string;
+  code: string;
+  message: string;
+}
+
+/**
+ * Respuesta 503 honesta para una escritura sin red. El cuerpo lleva
+ * `message`/`code` en la raíz (así `supabase-js` devuelve `error.message`
+ * legible a quien lo llame) y además `error` anidado por compatibilidad.
+ * Emite `goadmin:offline-write-rejected` para el toast global del banner.
+ */
+export function offlineWriteRejected(detail: OfflineWriteRejectedDetail): Response {
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    try {
+      window.dispatchEvent(new CustomEvent(OFFLINE_WRITE_REJECTED_EVENT, { detail }));
+    } catch {
+      // sin CustomEvent
+    }
+  }
+  const body = { message: detail.message, code: detail.code, details: detail.table ? `${detail.method} ${detail.table}` : detail.method, hint: null, data: null, error: { message: detail.message, code: detail.code } };
+  return new Response(JSON.stringify(body), { status: 503, headers: { 'Content-Type': 'application/json', 'X-Offline-Rejected': detail.code } });
+}
 
 /** FNV-1a de 32 bits en hexadecimal: clave corta y estable para el body. */
 export function hashBody(body: string): string {
@@ -288,8 +350,11 @@ async function resolveFromLocalRpc(fnName: string, body: string): Promise<Respon
  *    caché por `rpc:<fn>:<hash del body>`; si no hay, `503 Offline`. **Nunca se encola**:
  *    una RPC no es una acción de negocio reproducible y encolarla es lo que
  *    llenaba el contador de «acciones pendientes» con lecturas.
- *  - Resto (`POST/PATCH/PUT/DELETE` REST): se encola en `action-queue` y se
- *    responde `202` como hasta ahora.
+ *  - Resto (`POST/PATCH/PUT/DELETE` REST), fase 4F: tabla con outbox propio
+ *    → 503 `OFFLINE_OUTBOX_TABLE`; tabla de `QUEUEABLE_OFFLINE_WRITE_TABLES`
+ *    → se encola en `action-queue` y se responde `202`; cualquier otra →
+ *    503 `OFFLINE_WRITE_REQUIRES_NETWORK` («Sin conexión: esta acción
+ *    requiere internet»). Nunca más un 202 con `data: null` a ciegas.
  */
 export async function resolveOfflineDataRequest(args: {
   url: string;
@@ -326,16 +391,25 @@ export async function resolveOfflineDataRequest(args: {
     return noData();
   }
 
-  // Tablas de venta (fase 4B): NUNCA a la cola HTTP. Un 202 con `data: null`
-  // rompe la cadena venta → líneas → pagos y sincroniza una venta vacía. El
-  // POS las guarda como sobre completo en el outbox (`salesOutbox.ts`); si
-  // otro flujo llega aquí, falla con un error claro en vez de "guardar".
+  // Tablas con outbox propio (ventas 4B, clientes 4D, caja 4F): NUNCA a la
+  // cola HTTP. Un 202 con `data: null` rompe la cadena venta → líneas →
+  // pagos y sincroniza una venta vacía. El POS las guarda como operación
+  // completa en su outbox; si otro flujo llega aquí, falla con un error
+  // claro en vez de "guardar".
   const restTable = getRestTableName(url);
-  if (restTable !== null && SALE_TABLES_NOT_QUEUED.has(restTable)) {
-    return new Response(
-      JSON.stringify({ data: null, error: { message: `Offline: la tabla ${restTable} no se encola; la venta debe ir al outbox`, code: 'OFFLINE_SALE_TABLE' } }),
-      { status: 503, headers: { 'Content-Type': 'application/json' } },
-    );
+  if (restTable !== null && OUTBOX_TABLES_NOT_QUEUED.has(restTable)) {
+    return offlineWriteRejected({
+      table: restTable,
+      method,
+      code: OFFLINE_OUTBOX_TABLE_CODE,
+      message: `${OFFLINE_WRITE_REQUIRES_NETWORK_MESSAGE} (la tabla ${restTable} se sincroniza desde el POS, no desde esta pantalla)`,
+    });
+  }
+
+  // Cola honesta (fase 4F): solo se encola lo que se puede reproducir tal
+  // cual sin que la UI necesite el id devuelto. El resto, 503 claro.
+  if (restTable === null || !QUEUEABLE_OFFLINE_WRITE_TABLES.has(restTable)) {
+    return offlineWriteRejected({ table: restTable, method, code: OFFLINE_WRITE_REQUIRES_NETWORK_CODE, message: OFFLINE_WRITE_REQUIRES_NETWORK_MESSAGE });
   }
 
   await queueAction({ url, method, headers, body });

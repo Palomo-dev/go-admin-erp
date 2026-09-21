@@ -239,12 +239,16 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
   });
 
   // ── Vista de la web ──
+  // sandbox: true (auditoría §4.3). El preload solo usa contextBridge e
+  // ipcRenderer, que están disponibles en un preload sandboxed. Las ventanas
+  // de impresión de la web (`window.open('', '_blank')`) siguen funcionando:
+  // ver installExternalLinkGuards.
   webView = new WebContentsView({
     webPreferences: {
       preload: getPreloadPath('index'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
       spellcheck: false,
       backgroundThrottling: false,
       zoomFactor,
@@ -484,14 +488,20 @@ export function isInternalUrl(url: string, loadUrl: string): boolean {
  *   heredaría el bridge (impresión, agente, configuración). Se bloquea y se
  *   abre en el navegador del sistema.
  * - `setWindowOpenHandler`: los enlaces externos van al navegador. Se permite
- *   `about:blank` porque las ventanas de impresión (`window.open('', '_blank')`)
- *   lo usan para mostrar el diálogo de impresión; sin esto reimprimir desde el
- *   POS no muestra nada.
+ *   `about:blank` porque las ventanas de impresión de la web
+ *   (`window.open('', '_blank')` + `document.write(html)` + `print()`) lo
+ *   usan para mostrar el diálogo de impresión del navegador; sin esto
+ *   reimprimir desde el POS no muestra nada.
  *
- * CRÍTICO: la vista de la web tiene `sandbox: false`. Por defecto las ventanas
- * hijas se crean sandboxed, lo que hace que `window.open()` devuelva null
- * (desajuste de sandbox entre opener e hija). Se hereda `sandbox: false` para
- * que la hija comparta el proceso del opener y `window.open()` funcione.
+ * Sandbox (auditoría §4.3, cerrado 2026-09-21): antes la vista corría con
+ * `sandbox: false` y las hijas heredaban `sandbox: false` porque, si el
+ * opener no está sandboxed y la hija sí, Chromium las separa de proceso y
+ * `window.open()` devuelve un proxy sin `document`. Con el opener sandboxed
+ * las hijas se crean sandboxed (default de Electron ≥ 20), comparten proceso
+ * y `window.open('')` devuelve una ventana same-origin con `document.write`
+ * y `print()` operativos (comprobado con Electron 33.4.11). Ya no se baja el
+ * sandbox de nada. Las hijas solo pueden ser `about:blank` o una URL interna;
+ * `nodeIntegration` sigue en false y `contextIsolation` en true.
  */
 export function installExternalLinkGuards(wc: WebContents, loadUrl: string): void {
   wc.on('will-navigate', (event, url) => {
@@ -505,8 +515,9 @@ export function installExternalLinkGuards(wc: WebContents, loadUrl: string): voi
       return {
         action: 'allow',
         overrideBrowserWindowOptions: {
+          autoHideMenuBar: true,
           webPreferences: {
-            sandbox: false,
+            sandbox: true,
             nodeIntegration: false,
             contextIsolation: true,
           },

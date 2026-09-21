@@ -6,6 +6,7 @@ import * as net from 'net';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { appendLog, flushLog } from './crashReporter';
+import { getWebRoot as resolveWebRoot, readPublicEnvFile } from './publicEnv';
 
 /**
  * Servidor Next.js embebido (fase 3 del desktop).
@@ -91,9 +92,6 @@ const STOP_TIMEOUT_MS = 5_000;
 const RESTART_DELAY_MS = 1_500;
 const MAX_RESTARTS = 3;
 
-/** Solo estas claves pasan del .env empaquetado al proceso hijo. */
-const ENV_ALLOWED_PREFIX = 'NEXT_PUBLIC_';
-
 type WebServerEvents = {
   ready: (url: string) => void;
   /** El servidor murió sin que se le pidiera. Se emite ANTES de intentar reiniciarlo. */
@@ -136,11 +134,9 @@ class WebServer extends EventEmitter {
     return app.isPackaged || process.env.GOADMIN_DESKTOP_LOCAL_WEB === '1';
   }
 
-  /** Carpeta con server.js, .next/, public/ y .env. */
+  /** Carpeta con server.js, .next/, public/ y .env (la resuelve publicEnv, compartida con el main). */
   getWebRoot(): string {
-    if (app.isPackaged) return path.join(process.resourcesPath, 'web');
-    // dist/main → electron/resources/web
-    return path.join(__dirname, '..', '..', 'resources', 'web');
+    return resolveWebRoot();
   }
 
   /** true si hay un build empaquetado que se pueda arrancar. */
@@ -475,33 +471,16 @@ function probe(url: string): Promise<boolean> {
 }
 
 /**
- * Lee resources/web/.env y devuelve solo las claves públicas. La allow-list
- * ya se aplica al construir (scripts/build-web.js); aquí se repite por si el
- * archivo se editara a mano en una instalación.
+ * Lee resources/web/.env y devuelve solo las claves públicas (parser y
+ * allow-list `NEXT_PUBLIC_*` en publicEnv.ts, compartidos con el main).
  */
 function readPackagedEnv(file: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  let content = '';
-  try {
-    content = fs.readFileSync(file, 'utf-8');
-  } catch {
+  const rec = readPublicEnvFile(file);
+  if (!rec) {
     console.warn(`[webServer] No se encontró ${file}; el servidor arranca sin variables públicas`);
-    return out;
+    return {};
   }
-  for (const rawLine of content.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#')) continue;
-    const eq = line.indexOf('=');
-    if (eq <= 0) continue;
-    const key = line.slice(0, eq).trim();
-    if (!key.startsWith(ENV_ALLOWED_PREFIX)) continue;
-    let value = line.slice(eq + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-    out[key] = value;
-  }
-  return out;
+  return rec;
 }
 
 export const webServer = new WebServer();

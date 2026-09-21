@@ -8,6 +8,7 @@ import { getUpdateState, checkForUpdates, installUpdate } from './updater';
 import { readLog, clearLog } from './crashReporter';
 import { isOnline, checkNow } from './connectivity';
 import { reloadApp } from './windows/mainWindow';
+import { openPrintPreview } from './printPreview';
 
 export function registerIpcHandlers(): void {
   // ── Agente ──
@@ -112,6 +113,12 @@ export function registerIpcHandlers(): void {
       return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
   });
+
+  // Ventana de impresión creada por el main (sandboxed, sin preload) con el
+  // HTML que manda la web; alternativa a window.open('') (ver printPreview.ts).
+  ipcMain.handle('printing:open-preview', (e, html: unknown, opts?: unknown) =>
+    openPrintPreview(e.sender, html, opts),
+  );
 
   ipcMain.handle('printing:open-cash-drawer', async (_e, printerName?: string) => {
     try {

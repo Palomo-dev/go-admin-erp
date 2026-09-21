@@ -16,12 +16,18 @@ const nextConfig = {
   // "Cannot find module webpack-runtime.js". Sin la variable, `.next` de siempre.
   distDir: process.env.NEXT_DIST_DIR || '.next',
   eslint: {
-    // Permite que el build en producción complete aunque haya errores de ESLint
+    // DEUDA (auditoría desktop §4.6, 2026-09-21): sigue en true porque
+    // `npm run lint` no está verde: miles de `@typescript-eslint/no-explicit-any`
+    // preexistentes en todo src/. Activarlo hoy rompería el despliegue sin
+    // corregir nada. Cuando el lint quede en 0, pasar a false. Mientras tanto,
+    // cada archivo que se toque debe quedar limpio (regla de CLAUDE.md).
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // Permite que el build en producción complete aunque haya errores de TypeScript
-    ignoreBuildErrors: true,
+    // Auditoría desktop §4.6 [CERRADO 2026-09-21]: el build falla si hay
+    // errores de tipos. `tsc --noEmit` está en 0 errores; si vuelve a haber
+    // alguno, ni Vercel ni la web embebida del desktop deben publicarlo.
+    ignoreBuildErrors: false,
   },
   // Limitar workers de webpack para evitar OOM en Vercel (8GB RAM).
   // cpus: 1 = solo 1 worker de webpack (en vez de 4 por defecto).

@@ -18,7 +18,7 @@
 | Historial de rondas y calificaciones (anexar, nunca reescribir) | `PROGRESS.md` (raíz), entradas «Fase: F0 …» y «Prueba de humo en Go Admin Desktop» |
 | Ciclo de trabajo builder → tester → qa-reviewer | `.devin/workflows/loop.md` |
 | Scripts del Workflow tool por fase | `docs/pos-doble-pantalla/workflow-f0-v4.js` (F0, ya ejecutado), `workflow-f1.js`, `workflow-f2.js`, `workflow-f3.js`, `workflow-f4.js` |
-| Migraciones preparadas (NO aplicadas, sin commitear) | `supabase/migrations/20260916010000_pos_terminals.sql` + `supabase/rollbacks/20260916010000_pos_terminals_rollback.sql` (F2) · `supabase/migrations/20260916020000_pos_display_feedback.sql` + rollback (F4) |
+| Migraciones (APLICADAS por MCP el 2026-09-21 y commiteadas: `71112cbf`, `c98618f8`) | `supabase/migrations/20260916010000_pos_terminals.sql` (+ rollback): `pos_terminals` (identidad, RLS por pertenencia) y `pos_terminal_secrets` (código de emparejamiento y hash del token; SIN permisos para anon/authenticated, solo service role) · `supabase/migrations/20260916020000_pos_display_feedback.sql` (+ rollback) |
 | Núcleo de la pantalla (protocolo, proyección, transporte, emisor) | `src/lib/pos/display/{protocol,projection,transport,desktopChannel,terminal,emitter,emitterRegistry,settings,customerDisplaySettings,presence,payment,openDisplay,posDisplay,route,index}.ts` |
 | Ruta pública de la pantalla | `src/app/pos-display/` (excluida del gate en `src/middleware.ts`; `isCustomerDisplayPath` en `src/lib/pos/display/route.ts`) |
 | Componentes de la pantalla | `src/components/pos-display/{CustomerDisplay,OrderView,views,useDisplayReceiver,displayLink,logic,BrandHeader,FullscreenButton}.tsx` |

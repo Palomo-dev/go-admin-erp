@@ -29,7 +29,13 @@ const config: CapacitorConfig = {
     cleartext: false,
     androidScheme: 'https',
     iosScheme: 'https',
-    // Dominios permitidos para navegacion dentro del WebView.
+    // Dominios permitidos para NAVEGACION (top-level) dentro del WebView.
+    // Solo gobierna a que paginas puede ir el WebView; NO limita fetch/XHR
+    // ni WebSocket. El softphone (F3/F15-B) no navega a Twilio: abre
+    // wss://voice-js.<edge>.twilio.com, https://eventgw.twilio.com y TURN
+    // en global.turn.twilio.com, y nada de eso pasa por esta lista. No
+    // se anaden dominios de Twilio a proposito (ampliaria a donde puede
+    // navegar el WebView sin ganar nada).
     allowNavigation: ['*.goadmin.io', '*.supabase.co'],
   },
   android: {

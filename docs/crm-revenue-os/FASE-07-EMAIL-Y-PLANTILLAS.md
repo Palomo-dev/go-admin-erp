@@ -1,5 +1,15 @@
 # FASE 07 — Email profesional desde la oportunidad: editor de bloques + HTML, plantillas, dominio propio por organización, IA, tracking e inbound
 
+## Estado real (2026-09-21)
+
+- **Rutas API** (`src/app/api/email/**`, 17 endpoints, verificado con `ls` recursivo): `domains`, `domains/[id]`, `domains/[id]/verify`, `domains/[id]/default`, `messages`, `messages/[id]`, `messages/[id]/reply`, `messages/[id]/cancel`, `send`, `settings`, `templates`, `templates/[id]`, `templates/[id]/duplicate`, `templates/[id]/test-send`, `templates/preview` (global, no por id), `variables`, `webhook`. Baja pública en `src/app/u/[token]/route.ts`. IA de redacción en `src/app/api/crm/ia/draft-email/route.ts`. No existen `domains/[id]/dns` ni `/api/email/signatures` que planeaba §4.1.
+- **Servicios** (`src/lib/services/crm/email/`, 26 archivos, 4.337 líneas sin tests): `sendService.ts` (296L, orquestador real), `templatesService.ts` (259L), `domainsService.ts` (255L), `render.ts` (111L), `messagesService.ts` (71L), más `attachments.ts`, `blocks.ts`, `domainRules.ts`, `domainStore.ts`, `inboundService.ts`, `messageStore.ts`, `sanitize.ts`, `unsubscribe.ts`, `variables.ts`, `webhookService.ts`, etc. — nombres y granularidad distintos a §4.2. `src/lib/services/crm/emailService.ts` (102L) quedó como fachada legacy que reexporta, usada por `sequenceService.ts` y `automationService.ts`.
+- **UI**: diálogo `src/components/crm/email/ComposeEmailDialogFull.tsx`; editor de bloques en `src/components/crm/email/editor/`; plantillas en `src/app/app/crm/plantillas/**`; configuración en `src/components/configuracion/crm/EmailTab.tsx` + `src/components/configuracion/crm/email/*` (no `EmailSettingsTab.tsx` como en §5.1).
+- **Migraciones**: no hay archivo `202609_crm_v4_f07_templates_email` independiente; las columnas de `templates` (`preheader`, `parent_template_id`, etc.) llegaron por `supabase/migrations/00000000000000_baseline_schema.sql` y `20260908214513_crm_v4_f00_01_reconciliacion_checks_columnas.sql`.
+- **Variables de entorno**: `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `EMAIL_GLOBAL_DOMAIN`, `EMAIL_GLOBAL_FROM_NAME` (ver `.env.example`).
+- **Tests**: 17 archivos en `src/lib/services/crm/email/__tests__/` (incluye `secretosDeRelleno.test.ts` y `svixReal.test.ts` de integración con Svix real).
+- **Calificación** (`docs/crm-revenue-os/PROGRESS.md`, "Fase: F7 — APROBADA — 2026-09-09"): **9,5/10**, cuatro rondas (8,0 → 8,2 → 9,0 → 9,4 → 9,5), 225 casos verdes en 13 suites.
+
 > Fecha: 2026-09-08 · Estado: **reescrito V4** (reemplaza el V3 que asumía SendGrid como stack vivo y no tenía editor de bloques real)
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj`
 > Depende de: **F0** (seguridad, `outbound_jobs` + pg_cron + `/api/crm/jobs/run`, `contact_consents` + `fn_can_contact`, `templates.blocks_json/engine/version`, `activities.email_message_id`, secretos cifrados en `vault`), **F9** (timeline + `QuickActionsBar` que abre `ComposeEmailDialog`).
@@ -225,6 +235,8 @@ Todas las migraciones se aplican SOLO con MCP `apply_migration`. Patrón RLS: el
 Columnas que **ya crea F0** y esta fase asume: `templates.blocks_json jsonb`, `templates.engine text`, `templates.version integer`, `activities.email_message_id uuid`, tabla `contact_consents` + `fn_can_contact(p_customer_id uuid, p_channel text) returns boolean`, tabla `outbound_jobs` + `fn_claim_jobs(p_kind text, p_limit int)`.
 
 ### 3.1 Migraciones
+
+> **Obsoleto:** no se aplicó como migración `f07` independiente. Las columnas de `templates` (`preheader`, `parent_template_id`, `usage_count`, `last_used_at`, `is_system`) y los CHECK/índices de abajo están en `supabase/migrations/00000000000000_baseline_schema.sql` y `20260908214513_crm_v4_f00_01_reconciliacion_checks_columnas.sql` (verificado con `grep` sobre `supabase/migrations/*.sql`).
 
 #### `202609_crm_v4_f07_templates_email`
 
@@ -605,6 +617,8 @@ Auth "sesión" = `getServerOrgContext()` (orgId nunca del body). Errores en JSON
 
 Todos en `src/lib/services/crm/email/` (se parte el `emailService.ts` de 815L). Server-only (`import 'server-only'`), reciben `SupabaseClient` explícito.
 
+> **Obsoleto:** los nombres de archivo reales no coinciden con los de esta sección (`emailService.ts` → `sendService.ts`, `emailRenderService.ts` → `render.ts`, `emailTemplateService.ts` → `templatesService.ts`, `emailDomainService.ts` → `domainsService.ts`, `emailInboundService.ts` → `inboundService.ts`, `emailUnsubscribeService.ts` → `unsubscribe.ts`) y hay más archivos de los planeados (`attachments.ts`, `blocks.ts`, `domainRules.ts`, `domainStore.ts`, `domainsSupport.ts`, `http.ts`, `messageStore.ts`, `publicPage.ts`, `renderBlocks.ts`, `renderPrimitives.ts`, `resendClient.ts`, `sanitize.ts`, `schemas.ts`, `variablesContext.ts`, `webhookService.ts`). `src/lib/services/crm/emailService.ts` (el archivo del nombre original) quedó como fachada de 102L que reexporta desde `email/*` para mantener la firma legacy que usan `sequenceService.ts` y `automationService.ts`.
+
 #### `emailService.ts` (orquestador; ≤300L)
 
 ```ts
@@ -902,6 +916,8 @@ Antes de llamar: `decrement_ai_credits(p_org_id, p_cost)` con costo desde `provi
 ## 5. UI
 
 ### 5.1 Rutas / páginas
+
+> **Obsoleto:** el diálogo real se llama `ComposeEmailDialogFull.tsx` (no `ComposeEmailDialog.tsx`); la pestaña de configuración es `src/components/configuracion/crm/EmailTab.tsx` (no `EmailSettingsTab.tsx`), con las tarjetas de dominios/política en `src/components/configuracion/crm/email/*`.
 
 | Ruta | Archivo | Propósito |
 |---|---|---|

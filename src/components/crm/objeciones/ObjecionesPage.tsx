@@ -9,14 +9,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, RefreshCw } from 'lucide-react';
-import { AnimatePresence, MotionConfig } from 'motion/react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { toast } from '@/components/ui/use-toast';
-import { StaggerList } from '@/components/shared/motion/staggerList';
+import { AnimatePresence, StaggerList } from '@/components/shared/motion';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
 import type { Objection } from '@/lib/services/crm/objectionService';
 import { EMPTY_FILTERS, filterObjections, type ObjectionFilters } from '@/lib/services/crm/objectionModel';
@@ -103,88 +102,86 @@ export function ObjecionesPage() {
   };
 
   return (
-    <MotionConfig reducedMotion="user">
-      <TooltipProvider delayDuration={300}>
-        <div className="space-y-5 p-4 sm:p-6">
-          <header className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Objeciones</h1>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Lo que dice el cliente, cómo responder y qué preguntar. El vendedor las registra en la oportunidad con dos clics.
-              </p>
+    <TooltipProvider delayDuration={300}>
+      <div className="space-y-5 p-4 sm:p-6">
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Objeciones</h1>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              Lo que dice el cliente, cómo responder y qué preguntar. El vendedor las registra en la oportunidad con dos clics.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="ghost" size="icon" aria-label="Actualizar lista" disabled={refreshing} onClick={() => void refresh()}>
+              <RefreshCw className={cn('h-4 w-4', refreshing && 'motion-safe:animate-spin')} aria-hidden="true" />
+            </Button>
+            <Button ref={newButtonRef} type="button" className="bg-blue-600 text-white hover:bg-blue-700" onClick={() => openEditor(null)}>
+              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> Nueva objeción
+            </Button>
+          </div>
+        </header>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>{loaded ? 'No se pudo actualizar la lista' : 'No se pudieron cargar las objeciones'}</AlertTitle>
+            <AlertDescription>
+              {error}. {loaded ? 'Se muestra la última lista conocida; pulsa' : 'Pulsa'} «Actualizar» para reintentar.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {loading ? (
+          <div className="space-y-4" aria-busy="true" aria-label="Cargando objeciones">
+            <Skeleton className="h-9 w-full max-w-md" />
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="ghost" size="icon" aria-label="Actualizar lista" disabled={refreshing} onClick={() => void refresh()}>
-                <RefreshCw className={cn('h-4 w-4', refreshing && 'motion-safe:animate-spin')} aria-hidden="true" />
-              </Button>
-              <Button ref={newButtonRef} type="button" className="bg-blue-600 text-white hover:bg-blue-700" onClick={() => openEditor(null)}>
-                <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> Nueva objeción
-              </Button>
-            </div>
-          </header>
+          </div>
+        ) : objections.length === 0 && (loaded || !error) ? (
+          <ObjectionsEmptyState filtered={false} onCreate={() => openEditor(null)} onClearFilters={() => setFilters(EMPTY_FILTERS)} />
+        ) : objections.length === 0 ? null : (
+          <>
+            <ObjectionsToolbar filters={filters} onChange={setFilters} total={objections.length} shown={shown.length} categories={categories} />
+            {shown.length === 0 ? (
+              <ObjectionsEmptyState filtered onCreate={() => openEditor(null)} onClearFilters={() => setFilters(EMPTY_FILTERS)} />
+            ) : (
+              <StaggerList as="ul" aria-label="Objeciones" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <AnimatePresence initial={false}>
+                  {shown.map((o) => (
+                    <ObjectionCard
+                      key={o.id}
+                      objection={o}
+                      toggling={togglingId === o.id}
+                      onToggle={(x) => void onToggle(x)}
+                      onEdit={(x) => openEditor(x)}
+                      onDelete={(x) => setDeleteTarget(x)}
+                    />
+                  ))}
+                </AnimatePresence>
+              </StaggerList>
+            )}
+          </>
+        )}
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertTitle>{loaded ? 'No se pudo actualizar la lista' : 'No se pudieron cargar las objeciones'}</AlertTitle>
-              <AlertDescription>
-                {error}. {loaded ? 'Se muestra la última lista conocida; pulsa' : 'Pulsa'} «Actualizar» para reintentar.
-              </AlertDescription>
-            </Alert>
-          )}
+        <ObjectionEditorSheet
+          open={editorOpen}
+          objection={editing}
+          onOpenChange={setEditorOpen}
+          onSave={save}
+          returnFocusFallback={() => newButtonRef.current}
+        />
 
-          {loading ? (
-            <div className="space-y-4" aria-busy="true" aria-label="Cargando objeciones">
-              <Skeleton className="h-9 w-full max-w-md" />
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)}
-              </div>
-            </div>
-          ) : objections.length === 0 && (loaded || !error) ? (
-            <ObjectionsEmptyState filtered={false} onCreate={() => openEditor(null)} onClearFilters={() => setFilters(EMPTY_FILTERS)} />
-          ) : objections.length === 0 ? null : (
-            <>
-              <ObjectionsToolbar filters={filters} onChange={setFilters} total={objections.length} shown={shown.length} categories={categories} />
-              {shown.length === 0 ? (
-                <ObjectionsEmptyState filtered onCreate={() => openEditor(null)} onClearFilters={() => setFilters(EMPTY_FILTERS)} />
-              ) : (
-                <StaggerList as="ul" aria-label="Objeciones" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  <AnimatePresence initial={false}>
-                    {shown.map((o) => (
-                      <ObjectionCard
-                        key={o.id}
-                        objection={o}
-                        toggling={togglingId === o.id}
-                        onToggle={(x) => void onToggle(x)}
-                        onEdit={(x) => openEditor(x)}
-                        onDelete={(x) => setDeleteTarget(x)}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </StaggerList>
-              )}
-            </>
-          )}
-
-          <ObjectionEditorSheet
-            open={editorOpen}
-            objection={editing}
-            onOpenChange={setEditorOpen}
-            onSave={save}
-            returnFocusFallback={() => newButtonRef.current}
-          />
-
-          <ConfirmDialog
-            open={deleteTarget !== null}
-            onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
-            title="Eliminar objeción"
-            description={`Se eliminará «${deleteTarget?.title ?? ''}» del catálogo. Las oportunidades donde ya estaba registrada perderán ese registro. Esta acción no se puede deshacer.`}
-            confirmLabel="Eliminar"
-            variant="destructive"
-            onConfirm={onDelete}
-            onCloseAutoFocus={onDeleteCloseAutoFocus}
-          />
-        </div>
-      </TooltipProvider>
-    </MotionConfig>
+        <ConfirmDialog
+          open={deleteTarget !== null}
+          onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+          title="Eliminar objeción"
+          description={`Se eliminará «${deleteTarget?.title ?? ''}» del catálogo. Las oportunidades donde ya estaba registrada perderán ese registro. Esta acción no se puede deshacer.`}
+          confirmLabel="Eliminar"
+          variant="destructive"
+          onConfirm={onDelete}
+          onCloseAutoFocus={onDeleteCloseAutoFocus}
+        />
+      </div>
+    </TooltipProvider>
   );
 }

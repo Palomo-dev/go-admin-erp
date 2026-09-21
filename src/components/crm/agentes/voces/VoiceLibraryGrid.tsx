@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/use-toast";
 import { Loader2, Music4 } from "lucide-react";
 import { LoadErrorState } from "@/components/common/LoadErrorState";
-import { FadeIn } from "@/components/shared/motion/primitives";
+import { FadeIn } from "@/components/shared/motion";
 import { fetchJson } from "@/lib/utils/fetchJson";
 import { describeError } from "@/lib/utils/errorMessage";
 import type { LibraryVoice } from "@/lib/services/crm/voiceLibrary";

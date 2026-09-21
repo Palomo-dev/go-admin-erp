@@ -14,6 +14,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/utils/Utils';
 import { useSoftphone } from '@/components/voice/SoftphoneProvider';
+import { useCallModePolicy } from '@/components/voice/hooks/useCallModePolicy';
 import {
   getCallModes,
   getQuickActions,
@@ -80,6 +81,8 @@ export function QuickActionsBar({
   variant, opportunityId, customerId, customer, opportunityName, actions, onActionCompleted, className,
 }: QuickActionsBarProps) {
   const softphone = useOptionalSoftphone();
+  // F15-B: modo por defecto por plataforma × preferencia × micrófono (única decisión: resolveDefaultCallMode).
+  const { decision: callPolicy } = useCallModePolicy();
   // F16 r5 · T-3: indicativo de la organización para los teléfonos nacionales
   // (antes siempre '57'). `undefined` mientras carga → último recurso.
   const defaultCountry = useOrgDefaultCountry() ?? undefined;
@@ -93,6 +96,7 @@ export function QuickActionsBar({
     hasCustomer: Boolean(resolvedCustomerId),
     softphone: softphone ? { deviceState: softphone.deviceState } : null,
     actions,
+    defaultCallMode: callPolicy?.mode ?? null,
   };
   const items = getQuickActions(ctx);
   const callModes = getCallModes(ctx);
@@ -109,7 +113,16 @@ export function QuickActionsBar({
       if (!softphone || !to) return;
       setCalling(true);
       try {
-        await softphone.makeCall(to, { customerId: resolvedCustomerId, opportunityId });
+        const result = await softphone.makeCall(to, { customerId: resolvedCustomerId, opportunityId });
+        if (!result.ok) {
+          // F15-B: micrófono bloqueado por el SO (o getUserMedia con NotAllowedError):
+          // no se traga; se dice dónde activarlo y se ofrece el bridge «Mi celular».
+          if (result.reason === 'mic_denied') {
+            toast({ title: 'Sin micrófono: llamamos desde tu celular', description: result.settingsHint ?? result.message });
+            setOpenDialog('mobile');
+          }
+          return;
+        }
         toast({ title: 'Llamando…', description: to });
         onActionCompleted?.('call', { mode });
       } catch (err) {
@@ -182,7 +195,7 @@ export function QuickActionsBar({
                       className="text-sm"
                     >
                       <div className="flex flex-col">
-                        <span>{m.label}</span>
+                        <span>{m.label}{m.isDefault && <span className="ml-1 text-[11px] text-gray-500 dark:text-gray-400">· predeterminado</span>}</span>
                         {!m.enabled && m.reason && <span className="text-[11px] text-gray-500 dark:text-gray-400">{m.reason}</span>}
                       </div>
                     </DropdownMenuItem>

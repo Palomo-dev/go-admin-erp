@@ -654,3 +654,34 @@ Severidad: 🔴 crítico · 🟠 alto · 🟡 medio · ⚪ bajo. "Fase" = fase V
 - Compatibilidad de todas las dependencias con Node 22 (F0 lo prueba).
 - Paths exactos de `AndroidManifest.xml` e `Info.plist` en `mobile/` (el audit UI reporta el contenido, no el path).
 - Si `voice_agent_campaigns`/`voice_agent_calls` tienen políticas RLS completas (el brief dice "RLS ok en la mayoría").
+
+---
+
+## 10. Inventario al cierre (2026-09-21)
+
+Conteos en solo lectura por MCP de Supabase (`select count(*)`, proyecto `jgmgphmzusbluqhuqihj`), tomados el 2026-09-21. Todas las fases de implementación de V4 están APROBADAS ≥ 9,5 desde el 2026-09-15/16; estas cifras son el uso real acumulado hasta hoy, no un objetivo. Sin nombres de organización (regla 2 de `CLAUDE.md`): donde hace falta distinguir, se usa el id.
+
+| Tabla | Filas |
+|---|---|
+| `outbound_jobs` | 488 |
+| `crm_events` | 38 |
+| `contact_consents` | 0 |
+| `voices` | 0 |
+| `voice_agents` | 0 |
+| `automation_rules` | 0 |
+| `sequences` | 0 |
+| `sequence_enrollments` | 0 |
+| `quotations` | 6 |
+| `contract_signatures` | 0 |
+| `onboarding_instances` | 0 |
+| `referrals` | 0 |
+| `partners` | 0 |
+| `sales_targets` | 0 |
+| `commissions` | 230 |
+| `health_score_snapshots` | 991 |
+
+Lectura: `outbound_jobs`, `commissions` y `health_score_snapshots` tienen uso real (la cola drena, hay comisiones calculadas, el health score corre). `crm_events` (38) y `quotations` (6) tienen actividad mínima pero no cero. Las tablas de canales nuevos de V4 (`voices`, `voice_agents`, `automation_rules`, `sequences`, `sequence_enrollments`, `contact_consents`, `contract_signatures`, `onboarding_instances`, `referrals`, `partners`, `sales_targets`) siguen en 0 filas: el código y las migraciones están aprobados y verificados por tests, pero ninguna organización los ha usado todavía en producción. Esto es consistente con lo reportado en §3.2 (tablas del plan V3 que existían con 0 filas) — la diferencia es que ahora la capacidad existe y está probada, falta adopción.
+
+**Organizaciones con el módulo CRM activo:** 49 (`select count(distinct organization_id) from organization_modules where module_code = 'crm' and is_active = true`).
+
+No verificado en esta pasada: cuántas de esas 49 organizaciones tienen configurado al menos un proveedor (Twilio/ElevenLabs/Resend/Meta) — requeriría cruzar contra `provider_configs`/`ai_settings` por organización, fuera del alcance de este cierre de solo lectura.

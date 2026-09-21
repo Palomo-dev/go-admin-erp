@@ -18,7 +18,6 @@
  */
 
 import { useState } from 'react';
-import { MotionConfig } from 'motion/react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -70,100 +69,98 @@ export function RevenueOsPage() {
     : null;
 
   return (
-    <MotionConfig reducedMotion="user">
-      <div className="min-h-screen space-y-4 bg-gray-50 p-3 dark:bg-gray-900 sm:p-4 md:p-6">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white sm:text-2xl">Revenue OS</h1>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Pronóstico, embudo, cohortes y matemática comercial de la organización.
-              {periodLabel && (
-                <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  Periodo: {periodLabel}
-                  {currency ? ` · moneda ${currency}` : ''}
-                </span>
-              )}
-            </p>
-            {data && !currency && (
-              <p role="note" className="mt-1 text-xs text-amber-800 dark:text-amber-200">
-                {SIN_MONEDA}
-              </p>
+    <div className="min-h-screen space-y-4 bg-gray-50 p-3 dark:bg-gray-900 sm:p-4 md:p-6">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white sm:text-2xl">Revenue OS</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Pronóstico, embudo, cohortes y matemática comercial de la organización.
+            {periodLabel && (
+              <span className="block text-xs text-gray-500 dark:text-gray-400">
+                Periodo: {periodLabel}
+                {currency ? ` · moneda ${currency}` : ''}
+              </span>
             )}
-          </div>
-          <div className="flex flex-wrap items-end gap-3">
-            <RevenueRangeControl
-              key={lastPeriod ? `${lastPeriod.start}-${lastPeriod.end}` : 'init'}
-              current={lastPeriod}
-              onApply={(r) => setRange(r)}
-              disabled={loading}
+          </p>
+          {data && !currency && (
+            <p role="note" className="mt-1 text-xs text-amber-800 dark:text-amber-200">
+              {SIN_MONEDA}
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <RevenueRangeControl
+            key={lastPeriod ? `${lastPeriod.start}-${lastPeriod.end}` : 'init'}
+            current={lastPeriod}
+            onApply={(r) => setRange(r)}
+            disabled={loading}
+          />
+          <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => void reload()} disabled={loading}>
+            <RefreshCw className={`mr-1.5 h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
+            Actualizar
+          </Button>
+        </div>
+      </header>
+
+      {error && (
+        <LoadErrorState title="No se pudo cargar el panel Revenue OS" message={error} onRetry={() => void reload()} isRetrying={loading} />
+      )}
+
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1" aria-label="Secciones de Revenue OS">
+          {TABS.map((t) => (
+            <TabsTrigger key={t.value} value={t.value} className="text-xs sm:text-sm">
+              {t.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value="resumen" className="mt-4 space-y-4">
+          {!data && loading && !error ? (
+            <PanelSkeleton />
+          ) : data ? (
+            <>
+              <KpiTiles summary={data.summary} funnel={data.pipeline_funnel} currency={currency} />
+              <RevenueTrendChart rows={data.revenue_metrics} currency={currency} />
+            </>
+          ) : null}
+        </TabsContent>
+
+        <TabsContent value="embudo" className={PANEL}>
+          {!data && loading && !error ? (
+            <Skeleton className="h-64 w-full" />
+          ) : data ? (
+            <FunnelPanel funnel={data.pipeline_funnel} pipelineNames={data.pipeline_names} currency={currency} />
+          ) : null}
+        </TabsContent>
+
+        <TabsContent value="forecast" className="mt-4">
+          {data ? <ForecastDashboard currency={currency} /> : null}
+        </TabsContent>
+
+        <TabsContent value="cohortes" className={PANEL}>
+          {!data && loading && !error ? (
+            <Skeleton className="h-48 w-full" />
+          ) : data ? (
+            <CohortTable rows={data.cohort_retention} today={data.period.today} />
+          ) : null}
+        </TabsContent>
+
+        <TabsContent value="matematica" className="mt-4">
+          {!data && loading && !error ? (
+            <Skeleton className="h-64 w-full" />
+          ) : data ? (
+            <RevenueMathPanel
+              key={data.inputs.updated_at ?? 'none'}
+              math={data.math}
+              inputs={data.inputs}
+              canEdit={canEditInputs}
+              onSaved={() => void reload()}
+              currency={currency}
             />
-            <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => void reload()} disabled={loading}>
-              <RefreshCw className={`mr-1.5 h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-              Actualizar
-            </Button>
-          </div>
-        </header>
-
-        {error && (
-          <LoadErrorState title="No se pudo cargar el panel Revenue OS" message={error} onRetry={() => void reload()} isRetrying={loading} />
-        )}
-
-        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-          <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1" aria-label="Secciones de Revenue OS">
-            {TABS.map((t) => (
-              <TabsTrigger key={t.value} value={t.value} className="text-xs sm:text-sm">
-                {t.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          <TabsContent value="resumen" className="mt-4 space-y-4">
-            {!data && loading && !error ? (
-              <PanelSkeleton />
-            ) : data ? (
-              <>
-                <KpiTiles summary={data.summary} funnel={data.pipeline_funnel} currency={currency} />
-                <RevenueTrendChart rows={data.revenue_metrics} currency={currency} />
-              </>
-            ) : null}
-          </TabsContent>
-
-          <TabsContent value="embudo" className={PANEL}>
-            {!data && loading && !error ? (
-              <Skeleton className="h-64 w-full" />
-            ) : data ? (
-              <FunnelPanel funnel={data.pipeline_funnel} pipelineNames={data.pipeline_names} currency={currency} />
-            ) : null}
-          </TabsContent>
-
-          <TabsContent value="forecast" className="mt-4">
-            {data ? <ForecastDashboard currency={currency} /> : null}
-          </TabsContent>
-
-          <TabsContent value="cohortes" className={PANEL}>
-            {!data && loading && !error ? (
-              <Skeleton className="h-48 w-full" />
-            ) : data ? (
-              <CohortTable rows={data.cohort_retention} today={data.period.today} />
-            ) : null}
-          </TabsContent>
-
-          <TabsContent value="matematica" className="mt-4">
-            {!data && loading && !error ? (
-              <Skeleton className="h-64 w-full" />
-            ) : data ? (
-              <RevenueMathPanel
-                key={data.inputs.updated_at ?? 'none'}
-                math={data.math}
-                inputs={data.inputs}
-                canEdit={canEditInputs}
-                onSaved={() => void reload()}
-                currency={currency}
-              />
-            ) : null}
-          </TabsContent>
-        </Tabs>
-      </div>
-    </MotionConfig>
+          ) : null}
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

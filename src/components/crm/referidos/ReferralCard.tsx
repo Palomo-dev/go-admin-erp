@@ -9,7 +9,7 @@
 import Link from 'next/link';
 import { ArrowRight, Gift, Mail, Phone, User, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StaggerItem } from '@/components/shared/motion/staggerList';
+import { StaggerItem } from '@/components/shared/motion';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { describeReward } from '@/lib/services/crm/referralReward';
 import { nextReferralStatuses } from '@/lib/services/crm/referralStateMachine';

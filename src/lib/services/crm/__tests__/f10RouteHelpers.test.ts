@@ -7,7 +7,7 @@
 // orgContext arrastra svix (ESM) por webhookSignatures: se dobla como en el resto de suites F10.
 jest.mock('@/lib/utils/orgContext', () => ({ OrgContextError: class extends Error { statusCode = 401; }, getServerOrgContext: jest.fn() }));
 
-import { isSafeId, UUID_RE, failResponse } from '@/lib/services/crm/f10RouteHelpers';
+import { isSafeId, UUID_RE, failResponse, canManualSign } from '@/lib/services/crm/f10RouteHelpers';
 import { ProposalConvertedError, ProposalCustomerRequiredError } from '@/lib/services/crm/proposalServerService';
 
 describe('failResponse (r4): los errores tipados del servicio llevan su propio statusCode', () => {
@@ -21,6 +21,27 @@ describe('failResponse (r4): los errores tipados del servicio llevan su propio s
     } finally {
       errSpy.mockRestore();
     }
+  });
+
+  // de tester r4 (R4B-A3): solo se respeta un statusCode numérico 4xx
+  it('statusCode 5xx, fuera de rango (399) o como texto ("409") NO se filtra → 500', () => {
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      expect(failResponse('t', Object.assign(new Error('boom'), { statusCode: 503, code: 'X' })).status).toBe(500);
+      expect(failResponse('t', Object.assign(new Error('x'), { statusCode: 399 })).status).toBe(500);
+      expect(failResponse('t', Object.assign(new Error('x'), { statusCode: '409' })).status).toBe(500);
+    } finally {
+      errSpy.mockRestore();
+    }
+  });
+});
+
+// de tester r2 (T2-E1): «signed» a mano se decide por id de rol en el servidor, nunca por nombre
+describe('canManualSign', () => {
+  it('roles 1/2/5 o superadmin sí; 3/4/6 no; roleId no numérico no', () => {
+    for (const roleId of [1, 2, 5]) expect(canManualSign({ roleId, isSuperAdmin: false })).toBe(true);
+    expect(canManualSign({ roleId: 4, isSuperAdmin: true })).toBe(true);
+    for (const roleId of [3, 4, 6, Number.NaN]) expect(canManualSign({ roleId, isSuperAdmin: false })).toBe(false);
   });
 });
 

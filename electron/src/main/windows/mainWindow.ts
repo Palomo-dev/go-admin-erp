@@ -8,6 +8,7 @@ import { isOnline, onConnectivityChange, checkNow } from '../connectivity';
 import { webServer } from '../webServer';
 import { TOOLBAR_HEIGHT, applyTheme, getThemeColors, watchTheme } from '../theme';
 import { broadcast } from '../broadcast';
+import { ALLOWED_EXTERNAL_SCHEMES } from '../permissions';
 
 /**
  * Ventana principal = barra de aplicación propia + vista de la web.
@@ -561,11 +562,23 @@ export function isInternalUrl(url: string, loadUrl: string): boolean {
  * sandbox de nada. Las hijas solo pueden ser `about:blank` o una URL interna;
  * `nodeIntegration` sigue en false y `contextIsolation` en true.
  */
+/** Solo se entrega al SO lo que el navegador abriría: web y los esquemas de contacto del CRM. */
+function canOpenExternally(url: string): boolean {
+  try {
+    const protocol = new URL(url).protocol;
+    return protocol === 'http:' || protocol === 'https:' || ALLOWED_EXTERNAL_SCHEMES.has(protocol);
+  } catch {
+    return false;
+  }
+}
+
 export function installExternalLinkGuards(wc: WebContents, loadUrl: string): void {
   wc.on('will-navigate', (event, url) => {
     if (isInternalUrl(url, loadUrl)) return;
     event.preventDefault();
-    shell.openExternal(url).catch(() => {});
+    // `will-navigate` corre antes que el permiso `openExternal`: mismo criterio aquí
+    // (F15-B). `ms-msdt:`, `search-ms:`, `file:`… no salen al sistema.
+    if (canOpenExternally(url)) shell.openExternal(url).catch(() => {});
   });
 
   wc.setWindowOpenHandler(({ url }) => {
@@ -582,7 +595,7 @@ export function installExternalLinkGuards(wc: WebContents, loadUrl: string): voi
         },
       };
     }
-    shell.openExternal(url).catch(() => {});
+    if (canOpenExternally(url)) shell.openExternal(url).catch(() => {});
     return { action: 'deny' };
   });
 }

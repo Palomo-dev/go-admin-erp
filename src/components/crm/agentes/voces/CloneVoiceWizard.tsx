@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/components/ui/use-toast";
 import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Loader2, Sparkles } from "lucide-react";
-import { FadeIn } from "@/components/shared/motion/primitives";
+import { FadeIn } from "@/components/shared/motion";
 import { fetchJson } from "@/lib/utils/fetchJson";
 import { describeError } from "@/lib/utils/errorMessage";
 import { MAX_CLONE_SAMPLES, MIN_SAMPLE_SECONDS, summarizeSamples, validateCloneStep } from "@/lib/services/crm/voiceCloneScript";

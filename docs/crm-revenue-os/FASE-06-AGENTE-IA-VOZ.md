@@ -1,5 +1,17 @@
 # FASE 06 — Agente IA multicanal con propósito por etapa: voz clonada (ElevenLabs) + cerebro OpenAI/Gemini + email + WhatsApp + herramientas
 
+## Estado real (2026-09-21)
+
+- **Rutas API** (verificadas con `ls`): `src/app/api/crm/voice-agents/{route.ts, [id]/route.ts, [id]/dispatch/route.ts, campaigns/route.ts, campaigns/[id]/route.ts, campaigns/run/route.ts}`, `voice-agent-calls/route.ts`, `voices/{route.ts, [id]/preview/route.ts, clone/route.ts, library/route.ts}` (`voices/[id]` **no** tiene ruta propia, solo `/preview`), `stage-agents/route.ts`, `webhooks/elevenlabs/route.ts`; fuera de `crm/`: `voice/ai-agent/status/route.ts`, `voice/twiml/ai-agent/route.ts`.
+- **Servicios reales** (`src/lib/services/crm/`, `wc -l`): `voiceAgentService.ts` 1848, `voiceAgentTools.ts` 760, `stageAgentService.ts` 375, `voiceContextService.ts` 355, `voiceCatalogService.ts` 340, `voiceLibraryService.ts` 295, `voiceLibrary.ts` 293, `voiceCloneScript.ts` 246, `voiceAvatar.ts` 147, `voiceTokenService.ts` 102, `voiceAgentCron.ts` 98, `callAiPolicy.ts` 94.
+- **UI**: `src/app/app/crm/agentes-ia/page.tsx` monta `AgentesIaPage.tsx`; editor en `src/components/crm/agentes/editor/**` (4 pestañas: `AgentPurposeTab`/`AgentScriptTab`/`AgentVoiceTab`/`AgentToolsTab` + `useAgentForm`); voces en `src/components/crm/agentes/voces/**`; campañas en `src/components/crm/agentes/campanas/**`.
+- **Migraciones aplicadas** (`supabase/migrations/*f06*`, 11 archivos, 2026-09-09): consentimiento/DNC, `stage_agents`+`voices`+`tool_runs`, guardarraíles del dispatcher, revocación de `anon`, libro de intentos inmutable, auditoría de `tool_runs`, dedupe atómico de despacho puntual.
+- **Variables de entorno**: `ELEVENLABS_API_KEY`, `ELEVENLABS_MODEL`, `ELEVENLABS_SCRIBE_MODEL`, `ELEVENLABS_WEBHOOK_SECRET`, `ELEVENLABS_STT_WEBHOOK_ID`; además `TWILIO_*` (F3) y `DEEPGRAM_API_KEY`/`DEEPGRAM_MODEL` para el puente humano.
+- **Tests**: `f6VoiceAgent.test.ts`, `f6Adversarial.test.ts` (97 casos), `voiceLibraryService.test.ts` + rondas UX (`voiceLibraryUx*Round2-4.test.ts`), `voiceLibraryAccount.test.ts`, `stt.test.ts`, `voiceNotConfiguredScope.test.ts`, `integrations/twilio/__tests__/voiceIdentity.test.ts`; cubierta también por `src/__tests__/guardrails.test.ts`.
+- **Calificación**: **APROBADA — 9,5/10** (ronda 3, 2,0 → 6,0 → 8,5 → 9,5; `docs/crm-revenue-os/PROGRESS.md:826`). El 2026-09-10 se corrigió una suite no determinista (dependía del reloj real) sin tocar producto (`PROGRESS.md:741`). Ronda de UX móvil (375 px) del 2026-09-21 sobre diálogo/voces/campañas: tester 9,6 (`PROGRESS.md:1904`).
+
+---
+
 > Fecha: 2026-09-08 · Estado: **reescrito V4** (sustituye la V3 completa)
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj` · Vercel iad1 (Next.js) + Railway (ws-server)
 > Depende de: F0 (cola `outbound_jobs`, outbox `crm_events`, pg_cron + `/api/crm/jobs/run`, seguridad ws-server, fixes de schema `activities`/`tasks`/`customers.timezone`/`purpose_type`, Dockerfile con lockfile y `crm/**`, borrado de código muerto), F3 (telefonía: `calls`, números, grabación, `/api/voice/status`), F4 (transcripción + análisis: job `analyze`), F7 (email: `sendEmail`, plantillas, "Redactar con IA"), F16 (WhatsApp: envío vía `messages` + `trg_channel_dispatch`, plantillas HSM, ventana 24h), F9 (timeline: `TimelineEntryCard`)
@@ -548,6 +560,8 @@ INSERT INTO voice_agents (organization_id,name,slug,purpose_type,system_prompt,f
 
 Todos los endpoints de sesión usan `getServerOrgContext()` (`src/lib/utils/orgContext.ts:24`); "admin" = rol con permiso `crm.automations.manage` (F0 define el permiso; hasta entonces `role_id` de admin/owner).
 
+> **Obsoleto:** verificado con `ls` sobre `src/app/api/crm/voice-agents/[id]/` — no existen `test`, `call-me` ni `history` como sub-rutas propias; tampoco existe `/api/crm/agent-tools/[tool]` ni `/api/crm/ai-usage` en todo el árbol de `src/app/api`. `voices/[id]` no tiene ruta propia (PATCH/DELETE), solo `/preview`. El webhook de ElevenLabs quedó en `/api/crm/webhooks/elevenlabs` (un solo endpoint, no `/api/webhooks/elevenlabs/post-call`). Sí se añadió algo que el plan no tenía: `GET /api/crm/voices/library` (295 líneas, catálogo compartido de voces entre organizaciones, de las rondas de UX de voces).
+
 ### 4.2 Servicios (firmas TS)
 
 | Archivo | Exporta | Responsabilidad |
@@ -569,6 +583,8 @@ Todos los endpoints de sesión usan `getServerOrgContext()` (`src/lib/utils/orgC
 | `src/lib/services/crm/jobs/handlers/{aiCall,aiWhatsapp,aiDraftEmail,agentOrchestration}.ts` | `handle(sb, job): Promise<JobResult>` | Registrados en el runner de F0 |
 
 Se ELIMINAN (coordinado con F0): `voiceAgent/voiceAgentTools.ts` (PMS), `voiceAgentPrompts.ts`, `realtimeSession.ts`, `elevenLabsTTS.ts`, `deepgramSTT.ts`, `voiceAgent/voiceAgentService.ts` (Media Streams), `crm/voiceAgentTools.ts`, `api/integrations/twilio/voice/media-stream`.
+
+> **Obsoleto:** el reparto en ~10 archivos nuevos (`agentDispatcher.ts`, `agentOrchestrator.ts`, `agentContextBuilder.ts`, `agentTools/index.ts` + un archivo por tool, `agentSimulator.ts`, `voiceService.ts`, `agentCostService.ts`, `elevenAgentsService.ts`, `relaySession.ts`) no existe en el repo (`find` sobre `src/lib/services` no encuentra ninguno de esos nombres). El dispatcher, la orquestación, el constructor de contexto y las herramientas quedaron consolidados en `src/lib/services/crm/voiceAgentService.ts` (1848 líneas) y `src/lib/services/crm/voiceAgentTools.ts` (760 líneas); el motor secundario de Twilio vive en `src/lib/services/integrations/twilio/voiceAgent/voiceAgentTools.ts` (422 líneas, archivo homónimo pero distinto). No se validó archivo por archivo el resto de la lista de este apartado (webhooks, jobs, llmAdapters, guardrails) más allá de la tabla de rutas de arriba.
 
 ### 4.3 Webhooks y callbacks de proveedor
 
@@ -861,6 +877,8 @@ Cada sesión guarda en memoria `history` (items del LLM) y en BD solo el log leg
 
 Entrada de nav: `src/components/app-layout/…` grupo CRM → "Agentes IA" (icono `Bot`), junto a Llamadas/Leads (F3/F9).
 
+> **Obsoleto:** no existen las rutas `/app/crm/agentes-ia/nuevo`, `/app/crm/agentes-ia/[id]` ni `/app/crm/agentes-ia/voces` (`find src/app/app/crm/agentes-ia -type f` solo devuelve `page.tsx`). El alta y edición quedaron como un diálogo (`AgentEditorDialog.tsx`, hoja `h-dvh` con 4 pasos) montado sobre la lista, no como páginas propias con wizard de 3 pasos. La pestaña "Agente IA" por etapa tampoco vive en `StageConfigDialog.tsx`: se movió a `StageDialog.tsx` (nota del propio archivo, ronda 3 de F6 / F-NEW-3 ronda 2).
+
 ### 5.2 Componentes (todos ≤300 líneas; `src/components/crm/agentes-ia/`)
 
 | Archivo | Props | Estado/hooks | Servicios |
@@ -883,6 +901,8 @@ Entrada de nav: `src/components/app-layout/…` grupo CRM → "Agentes IA" (icon
 | `AiCallEntry.tsx` (`src/components/crm/timeline/`, F9) | `{entry: TimelineEntry}` | tarjeta compacta: icono Bot, "Agente {{name}} llamó (3:12) · Resultado: reunión agendada", chips de tools aplicadas, botón "Ver conversación" → `AgentCallDetailSheet` | — |
 
 `StageConfigDialog.tsx` (288 L hoy, sin tabs) pasa a `Tabs`: General (formulario actual) | Criterios de salida (F2) | Automatización (F8) | Agente IA (esta fase). Se divide en `StageConfigDialog.tsx` (shell ≤150 L) + `StageGeneralForm.tsx`.
+
+> **Obsoleto:** la lista de componentes de arriba (`AgentList.tsx`, `AgentUsageDashboard.tsx`, `AgentEditor.tsx`, `tabs/PurposeTab.tsx`, etc., bajo `src/components/crm/agentes-ia/`) no coincide con los nombres reales. El directorio es `src/components/crm/agentes/` (sin `-ia`): `AgentesIaPage.tsx`, `AgentEditorDialog.tsx`, `editor/{AgentPurposeTab,AgentScriptTab,AgentVoiceTab,AgentToolsTab}.tsx` + `useAgentForm.ts`, `voces/{CloneVoiceWizard,MyVoicesPanel,VoiceLibraryGrid,VoicePickCard,VoicePreviewButton,...}.tsx`, `campanas/{CampaignCard,CampaignTargetPicker}.tsx`. No se verificó componente por componente contra la tabla (16 filas); la comprobación fue por listado de archivos.
 
 ### 5.3 Flujos de usuario
 

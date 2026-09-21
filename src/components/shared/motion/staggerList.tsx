@@ -1,11 +1,11 @@
 'use client';
-import { motion, useReducedMotion, type HTMLMotionProps, type Variants } from 'motion/react';
+import { motion, useReducedMotion, type HTMLMotionProps, type TargetAndTransition, type Variants } from 'motion/react';
 import { forwardRef } from 'react';
+import { DURATION, EASING, OFFSET, SCALE, STAGGER } from './tokens';
 
 /**
- * Primitivas de animación para LISTAS (brief UX 2026-09).
- * Complementan `primitives.tsx` (no lo modifican): entradas escalonadas de
- * tarjetas. Duraciones 150–300 ms. Con
+ * Primitivas de animación para LISTAS (brief UX 2026-09, tokens en F15).
+ * Complementan `primitives.tsx`: entradas escalonadas de tarjetas. Con
  * `prefers-reduced-motion` no hay desplazamiento ni escalonado: solo opacidad
  * instantánea, para que nada «vuele» por la pantalla.
  *
@@ -16,19 +16,23 @@ import { forwardRef } from 'react';
 
 const listVariants: Variants = {
   initial: {},
-  animate: { transition: { staggerChildren: 0.04, delayChildren: 0.02 } },
+  animate: { transition: { staggerChildren: STAGGER.children, delayChildren: STAGGER.delay } },
 };
 
+// `exit` va como objeto (no como etiqueta): una etiqueta en `initial`/`animate`/`exit`
+// convierte al hijo en «controlador» de variantes y lo saca de la orquestación del
+// padre, con lo que `staggerChildren` no le llega (tester F15, 2026-09-21).
+const itemExit: TargetAndTransition = { opacity: 0, scale: SCALE.item, transition: { duration: DURATION.fast } };
+const reducedItemExit: TargetAndTransition = { opacity: 0, transition: { duration: DURATION.none } };
+
 const itemVariants: Variants = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.22, ease: 'easeOut' } },
-  exit: { opacity: 0, scale: 0.98, transition: { duration: 0.15 } },
+  initial: { opacity: 0, y: OFFSET.item },
+  animate: { opacity: 1, y: 0, transition: { duration: DURATION.base, ease: EASING.out } },
 };
 
 const reducedItemVariants: Variants = {
   initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0 } },
-  exit: { opacity: 0, transition: { duration: 0 } },
+  animate: { opacity: 1, transition: { duration: DURATION.none } },
 };
 
 export type StaggerTag = 'div' | 'ul' | 'ol' | 'li' | 'section' | 'article';
@@ -56,7 +60,7 @@ export const StaggerList = forwardRef<HTMLDivElement, DivProps>(({ as = 'div', v
 });
 StaggerList.displayName = 'StaggerList';
 
-/** Elemento de una `StaggerList` (también sirve suelto con AnimatePresence). */
+/** Elemento de una `StaggerList`: hereda `initial`/`animate` del contenedor (así lo escalona). */
 export const StaggerItem = forwardRef<HTMLDivElement, DivProps & { layout?: boolean }>(
   ({ as = 'div', layout = true, ...rest }, ref) => {
     const reduced = useReducedMotion();
@@ -66,9 +70,7 @@ export const StaggerItem = forwardRef<HTMLDivElement, DivProps & { layout?: bool
         ref={ref}
         layout={reduced ? false : layout}
         variants={reduced ? reducedItemVariants : itemVariants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
+        exit={reduced ? reducedItemExit : itemExit}
         {...rest}
       />
     );

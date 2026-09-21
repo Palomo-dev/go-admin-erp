@@ -25,7 +25,7 @@ import {
 } from '@/lib/services/crm/automation/ruleEditorModel';
 import { ActionChipEditor } from './ActionChipEditor';
 import { CHIP_ICON_CLASS, CHIP_LIST_CLASS, CHIP_TEXT_CLASS, chipClass } from './SentenceBlock';
-import { AnimatePresence, Chip, Expand } from './motion';
+import { AnimatePresence, Chip, Expand } from '@/components/shared/motion';
 import type { RuleLookups } from './useRuleLookups';
 
 interface Props {

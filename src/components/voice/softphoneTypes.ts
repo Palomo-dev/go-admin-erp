@@ -17,6 +17,16 @@ export interface MakeCallOptions {
   displayName?: string | null;
 }
 
+/**
+ * Resultado de `makeCall` (F15-B). Antes devolvía `void` y el llamador no
+ * podía saber si falló por micrófono denegado (31401/31402) para ofrecer el
+ * bridge «Llamar desde mi celular». `settingsHint` trae la ruta de Ajustes
+ * de la plataforma (`microphoneSettingsHint`).
+ */
+export type MakeCallResult =
+  | { ok: true }
+  | { ok: false; reason: 'no_number' | 'unavailable' | 'busy' | 'mic_denied' | 'error'; message: string; settingsHint: string | null };
+
 export interface ActiveCallInfo {
   direction: 'outbound' | 'inbound';
   callSid: string | null;
@@ -64,7 +74,7 @@ export interface SoftphoneContextValue {
   lastEndedCall: EndedCallInfo | null;
   clearLastEndedCall: () => void;
   audio: AudioDevicesState;
-  makeCall: (to: string, opts?: MakeCallOptions) => Promise<void>;
+  makeCall: (to: string, opts?: MakeCallOptions) => Promise<MakeCallResult>;
   hangup: () => void;
   mute: (muted: boolean) => void;
   sendDigits: (digits: string) => void;

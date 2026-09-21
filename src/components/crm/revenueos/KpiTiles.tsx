@@ -8,7 +8,7 @@
 
 import type { ReactNode } from 'react';
 import { Banknote, Clock, Percent, Receipt, Trophy, Wallet } from 'lucide-react';
-import { StaggerItem, StaggerList } from '@/components/shared/motion/staggerList';
+import { StaggerItem, StaggerList } from '@/components/shared/motion';
 import type { PipelineFunnelRow, RevenueSummary } from '@/lib/services/crm/revenueOsService';
 import { fmtDays, fmtMoney, fmtPct, SIN_DATOS } from './formatters';
 import { arpaHint, collectedHint, winRateHint, wonHint } from './kpiHints';

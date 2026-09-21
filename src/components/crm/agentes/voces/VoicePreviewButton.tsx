@@ -9,7 +9,7 @@
 import React, { forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Play, Square } from "lucide-react";
-import { SoundWave } from "@/components/shared/motion/audio";
+import { SoundWave } from "@/components/shared/motion";
 import type { PreviewStatus } from "./useAudioPreview";
 
 interface Props {

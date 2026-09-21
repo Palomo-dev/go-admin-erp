@@ -19,7 +19,7 @@ import {
   formatRelativeTime,
   type HumanizerLookups,
 } from '@/lib/services/crm/automation/ruleHumanizer';
-import { StaggerItem } from '@/components/shared/motion/staggerList';
+import { StaggerItem } from '@/components/shared/motion';
 import type { AutomationRuleView } from './useAutomationRules';
 
 interface Props {

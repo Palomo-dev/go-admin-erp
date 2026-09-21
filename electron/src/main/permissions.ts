@@ -26,6 +26,9 @@ export const GRANTED_PERMISSIONS: ReadonlySet<string> = new Set([
   'clipboard-sanitized-write',
   'fullscreen',
   'openExternal',
+  // `/marcar` (asistencia) y el modal de ubicación del login la usan; antes de este
+  // manejador Electron la concedía por defecto: denegarla sería una regresión.
+  'geolocation',
 ]);
 
 /** Tipos de `media` que se conceden (`display-capture` es otro permiso y se deniega). */
@@ -148,8 +151,11 @@ export function installPermissionHandlers(
   const log = opts.log ?? ((m: string) => console.warn(m));
 
   const requestHandler: RequestHandler = (webContents, permission, callback, details) => {
-    const d = details as PermissionDetails;
-    const origin = originOf(d.requestingUrl) ?? originOf(safeUrl(webContents));
+    const d = (details ?? {}) as PermissionDetails;
+    // Tester F15-B: el fallback a `webContents.getURL()` solo si el frame NO
+    // trae URL. Un iframe `about:blank`/`data:`/`srcdoc` dentro de la app trae
+    // una URL no http(s) y antes caía al origen de la app → micrófono concedido.
+    const origin = typeof d.requestingUrl === 'string' ? originOf(d.requestingUrl) : originOf(safeUrl(webContents));
     const decision = decidePermission(permission, d, { originAllowed: isOriginAllowed(origin, origins()) });
     if (decision === 'deny') {
       log(`[permissions] denegado ${permission} para ${origin ?? 'origen desconocido'}`);
@@ -161,7 +167,8 @@ export function installPermissionHandlers(
       // Primera llamada en macOS: el prompt del sistema aparece aquí y no a
       // mitad del getUserMedia del SDK. Si el usuario lo niega, se deniega y
       // la web muestra dónde activarlo (Seguridad y privacidad → Micrófono).
-      opts.askForMicrophone().then(
+      // `Promise.resolve().then(...)`: si la API nativa lanzara síncronamente, deniega en vez de reventar el handler.
+      Promise.resolve().then(() => opts.askForMicrophone!()).then(
         (granted) => {
           if (!granted) log('[permissions] macOS negó el micrófono (Seguridad y privacidad → Micrófono)');
           callback(granted);
@@ -174,7 +181,7 @@ export function installPermissionHandlers(
   };
 
   const checkHandler: CheckHandler = (_webContents, permission, requestingOrigin, details) => {
-    const d = details as PermissionDetails;
+    const d = (details ?? {}) as PermissionDetails;
     const origin = originOf(requestingOrigin) ?? originOf(d.requestingUrl);
     return decidePermission(permission, d, { originAllowed: isOriginAllowed(origin, origins()) }) === 'grant';
   };

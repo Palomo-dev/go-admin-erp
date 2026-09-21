@@ -18,7 +18,8 @@ import { toast } from '@/components/ui/use-toast';
 import { useCallRealtime } from './hooks/useCallRealtime';
 import { useAudioDevices } from './hooks/useAudioDevices';
 import { useTwilioDevice, describeDeviceError } from './hooks/useTwilioDevice';
-import type { ActiveCallInfo, CallStatus, EndedCallInfo, MakeCallOptions, SoftphoneContextValue, SoftphoneValue } from './softphoneTypes';
+import { microphoneDeniedReason } from './hooks/useCallModePolicy';
+import type { ActiveCallInfo, CallStatus, EndedCallInfo, MakeCallOptions, MakeCallResult, SoftphoneContextValue, SoftphoneValue } from './softphoneTypes';
 
 // ─── Tipos (definidos en ./softphoneTypes, reexportados aquí) ─────────────────
 
@@ -27,6 +28,7 @@ export { describeDeviceError } from './hooks/useTwilioDevice';
 export type {
   CallStatus,
   MakeCallOptions,
+  MakeCallResult,
   ActiveCallInfo,
   EndedCallInfo,
   SoftphoneContextValue,
@@ -146,18 +148,21 @@ export function SoftphoneProvider({ children, enabled = true }: { children: Reac
 
   // ─── Acciones ──────────────────────────────────────────────────────────────
   const makeCall = useCallback(
-    async (to: string, opts?: MakeCallOptions) => {
+    async (to: string, opts?: MakeCallOptions): Promise<MakeCallResult> => {
       const device = deviceRef.current;
       if (!device || deviceState !== 'registered') {
-        toast({ title: 'Telefonía no disponible', description: deviceReason ?? 'El softphone no está registrado', variant: 'destructive' });
-        return;
+        const message = deviceReason ?? 'El softphone no está registrado';
+        toast({ title: 'Telefonía no disponible', description: message, variant: 'destructive' });
+        // F15-B: micrófono bloqueado por el SO (`mic_denied`) → el llamador ofrece el bridge.
+        const denied = deviceState === 'no_permission';
+        return { ok: false, reason: denied ? 'mic_denied' : 'unavailable', message, settingsHint: denied ? microphoneDeniedReason() : null };
       }
       if (callRef.current) {
         toast({ title: 'Ya hay una llamada en curso', description: 'Finaliza la llamada actual antes de iniciar otra', variant: 'destructive' });
-        return;
+        return { ok: false, reason: 'busy', message: 'Finaliza la llamada actual antes de iniciar otra', settingsHint: null };
       }
       const number = to.trim();
-      if (!number) return;
+      if (!number) return { ok: false, reason: 'no_number', message: 'Sin número', settingsHint: null };
       setLiveNote('');
       setLastEndedCall(null);
       setActive({
@@ -180,14 +185,18 @@ export function SoftphoneProvider({ children, enabled = true }: { children: Reac
         // `parameters.CallSid` está disponible tras el handshake inicial.
         const sid = call.parameters?.CallSid ?? null;
         if (sid) setActive({ ...(activeRef.current as ActiveCallInfo), callSid: sid });
+        return { ok: true };
       } catch (err) {
         const d = describeDeviceError(err);
         setCallStatus('idle');
         setActive(null);
-        toast({ title: 'No se pudo iniciar la llamada', description: d.reason, variant: 'destructive' });
+        // getUserMedia falló (NotAllowedError → 31401/31402): decir DÓNDE activarlo, no tragarlo.
+        const settingsHint = d.state === 'no_permission' ? microphoneDeniedReason() : null;
+        toast({ title: 'No se pudo iniciar la llamada', description: settingsHint ?? d.reason, variant: 'destructive' });
+        return { ok: false, reason: settingsHint ? 'mic_denied' : 'error', message: d.reason, settingsHint };
       }
     },
-    [deviceState, deviceReason, bindCallEvents, setActive, setLiveNote]
+    [deviceRef, deviceState, deviceReason, bindCallEvents, setActive, setLiveNote]
   );
 
   const hangup = useCallback(() => {

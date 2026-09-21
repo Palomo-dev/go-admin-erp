@@ -8,6 +8,18 @@
 
 ---
 
+## Estado real (2026-09-21)
+
+- **Rutas API** verificadas con `ls`: `calls/route.ts`, `calls/manual/`, `calls/[id]/{route,analysis,analysis/apply,analyze,link,tags,transcribe,transcript}/route.ts`, `webhooks/elevenlabs/route.ts` — todas bajo `src/app/api/crm/`. La ruta legada `src/app/api/crm/transcribe/route.ts` **sigue existiendo** (no se borró): hoy es un shim de compatibilidad que delega en el pipeline real (`runTranscribePipeline`), ver nota en §3.4.
+- **Servicios** (`wc -l`): `callAnalysisService.ts` 921 L, `transcriptionService.ts` 1277 L, `callAnalysisRules.ts` 655 L, `callIntelligenceService.ts` 228 L, `audioDuration.ts` 209 L, `callAiPolicy.ts` 94 L.
+- **UI real**: los paneles viven en `src/components/crm/calls/{CallTranscriptPanel,CallAnalysisPanel,CallAnalysisSections,useCallIntelligence,CallAiPolicyCard}.tsx` (no en `src/components/voice/` como dice §5.2); la fila expandible de `/app/crm/llamadas` (153 L) está en `src/components/voice/{CallRow,CallRowDetail}.tsx`. La configuración de política IA vive en `CallAiPolicyCard` montada en `configuracion/crm/ProveedoresTab.tsx` sobre `GET/PUT /api/crm/config/providers`; no existe `/api/crm/settings/call-ai` ni `CallIntelligenceSettings.tsx` (ver nota en §4.1/§5.2).
+- **Migraciones f04 aplicadas** (`ls supabase/migrations | grep f04`): solo `20260909153122_crm_v4_f04_r3_unique_objection_and_tag_relations.sql` lleva ese prefijo; el resto del esquema de esta fase (columnas `call_ai_*`, columnas de transcripts/analyses, trigger de encolado, publicación realtime) se aplicó dentro de las migraciones `f00_*` de la ronda 1, sin `.sql` propio "f04_call_ai_settings" separado del plan §3.1.
+- **Variables de entorno** (`.env.example`): `ELEVENLABS_API_KEY`, `ELEVENLABS_WEBHOOK_SECRET`, `ELEVENLABS_STT_WEBHOOK_ID`, `ELEVENLABS_SCRIBE_MODEL=scribe_v2`.
+- **Tests que protegen esta fase**: `src/lib/services/crm/__tests__/{f4Round2,f4Round3,f4Round4Builder,f4Round4Tester,f4Round5Builder,f4Round5Tester,f4Round6Builder,f4Round6Tester,f4Round7Builder,f4Adversarial,f4AnalysisApply,f4Webhook,callAnalysisRules,callActivityService,callChannelRoles,callCreditsService,callIntelligencePipeline,callStateMachine}.test.ts`.
+- **Calificación** (`docs/crm-revenue-os/PROGRESS.md`, solo lectura): **F4 — APROBADA — 9,6/10** (seis rondas: 7,5→8,0→8,5→9,0→9,2→9,6), más una ronda 7 opcional post-aprobación que cerró cinco puntos bajos y un gemelo.
+
+---
+
 ## 0. Objetivo y alcance
 
 Al terminar esta fase, para una organización de prueba con Twilio + ElevenLabs + Gemini configurados:
@@ -345,6 +357,8 @@ Verificación (`pg_indexes`, ejecutada tras aplicar): las dos filas existen con
 - `activities`: la fila de la llamada la crea el trigger `trg_calls_completed_activity` (F0/F3) al completar; F4 la **enriquece** (nunca crea una segunda).
 - Deja de usarse: Deepgram en `transcriptionService.ts`, `src/app/api/crm/transcribe/route.ts` (se borra en F5 cuando `ActivityActions` desaparece), `mapRecordingStatus` de `voice/recording` (F3).
 
+> **Obsoleto:** `ActivityActions.tsx` sí desapareció (F9 lo confirma), pero `src/app/api/crm/transcribe/route.ts` **no se borró**. Pasó a ser un shim de compatibilidad (`POST /api/crm/transcribe — COMPATIBILIDAD`, ver el comentario en el propio archivo) que crea la llamada manual y delega en `runTranscribePipeline` (`callIntelligenceService.ts`) en vez de duplicar lógica. Sigue teniendo llamadores en tests de F3/F5 (`f3f5Round7Builder.test.ts`, `f3f5Round7Tester.test.ts`, `f3f5Round8Builder.test.ts`).
+
 ---
 
 ## 4. Backend
@@ -362,6 +376,8 @@ Verificación (`pg_indexes`, ejecutada tras aplicar): las dos filas existen con
 | POST | `/api/crm/webhooks/elevenlabs` **NUEVO** | firma `ElevenLabs-Signature` | payload `speech_to_text_transcription` (4.3) | `200 {received:true}` | 401 firma inválida; 404 request_id desconocido → 200 (no reintentar) | `provider_request_id` único |
 | POST | `/api/crm/jobs/run` (F0) | `Authorization: Bearer CRON_SECRET` | `{ kinds?: string[] }` | `{claimed, done, failed}` | 401 fail-closed | `fn_claim_jobs` |
 | GET/PATCH | `/api/crm/settings/call-ai` **NUEVO** | sesión (PATCH requiere rol admin de la org) | PATCH: subconjunto de las 9 columnas `call_ai_*` + `stt_provider` (escribe `provider_configs` category `stt`) | `{success, data}` | 403 | — |
+
+> **Obsoleto:** esta ruta no se creó. La política de inteligencia de llamadas se lee/escribe desde `GET/PUT /api/crm/config/providers` (categorías `stt`/`analysis` de `provider_configs`), consumida por `CallAiPolicyCard.tsx` (`src/components/crm/calls/`) montado en `configuracion/crm/ProveedoresTab.tsx` — reutiliza el endpoint de proveedores en vez de abrir uno nuevo.
 
 Todas las rutas de sesión usan `getServerOrgContext()` (`src/lib/utils/orgContext.ts:24`) y filtran por `ctx.organizationId`; los jobs y el webhook usan `createClient` de `@supabase/supabase-js` con service role y **siempre** filtran por el `organization_id` guardado en el job/fila (D7).
 
@@ -814,6 +830,8 @@ const parsed = response.output_parsed!;
 | `src/components/voice/hooks/useCallIntelligence.ts` **NUEVO** | `(callId: string) => { transcript, segments, analysis, tags, jobs, loading, error, refetch }` | GET `transcript?segments=1`, GET `analyze`, GET `intelligence`; canal realtime `postgres_changes` en `call_transcripts` y `call_analyses` con filtro `call_id=eq.{callId}` (publicación de 3.1); fallback polling 10 s mientras haya job `queued|running`. | ≤ 160 L |
 | `src/components/voice/CallsTable.tsx` (modificar :286) | — | Fila expandible (`<Collapsible>`): `CallPlayer` + `CallTranscriptPanel` + `CallAnalysisPanel` en dos columnas; carga perezosa al expandir. | ≤ 300 L (extraer `CallRowDetail.tsx`) |
 | `src/components/configuracion/crm/CallIntelligenceSettings.tsx` **NUEVO** | `{ organizationId: number }` | GET/PATCH `/api/crm/settings/call-ai`; `<Select>` proveedor STT (elevenlabs/gemini/openai), `<Switch>` auto-transcribir/analizar/PII, `<RadioGroup>` auto|suggest, `<Slider>` umbral, inputs retención y presupuesto. | ≤ 260 L |
+
+> **Obsoleto (verificado 2026-09-21):** ningún componente de esta tabla vive donde dice la columna "Archivo". Lo real: `CallTranscriptPanel.tsx` (279 L), `CallAnalysisPanel.tsx` (252 L), `CallAnalysisSections.tsx` (111 L) y `useCallIntelligence.ts` (188 L) están en `src/components/crm/calls/`, no en `src/components/voice/`. No existe `CallIntelligenceStatus.tsx` como archivo separado (sus estados se resuelven dentro de `CallAnalysisPanel`/`CallTranscriptPanel`). No existe `src/components/configuracion/crm/CallIntelligenceSettings.tsx`: la pantalla equivalente es `CallAiPolicyCard.tsx` (207 L, en `src/components/crm/calls/`), montada en `ProveedoresTab.tsx` y no en una sección propia "Telefonía". `CallsTable.tsx` (existe, 300 L) sí delega la fila expandible, pero en `CallRow.tsx`/`CallRowDetail.tsx`, no inline.
 
 ### 5.3 Flujos de usuario
 

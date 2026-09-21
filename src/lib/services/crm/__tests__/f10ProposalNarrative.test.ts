@@ -7,6 +7,7 @@
 import {
   buildProposalSections,
   coerceSections,
+  hasEditedSections,
   mergeSections,
   validateSectionsInput,
   renderProposalHtml,
@@ -115,6 +116,24 @@ describe('F10 proposalNarrative — mergeSections', () => {
     const generated = buildProposalSections(ctx);
     const existing = { ...generated, pricing: { ...generated.pricing, total: 1, lines: [] } };
     expect(mergeSections(existing, generated).pricing.total).toBe(6800000);
+  });
+
+  // de tester r1 (F2): «Regenerar» refresca de verdad lo no editado, conserva filas legado sin `edited`, force descarta ediciones
+  it('F2 la sección NO editada se refresca con el discovery nuevo; una fila anterior a la bandera (sin `edited`) se conserva; force regenera todo; hasEditedSections', () => {
+    const first = buildProposalSections(ctx);
+    expect(first.situacion.edited).toBe(false);
+    const edited = { ...first, situacion: { ...first.situacion, content: 'EDITADO', edited: true } };
+    const regenerated = buildProposalSections({ ...ctx, discovery: { ...ctx.discovery, problem: 'nuevo dato relevante' } });
+    expect(regenerated.problemas.content).not.toBe(first.problemas.content);
+    const merged = mergeSections(edited, regenerated);
+    expect(merged.situacion).toMatchObject({ content: 'EDITADO', edited: true });
+    expect(merged.problemas.content).toBe(regenerated.problemas.content);
+    const legacy = { ...first, problemas: { title: first.problemas.title, content: 'LEGADO' } };
+    expect(mergeSections(legacy, regenerated).problemas.content).toBe('LEGADO');
+    expect(mergeSections(edited, regenerated, { force: true }).situacion.content).toBe(regenerated.situacion.content);
+    expect(hasEditedSections(edited)).toBe(true);
+    expect(hasEditedSections(first)).toBe(false);
+    expect(hasEditedSections(null)).toBe(false);
   });
 });
 

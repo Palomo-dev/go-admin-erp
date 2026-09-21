@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, SlideUp } from '@/components/shared/motion';
 import { Phone, PhoneCall, PhoneIncoming, PhoneOff } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,12 @@ export function SoftphoneDock() {
       const el = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-phone]');
       const phone = el?.dataset.phone;
       e.preventDefault();
+      // Política de modo (F15-B): si el botón de la tarjeta decidió «desde mi celular»
+      // (micrófono bloqueado o preferencia), el atajo abre ese mismo flujo.
+      if (el?.dataset.callMode === 'mobile') {
+        el.click();
+        return;
+      }
       if (phone && makeCall) {
         void makeCall(phone, { opportunityId: el?.dataset.opportunityId ?? null, customerId: el?.dataset.customerId ?? null, displayName: el?.dataset.displayName ?? null });
       } else {
@@ -90,13 +96,7 @@ export function SoftphoneDock() {
         </button>
       ) : (
         <AnimatePresence>
-          <motion.div
-            initial={{ y: 24, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 24, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="fixed bottom-0 right-0 z-50 w-full sm:bottom-4 sm:right-4 sm:w-[340px]"
-          >
+          <SlideUp className="fixed bottom-0 right-0 z-50 w-full sm:bottom-4 sm:right-4 sm:w-[340px]">
             <Card role="region" aria-label="Softphone" className="rounded-none border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl">
               <DockHeader deviceState={deviceState} deviceReason={deviceReason} deviceMissing={deviceMissing} deviceScope={deviceScope} callStatus={callStatus} onMinimize={() => setCollapsed(true)} onRetry={sp.retry} />
 
@@ -161,7 +161,7 @@ export function SoftphoneDock() {
                 )}
               </div>
             </Card>
-          </motion.div>
+          </SlideUp>
         </AnimatePresence>
       )}
 

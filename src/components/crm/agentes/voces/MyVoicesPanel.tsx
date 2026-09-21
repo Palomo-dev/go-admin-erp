@@ -20,7 +20,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/use-toast";
 import { AlertTriangle, ChevronDown, Info, Library, Mic, SlidersHorizontal } from "lucide-react";
 import { LoadErrorState } from "@/components/common/LoadErrorState";
-import { FadeIn } from "@/components/shared/motion/primitives";
+import { FadeIn } from "@/components/shared/motion";
 import { fetchJson } from "@/lib/utils/fetchJson";
 import { describeError } from "@/lib/utils/errorMessage";
 import { describeVoiceRemoval } from "@/lib/services/crm/voiceLibrary";

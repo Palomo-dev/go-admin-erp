@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Mic, Square, Trash2, Upload } from "lucide-react";
-import { LevelMeter } from "@/components/shared/motion/audio";
+import { LevelMeter } from "@/components/shared/motion";
 import { CLONE_SCRIPT_ES, MAX_CLONE_SAMPLES, estimateReadingSeconds } from "@/lib/services/crm/voiceCloneScript";
 import type { VoiceRecorderState } from "../useVoiceRecorder";
 import { describeRecordHint, describeSample, formatClock, sampleRemoveId, type CloneSample } from "./cloneSamples";

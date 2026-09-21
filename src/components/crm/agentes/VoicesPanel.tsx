@@ -22,7 +22,6 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { MotionConfig } from "motion/react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Library, Mic, UserRound } from "lucide-react";
@@ -44,86 +43,82 @@ export function VoicesPanel() {
   );
 
   return (
-    // Ronda 3: con `prefers-reduced-motion` activo, `FadeIn` seguía animando; `MotionConfig`
-    // apaga las transformaciones en toda la pestaña (mismo patrón que Secuencias).
-    <MotionConfig reducedMotion="user">
-      <div className="space-y-4">
-        {!tts.unknown && !tts.ready && (
-          <div
-            role="status"
-            className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
+    <div className="space-y-4">
+      {!tts.unknown && !tts.ready && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <p>
+            Falta la clave de ElevenLabs: puedes explorar la biblioteca, pero no añadir, clonar ni reproducir voces
+            en llamadas hasta guardarla en{" "}
+            <Link href={PROVIDERS_SETTINGS_HREF} className="font-medium underline">
+              Configuración › CRM › Proveedores e IA
+            </Link>
+            .
+          </p>
+        </div>
+      )}
+      {tts.unknown && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-gray-300 bg-gray-50 p-3 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>
+            No se pudo comprobar si hay clave de ElevenLabs configurada (falló la lectura de Proveedores e IA).
+            Añadir, clonar o escuchar pueden fallar con el error del proveedor.
+          </span>
+        </div>
+      )}
+
+      <Tabs value={view} onValueChange={(v) => setView(v as View)}>
+        {/* UX móvil: tres columnas iguales, icono sobre etiqueta a 375 px (antes `inline-flex` medía 417 px y desbordaba). */}
+        <TabsList aria-label="Vistas de voces" className="grid h-auto w-full grid-cols-3 sm:inline-flex sm:w-auto">
+          <TabsTrigger value="biblioteca" className="min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm">
+            <Library className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="max-w-full truncate">Biblioteca</span>
+          </TabsTrigger>
+          {/* R10: el lector anuncia «Mis voces, 5 voces», no «Mis voces5». */}
+          <TabsTrigger
+            value="mias"
+            className="min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm"
+            aria-label={voices.length > 0 ? `Mis voces, ${voices.length}` : undefined}
           >
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <p>
-              Falta la clave de ElevenLabs: puedes explorar la biblioteca, pero no añadir, clonar ni reproducir voces
-              en llamadas hasta guardarla en{" "}
-              <Link href={PROVIDERS_SETTINGS_HREF} className="font-medium underline">
-                Configuración › CRM › Proveedores e IA
-              </Link>
-              .
-            </p>
-          </div>
-        )}
-        {tts.unknown && (
-          <div
-            role="status"
-            className="flex items-start gap-2 rounded-lg border border-gray-300 bg-gray-50 p-3 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-          >
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>
-              No se pudo comprobar si hay clave de ElevenLabs configurada (falló la lectura de Proveedores e IA).
-              Añadir, clonar o escuchar pueden fallar con el error del proveedor.
+            <UserRound className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="flex min-w-0 max-w-full items-center gap-1">
+              <span className="truncate">Mis voces</span>
+              {voices.length > 0 && (
+                <Badge variant="secondary" className="h-4 shrink-0 px-1 text-[10px] sm:h-5 sm:px-1.5 sm:text-xs" aria-hidden="true">
+                  {voices.length}
+                </Badge>
+              )}
             </span>
-          </div>
-        )}
+          </TabsTrigger>
+          <TabsTrigger value="clonar" className="min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm">
+            <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="max-w-full truncate">Clonar mi voz</span>
+          </TabsTrigger>
+        </TabsList>
 
-        <Tabs value={view} onValueChange={(v) => setView(v as View)}>
-          {/* UX móvil: tres columnas iguales, icono sobre etiqueta a 375 px (antes `inline-flex` medía 417 px y desbordaba). */}
-          <TabsList aria-label="Vistas de voces" className="grid h-auto w-full grid-cols-3 sm:inline-flex sm:w-auto">
-            <TabsTrigger value="biblioteca" className="min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm">
-              <Library className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="max-w-full truncate">Biblioteca</span>
-            </TabsTrigger>
-            {/* R10: el lector anuncia «Mis voces, 5 voces», no «Mis voces5». */}
-            <TabsTrigger
-              value="mias"
-              className="min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm"
-              aria-label={voices.length > 0 ? `Mis voces, ${voices.length}` : undefined}
-            >
-              <UserRound className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="flex min-w-0 max-w-full items-center gap-1">
-                <span className="truncate">Mis voces</span>
-                {voices.length > 0 && (
-                  <Badge variant="secondary" className="h-4 shrink-0 px-1 text-[10px] sm:h-5 sm:px-1.5 sm:text-xs" aria-hidden="true">
-                    {voices.length}
-                  </Badge>
-                )}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger value="clonar" className="min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm">
-              <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="max-w-full truncate">Clonar mi voz</span>
-            </TabsTrigger>
-          </TabsList>
+        <TabsContent value="biblioteca" className="pt-4">
+          <VoiceLibraryGrid ownedVoiceIds={ownedVoiceIds} onAdded={() => void reload()} account={account} />
+        </TabsContent>
 
-          <TabsContent value="biblioteca" className="pt-4">
-            <VoiceLibraryGrid ownedVoiceIds={ownedVoiceIds} onAdded={() => void reload()} account={account} />
-          </TabsContent>
+        <TabsContent value="mias" className="pt-4">
+          <MyVoicesPanel catalog={catalog} onGoToLibrary={() => setView("biblioteca")} onGoToClone={() => setView("clonar")} />
+        </TabsContent>
 
-          <TabsContent value="mias" className="pt-4">
-            <MyVoicesPanel catalog={catalog} onGoToLibrary={() => setView("biblioteca")} onGoToClone={() => setView("clonar")} />
-          </TabsContent>
-
-          <TabsContent value="clonar" className="pt-4">
-            <CloneVoiceWizard
-              account={account}
-              onCreated={() => {
-                void reload();
-              }}
-            />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </MotionConfig>
+        <TabsContent value="clonar" className="pt-4">
+          <CloneVoiceWizard
+            account={account}
+            onCreated={() => {
+              void reload();
+            }}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

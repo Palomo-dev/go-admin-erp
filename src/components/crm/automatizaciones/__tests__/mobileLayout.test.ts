@@ -5,7 +5,7 @@
  * Defecto reportado por el dueño (iPhone): las fichas de acción («enviar un
  * email con asunto…», «crear la tarea…») sobresalían por la derecha y el pie
  * quedaba con el interruptor descolgado. Causa raíz medida con el arnés:
- *  1. Cada ficha va en un `motion.div` (`Chip`) dentro de `flex flex-wrap`;
+ *  1. Cada ficha va en un `motion.div` (`Chip`, hoy en `shared/motion/chip.tsx`) dentro de `flex flex-wrap`;
  *     como elemento flex sin `min-w-0` su mínimo era el ancho del texto sin
  *     cortar (`truncate` = nowrap), así que `max-w-full` del botón no servía
  *     y el formulario medía 659 px de scroll en 374 de ancho.
@@ -77,7 +77,7 @@ describe('fichas apiladas en móvil (chipClass ejecutada)', () => {
 describe('cableado: acciones, condiciones y Chip', () => {
   const actions = read('ActionsBlock.tsx');
   const conditions = read('ConditionsBlock.tsx');
-  const motion = read('motion.tsx');
+  const motion = fs.readFileSync(path.join(ROOT, 'src/components/shared/motion/chip.tsx'), 'utf8');
 
   it('ActionsBlock y ConditionsBlock usan la ficha apilada y el texto que envuelve', () => {
     for (const [src, tone] of [[actions, 'emerald'], [conditions, 'amber']] as const) {

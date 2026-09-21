@@ -8,7 +8,7 @@
 import React from "react";
 import { Mic } from "lucide-react";
 import { voiceAvatar } from "@/lib/services/crm/voiceAvatar";
-import { PulseRing } from "@/components/shared/motion/audio";
+import { PulseRing } from "@/components/shared/motion";
 
 const SIZES = { sm: "h-9 w-9", md: "h-12 w-12", lg: "h-16 w-16" } as const;
 

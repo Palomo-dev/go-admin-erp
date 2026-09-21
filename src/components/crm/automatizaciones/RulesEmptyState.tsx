@@ -9,7 +9,7 @@ import { Sparkles, Zap, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { describeRule } from '@/lib/services/crm/automation/ruleHumanizer';
 import { EXAMPLE_FORM } from '@/lib/services/crm/automation/ruleEditorModel';
-import { Appear } from './motion';
+import { FadeIn } from '@/components/shared/motion';
 
 interface Props {
   /** `true` cuando hay reglas pero ninguna pasa los filtros. */
@@ -22,15 +22,15 @@ interface Props {
 export function RulesEmptyState({ filtered, onCreate, onUseExample, onClearFilters }: Props) {
   if (filtered) {
     return (
-      <Appear className="rounded-xl border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
+      <FadeIn className="rounded-xl border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
         <p className="font-medium text-gray-900 dark:text-gray-100">Ninguna regla coincide con los filtros</p>
         <Button type="button" variant="outline" className="mt-3" onClick={onClearFilters}>Quitar filtros</Button>
-      </Appear>
+      </FadeIn>
     );
   }
 
   return (
-    <Appear className="mx-auto max-w-2xl rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <FadeIn className="mx-auto max-w-2xl rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/60">
         <Sparkles className="h-7 w-7 text-blue-600 dark:text-blue-400" aria-hidden="true" />
       </div>
@@ -58,6 +58,6 @@ export function RulesEmptyState({ filtered, onCreate, onUseExample, onClearFilte
         </Button>
         <Button type="button" variant="outline" onClick={onCreate}>Empezar desde cero</Button>
       </div>
-    </Appear>
+    </FadeIn>
   );
 }

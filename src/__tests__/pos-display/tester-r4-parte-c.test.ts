@@ -477,7 +477,9 @@ describe('Parte C · errores de protocolo a nivel de enlace', () => {
     const foreign = cashier({ terminalId: OTHER_TERMINAL });
     foreign.emitter.setActiveCart(cart({ items: [item({ id: 'l1' })], subtotal: 5000, total: 5000 }));
     const s = screen();
-    await tick(HEARTBEAT_MS * 4);
+    // Dos latidos de la caja ajena bastan para ver que se ignoran. No se esperan 4 (= TO_IDLE_MS):
+    // con la suite en paralelo el reloj cruzaba el plazo de reposo y la vista pasaba a 'idle' (flaky).
+    await tick(HEARTBEAT_MS * 2);
     expect(s.latest().connected).toBe(false);
     expect(s.latest().state).toBeNull();
     expect(s.latest().hello).toBeNull();

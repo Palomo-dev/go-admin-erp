@@ -1922,7 +1922,9 @@
       "ariaLabel": "Customer display",
       "notEmitting": "Disabled in Settings › POS › Customer display",
       "unsupported": "This browser does not support the customer display (no BroadcastChannel). Update it or use the desktop app.",
-      "disabled": "Display off"
+      "disabled": "Display off",
+      "openNoSignal": "Display open, no signal",
+      "openNoSignalHint": "The customer display window is open, but the register is not receiving its signal. Close it and open it again."
     },
     "menu": {
       "open": "Open customer display",
@@ -1951,7 +1953,20 @@
       "saveError": "The customer display settings could not be saved",
       "loadError": "The customer display settings could not be loaded",
       "disabledNotice": "You can open the display to test it, but it will not show the order until the switch is enabled.",
-      "comingSoon": "On-screen tips, ratings, tax breakdown and idle mode arrive in phase 2."
+      "comingSoon": "On-screen tips, ratings, tax breakdown and idle mode arrive in phase 2.",
+      "monitor": "Display monitor",
+      "monitorHint": "This computer only. The organization decides whether the display is on; each register chooses which monitor shows it.",
+      "monitorAuto": "Automatic (the second monitor, if any)",
+      "monitorPrimary": "primary",
+      "monitorSaveError": "The desktop app could not save the chosen monitor",
+      "displaysUnavailable": "The monitors of this computer could not be listed",
+      "windowClosed": "Customer display closed",
+      "windowOpenOn": "Customer display open on {monitor}",
+      "windowOpenWindowed": "Customer display open in a window (single monitor)",
+      "windowOpenUnknownMonitor": "Customer display open on an unlisted monitor (#{id})",
+      "monitorDisconnected": "Monitor #{id} (disconnected)",
+      "monitorChangeRequiresReopen": "Close the customer display and open it again to move it to another monitor",
+      "monitorChangeReopened": "Customer display moved to the chosen monitor"
     }
   },
   "posDisplay": {

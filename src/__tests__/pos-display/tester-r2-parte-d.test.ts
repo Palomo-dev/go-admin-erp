@@ -508,12 +508,15 @@ describe('estático · indicador y tarjeta', () => {
 
   it('el indicador espera (await) a open/close, que ahora son asíncronas', () => {
     expect(indicator).toMatch(/await openCustomerDisplay\(\)/);
-    expect(indicator).toMatch(/await closeCustomerDisplay\(\)/);
+    // Ronda 3 de Electron: close recibe `bridgeWindowOpen` del hook de la ventana del escritorio.
+    expect(indicator).toMatch(/await closeCustomerDisplay\(\{ bridgeWindowOpen: windowStatus\?\.open \}\)/);
     expect(card).toMatch(/await openCustomerDisplay\(\)/);
   });
 
-  it('«Cerrar» se deshabilita solo cuando no hay presencia, ni ventana propia, ni puente que SEPA cerrar (mismo criterio que closeCustomerDisplay)', () => {
-    expect(indicator).toMatch(/!connected\s*&&\s*!hasOwnWindow\s*&&\s*!canCloseViaNativeBridge\(\)/);
+  it('«Cerrar» se deshabilita solo cuando no hay presencia, ni ventana propia, ni puente que SEPA cerrar con ventana abierta (F1 r2: resolveNothingToClose)', () => {
+    // F1 ronda 2: el criterio vive en resolveNothingToClose (desktopDisplay.ts) y añade `status().open`
+    // del puente; el indicador le pasa canCloseViaNativeBridge() (mismo criterio que closeCustomerDisplay).
+    expect(indicator).toMatch(/nothingToClose = resolveNothingToClose\(\{[\s\S]*?bridgeCanClose: canCloseViaNativeBridge\(\),[\s\S]*?windowOpen: windowStatus\?\.open,[\s\S]*?\}\)/);
     expect(indicator).not.toMatch(/resolveNativePosDisplayApi/);
     expect(indicator).toMatch(/disabled=\{nothingToClose\}/);
   });
@@ -529,7 +532,8 @@ describe('estático · indicador y tarjeta', () => {
 
   it('la tarjeta revierte el interruptor si el guardado falla y lo deshabilita mientras guarda', () => {
     expect(card).toMatch(/setSettings\(previous\)/);
-    expect(card).toMatch(/disabled=\{saving\}/);
+    // F1 ronda 4 (D2): también deshabilitado mientras el valor leído no sea fiable (loadFailed).
+    expect(card).toMatch(/disabled=\{saving \|\| loadFailed\}/);
   });
 
   it('la tarjeta aplica la caché que fijó el servicio (applyPosDisplaySettings) y NO relee la BD tras guardar', () => {

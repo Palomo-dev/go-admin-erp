@@ -1814,7 +1814,9 @@
       "ariaLabel": "Tela do cliente",
       "notEmitting": "Desativada em Configurações › PDV › Tela do cliente",
       "unsupported": "Este navegador não suporta a tela do cliente (sem BroadcastChannel). Atualize-o ou use o aplicativo para computador.",
-      "disabled": "Tela desativada"
+      "disabled": "Tela desativada",
+      "openNoSignal": "Tela aberta, sem sinal",
+      "openNoSignalHint": "A janela da tela do cliente está aberta, mas o caixa não recebe o sinal dela. Feche-a e abra novamente."
     },
     "menu": {
       "open": "Abrir tela do cliente",
@@ -1843,7 +1845,20 @@
       "saveError": "Não foi possível salvar a configuração da tela do cliente",
       "loadError": "Não foi possível carregar a configuração da tela do cliente",
       "disabledNotice": "A tela pode ser aberta para teste, mas não mostrará o pedido até ativar o interruptor.",
-      "comingSoon": "Gorjeta na tela, avaliação, detalhamento de impostos e modo de espera chegam na fase 2."
+      "comingSoon": "Gorjeta na tela, avaliação, detalhamento de impostos e modo de espera chegam na fase 2.",
+      "monitor": "Monitor da tela",
+      "monitorHint": "Somente neste computador. A organização decide se a tela está ativa; cada caixa escolhe em qual monitor ela aparece.",
+      "monitorAuto": "Automático (o segundo monitor, se houver)",
+      "monitorPrimary": "principal",
+      "monitorSaveError": "O aplicativo de desktop não conseguiu salvar o monitor escolhido",
+      "displaysUnavailable": "Não foi possível listar os monitores deste computador",
+      "windowClosed": "Tela do cliente fechada",
+      "windowOpenOn": "Tela do cliente aberta em {monitor}",
+      "windowOpenWindowed": "Tela do cliente aberta em uma janela (um único monitor)",
+      "windowOpenUnknownMonitor": "Tela do cliente aberta em um monitor não listado (#{id})",
+      "monitorDisconnected": "Monitor #{id} (desconectado)",
+      "monitorChangeRequiresReopen": "Feche a tela do cliente e abra-a novamente para movê-la para outro monitor",
+      "monitorChangeReopened": "Tela do cliente movida para o monitor escolhido"
     }
   },
   "posDisplay": {

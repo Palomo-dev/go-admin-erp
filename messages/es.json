@@ -1922,7 +1922,9 @@
       "ariaLabel": "Pantalla del cliente",
       "notEmitting": "Desactivada en Configuración › POS › Pantalla del cliente",
       "unsupported": "Este navegador no admite la pantalla del cliente (sin BroadcastChannel). Actualícelo o use la aplicación de escritorio.",
-      "disabled": "Pantalla desactivada"
+      "disabled": "Pantalla desactivada",
+      "openNoSignal": "Pantalla abierta, sin señal",
+      "openNoSignalHint": "La ventana de la pantalla del cliente está abierta, pero la caja no recibe su señal. Ciérrela y vuelva a abrirla."
     },
     "menu": {
       "open": "Abrir pantalla del cliente",
@@ -1951,7 +1953,20 @@
       "saveError": "No se pudo guardar la configuración de la pantalla del cliente",
       "loadError": "No se pudo cargar la configuración de la pantalla del cliente",
       "disabledNotice": "La pantalla se puede abrir para probarla, pero no mostrará el pedido hasta activar el interruptor.",
-      "comingSoon": "Propina en pantalla, calificación, desglose de impuestos y modo reposo llegan en la fase 2."
+      "comingSoon": "Propina en pantalla, calificación, desglose de impuestos y modo reposo llegan en la fase 2.",
+      "monitor": "Monitor de la pantalla",
+      "monitorHint": "Solo en este equipo. La organización decide si la pantalla está activa; cada caja elige en qué monitor se muestra.",
+      "monitorAuto": "Automático (el segundo monitor, si lo hay)",
+      "monitorPrimary": "principal",
+      "monitorSaveError": "La aplicación de escritorio no pudo guardar el monitor elegido",
+      "displaysUnavailable": "No se pudieron listar los monitores de este equipo",
+      "windowClosed": "Pantalla del cliente cerrada",
+      "windowOpenOn": "Pantalla del cliente abierta en {monitor}",
+      "windowOpenWindowed": "Pantalla del cliente abierta en una ventana (un solo monitor)",
+      "windowOpenUnknownMonitor": "Pantalla del cliente abierta en un monitor no listado (#{id})",
+      "monitorDisconnected": "Monitor #{id} (desconectado)",
+      "monitorChangeRequiresReopen": "Cierre la pantalla del cliente y vuelva a abrirla para cambiarla de monitor",
+      "monitorChangeReopened": "Pantalla del cliente movida al monitor elegido"
     }
   },
   "posDisplay": {

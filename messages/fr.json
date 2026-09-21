@@ -1814,7 +1814,9 @@
       "ariaLabel": "Écran client",
       "notEmitting": "Désactivé dans Configuration › POS › Écran client",
       "unsupported": "Ce navigateur ne prend pas en charge l'écran client (pas de BroadcastChannel). Mettez-le à jour ou utilisez l'application de bureau.",
-      "disabled": "Écran désactivé"
+      "disabled": "Écran désactivé",
+      "openNoSignal": "Écran ouvert, sans signal",
+      "openNoSignalHint": "La fenêtre de l'écran client est ouverte, mais la caisse ne reçoit pas son signal. Fermez-la et rouvrez-la."
     },
     "menu": {
       "open": "Ouvrir l'écran client",
@@ -1843,7 +1845,20 @@
       "saveError": "La configuration de l'écran client n'a pas pu être enregistrée",
       "loadError": "La configuration de l'écran client n'a pas pu être chargée",
       "disabledNotice": "L'écran peut être ouvert pour le tester, mais il n'affichera pas la commande tant que l'interrupteur n'est pas activé.",
-      "comingSoon": "Pourboire à l'écran, évaluation, détail des taxes et mode veille arrivent en phase 2."
+      "comingSoon": "Pourboire à l'écran, évaluation, détail des taxes et mode veille arrivent en phase 2.",
+      "monitor": "Moniteur de l'écran",
+      "monitorHint": "Sur cet ordinateur uniquement. L'organisation décide si l'écran est actif ; chaque caisse choisit le moniteur qui l'affiche.",
+      "monitorAuto": "Automatique (le second moniteur, s'il existe)",
+      "monitorPrimary": "principal",
+      "monitorSaveError": "L'application de bureau n'a pas pu enregistrer le moniteur choisi",
+      "displaysUnavailable": "Impossible de lister les moniteurs de cet ordinateur",
+      "windowClosed": "Écran client fermé",
+      "windowOpenOn": "Écran client ouvert sur {monitor}",
+      "windowOpenWindowed": "Écran client ouvert dans une fenêtre (un seul moniteur)",
+      "windowOpenUnknownMonitor": "Écran client ouvert sur un moniteur non listé (#{id})",
+      "monitorDisconnected": "Moniteur #{id} (déconnecté)",
+      "monitorChangeRequiresReopen": "Fermez l'écran client et rouvrez-le pour le déplacer vers un autre moniteur",
+      "monitorChangeReopened": "Écran client déplacé vers le moniteur choisi"
     }
   },
   "posDisplay": {

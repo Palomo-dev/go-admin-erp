@@ -104,6 +104,15 @@ export function getPosDisplayEnvironment(): DisplayPresenceEnvironment {
   };
 }
 
+/**
+ * Go Admin Desktop: este módulo NO escribe nada en el proceso principal a
+ * partir de lo que LEE del interruptor de la organización (ni `setEnabled`
+ * ni `close()` del puente). `config.json` solo cambia por una acción del
+ * usuario en esta máquina (tarjeta o «Activar y abrir»): ver desktopDisplay.ts,
+ * cabecera, punto 4. Así una carga fallida del interruptor (arranque sin red,
+ * RLS) deja el emisor y la ventana del escritorio exactamente como estaban.
+ */
+
 /** Emisor de esta ventana de caja. Se crea perezosamente; en servidor (SSR) también existe pero nunca abre transporte. */
 export function getPosDisplayEmitter(): DisplayEmitter {
   if (!instance) {

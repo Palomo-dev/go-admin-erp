@@ -505,14 +505,17 @@ export class ConfiguracionService {
   // Obtener ajustes de la pantalla del cliente (PLAN pos-doble-pantalla §5.2).
   // Devuelve además el JSON crudo para que la UI conserve las claves que la
   // Fase 2 añadirá y que aún no edita. La CARGA de la tarjeta degrada a los
-  // valores por defecto si la lectura falla; el guardado no (ver arriba).
-  static async getCustomerDisplayConfig(): Promise<{ settings: CustomerDisplaySettings; raw: Record<string, unknown> }> {
+  // valores por defecto si la lectura falla (no lanza), pero lo DICE con
+  // `loadFailed: true`: «no se pudo leer» no es «apagado». La tarjeta avisa y
+  // no toma ese `enabled` por fiable (no lo persiste en el escritorio ni deja
+  // alternarlo hasta releer con éxito). El guardado sí lanza (ver arriba).
+  static async getCustomerDisplayConfig(): Promise<{ settings: CustomerDisplaySettings; raw: Record<string, unknown>; loadFailed: boolean }> {
     try {
       const raw = await this.readCustomerDisplayRow();
-      return { settings: parseCustomerDisplaySettings(raw), raw };
+      return { settings: parseCustomerDisplaySettings(raw), raw, loadFailed: false };
     } catch (error) {
       console.error('Error obteniendo configuración de la pantalla del cliente:', error);
-      return { settings: { ...DEFAULT_CUSTOMER_DISPLAY_SETTINGS }, raw: {} };
+      return { settings: { ...DEFAULT_CUSTOMER_DISPLAY_SETTINGS }, raw: {}, loadFailed: true };
     }
   }
 

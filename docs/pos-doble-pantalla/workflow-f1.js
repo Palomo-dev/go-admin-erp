@@ -7,7 +7,7 @@ export const meta = {
 const PLAN = args.plan
 const DATE = args.date
 const UMBRAL = 9.5
-const MAX_RONDAS = 3
+const MAX_RONDAS = 4 // ronda 4 = ronda de cierre con alcance congelado por el orquestador (D1–D8)
 
 const REGLAS = `
 Reglas del repositorio (además del CLAUDE.md que ya tienes):
@@ -61,6 +61,20 @@ const QA_SCHEMA = { type: 'object', properties: {
   paraElDiez: { type: 'array', items: { type: 'string' } }, veredicto: { type: 'string', enum: ['aprobado', 'requiere-nueva-ronda'] } },
   required: ['calificacion', 'fortalezas', 'problemas', 'paraElDiez', 'veredicto'] }
 
+
+const DECISIONES_R4 = `
+RONDA DE CIERRE (ronda 4). Las rondas 1–3 no convergieron (8 → 8 → 7) porque el alcance creció: la «sincronía hacia abajo» (organización apagada ⇒ config.json ⇒ cerrar ventana huérfana) introdujo una regresión al arrancar SIN RED y estado de módulo frágil. El orquestador CONGELA el alcance con estas decisiones; no las discutas, aplícalas y no añadas nada más:
+D1. ELIMINAR la sincronía hacia abajo por completo: syncDesktopDisplayEnabledDown, hasEmitted, openedManuallyHere, lastPersistedEnabled y todo cierre automático de «ventana huérfana» desaparecen de posDisplay.ts, desktopDisplay.ts y PantallaClienteContent.tsx (y sus tests). config.json.enabled/displayId se escriben SOLO cuando el usuario actúa en ESTA máquina: interruptor o monitor en la tarjeta, o «Activar y abrir» del indicador (que sí persiste enabled=true). Si la organización apaga la pantalla desde otra máquina, la ventana abierta simplemente muestra «Conectando… active la pantalla del cliente en Configuración › POS» (ya existe) y se cierra con «Cerrar» o al cerrar la app. Documentar esta decisión en un comentario de cabecera de desktopDisplay.ts.
+D2. settings.ts y ConfiguracionService.getCustomerDisplayConfig NO deben confundir «no se pudo leer» con «apagado»: si en la ronda 3 se añadió lógica de caché-por-fallo para la sincronía, déjala solo si es inocua y está testeada; si era exclusiva de D1, quítala. El arranque sin red debe dejar el emisor como estaba (test: loadCustomerDisplaySettings falla ⇒ isEmitting no cambia y no se llama a close() del puente).
+D3. «Pantalla abierta, sin señal»: la gracia de 3 s se cuenta desde max(openedAt, emittingSince) y NUNCA se antepone a reason 'disabled' ni 'loading' (con la organización apagada el indicador dice «Pantalla desactivada» con «Activar y abrir»). Con «Abrir ahora» que cierra y reabre, openedAt se reinicia (status open→open con displayId distinto o un nuevo onStatus cuenta como reapertura).
+D4. closeCustomerDisplay devuelve 'none' cuando el puente no tenía ventana (status().open === false) y no hay ventana propia; el ítem «Cerrar» del indicador se deshabilita en ese caso.
+D5. readSavedDisplayChoice: solo /^-?\d+$/ (Number.parseInt estricto); '', ' ', '1e3', '0x10' ⇒ desconocido.
+D6. Apagar desde la tarjeta manda setEnabled UNA vez. La tarjeta relee listDisplays también al recibir foco de ventana (visibilitychange/focus), además de onStatus.
+D7. Corregir la cabecera de needsReopenForDisplayChange para que diga lo que hace el código (o el código lo que dice la cabecera): con {open:true, displayId:null} y elección numérica SÍ se reabre.
+D8. electron/** sucio es de otras sesiones: no es fallo de esta fase (el tester no debe contarlo). La prueba de humo en hardware NO es requisito de la nota: no hay paquete con la web actual; se anota en paraElDiez. Se califica código + tests + degradación sin puente.
+Compuerta de esta ronda: npx jest src/__tests__/pos-display src/__tests__/guardrails.test.ts en verde; npx eslint de los archivos tocados limpio; grep -rn electronAPI src/ = 0; grep -rn "syncDesktopDisplayEnabledDown\|openedManuallyHere\|lastPersistedEnabled" src/ = 0.
+`
+
 function fb(test, qa) {
   const a = (qa?.problemas || []).map((p, i) => `${i + 1}. [qa · ${p.severidad}] ${p.descripcion}\n   Acción: ${p.accion}`)
   const b = (test?.fallos || []).map((f, i) => `${i + 1}. [tester · ${f.severidad}] ${f.descripcion}\n   Reproducir: ${f.reproducir}\n   Esperado: ${f.esperado} | Obtenido: ${f.obtenido}`)
@@ -99,12 +113,12 @@ Alcance:
 ${ALCANCE}
 Builder: ${JSON.stringify(build, null, 2)}
 Tester: ${JSON.stringify(test, null, 2)}
-Rubric de 5 dimensiones (2 puntos cada una): funcionalidad completa; robustez (monitor que desaparece, sin monitor secundario, atajo, arranque); consistencia con mainWindow (webPreferences, partition, allowedHosts, store, patrón de IPC/preload/tipos); resultados del tester (un crítico limita a 6); trazabilidad. Ten en cuenta que Electron no se pudo ejecutar: califica el código y las pruebas posibles, y anota en paraElDiez qué debe verificarse en el hardware real. Nunca 10 automático. Si < 9,5, acciones concretas y verificables.`, { label: `qa:F1:r${ronda}`, phase: 'Fase 1 Electron', schema: QA_SCHEMA, effort: 'high' })
+${ronda === 4 ? 'Esta es la RONDA DE CIERRE con alcance congelado por el orquestador (D1–D8 en el feedback del builder): califica contra ESE alcance; no pidas de vuelta la sincronía hacia abajo ni la prueba en hardware. ' : ''}Rubric de 5 dimensiones (2 puntos cada una): funcionalidad completa; robustez (monitor que desaparece, sin monitor secundario, atajo, arranque); consistencia con mainWindow (webPreferences, partition, allowedHosts, store, patrón de IPC/preload/tipos); resultados del tester (un crítico limita a 6); trazabilidad. Ten en cuenta que Electron no se pudo ejecutar: califica el código y las pruebas posibles, y anota en paraElDiez qué debe verificarse en el hardware real. Nunca 10 automático. Si < 9,5, acciones concretas y verificables.`, { label: `qa:F1:r${ronda}`, phase: 'Fase 1 Electron', schema: QA_SCHEMA, effort: 'high' })
 
   rondas.push({ ronda, build, test, qa })
   const nota = qa?.calificacion ?? 0
   log(`Fase 1 — ronda ${ronda}: QA ${nota}/10, tester ${test?.robustez ?? '?'}/10, ${qa?.veredicto ?? '?'}`)
   if (nota >= UMBRAL) break
-  feedback = fb(test, qa)
+  feedback = ronda === 3 ? DECISIONES_R4 + '\nHallazgos concretos de la ronda 3 (solo los compatibles con D1-D8):\n' + fb(test, qa) : fb(test, qa)
 }
 return { fecha: DATE, fase: 'F1', rondas }

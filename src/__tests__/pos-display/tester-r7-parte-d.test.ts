@@ -391,7 +391,12 @@ describe('indicador · comprobaciones estáticas', () => {
   });
 
   it('la etiqueta del botón solo dice «desactivada» con reason === "disabled"; con "loading" o "unsupported" dice «sin pantalla»', () => {
-    expect(indicator).toMatch(/reason === 'disabled'\s*\?\s*t\('indicator\.disabled'\)\s*:\s*t\('indicator\.disconnected'\)/);
+    // F1 ronda 2: «desactivada» va ANTES que «abierta sin señal» (solo escritorio) y esta antes que «sin pantalla».
+    // F1 ronda 4 (D3): el orden lo decide el criterio puro resolveIndicatorState; el indicador solo lo pinta.
+    expect(indicator).toMatch(
+      /indicatorState === 'disabled'\s*\?\s*t\('indicator\.disabled'\)\s*:\s*indicatorState === 'open-no-signal'\s*\?\s*t\('indicator\.openNoSignal'\)\s*:\s*t\('indicator\.disconnected'\)/,
+    );
+    expect(indicator).toMatch(/resolveIndicatorState\(\{ connected, reason, signal: windowSignal \}\)/);
     // Ninguna otra rama pinta indicator.disabled ni indicator.notEmitting.
     expect(indicator.match(/t\('indicator\.disabled'\)/g)).toHaveLength(1);
     expect(indicator.match(/t\('indicator\.notEmitting'\)/g)).toHaveLength(1);

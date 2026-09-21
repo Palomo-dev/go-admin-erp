@@ -42,6 +42,14 @@ const cache = new Map<number, CustomerDisplaySettings>();
 /** Cargas en curso, para que N llamadas simultáneas hagan una sola consulta. */
 const inflight = new Map<number, Promise<CustomerDisplaySettings>>();
 /**
+ * Organizaciones cuya carga inicial FALLÓ (red, RLS): la caché guarda el
+ * valor por defecto para que el emisor no espere, pero no se «conoce» el
+ * interruptor (`hasCustomerDisplaySettingsCache` = false): el indicador se
+ * queda en «cargando» en vez de afirmar «desactivada» y ofrecer «Activar»
+ * sin red. La siguiente carga vuelve a consultar; un éxito lo limpia.
+ */
+const loadFailed = new Set<number>();
+/**
  * Época por organización: la avanza cada escritor (carga, relectura, prime)
  * al EMPEZAR. Un escritor asíncrono anota su época antes de consultar y solo
  * escribe la caché si ningún escritor más reciente la ha escrito ya
@@ -67,6 +75,7 @@ function commit(orgId: number, mine: number, settings: CustomerDisplaySettings):
   if (mine <= (applied.get(orgId) ?? 0)) return false; // respuesta superada
   applied.set(orgId, mine);
   cache.set(orgId, settings);
+  loadFailed.delete(orgId);
   return true;
 }
 
@@ -103,7 +112,7 @@ export function isCustomerDisplayEnabled(orgId: number): boolean {
  * indicador de la caja lo usa para no pintar «desactivada» durante la carga.
  */
 export function hasCustomerDisplaySettingsCache(orgId: number): boolean {
-  return cache.has(orgId);
+  return cache.has(orgId) && !loadFailed.has(orgId);
 }
 
 /** Mensaje legible de un error de Supabase (objeto con `message`) o de una excepción cualquiera. */
@@ -143,16 +152,18 @@ export async function fetchCustomerDisplaySettings(orgId: number): Promise<Custo
 export async function loadCustomerDisplaySettings(orgId: number): Promise<CustomerDisplaySettings> {
   if (!isValidOrgId(orgId)) return { ...DEFAULT_CUSTOMER_DISPLAY_SETTINGS };
   const cached = cache.get(orgId);
-  if (cached) return cached;
+  if (cached && !loadFailed.has(orgId)) return cached; // tras un fallo se vuelve a consultar
   const pending = inflight.get(orgId);
   if (pending) return pending;
 
   const mine = bump(orgId);
+  let failed = false;
   const load = (async () => {
     try {
       return await fetchCustomerDisplaySettings(orgId);
     } catch (err) {
       console.warn('[pos-display] no se pudo leer pos_customer_display:', describeError(err));
+      failed = true;
       return { ...DEFAULT_CUSTOMER_DISPLAY_SETTINGS };
     }
   })();
@@ -160,7 +171,7 @@ export async function loadCustomerDisplaySettings(orgId: number): Promise<Custom
   inflight.set(orgId, load);
   try {
     const settings = await load;
-    commit(orgId, mine, settings);
+    if (commit(orgId, mine, settings) && failed) loadFailed.add(orgId);
     return cache.get(orgId) ?? settings;
   } finally {
     // Solo se retira la promesa propia: un `prime` intermedio ya la habrá borrado.
@@ -212,6 +223,7 @@ export function primeCustomerDisplaySettings(orgId: number, settings: CustomerDi
   const mine = bump(orgId);
   applied.set(orgId, mine);
   cache.set(orgId, parseCustomerDisplaySettings(settings));
+  loadFailed.delete(orgId); // el valor recién guardado sí se conoce
   inflight.delete(orgId);
 }
 
@@ -221,4 +233,5 @@ export function clearCustomerDisplaySettingsCache(): void {
   inflight.clear();
   epoch.clear();
   applied.clear();
+  loadFailed.clear();
 }

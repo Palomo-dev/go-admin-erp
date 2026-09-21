@@ -66,24 +66,36 @@ describe('isDisplayPresent', () => {
 describe('readDisplayPresence', () => {
   it('sin transporte (interruptor apagado, entorno cargado y compatible): gris, no emite y reason «disabled»', () => {
     expect(readDisplayPresence(source(null, false), 5000)).toEqual({ connected: false, emitting: false, reason: 'disabled', lastSeenAt: null });
-    expect(DEFAULT_PRESENCE_ENVIRONMENT).toEqual({ settingsLoaded: true, transportSupported: true });
+    // El default lleva `enabled: false`: sin entorno se conserva el motivo «apagado», nunca se inventa «cargando».
+    expect(DEFAULT_PRESENCE_ENVIRONMENT).toEqual({ settingsLoaded: true, enabled: false, transportSupported: true });
   });
   it('emitiendo pero sin pantalla: gris y sin motivo', () => {
     expect(readDisplayPresence(source(null, true), 5000)).toEqual({ connected: false, emitting: true, reason: null, lastSeenAt: null });
   });
   it('interruptor aún cargando (sin caché): no emite y reason «loading», nunca «disabled»', () => {
-    const snapshot = readDisplayPresence(source(null, false), 5000, STALE_AFTER_MS, { settingsLoaded: false, transportSupported: true });
+    const snapshot = readDisplayPresence(source(null, false), 5000, STALE_AFTER_MS, { settingsLoaded: false, enabled: false, transportSupported: true });
     expect(snapshot).toEqual({ connected: false, emitting: false, reason: 'loading', lastSeenAt: null });
     // El estado inicial del hook también es «cargando»: el menú no pinta etiqueta hasta saber.
     expect(DISCONNECTED_PRESENCE.reason).toBe('loading');
   });
+  it('caché ENCENDIDA y emisor sin arrancar (la página aún no llamó a start): reason «loading», nunca «disabled»', () => {
+    // En /app/pos el indicador monta antes de que el efecto de la página resuelva la moneda base y arranque
+    // el emisor; con el interruptor encendido en caché, «apagada» sería mentira.
+    const env = { settingsLoaded: true, enabled: true, transportSupported: true };
+    expect(resolvePresenceReason(false, env)).toBe('loading');
+    expect(readDisplayPresence(source(null, false), 5000, STALE_AFTER_MS, env)).toEqual({ connected: false, emitting: false, reason: 'loading', lastSeenAt: null });
+    // «Apagada» exige caché cargada Y en false.
+    expect(resolvePresenceReason(false, { settingsLoaded: true, enabled: false, transportSupported: true })).toBe('disabled');
+    // Sin caché, el valor por defecto (false) no cuenta como «apagada».
+    expect(resolvePresenceReason(false, { settingsLoaded: false, enabled: false, transportSupported: true })).toBe('loading');
+  });
   it('entorno sin BroadcastChannel: reason «unsupported» aunque el interruptor esté cargado (y encendido)', () => {
-    const snapshot = readDisplayPresence(source(null, false), 5000, STALE_AFTER_MS, { settingsLoaded: true, transportSupported: false });
+    const snapshot = readDisplayPresence(source(null, false), 5000, STALE_AFTER_MS, { settingsLoaded: true, enabled: true, transportSupported: false });
     expect(snapshot.reason).toBe('unsupported');
     // Sin soporte manda sobre «cargando»: es definitivo y Configuración no lo arregla.
-    expect(resolvePresenceReason(false, { settingsLoaded: false, transportSupported: false })).toBe('unsupported');
+    expect(resolvePresenceReason(false, { settingsLoaded: false, enabled: false, transportSupported: false })).toBe('unsupported');
     // Con transporte abierto no hay motivo, diga lo que diga el entorno.
-    expect(resolvePresenceReason(true, { settingsLoaded: false, transportSupported: false })).toBeNull();
+    expect(resolvePresenceReason(true, { settingsLoaded: false, enabled: false, transportSupported: false })).toBeNull();
   });
   it('señal reciente: verde; señal vieja: gris sin mensaje alguno (decide el reloj)', () => {
     expect(readDisplayPresence(source(5000), 5000 + STALE_AFTER_MS - 1).connected).toBe(true);

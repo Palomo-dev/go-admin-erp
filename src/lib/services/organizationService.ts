@@ -29,6 +29,24 @@ export interface Organization extends Organizacion {
   is_super_admin?: boolean;
 }
 
+/** Fila de organization_members con sus joins tal como la devuelve Supabase (sin tipos generados). */
+interface MemberOrganizationRow {
+  organizations?: Record<string, unknown> | null;
+  roles?: { name?: unknown } | null;
+  is_super_admin?: boolean | null;
+}
+
+/** `payment_methods!inner`: el join interno garantiza que siempre hay método. */
+interface PaymentMethodJoinRow {
+  payment_methods: PaymentMethodRow | PaymentMethodRow[];
+}
+
+interface PaymentMethodRow {
+  code: string;
+  name: string;
+  requires_reference?: boolean | null;
+}
+
 export const organizationService = {
   /**
    * Obtiene todas las organizaciones a las que pertenece un usuario
@@ -57,7 +75,8 @@ export const organizationService = {
       const organizations: Organization[] = [];
       
       if (data && Array.isArray(data)) {
-        data.forEach((item: any) => {
+        // Supabase tipa el join como array aunque la FK devuelva un objeto; se valida la forma real abajo.
+        (data as unknown as MemberOrganizationRow[]).forEach((item) => {
           // Verificar que el item tiene la estructura esperada
           if (item && 
               item.organizations && 
@@ -118,6 +137,28 @@ export const organizationService = {
   },
 
   /**
+   * Marca mínima de una organización para pantallas públicas (p. ej. la
+   * pantalla del cliente del POS): solo nombre, logo y color primario.
+   * Devuelve null si la fila no existe o no se puede leer (RLS, red); quien
+   * llama decide qué pintar en ese caso. Nunca lanza.
+   */
+  async getOrganizationBrand(
+    organizationId: number,
+  ): Promise<{ name: string | null; logo_url: string | null; primary_color: string | null } | null> {
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('name, logo_url, primary_color')
+      .eq('id', organizationId)
+      .maybeSingle<{ name: string | null; logo_url: string | null; primary_color: string | null }>();
+
+    if (error) {
+      logError('[organizationService] obtener marca de la organización', error);
+      return null;
+    }
+    return data ?? null;
+  },
+
+  /**
    * Obtiene los métodos de pago activos de una organización
    */
   async getOrganizationPaymentMethods(organizationId: number): Promise<Array<{
@@ -146,7 +187,7 @@ export const organizationService = {
       }
 
       // Transformar la respuesta
-      const methods = (data || []).map((item: any) => {
+      const methods = ((data || []) as PaymentMethodJoinRow[]).map((item) => {
         const method = Array.isArray(item.payment_methods)
           ? item.payment_methods[0]
           : item.payment_methods;

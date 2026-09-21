@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
+import { isCustomerDisplayPath } from '@/lib/pos/display/route';
 
 const DISMISS_KEY = 'pwa-install-dismissed';
 const DISMISS_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 días
@@ -16,7 +18,7 @@ function useIsIOS() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream);
+    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as Window & { MSStream?: unknown }).MSStream);
   }, []);
 
   return isIOS;
@@ -29,6 +31,8 @@ function useIsIOS() {
  * Se puede cerrar y no vuelve a aparecer por 7 días.
  */
 export function PWAInstallPrompt() {
+  // usePathname es nullable en este repo (src/pages convive con App Router).
+  const pathname = usePathname();
   const { canInstall, isInstalled, promptInstall } = usePWAInstall();
   const isIOS = useIsIOS();
   const [dismissed, setDismissed] = useState(false);
@@ -55,6 +59,11 @@ export function PWAInstallPrompt() {
       setDismissed(true);
     }
   };
+
+  // Pantalla del cliente del POS (/pos-display): frente al cliente solo hay
+  // marca del comercio, sin banners de GO Admin (docs/pos-doble-pantalla/PLAN.md
+  // §4.1.4 «cero navegación, no hay menús» y §4.1.5).
+  if (isCustomerDisplayPath(pathname)) return null;
 
   // No mostrar en iOS (Apple no soporta beforeinstallprompt y el usuario
   // no quiere ver el prompt de instalación en dispositivos Apple).

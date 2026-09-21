@@ -76,12 +76,14 @@ export default function RootLayout({
           <SentryErrorBoundary>
             <SentryMobileInit />
             <PWARegister />
+            {/* Ambos se retiran solos en /pos-display (pantalla del cliente del POS): ver src/lib/pos/display/route.ts. */}
             <PWAInstallPrompt />
             <PushNotificationManager />
             <I18nProvider>
               <SessionProvider>
                 <LanguageSync />
                 {children}
+                {/* Se queda también en /pos-display: solo emite avisos de sesión y de acciones bajo /app; la pantalla del cliente no dispara toasts. */}
                 <Toaster />
               </SessionProvider>
             </I18nProvider>

@@ -42,6 +42,14 @@ export const THANKS_MS = 8_000;
  *   con más líneas: ≥ 4 en cualquier caso. Con descuento en el bloque de
  *   totales (+46 px) siguen cabiendo 6.
  * A 1920×1080: line 42,24 px (fila 79,4), small 24,96 px (sublínea 37,4).
+ *
+ * A 1366×768 (PLAN §13; misma aritmética, calculada, no medida en navegador):
+ * gutter 34,15 px, logo 54,6 px, line 30,05 px (fila simple 61,1), small 18
+ * px (mínimo del clamp), total 116,1 px. Cabecera ≈ 90, pie ≈ 35, bloque de
+ * totales ≈ 258 (dos filas de 45,1 + TOTAL ≈ 121 + py 34 + borde). Contenedor
+ * ≈ 385 px de clientHeight, menos py 34 ≈ 351 útiles → 5 filas simples
+ * (305,5) con o sin contador (316 disponibles con él); con descuento en los
+ * totales (+49 px) quedan 4. Sigue ≥ 4 en cualquier caso.
  */
 const SCALE_STYLE = {
   '--pd-gutter': 'clamp(16px, 2.5vw, 48px)',

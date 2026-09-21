@@ -59,12 +59,15 @@ export async function getOrganizationTimezone(organizationId: number): Promise<s
 
   const promise = (async (): Promise<string> => {
     try {
-      // 2a. Leer organizations.timezone (fuente canonica)
+      // 2a. Leer organizations.timezone (fuente canonica).
+      // maybeSingle, no single: con una organizacion que la sesion no puede
+      // leer (RLS, id inexistente) single hace que PostgREST responda 406 y
+      // ensucie la consola en cada intento; data null cae al siguiente respaldo.
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
         .select('timezone')
         .eq('id', organizationId)
-        .single();
+        .maybeSingle();
 
       if (!orgError && orgData) {
         const tz = orgData.timezone;
@@ -81,7 +84,7 @@ export async function getOrganizationTimezone(organizationId: number): Promise<s
         .select('settings')
         .eq('organization_id', organizationId)
         .eq('key', 'calendar')
-        .single();
+        .maybeSingle();
 
       if (!settingsError && settingsData?.settings) {
         const tz = (settingsData.settings as Record<string, unknown>)?.timezone;

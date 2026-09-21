@@ -294,7 +294,7 @@ describe('presencia · reason con getPosDisplayEnvironment y el emisor real (T3)
     db.hold = true;
     const start = posDisplay.startPosDisplay({ organizationId: 120, currency: 'COP' });
     await flush();
-    expect(posDisplay.getPosDisplayEnvironment()).toEqual({ settingsLoaded: false, transportSupported: true });
+    expect(posDisplay.getPosDisplayEnvironment()).toEqual({ settingsLoaded: false, enabled: false, transportSupported: true });
     expect(presence().reason).toBe('loading');
     release(0);
     await start;
@@ -326,7 +326,7 @@ describe('presencia · reason con getPosDisplayEnvironment y el emisor real (T3)
       const emitter = await posDisplay.startPosDisplay({ organizationId: 120, currency: 'COP' });
       expect(posDisplay.isBroadcastChannelSupported()).toBe(false);
       expect(emitter.isEmitting).toBe(false);
-      expect(posDisplay.getPosDisplayEnvironment()).toEqual({ settingsLoaded: true, transportSupported: false });
+      expect(posDisplay.getPosDisplayEnvironment()).toEqual({ settingsLoaded: true, enabled: true, transportSupported: false });
       expect(presence().reason).toBe('unsupported');
     } finally {
       g.BroadcastChannel = original;

@@ -2761,3 +2761,298 @@ en "Reglas del sistema" de la configuración de IA.
   4. [bajo] toast.closeFromOpener en es/en/fr/pt indica 'ciérrela en su ventana (Alt+F4)'. Alt+F4 es un atajo de Windows; en macOS (navegador y Electron) el atajo es Cmd+W/Cmd+Q y Alt+F4 no hace nada. Además el texto dice 'pulse «Abrir» para recuperarla': window.open con nombre fijo solo alcanza la emergente si está en el mismo grupo de contextos (la abrió esta misma pestaña antes de recargar); si la abrió OTRA pestaña, «Abrir» crea una SEGUNDA pantalla y la primera sigue huérfana (limitación admitida por el builder, pero el texto la promete como salida universal).
 - No probado: Render real del indicador de /app/pos y de la tarjeta Configuración › POS › Pantalla del cliente: requieren sesión y está prohibido introduc; window.open('/pos-display') en Electron real (F0 'ventana normal'): solo revisado en código (electron/src/main/windows/mainWindow.ts:335 per; Evento `storage` entre ventanas reales (navegador y Electron): simulado con un window falso en Node; no se comprobó en Chromium que la marca; Upsert real contra organization_settings (RLS de cajero no admin, constraint UNIQUE(organization_id,key)): el cliente Supabase está simulado
 - Proxima accion: nueva ronda con el feedback
+
+### Fase: F0 — Hallazgo del dueño en hardware real y arreglos directos — 2026-09-16
+- Prueba en el .exe 0.2.0: con el POS abierto, la pantalla decia "Abra el punto de venta en este equipo" y el POS "Sin pantalla".
+- Causa 1 (corregida, commit 7fe4f133): la identidad de la caja (pos_terminal_id) solo se creaba con el interruptor maestro encendido (por defecto apagado). Ahora se crea siempre al abrir el POS; la pantalla dice "Conectando... active la pantalla del cliente en Configuracion > POS"; el indicador dice "Pantalla desactivada" y ofrece "Activar y abrir" en un clic. 764 tests.
+- Causa 2 (corregida, commit 13e05fe7): el Desktop ya no carga la web remota sino un Next embebido (localhost:47800); la ventana de la pantalla puede caer en otro origen/particion y BroadcastChannel no cruza. Nuevo canal por el relay del proceso principal (desktopChannel.ts) con canal inyectable en transport.ts; funciona sin internet. 805 tests.
+- Coordinacion: la sesion "Database errors" (Desktop fase 3/4) implementa main + preload + ventana hija con la misma session (contrato en src/lib/utils/desktop.ts: DesktopPosDisplayBridge). Entra en el Desktop 0.2.1. Esto reemplaza la parte Electron de la F1 prevista para el builder: la F1 queda en integrar el puente (selector de monitor, cierre por puente, ocultar pantalla completa) y la prueba de humo contra el .exe.
+- Commit intermedio 17e88b6e con toda la F0 (A 9.7; B/C/D en ronda 4) para desbloquear a esa sesion en posService/CheckoutDialog.
+- Ronda 4 en curso al momento de anotar: D aprobada 9.7 (r5), C tester 9 (849/849) con QA pendiente, B tester en curso.
+
+### Fase: F0 Prueba de humo en Go Admin Desktop 0.2.1 — 2026-09-16
+
+- Entorno: paquete `electron/release/win-unpacked` (0.2.1, puente `posDisplay` por IPC), un solo monitor, sesión real del dueño.
+- Resultado: ENLACE OK por IPC. Desde el indicador del POS «Activar y abrir pantalla del cliente» abre la ventana hija y enlaza en < 1 s (marca, «Le atiende …», líneas del carrito). Indicador pasa a «Pantalla del cliente conectada».
+- Carrito en vivo: cantidad 1→2 y línea nueva se reflejan al instante; al cambiar de carrito la pantalla sigue al activo; con la ventana pequeña muestra «y N más» + últimas líneas.
+- Cobro: al abrir «Procesar pago» la pantalla pasa a «PAGO EN EFECTIVO» con Recibido/Cambio; con 20.000 sobre 12.750 muestra cambio 7.250. «Completar venta» → «Gracias por su compra · Total pagado $ 12.750» con logo.
+- Cierre: «Cerrar» del menú cierra la ventana e indicador «Sin pantalla»; cerrar con la X del sistema también deja «Sin pantalla» en < 5 s; reabrir enlaza de nuevo.
+- BUG encontrado y corregido (68cb0fd8): tras completar la venta el POS activa el carrito siguiente y la pantalla mostraba «TOTAL $ 12.750» sobre un carrito de $ 0 (cajero: Total Final $ 0). Causa: TaxSummary reenviaba totales viejos con el cartId nuevo. Ahora los totales llevan el id del carrito que los produjo, el cálculo asíncrono superado se cancela y CartView filtra por id y retira el override con subtotal 0. Guardarraíl en guardrails.test.ts. Pendiente: verificar en vivo cuando se reconstruya el paquete de escritorio (el 0.2.1 actual no lleva el fix).
+- También (68cb0fd8): error real de tsc en transport.ts (BroadcastChannel → DisplayChannel bajo strictFunctionTypes) corregido con un adaptador explícito.
+- Nota UX ajena a la pantalla: el botón «Sin conexión» del encabezado del POS es el de «Ventas pendientes de sincronizar», no un estado de red; confunde junto al «En línea» de la barra.
+- Calificacion: no aplica (prueba manual). Proxima accion: cerrar ronda 4 (tester:integracion en curso) y reconstruir el paquete de escritorio con 68cb0fd8.
+
+### F-48 / F-52 — diagnóstico POS y corrección contado/crédito — 2026-09-19
+
+- F-48 medido sin mutaciones históricas: 2.934 ventas; 105 sin factura; 40
+  contabilizables sin factura; 2.117 asientos `sales`, sin duplicados por
+  `(organization_id, source_id)`; 2.042 facturas con asiento por ambas fuentes,
+  16 organizaciones y COP 85.763.018,29 duplicados.
+- Los 36 asientos `sales` huérfanos tienen UUID válido y los 36 poseen eventos
+  `insert` y `delete` de `sales` en `finance_audit_log`: son ventas eliminadas,
+  no identificadores mal formados. Excluidos de la reversión automática.
+- F-52 aplicado por MCP, versión `20260919235511_f52_sale_pos_is_credit`.
+  `fn_auto_journal_sale_pos` deriva crédito de `COALESCE(NEW.balance, 0) > 0`,
+  filtra `conditions.is_credit` en las tres búsquedas de reglas, acota la
+  idempotencia por organización, fija `search_path` y revoca ejecución directa
+  a roles cliente.
+- Migración y rollback versionados en `supabase/migrations/` y
+  `supabase/rollbacks/`. Preflight de aplicación y rollback correctos.
+- Prueba transaccional revertida: contado con `payment_status='pending'` y saldo
+  cero debitó 1105; crédito con `payment_status='paid'` y saldo positivo debitó
+  1305. Un rol `authenticated` bajo RLS siguió disparando el trigger tras el
+  `REVOKE` de ejecución directa. Después: 2.934 ventas, 2.117 asientos `sales`,
+  cero duplicados.
+- Procedimiento F-48 documentado: los 160 asientos anteriores a F-45 deben
+  contrarregistrarse invirtiendo las líneas originales; no se recalculan con la
+  fórmula nueva porque dejaría residuo en 2405. Bloque C sigue sin aprobación.
+- Diseño de la RPC transaccional documentado, no implementado. La venta se inserta
+  `pending`, la factura se crea antes del estado final y cualquier fallo revierte
+  todo; efectos externos quedan fuera de la transacción.
+- Inventariadas nueve tablas auxiliares sin RLS con nombre, filas y presencia de
+  `organization_id`; ninguna tiene esa columna. No se habilitó RLS a ciegas.
+- Verificación: guardarraíl F-52 y control de bytes 6/6 verdes; Jest completo
+  6.564 verdes y 5 fallos ajenos a esta ronda; tsc terminó con 12 errores en
+  archivos del GO Assistant ya modificados; `next build` quedó sin progreso en
+  «Creating an optimized production build» y se interrumpió tras más de seis
+  minutos sin nueva salida.
+- Pendiente: prueba de compra con IVA para cerrar F-45; aprobación del diseño RPC;
+  aprobación explícita del Bloque C antes de escribir SQL correctivo.
+
+### GO Assistant — cierre de fallos de clientes, adjuntos e historial — 2026-09-19
+
+- Alcance: problemas reportados en el asistente del header, no certificación de
+  todas las fases ni de todos los documentos contables reales.
+- Sustituido el formulario por resumen de solo lectura y corrección conversacional.
+  Persona, empresa y software se guardan separados. Confirmación estricta por id,
+  conectada al registro completo de herramientas y reevaluando permisos/módulos.
+- Aplicada por MCP la migración de capacidad para las 84 organizaciones actuales;
+  nuevas organizaciones también usan write_full. No se conceden permisos ni
+  módulos adicionales. Configuración administrable desde la UI del ERP.
+- Upload firmado directo a Storage privado, finalización idempotente y reintentos.
+  Visión de capturas con respaldo Google ante errores transitorios, sin cobrar
+  extracciones fallidas ni confundir un 503 con una imagen borrosa.
+- Historial recupera propuestas/resultados; el fallback de chat persiste el hilo.
+  Streams incompletos no son éxitos ni disparan reintentos automáticos inciertos.
+  Se conservan adjuntos/correcciones; bloqueo de cambio de hilo durante operaciones.
+- Smoke HTTP real con sesión: cliente sintético creado, confirmación repetida
+  sin duplicación, resultado persistido y Deshacer exitoso. MCP verificó que no
+  quedó el cliente de prueba. Se conservó la auditoría.
+- Smoke HTTP real de imagen: PNG de 6.411.311 bytes, prepare 200, PUT 200,
+  finalize 201 y retry 200 con mismo id. Lectura posterior sin reupload respondió
+  4821; MCP confirmó extracción guardada con gemini-3.8-flash y texto correcto.
+- Tests: 605/605 focalizados; suite completa 6.663 pasan, 2 fallos conocidos de
+  website/sectionContract y 1 omitida. Tras ajustes de tipos: 106/106 focalizados.
+  ESLint de los archivos productivos del asistente y diff-check limpios.
+- Build completo: salida 0, 334 páginas generadas, salida temporal aislada.
+  El build omite tipos/lint por configuración existente; no se usa como prueba
+  de TypeScript. Chequeo global de tipos separado en cierre.
+- QA independiente: 9,5/10 para estos bugs (code-ready), no para el plan global.
+- Producción NO cerrada: sin commit/push/despliegue. La migración de protección
+  de ai_agent_actions está preparada, NO aplicada: requiere desplegar antes
+  todos los escritores de servidor y luego aplicar MCP con smoke posterior.
+- Evidencia y límites: docs/ia-chat/GO-ASSISTANT-CORRECCIONES-2026-09-19.md.
+  Orden de publicación: docs/ia-chat/GO-ASSISTANT-ACTIONS-SERVER-ONLY.md.
+
+- Verificación final de tipos: `npx tsc --noEmit -p tsconfig.json` terminó con
+  salida 0. Se corrigieron inferencias circulares en mocks y el tipo explícito
+  del contexto del chat; última suite de confirmación 39/39 y lint limpios.
+  Se restauró tsconfig sin cambios funcionales y las salidas temporales de
+  build/smoke quedaron excluidas solo del Git local, no del código versionado.
+  No quedan procesos de prueba propios activos. Publicación y revocación de
+  escritura directa de propuestas siguen pendientes de autorización/despliegue.
+
+
+### Website Builder V2 — inicio /loop — 2026-09-19
+
+- Instrucción vigente: implementar el plan fase por fase con builder, tester y QA independientes; solo adiciones compatibles, preservando páginas y ventas activas. Ninguna calificación implica riesgo cero.
+- Se eliminó la branch trabajo-local a petición del usuario. El destino de BD autorizado es producción jgmgphmzusbluqhuqihj, exclusivamente MCP. F00 solo permite lecturas.
+- Queda descartado sustituir o quitar los UNIQUE actuales para implementar outlets. El diseño V2 deberá añadir estructuras y mantener cardinalidad y comportamiento legacy.
+- El cierre exige pruebas reales del tester y QA >= 9,5; máximo tres rondas por parte antes de escalar según .devin/workflows/loop.md. Los SQL aplicados y rollbacks se conservan según AGENTS y POLITICA-MIGRACIONES, que prevalecen sobre la nota antigua del workflow.
+
+| Fase/parte | Estado | Ronda | QA / Tester | Responsable |
+|---|---|---|---|---|
+| F00-A Consumidores y protección de flujos actuales | en_progreso | 1 | pendiente | builder_f00 |
+| F00-B Referencias y cobertura visual | en_progreso | 1 | pendiente | builder_referencias_f00 |
+| F00-C Esquema, aislamiento, recuperación y línea base | en_progreso | 1 | pendiente | root / tester_f00 |
+| F01 Contrato y compatibilidad | pendiente | 0 | pendiente | por asignar |
+| F02 Contexto y aislamiento aditivo | pendiente | 0 | pendiente | por asignar |
+| F03 Borradores y publicación | pendiente | 0 | pendiente | por asignar |
+| F04 Identidad y tema | pendiente | 0 | pendiente | por asignar |
+| F05 Header, footer y rutas | pendiente | 0 | pendiente | por asignar |
+| F06 Multimedia | pendiente | 0 | pendiente | por asignar |
+| F07 Preview | pendiente | 0 | pendiente | por asignar |
+| F08 Editor sobre lienzo | pendiente | 0 | pendiente | por asignar |
+| F09 Composiciones | pendiente | 0 | pendiente | por asignar |
+| F10 Hotel | pendiente | 0 | pendiente | por asignar |
+| F11 Restaurante | pendiente | 0 | pendiente | por asignar |
+| F12 Comercio/servicios | pendiente | 0 | pendiente | por asignar |
+| F13 Validación y despliegue | pendiente | 0 | pendiente | por asignar |
+
+- Calificaciones aún no emitidas. Pruebas históricas no equivalen a pruebas de esta ronda.
+- Próxima acción: completar inventarios de F00 y auditoría real; no activar funcionalidades ni publicar sin superar las compuertas correspondientes.
+
+
+### Website Builder V2 — F00-A consumidores — Ronda 1 — 2026-09-19
+
+- Estado: aprobado para inventario estático; NO es aprobación de F00 completa ni de cambios en producción.
+- Builder: builder_f00. Entrega F00-INVENTARIO-CONSUMIDORES.md y F00-INVENTARIO-ESTATICO.json.
+- Tester: tester_f00, 9,7/10. Ejecutó 150 comprobaciones: todas pasan después de corregir cinco rutas abreviadas y añadir hash de carrito. Confirmó 42 hashes sin diferencias, 11 ERP y 31 websites, incluidos siete webhooks. Controles negativos de hash/ruta/token detectaron anomalías en memoria sin alterar fuentes.
+- QA independiente: builder_referencias_f00 en rol qa-reviewer, 9,7/10. Releyó los archivos y comprobó nuevamente 42 hashes. No revisó su propia entrega de referencias.
+- Alcance confirmado: 4.496 fuentes ERP y 407 websites; consumidores directos e indirectos de configuración/páginas/menús, cache, preview, checkout, chat y Edge Function.
+- Cambios de la ronda: únicamente inventario y documentación. Detectado servicio de aplicación de plantillas que borra/recrea páginas; no se invocó y queda excluido de la adopción V2.
+- Límites hacia 10: release productivo no identificado; faltan consumidores remotos y mediciones/recorridos reales de otras partes. La inspección local no certifica las ventas desplegadas.
+- Decisión: conservar UNIQUE y cardinalidad legacy; documento V2 lateral. F00-B y F00-C continúan en revisión, respaldos sin verificación aún. No avanzar a migraciones o activación por esta aprobación parcial.
+- Preferencia adicional del usuario: MCP Higgsfield si se necesita generar multimedia en F06; no se generaron recursos en F00.
+
+
+### Website Builder V2 — F00-B1 y F00-C1 — Ronda 1 — 2026-09-19
+
+- F00-B1 fichas y trazabilidad: builder_referencias_f00 construyó 32 fichas; tester_f00 ejecutó 262 comprobaciones documentales, todas pasan, 9,6/10. QA independiente builder_f00 emitió 9,6/10: aprobado solo el inventario de fichas. F00-B2 continúa con capturas/menús/footers pendientes; no se da por auditada toda la navegación por contar 32 documentos.
+- F00-C1 inventario de BD y decisión aditiva: root produjo esquema/lecturas sanitizadas y ADR-001. Tester ejecutó 87 comprobaciones iniciales y 7 adicionales, todas pasan, 9,6/10 documental. QA independiente builder_f00 emitió 9,6/10 para inventario/decisión, sin certificar recuperación ni seguridad integral.
+- Feedback atendido: F03 deja intactos escritores y firmas legacy para no adoptados; servicio/editor V2 lateral. Evidencia JSON ampliada con conteos, lectura anon, Storage y contrato de columnas de tracking. Recuperación diferencia sitio global adoptado y outlet solo V2 (última revisión propia o no publicado/404; nunca portada de otra identidad).
+- Hallazgos de solo lectura: 84 settings, 1.064 páginas, 1.944 secciones globales; 148 menús, 830 items; versiones/presets vacíos; 89 sucursales sin publicación. Rol anon puede leer 7 páginas no publicadas; no hay draft_content guardado. No se extrajo contenido ni se cambiaron políticas.
+- Pruebas globales actuales: Jest 6.666 pasan, 2 fallos preexistentes del contrato website y 8 omitidos; 91 guardrails pasan. TypeScript pasa en ambos proyectos (ERP requirió heap8GB). Compilaciones aún pendientes de finalizar; no contarlas como aprobadas.
+- Incidencia local de verificación: el tester usó inicialmente .next-desktop existente para build ERP. Se interrumpió su proceso al advertirlo y se conservó la salida parcial; no hay comparación de bytes que permita prometer que el artefacto generado previo quedó intacto. No cambió fuentes ni el next dev activo ni producción. Reejecución en copia TEMP aislada con red bloqueada. Esta incidencia no se oculta bajo los hashes de fuentes intactos.
+- Estado global: F00 en progreso, no aprobada. F00-C2 respaldo/recuperación, correspondencia del release y recorridos/runtime requieren evidencia. No se aplicó ninguna migración V2 ni se activó el nuevo editor.
+
+
+### Website Builder V2 — F00-C3 línea base y continuación visual — Ronda 1 — 2026-09-19
+
+- C3 aprobado exclusivamente como registro fiel de la línea base: tester 9,5/10; QA independiente builder_f00 9,5/10. No aprueba funcionamiento de producción ni F00 completa.
+- ERP: Jest 6.666 pasan, 2 fallos conocidos de sectionContract y 8 omitidos; guardrails 91/91. TypeScript 0 con heap8GB después del OOM inicial. Build aislado 0, 335 páginas. Websites: TypeScript 0, build aislado 0, 48 páginas.
+- Tester confirmó 42/42 hashes fuente al cerrar. QA recalculó 84 comparaciones (42 fuentes y 42 copias), todas coinciden. Sin procesos propios de pruebas restantes; servidor dev del usuario conservado.
+- Bloqueo de red Node: siete rechazos registrados (tres autotests, un intento durante Jest y tres intentos de autenticación desde una ruta de depuración durante prerender websites). Ninguno se presenta como prueba live exitosa ni como aislamiento certificado del sistema operativo.
+- Se mantiene la incidencia del primer build: artefacto .next-desktop parcialmente regenerado, no restaurado. No usarlo para empaquetar sin regeneración explícita. F00 incorpora procedimiento de copia/salida nuevas y códigos de salida junto a logs para futuras ejecuciones.
+- Hallazgo suplementario crítico en código local de websites: templates/apply acepta organization_id del body sin autorización comprobada; middleware llama getUser sin evaluar su resultado; servicio puede borrar todas las páginas de la organización y recrearlas sin transacción. Revisión independiente builder_f00 y 10 condiciones estáticas verificadas por tester. No se ejecutó endpoint; exposición productiva sin comprobar. Detalle en F00-ESQUEMA-Y-RECUPERACION.md; no reutilizar ese flujo en V2.
+- B2: CUA dejó de exponer navegador; el bloqueo quedó registrado. La alternativa agent-browser en sesión TEMP propia abrió PayGin y permitió captura móvil estable. Continúa revisión visual; no aprobar cobertura por el mero arranque de la herramienta.
+- Estado global F00: en progreso, no aprobado. Respaldo/recuperación, versión desplegada, recorridos operativos y cobertura visual siguen pendientes. F01–F13 pendientes; ninguna migración, publicación ni activación V2 realizada en esta tarea.
+
+
+### Website Builder V2 — F00-B2 muestras visuales y compatibilidad documentada — Ronda 1 — cierre 2026-09-20
+
+- Estado global: F00 sigue en progreso y sin aprobación completa. La revisión siguiente aprueba fidelidad de muestras/documentos, no funcionamiento de demos, sitios productivos o implementación V2. F01–F13 continúan pendientes.
+- B2a: builder_referencias_f00 entregó 95 PNG de 15 referencias. Tester revisó 55 imágenes y verificó 585/585 condiciones de la unión, además de controles por bloque; 9,5/10. QA independiente root: 17 PNG examinados, 95/95 hashes recalculados, 9,5/10. Aprobada solamente la evidencia y sus límites en F00-COBERTURA-VISUAL-AMPLIADA.md.
+- B2b: builder_f00 entregó 120 PNG de 14 referencias, con 118 incluidos y dos exploratorios excluidos. Tester: 964/964 controles del manifiesto, 135/135 documentales, 40 imágenes distintas examinadas; 9,5/10. QA independiente root: 12 imágenes, 120/120 hashes, 9,5/10. Aprobada solamente la evidencia final declarada en F00-B2-HOTEL-Y-RESTAURANTE.md. Sobrescrituras tempranas de capturas están declaradas; no se afirma conservar sus bytes anteriores.
+- B2c: root construyó 31 PNG de All Natural, Ecom y Leafore. Tester: 240/240 controles, 18/18 documentales y 21 imágenes examinadas; 9,6/10. QA independiente builder_referencias_f00: 31 hashes y 10 imágenes, 9,6/10. Aprobada solamente la evidencia en F00-B2-COMERCIO-ADICIONAL.md; root no calificó su propia entrega.
+- Reconciliación independiente: 244 capturas incluidas y exactamente las 32 referencias de la matriz, sin duplicados entre entregas. El tester abrió 116 rutas PNG distintas, 117 aperturas contando la recaptura Hotellia. No son 244 imágenes vistas por el tester ni una auditoría exhaustiva de todas las páginas. Las sesiones propias de navegador quedaron cerradas.
+- Las muestras acreditan diferencias visuales entre regiones y páginas, menús, galerías, pestañas y footers. Persisten casos explícitos sin resolver: header de PayGin, cierre estable de Luna Rossa, mapas/iframes externos, ancla/Load More móviles de Matchioo, tarjetas de sedes, recortes de menús/footers, tablet y teclado/foco completos. No copiar esos problemas a componentes V2. Capturas/manifiestos en TEMP: pendiente conservación duradera.
+- Hallazgo adicional para F01: la fuente de app/api/_sections/manifest/route.ts existe, pero la carpeta privada queda fuera de las 111 rutas del build websites; sin rewrites alternativos. Tester confirmó ocho condiciones estáticas con hashes de cinco artefactos, sin HTTP. QA independiente builder_referencias_f00: 9,7/10 para los párrafos documentales de F01 (contrato puro, consumo por variante, aliases y publicación V2 cerrada ante incompatibilidad). No aprueba implementación ni despliegue. Se añadió enlace a evidencia según feedback.
+- Consulta de despliegues por MCP Vercel: list_teams vacío y list_deployments 403 para ambos proyectos locales por falta de acceso al equipo. get_project presentó discrepancia de argumentos en el conector. No se usaron credenciales alternativas ni se publicó código. La revisión de producción sigue sin identificar; no atribuirle automáticamente hallazgos del árbol local.
+- Línea base se conserva: TypeScript y builds aislados pasan en ambos repositorios; ERP Jest 6.666 pasan, dos fallos conocidos y ocho omitidos; guardrails 91/91. Última comparación de los 42 hashes protegidos: todos intactos. Se mantiene la incidencia del artefacto local .next-desktop parcialmente regenerado, no restaurado; no empaquetarlo sin regeneración posterior.
+- Cambios de esta ronda: documentación e inventarios. No se modificó código del editor, renderer, checkout o webhooks; no se aplicaron migraciones V2, escrituras de contenido, permisos, activación, commit, push, PR ni despliegue. La lectura MCP de producción no demuestra por sí sola recuperación o aislamiento funcional.
+- Próxima acción de F00: verificar respaldo/recuperación; recuperar acceso del conector al equipo de despliegue; identificar la revisión publicada y completar recorridos representativos del editor/sitios, mediciones y aislamiento con contexto autorizado. La autorización de trabajar sobre producción ya existe; lo que falta es evidencia/acceso, no volver a pedir permiso genérico para usarla. No ejecutar una migración antes de resolver sus dependencias.
+- Higgsfield queda como herramienta autorizada si se necesitan imágenes/videos en F06. No se lanzó ninguna generación durante F00.
+
+| Parte | Estado vigente al cierre de esta ronda | QA / Tester |
+|---|---|---|
+| F00-A inventario estático | aprobado en su alcance documental | 9,7 / 9,7 |
+| F00-B1 fichas | aprobado en su alcance documental | 9,6 / 9,6 |
+| F00-B2a muestras de 15 referencias | aprobado en fidelidad de evidencia | 9,5 / 9,5 |
+| F00-B2b muestras de 14 referencias | aprobado en fidelidad de evidencia | 9,5 / 9,5 |
+| F00-B2c muestras de 3 referencias | aprobado en fidelidad de evidencia | 9,6 / 9,6 |
+| F00-B cobertura exhaustiva | pendiente; límites por referencia documentados | sin cierre |
+| F00-C1 esquema/decisión aditiva | aprobado en su alcance documental | 9,6 / 9,6 |
+| F00-C2 recuperación y despliegue | pendiente de evidencia/acceso | sin cierre |
+| F00-C3 línea base | aprobado como registro de pruebas y límites | 9,5 / 9,5 |
+| F00 recorridos y mediciones actuales | pendientes | sin cierre |
+| F01–F13 implementación | pendientes | sin calificación de implementación |
+
+### GO Assistant — clientes con el formulario del módulo, orgs nuevas y factura desde la foto — 2026-09-21
+
+**Feedback del dueño (capturas):** (1) el formulario de "Crear cliente" del chat no gusta; si hay
+formulario, que sea EL MISMO de `/app/clientes/new` (persona/empresa y todas las variables) y que
+cambiarlo lo cambie en todas partes; (2) otra organización probó y "solo puedo consultar";
+(3) que el chat lea fotos de facturas y ayude a subirlas.
+
+**(1) Una sola traducción cliente.** `src/lib/services/customers/customerPayload.ts`:
+`buildCustomerInsert` (formulario → fila `customers`), `customerValuesFromAction` (campos del
+asistente → valores del formulario: persona/empresa inferido por NIT, razón social o "es la empresa";
+nombre repartido a la colombiana; documento normalizado a los códigos de
+`country_identification_types` —`cc`, `nit`…—, DV del NIT calculado). La usan `ClientForm` (modo
+creación) y `aiActionsService.createCustomer`. El catálogo `create_customer` ahora declara
+`customer_type` y los códigos del formulario (antes 'CC'/'NIT' en mayúsculas: dos catálogos para el
+mismo dato; en la base conviven 10 804 'CC' y 229 'cc' por eso). El saneado de `select` acepta
+mayúsculas/minúsculas. Botón **"Formulario completo"** en la tarjeta: abre `ClientForm` embebido
+(`assistant/CustomerFormDialog.tsx`) prellenado; al guardar, `/execute-action` recibe
+`{actionId, external:{entityType:'customer', entityId}}`, comprueba que el cliente exista en la
+organización, y cierra la propuesta como ejecutada con `undo` de borrado. El formulario escribe con
+la sesión del usuario y su RLS, igual que el módulo.
+
+**(2) Organizaciones.** Las 83 activas ya estaban en `write_full` (activadas el 2026-09-19 por otra
+sesión; la prueba de la captura fue el 17). Lo que faltaba: ninguna organización NUEVA nacía con
+fila en `ai_assistant_settings` → volvía a `off`. Migración
+`20260921100000_go_assistant_settings_por_defecto_en_org_nueva` (+ rollback): disparador
+`trg_seed_ai_assistant_settings` que crea la fila con `write_full` al crear la organización.
+
+**(3) Factura desde la foto → registrada.** `leer_documento` ya extraía y conciliaba; faltaba el
+paso final. Herramienta `registrar_factura_compra` (`tools/facturas.ts`) + RPC
+`assistant_register_purchase_invoice` (`20260921110000`, + rollback): proveedor por id o por NIT
+(se crea si no existe), `invoice_purchase` en `received` (asiento por disparador), `invoice_items`,
+`accounts_payable` pendiente, y entrada de stock de las líneas con producto conciliado
+(`receive_stock`, por defecto sí). Duplicado por proveedor+número en la base. Es el mismo flujo
+que `purchaseOrderService.generateInvoiceFromPurchaseOrder`. Deshacer = anular por compensación,
+RPC `assistant_void_purchase_invoice` (`20260921120000`, + rollback): stock de vuelta con
+movimiento `return`, CxP a cero en `void`, y asiento espejo de cada asiento generado (source
+`<origen>_void` por el UNIQUE(source, source_id)); se niega si hay pagos. El adjunto queda enlazado
+a la factura (`ai_attachments.linked_entity_*`). El stream sugiere `registrar_factura_compra` tras
+leer una factura.
+
+**Tester (base real, DO-blocks con rollback).** Registro: proveedor nuevo por NIT, total 28 800 con
+IVA 19 % (coincide con el recálculo del disparador), CxP 28 800 `pending`, stock +2, línea sin
+producto no mueve stock; duplicado → `DUPLICATE_INVOICE`; producto ajeno → `PRODUCT_NOT_IN_ORG`;
+sin número → `NUMBER_REQUIRED`. Anulación: stock vuelve al valor inicial, CxP `void`/0, todos los
+asientos revertidos y **neto por cuenta = 0**, segunda anulación idempotente. Cero residuos.
+Jest `goAssistantClientesYFacturas.test.ts` (17) + `goAssistantCustomer.test.ts` ajustado a los
+códigos del formulario.
+
+**Hallazgo preexistente, no tocado:** al registrar una compra, `fn_auto_journal_purchase`
+(`invoice_purchase` received) y `fn_auto_journal_ap` (`accounts_payable` insert) generan DOS asientos
+con la misma regla `purchase/created`. Pasa igual en el flujo del módulo. Revisar con el contador.
+
+**Pendiente:** smoke test en navegador con la captura de una factura real (necesita sesión).
+
+### Fase: F0 v4 (ronda 4) Parte B — Ronda 4 — 2026-09-16
+- Calificacion QA: 9.8/10 (aprobado)
+- Calificacion Tester: sin tester
+- Que se hizo: Ronda 4 de la Parte B: los cuatro puntos del feedback (override de totales obsoleto, lista blanca active/hold en project(), «Gracias» con el total de la factura a crédito, e interruptor maestro releído en cada publicación) ya estaban aplicados en el árbol y en el commit 17e88b6e con sus tests. Esta ronda se dedicó a verificarlos contra el feedback punto por punto y a completar el cierre que pedía el «para el 10»: la suite pos-display (24 suites, 680 tests) en verde; ESLint limpio en emitter.ts, settings.ts, posDisplay.ts, payment.ts y en los dos archivos de test; tsc sin errores en ningún archivo de la Parte B (los 2 únicos errores que salieron en posService.ts fueron transitorios de una ses
+- Que falta / feedback recibido:
+  (ninguno)
+- Para el 10: tsc del proyecto completo (NODE_OPTIONS=--max-old-space-size=8192, no incremental) da exactamente 1 error, y NO es de la Parte B: src/lib/pos/display/transport.; posDisplay.ts:112 `isEnabled: () => isCustomerDisplayEnabled(getOrganizationId())`: con la opción A esa closure corre en cada flush/announce, y getOrganizationI; Toggle «Excluir impuesto» por línea: isSameLine (emitter.ts:203-211) no compara taxExcluded, así que al alternarlo el override de TaxSummary NO caduca y, hasta ; CartView.tsx:321 `Number(result.invoice.total) || cart.total`: una factura a crédito con total 0 (todo descontado) mostraría cart.total en «Gracias». Caso teóri
+- Proxima accion: avanzar
+
+### Fase: F0 v4 (ronda 4) Parte C — Ronda 4 — 2026-09-16
+- Calificacion QA: 9.6/10 (aprobado)
+- Calificacion Tester: 8/10 (897/897 casos; 0 fallos)
+- Que se hizo: Ronda 4 de la Parte C (/pos-display). Al abrir el árbol, los cinco puntos del qa-reviewer y los tres del tester ya tenían código en el commit intermedio 17e88b6e y en cambios sin commitear de otra sesión (PWAInstallPrompt, PushNotificationManager, layout.tsx). Siguiendo la instrucción «no reescribas, corrige», verifiqué punto por punto contra el código y los tests en vez de rehacer: (1) moneda en el hello (protocol.ts `currency?`, emitter.helloDraft, displayLink DisplayHello.currency, `resolveDisplayCurrency` en logic.ts con prioridad carrito → hello → recordada → respaldo, CustomerDisplay con useRef solo para el recuerdo actualizado en useEffect; los dos it.failing de tester-r3-parte-c son 
+- Que falta / feedback recibido:
+  1. [bajo] qa-3 de la ronda 3 queda resuelto solo parcialmente. El builder afirma que «las esperas restantes no pueden fallar por carga», pero src/__tests__/pos-display/tester-r8-parte-b.test.ts:747 espera thanks → idle con `untilReceived(..., 20 + 500)`: un tope de 520 ms que depende del temporizador del emisor más la entrega del BroadcastChannel en el worker de jest. El tester lo reprodujo (1 fallo en 3 corridas con tsc en paralelo). Es el único `untilReceived` del archivo con tope corto; los demás usan el default de 2000 ms. -> En tester-r8-parte-b.test.ts:747 quitar el tercer argumento: `await untilReceived(x.received, (ms) => lastState(ms)?.mode === 'idle');` (tope por defecto 2000 ms, como el resto del archivo). Ajustar el comentario de la línea 746. Verificar con 3 corridas de la carpeta mientras corre `NODE_OPTIONS=--max-old-space-size=8192 npx tsc --noEmit -p tsconfig.json` en otra terminal.
+  2. [medio] Higiene de commit (no baja la nota por alcance congelado, pero el orquestador debe resolverlo al cerrar): HEAD no compila por sí solo. `git show HEAD:src/lib/services/organizationService.ts | grep -c getOrganizationBrand` → 0, mientras `src/components/pos-display/useDisplayBrand.ts` (commiteado en 17e88b6e y presente en HEAD a923cc57) lo llama en la línea 67. `getOrganizationBrand` y el `maybeSingle` de organizationTimezoneService.ts, junto con PWAInstallPrompt.tsx, PushNotificationManager.tsx y layout.tsx, siguen sin commitear. Un checkout limpio de HEAD da TS2339; el build de Next no cae porque `ignoreBuildErrors: true`, pero la compuerta tsc de PLAN §12 sí. -> Incluir en el mismo commit de cierre de la Parte C: src/lib/services/organizationService.ts, src/lib/services/organizationTimezoneService.ts, src/components/PWAInstallPrompt.tsx, src/components/PushNotificationManager.tsx, src/app/layout.tsx, src/__tests__/pos-display/tester-r4-parte-c.test.ts y tester-r4-parte-c-bis.test.ts. Comprobar antes de commitear con `git stash && NODE_OPTIONS=--max-old-space-size=8192 npx tsc --noEmit -p tsconfig.json; git stash pop` que el error TS2339 desaparece del árbol commiteado.
+- Para el 10: useOverflowCorrection (OrderView.tsx:118-128) es histerético ante un cambio de tamaño de ventana (hallazgo del tester, fuera de la lista): si en el relayout tra; sanitizeDisplayCart (logic.ts:474) rellena `currency` con FALLBACK_CURRENCY cuando el carrito llega sin moneda, y ese 'COP' de respaldo gana a `hello.currency` ; BrandLogo (BrandHeader.tsx:17-21) pinta un `<img>` sin `onError`: si `organizations.logo_url` apunta a un recurso caído, el cliente ve el icono de imagen rota e; El comentario de SCALE_STYLE en CustomerDisplay.tsx dice «calculada, no medida» para 1366×768; el tester ya lo midió en navegador (total 116,1 px, línea 30,05 p
+- Fallos del tester:
+  1. [medio] El commit intermedio HEAD (17e88b6e) no compila por sí solo: src/components/pos-display/useDisplayBrand.ts (commiteado) llama a organizationService.getOrganizationBrand, que solo existe en el cambio SIN commitear de src/lib/services/organizationService.ts (junto con el maybeSingle de organizationTimezoneService.ts, PWAInstallPrompt.tsx, PushNotificationManager.tsx, layout.tsx y route.ts sí commiteado). Quien haga checkout limpio de HEAD, o un stash, obtiene TS2339 y `next build` roto. El árbol de trabajo sí compila (tsc 0 errores en la primera corrida).
+  2. [bajo] qa-3 / T3 (intermitencia de tester-r8-parte-b) queda resuelto en condiciones normales (5/5 corridas del archivo solo, 3/3 con otro jest en paralelo) pero NO bajo carga real: el test «stop() de la caja manda bye… «Gracias» vence y vuelve a idle» (src/__tests__/pos-display/tester-r8-parte-b.test.ts:737) usa `untilReceived(…, 20 + 500)`, un tope de 520 ms para thanks→idle que sí depende de la CPU (temporizador del emisor + entrega del BroadcastChannel en un worker de jest). Falló 1 de 3 corridas de la carpeta con `tsc` de 8 GB corriendo a la vez; el builder afirmó que las esperas restantes «no pueden fallar por carga».
+- No probado: FullscreenButton oculto bajo window.electronAPI: no hay app de escritorio en esta sesión y no se puede inyectar electronAPI antes del montaj; Logo externo real (organizations.logo_url) y su fallo de carga: la organización de prueba no tiene logo; se verificó la inicial de respaldo ; Hardware táctil real (capabilities.touch=true): solo se observó touch=false en need_snapshot/display_alive con maxTouchPoints=0.; `npx next build` completo y `npx jest` completo: el árbol está siendo editado por otras sesiones en paralelo (desktopChannel.ts, transport.t
+- Proxima accion: avanzar
+
+### Fase: F0 v4 (ronda 4) Parte D — Ronda 4 — 2026-09-16
+- Calificacion QA: 9.7/10 (aprobado)
+- Calificacion Tester: 8/10 (890/890 casos; 0 fallos)
+- Que se hizo: Ronda 4 de corrección de la Parte D, sin reescrituras. (1+2) settings.ts cierra las dos carreras de caché con una sola época por organización: `bump(orgId)` la avanza al empezar cada escritor (carga, relectura, prime) y `commit(orgId, mine, settings)` solo escribe si `mine` es mayor que la última época aplicada. Así una relectura superada que responde la última se descarta (la caja queda apagada con la BD en false), una carga lenta no pisa un `prime` posterior (el POS vuelve a arrancar encendido sin reconsultar, db.reads === 2), y `primeCustomerDisplaySettings` además borra el `inflight` para que una carga posterior no reciba la promesa vieja. Los dos `it.failing` de tester-r3-parte-d pasan 
+- Que falta / feedback recibido:
+  (ninguno)
+- Para el 10: settings.ts: `clearCustomerDisplaySettingsCache()` reinicia `epoch`, así que una carga en vuelo de antes del clear y una carga nueva de la misma organización co; settings.ts línea 147-148: el segundo llamador simultáneo de `loadCustomerDisplaySettings` recibe la promesa `load` cruda (valor leído), no `cache.get(orgId) ??; Fallo de red/RLS en la carga inicial (hallazgo del tester): `loadCustomerDisplaySettings` cachea `{enabled:false}` y `getPosDisplayEnvironment` lo reporta como ; PantallaClienteContent.tsx líneas 50-53: el `.catch` con el toast `config.loadError` es código muerto porque `ConfiguracionService.getCustomerDisplayConfig()` c
+- Fallos del tester:
+  1. [medio] tsc reporta 1 error en un archivo de la fase, src/lib/pos/display/transport.ts(232,3): TS2322 'BroadcastChannel' no es asignable a 'DisplayChannel' (la propiedad `onmessage` se tipa como `(event: { data: unknown }) => void`, y con strictFunctionTypes el `onmessage(ev: MessageEvent)` de BroadcastChannel no encaja). NO es de la ronda 4 de la Parte D: lo introdujo el commit 13e05fe7 «feat(pos): canal de la pantalla del cliente por el relay de Go Admin Desktop» (Fase 1/escritorio, otro builder). `next build` no se rompe porque next.config tiene `typescript.ignoreBuildErrors: true`, pero la verificación `tsc --noEmit` de cierre de fase deja de estar en verde. No baja la nota de la Parte D.
+- No probado: Verificación manual con throttling lento en /app/pos (menú del indicador antes de que resuelva organization_settings): no hay sesión de usua; Interacción real del indicador (window.open / toast / DropdownMenu) y de la tarjeta de Configuración en navegador: requieren sesión autentic; Puente de escritorio (window.electronAPI.posDisplay / goAdminDesktop.posDisplay): F1, no disponible en web; cubierto solo por tests unitario; HALLAZGO NUEVO bajo (fuera de la lista, no baja nota): settings.ts — `clearCustomerDisplaySettingsCache()` reinicia `epoch`/`applied`; si un
+- Proxima accion: avanzar
+
+### Fase: F0 v4 (ronda 4) Parte D — Ronda 5 — 2026-09-16
+- Calificacion QA: 9.7/10 (aprobado)
+- Calificacion Tester: 9/10 (822/822 casos; 0 fallos)
+- Que se hizo: Ronda de corrección de la Parte D (indicador del POS y tarjeta de Configuración). Se cerró el residuo de T3: `resolvePresenceReason` afirmaba 'disabled' siempre que no había transporte con la caché cargada, sin mirar el VALOR del interruptor, de modo que tras encenderlo en Configuración y volver al POS por navegación SPA el menú del indicador decía «Desactivada en Configuración › POS» durante toda la consulta de moneda base (el indicador monta antes de que el efecto de /app/pos llame a `startPosDisplay`). Ahora `DisplayPresenceEnvironment` lleva `enabled` (valor de la caché de settings.ts), `getPosDisplayEnvironment()` lo rellena con `isCustomerDisplayEnabled(orgId)` en el mismo try, y el or
+- Que falta / feedback recibido:
+  (ninguno)
+- Para el 10: [bajo · fuera de la lista] Si `createTransport` lanza (constructor de BroadcastChannel fallando en un contexto restringido) con la caché en true, `openTransport; [bajo · ajeno a la Parte D] `src/__tests__/pos-display/tester-r8-parte-b.test.ts` › «stop() de la caja manda bye…» falló una vez al correr las 29 suites en para; [no probado] Render real en navegador del caso «Slow 3G + navegación SPA a /app/pos + abrir el menú del indicador antes de que resuelva getBaseCurrency» (el men; [bajo · fuera de la lista] `getPosDisplayEnvironment()` evalúa la organización ACTIVA mientras el emisor sigue arrancado para la organización con la que se llam
+- No probado: Render real de /pos-display en navegador (estado Conectando/Reposo sin errores de consola): NO se levantó servidor de Next porque hay un `ne; Verificación manual en navegador del caso «Slow 3G + navegación SPA a /app/pos + pulsar el indicador antes de que resuelva getBaseCurrency»:; `npx tsc --noEmit -p tsconfig.json` completo: devuelve exit 0 con salida VACÍA (síntoma OOM conocido: el proyecto tiene ~190 errores preexis; Hallazgo menor fuera de la lista (no baja nota, para paraElDiez): si `createTransport` LANZA o devuelve null por una causa distinta a «sin B
+- Proxima accion: avanzar

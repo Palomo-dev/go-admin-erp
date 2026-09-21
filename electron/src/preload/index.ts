@@ -122,6 +122,8 @@ try {
     listDisplays: () => ipcRenderer.invoke('pos-display:list-displays'),
     setEnabled: (enabled: boolean, displayId?: number | null) =>
       ipcRenderer.invoke('pos-display:set-enabled', enabled, displayId),
+    /** `{ enabled, displayId } | null` guardado en config.json. */
+    getConfig: () => ipcRenderer.invoke('pos-display:get-config'),
     /** `{ open, displayId }` cada vez que la pantalla abre o cierra. Devuelve la baja. */
     onStatus: (handler: (status: unknown) => void) => subscribe('pos-display:status', handler),
   },

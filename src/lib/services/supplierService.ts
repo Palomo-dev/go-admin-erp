@@ -327,42 +327,55 @@ class SupplierService {
     input: SupplierInput
   ): Promise<{ data: Supplier | null; error: Error | null }> {
     try {
+      // Actualización PARCIAL: solo se escriben los campos presentes en
+      // `input`. Antes se escribía la fila entera con
+      // `input.campo || <valor por defecto>`, así que un formulario que no
+      // maneja un campo lo borraba: `EditarProveedorForm` no envía
+      // `supplier_type`, `parent_supplier_id`, `doc_type` ni
+      // `fiscal_responsibilities`, y guardar cualquier cambio convertía una
+      // persona natural en empresa y le borraba el proveedor padre y los datos
+      // DIAN (auditoría de proveedores y categorías, 2026-09-22).
+      const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      const setIfPresent = (column: string, value: unknown, empty: unknown = null) => {
+        if (value === undefined) return;
+        payload[column] = value === '' ? empty : value;
+      };
+
+      setIfPresent('name', input.name);
+      setIfPresent('supplier_type', input.supplier_type);
+      setIfPresent('parent_supplier_id', input.parent_supplier_id);
+      setIfPresent('doc_type', input.doc_type);
+      setIfPresent('nit', input.nit);
+      setIfPresent('contact', input.contact);
+      setIfPresent('phone', input.phone);
+      setIfPresent('email', input.email);
+      setIfPresent('notes', input.notes);
+      setIfPresent('description', input.description);
+      setIfPresent('logo_url', input.logo_url);
+      setIfPresent('address', input.address);
+      setIfPresent('city', input.city);
+      setIfPresent('state', input.state);
+      setIfPresent('country', input.country, 'Colombia');
+      setIfPresent('postal_code', input.postal_code);
+      setIfPresent('tax_id', input.tax_id);
+      setIfPresent('tax_regime', input.tax_regime);
+      setIfPresent('fiscal_responsibilities', input.fiscal_responsibilities);
+      setIfPresent('payment_terms', input.payment_terms);
+      setIfPresent('credit_days', input.credit_days);
+      setIfPresent('website', input.website);
+      setIfPresent('bank_name', input.bank_name);
+      setIfPresent('bank_account', input.bank_account);
+      setIfPresent('account_type', input.account_type);
+      setIfPresent('dv', input.dv);
+      setIfPresent('municipality_code', input.municipality_code);
+      setIfPresent('identification_document_code', input.identification_document_code);
+      setIfPresent('country_code', input.country_code, 'CO');
+      setIfPresent('legal_organization_code', input.legal_organization_code);
+      setIfPresent('trade_name', input.trade_name);
+
       const { data, error } = await supabase
         .from('suppliers')
-        .update({
-          name: input.name,
-          supplier_type: input.supplier_type || 'company',
-          parent_supplier_id: input.parent_supplier_id || null,
-          doc_type: input.doc_type || null,
-          nit: input.nit || null,
-          contact: input.contact || null,
-          phone: input.phone || null,
-          email: input.email || null,
-          notes: input.notes || null,
-          description: input.description || null,
-          logo_url: input.logo_url || null,
-          address: input.address || null,
-          city: input.city || null,
-          state: input.state || null,
-          country: input.country || 'Colombia',
-          postal_code: input.postal_code || null,
-          tax_id: input.tax_id || null,
-          tax_regime: input.tax_regime || null,
-          fiscal_responsibilities: input.fiscal_responsibilities || null,
-          payment_terms: input.payment_terms || null,
-          credit_days: input.credit_days || null,
-          website: input.website || null,
-          bank_name: input.bank_name || null,
-          bank_account: input.bank_account || null,
-          account_type: input.account_type || null,
-          dv: input.dv || null,
-          municipality_code: input.municipality_code || null,
-          identification_document_code: input.identification_document_code || null,
-          country_code: input.country_code || 'CO',
-          legal_organization_code: input.legal_organization_code || null,
-          trade_name: input.trade_name || null,
-          updated_at: new Date().toISOString()
-        })
+        .update(payload)
         .eq('uuid', supplierUuid)
         .eq('organization_id', organizationId)
         .select()

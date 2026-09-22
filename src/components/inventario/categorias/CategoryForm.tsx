@@ -103,12 +103,17 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
   };
 
   const handleNameChange = (name: string) => {
-    const slug = generateSlug(name);
     setFormData(prev => ({
       ...prev,
       name,
-      slug,
-      meta_title: name,
+      // El slug es la URL pública de la categoría en la tienda web: al editar
+      // NO se regenera al cambiar el nombre (rompería los enlaces ya
+      // publicados y los indexados). Se sigue derivando solo al crear; en
+      // edición se cambia a mano en su propio campo. Igual con `meta_title`,
+      // que antes se pisaba aunque el usuario lo hubiera escrito.
+      ...(isEditMode
+        ? {}
+        : { slug: generateSlug(name), meta_title: name }),
       meta_description: prev.description || `Categoría: ${name}`,
     }));
   };

@@ -1,330 +1,70 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Check, X, AlertTriangle, Loader2, Shield, Sparkles } from 'lucide-react';
+import { Check, X, AlertTriangle, Loader2, Pencil, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/utils/Utils';
-import type { ActionFieldDef, PendingAction } from '@/lib/ai/assistant/clientTypes';
+import type { PendingAction } from '@/lib/ai/assistant/clientTypes';
 import BulkPreviewTable from './assistant/BulkPreviewTable';
 
-interface ActionConfirmationFormProps {
+interface Props {
   action: PendingAction;
-  /** Devuelve los campos corregidos; el id lo pone el llamador. */
-  onConfirm: (fields: Array<{ name: string; value: unknown }>) => void;
+  onConfirm: () => void;
+  onCorrect: () => void;
   onReject: () => void;
+  /** Abrir el formulario REAL del módulo (hoy: clientes) prellenado. */
+  onOpenForm?: () => void;
   isExecuting?: boolean;
 }
 
-const RISK_LABEL: Record<PendingAction['risk'], { text: string; className: string }> = {
-  low: {
-    text: 'Sin impacto',
-    className: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600',
-  },
-  medium: {
-    text: 'Crea o modifica datos',
-    className: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700',
-  },
-  high: {
-    text: 'Impacto contable',
-    className: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700',
-  },
-};
+/** Acciones que tienen un formulario de módulo que se puede abrir desde la tarjeta. */
+const WITH_MODULE_FORM = new Set<string>(['create_customer']);
 
-export default function ActionConfirmationForm({
-  action,
-  onConfirm,
-  onReject,
-  isExecuting = false,
-}: ActionConfirmationFormProps) {
-  const [fields, setFields] = useState<ActionFieldDef[]>(action.fields);
-  const [isImprovingDescription, setIsImprovingDescription] = useState(false);
-
-  const updateField = (name: string, value: unknown) => {
-    setFields((prev) => prev.map((field) => (field.name === name ? { ...field, value } : field)));
-  };
-
-  const handleImproveDescription = async () => {
-    const nameField = fields.find((f) => f.name === 'name');
-    const descField = fields.find((f) => f.name === 'description');
-    if (!nameField?.value) return;
-
-    setIsImprovingDescription(true);
-    try {
-      const response = await fetch('/api/ai-assistant/improve-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productName: nameField.value,
-          currentDescription: descField?.value || '',
-          type: 'product_description',
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        updateField('description', data.improvedText);
-      }
-    } catch (error) {
-      console.error('Error mejorando descripción:', error);
-    } finally {
-      setIsImprovingDescription(false);
-    }
-  };
-
-  const handleConfirm = () => {
-    onConfirm(fields.map((f) => ({ name: f.name, value: f.value })));
-  };
-
-  const asText = (value: unknown): string =>
-    value === null || value === undefined ? '' : String(value);
-
-  const renderField = (field: ActionFieldDef) => {
-    const baseInputClass = 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600';
-    const disabled = field.readonly || isExecuting;
-
-    switch (field.type) {
-      case 'number':
-        return (
-          <Input
-            id={field.name}
-            type="number"
-            value={asText(field.value)}
-            onChange={(e) => updateField(field.name, e.target.value === '' ? '' : parseFloat(e.target.value))}
-            min={field.min}
-            max={field.max}
-            disabled={disabled}
-            className={cn(baseInputClass, field.readonly && 'bg-gray-100 dark:bg-gray-700')}
-          />
-        );
-
-      case 'textarea':
-        return (
-          <div className="space-y-2">
-            <Textarea
-              id={field.name}
-              value={asText(field.value)}
-              onChange={(e) => updateField(field.name, e.target.value)}
-              placeholder={field.placeholder}
-              disabled={disabled}
-              className={cn(baseInputClass, 'min-h-[80px]', field.readonly && 'bg-gray-100 dark:bg-gray-700')}
-            />
-            {field.name === 'description' && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleImproveDescription}
-                disabled={isImprovingDescription || isExecuting}
-                className="text-xs h-7 text-purple-600 border-purple-200 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-800 dark:hover:bg-purple-900/20"
-              >
-                {isImprovingDescription ? (
-                  <>
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Mejorando...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    Mejorar con IA
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        );
-
-      case 'select':
-        return (
-          <Select
-            value={asText(field.value)}
-            onValueChange={(value) => updateField(field.name, value)}
-            disabled={disabled}
-          >
-            <SelectTrigger id={field.name} className={baseInputClass}>
-              <SelectValue placeholder={field.placeholder || 'Seleccionar...'} />
-            </SelectTrigger>
-            <SelectContent>
-              {(field.options ?? []).map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-
-      case 'boolean':
-        return (
-          <div className="flex items-center space-x-2">
-            <Switch
-              id={field.name}
-              checked={Boolean(field.value)}
-              onCheckedChange={(checked) => updateField(field.name, checked)}
-              disabled={disabled}
-            />
-            <span className="text-sm text-gray-600 dark:text-gray-400">{field.value ? 'Sí' : 'No'}</span>
-          </div>
-        );
-
-      case 'date':
-        return (
-          <Input
-            id={field.name}
-            type="date"
-            value={asText(field.value)}
-            onChange={(e) => updateField(field.name, e.target.value)}
-            disabled={disabled}
-            className={baseInputClass}
-          />
-        );
-
-      default:
-        return (
-          <Input
-            id={field.name}
-            value={asText(field.value)}
-            onChange={(e) => updateField(field.name, e.target.value)}
-            placeholder={field.placeholder}
-            disabled={disabled}
-            className={cn(baseInputClass, field.readonly && 'bg-gray-100 dark:bg-gray-700')}
-          />
-        );
-    }
-  };
-
-  const requiredFieldsValid = fields
-    .filter((f) => f.required)
-    .every((f) => f.value !== undefined && f.value !== '' && f.value !== null);
-
-  const risk = RISK_LABEL[action.risk] ?? RISK_LABEL.medium;
+/** Conserva el nombre por compatibilidad de imports; ya no es un formulario. */
+export default function ActionConfirmationForm({ action, onConfirm, onCorrect, onReject, onOpenForm, isExecuting = false }: Props) {
+  const preview = action.preview;
+  const lines = preview?.lines.length ? preview.lines : action.fields
+    .filter((field) => field.value !== undefined && field.value !== null && field.value !== '')
+    .map((field) => ({ label: field.label, value: field.options?.find((option) => option.value === String(field.value))?.label ?? String(field.value) }));
+  const missing = action.fields.filter((field) => field.required && (field.value === undefined || field.value === null || field.value === ''));
+  const summaryId = 'action-summary-' + action.id;
 
   return (
-    <section
-      aria-label={`Confirmar acción: ${action.title}`}
-      className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm"
-    >
-      <div className="bg-gray-50 dark:bg-gray-900 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">{action.title}</h3>
-        </div>
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          <Badge variant="outline" className={risk.className}>
-            {risk.text}
-          </Badge>
-        </div>
+    <section aria-label={'Confirmar acción: ' + action.title} aria-describedby={summaryId} aria-busy={isExecuting}
+      className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div className="space-y-2 border-b p-4 dark:border-gray-700">
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100">{action.title}</h3>
+        <p id={summaryId} className="text-sm text-gray-700 dark:text-gray-300">{preview?.summary || action.description}</p>
+        {action.risk === 'high' && <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Revisa el resumen: esta acción tiene impacto contable.</p>}
       </div>
-
-      {action.description && (
-        <div className="px-4 py-3 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
-          <p className="text-sm text-gray-600 dark:text-gray-400">{action.description}</p>
-        </div>
-      )}
-
-      {/* Lo que la herramienta calculó: nombres y precios reales, avisos,
-          totales y —en carga masiva— la tabla. Sin esto la tarjeta diría
-          "producto 51814 × 3", que no permite confirmar con criterio. */}
-      {action.preview && (action.preview.lines.length > 0 || action.preview.warnings.length > 0 || action.preview.bulk) && (
-        <div className="px-4 py-3 space-y-3 border-b border-gray-100 dark:border-gray-800">
-          {action.preview.lines.length > 0 && (
-            <dl className="text-sm space-y-1">
-              {action.preview.lines.map((line, i) => (
-                <div key={`${line.label}-${i}`} className="flex justify-between gap-3">
-                  <dt className="text-gray-600 dark:text-gray-400 truncate">{line.label}</dt>
-                  <dd className="text-gray-900 dark:text-gray-100 text-right tabular-nums">{line.value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          {action.preview.totals && Object.keys(action.preview.totals).length > 0 && (
-            <dl className="text-sm space-y-0.5 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
-              {Object.entries(action.preview.totals).map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-3">
-                  <dt className="text-gray-600 dark:text-gray-400">{k}</dt>
-                  <dd className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{v}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          {action.preview.bulk && <BulkPreviewTable bulk={action.preview.bulk} />}
-          {action.preview.warnings.length > 0 && (
-            <ul className="space-y-1" aria-label="Avisos">
-              {action.preview.warnings.map((w, i) => (
-                <li key={i} className="flex gap-2 text-xs text-amber-800 dark:text-amber-300">
-                  <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>{w}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {!action.preview.reversible && (
-            <p className="text-xs text-red-700 dark:text-red-400 font-medium">Esta acción no se puede deshacer desde el chat.</p>
-          )}
-        </div>
-      )}
-
-      <div className={cn('p-4 space-y-4', fields.length === 0 && 'hidden')}>
-        {fields.map((field) => (
-          <div key={field.name} className="space-y-1.5">
-            <Label htmlFor={field.name} className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {field.label}
-              {field.required && (
-                <span className="text-red-500 ml-1" aria-hidden="true">
-                  *
-                </span>
-              )}
-            </Label>
-            {renderField(field)}
-          </div>
-        ))}
+      <div className="space-y-3 p-4">
+        <dl className="space-y-2 text-sm">
+          {lines.map((line, index) => (
+            <div key={line.label + index} className="grid grid-cols-2 gap-3">
+              <dt className="break-words text-gray-600 dark:text-gray-400">{line.label}</dt>
+              <dd className="break-words text-right text-gray-900 dark:text-gray-100">{line.value}</dd>
+            </div>
+          ))}
+          {Object.entries(preview?.totals ?? {}).map(([label, value]) => (
+            <div key={label} className="flex justify-between gap-3 border-t pt-2 font-semibold"><dt>{label}</dt><dd>{value}</dd></div>
+          ))}
+        </dl>
+        {preview?.bulk && <BulkPreviewTable bulk={preview.bulk} />}
+        {(preview?.warnings ?? []).map((warning, index) => <p key={index} className="flex gap-2 text-sm text-amber-800 dark:text-amber-300"><AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />{warning}</p>)}
+        {missing.length > 0 && <p className="text-sm text-amber-800 dark:text-amber-300">Falta: {missing.map((field) => field.label).join(', ')}. Dímelo en el chat antes de confirmar.</p>}
+        {preview?.reversible === false && <p className="text-sm text-red-700 dark:text-red-300">Esta acción no se puede deshacer desde el chat.</p>}
+        <p className="text-xs text-gray-600 dark:text-gray-400">¿Algo está mal? Pulsa Corregir y dime qué cambiar. No se guardará nada hasta que confirmes.</p>
       </div>
-
-      <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3">
-        <Button
-          variant="outline"
-          onClick={onReject}
-          disabled={isExecuting}
-          className="flex-1 border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
-        >
-          <X className="h-4 w-4 mr-2" aria-hidden="true" />
-          Rechazar
+      <div className="flex flex-wrap gap-2 border-t p-3 dark:border-gray-700">
+        <Button onClick={onConfirm} disabled={isExecuting || missing.length > 0} className="min-h-11 flex-1">
+          {isExecuting ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Check className="mr-2 h-4 w-4" aria-hidden="true" />}
+          {isExecuting ? 'Procesando…' : 'Confirmar'}
         </Button>
-        <Button
-          onClick={handleConfirm}
-          disabled={isExecuting || !requiredFieldsValid}
-          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-        >
-          {isExecuting ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
-              Ejecutando...
-            </>
-          ) : (
-            <>
-              <Check className="h-4 w-4 mr-2" aria-hidden="true" />
-              Confirmar
-            </>
-          )}
-        </Button>
-      </div>
-
-      <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
-        <p className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
-          <Shield className="h-3 w-3" aria-hidden="true" />
-          Esta acción se ejecuta solo dentro de tu organización, con tus permisos.
-        </p>
+        <Button variant="outline" onClick={onCorrect} disabled={isExecuting} className="min-h-11"><Pencil className="mr-2 h-4 w-4" aria-hidden="true" />Corregir</Button>
+        {onOpenForm && WITH_MODULE_FORM.has(action.type) && (
+          <Button variant="outline" onClick={onOpenForm} disabled={isExecuting} className="min-h-11" title="Abre el mismo formulario del módulo de Clientes, con estos datos ya puestos">
+            <ClipboardList className="mr-2 h-4 w-4" aria-hidden="true" />Formulario completo
+          </Button>
+        )}
+        <Button variant="ghost" onClick={onReject} disabled={isExecuting} className="min-h-11"><X className="mr-2 h-4 w-4" aria-hidden="true" />Rechazar</Button>
       </div>
     </section>
   );

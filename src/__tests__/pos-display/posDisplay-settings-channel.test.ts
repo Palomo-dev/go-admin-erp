@@ -101,6 +101,10 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
+// Fase 2 (F2-A): `pos_customer_display` es el esquema completo de settings.ts
+// (propina, calificación, reposo, idioma, táctil) y lo que se lee o se escribe
+// lleva siempre todos los campos con sus valores por defecto. Estas pruebas
+// son del interruptor maestro, así que comparan con objectContaining.
 describe('resolveDisplayCurrency', () => {
   it('devuelve el código de la moneda base', async () => {
     expect(await posDisplay.resolveDisplayCurrency(async () => ({ code: 'USD' }))).toBe('USD');
@@ -226,7 +230,7 @@ describe('guardar en la MISMA ventana que la caja (navegación SPA Configuració
     db.readError = { message: 'red caída' };
     db.readErrorFrom = 2;
     const saved = await ConfiguracionService.saveCustomerDisplayConfig({ enabled: true });
-    expect(saved).toEqual({ enabled: true });
+    expect(saved).toEqual(expect.objectContaining({ enabled: true }));
     expect(db.upserts).toHaveLength(1);
     expect(settingsModule.isCustomerDisplayEnabled(120)).toBe(true);
     // La tarjeta aplica la caché sin leer: cero consultas nuevas.

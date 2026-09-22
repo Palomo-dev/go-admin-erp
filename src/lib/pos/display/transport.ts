@@ -59,7 +59,9 @@
  * pestañas responden hello + state casi a la vez y «gana el último hello»
  * dejaría la pantalla en manos del azar. Durante ADOPTION_WINDOW_MS a
  * partir de ese envío, un hello de otra instancia solo releva a la activa
- * si es ESTRICTAMENTE mejor: primero `sessionOpen: true` sobre `false`
+ * si es ESTRICTAMENTE mejor: primero `visible: true` sobre `false` (Fase
+ * 2-B: la pestaña que el cajero tiene delante; solo cuando las dos lo
+ * declaran), luego `sessionOpen: true` sobre `false`
  * (la pestaña con caja abierta es la que vende), a igualdad el `seq` mayor
  * (la que más lleva trabajando), y en empate total se conserva la que ya
  * está. Un hello siempre releva a una instancia adoptada sin hello (por un
@@ -123,6 +125,13 @@ export interface DisplayTransport {
    * now − lastDisplaySeenAt < STALE_AFTER_MS.
    */
   readonly lastDisplaySeenAt: number | null;
+  /**
+   * Últimas `capabilities` declaradas por la pantalla (`display_alive` /
+   * `need_snapshot`); null si nunca hubo pantalla o tras su `display_bye`.
+   * Opcional (aditivo, ronda 2 de F2-B): un transporte que no las guarde se
+   * lee como null y la caja no asume nada sobre la pantalla.
+   */
+  readonly lastDisplayCapabilities?: DisplayCapabilities | null;
 }
 
 /** Lado pantalla: recibe el estado y devuelve intenciones a la caja. */
@@ -144,7 +153,8 @@ export interface DisplayReceiver {
   /**
    * Presencia hacia la caja: emite `display_alive` cada HEARTBEAT_INTERVAL_MS
    * con las capacidades de la pantalla (PLAN §4.4). Idempotente: una segunda
-   * llamada solo actualiza las capacidades (p. ej. tras un resize).
+   * llamada solo actualiza las capacidades (p. ej. tras un resize); si cambia
+   * `touch`, además emite un `display_alive` en el acto (ronda 3 de F2-B).
    */
   startPresence(capabilities: DisplayCapabilities): void;
   stopPresence(): void;
@@ -313,6 +323,7 @@ export class BroadcastChannelTransport implements DisplayTransport {
   private seq = 0;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private displaySeenAt: number | null = null;
+  private displayCapabilities: DisplayCapabilities | null = null;
   private closed = false;
 
   constructor(options: BroadcastChannelTransportOptions) {
@@ -337,6 +348,11 @@ export class BroadcastChannelTransport implements DisplayTransport {
   /** Ver DisplayTransport.lastDisplaySeenAt. */
   get lastDisplaySeenAt(): number | null {
     return this.displaySeenAt;
+  }
+
+  /** Ver DisplayTransport.lastDisplayCapabilities: se actualizan con cada `display_alive` / `need_snapshot` y se borran con `display_bye`. */
+  get lastDisplayCapabilities(): DisplayCapabilities | null {
+    return this.displayCapabilities;
   }
 
   publish(draft: DownMessageDraft): void {
@@ -400,8 +416,15 @@ export class BroadcastChannelTransport implements DisplayTransport {
     // Intención dirigida a otra instancia (otra pestaña de la misma caja): no es para esta.
     if (data.toInstanceId !== undefined && data.toInstanceId !== this.instanceId) return;
     // Presencia de la pantalla: cualquier señal suya cuenta; su despedida la borra.
-    if (data.t === 'display_alive' || data.t === 'need_snapshot') this.displaySeenAt = this.now();
-    else if (data.t === 'display_bye') this.displaySeenAt = null;
+    // Con la señal viajan sus capacidades (táctil, tamaño): la caja las consulta para no
+    // prometer una respuesta que una pantalla no táctil nunca dará (ronda 2 de F2-B).
+    if (data.t === 'display_alive' || data.t === 'need_snapshot') {
+      this.displaySeenAt = this.now();
+      this.displayCapabilities = { ...data.capabilities };
+    } else if (data.t === 'display_bye') {
+      this.displaySeenAt = null;
+      this.displayCapabilities = null;
+    }
     dispatch(this.upHandlers, data);
   }
 }
@@ -424,15 +447,29 @@ export interface BroadcastChannelReceiverOptions {
 interface AdoptedHello {
   sessionOpen: boolean;
   seq: number;
+  /** `hello.visible` (Fase 2-B); null si el emisor no lo mandó. */
+  visible: boolean | null;
+}
+
+/** Lo que isBetterHello necesita de un `hello` aceptado. */
+function toAdoptedHello(hello: Extract<DownMessage, { t: 'hello' }>): AdoptedHello {
+  return { sessionOpen: hello.sessionOpen, seq: hello.seq, visible: typeof hello.visible === 'boolean' ? hello.visible : null };
 }
 
 /**
  * ¿`candidate` releva a `current` dentro de la ventana de elección? Solo si
- * es estrictamente mejor: sessionOpen primero, seq después. Sin hello previo
- * (adopción por latido o state) cualquier hello releva.
+ * es estrictamente mejor, en este orden:
+ * 1. `visible` (Fase 2-B, deuda del QA de F2-A): con dos pestañas de
+ *    /app/pos, la que el cajero tiene delante gana aunque la oculta lleve
+ *    más `seq` o tenga caja abierta. Solo decide cuando LAS DOS lo declaran
+ *    y difieren; si alguna no lo manda (emisor anterior) se compara como antes.
+ * 2. `sessionOpen: true` sobre `false`.
+ * 3. `seq` mayor.
+ * Sin hello previo (adopción por latido o state) cualquier hello releva.
  */
-function isBetterHello(candidate: AdoptedHello, current: AdoptedHello | null): boolean {
+export function isBetterHello(candidate: AdoptedHello, current: AdoptedHello | null): boolean {
   if (current === null) return true;
+  if (candidate.visible !== null && current.visible !== null && candidate.visible !== current.visible) return candidate.visible;
   if (candidate.sessionOpen !== current.sessionOpen) return candidate.sessionOpen;
   return candidate.seq > current.seq;
 }
@@ -583,11 +620,22 @@ export class BroadcastChannelReceiver implements DisplayReceiver {
     };
   }
 
-  /** Ver DisplayReceiver.startPresence. Idempotente: no duplica el intervalo; sí actualiza las capacidades. */
+  /**
+   * Ver DisplayReceiver.startPresence. Idempotente: no duplica el intervalo;
+   * sí actualiza las capacidades. Si la presencia ya corre y cambia `touch`
+   * (ronda 3 de F2-B: la pantalla declara el táctil RESUELTO en cuanto conoce
+   * el forzado del hello), se emite un `display_alive` en el acto para que
+   * la caja no espere al siguiente latido; un cambio solo de tamaño (resize,
+   * que dispara muchas veces seguidas) sigue esperando al latido.
+   */
   startPresence(capabilities: DisplayCapabilities): void {
     if (this.closed) return;
+    const touchChanged = this.presenceCapabilities !== null && this.presenceCapabilities.touch !== capabilities.touch;
     this.presenceCapabilities = { ...capabilities };
-    if (this.presenceTimer !== null) return;
+    if (this.presenceTimer !== null) {
+      if (touchChanged) this.sendAlive();
+      return;
+    }
     this.presenceTimer = setInterval(() => this.sendAlive(), this.presenceIntervalMs);
     unrefTimer(this.presenceTimer);
     // El primer «estoy» sale ya: la caja no debería esperar un intervalo entero para ponerse en verde.
@@ -642,7 +690,7 @@ export class BroadcastChannelReceiver implements DisplayReceiver {
       // Otra instancia saluda. Regla general: la releva («gana la última que
       // saluda», es lo que hace que la pestaña enfocada recupere la pantalla).
       // En la ventana de elección, solo si es estrictamente mejor.
-      const candidate: AdoptedHello = { sessionOpen: data.sessionOpen, seq: data.seq };
+      const candidate = toAdoptedHello(data);
       if (this.isElectionOpen() && !isBetterHello(candidate, this.adoptedHello)) return;
       // Al cambiar de instancia la marca de seq se reinicia con ella: el
       // contador es por instancia, y la que releva suele traer un seq MENOR
@@ -656,7 +704,7 @@ export class BroadcastChannelReceiver implements DisplayReceiver {
 
     this.highestSeq = data.seq;
     this.receivedAt = this.now();
-    if (data.t === 'hello') this.adoptedHello = { sessionOpen: data.sessionOpen, seq: data.seq };
+    if (data.t === 'hello') this.adoptedHello = toAdoptedHello(data);
     if (data.t === 'bye') {
       this.byeAt = this.receivedAt;
       this.releaseActiveInstance();

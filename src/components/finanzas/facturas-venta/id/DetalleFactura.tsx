@@ -70,6 +70,7 @@ import { PDFService, InvoiceDataForPDF } from '@/lib/services/pdfService';
 import { SendToFactusButton, FactusStatusBadge } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService, type EInvoiceStatus } from '@/lib/services/electronicInvoicingService';
 import { stockMovementService } from '@/lib/services/stockMovementService';
+import { calcularEstadoVencimientoFactura } from './paymentTerms';
 
 // Mapeo de estados a colores de badge
 const estadoColors: Record<string, string> = {
@@ -127,7 +128,7 @@ interface OrganizationPDFData {
 
 export default function DetalleFactura({ factura }: { factura: any }) {
   const router = useRouter();
-  const { formatDate: formatDateInOrg, getToday } = useFormatDate();
+  const { timezone, formatDate: formatDateInOrg, getToday } = useFormatDate();
   const [isPaid, setIsPaid] = useState(factura.status === 'paid');
   const [dialogPagoOpen, setDialogPagoOpen] = useState(false);
   const [dialogNotaCreditoOpen, setDialogNotaCreditoOpen] = useState(false);
@@ -142,6 +143,15 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   const [eInvoiceFactusNumber, setEInvoiceFactusNumber] = useState<string | null>(null);
   const [creditoAplicado, setCreditoAplicado] = useState<number>(0);
   const [salespersonName, setSalespersonName] = useState<string | null>(factura.salesperson_name || null);
+  const estadoVencimiento = factura.payment_terms > 0
+    ? calcularEstadoVencimientoFactura({
+        dueDate: factura.due_date,
+        issueDate: factura.issue_date,
+        paymentTerms: factura.payment_terms,
+        today: getToday(),
+        timezone,
+      })
+    : null;
 
   // Cargar nombre del vendedor desde profiles si no viene en la factura
   useEffect(() => {
@@ -999,28 +1009,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
                 <span className="text-sm sm:text-base text-gray-900 dark:text-gray-100">
                   {factura.payment_terms !== null && factura.payment_terms !== undefined ? 
                     factura.payment_terms === 0 ? 'Contado' : 
-                    (() => {
-                      if (factura.issue_date && factura.payment_terms > 0) {
-                        // Convertir issue_date (timestamptz) a dia calendario de la org
-                        const fechaEmisionStr = formatDateInOrg(factura.issue_date);
-                        // Parsear como fecha pura (dd/MM/yyyy -> componentes)
-                        const [dd, mm, yyyy] = fechaEmisionStr.split('/');
-                        const fechaEmision = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
-                        const fechaVencimiento = new Date(fechaEmision);
-                        fechaVencimiento.setDate(fechaVencimiento.getDate() + factura.payment_terms);
-                        // Hoy en la zona horaria de la organizacion
-                        const hoyStr = getToday();
-                        const [hdd, hmm, hyyyy] = hoyStr.split('-');
-                        const hoy = new Date(parseInt(hyyyy), parseInt(hmm) - 1, parseInt(hdd));
-                        const diasRestantes = Math.ceil((fechaVencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
-                        
-                        return `${factura.payment_terms} días ${diasRestantes > 0 ? 
-                          `(${diasRestantes} días restantes)` : 
-                          diasRestantes === 0 ? '(vence hoy)' : 
-                          `(vencido hace ${Math.abs(diasRestantes)} días)`}`;
-                      }
-                      return `${factura.payment_terms} días`;
-                    })() 
+                    `${factura.payment_terms} días${estadoVencimiento ? ` (${estadoVencimiento})` : ''}`
                     : 'N/A'}
                 </span>
               </div>

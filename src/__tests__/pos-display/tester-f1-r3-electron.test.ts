@@ -121,6 +121,10 @@ afterEach(() => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Fase 2 (F2-A): `pos_customer_display` es el esquema completo de settings.ts
+// (propina, calificación, reposo, idioma, táctil) y lo que se lee o se escribe
+// lleva siempre todos los campos con sus valores por defecto. Estas pruebas
+// son del interruptor maestro, así que comparan con objectContaining.
 describe('A · arranque sin red: «no se pudo leer» no es «la organización la apagó» (D2)', () => {
   it('con la consulta rechazando, la carga inicial cachea APAGADO pero NO cuenta como conocida (cierre de F1, D2): la caja no emite y el indicador queda en «cargando»', async () => {
     sinRed();
@@ -195,13 +199,13 @@ describe('B · la tarjeta: getCustomerDisplayConfig distingue «no se pudo leer�
     sinRed();
     jest.spyOn(console, 'error').mockImplementation(() => {});
     const result = await ConfiguracionService.getCustomerDisplayConfig();
-    expect(result.settings).toEqual({ enabled: false });
+    expect(result.settings).toEqual(expect.objectContaining({ enabled: false }));
     expect(result.loadFailed).toBe(true);
   });
 
   it('con fila legible (encendida o apagada): loadFailed: false', async () => {
     conFila(false);
-    expect(await ConfiguracionService.getCustomerDisplayConfig()).toEqual({ settings: { enabled: false }, raw: { enabled: false }, loadFailed: false });
+    expect(await ConfiguracionService.getCustomerDisplayConfig()).toEqual({ settings: expect.objectContaining({ enabled: false }), raw: { enabled: false }, loadFailed: false });
     conFila(true);
     expect((await ConfiguracionService.getCustomerDisplayConfig()).loadFailed).toBe(false);
   });
@@ -259,7 +263,7 @@ describe('D · mismo resultado entre por donde entre: ni la caja ni la tarjeta e
 
     // Camino de la tarjeta: el cajero abre Configuración y la tarjeta lee la organización apagada.
     const loaded = await ConfiguracionService.getCustomerDisplayConfig();
-    expect(loaded).toEqual({ settings: { enabled: false }, raw: { enabled: false }, loadFailed: false });
+    expect(loaded).toEqual({ settings: expect.objectContaining({ enabled: false }), raw: { enabled: false }, loadFailed: false });
     await drenar();
     expect(saved).toEqual([]);
     expect(bridge.close).not.toHaveBeenCalled();

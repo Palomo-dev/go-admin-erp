@@ -18,6 +18,8 @@ import { VENTAS_TOOLS } from './tools/ventas';
 import { COMPRAS_TOOLS } from './tools/compras';
 import { CARGA_MASIVA_TOOLS } from './tools/cargaMasiva';
 import { MONEDA_TOOLS } from './tools/moneda';
+import { FACTURAS_TOOLS } from './tools/facturas';
+import { PREGUNTA_TOOLS } from './tools/pregunta';
 import { DOCUMENTOS_TOOLS } from './tools/documentos';
 import { NAVEGACION_TOOLS } from './tools/navegacion';
 import type { ToolDefinition } from './types';
@@ -45,6 +47,8 @@ function buildRegistry(): Map<string, ToolDefinition<never>> {
     ...(COMPRAS_TOOLS as unknown as Array<ToolDefinition<never>>),
     ...(CARGA_MASIVA_TOOLS as unknown as Array<ToolDefinition<never>>),
     ...(MONEDA_TOOLS as unknown as Array<ToolDefinition<never>>),
+    ...(FACTURAS_TOOLS as unknown as Array<ToolDefinition<never>>),
+    ...(PREGUNTA_TOOLS as unknown as Array<ToolDefinition<never>>),
     ...(DOCUMENTOS_TOOLS as unknown as Array<ToolDefinition<never>>),
     ...(NAVEGACION_TOOLS as unknown as Array<ToolDefinition<never>>),
     ...(catalogTools() as unknown as Array<ToolDefinition<never>>),
@@ -115,8 +119,10 @@ export function evaluateTool(
   tool: ToolDefinition<never>,
   channel: 'text' | 'voice'
 ): ToolDecision {
-  if (caps.level === 'off') return { allowed: false, reason: 'level_off' };
-  if (!levelAtLeast(caps.level, tool.minLevel)) return { allowed: false, reason: 'level_too_low' };
+  // El chat base puede leer adjuntos propios, nunca consultar el ERP ni escribir.
+  const ownAttachment = tool.name === 'leer_documento' && tool.risk === 'low';
+  if (caps.level === 'off' && !ownAttachment) return { allowed: false, reason: 'level_off' };
+  if (!ownAttachment && !levelAtLeast(caps.level, tool.minLevel)) return { allowed: false, reason: 'level_too_low' };
   if (caps.enabledTools && !caps.enabledTools.includes(tool.name)) {
     return { allowed: false, reason: 'not_enabled' };
   }
@@ -125,9 +131,8 @@ export function evaluateTool(
   }
   if (!hasAnyPermission(caps, tool.permissions)) return { allowed: false, reason: 'no_permission' };
 
-  // Los módulos solo se comprueban si se pudieron resolver: "no sé" no puede
-  // significar "no".
-  if (tool.requiredModule && caps.activeModules.size > 0 && !caps.activeModules.has(tool.requiredModule)) {
+  // Una lista vacía no concede acceso a todos los módulos.
+  if (tool.requiredModule && !caps.activeModules.has(tool.requiredModule)) {
     return { allowed: false, reason: 'module_inactive' };
   }
 

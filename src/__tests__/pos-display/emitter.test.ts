@@ -5,10 +5,20 @@
  */
 
 import type { Cart, CartItem } from '@/components/pos/types';
-import { DisplayEmitter, RAF_FALLBACK_MS, THANKS_DURATION_MS, defaultScheduler, findChangedLineId, sameLines } from '@/lib/pos/display/emitter';
+import {
+  DisplayEmitter,
+  RAF_FALLBACK_MS,
+  THANKS_DURATION_MS,
+  cartLinesSignature,
+  defaultIsVisible,
+  defaultScheduler,
+  findChangedLineId,
+  linesSignature,
+  sameLines,
+} from '@/lib/pos/display/emitter';
 import { isQrPaymentCode, resolveCashReceived, toDisplayPayment } from '@/lib/pos/display/payment';
 import { projectCartForDisplay } from '@/lib/pos/display/projection';
-import { PROTOCOL_VERSION, type DisplayState, type DownMessageDraft, type UpMessage } from '@/lib/pos/display/protocol';
+import { PROTOCOL_VERSION, isDownMessage, type DisplayState, type DownMessageDraft, type UpMessage } from '@/lib/pos/display/protocol';
 import type { DisplayTransport, HelloDraft } from '@/lib/pos/display/transport';
 
 const TERMINAL = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
@@ -176,7 +186,8 @@ describe('DisplayEmitter · arranque', () => {
     h.emitter.start(START);
     const t = h.transport();
     expect(t.types).toEqual(['hello', 'state']);
-    expect(t.published[0]).toEqual({ t: 'hello', organizationId: 120, cashier: null, sessionOpen: false, currency: 'COP' });
+    // F2-B: el hello lleva `visible` (isVisible por defecto: sin document → true).
+    expect(t.published[0]).toEqual({ t: 'hello', organizationId: 120, cashier: null, sessionOpen: false, currency: 'COP', visible: true });
     expect(t.lastState).toEqual({ mode: 'idle', cart: null, payment: null, tip: null, thanks: null });
     expect(t.heartbeatStarted).toBe(1);
     expect(h.emitter.isEmitting).toBe(true);
@@ -187,7 +198,14 @@ describe('DisplayEmitter · arranque', () => {
     h.emitter.setSession({ cashier: { name: 'Andrea' } });
     expect(h.transports).toHaveLength(0); // sin transporte aún: no se emite nada
     h.emitter.start({ ...START, sessionOpen: true });
-    expect(h.transport().published[0]).toEqual({ t: 'hello', organizationId: 120, cashier: { name: 'Andrea' }, sessionOpen: true, currency: 'COP' });
+    expect(h.transport().published[0]).toEqual({
+      t: 'hello',
+      organizationId: 120,
+      cashier: { name: 'Andrea' },
+      sessionOpen: true,
+      currency: 'COP',
+      visible: true,
+    });
   });
 
   it('start con organizationId inválido no abre transporte', () => {
@@ -1227,5 +1245,426 @@ describe('DisplayEmitter · reannounce (foco entre pestañas)', () => {
     h.emitter.reannounce();
     expect(t.types.slice(before)).toEqual(['hello', 'state']);
     expect(t.lastState.mode).toBe('order');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fase 2 (parte A): firma de líneas en setTotals (deuda del QA de F0) y
+// ajustes de presentación en hello.settings.
+// ---------------------------------------------------------------------------
+
+describe('DisplayEmitter · setTotals con firma de líneas (F2-A, deuda QA F0)', () => {
+  const L1 = [item({ id: 'l1', quantity: 1, unit_price: 5000, total: 5000 })];
+  const L2 = [item({ id: 'l1', quantity: 1, unit_price: 5000, total: 5000 }), item({ id: 'l2', quantity: 2, unit_price: 3000, total: 6000 })];
+
+  it('linesSignature: misma firma ⇔ sameLines; cambia con cantidad, precio, descuento, nota o modificadores', () => {
+    const a = projectCartForDisplay(cart({ items: L1 }), { currency: 'COP' });
+    const b = projectCartForDisplay(cart({ items: [item({ id: 'l1', quantity: 1, unit_price: 5000, total: 5000 })] }), { currency: 'COP' });
+    expect(linesSignature(a)).toBe(linesSignature(b));
+    expect(sameLines(a, b)).toBe(true);
+    const variants: Array<Partial<CartItem>> = [
+      { quantity: 2 },
+      { unit_price: 5100 },
+      { discount_amount: 500 },
+      { notes: 'sin azúcar' },
+      { modifiers: [{ name: 'Leche', extra_price: 0 }] as unknown as CartItem['modifiers'] },
+    ];
+    for (const v of variants) {
+      const c = projectCartForDisplay(cart({ items: [item({ id: 'l1', quantity: 1, unit_price: 5000, total: 5000, ...v })] }), { currency: 'COP' });
+      expect(sameLines(a, c)).toBe(false);
+      expect(linesSignature(a)).not.toBe(linesSignature(c));
+    }
+    expect(linesSignature(null)).toBe('');
+    expect(cartLinesSignature(null)).toBe('');
+    expect(cartLinesSignature(cart({ items: L1 }))).toBe(linesSignature(a));
+    // Otro carrito con las mismas líneas: distinta firma (lleva el id del carrito).
+    expect(cartLinesSignature(cart({ id: 'otro', items: L1 }))).not.toBe(linesSignature(a));
+  });
+
+  it('setCart(L1) → setCart(L2, mutación) → setTotals(id, totales de L1 con firma L1) ⇒ el state lleva los totales del Cart', () => {
+    const h = harness();
+    h.emitter.start(START);
+    const c1 = cart({ items: L1, subtotal: 5000, tax_total: 950, total: 5950 });
+    h.emitter.setActiveCart(c1);
+    h.flush();
+    const sigL1 = cartLinesSignature(c1);
+    // Mutación real: entra l2 (posService acaba de guardar).
+    const c2 = cart({ items: L2, subtotal: 11000, tax_total: 2090, total: 13090 });
+    h.emitter.onCartsSaved([c2]);
+    h.flush();
+    expect(h.transport().lastState.cart?.total).toBe(13090);
+    const before = h.transport().published.length;
+    // TaxSummary reenvía sus totales VIEJOS (calculados con L1) tras cambiar la identidad del callback.
+    h.emitter.setTotals('cart-1', { discountTotal: 0, taxTotal: 950, total: 5950 }, sigL1);
+    expect(h.pending()).toBe(false); // ni siquiera se programa una emisión
+    h.flush();
+    expect(h.transport().published.length).toBe(before);
+    const state = h.emitter.getState();
+    expect(state.cart?.total).toBe(13090);
+    expect(state.cart?.taxTotal).toBe(2090);
+    // Con la firma correcta (L2) sí se aplican.
+    h.emitter.setTotals('cart-1', { discountTotal: 0, taxTotal: 2100, total: 13100 }, cartLinesSignature(c2));
+    h.flush();
+    expect(h.transport().lastState.cart?.total).toBe(13100);
+  });
+
+  it('ronda 2: la firma y sameLines ven tax_excluded / tax_included (DisplayLine los lleva)', () => {
+    const base = projectCartForDisplay(cart({ items: [item({ id: 'l1', tax_excluded: false, tax_included: false })] }), { currency: 'COP' });
+    const excluded = projectCartForDisplay(cart({ items: [item({ id: 'l1', tax_excluded: true, tax_included: false })] }), { currency: 'COP' });
+    const included = projectCartForDisplay(cart({ items: [item({ id: 'l1', tax_excluded: false, tax_included: true })] }), { currency: 'COP' });
+    expect(sameLines(base, excluded)).toBe(false);
+    expect(sameLines(base, included)).toBe(false);
+    expect(linesSignature(base)).not.toBe(linesSignature(excluded));
+    expect(linesSignature(base)).not.toBe(linesSignature(included));
+    expect(linesSignature(excluded)).not.toBe(linesSignature(included));
+    // Documentado: alternar el impuesto cuenta como cambio de línea → se resalta esa línea (600 ms).
+    expect(findChangedLineId(base, excluded)).toBe('l1');
+  });
+
+  it('ronda 2: setActiveCart(l1) → setTotals(firma) → onCartsSaved(l1 con tax_excluded=true) ⇒ el state lleva el total del Cart, no el override con impuesto', () => {
+    const h = harness();
+    h.emitter.start(START);
+    const c1 = cart({ items: [item({ id: 'l1', tax_excluded: false })], subtotal: 5000, tax_total: 950, total: 5950 });
+    h.emitter.setActiveCart(c1);
+    h.flush();
+    h.emitter.setTotals('cart-1', { discountTotal: 0, taxTotal: 950, total: 5950 }, cartLinesSignature(c1));
+    h.flush();
+    expect(h.transport().lastState.cart?.total).toBe(5950);
+    // El cajero pulsa «Excluir impuesto de este producto»: posService guarda el carrito con tax_total 0.
+    const c2 = cart({ items: [item({ id: 'l1', tax_excluded: true })], subtotal: 5000, tax_total: 0, total: 5000 });
+    expect(cartLinesSignature(c2)).not.toBe(cartLinesSignature(c1));
+    h.emitter.onCartsSaved([c2]);
+    h.flush();
+    const state = h.transport().lastState;
+    expect(state.cart?.lines[0]?.taxExcluded).toBe(true);
+    expect(state.cart?.total).toBe(5000); // el override con el impuesto que ya no existe se descartó
+    expect(state.cart?.taxTotal).toBe(0);
+    // Y el reenvío de los totales VIEJOS de TaxSummary (firma de c1) tampoco entra.
+    h.emitter.setTotals('cart-1', { discountTotal: 0, taxTotal: 950, total: 5950 }, cartLinesSignature(c1));
+    h.flush();
+    expect(h.transport().lastState.cart?.total).toBe(5000);
+  });
+
+  it('sin firma se comporta como antes: solo se comprueba el id del carrito', () => {
+    const h = harness();
+    h.emitter.start(START);
+    h.emitter.setActiveCart(cart({ items: L2, total: 13090 }));
+    h.flush();
+    h.emitter.setTotals('cart-1', { discountTotal: 0, taxTotal: 1, total: 42 });
+    h.flush();
+    expect(h.transport().lastState.cart?.total).toBe(42);
+  });
+
+  it('override con firma que llega ANTES del carrito: se conserva si casa con las líneas reales y se descarta si no', () => {
+    const h = harness();
+    h.emitter.start(START);
+    const c2 = cart({ items: L2, subtotal: 11000, tax_total: 2090, total: 13090 });
+    // Firma de L2 antes de activar el carrito (TaxSummary se adelanta a setActiveCart): casa → se aplica.
+    h.emitter.setTotals('cart-1', { discountTotal: 0, taxTotal: 2100, total: 13100 }, cartLinesSignature(c2));
+    h.emitter.setActiveCart(c2);
+    h.flush();
+    expect(h.transport().lastState.cart?.total).toBe(13100);
+
+    const h2 = harness();
+    h2.emitter.start(START);
+    // Firma de L1 pero el carrito que llega tiene L2: no casa → totales del Cart.
+    h2.emitter.setTotals('cart-1', { discountTotal: 0, taxTotal: 950, total: 5950 }, cartLinesSignature(cart({ items: L1 })));
+    h2.emitter.setActiveCart(c2);
+    h2.flush();
+    expect(h2.transport().lastState.cart?.total).toBe(13090);
+  });
+
+  it('la misma firma con los mismos totales no reemite (deduplicación)', () => {
+    const h = harness();
+    h.emitter.start(START);
+    const c = cart({ items: L1, total: 5950 });
+    h.emitter.setActiveCart(c);
+    h.flush();
+    const sig = cartLinesSignature(c);
+    h.emitter.setTotals('cart-1', { discountTotal: 0, taxTotal: 950, total: 5950 }, sig);
+    h.flush();
+    const count = h.emitter.emittedStateCount;
+    h.emitter.setTotals('cart-1', { discountTotal: 0, taxTotal: 950, total: 5950 }, sig);
+    expect(h.pending()).toBe(false);
+    expect(h.emitter.emittedStateCount).toBe(count);
+  });
+});
+
+describe('DisplayEmitter · hello.settings y refresh() con el transporte abierto (F2-A)', () => {
+  const settings = {
+    tips: { enabled: true, presets: [5, 10, 15], allowCustom: true },
+    rating: { enabled: false },
+    showTaxBreakdown: true,
+    showCustomerName: false,
+    locale: null,
+    touch: 'auto' as const,
+  };
+
+  function harnessWithSettings(get: () => typeof settings) {
+    const enabled = { value: true };
+    const transports: FakeTransport[] = [];
+    const sched = manualScheduler();
+    const emitter = new DisplayEmitter({
+      createTransport: () => {
+        const t = new FakeTransport();
+        transports.push(t);
+        return t;
+      },
+      isEnabled: () => enabled.value,
+      getSettings: get,
+      schedule: sched.schedule,
+    });
+    return { emitter, transports, enabled, flush: sched.flush, transport: () => transports[transports.length - 1] };
+  }
+
+  it('sin getSettings el hello no lleva settings (forma de la Fase 0); con getSettings los lleva en cada saludo', () => {
+    const h0 = harness();
+    h0.emitter.start(START);
+    expect(h0.transport().published[0]).not.toHaveProperty('settings');
+
+    const h = harnessWithSettings(() => settings);
+    h.emitter.start(START);
+    const hello = h.transport().published[0] as HelloDraft;
+    expect(hello.t).toBe('hello');
+    expect(hello.settings).toEqual(settings);
+    h.transport().emitUp(needSnapshot());
+    const again = h.transport().published[h.transport().published.length - 2] as HelloDraft;
+    expect(again.settings).toEqual(settings);
+  });
+
+  it('refresh() con el transporte YA abierto vuelve a saludar con los ajustes nuevos (la tarjeta guardó)', () => {
+    let current = settings;
+    const h = harnessWithSettings(() => current);
+    h.emitter.start(START);
+    const t = h.transport();
+    const before = t.published.length;
+    current = { ...settings, tips: { enabled: true, presets: [8, 12, 18], allowCustom: false } };
+    h.emitter.refresh();
+    expect(t.types.slice(before)).toEqual(['hello', 'state']);
+    expect((t.published[before] as HelloDraft).settings?.tips.presets).toEqual([8, 12, 18]);
+    expect(h.transports).toHaveLength(1); // no reabre el transporte
+  });
+
+  it('start() repetido con getSettings saluda UNA sola vez (refresh ya lo hizo)', () => {
+    const h = harnessWithSettings(() => settings);
+    h.emitter.start(START);
+    const t = h.transport();
+    const before = t.published.length;
+    h.emitter.start({ ...START, cashier: { name: 'Andrea' } });
+    expect(t.types.slice(before)).toEqual(['hello', 'state']);
+    expect((t.published[before] as HelloDraft).cashier).toEqual({ name: 'Andrea' });
+  });
+
+  it('refresh() sin getSettings y con transporte abierto no reemite nada (comportamiento de la Fase 0)', () => {
+    const h = harness();
+    h.emitter.start(START);
+    const before = h.transport().published.length;
+    h.emitter.refresh();
+    expect(h.transport().published.length).toBe(before);
+  });
+
+  it('getSettings que lanza: el hello sale igual, sin settings, y se avisa', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const h = harnessWithSettings(() => {
+      throw new Error('caché rota');
+    });
+    h.emitter.start(START);
+    const hello = h.transport().published[0] as HelloDraft;
+    expect(hello.t).toBe('hello');
+    expect(hello).not.toHaveProperty('settings');
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('ronda 2: getSettings que devuelve null/undefined/array: el hello sale SIN settings (isDownMessage lo acepta)', () => {
+    for (const bad of [null, undefined, [], 'x', 42]) {
+      const h = harnessWithSettings(() => bad as never);
+      h.emitter.start(START);
+      const hello = h.transport().published[0] as HelloDraft;
+      expect(hello.t).toBe('hello');
+      expect(hello).not.toHaveProperty('settings');
+      expect(isDownMessage({ v: PROTOCOL_VERSION, seq: 1, terminalId: TERMINAL, instanceId: 'i1', ...hello })).toBe(true);
+    }
+  });
+
+  it('isDownMessage acepta hello con settings objeto y rechaza settings que no sea objeto', () => {
+    const base = { v: PROTOCOL_VERSION, t: 'hello', seq: 0, terminalId: TERMINAL, instanceId: 'i1', organizationId: 120, cashier: null, sessionOpen: true };
+    expect(isDownMessage({ ...base })).toBe(true);
+    expect(isDownMessage({ ...base, settings })).toBe(true);
+    expect(isDownMessage({ ...base, settings: 'x' })).toBe(false);
+    expect(isDownMessage({ ...base, settings: null })).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Ronda 3 de F2-A (QA medio #1): refresh() con el transporte abierto solo
+// resaluda desde una ventana VISIBLE. Guardar la tarjeta en otra ventana
+// dispara refresh() en TODAS las pestañas de /app/pos; sin esta regla la
+// pantalla seguía a la última en saludar, que podía ser la de fondo.
+// ---------------------------------------------------------------------------
+
+describe('DisplayEmitter · refresh() solo saluda si la ventana está visible: resaludo (F2-A ronda 3) y apertura del transporte (ronda 4)', () => {
+  const settings = {
+    tips: { enabled: true, presets: [5, 10, 15], allowCustom: true },
+    rating: { enabled: false },
+    showTaxBreakdown: false,
+    showCustomerName: false,
+    locale: null,
+    touch: 'auto' as const,
+  };
+
+  /** `document` falso: el emisor no lo lee directamente, se inyecta `isVisible` como hace posDisplay.ts con defaultIsVisible. */
+  function harnessVisible(doc: { visibilityState: 'visible' | 'hidden' }, withSettings = true) {
+    const transports: FakeTransport[] = [];
+    const sched = manualScheduler();
+    const emitter = new DisplayEmitter({
+      createTransport: () => {
+        const t = new FakeTransport();
+        transports.push(t);
+        return t;
+      },
+      isEnabled: () => true,
+      getSettings: withSettings ? () => settings : undefined,
+      isVisible: () => doc.visibilityState === 'visible',
+      schedule: sched.schedule,
+    });
+    return { emitter, transports, transport: () => transports[transports.length - 1] };
+  }
+
+  it('ventana VISIBLE (ronda 4): encender desde refresh() abre el transporte Y saluda (la rama de apertura solo calla cuando la ventana está oculta)', () => {
+    const doc = { visibilityState: 'visible' as 'visible' | 'hidden' };
+    const enabled = { value: false };
+    const transports: FakeTransport[] = [];
+    const emitter = new DisplayEmitter({
+      createTransport: () => {
+        const t = new FakeTransport();
+        transports.push(t);
+        return t;
+      },
+      isEnabled: () => enabled.value,
+      getSettings: () => settings,
+      isVisible: () => doc.visibilityState === 'visible',
+      schedule: manualScheduler().schedule,
+    });
+    emitter.start(START);
+    enabled.value = true;
+    emitter.refresh();
+    expect(transports).toHaveLength(1);
+    expect(transports[0].types).toEqual(['hello', 'state']);
+  });
+
+  it('ventana oculta: refresh() con el transporte abierto NO reemite hello ni state; visible: sí', () => {
+    const doc = { visibilityState: 'hidden' as 'visible' | 'hidden' };
+    const h = harnessVisible(doc);
+    h.emitter.start(START);
+    expect(h.transport().types).toEqual(['hello', 'state']); // abrir el transporte desde start() no depende de la visibilidad
+    h.emitter.refresh();
+    h.emitter.refresh();
+    expect(h.transport().types).toEqual(['hello', 'state']);
+
+    doc.visibilityState = 'visible';
+    h.emitter.refresh();
+    expect(h.transport().types).toEqual(['hello', 'state', 'hello', 'state']);
+    expect(h.transports).toHaveLength(1);
+  });
+
+  it('ventana oculta: reannounce() (visibilitychange/focus de la página) sí saluda y lleva los ajustes de la caché en ese momento', () => {
+    const doc = { visibilityState: 'hidden' as 'visible' | 'hidden' };
+    const h = harnessVisible(doc);
+    h.emitter.start(START);
+    h.emitter.refresh(); // ignorado: oculta
+    h.emitter.reannounce();
+    expect(h.transport().types).toEqual(['hello', 'state', 'hello', 'state']);
+    expect((h.transport().published[2] as HelloDraft).settings).toEqual(settings);
+  });
+
+  it('ventana oculta (ronda 4): encender abre el transporte (latido incluido) pero NO saluda; need_snapshot de la pantalla sí obtiene hello + state; apagar cierra igual', () => {
+    const doc = { visibilityState: 'hidden' as 'visible' | 'hidden' };
+    const enabled = { value: false };
+    const transports: FakeTransport[] = [];
+    const sched = manualScheduler();
+    const emitter = new DisplayEmitter({
+      createTransport: () => {
+        const t = new FakeTransport();
+        transports.push(t);
+        return t;
+      },
+      isEnabled: () => enabled.value,
+      getSettings: () => settings,
+      isVisible: () => doc.visibilityState === 'visible',
+      schedule: sched.schedule,
+    });
+    emitter.start(START);
+    expect(transports).toHaveLength(0);
+    enabled.value = true;
+    emitter.refresh();
+    expect(transports).toHaveLength(1);
+    expect(emitter.isEmitting).toBe(true);
+    expect(transports[0].heartbeatStarted).toBe(1); // el latido sale aunque no salude
+    expect(transports[0].types).toEqual([]); // oculta: no releva a la pestaña que el cajero tiene delante
+    // Una pestaña única en segundo plano: la pantalla la adopta por latido y pide snapshot; se responde sin mirar la visibilidad.
+    transports[0].emitUp({ v: PROTOCOL_VERSION, t: 'need_snapshot', terminalId: TERMINAL, capabilities: { touch: false, width: 1280, height: 800 } });
+    expect(transports[0].types).toEqual(['hello', 'state']);
+    expect((transports[0].published[0] as HelloDraft).settings).toEqual(settings);
+    enabled.value = false;
+    emitter.refresh();
+    expect(transports[0].closed).toBe(true);
+    expect(emitter.isEmitting).toBe(false);
+  });
+
+  it('ventana oculta: start() repetido (datos de ESTA caja) sigue resaludando, como en la Fase 0', () => {
+    const doc = { visibilityState: 'hidden' as 'visible' | 'hidden' };
+    const h = harnessVisible(doc);
+    h.emitter.start(START);
+    h.emitter.start({ ...START, cashier: { name: 'Andrea' } });
+    expect(h.transport().types).toEqual(['hello', 'state', 'hello', 'state']);
+    expect((h.transport().published[2] as HelloDraft).cashier).toEqual({ name: 'Andrea' });
+  });
+
+  it('isVisible que lanza cuenta como visible (se avisa) y nunca rompe refresh()', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const transports: FakeTransport[] = [];
+    const sched = manualScheduler();
+    const emitter = new DisplayEmitter({
+      createTransport: () => {
+        const t = new FakeTransport();
+        transports.push(t);
+        return t;
+      },
+      isEnabled: () => true,
+      getSettings: () => settings,
+      isVisible: () => {
+        throw new Error('document roto');
+      },
+      schedule: sched.schedule,
+    });
+    emitter.start(START);
+    emitter.refresh();
+    expect(transports[0].types).toEqual(['hello', 'state', 'hello', 'state']);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('defaultIsVisible: sin document → true; con document lee visibilityState; si lanza → true', () => {
+    const g = globalThis as { document?: unknown };
+    const original = Object.getOwnPropertyDescriptor(g, 'document');
+    try {
+      delete g.document;
+      expect(defaultIsVisible()).toBe(true);
+      Object.defineProperty(g, 'document', { value: { visibilityState: 'hidden' }, configurable: true, writable: true });
+      expect(defaultIsVisible()).toBe(false);
+      Object.defineProperty(g, 'document', { value: { visibilityState: 'visible' }, configurable: true, writable: true });
+      expect(defaultIsVisible()).toBe(true);
+      Object.defineProperty(g, 'document', {
+        get() {
+          throw new Error('sin acceso');
+        },
+        configurable: true,
+      });
+      expect(defaultIsVisible()).toBe(true);
+    } finally {
+      if (original) Object.defineProperty(g, 'document', original);
+      else delete g.document;
+    }
   });
 });

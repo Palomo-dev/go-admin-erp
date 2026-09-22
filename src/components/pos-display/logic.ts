@@ -28,6 +28,8 @@ import type {
   DisplayState,
   DisplayVariantAttribute,
 } from '@/lib/pos/display/protocol';
+import { QR_TEXT_MAX_CHARS, isAmountWithinTotal, qrImageNeedsNetwork, qrTextFits } from '@/lib/pos/display/payment';
+import { sanitizeDisplayTip } from '@/lib/pos/display/tip';
 
 /** Duración del resaltado de la línea que acaba de cambiar (PLAN §4.1). */
 export const HIGHLIGHT_MS = 600;
@@ -283,6 +285,8 @@ export type DisplayView =
   | 'payment_card'
   | 'payment_qr'
   | 'thanks'
+  /** Propina (F2-B, PLAN §4.2): solo si la caja la pregunta (`mode: 'tip'` con bloque `tip` y carrito con líneas). */
+  | 'tip'
   | 'connecting'
   | 'update_required';
 
@@ -295,6 +299,13 @@ export interface ResolveViewInput {
   updateRequired: boolean;
   /** La vista Gracias ya cumplió sus 8 s (PLAN §4.2). */
   thanksExpired?: boolean;
+  /**
+   * ¿La pantalla es táctil? (resolveTouch). Solo lo mira `tip` (ronda 2 de
+   * F2-B, QA-7): sin presets y sin táctil no hay nada que mostrar ni que
+   * pulsar («Otro» exige botones), así que se pinta el cobro. Ausente → no
+   * se degrada por este motivo (compatibilidad con quien no lo pase).
+   */
+  touch?: boolean;
   state: DisplayState | null;
 }
 
@@ -337,8 +348,13 @@ function hasPaymentTotal(payment: DisplayPayment | null | undefined): payment is
  *    pedido en curso (PLAN §4.1.3). useDisplayReceiver sigue pidiendo
  *    need_snapshot mientras dure.
  * 3. Con caja y estado: el `mode` del estado, degradado si falta el bloque
- *    que necesita. `tip` y `closed` no existen en Fase 0 y se tratan como el
- *    estado neutro más cercano (pedido si hay carrito; reposo si no).
+ *    que necesita. `closed` no existe aún y se trata como el estado neutro
+ *    más cercano (pedido si hay carrito; reposo si no). `tip` (F2-B) se
+ *    pinta solo con carrito con líneas y bloque `tip` saneado; si falta
+ *    cualquiera de los dos, cae a pedido/reposo: nunca se pregunta una
+ *    propina sobre nada. Y con bloque `tip` SIN presets en una pantalla NO
+ *    táctil (`touch === false`) cae al cobro que viaja en el mismo state:
+ *    una pregunta sin importes ni botones no describe nada (ronda 2, QA-7).
  */
 export function resolveView(input: ResolveViewInput): DisplayView {
   if (!input.connected) {
@@ -358,7 +374,13 @@ export function resolveView(input: ResolveViewInput): DisplayView {
     case 'thanks':
       if (!state.thanks || !Number.isFinite(state.thanks.total)) return 'idle';
       return input.thanksExpired ? 'idle' : 'thanks';
-    case 'tip':
+    case 'tip': {
+      if (!state.tip || !hasLines(state.cart)) return orderOrIdle;
+      if (input.touch === false && state.tip.presets.length === 0) {
+        return hasPaymentTotal(state.payment) ? paymentView(state.payment) : orderOrIdle;
+      }
+      return 'tip';
+    }
     case 'closed':
       return orderOrIdle;
     default:
@@ -368,7 +390,9 @@ export function resolveView(input: ResolveViewInput): DisplayView {
 
 /** Solo los estados que muestran importes; en Conectando se ocultan (PLAN §4.1 «nunca miente»). */
 export function viewShowsAmounts(view: DisplayView): boolean {
-  return view === 'order' || view === 'payment_cash' || view === 'payment_card' || view === 'payment_qr' || view === 'thanks';
+  return (
+    view === 'order' || view === 'payment_cash' || view === 'payment_card' || view === 'payment_qr' || view === 'thanks' || view === 'tip'
+  );
 }
 
 /** Una línea vale la pena resaltarla solo si existe en el carrito que se pinta. */
@@ -496,13 +520,18 @@ export function sanitizeDisplayPayment(value: unknown): DisplayPayment | null {
       if (isRecord(rawQr) && typeof rawQr.value === 'string' && (rawQr.kind === 'image' || rawQr.kind === 'text')) {
         qr = { kind: rawQr.kind, value: rawQr.value };
       }
-      return {
+      const payment: DisplayPayment = {
         method: 'qr',
         total,
         provider: nonEmptyString(value.provider) ?? '',
         qr,
         expiresAt: finiteOrNull(value.expiresAt),
       };
+      // Importe de ESTE código (pago mixto, F2-C r3). Ausente (emisor
+      // anterior), no finito o fuera de (0, total] (ronda 4, C3: un emisor
+      // distinto o un state fabricado) → no se conserva = «el total».
+      if (isAmountWithinTotal(value.amount, total)) payment.amount = value.amount;
+      return payment;
     }
     default:
       return null;
@@ -512,7 +541,7 @@ export function sanitizeDisplayPayment(value: unknown): DisplayPayment | null {
 /**
  * Estado completo saneado. Se aplica UNA vez al aceptar el `state` en
  * useDisplayReceiver; resolveView y las vistas trabajan siempre sobre esto.
- * `tip` se conserva tal cual (no se pinta en Fase 0).
+ * `tip` se sanea con sanitizeDisplayTip (F2-B).
  */
 export function sanitizeDisplayState(value: DisplayState): DisplayState {
   const rawThanks: unknown = value.thanks;
@@ -521,10 +550,110 @@ export function sanitizeDisplayState(value: DisplayState): DisplayState {
     mode: value.mode,
     cart: sanitizeDisplayCart(value.cart),
     payment: sanitizeDisplayPayment(value.payment),
-    tip: value.tip ?? null,
+    // F2-B: presets válidos, `allowCustom` booleano, `base` finita; sin nada que preguntar → null (tip.ts).
+    tip: sanitizeDisplayTip(value.tip),
     thanks:
       thanksTotal === null || !isRecord(rawThanks) ? null : { total: thanksTotal, askRating: Boolean(rawThanks.askRating) },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Táctil (PLAN §4.4): detección + forzado desde los ajustes
+// ---------------------------------------------------------------------------
+
+/**
+ * ¿La pantalla puede mostrar controles táctiles? `detected` es
+ * `navigator.maxTouchPoints > 0`; `override` es `hello.settings.touch`
+ * ('auto' | 'touch' | 'no-touch') por si el hardware miente. Cualquier
+ * valor desconocido (emisor de la Fase 0 sin ajustes, JSON raro) cuenta como
+ * 'auto'. Regla: la pantalla nunca muestra un control que no pueda usarse.
+ */
+export function resolveTouch(detected: boolean, override: unknown): boolean {
+  if (override === 'touch') return true;
+  if (override === 'no-touch') return false;
+  return detected === true;
+}
+
+// ---------------------------------------------------------------------------
+// Cobro · QR (PLAN §4.2, §3.5): qué se pinta con lo que llegó
+// ---------------------------------------------------------------------------
+
+export type QrPresentationKind = 'image' | 'text' | 'fallback';
+
+export interface QrPresentation {
+  /** `image`: `<img src=value>`; `text`: generar el QR a partir de `value`; `fallback`: «siga las instrucciones del cajero». */
+  kind: QrPresentationKind;
+  value: string | null;
+  /** ms hasta el vencimiento (≥ 0); null si el cobro no vence o ya venció (entonces `kind` es `fallback`). */
+  remainingMs: number | null;
+  /** true si había vencimiento y ya pasó. */
+  expired: boolean;
+}
+
+export interface QrPresentationEnv {
+  now: number;
+  /** `navigator.onLine`; sin él, true (no se puede afirmar que no hay red). */
+  online: boolean;
+  /** true si el `<img>` de esta imagen ya falló al cargar. */
+  imageFailed?: boolean;
+}
+
+/**
+ * ¿La imagen necesita red para pintarse? (una data URL o blob no). Vive en
+ * payment.ts desde la ronda 5: el emisor la usa para preferir el texto EMVCo
+ * cuando la imagen es remota. Se reexporta para no romper a quien la importa
+ * de aquí.
+ */
+export { qrImageNeedsNetwork };
+
+/**
+ * Longitud máxima del texto que la pantalla acepta convertir en QR. Es la
+ * misma constante que usa el emisor (payment.ts): un QR v40 nivel M admite
+ * 2 331 bytes en modo byte y `QRCodeSVG` LANZA «Data too long» durante el
+ * render por encima. Se reexporta para que las pruebas de la pantalla la
+ * lean de aquí. Un emisor viejo o un state fabricado podrían traer más: la
+ * pantalla lo degrada en lugar de caerse.
+ */
+export { QR_TEXT_MAX_CHARS };
+
+/**
+ * Decide qué muestra la vista Cobro·QR. Nunca un código roto (PLAN §3.5):
+ * - sin `qr`, vencido, imagen que falló al cargar, o imagen remota sin red
+ *   → `fallback` («Pago con QR: siga las instrucciones del cajero»);
+ * - texto más largo que `QR_TEXT_MAX_CHARS` en caracteres o bytes UTF-8 (no
+ *   cabe en un QR; qrcode.react lanzaría) → `fallback`;
+ * - imagen pintable → `image`; texto → `text` (la pantalla lo convierte en QR).
+ * `remainingMs` alimenta la cuenta atrás; con `expiresAt` null no hay cuenta.
+ */
+export function resolveQrPresentation(
+  payment: Extract<DisplayPayment, { method: 'qr' }>,
+  env: QrPresentationEnv,
+): QrPresentation {
+  const expiresAt = typeof payment.expiresAt === 'number' && Number.isFinite(payment.expiresAt) ? payment.expiresAt : null;
+  const expired = expiresAt !== null && expiresAt <= env.now;
+  const remainingMs = expiresAt === null || expired ? null : Math.max(0, expiresAt - env.now);
+  const fallback: QrPresentation = { kind: 'fallback', value: null, remainingMs, expired };
+
+  const qr = payment.qr;
+  if (expired || !qr || typeof qr.value !== 'string' || qr.value.trim().length === 0) return fallback;
+  if (qr.kind === 'image') {
+    if (env.imageFailed === true) return fallback;
+    if (env.online === false && qrImageNeedsNetwork(qr.value)) return fallback;
+    return { kind: 'image', value: qr.value, remainingMs, expired };
+  }
+  if (qr.kind === 'text') {
+    if (!qrTextFits(qr.value)) return fallback;
+    return { kind: 'text', value: qr.value, remainingMs, expired };
+  }
+  return fallback;
+}
+
+/** mm:ss para la cuenta atrás; negativos o no finitos → 00:00. */
+export function formatCountdown(ms: number): string {
+  const total = Number.isFinite(ms) && ms > 0 ? Math.floor(ms / 1000) : 0;
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 // ---------------------------------------------------------------------------

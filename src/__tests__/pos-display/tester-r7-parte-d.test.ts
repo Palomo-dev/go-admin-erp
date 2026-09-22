@@ -184,6 +184,10 @@ afterEach(() => {
 // T1 · fuera de orden visto desde la pantalla
 // ---------------------------------------------------------------------------
 
+// Fase 2 (F2-A): `pos_customer_display` es el esquema completo de settings.ts
+// (propina, calificación, reposo, idioma, táctil) y lo que se lee o se escribe
+// lleva siempre todos los campos con sus valores por defecto. Estas pruebas
+// son del interruptor maestro, así que comparan con objectContaining.
 describe('T1 · relecturas fuera de orden con una pantalla real escuchando', () => {
   it('encender y apagar seguidos; «encendido» responde la última: la pantalla no recibe NINGÚN hello y la caja sigue apagada', async () => {
     primeCustomerDisplaySettings(120, { enabled: false });
@@ -214,7 +218,7 @@ describe('T1 · relecturas fuera de orden con una pantalla real escuchando', () 
     // Llega la respuesta superada (encendido): debe descartarse.
     release(0);
     await flush(10);
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: false });
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: false }));
     expect(emitter.isEmitting).toBe(false);
     // La pantalla no recibió ningún hello ni state: sigue sin instancia activa.
     expect(log.slice(heardBeforeStale)).toEqual([]);
@@ -247,7 +251,7 @@ describe('T1 · relecturas fuera de orden con una pantalla real escuchando', () 
     await flush(10);
     expect(emitter.isEmitting).toBe(true);
     expect(log.slice(beforeStale)).not.toContain('bye');
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: true });
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: true }));
     // La pantalla sigue con la caja como instancia activa.
     expect(receiver.activeInstanceId).not.toBeNull();
   });
@@ -273,12 +277,12 @@ describe('T2 · POS → Configuración (encender) → POS con la carga del POS e
     release(1); // lectura previa al upsert
     await save;
     expect(db.upserts).toBe(1);
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: true });
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: true }));
 
     release(0); // la carga vieja responde «sin fila»
     await first;
     await flush();
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: true });
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: true }));
     expect(log).not.toContain('hello'); // el primer arranque quedó cancelado por stop
 
     db.hold = false;
@@ -310,12 +314,12 @@ describe('T1 · clearCustomerDisplaySettingsCache con una carga en vuelo', () =>
     expect(db.pending).toHaveLength(2);
 
     release(1);
-    await expect(fresh).resolves.toEqual({ enabled: false });
+    await expect(fresh).resolves.toEqual(expect.objectContaining({ enabled: false }));
     release(0);
     await stale;
     await flush();
     // La respuesta vieja pertenece a una sesión anterior y no debe imponerse a la nueva.
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: false });
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: false }));
   });
 });
 
@@ -325,7 +329,7 @@ describe('T1 · clearCustomerDisplaySettingsCache con una carga en vuelo', () =>
 
 describe('settings.ts · bordes', () => {
   it.each([0, -3, NaN, 2.5])('refreshCustomerDisplaySettings(%p): no consulta, no escribe caché y devuelve apagado', async (bad) => {
-    await expect(refreshCustomerDisplaySettings(bad)).resolves.toEqual({ enabled: false });
+    await expect(refreshCustomerDisplaySettings(bad)).resolves.toEqual(expect.objectContaining({ enabled: false }));
     expect(db.reads).toBe(0);
     expect(hasCustomerDisplaySettingsCache(bad)).toBe(false);
   });
@@ -338,7 +342,7 @@ describe('settings.ts · bordes', () => {
     ['string', 'enabled'],
   ])('prime con JSON malformado (%s) degrada a apagado y la caja no emite', async (_label, raw) => {
     primeCustomerDisplaySettings(120, raw as unknown as CustomerDisplaySettings);
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: false });
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: false }));
     expect(hasCustomerDisplaySettingsCache(120)).toBe(true);
     const emitter = await posDisplay.startPosDisplay({ organizationId: 120, currency: 'COP' });
     expect(emitter.isEmitting).toBe(false);
@@ -356,7 +360,7 @@ describe('settings.ts · bordes', () => {
     db.row = { settings: 'garbage' };
     fakeWindow.fire(posDisplay.CUSTOMER_DISPLAY_SETTINGS_CHANGED_KEY);
     await flush(6);
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: false });
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: false }));
     expect(emitter.isEmitting).toBe(false);
     expect(log).toContain('bye');
   });
@@ -367,8 +371,8 @@ describe('settings.ts · bordes', () => {
     await flush();
     primeCustomerDisplaySettings(120, { enabled: true });
     release(0, 'error');
-    await expect(refresh).resolves.toEqual({ enabled: true });
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: true });
+    await expect(refresh).resolves.toEqual(expect.objectContaining({ enabled: true }));
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: true }));
   });
 });
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { checkRateLimit } from '@/lib/security/rateLimit';
+import { getServiceClient } from '@/lib/supabase/server-service';
 
 /**
  * POST /api/ai-assistant/reject-action  →  { actionId }
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     // El compare-and-set sobre el estado hace el trabajo: si ya se ejecutó, se
     // rechazó o caducó, no hay nada que rechazar y no se pisa el desenlace.
-    const { data, error } = await ctx.supabase
+    const { data, error } = await getServiceClient()
       .from('ai_agent_actions')
       .update({
         status: 'rejected',

@@ -137,3 +137,65 @@ Agregar a `src/__tests__/guardrails.test.ts`:
   El procedimiento de contraasientos es distinto a este: no borra,
   sino que inserta asientos de reversión con `source='reversal'`
   que anulan los duplicados.
+
+## Anexo F-48 — contraasientos para POS + factura
+
+**Estado:** documentado, no aprobado para ejecución.
+**Bloque:** C. Requiere aprobación explícita antes de escribir o aplicar el SQL
+de corrección.
+
+F-48 no usa el reset descrito arriba. Afecta libros operativos y se corrige con
+contraasientos publicados, sin borrar ni modificar los asientos originales.
+
+### Conjunto medido
+
+- 2.042 filas de `invoice_sales` con `sale_id` y asiento por las dos fuentes:
+  `sales` e `invoice_sales`.
+- 2.041 ventas distintas; una venta tiene más de una factura vinculada.
+- 16 organizaciones.
+- COP 85.763.018,29 de bruto duplicado.
+- Se conservan los asientos `invoice_sales` y se contrarregistran los asientos
+  `sales` correspondientes.
+- Los 36 asientos `sales` huérfanos quedan fuera: pertenecen a ventas eliminadas
+  y requieren auditoría separada.
+
+### Regla obligatoria: invertir el asiento original, no recalcularlo
+
+El contraasiento se construye exclusivamente desde las líneas persistidas del
+asiento original:
+
+- por cada débito original, insertar el mismo importe al crédito;
+- por cada crédito original, insertar el mismo importe al débito;
+- conservar cuenta, moneda, tasa, sucursal y organización del original;
+- enlazar el contraasiento con el asiento revertido mediante una referencia
+  auditable e idempotente;
+- no invocar la fórmula contable vigente para reconstruir importes.
+
+Esta regla es crítica porque 160 de los 2.042 asientos `sales` son anteriores a
+F-45 y dejaron el IVA 2405 al **débito**. Su contraasiento debe poner exactamente
+ese mismo importe al **crédito**. Si se genera desde la fórmula nueva —que pone
+el IVA de ventas al crédito—, ambas líneas quedarían al crédito y se conservaría
+un residuo en 2405.
+
+En otras palabras, el procedimiento neutraliza lo que realmente se publicó,
+incluidos sus errores históricos; no intenta generar hoy el asiento que habría
+sido correcto en aquel momento.
+
+### Guardas exigidas al futuro SQL
+
+1. Seleccionar el asiento `sales` por `organization_id`, `source='sales'` y el
+   `sale_id` vinculado desde `invoice_sales`.
+2. Exigir que exista también el asiento canónico `invoice_sales` de esa misma
+   factura y organización.
+3. Excluir cualquier asiento ya revertido mediante una clave idempotente estable.
+4. Copiar e invertir todas las filas de `journal_lines`; no asumir que siempre
+   existen exactamente dos o tres líneas.
+5. Validar por asiento que débito total = crédito total antes y después.
+6. Validar por cuenta que original + contraasiento = cero, incluida 2405.
+7. Ejecutar primero una simulación de solo lectura y entregar el paquete al
+   contador.
+8. No incluir los 36 huérfanos ni las filas que no pertenezcan al conjunto exacto
+   de 2.042 facturas medido.
+
+No se añade todavía SQL de mutación a este procedimiento. Ese artefacto pertenece
+al Bloque C y solo se escribirá después de la aprobación explícita.

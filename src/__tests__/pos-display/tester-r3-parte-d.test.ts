@@ -163,6 +163,10 @@ afterEach(() => {
 // Relecturas fuera de orden
 // ---------------------------------------------------------------------------
 
+// Fase 2 (F2-A): `pos_customer_display` es el esquema completo de settings.ts
+// (propina, calificación, reposo, idioma, táctil) y lo que se lee o se escribe
+// lleva siempre todos los campos con sus valores por defecto. Estas pruebas
+// son del interruptor maestro, así que comparan con objectContaining.
 describe('evento storage · dos relecturas que responden fuera de orden', () => {
   it('encender y apagar seguidos en Configuración: si la respuesta «encendido» llega la última, la caja queda APAGADA (estado real de la BD)', async () => {
     primeCustomerDisplaySettings(120, { enabled: false });
@@ -276,7 +280,7 @@ describe('carga inicial lenta que sobrevive a stopPosDisplay (navegación SPA PO
     release(0);
     await first;
     await flush();
-    expect(db.row).toEqual({ settings: { enabled: true } });
+    expect(db.row).toEqual({ settings: expect.objectContaining({ enabled: true }) });
     expect(getCachedCustomerDisplaySettings(120).enabled).toBe(true);
     db.hold = false;
     const emitter = await posDisplay.startPosDisplay({ organizationId: 120, currency: 'COP' });
@@ -363,7 +367,7 @@ describe('startPosDisplay · secuencias reales de React', () => {
 describe('ConfiguracionService.saveCustomerDisplayConfig · bordes', () => {
   it('storage que lanza al escribir la marca: el guardado NO falla y devuelve lo guardado', async () => {
     markStorageThrows = true;
-    await expect(ConfiguracionService.saveCustomerDisplayConfig({ enabled: true })).resolves.toEqual({ enabled: true });
+    await expect(ConfiguracionService.saveCustomerDisplayConfig({ enabled: true })).resolves.toEqual(expect.objectContaining({ enabled: true }));
     expect(db.upserts).toHaveLength(1);
     expect(getCachedCustomerDisplaySettings(120).enabled).toBe(true);
   });
@@ -375,7 +379,7 @@ describe('ConfiguracionService.saveCustomerDisplayConfig · bordes', () => {
     expect(payload.organization_id).toBe(120);
     expect(payload.key).toBe('pos_customer_display');
     expect(options).toEqual({ onConflict: 'organization_id,key' });
-    expect(payload.settings).toEqual({ enabled: true });
+    expect(payload.settings).toEqual(expect.objectContaining({ enabled: true }));
     expect(typeof payload.updated_at).toBe('string');
     expect(Number.isNaN(Date.parse(payload.updated_at as string))).toBe(false);
   });
@@ -400,8 +404,8 @@ describe('ConfiguracionService.saveCustomerDisplayConfig · bordes', () => {
   it('config vacío ({}) no cambia el valor de la fila y sigue escribiendo la marca (idempotente)', async () => {
     db.row = { settings: { enabled: true, tips: { enabled: true } } };
     const saved = await ConfiguracionService.saveCustomerDisplayConfig({});
-    expect(saved).toEqual({ enabled: true });
-    expect(db.upserts[0].payload.settings).toEqual({ enabled: true, tips: { enabled: true } });
+    expect(saved).toEqual(expect.objectContaining({ enabled: true }));
+    expect(db.upserts[0].payload.settings).toEqual(expect.objectContaining({ enabled: true, tips: expect.objectContaining({ enabled: true }) }));
   });
 });
 

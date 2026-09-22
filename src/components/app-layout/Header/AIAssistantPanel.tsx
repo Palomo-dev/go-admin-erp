@@ -7,15 +7,14 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { cn } from '@/utils/Utils';
 import type { AssistantMessage, AssistantContext } from '@/lib/services/aiAssistantService';
-import {
-  EMPTY_DYNAMIC_OPTIONS,
-  FIELD_OPTION_SOURCE,
-  type DynamicOptions,
-  type PendingAction,
-} from '@/lib/ai/assistant/clientTypes';
+import type { PendingAction, PendingQuestion } from '@/lib/ai/assistant/clientTypes';
+import { uploadAssistantAttachments } from '@/lib/ai/assistant/attachments';
+import Link from 'next/link';
 import { streamAssistant, type ToolStep } from '@/lib/ai/assistant/streamClient';
 import Composer, { type ComposerAttachment } from './assistant/Composer';
 import ConversationHistory from './assistant/ConversationHistory';
+import CustomerFormDialog from './assistant/CustomerFormDialog';
+import QuestionCard from './assistant/QuestionCard';
 import ActionConfirmationForm from './ActionConfirmationForm';
 import MarkdownRenderer from './MarkdownRenderer';
 
@@ -25,16 +24,27 @@ interface AIAssistantPanelProps {
   context: AssistantContext;
 }
 
-export default function AIAssistantPanel({
+export default function AIAssistantPanel(props: AIAssistantPanelProps) {
+  // Un cambio de organización nunca reutiliza mensajes, adjuntos ni propuestas.
+  return <AssistantSession key={props.context.organizationId} {...props} />;
+}
+
+function AssistantSession({
   isOpen,
   onToggle,
   context
 }: AIAssistantPanelProps) {
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [correctionActionId, setCorrectionActionId] = useState<string | null>(null);
+  const [focusRequest, setFocusRequest] = useState(0);
+  const [answeringModel, setAnsweringModel] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  /** Pregunta con opciones esperando respuesta (se responde como mensaje). */
+  const [pendingQuestion, setPendingQuestion] = useState<PendingQuestion | null>(null);
+  const [restoredActions, setRestoredActions] = useState<PendingAction[]>([]);
   /** Texto que se va escribiendo mientras el modelo responde. */
   const [streamingText, setStreamingText] = useState('');
   /** Pasos de herramienta del turno en curso: "Buscando en el catálogo… → 6". */
@@ -50,11 +60,19 @@ export default function AIAssistantPanel({
   const [undoable, setUndoable] = useState<{ actionId: string; label: string } | null>(null);
   const [isUndoing, setIsUndoing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  /** Formulario del módulo de clientes, abierto desde la tarjeta. */
+  const [showCustomerForm, setShowCustomerForm] = useState(false);
   /** Cambiar este número hace que el historial se recargue. */
   const [historyToken, setHistoryToken] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   /** Permite cortar la respuesta en curso desde el boton de detener. */
   const abortRef = useRef<AbortController | null>(null);
+  const attachmentsRef = useRef(attachments);
+  attachmentsRef.current = attachments;
+  useEffect(() => () => {
+    abortRef.current?.abort();
+    for (const item of attachmentsRef.current) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+  }, []);
   const [isExecutingAction, setIsExecutingAction] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -180,35 +198,6 @@ export default function AIAssistantPanel({
     }
   };
 
-  /**
-   * Rellena los `select` de la tarjeta con las opciones reales de la
-   * organización. Son datos de presentación; el endpoint los filtra por la
-   * organización de la sesión.
-   */
-  const withDynamicOptions = useCallback(async (proposed: PendingAction): Promise<PendingAction> => {
-    let dynamicOptions: DynamicOptions = EMPTY_DYNAMIC_OPTIONS;
-    try {
-      const optionsRes = await fetch('/api/ai-assistant/dynamic-options', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      if (optionsRes.ok) {
-        dynamicOptions = { ...EMPTY_DYNAMIC_OPTIONS, ...(await optionsRes.json()) };
-      }
-    } catch (optionsError) {
-      console.error('Error cargando opciones del formulario:', optionsError);
-    }
-
-    return {
-      ...proposed,
-      fields: proposed.fields.map((field) => {
-        const source = FIELD_OPTION_SOURCE[field.name];
-        return source ? { ...field, options: dynamicOptions[source] } : field;
-      }),
-    };
-  }, []);
-
   const clientContext = useCallback(
     () => ({
       userName: context.userName,
@@ -230,7 +219,7 @@ export default function AIAssistantPanel({
       const response = await fetch('/api/ai-assistant/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content, conversationHistory: messages, context: clientContext() }),
+        body: JSON.stringify({ message: content, conversationId, conversationHistory: messages, context: clientContext() }),
       });
 
       if (!response.ok) {
@@ -239,6 +228,7 @@ export default function AIAssistantPanel({
       }
 
       const data = await response.json();
+      if (typeof data.conversationId === 'string') setConversationId(data.conversationId);
       setMessages((prev) => [
         ...prev,
         {
@@ -250,17 +240,17 @@ export default function AIAssistantPanel({
       ]);
 
       if (data.action) {
-        setPendingAction(await withDynamicOptions(data.action as PendingAction));
+        setPendingAction(data.action as PendingAction);
       }
     },
-    [messages, clientContext, withDynamicOptions]
+    [messages, clientContext, conversationId]
   );
 
   const sendMessage = async (content: string) => {
     // Con adjunto y sin texto se manda igual: "aquí tienes la factura" está
     // implícito. El modelo recibe los ids y sabe qué hacer.
     const texto = content.trim() || (attachments.length > 0 ? 'Lee este documento.' : '');
-    if (!texto || isLoading) return;
+    if (!texto || isLoading || isExecutingAction || isUndoing) return;
     content = texto;
 
     const userMessage: AssistantMessage = {
@@ -280,51 +270,27 @@ export default function AIAssistantPanel({
     // Contenedor en vez de dos `let`: TypeScript no ve que los callbacks del
     // stream se ejecuten, asi que estrecha las variables sueltas a `never` y
     // luego se queja al leerlas. El acceso por propiedad no sufre eso.
-    const captured: { action: PendingAction | null; error: { message: string } | null } = {
+    const captured: { action: PendingAction | null; question: PendingQuestion | null; error: { message: string } | null } = {
       action: null,
+      question: null,
       error: null,
     };
 
     try {
-      // Los adjuntos se suben ANTES de hablar con el modelo: el modelo recibe
-      // sus ids y decide si llama a `leer_documento`. Si alguno falla, se avisa
-      // y se sigue con los que sí subieron — un archivo corrupto no debe
-      // bloquear la pregunta.
-      const attachmentIds: string[] = [];
-      const pendientes = attachments;
-      for (const a of pendientes) {
-        try {
-          const form = new FormData();
-          form.append('file', a.file, a.file.name);
-          if (conversationId) form.append('conversation_id', conversationId);
-          const res = await fetch('/api/ai-assistant/attachments', { method: 'POST', body: form });
-          const data = await res.json();
-          if (res.ok && typeof data.id === 'string') {
-            attachmentIds.push(data.id);
-          } else {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: `attach-err-${Date.now()}`,
-                role: 'assistant',
-                content: `⚠️ No pude subir «${a.file.name}»: ${data.error || 'error desconocido'}.`,
-                timestamp: new Date(),
-              },
-            ]);
-          }
-        } catch (uploadError) {
-          console.error('Error subiendo adjunto:', uploadError);
-        }
+      const uploaded = await uploadAssistantAttachments(attachments, conversationId);
+      setAttachments(uploaded.items);
+      if (uploaded.errors.length) {
+        setMessages((prev) => [...prev, { id: 'upload-error-' + Date.now(), role: 'assistant', content: uploaded.errors.join('\n\n'), timestamp: new Date() }]);
+        setInputValue(content);
+        return;
       }
-      // Se limpian aunque alguno fallara: el usuario ya vio el aviso.
-      for (const a of pendientes) if (a.previewUrl) URL.revokeObjectURL(a.previewUrl);
-      setAttachments([]);
+      const attachmentIds = uploaded.ids;
 
       const controller = new AbortController();
       abortRef.current = controller;
 
       const result = await streamAssistant(
-        { message: content, conversationId, context: clientContext(), attachmentIds },
+        { message: content, conversationId, context: clientContext(), attachmentIds, correctionActionId: correctionActionId ?? undefined },
         {
           onToken: (delta) => setStreamingText((prev) => prev + delta),
           // Los pasos de herramienta no son adorno: convierten la espera en
@@ -338,7 +304,10 @@ export default function AIAssistantPanel({
           onAction: (action) => {
             captured.action = action;
           },
-          onUsage: () => {},
+          onQuestion: (question) => {
+            captured.question = question;
+          },
+          onUsage: (usage) => setAnsweringModel(usage.model),
           onMeta: (meta) => setConversationId(meta.conversationId),
           onError: (err) => {
             captured.error = err;
@@ -348,11 +317,28 @@ export default function AIAssistantPanel({
       );
 
       if (!result.ok) {
-        // El stream no llegó a ninguna parte: se intenta por el camino viejo.
-        await sendViaFallback(content);
+        // Solo el transporte puede autorizar un reintento automático. Un corte
+        // parcial/abortado puede haber consumido créditos o creado una propuesta.
+        if (result.canFallback && !attachmentIds.length && !correctionActionId && !controller.signal.aborted) {
+          await sendViaFallback(content);
+          return;
+        }
+        setInputValue(content);
+        if (captured.action) setPendingAction(captured.action);
+        setMessages(previous => [...previous, {
+          id: `partial-${Date.now()}`, role: 'assistant', timestamp: new Date(),
+          content: [result.content, captured.error?.message ?? 'La respuesta quedó incompleta. Conservé los adjuntos y la corrección. Revisa el historial antes de reintentar.'].filter(Boolean).join('\n\n'),
+        }]);
         return;
       }
 
+      if (!captured.error && !controller.signal.aborted) {
+        for (const item of uploaded.items) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+        setAttachments((current) => current.filter((item) => !uploaded.items.some((sent) => sent.id === item.id)));
+        setCorrectionActionId(null);
+      } else {
+        setInputValue(content);
+      }
       const finalText = result.content || captured.error?.message || '';
       if (finalText) {
         const assistantId = `assistant-${Date.now()}`;
@@ -364,9 +350,10 @@ export default function AIAssistantPanel({
         // lee un error del sistema en voz alta.
         if (speakReplies && result.content && !captured.error) void speak(assistantId, result.content);
       }
+      if (captured.question && !captured.error) setPendingQuestion(captured.question);
 
       if (captured.action) {
-        setPendingAction(await withDynamicOptions(captured.action));
+        setPendingAction(captured.action);
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -375,7 +362,7 @@ export default function AIAssistantPanel({
         {
           id: `error-${Date.now()}`,
           role: 'assistant',
-          content: 'Lo siento, hubo un error al procesar tu mensaje. Por favor, intenta de nuevo.',
+          content: error instanceof Error ? error.message : 'No pude procesar tu mensaje. Inténtalo de nuevo.',
           timestamp: new Date(),
         },
       ]);
@@ -392,15 +379,17 @@ export default function AIAssistantPanel({
 
   // Confirmar: se manda el id de la propuesta y las correcciones del usuario.
   // Nunca la organización, el rol ni el estado "confirmed" (C1).
-  const handleConfirmAction = async (fields: Array<{ name: string; value: unknown }>) => {
-    if (!pendingAction) return;
+  const handleConfirmAction = async (external?: { entityType: 'customer'; entityId: string }) => {
+    if (!pendingAction || isLoading || isExecutingAction || isUndoing) return;
     setIsExecutingAction(true);
 
     try {
       const response = await fetch('/api/ai-assistant/execute-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actionId: pendingAction.id, fields }),
+        // `external`: el usuario guardó en el formulario del módulo; la
+        // propuesta se cierra con esa entidad, no se vuelve a escribir.
+        body: JSON.stringify(external ? { actionId: pendingAction.id, external } : { actionId: pendingAction.id }),
       });
 
       const result = await response.json();
@@ -415,7 +404,7 @@ export default function AIAssistantPanel({
         'No se pudo ejecutar la acción. Vuelve a intentarlo.';
 
       const resultMessage: AssistantMessage = {
-        id: `result-${Date.now()}`,
+        id: `result-${pendingAction.id}`,
         role: 'assistant',
         content: result.success
           ? `✅ **Acción completada:** ${detalle}`
@@ -423,13 +412,14 @@ export default function AIAssistantPanel({
         timestamp: new Date(),
       };
 
-      setMessages(prev => [...prev, resultMessage]);
-      setPendingAction(null);
+      setMessages(prev => prev.some(message => message.id === resultMessage.id) ? prev : [...prev, resultMessage]);
+      setPendingAction(restoredActions[0] ?? null);
+      setRestoredActions(previous => previous.slice(1));
 
       // El servidor decide si algo es reversible (guardó o no `undo_payload`).
       // El cliente solo pregunta; si no lo es, el endpoint responde que no y el
       // botón no se ofrece.
-      if (result.success) {
+      if (result.success && result.undoAvailable) {
         setUndoable({ actionId: pendingAction.id, label: pendingAction.title });
       }
     } catch (error) {
@@ -449,25 +439,32 @@ export default function AIAssistantPanel({
   // Rechazar: hay que decírselo al SERVIDOR. Cerrar la tarjeta en el navegador
   // dejaba la propuesta viva y ejecutable 30 minutos con solo reenviar su id, y
   // la auditoría nunca registraba que el usuario había dicho que no.
-  const handleRejectAction = () => {
-    const actionId = pendingAction?.id;
-    if (actionId) {
-      void fetch('/api/ai-assistant/reject-action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actionId }),
-      }).catch((error) => console.error('Error rechazando acción:', error));
-    }
-
-    const rejectMessage: AssistantMessage = {
-      id: `reject-${Date.now()}`,
-      role: 'assistant',
-      content: '🚫 Acción cancelada. ¿Hay algo más en lo que pueda ayudarte?',
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, rejectMessage]);
-    setPendingAction(null);
+  const handleRejectAction = async (correct = false) => {
+    if (!pendingAction || isExecutingAction || isLoading || isUndoing) return;
+    setIsExecutingAction(true);
+    try {
+      const response = await fetch('/api/ai-assistant/reject-action', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionId: pendingAction.id }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success || (correct && !result.rejected)) {
+        throw new Error('No pude cancelar esa propuesta. Recarga el historial antes de continuar.');
+      }
+      if (correct) {
+        setCorrectionActionId(pendingAction.id);
+        setFocusRequest((value) => value + 1);
+      }
+      setMessages((prev) => [...prev, {
+        id: 'reject-' + Date.now(), role: 'assistant',
+        content: correct ? 'Dime qué quieres corregir. Prepararé un nuevo resumen para confirmar; la propuesta anterior ya está cancelada.' : 'Acción cancelada.',
+        timestamp: new Date(),
+      }]);
+      setPendingAction(restoredActions[0] ?? null);
+      setRestoredActions(previous => previous.slice(1));
+    } catch (error) {
+      setMessages((prev) => [...prev, { id: 'reject-error-' + Date.now(), role: 'assistant', content: error instanceof Error ? error.message : 'No pude cancelar la propuesta.', timestamp: new Date() }]);
+    } finally { setIsExecutingAction(false); }
   };
 
   /**
@@ -476,15 +473,24 @@ export default function AIAssistantPanel({
    * usuario seguía perdiéndose al cerrar.
    */
   const handleSelectConversation = useCallback(async (id: string) => {
+    if (isLoading || isExecutingAction || isUndoing) return;
     setShowHistory(false);
-    setPendingAction(null);
-    setUndoable(null);
     setIsLoading(true);
     try {
       const response = await fetch(`/api/ai-assistant/conversations/${id}`);
       if (!response.ok) throw new Error('No se pudo abrir la conversación');
       const data = await response.json();
+      setCorrectionActionId(null);
       const mensajes = Array.isArray(data.messages) ? data.messages : [];
+      const pending = Array.isArray(data.pendingActions) ? data.pendingActions as PendingAction[] : [];
+      setPendingAction(pending[0] ?? null);
+      setRestoredActions(pending.slice(1));
+      setUndoable(null);
+      setInputValue('');
+      setAttachments(items => {
+        for (const item of items) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+        return [];
+      });
       setMessages(
         mensajes.map((m: { id: string; role: string; content: string; created_at: string }) => ({
           id: m.id,
@@ -508,11 +514,11 @@ export default function AIAssistantPanel({
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isLoading, isExecutingAction, isUndoing]);
 
   /** Deshacer la última acción, dentro de su ventana de tiempo. */
   const handleUndo = useCallback(async () => {
-    if (!undoable || isUndoing) return;
+    if (!undoable || isUndoing || isLoading || isExecutingAction) return;
     setIsUndoing(true);
     try {
       const response = await fetch('/api/ai-assistant/undo-action', {
@@ -543,7 +549,7 @@ export default function AIAssistantPanel({
     } finally {
       setIsUndoing(false);
     }
-  }, [undoable, isUndoing]);
+  }, [undoable, isUndoing, isLoading, isExecutingAction]);
 
   /** Adjuntar: por boton, por arrastrar y soltar, o pegando una captura. */
   const handleAttach = useCallback((files: File[]) => {
@@ -556,9 +562,9 @@ export default function AIAssistantPanel({
         previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
       }));
     if (nuevos.length < files.length) {
-      console.warn('[GO Assistant] Se descartaron archivos de mas de 20 MB');
+      setMessages((prev) => [...prev, { id: 'file-size-' + Date.now(), role: 'assistant', content: 'No pude adjuntar algunos archivos: el límite es 20 MB por archivo.', timestamp: new Date() }]);
     }
-    setAttachments((prev) => [...prev, ...nuevos]);
+    setAttachments((prev) => [...prev, ...nuevos].slice(0, 10));
   }, []);
 
   const handleRemoveAttachment = useCallback((id: string) => {
@@ -592,8 +598,16 @@ export default function AIAssistantPanel({
   };
 
   const clearConversation = () => {
+    if (isLoading || isExecutingAction || isUndoing) return;
+    setCorrectionActionId(null);
+    setUndoable(null);
+    setAttachments((items) => {
+      for (const item of items) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      return [];
+    });
     setMessages([]);
     setPendingAction(null);
+    setRestoredActions([]);
     // Se abre un hilo NUEVO en vez de seguir escribiendo en el anterior: el
     // historial queda intacto y recuperable desde la base.
     setConversationId(null);
@@ -667,7 +681,8 @@ export default function AIAssistantPanel({
             {speakReplies ? <Volume2 size={14} /> : <VolumeX size={14} />}
           </button>
           <button
-            onClick={() => setShowHistory((v) => !v)}
+            onClick={() => { if (!isLoading && !isExecutingAction && !isUndoing) setShowHistory((v) => !v); }}
+            disabled={isLoading || isExecutingAction || isUndoing}
             className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-700 text-white hover:bg-blue-800 transition-colors"
             title="Conversaciones anteriores"
             aria-label="Conversaciones anteriores"
@@ -696,7 +711,7 @@ export default function AIAssistantPanel({
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !pendingAction ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-full mb-4">
               <Sparkles size={32} className="text-blue-500" />
@@ -787,7 +802,7 @@ export default function AIAssistantPanel({
                 <button
                   type="button"
                   onClick={handleUndo}
-                  disabled={isUndoing}
+                  disabled={isUndoing || isLoading || isExecutingAction}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
                   <Undo2 size={12} aria-hidden="true" />
@@ -845,6 +860,28 @@ export default function AIAssistantPanel({
             )}
             
             {/* Formulario de Confirmación de Acción - Dentro del chat */}
+            {pendingQuestion && !pendingAction && !isLoading && (
+              <div className="flex gap-3">
+                <Avatar className="h-8 w-8 flex-shrink-0">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                    <Bot size={16} />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 max-w-[90%]">
+                  <QuestionCard
+                    question={pendingQuestion}
+                    onAnswer={(texto) => {
+                      setPendingQuestion(null);
+                      void sendMessage(texto);
+                    }}
+                    onOther={() => {
+                      setPendingQuestion(null);
+                      setFocusRequest((n) => n + 1);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
             {pendingAction && (
               <div className="flex gap-3">
                 <Avatar className="h-8 w-8 flex-shrink-0">
@@ -855,10 +892,22 @@ export default function AIAssistantPanel({
                 <div className="flex-1 max-w-[90%]">
                   <ActionConfirmationForm
                     action={pendingAction}
-                    onConfirm={handleConfirmAction}
-                    onReject={handleRejectAction}
-                    isExecuting={isExecutingAction}
+                    onConfirm={() => void handleConfirmAction()}
+                    onReject={() => void handleRejectAction()}
+                    onCorrect={() => void handleRejectAction(true)}
+                    onOpenForm={() => setShowCustomerForm(true)}
+                    isExecuting={isExecutingAction || isLoading || isUndoing}
                   />
+                  {showCustomerForm && (
+                    <CustomerFormDialog
+                      action={pendingAction}
+                      organizationId={context.organizationId}
+                      branchId={context.branchId ?? null}
+                      open={showCustomerForm}
+                      onOpenChange={setShowCustomerForm}
+                      onCreated={(customerId) => void handleConfirmAction({ entityType: 'customer', entityId: customerId })}
+                    />
+                  )}
                 </div>
               </div>
             )}
@@ -869,6 +918,8 @@ export default function AIAssistantPanel({
       </div>
 
       <Composer
+        focusRequest={focusRequest}
+        disabled={isExecutingAction || isUndoing}
         value={inputValue}
         onChange={setInputValue}
         onSubmit={() => sendMessage(inputValue)}
@@ -883,6 +934,8 @@ export default function AIAssistantPanel({
       <div className="px-4 pb-2 bg-white dark:bg-gray-900 flex-shrink-0">
         <p className="text-[10px] text-gray-400 text-center">
           GO Assistant puede cometer errores. Verifica la información importante.
+          {answeringModel && <span className="block">Modelo: {answeringModel}</span>}
+          <Link href="/app/configuracion/asistente" className="block py-2 text-blue-700 underline dark:text-blue-300">Configurar permisos del asistente</Link>
         </p>
       </div>
     </div>

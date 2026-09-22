@@ -16,6 +16,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { normalizePhoneToE164 } from '@/lib/domains/phone';
 import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';
 
@@ -71,7 +73,6 @@ type Step = 'search' | 'contact' | 'payment' | 'success';
 function BuyDomainForm({
   open,
   onOpenChange,
-  organizationId,
   userEmail,
   userName,
   onPurchaseComplete,
@@ -90,7 +91,6 @@ function BuyDomainForm({
   
   // Stripe
   const [setupIntentSecret, setSetupIntentSecret] = useState<string | null>(null);
-  const [customerId, setCustomerId] = useState<string | null>(null);
   
   // Contacto
   const [contactInfo, setContactInfo] = useState<ContactInfo>({
@@ -104,6 +104,7 @@ function BuyDomainForm({
     zip: '',
     country: 'CO',
   });
+  const phoneIsInvalid = Boolean(contactInfo.phone) && !normalizePhoneToE164(contactInfo.phone);
 
   // Resetear al cerrar
   useEffect(() => {
@@ -121,7 +122,7 @@ function BuyDomainForm({
     const initSetupIntent = async () => {
       if (step === 'payment' && !setupIntentSecret) {
         try {
-          const response = await fetch('/api/stripe/setup-intent', {
+          const response = await fetch('/api/domains/setup-intent', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: contactInfo.email, name: `${contactInfo.firstName} ${contactInfo.lastName}` }),
@@ -129,7 +130,6 @@ function BuyDomainForm({
           const data = await response.json();
           if (data.success) {
             setSetupIntentSecret(data.clientSecret);
-            setCustomerId(data.customerId);
           } else {
             setError(t('errorPaymentSetup'));
           }
@@ -139,7 +139,7 @@ function BuyDomainForm({
       }
     };
     initSetupIntent();
-  }, [step, setupIntentSecret, contactInfo.email, contactInfo.firstName, contactInfo.lastName]);
+  }, [step, setupIntentSecret, contactInfo.email, contactInfo.firstName, contactInfo.lastName, t]);
 
 
   // Verificar disponibilidad
@@ -169,7 +169,7 @@ function BuyDomainForm({
     } finally {
       setIsChecking(false);
     }
-  }, []);
+  }, [t]);
 
   // Debounce búsqueda
   useEffect(() => {
@@ -183,9 +183,11 @@ function BuyDomainForm({
 
   // Validar contacto
   const isContactValid = () => {
-    return contactInfo.firstName && contactInfo.lastName && contactInfo.email && 
-           contactInfo.phone && contactInfo.address1 && contactInfo.city && 
-           contactInfo.state && contactInfo.zip && contactInfo.country;
+    return Boolean(
+      contactInfo.firstName && contactInfo.lastName && contactInfo.email &&
+      normalizePhoneToE164(contactInfo.phone) && contactInfo.address1 && contactInfo.city &&
+      contactInfo.state && contactInfo.zip && /^[A-Z]{2}$/.test(contactInfo.country)
+    );
   };
 
   // Verificar tarjeta y procesar compra
@@ -216,18 +218,13 @@ function BuyDomainForm({
       if (confirmError) throw new Error(confirmError.message);
       if (setupIntent?.status !== 'succeeded') throw new Error('La verificación de tarjeta falló');
 
-      const pmId = setupIntent.payment_method as string;
-
       // 2. Procesar compra
       const purchaseResponse = await fetch('/api/domains/purchase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           domain: domainResult.domain,
-          organizationId,
-          expectedPrice: domainResult.price,
-          stripePaymentMethodId: pmId,
-          stripeCustomerId: customerId,
+          setupIntentId: setupIntent.id,
           contactInfo,
         }),
       });
@@ -258,7 +255,7 @@ function BuyDomainForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] dark:bg-gray-800 dark:border-gray-700 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] overflow-y-auto p-4 sm:max-w-[600px] sm:p-6 dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
@@ -297,7 +294,7 @@ function BuyDomainForm({
 
         <div className="py-4 space-y-3 sm:space-y-4">
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" role="alert" className="break-words">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
@@ -379,28 +376,44 @@ function BuyDomainForm({
 
           {/* PASO 2: Contacto */}
           {step === 'contact' && (
-            <div className="grid grid-cols-2 gap-2 sm:gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
               <div>
-                <Label className="dark:text-gray-200">{t('firstName')}</Label>
-                <Input value={contactInfo.firstName} onChange={(e) => setContactInfo({...contactInfo, firstName: e.target.value})}
+                <Label htmlFor="domain-first-name" className="dark:text-gray-200">{t('firstName')}</Label>
+                <Input id="domain-first-name" value={contactInfo.firstName} onChange={(e) => setContactInfo({...contactInfo, firstName: e.target.value})}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className="dark:text-gray-200">{t('lastName')}</Label>
-                <Input value={contactInfo.lastName} onChange={(e) => setContactInfo({...contactInfo, lastName: e.target.value})}
+                <Label htmlFor="domain-last-name" className="dark:text-gray-200">{t('lastName')}</Label>
+                <Input id="domain-last-name" value={contactInfo.lastName} onChange={(e) => setContactInfo({...contactInfo, lastName: e.target.value})}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className="dark:text-gray-200">{t('email')}</Label>
-                <Input type="email" value={contactInfo.email} onChange={(e) => setContactInfo({...contactInfo, email: e.target.value})}
+                <Label htmlFor="domain-email" className="dark:text-gray-200">{t('email')}</Label>
+                <Input id="domain-email" type="email" value={contactInfo.email} onChange={(e) => setContactInfo({...contactInfo, email: e.target.value})}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className="dark:text-gray-200">{t('phone')}</Label>
-                <Input value={contactInfo.phone} onChange={(e) => setContactInfo({...contactInfo, phone: e.target.value})}
-                  placeholder="+573001234567" className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                <Label htmlFor="domain-phone" className="dark:text-gray-200">{t('phone')}</Label>
+                <PhoneInput
+                  id="domain-phone"
+                  value={contactInfo.phone}
+                  onChange={(phone) => setContactInfo({ ...contactInfo, phone })}
+                  defaultIso={contactInfo.country}
+                  required
+                  aria-describedby="domain-phone-help"
+                  aria-invalid={phoneIsInvalid}
+                  inputClassName="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                />
+                <p id="domain-phone-help" className={cn(
+                  'mt-1 text-xs',
+                  phoneIsInvalid ? 'text-destructive' : 'text-muted-foreground'
+                )}>
+                  {phoneIsInvalid
+                    ? 'El teléfono debe incluir un código de país válido.'
+                    : 'Incluye el código del país. Ejemplo: +57 300 123 4567.'}
+                </p>
               </div>
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <Label className="dark:text-gray-200">{t('address')}</Label>
                 <Input value={contactInfo.address1} onChange={(e) => setContactInfo({...contactInfo, address1: e.target.value})}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />

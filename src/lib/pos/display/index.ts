@@ -9,15 +9,51 @@ export {
   DisplayEmitter,
   RAF_FALLBACK_MS,
   THANKS_DURATION_MS,
+  cartLinesSignature,
   defaultScheduler,
   findChangedLineId,
+  linesSignature,
   sameLines,
   type DisplayEmitterOptions,
   type DisplayEmitterStartOptions,
   type DisplaySessionInfo,
   type Scheduler,
+  type TipPhase,
 } from './emitter';
-export { isQrPaymentCode, resolveCashReceived, toDisplayPayment, type CashReceivedEntry, type DisplayPaymentInput } from './payment';
+// F2-B: aritmética y saneado de la propina en pantalla, compartidos por la caja y /pos-display.
+export {
+  TIP_AMOUNT_LIMIT,
+  TIP_CUSTOM_MAX_DIGITS,
+  computeTipAmount,
+  isAcceptableTipChoice,
+  isValidTipPercent,
+  resolveTipBase,
+  resolveTipSelection,
+  sanitizeDisplayTip,
+  sanitizeTipAmount,
+  tipOptions,
+  type DisplayTipBlock,
+  type TipOption,
+  type TipSelection,
+} from './tip';
+export {
+  QR_TEXT_MAX_CHARS,
+  isImageSource,
+  isQrPaymentCode,
+  normalizeQrImageSource,
+  parseExpiresAt,
+  pickQrFromProviderResponse,
+  qrTextFits,
+  resolveCashReceived,
+  resolveDisplayQr,
+  toDisplayPayment,
+  type CashReceivedEntry,
+  type DisplayPaymentInput,
+  type DisplayQr,
+  type PickedProviderQr,
+  type ResolveDisplayQrInput,
+  type ResolvedDisplayQr,
+} from './payment';
 // settings.ts y posDisplay.ts NO se reexportan: tocan Supabase y la organización
 // activa (solo navegador). Se importan por su ruta desde la caja.
 export {
@@ -40,6 +76,7 @@ export {
   getOrCreateLocalTerminalId,
   isTerminalId,
   readLocalTerminalId,
+  setLocalTerminalId,
   type TerminalIdStorage,
 } from './terminal';
 // Ruta de la pantalla y su detección desde el layout raíz (PWA, push): ver route.ts.

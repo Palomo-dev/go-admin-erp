@@ -6,13 +6,14 @@
  * «Actualice la pantalla». Ninguna calcula nada: pintan lo que llega.
  */
 
-import { useEffect, useState } from 'react';
+import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
+import { QRCodeSVG } from 'qrcode.react';
 import type { DisplayPayment } from '@/lib/pos/display/protocol';
 import { formatDateInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
 import { formatCurrency } from '@/utils/Utils';
 import { BrandLogo } from './BrandHeader';
-import { capitalizeFirst } from './logic';
+import { capitalizeFirst, formatCountdown, resolveQrPresentation } from './logic';
 import { TotalRow } from './OrderView';
 import type { DisplayBrand } from './useDisplayBrand';
 
@@ -101,7 +102,17 @@ function PaymentFrame({
   );
 }
 
-export function PaymentView({ payment, currency, brand }: { payment: DisplayPayment; currency: string; brand: DisplayBrand }) {
+export interface PaymentViewProps {
+  payment: DisplayPayment;
+  currency: string;
+  brand: DisplayBrand;
+  /** Cobro·QR (Fase 2): ¿se puede mostrar el botón «Ya pagué»? (resolveTouch: detección + forzado). */
+  touch?: boolean;
+  /** Cobro·QR: el cliente pulsó «Ya pagué». Solo avisa a la caja; no confirma nada. */
+  onQrPaidClaim?: () => void;
+}
+
+export function PaymentView({ payment, currency, brand, touch = false, onQrPaidClaim }: PaymentViewProps) {
   const t = useTranslations('posDisplay');
   const money = (value: unknown) => moneyOrDash(value, currency);
 
@@ -138,13 +149,153 @@ export function PaymentView({ payment, currency, brand }: { payment: DisplayPaym
     );
   }
 
-  // QR: en Fase 0 sin imagen (PLAN §12 F0); el código llega en Fase 2.
+  return <QrPaymentView payment={payment} currency={currency} brand={brand} touch={touch} onQrPaidClaim={onQrPaidClaim} />;
+}
+
+/** Reloj de 1 s para la cuenta atrás del QR; se para cuando no hay vencimiento. */
+function useNow(active: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [active]);
+  return now;
+}
+
+/** `navigator.onLine`, reevaluado con los eventos online/offline; true si el navegador no lo expone. */
+function useOnline(): boolean {
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine !== false));
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine !== false);
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => {
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
+    };
+  }, []);
+  return online;
+}
+
+/**
+ * Última red bajo `QRCodeSVG`: qrcode.react LANZA durante el render si el
+ * texto no cabe en un QR («Data too long»). `resolveQrPresentation` ya
+ * degrada los textos largos, pero un error de la librería no puede tumbar la
+ * pantalla entera (PLAN §3.5). Se monta con `key={valor}` desde QrPaymentView:
+ * un código nuevo remonta el boundary y vuelve a intentar pintar.
+ */
+class QrCodeBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError(): { failed: boolean } {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo): void {
+    console.warn('[pos-display] no se pudo generar el QR; se muestran las instrucciones', error, info.componentStack);
+  }
+
+  render(): ReactNode {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
+/**
+ * Cobro · QR (PLAN §4.2, Fase 2): el código a pantalla completa (imagen del
+ * proveedor, o generado desde el texto EMVCo con qrcode.react), el nombre del
+ * medio, el total y la cuenta atrás si el cobro vence. Sin código, vencido,
+ * imagen que no carga o sin red → «Pago con QR: siga las instrucciones del
+ * cajero» (PLAN §3.5), nunca un código roto. Táctil: botón «Ya pagué» que
+ * SOLO avisa a la caja (una vez por código); no táctil: sin botón.
+ */
+export function QrPaymentView({
+  payment,
+  currency,
+  brand,
+  touch = false,
+  onQrPaidClaim,
+}: PaymentViewProps & { payment: Extract<DisplayPayment, { method: 'qr' }> }) {
+  const t = useTranslations('posDisplay');
+  const qrValue = payment.qr?.value ?? null;
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  const [claimedFor, setClaimedFor] = useState<string | null>(null);
+  const online = useOnline();
+  const now = useNow(payment.expiresAt !== null);
+  const view = resolveQrPresentation(payment, {
+    now,
+    online,
+    imageFailed: failedImage !== null && failedImage === qrValue,
+  });
+  // Un código nuevo (otro intento del cajero) vuelve a permitir avisar.
+  const claimKey = `${qrValue ?? ''}|${payment.expiresAt ?? ''}`;
+  const claimed = claimedFor === claimKey;
+  const label = payment.provider ? t('payment.qrWith', { provider: payment.provider }) : t('payment.qr');
+  // Pago mixto (F2-C r3): el QR cobra `amount` (lo pendiente), no el total.
+  // Solo se pinta cuando difiere: con un único pago sobra la línea.
+  const partialAmount =
+    typeof payment.amount === 'number' && Number.isFinite(payment.amount) && payment.amount !== payment.total ? payment.amount : null;
+
   return (
     <PaymentFrame brand={brand} total={payment.total} currency={currency}>
-      <p className="text-[length:var(--pd-heading)] uppercase tracking-wider text-neutral-500">
-        {payment.provider ? t('payment.qrWith', { provider: payment.provider }) : t('payment.qr')}
-      </p>
-      <p className="text-[length:var(--pd-big)] font-semibold text-neutral-900">{t('payment.qrInstructions')}</p>
+      <p className="text-[length:var(--pd-heading)] uppercase tracking-wider text-neutral-500">{label}</p>
+      {partialAmount !== null && (
+        <p className="text-[length:var(--pd-line)] font-semibold tabular-nums text-neutral-900" data-qr-amount={partialAmount}>
+          {t('payment.qrAmountOfTotal', { total: moneyOrDash(payment.total, currency), amount: moneyOrDash(partialAmount, currency) })}
+        </p>
+      )}
+      {view.kind === 'fallback' ? (
+        <p className="text-[length:var(--pd-big)] font-semibold text-neutral-900">
+          {view.expired ? t('payment.qrExpired') : t('payment.qrInstructions')}
+        </p>
+      ) : (
+        <div
+          className="flex aspect-square h-[min(52vh,60vw)] items-center justify-center rounded-2xl border border-neutral-200 bg-white p-[2vh]"
+          data-qr-kind={view.kind}
+        >
+          {view.kind === 'image' ? (
+            // eslint-disable-next-line @next/next/no-img-element -- imagen dinámica del proveedor de pago (URL o data URL), sin optimizador
+            <img
+              src={view.value ?? ''}
+              alt={label}
+              className="h-full w-full object-contain"
+              draggable={false}
+              onError={() => setFailedImage(qrValue)}
+            />
+          ) : (
+            <QrCodeBoundary
+              key={view.value ?? ''}
+              fallback={<p className="text-center text-[length:var(--pd-line)] font-semibold text-neutral-900">{t('payment.qrInstructions')}</p>}
+            >
+              <QRCodeSVG value={view.value ?? ''} className="h-full w-full" level="M" includeMargin={false} />
+            </QrCodeBoundary>
+          )}
+        </div>
+      )}
+      {view.kind !== 'fallback' && (
+        <p className="text-[length:var(--pd-line)] text-neutral-700">{t('payment.qrScan')}</p>
+      )}
+      {view.remainingMs !== null && (
+        <p className="text-[length:var(--pd-line)] tabular-nums text-neutral-500" aria-live="polite">
+          {t('payment.qrExpiresIn', { time: formatCountdown(view.remainingMs) })}
+        </p>
+      )}
+      {touch && onQrPaidClaim && view.kind !== 'fallback' && (
+        <button
+          type="button"
+          disabled={claimed}
+          onClick={() => {
+            if (claimed) return;
+            setClaimedFor(claimKey);
+            onQrPaidClaim();
+          }}
+          className="mt-2 rounded-full px-[calc(var(--pd-gutter)*1.5)] py-[calc(var(--pd-gutter)*0.5)] text-[length:var(--pd-line)] font-semibold text-white shadow-md transition-opacity disabled:opacity-60"
+          style={{ backgroundColor: brand.primaryColor }}
+        >
+          {claimed ? t('payment.qrPaidSent') : t('payment.qrPaidButton')}
+        </button>
+      )}
     </PaymentFrame>
   );
 }

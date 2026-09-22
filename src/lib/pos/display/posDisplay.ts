@@ -23,10 +23,12 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { DisplayEmitter } from './emitter';
 import type { DisplayPresenceEnvironment } from './presence';
 import {
+  getCachedCustomerDisplaySettings,
   hasCustomerDisplaySettingsCache,
   isCustomerDisplayEnabled,
   loadCustomerDisplaySettings,
   refreshCustomerDisplaySettings,
+  toDisplayPresentationSettings,
 } from './settings';
 import { getOrCreateLocalTerminalId } from './terminal';
 import { BroadcastChannelTransport, isBroadcastChannelSupported, type DisplayTransport } from './transport';
@@ -119,6 +121,8 @@ export function getPosDisplayEmitter(): DisplayEmitter {
     instance = new DisplayEmitter({
       createTransport: createBrowserTransport,
       isEnabled: () => isCustomerDisplayEnabled(getOrganizationId()),
+      // Fase 2: los ajustes de presentación viajan en hello.settings desde la misma caché.
+      getSettings: () => toDisplayPresentationSettings(getCachedCustomerDisplaySettings(getOrganizationId())),
     });
   }
   return instance;
@@ -307,8 +311,10 @@ export function stopPosDisplay(): void {
 }
 
 /**
- * Aplica el interruptor que YA está en la caché de settings.ts, sin leer la
- * BD: encendido → el emisor abre el transporte y saluda; apagado → lo cierra.
+ * Aplica los ajustes que YA están en la caché de settings.ts, sin leer la
+ * BD: encendido → el emisor abre el transporte y saluda; apagado → lo cierra;
+ * encendido y ya abierto → vuelve a saludar con los ajustes nuevos (Fase 2:
+ * propina, calificación… sin recargar la pantalla, PLAN §5.2).
  * La tarjeta de configuración lo llama tras guardar: el servicio fijó la
  * caché con el valor recién escrito (`primeCustomerDisplaySettings`), así
  * que releer sería una consulta de más y, si fallara, apagaría una caja que

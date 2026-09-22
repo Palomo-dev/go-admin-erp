@@ -46,7 +46,10 @@ import { QrPaymentDialog } from '@/components/shared/QrPaymentDialog';
 import { useMobileNative } from '@/hooks/useMobileNative';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
-import { resolveCashReceived, toDisplayPayment } from '@/lib/pos/display/payment';
+import { isQrPaymentCode, pickQrFromProviderResponse, resolveCashReceived, resolveDisplayQr, resolveQrChargeAmount, toDisplayPayment } from '@/lib/pos/display/payment';
+import { useCustomerDisplayPresence } from '@/components/pos/display/useCustomerDisplayPresence';
+import { TipFromDisplayNotice } from '@/components/pos/display/TipFromDisplayNotice';
+import { applyTipToPrefilledPayment } from '@/components/pos/display/tipNotice';
 import { isDesktop } from '@/lib/utils/desktop';
 import { newSaleId, ticketSaleNumber } from '@/lib/offline/salesOutbox';
 
@@ -170,8 +173,24 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [qrReference, setQrReference] = useState<string>('');
   const [qrProviderLabel, setQrProviderLabel] = useState<string>('');
   const [qrExpiresAt, setQrExpiresAt] = useState<string | undefined>();
+  // Importe por el que se generó el QR (F2-C, C2): el de la PROPIA entrada QR
+  // en pago mixto, no `remaining` (que ya descuenta esa entrada pre-rellenada).
+  // Lo comparten el proveedor, el modal, la pantalla del cliente y onPaid.
+  const [qrAmount, setQrAmount] = useState<number | undefined>();
+  // Id de la entrada de pago desde la que se generó el QR (ronda 5, QA-2):
+  // onPaid la confirma (método e importe del código) en vez de añadir otra,
+  // que duplicaba el pago (25.000 → 50.000 pagados sobre 25.000).
+  const [qrEntryId, setQrEntryId] = useState<string | undefined>();
   // Guarda el metodo QR usado para registrar el pago correcto al confirmar
   const [qrPaymentMethod, setQrPaymentMethod] = useState<string>('');
+  // Pantalla del cliente (Fase 2, Cobro·QR): «Mostrar en pantalla del cliente»,
+  // marcado por defecto al generar el QR si hay pantalla conectada (indicador de F0).
+  const displayPresence = useCustomerDisplayPresence();
+  const displayConnectedRef = useRef(false);
+  useEffect(() => {
+    displayConnectedRef.current = displayPresence.connected;
+  }, [displayPresence.connected]);
+  const [showQrOnDisplay, setShowQrOnDisplay] = useState(false);
 
   // Estados para búsqueda de direcciones de clientes
   const [addressSearch, setAddressSearch] = useState<string>('');
@@ -216,6 +235,29 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [touchedIds, setTouchedIds] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     if (!open || showReceipt) return;
+    // Fase 2 (Cobro·QR): con el QR generado se proyecta ESE medio y, si el
+    // cajero lo permite, el código a pantalla completa (PLAN §4.2). Con el
+    // interruptor apagado viaja sin código: la pantalla dice «Pago con QR:
+    // siga las instrucciones del cajero» (PLAN §3.5).
+    if (showQrDialog && qrPaymentMethod) {
+      const resolved = showQrOnDisplay
+        ? resolveDisplayQr({ imageUrl: qrImageUrl, data: qrData, expiresAt: qrExpiresAt })
+        : { qr: null, expiresAt: null };
+      getPosDisplayEmitter().setPayment(
+        toDisplayPayment({
+          methodCode: qrPaymentMethod,
+          methodName: qrProviderLabel || null,
+          total: cartTotal,
+          qr: resolved.qr,
+          expiresAt: resolved.expiresAt,
+          // Pago mixto (C2): el importe por el que se generó ESTE código
+          // (`qrAmount`, el de la propia entrada QR); la pantalla pinta
+          // «Total X · Este pago Y» cuando difieren.
+          amount: qrAmount ?? cartTotal,
+        }),
+      );
+      return;
+    }
     const last = payments[payments.length - 1];
     const methodCode = last?.method ?? 'cash';
     const methodName = paymentMethods.find((pm) => pm.code === methodCode)?.name ?? null;
@@ -229,7 +271,44 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         change: received === null ? null : change,
       }),
     );
-  }, [open, showReceipt, payments, paymentMethods, cartTotal, change, touchedIds]);
+  }, [
+    open,
+    showReceipt,
+    payments,
+    paymentMethods,
+    cartTotal,
+    change,
+    touchedIds,
+    showQrDialog,
+    showQrOnDisplay,
+    qrPaymentMethod,
+    qrProviderLabel,
+    qrImageUrl,
+    qrData,
+    qrExpiresAt,
+    qrAmount,
+  ]);
+
+  // Fase 2 (Cobro·QR): «Ya pagué» desde la pantalla del cliente. Solo avisa;
+  // la confirmación sigue siendo del cajero o del webhook (poller del QR).
+  useEffect(() => {
+    if (!open) return;
+    return getPosDisplayEmitter().onUp((msg) => {
+      if (msg.t !== 'qr_paid_claim' || msg.cartId !== cart.id) return;
+      toast.info('El cliente indica que ya pagó', {
+        description: 'Confirme el pago como siempre: por el estado del QR o el comprobante.',
+      });
+    });
+  }, [open, cart.id]);
+
+  // Fase 2-B (Propina en pantalla): la base sobre la que la pantalla calcula
+  // los porcentajes es la MISMA que usa handleTipPercentage (total con
+  // impuestos, sin propina ni domicilio); así «10 %» es la misma cifra en la
+  // pantalla y en la caja. La fase la abre el emisor al entrar en cobro.
+  useEffect(() => {
+    if (!open || showReceipt) return;
+    getPosDisplayEmitter().setTipBase(baseTotal);
+  }, [open, showReceipt, baseTotal]);
 
   useEffect(() => {
     if (open) {
@@ -346,6 +425,19 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setSelectedRateId('');
       setShippingFee(0);
       setShipmentPaymentStatus('paid');
+      // Cobro con QR (ronda 5, QA-3): si el cobro se cerró desde el padre con
+      // el diálogo QR abierto, sin esto el siguiente cobro proyectaría a la
+      // pantalla el código de la venta ANTERIOR con el total de la nueva.
+      setShowQrDialog(false);
+      setQrData(undefined);
+      setQrImageUrl(undefined);
+      setQrExpiresAt(undefined);
+      setQrAmount(undefined);
+      setQrEntryId(undefined);
+      setQrPaymentMethod('');
+      setQrReference('');
+      setQrProviderLabel('');
+      setShowQrOnDisplay(false);
     }
   }, [open]);
 
@@ -561,32 +653,63 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     }
   };
   
+  // F2-B ronda 3 (QA-3): la ÚNICA entrada de pago pre-rellenada (no tocada
+  // por el cajero) sigue al total con la propina en AMBOS sentidos: sube al
+  // fijar una propina (botón, importe libre o «Aplicar» del aviso de la
+  // pantalla) y BAJA al quitarla o cambiarla. Antes solo subía con «Aplicar»,
+  // y al deseleccionar el porcentaje la entrada conservaba la propina:
+  // totalPaid > cartTotal, «Cambio» = la propina retirada y, en tarjeta/QR,
+  // un pago confirmado por encima de la venta. Una entrada TOCADA (efectivo
+  // tecleado, QR confirmado por el proveedor) nunca se modifica.
+  const followTipOnPrefilledPayment = (nextTipAmount: number) => {
+    setPayments((prev) => applyTipToPrefilledPayment(prev, touchedIds, baseTotal + nextTipAmount + shippingFee));
+  };
+
   const handleTipPercentage = (percentage: number) => {
     if (tipPercentage === percentage) {
       // Deseleccionar si ya está seleccionado
       setTipPercentage(null);
       setTipAmount(0);
+      followTipOnPrefilledPayment(0);
     } else {
       setTipPercentage(percentage);
       const calculatedTip = Math.round(baseTotal * (percentage / 100));
       setTipAmount(calculatedTip);
+      followTipOnPrefilledPayment(calculatedTip);
     }
   };
-  
+
   const handleTipAmountChange = (value: number) => {
     setTipPercentage(null);
     setTipAmount(value);
+    followTipOnPrefilledPayment(value);
   };
 
   // Generar QR de pago según el método seleccionado
-  const handleQrPayment = async (methodCode: string) => {
+  // `entryId` / `entryAmount`: la entrada de pago desde la que se pulsó
+  // «Generar QR» (C2). El QR se genera por el importe de la PROPIA entrada,
+  // acotado a lo que falta tras las OTRAS entradas y nunca por encima del
+  // total (ronda 5, QA-1: 30.000 sobre 25.000 → 25.000; efectivo 15.000 +
+  // entrada 20.000 → 10.000); si queda en 0 se cae a lo pendiente y, sin
+  // nada pendiente, al total. Así lo que cobra el código es lo que ve el
+  // cliente en la pantalla.
+  const handleQrPayment = async (methodCode: string, entryId?: string, entryAmount?: number) => {
     if (!cart.branch_id) {
       toast.error('Se requiere una sucursal para procesar');
       return;
     }
     try {
       const reference = `POS-${Date.now()}-${cart.organization_id}`;
-      const amount = remaining > 0 ? remaining : cartTotal;
+      const othersTotal = payments.filter((p) => p.id !== entryId).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      // Sin saldo pendiente no se genera cobro (ronda 6, HALLAZGO R): con las
+      // otras entradas cubriendo ya el total (o total 0), resolveQrChargeAmount
+      // caería al total y el proveedor crearía un cobro REAL sobre una venta
+      // ya cubierta. Se corta antes del fetch.
+      if (Math.max(0, cartTotal - othersTotal) <= 0) {
+        toast.error('No hay saldo pendiente para cobrar con QR');
+        return;
+      }
+      const amount = resolveQrChargeAmount({ entryAmount, othersTotal, total: cartTotal });
 
       // Guardar el metodo QR para registrar el pago correcto al confirmar
       setQrPaymentMethod(methodCode);
@@ -671,9 +794,17 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
       setQrReference(reference);
       setQrProviderLabel(providerLabel);
-      setQrData(qr.qr_image || qr.qr_string || qr.redirectURL || undefined);
-      setQrImageUrl(qr.qr_image || undefined);
+      // Qué campo trae cada proveedor (Bre-B `qr`, Redeban `qr_string` +
+      // `qr_image_base64`, Wompi `qr_image`, Bancolombia `redirectURL`): lo
+      // decide pickQrFromProviderResponse, el mismo mapeo que prueba la
+      // pantalla del cliente; aquí no se enumeran campos.
+      const picked = pickQrFromProviderResponse(qr);
+      setQrData(picked.data);
+      setQrImageUrl(picked.imageUrl);
       setQrExpiresAt(session?.expires_at || undefined);
+      setQrAmount(amount);
+      setQrEntryId(entryId);
+      setShowQrOnDisplay(displayConnectedRef.current);
       setShowQrDialog(true);
     } catch (err) {
       console.error('Error en handleQrPayment:', err);
@@ -2048,6 +2179,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                               id={`amount-${payment.id}`}
                               type="number"
                               min="0"
+                              max={isQrPaymentCode(payment.method) ? cartTotal : undefined}
                               step="0.01"
                               value={payment.amount}
                               onChange={(e) => updatePayment(payment.id, 'amount', e.target.value)}
@@ -2080,12 +2212,15 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                         const currentMethod = paymentMethods.find(m => m.id === payment.method);
                         const qrCodes = ['redeban_qr', 'breb_qr', 'bancolombia_qr_wompi', 'bancolombia_qr'];
                         if (currentMethod && qrCodes.includes(currentMethod.code)) {
+                          // Ronda 6 (HALLAZGO R): con las OTRAS entradas cubriendo el total no hay nada que cobrar por QR.
+                          const othersCoverTotal = payments.filter((p) => p.id !== payment.id).reduce((sum, p) => sum + (Number(p.amount) || 0), 0) >= cartTotal;
                           return (
                             <Button
                               type="button"
                               variant="outline"
                               className="w-full mt-2"
-                              onClick={() => handleQrPayment(currentMethod.code)}
+                              disabled={othersCoverTotal}
+                              onClick={() => handleQrPayment(currentMethod.code, payment.id, payment.amount)}
                             >
                               <QrCode className="h-4 w-4 mr-2" />
                               Generar QR de pago
@@ -2122,6 +2257,26 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                       </Label>
                     </div>
                     
+                    {/* Propina elegida en la pantalla del cliente (F2-B): aviso no bloqueante; nada se aplica solo */}
+                    <TipFromDisplayNotice
+                      open={open && !showReceipt}
+                      currency={currency?.code || 'COP'}
+                      cashierMovedOn={tipAmount > 0 || touchedIds.size > 0}
+                      onApply={(selection) => {
+                        setTipPercentage(selection.percent);
+                        setTipAmount(selection.amount);
+                        // F2-B ronda 2: el total sube con la propina; la ÚNICA entrada de
+                        // pago pre-rellenada (no tocada por el cajero) sigue al total nuevo
+                        // (misma regla que la pre-carga) para no dejar «Falta dinero» en
+                        // tarjeta/QR, donde nadie teclea. Una entrada TOCADA nunca se
+                        // modifica; la ajustada sigue sin marcarse como tocada.
+                        // Ronda 3 (QA-1, dinero): una entrada QR YA COBRADA por el proveedor
+                        // (onPaid la marca en `touchedIds`) no se reescribe: la propina
+                        // queda como «Falta dinero» y se cobra aparte, que es la verdad.
+                        followTipOnPrefilledPayment(selection.amount);
+                      }}
+                    />
+
                     {/* Botones de porcentaje */}
                     <div className="grid grid-cols-4 gap-2 mb-3">
                       {[5, 10, 15, 20].map((pct) => (
@@ -2339,21 +2494,59 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         qrImageUrl={qrImageUrl}
         reference={qrReference}
         organizationId={cart.organization_id}
-        amount={remaining > 0 ? remaining : cartTotal}
+        amount={qrAmount ?? (remaining > 0 ? remaining : cartTotal)}
         currency={currency?.code || 'COP'}
         providerLabel={qrProviderLabel}
         expiresAt={qrExpiresAt}
+        extraControl={
+          displayPresence.emitting ? (
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded"
+                checked={showQrOnDisplay}
+                onChange={(e) => setShowQrOnDisplay(e.target.checked)}
+              />
+              <span>Mostrar en pantalla del cliente</span>
+              {!displayPresence.connected && <span className="text-xs text-gray-400">(sin pantalla conectada)</span>}
+            </label>
+          ) : null
+        }
         onPaid={() => {
           setShowQrDialog(false);
           toast.success('Pago QR confirmado');
-          // Agregar el pago QR con el metodo correcto (redeban_qr, breb_qr, etc)
-          const qrPaymentAmount = remaining > 0 ? remaining : cartTotal;
+          // Pantalla del cliente (F2-C, C1): con el pago confirmado la fase
+          // de propina queda decidida (equivale a «Omitir» si seguía
+          // pendiente); al reproyectar el medio sin código la pantalla pasa a
+          // Cobro/Gracias y nunca vuelve a preguntar la propina al cliente
+          // que ya pagó. Sin fase pendiente no hace nada.
+          getPosDisplayEmitter().skipTip();
+          // Confirmar la entrada QR desde la que se generó el código
+          // (`qrEntryId`) con el metodo correcto (redeban_qr, breb_qr, etc) y
+          // el importe que cobró ESE código (C2). Antes se AÑADÍA una entrada
+          // nueva sin retirar la original y el pago quedaba duplicado
+          // (25.000 → 50.000 pagados; ronda 5, QA-2). El append queda solo
+          // como respaldo si la entrada ya no existe (el cajero la quitó).
+          const qrPaymentAmount = qrAmount ?? (remaining > 0 ? remaining : cartTotal);
           const newPayment: PaymentEntry = {
             id: crypto.randomUUID(),
             method: qrPaymentMethod || 'redeban_qr',
             amount: qrPaymentAmount,
           };
-          setPayments(prev => [...prev, newPayment]);
+          setPayments(prev => prev.some(p => p.id === qrEntryId)
+            ? prev.map(p => p.id === qrEntryId ? { ...p, method: qrPaymentMethod || p.method, amount: qrPaymentAmount } : p)
+            : [...prev, newPayment]);
+          // La entrada confirmada por el proveedor queda INTOCABLE (ronda 6,
+          // HALLAZGO P): sin esto seguía siendo «la única entrada pre-rellenada»
+          // y un «Aplicar» posterior del aviso de propina (applyTipToPrefilledPayment)
+          // la reescribía a total + propina: la venta registraba un pago QR
+          // por más de lo que cobró el proveedor. Marcada como tocada, la
+          // propina queda en «Falta dinero» y el cajero la cobra por otro
+          // medio. resolveCashReceived solo mira efectivo: «recibido/cambio»
+          // no cambia. Se marca la entrada de origen si existe; si el cajero
+          // la quitó, la añadida como respaldo.
+          const confirmedQrEntryId = qrEntryId !== undefined && payments.some(p => p.id === qrEntryId) ? qrEntryId : newPayment.id;
+          setTouchedIds(prev => (prev.has(confirmedQrEntryId) ? prev : new Set(prev).add(confirmedQrEntryId)));
         }}
       />
       {hasSerialItems && (

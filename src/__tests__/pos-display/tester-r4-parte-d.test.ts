@@ -159,6 +159,10 @@ afterEach(() => {
 // T1/T2 · época por organización
 // ---------------------------------------------------------------------------
 
+// Fase 2 (F2-A): `pos_customer_display` es el esquema completo de settings.ts
+// (propina, calificación, reposo, idioma, táctil) y lo que se lee o se escribe
+// lleva siempre todos los campos con sus valores por defecto. Estas pruebas
+// son del interruptor maestro, así que comparan con objectContaining.
 describe('settings.ts · época por organización (T1/T2)', () => {
   it('carga inicial y relectura fuera de orden: manda la relectura (más reciente) y la carga superada devuelve lo cacheado', async () => {
     db.hold = true;
@@ -177,8 +181,8 @@ describe('settings.ts · época por organización (T1/T2)', () => {
     const [fromLoad, fromRefresh] = await Promise.all([load, refresh]);
     expect(getCachedCustomerDisplaySettings(120).enabled).toBe(true);
     // La carga superada NO devuelve su propia respuesta vieja (apagado): devuelve lo que hay.
-    expect(fromLoad).toEqual({ enabled: true });
-    expect(fromRefresh).toEqual({ enabled: true });
+    expect(fromLoad).toEqual(expect.objectContaining({ enabled: true }));
+    expect(fromRefresh).toEqual(expect.objectContaining({ enabled: true }));
   });
 
   it('tres relecturas que responden 0, 2, 1: gana la 2 y la 1 (tardía) se descarta', async () => {
@@ -204,7 +208,7 @@ describe('settings.ts · época por organización (T1/T2)', () => {
     release(1); // superada: su «apagado» no debe pisar el «encendido» de la 2
     await Promise.all([r0, r1, r2]);
     expect(getCachedCustomerDisplaySettings(120).enabled).toBe(true);
-    expect(await r1).toEqual({ enabled: true }); // devuelve lo vigente, no su instantánea
+    expect(await r1).toEqual(expect.objectContaining({ enabled: true })); // devuelve lo vigente, no su instantánea
   });
 
   it('prime con una relectura en vuelo: la relectura que llega después no lo pisa y devuelve lo primado', async () => {
@@ -215,7 +219,7 @@ describe('settings.ts · época por organización (T1/T2)', () => {
     await flush();
     primeCustomerDisplaySettings(120, { enabled: true }); // esta ventana acaba de guardar «encendido»
     release(0);
-    expect(await refresh).toEqual({ enabled: true });
+    expect(await refresh).toEqual(expect.objectContaining({ enabled: true }));
     expect(getCachedCustomerDisplaySettings(120).enabled).toBe(true);
   });
 
@@ -226,7 +230,7 @@ describe('settings.ts · época por organización (T1/T2)', () => {
     await flush();
     primeCustomerDisplaySettings(120, { enabled: true });
     release(0, 'error');
-    expect(await refresh).toEqual({ enabled: true });
+    expect(await refresh).toEqual(expect.objectContaining({ enabled: true }));
     expect(getCachedCustomerDisplaySettings(120).enabled).toBe(true);
   });
 
@@ -242,7 +246,7 @@ describe('settings.ts · época por organización (T1/T2)', () => {
     await refresh;
     expect(getCachedCustomerDisplaySettings(120).enabled).toBe(false); // fallback provisional
     release(1);
-    expect(await load).toEqual({ enabled: true });
+    expect(await load).toEqual(expect.objectContaining({ enabled: true }));
     expect(getCachedCustomerDisplaySettings(120).enabled).toBe(true);
   });
 
@@ -253,7 +257,7 @@ describe('settings.ts · época por organización (T1/T2)', () => {
     await flush();
     primeCustomerDisplaySettings(120, { enabled: false });
     release(0);
-    expect(await load121).toEqual({ enabled: true });
+    expect(await load121).toEqual(expect.objectContaining({ enabled: true }));
     expect(getCachedCustomerDisplaySettings(121).enabled).toBe(true);
     expect(getCachedCustomerDisplaySettings(120).enabled).toBe(false);
   });
@@ -264,7 +268,7 @@ describe('settings.ts · época por organización (T1/T2)', () => {
     clearCustomerDisplaySettingsCache();
     expect(hasCustomerDisplaySettingsCache(120)).toBe(false);
     db.row = { settings: { enabled: false } };
-    expect(await loadCustomerDisplaySettings(120)).toEqual({ enabled: false }); // época 1 > applied 0
+    expect(await loadCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: false })); // época 1 > applied 0
     expect(hasCustomerDisplaySettingsCache(120)).toBe(true);
   });
 
@@ -274,10 +278,10 @@ describe('settings.ts · época por organización (T1/T2)', () => {
     await flush();
     primeCustomerDisplaySettings(120, { enabled: true });
     // Nueva carga: resuelve al instante con la caché, sin encolar otra lectura.
-    expect(await loadCustomerDisplaySettings(120)).toEqual({ enabled: true });
+    expect(await loadCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: true }));
     expect(db.reads).toBe(1);
     release(0);
-    expect(await first).toEqual({ enabled: true });
+    expect(await first).toEqual(expect.objectContaining({ enabled: true }));
   });
 });
 

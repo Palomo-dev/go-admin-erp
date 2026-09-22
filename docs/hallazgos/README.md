@@ -54,6 +54,17 @@ vive fuera del repo, en `docs/auditoria-finanzas/` (ignorado por `.gitignore`).
 | [F-39](F-39.md) | Fuga cross-tenant en políticas sin filtro de organización | Alta | Documentado | Fase 2 |
 | [F-40](F-40.md) | ImportLeadsCsv inserta columna GENERADA y no setea customer_type | Media | Documentado | Fase 2 |
 | [F-41](F-41.md) | stock_levels y stock_movements son dos fuentes de verdad que ya divergieron | Alta (deuda estructural) | Documentado | Fase 3c |
+| [F-42](F-42.md) | La tasa de impuesto no se persiste en la línea de factura | Bloqueante | En corrección | Fase 3a |
+| [F-43](F-43.md) | tax_account_mapping es tabla muerta y apunta a cuentas inexistentes | Baja (deuda) | Documentado | Fase 3c |
+| [F-44](F-44.md) | Bug de copiar-pegar en fn_recalc_invoice_totals (rama de compras) | Media | Documentado | Fase 3b |
+| [F-45](F-45.md) | fn_create_journal_entry invierte el IVA en ventas | Crítica | Corregido (migración 2026-09-19; backfill pendiente) | Fase 3a |
+| [F-46](F-46.md) | is_default sin poblar en 70 de 71 orgs | Media | Pendiente | Fase 3a |
+| [F-47](F-47.md) | fn_create_journal_entry ejecutable por anon y authenticated | Alta | Corregido (REVOKE) | Fase 1 |
+| [F-48](F-48.md) | Doble asiento POS por sales e invoice_sales | Crítica | Diagnóstico cerrado; reversión pendiente | Fase 3a |
+| [F-49](F-49.md) | Factura en draft con asiento posted | Alta | Documentado | Fase 3a |
+| [F-50](F-50.md) | tax_code inconsistente entre rutas | Media | Documentado | Fase 3a |
+| [F-51](F-51.md) | Divergencia de redondeo de 1 centavo entre rutas | Baja | Documentado | Fase 3b |
+| [F-52](F-52.md) | La ruta POS ignoraba contado frente a crédito | Crítica | Corregido y verificado (20260919235511) | Fase 3a |
 
 ## Notas
 

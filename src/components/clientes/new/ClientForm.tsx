@@ -21,6 +21,7 @@ import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 import { HabeasDataCheckbox } from '@/components/shared/DianLookupButton';
 import type { DianNormalizedData } from '@/lib/services/dianLookupService';
+import { buildCustomerInsert, type CustomerFormValues } from '@/lib/services/customers/customerPayload';
 
 interface ClientFormProps {
   organizationId: number;
@@ -33,6 +34,12 @@ interface ClientFormProps {
   onCancel?: () => void;
   /** Modo embebido: oculta redirecciones y usa callbacks (para diálogos) */
   embedded?: boolean;
+  /**
+   * Valores iniciales (solo en creación). Los usa el asistente para abrir
+   * ESTE mismo formulario con lo que entendió del mensaje: persona/empresa,
+   * documento, teléfono… El usuario revisa y guarda como siempre.
+   */
+  initialValues?: Partial<CustomerFormValues>;
 }
 
 type DocumentType = string;
@@ -60,26 +67,26 @@ const fallbackDocumentTypes: DocumentTypeOption[] = [
   { value: 'other', label: 'Otro', forCompany: true, forPerson: true }
 ];
 
-export function ClientForm({ organizationId, branchId, clientId, mode = 'create', onSuccess, onCancel, embedded = false }: ClientFormProps) {
+export function ClientForm({ organizationId, branchId, clientId, mode = 'create', onSuccess, onCancel, embedded = false, initialValues }: ClientFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const isEditMode = mode === 'edit' && !!clientId;
   
   // Estados del formulario
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    documentType: '' as DocumentType,
-    documentNumber: '',
-    dv: '',
-    companyName: '',
-    tradeName: '',
-    address: '',
-    municipalityId: '' as string,
-    notes: '',
-    tags: '',
+    firstName: initialValues?.firstName ?? '',
+    lastName: initialValues?.lastName ?? '',
+    email: initialValues?.email ?? '',
+    phone: initialValues?.phone ?? '',
+    documentType: (initialValues?.documentType ?? '') as DocumentType,
+    documentNumber: initialValues?.documentNumber ?? '',
+    dv: initialValues?.dv ?? '',
+    companyName: initialValues?.companyName ?? '',
+    tradeName: initialValues?.tradeName ?? '',
+    address: initialValues?.address ?? '',
+    municipalityId: (initialValues?.municipalityId ?? '') as string,
+    notes: initialValues?.notes ?? '',
+    tags: initialValues?.tags ?? '',
   });
   const [locationData, setLocationData] = useState<LocationData>({
     country: '',
@@ -91,7 +98,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   });
 
   // Tipo de cliente: persona o empresa
-  const [customerType, setCustomerType] = useState<CustomerType>('person');
+  const [customerType, setCustomerType] = useState<CustomerType>(initialValues?.customerType ?? 'person');
   // Empresa padre (para clientes persona vinculados a una empresa)
   const [parentCustomerId, setParentCustomerId] = useState<string>('');
   const [companies, setCompanies] = useState<{id: string; name: string}[]>([]);
@@ -99,11 +106,11 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   const [documentTypes, setDocumentTypes] = useState<DocumentTypeOption[]>(fallbackDocumentTypes);
   
   // Estados para roles seleccionados (desde catálogo)
-  const [selectedRoles, setSelectedRoles] = useState<string[]>(['cliente', 'huesped']);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(initialValues?.roles?.length ? initialValues.roles : ['cliente', 'huesped']);
   const [customerRoles, setCustomerRoles] = useState<{code: string; label: string; description: string; is_default: boolean}[]>([]);
   
   // Estados para responsabilidades fiscales
-  const [selectedFiscal, setSelectedFiscal] = useState<string[]>(['R-99-PN']);
+  const [selectedFiscal, setSelectedFiscal] = useState<string[]>(initialValues?.fiscalResponsibilities?.length ? initialValues.fiscalResponsibilities : ['R-99-PN']);
   const [fiscalOptions, setFiscalOptions] = useState<{code: string; description: string}[]>([]);
   
   
@@ -536,29 +543,20 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           return; // Detener el envío - se mostrará el modal de duplicado
         }
         
-        // Preparar los datos para inserción
-        const customerData = {
-          organization_id: organizationId,
-          branch_id: branchId || null,
-          first_name: customerType === 'company' ? (formData.companyName || '') : formData.firstName,
-          last_name: customerType === 'company' ? '' : formData.lastName,
-          email: formData.email || null,
-          phone: formData.phone || null,
-          identification_type: formData.documentType,
-          identification_number: formData.documentNumber || null,
-          dv: formData.dv ? parseInt(formData.dv, 10) : null,
-          company_name: formData.companyName || null,
-          trade_name: formData.tradeName || null,
-          address: formData.address || null,
-          fiscal_municipality_id: formData.municipalityId || null,
-          notes: formData.notes || null,
-          roles: selectedRoles,
-          fiscal_responsibilities: selectedFiscal,
-          tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(t => t) : [],
-          customer_type: customerType,
-          parent_customer_id: customerType === 'person' && parentCustomerId ? parentCustomerId : null,
-          created_at: new Date().toISOString()
-        };
+        // Preparar los datos para inserción. La traducción formulario → fila
+        // vive en `customerPayload.ts` y la comparte el asistente: un solo sitio.
+        const customerData = buildCustomerInsert(
+          {
+            ...formData,
+            customerType,
+            city: initialValues?.city ?? '',
+            roles: selectedRoles,
+            fiscalResponsibilities: selectedFiscal,
+            parentCustomerId,
+            currentSoftware: initialValues?.currentSoftware ?? '',
+          },
+          { organizationId, branchId: branchId ?? null }
+        );
         
         // Insertar el cliente
         const { data: newCustomer, error: insertError } = await supabase

@@ -3,7 +3,8 @@
  *
  * El objeto va al bucket PRIVADO `ai-attachments` (migración
  * `20260910210000_go_assistant_f4_adjuntos_y_vision.sql`). No se devuelve
- * ninguna URL: lo que vuelve al cliente es el `id` de la fila. Quien quiera ver
+ * ninguna URL de lectura: prepare devuelve solo una URL firmada de escritura;
+ * finalize devuelve el `id` de la fila. Quien quiera ver
  * el original pide una URL firmada corta por su camino; una foto de factura
  * lleva NIT, valores y a veces datos de personas (§9.6).
  *
@@ -18,11 +19,15 @@
  *   del asistente (20 MB por llamada y una extracción de visión detrás).
  */
 
-import { randomUUID } from 'crypto';
+import { randomUUID, createHmac, timingSafeEqual } from 'crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { checkRateLimit } from '@/lib/security/rateLimit';
+import { normalizeAttachmentMime } from '@/lib/ai/assistant/attachments';
+import { readWsSessionSecret } from '@/lib/security/wsSessionToken';
+import { readRealSecret } from '@/lib/security/secrets';
+import type { ServerOrgContext } from '@/lib/utils/orgContext';
 
 /** 20 MB, el mismo tope que declara el bucket. */
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -60,10 +65,142 @@ const MIME_ALIASES: Record<string, string> = {
 
 function normalizeMime(raw: string): string {
   const base = raw.split(';')[0]?.trim().toLowerCase() ?? '';
-  return MIME_ALIASES[base] ?? base;
+  return Object.prototype.hasOwnProperty.call(MIME_ALIASES, base) ? MIME_ALIASES[base] : base;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Autorización pendiente sin filas incompletas visibles para visión. La clave
+// existente se separa por propósito: estos tokens no son tokens de voz.
+interface UploadClaims {
+  id: string; organizationId: number; userId: string; path: string;
+  mime: string; bytes: number; conversationId: string | null; exp: number;
+}
+const UPLOAD_TTL = 2 * 60 * 60 * 1000;
+const attachmentJson = (body: object, status = 200) => NextResponse.json(body, {
+  status, headers: { 'Cache-Control': 'no-store' },
+});
+const fail = (error: string, code: string, status: number) => attachmentJson({ error, code }, status);
+function signature(payload: string, secret: string): Buffer {
+  return createHmac('sha256', secret).update(`assistant-attachment-v1:${payload}`).digest();
+}
+function readAuthorization(token: unknown, secret: string, ctx: ServerOrgContext): UploadClaims | null {
+  if (typeof token !== 'string' || token.length > 4096) return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const actual = Buffer.from(parts[1], 'base64url');
+  const expected = signature(parts[0], secret);
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
+  try {
+    const claims: UploadClaims = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
+    if (claims.organizationId !== ctx.organizationId || claims.userId !== ctx.userId ||
+        !Number.isFinite(claims.exp) || claims.exp <= Date.now() || claims.exp > Date.now() + UPLOAD_TTL ||
+        !UUID_RE.test(claims.id) || !Object.prototype.hasOwnProperty.call(ALLOWED, claims.mime) ||
+        !Number.isInteger(claims.bytes) || claims.bytes <= 0 || claims.bytes > MAX_BYTES ||
+        claims.path !== `org/${ctx.organizationId}/${claims.id}.${ALLOWED[claims.mime].ext}` ||
+        (claims.conversationId !== null && !UUID_RE.test(claims.conversationId))) return null;
+    return claims;
+  } catch { return null; }
+}
+
+async function signedUpload(request: NextRequest, ctx: ServerOrgContext) {
+  // JSON es solo control, nunca contiene binarios. Acotar también cuerpos chunked.
+  const reader = request.body?.getReader();
+  if (!reader) return fail('Falta la solicitud.', 'BAD_REQUEST', 400);
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  while (true) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    length += chunk.value.byteLength;
+    if (length > 8192) { await reader.cancel(); return fail('Solicitud demasiado grande.', 'TOO_LARGE', 413); }
+    chunks.push(chunk.value);
+  }
+  let body: Record<string, unknown>;
+  try {
+    const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return fail('Solicitud inválida.', 'BAD_REQUEST', 400);
+    const parsedBody = parsed as Record<string, unknown>;
+    body = readOrgBody(ctx, parsedBody, { route: 'ai-assistant/attachments', request });
+  } catch (error) {
+    if (error instanceof OrgContextError) return fail(error.message, error.code, error.statusCode);
+    return fail('JSON inválido.', 'BAD_REQUEST', 400);
+  }
+  if (body.operation !== 'prepare' && body.operation !== 'finalize') return fail('Operación inválida.', 'BAD_REQUEST', 400);
+  // Alternativa para despliegues sin voz. Solo se usa como clave HMAC con
+  // propósito separado, nunca como cliente privilegiado ni se envía al navegador.
+  const secret = readWsSessionSecret() ?? readRealSecret('SUPABASE_SERVICE_ROLE_KEY', { min: 32 });
+  if (!secret) return fail('La subida directa no está configurada. Contacta al administrador.', 'UPLOAD_NOT_CONFIGURED', 503);
+  const storage = ctx.supabase.storage.from(BUCKET);
+  if (body.operation === 'prepare') {
+    const limit = await checkRateLimit(`assistant:attach:${ctx.userId}`, { limit: 20, windowMs: 3600000 });
+    if (!limit.allowed) return fail('Demasiadas subidas. Inténtalo más tarde.', 'RATE_LIMITED', 429);
+    if (typeof body.bytes !== 'number' || !Number.isInteger(body.bytes) || body.bytes <= 0) return fail('Tamaño inválido.', 'EMPTY_FILE', 400);
+    if (body.bytes > MAX_BYTES) return fail('El archivo supera el máximo de 20 MB.', 'TOO_LARGE', 413);
+    if (typeof body.filename !== 'string' || body.filename.length > 255 || typeof body.mime !== 'string') return fail('Archivo inválido.', 'BAD_REQUEST', 400);
+    const mime = normalizeAttachmentMime(normalizeMime(body.mime), body.filename);
+    if (!Object.prototype.hasOwnProperty.call(ALLOWED, mime)) return fail('Tipo de archivo no admitido.', 'UNSUPPORTED_TYPE', 415);
+    const conversationId = body.conversation_id ?? null;
+    if (conversationId !== null) {
+      if (typeof conversationId !== 'string' || !UUID_RE.test(conversationId)) return fail('Conversación inválida.', 'BAD_CONVERSATION', 400);
+      const { data, error } = await ctx.supabase.from('ai_assistant_conversations').select('id')
+        .eq('id', conversationId).eq('organization_id', ctx.organizationId).eq('user_id', ctx.userId).maybeSingle();
+      if (error) return fail('No pude verificar la conversación.', 'LOOKUP_FAILED', 503);
+      if (!data) return fail('Esa conversación no es tuya.', 'CONVERSATION_NOT_FOUND', 404);
+    }
+    const id = randomUUID();
+    const path = `org/${ctx.organizationId}/${id}.${ALLOWED[mime].ext}`;
+    const { data, error } = await storage.createSignedUploadUrl(path, { upsert: false });
+    if (error || !data) return fail('No pude preparar la subida.', 'UPLOAD_FAILED', 502);
+    const claims: UploadClaims = { id, path, mime, bytes: body.bytes, conversationId,
+      userId: ctx.userId, organizationId: ctx.organizationId, exp: Date.now() + UPLOAD_TTL };
+    const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
+    return attachmentJson({ uploadUrl: data.signedUrl, mime,
+      finalizeToken: `${payload}.${signature(payload, secret).toString('base64url')}` });
+  }
+  const claims = readAuthorization(body.finalizeToken, secret, ctx);
+  if (!claims) return fail('Autorización de subida inválida o vencida.', 'INVALID_UPLOAD', 403);
+  const lookup = () => ctx.supabase.from('ai_attachments').select('id, kind, mime, bytes, created_at')
+    .eq('id', claims.id).eq('organization_id', ctx.organizationId).eq('user_id', ctx.userId)
+    .eq('storage_path', claims.path).maybeSingle();
+  const existing = await lookup();
+  if (existing.error) return fail('No pude verificar el adjunto.', 'LOOKUP_FAILED', 503);
+  const result = (row: { id: string; kind: string; mime: string; bytes: number; created_at: string }, status: number) =>
+    attachmentJson({ id: row.id, kind: row.kind, mime: row.mime, bytes: row.bytes, createdAt: row.created_at }, status);
+  if (existing.data) return result(existing.data, 200);
+  // Leer solo el path firmado, nunca un path arbitrario recibido en finalize.
+  const filename = claims.path.split('/').pop()!;
+  const { data: objects, error } = await storage.list(`org/${ctx.organizationId}`, { search: filename, limit: 2 });
+  if (error) return fail('No pude verificar Storage.', 'STORAGE_UNAVAILABLE', 503);
+  const object = objects?.find((entry) => entry.name === filename);
+  if (!object) return fail('La subida aún no aparece en Storage. Reintenta.', 'UPLOAD_PENDING', 409);
+  // storage.search no devuelve owner (verificado por MCP). La pertenencia de
+  // la autorización pendiente se verifica con HMAC userId + org + path, no con
+  // un campo owner ficticio del listado. Storage sigue usando la sesión/RLS.
+  const bytes: unknown = object.metadata?.size;
+  const mime: unknown = object.metadata?.mimetype;
+  if (typeof bytes !== 'number' || bytes !== claims.bytes || bytes > MAX_BYTES || bytes <= 0 ||
+      typeof mime !== 'string' || normalizeMime(mime) !== claims.mime) {
+    const cleanup = await storage.remove([claims.path]);
+    if (cleanup.error) console.error('[GO Assistant] No pude limpiar una subida inválida:', cleanup.error.message);
+    return fail('El tamaño o tipo guardado no coincide con el archivo autorizado.', 'INVALID_OBJECT', 422);
+  }
+  // PK emitida en prepare: las carreras/reintentos no duplican metadata.
+  const inserted = await ctx.supabase.from('ai_attachments').insert({ id: claims.id,
+    organization_id: ctx.organizationId, user_id: ctx.userId, conversation_id: claims.conversationId,
+    storage_path: claims.path, mime: claims.mime, bytes, kind: ALLOWED[claims.mime].kind,
+  }).select('id, kind, mime, bytes, created_at').single();
+  if (inserted.error || !inserted.data) {
+    if (inserted.error?.code === '23505') {
+      const retry = await lookup();
+      if (retry.data) return result(retry.data, 200);
+    }
+    // No borrar ante errores transitorios: el cliente conserva la autorización
+    // y puede finalizar el mismo objeto, sin subirlo ni facturarlo otra vez.
+    return fail('No pude registrar el documento. Reintenta.', 'INSERT_FAILED', 503);
+  }
+  return result(inserted.data, 201);
+}
 
 export async function POST(request: NextRequest) {
   let ctx;
@@ -74,6 +211,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
     }
     throw err;
+  }
+
+  if (request.headers.get('content-type')?.split(';')[0].trim() === 'application/json') {
+    const limit = await checkRateLimit(`assistant:attach-control:${ctx.organizationId}:${ctx.userId}`, { limit: 100, windowMs: 3600000 });
+    if (!limit.allowed) return fail('Demasiadas solicitudes. Inténtalo más tarde.', 'RATE_LIMITED', 429);
+    return signedUpload(request, ctx);
   }
 
   // §9.1.4: adjuntos por hora. Cada uno arrastra una extracción de visión, que
@@ -134,9 +277,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const mime = normalizeMime(file.type || '');
+  const mime = normalizeAttachmentMime(normalizeMime(file.type || ''), file.name);
   const spec = ALLOWED[mime];
-  if (!spec) {
+  if (!Object.prototype.hasOwnProperty.call(ALLOWED, mime)) {
     return NextResponse.json(
       {
         error: `No puedo leer archivos de tipo "${file.type || 'desconocido'}". Acepto imágenes, PDF, CSV y Excel.`,

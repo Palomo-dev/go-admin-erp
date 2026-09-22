@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/utils/Utils';
 import { ConfiguracionService } from '../configuracionService';
-import { DEFAULT_CUSTOMER_DISPLAY_SETTINGS, type CustomerDisplaySettings } from '@/lib/pos/display/settings';
+import { defaultCustomerDisplaySettings, type CustomerDisplaySettings } from '@/lib/pos/display/settings';
+import { AjustesPantallaSection } from './AjustesPantallaSection';
+import { EstaCajaSection } from './EstaCajaSection';
 import { applyPosDisplaySettings } from '@/lib/pos/display/posDisplay';
 import { closeCustomerDisplay, markCustomerDisplayHintShown, openCustomerDisplay } from '@/lib/pos/display/openDisplay';
 import {
@@ -88,20 +90,30 @@ const AUTO_DISPLAY_VALUE = 'auto';
  * sin reubicarla. Con un Desktop anterior, o en el navegador, nada de esto
  * se pinta y el comportamiento es el de la Fase 0.
  *
- * Pendiente para la Fase 2 (NO va en esta fase): propina en pantalla
- * (porcentajes sugeridos, «Otro»), calificación al final, desglose de
- * impuestos, nombre del cliente, modo reposo, idioma y forzar táctil. Todo
- * en la misma clave `pos_customer_display`; ver PLAN §6.1.
+ * Fase 2: el resto de ajustes de PLAN §5.2 (propina en pantalla con sus
+ * porcentajes y «Otro», calificación al final, desglose de impuestos,
+ * nombre del cliente, modo reposo, idioma y forzar táctil) viven en
+ * AjustesPantallaSection, en la misma clave `pos_customer_display`, y se
+ * guardan juntos con «Guardar ajustes»; el interruptor maestro sigue
+ * guardando al instante. Los dos guardados comparten UN estado `saving`:
+ * mientras uno está en vuelo el otro control queda deshabilitado (ronda 2:
+ * dos lectura-mezcla-upsert concurrentes sobre la misma fila perdían una
+ * escritura). La sección «Esta caja» (EstaCajaSection) elige, crea o
+ * renombra la terminal de `pos_terminals` a la que se vincula este equipo.
  */
 export function PantallaClienteContent({ embedded = false }: { embedded?: boolean }) {
   const t = useTranslations('posCustomerDisplay.config');
   const tToast = useTranslations('posCustomerDisplay.toast');
   const { toast } = useToast();
-  const [settings, setSettings] = useState<CustomerDisplaySettings>({ ...DEFAULT_CUSTOMER_DISPLAY_SETTINGS });
+  const [settings, setSettings] = useState<CustomerDisplaySettings>(defaultCustomerDisplaySettings);
   const [loading, setLoading] = useState(true);
   // true si la fila de la organización no se pudo leer: el `enabled` que se pinta es el valor por
   // defecto, no el real, y no se debe persistir ni alternar hasta releer con éxito.
   const [loadFailed, setLoadFailed] = useState(false);
+  // Un solo «guardando» para la fila pos_customer_display: lo encienden el interruptor maestro
+  // (aquí) y «Guardar ajustes» (AjustesPantallaSection, por onSavingChange). Mientras uno guarda,
+  // el otro queda deshabilitado: ambos hacen lectura-mezcla-upsert sobre la misma fila y, si se
+  // solaparan, el último upsert pisaría al otro sin aviso (se perdía el encendido o la presentación).
   const [saving, setSaving] = useState(false);
 
   // ── Escritorio (Fase 1): monitores y estado de la ventana ──
@@ -209,8 +221,7 @@ export function PantallaClienteContent({ embedded = false }: { embedded?: boolea
   }, [t, toast]);
 
   const handleToggleEnabled = useCallback(async (value: boolean) => {
-    const previous = settings;
-    setSettings({ ...settings, enabled: value });
+    setSettings((prev) => ({ ...prev, enabled: value }));
     setSaving(true);
     try {
       const saved = await ConfiguracionService.saveCustomerDisplayConfig({ enabled: value });
@@ -229,12 +240,14 @@ export function PantallaClienteContent({ embedded = false }: { embedded?: boolea
       if (!persisted) toast({ title: t('monitorSaveError'), variant: 'destructive' });
     } catch (err) {
       console.error('Error guardando la configuración de la pantalla del cliente:', err);
-      setSettings(previous);
+      // Se revierte SOLO `enabled` sobre el estado actual (no un closure viejo): una presentación
+      // guardada entretanto por «Guardar ajustes» no se pisa en la UI.
+      setSettings((prev) => ({ ...prev, enabled: !value }));
       toast({ title: t('saveError'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
-  }, [desktopBridge, displayChoice, settings, t, toast]);
+  }, [desktopBridge, displayChoice, t, toast]);
 
   const handleOpenNow = useCallback(async () => {
     // Escritorio con la ventana YA abierta en otro monitor: el proceso principal solo la traería al
@@ -381,8 +394,11 @@ export function PantallaClienteContent({ embedded = false }: { embedded?: boolea
         </Button>
       </div>
 
-      {/* Fase 2: propina, calificación, impuestos, reposo, idioma, táctil (PLAN §5.2). No se muestran controles que aún no actúan. */}
-      <p className="text-xs text-gray-500 dark:text-gray-400">{t('comingSoon')}</p>
+      {/* Esta caja: terminal de pos_terminals a la que se vincula este equipo (Fase 2). */}
+      <EstaCajaSection />
+
+      {/* Ajustes de presentación de la organización (Fase 2, PLAN §5.2). */}
+      <AjustesPantallaSection settings={settings} disabled={loadFailed || saving} onSaved={setSettings} onSavingChange={setSaving} />
     </div>
   );
 }

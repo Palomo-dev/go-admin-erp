@@ -10,12 +10,14 @@
  * animación mayor de 300 ms.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { BrandHeader } from './BrandHeader';
 import { FullscreenButton } from './FullscreenButton';
 import { OrderView } from './OrderView';
-import { resolveDisplayCurrency, resolveView, viewShowsAmounts } from './logic';
+import { TipView } from './TipView';
+import { resolveDisplayCurrency, resolveTouch, resolveView, viewShowsAmounts } from './logic';
+import { markRenderHealthy } from './retryBackoff';
 import { useDisplayBrand } from './useDisplayBrand';
 import { useDisplayReceiver } from './useDisplayReceiver';
 import { ConnectingView, IdleView, PaymentView, ThanksView, UnsupportedView, UpdateRequiredView } from './views';
@@ -88,11 +90,15 @@ export function CustomerDisplay() {
   const state = link.state;
 
   const thanksExpired = useThanksExpired(state?.mode === 'thanks' && state.thanks ? state.thanks.total : null);
+  // Táctil (PLAN §4.4): detección del navegador + forzado de los ajustes de la organización.
+  // Se resuelve ANTES de la vista: una propina sin presets en pantalla no táctil cae al cobro (logic.ts).
+  const touch = resolveTouch(link.touchDetected, link.hello?.settings?.touch);
   const view = resolveView({
     connected: link.connected,
     disconnectedTooLong: link.disconnectedTooLong,
     updateRequired: link.updateRequired,
     thanksExpired,
+    touch,
     state,
   });
 
@@ -108,8 +114,31 @@ export function CustomerDisplay() {
     rememberedCurrencyRef.current = currency;
   }, [currency]);
 
+  // Retroceso del error boundary (error.tsx, ronda 4 de F2-C · C4): un
+  // efecto solo corre si el render NO lanzó, así que cada `state` que llega
+  // aquí se pintó bien y el contador de reintentos vuelve a empezar. El
+  // `state` que tumba una vista nunca pasa por aquí (lo atrapa el boundary).
+  useEffect(() => {
+    if (state !== null) markRenderHealthy();
+  }, [state]);
+
   const cashierName = link.connected && link.hello?.cashier?.name ? link.hello.cashier.name : null;
   const muted = view === 'connecting' || view === 'update_required';
+
+  // Cobro·QR: «Ya pagué» solo avisa a la caja (qr_paid_claim); la confirmación sigue siendo del cajero.
+  const paymentCartId = state?.mode === 'payment' && state.cart?.id ? state.cart.id : null;
+  const sendUp = link.sendUp;
+  const onQrPaidClaim = useCallback(() => {
+    if (paymentCartId) sendUp({ t: 'qr_paid_claim', cartId: paymentCartId });
+  }, [sendUp, paymentCartId]);
+  // Propina (F2-B): la elección solo AVISA a la caja (tip_selected); el cajero confirma con Aplicar / Cambiar.
+  const tipCartId = state?.mode === 'tip' && state.cart?.id ? state.cart.id : null;
+  const onTipSelect = useCallback(
+    (choice: { kind: 'percent' | 'amount' | 'none'; value: number }) => {
+      if (tipCartId) sendUp({ t: 'tip_selected', cartId: tipCartId, kind: choice.kind, value: choice.value });
+    },
+    [sendUp, tipCartId],
+  );
 
   let content: React.ReactNode;
   if (!link.supported) {
@@ -121,7 +150,17 @@ export function CustomerDisplay() {
   } else if (view === 'order' && state?.cart) {
     content = <OrderView cart={state.cart} highlightUntil={link.highlightUntil} brand={brand} />;
   } else if ((view === 'payment_cash' || view === 'payment_card' || view === 'payment_qr') && state?.payment) {
-    content = <PaymentView payment={state.payment} currency={currency} brand={brand} />;
+    content = (
+      <PaymentView
+        payment={state.payment}
+        currency={currency}
+        brand={brand}
+        touch={touch}
+        onQrPaidClaim={paymentCartId ? onQrPaidClaim : undefined}
+      />
+    );
+  } else if (view === 'tip' && state?.cart && state.tip) {
+    content = <TipView cart={state.cart} tip={state.tip} currency={currency} brand={brand} touch={touch} onSelect={tipCartId ? onTipSelect : undefined} />;
   } else if (view === 'thanks' && state?.thanks) {
     content = <ThanksView total={state.thanks.total} currency={currency} brand={brand} />;
   } else {

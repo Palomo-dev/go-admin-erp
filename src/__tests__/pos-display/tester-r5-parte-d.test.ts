@@ -172,6 +172,10 @@ afterEach(() => {
 // T1/T2 · época por organización como propiedad
 // ---------------------------------------------------------------------------
 
+// Fase 2 (F2-A): `pos_customer_display` es el esquema completo de settings.ts
+// (propina, calificación, reposo, idioma, táctil) y lo que se lee o se escribe
+// lleva siempre todos los campos con sus valores por defecto. Estas pruebas
+// son del interruptor maestro, así que comparan con objectContaining.
 describe('settings.ts · época por organización, todas las permutaciones (T1/T2)', () => {
   const orders = permutations([0, 1, 2]);
 
@@ -203,7 +207,7 @@ describe('settings.ts · época por organización, todas las permutaciones (T1/T
     await Promise.all(calls);
 
     // La última relectura emitida (C, enabled:true) manda, llegue cuando llegue.
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: true });
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: true }));
     // Ningún llamador recibió algo distinto de la caché en su instante.
     for (let i = 0; i < 3; i += 1) expect(returned[i]).toEqual(cacheAtResolve[i]);
   });
@@ -227,7 +231,7 @@ describe('settings.ts · época por organización, todas las permutaciones (T1/T
       await flush();
     }
     await Promise.all([load, b, c]);
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: false });
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: false }));
   });
 
   it('carga en vuelo + prime(true) + prime(false): manda el último prime y la carga tardía no lo pisa', async () => {
@@ -237,10 +241,10 @@ describe('settings.ts · época por organización, todas las permutaciones (T1/T
     await flush();
     primeCustomerDisplaySettings(120, { enabled: true });
     primeCustomerDisplaySettings(120, { enabled: false });
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: false });
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: false }));
     release(0);
-    await expect(load).resolves.toEqual({ enabled: false });
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: false });
+    await expect(load).resolves.toEqual(expect.objectContaining({ enabled: false }));
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: false }));
   });
 
   it('dos organizaciones con lecturas en vuelo cruzadas: cada época solo cuenta en la suya', async () => {
@@ -254,12 +258,12 @@ describe('settings.ts · época por organización, todas las permutaciones (T1/T
     // Un prime en la 121 no supera la carga en vuelo de la 120…
     primeCustomerDisplaySettings(121, { enabled: true });
     release(0);
-    await expect(load120).resolves.toEqual({ enabled: true });
+    await expect(load120).resolves.toEqual(expect.objectContaining({ enabled: true }));
     // …y la carga tardía de la 121 no pisa su prime.
     release(1);
-    await expect(load121).resolves.toEqual({ enabled: true });
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: true });
-    expect(getCachedCustomerDisplaySettings(121)).toEqual({ enabled: true });
+    await expect(load121).resolves.toEqual(expect.objectContaining({ enabled: true }));
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: true }));
+    expect(getCachedCustomerDisplaySettings(121)).toEqual(expect.objectContaining({ enabled: true }));
   });
 
   it('relectura que falla sin caché con otra más nueva en vuelo: el fallback (apagado) se aplica y la nueva lo sustituye', async () => {
@@ -270,11 +274,11 @@ describe('settings.ts · época por organización, todas las permutaciones (T1/T
     const b = refreshCustomerDisplaySettings(120); // #1, responderá encendido
     await flush();
     release(0, 'error');
-    await expect(a).resolves.toEqual({ enabled: false });
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: false });
+    await expect(a).resolves.toEqual(expect.objectContaining({ enabled: false }));
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: false }));
     release(1);
-    await expect(b).resolves.toEqual({ enabled: true });
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: true });
+    await expect(b).resolves.toEqual(expect.objectContaining({ enabled: true }));
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: true }));
   });
 
   it('relectura que falla DESPUÉS de que una más nueva ya escribió: devuelve lo nuevo y no lo pisa con su fallback', async () => {
@@ -286,10 +290,10 @@ describe('settings.ts · época por organización, todas las permutaciones (T1/T
     const b = refreshCustomerDisplaySettings(120); // #1
     await flush();
     release(1);
-    await expect(b).resolves.toEqual({ enabled: true });
+    await expect(b).resolves.toEqual(expect.objectContaining({ enabled: true }));
     release(0, 'error');
-    await expect(a).resolves.toEqual({ enabled: true });
-    expect(getCachedCustomerDisplaySettings(120)).toEqual({ enabled: true });
+    await expect(a).resolves.toEqual(expect.objectContaining({ enabled: true }));
+    expect(getCachedCustomerDisplaySettings(120)).toEqual(expect.objectContaining({ enabled: true }));
   });
 });
 

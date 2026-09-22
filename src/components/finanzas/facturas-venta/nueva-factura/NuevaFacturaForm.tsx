@@ -28,6 +28,7 @@ import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoice
 import { formatCurrency } from '@/utils/Utils';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
+import { resolveLineTax } from '@/lib/services/taxResolver';
 
 // Tipo para un ítem de factura
 export type InvoiceItem = {
@@ -639,6 +640,43 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       console.warn('[NuevaFacturaForm] No se pudieron evaluar promociones:', promoErr);
     }
 
+    // F-42: Resolver impuestos de cada línea antes de calcular totales.
+    // El resolver sigue el orden: item → appliedTaxes → product_tax_relations → org default → 0.
+    // Sin esto, los items se insertan con tax_rate=0 y el trigger fn_recalc_invoice_totals
+    // calcula tax_total=0, perdiendo el IVA en la cabecera y en el asiento contable.
+    const itemsWithoutTax = evaluatedItems.filter(it =>
+      !Number(it.tax_rate) || Number(it.tax_rate) === 0
+    );
+    if (itemsWithoutTax.length > 0 && organizationId) {
+      const resolvedItems = await Promise.all(
+        evaluatedItems.map(async (item) => {
+          const resolved = await resolveLineTax({
+            itemTaxRate: item.tax_rate,
+            itemTaxCode: item.tax_code,
+            appliedTaxes,
+            appliedTaxTotals,
+            productId: item.product_id,
+            organizationId: Number(organizationId),
+            taxIncluded,
+            qty: Number(item.qty) || 0,
+            unitPrice: Number(item.unit_price) || 0,
+            discountAmount: Number(item.discount_amount) || 0,
+          });
+          if (resolved.has_no_tax) {
+            console.warn(`[F-42] Línea "${item.description}" sin impuesto asignado.`);
+          }
+          return {
+            ...item,
+            tax_rate: resolved.tax_rate,
+            tax_code: resolved.tax_code,
+            tax_included: resolved.tax_included,
+            total_line: resolved.total_line,
+          };
+        })
+      );
+      evaluatedItems = resolvedItems;
+    }
+
     // Totales SIEMPRE recalculados desde los items (fuente de verdad), en vez de
     // confiar en los estados subtotal/taxTotal/total que llegan de forma asíncrona
     // desde ImpuestosFactura y pueden quedar desincronizados si se guarda justo
@@ -692,7 +730,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           ? (commissionMethod === 'fixed_amount' ? commissionRate : Math.round((safeSubtotal > 0 ? safeSubtotal : safeTotal) * commissionRate / 100 * 100) / 100)
           : 0,
         appliedTaxes,
-        items: items.map(item => ({
+        items: evaluatedItems.map(item => ({
           id: item.id,
           product_id: item.product_id,
           description: item.description,
@@ -744,7 +782,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       if (saleError) throw saleError;
       
       // 2. Crear los items de venta
-      const saleItemPromises = items.map(item => {
+      const saleItemPromises = evaluatedItems.map(item => {
         return supabase
           .from('sale_items')
           .insert({
@@ -875,7 +913,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         }
       }
 
-      const invoiceItemsToInsert = items.map(item => {
+      const invoiceItemsToInsert = evaluatedItems.map(item => {
         // Obtener los seriales seleccionados para este producto
         const serialIds = item.product_id != null && item.track_serial === true
           ? (serialSelections[item.product_id] || [])

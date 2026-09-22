@@ -33,7 +33,47 @@
  *   miente»).
  *
  * Modo resultante (derivado en cada emisión, en este orden):
- *   closed (setMode('closed'))  >  thanks  >  payment  >  order (≥ 1 línea)  >  idle
+ *   closed (setMode('closed'))  >  thanks  >  payment QR con código  >  tip (fase pendiente)  >  payment  >  order (≥ 1 línea)  >  idle
+ *
+ * Máquina de estados de la venta (Fase 2-B, PLAN §4.2 y §5.3):
+ *   order ──setPayment(≠ null)──▶ tip (solo si tips.enabled y hay líneas)
+ *   order ──setPayment(≠ null)──▶ payment (si la propina está desactivada)
+ *   tip ──tip_selected (pantalla táctil) | skipTip() (cajero)──▶ payment
+ *   payment ──setMode('thanks')──▶ thanks ──8 s / siguiente venta──▶ order | idle
+ *   tip | payment ──setMode('order') (cancelar) | setPayment(null)──▶ order
+ * La fase de propina es de la VENTA, no del método: cambiar de medio de pago
+ * (`setPayment` con otro `method`) o teclear el efectivo reproyecta el cobro
+ * pero no vuelve a preguntar la propina ni la anula. Excepción de PINTADO
+ * (Fase 2-C): un cobro QR CON código se impone a la pregunta de propina
+ * pendiente (el cliente ya está pagando; en pantalla no táctil la propina es
+ * informativa y nadie la «omite»); la fase no se cierra: si el QR se retira
+ * sin cobrar, la pregunta vuelve. Cuando el QR SE CONFIRMA («Pago QR
+ * confirmado», onPaid de QrPaymentDialog) la caja llama a `skipTip()`: el
+ * cliente ya pagó y la fase queda decidida, así que la reproyección del
+ * medio sin código pasa a `payment` y nunca de vuelta a `tip` (F2-C, C1).
+ * Solo `setMode('order')` (el cajero cierra el cobro sin vender),
+ * `setPayment(null)` y `thanks` la olvidan, y con ella la BASE (`tipBase`):
+ * la fija CheckoutDialog para ESE cobro (setTipBase, solo con la caja
+ * arrancada) y también se borra en stop() y al cambiar de organización, así
+ * el primer «tip» de la venta siguiente nunca viaja con la base de otra venta
+ * u otra organización (ronda 2 de F2-B, QA-1). Excepción de PINTADO añadida
+ * en esa ronda (QA-5): con base efectiva 0 (cortesía, descuento del 100 %)
+ * la fase queda pendiente pero se pinta `payment`: no se pregunta «5 % · $0».
+ * Los cambios de fase (pending → done → null) se avisan por
+ * `onTipPhaseChange` solo cuando el valor cambia (QA-6), y la UI de la caja
+ * los sigue sin sondeo. La elección del cliente (`tip_selected`, solo de la pantalla que
+ * sigue a ESTA instancia y para el carrito proyectado) cierra la fase y se
+ * entrega a `onTipSelected`; el emisor NO aplica nada: la caja decide
+ * (Aplicar / Cambiar) y la propina se registra por el flujo existente
+ * (`tip_amount` del cobro → tabla `tips`). Los presets, «Otro» y la base del
+ * cálculo se fijan al ENTRAR en la fase (`getSettings` en ese instante) y
+ * viajan en `state.tip`; la pantalla calcula los importes con tip.ts, la
+ * misma aritmética que usa la caja para el aviso. El táctil que la caja
+ * cree (`lastDisplayCapabilities.touch`) es el que la pantalla PINTA: la
+ * pantalla declara el táctil RESUELTO (detección + `settings.touch`) y
+ * reemite `display_alive` al conocer el forzado; la caja lo sigue por
+ * `onDisplayCapabilitiesChange` (ronda 3 de F2-B) y, como respaldo, aplica
+ * el mismo forzado con `presentationSettings.touch`.
  * `setMode('order')` y `setMode('idle')` limpian cobro y gracias y dejan que
  * el carrito decida: con líneas se ve «Pedido», sin ellas «Reposo». Solo se
  * proyecta un carrito VIVO: `status` `active` u `hold` (la misma lista blanca
@@ -49,6 +89,47 @@
  * cliente vería, durante los cientos de ms que tarda TaxSummary (una
  * consulta de impuestos por línea), las líneas nuevas con el total anterior:
  * una cifra que no suma con lo que tiene delante (PLAN §4.1, §4.3).
+ *
+ * Firma de líneas (Fase 2, deuda del QA de F0): `setTotals` admite además la
+ * FIRMA de las líneas con las que TaxSummary calculó (`linesSignature`, los
+ * mismos campos que compara `sameLines`: id, cantidad, precio, descuento,
+ * nota, número de modificadores y trato del impuesto). Si no coincide con la del carrito
+ * proyectado, el override se DESCARTA sin emitir: son totales de un carrito
+ * que ya no existe tal cual (TaxSummary reenvía sus totales viejos cuando
+ * cambia la identidad del callback, antes de recalcular). Sin firma se
+ * conserva el comportamiento anterior (solo id de carrito). Un override con
+ * firma que llega ANTES de que la página active el carrito se guarda y se
+ * comprueba en el `setCart` siguiente: si no casa, se descarta ahí.
+ *
+ * Ajustes de presentación (Fase 2): `getSettings` (opcional) lee de la caché
+ * de settings.ts y viaja en `hello.settings` (protocol.ts). Tras guardar la
+ * tarjeta, `refresh()` vuelve a saludar aunque el transporte ya estuviera
+ * abierto, para que la pantalla aplique presets, calificación, etc. sin
+ * recargar (PLAN §5.2). Sin `getSettings` el hello no lleva el campo (emisor
+ * de la Fase 0 y pruebas).
+ *
+ * Saludo SOLO desde una ventana VISIBLE (rondas 3 y 4 de F2-A, QA medio):
+ * con dos pestañas de /app/pos en la misma máquina, guardar la tarjeta o
+ * apagar y encender el interruptor desde otra ventana dispara `storage` →
+ * refreshPosDisplay → `refresh()` en las DOS, y el receptor sigue a «la
+ * última que saluda» (transport.ts, regla 2): la pantalla podía pasar a
+ * pintar el carrito de la pestaña de FONDO hasta que el cajero cambiara de
+ * foco. Por eso las DOS ramas de `refresh()` que saludan comprueban
+ * `isVisible()` (por defecto `document.visibilityState === 'visible'`; sin
+ * `document`, true):
+ * - resaludo con el transporte YA abierto (ronda 3): la pestaña oculta no
+ *   publica nada;
+ * - APERTURA del transporte al encender (ronda 4): la pestaña oculta abre el
+ *   transporte igual (latido incluido, para poder responder a un
+ *   `need_snapshot`) pero NO saluda.
+ * No pierde nada: al volver a verse, la página llama a `reannounce()`
+ * (visibilitychange/focus) y ese saludo ya lee los ajustes nuevos de la
+ * caché; y si es la ÚNICA pestaña de POS (en segundo plano mientras se
+ * enciende desde Configuración), la pantalla la adopta provisionalmente por
+ * latido, le pide snapshot y `handleUp` responde con hello + state sin mirar
+ * la visibilidad. Solo `start()`, `setSession` y la respuesta a
+ * `need_snapshot` NO dependen de la visibilidad: son datos de ESTA caja o
+ * una petición expresa de la pantalla, no un aviso ajeno.
  *
  * «Gracias» dura THANKS_DURATION_MS «o hasta la siguiente venta» (PLAN §4.2).
  * Decisión (ronda 3): la «siguiente venta» es una MUTACIÓN REAL de líneas
@@ -96,8 +177,18 @@
  */
 
 import type { Cart } from '@/components/pos/types';
-import type { DisplayCart, DisplayMode, DisplayPayment, DisplayState, UpMessage } from './protocol';
+import type {
+  DisplayCapabilities,
+  DisplayCart,
+  DisplayMode,
+  DisplayPayment,
+  DisplayPresentationSettings,
+  DisplayState,
+  TipSelectedMessage,
+  UpMessage,
+} from './protocol';
 import { projectCartForDisplay, type DisplayTotalsOverride } from './projection';
+import { isAcceptableTipChoice, isValidTipPercent, resolveTipSelection, type DisplayTipBlock, type TipSelection } from './tip';
 import type { DisplayTransport, HelloDraft } from './transport';
 
 /** Cuánto se muestra «Gracias» antes de volver al modo derivado (PLAN §4.2: 8 s o siguiente venta). */
@@ -129,15 +220,33 @@ export interface DisplayEmitterOptions {
   createTransport: () => DisplayTransport | null;
   /** Lee el interruptor maestro desde la caché en memoria (settings.ts). Síncrono. */
   isEnabled: () => boolean;
+  /**
+   * Ajustes de presentación para `hello.settings` (Fase 2), desde la caché
+   * de settings.ts. Síncrono; se lee en cada saludo. Ausente → el hello no
+   * lleva `settings`.
+   */
+  getSettings?: () => DisplayPresentationSettings;
+  /**
+   * ¿La ventana de esta caja está visible? Solo lo consulta `refresh()` para
+   * decidir si saluda: al resaludar con el transporte ya abierto y al ABRIRLO
+   * tras encender el interruptor (ver cabecera). Por defecto
+   * `defaultIsVisible` (document.visibilityState); inyectable en pruebas.
+   */
+  isVisible?: () => boolean;
   /** Por defecto: requestAnimationFrame si existe, si no setTimeout(0). */
   schedule?: Scheduler;
   /** Duración de «Gracias». Por defecto THANKS_DURATION_MS; las pruebas lo acortan. */
   thanksDurationMs?: number;
 }
 
+/** Fase de la propina en pantalla: ver la máquina de estados en la cabecera. */
+export type TipPhase = 'pending' | 'done' | null;
+
 interface TotalsOverrideForCart {
   cartId: string;
   totals: DisplayTotalsOverride;
+  /** Firma de las líneas con las que se calcularon (linesSignature); null si el emisor no la dio. */
+  signature: string | null;
 }
 
 const IDLE_STATE: Readonly<DisplayState> = Object.freeze({
@@ -189,6 +298,20 @@ export function defaultScheduler(): Scheduler {
   };
 }
 
+/**
+ * Visibilidad por defecto de la ventana: `document.visibilityState === 'visible'`.
+ * Sin `document` (Node, pruebas) o si la lectura lanza, true: nunca deja de
+ * saludar por no poder averiguarlo.
+ */
+export function defaultIsVisible(): boolean {
+  try {
+    if (typeof document === 'undefined') return true;
+    return document.visibilityState === 'visible';
+  } catch {
+    return true;
+  }
+}
+
 function isValidOrganizationId(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;
 }
@@ -199,7 +322,16 @@ function hasLines(cart: DisplayCart | null): cart is DisplayCart {
 
 type DisplayLine = DisplayCart['lines'][number];
 
-/** Lo que cuenta como «la misma línea» para el resaltado: cantidad, precio, descuento, nota y número de modificadores. */
+/**
+ * Lo que cuenta como «la misma línea»: cantidad, precio, descuento, nota,
+ * número de modificadores y el trato del impuesto (`taxExcluded` /
+ * `taxIncluded`). Los dos últimos entraron en la ronda 2 de F2-A: al pulsar
+ * «Excluir impuesto de este producto» la línea cambia de total sin cambiar
+ * ningún otro campo, y sin verlos el override de TaxSummary (con el impuesto
+ * que ya no existe) sobrevivía al recálculo. Efecto colateral aceptado y
+ * documentado: esa línea se RESALTA 600 ms como cualquier otro cambio
+ * (`findChangedLineId` usa el mismo criterio); el cliente ve qué cambió.
+ */
 function isSameLine(a: DisplayLine, b: DisplayLine): boolean {
   return (
     a.id === b.id &&
@@ -207,7 +339,9 @@ function isSameLine(a: DisplayLine, b: DisplayLine): boolean {
     a.unitPrice === b.unitPrice &&
     a.discount === b.discount &&
     a.note === b.note &&
-    a.modifiers.length === b.modifiers.length
+    a.modifiers.length === b.modifiers.length &&
+    a.taxExcluded === b.taxExcluded &&
+    a.taxIncluded === b.taxIncluded
   );
 }
 
@@ -229,9 +363,40 @@ export function sameLines(prev: DisplayCart | null, next: DisplayCart | null): b
 }
 
 /**
+ * Firma textual de las líneas de una proyección: los MISMOS campos que
+ * compara `sameLines` (id, cantidad, precio, descuento, nota, número de
+ * modificadores, `taxExcluded` y `taxIncluded`), en orden. Dos proyecciones
+ * con `sameLines` true tienen la misma firma y viceversa. `null` (sin
+ * carrito) → ''. Sirve para que TaxSummary etiquete los totales con el
+ * carrito exacto con el que los calculó y `setTotals` descarte los que ya no
+ * corresponden (también al alternar el impuesto de una línea).
+ */
+export function linesSignature(cart: DisplayCart | null): string {
+  if (cart === null) return '';
+  const parts = cart.lines.map((line) =>
+    [line.id, line.qty, line.unitPrice, line.discount ?? '', line.note ?? '', line.modifiers.length, line.taxExcluded ? 1 : 0, line.taxIncluded ? 1 : 0].map(String).join('\u001f'),
+  );
+  return `${cart.id}\u001e${parts.join('\u001e')}`;
+}
+
+/**
+ * Firma de las líneas de un `Cart` del POS (proyecta con projectCartForDisplay,
+ * que ignora los totales para las líneas). Para que CartView/TaxSummary la
+ * calculen sin conocer la moneda ni el override. Nunca lanza: sin carrito → ''.
+ */
+export function cartLinesSignature(cart: Cart | null | undefined): string {
+  if (!cart) return '';
+  try {
+    return linesSignature(projectCartForDisplay(cart, { currency: 'COP', lastChangedLineId: null }));
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Línea que acaba de cambiar entre dos proyecciones, para el resaltado de
  * 600 ms (PLAN §4.1). Solo si cambió UNA línea (nueva, o con distinta
- * cantidad/precio/descuento/nota); si cambiaron varias o ninguna, null.
+ * cantidad/precio/descuento/nota/impuesto); si cambiaron varias o ninguna, null.
  */
 export function findChangedLineId(prev: DisplayCart | null, next: DisplayCart | null): string | null {
   if (!next) return null;
@@ -254,6 +419,8 @@ function warn(where: string, err: unknown): void {
 export class DisplayEmitter {
   private readonly createTransport: () => DisplayTransport | null;
   private readonly isEnabled: () => boolean;
+  private readonly getSettings: (() => DisplayPresentationSettings) | null;
+  private readonly isVisible: () => boolean;
   private readonly schedule: Scheduler;
   private readonly thanksDurationMs: number;
 
@@ -272,6 +439,22 @@ export class DisplayEmitter {
   private totalsOverride: TotalsOverrideForCart | null = null;
 
   private payment: DisplayPayment | null = null;
+  /**
+   * Propina en pantalla (F2-B): `pending` mientras se pregunta, `done` cuando
+   * el cliente eligió o el cajero omitió, null fuera de la fase. Los presets
+   * y «Otro» se congelan al entrar; `tipBase` lo fija la caja (setTipBase) y
+   * sin él se usa el total proyectado.
+   */
+  private tipState: TipPhase = null;
+  private tipConfig: { presets: number[]; allowCustom: boolean } | null = null;
+  private tipBase: number | null = null;
+  private tipSelected: TipSelectedMessage | null = null;
+  private readonly tipListeners = new Set<(selection: TipSelection) => void>();
+  private readonly tipPhaseListeners = new Set<(phase: TipPhase) => void>();
+  private readonly stateListeners = new Set<(state: DisplayState) => void>();
+  /** Oyentes de `onDisplayCapabilitiesChange` (ronda 3 de F2-B) y la última capacidad avisada, serializada, para avisar solo con cambio. */
+  private readonly capabilitiesListeners = new Set<(capabilities: DisplayCapabilities | null) => void>();
+  private lastCapabilitiesJson: string | null = null;
   private thanks: DisplayState['thanks'] = null;
   private thanksTimer: ReturnType<typeof setTimeout> | null = null;
   private closed = false;
@@ -279,10 +462,14 @@ export class DisplayEmitter {
   private pendingFlush: Cancel | null = null;
   private lastEmittedJson: string | null = null;
   private stateCount = 0;
+  /** Oyentes de `onUp` (Fase 2): la caja UI reacciona a las intenciones de la pantalla; el emisor no. */
+  private readonly upListeners = new Set<(msg: UpMessage) => void>();
 
   constructor(options: DisplayEmitterOptions) {
     this.createTransport = options.createTransport;
     this.isEnabled = options.isEnabled;
+    this.getSettings = options.getSettings ?? null;
+    this.isVisible = options.isVisible ?? defaultIsVisible;
     this.schedule = options.schedule ?? defaultScheduler();
     this.thanksDurationMs = options.thanksDurationMs ?? THANKS_DURATION_MS;
   }
@@ -320,8 +507,10 @@ export class DisplayEmitter {
       this.started = true;
       this.projectedCart = this.project();
       const hadTransport = this.transport !== null;
-      this.refresh(); // abre el transporte y saluda si el interruptor está encendido
-      if (hadTransport && this.transport) this.announce(); // ya estaba abierto: vuelve a saludar con los datos nuevos
+      const announced = this.applySwitch(true); // abre el transporte y saluda si el interruptor está encendido (sin mirar la visibilidad)
+      // Ya estaba abierto: vuelve a saludar con los datos nuevos (salvo que applySwitch ya lo hiciera).
+      // No depende de la visibilidad: start() repetido es un cambio de datos de ESTA caja, no un aviso ajeno.
+      if (hadTransport && this.transport && !announced) this.announce();
     } catch (err) {
       warn('start', err);
     }
@@ -334,6 +523,8 @@ export class DisplayEmitter {
       this.cancelPending();
       this.clearThanks();
       this.payment = null;
+      this.resetTip();
+      this.tipBase = null; // la base es de una venta concreta: no sobrevive a la parada (QA-1, ronda 2)
       this.closed = false;
       this.closeTransport();
     } catch (err) {
@@ -342,23 +533,62 @@ export class DisplayEmitter {
   }
 
   /**
-   * Relee el interruptor maestro. Encendido y sin transporte → lo abre y
-   * saluda; apagado y con transporte → lo cierra (la pantalla pasa a
-   * «Conectando» y luego a «Reposo»). La Parte D lo llama tras guardar.
+   * Relee el interruptor maestro. Encendido y sin transporte → lo abre
+   * (latido incluido) y saluda SOLO si la ventana está visible; apagado y
+   * con transporte → lo cierra (la pantalla pasa a «Conectando» y luego a
+   * «Reposo»). Encendido y YA abierto → vuelve a saludar si hay
+   * `getSettings` (Fase 2: la tarjeta guardó propina, calificación, etc. y
+   * la pantalla los aplica sin recargar, PLAN §5.2) Y SOLO si la ventana
+   * está visible (`isVisible`). En las dos ramas la razón es la misma: una
+   * pestaña de fondo no debe robarle la pantalla a la que el cajero tiene
+   * delante (ver cabecera). La tarjeta lo llama tras guardar; el listener
+   * de `storage`, cuando guardó otra ventana.
    */
   refresh(): void {
     try {
-      if (!this.started) return;
-      const enabled = this.isEnabled();
-      if (enabled && !this.transport) {
-        this.openTransport();
-        if (this.transport) this.announce();
-      } else if (!enabled && this.transport) {
-        this.cancelPending();
-        this.closeTransport();
-      }
+      this.applySwitch();
     } catch (err) {
       warn('refresh', err);
+    }
+  }
+
+  /** Cuerpo de refresh(). Devuelve si saludó (start() lo usa para no saludar dos veces). `fromStart`: start() saluda al abrir sin mirar la visibilidad. */
+  private applySwitch(fromStart = false): boolean {
+    if (!this.started) return false;
+    const enabled = this.isEnabled();
+    if (enabled && !this.transport) {
+      // El transporte se abre SIEMPRE (latido incluido): así la caja puede
+      // responder a un need_snapshot aunque esté oculta. Pero solo saluda si
+      // la ventana está visible o si es el propio start() de esta caja (ronda
+      // 4 de F2-A): apagar y encender desde otra ventana dispara `storage` →
+      // refresh() en todas las pestañas, y la oculta no debe relevar a la que
+      // el cajero tiene delante. La oculta se presenta al volver a verse
+      // (reannounce) o cuando la pantalla le pide snapshot (handleUp).
+      this.openTransport();
+      if (!this.transport) return false;
+      if (!fromStart && !this.windowVisible()) return false;
+      this.announce();
+      return true;
+    }
+    if (!enabled && this.transport) {
+      this.cancelPending();
+      this.closeTransport();
+      return false;
+    }
+    if (enabled && this.transport && this.getSettings && this.windowVisible()) {
+      this.announce();
+      return true;
+    }
+    return false;
+  }
+
+  /** `isVisible` envuelto: si lanza, se asume visible (como defaultIsVisible). */
+  private windowVisible(): boolean {
+    try {
+      return this.isVisible() !== false;
+    } catch (err) {
+      warn('isVisible', err);
+      return true;
     }
   }
 
@@ -451,13 +681,21 @@ export class DisplayEmitter {
         // Override obsoleto: las líneas cambiaron desde que TaxSummary lo calculó.
         this.totalsOverride = null;
         next = this.project();
+      } else if (this.totalsOverride && next && this.totalsOverride.cartId === next.id && !this.matchesOverrideSignature(next)) {
+        // Override con firma que llegó antes que el carrito (TaxSummary se adelantó a
+        // setActiveCart) y no casa con las líneas reales: se descarta.
+        this.totalsOverride = null;
+        next = this.project();
       }
       const changed = findChangedLineId(prev, next);
       if (changed !== null) this.lastChangedLineId = changed;
       else if (!equivalent) this.lastChangedLineId = null;
       this.projectedCart = next;
       if (fromMutation && !equivalent && hasLines(next) && this.thanks) this.clearThanks();
-      if (fromMutation && next === null && this.payment) this.payment = null;
+      if (fromMutation && next === null && this.payment) {
+        this.payment = null;
+        this.resetTip();
+      }
       this.requestFlush();
     } catch (err) {
       warn('setCart', err);
@@ -493,21 +731,32 @@ export class DisplayEmitter {
    * `{ discountTotal, taxTotal, total }` del mismo motor que ve el cajero).
    * Solo se aplican mientras el carrito proyectado tenga ese id y líneas;
    * `null` los retira.
+   *
+   * `signature` (Fase 2): firma de las líneas con las que se calcularon
+   * (`linesSignature` / `cartLinesSignature`). Si el carrito proyectado
+   * tiene ese id y su firma es OTRA, los totales se descartan sin emitir:
+   * describen líneas que ya no están delante del cliente. Sin firma se
+   * comporta como antes (solo se comprueba el id).
    */
-  setTotals(cartId: string, totals: DisplayTotalsOverride | null): void {
+  setTotals(cartId: string, totals: DisplayTotalsOverride | null, signature?: string | null): void {
     try {
       if (typeof cartId !== 'string' || cartId.length === 0) return;
+      const sig = typeof signature === 'string' ? signature : null;
       if (totals === null) {
         if (this.totalsOverride?.cartId !== cartId) return;
         this.totalsOverride = null;
       } else {
+        if (sig !== null && this.projectedCart && this.projectedCart.id === cartId && linesSignature(this.projectedCart) !== sig) {
+          return; // totales de unas líneas que ya no son las proyectadas: no se aplican
+        }
         const same =
           this.totalsOverride?.cartId === cartId &&
           this.totalsOverride.totals.discountTotal === totals.discountTotal &&
           this.totalsOverride.totals.taxTotal === totals.taxTotal &&
-          this.totalsOverride.totals.total === totals.total;
+          this.totalsOverride.totals.total === totals.total &&
+          this.totalsOverride.signature === sig;
         if (same) return;
-        this.totalsOverride = { cartId, totals: { ...totals } };
+        this.totalsOverride = { cartId, totals: { ...totals }, signature: sig };
       }
       if (this.cart?.id !== cartId) return;
       this.projectedCart = this.project();
@@ -529,12 +778,118 @@ export class DisplayEmitter {
   setPayment(payment: DisplayPayment | null): void {
     try {
       if (!this.started) return;
+      const opening = payment !== null && this.payment === null;
       this.payment = payment;
       if (payment && this.thanks) this.clearThanks();
+      // F2-B: al ENTRAR en cobro se abre la fase de propina (si procede); al
+      // cancelarlo se olvida, base incluida (la fija CheckoutDialog para ESE
+      // cobro). Cambiar de medio o teclear importes no la toca.
+      if (payment === null) {
+        this.resetTip();
+        this.tipBase = null;
+      } else if (opening) this.beginTipPhase();
       this.requestFlush();
     } catch (err) {
       warn('setPayment', err);
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Propina en pantalla (F2-B)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Importe sobre el que la pantalla calcula los porcentajes: el total con
+   * impuestos ANTES de propina y domicilio (`baseTotal` del modal de cobro),
+   * para que «10 %» sea la misma cifra en la pantalla y en la caja. La caja
+   * lo manda con cada cambio; null lo retira (se usa el total proyectado).
+   * No abre ni cierra la fase.
+   */
+  setTipBase(base: number | null): void {
+    try {
+      // Ronda 2 (QA-1): misma guarda que setPayment/setMode. CheckoutDialog se
+      // monta también en mesas y nueva venta, con la caja sin arrancar; sin
+      // esto la base de ESA venta quedaba residente y viajaba en el primer
+      // «tip» al volver al POS.
+      if (!this.started) return;
+      const next = typeof base === 'number' && Number.isFinite(base) && base >= 0 ? base : null;
+      if (next === this.tipBase) return;
+      this.tipBase = next;
+      if (this.tipState === 'pending') this.requestFlush();
+    } catch (err) {
+      warn('setTipBase', err);
+    }
+  }
+
+  /**
+   * El cajero omite la propina en pantalla (o la registró él mismo en la
+   * caja, o siguió cobrando): la pantalla pasa a «Cobro». Sin fase pendiente
+   * no hace nada. No borra una elección ya recibida.
+   */
+  skipTip(): void {
+    try {
+      if (this.tipState !== 'pending') return;
+      this.setTipPhase('done');
+      this.requestFlush();
+    } catch (err) {
+      warn('skipTip', err);
+    }
+  }
+
+  /**
+   * Cambios de `tipPhase` (ronda 2, QA-6): se avisa solo cuando el valor
+   * cambia de verdad (pending → done → null), desde beginTipPhase, skipTip,
+   * acceptTipSelection y resetTip. Sustituye el sondeo de la UI de la caja
+   * (TipFromDisplayNotice). Un oyente que lance no afecta al resto ni al
+   * emisor. Devuelve la baja. Sobrevive a stop()/start().
+   */
+  onTipPhaseChange(listener: (phase: TipPhase) => void): () => void {
+    this.tipPhaseListeners.add(listener);
+    return () => {
+      this.tipPhaseListeners.delete(listener);
+    };
+  }
+
+  /**
+   * Cada `state` que sale de verdad por el transporte (`announce` y `flush`
+   * con cambio real; ronda 2, QA-3). La UI de la caja lo usa para saber qué
+   * pinta la pantalla AHORA (p. ej. si la pregunta de propina quedó tapada
+   * por un QR con código) sin sondear ni duplicar `buildState`. No se avisa
+   * con el interruptor apagado ni sin transporte: entonces no hay pantalla
+   * que pinte nada. Un oyente que lance no afecta al resto ni a la emisión.
+   */
+  onStatePublished(listener: (state: DisplayState) => void): () => void {
+    this.stateListeners.add(listener);
+    return () => {
+      this.stateListeners.delete(listener);
+    };
+  }
+
+  /**
+   * Elección del cliente desde la pantalla táctil, ya resuelta a importe con
+   * la base que la caja emitió (tip.ts). Solo se entrega si la fase estaba
+   * pendiente y `cartId` es el carrito proyectado. El emisor no aplica nada:
+   * la caja muestra «Cliente eligió 10 % ($X)» con Aplicar / Cambiar
+   * (PLAN §5.3). Un oyente que lance no afecta al resto. Sobrevive a
+   * stop()/start(): se registra una vez por componente.
+   */
+  onTipSelected(listener: (selection: TipSelection) => void): () => void {
+    this.tipListeners.add(listener);
+    return () => {
+      this.tipListeners.delete(listener);
+    };
+  }
+
+  /** Fase de la propina en pantalla ahora mismo (para la UI de la caja y las pruebas). */
+  get tipPhase(): TipPhase {
+    return this.tipState;
+  }
+
+  /** Última elección aceptada en esta fase, resuelta a importe; null si no hubo. */
+  get tipSelection(): TipSelection | null {
+    const msg = this.tipSelected;
+    if (!msg) return null;
+    return resolveTipSelection(msg.cartId, this.effectiveTipBase(), { kind: msg.kind, value: msg.value });
   }
 
   /**
@@ -543,7 +898,8 @@ export class DisplayEmitter {
    * - `closed`: sin caja abierta. Se mantiene hasta `order`/`idle`.
    * - `order` / `idle`: limpia cobro, gracias y cerrado; el carrito decide.
    * - `payment`: no hace nada por sí solo; el modo lo fija setPayment.
-   * - `tip`: fuera de la Fase 0; se ignora.
+   * - `tip`: no se fuerza desde fuera; la fase la abre setPayment (F2-B) y
+   *   la cierran tip_selected / skipTip(). Se ignora.
    * Con la caja sin arrancar (CheckoutDialog en mesas o nueva venta) se ignora.
    */
   setMode(mode: DisplayMode, extra?: { total?: number; askRating?: boolean }): void {
@@ -553,6 +909,8 @@ export class DisplayEmitter {
         case 'thanks': {
           const total = typeof extra?.total === 'number' && Number.isFinite(extra.total) ? extra.total : this.projectedCart?.total ?? 0;
           this.payment = null;
+          this.resetTip();
+          this.tipBase = null; // la venta terminó: la base no vale para la siguiente
           this.closed = false;
           this.thanks = { total, askRating: extra?.askRating === true };
           this.armThanksTimer();
@@ -564,6 +922,8 @@ export class DisplayEmitter {
         case 'order':
         case 'idle':
           this.payment = null;
+          this.resetTip();
+          this.tipBase = null; // cobro cancelado: la base era de ese cobro
           this.closed = false;
           this.clearThanks();
           break;
@@ -596,14 +956,87 @@ export class DisplayEmitter {
     return this.transport?.lastDisplaySeenAt ?? null;
   }
 
+  /**
+   * Últimas `capabilities` que la pantalla declaró (`display_alive` /
+   * `need_snapshot`): táctil o no, y tamaño. null sin transporte, sin
+   * pantalla, tras su `display_bye` o si el transporte no las guarda
+   * (ronda 2, QA-3). La UI de la caja las usa para no prometer una respuesta
+   * que una pantalla NO táctil nunca dará (PLAN §4.4).
+   */
+  get lastDisplayCapabilities(): DisplayCapabilities | null {
+    return this.transport?.lastDisplayCapabilities ?? null;
+  }
+
+  /**
+   * Cambios de `lastDisplayCapabilities` (ronda 3 de F2-B, QA-5): se avisa
+   * cuando la pantalla declara capacidades distintas (`display_alive` /
+   * `need_snapshot` con otro táctil o tamaño), cuando se despide
+   * (`display_bye` → null) y cuando el transporte se cierra (null). La UI de
+   * la caja (TipFromDisplayNotice) lo usa para que el aviso «esperando la
+   * propina…» / «registre lo que indique el cliente» siga a lo que la
+   * pantalla PINTA sin quedarse un render atrás: la pantalla reemite
+   * `display_alive` con el táctil RESUELTO (detección + forzado de los
+   * ajustes) en cuanto conoce `hello.settings.touch` (displayLink.ts). Solo
+   * con cambio real (comparación serializada). Un oyente que lance no afecta
+   * al resto. Devuelve la baja. Sobrevive a stop()/start().
+   */
+  onDisplayCapabilitiesChange(listener: (capabilities: DisplayCapabilities | null) => void): () => void {
+    this.capabilitiesListeners.add(listener);
+    return () => {
+      this.capabilitiesListeners.delete(listener);
+    };
+  }
+
+  /**
+   * Ajustes de presentación que la caja tiene en caché (`getSettings`), o
+   * null si el cableado no los provee o la lectura lanza. Para que la UI de
+   * la caja aplique el MISMO forzado táctil que la pantalla
+   * (`settings.touch`, PLAN §4.4) sin conocer settings.ts ni la organización.
+   */
+  get presentationSettings(): DisplayPresentationSettings | null {
+    if (!this.getSettings) return null;
+    try {
+      const settings: unknown = this.getSettings();
+      return typeof settings === 'object' && settings !== null && !Array.isArray(settings) ? (settings as DisplayPresentationSettings) : null;
+    } catch (err) {
+      warn('getSettings', err);
+      return null;
+    }
+  }
+
   /** Cuántos `state` se han publicado (pruebas). */
   get emittedStateCount(): number {
     return this.stateCount;
   }
 
+  /**
+   * Intenciones de la pantalla hacia la UI de la caja (Fase 2, PLAN §8):
+   * `qr_paid_claim` («el cliente indica que ya pagó»: solo avisa, la
+   * confirmación sigue siendo del cajero o del webhook), `tip_selected`,
+   * `rating`. El emisor NO cambia su estado con ninguna de ellas: quien se
+   * suscribe decide qué hacer (un toast, registrar la propina por su flujo).
+   * `need_snapshot` y la presencia (`display_alive`/`display_bye`) no se
+   * reenvían: los atiende el emisor y el transporte. Devuelve la baja. Un
+   * oyente que lance no afecta ni al resto ni al emisor. Sobrevive a
+   * stop()/start(): se registra una vez por componente.
+   */
+  onUp(listener: (msg: UpMessage) => void): () => void {
+    this.upListeners.add(listener);
+    return () => {
+      this.upListeners.delete(listener);
+    };
+  }
+
   // -------------------------------------------------------------------------
   // Internos
   // -------------------------------------------------------------------------
+
+  /** ¿La firma del override (si la tiene) casa con la proyección dada? Sin firma, siempre true. */
+  private matchesOverrideSignature(cart: DisplayCart): boolean {
+    const override = this.totalsOverride;
+    if (!override || override.signature === null) return true;
+    return linesSignature(cart) === override.signature;
+  }
 
   private project(): DisplayCart | null {
     if (!this.cart) return null;
@@ -626,14 +1059,133 @@ export class DisplayEmitter {
     this.totalsOverride = null;
     this.lastChangedLineId = null;
     this.payment = null;
+    this.resetTip();
+    this.tipBase = null; // la base de la organización anterior no viaja en el primer «tip» de la nueva (QA-1, ronda 2)
     this.closed = false;
     this.clearThanks();
   }
 
+  /**
+   * Abre la fase de propina si la organización la tiene activada
+   * (`getSettings().tips.enabled`) con al menos un preset válido o «Otro», y
+   * hay líneas que cobrar. Presets y «Otro» se congelan aquí: un cambio de
+   * ajustes a mitad de cobro no cambia la pregunta que el cliente ya ve.
+   */
+  private beginTipPhase(): void {
+    this.resetTip();
+    if (!this.getSettings || !hasLines(this.projectedCart)) return;
+    let settings: DisplayPresentationSettings | undefined;
+    try {
+      settings = this.getSettings();
+    } catch (err) {
+      warn('getSettings', err);
+      return;
+    }
+    const tips = settings?.tips;
+    if (!tips || tips.enabled !== true) return;
+    const presets = Array.isArray(tips.presets) ? Array.from(new Set(tips.presets.filter(isValidTipPercent))) : [];
+    const allowCustom = tips.allowCustom === true;
+    if (presets.length === 0 && !allowCustom) return;
+    this.tipConfig = { presets, allowCustom };
+    this.setTipPhase('pending');
+  }
+
+  /** No toca `tipBase`: beginTipPhase lo llama al abrir y la base que fijó la caja para ESTE cobro debe seguir. */
+  private resetTip(): void {
+    this.setTipPhase(null);
+    this.tipConfig = null;
+    this.tipSelected = null;
+  }
+
+  /** Único punto que escribe `tipState`; avisa a onTipPhaseChange solo si cambió. */
+  private setTipPhase(next: TipPhase): void {
+    if (this.tipState === next) return;
+    this.tipState = next;
+    for (const listener of Array.from(this.tipPhaseListeners)) {
+      try {
+        listener(next);
+      } catch (err) {
+        warn('onTipPhaseChange', err);
+      }
+    }
+  }
+
+  /** Base del cálculo: la que fijó la caja o, sin ella, el total proyectado. */
+  private effectiveTipBase(): number {
+    if (this.tipBase !== null) return this.tipBase;
+    return this.projectedCart?.total ?? 0;
+  }
+
+  private tipBlock(): DisplayTipBlock {
+    const config = this.tipConfig ?? { presets: [], allowCustom: false };
+    return { presets: [...config.presets], allowCustom: config.allowCustom, selected: this.tipSelected, base: this.effectiveTipBase() };
+  }
+
+  /**
+   * `tip_selected` de la pantalla: cierra la fase (la pantalla pasa a
+   * «Cobro») y avisa a la caja con el importe resuelto. Se descarta fuera
+   * de la fase pendiente o si habla de otro carrito (una pantalla rezagada).
+   *
+   * Tolerancia (ronda 2, QA-4): un `percent` que no es un entero en [1, 100]
+   * o un `amount` con más de TIP_CUSTOM_MAX_DIGITS cifras se DESCARTA sin
+   * cerrar la fase (aviso en consola). La pantalla propia nunca los manda
+   * (tip.ts / TipView los limitan), pero otra pantalla (F3 Realtime) o un
+   * sobre fabricado sí podrían; antes el primero se resolvía como «Sin
+   * propina» y cerraba la pregunta, y el segundo llegaba a la caja tal cual.
+   */
+  private acceptTipSelection(msg: TipSelectedMessage): void {
+    if (this.tipState !== 'pending') return;
+    const cartId = this.projectedCart?.id ?? null;
+    if (cartId === null || msg.cartId !== cartId) return;
+    if (!isAcceptableTipChoice(msg.kind, msg.value)) {
+      console.warn('[pos-display] tip_selected descartado: valor fuera de rango', { kind: msg.kind, value: msg.value });
+      return;
+    }
+    this.tipSelected = msg;
+    this.setTipPhase('done');
+    this.requestFlush();
+    const selection = resolveTipSelection(msg.cartId, this.effectiveTipBase(), { kind: msg.kind, value: msg.value });
+    for (const listener of Array.from(this.tipListeners)) {
+      try {
+        listener(selection);
+      } catch (err) {
+        warn('onTipSelected', err);
+      }
+    }
+  }
+
+  /**
+   * Deriva el `state` que viaja. Orden: closed > thanks > cobro QR con código
+   * > propina pendiente (con líneas y base > 0) > cobro > pedido > reposo. El cobro QR con código va
+   * ANTES que la propina pendiente (Fase 2-C): al generar el QR la caja
+   * proyecta `payment.qr`, y si la fase de propina siguiera tapándolo, en una
+   * pantalla no táctil (propina informativa, PLAN §4.4) el cliente nunca
+   * vería el código hasta que el cajero pulsara «Omitir». Vale para cualquier
+   * caja que use el emisor, no solo CheckoutDialog. La fase NO se cierra
+   * (tipPhase sigue 'pending'): un QR sin código (interruptor «Mostrar en
+   * pantalla» apagado) o retirado vuelve a mostrar la pregunta.
+   *
+   * Un QR VENCIDO también se impone (ronda 3): resolveDisplayQr deja `qr:
+   * null` pero conserva `expiresAt`, y la pantalla ya sabe decir «El código
+   * venció». Si no se impusiera, cualquier recálculo del efecto de
+   * CheckoutDialog tras el vencimiento haría saltar la pantalla de «venció» a
+   * la pregunta de propina mientras el cajero regenera el código. La regla:
+   * `qr !== null` (código vivo) o `expiresAt` numérico (vencido) → cobro QR;
+   * `qr` y `expiresAt` ambos null (interruptor apagado) → sigue la propina.
+   */
   private buildState(): DisplayState {
     const cart = this.projectedCart;
     if (this.closed) return { ...IDLE_STATE, mode: 'closed' };
     if (this.thanks) return { ...IDLE_STATE, mode: 'thanks', thanks: this.thanks };
+    if (this.payment && this.payment.method === 'qr' && (!!this.payment.qr || Number.isFinite(this.payment.expiresAt))) {
+      return { ...IDLE_STATE, mode: 'payment', cart: this.withHighlight(cart), payment: this.payment };
+    }
+    // Base 0 (cortesía, descuento del 100 %): no hay nada sobre lo que
+    // preguntar («5 % · $0») y se pinta el cobro. Derivado, como `hasLines`:
+    // la fase sigue pendiente y, si la base cambia, la pregunta aparece.
+    if (this.payment && this.tipState === 'pending' && hasLines(cart) && this.effectiveTipBase() > 0) {
+      return { ...IDLE_STATE, mode: 'tip', cart: this.withHighlight(cart), payment: this.payment, tip: this.tipBlock() };
+    }
     if (this.payment) {
       return { ...IDLE_STATE, mode: 'payment', cart: this.withHighlight(cart), payment: this.payment };
     }
@@ -648,14 +1200,31 @@ export class DisplayEmitter {
   }
 
   private helloDraft(): HelloDraft {
-    return {
+    const hello: HelloDraft = {
       t: 'hello',
       organizationId: this.organizationId,
       cashier: this.session.cashier,
       sessionOpen: this.session.sessionOpen,
       // La pantalla la usa cuando el state no trae carrito (thanks, cobro sin líneas): ver protocol.ts.
       currency: this.currency,
+      // F2-B: con dos pestañas de /app/pos la pantalla prefiere a la visible (transport.ts · isBetterHello).
+      visible: this.windowVisible(),
     };
+    // Fase 2: ajustes de presentación (propina, calificación, impuestos, idioma, táctil).
+    // Solo si el cableado los provee: así el hello de la Fase 0 no cambia de forma.
+    if (this.getSettings) {
+      try {
+        const settings: unknown = this.getSettings();
+        // Solo un objeto viaja: `null`/`undefined` haría que isDownMessage rechazara el saludo ENTERO
+        // en la pantalla (posDisplay.ts nunca devuelve null hoy; es una guarda contra un cableado futuro).
+        if (typeof settings === 'object' && settings !== null && !Array.isArray(settings)) {
+          hello.settings = settings as DisplayPresentationSettings;
+        }
+      } catch (err) {
+        warn('getSettings', err); // el saludo sale igual, sin ajustes: la pantalla se queda en «solo resumen»
+      }
+    }
+    return hello;
   }
 
   /**
@@ -680,6 +1249,17 @@ export class DisplayEmitter {
     this.stateCount += 1;
     this.lastEmittedJson = JSON.stringify(state);
     this.lastChangedLineId = null; // el resaltado ya viajó; no se repite en la siguiente emisión
+    this.notifyStatePublished(state);
+  }
+
+  private notifyStatePublished(state: DisplayState): void {
+    for (const listener of Array.from(this.stateListeners)) {
+      try {
+        listener(state);
+      } catch (err) {
+        warn('onStatePublished', err);
+      }
+    }
   }
 
   private openTransport(): void {
@@ -713,6 +1293,23 @@ export class DisplayEmitter {
     } catch (err) {
       warn('closeTransport', err);
     }
+    // Sin transporte no hay pantalla: `lastDisplayCapabilities` pasa a null y quien escuche lo sabe.
+    this.notifyCapabilitiesIfChanged();
+  }
+
+  /** Avisa a onDisplayCapabilitiesChange solo si `lastDisplayCapabilities` cambió desde el último aviso. */
+  private notifyCapabilitiesIfChanged(): void {
+    const capabilities = this.lastDisplayCapabilities;
+    const json = capabilities === null ? null : JSON.stringify(capabilities);
+    if (json === this.lastCapabilitiesJson) return;
+    this.lastCapabilitiesJson = json;
+    for (const listener of Array.from(this.capabilitiesListeners)) {
+      try {
+        listener(capabilities === null ? null : { ...capabilities });
+      } catch (err) {
+        warn('onDisplayCapabilitiesChange', err);
+      }
+    }
   }
 
   private handleUp(msg: UpMessage): void {
@@ -720,10 +1317,31 @@ export class DisplayEmitter {
     // calificación llegan en fases 2 y 4 y las confirma la caja. Envuelto
     // como el resto de puntos de entrada: un transporte cuyo publish lance
     // (Supabase Realtime en F3) no debe propagar al handler de subida.
+    // La respuesta NO depende de la visibilidad (ronda 4 de F2-A): una única
+    // pestaña de POS en segundo plano, encendida desde Configuración, abre
+    // el transporte sin saludar; la pantalla la adopta por latido, pide
+    // snapshot y aquí recibe su hello + state. Con dos pestañas, la ventana
+    // de elección del receptor (ADOPTION_WINDOW_MS) resuelve por
+    // sessionOpen/seq, no por quién responde la última.
     try {
+      // El transporte ya anotó (o borró) las capacidades antes de entregar el sobre: se avisa si cambiaron.
+      if (msg.t === 'display_alive' || msg.t === 'need_snapshot' || msg.t === 'display_bye') this.notifyCapabilitiesIfChanged();
       if (msg.t === 'need_snapshot') this.announce();
+      // F2-B: la elección de propina sí cierra la fase (la pantalla pasa a «Cobro»); aplicarla sigue siendo de la caja.
+      if (msg.t === 'tip_selected') this.acceptTipSelection(msg);
     } catch (err) {
       warn('handleUp', err);
+    }
+    // Fase 2: intenciones para la UI de la caja. No tocan el estado del emisor (salvo tip_selected, arriba).
+    // Un sobre sin `t` (basura que un transporte futuro dejara pasar) no se reenvía ni rompe.
+    const type = typeof msg === 'object' && msg !== null ? msg.t : undefined;
+    if (typeof type !== 'string' || type === 'need_snapshot' || type === 'display_alive' || type === 'display_bye') return;
+    for (const listener of Array.from(this.upListeners)) {
+      try {
+        listener(msg);
+      } catch (err) {
+        warn('onUp', err);
+      }
     }
   }
 
@@ -753,6 +1371,7 @@ export class DisplayEmitter {
       this.stateCount += 1;
       this.transport.publish({ t: 'state', state });
       this.lastChangedLineId = null; // el resaltado ya viajó; no se repite en la siguiente emisión
+      this.notifyStatePublished(state);
     } catch (err) {
       warn('flush', err);
     }

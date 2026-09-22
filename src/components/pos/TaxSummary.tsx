@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Calculator, Settings, ChevronDown, Check } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { POSService } from '@/lib/services/posService';
+import { cartLinesSignature } from '@/lib/pos/display/emitter';
 import { Cart } from './types';
 import { formatCurrency } from '@/utils/Utils';
 import { 
@@ -45,10 +46,20 @@ interface TaxSummaryProps {
   taxIncluded: boolean;
   onTaxIncludedChange: (included: boolean) => void;
   onAppliedTaxesChange?: (taxIds: string[]) => void;
-  /** `cartId` es el carrito con el que se calcularon: el padre debe ignorar totales de otro carrito (ver CartView). */
-  onTotalsChange?: (totals: { subtotal: number; totalTaxAmount: number; finalTotal: number; cartId: string }) => void;
+  /**
+   * `cartId` es el carrito con el que se calcularon: el padre debe ignorar
+   * totales de otro carrito (ver CartView). `linesSignature` identifica las
+   * LÍNEAS exactas con las que se calcularon (`cartLinesSignature`, los
+   * mismos campos que compara `sameLines` en el emisor de la pantalla del
+   * cliente): el padre descarta un reenvío de totales viejos cuando las
+   * líneas ya cambiaron.
+   */
+  onTotalsChange?: (totals: { subtotal: number; totalTaxAmount: number; finalTotal: number; cartId: string; linesSignature: string }) => void;
   className?: string;
 }
+
+/** Totales que TaxSummary comunica al padre (la forma del parámetro de `onTotalsChange`). */
+export type TaxSummaryTotals = Parameters<NonNullable<TaxSummaryProps['onTotalsChange']>>[0];
 
 export function TaxSummary({ 
   cart, 
@@ -64,12 +75,18 @@ export function TaxSummary({
   const [loading, setLoading] = useState(true);
   const [hasProductSpecificTaxes, setHasProductSpecificTaxes] = useState(false);
   const [taxSelectorOpen, setTaxSelectorOpen] = useState(false);
-  const [calculatedTotals, setCalculatedTotals] = useState({
+  const [calculatedTotals, setCalculatedTotals] = useState<TaxSummaryTotals>({
     subtotal: 0,
     totalTaxAmount: 0,
     finalTotal: 0,
-    cartId: cart.id
+    cartId: cart.id,
+    linesSignature: cartLinesSignature(cart),
   });
+
+  // Firma de las líneas del carrito (id, cantidad, precio, descuento, nota, modificadores):
+  // etiqueta cada resultado con las líneas exactas con las que se calculó. Es un string:
+  // un carrito nuevo con las mismas líneas produce la misma firma y no dispara recálculo.
+  const linesSignature = useMemo(() => cartLinesSignature(cart), [cart]);
 
   // Cargar impuestos de la organización
   useEffect(() => {
@@ -114,7 +131,7 @@ export function TaxSummary({
     const calculateTaxBreakdown = async () => {
       if (cart.items.length === 0 || organizationTaxes.length === 0) {
         setTaxBreakdown([]);
-        setCalculatedTotals({ subtotal: 0, totalTaxAmount: 0, finalTotal: 0, cartId });
+        setCalculatedTotals({ subtotal: 0, totalTaxAmount: 0, finalTotal: 0, cartId, linesSignature });
         return;
       }
 
@@ -234,7 +251,8 @@ export function TaxSummary({
         subtotal: Math.round(combinedSubtotal * 100) / 100,
         totalTaxAmount: Math.round(combinedTaxAmount * 100) / 100,
         finalTotal: Math.round(combinedFinalTotal * 100) / 100,
-        cartId
+        cartId,
+        linesSignature,
       });
     };
 
@@ -242,7 +260,7 @@ export function TaxSummary({
     return () => {
       cancelled = true;
     };
-  }, [cart.id, cart.items, organizationTaxes, appliedTaxes, taxIncluded]);
+  }, [cart.id, cart.items, linesSignature, organizationTaxes, appliedTaxes, taxIncluded]);
 
   // Comunicar totales al padre cuando cambien
   useEffect(() => {

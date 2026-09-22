@@ -14,11 +14,12 @@
  *   (`display_alive` cada 1 s).
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { UpMessageDraft } from '@/lib/pos/display/protocol';
 import { BroadcastChannelReceiver } from '@/lib/pos/display/transport';
 import { isDisplayTransportAvailable, resolveDisplayChannelFactory } from '@/lib/pos/display/desktopChannel';
 import { TERMINAL_ID_STORAGE_KEY, readLocalTerminalId } from '@/lib/pos/display/terminal';
-import { INITIAL_LINK_SNAPSHOT, readCapabilities, startDisplayLink, type DisplayLinkSnapshot } from './displayLink';
+import { INITIAL_LINK_SNAPSHOT, readCapabilities, startDisplayLink, type DisplayLink, type DisplayLinkSnapshot } from './displayLink';
 
 export { DISCONNECTED_TO_IDLE_MS, readCapabilities, type DisplayHello } from './displayLink';
 
@@ -27,6 +28,10 @@ export interface DisplayReceiverSnapshot extends DisplayLinkSnapshot {
   terminalId: string | null;
   /** false si el navegador no tiene BroadcastChannel: la pantalla no puede funcionar aquí. */
   supported: boolean;
+  /** `navigator.maxTouchPoints > 0` al montar (PLAN §4.4); el forzado de los ajustes lo aplica resolveTouch. */
+  touchDetected: boolean;
+  /** Manda una intención a la caja (Fase 2: `qr_paid_claim`…). Sin enlace o sin caja conectada no hace nada. Estable. */
+  sendUp: (msg: UpMessageDraft) => void;
 }
 
 /** Lee el id de la caja ahora y cada vez que la caja lo escriba (evento `storage` cruza ventanas del mismo origen). */
@@ -57,6 +62,11 @@ export function useDisplayReceiver(): DisplayReceiverSnapshot {
   // receptor es el mismo, solo cambia el tubo (desktopChannel.ts).
   const [supported] = useState<boolean>(() => isDisplayTransportAvailable());
   const [snapshot, setSnapshot] = useState<DisplayLinkSnapshot>(INITIAL_LINK_SNAPSHOT);
+  const [touchDetected] = useState<boolean>(() => readCapabilities().touch);
+  const linkRef = useRef<DisplayLink | null>(null);
+  const sendUp = useCallback((msg: UpMessageDraft) => {
+    linkRef.current?.send(msg);
+  }, []);
 
   useEffect(() => {
     if (!terminalId || !supported) return;
@@ -70,6 +80,7 @@ export function useDisplayReceiver(): DisplayReceiverSnapshot {
     }
 
     const link = startDisplayLink({ receiver, capabilities: readCapabilities, onChange: setSnapshot });
+    linkRef.current = link;
 
     const onResize = () => link.refreshPresence();
     window.addEventListener('resize', onResize);
@@ -80,9 +91,10 @@ export function useDisplayReceiver(): DisplayReceiverSnapshot {
       window.removeEventListener('resize', onResize);
       window.removeEventListener('pagehide', onUnload);
       link.stop();
+      linkRef.current = null;
       setSnapshot(INITIAL_LINK_SNAPSHOT);
     };
   }, [terminalId, supported]);
 
-  return { terminalId, supported, ...snapshot };
+  return { terminalId, supported, touchDetected, sendUp, ...snapshot };
 }

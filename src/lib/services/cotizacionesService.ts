@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { promotionEngine } from '@/lib/services/promotionEngine';
+import { resolveLineTax } from '@/lib/services/taxResolver';
 
 export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired' | 'converted';
 
@@ -196,6 +197,34 @@ export class CotizacionesService {
         console.warn('[cotizacionesService] No se pudieron evaluar promociones:', promoErr);
       }
 
+      // F-42: Resolver impuestos de cada línea antes de insertar.
+      const itemsWithoutTax = evaluatedItems.filter(it =>
+        !Number(it.tax_rate) || Number(it.tax_rate) === 0
+      );
+      if (itemsWithoutTax.length > 0) {
+        evaluatedItems = await Promise.all(
+          evaluatedItems.map(async (item) => {
+            const resolved = await resolveLineTax({
+              itemTaxRate: item.tax_rate,
+              itemTaxCode: item.tax_code,
+              productId: item.product_id,
+              organizationId: quotationData.organization_id,
+              taxIncluded: item.tax_included,
+              qty: Number(item.qty) || 0,
+              unitPrice: Number(item.unit_price) || 0,
+              discountAmount: Number(item.discount_amount) || 0,
+            });
+            return {
+              ...item,
+              tax_rate: resolved.tax_rate,
+              tax_code: resolved.tax_code,
+              tax_included: resolved.tax_included,
+              total_line: resolved.total_line,
+            };
+          })
+        );
+      }
+
       const { data, error } = await supabase
         .from('quotations')
         .insert(quotationData)
@@ -239,8 +268,33 @@ export class CotizacionesService {
       if (error) throw error;
 
       if (items) {
+        // F-42: Resolver impuestos de cada línea antes de insertar.
+        const resolvedItems = await Promise.all(
+          items.map(async (item) => {
+            const resolved = await resolveLineTax({
+              itemTaxRate: item.tax_rate,
+              itemTaxCode: item.tax_code,
+              productId: item.product_id,
+              // La organización sale de la fila actualizada: los llamadores no la
+              // envían en `updates` y con 0 el resolver no encuentra el impuesto
+              // por defecto de la organización.
+              organizationId: updates.organization_id ?? data.organization_id,
+              taxIncluded: item.tax_included,
+              qty: Number(item.qty) || 0,
+              unitPrice: Number(item.unit_price) || 0,
+              discountAmount: Number(item.discount_amount) || 0,
+            });
+            return {
+              ...item,
+              tax_rate: resolved.tax_rate,
+              tax_code: resolved.tax_code,
+              tax_included: resolved.tax_included,
+              total_line: resolved.total_line,
+            };
+          })
+        );
         await supabase.from('quotation_items').delete().eq('quotation_id', id);
-        const itemsToInsert = items.map((item) => ({
+        const itemsToInsert = resolvedItems.map((item) => ({
           ...item,
           quotation_id: id,
           id: undefined,
@@ -392,7 +446,29 @@ export class CotizacionesService {
       if (invoiceError) throw invoiceError;
 
       if (quotation.quotation_items && quotation.quotation_items.length > 0) {
-        const invoiceItemsToInsert = quotation.quotation_items.map((item) => ({
+        // F-42: Resolver impuestos de cada línea antes de insertar en invoice_items.
+        const resolvedItems = await Promise.all(
+          quotation.quotation_items.map(async (item) => {
+            const resolved = await resolveLineTax({
+              itemTaxRate: item.tax_rate,
+              itemTaxCode: item.tax_code,
+              productId: item.product_id,
+              organizationId,
+              taxIncluded: item.tax_included,
+              qty: Number(item.qty) || 0,
+              unitPrice: Number(item.unit_price) || 0,
+              discountAmount: Number(item.discount_amount) || 0,
+            });
+            return {
+              ...item,
+              tax_rate: resolved.tax_rate,
+              tax_code: resolved.tax_code,
+              tax_included: resolved.tax_included,
+              total_line: resolved.total_line,
+            };
+          })
+        );
+        const invoiceItemsToInsert = resolvedItems.map((item) => ({
           invoice_sales_id: invoiceData.id,
           invoice_id: invoiceData.id,
           invoice_type: 'sale' as const,

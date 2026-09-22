@@ -4,6 +4,8 @@ import { readOrgBody } from '@/lib/security/organizationBody';
 import { getAssistantCapabilities } from '@/lib/ai/assistant/capabilities';
 import { applyUndo } from '@/lib/ai/assistant/undoService';
 import { checkRateLimit } from '@/lib/security/rateLimit';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { getTool, evaluateTool } from '@/lib/ai/agent/toolRegistry';
 
 /**
  * POST /api/ai-assistant/undo-action  →  { actionId }
@@ -59,10 +61,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data, error } = await ctx.supabase
+    const actionStore = getServiceClient();
+    const { data, error } = await actionStore
       .from('ai_agent_actions')
       .select('id, organization_id, user_id, tool_name, status, undo_payload, executed_at')
       .eq('id', actionId)
+      .eq('organization_id', ctx.organizationId)
+      .eq('user_id', ctx.userId)
       .maybeSingle();
 
     if (error) throw new Error(error.message);
@@ -106,6 +111,10 @@ export async function POST(request: NextRequest) {
 
     // La ventana se lee de la configuración de la organización.
     const caps = await getAssistantCapabilities(ctx);
+    const tool = getTool(action.tool_name);
+    if (!tool || !evaluateTool(caps, tool, 'text').allowed) {
+      return NextResponse.json({ success: false, code: 'FORBIDDEN', message: 'Ya no tienes permiso para deshacer esta operación.' }, { status: 403 });
+    }
     const ejecutada = action.executed_at ? new Date(action.executed_at).getTime() : 0;
     const limite = ejecutada + caps.undoWindowMinutes * 60_000;
     if (Date.now() > limite) {
@@ -120,10 +129,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Compare-and-set: dos clics deshacen una sola vez.
-    const { data: claimed, error: claimError } = await ctx.supabase
+    const { data: claimed, error: claimError } = await actionStore
       .from('ai_agent_actions')
       .update({ status: 'undone', undone_at: new Date().toISOString() })
       .eq('id', action.id)
+      .eq('organization_id', ctx.organizationId)
+      .eq('user_id', ctx.userId)
       .eq('status', 'executed')
       .select('id');
 
@@ -141,10 +152,12 @@ export async function POST(request: NextRequest) {
       // No se pudo revertir: la fila vuelve a `executed`, porque el cambio de
       // negocio SIGUE aplicado. Dejarla en `undone` sería mentir sobre el estado
       // del sistema, que es peor que el fallo en sí.
-      await ctx.supabase
+      await actionStore
         .from('ai_agent_actions')
         .update({ status: 'executed', undone_at: null, error_code: outcome.errorCode ?? 'undo_failed', error_message: outcome.message })
-        .eq('id', action.id);
+        .eq('id', action.id)
+        .eq('organization_id', ctx.organizationId)
+        .eq('user_id', ctx.userId);
 
       return NextResponse.json(
         { success: false, code: outcome.errorCode ?? 'UNDO_FAILED', message: outcome.message },

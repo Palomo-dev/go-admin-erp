@@ -44,7 +44,7 @@ export default function PreciosYCostos({ formData, updateFormData }: PreciosYCos
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 max-w-full">
+      <div className="grid max-w-full grid-cols-1 gap-4 min-[430px]:grid-cols-2 md:grid-cols-4 sm:gap-6">
         {/* Precio de Venta */}
         <div className="space-y-2">
           <Label htmlFor="price" className="text-gray-700 dark:text-gray-300">

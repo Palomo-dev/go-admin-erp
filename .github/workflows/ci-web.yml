@@ -50,6 +50,9 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+      # `electron/src/**` entra en el tsconfig raíz (y los tests de permisos lo
+      # importan): sin las dependencias de electron/ salen 99 «Cannot find module 'electron'».
+      - run: npm ci --prefix electron
       - run: npx tsc --noEmit -p tsconfig.json
         env:
           NODE_OPTIONS: --max-old-space-size=8192

@@ -25,9 +25,9 @@ import {
   RefreshCw,
   ArrowLeft,
   Calendar,
-  Users,
   Wallet,
   FileText,
+  Smile,
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
@@ -35,6 +35,30 @@ import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { ReportesService, SalesReport, ProductReport, PaymentMethodReport, DailySalesData } from './reportesService';
 import { useBranch } from '@/lib/context/BranchContext';
+
+/**
+ * Lo que esta página LEE de `ReportesService.getCashReport` (que devuelve
+ * `any`). Se declara aquí, del lado del consumidor, para no tipar de golpe un
+ * servicio que usan más pantallas: cada campo es opcional porque la consulta
+ * de sesiones puede fallar y devolver la forma vacía.
+ */
+interface CashSessionView {
+  id: string | number;
+  opened_at?: string | null;
+  opening_balance?: number | null;
+  closing_balance?: number | null;
+  difference?: number | null;
+  status?: string | null;
+  cash_registers?: { name?: string | null } | null;
+}
+
+interface CashReportView {
+  sessions?: CashSessionView[];
+  totalVentas?: number;
+  totalIngresos?: number;
+  totalEgresos?: number;
+  balance?: number;
+}
 
 export function ReportesPage() {
   const { toast } = useToast();
@@ -65,7 +89,7 @@ export function ReportesPage() {
   const [topProducts, setTopProducts] = useState<ProductReport[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodReport[]>([]);
   const [dailySales, setDailySales] = useState<DailySalesData[]>([]);
-  const [cashReport, setCashReport] = useState<any>(null);
+  const [cashReport, setCashReport] = useState<CashReportView | null>(null);
 
   const loadData = useCallback(async (showRefresh = false) => {
     if (showRefresh) {
@@ -178,6 +202,13 @@ export function ReportesPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Pantalla del cliente (Fase 4): informe de lo que el cliente calificó en caja. */}
+          <Link href="/app/pos/reportes/satisfaccion">
+            <Button variant="outline">
+              <Smile className="h-4 w-4 mr-2" />
+              Satisfacción en caja
+            </Button>
+          </Link>
           <Button variant="outline" size="icon" onClick={() => loadData(true)} disabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
@@ -456,7 +487,7 @@ export function ReportesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {cashReport?.sessions?.slice(0, 5).map((session: any) => (
+                    {cashReport?.sessions?.slice(0, 5).map((session) => (
                       <tr key={session.id} className="border-b border-gray-100 dark:border-gray-800">
                         <td className="py-2 px-3 text-gray-900 dark:text-white">
                           {session.cash_registers?.name || 'Caja'}

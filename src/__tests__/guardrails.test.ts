@@ -587,7 +587,16 @@ describe('F0 Guardarraíles', () => {
         // pantalla (bootstrap, heartbeat) o el código de emparejamiento de un
         // solo uso con rate limit (pair). Cualquier otra cosa es una ruta
         // abierta detrás de la exclusión del middleware.
-        const conToken = /authenticateDisplayRequest|requireDisplayToken|displayAuth/.test(content);
+        // `resolveDisplayActor` (F4, `lib/pos/display/server/displayActor.ts`) es
+        // la TERCERA credencial válida y no un agujero: con cabecera Bearer
+        // delega en `authenticateDisplayRequest` (el mismo token de F3) y, sin
+        // ella, exige `getServerOrgContext` y comprueba la terminal contra la
+        // organización de la SESIÓN. En los dos caminos la organización y la
+        // sucursal salen de la fila de `pos_terminals`, nunca de la petición,
+        // que es justo lo que vigila este caso. Se exige el import para que el
+        // nombre no pueda venir de un comentario.
+        const conActor = /from '@\/lib\/pos\/display\/server\/displayActor'/.test(content) && /resolveDisplayActor\s*\(/.test(content);
+        const conToken = conActor || /authenticateDisplayRequest|requireDisplayToken|displayAuth/.test(content);
         const esCanje = /\bcheckRateLimit\s*\(/.test(content) && /PAIR_RATE_LIMIT|pairing_code/.test(content);
         if (!conSesion && !conToken && !esCanje) ofensores.push(`${rel} (sin sesión, sin token y sin canje con límite)`);
       }

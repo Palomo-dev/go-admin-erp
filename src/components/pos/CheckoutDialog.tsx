@@ -1158,7 +1158,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setCompletedSale(sale);
       setShowReceipt(true);
       saleConfirmedRef.current = true;
-      getPosDisplayEmitter().setMode('thanks', { total: cartTotal });
+      // `saleId` (Fase 4): la pantalla puede pedir calificación durante
+      // «Gracias» y la caja la registra contra ESTA venta (feedback.ts).
+      getPosDisplayEmitter().setMode('thanks', { total: cartTotal, saleId: sale.id });
 
       // Haptic feedback de venta exitosa (no-op en web)
       hapticNotification('success');

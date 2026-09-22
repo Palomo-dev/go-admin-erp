@@ -630,14 +630,39 @@ export class VentasService {
   }
 
   // Anular venta
+  //
+  // `sales_status_check` solo admite draft|paid|partial|pending|void: escribir
+  // 'cancelled' violaba la restricción, así que anular una venta **nunca**
+  // llegó a funcionar (auditoría de ventas, 2026-09-22). El estado de anulada
+  // es `void`, el mismo que usa el camino de la nota crédito en posService.
+  // Además las notas se conservan: antes se machacaba lo que hubiera escrito
+  // el cajero con «[ANULADA] …».
   static async cancelSale(saleId: string, reason?: string): Promise<boolean> {
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: current, error: readError } = await supabase
+      .from('sales')
+      .select('notes, status')
+      .eq('id', saleId)
+      .maybeSingle();
+
+    if (readError) {
+      console.error('Error leyendo la venta a anular:', readError);
+      return false;
+    }
+    if (!current) {
+      console.error('Venta no encontrada al anular:', saleId);
+      return false;
+    }
+    if (current.status === 'void') return true; // ya estaba anulada
+
+    const marca = reason ? `[ANULADA] ${reason}` : '[ANULADA]';
+    const notes = current.notes ? `${current.notes}
+${marca}` : marca;
 
     const { error } = await supabase
       .from('sales')
       .update({
-        status: 'cancelled',
-        notes: reason ? `[ANULADA] ${reason}` : '[ANULADA]',
+        status: 'void',
+        notes,
         updated_at: new Date().toISOString()
       })
       .eq('id', saleId);
@@ -662,7 +687,7 @@ export class VentasService {
         unit_price,
         tax_rate,
         discount_amount,
-        products (id, name, sku, price)
+        products (id, name, sku)
       `)
       .eq('sale_id', saleId);
 

@@ -140,8 +140,26 @@ export interface Sale {
   tax_total: number;
   discount_total: number;
   balance: number;
-  /** `pending_sync`: venta provisional guardada en el outbox del Desktop (fase 4B), aún no está en Supabase. */
-  status: 'pending' | 'completed' | 'cancelled' | 'expired' | 'pending_sync';
+  /**
+   * Estados REALES de `sales` según `sales_status_check`:
+   * `draft | paid | partial | pending | void`. «completed» y «cancelled» no
+   * existen en la base de datos y se conservan solo porque los pedidos web y
+   * código antiguo los usan; el tipo los admite para no romper esas rutas,
+   * pero una venta del POS nunca los tendrá (auditoría de ventas, 2026-09-22).
+   *
+   * `pending_sync`: venta provisional guardada en el outbox del Desktop
+   * (fase 4B), aún no está en Supabase.
+   */
+  status:
+    | 'draft'
+    | 'paid'
+    | 'partial'
+    | 'pending'
+    | 'void'
+    | 'completed'
+    | 'cancelled'
+    | 'expired'
+    | 'pending_sync';
   payment_status: 'pending' | 'paid' | 'partial' | 'refunded';
   sale_date: string;
   invoice_number?: string;

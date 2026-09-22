@@ -207,10 +207,28 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
         text: 'text-yellow-700 dark:text-yellow-400',
         icon: <Clock className="h-4 w-4" />
       },
+      // `void` es el estado real de anulada; `cancelled` se conserva por si
+      // llega de otra fuente. Sin la entrada `void`, una venta anulada caía en
+      // `styles.pending` y se pintaba amarilla como «Pendiente».
+      void: {
+        bg: 'bg-red-100 dark:bg-red-900/30',
+        text: 'text-red-700 dark:text-red-400',
+        icon: <XCircle className="h-4 w-4" />
+      },
       cancelled: {
         bg: 'bg-red-100 dark:bg-red-900/30',
         text: 'text-red-700 dark:text-red-400',
         icon: <XCircle className="h-4 w-4" />
+      },
+      partial: {
+        bg: 'bg-blue-100 dark:bg-blue-900/30',
+        text: 'text-blue-700 dark:text-blue-400',
+        icon: <Clock className="h-4 w-4" />
+      },
+      draft: {
+        bg: 'bg-gray-100 dark:bg-gray-800/30',
+        text: 'text-gray-600 dark:text-gray-400',
+        icon: <Clock className="h-4 w-4" />
       },
       expired: {
         bg: 'bg-gray-100 dark:bg-gray-800/30',
@@ -224,7 +242,11 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
     const label =
       status === 'completed' || status === 'paid' ? 'Completada'
       : status === 'pending' ? 'Pendiente'
-      : status === 'cancelled' ? 'Anulada'
+      // `void` es el estado de anulada en `sales_status_check`; antes caía al
+      // literal crudo y una venta anulada se veía como «Pendiente».
+      : status === 'void' || status === 'cancelled' ? 'Anulada'
+      : status === 'partial' ? 'Pago parcial'
+      : status === 'draft' ? 'Borrador'
       : status === 'expired' ? 'Expirada'
       : status;
 
@@ -327,13 +349,13 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
             <Copy className="h-4 w-4 mr-1.5" />
             Duplicar
           </Button>
-          {sale.status === 'completed' && (
+          {(sale.status === 'paid' || sale.status === 'completed') && (
             <Button variant="outline" size="sm" onClick={handleCreateReturn} className="dark:border-gray-700">
               <RotateCcw className="h-4 w-4 mr-1.5" />
               Devolución
             </Button>
           )}
-          {sale.status !== 'cancelled' && (
+          {sale.status !== 'void' && sale.status !== 'cancelled' && (
             <Button variant="destructive" size="sm" onClick={handleCancel}>
               <XCircle className="h-4 w-4 mr-1.5" />
               Anular

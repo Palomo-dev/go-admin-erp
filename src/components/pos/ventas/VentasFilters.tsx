@@ -83,8 +83,12 @@ export function VentasFilters({ filters, onFiltersChange, onClearFilters }: Vent
             <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
               <SelectItem value="all" className="dark:text-white dark:hover:bg-gray-700">Todos los estados</SelectItem>
               <SelectItem value="pending" className="dark:text-white dark:hover:bg-gray-700">Pendiente</SelectItem>
-              <SelectItem value="completed" className="dark:text-white dark:hover:bg-gray-700">Completada</SelectItem>
-              <SelectItem value="cancelled" className="dark:text-white dark:hover:bg-gray-700">Anulada</SelectItem>
+              {/* Valores reales de `sales_status_check`: draft|paid|partial|pending|void.
+                  «completed» y «cancelled» no existen y devolvían siempre cero. */}
+              <SelectItem value="paid" className="dark:text-white dark:hover:bg-gray-700">Completada</SelectItem>
+              <SelectItem value="partial" className="dark:text-white dark:hover:bg-gray-700">Pago parcial</SelectItem>
+              <SelectItem value="void" className="dark:text-white dark:hover:bg-gray-700">Anulada</SelectItem>
+              <SelectItem value="draft" className="dark:text-white dark:hover:bg-gray-700">Borrador</SelectItem>
             </SelectContent>
           </Select>
         </div>

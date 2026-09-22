@@ -72,11 +72,28 @@ export function VentasTable({
             Pendiente
           </Badge>
         );
+      // `sales_status_check` solo admite draft|paid|partial|pending|void: el
+      // estado de anulada en la BD es `void`. Se mantiene 'cancelled' por si
+      // llega de otra fuente (pedidos web), pero el real es `void`.
+      case 'void':
       case 'cancelled':
         return (
           <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0">
             <XCircle className="h-3 w-3 mr-1" />
             Anulada
+          </Badge>
+        );
+      case 'partial':
+        return (
+          <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0">
+            <Clock className="h-3 w-3 mr-1" />
+            Pago parcial
+          </Badge>
+        );
+      case 'draft':
+        return (
+          <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800/30 dark:text-gray-400 border-0">
+            Borrador
           </Badge>
         );
       case 'expired':
@@ -270,7 +287,7 @@ export function VentasTable({
                       Duplicar
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="dark:bg-gray-700" />
-                    {sale.status === 'completed' && (
+                    {(sale.status === 'paid' || sale.status === 'completed') && (
                       <DropdownMenuItem 
                         onClick={() => onCreateReturn(sale)}
                         className="dark:hover:bg-gray-700"
@@ -279,7 +296,7 @@ export function VentasTable({
                         Crear Devolución
                       </DropdownMenuItem>
                     )}
-                    {sale.status !== 'cancelled' && sale.status !== 'expired' && (
+                    {sale.status !== 'void' && sale.status !== 'cancelled' && sale.status !== 'expired' && (
                       <DropdownMenuItem 
                         onClick={() => onCancel(sale)}
                         className="text-red-600 dark:text-red-400 dark:hover:bg-gray-700"

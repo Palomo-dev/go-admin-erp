@@ -51,7 +51,10 @@ const ABIERTA_VENTANA: DesktopPosDisplayStatus = { open: true, displayId: null }
 const CERRADA: DesktopPosDisplayStatus = { open: false, displayId: null };
 
 const SRC = join(process.cwd(), 'src');
-const read = (rel: string) => readFileSync(join(SRC, rel), 'utf8');
+// El fuente se lee normalizado a LF: en Windows con core.autocrlf=true un
+// checkout o stash deja el árbol en CRLF y las regex con `\n` de este archivo
+// (D6) fallaban aunque el índice estuviera bien. Lo que importa es el índice.
+const read = (rel: string) => readFileSync(join(SRC, rel), 'utf8').replace(/\r\n/g, '\n');
 const desktopDisplaySrc = read('lib/pos/display/desktopDisplay.ts');
 const posDisplaySrc = read('lib/pos/display/posDisplay.ts');
 const openDisplaySrc = read('lib/pos/display/openDisplay.ts');

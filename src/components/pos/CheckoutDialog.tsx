@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User, ShoppingCart, Wallet, Plus, Trash2, X, Percent, Truck, MapPin, Phone, Navigation, UserCircle, Clock, QrCode } from 'lucide-react';
+import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User, ShoppingCart, Wallet, Plus, Trash2, X, Percent, Truck, MapPin, Phone, Navigation, UserCircle, Clock, QrCode, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,7 +46,8 @@ import { QrPaymentDialog } from '@/components/shared/QrPaymentDialog';
 import { useMobileNative } from '@/hooks/useMobileNative';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
-import { isQrPaymentCode, pickQrFromProviderResponse, resolveCashReceived, resolveDisplayQr, resolveQrChargeAmount, toDisplayPayment } from '@/lib/pos/display/payment';
+import { confirmQrPaymentEntry, isQrPaymentCode, pickQrFromProviderResponse, resolveCashReceived, resolveDisplayQr, resolveQrChargeAmount, toDisplayPayment } from '@/lib/pos/display/payment';
+import { computeTipAmount } from '@/lib/pos/display/tip';
 import { useCustomerDisplayPresence } from '@/components/pos/display/useCustomerDisplayPresence';
 import { TipFromDisplayNotice } from '@/components/pos/display/TipFromDisplayNotice';
 import { applyTipToPrefilledPayment } from '@/components/pos/display/tipNotice';
@@ -173,6 +174,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [qrReference, setQrReference] = useState<string>('');
   const [qrProviderLabel, setQrProviderLabel] = useState<string>('');
   const [qrExpiresAt, setQrExpiresAt] = useState<string | undefined>();
+  // El proveedor mató el código sin pago (expired/rejected/cancelled del
+  // poller, HALLAZGO T): la pantalla del cliente lo retira («El código
+  // venció») aunque el `expires_at` local siga en el futuro.
+  const [qrDead, setQrDead] = useState(false);
   // Importe por el que se generó el QR (F2-C, C2): el de la PROPIA entrada QR
   // en pago mixto, no `remaining` (que ya descuenta esa entrada pre-rellenada).
   // Lo comparten el proveedor, el modal, la pantalla del cliente y onPaid.
@@ -181,8 +186,28 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // onPaid la confirma (método e importe del código) en vez de añadir otra,
   // que duplicaba el pago (25.000 → 50.000 pagados sobre 25.000).
   const [qrEntryId, setQrEntryId] = useState<string | undefined>();
+  // Id de la entrada que onPaid acaba de confirmar (ronda 7, QA-2): lo fija
+  // el updater de `payments` (una sola fuente, `prev`) y lo lee el updater
+  // de `touchedIds`, que corre después en el mismo render (el hook de
+  // `payments` se declara antes). Nunca se decide con el `payments` de la
+  // clausura, que puede ir por detrás del estado real.
+  // DEPENDENCIA DE ORDEN (ronda 8, QA-6): el updater de `touchedIds` lee este
+  // ref DESPUÉS de que corra el de `payments` porque React procesa las colas
+  // en el orden de declaración de los hooks. Si alguien declara `touchedIds`
+  // antes que `payments`, el ref llega null y se marca el respaldo aunque la
+  // entrada de origen exista. Lo vigila un guard estático
+  // (qr-payment-f2c-r8 › «orden de hooks») que falla al invertirlos.
+  const confirmedQrEntryIdRef = useRef<string | null>(null);
   // Guarda el metodo QR usado para registrar el pago correcto al confirmar
   const [qrPaymentMethod, setQrPaymentMethod] = useState<string>('');
+  // Guard de en-vuelo de «Generar QR de pago» (ronda 8, F2C-R7-2): una doble
+  // pulsación (doble tap en la caja táctil) hacía DOS fetch a create-qr, dos
+  // cobros reales en el proveedor, y el poller del diálogo (efecto [open])
+  // quedaba fijado a la PRIMERA referencia mientras el cliente pagaba la
+  // segunda. El ref corta de forma síncrona (el estado llega un render
+  // tarde); el estado deshabilita el botón y pinta «Generando…».
+  const qrRequestInFlightRef = useRef(false);
+  const [isCreatingQr, setIsCreatingQr] = useState(false);
   // Pantalla del cliente (Fase 2, Cobro·QR): «Mostrar en pantalla del cliente»,
   // marcado por defecto al generar el QR si hay pantalla conectada (indicador de F0).
   const displayPresence = useCustomerDisplayPresence();
@@ -240,9 +265,14 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     // interruptor apagado viaja sin código: la pantalla dice «Pago con QR:
     // siga las instrucciones del cajero» (PLAN §3.5).
     if (showQrDialog && qrPaymentMethod) {
-      const resolved = showQrOnDisplay
-        ? resolveDisplayQr({ imageUrl: qrImageUrl, data: qrData, expiresAt: qrExpiresAt })
-        : { qr: null, expiresAt: null };
+      // Código muerto por el proveedor (qrDead): sin código y vencido, con
+      // el interruptor en cualquier posición; la pantalla dice «El código
+      // venció», nunca pinta uno que ya no sirve.
+      const resolved = qrDead
+        ? { qr: null, expiresAt: 0 }
+        : showQrOnDisplay
+          ? resolveDisplayQr({ imageUrl: qrImageUrl, data: qrData, expiresAt: qrExpiresAt })
+          : { qr: null, expiresAt: null };
       getPosDisplayEmitter().setPayment(
         toDisplayPayment({
           methodCode: qrPaymentMethod,
@@ -286,6 +316,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     qrImageUrl,
     qrData,
     qrExpiresAt,
+    qrDead,
     qrAmount,
   ]);
 
@@ -432,6 +463,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setQrData(undefined);
       setQrImageUrl(undefined);
       setQrExpiresAt(undefined);
+      setQrDead(false);
       setQrAmount(undefined);
       setQrEntryId(undefined);
       setQrPaymentMethod('');
@@ -673,7 +705,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       followTipOnPrefilledPayment(0);
     } else {
       setTipPercentage(percentage);
-      const calculatedTip = Math.round(baseTotal * (percentage / 100));
+      // Misma aritmética que la pantalla del cliente y «Aplicar» (tip.ts, regla dura 7): con presets
+      // arbitrarios de la organización `Math.round(base * (pct / 100))` difería en 1 (25 × 58 % → 14 / 15).
+      const calculatedTip = computeTipAmount(baseTotal, percentage);
       setTipAmount(calculatedTip);
       followTipOnPrefilledPayment(calculatedTip);
     }
@@ -694,10 +728,15 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // nada pendiente, al total. Así lo que cobra el código es lo que ve el
   // cliente en la pantalla.
   const handleQrPayment = async (methodCode: string, entryId?: string, entryAmount?: number) => {
+    // Ya hay una generación en vuelo: la segunda pulsación no hace nada
+    // (F2C-R7-2). Antes del fetch y de cualquier setState.
+    if (qrRequestInFlightRef.current) return;
     if (!cart.branch_id) {
       toast.error('Se requiere una sucursal para procesar');
       return;
     }
+    qrRequestInFlightRef.current = true;
+    setIsCreatingQr(true);
     try {
       const reference = `POS-${Date.now()}-${cart.organization_id}`;
       const othersTotal = payments.filter((p) => p.id !== entryId).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
@@ -802,6 +841,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setQrData(picked.data);
       setQrImageUrl(picked.imageUrl);
       setQrExpiresAt(session?.expires_at || undefined);
+      setQrDead(false);
       setQrAmount(amount);
       setQrEntryId(entryId);
       setShowQrOnDisplay(displayConnectedRef.current);
@@ -809,6 +849,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     } catch (err) {
       console.error('Error en handleQrPayment:', err);
       toast.error('Error al generar QR de pago');
+    } finally {
+      // Siempre (éxito, retorno temprano o error): el botón vuelve a estar
+      // disponible y la siguiente pulsación ya puede generar otro código.
+      qrRequestInFlightRef.current = false;
+      setIsCreatingQr(false);
     }
   };
   
@@ -2219,11 +2264,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                               type="button"
                               variant="outline"
                               className="w-full mt-2"
-                              disabled={othersCoverTotal}
+                              disabled={othersCoverTotal || isCreatingQr}
+                              aria-busy={isCreatingQr}
                               onClick={() => handleQrPayment(currentMethod.code, payment.id, payment.amount)}
                             >
-                              <QrCode className="h-4 w-4 mr-2" />
-                              Generar QR de pago
+                              {isCreatingQr ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <QrCode className="h-4 w-4 mr-2" />}
+                              {isCreatingQr ? 'Generando…' : 'Generar QR de pago'}
                             </Button>
                           );
                         }
@@ -2498,6 +2544,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         currency={currency?.code || 'COP'}
         providerLabel={qrProviderLabel}
         expiresAt={qrExpiresAt}
+        onTerminal={() => setQrDead(true)}
         extraControl={
           displayPresence.emitting ? (
             <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
@@ -2533,9 +2580,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             method: qrPaymentMethod || 'redeban_qr',
             amount: qrPaymentAmount,
           };
-          setPayments(prev => prev.some(p => p.id === qrEntryId)
-            ? prev.map(p => p.id === qrEntryId ? { ...p, method: qrPaymentMethod || p.method, amount: qrPaymentAmount } : p)
-            : [...prev, newPayment]);
+          // Una sola decisión (confirmQrPaymentEntry, ronda 7 · QA-2): la lista
+          // nueva y el id confirmado salen del MISMO `prev`; el id queda en el
+          // ref para el updater de `touchedIds`. Idempotente si StrictMode
+          // ejecuta el updater dos veces.
+          confirmedQrEntryIdRef.current = null;
+          setPayments(prev => {
+            const confirmed = confirmQrPaymentEntry({ payments: prev, qrEntryId, method: qrPaymentMethod, amount: qrPaymentAmount, fallback: newPayment });
+            confirmedQrEntryIdRef.current = confirmed.confirmedId;
+            return confirmed.payments;
+          });
           // La entrada confirmada por el proveedor queda INTOCABLE (ronda 6,
           // HALLAZGO P): sin esto seguía siendo «la única entrada pre-rellenada»
           // y un «Aplicar» posterior del aviso de propina (applyTipToPrefilledPayment)
@@ -2544,9 +2598,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           // propina queda en «Falta dinero» y el cajero la cobra por otro
           // medio. resolveCashReceived solo mira efectivo: «recibido/cambio»
           // no cambia. Se marca la entrada de origen si existe; si el cajero
-          // la quitó, la añadida como respaldo.
-          const confirmedQrEntryId = qrEntryId !== undefined && payments.some(p => p.id === qrEntryId) ? qrEntryId : newPayment.id;
-          setTouchedIds(prev => (prev.has(confirmedQrEntryId) ? prev : new Set(prev).add(confirmedQrEntryId)));
+          // la quitó, la añadida como respaldo: lo decidió el updater de
+          // `payments` (ref), nunca el `payments` de la clausura.
+          setTouchedIds(prev => {
+            const confirmedQrEntryId = confirmedQrEntryIdRef.current ?? newPayment.id;
+            return prev.has(confirmedQrEntryId) ? prev : new Set(prev).add(confirmedQrEntryId);
+          });
         }}
       />
       {hasSerialItems && (

@@ -1178,7 +1178,8 @@ describe('ronda 3 · QA-1 (dinero) · «Aplicar» no reescribe una entrada QR ya
   it('CheckoutDialog (estático): onPaid marca como tocada la entrada QR confirmada (confirmedQrEntryId → setTouchedIds) y «Aplicar» pasa por followTipOnPrefilledPayment con touchedIds', () => {
     const onPaid = CHECKOUT_SOURCE.slice(CHECKOUT_SOURCE.indexOf('onPaid={() => {'), CHECKOUT_SOURCE.indexOf('<SerialSelectorDialog'));
     expect(onPaid).toContain('const confirmedQrEntryId');
-    expect(onPaid).toMatch(/setTouchedIds\(prev => \(prev\.has\(confirmedQrEntryId\) \? prev : new Set\(prev\)\.add\(confirmedQrEntryId\)\)\)/);
+    // F2-C ronda 7 (QA-2): el id llega por ref desde el updater de payments; el updater de touchedIds lo marca.
+    expect(onPaid).toMatch(/setTouchedIds\(prev => \{[\s\S]*?prev\.has\(confirmedQrEntryId\) \? prev : new Set\(prev\)\.add\(confirmedQrEntryId\);[\s\S]*?\}\)/);
     const notice = CHECKOUT_SOURCE.slice(CHECKOUT_SOURCE.indexOf('<TipFromDisplayNotice'), CHECKOUT_SOURCE.indexOf('{/* Botones de porcentaje */}'));
     expect(notice).toContain('followTipOnPrefilledPayment(selection.amount)');
     expect(CHECKOUT_SOURCE).toMatch(/const followTipOnPrefilledPayment = \(nextTipAmount: number\) => \{\s*setPayments\(\(prev\) => applyTipToPrefilledPayment\(prev, touchedIds, baseTotal \+ nextTipAmount \+ shippingFee\)\);/);
@@ -1405,6 +1406,30 @@ describe('ronda 3 · QA-2 / QA-5 · táctil resuelto en la pantalla y seguido po
         // Respaldo: aunque la pantalla declarase la detección cruda, la caja llega al mismo aviso.
         expect(resolveTipWaitingNotice({ ...base, touch: resolveNoticeTouch({ touch: detected }, override) })?.kind).toBe(painted ? 'waiting' : 'informational');
       }
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. Ronda 4 (cierre) · QA-1 · la fila de la vista de propina no se llama «Total»
+// ---------------------------------------------------------------------------
+
+describe('ronda 4 · QA-1 · TipView etiqueta la base de la propina, no «Total»', () => {
+  const TIPVIEW_SOURCE = readFileSync(join(process.cwd(), 'src/components/pos-display/TipView.tsx'), 'utf8');
+
+  it('TipView (estático): la fila con `base` usa la clave posDisplay.tip.base y no t(\'total\') (con domicilio el cobro pinta otro «Total»)', () => {
+    expect(TIPVIEW_SOURCE).not.toMatch(/label=\{t\('total'\)\}\s+value=\{money\(base\)\}/);
+    expect(TIPVIEW_SOURCE).toMatch(/label=\{t\('tip\.base'\)\}\s+value=\{money\(base\)\}/);
+  });
+
+  it('la clave posDisplay.tip.base existe en los cuatro idiomas y no dice «Total»', () => {
+    for (const locale of ['es', 'en', 'fr', 'pt']) {
+      const messages = JSON.parse(readFileSync(join(process.cwd(), `messages/${locale}.json`), 'utf8')) as {
+        posDisplay: { total: string; tip: { base?: unknown } };
+      };
+      expect(typeof messages.posDisplay.tip.base).toBe('string');
+      expect((messages.posDisplay.tip.base as string).trim().length).toBeGreaterThan(0);
+      expect(messages.posDisplay.tip.base).not.toBe(messages.posDisplay.total);
     }
   });
 });

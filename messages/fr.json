@@ -1925,6 +1925,7 @@
       "seconds": "secondes (10 à 3600)",
       "locale": "Langue de l'écran",
       "localeHint": "Si l'écran doit utiliser une autre langue que l'ERP.",
+      "phase4Hint": "Disponible en phase 4 : enregistré dès maintenant, mais l’écran client ne l’applique pas encore.",
       "localeOrg": "Celle de l'organisation",
       "touch": "Forcer tactile / non tactile",
       "touchHint": "Uniquement si la détection automatique se trompe avec le matériel.",
@@ -1994,7 +1995,8 @@
       "sent": "Merci, votre choix a été envoyé à la caisse",
       "confirmCustom": "Confirmer",
       "back": "Retour",
-      "deleteDigit": "Effacer"
+      "deleteDigit": "Effacer",
+      "base": "Base du pourboire"
     },
     "connectingHint": "S’il ne se connecte pas, activez l’écran client sur la caisse : Configuration › POS › Écran client"
   }

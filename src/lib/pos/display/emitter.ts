@@ -127,9 +127,16 @@
  * caché; y si es la ÚNICA pestaña de POS (en segundo plano mientras se
  * enciende desde Configuración), la pantalla la adopta provisionalmente por
  * latido, le pide snapshot y `handleUp` responde con hello + state sin mirar
- * la visibilidad. Solo `start()`, `setSession` y la respuesta a
- * `need_snapshot` NO dependen de la visibilidad: son datos de ESTA caja o
- * una petición expresa de la pantalla, no un aviso ajeno.
+ * la visibilidad. Solo `start()` y la respuesta a `need_snapshot` NO
+ * dependen de la visibilidad: son datos de ESTA caja o una petición expresa
+ * de la pantalla, no un aviso ajeno. `setSession` (ronda 5 de F2-B, defecto
+ * F2B-R4-1) tampoco saluda desde una pestaña OCULTA: con dos pestañas, la
+ * visible abre la caja y la oculta recibe el Realtime de `cash_sessions`,
+ * recarga y llamaba a setSession la ÚLTIMA; su hello relevaba a la visible
+ * fuera de la ventana de elección. La sesión se guarda igual y viaja en el
+ * siguiente hello (reannounce al volver a verse, o respuesta a need_snapshot).
+ * El receptor añade la guarda simétrica: un hello `visible: false` no releva
+ * a una activa adoptada con `visible: true` (transport.ts, regla 2).
  *
  * «Gracias» dura THANKS_DURATION_MS «o hasta la siguiente venta» (PLAN §4.2).
  * Decisión (ronda 3): la «siguiente venta» es una MUTACIÓN REAL de líneas
@@ -449,6 +456,15 @@ export class DisplayEmitter {
   private tipConfig: { presets: number[]; allowCustom: boolean } | null = null;
   private tipBase: number | null = null;
   private tipSelected: TipSelectedMessage | null = null;
+  /**
+   * La misma elección ya resuelta a importe en el momento de aceptarla (ronda
+   * 8, QA F2B-R7 E): el getter `tipSelection` devuelve ESTA, no una
+   * re-resolución. CONGELADA (`Object.freeze`, ronda 4 de cierre): es la
+   * misma referencia que reciben los oyentes de `onTipSelected`, y un oyente
+   * descuidado que la mutara cambiaría la cifra que el cliente vio para el
+   * getter y para los oyentes siguientes.
+   */
+  private tipResolved: Readonly<TipSelection> | null = null;
   private readonly tipListeners = new Set<(selection: TipSelection) => void>();
   private readonly tipPhaseListeners = new Set<(phase: TipPhase) => void>();
   private readonly stateListeners = new Set<(state: DisplayState) => void>();
@@ -606,7 +622,11 @@ export class DisplayEmitter {
     }
   }
 
-  /** Nombre del cajero y estado de la caja. Cambiarlos vuelve a emitir `hello` (PLAN §5.2). */
+  /**
+   * Nombre del cajero y estado de la caja. Cambiarlos vuelve a emitir `hello`
+   * (PLAN §5.2)… solo desde una ventana VISIBLE (ver cabecera, F2B-R4-1): la
+   * pestaña oculta guarda la sesión y la lleva en su próximo saludo.
+   */
   setSession(session: Partial<DisplaySessionInfo>): void {
     try {
       const next: DisplaySessionInfo = {
@@ -615,7 +635,7 @@ export class DisplayEmitter {
       };
       const changed = next.sessionOpen !== this.session.sessionOpen || next.cashier?.name !== this.session.cashier?.name;
       this.session = next;
-      if (changed && this.transport) this.announce();
+      if (changed && this.transport && this.windowVisible()) this.announce();
     } catch (err) {
       warn('setSession', err);
     }
@@ -871,9 +891,11 @@ export class DisplayEmitter {
    * pendiente y `cartId` es el carrito proyectado. El emisor no aplica nada:
    * la caja muestra «Cliente eligió 10 % ($X)» con Aplicar / Cambiar
    * (PLAN §5.3). Un oyente que lance no afecta al resto. Sobrevive a
-   * stop()/start(): se registra una vez por componente.
+   * stop()/start(): se registra una vez por componente. La selección llega
+   * CONGELADA (la misma referencia que devuelve `tipSelection`): mutarla
+   * lanza en modo estricto y no cambia la cifra para nadie.
    */
-  onTipSelected(listener: (selection: TipSelection) => void): () => void {
+  onTipSelected(listener: (selection: Readonly<TipSelection>) => void): () => void {
     this.tipListeners.add(listener);
     return () => {
       this.tipListeners.delete(listener);
@@ -885,11 +907,19 @@ export class DisplayEmitter {
     return this.tipState;
   }
 
-  /** Última elección aceptada en esta fase, resuelta a importe; null si no hubo. */
-  get tipSelection(): TipSelection | null {
-    const msg = this.tipSelected;
-    if (!msg) return null;
-    return resolveTipSelection(msg.cartId, this.effectiveTipBase(), { kind: msg.kind, value: msg.value });
+  /**
+   * Última elección aceptada en esta fase, resuelta a importe; null si no hubo.
+   * Es EXACTAMENTE la `TipSelection` que se entregó a `onTipSelected`: el
+   * importe quedó congelado con la base que el cliente vio al pulsar. Si la
+   * base cambia después (el cajero edita un descuento en el modal) este
+   * getter NO se re-resuelve: una elección tiene una sola cifra por cualquier
+   * camino de lectura (ronda 8, QA F2B-R7 describe E). Quien quiera el
+   * importe con la base actual lo recalcula con `computeTipAmount` (tip.ts).
+   * La referencia está congelada (`Object.isFrozen` → true): ni el aviso de
+   * la caja ni ningún oyente pueden alterarla.
+   */
+  get tipSelection(): Readonly<TipSelection> | null {
+    return this.tipResolved;
   }
 
   /**
@@ -1095,6 +1125,7 @@ export class DisplayEmitter {
     this.setTipPhase(null);
     this.tipConfig = null;
     this.tipSelected = null;
+    this.tipResolved = null;
   }
 
   /** Único punto que escribe `tipState`; avisa a onTipPhaseChange solo si cambió. */
@@ -1116,6 +1147,15 @@ export class DisplayEmitter {
     return this.projectedCart?.total ?? 0;
   }
 
+  /** ¿La elección está entre lo que la fase ofreció? `none` siempre; `amount` con allowCustom; `percent` solo si es un preset. */
+  private isOfferedTipChoice(kind: TipSelectedMessage['kind'], value: number): boolean {
+    if (kind === 'none') return true;
+    const config = this.tipConfig;
+    if (config === null) return false;
+    if (kind === 'amount') return config.allowCustom;
+    return config.presets.includes(value);
+  }
+
   private tipBlock(): DisplayTipBlock {
     const config = this.tipConfig ?? { presets: [], allowCustom: false };
     return { presets: [...config.presets], allowCustom: config.allowCustom, selected: this.tipSelected, base: this.effectiveTipBase() };
@@ -1132,6 +1172,12 @@ export class DisplayEmitter {
    * (tip.ts / TipView los limitan), pero otra pantalla (F3 Realtime) o un
    * sobre fabricado sí podrían; antes el primero se resolvía como «Sin
    * propina» y cerraba la pregunta, y el segundo llegaba a la caja tal cual.
+   *
+   * Y solo lo que se OFRECIÓ (ronda 5, tester r4 bloque B): la configuración
+   * congelada al abrir la fase (`tipConfig`) es el contrato con la pantalla.
+   * Un `amount` exige `allowCustom`; un `percent` debe estar en `presets`.
+   * Lo que no casa se descarta igual, sin cerrar la fase, con aviso en
+   * consola: la única barrera ya no es el «Aplicar» del cajero.
    */
   private acceptTipSelection(msg: TipSelectedMessage): void {
     if (this.tipState !== 'pending') return;
@@ -1141,10 +1187,20 @@ export class DisplayEmitter {
       console.warn('[pos-display] tip_selected descartado: valor fuera de rango', { kind: msg.kind, value: msg.value });
       return;
     }
+    if (!this.isOfferedTipChoice(msg.kind, msg.value)) {
+      console.warn('[pos-display] tip_selected descartado: no está entre lo ofrecido', { kind: msg.kind, value: msg.value, offered: this.tipConfig });
+      return;
+    }
     this.tipSelected = msg;
+    // Se resuelve UNA vez con la base que el cliente vio y se CONGELA: el
+    // getter `tipSelection` y todos los oyentes reciben esta misma referencia
+    // (no se re-resuelve) y ninguno puede cambiarle la cifra.
+    const selection: Readonly<TipSelection> = Object.freeze(
+      resolveTipSelection(msg.cartId, this.effectiveTipBase(), { kind: msg.kind, value: msg.value }),
+    );
+    this.tipResolved = selection;
     this.setTipPhase('done');
     this.requestFlush();
-    const selection = resolveTipSelection(msg.cartId, this.effectiveTipBase(), { kind: msg.kind, value: msg.value });
     for (const listener of Array.from(this.tipListeners)) {
       try {
         listener(selection);
@@ -1322,7 +1378,9 @@ export class DisplayEmitter {
     // el transporte sin saludar; la pantalla la adopta por latido, pide
     // snapshot y aquí recibe su hello + state. Con dos pestañas, la ventana
     // de elección del receptor (ADOPTION_WINDOW_MS) resuelve por
-    // sessionOpen/seq, no por quién responde la última.
+    // `visible` primero (F2-B) y luego sessionOpen/seq, no por quién
+    // responde la última; y fuera de la ventana una oculta no releva a una
+    // visible (transport.ts, regla 2).
     try {
       // El transporte ya anotó (o borró) las capacidades antes de entregar el sobre: se avisa si cambiaron.
       if (msg.t === 'display_alive' || msg.t === 'need_snapshot' || msg.t === 'display_bye') this.notifyCapabilitiesIfChanged();

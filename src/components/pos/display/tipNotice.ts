@@ -8,6 +8,18 @@
  *   pendiente, según lo que la pantalla PINTA de verdad y si es táctil.
  * - `applyTipToPrefilledPayment`: al pulsar «Aplicar», la única entrada de
  *   pago pre-rellenada (no tocada) sigue al total nuevo.
+ *
+ * LIMITACIÓN conocida (B3 de la lista congelada de F2-B, ronda 4; PLAN §13):
+ * `resolveTipWaitingNotice` decide con `connected` (presencia POR TERMINAL:
+ * `display_alive` llega a todas las pestañas) y no sabe si la pantalla sigue
+ * a ESTA instancia de /app/pos. Con dos ventanas de /app/pos VISIBLES en
+ * cobro con propina, AMBAS muestran «esperando la propina…», pero solo la
+ * instancia que el receptor adoptó (transport.ts, regla 2) recibirá
+ * `tip_selected`; en la otra el aviso queda hasta «Omitir» o hasta que el
+ * cajero cambie de ventana (el reannounce la releva). Nada se aplica solo:
+ * «Aplicar» sigue siendo del cajero. No se resuelve en esta fase; exponer
+ * «¿me sigue la pantalla?» al emisor queda para una posterior. El detalle
+ * del lado React está en TipFromDisplayNotice.tsx.
  */
 
 import type { TipPhase } from '@/lib/pos/display/emitter';
@@ -51,6 +63,14 @@ export interface TipWaitingInput {
   connected: boolean;
   /** `capabilities.touch` de la pantalla, o null si aún no lo dijo. */
   touch: boolean | null;
+  /**
+   * Cuántos porcentajes ofrece la fase (`getState().tip?.presets.length`).
+   * Con pantalla NO táctil y 0 presets la pantalla no pinta ningún importe
+   * (resolveView cae al cobro: solo «Otro», que sin táctil nadie puede
+   * pulsar) y no hay nada que leer al cliente (ronda 8, F2B-R7-1). Opcional
+   * para no romper a quien no lo pase: se asume que hay presets.
+   */
+  presetsCount?: number;
 }
 
 export const TIP_WAITING_TEXT = 'Pantalla del cliente: esperando la propina…';
@@ -66,11 +86,16 @@ export const TIP_INFORMATIONAL_ACTION = 'Continuar';
  * confundiría al cajero. Con pantalla NO táctil (`touch === false`) la
  * pantalla nunca contestará: el texto cambia a «registre lo que indique el
  * cliente» con «Continuar» (misma acción: skipTip). Sin pantalla conectada,
- * nada: no hay a quién esperar.
+ * nada: no hay a quién esperar. Y sin táctil NI presets (`presetsCount === 0`,
+ * solo «Otro»), null: la pantalla pinta el cobro (logic.ts resolveView) y el
+ * texto informativo afirmaría importes que el cliente no ve (F2B-R7-1).
  */
 export function resolveTipWaitingNotice(input: TipWaitingInput): TipWaitingNotice | null {
   if (input.phase !== 'pending' || !input.connected || input.displayMode !== 'tip') return null;
-  if (input.touch === false) return { kind: 'informational', text: TIP_INFORMATIONAL_TEXT, action: TIP_INFORMATIONAL_ACTION };
+  if (input.touch === false) {
+    if (input.presetsCount === 0) return null;
+    return { kind: 'informational', text: TIP_INFORMATIONAL_TEXT, action: TIP_INFORMATIONAL_ACTION };
+  }
   return { kind: 'waiting', text: TIP_WAITING_TEXT, action: TIP_WAITING_ACTION };
 }
 

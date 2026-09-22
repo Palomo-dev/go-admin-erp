@@ -3357,3 +3357,119 @@ Rondas 7,8 → 8,4 → 8,6. Durante las rondas el builder aplicó por MCP tres m
 - Parte A (residuo): src/app/api/pos/terminals/[id]/route.ts exportaba helpers que no son handlers (TS2344 en next build) → HECHO por el orquestador: movidos a src/lib/pos/display/terminalPermissions.ts; tests actualizados.
 - Lista congelada para la ronda 4 de C: C1 tras «Pago QR confirmado» la pantalla no vuelve a 'tip'; C2 amount = importe de la propia entrada QR (no remaining global); C3 amount acotado a (0, total]; C4 error.tsx sin doble conteo en StrictMode y reinicio al recuperarse; C5 archivos nuevos en LF; C6 textos en español de CheckoutDialog y organizationId en create-qr son deuda preexistente (no cuentan).
 - Regla del run: una ronda de cierre con lista congelada se acepta con veredicto «aprobado» aunque no llegue a 9,5 (igual que A).
+
+### Fase: F2 Parte B (propina en pantalla) — Ronda 1 — 2026-09-21
+
+- Calificacion QA: 8.4/10 (requiere-nueva-ronda)
+
+- Calificacion Tester: 7/10 (1669/1669 casos; 0 fallos)
+
+- Que se hizo: Fase 2-B (propina en pantalla) ronda 1: al llegar, el árbol de trabajo ya contenía la implementación completa y sin commitear de los 5 puntos del alcance; mi trabajo consistió en leer PLAN §4/§5.2/§6.1/§8/§12, verificar punto por punto contra el código real y ejecutar las comprobaciones. (0) protocol.ts añade `visible?: boolean` opcional al hello (validado como booleano en isDownMessage), el emitter lo rellena con `isVisible()` (windowVisible) y 
+
+- Que falta / feedback recibido:
+
+  1. [medio] Contrato del emisor roto: `tipBase` (setTipBase) no se limpia en stop(), forgetOrganizationState(), setPayment(null) ni setMode('order'|'thanks'), y setTipBase no comprueba `started` a diferencia de s
+
+  2. [medio] «Aplicar» deja el cobro en «Falta dinero»: la primera entrada de pago se pre-rellena con el total sin propina (addPayment → amount: remaining) y, al aplicar, cartTotal sube pero la entrada no se ajust
+
+  3. [medio] El aviso azul «Pantalla del cliente: esperando la propina… / Omitir» se muestra por `tipPhase === 'pending' && presence.connected`, sin mirar lo que la pantalla pinta de verdad ni si es táctil: (a) mi
+
+  4. [bajo] Tolerancia del protocolo en tip_selected: `amount` sin tope (isUpMessage solo exige finito ≥ 0; resolveTipSelection entrega 1e15 tal cual y el aviso pintaría un importe absurdo) y un `percent` no ente
+
+  5. [bajo] Base 0 (cortesía / descuento del 100 %): la fase se abre y la pantalla pregunta con «5 % · $0 / 10 % · $0 / 15 % · $0»; si el cliente pulsa 10 %, describeTipSelection devuelve «Cliente eligió no dejar
+
+  6. [bajo] TipFromDisplayNotice lee `tipPhase` por sondeo cada 250 ms (setInterval) porque el emisor no notifica cuando cierra la fase (skipTip, setMode('order'), thanks). Reconocido por el builder; es la única 
+
+- Proxima accion: nueva ronda con el feedback
+
+### Fase: F2 Parte B (propina en pantalla) — Ronda 2 — 2026-09-21
+
+- Calificacion QA: 7.4/10 (requiere-nueva-ronda)
+
+- Calificacion Tester: 7/10 (1747/1749 casos; 2 fallos)
+
+- Que se hizo: Ronda 2 de la Fase 2-B (propina en pantalla): atendidos los 7 puntos del QA y los 6 del tester, todos aditivos. En emitter.ts la base de propina pasa a ser de la venta (setTipBase ignora la caja sin arrancar; tipBase se borra en stop(), forgetOrganizationState(), setPayment(null) y setMode('order'|'idle'|'thanks'), no en resetTip), acceptTipSelection descarta sin cerrar la fase un percent no entero o un amount >= 10^TIP_CUSTOM_MAX_DIGITS (isAccep
+
+- Que falta / feedback recibido:
+
+  1. [alto] Dinero: «Aplicar» reescribe una entrada QR YA COBRADA. Flujo: el cliente elige 10 % en pantalla táctil (fase done, aviso con Aplicar/Cambiar); el cajero, sin aplicar, genera el QR desde la única entra
+
+  2. [medio] F2B-R2-1 (tester, confirmado en código): incoherencia táctil caja ↔ pantalla con el forzado de ajustes. La pantalla decide sus botones con `resolveTouch(link.touchDetected, hello.settings.touch)` (Cus
+
+  3. [medio] Sincronización en un solo sentido de la entrada pre-rellenada (tester, hallazgo 2; verificado: ningún useEffect sigue `cartTotal`, CheckoutDialog.tsx 211-217, 656-671). «Aplicar» sube la única entrada
+
+  4. [bajo] tsc del proyecto entero deja 1 error: src/__tests__/pos-display/tester-f2b-r2.test.ts(420,43) `Property 'qr' does not exist on type 'DisplayPayment'` (acceso sin estrechar la unión). Es del archivo de
+
+  5. [bajo] TipFromDisplayNotice lee `lastDisplayCapabilities.touch` en el render, sin suscripción: si las capabilities cambian sin cambio de fase, de state publicado ni de presencia, el texto del aviso queda un 
+
+- Proxima accion: nueva ronda con el feedback
+
+### Fase: F2 Parte B (propina en pantalla) — Ronda 3 — 2026-09-21
+
+- Calificacion QA: 8.7/10 (requiere-nueva-ronda)
+
+- Calificacion Tester: 8/10 (1857/1857 casos; 0 fallos)
+
+- Que se hizo: Ronda 3 de F2-B (propina en pantalla) aplicada sin ampliar alcance. (1) QA-1 dinero: «Aplicar» ya no reescribe una entrada QR cobrada: la Parte C marcó la entrada confirmada en `touchedIds` en onPaid (confirmedQrEntryId) y aquí el onApply del aviso pasa por `followTipOnPrefilledPayment`, que respeta `touchedIds` (test de flujo en tip-f2b: selección → QR → onPaid → Aplicar deja 25.000 y remaining 2.500; tester-f2c-r5 «HALLAZGO P» ya pasa). (2) QA-
+
+- Que falta / feedback recibido:
+
+  1. [medio] F2B-R3-1 confirmado leyendo displayLink.ts y transport.ts: tras una reconexión de la caja sin bye, askSnapshot() actualiza declaredTouch con la detección CRUDA (hello=null) pero NO toca receiver.prese
+
+  2. [medio] F2B-R3-2 confirmado en node: tip.ts (Math.round((base × pct) / 100)) y CheckoutDialog.handleTipPercentage (Math.round(base × (pct / 100))) son dos implementaciones distintas de la misma regla (regla d
+
+  3. [bajo] LIMITACIÓN documentada por el tester y confirmada: con dos ventanas de /app/pos VISIBLES (dos monitores) y las dos en cobro, ambas cajas muestran «Pantalla del cliente: esperando la propina…» porque r
+
+  4. [bajo] Formato de moneda: TipView, OrderView y describeTipSelection usan formatCurrency de @/utils/Utils, que fija el locale es-CO e ignora hello.settings.locale y el locale de la organización; PLAN §4.5 pid
+
+  5. [bajo] Trazabilidad y estado del árbol: el código de la ronda 3 (emitter.ts, transport.ts, displayLink.ts, tipNotice.ts, TipFromDisplayNotice.tsx) ya está en HEAD dentro del commit de integración 40b8f042, s
+
+- Proxima accion: nueva ronda con el feedback
+
+### Fase: F2 Parte C — Ronda 4 (cierre, lista congelada C1–C6) — 2026-09-21
+
+- Calificacion QA: 8.2/10 (aprobado)
+
+- Calificacion Tester: 7/10 (1883/1883 casos; 0 fallos)
+
+- Que se hizo: Ronda de cierre de F2 Parte C (Cobro con QR), sobre el árbol donde C1–C4 ya estaban implementados y probados desde las rondas 4–6 (qr-payment-f2c-r4.test.ts cubre C1 skipTip → payment/thanks, C2 resolveQrChargeAmount, C3 isAmountWithinTotal en emisor y pantalla, C4 retryDelayFor/markRenderHealthy). Esta ronda aplicó los hallazgos concretos compatibles con la lista congelada, sin ampliar alcance: (1) EOL: nuevo .gitattributes en la raíz con `* tex
+
+- Que falta / feedback recibido:
+
+  1. [medio] Regresión INTRODUCIDA por esta ronda (no preexistente): `.gitattributes` con `* text=auto eol=lf` alcanza a `mobile/android/gradlew.bat` (hoy `i/lf w/crlf attr/text=auto eol=lf`) y a `print-agent/inic
+
+  2. [alto] PREEXISTENTE y fuera de la lista congelada, pero es dinero real: «Generar QR de pago» no tiene guard de en-vuelo. Verificado en src/components/pos/CheckoutDialog.tsx L702-819 (handleQrPayment sin band
+
+  3. [bajo] PREEXISTENTE: `QrPoller.poll()` (src/lib/services/integrations/qrShared/qrPoller.ts L143-186) comprueba `running` solo antes del `await fetch`; una respuesta `paid` que llega tras `stop()` (Cancelar c
+
+  4. [bajo] Multi-tenant (PREEXISTENTE, QA-6, allow-list de guardrails): `handleQrPayment` sigue enviando `organizationId: cart.organization_id` en el body de los 4 routes create-qr, y `QrPaymentDialog` recibe `o
+
+  5. [bajo] El patrón «ref entre updaters» (confirmedQrEntryIdRef) depende del orden de declaración de los hooks (`payments` L94 antes que `touchedIds` L235) y de que ambos dispatch vayan en la misma lane. Está b
+
+  6. [bajo] Textos en español cableados en CheckoutDialog (toasts «Pago QR confirmado», «El cliente indica que ya pagó», «No hay saldo pendiente para cobrar con QR») sin pasar por next-intl. Deuda preexistente C6
+
+- Decisión del orquestador: C CERRADA con 8,2 «aprobado». El medio de la ronda (.gitattributes `* text=auto eol=lf` sin excepción para .bat) lo resolvió el orquestador añadiendo `*.bat/*.cmd/*.ps1 text eol=crlf` (archivo compartido: avisado a la coordinación). El alto PREEXISTENTE (sin guard de en-vuelo en «Generar QR de pago», dinero real) y los bajos preexistentes (QrPoller sin comprobar `running` tras cada await; organizationId en el body de los 4 routes create-qr; textos en español de CheckoutDialog) quedan registrados como DEUDA con dueño = pantalla del cliente, a resolver en una ronda de deuda tras F4 o cuando la sesión de promociones/checkout libere CheckoutDialog.
+
+### Fase: F2 — Lista congelada para el cierre de la Parte B (B1–B6) — 2026-09-21
+B1 una sola fuente del touch resuelto tras reconexión (askSnapshot → startPresence(effectiveCapabilities)); B2 handleTipPercentage usa computeTipAmount de tip.ts (regla dura 7); B3 documentar la limitación de dos cajas visibles en cobro; B4 formato de moneda por locale → F4; B5 tsc completo en 0 (tester-f2b-r2 línea 420); B6 el código de la ronda 3 ya viajó en 40b8f042 (no cuenta).
+
+### Fase: F2 — Segunda corrida de B y C (la caché se invalidó al ampliar el alcance de B con el punto 0) — 2026-09-22
+- Parte B: r1 QA 8.4 (requiere-nueva-ronda) · tester 7 | r2 QA 7.3 (requiere-nueva-ronda) · tester 7 | r3 QA 9.1 (aprobado) · tester 8 | r4 QA 8.9 (aprobado) · tester 8
+- Parte C: r1 QA 8 (requiere-nueva-ronda) · tester 6 | r2 QA 8 (requiere-nueva-ronda) · tester 7 | r3 QA 8.3 (requiere-nueva-ronda) · tester 8 | r4 QA 8.5 (requiere-nueva-ronda) · tester 8
+- B cierre (8,9 aprobado): bajos diferidos a ronda de deuda tras F4: bye y hello en el mismo ms al cambiar de organización (bandera «último aceptado fue bye» en el receptor); buildState con cobro abierto y cart null → IDLE; test sensible a tiempos (tester-f2b-r6 L489) → inyectar now; tipNotice.ts con textos en español (QA-5) y formato de moneda por locale (B4) → F4.
+- C cierre (8,5, requiere-nueva-ronda): el único medio (pasada la gracia de 30 s el diálogo vencido solo ofrecía «Cancelar» y perdía la comprobación manual) lo CORRIGIÓ el orquestador en QrPaymentDialog.tsx: en vencido por reloj sin veredicto del proveedor queda «Verificar pago» (misma consulta que «Ya pague»). Bajos diferidos: reinicio derivado del diálogo con key por referencia; i18n de QrPaymentDialog (textos sin tildes); flakiness de tester-r8-parte-b (until con reloj real). jest pos-display tras la corrección: 73 suites / 1996 tests verdes.
+- Decisión: C aceptada por el orquestador (ACEPTADAS_POR_ORQUESTADOR en workflow-f2.js) para pasar a integración + QA final.
+
+### Fase: F2 Integracion + QA FINAL DE LA FASE — 2026-09-22
+- Tester integracion: 8/10 (29/29 casos; 0 fallos). No probado: render React, POSService.checkout contra la base, táctil real, dos pestañas reales.
+- QA FINAL DE LA FASE: 8.8/10 (aprobado)
+- Fortalezas: Aceptación §12 F2 cubierta en código y verificada por mí: emitter.setPayment abre la fase de propina solo si settings.tips.enabled y hay lín; Una sola aritmética de propina: computeTipAmount (tip.ts) la usan la pantalla (TipView → tipOptions), el emisor (resolveTipSelection) y el m; Cobro·QR: CheckoutDialog reutiliza qrImageUrl/qrData existentes y solo los pasa por resolveDisplayQr → toDisplayPayment → setPayment (L268-2; Táctil/no táctil según §4.4: resolveTouch(navigator.maxTouchPoints>0, hello.settings.touch) con override auto|touch|no-touch (logic.ts L571)
+- Problemas y acción del orquestador:
+  1. [medio] La tarjeta persiste calificación, desglose, nombre del cliente, reposo e idioma pero la pantalla no los consume aún → HECHO: esos controles quedan deshabilitados con la nota «Disponible en la fase 4» (clave phase4Hint en es/en/fr/pt); consumirlos es alcance de F4 (rating y reposo ya estaban; se añaden showTaxBreakdown, showCustomerName y locale/formato de moneda).
+  2. [bajo] posService fija tip_type por el primer pago: una propina cobrada por QR salía como 'cash' y 'transfer' violaba el CHECK (cash/card/split/pooled) → HECHO en el camino de respaldo de posService (no efectivo ⇒ 'card'); la RPC pos_checkout_v1 (sesión de Desktop) aplica hoy `card` solo si el primer método es 'card': se le pide alinear la regla.
+  3. [bajo] Vincular esta caja a una terminal desde Configuración con /app/pos emitiendo en otra pestaña deja emisor y pantalla en canales distintos hasta recargar → DIFERIDO a ronda de deuda (listener de TERMINAL_ID_STORAGE_KEY en startPosDisplay).
+  4. [bajo] 51 problemas de ESLint preexistentes en CheckoutDialog.tsx (any, unused, exhaustive-deps) → DIFERIDO a una ronda de tipado aparte (archivo compartido con la sesión de promociones).
+  5. [bajo] La aceptación «la propina queda en tips con el sale_id correcto» no se ejecutó contra la base ni hay filas en pos_terminals → pendiente de prueba real en una organización de prueba (ver «Para el 10»).
+- Para el 10 / hardware real: Hardware real, propina táctil: pantalla del cliente táctil (maxTouchPoints > 0) con tips.enabled y presets 5/10/15; abrir cobro con un carrito de 27.000, comprobar que la; Hardware real, no táctil: misma pantalla con touch 'auto' en un monitor sin táctil → importes como información, sin botones, y en la caja el aviso «informational» con «Co; Hardware real, Bre-B: generar el QR en el cobro con la pantalla conectada (interruptor «Mostrar en pantalla del cliente» marcado solo), ver el código a pantalla completa ; Hardware real, dos pestañas y vínculo: con /app/pos emitiendo en una pestaña, vincular la caja a una terminal desde Configuración en otra → reproducir el hallazgo 1 (pant; Electron: abrir la pantalla en el segundo monitor desde la tarjeta (selector de F1), repetir propina y QR por el bridge window.goAdminDesktop.posDisplay y comprobar que e
+- Compuerta de cierre: tsc completo (8 GB) 0 errores; jest pos-display + src/lib/offline + guardrails en TZ=UTC y TZ=America/Bogota 105 suites / 2548 tests; eslint de la zona 0 errores.
+- Cierre: F2 CERRADA en código (A 8,9 · B 8,9 · C 8,5+corrección · final 8,8, todas «aprobado» salvo C aceptada por el orquestador tras aplicar la acción del QA). Proxima accion: F3 (workflow-f3.js).

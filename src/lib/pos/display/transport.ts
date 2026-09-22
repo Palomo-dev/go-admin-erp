@@ -485,8 +485,17 @@ export function isBetterHello(candidate: AdoptedHello, current: AdoptedHello | n
  * 2. Con instancia activa, un `hello` de otra instancia la releva
  *    —«gana la última que saluda»— salvo dentro de la ventana de elección
  *    abierta por un need_snapshot sin destinatario: ahí solo releva un hello
- *    estrictamente mejor (`sessionOpen: true` primero; a igualdad, `seq`
- *    mayor; en empate total se conserva la actual). Ver isBetterHello.
+ *    estrictamente mejor (`visible: true` primero cuando los dos lo declaran
+ *    y difieren; luego `sessionOpen: true`; a igualdad, `seq` mayor; en
+ *    empate total se conserva la actual). Ver isBetterHello.
+ *    FUERA de la ventana rige una sola excepción a «gana la última que
+ *    saluda» (ronda 5 de F2-B, defecto F2B-R4-1): si la activa se adoptó con
+ *    `visible: true` y el hello nuevo declara `visible: false`, NO releva.
+ *    Con dos pestañas de /app/pos, la visible abre la caja y la oculta
+ *    recarga `cash_sessions` por Realtime y saluda la ÚLTIMA (setSession);
+ *    sin esta guarda la pantalla pasaba a pintar la pestaña de fondo y no se
+ *    reparaba hasta que el cajero cambiara de ventana y volviera. Un hello
+ *    sin el campo (emisor anterior) o con `visible: true` releva como siempre.
  *    Una activa adoptada sin hello es provisional: su need_snapshot sale sin
  *    destinatario (abre la ventana) y cualquier hello la releva.
  * 3. Cualquier otro mensaje de una instancia que no es la activa se descarta.
@@ -692,6 +701,10 @@ export class BroadcastChannelReceiver implements DisplayReceiver {
       // En la ventana de elección, solo si es estrictamente mejor.
       const candidate = toAdoptedHello(data);
       if (this.isElectionOpen() && !isBetterHello(candidate, this.adoptedHello)) return;
+      // Fuera de la ventana, una pestaña OCULTA no releva a una VISIBLE (regla
+      // 2 de la cabecera): es el hello de setSession de la pestaña de fondo
+      // tras el Realtime de cash_sessions. Solo decide cuando los dos lo declaran.
+      if (!this.isElectionOpen() && this.adoptedHello?.visible === true && candidate.visible === false) return;
       // Al cambiar de instancia la marca de seq se reinicia con ella: el
       // contador es por instancia, y la que releva suele traer un seq MENOR
       // que la anterior (una pestaña en segundo plano late a 1/min). Si se

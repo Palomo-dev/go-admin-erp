@@ -15,6 +15,12 @@
  * Los defectos documentados en la ronda 8 (bloque «defectos documentados»
  * y el de handleUp) se corrigieron en la ronda 9: sus `it.failing` pasaron a
  * `it` normales y ahora vigilan que no reincidan.
+ *
+ * Plazos: `until`/`untilReceived` corren con reloj REAL, así que su tope
+ * depende de la carga del runner. En el run completo de `pos-display` (77+
+ * suites en paralelo) el caso «stop() de la caja manda bye…» vencía su tope
+ * de 520 ms y pasaba en aislamiento (QA F2-C r12): los topes de ese caso son
+ * holgados a propósito; solo acotan un cuelgue, no miden latencia.
  */
 
 import type { Cart, CartItem } from '@/components/pos/types';
@@ -736,24 +742,27 @@ describe('Parte B · extremo a extremo con BroadcastChannel', () => {
 
   itBC('stop() de la caja manda bye y la pantalla lo recibe; «Gracias» vence y vuelve a idle si el carrito activo ya no tiene líneas', async () => {
     const x = e2e();
+    // Reloj real: bajo la carga del run completo (77+ suites) el BroadcastChannel
+    // y el timer de «Gracias» (20 ms) llegan tarde; el tope solo acota un cuelgue.
+    const LOADED_RUNNER_MS = 10_000;
     try {
       x.emitter.start(START);
       x.emitter.setActiveCart(cart({ items: [item({ id: 'l1' })], total: 5000 }));
-      await untilReceived(x.received, (ms) => lastState(ms)?.mode === 'order');
+      await untilReceived(x.received, (ms) => lastState(ms)?.mode === 'order', LOADED_RUNNER_MS);
       x.emitter.setActiveCart(cart({ id: 'nuevo', items: [] }));
       x.emitter.setMode('thanks', { total: 5000 });
-      await untilReceived(x.received, (ms) => lastState(ms)?.mode === 'thanks');
+      await untilReceived(x.received, (ms) => lastState(ms)?.mode === 'thanks', LOADED_RUNNER_MS);
       expect(x.states().at(-1)!.mode).toBe('thanks');
-      // e2e() arma thanksDurationMs = 20; tope holgado por si la máquina va cargada.
-      await untilReceived(x.received, (ms) => lastState(ms)?.mode === 'idle', 20 + 500);
+      // e2e() arma thanksDurationMs = 20; el tope de 520 ms vencía bajo carga (QA F2-C r12).
+      await untilReceived(x.received, (ms) => lastState(ms)?.mode === 'idle', 20 + LOADED_RUNNER_MS);
       expect(x.states().at(-1)!.mode).toBe('idle');
       x.emitter.stop();
-      await untilReceived(x.received, (ms) => ms.at(-1)?.t === 'bye');
+      await untilReceived(x.received, (ms) => ms.at(-1)?.t === 'bye', LOADED_RUNNER_MS);
       expect(x.received.at(-1)!.t).toBe('bye');
     } finally {
       x.close();
     }
-  });
+  }, 4 * 10_000 + 5000);
 
   it('THANKS_DURATION_MS sigue siendo 8 s', () => {
     expect(THANKS_DURATION_MS).toBe(8000);

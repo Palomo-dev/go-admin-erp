@@ -2394,8 +2394,11 @@ export class POSService {
           sale_id: saleData.id,
           server_id: checkoutData.tip_server_id || userId,
           amount: checkoutData.tip_amount,
-          tip_type: tipPayment?.method === 'card' ? 'card' : 
-                   tipPayment?.method === 'transfer' ? 'transfer' : 'cash',
+          // tips.tip_type solo admite cash/card/split/pooled (CHECK en la BD):
+          // 'transfer' violaba la restricción y todo lo que no es efectivo
+          // (tarjeta, datáfono, transferencia, QR Bre-B/Nequi/Bold…) es
+          // propina electrónica → 'card'. Misma regla que pos_checkout_v1.
+          tip_type: !tipPayment || tipPayment.method === 'cash' ? 'cash' : 'card',
           is_distributed: false,
           notes: `Propina de venta #${saleData.id.slice(-8)}`
         };

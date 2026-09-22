@@ -2033,6 +2033,7 @@
       "seconds": "seconds (10 to 3600)",
       "locale": "Display language",
       "localeHint": "In case the display must use a language other than the ERP's.",
+      "phase4Hint": "Available in phase 4: it is saved now, but the customer display does not apply it yet.",
       "localeOrg": "The organization's",
       "touch": "Force touch / non-touch",
       "touchHint": "Only if automatic detection gets the hardware wrong.",
@@ -2102,7 +2103,8 @@
       "sent": "Thank you, your choice was sent to the register",
       "confirmCustom": "Confirm",
       "back": "Back",
-      "deleteDigit": "Delete"
+      "deleteDigit": "Delete",
+      "base": "Tip base"
     },
     "connectingHint": "If it does not connect, turn on the customer display at the register: Settings › POS › Customer display"
   }

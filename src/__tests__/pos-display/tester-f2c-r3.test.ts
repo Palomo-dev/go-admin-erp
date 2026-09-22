@@ -304,17 +304,21 @@ describe('HALLAZGO H (corregido en r4 · C1) · tras «Pago QR confirmado» la p
     const onPaid = src.slice(start, src.indexOf('}}', start) + 2);
     expect(onPaid).toContain('setShowQrDialog(false)');
     expect(onPaid).toContain('getPosDisplayEmitter().skipTip()');
-    // Ronda 5 (QA-2): onPaid confirma la entrada de origen (prev.map) y solo añade como respaldo.
-    expect(onPaid).toContain('setPayments(prev => prev.some(p => p.id === qrEntryId)');
-    expect(onPaid.indexOf('skipTip()')).toBeLessThan(onPaid.indexOf('setPayments(prev => prev.some(p => p.id === qrEntryId)'));
+    // Ronda 5 (QA-2): onPaid confirma la entrada de origen y solo añade como respaldo.
+    // Ronda 7 (QA-2): la decisión vive en confirmQrPaymentEntry(prev, …) dentro del updater.
+    expect(onPaid).toContain('confirmQrPaymentEntry({ payments: prev, qrEntryId, method: qrPaymentMethod, amount: qrPaymentAmount, fallback: newPayment })');
+    expect(onPaid.indexOf('skipTip()')).toBeLessThan(onPaid.indexOf('confirmQrPaymentEntry({ payments: prev'));
     // Ronda 6 (HALLAZGO P): ahora SÍ se llama a setTouchedIds. En r5 la entrada
     // confirmada por el proveedor quedaba «pre-rellenada» y un «Aplicar» del
     // aviso de propina (applyTipToPrefilledPayment) la reescribía a total +
     // propina: la venta registraba un pago QR mayor que el cobrado. Marcarla
     // como tocada la vuelve intocable; resolveCashReceived solo mira efectivo,
     // así que «recibido/cambio» no cambia. La propina sigue sin fijarse aquí.
-    expect(onPaid).toContain('setTouchedIds(prev => (prev.has(confirmedQrEntryId) ? prev : new Set(prev).add(confirmedQrEntryId)))');
-    expect(onPaid.indexOf('setPayments(prev => prev.some(p => p.id === qrEntryId)')).toBeLessThan(onPaid.indexOf('setTouchedIds'));
+    // Ronda 7 (QA-2): el id tocado lo fija el updater de `payments` (ref) y lo lee el de `touchedIds`.
+    expect(onPaid).toContain('confirmedQrEntryIdRef.current = confirmed.confirmedId;');
+    expect(onPaid).toContain('const confirmedQrEntryId = confirmedQrEntryIdRef.current ?? newPayment.id;');
+    expect(onPaid).toContain('return prev.has(confirmedQrEntryId) ? prev : new Set(prev).add(confirmedQrEntryId);');
+    expect(onPaid.indexOf('confirmQrPaymentEntry({ payments: prev')).toBeLessThan(onPaid.indexOf('setTouchedIds'));
     expect(onPaid).not.toContain('setTipAmount');
     // Un solo skipTip en el archivo: el de onPaid. La fase no se cierra al GENERAR el QR (ronda 2).
     expect(src.match(/skipTip\(/g)).toHaveLength(1);

@@ -364,8 +364,10 @@ describe('P · la entrada QR confirmada por onPaid queda intocable en todos los 
   it('CheckoutDialog (estático): onPaid marca con setTouchedIds la entrada de origen si existe, si no la añadida; y updatePayment sigue marcando solo el importe', () => {
     const onPaid = CHECKOUT.slice(CHECKOUT.indexOf('onPaid={() => {'), CHECKOUT.indexOf('<SerialSelectorDialog'));
     expect(onPaid.length).toBeGreaterThan(0);
-    expect(onPaid).toMatch(/const confirmedQrEntryId = qrEntryId !== undefined && payments\.some\(p => p\.id === qrEntryId\) \? qrEntryId : newPayment\.id;/);
-    expect(onPaid).toMatch(/setTouchedIds\(prev => \(prev\.has\(confirmedQrEntryId\) \? prev : new Set\(prev\)\.add\(confirmedQrEntryId\)\)\);/);
+    // Ronda 7 (QA-2): el id confirmado sale del `prev` del updater de payments (confirmQrPaymentEntry → ref), no de la clausura.
+    expect(onPaid).toMatch(/confirmedQrEntryIdRef\.current = confirmed\.confirmedId;/);
+    expect(onPaid).toMatch(/setTouchedIds\(prev => \{\s*const confirmedQrEntryId = confirmedQrEntryIdRef\.current \?\? newPayment\.id;\s*return prev\.has\(confirmedQrEntryId\) \? prev : new Set\(prev\)\.add\(confirmedQrEntryId\);\s*\}\);/);
+    expect(onPaid).not.toMatch(/payments\.some\(p => p\.id === qrEntryId\)/);
     expect(onPaid.indexOf('setPayments(')).toBeLessThan(onPaid.indexOf('setTouchedIds('));
     expect(CHECKOUT).toMatch(/if \(field === 'amount'\) setTouchedIds\(\(prev\) => \(prev\.has\(id\) \? prev : new Set\(prev\)\.add\(id\)\)\);/);
   });
@@ -416,6 +418,7 @@ describe('R · corte de handleQrPayment ≡ disabled del botón, con importes ra
     expect(handler).toMatch(/if \(Math\.max\(0, cartTotal - othersTotal\) <= 0\) \{/);
     const button = CHECKOUT.slice(CHECKOUT.indexOf('const othersCoverTotal ='), CHECKOUT.indexOf('Generar QR de pago', CHECKOUT.indexOf('const othersCoverTotal =')));
     expect(button).toMatch(/payments\.filter\(\(p\) => p\.id !== payment\.id\)\.reduce\(\(sum, p\) => sum \+ \(Number\(p\.amount\) \|\| 0\), 0\) >= cartTotal/);
-    expect(button).toContain('disabled={othersCoverTotal}');
+    // Ronda 8 (F2C-R7-2): además, deshabilitado mientras hay una generación en vuelo (isCreatingQr).
+    expect(button).toContain('disabled={othersCoverTotal || isCreatingQr}');
   });
 });

@@ -6,10 +6,12 @@
  * pantalla es exactamente lo que el cajero aplica con «Aplicar».
  *
  * Reglas:
- * - El importe de un porcentaje es `Math.round(base × pct / 100)`: el MISMO
- *   redondeo que ya usa el modal de cobro (`handleTipPercentage`), así el
- *   flujo existente de propinas (`tip_amount` → tabla `tips`) recibe la
- *   misma cifra que el cliente vio.
+ * - El importe de un porcentaje es `computeTipAmount` (`Math.round(base ×
+ *   pct / 100)`), y el modal de cobro (`handleTipPercentage`) lo llama desde
+ *   la ronda 5 de F2-B en vez de repetir la fórmula: `Math.round(base * (pct
+ *   / 100))` difería en 1 con presets arbitrarios (25 × 58 % → 14 / 15). Así
+ *   el flujo existente de propinas (`tip_amount` → tabla `tips`) recibe la
+ *   misma cifra que el cliente vio, venga del botón o de la pantalla.
  * - `base` es el importe sobre el que se calcula (el total con impuestos,
  *   antes de propina y domicilio: `baseTotal` del modal). PLAN §5.3 lo
  *   ejemplifica con 10 % de 20.250 = 2.025. La caja lo manda en

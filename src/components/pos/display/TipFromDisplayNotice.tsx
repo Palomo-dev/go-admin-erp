@@ -11,13 +11,19 @@
  *   el cliente ve el QR, no la pregunta (ronda 2, QA-3). Con pantalla NO
  *   táctil (`capabilities.touch === false`) la pantalla nunca contestará
  *   (PLAN §4.4): «La pantalla muestra las propinas sugeridas: registre lo que
- *   indique el cliente» con «Continuar» (mismo skipTip). Solo con pantalla
- *   conectada: sin pantalla no hay nadie a quien esperar.
+ *   indique el cliente» con «Continuar» (mismo skipTip). Sin táctil Y sin
+ *   presets (solo «Otro») la pantalla pinta el cobro, no importes: ningún
+ *   aviso (F2B-R7-1, ronda 8; `presetsCount` de resolveTipWaitingNotice).
+ *   Solo con pantalla conectada: sin pantalla no hay nadie a quien esperar.
  * - Elección recibida: «Cliente eligió 10 % ($2.025)» con «Aplicar» (la caja
  *   registra la propina por el flujo existente: `tipAmount` del modal →
  *   `tip_amount` del cobro → tabla `tips` al confirmar) y «Cambiar» (se
  *   descarta el aviso y el cajero usa los controles de propina del modal).
- *   «Sin propina» solo informa. NADA se aplica solo.
+ *   «Sin propina» solo informa. NADA se aplica solo. La elección se lee del
+ *   getter congelado `emitter.tipSelection` al abrir (fuente de verdad) y se
+ *   sigue por `onTipSelected`: un remontaje con la fase en «done» la
+ *   conserva, y reabre el aviso aunque se hubiera pulsado «Cambiar» (ronda 4
+ *   de cierre, QA-2; ruta excepcional y sin efecto sobre la venta).
  *
  * `cashierMovedOn`: el cajero ya registró una propina en la caja o empezó a
  * teclear el cobro (PLAN §4.4 no táctil: «el cajero registra la elección en
@@ -32,6 +38,18 @@
  * al conocerlo; aquí se sigue por `onDisplayCapabilitiesChange` (sin
  * sondeo, sin quedarse un render atrás) y, como respaldo, se vuelve a aplicar
  * el mismo forzado con `presentationSettings.touch` (resolveNoticeTouch).
+ *
+ * LIMITACIÓN conocida (B3 de la lista congelada de F2-B; PLAN §13): el aviso
+ * depende de `presence.connected`, que es POR TERMINAL (display_alive va a
+ * todas las pestañas), y no de si la pantalla sigue a ESTA instancia de
+ * /app/pos. Con dos ventanas VISIBLES de /app/pos en la misma máquina, las
+ * dos en cobro con propina, las dos muestran «esperando la propina…», pero
+ * solo la instancia que el receptor adoptó (la última visible que saludó,
+ * transport.ts regla 2) recibirá `tip_selected`; en la otra el aviso se
+ * queda esperando hasta que el cajero pulse «Omitir» o cambie de ventana
+ * (reannounce la releva). No hay riesgo de aplicar nada: «Aplicar» sigue
+ * siendo del cajero. Exponer «¿me sigue la pantalla?» al emisor queda para
+ * una fase posterior (no está en el alcance congelado de F2-B).
  */
 
 import { useEffect, useState } from 'react';
@@ -77,6 +95,15 @@ export function TipFromDisplayNotice({ open, currency, cashierMovedOn = false, o
     setPhase(emitter.tipPhase);
     setDisplayMode(emitter.getState().mode);
     setDisplayCapabilities(emitter.lastDisplayCapabilities);
+    // La elección ya recibida (getter congelado del emisor) es la fuente de
+    // verdad, no solo lo que llegue por onTipSelected desde ahora: un
+    // remontaje del aviso con la fase en «done» (StrictMode en desarrollo, o
+    // un refactor que condicione la sección) no pierde «Cliente eligió 10 %».
+    // Decisión (ronda 4 de cierre, QA-2): un remontaje REABRE el aviso aunque
+    // el cajero hubiera pulsado «Cambiar» antes (`dismissed` es estado del
+    // componente y arranca en false). Es una ruta excepcional, «Aplicar»
+    // sigue siendo del cajero y nada se aplica solo.
+    setSelection(emitter.tipSelection);
     const offPhase = emitter.onTipPhaseChange((next) => {
       setPhase(next);
       setDisplayMode(emitter.getState().mode);
@@ -139,6 +166,8 @@ export function TipFromDisplayNotice({ open, currency, cashierMovedOn = false, o
     displayMode,
     connected: presence.connected,
     touch: resolveNoticeTouch(displayCapabilities, getPosDisplayEmitter().presentationSettings?.touch),
+    // Sin táctil y sin presets la pantalla no pinta importes (F2B-R7-1): nada que avisar.
+    presetsCount: getPosDisplayEmitter().getState().tip?.presets.length ?? 0,
   });
   if (waiting) {
     return (

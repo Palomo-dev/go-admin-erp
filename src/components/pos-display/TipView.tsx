@@ -182,7 +182,13 @@ export function TipView({ cart, tip, currency, brand, touch, onSelect }: TipView
           </>
         )}
       </div>
-      <TotalRow label={t('total')} value={money(base)} color={brand.primaryColor} />
+      {/*
+        La fila NO se llama «Total»: `base` es el total con impuestos SIN
+        domicilio (PLAN §5.3, `baseTotal` del modal), y en una venta a
+        domicilio el cobro siguiente pinta «Total» con el envío. Dos cifras
+        distintas con la misma etiqueta confundían (F2-B ronda 4, QA-1).
+      */}
+      <TotalRow label={t('tip.base')} value={money(base)} color={brand.primaryColor} />
     </div>
   );
 }

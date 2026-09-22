@@ -389,6 +389,47 @@ export function resolveCashReceived(payments: ReadonlyArray<CashReceivedEntry>, 
   return touchedCash.reduce((sum, entry) => sum + toAmount(entry.amount), 0);
 }
 
+/** Lo que devuelve `confirmQrPaymentEntry`: la lista nueva y el id de la entrada confirmada, que SIEMPRE está en esa lista. */
+export interface ConfirmedQrPaymentEntry<T extends CashReceivedEntry> {
+  payments: T[];
+  confirmedId: string;
+}
+
+/**
+ * Confirmación del pago QR en la lista de entradas del modal de cobro
+ * (onPaid de QrPaymentDialog). Una sola decisión para dos estados: la lista
+ * de pagos y el id que se marca «tocado» (intocable para el aviso de
+ * propina, ronda 6 · P). Antes CheckoutDialog decidía la lista con el `prev`
+ * del updater y el id con el `payments` de la clausura del efecto que abrió
+ * el diálogo; si divergían (el cajero quita la entrada QR con el poller
+ * vivo) se marcaba un id que ya no existía y la de respaldo quedaba sin
+ * marcar (ronda 7, QA-2). Aquí la fuente es UNA: `payments`.
+ * - Si `qrEntryId` está en la lista: esa entrada pasa a `method` (si viene)
+ *   y `amount`, y es la confirmada.
+ * - Si no (el cajero la quitó, o nunca hubo id): se añade `fallback` al
+ *   final y es la confirmada.
+ * Pura: no muta `payments` ni sus entradas; `confirmedId` está siempre en
+ * `payments` del resultado. `method` vacío conserva el de la entrada.
+ */
+export function confirmQrPaymentEntry<T extends CashReceivedEntry>(input: {
+  payments: ReadonlyArray<T>;
+  qrEntryId: string | undefined | null;
+  method: string;
+  amount: number;
+  fallback: T;
+}): ConfirmedQrPaymentEntry<T> {
+  const list = Array.isArray(input.payments) ? input.payments : [];
+  const id = typeof input.qrEntryId === 'string' && input.qrEntryId.length > 0 ? input.qrEntryId : null;
+  const method = typeof input.method === 'string' && input.method.trim().length > 0 ? input.method : null;
+  if (id !== null && list.some((p) => p.id === id)) {
+    return {
+      payments: list.map((p) => (p.id === id ? { ...p, method: method ?? p.method, amount: input.amount } : p)),
+      confirmedId: id,
+    };
+  }
+  return { payments: [...list, input.fallback], confirmedId: input.fallback.id };
+}
+
 /** Estado de cobro para la pantalla según el método. Nunca lanza. */
 export function toDisplayPayment(input: DisplayPaymentInput): DisplayPayment {
   const code = typeof input.methodCode === 'string' ? input.methodCode.trim().toLowerCase() : '';

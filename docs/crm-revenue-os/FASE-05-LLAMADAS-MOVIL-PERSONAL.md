@@ -1,5 +1,18 @@
 # FASE 05 — Llamar desde mi celular (click-to-call de 2 patas) con la misma grabación y transcripción
 
+## Estado real (2026-09-21)
+
+**APROBADA — ronda 5 (2026-09-15), 9,5/10** (`docs/crm-revenue-os/PROGRESS.md`, tabla de fases; ronda 8 del 2026-09-15 la vuelve a tocar sin cambiar la nota, compartida con el cierre de F3). Detalle ronda a ronda en §13-§14 de este documento.
+
+- **Rutas** (`src/app/api/voice/bridge/**`): `initiate`, `status`, `[id]` (GET), `[id]/cancel`. Comparten zona con F3: `twiml/agent-leg`, `twiml/customer-leg`, `twiml/consent-whisper`, `recording`, `status`.
+- **Servicios** (`src/lib/services/crm/`): `mobileBridgeService.ts` (530L, `initiateBridge`/`cancelBridge`/`getVerifiedMobile`), `bridgeState.ts` (215L), `bridgeTokens.ts` (121L, HMAC de las URLs de callback), `bridgeTwimlBuilders.ts` (179L), `phoneNormalize.ts` (134L, `normalizeE164`), `manualCallService.ts` (312L, backend de "registrar llamada manual").
+- **UI**: `src/components/crm/shared/MobileCallDialog.tsx` (no `MobileBridgeStatus.tsx`/`CallModeMenu.tsx` como planeaba §5.2, ver nota más abajo), montado desde `src/components/crm/shared/QuickActionsBar.tsx`; `src/components/configuracion/crm/telefonia/MyMobileSection.tsx` (OTP del celular).
+- **Migraciones**: `20260910063313_crm_v4_f05_bridges_call_link.sql` (ALTER de `mobile_call_bridges`, ya existía la tabla base), `20260910063342_crm_v4_f05_mobile_verification.sql`, `20260910071154_crm_v4_f05_otp_fn_service_role_only.sql`.
+- **Variables de entorno**: comparte las de F3 más `VOICE_CALLBACK_SECRET` (obligatoria: sin ella `bridge/initiate` responde 503). `TWILIO_PUSH_CREDENTIAL_SID_IOS`/`_ANDROID` están en `.env.example` "para el softphone nativo (F5)" pero `grep -r` sobre `src/` da **0 usos**: no hay Ruta B (SDK nativo/push), F5 construida es solo la Ruta A (bridge de 2 patas).
+- **Tests**: no hay `__tests__` bajo `src/app/api/voice/bridge/**`; los route handlers se ejercen desde `src/lib/services/crm/__tests__/f3f5Round{2..8}*.test.ts`. `src/__tests__/guardrails.test.ts` (caso 7) cubre la firma fail-closed de las rutas de puente.
+
+---
+
 > Fecha: 2026-09-08 · Estado: **reescrito V4** (sustituye la V3 completa)
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj` · Repo: `go-admin-erp`
 > Depende de: **F0** (fix `resolveOrgFromExternal`, firmas fail-closed con token de (sub)cuenta, `TWILIO_WEBHOOK_BASE_URL` = origin, CHECKs de `calls` reconciliados, bucket `crm-call-recordings`, `outbound_jobs`, `twilio/verify/*` autenticados, permisos de micrófono en manifests) y **F3** (`voiceContextService`, `twimlBuilders`, `callCreditsService`, `/api/voice/status`, `/api/voice/recording`, `twiml/consent`, `CallDispositionDialog`, `QuickActionsBar`/`CallModeMenu`, `user_comm_preferences`, `MyMobileSection`, trigger `trg_calls_completed_activity`).
@@ -90,6 +103,8 @@ BD → Realtime (calls + mobile_call_bridges) → UI MobileBridgeStatus → Call
 Especificada en 5.8; no forma parte del path crítico. La app remota seguiría llamando a `/api/voice/token`, pero el `Device` viviría en el plugin nativo (`@capgo/capacitor-twilio-voice`) con VoIP push (iOS PushKit) / FCM (Android) y `VoiceGrant({pushCredentialSid})`.
 
 ### 2.3 Variante "sin abrir la app" (opcional, flag `voice_mobile_ivr_enabled`)
+
+> **Obsoleto:** esta variante no se construyó. `voice_mobile_ivr_enabled` se lee en `mobileBridgeService.ts` (`getBridgeSettings` expone `ivrEnabled`) pero ningún código lo consulta para ramificar; `src/app/api/voice/twiml/inbound/route.ts` no tiene la rama "agent-originated" del diagrama y **la ruta `twiml/agent-dial` no existe** (`find src/app/api -iname "*agent-dial*"` da 0; la única mención en `src/` es un comentario en `bridgeTwimlBuilders.ts:165`). Es plomería sin terminar, no una feature activa.
 
 ```
 Vendedor marca +57 601… (número Twilio de la org) desde su celular verificado
@@ -389,6 +404,8 @@ Las de F3 (`twilio ^6.1`, `libphonenumber-js`). Para `sniffAudioMime` no se aña
 | `src/components/voice/ManualCallDialog.tsx` | NUEVO ≤220L | `{opportunityId?, customerId?, phone?, onCreated}` | Campos: número (prefill), dirección, fecha/hora (default ahora), duración (mm:ss), resultado (mismas opciones que la disposición), nota, audio (dropzone; valida mime/tamaño en cliente; barra de progreso). `POST /api/crm/calls/manual` (multipart). Reemplaza `ActivityActions.CallDialog` modo manual. |
 | `src/components/voice/CallsTable.tsx` (F3) | ampliar (+20L) | — | Iconos por modo; filtro `mode`. |
 | `src/app/api/...` | — | — | Ver 4.1. |
+
+> **Obsoleto:** la implementación real no siguió esta lista de componentes. `MobileBridgeStatus.tsx`, `CallModeMenu.tsx` y `useBridgeRealtime.ts` no existen (`find`/`grep` sobre `src/` en 0); el flujo de "Mi celular" quedó en un único `src/components/crm/shared/MobileCallDialog.tsx` (diálogo modal, no el panel embebido en `SoftphoneDock` que describía el plan), llamado directo desde `QuickActionsBar` en vez de a través de un `CallModeMenu` compartido con F3. **`ManualCallDialog.tsx` tampoco se construyó**: `POST /api/crm/calls/manual` (backend de `manualCallService.ts`) existe y funciona, pero ningún componente de `src/components` ni `src/app` lo invoca — hoy no hay forma de registrar una llamada manual desde la UI.
 
 ### 5.3 Flujos de usuario
 

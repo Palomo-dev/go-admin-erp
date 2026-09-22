@@ -1,5 +1,7 @@
 # Plan: Header Configurable + Super-Menú con Categorías
 
+> **Estado 2026-09-21: antecedente.** Fases 0–11 implementadas y en producción. H12A–C **no se continúan** (ADR-002 D11): iconos, orden de acciones y estilo del CTA se retoman, si vuelven, como campos del documento V2. El modelo de menú sobre `website_pages` (`parent_page_id`, `linked_category_id`) queda legacy y se importa al adoptar V2. Gobierna el [plan V2](../website-builder-v2/PLAN-MAESTRO.md) y su [ADR-002](../website-builder-v2/ADR-002-DECISIONES-Y-SECUENCIA.md).
+
 **Fecha:** 2026-08-18
 **Módulos implicados:** `app-organ` (branding) + `inventario` (categorías) + repositorio `goadmin-websites`
 **Repositorios:**

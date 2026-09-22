@@ -11,6 +11,7 @@ import { SentryMobileInit } from '@/components/SentryMobileInit';
 import { PWARegister } from '@/components/PWARegister';
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 import { PushNotificationManager } from '@/components/PushNotificationManager';
+import { DesktopThemeSync } from '@/components/app-layout/DesktopThemeSync';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -75,13 +76,17 @@ export default function RootLayout({
         >
           <SentryErrorBoundary>
             <SentryMobileInit />
+            {/* Solo en Go Admin Desktop: la barra, el fondo y el splash siguen al interruptor claro/oscuro del header. */}
+            <DesktopThemeSync />
             <PWARegister />
+            {/* Ambos se retiran solos en /pos-display (pantalla del cliente del POS): ver src/lib/pos/display/route.ts. */}
             <PWAInstallPrompt />
             <PushNotificationManager />
             <I18nProvider>
               <SessionProvider>
                 <LanguageSync />
                 {children}
+                {/* Se queda también en /pos-display: solo emite avisos de sesión y de acciones bajo /app; la pantalla del cliente no dispara toasts. */}
                 <Toaster />
               </SessionProvider>
             </I18nProvider>

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { cn } from '@/utils/Utils';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from '@/components/ui/use-toast';
@@ -121,16 +122,28 @@ export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange
 
   return (
     <Sheet open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next); }}>
-      <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="flex w-full flex-col gap-0 bg-gray-50 p-0 dark:bg-gray-950 sm:max-w-3xl">
-        <SheetHeader className="border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-900">
+      {/*
+        UX móvil (ronda 1): la hoja mide `h-dvh` y NO se desplaza como un todo
+        (`overflow-hidden` sustituye al `overflow-y-auto` del Sheet base); solo
+        el cuerpo (`flex-1 min-h-0 overflow-y-auto`) hace scroll. Sin `min-h-0`
+        el formulario no encogía, la hoja entera se desplazaba y el pie quedaba
+        descolgado bajo un hueco vacío.
+      */}
+      <SheetContent
+        side="right"
+        onCloseAutoFocus={onCloseAutoFocus}
+        className="flex h-dvh w-full flex-col gap-0 overflow-hidden bg-gray-50 p-0 dark:bg-gray-950 sm:max-w-3xl"
+      >
+        <SheetHeader className="border-b border-gray-200 bg-white px-4 py-4 pr-12 dark:border-gray-800 dark:bg-gray-900 sm:px-6">
           <SheetTitle className="text-gray-900 dark:text-gray-100">{rule ? 'Editar regla' : 'Nueva regla'}</SheetTitle>
           <SheetDescription className="text-gray-600 dark:text-gray-400">
             Arma la frase: cuándo se dispara, con qué condiciones y qué hace. Abajo verás cómo queda antes de guardar.
           </SheetDescription>
         </SheetHeader>
 
+        {/* `relative`: el botón de envío `sr-only` es absoluto; sin esto se posicionaba respecto a la hoja y alargaba su scroll. */}
         <form
-          className="flex-1 space-y-4 overflow-y-auto px-6 py-4"
+          className="relative min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6"
           noValidate
           onSubmit={(e) => { e.preventDefault(); void submit(); }}
         >
@@ -180,16 +193,30 @@ export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange
           <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">Guardar</button>
         </form>
 
-        <SheetFooter className="gap-3 border-t border-gray-200 bg-white px-6 py-3 dark:border-gray-800 dark:bg-gray-900 sm:justify-between">
+        {/*
+          Pie (UX móvil ronda 1): el SheetFooter base apila en columna INVERSA
+          bajo `sm` y el interruptor caía descolgado bajo los botones. A 375 px
+          no caben interruptor + «Desactivada» + dos botones en una fila (395 px
+          frente a 342), así que en móvil el interruptor va arriba alineado a la
+          izquierda y los dos botones debajo a mitades iguales; desde `sm`, una
+          fila con el interruptor a la izquierda y los botones a la derecha.
+          `env(safe-area-inset-bottom)` para el iPhone.
+        */}
+        <SheetFooter
+          className={cn(
+            'flex-col gap-2 border-t border-gray-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6',
+            'pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-gray-800 dark:bg-gray-900',
+          )}
+        >
           {/* Juicio (d): el estado inicial estaba plegado en Ajustes y toda regla nacía desactivada sin verse. Va junto a guardar. */}
-          <div className="flex items-center gap-2 self-center">
+          <div className="flex min-w-0 items-center gap-2">
             <Switch id="rule-active" checked={form.is_active} disabled={saving} onCheckedChange={(v) => update({ ...form, is_active: v })} />
             {/* El estado se dice aquí y en el botón; la tercera vez (frase larga) sobraba. */}
             <Label htmlFor="rule-active" className="text-sm text-gray-900 dark:text-gray-100">
               {form.is_active ? 'Activa' : 'Desactivada'}
             </Label>
           </div>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
             <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving} onClick={() => void submit()}>
               {saving ? 'Guardando…' : primaryLabel(rule !== null, form.is_active)}

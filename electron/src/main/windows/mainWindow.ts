@@ -8,6 +8,7 @@ import { isOnline, onConnectivityChange, checkNow } from '../connectivity';
 import { webServer } from '../webServer';
 import { TOOLBAR_HEIGHT, applyTheme, getThemeColors, watchTheme } from '../theme';
 import { broadcast } from '../broadcast';
+import { ALLOWED_EXTERNAL_SCHEMES } from '../permissions';
 
 /**
  * Ventana principal = barra de aplicación propia + vista de la web.
@@ -128,6 +129,61 @@ function saveWindowState(): void {
   } catch {}
 }
 
+// ── Marca (manual de marca v2.0) ──
+// Paleta: Azul GO #4361EE (identidad), Azul acción #3651D4 (botones), Azul
+// profundo #2A3EA8 (hover), Tinta #0F172A, Pizarra #475569, Fondo suave
+// #F8FAFF. Inter con Segoe UI de respaldo: el splash y la pantalla sin
+// conexión son `data:` URLs (origen opaco) y no pueden cargar los .ttf.
+const BRAND = {
+  azulGo: '#4361EE',
+  azulAccion: '#3651D4',
+  azulProfundo: '#2A3EA8',
+  tinta: '#0F172A',
+  pizarra: '#475569',
+  fondoSuave: '#F8FAFF',
+  font: "Inter, 'Segoe UI', system-ui, -apple-system, sans-serif",
+} as const;
+
+let brandMarkDataUri: string | null | undefined;
+
+/**
+ * Isotipo (src/renderer/toolbar/brand-mark.png, 128 px, lo genera
+ * build/brand/generate-assets.py) como `data:` URI para incrustarlo en las
+ * pantallas propias. Se lee una vez de dist/renderer/toolbar; si faltara, el
+ * HTML pinta un cuadrado con «GO» en CSS.
+ */
+function getBrandMarkDataUri(): string | null {
+  if (brandMarkDataUri !== undefined) return brandMarkDataUri;
+  try {
+    const file = path.join(__dirname, '..', '..', 'renderer', 'toolbar', 'brand-mark.png');
+    brandMarkDataUri = `data:image/png;base64,${fs.readFileSync(file).toString('base64')}`;
+  } catch {
+    brandMarkDataUri = null;
+  }
+  return brandMarkDataUri;
+}
+
+/** Firma del manual: isotipo + «GO Admin» (GO 700, Admin 500). `x` = lado del isotipo en px. */
+function brandSignatureHtml(x: number): string {
+  const mark = getBrandMarkDataUri();
+  const markHtml = mark
+    ? `<img class="mark" src="${mark}" alt="" width="${x}" height="${x}" draggable="false">`
+    : `<span class="mark mark-css" aria-hidden="true">GO</span>`;
+  return `<div class="brand" aria-label="GO Admin">${markHtml}<span class="name"><b>GO</b> Admin</span></div>`;
+}
+
+/** CSS común de la firma. Separación x/3 y altura de mayúsculas ≈ 0,60·x. */
+function brandSignatureCss(x: number, textColor: string): string {
+  const gap = Math.round(x / 3);
+  const fontSize = Math.round(x * 0.6 / 0.727); // altura de mayúsculas de Inter ≈ 0,727 em
+  return `
+      .brand{display:flex;align-items:center;gap:${gap}px;color:${textColor}}
+      .mark{width:${x}px;height:${x}px;flex:none;border-radius:${Math.round(x * 0.29)}px;background:${BRAND.azulGo}}
+      .mark-css{display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:${Math.round(x * 0.4)}px;letter-spacing:-0.02em}
+      .name{font-size:${fontSize}px;font-weight:500;letter-spacing:-0.01em;line-height:1}
+      .name b{font-weight:700}`;
+}
+
 // ── Splash screen ──
 function createSplashWindow(): BrowserWindow {
   const windowIcon = getWindowIcon();
@@ -144,20 +200,23 @@ function createSplashWindow(): BrowserWindow {
     ...(windowIcon ? { icon: windowIcon } : {}),
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
+  const bg = theme.dark ? theme.background : BRAND.fondoSuave;
+  const fg = theme.dark ? '#F8FAFC' : BRAND.tinta;
+  const muted = theme.dark ? '#94A3B8' : BRAND.pizarra;
+  const track = theme.dark ? 'rgba(248,250,252,0.16)' : 'rgba(67,97,238,0.18)';
   const splashHtml = `data:text/html;charset=utf-8,${encodeURIComponent(`
     <!DOCTYPE html>
-    <html><head><meta charset="utf-8"><style>
+    <html lang="es"><head><meta charset="utf-8"><style>
       *{margin:0;padding:0;box-sizing:border-box}
-      body{font-family:'Segoe UI',system-ui,sans-serif;background:${theme.background};color:${theme.dark ? '#f8fafc' : '#0f172a'};display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:22px;border-radius:12px}
-      .logo{font-size:26px;font-weight:700;letter-spacing:-0.5px}
-      .logo span{color:#3b82f6}
-      .spinner{width:34px;height:34px;border:3px solid ${theme.dark ? 'rgba(248,250,252,0.18)' : 'rgba(15,23,42,0.15)'};border-top-color:#3b82f6;border-radius:50%;animation:spin 0.9s linear infinite}
+      body{font-family:${BRAND.font};background:${bg};color:${fg};display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:26px;border-radius:16px;-webkit-font-smoothing:antialiased}
+      ${brandSignatureCss(48, fg)}
+      .spinner{width:30px;height:30px;border:3px solid ${track};border-top-color:${BRAND.azulGo};border-radius:50%;animation:spin 0.9s linear infinite}
       @keyframes spin{to{transform:rotate(360deg)}}
-      .text{font-size:12px;color:${theme.dark ? '#94a3b8' : '#475569'};letter-spacing:0.3px}
+      .text{font-size:13px;color:${muted}}
     </style></head><body>
-      <div class="logo">GO <span>Admin</span> ERP</div>
+      ${brandSignatureHtml(48)}
       <div class="spinner"></div>
-      <div class="text">Abriendo tu espacio de trabajo...</div>
+      <div class="text">Abriendo tu espacio de trabajo…</div>
     </body></html>
   `)}`;
   splashWindow.loadURL(splashHtml);
@@ -239,12 +298,16 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
   });
 
   // ── Vista de la web ──
+  // sandbox: true (auditoría §4.3). El preload solo usa contextBridge e
+  // ipcRenderer, que están disponibles en un preload sandboxed. Las ventanas
+  // de impresión de la web (`window.open('', '_blank')`) siguen funcionando:
+  // ver installExternalLinkGuards.
   webView = new WebContentsView({
     webPreferences: {
       preload: getPreloadPath('index'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
       spellcheck: false,
       backgroundThrottling: false,
       zoomFactor,
@@ -484,20 +547,38 @@ export function isInternalUrl(url: string, loadUrl: string): boolean {
  *   heredaría el bridge (impresión, agente, configuración). Se bloquea y se
  *   abre en el navegador del sistema.
  * - `setWindowOpenHandler`: los enlaces externos van al navegador. Se permite
- *   `about:blank` porque las ventanas de impresión (`window.open('', '_blank')`)
- *   lo usan para mostrar el diálogo de impresión; sin esto reimprimir desde el
- *   POS no muestra nada.
+ *   `about:blank` porque las ventanas de impresión de la web
+ *   (`window.open('', '_blank')` + `document.write(html)` + `print()`) lo
+ *   usan para mostrar el diálogo de impresión del navegador; sin esto
+ *   reimprimir desde el POS no muestra nada.
  *
- * CRÍTICO: la vista de la web tiene `sandbox: false`. Por defecto las ventanas
- * hijas se crean sandboxed, lo que hace que `window.open()` devuelva null
- * (desajuste de sandbox entre opener e hija). Se hereda `sandbox: false` para
- * que la hija comparta el proceso del opener y `window.open()` funcione.
+ * Sandbox (auditoría §4.3, cerrado 2026-09-21): antes la vista corría con
+ * `sandbox: false` y las hijas heredaban `sandbox: false` porque, si el
+ * opener no está sandboxed y la hija sí, Chromium las separa de proceso y
+ * `window.open()` devuelve un proxy sin `document`. Con el opener sandboxed
+ * las hijas se crean sandboxed (default de Electron ≥ 20), comparten proceso
+ * y `window.open('')` devuelve una ventana same-origin con `document.write`
+ * y `print()` operativos (comprobado con Electron 33.4.11). Ya no se baja el
+ * sandbox de nada. Las hijas solo pueden ser `about:blank` o una URL interna;
+ * `nodeIntegration` sigue en false y `contextIsolation` en true.
  */
+/** Solo se entrega al SO lo que el navegador abriría: web y los esquemas de contacto del CRM. */
+function canOpenExternally(url: string): boolean {
+  try {
+    const protocol = new URL(url).protocol;
+    return protocol === 'http:' || protocol === 'https:' || ALLOWED_EXTERNAL_SCHEMES.has(protocol);
+  } catch {
+    return false;
+  }
+}
+
 export function installExternalLinkGuards(wc: WebContents, loadUrl: string): void {
   wc.on('will-navigate', (event, url) => {
     if (isInternalUrl(url, loadUrl)) return;
     event.preventDefault();
-    shell.openExternal(url).catch(() => {});
+    // `will-navigate` corre antes que el permiso `openExternal`: mismo criterio aquí
+    // (F15-B). `ms-msdt:`, `search-ms:`, `file:`… no salen al sistema.
+    if (canOpenExternally(url)) shell.openExternal(url).catch(() => {});
   });
 
   wc.setWindowOpenHandler(({ url }) => {
@@ -505,15 +586,16 @@ export function installExternalLinkGuards(wc: WebContents, loadUrl: string): voi
       return {
         action: 'allow',
         overrideBrowserWindowOptions: {
+          autoHideMenuBar: true,
           webPreferences: {
-            sandbox: false,
+            sandbox: true,
             nodeIntegration: false,
             contextIsolation: true,
           },
         },
       };
     }
-    shell.openExternal(url).catch(() => {});
+    if (canOpenExternally(url)) shell.openExternal(url).catch(() => {});
     return { action: 'deny' };
   });
 }
@@ -549,30 +631,32 @@ function showOfflineScreen(): void {
     <html lang="es">
     <head><meta charset="utf-8"><title>Sin conexión</title>
     <style>
-      :root{color-scheme:light dark;--bg:#f8fafc;--fg:#0f172a;--muted:#475569;--hint:#64748b}
-      @media (prefers-color-scheme: dark){:root{--bg:#0f172a;--fg:#e2e8f0;--muted:#94a3b8;--hint:#64748b}}
+      :root{color-scheme:light dark;--bg:${BRAND.fondoSuave};--fg:${BRAND.tinta};--muted:${BRAND.pizarra};--hint:#64748b;--icon:#94A3B8;--btn:${BRAND.azulAccion};--btn-hover:${BRAND.azulProfundo}}
+      @media (prefers-color-scheme: dark){:root{--bg:#0f172a;--fg:#e2e8f0;--muted:#94a3b8;--hint:#64748b;--icon:#475569;--btn:${BRAND.azulGo};--btn-hover:${BRAND.azulAccion}}}
       *{margin:0;padding:0;box-sizing:border-box}
-      body{font-family:'Segoe UI',system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:var(--bg);color:var(--fg);gap:18px;padding:32px}
-      .logo{font-size:22px;font-weight:700;letter-spacing:-0.5px}
-      .logo span{color:#3b82f6}
-      .icon{font-size:52px;line-height:1;margin-top:8px}
-      h1{font-size:19px;font-weight:600}
-      p{color:var(--muted);font-size:13.5px;max-width:460px;text-align:center;line-height:1.6}
-      button{margin-top:6px;padding:11px 30px;font-size:14px;font-weight:600;cursor:pointer;border:none;border-radius:8px;background:#3b82f6;color:#fff;transition:background .15s}
-      button:hover{background:#2563eb}
-      .hint{font-size:11.5px;color:var(--hint)}
+      body{font-family:${BRAND.font};display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:var(--bg);color:var(--fg);gap:18px;padding:32px;-webkit-font-smoothing:antialiased}
+      ${brandSignatureCss(40, 'var(--fg)')}
+      .icon{width:56px;height:56px;margin-top:10px;color:var(--icon)}
+      .icon svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+      h1{font-size:20px;font-weight:600;letter-spacing:-0.01em}
+      p{color:var(--muted);font-size:14px;max-width:440px;text-align:center;line-height:1.6}
+      button{margin-top:6px;padding:11px 28px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;border:none;border-radius:10px;background:var(--btn);color:#fff;transition:background .15s}
+      button:hover{background:var(--btn-hover)}
+      button:focus-visible{outline:2px solid var(--btn);outline-offset:2px}
+      button:disabled{opacity:.7;cursor:default}
+      .hint{font-size:12px;color:var(--hint)}
     </style></head>
     <body>
-      <div class="logo">GO <span>Admin</span> ERP</div>
-      <div class="icon">&#128246;</div>
+      ${brandSignatureHtml(40)}
+      <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 8.5a16 16 0 0 1 20 0"/><path d="M5 12a11 11 0 0 1 14 0"/><path d="M8.5 15.5a6 6 0 0 1 7 0"/><circle cx="12" cy="19" r="1" fill="currentColor"/><path d="M3 3l18 18"/></svg></div>
       <h1>Sin conexión a internet</h1>
-      <p>No se pudo abrir Go Admin ERP. Revisa tu conexión — la aplicación se recargará sola en cuanto vuelva.</p>
+      <p>No pudimos abrir GO Admin ERP. Revisa tu conexión: la aplicación se recargará sola en cuanto vuelva.</p>
       <button id="retry">Reintentar ahora</button>
-      <p class="hint">El agente de impresión sigue corriendo en segundo plano.</p>
+      <p class="hint">El agente de impresión sigue funcionando en segundo plano.</p>
       <script>
         document.getElementById('retry').addEventListener('click', function () {
           this.disabled = true;
-          this.textContent = 'Reintentando...';
+          this.textContent = 'Reintentando…';
           if (window.goAdminDesktop && window.goAdminDesktop.reload) {
             window.goAdminDesktop.reload();
           } else {

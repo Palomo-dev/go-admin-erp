@@ -15,33 +15,45 @@
  *
  * Pero `isEmitting === false` NO siempre significa «apagado en Configuración»:
  * también lo es mientras la caja carga el interruptor (primeros cientos de
- * ms, más con red lenta) y cuando el entorno no tiene BroadcastChannel. Por
- * eso la instantánea lleva `reason`, calculada a partir del entorno
- * (`DisplayPresenceEnvironment`), para que el menú del indicador no mande al
- * cajero a Configuración a por un interruptor que ya está encendido.
+ * ms, más con red lenta), mientras el interruptor YA está encendido en caché
+ * pero la página aún no ha arrancado el emisor (en /app/pos el arranque
+ * espera a la consulta de moneda base, y el indicador monta antes), y cuando
+ * el entorno no tiene BroadcastChannel. Por eso la instantánea lleva
+ * `reason`, calculada a partir del entorno (`DisplayPresenceEnvironment`),
+ * para que el menú del indicador no mande al cajero a Configuración a por un
+ * interruptor que ya está encendido.
  */
 
 import { STALE_AFTER_MS } from './transport';
 
 /**
  * Por qué no hay transporte. `null` cuando sí lo hay.
- * - 'loading': aún no se conoce el interruptor (sin caché en settings.ts); el indicador no pinta etiqueta.
+ * - 'loading': aún no se sabe si emitirá: sin caché del interruptor (settings.ts), o con la caché
+ *   ENCENDIDA pero el emisor todavía sin transporte (la página aún no llamó a `start`); el
+ *   indicador no pinta etiqueta.
  * - 'unsupported': el entorno no tiene BroadcastChannel; nunca emitirá aunque el interruptor esté encendido.
- * - 'disabled': el interruptor maestro está apagado en Configuración › POS.
+ * - 'disabled': el interruptor maestro está apagado en Configuración › POS. Solo se afirma cuando la
+ *   caché existe Y dice `enabled: false`.
  */
 export type DisplayPresenceReason = 'loading' | 'unsupported' | 'disabled' | null;
 
-/** Lo que el entorno sabe y el emisor no: si el interruptor ya se cargó y si el transporte es posible. */
+/** Lo que el entorno sabe y el emisor no: si el interruptor ya se cargó, qué dice, y si el transporte es posible. */
 export interface DisplayPresenceEnvironment {
   /** ¿Hay caché del interruptor para la organización activa? (settings.ts `hasCustomerDisplaySettingsCache`). */
   readonly settingsLoaded: boolean;
+  /**
+   * Valor del interruptor en caché (settings.ts `isCustomerDisplayEnabled`). Solo cuenta si
+   * `settingsLoaded` es true; sin caché es el valor por defecto (false) y no significa «apagado».
+   */
+  readonly enabled: boolean;
   /** ¿El entorno soporta BroadcastChannel? (transport.ts `isBroadcastChannelSupported`). */
   readonly transportSupported: boolean;
 }
 
-/** Sin entorno se asume lo que no exige etiqueta nueva: cargado y compatible → «apagado». */
+/** Sin entorno se asume lo que no exige etiqueta nueva: cargado, apagado y compatible → «apagado». */
 export const DEFAULT_PRESENCE_ENVIRONMENT: Readonly<DisplayPresenceEnvironment> = Object.freeze({
   settingsLoaded: true,
+  enabled: false,
   transportSupported: true,
 });
 
@@ -74,13 +86,15 @@ export const DISCONNECTED_PRESENCE: Readonly<DisplayPresenceSnapshot> = Object.f
 });
 
 /**
- * Motivo de no emitir. Orden: sin soporte (definitivo) > cargando (aún no
- * se sabe) > apagado (lo único que el cajero puede cambiar en Configuración).
+ * Motivo de no emitir. Orden: sin soporte (definitivo) > cargando (sin caché,
+ * O caché encendida con el emisor aún sin arrancar) > apagado (solo con la
+ * caché en `enabled: false`: lo único que el cajero puede cambiar en
+ * Configuración). «Apagado» nunca se afirma con el interruptor encendido.
  */
 export function resolvePresenceReason(emitting: boolean, env: DisplayPresenceEnvironment = DEFAULT_PRESENCE_ENVIRONMENT): DisplayPresenceReason {
   if (emitting) return null;
   if (!env.transportSupported) return 'unsupported';
-  if (!env.settingsLoaded) return 'loading';
+  if (!env.settingsLoaded || env.enabled) return 'loading';
   return 'disabled';
 }
 

@@ -8,8 +8,7 @@
  */
 
 import { cn } from '@/utils/Utils';
-
-type Tone = 'blue' | 'amber' | 'emerald';
+import type { Tone } from './chipClasses';
 
 const TONE: Record<Tone, string> = {
   // Contraste AA verificado: blue-600/blanco 5,2:1; amber-500/gray-950 10:1; emerald-700/blanco 5,5:1.
@@ -56,21 +55,5 @@ export function SentenceConnector() {
   return <div aria-hidden="true" className="ml-6 h-4 w-px bg-gray-300 dark:bg-gray-700" />;
 }
 
-/**
- * Ficha (condición o acción) como botón: `aria-expanded` dice si su editor
- * está abierto. Seleccionada = borde y fondo del tono del bloque.
- */
-export function chipClass(selected: boolean, tone: Tone = 'blue'): string {
-  const selectedTone: Record<Tone, string> = {
-    blue: 'border-blue-600 bg-blue-50 text-blue-900 dark:border-blue-400 dark:bg-blue-950/60 dark:text-blue-100',
-    amber: 'border-amber-600 bg-amber-50 text-amber-900 dark:border-amber-400 dark:bg-amber-950/50 dark:text-amber-100',
-    emerald: 'border-emerald-700 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-950/50 dark:text-emerald-100',
-  };
-  return cn(
-    'inline-flex max-w-full items-center gap-1.5 rounded-full border px-3 py-1.5 text-left text-sm transition-colors',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900',
-    selected
-      ? selectedTone[tone]
-      : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800',
-  );
-}
+/** Fichas: clases sin JSX en `chipClasses.ts` (se prueban ejecutadas); se reexportan aquí. */
+export { chipClass, CHIP_ICON_CLASS, CHIP_LIST_CLASS, CHIP_TEXT_CLASS } from './chipClasses';

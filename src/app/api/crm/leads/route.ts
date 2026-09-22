@@ -103,6 +103,11 @@ export async function GET(request: NextRequest) {
  * `record_type` y `status` no se leen del cuerpo: siempre 'lead' y 'open'. Para
  * pasar a 'deal' está POST /api/crm/leads/[id]/convert.
  *
+ * Sin `salesperson_id` el vendedor se asigna automáticamente (F1) según la
+ * configuración de la organización; la respuesta lo cuenta en `assignment`
+ * (`assigned` | `explicit` | `skipped` | `unassigned` + motivo). Sin equipo o
+ * sin miembros el lead se crea igual, sin asignar.
+ *
  * La lógica vive en `leadCreateService.createLeadWithCustomer` (F12 la extrajo
  * sin cambiar el contrato para que la conversión de referidos la reutilice).
  */
@@ -128,7 +133,12 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: true, data: result.data, created_customer_id: result.created_customer_id },
+      {
+        success: true,
+        data: result.data,
+        created_customer_id: result.created_customer_id,
+        assignment: result.assignment,
+      },
       { status: 201 }
     );
   } catch (error: unknown) {

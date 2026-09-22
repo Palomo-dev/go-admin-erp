@@ -70,8 +70,8 @@ export function RunsSheet({ open, onOpenChange, ruleId, ruleName }: Props) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="w-full bg-white dark:bg-gray-950 sm:max-w-2xl">
-        <SheetHeader>
-          <SheetTitle className="text-gray-900 dark:text-gray-100">
+        <SheetHeader className="pr-8">
+          <SheetTitle className="break-words text-gray-900 dark:text-gray-100">
             {ruleName ? `Historial de «${ruleName}»` : 'Historial de todas las reglas'}
           </SheetTitle>
           <SheetDescription className="text-gray-600 dark:text-gray-400">
@@ -106,7 +106,8 @@ export function RunsSheet({ open, onOpenChange, ruleId, ruleName }: Props) {
               <TableHeader>
                 <TableRow>
                   <TableHead scope="col">Estado</TableHead>
-                  <TableHead scope="col">Fecha</TableHead>
+                  {/* UX móvil: bajo `sm` la fecha va debajo del estado (misma celda) y la tabla cabe en 375 px sin scroll lateral. */}
+                  <TableHead scope="col" className="hidden sm:table-cell">Fecha</TableHead>
                   <TableHead scope="col">Detalle</TableHead>
                 </TableRow>
               </TableHeader>
@@ -116,19 +117,24 @@ export function RunsSheet({ open, onOpenChange, ruleId, ruleName }: Props) {
                   const results = run.result?.results ?? [];
                   return (
                     <TableRow key={run.id}>
-                      <TableCell className={cn('whitespace-nowrap align-top font-medium', TONE_CLASS[status.tone])}>
-                        <span className="inline-flex items-center gap-1.5">
+                      <TableCell className={cn('align-top font-medium', TONE_CLASS[status.tone])}>
+                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                           <StatusIcon tone={status.tone} />
                           {status.label}
                         </span>
+                        <span className="mt-0.5 block text-xs font-normal text-gray-600 dark:text-gray-400 sm:hidden">
+                          {formatDateTime(run.created_at) || '—'}
+                        </span>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap align-top text-gray-700 dark:text-gray-300">
+                      <TableCell className="hidden whitespace-nowrap align-top text-gray-700 dark:text-gray-300 sm:table-cell">
                         {formatDateTime(run.created_at) || '—'}
                       </TableCell>
-                      <TableCell className="align-top text-gray-700 dark:text-gray-300">
+                      {/* Tester UXM-C: `overflow-wrap: anywhere` (no `break-words`): en una celda de tabla `break-word` no reduce el
+                          ancho mínimo y un error de 120 caracteres sin espacios ensanchaba la tabla a 1146 px (scroll lateral a 375). */}
+                      <TableCell className="min-w-0 align-top text-gray-700 [overflow-wrap:anywhere] dark:text-gray-300">
                         {run.skip_reason && <p>{describeSkipReason(run.skip_reason)}</p>}
                         {run.error_message && (
-                          <p className="break-words text-red-700 dark:text-red-300">{run.error_message}</p>
+                          <p className="text-red-700 [overflow-wrap:anywhere] dark:text-red-300">{run.error_message}</p>
                         )}
                         {results.length > 0 && (
                           <ul className="mt-1 space-y-0.5 text-xs">

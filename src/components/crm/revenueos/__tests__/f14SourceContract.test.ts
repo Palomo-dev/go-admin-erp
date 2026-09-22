@@ -108,8 +108,11 @@ describe('Organización y errores en las rutas', () => {
 });
 
 describe('UI: brief y accesibilidad', () => {
-  it('la página respeta prefers-reduced-motion (MotionConfig reducedMotion="user")', () => {
-    expect(read(UI.page)).toMatch(/reducedMotion="user"/);
+  it('la página respeta prefers-reduced-motion (un solo MotionConfig reducedMotion="user" en el provider compartido, F15)', () => {
+    // F15 (2026-09-21): el `MotionConfig` vive en src/components/shared/motion/MotionProvider.tsx,
+    // montado en src/app/app/layout.tsx; la página no lo anida.
+    expect(read('src/components/shared/motion/MotionProvider.tsx')).toMatch(/<MotionConfig reducedMotion="user"/);
+    expect(read(UI.page)).not.toMatch(/<MotionConfig/);
   });
   it('las celdas de cohorte llevan el número en el texto, no solo color; tabla con caption y scope', () => {
     const src = read(UI.cohorts);

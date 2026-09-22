@@ -43,6 +43,7 @@ import { recipeService, type ProductRecipe } from '@/lib/services/recipeService'
 import { useBranch } from '@/lib/context/BranchContext';
 import { LocalCatalogNotice } from './LocalCatalogNotice';
 import { isCatalogNotReplicatedError } from '@/lib/offline/posOfflineReads';
+import { useHardwareBarcodeScanner } from '@/hooks/useHardwareBarcodeScanner';
 
 interface ProductSearchProps {
   onProductSelect: (product: Product, modifiers?: SelectedModifier[]) => void;
@@ -283,6 +284,86 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
   };
+
+  // Lector físico de códigos de barras (USB/Bluetooth como teclado): el
+  // código va directo al carrito, sin pasar por la búsqueda ni hacer clic.
+  // Resuelve con las mismas piezas que el grid: `getProductByBarcode` da la
+  // fila exacta (puede ser una variante) y `getProductsPaginated` con el
+  // código como término devuelve al padre/simple con stock, variantes y
+  // modificadores ya calculados (la RPC empareja `barcode` exacto, también
+  // el de las variantes). Así la decisión —agregar, pedir variante o avisar
+  // de agotado— es la misma que al tocar la tarjeta.
+  const handleHardwareScan = useCallback(async (code: string) => {
+    try {
+      const [row, page] = await Promise.all([
+        POSService.getProductByBarcode(code).catch(() => null),
+        POSService.getProductsPaginated({
+          page: 1,
+          limit: 5,
+          search: code,
+          category_id: null,
+          status: 'active',
+          branchFilter,
+        }),
+      ]);
+      const grid = page.data as PosGridProduct[];
+      const parentId = row ? (row.parent_product_id ?? row.id) : null;
+      const parent = parentId !== null ? grid.find((p) => p.id === parentId) : undefined;
+      if (!row || !parent) {
+        toast({
+          title: 'Código no encontrado',
+          description: `Ningún producto activo tiene el código ${code}.`,
+          variant: 'destructive',
+          duration: 3000,
+        });
+        return;
+      }
+      if (parent.is_out_of_stock) {
+        toast({
+          title: 'Producto agotado',
+          description: `${parent.name} no tiene stock disponible.`,
+          variant: 'destructive',
+          duration: 3000,
+        });
+        return;
+      }
+      if (row.parent_product_id) {
+        // El código identifica una variante concreta: no hay nada que elegir,
+        // salvo que el producto lleve modificadores.
+        if (parent.has_modifiers) {
+          setSelectedParentProduct(parent);
+          setShowVariantDialog(true);
+          return;
+        }
+        const variant = row as PosGridProduct;
+        const inheritedCategory = variant.categories || variant.category || parent.categories || parent.category || null;
+        onProductSelect({
+          ...variant,
+          name: resolveVariantDisplayName(
+            variant.name,
+            (variant.variant_data ?? null) as Record<string, string> | null,
+            parent.name
+          ),
+          category: inheritedCategory ?? undefined,
+          categories: inheritedCategory,
+          station: variant.station || inheritedCategory?.station || parent.station || null,
+        } as Product);
+        return;
+      }
+      // Simple: al carrito. Padre con variantes o modificadores: el diálogo.
+      handleProductClick(parent);
+    } catch (error) {
+      console.error('Error al resolver el código escaneado:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo buscar el producto escaneado',
+        variant: 'destructive',
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branchFilter, onProductSelect]);
+
+  useHardwareBarcodeScanner({ onScan: handleHardwareScan });
 
   // Ver la receta vinculada a un producto (abre un diálogo con ingredientes y rendimiento).
   // No agrega el producto al carrito: es solo consulta desde el grid del POS.

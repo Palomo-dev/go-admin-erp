@@ -40,6 +40,10 @@ export interface PhoneInputProps {
   defaultIso?: string;
   /** Requerido (atributo del input del número). */
   required?: boolean;
+  /** Texto de ayuda o error asociado al input. */
+  'aria-describedby'?: string;
+  /** Indica a tecnologías asistivas que el valor es inválido. */
+  'aria-invalid'?: boolean;
 }
 
 export function PhoneInput({
@@ -53,6 +57,8 @@ export function PhoneInput({
   name,
   defaultIso = DEFAULT_COUNTRY_ISO,
   required = false,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
 }: PhoneInputProps) {
   // Detectar país y número a partir del valor entrante
   const parsed = React.useMemo(() => {
@@ -184,6 +190,8 @@ export function PhoneInput({
         placeholder={placeholder}
         disabled={disabled}
         required={required}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
         className={cn('rounded-l-none', inputClassName)}
       />
     </div>

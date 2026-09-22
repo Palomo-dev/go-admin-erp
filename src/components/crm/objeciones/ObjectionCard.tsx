@@ -9,12 +9,10 @@
 
 import { useId, useState } from 'react';
 import { CheckCircle2, ChevronDown, HelpCircle, MessageSquareReply, PauseCircle, Pencil, Trash2 } from 'lucide-react';
-import { AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { FadeIn } from '@/components/shared/motion/primitives';
-import { StaggerItem } from '@/components/shared/motion/staggerList';
+import { AnimatePresence, FadeIn, StaggerItem } from '@/components/shared/motion';
 import type { Objection } from '@/lib/services/crm/objectionService';
 import { cn } from '@/utils/Utils';
 import { CategoryBadge } from './categoryMeta';

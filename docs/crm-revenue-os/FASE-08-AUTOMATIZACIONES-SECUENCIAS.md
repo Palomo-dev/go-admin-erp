@@ -1,5 +1,17 @@
 # FASE 08 — Un solo motor de automatizaciones y secuencias multicanal por etapa (con scheduler real y builder visual)
 
+## Estado real (2026-09-21)
+
+- **Rutas API** (`src/app/api/crm/`): `automation-rules/{route.ts, [id]/route.ts, [id]/trigger/route.ts}`, `automation-runs/route.ts`, `sequences/{route.ts, [id]/route.ts, [id]/enroll/route.ts, [id]/enroll/preview/route.ts, [id]/enrollments/route.ts}`. `/api/crm/campaigns` (raíz + `[id]`) **existe pero no es de esta fase**: es campañas de WhatsApp (`whatsapp/campaignStore.ts`), parte de F16.
+- **Servicios reales** (`src/lib/services/crm/`, `wc -l`): `sequenceService.ts` 1370, `automationService.ts` 630, `sequenceTimeline.ts` 167, `sequenceStats.ts` 136, `sequenceSweep.ts` 106; además `automation/automationEngine.ts` y `automation/conditionsDsl.ts` (motor de reglas, sí separados como en el plan).
+- **UI**: `src/app/app/crm/automatizaciones/page.tsx` → `AutomatizacionesPage.tsx`; `src/app/app/crm/secuencias/page.tsx` → `SecuenciasPage.tsx`; `src/app/app/crm/campanas/**` (WhatsApp, F16, no F8).
+- **Migraciones aplicadas** (`supabase/migrations/*f08*`): 4 originales del 2026-09-09 (esquema del motor, RPC de inscripción, encadenado/reanudación, corte a prueba de fallos del paso de condición) + 2 de `branch_access` del 2026-09-10.
+- **Variables de entorno**: ninguna propia; corre sobre `pg_cron`/`pg_net` (F0) y reutiliza credenciales de email (F7) y WhatsApp (F16); `CRON_SECRET` protege el runner de jobs.
+- **Tests**: `automationEngine.test.ts`, `sequenceStats.test.ts` + `sequenceStatsIo.test.ts`, `sequenceTimeline.test.ts`, `sequences/__tests__/sequencesGet.contract.test.ts`, `components/crm/secuencias/__tests__/{sequenceOptions,round4SourceContract}.test.ts`, `components/crm/automatizaciones/__tests__/mobileLayout*.test.ts`.
+- **Calificación**: **APROBADA — 9,5/10** (ronda 3, 3,5 → 7,5 → 8,5 → 9,5; `docs/crm-revenue-os/PROGRESS.md:868`). Ronda de UX móvil (375 px) del 2026-09-21 sobre `automatizaciones`: tester 9,6 (`PROGRESS.md:1904`); `secuencias`/`campañas` no se tocaron en esa ronda.
+
+---
+
 > Fecha: 2026-09-08 · Estado: **reescrito V4** (sustituye la V3 completa)
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj` · Vercel iad1 (Next.js) + pg_cron/pg_net
 > Depende de: F0 (`outbound_jobs` + `fn_claim_jobs`, outbox `crm_events` + `trg_opp_stage_change_enqueue`, pg_cron → `/api/crm/jobs/run` fail-closed, fixes `tasks`/`activities`/`customers.timezone`, `contact_consents` + `fn_can_contact`, eliminación de `automations` legacy + `followupEngineService` + `AutomationSettings` + `EmailNotifications`), F2 (etapas, gates `stageGateService`, `pipelineTemplates.ts`), F3 (llamadas: task de llamada con guion), F6 (agente IA: `agentDispatcher.dispatchAgent`, `ai_draft_email`), F7 (email: `sendEmail`, plantillas, eventos `email.*`), F16 (WhatsApp: envío vía `messages`, HSM, ventana 24h, `whatsapp.received`), F9 (timeline)
@@ -444,6 +456,8 @@ SELECT count(*) FROM pg_policies WHERE tablename IN ('sequence_step_runs','autom
 | POST | `/api/crm/jobs/run` (F0) | `Bearer CRON_SECRET` fail-closed | `{kinds?: string[]}` | `{claimed, done, failed}` | 401 | `fn_claim_jobs(p_kinds, 25, worker)` |
 | DELETE | `/api/crm/followup/run` | — | **eliminado** (C-C) | — | — | — |
 
+> **Obsoleto:** verificado con `find` sobre `src/app/api/crm/{automation-rules,sequences}` — no existen `automation-rules/[id]/test-run`, `automation-rules/[id]/runs`, `sequences/[id]/unenroll`, `sequences/enrollments/[id]/pause|resume` ni `sequences/[id]/stats` como rutas propias. Pausar/reanudar/desinscribir quedaron como `PATCH`/`DELETE` de `sequences/[id]/enrollments` (`action: 'resume'` en el body; ver cabecera del archivo), y la vista previa antes de inscribir vive en `sequences/[id]/enroll/preview` (no en `automation-rules/.../test-run`, que no existe). No se confirmó si el dry-run de reglas (`DryRunDialog.tsx` en la UI real) llama a algún endpoint o corre en cliente.
+
 ### 4.2 Servicios (firmas TS)
 
 | Archivo | Exporta | Responsabilidad |
@@ -459,6 +473,8 @@ SELECT count(*) FROM pg_policies WHERE tablename IN ('sequence_step_runs','autom
 | `src/lib/services/crm/automation/automationService.ts` (reescribir, solo CRUD) | `getRules`, `getRule`, `createRule`, `updateRule`, `deleteRule`, `ruleSchema`, `testRun(sb, orgId, ruleId, opportunityId, event?)` | CRUD + dry run |
 | `src/lib/services/crm/automationSeeds.ts` (NUEVO) | `seedAutomationsForPipeline(sb, orgId, pipelineId, templateKey)`; `AUTOMATION_SEEDS` | §3.2; llamado desde `createPipelineFromTemplate` |
 | `src/lib/services/crm/jobs/handlers/{crmEvent,automation,sequenceStep,timeEvents}.ts` (nombres = kinds `crm_event`, `automation`, `sequence_step`, `time_events`) | `handle(sb, job)` | `crmEvent`: drena `crm_events` `status='pending'` (SELECT … FOR UPDATE SKIP LOCKED, lotes de 200, marca `processed|failed`) → `evaluateRules` + `stage_agents` (F6) + `evaluateExit` de inscripciones afectadas + `fn_pause_sequences_on_reply`; `timeEvents`: cada hora `fn_emit_time_events` por org con CRM activo |
+
+> **Obsoleto:** del lado de reglas, `automation/automationEngine.ts` y `automation/conditionsDsl.ts` sí existen tal como se planeó. Del lado de secuencias no: `sequence/sequenceEngine.ts` y `sequence/scheduling.ts` no existen en el árbol (`find` sin resultados); la máquina de pasos, `computeNextRunAt` y el CRUD quedaron todos en un único `src/lib/services/crm/sequenceService.ts` (1370 líneas, muy por encima del "reescribir, solo CRUD" que pedía el plan). No se verificó archivo por archivo el resto de la tabla (acciones individuales, `templateVars.ts`, `automationSeeds.ts`).
 
 ### 4.3 Webhooks / proveedor
 
@@ -644,6 +660,8 @@ await fetch(action.url, { method: 'POST', headers: { 'Content-Type': 'applicatio
 
 Nav CRM: "Automatizaciones" (icono `Workflow`) y "Secuencias" (icono `ListOrdered`).
 
+> **Obsoleto:** no existen `/app/crm/automatizaciones/[id]` ni `/app/crm/secuencias/[id]` (`find` solo devuelve el `page.tsx` raíz de cada carpeta). El editor de reglas es un `Sheet` (`RuleEditorSheet.tsx`) y el de secuencias un `Dialog` (`SequenceEditorDialog.tsx`), ambos montados sobre la lista — no páginas propias. Este rediseño no es una simple desviación de implementación: responde a un brief de UX posterior (`BRIEF-UX-CRM.md` §6.2/§6.3, "rediseño APROBADA 9,6/10", ver tabla de fases en `PROGRESS.md`) que reemplazó el formulario por secciones (When/If/Then) por una frase construible con chips ("Cuando [disparador] · si [condiciones] · entonces [acciones]").
+
 ### 5.2 Componentes (`src/components/crm/automatizaciones/` y `src/components/crm/secuencias/`; ≤300 L)
 
 | Archivo | Props | Estado/hooks | Servicios |
@@ -667,6 +685,8 @@ Nav CRM: "Automatizaciones" (icono `Workflow`) y "Secuencias" (icono `ListOrdere
 | `SequenceStepStats.tsx` | `{sequenceId}` | tabla por paso: enviados, entregados, abiertos, clics, respondidos, fallidos (barras proporcionales) | `GET stats` |
 | `EnrollInSequenceDialog.tsx` (`src/components/crm/shared/`) | `{opportunityIds: string[], open, onOpenChange}` | selector de secuencia (solo activas), fecha de inicio, resumen del primer paso, advertencias DNC/sin canal; usado por `QuickActionsBar` (F9) y acciones masivas de `TableView` | `POST enroll` |
 | `AutomationActivityEntry.tsx` (`src/components/crm/timeline/`, F9) | `{entry}` | "Regla X ejecutó: email enviado, tarea creada" con link al run | — |
+
+> **Obsoleto:** los nombres reales de `src/components/crm/automatizaciones/` son `RuleCard.tsx` + `RulesToolbar.tsx` (no `RuleList.tsx`), `RuleEditorSheet.tsx` (no `RuleEditor.tsx`), `TriggerBlock.tsx`/`ConditionsBlock.tsx`+`ConditionChipEditor.tsx`/`ActionsBlock.tsx`+`ActionChipEditor.tsx` (no `WhenSection`/`IfSection`/`ThenSection`), `DryRunDialog.tsx` (no `RuleTestRunDialog.tsx`), `RunsSheet.tsx` (no `RuleRunsTable.tsx`), más `chipClasses.ts`/`SentenceBlock.tsx`/`motion.tsx` que el plan no contemplaba. En `src/components/crm/secuencias/` los reales son `SequenceCard.tsx`, `SequenceEditorDialog.tsx` + `StepTimelineEditor.tsx` (no `SequenceBuilder.tsx`), `StepCard.tsx` + `StepBranch.tsx` (no `StepEditorSheet.tsx`), `EnrollmentsSheet.tsx` (no `EnrollmentTable.tsx`), `EnrollDialog.tsx` (no `EnrollInSequenceDialog.tsx`), `ConditionEditor.tsx`, `channelMeta.tsx`. No se verificó `PipelineAutomationSummary.tsx`/`StageAutomationTab.tsx` ni `SequenceCalendarPreview.tsx`/`SequenceStepStats.tsx`.
 
 ### 5.3 Flujos de usuario
 

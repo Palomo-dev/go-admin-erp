@@ -58,6 +58,17 @@ describe('F10 paymentEvents — parseStripeCheckoutEvent', () => {
     expect(majorToMinor(0.001, 'usd')).toBe(0);
   });
 
+  // de tester r1 (A8/A9): redondeo a la unidad menor y monedas de tres decimales de Stripe
+  it('A8/A9 majorToMinor redondea (12.345 USD → 1235); KWD/BHD/JOD/OMR/TND se dividen y multiplican por 1000, ida y vuelta', () => {
+    expect(majorToMinor(12.345, 'USD')).toBe(1235);
+    expect(majorToMinor(5000, 'JPY')).toBe(5000);
+    // Stripe: 1 KWD = 1000 fils → amount_total 5000 = 5 KWD
+    expect(minorToMajor(5000, 'kwd')).toBe(5);
+    for (const c of ['BHD', 'jod', 'OMR', 'tnd']) expect(minorToMajor(1500, c)).toBe(1.5);
+    expect(majorToMinor(5, 'KWD')).toBe(5000);
+    expect(majorToMinor(1.2345, 'bhd')).toBe(1235);
+  });
+
   it.each([
     ['tipo distinto', ev({ type: 'payment_intent.succeeded' })],
     ['sesión sin pagar', ev({}, { payment_status: 'unpaid' })],

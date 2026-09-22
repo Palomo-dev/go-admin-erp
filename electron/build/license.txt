@@ -1,6 +1,6 @@
-Go Admin ERP — Términos de Licencia
+﻿GO Admin ERP — Términos de licencia
 
-Copyright © 2025 GO Admin. Todos los derechos reservados.
+Copyright © 2025 GO Admin S.A.S. Todos los derechos reservados.
 
 Al instalar este software aceptas:
 

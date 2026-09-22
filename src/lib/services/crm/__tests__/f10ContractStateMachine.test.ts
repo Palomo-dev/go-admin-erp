@@ -125,6 +125,17 @@ describe('F10 contractStateMachine — verifyDocumensoSignature (fallo cerrado)'
     const h = createHmac('sha256', ph).update(body).digest('hex');
     expect(verifyDocumensoSignature({ rawBody: body, headers: { 'x-documenso-signature': h }, secret: ph })).toBe(false);
   });
+
+  // de tester r1 (C1-C3): longitudes distintas (timingSafeEqual lanzaría), la firma manda sobre el secreto compartido, secreto corto
+  it('C1-C3 longitudes distintas → false sin lanzar; HMAC errónea + secreto compartido correcto → false (no se cae al secreto); secreto < 16 caracteres nunca verifica', () => {
+    const headersFor = (s: string) => ({ 'x-documenso-signature': null, 'x-documenso-secret': s });
+    expect(() => verifyDocumensoSignature({ rawBody: '{}', headers: headersFor('corto'), secret })).not.toThrow();
+    expect(verifyDocumensoSignature({ rawBody: '{}', headers: headersFor('corto'), secret })).toBe(false);
+    expect(verifyDocumensoSignature({ rawBody: '{}', headers: { 'x-documenso-signature': 'abc', 'x-documenso-secret': null }, secret })).toBe(false);
+    expect(verifyDocumensoSignature({ rawBody: '{}', headers: { 'x-documenso-signature': 'deadbeef', 'x-documenso-secret': secret }, secret })).toBe(false);
+    expect(verifyDocumensoSignature({ rawBody: '{}', headers: headersFor('corto12345'), secret: 'corto12345' })).toBe(false);
+    expect(verifyDocumensoSignature({ rawBody: '{}', headers: headersFor('your-webhook-secret-here-xxxx'), secret: 'your-webhook-secret-here-xxxx' })).toBe(false);
+  });
 });
 
 describe('F10 contractStateMachine — parseDocumensoPayload', () => {

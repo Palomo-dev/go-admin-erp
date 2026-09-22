@@ -15,13 +15,81 @@ import { PrintService } from '@/lib/services/printService';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import KitchenService from '@/lib/services/kitchenService';
 import { supabase } from '@/lib/supabase/config';
-import { Cart, Sale, SaleItem, Customer } from './types';
+import { Cart, Sale, SaleItem, Customer, Product, Category, Payment } from './types';
 import { formatCurrency, cn } from '@/utils/Utils';
-import { TaxSummary } from './TaxSummary';
+import { TaxSummary, type TaxSummaryTotals } from './TaxSummary';
 import { CachedProductImage } from './CachedProductImage';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { toast } from 'sonner';
 import DetalleFactura from '@/components/finanzas/facturas-venta/id/DetalleFactura';
+import type { KitchenTicket } from '@/lib/services/kitchenService';
+import type { LucideIcon } from 'lucide-react';
+
+type KitchenTicketStatus = KitchenTicket['status'];
+
+/**
+ * `item.product` en el carrito trae más que `Product`: la categoría puede
+ * venir como objeto o como array (según el join), y las variantes traen
+ * `variant_data`. Solo lo que este componente lee.
+ */
+type CartProduct = Product & {
+  categories?: Category | Category[] | null;
+  variant_data?: Record<string, string> | null;
+};
+
+/** ¿La categoría del producto exige preparación en cocina? (objeto o array, según el join). */
+function requiresPreparation(product: CartProduct | undefined): boolean {
+  const cat = product?.category ?? product?.categories;
+  const first = Array.isArray(cat) ? cat[0] : cat;
+  return first?.requires_preparation === true;
+}
+
+/**
+ * Formas mínimas de lo que devuelve POSService.getInvoiceForCart (el servicio
+ * lo tipa como `any`): solo los campos que se leen aquí. Los importes de
+ * `invoice_items` son `numeric` y pueden llegar como string.
+ */
+interface InvoiceItemRow {
+  id: string;
+  product_id?: number;
+  qty: string | number;
+  unit_price: string | number;
+  total_line: string | number;
+  discount_amount?: string | number | null;
+  tax_amount?: string | number | null;
+  description?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  products?: { name: string; sku?: string } | null;
+}
+
+/** Fila de `payments` de la factura (select *): solo lo que el ticket necesita para pintar «Pagos». */
+interface InvoicePaymentRow {
+  id: string;
+  method?: string;
+  payment_method?: string;
+  amount: string | number;
+  status?: string;
+  payment_date?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** Lo que PrintService lee de cada línea además de `SaleItem` (nombre y producto para el ticket). */
+type PrintableSaleItem = SaleItem & {
+  name: string;
+  product_name: string;
+  product?: { name: string; sku?: string };
+};
+
+/** Mensaje legible de un error de Supabase o de una excepción cualquiera. */
+function errorMessage(error: unknown): string | undefined {
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string' && message.length > 0) return message;
+  }
+  return undefined;
+}
 
 interface CartViewProps {
   cart: Cart;
@@ -68,19 +136,37 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
 
   // Totales que ve el cajero (TaxSummary, con `tax_excluded` por línea y el
   // override de organization_taxes) → pantalla del cliente (PLAN §8: la
-  // pantalla repite lo que el recibo repetirá). Con subtotal 0 TaxSummary
-  // aún no ha cargado los impuestos: no se envía nada y la pantalla usa los
-  // totales del carrito.
+  // pantalla repite lo que el recibo repetirá).
+  //
+  // Al cambiar de carrito (cobro que lo elimina y activa el siguiente) este
+  // callback cambia de identidad y TaxSummary reenvía sus totales VIEJOS
+  // antes de recalcular: sin la comprobación de `cartId` la pantalla
+  // mostraba el total de la venta anterior sobre el carrito nuevo. Con
+  // subtotal 0 (impuestos aún sin cargar, o carrito a $0) se retira el
+  // override y la pantalla usa los totales del propio carrito.
+  //
+  // Además del id, TaxSummary etiqueta los totales con la FIRMA de las líneas
+  // con las que los calculó (`linesSignature`, Fase 2): el emisor descarta un
+  // reenvío de totales viejos cuando las líneas ya cambiaron (misma id, otra
+  // firma), en vez de mostrarlos durante los cientos de ms del recálculo.
   const cartId = cart.id;
   const cartDiscountTotal = cart.discount_total;
   const handleTotalsChange = useCallback(
-    (totals: { subtotal: number; totalTaxAmount: number; finalTotal: number }) => {
-      if (!(totals.subtotal > 0)) return;
-      getPosDisplayEmitter().setTotals(cartId, {
-        discountTotal: cartDiscountTotal,
-        taxTotal: totals.totalTaxAmount,
-        total: totals.finalTotal,
-      });
+    (totals: TaxSummaryTotals) => {
+      if (totals.cartId !== cartId) return;
+      if (!(totals.subtotal > 0)) {
+        getPosDisplayEmitter().setTotals(cartId, null);
+        return;
+      }
+      getPosDisplayEmitter().setTotals(
+        cartId,
+        {
+          discountTotal: cartDiscountTotal,
+          taxTotal: totals.totalTaxAmount,
+          total: totals.finalTotal,
+        },
+        totals.linesSignature,
+      );
     },
     [cartId, cartDiscountTotal],
   );
@@ -93,7 +179,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   
   // Estados para ver factura
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [invoiceData, setInvoiceData] = useState<any>(null);
+  const [invoiceData, setInvoiceData] = useState<Awaited<ReturnType<typeof POSService.getInvoiceForCart>> | null>(null);
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
 
   // Estado para envío de comanda
@@ -151,7 +237,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
           table: 'kitchen_tickets',
           filter: `id=eq.${cart.kitchen_ticket_id}`
         },
-        (payload: any) => {
+        (payload: { new?: Partial<Pick<KitchenTicket, 'status'>> }) => {
           if (payload.new?.status) {
             setKitchenStatus(payload.new.status);
           }
@@ -165,12 +251,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   }, [cart.kitchen_ticket_id, cart.branch_id]);
 
   // Detectar si hay items que requieren preparación
-  const hasPreparationItems = cart.items.some(item => {
-    const product = item.product as any;
-    const cat = product?.category || product?.categories;
-    const requiresPrep = Array.isArray(cat) ? cat[0]?.requires_preparation : cat?.requires_preparation;
-    return requiresPrep === true;
-  });
+  const hasPreparationItems = cart.items.some(item => requiresPreparation(item.product as CartProduct | undefined));
 
   // Actualizar cantidad de un item
   const handleQuantityChange = async (itemId: string, newQuantity: number) => {
@@ -327,10 +408,10 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
       setShowHoldWithDebtDialog(false);
       setHoldWithDebtReason('');
       setPaymentTerms(30);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error holding cart with debt:', error);
       toast.error('Error al registrar deuda', {
-        description: error.message || 'No se pudo crear la factura y cuenta por cobrar'
+        description: errorMessage(error) || 'No se pudo crear la factura y cuenta por cobrar'
       });
     } finally {
       setIsProcessingHoldWithDebt(false);
@@ -344,10 +425,10 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
       const data = await POSService.getInvoiceForCart(cart.id);
       setInvoiceData(data);
       setShowInvoiceModal(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error cargando factura:', error);
       toast.error('Error al cargar factura', {
-        description: error.message || 'No se pudo obtener los datos de la factura'
+        description: errorMessage(error) || 'No se pudo obtener los datos de la factura'
       });
     } finally {
       setIsLoadingInvoice(false);
@@ -392,7 +473,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         total: parseFloat(data.invoice.total),
         subtotal: parseFloat(data.invoice.subtotal),
         tax_total: parseFloat(data.invoice.tax_total),
-        discount_total: data.items.reduce((sum: number, item: any) => sum + parseFloat(item.discount_amount || '0'), 0),
+        discount_total: (data.items as InvoiceItemRow[]).reduce((sum, item) => sum + parseFloat(String(item.discount_amount || '0')), 0),
         balance: parseFloat(data.invoice.balance || data.invoice.total),
         tax_included: data.invoice.tax_included,
         status: 'completed',
@@ -401,24 +482,24 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         notes: data.invoice.notes,
         created_at: data.invoice.created_at,
         updated_at: data.invoice.updated_at,
-      } as any;
+      };
 
       // Convertir items de factura a formato SaleItem
-      const saleItems: SaleItem[] = data.items.map(item => ({
+      const saleItems: PrintableSaleItem[] = (data.items as InvoiceItemRow[]).map((item) => ({
         id: item.id,
         sale_id: data.invoice.number,
         product_id: item.product_id,
-        quantity: parseFloat(item.qty),
-        unit_price: parseFloat(item.unit_price),
-        total: parseFloat(item.total_line),
-        discount_amount: parseFloat(item.discount_amount || '0'),
-        tax_amount: parseFloat(item.tax_amount || '0'),
+        quantity: parseFloat(String(item.qty)),
+        unit_price: parseFloat(String(item.unit_price)),
+        total: parseFloat(String(item.total_line)),
+        discount_amount: parseFloat(String(item.discount_amount || '0')),
+        tax_amount: parseFloat(String(item.tax_amount || '0')),
         created_at: item.created_at || data.invoice.created_at,
         updated_at: item.updated_at || data.invoice.updated_at,
         name: item.description || item.products?.name || 'Producto',
         product_name: item.description || item.products?.name || 'Producto',
         product: item.products ? { name: item.products.name, sku: item.products.sku } : undefined,
-      } as any));
+      }));
 
       // Datos del cliente
       const customerData: Customer | undefined = data.customer ? {
@@ -440,21 +521,29 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
       } : undefined;
 
       // Pagos asociados a la factura
-      const payments = (data.invoice.pagos || []).map((p: any) => ({
+      // El ticket solo lee `method` y `amount`; el resto son los campos de la fila de `payments`.
+      const payments: Payment[] = ((data.invoice.pagos || []) as InvoicePaymentRow[]).map((p) => ({
         id: p.id,
-        method: p.method || p.payment_method,
-        amount: parseFloat(p.amount)
+        organization_id: data.invoice.organization_id,
+        reference_type: 'invoice',
+        reference_id: data.invoice.id,
+        amount: parseFloat(String(p.amount)),
+        method: (p.method || p.payment_method || 'other') as Payment['method'],
+        status: (p.status || 'completed') as Payment['status'],
+        payment_date: p.payment_date || p.created_at || data.invoice.created_at,
+        created_at: p.created_at || data.invoice.created_at,
+        updated_at: p.updated_at || data.invoice.updated_at,
       }));
 
       // Imprimir usando PrintService.printTicket con datos completos
       PrintService.printTicket(
         saleData,
         saleItems,
-        customerData as any,
+        customerData,
         payments,
         business,
         { name: cashierName || 'Sistema POS', email: cashierEmail },
-        branchInfo as any,
+        branchInfo,
         undefined,
         undefined,
         timezone,
@@ -462,10 +551,10 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
 
       toast.success('Factura enviada a imprimir');
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error imprimiendo factura:', error);
       toast.error('Error al imprimir factura', {
-        description: error.message || 'No se pudo imprimir la factura'
+        description: errorMessage(error) || 'No se pudo imprimir la factura'
       });
     }
   };
@@ -486,9 +575,9 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
     try {
       await onSendComanda(cart);
       toast.success('Enviado a cocina');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error enviando comanda:', error);
-      toast.error('Error al enviar comanda', { description: error.message || 'No se pudo enviar' });
+      toast.error('Error al enviar comanda', { description: errorMessage(error) || 'No se pudo enviar' });
     } finally {
       setIsSendingComanda(false);
     }
@@ -502,10 +591,10 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
       toast.success('Deuda anulada exitosamente', {
         description: `Se creó la nota de crédito ${result.creditNote.number}. Todos los balances han sido saldados.`
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error anulando deuda:', error);
       toast.error('Error al anular deuda', {
-        description: error.message || 'No se pudo crear la nota de crédito'
+        description: errorMessage(error) || 'No se pudo crear la nota de crédito'
       });
     }
   };
@@ -543,13 +632,13 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                   </Badge>
                 )}
                 {cart.kitchen_ticket_id && kitchenStatus && (() => {
-                  const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+                  const statusConfig: Record<KitchenTicketStatus, { label: string; color: string; icon: LucideIcon }> = {
                     new: { label: 'Enviado a cocina', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300 dark:border-yellow-700', icon: Send },
                     preparing: { label: 'En preparación', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-300 dark:border-orange-700', icon: ChefHat },
                     ready: { label: '¡Listo!', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-700 animate-pulse', icon: CheckCircle },
                     delivered: { label: 'Entregado', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-gray-300 dark:border-gray-700', icon: Check },
                   };
-                  const config = statusConfig[kitchenStatus] || statusConfig.new;
+                  const config = statusConfig[kitchenStatus as KitchenTicketStatus] || statusConfig.new;
                   const Icon = config.icon;
                   return (
                     <Badge variant="outline" className={`text-xs px-1.5 py-0 flex items-center gap-1 ${config.color}`}>
@@ -597,9 +686,10 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
               </div>
             ) : (
               cart.items.map((item) => {
-                const productImage = (item.product as any)?.image as string | null | undefined;
-                const variantEntries = (item.product as any)?.variant_data
-                  ? Object.entries((item.product as any).variant_data as Record<string, string>).filter(([, v]) => !!v)
+                const cartProduct = item.product as CartProduct | undefined;
+                const productImage = cartProduct?.image;
+                const variantEntries = cartProduct?.variant_data
+                  ? Object.entries(cartProduct.variant_data).filter(([, v]) => !!v)
                   : [];
 
                 return (
@@ -631,10 +721,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
 
                             {/* Badge de estado de cocina si el ticket fue enviado */}
                             {cart.kitchen_ticket_id && kitchenStatus && (() => {
-                              const product = item.product as any;
-                              const cat = product?.category || product?.categories;
-                              const requiresPrep = Array.isArray(cat) ? cat[0]?.requires_preparation : cat?.requires_preparation;
-                              if (!requiresPrep) return null;
+                              if (!requiresPreparation(item.product as CartProduct | undefined)) return null;
                               const itemStatusConfig: Record<string, { label: string; color: string }> = {
                                 new: { label: 'Enviado a cocina', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300 dark:border-yellow-700' },
                                 preparing: { label: 'En preparación', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-300 dark:border-orange-700' },

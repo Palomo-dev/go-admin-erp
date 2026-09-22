@@ -19,6 +19,8 @@ describe('F10 guardarraíles', () => {
     expect(src).not.toMatch(/\beval\s*\(/);
     expect(src).toMatch(/evaluateFormula/);
     expect(read('src/lib/services/crm/roiEvaluator.ts')).not.toMatch(/\bnew Function|\beval\s*\(/);
+    // de tester r1 (D4): la ruta tampoco, y sin contar comentarios
+    expect(read('src/app/api/crm/roi/route.ts').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')).not.toMatch(/\bnew\s+Function\b|\bFunction\s*\(|\beval\s*\(/);
   });
 
   it('el webhook de Documenso verifica la firma antes de cualquier escritura y resuelve la organización desde la fila', () => {

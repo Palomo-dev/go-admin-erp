@@ -13,7 +13,7 @@ import { EntitySelect } from '@/components/crm/shared/EntitySelect';
 import { stagesOfPipeline } from '@/components/crm/shared/useCrmLookups';
 import { TRIGGER_OPTIONS, triggerOption } from '@/lib/services/crm/automation/ruleCatalog';
 import { ignoredScope, mutedEvent, setTrigger, triggerScope, type RuleFormState } from '@/lib/services/crm/automation/ruleEditorModel';
-import { AnimatePresence, Expand } from './motion';
+import { AnimatePresence, Expand } from '@/components/shared/motion';
 import { EventPicker } from './EventPicker';
 import type { RuleLookups } from './useRuleLookups';
 

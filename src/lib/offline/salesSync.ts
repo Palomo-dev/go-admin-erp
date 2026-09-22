@@ -3,8 +3,10 @@
  *
  * Reproduce los sobres `pending` en orden de `created_at` llamando a
  * `POSService.checkout({ ...sobre, saleId, createdAt, replayFromOutbox })`
- * de uno en uno. La idempotencia la da el id generado en el cliente: si la
- * venta ya existe en Supabase, `checkout` completa solo lo que falte.
+ * de uno en uno. Desde la fase 4E cada reproducción es UNA llamada a la RPC
+ * `pos_checkout_v1` (un sobre = una transacción = todo o nada); la
+ * idempotencia la da el id generado en el cliente: si la venta ya existe en
+ * Supabase, la RPC responde `replayed: true` y completa solo lo que falte.
  *
  *  - Éxito → `synced` (se conserva 7 días).
  *  - Error → `attempts++`, backoff, y a los `MAX_ATTEMPTS` → `needs_review`.
@@ -84,13 +86,16 @@ async function replayOne(record: OutboxSaleRecord, now: number): Promise<'synced
       // Remapeado por `customersSync`; el sobre en disco ya cambió, aquí solo esta copia.
       checkout.cart.customer_id = customerState.serverId;
     }
-    await POSService.checkout({
+    const sale = await POSService.checkout({
       ...checkout,
       saleId: record.id,
       createdAt: checkout.createdAt ?? record.created_at,
       userId: checkout.userId ?? record.envelope.user_id ?? undefined,
       replayFromOutbox: true,
     });
+    if (sale.replayed) {
+      console.log(`[salesSync] La venta ${record.id} ya estaba en Supabase: la RPC no la duplicó (replayed).`);
+    }
     await updateOutboxSale(record.id, {
       status: 'synced',
       synced_at: new Date(now).toISOString(),

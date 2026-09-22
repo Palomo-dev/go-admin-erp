@@ -26,8 +26,8 @@ import {
   type RuleFormState,
 } from '@/lib/services/crm/automation/ruleEditorModel';
 import { ConditionChipEditor } from './ConditionChipEditor';
-import { chipClass } from './SentenceBlock';
-import { AnimatePresence, Chip, Expand } from './motion';
+import { CHIP_ICON_CLASS, CHIP_LIST_CLASS, CHIP_TEXT_CLASS, chipClass } from './SentenceBlock';
+import { AnimatePresence, Chip, Expand } from '@/components/shared/motion';
 import type { RuleLookups } from './useRuleLookups';
 
 interface Props {
@@ -104,32 +104,35 @@ export function ConditionsBlock({ form, lookups, onChange }: Props) {
           Sin condiciones: se dispara siempre que ocurra el disparador. Añade una solo si necesitas filtrar.
         </p>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className={CHIP_LIST_CLASS}>
+          {/* UX móvil: cada condición es una tarjeta apilada cuyo texto envuelve; en línea desde `sm`. */}
           <AnimatePresence initial={false}>
             {rules.map((node, index) => {
               const editable = !isGroup(node);
               const open = selected === index;
               return (
                 <Chip key={index}>
+                  {/* Grupo (tester UXM-C): en móvil la nota baja a su propia línea (`flex-wrap` + `basis-full`);
+                      en línea con el texto lo estrangulaba a 163 px y la ficha medía 194 px de alto (374 a 320 px). */}
                   <button
                     type="button"
                     id={`cond-chip-${index}`}
                     aria-expanded={editable ? open : undefined}
                     aria-controls={editable ? `cond-editor-${index}` : undefined}
                     aria-disabled={!editable || undefined}
-                    className={cn(chipClass(open, 'amber'), !editable && 'cursor-default')}
+                    className={cn(chipClass(open, 'amber', true), !editable && 'cursor-default flex-wrap sm:flex-nowrap')}
                     onClick={() => { if (editable) setSelected(open ? null : index); }}
                   >
-                    <span className="truncate">
+                    <span className={CHIP_TEXT_CLASS}>
                       {editable
                         ? describeCondition(node as ConditionRule, lookups.humanizer)
                         : `(${describeConditions(node, lookups.humanizer) ?? 'grupo vacío'})`}
                     </span>
                     {/* R-6: el grupo anidado no se edita en ficha; se dice en texto visible, no en `title` (que el teclado y el lector no ven). */}
-                    {!editable && <span className="shrink-0 text-xs text-gray-600 dark:text-gray-400">· grupo, se edita como JSON</span>}
+                    {!editable && <span className="min-w-0 basis-full text-xs text-gray-600 dark:text-gray-400 sm:shrink-0 sm:basis-auto">· grupo, se edita como JSON</span>}
                     {editable && (open
-                      ? <ChevronUp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      : <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />)}
+                      ? <ChevronUp className={CHIP_ICON_CLASS} aria-hidden="true" />
+                      : <ChevronDown className={CHIP_ICON_CLASS} aria-hidden="true" />)}
                   </button>
                 </Chip>
               );

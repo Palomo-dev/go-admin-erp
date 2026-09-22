@@ -271,7 +271,6 @@ describe('F0 Guardarraíles', () => {
     const ALLOWLIST = new Set<string>([
       'app/api/categorias/reglas/route.ts',
       'app/api/dian/lookup/route.ts',
-      'app/api/domains/purchase/route.ts',
       'app/api/integrations/meta/setup/route.ts',
       'app/api/integrations/payfac/commission/route.ts', // verifyPlatformAdmin
       'app/api/integrations/payfac/payouts/route.ts', // verifyPlatformAdmin
@@ -1270,6 +1269,33 @@ describe('F0 Guardarraíles', () => {
     });
   });
 
+  // === Pantalla del cliente: los totales llevan el id del carrito ===
+  // Bug visto en el escritorio 0.2.1 (2026-09-16): al completar una venta el
+  // POS elimina el carrito cobrado y activa el siguiente. `handleTotalsChange`
+  // de CartView cambia de identidad (depende de cart.id) y el efecto de
+  // TaxSummary reenvía sus totales VIEJOS con el id NUEVO; el emisor confía en
+  // el id y la pantalla mostraba «TOTAL $ 12.750» sobre un carrito de $ 0.
+  // Corrección: TaxSummary etiqueta cada cálculo con el carrito que lo
+  // produjo y cancela los cálculos asíncronos superados; CartView ignora
+  // totales de otro carrito y retira el override con subtotal 0.
+  describe('Pantalla del cliente: TaxSummary etiqueta los totales con su carrito y CartView los filtra', () => {
+    const taxSummary = readFile(path.join(SRC_ROOT, 'components', 'pos', 'TaxSummary.tsx'));
+    const cartView = readFile(path.join(SRC_ROOT, 'components', 'pos', 'CartView.tsx'));
+
+    test('TaxSummary: onTotalsChange lleva cartId y el cálculo asíncrono se cancela al cambiar de carrito', () => {
+      expect(taxSummary).toMatch(/onTotalsChange\?\s*:\s*\(totals:\s*\{[^}]*cartId:\s*string[^}]*\}\)\s*=>\s*void/);
+      expect(taxSummary).toMatch(/let\s+cancelled\s*=\s*false/);
+      expect(taxSummary).toMatch(/if\s*\(\s*cancelled\s*\)\s*return/);
+      // El id se captura al empezar el efecto y viaja en cada setCalculatedTotals.
+      expect(taxSummary.match(/setCalculatedTotals\s*\(\s*\{[^}]*cartId[^}]*\}\s*\)/gs)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    });
+
+    test('CartView: ignora totales de otro carrito y retira el override con subtotal 0', () => {
+      expect(cartView).toMatch(/if\s*\(\s*totals\.cartId\s*!==\s*cartId\s*\)\s*return/);
+      expect(cartView).toMatch(/setTotals\s*\(\s*cartId\s*,\s*null\s*\)/);
+    });
+  });
+
   // === Caso 16: callbacks de onAuthStateChange nunca son async ===
   // auth-js 2.69 hace `await` de los callbacks de onAuthStateChange DENTRO
   // del lock global de sesión (_notifyAllSubscribers corre con lockAcquired =
@@ -1493,5 +1519,56 @@ describe('21. Ningún .ts/.tsx bajo src/ contiene bytes de control (< 0x20 salvo
       }
     }
     expect(offenders).toEqual([]);
+  });
+});
+
+// === Caso 22: F-52 — las ventas POS escogen la regla contable según saldo ===
+describe('22. F-52: fn_auto_journal_sale_pos discrimina contado y crédito', () => {
+  const migrationPath = path.join(
+    REPO_ROOT,
+    'supabase',
+    'migrations',
+    '20260919235511_f52_sale_pos_is_credit.sql'
+  );
+  const rollbackPath = path.join(
+    REPO_ROOT,
+    'supabase',
+    'rollbacks',
+    '20260919235511_f52_sale_pos_is_credit_rollback.sql'
+  );
+  let sql = '';
+
+  beforeAll(() => {
+    expect(fs.existsSync(migrationPath)).toBe(true);
+    expect(fs.existsSync(rollbackPath)).toBe(true);
+    sql = readFile(migrationPath);
+  });
+
+  test('deriva is_credit del saldo y no de payment_status', () => {
+    expect(sql).toMatch(/v_is_credit\s*:=\s*COALESCE\(NEW\.balance,\s*0\)\s*>\s*0/);
+    expect(sql).not.toMatch(/v_is_credit\s*:=\s*\(?NEW\.payment_status/);
+  });
+
+  test('las tres búsquedas de reglas filtran por is_credit', () => {
+    const filters = sql.match(/\(conditions->>'is_credit'\)::boolean\s*=\s*v_is_credit/g) ?? [];
+    expect(filters).toHaveLength(3);
+  });
+
+  test('la idempotencia queda acotada por organización', () => {
+    const idempotencyBlock = sql.match(
+      /SELECT\s+id\s+INTO\s+v_existing_id[\s\S]*?LIMIT\s+1;/
+    )?.[0];
+    expect(idempotencyBlock).toBeDefined();
+    expect(idempotencyBlock).toMatch(/FROM\s+(?:public\.)?journal_entries/);
+    expect(idempotencyBlock).toMatch(/organization_id\s*=\s*NEW\.organization_id/);
+    expect(idempotencyBlock).toMatch(/source\s*=\s*'sales'/);
+    expect(idempotencyBlock).toMatch(/source_id\s*=\s*NEW\.id::text/);
+  });
+
+  test('la función SECURITY DEFINER fija search_path y no queda ejecutable directamente por roles cliente', () => {
+    expect(sql).toMatch(/SECURITY\s+DEFINER[\s\S]*?SET\s+search_path\s+TO\s+'public',\s*'pg_temp'/);
+    expect(sql).toMatch(
+      /REVOKE\s+ALL\s+ON\s+FUNCTION\s+public\.fn_auto_journal_sale_pos\(\)\s+FROM\s+PUBLIC,\s*anon,\s*authenticated/
+    );
   });
 });

@@ -3,8 +3,8 @@
  *
  * Nota importante de seguridad: aquí ya NO viajan `organizationId`, `userId` ni
  * `userRole`. La propuesta vive en `ai_agent_actions` del lado del servidor y el
- * cliente solo conoce su `id`; al confirmar manda ese id y, como mucho, las
- * correcciones que el usuario hizo sobre los campos declarados en el esquema.
+ * cliente solo conoce su `id`; al confirmar manda únicamente ese id. Las
+ * correcciones conversacionales producen una propuesta nueva en el servidor.
  * Ese es el cambio que cierra C1 y C2 del plan.
  */
 
@@ -31,6 +31,13 @@ export interface PendingAction {
   preview?: ActionPreview;
 }
 
+/** Pregunta con opciones del asistente (estilo A/B/C/Otro). */
+export interface PendingQuestion {
+  question: string;
+  options: Array<{ key: string; label: string; value?: string }>;
+  allowOther: boolean;
+}
+
 export interface ActionPreviewLine {
   label: string;
   value: string;
@@ -51,6 +58,8 @@ export interface BulkPreviewRow {
 }
 
 export interface ActionPreview {
+  /** Resumen leído antes de confirmar; opcional para propuestas antiguas. */
+  summary?: string;
   lines: ActionPreviewLine[];
   warnings: string[];
   totals?: Record<string, string>;

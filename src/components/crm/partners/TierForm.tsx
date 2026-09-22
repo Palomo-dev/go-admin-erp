@@ -89,7 +89,7 @@ export function TierForm({ tier, onSave, onCancel }: Props) {
           <AlertDescription>{serverError}</AlertDescription>
         </Alert>
       )}
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 [&>button]:h-11 sm:[&>button]:h-8">
         <Button type="button" variant="outline" size="sm" disabled={saving} onClick={onCancel}>Cancelar</Button>
         <Button type="submit" size="sm" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving}>{saving ? 'Guardando…' : tier ? 'Guardar' : 'Crear tier'}</Button>
       </div>

@@ -1,5 +1,5 @@
 /**
- * Lógica de la barra de aplicación de Go Admin Desktop.
+ * Lógica de la barra de aplicación de GO Admin Desktop.
  *
  * Es un script clásico (sin import/export): tsc lo compila a
  * dist/renderer/toolbar/toolbar.js y lo carga index.html con CSP
@@ -183,7 +183,7 @@
       online = state.online;
       renderConn();
       renderUpdate(state.update);
-      btnMenu.title = `Menú · Go Admin Desktop ${state.version}`;
+      btnMenu.title = `Menú · GO Admin Desktop ${state.version}`;
     })
     .catch((err) => console.error('[toolbar] init falló:', err));
 

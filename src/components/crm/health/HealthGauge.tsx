@@ -1,6 +1,6 @@
 'use client';
 
-import { useReducedMotion } from 'motion/react';
+import { useReducedMotion } from '@/components/shared/motion';
 import type { HealthBand } from '@/lib/services/crm/healthBands';
 import { BAND_STYLES } from './healthBandStyles';
 

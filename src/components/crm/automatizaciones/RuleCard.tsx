@@ -19,7 +19,7 @@ import {
   formatRelativeTime,
   type HumanizerLookups,
 } from '@/lib/services/crm/automation/ruleHumanizer';
-import { StaggerItem } from '@/components/shared/motion/staggerList';
+import { StaggerItem } from '@/components/shared/motion';
 import type { AutomationRuleView } from './useAutomationRules';
 
 interface Props {
@@ -58,7 +58,9 @@ export function RuleCard({ rule, lookups, lastRunAbsolute, toggling, onToggle, o
     <StaggerItem
       as="li"
       className={cn(
-        'flex flex-col gap-3 rounded-xl border bg-white p-4 shadow-sm transition-colors',
+        // `min-w-0`: como celda de la rejilla, sin esto el nombre truncado fijaba
+        // el ancho mínimo y la tarjeta sobresalía a 375 px (UX móvil ronda 1).
+        'flex min-w-0 flex-col gap-3 rounded-xl border bg-white p-4 shadow-sm transition-colors',
         'dark:bg-gray-900',
         rule.is_active ? 'border-gray-200 dark:border-gray-800' : 'border-dashed border-gray-300 dark:border-gray-700',
       )}
@@ -66,12 +68,13 @@ export function RuleCard({ rule, lookups, lastRunAbsolute, toggling, onToggle, o
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 id={`rule-name-${rule.id}`} className="truncate font-semibold text-gray-900 dark:text-gray-100">
+          {/* Dos líneas y corte por palabra: en móvil el nombre no se pierde tras una elipsis. */}
+          <h3 id={`rule-name-${rule.id}`} className="line-clamp-2 break-words font-semibold text-gray-900 dark:text-gray-100">
             {rule.name}
           </h3>
           <p className="mt-0.5 flex items-start gap-1.5 text-sm text-gray-700 dark:text-gray-300">
             <Zap className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-            <span>{describeTrigger(rule, lookups)}</span>
+            <span className="min-w-0 break-words">{describeTrigger(rule, lookups)}</span>
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
@@ -100,12 +103,12 @@ export function RuleCard({ rule, lookups, lastRunAbsolute, toggling, onToggle, o
         {conditions && (
           <div className="flex gap-2">
             <dt className="w-16 shrink-0 font-medium text-amber-700 dark:text-amber-300">si</dt>
-            <dd className="line-clamp-2 text-gray-700 dark:text-gray-300">{conditions}</dd>
+            <dd className="line-clamp-2 min-w-0 break-words text-gray-700 dark:text-gray-300">{conditions}</dd>
           </div>
         )}
         <div className="flex gap-2">
           <dt className="w-16 shrink-0 font-medium text-blue-700 dark:text-blue-300">entonces</dt>
-          <dd className="line-clamp-2 text-gray-700 dark:text-gray-300">
+          <dd className="line-clamp-2 min-w-0 break-words text-gray-700 dark:text-gray-300">
             {actions || <span className="italic text-gray-500 dark:text-gray-400">no hará nada (sin acciones)</span>}
           </dd>
         </div>

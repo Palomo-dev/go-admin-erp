@@ -78,13 +78,13 @@ describe('resolveNativePosDisplayApi', () => {
   it('sin ventana ni puente: null', async () => {
     expect(resolveNativePosDisplayApi(undefined)).toBeNull();
     expect(resolveNativePosDisplayApi({})).toBeNull();
-    expect(resolveNativePosDisplayApi({ electronAPI: {} })).toBeNull();
-    expect(resolveNativePosDisplayApi({ electronAPI: { posDisplay: {} } })).toBeNull(); // sin open()
+    expect(resolveNativePosDisplayApi({ goAdminDesktop: {} })).toBeNull();
+    expect(resolveNativePosDisplayApi({ goAdminDesktop: { posDisplay: {} } })).toBeNull(); // sin open(): Desktop < 0.2.1
   });
-  it('acepta window.electronAPI.posDisplay (PLAN) y window.goAdminDesktop.posDisplay (puente real)', async () => {
+  it('acepta SOLO window.goAdminDesktop.posDisplay (el puente real del preload); ningún otro nombre', async () => {
     const api = { open: jest.fn() };
-    expect(resolveNativePosDisplayApi({ electronAPI: { posDisplay: api } })).toBe(api);
     expect(resolveNativePosDisplayApi({ goAdminDesktop: { posDisplay: api } })).toBe(api);
+    expect(resolveNativePosDisplayApi({ otroPuente: { posDisplay: api } })).toBeNull();
   });
 });
 
@@ -92,9 +92,8 @@ describe('canCloseViaNativeBridge', () => {
   it('solo es true con un puente que sabe abrir Y cerrar', () => {
     expect(canCloseViaNativeBridge(undefined)).toBe(false);
     expect(canCloseViaNativeBridge({})).toBe(false);
-    expect(canCloseViaNativeBridge({ electronAPI: { posDisplay: { open: jest.fn() } } })).toBe(false); // solo abre
-    expect(canCloseViaNativeBridge({ electronAPI: { posDisplay: { close: jest.fn() } } })).toBe(false); // sin open(): no es puente
-    expect(canCloseViaNativeBridge({ electronAPI: { posDisplay: { open: jest.fn(), close: jest.fn() } } })).toBe(true);
+    expect(canCloseViaNativeBridge({ goAdminDesktop: { posDisplay: { open: jest.fn() } } })).toBe(false); // solo abre
+    expect(canCloseViaNativeBridge({ goAdminDesktop: { posDisplay: { close: jest.fn() } } })).toBe(false); // sin open(): no es puente
     expect(canCloseViaNativeBridge({ goAdminDesktop: { posDisplay: { open: jest.fn(), close: jest.fn() } } })).toBe(true);
   });
 
@@ -236,6 +235,26 @@ describe('openCustomerDisplay en escritorio (puente F1)', () => {
     const win = fakeWindow(fakeHandle());
     expect(await openCustomerDisplay({ win, storage: memoryStorage(), nativeApi: api })).toEqual({ via: 'electron' });
     expect(win.open).not.toHaveBeenCalled();
+  });
+
+  it('puente real que resuelve { ok: true }: electron; y pasa displayId (o null = automático) junto al origen', async () => {
+    const api = { open: jest.fn(() => Promise.resolve({ ok: true })) };
+    const win = fakeWindow(fakeHandle());
+    expect(await openCustomerDisplay({ win, storage: memoryStorage(), nativeApi: api, displayId: 2528732444 })).toEqual({ via: 'electron' });
+    expect(api.open).toHaveBeenCalledWith({ origin: undefined, displayId: 2528732444 });
+    expect(await openCustomerDisplay({ win, storage: memoryStorage(), nativeApi: api })).toEqual({ via: 'electron' });
+    expect(api.open).toHaveBeenLastCalledWith({ origin: undefined, displayId: null });
+    expect(win.open).not.toHaveBeenCalled();
+  });
+
+  it('puente real que contesta { ok: false, reason } (origen no permitido): se avisa y cae al camino web, como un rechazo', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const api = { open: jest.fn(() => Promise.resolve({ ok: false, reason: 'origen no permitido' })) };
+    const win = fakeWindow(fakeHandle());
+    expect(await openCustomerDisplay({ win, storage: memoryStorage(), nativeApi: api })).toEqual({ via: 'web', firstTime: true });
+    expect(win.open).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][1])).toContain('origen no permitido');
   });
 });
 

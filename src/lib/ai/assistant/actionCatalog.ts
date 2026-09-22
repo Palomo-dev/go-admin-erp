@@ -78,11 +78,27 @@ export interface ActionDefinition {
   fields: readonly ActionFieldDef[];
 }
 
+/**
+ * Los MISMOS códigos que usa el formulario de clientes
+ * (`country_identification_types`, en minúsculas). Antes el asistente
+ * guardaba 'CC'/'NIT' en mayúsculas y el formulario 'cc'/'nit': dos catálogos
+ * para el mismo dato. El servidor normaliza además lo que dicte el usuario
+ * ("cédula", "Nit") con `normalizeDocumentType`.
+ */
 const DOC_TYPE_OPTIONS = [
-  { value: 'CC', label: 'Cédula de ciudadanía' },
-  { value: 'NIT', label: 'NIT' },
-  { value: 'CE', label: 'Cédula de extranjería' },
-  { value: 'PASSPORT', label: 'Pasaporte' },
+  { value: 'cc', label: 'Cédula de ciudadanía' },
+  { value: 'nit', label: 'NIT (empresa)' },
+  { value: 'ce', label: 'Cédula de extranjería' },
+  { value: 'ti', label: 'Tarjeta de identidad' },
+  { value: 'passport', label: 'Pasaporte' },
+  { value: 'die', label: 'Documento de identificación extranjero' },
+  { value: 'rut', label: 'RUT' },
+  { value: 'other', label: 'Otro' },
+];
+
+const CUSTOMER_TYPE_OPTIONS = [
+  { value: 'person', label: 'Persona' },
+  { value: 'company', label: 'Empresa' },
 ];
 
 /** Motivo estándar para lo que F2 implementará vía servicios existentes. */
@@ -261,14 +277,20 @@ export const ACTION_CATALOG: Readonly<Record<AIActionType, ActionDefinition>> = 
   create_customer: {
     type: 'create_customer',
     label: 'Crear cliente',
-    description: 'Crea un cliente con nombre, documento y datos de contacto.',
+    description: 'Crea un cliente, que puede ser una PERSONA o una EMPRESA (customer_type). Si el usuario dice "es la empresa", "razón social", da un NIT o el nombre termina en S.A.S./Ltda., es company y el nombre va en company_name; si es una persona, su nombre va en full_name y, si trabaja para una empresa, esa empresa en company_name. No mezcles el nombre de la persona con el de su empresa. Guarda por separado el software que usa (current_software) y las observaciones explícitas (notes). No inventes datos; si no está claro si es persona o empresa, pregunta antes de proponer.',
     risk: 'medium',
     permissions: ['crm.customers.create', 'customer_management', 'crm.contacts.create'],
     minLevel: 'write_low',
     requiredModule: null,
     available: true,
     fields: [
-      { name: 'full_name', label: 'Nombre completo', type: 'text', value: '', required: true },
+      // No obligatorio: si no viene, se infiere (NIT o razón social → empresa).
+      { name: 'customer_type', label: 'Tipo de cliente', type: 'select', value: 'person', required: false, options: CUSTOMER_TYPE_OPTIONS },
+      { name: 'full_name', label: 'Nombre completo (persona)', type: 'text', value: '', required: false },
+      { name: 'company_name', label: 'Empresa / razón social', type: 'text', value: '', required: false },
+      { name: 'trade_name', label: 'Nombre comercial', type: 'text', value: '', required: false },
+      { name: 'current_software', label: 'Software actual', type: 'text', value: '', required: false },
+      { name: 'notes', label: 'Observaciones', type: 'textarea', value: '', required: false },
       { name: 'email', label: 'Email', type: 'text', value: '', required: false, placeholder: 'correo@ejemplo.com' },
       { name: 'phone', label: 'Teléfono', type: 'text', value: '', required: false },
       { name: 'doc_type', label: 'Tipo de documento', type: 'select', value: '', required: false, options: DOC_TYPE_OPTIONS },
@@ -417,7 +439,10 @@ export function sanitizeFieldValue(field: ActionFieldDef, value: unknown): unkno
       // con `options: []` y su pertenencia la valida el ejecutor contra la
       // organización.
       if (field.options && field.options.length > 0) {
-        return field.options.some((o) => o.value === s) ? s : undefined;
+        if (field.options.some((o) => o.value === s)) return s;
+        // "NIT" por "nit": el modelo a veces devuelve el código como lo oyó.
+        const laxo = field.options.find((o) => o.value.toLowerCase() === s.toLowerCase());
+        return laxo ? laxo.value : undefined;
       }
       return s;
     }

@@ -4,7 +4,7 @@
 
 import { Plus, UsersRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { FadeIn } from '@/components/shared/motion/primitives';
+import { FadeIn } from '@/components/shared/motion';
 
 interface Props {
   filtered: boolean;

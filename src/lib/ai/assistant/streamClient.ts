@@ -5,13 +5,12 @@
  * `EventSource` solo hace GET y no manda cabeceras: aquí hace falta POST con el
  * mensaje y la cookie de sesión.
  *
- * Regla §3.1: **el asistente nunca deja de responder**. Si el stream falla —el
- * navegador no lo soporta, un proxy lo bufferiza, el servidor devuelve un
- * error—, quien llama debe caer al camino de siempre (`/api/ai-assistant/chat`).
- * Por eso los fallos se señalizan y no se lanzan.
+ * Una desconexión no prueba que el servidor no haya generado/cobrado. Solo
+ * `done` confirma la entrega; preservar texto y adjuntos ante fallos. No
+ * repetir automáticamente un POST sin idempotencia aunque no lleguen tokens.
  */
 
-import type { BulkPreviewRow, PendingAction } from './clientTypes';
+import type { BulkPreviewRow, PendingAction, PendingQuestion } from './clientTypes';
 
 export interface ToolStep {
   name: string;
@@ -25,6 +24,7 @@ export interface StreamHandlers {
   onToolStart(step: ToolStep): void;
   onToolEnd(step: ToolStep): void;
   onAction(action: PendingAction): void;
+  onQuestion?(question: PendingQuestion): void;
   onUsage(usage: { model: string; credits: number }): void;
   onMeta(meta: { conversationId: string }): void;
   onError(error: { message: string; code?: string }): void;
@@ -32,8 +32,10 @@ export interface StreamHandlers {
 
 export interface StreamResult {
   content: string;
-  /** `false` = hay que caer al camino de respaldo. */
+  /** Solo true después de done explícito y sin error de servidor. */
   ok: boolean;
+  /** El llamador NO debe inferir permiso de reintento a partir de !ok. */
+  canFallback: boolean;
 }
 
 /** Un evento SSE ya separado en nombre y datos. */
@@ -51,7 +53,7 @@ interface ParsedEvent {
  */
 function drainEvents(buffer: string): { events: ParsedEvent[]; rest: string } {
   const events: ParsedEvent[] = [];
-  const parts = buffer.split('\n\n');
+  const parts = buffer.replace(/\r\n/g, '\n').split('\n\n');
   const rest = parts.pop() ?? '';
 
   for (const raw of parts) {
@@ -61,7 +63,7 @@ function drainEvents(buffer: string): { events: ParsedEvent[]; rest: string } {
       if (line.startsWith('event:')) event = line.slice(6).trim();
       else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim());
     }
-    if (dataLines.length > 0) events.push({ event, data: dataLines.join('\n') });
+    if (dataLines.length > 0 || event === 'done') events.push({ event, data: dataLines.join('\n') || '{}' });
   }
 
   return { events, rest };
@@ -104,11 +106,22 @@ export async function streamAssistant(
     conversationId?: string | null;
     context?: Record<string, unknown>;
     attachmentIds?: string[];
+    correctionActionId?: string;
   },
   handlers: StreamHandlers,
   signal?: AbortSignal
 ): Promise<StreamResult> {
   let content = '';
+  let receivedDone = false;
+  let failed = false;
+  const result = (): StreamResult => ({ content, ok: receivedDone && !failed, canFallback: false });
+  const fail = (message: string, code?: string): StreamResult => {
+    if (!failed) handlers.onError({ message, code });
+    failed = true;
+    return result();
+  };
+  const aborted = () => fail('La respuesta fue cancelada. Conservé el contenido recibido.', 'STREAM_ABORTED');
+  if (signal?.aborted) return aborted();
 
   let response: Response;
   try {
@@ -119,9 +132,9 @@ export async function streamAssistant(
       signal,
     });
   } catch (error) {
-    if ((error as Error)?.name === 'AbortError') return { content, ok: true };
+    if ((error as Error)?.name === 'AbortError' || signal?.aborted) return aborted();
     console.error('[GO Assistant] No se pudo abrir el stream:', error);
-    return { content, ok: false };
+    return fail('No pude abrir la respuesta. Verifica el historial antes de reintentar.', 'STREAM_CONNECTION_FAILED');
   }
 
   // 401/403 se devuelven como JSON, no como SSE: la sesión caducó y hay que
@@ -129,14 +142,13 @@ export async function streamAssistant(
   if (!response.ok) {
     try {
       const err = await response.json();
-      handlers.onError({ message: err.error || 'No pude responder.', code: err.code });
+      return fail(typeof err.error === 'string' ? err.error : 'No pude responder.', err.code);
     } catch {
-      handlers.onError({ message: 'No pude responder.', code: String(response.status) });
+      return fail('No pude responder.', String(response.status));
     }
-    return { content, ok: true };
   }
 
-  if (!response.body) return { content, ok: false };
+  if (!response.body) return fail('La respuesta llegó vacía. Verifica el historial antes de reintentar.', 'STREAM_INCOMPLETE');
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -144,6 +156,10 @@ export async function streamAssistant(
 
   try {
     for (;;) {
+      if (signal?.aborted) {
+        await reader.cancel();
+        return receivedDone ? result() : aborted();
+      }
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -155,6 +171,7 @@ export async function streamAssistant(
         let payload: Record<string, unknown>;
         try {
           payload = JSON.parse(data);
+          if (!payload || typeof payload !== 'object' || Array.isArray(payload)) continue;
         } catch {
           continue;
         }
@@ -190,6 +207,17 @@ export async function streamAssistant(
               preview: toActionPreview(payload.preview),
             });
             break;
+          case 'question':
+            handlers.onQuestion?.({
+              question: String(payload.question ?? ''),
+              options: Array.isArray(payload.options)
+                ? (payload.options as Array<Record<string, unknown>>)
+                    .filter((o) => o && typeof o.label === 'string')
+                    .map((o) => ({ key: String(o.key ?? ''), label: String(o.label), value: typeof o.value === 'string' ? o.value : undefined }))
+                : [],
+              allowOther: payload.allowOther !== false,
+            });
+            break;
           case 'usage':
             handlers.onUsage({
               model: String(payload.model ?? ''),
@@ -202,12 +230,10 @@ export async function streamAssistant(
             }
             break;
           case 'error':
-            handlers.onError({
-              message: String(payload.message ?? 'No pude responder.'),
-              code: payload.code ? String(payload.code) : undefined,
-            });
+            fail(String(payload.message ?? 'No pude responder.'), payload.code ? String(payload.code) : undefined);
             break;
           case 'done':
+            receivedDone = true;
             if (!content && typeof payload.content === 'string') content = payload.content;
             break;
           default:
@@ -216,12 +242,14 @@ export async function streamAssistant(
       }
     }
   } catch (error) {
-    if ((error as Error)?.name === 'AbortError') return { content, ok: true };
+    if (receivedDone) return result();
+    if ((error as Error)?.name === 'AbortError' || signal?.aborted) return aborted();
     console.error('[GO Assistant] El stream se cortó:', error);
-    // Si ya llegó texto, no se reintenta: se le enseña lo que hay. Reintentar
-    // cobraría el turno dos veces.
-    return { content, ok: content.length > 0 };
+    return fail('La conexión se interrumpió. Conservé el contenido recibido; verifica el historial antes de reintentar.', 'STREAM_INCOMPLETE');
+  } finally {
+    reader.releaseLock();
   }
 
-  return { content, ok: true };
+  if (!receivedDone) return fail('La respuesta quedó incompleta. Conservé el contenido recibido; verifica el historial antes de reintentar.', 'STREAM_INCOMPLETE');
+  return result();
 }

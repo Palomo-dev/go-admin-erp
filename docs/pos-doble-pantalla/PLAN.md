@@ -394,6 +394,17 @@ Sin datos personales del cliente. Solo el número.
   (patrón de pertenencia con `IN (SELECT … JOIN)` y `(select auth.uid())`, no
   `EXISTS` anidado — ver lo aprendido en `rls-quitar-qual-true-destapa-el-coste`).
   Nada para `anon`.
+  - F2-A ronda 3 (migración `20260921150000`): `update` exige además el mismo
+    criterio que la ruta de §7 — membresía activa con `role_id in (1, 2, 5)`
+    (ids, nunca nombres) o `is_super_admin`, O
+    `check_user_permission(uid, organization_id, 'admin.full_access')` para los
+    cargos con permiso. Un cajero que salte la ruta con PostgREST obtiene 0
+    filas (el `using` filtra; el `with_check` daría 42501). Defensa en
+    profundidad: la ruta sigue siendo quien responde `ADMIN_REQUIRED`.
+  - F2-A ronda 3 (migración `20260921150100`): el código es único sin
+    distinguir mayúsculas en la base (índice único sobre `upper(code)`, 23505)
+    y se exige en mayúsculas (CHECK `code = upper(code)`, 23514): la regla ya
+    no depende de que el cliente normalice.
 - `pos_display_feedback`: `insert` solo desde servidor (`service_role` tras
   validar el token de la pantalla); `select` para miembros.
 - La pantalla remota **nunca** consulta tablas directamente: pasa por las
@@ -439,6 +450,10 @@ conoce y muestra "Actualice la pantalla".
 
 export type DownMessage =
   | { v: 1; t: 'hello';    seq: number; terminalId: string; cashier: { name: string } | null; sessionOpen: boolean }
+  //   F2 (aditivo): `hello` lleva además `currency: string` (F0) y `settings?: DisplayPresentationSettings`
+  //   (propina {enabled, presets, allowCustom}, rating {enabled}, showTaxBreakdown, showCustomerName,
+  //   locale, touch). Opcional: un emisor sin ajustes (o con un getSettings que no devuelve un objeto)
+  //   manda el hello sin el campo y la pantalla se queda en «solo resumen». Nunca viajan `enabled` ni `idle`.
   | { v: 1; t: 'state';    seq: number; terminalId: string; state: DisplayState }
   | { v: 1; t: 'heartbeat';seq: number; terminalId: string; at: number }
   | { v: 1; t: 'bye';      seq: number; terminalId: string };

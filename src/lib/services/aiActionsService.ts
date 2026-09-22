@@ -24,6 +24,7 @@
  * documentados), que sí toca varias tablas y debe ser transaccional.
  */
 
+import { buildCustomerInsert, customerValuesFromAction } from '@/lib/services/customers/customerPayload';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   ACTION_CATALOG,
@@ -760,29 +761,22 @@ class AIActionsService {
   }
 
   private async createCustomer(data: Data, ctx: ActionExecutionContext): Promise<ActionResult> {
-    const fullName = str(data.full_name)!;
-    const { first_name, last_name } = splitName(fullName);
+    const fullName = str(data.full_name);
+    const companyName = str(data.company_name);
+    if (!fullName && !companyName) {
+      return { success: false, errorCode: 'missing_fields', message: 'Me falta el nombre del cliente (persona o empresa).' };
+    }
 
-    // `full_name`, `doc_type` y `doc_number` son GENERATED ALWAYS: se escriben
-    // los campos base (`first_name`/`last_name`, `identification_*`).
-    //
-    // La versión anterior fijaba `fiscal_municipality_id` a un UUID literal de
-    // otra organización. Se deja NULL: los datos fiscales se completan en la
-    // ficha del cliente o al facturar, no adivinándolos aquí.
+    // La MISMA traducción que hace `/app/clientes/new`: persona o empresa,
+    // nombre repartido, documento normalizado, DV del NIT, roles por defecto.
+    // Si cambia cómo se guarda un cliente, cambia en `customerPayload.ts` y
+    // cambia aquí. `full_name`, `doc_type` y `doc_number` son GENERATED ALWAYS.
+    const values = customerValuesFromAction(data);
+    const row = buildCustomerInsert(values, { organizationId: ctx.organizationId, branchId: ctx.branchId ?? null });
+
     const { data: customer, error } = await ctx.supabase
       .from('customers')
-      .insert({
-        organization_id: ctx.organizationId,
-        branch_id: ctx.branchId ?? null,
-        first_name,
-        last_name,
-        email: str(data.email),
-        phone: str(data.phone),
-        identification_type: str(data.doc_type),
-        identification_number: str(data.doc_number),
-        address: str(data.address),
-        city: str(data.city),
-      })
+      .insert(row)
       .select('id, full_name')
       .single();
 
@@ -803,7 +797,7 @@ class AIActionsService {
     const created = customer as { id: string; full_name: string | null };
     return {
       success: true,
-      message: `Cliente "${created.full_name ?? fullName}" creado`,
+      message: `${values.customerType === 'company' ? 'Empresa' : 'Cliente'} "${created.full_name ?? fullName ?? companyName}" creado`,
       data: created,
       entity: { type: 'customer', id: created.id },
       undo: { kind: 'delete_customer', payload: { customer_id: created.id } },

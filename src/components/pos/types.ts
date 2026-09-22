@@ -150,6 +150,8 @@ export interface Sale {
   pending_sync?: boolean;
   /** Número local `OFF-<sucursal>-<n>` impreso en el ticket mientras la venta está pendiente. */
   receipt_number_local?: string;
+  /** true si `pos_checkout_v1` encontró la venta ya creada (reproducción repetida de un sobre). Solo lo rellena la RPC (fase 4E). */
+  replayed?: boolean;
   payment_method?: string;
   notes?: string;
   created_at: string;

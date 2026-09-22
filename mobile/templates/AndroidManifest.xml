@@ -42,6 +42,14 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
+    <!-- Micrófono (F5/F15): grabación de voz para clonado y notas, y
+         getUserMedia del WebView. MODIFY_AUDIO_SETTINGS es permiso normal
+         (sin prompt) y el WebView lo exige junto a RECORD_AUDIO para
+         cancelación de eco y altavoz. Sin plugin: el WebView pide el permiso
+         en tiempo de ejecución al primer getUserMedia. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
     <!-- Notificaciones push (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

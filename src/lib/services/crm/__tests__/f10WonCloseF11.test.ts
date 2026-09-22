@@ -202,5 +202,10 @@ describe('guardia estática: wonCloseSteps no reimplementa lo que F11 sabe hacer
     expect(src).not.toMatch(/RENEWAL_MILESTONES/);
     expect(src).toMatch(/startOnboardingForWonOpportunity/);
     expect(src).toMatch(/scheduleRenewal/);
+    // de tester D1/D2 (guardas estáticas, regla dura 7): ni la hija, ni los hitos, ni la renovación, ni aritmética de meses a mano
+    expect(src).not.toMatch(/deal_type: 'renewal'/);
+    expect(src).not.toMatch(/type: 'onboarding'/);
+    expect(src).not.toMatch(/type: 'renewal_milestone'/);
+    expect(src).not.toMatch(/setMonth\(/);
   });
 });

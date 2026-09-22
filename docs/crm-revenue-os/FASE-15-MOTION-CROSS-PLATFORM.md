@@ -16,17 +16,25 @@
 
 ## 1. Estado actual verificado
 
+> Actualizado 2026-09-21 (constructor F15). Las secciones 2–11 son el diseño
+> original; donde difieren, manda esta tabla.
+
 | Qué | Estado | Archivo:línea |
 |---|---|---|
-| `motion` (motion.dev) | ❌ pendiente — instalar en F0: `npm install motion` | `package.json` |
-| `public/sw.js` | ✅ existe | `public/sw.js` |
-| `mobile/capacitor.config.ts` | ✅ existe | `mobile/capacitor.config.ts` |
-| `electron/src/main/index.ts` | ✅ existe | `electron/src/main/index.ts` |
-| `next-pwa` o equivalente | verificar | `package.json` |
-| Animaciones Motion dispersas | ✅ en varios componentes | grep `motion.` |
-| Sistema de animaciones consistente | ❌ | — |
-| Tests E2E cross-platform | ❌ | — |
-| `platformCapabilities.ts` | ❌ a crear (F3/F15) | `src/lib/services/voice/platformCapabilities.ts` |
+| `motion` (motion.dev) v13 | ✅ instalado | `package.json` `"motion": "^13.1.1"` |
+| Sistema único de motion | ✅ `src/components/shared/motion/` con `index.ts` (exports estables: `FadeIn`, `SlideIn`, `SlideUp`, `ScaleIn`, `StaggerList/Item`, `Chip`, `Expand`, `SoundWave`, `PulseRing`, `LevelMeter`, `MotionProvider`, `AnimatePresence`, `useReducedMotion`) | `src/components/shared/motion/index.ts` |
+| Tokens (duración/easing/muelle/offsets) | ✅ un solo archivo; cero literales en primitivas (test) | `src/components/shared/motion/tokens.ts` |
+| `prefers-reduced-motion` | ✅ todas las primitivas llaman a `useReducedMotion` (por componente, test estático) + `MotionConfig reducedMotion="user"` **una sola vez** en `src/app/app/layout.tsx`; los 7 `MotionConfig` de página se retiraron (anidado hereda, no aporta) | `motionSystem.test.ts` |
+| `automatizaciones/motion.tsx` | ✅ eliminado; `Chip`/`Expand` en `shared/motion/chip.tsx`; `Appear` → `FadeIn` | `RulesEmptyState.tsx` |
+| `src/lib/motion/*` y `src/lib/hooks/usePlatform.ts` | ✅ eliminados (diseño de §2 sin importadores; sustituidos por `shared/motion` y `platformCapabilities`) | — |
+| `motion/react` directo en CRM | 3 casos complejos (`StepTimelineEditor` Reorder, `FunnelPanel` y `ForecastScenarios` barras a valor continuo), con `useReducedMotion`; el resto por el índice | test «offenders» |
+| `platformCapabilities.ts` | ✅ hoja: `detectPlatform()` (`web`/`pwa`/`electron`/`capacitor-android`/`capacitor-ios`), `getCapabilities()` (`microphone`, `webrtc`, `pushNotifications`, `backgroundAudio`, `clipboard`, `nativeDialer`), `queryMicrophonePermission()`, `requestMicrophone()`; usado por `useTwilioDevice` | `src/lib/services/voice/platformCapabilities.ts` |
+| Permisos Capacitor micrófono | ✅ `RECORD_AUDIO` + `MODIFY_AUDIO_SETTINGS` en `mobile/android/app/src/main/AndroidManifest.xml` y en la plantilla; `NSMicrophoneUsageDescription` (es) en `mobile/templates/Info.plist`. **`mobile/ios/` no está generado** (`cap add ios` requiere macOS): la clave viaja en la plantilla. Sin plugin de permisos en `mobile/package.json`: el WebView pide el permiso nativo al primer `getUserMedia` (`requestMicrophone`) | manifests |
+| `public/sw.js` | ✅ no intercepta navegaciones (`/app/crm/*` nunca cacheado); guardarraíl en test | `src/__tests__/pwaCrmRoutes.f15.test.ts` |
+| `public/manifest.json` | ✅ scope `/`, standalone, iconos 192/512 maskable existentes | idem |
+| `viewport` raíz (`userScalable: false`, `maximumScale: 1`) | ⏸ **no tocado**: es global (no hay `viewport` propio en el POS) y quitarlo cambia pinch/double-tap en tablets del POS; no verificable en dispositivo desde aquí. Ruta segura: `viewport` propio en `src/app/app/pos/layout.tsx` y relajar el raíz | `src/app/layout.tsx:38` |
+| `electron/**` | ⏸ otra sesión; §5 pendiente | — |
+| Tests E2E cross-platform | ❌ (dispositivos reales fuera de alcance) | — |
 
 ---
 

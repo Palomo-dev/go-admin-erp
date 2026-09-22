@@ -100,12 +100,16 @@ afterEach(() => {
 // Persistencia
 // ---------------------------------------------------------------------------
 
+// Fase 2 (F2-A): `pos_customer_display` es el esquema completo de settings.ts
+// (propina, calificación, reposo, idioma, táctil) y lo que se lee o se escribe
+// lleva siempre todos los campos con sus valores por defecto. Estas pruebas
+// son del interruptor maestro, así que comparan con objectContaining.
 describe('ConfiguracionService.getCustomerDisplayConfig', () => {
   it('lee organization_settings por organización de la sesión y clave pos_customer_display', async () => {
     db.row = { settings: { enabled: true } };
     const { settings, raw } = await ConfiguracionService.getCustomerDisplayConfig();
-    expect(settings).toEqual({ enabled: true });
-    expect(raw).toEqual({ enabled: true });
+    expect(settings).toEqual(expect.objectContaining({ enabled: true }));
+    expect(raw).toEqual(expect.objectContaining({ enabled: true }));
     const q = db.queries[0];
     expect(q.table).toBe('organization_settings');
     expect(q.filters).toEqual([
@@ -117,7 +121,7 @@ describe('ConfiguracionService.getCustomerDisplayConfig', () => {
 
   it('sin fila: apagado por defecto y raw vacío', async () => {
     const { settings, raw } = await ConfiguracionService.getCustomerDisplayConfig();
-    expect(settings).toEqual({ enabled: false });
+    expect(settings).toEqual(expect.objectContaining({ enabled: false }));
     expect(raw).toEqual({});
   });
 
@@ -129,7 +133,7 @@ describe('ConfiguracionService.getCustomerDisplayConfig', () => {
   ])('JSON malformado (%s) degrada a apagado sin lanzar', async (_label, malformed) => {
     db.row = { settings: malformed };
     const { settings, raw } = await ConfiguracionService.getCustomerDisplayConfig();
-    expect(settings).toEqual({ enabled: false });
+    expect(settings).toEqual(expect.objectContaining({ enabled: false }));
     expect(raw).toEqual({});
   });
 
@@ -144,7 +148,7 @@ describe('ConfiguracionService.getCustomerDisplayConfig', () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     db.readError = { message: 'permission denied' };
     const { settings, raw } = await ConfiguracionService.getCustomerDisplayConfig();
-    expect(settings).toEqual({ enabled: false });
+    expect(settings).toEqual(expect.objectContaining({ enabled: false }));
     expect(raw).toEqual({});
     expect(error).toHaveBeenCalled();
   });
@@ -153,13 +157,13 @@ describe('ConfiguracionService.getCustomerDisplayConfig', () => {
 describe('ConfiguracionService.saveCustomerDisplayConfig', () => {
   it('upsert con la MISMA forma que operating_hours: {organization_id, key, settings, updated_at} y onConflict organization_id,key', async () => {
     const saved = await ConfiguracionService.saveCustomerDisplayConfig({ enabled: true });
-    expect(saved).toEqual({ enabled: true });
+    expect(saved).toEqual(expect.objectContaining({ enabled: true }));
     expect(db.upserts).toHaveLength(1);
     const { payload, options } = db.upserts[0];
     expect(Object.keys(payload).sort()).toEqual(['key', 'organization_id', 'settings', 'updated_at']);
     expect(payload.organization_id).toBe(120);
     expect(payload.key).toBe('pos_customer_display');
-    expect(payload.settings).toEqual({ enabled: true });
+    expect(payload.settings).toEqual(expect.objectContaining({ enabled: true }));
     expect(typeof payload.updated_at).toBe('string');
     expect(Number.isNaN(Date.parse(payload.updated_at as string))).toBe(false);
     expect(options).toEqual({ onConflict: 'organization_id,key' });
@@ -175,19 +179,21 @@ describe('ConfiguracionService.saveCustomerDisplayConfig', () => {
       },
     };
     await ConfiguracionService.saveCustomerDisplayConfig({ enabled: true });
-    expect(db.upserts[0].payload.settings).toEqual({
-      enabled: true,
-      tips: { enabled: true, presets: [5, 10, 15], allowCustom: true },
-      rating: { enabled: true },
-      idle: { mode: 'brand', mediaUrls: [], idleAfterSeconds: 90 },
-    });
+    expect(db.upserts[0].payload.settings).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        tips: { enabled: true, presets: [5, 10, 15], allowCustom: true },
+        rating: { enabled: true },
+        idle: { mode: 'brand', mediaUrls: [], idleAfterSeconds: 90 },
+      }),
+    );
   });
 
   it('normaliza un enabled corrupto en la fila al guardar ("true" → false; el cambio pedido manda)', async () => {
     db.row = { settings: { enabled: 'true', foo: 1 } };
     await ConfiguracionService.saveCustomerDisplayConfig({});
     // parse estricto: 'true' no es true; el merge escribe el booleano validado
-    expect(db.upserts[0].payload.settings).toEqual({ enabled: false, foo: 1 });
+    expect(db.upserts[0].payload.settings).toEqual(expect.objectContaining({ enabled: false, foo: 1 }));
   });
 
   it('error del upsert: lanza (la tarjeta revierte el interruptor y avisa)', async () => {

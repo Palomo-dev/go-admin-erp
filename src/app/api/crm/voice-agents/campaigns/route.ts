@@ -52,6 +52,8 @@ export async function POST(request: NextRequest) {
         target_config: body.target_config,
         schedule: body.schedule,
         max_calls_per_day: body.max_calls_per_day,
+        // Tester UXM-D: la UI lo enviaba y aquí se descartaba en silencio (quedaba el default 20).
+        max_calls_per_hour: body.max_calls_per_hour,
         max_concurrent: body.max_concurrent,
         status: body.status,
       },

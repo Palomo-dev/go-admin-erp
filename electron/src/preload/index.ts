@@ -10,6 +10,16 @@ console.log('[preload] Cargando preload script...');
  */
 type PosDisplayOpenOptions = { origin?: string; displayId?: number | null } | number;
 
+/** Opciones de `openPrintPreview` (espejo de main/printPreview.ts). */
+type PrintPreviewOptions = {
+  title?: string;
+  width?: number;
+  height?: number;
+  autoPrint?: boolean;
+  silent?: boolean;
+  deviceName?: string;
+};
+
 /**
  * Suscripción a un canal IPC que devuelve SU baja (quita solo ese listener).
  * A diferencia de `onConnectivity`/`onUpdateState`, que hacen
@@ -68,6 +78,14 @@ try {
     ipcRenderer.invoke('printing:print-raw', printerId, payload),
   reprintJob: (jobId: string) => ipcRenderer.invoke('printing:reprint', jobId),
   openCashDrawer: (printerName?: string) => ipcRenderer.invoke('printing:open-cash-drawer', printerName),
+  /**
+   * Abre una ventana de impresión (sandboxed, sin bridge) con `html` y la
+   * deja imprimirse sola, o la imprime el main con `{ autoPrint: true }`.
+   * Sustituto de `window.open('', '_blank')` + `document.write` cuando la web
+   * prefiera no depender de ventanas emergentes. Devuelve `{ success, error? }`.
+   */
+  openPrintPreview: (html: string, opts?: PrintPreviewOptions) =>
+    ipcRenderer.invoke('printing:open-preview', html, opts),
 
   // Conectividad real (comprobación contra Supabase, no navigator.onLine)
   isOnline: () => ipcRenderer.invoke('connectivity:get'),
@@ -79,6 +97,15 @@ try {
 
   // Ventana
   reload: () => ipcRenderer.invoke('app:reload'),
+
+  // Tema: la web manda su claro/oscuro (interruptor del header, next-themes)
+  // y el main recolorea barra, fondo, splash y pantalla sin conexión
+  // (main/theme.ts). `setTheme` y `getTheme` devuelven el estado
+  // `{ dark, source, background, bar, symbol }`; `onTheme` lo recibe en cada
+  // cambio ('theme:state') y devuelve la baja.
+  setTheme: (theme: 'light' | 'dark' | 'system') => ipcRenderer.invoke('theme:set', theme),
+  getTheme: () => ipcRenderer.invoke('theme:get'),
+  onTheme: (handler: (state: unknown) => void) => subscribe('theme:state', handler),
 
   // Pantalla del cliente del POS (ventana secundaria + relé de mensajes por
   // IPC: funciona sin internet y entre orígenes; ver main/posDisplayIpc.ts).
@@ -95,6 +122,8 @@ try {
     listDisplays: () => ipcRenderer.invoke('pos-display:list-displays'),
     setEnabled: (enabled: boolean, displayId?: number | null) =>
       ipcRenderer.invoke('pos-display:set-enabled', enabled, displayId),
+    /** `{ enabled, displayId } | null` guardado en config.json. */
+    getConfig: () => ipcRenderer.invoke('pos-display:get-config'),
     /** `{ open, displayId }` cada vez que la pantalla abre o cierra. Devuelve la baja. */
     onStatus: (handler: (status: unknown) => void) => subscribe('pos-display:status', handler),
   },

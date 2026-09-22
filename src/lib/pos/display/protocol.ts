@@ -111,9 +111,54 @@ export type DisplayPayment =
       provider: string;
       qr: { kind: 'image' | 'text'; value: string } | null;
       expiresAt: number | null;
+      /**
+       * Importe que cobra ESTE código (Fase 2-C, ronda 3). En pago mixto el
+       * QR se genera por lo pendiente (p. ej. 10.000 tras 15.000 en
+       * efectivo) y el cliente debe ver ese importe junto al código, no
+       * solo el total de la venta. AUSENTE = el total: el emisor omite la
+       * clave cuando no hay importe propio (así la forma del cobro QR de
+       * las fases anteriores no cambia y un emisor anterior sigue pasando
+       * el guard). La pantalla lo sanea (logic.ts: solo un número finito
+       * en (0, total] se conserva; el emisor aplica la misma regla en
+       * payment.ts · isAmountWithinTotal) y solo lo pinta cuando difiere
+       * del total.
+       */
+      amount?: number;
     };
 
 export type DisplayMode = 'idle' | 'order' | 'payment' | 'tip' | 'thanks' | 'closed';
+
+// ---------------------------------------------------------------------------
+// Ajustes de presentación (Fase 2, PLAN §5.2 y §6.1)
+// ---------------------------------------------------------------------------
+
+/** Cómo debe tratar la pantalla su propia detección táctil (`navigator.maxTouchPoints`). */
+export type DisplayTouchOverride = 'auto' | 'touch' | 'no-touch';
+
+/**
+ * Subconjunto de `pos_customer_display` (settings.ts) que la pantalla
+ * necesita para decidir QUÉ pinta: presets de propina, calificación,
+ * desglose de impuestos, nombre del cliente, idioma y forzado táctil. Viaja
+ * en `hello.settings` (opcional y aditivo, Fase 2): como el `hello` siempre
+ * precede al `state` (announce), la pantalla los conoce antes de pintar, y
+ * al guardar la tarjeta la caja vuelve a saludar para que apliquen sin
+ * recargar (PLAN §5.2). No viaja `enabled` (apagado = no hay hello) ni el
+ * modo reposo (lo resuelve la pantalla con sus propios recursos en F4).
+ *
+ * La pantalla lo trata como PISTA: un emisor anterior no lo manda y entonces
+ * la pantalla se comporta como en la Fase 0 (solo resumen). Cada campo es
+ * opcional al validar (isDownMessage solo exige que sea un objeto): la
+ * pantalla degrada campo a campo a los valores por defecto de PLAN §6.1.
+ */
+export interface DisplayPresentationSettings {
+  tips: { enabled: boolean; presets: number[]; allowCustom: boolean };
+  rating: { enabled: boolean };
+  showTaxBreakdown: boolean;
+  showCustomerName: boolean;
+  /** BCP 47 (p. ej. "es-CO"); null = el de la organización. */
+  locale: string | null;
+  touch: DisplayTouchOverride;
+}
 
 // ---------------------------------------------------------------------------
 // Mensajes hacia arriba (pantalla → caja): intenciones, nunca hechos
@@ -175,7 +220,16 @@ export interface DisplayState {
   mode: DisplayMode;
   cart: DisplayCart | null;
   payment: DisplayPayment | null;
-  tip: { presets: number[]; allowCustom: boolean; selected: TipSelectedMessage | null } | null;
+  /**
+   * Propina (Fase 2-B, PLAN §4.2). `base` (aditivo, opcional): importe sobre
+   * el que la pantalla calcula los porcentajes en vivo (el total con
+   * impuestos antes de propina y domicilio, el mismo que usa el modal de
+   * cobro). Sin `base` la pantalla usa `cart.total`. `selected`: reservado
+   * del borrador del PLAN; el emisor actual cierra la fase al recibir la
+   * elección (el estado pasa a `payment` sin bloque `tip`), así que viaja
+   * null mientras se pregunta.
+   */
+  tip: { presets: number[]; allowCustom: boolean; selected: TipSelectedMessage | null; base?: number } | null;
   thanks: { total: number; askRating: boolean } | null;
 }
 
@@ -218,6 +272,23 @@ export type DownMessage =
        * anterior sin este campo sigue siendo válido.
        */
       currency?: string;
+      /**
+       * Ajustes de presentación de la organización (Fase 2). Opcional y
+       * aditivo: un emisor de la Fase 0 no lo manda y la pantalla se queda
+       * en «solo resumen». isDownMessage solo exige que, si viene, sea un
+       * objeto; el contenido lo sanea la pantalla campo a campo.
+       */
+      settings?: DisplayPresentationSettings;
+      /**
+       * ¿La ventana de la caja que saluda está VISIBLE? (Fase 2-B, deuda
+       * del QA de F2-A.) Con dos pestañas de /app/pos y la misma terminal,
+       * la pantalla debe seguir a la que el cajero tiene delante: en la
+       * ventana de elección del receptor (transport.ts · isBetterHello) un
+       * hello con `visible: true` releva a uno con `visible: false` antes de
+       * mirar `sessionOpen` y `seq`. Opcional y aditivo: un emisor anterior
+       * no lo manda y entonces se compara como antes.
+       */
+      visible?: boolean;
     })
   | (DownEnvelope & { t: 'state'; state: DisplayState })
   | (DownEnvelope & { t: 'heartbeat'; at: number })
@@ -318,7 +389,9 @@ export function isIncompatibleEnvelope(value: unknown, terminalId: string): bool
  * - El contenido de cada línea de `cart.lines` (id, name, qty, unitPrice…):
  *   eso lo produce projectCartForDisplay y aquí no se re-valida.
  * - Los demás campos de `cart` (subtotal, total, currency…), de `payment`
- *   (total, received, change, provider, qr…) ni de `tip` (allowCustom, selected).
+ *   (total, received, change, provider, qr, amount…) ni de `tip`
+ *   (allowCustom, selected). Un `payment.amount` ausente (emisor anterior a
+ *   la ronda 3 de F2-C) o no numérico pasa: la pantalla lo sanea a null.
  * - Los elementos de `tip.presets` (pueden no ser números).
  * - La coherencia mode ↔ bloques: `mode: 'order'` con `cart: null`, o
  *   `mode: 'thanks'` con `thanks: null`, pasan.
@@ -362,7 +435,11 @@ export function isDownMessage(value: unknown): value is DownMessage {
       return (
         isOrganizationId(value.organizationId) &&
         typeof value.sessionOpen === 'boolean' &&
-        (value.cashier === null || (isRecord(value.cashier) && typeof value.cashier.name === 'string'))
+        (value.cashier === null || (isRecord(value.cashier) && typeof value.cashier.name === 'string')) &&
+        // Fase 2: ajustes opcionales; si vienen, un objeto (el contenido lo sanea la pantalla).
+        (value.settings === undefined || isRecord(value.settings)) &&
+        // Fase 2-B: visibilidad opcional; si viene, booleano.
+        (value.visible === undefined || typeof value.visible === 'boolean')
       );
     case 'state':
       return isDisplayStateShape(value.state);

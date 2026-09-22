@@ -313,9 +313,12 @@ export async function getICPProfiles(
 
   const profileIds = profiles.map((p) => (p as ICPProfile).id);
 
+  // Filtro de organización además de la RLS (defensa en profundidad): un
+  // criterio ajeno que apuntara a un perfil de esta organización no se evalúa.
   const { data: criteria, error: critError } = await supabase
     .from('icp_criteria')
     .select('*')
+    .eq('organization_id', organizationId)
     .in('icp_profile_id', profileIds)
     .order('created_at', { ascending: true });
 

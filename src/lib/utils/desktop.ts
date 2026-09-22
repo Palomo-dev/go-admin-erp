@@ -82,6 +82,20 @@ export interface DesktopUpdateState {
   message?: string;
 }
 
+/** Preferencia de tema del Desktop; mismos valores que `next-themes` (`useTheme().theme`). */
+export type DesktopThemePreference = 'light' | 'dark' | 'system';
+
+/** Estado que emite `electron/src/main/theme.ts` (`theme:state`). */
+export interface DesktopThemeState {
+  /** Color efectivo (`nativeTheme.shouldUseDarkColors`). */
+  dark: boolean;
+  /** Preferencia vigente (`nativeTheme.themeSource`). */
+  source: DesktopThemePreference;
+  background: string;
+  bar: string;
+  symbol: string;
+}
+
 /**
  * API expuesta por el preload de Go Admin Desktop.
  * Los métodos son opcionales porque un cliente puede tener una versión antigua
@@ -108,13 +122,18 @@ export interface DesktopPosDisplayBridge {
    * en la misma session/partition. `displayId` elige monitor; sin él, el
    * secundario si existe.
    */
-  open?: (opts?: { origin?: string; displayId?: number }) => Promise<{ ok: boolean; reason?: string }>;
+  open?: (opts?: { origin?: string; displayId?: number | null }) => Promise<{ ok: boolean; reason?: string }>;
   close?: () => Promise<void>;
   status?: () => Promise<DesktopPosDisplayStatus>;
   /** Aviso cuando la ventana de la pantalla abre o cierra ('pos-display:status'). */
   onStatus?: (handler: (status: DesktopPosDisplayStatus) => void) => () => void;
   listDisplays?: () => Promise<DesktopDisplayInfo[]>;
-  setEnabled?: (enabled: boolean, displayId?: number) => Promise<void>;
+  /**
+   * Persiste «abrir sola al arrancar» y el monitor de esta máquina.
+   * `displayId`: número = ese monitor; `null` = automático (el secundario);
+   * `undefined` = conservar el guardado. Mismo contrato que el preload.
+   */
+  setEnabled?: (enabled: boolean, displayId?: number | null) => Promise<void>;
 }
 
 export interface GoAdminDesktopBridge {
@@ -163,6 +182,17 @@ export interface GoAdminDesktopBridge {
 
   // Ventana
   reload?: () => Promise<boolean>;
+
+  /**
+   * Tema. La web manda su preferencia (`DesktopThemeSync.tsx`) y el Desktop
+   * recolorea barra propia, fondo de ventana, splash y pantalla sin conexión,
+   * y la persiste para el próximo arranque. Solo existe en Desktop >= 0.2.3;
+   * antes la app seguía siempre al tema del sistema.
+   */
+  setTheme?: (theme: DesktopThemePreference) => Promise<DesktopThemeState>;
+  getTheme?: () => Promise<DesktopThemeState>;
+  /** Aviso en cada cambio de tema ('theme:state'). Devuelve la baja. */
+  onTheme?: (handler: (state: DesktopThemeState) => void) => () => void;
 
   /**
    * Pantalla del cliente del POS (docs/pos-doble-pantalla/PLAN.md §9).

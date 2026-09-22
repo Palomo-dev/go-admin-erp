@@ -21,8 +21,11 @@ import { getPosDisplayEmitter, getPosDisplayEnvironment } from '@/lib/pos/displa
  *
  * Sin emisor arrancado (SSR, interruptor apagado) devuelve «sin pantalla» y
  * no lanza: la venta nunca depende de la pantalla. `reason` sale del entorno
- * (posDisplay.ts): «cargando» mientras no haya caché del interruptor, «sin
- * soporte» sin BroadcastChannel y «apagada» solo cuando de verdad lo está.
+ * (posDisplay.ts): «cargando» mientras no haya caché del interruptor O
+ * mientras la caché esté encendida y la página aún no haya arrancado el
+ * emisor (este hook monta antes que el efecto de arranque de /app/pos, que
+ * espera a la consulta de moneda base), «sin soporte» sin BroadcastChannel
+ * y «apagada» solo cuando la caché dice de verdad que lo está.
  */
 export function useCustomerDisplayPresence(): DisplayPresenceSnapshot {
   const [snapshot, setSnapshot] = useState<DisplayPresenceSnapshot>(() => ({ ...DISCONNECTED_PRESENCE }));

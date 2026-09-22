@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useSession } from '@/lib/context/SessionContext';
+import { isCustomerDisplayPath } from '@/lib/pos/display/route';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { saveWebPushSubscription, removeWebPushSubscription } from '@/lib/services/webPushService';
+import { saveWebPushSubscription } from '@/lib/services/webPushService';
 
 /**
  * Gestiona la suscripción a notificaciones push web automáticamente.
@@ -16,13 +18,20 @@ import { saveWebPushSubscription, removeWebPushSubscription } from '@/lib/servic
  * así que se reintenta la suscripción varias veces.
  */
 export function PushNotificationManager() {
+  // usePathname es nullable en este repo (src/pages convive con App Router).
+  const pathname = usePathname();
+  // Pantalla del cliente del POS (/pos-display): no se pide permiso de
+  // notificaciones delante del cliente (docs/pos-doble-pantalla/PLAN.md
+  // §4.1.4 «cero navegación, no hay menús»). La caja, bajo /app, ya lo pidió.
+  const isCustomerDisplay = isCustomerDisplayPath(pathname);
   const { session } = useSession();
   const user = session?.user;
-  const { isSupported, permission, isSubscribed, subscription, requestPermission, subscribe, unsubscribe } = usePushNotifications();
+  const { isSupported, permission, isSubscribed, subscription, requestPermission, subscribe } = usePushNotifications();
   const [saved, setSaved] = useState(false);
 
   // Cuando el usuario inicia sesión, intentar suscribir automáticamente
   useEffect(() => {
+    if (isCustomerDisplay) return;
     if (!user || !isSupported) return;
     if (permission === 'denied') return;
     if (isSubscribed) return;
@@ -57,7 +66,7 @@ export function PushNotificationManager() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [user, isSupported, permission, isSubscribed, requestPermission, subscribe]);
+  }, [isCustomerDisplay, user, isSupported, permission, isSubscribed, requestPermission, subscribe]);
 
   // Guardar suscripción en Supabase cuando cambia
   useEffect(() => {

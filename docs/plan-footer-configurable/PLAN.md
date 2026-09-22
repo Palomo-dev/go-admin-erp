@@ -1,5 +1,7 @@
 # Plan: Sistema de Menús Nombrados + Footer Configurable + Header con Menús Seleccionables
 
+> **Estado 2026-09-21: antecedente.** Implementado y en producción. `website_menus`/`website_menu_items` quedan legacy: en V2 los menús viven dentro del documento del sitio (ADR-002 D3) y se importan una vez al adoptar. El backend del newsletter no se continúa (D11). Gobierna el [plan V2](../website-builder-v2/PLAN-MAESTRO.md) y su [ADR-002](../website-builder-v2/ADR-002-DECISIONES-Y-SECUENCIA.md).
+
 **Fecha:** 2026-08-19
 **Módulos implicados:** `app-organ` (branding) + repositorio `goadmin-websites`
 **Repositorios:**

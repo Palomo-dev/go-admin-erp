@@ -1,6 +1,7 @@
 import { app, safeStorage } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import type { ThemePreference } from './theme';
 
 export interface DesktopConfig {
   email?: string;
@@ -17,6 +18,12 @@ export interface DesktopConfig {
    * secundario automáticamente.
    */
   posDisplay?: PosDisplayConfig;
+  /**
+   * Preferencia claro/oscuro que manda la web (interruptor del header) por
+   * `theme:set`. Se aplica a `nativeTheme.themeSource` al arrancar, antes del
+   * splash. Ausente = seguir al sistema.
+   */
+  theme?: ThemePreference;
 }
 
 export interface PosDisplayConfig {

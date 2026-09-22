@@ -19,6 +19,12 @@ export interface QuickActionsContext {
   /** null si el SoftphoneProvider no está montado en la página. */
   softphone: { deviceState: string } | null;
   actions?: QuickActionKind[];
+  /**
+   * F15-B: modo por defecto resuelto por `resolveDefaultCallMode` (plataforma
+   * × preferencia × micrófono). Va primero en el menú y se marca como
+   * predeterminado. `null`/ausente mientras se resuelve o en SSR.
+   */
+  defaultCallMode?: 'browser' | 'mobile' | null;
 }
 
 export interface QuickActionState {
@@ -33,6 +39,8 @@ export interface CallModeState {
   label: string;
   enabled: boolean;
   reason?: string;
+  /** Modo por defecto en esta plataforma para este usuario (F15-B). */
+  isDefault?: boolean;
 }
 
 export const QUICK_ACTION_LABELS: Record<QuickActionKind, string> = {
@@ -87,7 +95,11 @@ export function getCallModes(ctx: QuickActionsContext): CallModeState[] {
     ? { mode: 'mobile', label: 'Desde mi celular', enabled: false, reason: noPhone }
     : { mode: 'mobile', label: 'Desde mi celular', enabled: true };
   const ai: CallModeState = { mode: 'ai', label: 'Agente IA', enabled: false, reason: 'Disponible al finalizar F6 (agentes de voz)' };
-  return [browser, mobile, ai];
+  const modes = ctx.defaultCallMode === 'mobile' ? [mobile, browser, ai] : [browser, mobile, ai];
+  // Tester F15-B: solo browser/mobile pueden ser predeterminados; un valor
+  // fuera del dominio (p. ej. la preferencia cruda de la API) no marca nada.
+  if (ctx.defaultCallMode !== 'browser' && ctx.defaultCallMode !== 'mobile') return modes;
+  return modes.map((m) => (m.mode === ctx.defaultCallMode ? { ...m, isDefault: true } : m));
 }
 
 /** Normaliza un teléfono a E.164 aproximado (por defecto +57). */

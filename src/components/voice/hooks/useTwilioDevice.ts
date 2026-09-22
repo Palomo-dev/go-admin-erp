@@ -13,6 +13,9 @@
 
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import type { Call, Device } from '@twilio/voice-sdk';
+import { getCapabilities, queryMicrophonePermission } from '@/lib/services/voice/platformCapabilities';
+// F15-B: motivo de `no_permission` con la ruta de Ajustes de ESTA plataforma (SO en Electron, no «el navegador»).
+import { microphoneDeniedReason } from './useCallModePolicy';
 
 export type DeviceState = 'idle' | 'unregistered' | 'registering' | 'registered' | 'error' | 'no_permission' | 'not_configured';
 
@@ -108,12 +111,6 @@ export function describeDeviceError(err: unknown): { state: DeviceState; reason:
   }
 }
 
-function isMobileNative(): boolean {
-  if (typeof window === 'undefined') return false;
-  const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
-  return Boolean(cap?.isNativePlatform?.());
-}
-
 const RETRY_BACKOFF_MS = 30_000;
 const MAX_RETRIES = 5;
 
@@ -161,10 +158,17 @@ export function useTwilioDevice(onIncoming: (call: Call) => void, onDestroy?: ()
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!enabled) return; // Sin CRM activo: no inicializar, no pedir micrófono.
-    if (isMobileNative()) {
+    // F15: la decisión «¿hay softphone de navegador aquí?» vive en
+    // platformCapabilities (webrtc=false en Capacitor nativo o sin RTCPeerConnection).
+    const caps = getCapabilities();
+    if (!caps.webrtc) {
       setDeviceState('not_configured');
       setDeviceMissing([]);
-      setDeviceReason('En la app móvil usa "Mi celular" (el softphone del navegador no está soportado en WebView)');
+      setDeviceReason(
+        caps.platform.startsWith('capacitor')
+          ? 'En la app móvil usa "Mi celular" (el softphone del navegador no está soportado en WebView)'
+          : 'Este navegador no soporta llamadas WebRTC: usa "Mi celular" o un navegador actual',
+      );
       return;
     }
     let cancelled = false;
@@ -209,17 +213,12 @@ export function useTwilioDevice(onIncoming: (call: Call) => void, onDestroy?: ()
       // mostrar el estado no_permission; si es 'prompt' (nunca se ha pedido),
       // continuar — el SDK pedirá el micrófono cuando el usuario haga/reciba
       // una llamada, que es el momento correcto.
-      try {
-        const permStatus = await navigator.permissions?.query({ name: 'microphone' as PermissionName });
-        if (permStatus?.state === 'denied') {
-          if (cancelled) return;
-          setDeviceState('no_permission');
-          setDeviceReason('Permite el micrófono en el navegador para usar el softphone');
-          setDeviceErrorCode(31401);
-          return;
-        }
-      } catch {
-        // permissions.query no soportado o falló: continuar sin verificar.
+      if ((await queryMicrophonePermission()) === 'denied') {
+        if (cancelled) return;
+        setDeviceState('no_permission');
+        setDeviceReason(microphoneDeniedReason());
+        setDeviceErrorCode(31401);
+        return;
       }
 
       let mod: typeof import('@twilio/voice-sdk');
@@ -265,7 +264,7 @@ export function useTwilioDevice(onIncoming: (call: Call) => void, onDestroy?: ()
           }
         }
         setDeviceState(d.state === 'registering' ? 'error' : d.state);
-        setDeviceReason(d.reason);
+        setDeviceReason(d.state === 'no_permission' ? microphoneDeniedReason() : d.reason);
         setDeviceErrorCode(d.code);
         if (d.state === 'error' && d.code !== 31201 && d.code !== 31202 && d.code !== 31204) scheduleRetry();
       });
@@ -285,7 +284,7 @@ export function useTwilioDevice(onIncoming: (call: Call) => void, onDestroy?: ()
         if (cancelled) return;
         const d = describeDeviceError(err);
         setDeviceState(d.state === 'registering' ? 'error' : d.state);
-        setDeviceReason(d.reason);
+        setDeviceReason(d.state === 'no_permission' ? microphoneDeniedReason() : d.reason);
         setDeviceErrorCode(d.code);
       }
     }

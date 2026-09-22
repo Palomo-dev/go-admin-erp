@@ -117,7 +117,7 @@ export async function appendMessage(
   return (data as { id: string }).id;
 }
 
-/** Historial para reconstruir el hilo al reabrir el panel. */
+/** Últimos N mensajes, devueltos en orden cronológico para reconstruir el hilo. */
 export async function loadMessages(
   supabase: SupabaseClient,
   conversationId: string,
@@ -128,14 +128,14 @@ export async function loadMessages(
     .select('id, role, content, content_json, action_id, created_at')
     .eq('conversation_id', conversationId)
     .in('role', ['user', 'assistant'])
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false })
     .limit(limit);
 
   if (error) {
     console.error('[GO Assistant] No se pudo leer el historial:', error.message);
     return [];
   }
-  return (data ?? []) as StoredMessage[];
+  return [...(data ?? [])].reverse() as StoredMessage[];
 }
 
 /** Hilos recientes del usuario, para el panel de historial. */

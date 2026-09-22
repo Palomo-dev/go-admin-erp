@@ -1,4 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { autoAssignLead, type LeadAssignmentOutcome } from './leadAutoAssign';
+import { clean, resolveLeadCustomer, rollbackCustomer, type LeadCreateFailure, type NewCustomerInput } from './leadCustomer';
+
+// Reexportados para los llamadores previos a la extracción (F12, referidos).
+export { isUniqueViolation, rollbackCustomer, splitPersonName } from './leadCustomer';
+export type { NewCustomerInput } from './leadCustomer';
 
 /**
  * Alta de un lead con ficha de cliente (`customers` + `opportunities` con
@@ -10,6 +16,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  *
  * Añadido en F12 (aditivo): `deal_type` opcional, validado contra el CHECK
  * `opportunities_deal_type_check` (`new|renewal|expansion|referral|partner`).
+ *
+ * Añadido en F1 (cierre, aditivo): si el cuerpo NO trae `salesperson_id`, el
+ * vendedor se resuelve con `assignmentService` según la configuración de la
+ * organización (`leadAutoAssign`). El resultado viaja en `assignment`; la
+ * asignación nunca hace fallar el alta (sin equipo → lead sin asignar).
  */
 
 /** Origen por defecto de un lead creado a mano desde el ERP. */
@@ -18,16 +29,6 @@ export const MANUAL_LEAD_SOURCE = 'manual_erp';
 export const OPPORTUNITY_DEAL_TYPES = ['new', 'renewal', 'expansion', 'referral', 'partner'] as const;
 export type OpportunityDealType = (typeof OPPORTUNITY_DEAL_TYPES)[number];
 
-export interface NewCustomerInput {
-  /** Conveniencia: se parte en first_name / last_name si no vienen sueltos. */
-  full_name?: string;
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  phone?: string;
-  company_name?: string;
-  customer_type?: string;
-}
 
 export interface CreateLeadBody {
   name?: string;
@@ -53,52 +54,22 @@ export interface LeadCreateContext {
 }
 
 export type LeadCreateResult =
-  | { status: 201; data: Record<string, unknown>; created_customer_id: string | null; customer_id: string }
-  | { status: 400 | 409; error: string; extra?: Record<string, unknown> };
+  | {
+      status: 201;
+      data: Record<string, unknown>;
+      created_customer_id: string | null;
+      customer_id: string;
+      /** Cómo se resolvió el vendedor (F1): explícito, automático, apagado o sin asignar. */
+      assignment: LeadAssignmentOutcome;
+    }
+  | LeadCreateFailure;
 
-/**
- * Violación de unicidad de Postgres. La base tiene dos índices que este alta
- * puede tocar: `unique_customer_email_per_org` sobre `(organization_id, email)`
- * y `unique_customer_id_per_org` sobre `(organization_id, identification_number)`.
- * Dar de alta a alguien que ya está en la ficha es un caso NORMAL de uso, no un
- * fallo del servidor.
- */
-export function isUniqueViolation(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === '23505';
-}
 
-function violatesEmailIndex(error: unknown): boolean {
-  const message = typeof error === 'object' && error !== null ? String((error as { message?: unknown }).message ?? '') : '';
-  return message.includes('unique_customer_email_per_org');
-}
-
-function clean(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-/**
- * `customers.full_name` es una columna GENERADA (verificado en `pg_attribute`
- * el 2026-09-09): se calcula desde `first_name`/`last_name` para personas y
- * desde `company_name`/`trade_name` para empresas. Escribirla directamente
- * hace fallar el INSERT, así que el nombre se parte aquí.
- */
-export function splitPersonName(input: NewCustomerInput): { first: string | null; last: string | null } {
-  const first = clean(input.first_name);
-  const last = clean(input.last_name);
-  if (first || last) return { first, last };
-
-  const full = clean(input.full_name);
-  if (!full) return { first: null, last: null };
-
-  const parts = full.split(/\s+/);
-  if (parts.length === 1) return { first: parts[0], last: null };
-  return { first: parts[0], last: parts.slice(1).join(' ') };
-}
+/** Columnas que devuelve el alta (literal: el tipado de Supabase las analiza). `salesperson_id` desde F1. */
+const LEAD_COLUMNS =
+  'id, name, customer_id, pipeline_id, stage_id, amount, currency, status, record_type, source, temperature, next_contact_at, salesperson_id, created_at';
 
 const bad = (error: string): LeadCreateResult => ({ status: 400, error });
-const conflict = (error: string, extra: Record<string, unknown> = {}): LeadCreateResult => ({ status: 409, error, extra });
 
 /**
  * Crea el lead. Un lead SIEMPRE nace con ficha de cliente: `opportunities` no
@@ -178,93 +149,43 @@ export async function createLeadWithCustomer(ctx: LeadCreateContext, body: Creat
   }
 
   // ── 3. Cliente: existente o nuevo. Sin ficha no hay lead contactable ─────
-  let customerId = clean(body.customer_id);
-  let createdCustomerId: string | null = null;
+  const ficha = await resolveLeadCustomer(ctx, body, branchId);
+  if (!ficha.ok) return ficha.result;
+  const { customerId, createdCustomerId } = ficha;
 
-  if (customerId) {
-    const { data: customer, error } = await supabase
-      .from('customers')
-      .select('id')
-      .eq('id', customerId)
-      .eq('organization_id', organizationId)
-      .maybeSingle();
-    if (error) throw error;
-    if (!customer) return bad('El cliente no pertenece a la organización');
-  } else if (body.new_customer) {
-    const email = clean(body.new_customer.email);
-    const phone = clean(body.new_customer.phone);
-    const companyName = clean(body.new_customer.company_name);
-    const customerType = clean(body.new_customer.customer_type) || 'person';
-    const { first, last } = splitPersonName(body.new_customer);
+  const amount = Number.isFinite(Number(body.amount)) ? Number(body.amount) : 0;
+  const currency = clean(body.currency) || 'COP';
 
-    if (customerType === 'company') {
-      if (!companyName) return bad('Un cliente de tipo empresa necesita razón social');
-    } else if (!first) {
-      return bad('El nombre del cliente nuevo es obligatorio');
-    }
-    // Un lead sin forma de contacto es exactamente el registro inútil que este
-    // alta viene a evitar.
-    if (!email && !phone) return bad('El cliente nuevo necesita al menos correo o teléfono');
-
-    // `full_name` NO se envía: es columna generada (ver splitPersonName).
-    const { data: customer, error } = await supabase
-      .from('customers')
-      .insert({
-        organization_id: organizationId,
-        branch_id: branchId,
-        first_name: first,
-        last_name: last,
-        email,
-        phone,
-        company_name: companyName,
-        customer_type: customerType,
-        lifecycle_stage: 'lead',
-      })
-      .select('id, full_name')
-      .single();
-    if (error) {
-      // Correo ya usado en esta organización: se devuelve el cliente que ya
-      // existe para que la interfaz pueda ofrecer «usar el existente».
-      if (isUniqueViolation(error) && violatesEmailIndex(error) && email) {
-        const { data: existente } = await supabase
-          .from('customers')
-          .select('id, full_name')
-          .eq('organization_id', organizationId)
-          .eq('email', email)
-          .maybeSingle();
-        return conflict(
-          `Ya existe un cliente con el correo ${email} en esta organización. ` +
-            'Usa ese cliente para crear el lead en vez de crear una ficha repetida.',
-          { existing_customer: existente ?? null },
-        );
-      }
-      if (isUniqueViolation(error)) {
-        return conflict('Ya existe un cliente con esos datos en esta organización. Busca la ficha existente en vez de crear una repetida.');
-      }
-      throw error;
-    }
-
-    customerId = customer.id as string;
-    createdCustomerId = customerId;
-  } else {
-    return bad('Un lead necesita ficha de cliente: envía customer_id o new_customer');
-  }
-
-  // ── 4. Vendedor asignado (opcional, validado contra la organización) ─────
-  const salespersonId = clean(body.salesperson_id);
-  if (salespersonId) {
+  // ── 4. Vendedor: explícito (validado contra la organización) o automático ─
+  // El explícito manda: la asignación automática solo entra cuando el cuerpo
+  // no trae vendedor. Un vendedor ajeno a la organización es 400, nunca se
+  // «corrige» en silencio con la asignación automática.
+  const explicitSalespersonId = clean(body.salesperson_id);
+  let assignment: LeadAssignmentOutcome;
+  if (explicitSalespersonId) {
     const { data: member, error } = await supabase
       .from('organization_members')
       .select('user_id')
-      .eq('user_id', salespersonId)
+      .eq('user_id', explicitSalespersonId)
       .eq('organization_id', organizationId)
       .maybeSingle();
     if (error) throw error;
     if (!member) return bad('El vendedor asignado no es miembro de la organización');
+    assignment = { status: 'explicit', user_id: explicitSalespersonId };
+  } else {
+    // Nunca lanza: sin equipo/miembros o con error, el lead sigue adelante sin asignar.
+    const auto = await autoAssignLead(
+      { organizationId, customerId, opportunityData: { amount, currency, deal_type: dealType } },
+      supabase,
+    );
+    if (auto.status !== 'assigned') {
+      console.info('[leadCreateService] lead sin asignar (org %s, %s): %s', organizationId, auto.status, auto.reason);
+    }
+    assignment = auto;
   }
+  const salespersonId = assignment.status === 'assigned' || assignment.status === 'explicit' ? assignment.user_id : null;
 
   // ── 5. Alta del lead ────────────────────────────────────────────────────
-  const amount = Number.isFinite(Number(body.amount)) ? Number(body.amount) : 0;
 
   const { data: lead, error: insertError } = await supabase
     .from('opportunities')
@@ -276,7 +197,7 @@ export async function createLeadWithCustomer(ctx: LeadCreateContext, body: Creat
       customer_id: customerId,
       name,
       amount,
-      currency: clean(body.currency) || 'COP',
+      currency,
       expected_close_date: clean(body.expected_close_date),
       status: 'open',
       record_type: 'lead',
@@ -287,7 +208,7 @@ export async function createLeadWithCustomer(ctx: LeadCreateContext, body: Creat
       salesperson_id: salespersonId,
       created_by: ctx.userId,
     })
-    .select('id, name, customer_id, pipeline_id, stage_id, amount, currency, status, record_type, source, temperature, next_contact_at, created_at')
+    .select(LEAD_COLUMNS)
     .single();
 
   if (insertError) {
@@ -297,13 +218,11 @@ export async function createLeadWithCustomer(ctx: LeadCreateContext, body: Creat
     throw insertError;
   }
 
-  return { status: 201, data: lead as Record<string, unknown>, created_customer_id: createdCustomerId, customer_id: customerId };
-}
-
-/** Borra una ficha recién creada cuya alta de lead no cuajó (mejor esfuerzo, se registra si falla). */
-export async function rollbackCustomer(ctx: LeadCreateContext, customerId: string): Promise<void> {
-  const { error } = await ctx.supabase.from('customers').delete().eq('id', customerId).eq('organization_id', ctx.organizationId);
-  if (error) {
-    console.error('[leadCreateService] no se pudo revertir el cliente %s tras fallar el alta del lead: %s', customerId, error.message);
-  }
+  return {
+    status: 201,
+    data: lead as Record<string, unknown>,
+    created_customer_id: createdCustomerId,
+    customer_id: customerId,
+    assignment,
+  };
 }

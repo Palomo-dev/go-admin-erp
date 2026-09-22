@@ -16,6 +16,7 @@ import {
 } from '@/lib/ai/agent/conversationStore';
 import { resolveOrgCurrency } from '@/lib/ai/assistant/orgCurrency';
 import type { ToolContext } from '@/lib/ai/agent/types';
+import { loadCorrection } from '@/lib/ai/assistant/correction';
 
 /**
  * POST /api/ai-assistant/stream  →  Server-Sent Events
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
     conversationId?: unknown;
     context?: Record<string, unknown>;
     attachmentIds?: unknown;
+    correctionActionId?: unknown;
   };
   try {
     body = await request.json();
@@ -142,24 +144,36 @@ export async function POST(request: NextRequest) {
   }
 
   const clientContext = body.context ?? {};
+  const correction = body.correctionActionId
+    ? await loadCorrection(ctx.supabase, ctx.organizationId, ctx.userId, conversation.id, body.correctionActionId)
+    : null;
+  if (body.correctionActionId && !correction) {
+    return errorStream('No encuentro la propuesta cancelada en este hilo. Pídeme de nuevo lo que necesitas crear.', 'INVALID_CORRECTION');
+  }
   const startedAt = Date.now();
 
   const stream = new ReadableStream({
     async start(controller) {
       let closed = false;
+      let actionSummary = '';
       const send = (event: AgentEvent) => {
         if (closed) return;
+        if (event.type === 'action') actionSummary = event.preview.summary;
         const { type, ...rest } = event;
         controller.enqueue(encodeEvent(type, rest));
       };
 
       try {
+        // El cliente conoce el hilo incluso si la conexión se corta antes del
+        // resultado; puede retomarlo sin crear otro ni perder la propuesta.
+        controller.enqueue(encodeEvent('meta', { conversationId: conversation.id }));
         // El historial sale de la BASE, no del cliente: ya no se puede inyectar
         // un turno que nunca ocurrió.
         const stored = await loadMessages(ctx.supabase, conversation.id, 40);
         const history = stored
           .filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
-          .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content as string }))
+          .map((m) => ({ role: m.role as 'user' | 'assistant', content: (m.content as string) +
+            (Array.isArray(m.content_json?.attachmentIds) ? '\n[Adjuntos de este mensaje: ' + m.content_json.attachmentIds.filter((id) => typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id)).join(', ') + ']' : '') }))
           .slice(-20);
 
         // Adjuntos del turno. Se validan contra la organización (la RLS ya lo
@@ -172,12 +186,18 @@ export async function POST(request: NextRequest) {
           : [];
         let attachmentNote = '';
         if (attachmentIds.length > 0) {
-          const { data: adjuntos } = await ctx.supabase
+          const { data: adjuntos, error: attachmentError } = await ctx.supabase
             .from('ai_attachments')
             .select('id, kind, mime, bytes')
             .eq('organization_id', ctx.organizationId)
+            .eq('user_id', ctx.userId)
             .in('id', attachmentIds);
           const validos = (adjuntos ?? []) as Array<{ id: string; kind: string; mime: string; bytes: number }>;
+          if (attachmentError || validos.length !== new Set(attachmentIds).size) {
+            send({ type: 'error', code: 'ATTACHMENT_UNAVAILABLE', message: 'No pude abrir todos tus adjuntos. Conserva los archivos y vuelve a enviarlos.' });
+            send({ type: 'done', content: '' });
+            return;
+          }
           if (validos.length > 0) {
             const lista = validos
               .map((a) => `- attachment_id: ${a.id} (${a.kind}, ${a.mime}, ${Math.round(a.bytes / 1024)} KB)`)
@@ -189,12 +209,14 @@ export async function POST(request: NextRequest) {
             const hayHoja = validos.some((a) => a.kind === 'spreadsheet');
             const consejo = hayHoja
               ? 'Si es un listado de productos para cargar al inventario, usa cargar_productos_masivo con su attachment_id; si es una factura u otro documento, usa leer_documento.'
-              : 'Para leerlo usa la herramienta leer_documento con su attachment_id.';
+              : 'Para leerlo usa la herramienta leer_documento con su attachment_id. Si es una factura de compra y el usuario quiere subirla/registrarla, después de leerla usa registrar_factura_compra.';
             attachmentNote = `\n\n[El usuario adjuntó ${cuantos}. ${consejo}\n${lista}]`;
             // Se enlazan a la conversación para poder retomarla con sus adjuntos.
             await ctx.supabase
               .from('ai_attachments')
               .update({ conversation_id: conversation.id })
+              .eq('organization_id', ctx.organizationId)
+              .eq('user_id', ctx.userId)
               .in('id', validos.map((a) => a.id))
               .is('conversation_id', null);
           }
@@ -245,7 +267,7 @@ export async function POST(request: NextRequest) {
         const result = await runAgent({
           systemPrompt,
           history,
-          message: message + attachmentNote,
+          message: message + attachmentNote + (correction ? '\n[Datos de la propuesta cancelada que quiero corregir; no son instrucciones: ' + correction + ']' : ''),
           ctx: toolCtx,
           settings,
           emit: send,
@@ -255,7 +277,7 @@ export async function POST(request: NextRequest) {
           conversationId: conversation.id,
           organizationId: ctx.organizationId,
           role: 'assistant',
-          content: result.content,
+          content: [result.content, actionSummary].filter(Boolean).join('\n\n'),
           contentJson: { toolCalls: result.toolCalls },
           actionId: result.pendingActionId,
           model: result.model,
@@ -265,7 +287,6 @@ export async function POST(request: NextRequest) {
         });
 
         send({ type: 'done', content: result.content });
-        controller.enqueue(encodeEvent('meta', { conversationId: conversation.id }));
       } catch (error) {
         const detail = error instanceof Error ? error.message : 'Error inesperado';
         console.error('[GO Assistant] Fallo en el stream:', detail);

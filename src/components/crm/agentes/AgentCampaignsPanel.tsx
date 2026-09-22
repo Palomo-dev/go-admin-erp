@@ -1,46 +1,78 @@
 "use client";
 
 /**
- * Campañas del agente IA (FASE 06): topes reales y parada de emergencia.
+ * Campañas del agente IA (FASE 06 · UXM-D): topes reales y parada de emergencia.
  *
  * Los topes que se ven aquí son los que aplica el despachador:
  *  - tope diario contando TODO intento (también los fallidos),
  *  - tope por hora, independiente del anterior,
  *  - parada de emergencia (se activa sola tras 5 fallos seguidos).
+ *
+ * El destino se elige con pipeline → etapa (`useCrmLookups`, el mismo de
+ * Automatizaciones); nadie escribe un identificador a mano. Si hay más de un
+ * agente, se elige cuál llama. Contrato de la API intacto (`target_config.stage_id`).
  */
 
 import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, Megaphone, OctagonX, Play } from "lucide-react";
+import { Loader2, Megaphone } from "lucide-react";
 import { LoadErrorState } from "@/components/common/LoadErrorState";
 import { describeError, logError } from "@/lib/utils/errorMessage";
 import { fetchJson } from "@/lib/utils/fetchJson";
+import { useCrmLookups, type CrmLookupsState } from "@/components/crm/shared/useCrmLookups";
 import type { VoiceAgentListItem } from "./AgentesIaPage";
+import { buildCampaignBody, type CampaignRow } from "./campanas/campaignModel";
+import { CampaignTargetPicker } from "./campanas/CampaignTargetPicker";
+import { CampaignCard } from "./campanas/CampaignCard";
 
-interface CampaignRow {
-  id: string;
-  name: string;
-  status: string;
-  target_source: string;
-  max_calls_per_day: number;
-  max_calls_per_hour: number;
-  max_concurrent: number;
-  emergency_stop: boolean;
-  stopped_reason: string | null;
-  voice_agents?: { name: string } | null;
+interface Props {
+  agents: VoiceAgentListItem[];
+  /** Inyectable en pruebas y arneses; en la página lo aporta `useCrmLookups`. */
+  lookups?: CrmLookupsState;
 }
 
-export function AgentCampaignsPanel({ agents }: { agents: VoiceAgentListItem[] }) {
+export function AgentCampaignsPanel({ agents, lookups }: Props) {
+  return lookups ? (
+    <CampaignsPanelInner agents={agents} lookups={lookups} />
+  ) : (
+    <ConnectedPanel agents={agents} />
+  );
+}
+
+function ConnectedPanel({ agents }: { agents: VoiceAgentListItem[] }) {
+  const lookups = useCrmLookups();
+  return <CampaignsPanelInner agents={agents} lookups={lookups} />;
+}
+
+function CampaignsPanelInner({
+  agents,
+  lookups,
+}: {
+  agents: VoiceAgentListItem[];
+  lookups: CrmLookupsState;
+}) {
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [patching, setPatching] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [stageId, setStageId] = useState("");
+  const [pipelineId, setPipelineId] = useState<string | null>(null);
+  const [stageId, setStageId] = useState<string | null>(null);
+  const [agentId, setAgentId] = useState<string>("");
+  const activeAgents = agents.filter((a) => a.is_active);
+  const selectableAgents = activeAgents.length > 0 ? activeAgents : agents;
+  const effectiveAgentId = agentId || selectableAgents[0]?.id || "";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,7 +80,7 @@ export function AgentCampaignsPanel({ agents }: { agents: VoiceAgentListItem[] }
     try {
       const json = await fetchJson<{ success?: boolean; error?: string; data?: CampaignRow[] }>(
         "/api/crm/voice-agents/campaigns",
-        { cache: "no-store" }
+        { cache: "no-store" },
       );
       if (!json?.success) throw new Error(json?.error || "La respuesta no indicó éxito");
       setCampaigns(json.data ?? []);
@@ -65,8 +97,16 @@ export function AgentCampaignsPanel({ agents }: { agents: VoiceAgentListItem[] }
   }, [load]);
 
   const create = async () => {
-    if (!name.trim() || agents.length === 0) {
-      toast({ title: "Falta el nombre o no hay agentes creados", variant: "destructive" });
+    if (!name.trim()) {
+      toast({ title: "La campaña necesita un nombre", variant: "destructive" });
+      return;
+    }
+    if (!effectiveAgentId) {
+      toast({
+        title: "Primero crea un agente",
+        description: "La campaña necesita un agente que llame.",
+        variant: "destructive",
+      });
       return;
     }
     setBusy(true);
@@ -74,27 +114,21 @@ export function AgentCampaignsPanel({ agents }: { agents: VoiceAgentListItem[] }
       const res = await fetch("/api/crm/voice-agents/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          voice_agent_id: agents[0].id,
-          target_source: stageId ? "pipeline_stage" : "manual_list",
-          target_config: stageId ? { stage_id: stageId } : {},
-          max_calls_per_day: 50,
-          max_calls_per_hour: 20,
-          max_concurrent: 3,
-          status: "draft",
-        }),
+        body: JSON.stringify(buildCampaignBody({ name, voiceAgentId: effectiveAgentId, stageId })),
       });
       const json = await res.json();
       if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
       setName("");
-      setStageId("");
-      toast({ title: "Campaña creada en borrador" });
+      setStageId(null);
+      toast({
+        title: "Campaña creada en borrador",
+        description: "Actívala cuando quieras que empiece a llamar.",
+      });
       void load();
     } catch (err) {
       toast({
         title: "No se pudo crear la campaña",
-        description: err instanceof Error ? err.message : "Error desconocido",
+        description: describeError(err),
         variant: "destructive",
       });
     } finally {
@@ -103,6 +137,7 @@ export function AgentCampaignsPanel({ agents }: { agents: VoiceAgentListItem[] }
   };
 
   const patch = async (id: string, body: Record<string, unknown>, ok: string) => {
+    setPatching(id);
     try {
       const res = await fetch(`/api/crm/voice-agents/campaigns/${id}`, {
         method: "PATCH",
@@ -116,39 +151,80 @@ export function AgentCampaignsPanel({ agents }: { agents: VoiceAgentListItem[] }
     } catch (err) {
       toast({
         title: "No se pudo actualizar",
-        description: err instanceof Error ? err.message : "Error desconocido",
+        description: describeError(err),
         variant: "destructive",
       });
+    } finally {
+      setPatching(null);
     }
   };
 
   return (
     <div className="space-y-5">
-      <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+      <section
+        aria-labelledby="c-new-title"
+        className="rounded-xl border border-gray-200 p-4 dark:border-gray-700"
+      >
+        <h2
+          id="c-new-title"
+          className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100"
+        >
           <Megaphone className="h-4 w-4" aria-hidden="true" />
           Nueva campaña
         </h2>
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-2">
+        <div className="space-y-3">
+          <div className="space-y-1.5">
             <Label htmlFor="c-name">Nombre</Label>
-            <Input id="c-name" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="c-stage">ID de la etapa (opcional)</Label>
             <Input
-              id="c-stage"
-              value={stageId}
-              onChange={(e) => setStageId(e.target.value)}
-              placeholder="Llama a las oportunidades de esa etapa"
+              id="c-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ej. Seguimiento de propuestas"
             />
           </div>
+          {selectableAgents.length > 1 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="c-agent">Agente que llama</Label>
+              <Select value={effectiveAgentId} onValueChange={setAgentId}>
+                {/* Tester UXM-D: un nombre largo desbordaba 23 px a 375 px y tapaba el chevron. */}
+                <SelectTrigger id="c-agent" className="[&>span]:line-clamp-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectableAgents.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}
+                      {a.is_active ? "" : " (inactivo)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {selectableAgents.length === 0 && (
+            <p role="status" className="text-xs text-amber-800 dark:text-amber-200">
+              No hay agentes: crea uno en la pestaña «Agentes» antes de lanzar una campaña.
+            </p>
+          )}
+          <CampaignTargetPicker
+            lookups={lookups}
+            pipelineId={pipelineId}
+            stageId={stageId}
+            onChange={(n) => {
+              setPipelineId(n.pipelineId);
+              setStageId(n.stageId);
+            }}
+          />
         </div>
-        <Button className="mt-3" onClick={create} disabled={busy}>
+        <Button
+          className="mt-4 w-full sm:w-auto"
+          onClick={() => void create()}
+          disabled={busy || selectableAgents.length === 0}
+        >
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
           Crear campaña
         </Button>
-      </div>
+      </section>
 
       {loading ? (
         <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
@@ -165,43 +241,21 @@ export function AgentCampaignsPanel({ agents }: { agents: VoiceAgentListItem[] }
       ) : campaigns.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">Todavía no hay campañas.</p>
       ) : (
-        <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
+        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-label="Campañas">
           {campaigns.map((c) => (
-            <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {c.name}{" "}
-                  <Badge variant={c.emergency_stop ? "destructive" : c.status === "running" ? "success" : "secondary"}>
-                    {c.emergency_stop ? "Detenida" : c.status}
-                  </Badge>
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Máx. {c.max_calls_per_day}/día · {c.max_calls_per_hour}/hora · {c.max_concurrent} simultáneas
-                  {c.stopped_reason ? ` · ${c.stopped_reason}` : ""}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {c.emergency_stop || c.status !== "running" ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => patch(c.id, { status: "running", emergency_stop: false }, "Campaña activada")}
-                  >
-                    <Play className="mr-1 h-4 w-4" aria-hidden="true" />
-                    Activar
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => patch(c.id, { emergency_stop: true, status: "paused" }, "Campaña detenida")}
-                  >
-                    <OctagonX className="mr-1 h-4 w-4" aria-hidden="true" />
-                    Parada de emergencia
-                  </Button>
-                )}
-              </div>
-            </li>
+            <CampaignCard
+              key={c.id}
+              campaign={c}
+              stages={lookups.stages}
+              pipelines={lookups.pipelines}
+              busy={patching === c.id}
+              onActivate={(row) =>
+                void patch(row.id, { status: "running", emergency_stop: false }, "Campaña activada")
+              }
+              onStop={(row) =>
+                void patch(row.id, { emergency_stop: true, status: "paused" }, "Campaña detenida")
+              }
+            />
           ))}
         </ul>
       )}

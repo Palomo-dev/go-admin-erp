@@ -151,11 +151,16 @@ describe('GET sin red: réplica local → caché por URL → 503', () => {
     expect(other.status).toBe(503);
   });
 
-  it('las RPC siguen con la caché de la fase 4A y las escrituras REST con la cola', async () => {
+  it('las RPC siguen con la caché de la fase 4A; una escritura REST sin outbox ni cola reproducible recibe un 503 honesto (fase 4F)', async () => {
     const rpc = await resolveOfflineDataRequest({ url: `${BASE}/rpc/get_organization_currencies`, method: 'POST', body: '{"p_organization_id":120}', headers: {} });
     expect(rpc.status).toBe(503);
     const write = await resolveOfflineDataRequest({ url: `${BASE}/suppliers`, method: 'POST', body: '{"name":"x"}', headers: {} });
-    expect(write.status).toBe(202);
+    expect(write.status).toBe(503);
+    expect(await write.json()).toMatchObject({ code: 'OFFLINE_WRITE_REQUIRES_NETWORK', message: 'Sin conexión: esta acción requiere internet' });
+    expect(await getQueuedActions()).toHaveLength(0);
+    // Lo reproducible sin id devuelto (favoritos) sí sigue en la cola con 202.
+    const fav = await resolveOfflineDataRequest({ url: `${BASE}/product_favorites`, method: 'POST', body: '{"product_id":1}', headers: {} });
+    expect(fav.status).toBe(202);
     expect(await getQueuedActions()).toHaveLength(1);
   });
 });

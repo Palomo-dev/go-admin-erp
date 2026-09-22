@@ -32,18 +32,42 @@
  *   línea: SÍ resalta). Decisión de la ronda 4: un relevo entre dos pestañas
  *   de /app/pos no es «una línea nueva» para el cliente.
  * - `updateRequired`: solo llegan sobres de otra versión del protocolo.
+ * - Táctil declarado = táctil RESUELTO (ronda 3 de F2-B, QA-2): lo que viaja
+ *   en `capabilities.touch` (need_snapshot y display_alive) es
+ *   `resolveTouch(detección, hello.settings.touch)`, lo mismo que decide si
+ *   la vista de propina pinta botones (CustomerDisplay). Antes viajaba la
+ *   detección cruda y, con el forzado activo (`touch` / `no-touch`, PLAN
+ *   §4.4 «si el hardware miente»), la caja prometía «esperando la propina…»
+ *   sobre una pantalla sin botones, o «registre lo que indique el cliente»
+ *   sobre una con botones. Sin hello aún se declara la detección; al aceptar
+ *   un hello cuyo forzado cambia el resultado se REEMITE `display_alive` en
+ *   el acto (startPresence del receptor es idempotente y, si cambia
+ *   `touch`, manda uno sin esperar al latido), así la caja se entera antes
+ *   del siguiente latido. Un cambio de ajustes en
+ *   caliente llega por el resaludo de la caja (hello nuevo) y sigue el mismo
+ *   camino.
  */
 
 import { STALE_AFTER_MS, type DisplayReceiver } from '@/lib/pos/display/transport';
-import type { DisplayCapabilities, DisplayState, DownMessage } from '@/lib/pos/display/protocol';
-import { HIGHLIGHT_MS, sanitizeDisplayState, shouldHighlightAfterState } from './logic';
+import type {
+  DisplayCapabilities,
+  DisplayPresentationSettings,
+  DisplayState,
+  DownMessage,
+  UpMessageDraft,
+} from '@/lib/pos/display/protocol';
+import { HIGHLIGHT_MS, resolveTouch, sanitizeDisplayState, shouldHighlightAfterState } from './logic';
 
 /** Sin caja este tiempo, la pantalla deja Conectando y vuelve a Reposo (PLAN §10). */
 export const DISCONNECTED_TO_IDLE_MS = 60_000;
 /** Cada cuánto se repite `need_snapshot` mientras no hay caja o la que hay no ha mandado estado. */
 export const RESNAPSHOT_INTERVAL_MS = 2_000;
 /** Cada cuánto se evalúa la salud de la conexión. */
-export const HEALTH_INTERVAL_MS = 500;
+/**
+ * 250 ms y no 500: el peor caso sin `bye` (caja muerta de golpe) es
+ * STALE_AFTER_MS + un tick, y el PLAN §12 F0 pide Conectando en ≤ 3 s.
+ */
+export const HEALTH_INTERVAL_MS = 250;
 
 export interface DisplayHello {
   organizationId: number;
@@ -51,6 +75,14 @@ export interface DisplayHello {
   sessionOpen: boolean;
   /** Moneda de la caja (hello.currency); null con un emisor anterior que no la mande. */
   currency: string | null;
+  /**
+   * Ajustes de presentación de la organización (hello.settings, Fase 2):
+   * propina, calificación, desglose, nombre del cliente, idioma y forzado
+   * táctil. Ausente con un emisor de la Fase 0: la pantalla se queda en
+   * «solo resumen». Se pasa tal cual (isDownMessage solo garantiza que es un
+   * objeto): quien lo consuma debe sanear campo a campo.
+   */
+  settings?: DisplayPresentationSettings;
 }
 
 export interface DisplayLinkSnapshot {
@@ -94,6 +126,13 @@ export interface DisplayLink {
   evaluateHealth(): void;
   /** Reenvía la presencia con las capacidades actuales (p. ej. tras un resize). */
   refreshPresence(): void;
+  /**
+   * Manda una intención a la caja que se sigue (Fase 2): `qr_paid_claim`,
+   * `tip_selected`, `rating`. Solo con caja conectada; sin ella se descarta
+   * (no hay a quién avisar y la caja que llegue después no debe recibir un
+   * aviso de un cobro que ya no existe). Nunca lanza.
+   */
+  send(msg: UpMessageDraft): void;
   /** Deja de escuchar, cierra el receptor (con display_bye) y vuelve a la instantánea inicial. */
   stop(): void;
 }
@@ -149,9 +188,24 @@ export function startDisplayLink(options: DisplayLinkOptions): DisplayLink {
     if (!stopped) onChange(snapshot);
   };
 
+  /** Último `touch` declarado a la caja (need_snapshot o display_alive); null antes del primero. */
+  let declaredTouch: boolean | null = null;
+
+  /**
+   * Capacidades que se declaran: la detección del navegador con el táctil ya
+   * RESUELTO por el forzado de los ajustes del hello aceptado (ver cabecera).
+   * Sin hello, la detección tal cual (resolveTouch con override ausente).
+   */
+  const effectiveCapabilities = (): DisplayCapabilities => {
+    const raw = capabilities();
+    const resolved = resolveTouch(raw.touch === true, snapshot.hello?.settings?.touch);
+    declaredTouch = resolved;
+    return raw.touch === resolved ? raw : { ...raw, touch: resolved };
+  };
+
   const askSnapshot = () => {
     lastSnapshotAt = now();
-    receiver.send({ t: 'need_snapshot', capabilities: capabilities() });
+    receiver.send({ t: 'need_snapshot', capabilities: effectiveCapabilities() });
   };
 
   const shouldAskAgain = (at: number) => lastSnapshotAt === null || at - lastSnapshotAt >= resnapshotIntervalMs;
@@ -221,9 +275,16 @@ export function startDisplayLink(options: DisplayLinkOptions): DisplayLink {
             cashier: msg.cashier,
             sessionOpen: msg.sessionOpen,
             currency: typeof msg.currency === 'string' && msg.currency.trim().length > 0 ? msg.currency : null,
+            // Solo se añade la clave si viene: un hello de la Fase 0 produce el mismo objeto que antes.
+            ...(msg.settings !== undefined ? { settings: msg.settings } : {}),
           },
         });
         evaluateHealth();
+        // El forzado del hello cambia lo que la pantalla pinta: se declara el
+        // táctil resuelto en el acto (display_alive nuevo), no en el siguiente latido.
+        if (resolveTouch(capabilities().touch === true, msg.settings?.touch) !== declaredTouch) {
+          receiver.startPresence(effectiveCapabilities());
+        }
         break;
       case 'state': {
         const clean = sanitizeDisplayState(msg.state);
@@ -248,7 +309,7 @@ export function startDisplayLink(options: DisplayLinkOptions): DisplayLink {
 
   const health = setInterval(() => evaluateHealth(true), healthIntervalMs);
   askSnapshot();
-  receiver.startPresence(capabilities());
+  receiver.startPresence(effectiveCapabilities());
 
   return {
     get snapshot() {
@@ -256,7 +317,11 @@ export function startDisplayLink(options: DisplayLinkOptions): DisplayLink {
     },
     evaluateHealth: () => evaluateHealth(true),
     refreshPresence: () => {
-      if (!stopped) receiver.startPresence(capabilities());
+      if (!stopped) receiver.startPresence(effectiveCapabilities());
+    },
+    send: (msg) => {
+      if (stopped || !snapshot.connected) return;
+      receiver.send(msg);
     },
     stop: () => {
       if (stopped) return;

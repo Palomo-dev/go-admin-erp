@@ -22,6 +22,7 @@ import {
   type ChatToolDefinition,
 } from '@/lib/services/crm/voiceAgentTools';
 import { recordingEnabledForCall } from '@/lib/services/crm/consentService';
+import { loadOrgModelSettings, resolveModel } from '@/lib/ai/agent/modelRouter';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -365,7 +366,9 @@ export async function buildRuntimeConfig(
     stage,
     systemPrompt,
     greeting,
-    model: agent.llm_model || 'gpt-4o-mini',
+    // Modelo del agente; si no tiene, el de conversación de la organización
+    // (ai_settings → entorno → default de modelRouter). Nunca cableado aquí.
+    model: agent.llm_model?.trim() || resolveModel('conversation', await loadOrgModelSettings(supabase, orgId)).model,
     temperature: Number(agent.temperature ?? 0.7),
     maxTurns: agent.max_turns ?? 20,
     maxDurationSeconds: agent.max_duration_seconds ?? 300,

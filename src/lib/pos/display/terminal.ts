@@ -96,6 +96,27 @@ export function getOrCreateLocalTerminalId(storage: TerminalIdStorage | null = d
   return ephemeralTerminalId;
 }
 
+/**
+ * Fase 2: vincula esta caja a una fila de `pos_terminals` escribiendo su `id`
+ * (UUID) en la MISMA clave `pos_terminal_id`. Respeta el contrato de la
+ * cabecera: solo UUID; cualquier otro valor se rechaza y devuelve false sin
+ * tocar el storage. Devuelve true si quedó escrito. Cambiar el id cambia la
+ * identidad de la caja: una pantalla ya abierta con el id anterior deja de
+ * oírla hasta que relea la clave (useDisplayReceiver la sondea cada 1 s).
+ * La caja de ESTA ventana lee la clave al abrir el transporte (al entrar en
+ * /app/pos); una caja ya arrancada en OTRA ventana sigue con el id viejo
+ * hasta recargar (la tarjeta lo avisa; F2 no añade sincronía).
+ */
+export function setLocalTerminalId(id: string, storage: TerminalIdStorage | null = defaultStorage()): boolean {
+  if (!isTerminalId(id) || !storage) return false;
+  try {
+    storage.setItem(TERMINAL_ID_STORAGE_KEY, id);
+    return true;
+  } catch {
+    return false; // cuota llena o storage de solo lectura
+  }
+}
+
 /** Lee el id sin crearlo. Útil para la pantalla, que solo debe reflejar una caja ya identificada. */
 export function readLocalTerminalId(storage: TerminalIdStorage | null = defaultStorage()): string | null {
   if (!storage) return null;

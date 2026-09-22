@@ -21,6 +21,18 @@ export interface AssignmentParams {
   opportunityId?: string;
   strategy: AssignmentStrategy;
   teamId?: string;
+  /**
+   * Datos de la oportunidad cuando AÚN no existe (alta de lead, F1): la
+   * estrategia `territory` los usa en vez de leer `opportunities`.
+   */
+  opportunityData?: OpportunityFacts;
+}
+
+/** Campos de `opportunities` que evalúan los criterios de territorio. */
+export interface OpportunityFacts {
+  amount?: number | null;
+  currency?: string | null;
+  deal_type?: string | null;
 }
 
 export interface AssignmentResult {
@@ -76,7 +88,26 @@ async function getActiveTeamMembers(
     return [];
   }
 
-  return (data || []) as { user_id: string; sales_role_id: string | null; created_at: string }[];
+  const members = (data || []) as { user_id: string; sales_role_id: string | null; created_at: string }[];
+  if (members.length === 0) return members;
+
+  // Tenencia (tester F1, 2026-09-21): `sales_team_members.user_id` referencia
+  // `profiles`, no `organization_members`, y la RLS `stm_insert` solo mira
+  // `organization_id`. Una fila con un usuario ajeno a la organización no
+  // recibe leads: el camino explícito ya lo rechaza con 400, este no puede
+  // «corregirlo» en silencio.
+  const { data: pertenencia, error: errorPertenencia } = await supabase
+    .from('organization_members')
+    .select('user_id')
+    .eq('organization_id', orgId)
+    .eq('is_active', true) // un miembro desactivado de la organización no recibe leads
+    .in('user_id', members.map((m) => m.user_id));
+  if (errorPertenencia) {
+    console.warn('assignmentService.getActiveTeamMembers - pertenencia:', errorPertenencia.message);
+    return [];
+  }
+  const propios = new Set(((pertenencia || []) as { user_id: string }[]).map((m) => m.user_id));
+  return members.filter((m) => propios.has(m.user_id));
 }
 
 /**
@@ -185,7 +216,8 @@ async function assignTerritory(
   customerId: string,
   opportunityId: string | undefined,
   members: { user_id: string }[],
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  opportunityFacts?: OpportunityFacts
 ): Promise<AssignmentResult> {
   // 1. Cargar territories activas de la org
   const { data: territories, error } = await supabase
@@ -211,7 +243,7 @@ async function assignTerritory(
     throw new AssignmentError(`Customer no encontrado: ${customerId}`);
   }
 
-  const opportunityData = await loadOpportunityData(orgId, opportunityId, supabase);
+  const opportunityData = opportunityFacts ?? (await loadOpportunityData(orgId, opportunityId, supabase));
 
   // 3. Evaluar cada territorio y quedarse con el de mayor fit_score que matchee
   let bestTerritory: { id: string; name: string; assigned_user_id?: string; fitScore: number } | null = null;
@@ -329,7 +361,7 @@ export async function assignLead(
   params: AssignmentParams,
   supabase: SupabaseClient
 ): Promise<AssignmentResult> {
-  const { organizationId, customerId, opportunityId, strategy, teamId } = params;
+  const { organizationId, customerId, opportunityId, strategy, teamId, opportunityData } = params;
 
   // ── Validar teamId para estrategias que lo requieren ──
   if (!teamId && strategy !== 'load_balance') {
@@ -379,7 +411,8 @@ export async function assignLead(
         customerId,
         opportunityId,
         members,
-        supabase
+        supabase,
+        opportunityData
       );
       break;
 

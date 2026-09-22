@@ -84,8 +84,8 @@ describe('F1 — registro de herramientas', () => {
 describe('F1 — filtrado por usuario (§9.2)', () => {
   beforeEach(() => resetRegistry());
 
-  it('una organización en `off` no recibe ninguna herramienta', () => {
-    expect(resolveTools(caps({ level: 'off' }))).toEqual([]);
+  it('en off solo puede leer sus adjuntos, nunca operar ni consultar el ERP', () => {
+    expect(resolveTools(caps({ level: 'off' })).map((tool) => tool.name)).toEqual(['leer_documento']);
   });
 
   it('en `read` solo se ofrecen las de consulta', () => {
@@ -154,7 +154,9 @@ describe('F1 — traducción al formato del proveedor', () => {
 
   it('los select con opciones fijas se declaran como enum', () => {
     const tool = toolFromAction(ACTION_CATALOG.create_customer);
-    expect(tool.parameters.properties.doc_type.enum).toEqual(['CC', 'NIT', 'CE', 'PASSPORT']);
+    // Los mismos códigos del formulario de clientes (`country_identification_types`).
+    expect(tool.parameters.properties.doc_type.enum).toEqual(['cc', 'nit', 'ce', 'ti', 'passport', 'die', 'rut', 'other']);
+    expect(tool.parameters.properties.customer_type.enum).toEqual(['person', 'company']);
   });
 
   it('los select dinámicos NO declaran enum (se resuelven contra la BD)', () => {

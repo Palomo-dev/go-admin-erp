@@ -48,6 +48,12 @@ export interface QrPaymentDialogProps {
   expiresAt?: string;
   /** Callback cuando se confirma el pago. */
   onPaid?: () => void;
+  /**
+   * Control adicional bajo el QR mientras se espera el pago (p. ej. el
+   * interruptor «Mostrar en pantalla del cliente» del POS). Opcional: sin él
+   * el dialog es idéntico al de siempre.
+   */
+  extraControl?: React.ReactNode;
 }
 
 // ------------------------------------------------------------
@@ -93,6 +99,7 @@ export function QrPaymentDialog({
   providerLabel,
   expiresAt,
   onPaid,
+  extraControl,
 }: QrPaymentDialogProps) {
   // Estado de pago reportado por el poller (string del backend)
   const [status, setStatus] = useState<QrPaymentStatus>('pending');
@@ -273,6 +280,7 @@ export function QrPaymentDialog({
                   <span>Expira en {formatCountdown(remaining)}</span>
                 </div>
               )}
+              {extraControl}
             </>
           )}
         </div>

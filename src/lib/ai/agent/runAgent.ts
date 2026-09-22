@@ -22,12 +22,14 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { chargeAiCredits } from '@/lib/services/crm/aiCostService';
+import { getServiceClient } from '@/lib/supabase/server-service';
 import { getTool, resolveTools } from './toolRegistry';
 import { openModelStream, type AdapterMessage } from './openaiAdapter';
 import { actionFieldsFor } from './catalogTools';
 import type { ActionFieldDef } from '@/lib/ai/assistant/actionCatalog';
 import { resolveModel, type OrgModelSettings } from './modelRouter';
 import type { ToolContext, ToolDefinition, ToolPreview } from './types';
+import { QUESTION_TOOL, preguntaComoTexto, type PreguntaArgs } from './tools/pregunta';
 
 /** Eventos que el bucle emite hacia el transporte (SSE hoy, WebSocket en F5). */
 export type AgentEvent =
@@ -43,6 +45,13 @@ export type AgentEvent =
       /** Campos editables de la tarjeta; vacío si la herramienta no es de catálogo. */
       fields: ActionFieldDef[];
       expiresAt: string;
+    }
+  /** Pregunta con opciones (estilo A/B/C/Otro). Pausa el turno como una acción. */
+  | {
+      type: 'question';
+      question: string;
+      options: Array<{ key: string; label: string; value?: string }>;
+      allowOther: boolean;
     }
   | { type: 'usage'; model: string; promptTokens: number; completionTokens: number; credits: number }
   | { type: 'error'; message: string; code?: string }
@@ -92,6 +101,9 @@ function stepLabel(toolName: string): string {
     crear_orden_compra: 'Preparando la orden de compra…',
     crear_traslado: 'Preparando el traslado…',
     cargar_productos_masivo: 'Leyendo el listado y comparándolo con tu catálogo…',
+    registrar_factura_compra: 'Preparando la factura de compra…',
+    registrar_factura_venta: 'Preparando la factura de venta…',
+    buscar_clientes: 'Buscando clientes…',
     estado_configuracion: 'Revisando tu configuración…',
     listar_modulos_activos: 'Consultando tus módulos…',
     explicar_configuracion: 'Revisando la configuración…',
@@ -125,6 +137,7 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentOutput> {
   // El modelo que responde puede no ser el configurado: si falla al abrir el
   // stream, el adaptador cae al de emergencia. Se reporta el que respondio.
   let answeringModel = resolved.model;
+  let pendingActionId: string | null = null;
   const toolCalls: Array<{ name: string; ok: boolean }> = [];
 
   for (let iteration = 0; iteration < maxIterations; iteration++) {
@@ -213,6 +226,17 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentOutput> {
         continue;
       }
 
+      // ── Pregunta con opciones: no se ejecuta nada, se PAUSA el turno ────
+      // La respuesta del usuario llega como su siguiente mensaje. La pregunta
+      // queda en el historial como texto para que el modelo la recuerde.
+      if (call.name === QUESTION_TOOL) {
+        const q = parsed as PreguntaArgs;
+        await emit({ type: 'question', question: q.question, options: q.options, allowOther: q.allowOther });
+        finalContent = [content, preguntaComoTexto(q)].filter(Boolean).join('\n\n');
+        paused = QUESTION_TOOL;
+        break;
+      }
+
       await emit({ type: 'tool_start', name: call.name, label: stepLabel(call.name) });
 
       // ── Riesgo bajo: se ejecuta y el resultado vuelve al modelo ──────────
@@ -231,7 +255,9 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentOutput> {
       // ── Riesgo medio/alto: se propone y se PAUSA ────────────────────────
       const preview = await tool.preview(ctx, parsed);
 
-      const { data: row, error } = await ctx.supabase
+      // Solo el almacén de propuestas usa credenciales de servidor. Todas las
+      // herramientas de negocio conservan ctx.supabase (sesión + RLS).
+      const { data: row, error } = await getServiceClient()
         .from('ai_agent_actions')
         .insert({
           organization_id: ctx.organizationId,
@@ -279,14 +305,9 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentOutput> {
     }
 
     if (paused) {
-      return {
-        content: finalContent,
-        model: answeringModel,
-        promptTokens,
-        completionTokens,
-        pendingActionId: paused,
-        toolCalls,
-      };
+      // Una pregunta pausa el turno pero no deja acción pendiente en la base.
+      pendingActionId = paused === QUESTION_TOOL ? null : paused;
+      break;
     }
   }
 
@@ -328,7 +349,7 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentOutput> {
     model: answeringModel,
     promptTokens,
     completionTokens,
-    pendingActionId: null,
+    pendingActionId,
     toolCalls,
   };
 }

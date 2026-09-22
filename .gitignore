@@ -60,3 +60,11 @@ tsc_*.txt
 # Documentos de auditoría con datos de clientes (repo público)
 # Se entregan al contador por canal privado, no viven en el repo
 docs/auditoria-finanzas/
+
+# Salidas locales de agentes/diseño (no versionar)
+output/
+"Claude outputs"/
+Claude outputs/
+electron/release-brand*/
+.next-*/
+tsconfig.*.tmp.json

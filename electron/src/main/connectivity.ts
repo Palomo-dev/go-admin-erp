@@ -1,5 +1,6 @@
 import { app, net } from 'electron';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './constants';
+import { WEB_APP_URL } from './constants';
+import { getPublicEnv } from './publicEnv';
 import { broadcast } from './broadcast';
 import { appendLog } from './crashReporter';
 
@@ -29,7 +30,15 @@ const FAILURES_TO_GO_OFFLINE = 2;
 function getHealthcheckUrl(): string {
   const override = process.env.GOADMIN_HEALTHCHECK_URL;
   if (!app.isPackaged && override) return override;
-  return `${SUPABASE_URL}/rest/v1/`;
+  const { supabaseUrl } = getPublicEnv();
+  // Sin URL de Supabase (instalación sin resources/web/.env) se sondea la web
+  // pública: lo que importa es saber si hay ruta a internet.
+  return supabaseUrl ? `${supabaseUrl}/rest/v1/` : `${WEB_APP_URL}/`;
+}
+
+function getHealthcheckHeaders(): Record<string, string> {
+  const { supabaseAnonKey } = getPublicEnv();
+  return supabaseAnonKey ? { apikey: supabaseAnonKey } : {};
 }
 
 let online = true;
@@ -58,7 +67,7 @@ async function probe(): Promise<boolean> {
   try {
     const res = await net.fetch(getHealthcheckUrl(), {
       method: 'HEAD',
-      headers: { apikey: SUPABASE_ANON_KEY },
+      headers: getHealthcheckHeaders(),
       signal: controller.signal,
       cache: 'no-store',
     });

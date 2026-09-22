@@ -3,7 +3,7 @@ const config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
-  testMatch: ['**/__tests__/**/*.test.ts'],
+  testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
   // Fijar TZ=UTC por defecto (igual que Vercel producción).
   // Para validar con America/Bogota usar: npm run test:tz-bogota
   setupFiles: ['<rootDir>/jest.setup.tz.ts'],

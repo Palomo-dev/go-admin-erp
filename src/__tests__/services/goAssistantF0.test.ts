@@ -89,14 +89,13 @@ describe('GO Assistant F0 — guarda de acciones', () => {
     expect(decision.reason).toBe('module_inactive');
   });
 
-  it('si no se pudieron resolver los módulos, no se bloquea por ello', () => {
-    // "no sé" no puede significar "no": bloquear con la lista vacía dejaría
-    // mudo al asistente ante un fallo transitorio de consulta.
+  it('sin módulos activos no ofrece operaciones de inventario (fail-closed)', () => {
+    // El texto sigue disponible; sin módulos no se habilitan escrituras.
     const decision = evaluateAction(
       caps({ isAdmin: true, activeModules: new Set<string>() }),
       'create_product'
     );
-    expect(decision.allowed).toBe(true);
+    expect(decision.allowed).toBe(false);
   });
 
   it('`enabled_tools` recorta el catálogo aunque el nivel y el permiso alcancen', () => {

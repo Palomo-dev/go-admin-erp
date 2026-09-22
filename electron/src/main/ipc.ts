@@ -8,6 +8,8 @@ import { getUpdateState, checkForUpdates, installUpdate } from './updater';
 import { readLog, clearLog } from './crashReporter';
 import { isOnline, checkNow } from './connectivity';
 import { reloadApp } from './windows/mainWindow';
+import { openPrintPreview } from './printPreview';
+import { getThemeColors, setThemePreference } from './theme';
 
 export function registerIpcHandlers(): void {
   // ── Agente ──
@@ -113,6 +115,12 @@ export function registerIpcHandlers(): void {
     }
   });
 
+  // Ventana de impresión creada por el main (sandboxed, sin preload) con el
+  // HTML que manda la web; alternativa a window.open('') (ver printPreview.ts).
+  ipcMain.handle('printing:open-preview', (e, html: unknown, opts?: unknown) =>
+    openPrintPreview(e.sender, html, opts),
+  );
+
   ipcMain.handle('printing:open-cash-drawer', async (_e, printerName?: string) => {
     try {
       const response = await fetch(`http://127.0.0.1:${DISCOVERY_PORT}/open-cash-drawer`, {
@@ -145,6 +153,12 @@ export function registerIpcHandlers(): void {
     reloadApp();
     return true;
   });
+
+  // ── Tema (la web manda su claro/oscuro; ver theme.ts) ──
+  // El valor se valida en setThemePreference: cualquier cosa que no sea
+  // light | dark | system se rechaza y el renderer recibe el error.
+  ipcMain.handle('theme:get', () => getThemeColors());
+  ipcMain.handle('theme:set', (_e, theme: unknown) => setThemePreference(theme));
 
   // ── Logs del crash reporter ──
   ipcMain.handle('logs:read', () => readLog());

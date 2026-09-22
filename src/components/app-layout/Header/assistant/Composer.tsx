@@ -29,13 +29,10 @@ import { Send, Loader2, Paperclip, Mic, Square, X, FileText, ImageIcon } from 'l
 import { Button } from '@/components/ui/button';
 import { cn } from '@/utils/Utils';
 
-export interface ComposerAttachment {
-  id: string;
-  file: File;
-  previewUrl?: string;
-}
+export type ComposerAttachment = import('@/lib/ai/assistant/attachments').AssistantAttachment;
 
 interface ComposerProps {
+  focusRequest?: number;
   value: string;
   onChange(value: string): void;
   onSubmit(): void;
@@ -67,6 +64,7 @@ export default function Composer({
   onRemoveAttachment,
   attachmentsEnabled,
   disabled = false,
+  focusRequest = 0,
 }: ComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -78,6 +76,10 @@ export default function Composer({
   const [isMobile, setIsMobile] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  useEffect(() => {
+    if (focusRequest > 0) textareaRef.current?.focus();
+  }, [focusRequest]);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1023px)');
@@ -110,7 +112,7 @@ export default function Composer({
     // Shift de forma fiable y enviar sin querer es peor que un salto de más.
     if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
       e.preventDefault();
-      if (value.trim() && !isLoading) onSubmit();
+      if ((value.trim() || attachments.length) && !isLoading && !disabled) onSubmit();
     }
   };
 

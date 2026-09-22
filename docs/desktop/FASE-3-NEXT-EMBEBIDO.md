@@ -55,8 +55,9 @@ Origen: `docs/ROADMAP-DESKTOP.md` §Fase 3 y
   pruebas: iniciar sesión con red, visitar los tres módulos, desconectar el WiFi y repetir.
 - Login con Google desde el desktop (§3): añadir `http://localhost:47800/auth/callback` a las
   redirecciones permitidas de Supabase Auth.
-- Unificar las claves de Supabase hardcodeadas en `electron/src/main/constants.ts` con
-  `resources/web/.env` (auditoría §4.5).
+- ~~Unificar las claves de Supabase hardcodeadas en `electron/src/main/constants.ts` con
+  `resources/web/.env` (auditoría §4.5).~~ Hecho el 2026-09-21: `publicEnv.ts` lee
+  `resources/web/.env` (ver `docs/desktop/HARDENING-2026-09-21.md`).
 
 ### Cómo se construyó el paquete de esta sesión (y por qué desde una instantánea)
 
@@ -307,8 +308,10 @@ allow-list por prefijo `NEXT_PUBLIC_` al leer el `.env` por si alguien lo
 editara en una instalación. `build-web.js` además borra cualquier `.env*` que
 Next hubiera copiado al standalone.
 
-Las claves de Supabase también existen hardcodeadas en
-`electron/src/main/constants.ts` (auditoría §4.5, pendiente de unificar).
+Desde el 2026-09-21 el proceso main lee de este mismo `.env` la URL y la anon
+key de Supabase (agente de impresión, health-check) y el DSN de Sentry:
+`electron/src/main/publicEnv.ts`. Ya no hay claves cableadas en
+`constants.ts` (auditoría §4.5, cerrado; ver `HARDENING-2026-09-21.md`).
 
 ## 5. Cómo construir y cómo verificar offline
 

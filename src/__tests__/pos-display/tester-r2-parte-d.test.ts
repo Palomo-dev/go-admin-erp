@@ -165,6 +165,10 @@ afterEach(() => {
 // openDisplay · gesto del usuario y concurrencia
 // ---------------------------------------------------------------------------
 
+// Fase 2 (F2-A): `pos_customer_display` es el esquema completo de settings.ts
+// (propina, calificación, reposo, idioma, táctil) y lo que se lee o se escribe
+// lleva siempre todos los campos con sus valores por defecto. Estas pruebas
+// son del interruptor maestro, así que comparan con objectContaining.
 describe('openCustomerDisplay · gesto del usuario (anti-bloqueo de emergentes)', () => {
   it('sin puente nativo, window.open corre en el tramo síncrono: antes de que el llamador llegue a await', () => {
     const win = fakeOpener(fakeHandle());
@@ -276,14 +280,14 @@ describe('ConfiguracionService · filas con settings no-objeto', () => {
   ])('settings = %s: la carga devuelve apagado y raw {}', async (_label, settings) => {
     db.row = { settings };
     const { settings: parsed, raw } = await ConfiguracionService.getCustomerDisplayConfig();
-    expect(parsed).toEqual({ enabled: false });
+    expect(parsed).toEqual(expect.objectContaining({ enabled: false }));
     expect(raw).toEqual({});
   });
 
   it('settings = array: el guardado no esparce índices ni claves raras en el upsert', async () => {
     db.row = { settings: ['a', 'b'] };
     await ConfiguracionService.saveCustomerDisplayConfig({ enabled: true });
-    expect(db.upserts[0].payload.settings).toEqual({ enabled: true });
+    expect(db.upserts[0].payload.settings).toEqual(expect.objectContaining({ enabled: true }));
   });
 
   it('config con enabled: undefined (Partial): se ignora la clave y se conserva el true de la fila', async () => {
@@ -292,8 +296,8 @@ describe('ConfiguracionService · filas con settings no-objeto', () => {
     // Ningún llamador de la Fase 0 pasa undefined (la tarjeta pasa siempre
     // booleano), pero la Fase 2 amplía el Partial y el merge debe filtrarlo.
     const payload = db.upserts[0].payload.settings as Record<string, unknown>;
-    expect(payload).toEqual({ enabled: true, tips: { enabled: true } });
-    expect(saved).toEqual({ enabled: true });
+    expect(payload).toEqual(expect.objectContaining({ enabled: true, tips: expect.objectContaining({ enabled: true }) }));
+    expect(saved).toEqual(expect.objectContaining({ enabled: true }));
   });
 });
 
@@ -508,12 +512,15 @@ describe('estático · indicador y tarjeta', () => {
 
   it('el indicador espera (await) a open/close, que ahora son asíncronas', () => {
     expect(indicator).toMatch(/await openCustomerDisplay\(\)/);
-    expect(indicator).toMatch(/await closeCustomerDisplay\(\)/);
+    // Ronda 3 de Electron: close recibe `bridgeWindowOpen` del hook de la ventana del escritorio.
+    expect(indicator).toMatch(/await closeCustomerDisplay\(\{ bridgeWindowOpen: windowStatus\?\.open \}\)/);
     expect(card).toMatch(/await openCustomerDisplay\(\)/);
   });
 
-  it('«Cerrar» se deshabilita solo cuando no hay presencia, ni ventana propia, ni puente que SEPA cerrar (mismo criterio que closeCustomerDisplay)', () => {
-    expect(indicator).toMatch(/!connected\s*&&\s*!hasOwnWindow\s*&&\s*!canCloseViaNativeBridge\(\)/);
+  it('«Cerrar» se deshabilita solo cuando no hay presencia, ni ventana propia, ni puente que SEPA cerrar con ventana abierta (F1 r2: resolveNothingToClose)', () => {
+    // F1 ronda 2: el criterio vive en resolveNothingToClose (desktopDisplay.ts) y añade `status().open`
+    // del puente; el indicador le pasa canCloseViaNativeBridge() (mismo criterio que closeCustomerDisplay).
+    expect(indicator).toMatch(/nothingToClose = resolveNothingToClose\(\{[\s\S]*?bridgeCanClose: canCloseViaNativeBridge\(\),[\s\S]*?windowOpen: windowStatus\?\.open,[\s\S]*?\}\)/);
     expect(indicator).not.toMatch(/resolveNativePosDisplayApi/);
     expect(indicator).toMatch(/disabled=\{nothingToClose\}/);
   });
@@ -528,8 +535,11 @@ describe('estático · indicador y tarjeta', () => {
   });
 
   it('la tarjeta revierte el interruptor si el guardado falla y lo deshabilita mientras guarda', () => {
-    expect(card).toMatch(/setSettings\(previous\)/);
-    expect(card).toMatch(/disabled=\{saving\}/);
+    // F2-A ronda 2: se revierte SOLO `enabled` sobre el estado actual (no un closure viejo), para no
+    // pisar en la UI una presentación que «Guardar ajustes» haya guardado entretanto.
+    expect(card).toMatch(/setSettings\(\(prev\) => \(\{ \.\.\.prev, enabled: !value \}\)\)/);
+    // F1 ronda 4 (D2): también deshabilitado mientras el valor leído no sea fiable (loadFailed).
+    expect(card).toMatch(/disabled=\{saving \|\| loadFailed\}/);
   });
 
   it('la tarjeta aplica la caché que fijó el servicio (applyPosDisplaySettings) y NO relee la BD tras guardar', () => {

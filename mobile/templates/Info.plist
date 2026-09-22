@@ -57,18 +57,32 @@
     <key>NSBluetoothPeripheralUsageDescription</key>
     <string>GoAdmin usa Bluetooth para imprimir tickets de venta.</string>
 
+    <!-- Micrófono (F5/F15): llamadas del CRM, clonado de voz y notas de voz.
+         Sin esta clave la app CRASHEA al primer getUserMedia del WebView.
+         WKWebView (iOS >= 14.3) traduce getUserMedia a este permiso: no hace
+         falta plugin. El prompt del sistema aparece una sola vez. -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>GoAdmin usa el micrófono para las llamadas del CRM, grabar tu voz y notas de voz.</string>
+
     <!-- NFC: check-in de gimnasio y marcación de asistencia -->
     <key>NFCReaderUsageDescription</key>
     <string>GoAdmin usa NFC para check-in de gimnasio y marcación de asistencia.</string>
 
     <!-- ========================================================
-         BACKGROUND MODES — Push notifications
-         remote-notification permite recibir push en background
-         y procesar silent pushes vía FCM/APNs.
+         BACKGROUND MODES
+         - remote-notification: recibir push en background y procesar
+           silent pushes vía FCM/APNs.
+         - audio (F5/F15-B): una llamada WebRTC EN CURSO en el WKWebView
+           sigue sonando al bloquear la pantalla o cambiar de app. Sin
+           esta clave iOS suspende el audio en segundos. NO reemplaza a
+           CallKit: iOS puede suspender el WebView igualmente (memoria,
+           tiempo), por eso en móvil el modo por defecto es el bridge
+           «Llamar desde mi celular» (F5). Ver mobile/README.md.
          ======================================================== -->
     <key>UIBackgroundModes</key>
     <array>
         <string>remote-notification</string>
+        <string>audio</string>
     </array>
 
     <!-- ========================================================

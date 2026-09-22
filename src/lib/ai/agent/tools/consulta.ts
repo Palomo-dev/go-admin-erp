@@ -339,4 +339,85 @@ export const listarSucursales: ToolDefinition<Record<string, never>> = {
   },
 };
 
-export const CONSULTA_TOOLS = [buscarProductos, consultarStock, buscarProveedores, listarSucursales];
+interface BuscarClientesArgs {
+  consulta: string;
+}
+
+/**
+ * Para facturar o vender a un cliente registrado hace falta su id. Búsqueda
+ * por nombre, documento, teléfono o correo; devuelve también si es persona
+ * o empresa para que el modelo no se confunda.
+ */
+export const buscarClientes: ToolDefinition<BuscarClientesArgs> = {
+  name: 'buscar_clientes',
+  description:
+    'Busca clientes de la organización por nombre, documento, teléfono o correo. Úsala antes de registrar una venta o una factura a un cliente: nunca inventes un customer_id. Si hay varios parecidos, pregunta cuál con preguntar_opciones.',
+  parameters: {
+    type: 'object',
+    properties: {
+      consulta: { type: 'string', description: 'Nombre (o parte), documento, teléfono o correo del cliente.' },
+    },
+    required: ['consulta'],
+    additionalProperties: false,
+  },
+  risk: 'low',
+  permissions: ['crm.customers.view', 'crm.contacts.view', 'customer_management', 'pos.view'],
+  minLevel: 'read',
+  requiredModule: null,
+  availableInVoice: true,
+
+  parseArgs(raw: unknown): BuscarClientesArgs | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const q = (raw as Record<string, unknown>).consulta;
+    const consulta = typeof q === 'string' ? q.trim().slice(0, 80) : '';
+    return consulta ? { consulta } : null;
+  },
+
+  async preview(): Promise<ToolPreview> {
+    return READ_PREVIEW;
+  },
+
+  async execute(ctx: ToolContext, args: BuscarClientesArgs): Promise<ToolResult> {
+    const safe = args.consulta.replace(/[%_\\]/g, (c) => `\\${c}`);
+    const { data, error } = await ctx.supabase
+      .from('customers')
+      .select('id, full_name, company_name, customer_type, doc_type, doc_number, phone, email')
+      .eq('organization_id', ctx.organizationId)
+      .or(`full_name.ilike.%${safe}%,company_name.ilike.%${safe}%,doc_number.ilike.%${safe}%,phone.ilike.%${safe}%,email.ilike.%${safe}%`)
+      .order('full_name', { ascending: true })
+      .limit(8);
+    if (error) {
+      return { ok: false, errorCode: 'query_error', message: `No pude buscar clientes: ${error.message}` };
+    }
+    const rows = (data ?? []) as Array<{
+      id: string;
+      full_name: string | null;
+      company_name: string | null;
+      customer_type: string | null;
+      doc_type: string | null;
+      doc_number: string | null;
+      phone: string | null;
+      email: string | null;
+    }>;
+    return {
+      ok: true,
+      message:
+        rows.length === 0
+          ? `No encontré clientes que coincidan con "${args.consulta}".`
+          : `${rows.length} cliente${rows.length === 1 ? '' : 's'} encontrado${rows.length === 1 ? '' : 's'}.`,
+      data: {
+        clientes: rows.map((r) => ({
+          id: r.id,
+          nombre: r.full_name,
+          empresa: r.company_name,
+          tipo: r.customer_type === 'company' ? 'empresa' : 'persona',
+          documento: r.doc_number ? `${r.doc_type ?? ''} ${r.doc_number}`.trim() : null,
+          telefono: r.phone,
+          email: r.email,
+        })),
+      },
+    };
+  },
+};
+
+export const CONSULTA_TOOLS = [buscarProductos, consultarStock, buscarProveedores, listarSucursales, buscarClientes];

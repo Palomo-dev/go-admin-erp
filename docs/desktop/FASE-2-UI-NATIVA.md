@@ -24,7 +24,7 @@ Objetivo: que la app deje de parecer un navegador sin barra. Todo lo de esta fas
 ```
 BrowserWindow (titleBarStyle: 'hidden' + titleBarOverlay {color, symbolColor, height: 40})
 ├─ webContents propio  → dist/renderer/toolbar/index.html   (la BARRA, preload/toolbar.js, sandbox: true)
-└─ WebContentsView     → https://app.goadmin.io             (la WEB,   preload/index.js, bounds y=40)
+└─ WebContentsView     → https://app.goadmin.io             (la WEB,   preload/index.js, bounds y=40, sandbox: true desde 2026-09-21)
 ```
 
 - Los botones minimizar/maximizar/cerrar los dibuja Windows (Window Controls Overlay). La barra
@@ -67,6 +67,57 @@ aceleradores, y el botón «⋯» de la barra lo abre como popup (`toolbar:menu`
 `win.setBackgroundColor`, `win.setTitleBarOverlay` y difunde `theme:state`; `watchTheme()` se
 suscribe una vez a `nativeTheme.on('updated')`. El splash y la pantalla offline usan los mismos
 colores (`prefers-color-scheme` deriva de `nativeTheme`). El `#1e3a8a` desapareció.
+
+Desde 2026-09-21 la fuente ya no es solo el sistema: la web manda su preferencia y el Desktop la
+sigue. Ver «1.6 Tema sigue al header».
+
+### 1.6 Tema sigue al header (2026-09-21)
+
+**Problema reportado por el dueño.** En Go Admin Desktop, al cambiar claro/oscuro con el
+interruptor del header de la web, la barra propia, el fondo de la ventana, el splash y la pantalla
+sin conexión no cambiaban: `nativeTheme.themeSource` se quedaba en `system`, así que todo lo que
+pinta el proceso principal seguía al tema del sistema operativo y no al de la web.
+
+**Solución.** El tema del Desktop sigue al de la web, en ambos sentidos del arranque:
+
+| Pieza | Archivo | Qué hace |
+|---|---|---|
+| Web | `src/components/app-layout/DesktopThemeSync.tsx` (montado en `src/app/layout.tsx` dentro del `ThemeProvider` de `next-themes`) | Solo en Desktop. Lee `useTheme().theme` y al montar y en cada cambio llama `window.goAdminDesktop.setTheme('light' \| 'dark' \| 'system')`. Escucha además `storage` de la clave `theme` (cambio hecho en otra ventana del mismo origen, p. ej. la pantalla del cliente). No repite el mismo valor. Fuera del Desktop, o con un Desktop antiguo sin `setTheme`, no hace nada. |
+| Tipos del bridge | `src/lib/utils/desktop.ts` | `setTheme?`, `getTheme?`, `onTheme?` (opcionales: un .exe anterior no los tiene) y `DesktopThemeState { dark, source, background, bar, symbol }`. |
+| Preload | `electron/src/preload/index.ts` | `setTheme(v)` → `theme:set`; `getTheme()` → `theme:get`; `onTheme(handler)` → suscripción a `theme:state` que devuelve la baja. |
+| IPC | `electron/src/main/ipc.ts` | `theme:get` devuelve `getThemeColors()`; `theme:set` llama `setThemePreference(v)`, que valida (`light` \| `dark` \| `system`, cualquier otra cosa rechaza la promesa) y fija `nativeTheme.themeSource`. |
+| Main | `electron/src/main/theme.ts` | `initTheme()` aplica la preferencia guardada al arrancar, **antes** del splash y de la ventana (`index.ts`), para que ya nazcan del color correcto. `setThemePreference()` persiste en `config.json` (`store.ts`, campo `theme`) y difunde `theme:state`; el cambio de color efectivo dispara `nativeTheme 'updated'` y `watchTheme` recolorea `backgroundColor`, `titleBarOverlay` y la barra. `ThemeColors` lleva ahora `source`. |
+
+La barra (`renderer/toolbar`) no se tocó: ya escuchaba `theme:state` por su preload. La pantalla
+del cliente (ventana hija) hereda el mismo `nativeTheme` del proceso, así que cambia también. Fuera
+del Desktop nada cambia. Con `system` se sigue al sistema como hasta ahora.
+
+**Verificación hecha.**
+
+- Web: `npx jest src/components/app-layout/__tests__/DesktopThemeSync.test.tsx` (9 tests: llama
+  al bridge al montar y en cada cambio, no repite valores, sigue `storage`, se da de baja, ignora
+  valores inválidos, no hace nada sin bridge o con un Desktop sin `setTheme`). `jest.config.js`
+  admite ahora `*.test.tsx` en `testMatch`. `tsc` acotado a los archivos tocados: 0 errores;
+  `eslint` limpio.
+- Electron: `npx tsc -p . --noEmit` y `npm run build` en `electron/` limpios. Prueba de humo en
+  Electron real (script temporal con `--user-data-dir` aparte, sin la web): con `theme: 'dark'`
+  guardado, `initTheme()` deja `themeSource = 'dark'` y la ventana nace con fondo `#0F172A`; desde
+  un renderer con el preload real, `setTheme('light')` dispara `nativeTheme 'updated'`, devuelve
+  `{ dark: false, source: 'light', … }`, `onTheme` recibe `theme:state`, `getTheme()` coincide, la
+  ventana pasa a `#F8FAFC`, `config.json` queda con `"theme": "light"` y `setTheme('sepia')` se
+  rechaza.
+
+**Prueba manual en la app (pendiente de hacer con la web desplegada).**
+
+1. Abrir Go Admin Desktop con el sistema en modo claro y la web en oscuro (interruptor del header).
+   Esperado: barra, overlay de controles nativos y fondo de la ventana en oscuro nada más cargar.
+2. Cambiar el interruptor a claro. Esperado: la barra y el fondo cambian al instante; sin recargar.
+3. Cerrar y volver a abrir la app. Esperado: el splash sale ya del color elegido (no del sistema).
+4. Cortar la red y recargar (`F5`). Esperado: la pantalla «Sin conexión» sale del color elegido.
+5. Con la pantalla del cliente abierta (`Ctrl+Shift+D`), cambiar el tema en la caja. Esperado: la
+   pantalla del cliente cambia también (mismo `nativeTheme`, misma clave `theme` en `localStorage`).
+6. Desde DevTools de la web: `await window.goAdminDesktop.setTheme('system')` vuelve a seguir al
+   sistema; `await window.goAdminDesktop.getTheme()` devuelve `{ dark, source, background, bar, symbol }`.
 
 ### 1.5 Lado web (punto 5)
 

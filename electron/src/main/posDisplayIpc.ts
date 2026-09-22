@@ -8,6 +8,7 @@ import {
   openPosDisplay,
   setPosDisplayEnabled,
 } from './windows/posDisplayWindow';
+import { loadConfig } from './store';
 
 /**
  * IPC de la pantalla del cliente del POS (`window.goAdminDesktop.posDisplay`).
@@ -137,8 +138,15 @@ export function registerPosDisplayIpc(): void {
       );
       return { ok: false, reason: 'origen no permitido' };
     }
-    return openPosDisplay({ origin, displayId: opts.displayId ?? null, session: event.sender.session });
+    // Sin displayId explícito se usa el guardado por setEnabled (config.json):
+    // así «Abrir ahora» respeta el monitor elegido sin que la web tenga que
+    // copiarlo a localStorage (petición de la sesión del POS, F1).
+    const savedDisplayId = loadConfig().posDisplay?.displayId ?? null;
+    return openPosDisplay({ origin, displayId: opts.displayId ?? savedDisplayId, session: event.sender.session });
   });
+
+  /** Preferencia persistida `{ enabled, displayId }` (o null si nunca se configuró). */
+  ipcMain.handle('pos-display:get-config', () => loadConfig().posDisplay ?? null);
 
   ipcMain.handle('pos-display:close', () => {
     closePosDisplay();

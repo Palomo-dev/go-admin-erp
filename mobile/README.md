@@ -174,6 +174,38 @@ Los permisos se configuran en:
 - **iOS:** `mobile/ios/App/App/Info.plist` (ver `docs/PLAN_CAPACITOR_MOVIL.md` sección 10)
 - **Android:** `mobile/android/app/src/main/AndroidManifest.xml` (ver plan sección 10)
 
+### Micrófono y llamadas del CRM (F5/F15-B)
+
+Cómo llega el permiso al WebView sin plugin:
+
+- **Android:** `getUserMedia({ audio: true })` dispara `WebChromeClient.onPermissionRequest`.
+  Capacitor lo implementa en `BridgeWebChromeClient`: si la app ya tiene
+  `RECORD_AUDIO` concede la petición; si no, lanza el prompt del sistema y
+  concede al aceptar. Requiere `RECORD_AUDIO` y `MODIFY_AUDIO_SETTINGS` en el
+  manifest (ya están). Si el usuario niega el permiso, la web recibe
+  `NotAllowedError` y ofrece el bridge «Llamar desde mi celular».
+- **iOS (WKWebView ≥ 14.3):** `getUserMedia` se traduce al permiso nativo; hace
+  falta `NSMicrophoneUsageDescription` en `Info.plist` (plantilla en
+  `templates/Info.plist`). Sin la clave la app se cierra en el primer
+  `getUserMedia`. `UIBackgroundModes` lleva `audio` para que una llamada en
+  curso siga sonando al bloquear la pantalla.
+- El softphone abre `wss://voice-js.<edge>.twilio.com`, `https://eventgw.twilio.com`
+  y TURN en `global.turn.twilio.com`. Nada de eso es una navegación, así que
+  `allowNavigation` en `capacitor.config.ts` no necesita esos dominios.
+
+**Límite real (por qué en móvil el modo por defecto es el bridge F5):** sin
+plugin nativo no hay servicio en primer plano (`foregroundServiceType=
+"microphone"`) en Android ni CallKit/PushKit en iOS. El sistema puede matar o
+suspender el WebView en segundo plano (memoria, ahorro de batería, otra
+llamada entrante) y la llamada in-app se corta sin aviso. La app decide el modo
+con `resolveDefaultCallMode` (`src/lib/services/voice/callModePolicy.ts`): en
+Capacitor es SIEMPRE `mobile` (Twilio llama al celular verificado del vendedor
+y luego al cliente; la llamada va por la red celular, no por el WebView).
+`getCapabilities()` deja `webrtc=false` en Capacitor, así que una preferencia
+`browser` guardada en Configuración → Telefonía no se cumple ahí: la app lo
+explica («El softphone in-app no está disponible en la app móvil…») y usa el
+bridge. La preferencia sí manda en web, PWA y Electron.
+
 ## Custom URL Scheme
 
 - Scheme: `goadmin`

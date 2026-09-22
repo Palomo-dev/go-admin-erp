@@ -35,10 +35,10 @@ interface TaskConfig {
  * producción es que `.env` traiga los modelos de 2026 (ver `.env.example`).
  */
 const TASKS: Record<AgentTask, TaskConfig> = {
-  reasoning: { env: 'OPENAI_MODEL', fallback: 'gpt-4o-mini', provider: 'openai' },
-  conversation: { env: 'OPENAI_CONVERSATION_MODEL', fallback: 'gpt-4o-mini', provider: 'openai' },
-  cheap: { env: 'OPENAI_CHEAP_MODEL', fallback: 'gpt-4o-mini', provider: 'openai' },
-  vision: { env: 'GEMINI_ANALYSIS_MODEL', fallback: 'gemini-1.5-flash', provider: 'google' },
+  reasoning: { env: 'OPENAI_MODEL', fallback: 'gpt-5.6-luna', provider: 'openai' },
+  conversation: { env: 'OPENAI_CONVERSATION_MODEL', fallback: 'gpt-5.6-terra', provider: 'openai' },
+  cheap: { env: 'OPENAI_CHEAP_MODEL', fallback: 'gpt-5.6-luna', provider: 'openai' },
+  vision: { env: 'GEMINI_ANALYSIS_MODEL', fallback: 'gemini-3.8-flash', provider: 'google' },
   stt: { env: 'OPENAI_TRANSCRIBE_MODEL', fallback: 'whisper-1', provider: 'openai' },
 };
 
@@ -147,7 +147,7 @@ export function resolveModel(
 
   const fromOverride = settings.overrides[task];
   const fromOrg = task === 'reasoning' || task === 'conversation' ? settings.model : null;
-  const fromEnv = process.env[config.env];
+  const fromEnv = process.env[config.env]?.trim() || (task === 'vision' ? process.env.GEMINI_CHAT_MODEL?.trim() : undefined);
 
   let model: string;
   let source: ResolvedModel['source'];

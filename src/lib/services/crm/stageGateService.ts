@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/utils/orgId';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { DEFAULT_DISCOVERY_FIELDS, type DiscoveryField } from './discoveryTemplateService';
+import { discoveryDataProgress, type DiscoveryDataProgress } from './discoveryProgress';
 
 /**
  * Servicio CRM para evaluar exit_criteria de etapas contra oportunidades.
@@ -427,16 +429,16 @@ class StageGateService {
               : defaultMessage || `Discovery incompleto: faltan ${missingKeys.join(', ')}`,
           };
         }
-        // Fallback: usar completed_sections / total_sections
-        const completed = Number(dd.completed_sections || 0);
-        const total = Number(dd.total_sections || 0);
-        const passed = total > 0 && completed >= total;
-        return {
-          passed,
-          message: passed
-            ? `Discovery completo (${completed}/${total})`
-            : defaultMessage || `Discovery incompleto (${completed}/${total} secciones)`,
-        };
+        // Fallback: progreso real sobre discovery_data (mapa plano por campo
+        // de la plantilla activa, ver discoveryDataProgress en
+        // discoveryProgress.ts). Antes leía completed_sections/total_sections,
+        // claves que discovery_data nunca tuvo (ni en la forma real ni en la
+        // anidada de discoveryService.ts) → siempre «0/0», el criterio nunca
+        // pasaba (F2, PROGRESS.md).
+        const fields = await loadDiscoveryFields(supabase, this.orgId);
+        const progress = discoveryDataProgress(dd, fields);
+        const passed = discoveryPassed(progress);
+        return { passed, message: formatDiscoveryMessage(progress, passed) };
       }
 
       case 'quotation': {
@@ -609,6 +611,60 @@ function evalCustomOperator(
     default:
       return true;
   }
+}
+
+/**
+ * Campos del discovery template activo de la organización, para el criterio
+ * `discovery`/`require_discovery` sin `requiredKeys` (ver `discoveryDataProgress`
+ * en `discoveryProgress.ts`). Misma tabla y forma que usa
+ * `discoveryTemplateService.getDiscoveryTemplateForOrg` (el más reciente
+ * activo; `DEFAULT_DISCOVERY_FIELDS` si la organización no configuró uno o la
+ * consulta falla) — no se reutiliza esa función directamente para no acoplar
+ * el tipo del cliente inyectado (`SupabaseClient` genérico aquí) al `typeof
+ * supabase` del cliente de navegador.
+ */
+async function loadDiscoveryFields(
+  supabaseClient: SupabaseClient,
+  organizationId: number
+): Promise<DiscoveryField[]> {
+  try {
+    const { data, error } = await supabaseClient
+      .from('discovery_templates')
+      .select('sections')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) return DEFAULT_DISCOVERY_FIELDS;
+    const sections = (data as { sections?: unknown }).sections;
+    // Plantilla activa vacía (`sections: []`): nada que descubrir no puede ser una puerta
+    // imposible («0/0»); se evalúa con los campos por defecto (decisión 2026-09-21).
+    return Array.isArray(sections) && sections.length > 0 ? (sections as DiscoveryField[]) : DEFAULT_DISCOVERY_FIELDS;
+  } catch {
+    return DEFAULT_DISCOVERY_FIELDS;
+  }
+}
+
+/**
+ * Mensaje honesto de progreso de discovery, compartido por los dos sitios
+ * que evalúan el criterio `discovery` sin `requiredKeys` (F2, PROGRESS.md:
+ * «`stageGateService` `require_discovery` siempre 0/0 con la forma plana»).
+ */
+function formatDiscoveryMessage(progress: DiscoveryDataProgress, passed: boolean): string {
+  if (passed) {
+    return `Discovery: ${progress.completed} de ${progress.total} secciones completas`;
+  }
+  if (progress.missing.length > 0) {
+    return `Discovery: ${progress.completed} de ${progress.total} secciones completas (faltan: ${progress.missing.join(', ')})`;
+  }
+  return `Discovery incompleto (${progress.completed}/${progress.total} secciones)`;
+}
+
+/** Regla de «pasa» compartida: nada obligatorio pendiente y hay algo que revisar. */
+function discoveryPassed(progress: DiscoveryDataProgress): boolean {
+  return progress.total > 0 && progress.missing.length === 0;
 }
 
 /**
@@ -822,16 +878,19 @@ async function evaluateFlatCriteria(
     }
   }
 
-  // require_discovery
+  // require_discovery — mismo arreglo que el criterio 'discovery' de
+  // evaluateRequirement: progreso real sobre discovery_data vía
+  // discoveryDataProgress, no completed_sections/total_sections (que
+  // discovery_data nunca tuvo, F2 PROGRESS.md).
   if (criteria.require_discovery) {
     const dd = (opp.discovery_data as Record<string, unknown> | null) || {};
-    const completed = Number(dd.completed_sections || 0);
-    const total = Number(dd.total_sections || 0);
-    if (total === 0 || completed < total) {
+    const fields = await loadDiscoveryFields(supabaseClient, organizationId);
+    const progress = discoveryDataProgress(dd, fields);
+    if (!discoveryPassed(progress)) {
       missing.push({
         type: 'discovery',
         label: 'Discovery',
-        detail: `Discovery incompleto (${completed}/${total} secciones)`,
+        detail: formatDiscoveryMessage(progress, false),
       });
     }
   }

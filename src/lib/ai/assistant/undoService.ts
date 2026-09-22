@@ -415,6 +415,57 @@ export async function applyUndo(ctx: UndoContext, undo: { kind: string; payload:
       return { ok: true, message: `Carga deshecha: ${resumen.join(', ') || 'no había nada que revertir'}.` };
     }
 
+    // Factura de compra: anulación por compensación en la base (stock de
+    // vuelta, CxP a cero, asientos espejo). Con pagos, la RPC se niega.
+    case 'void_purchase_invoice': {
+      const invoiceId = typeof payload.invoice_id === 'string' ? payload.invoice_id : '';
+      if (!invoiceId) return { ok: false, errorCode: 'bad_payload', message: 'No sé qué factura anular.' };
+      const { data, error } = await ctx.supabase.rpc('assistant_void_purchase_invoice', {
+        p_organization_id: ctx.organizationId,
+        p_user_id: ctx.userId,
+        p_invoice_id: invoiceId,
+      });
+      if (error) {
+        if (error.message.includes('VOID_HAS_PAYMENTS')) {
+          return { ok: false, errorCode: 'has_payments', message: 'La factura ya tiene pagos: no se anula desde el chat. Hazlo desde Finanzas con una nota de crédito.' };
+        }
+        if (error.message.includes('INVOICE_NOT_IN_ORG')) {
+          return { ok: false, errorCode: 'not_found', message: 'No encuentro esa factura en esta organización.' };
+        }
+        return { ok: false, errorCode: 'void_failed', message: error.message };
+      }
+      const r = data as { already_void?: boolean; salidas_stock?: number; asientos_revertidos?: number; number_ext?: string };
+      if (r.already_void) return { ok: true, message: 'La factura ya estaba anulada.' };
+      return {
+        ok: true,
+        message: `Factura ${r.number_ext ?? ''} anulada: ${r.salidas_stock ?? 0} ${(r.salidas_stock ?? 0) === 1 ? 'línea' : 'líneas'} de stock devueltas, cuenta por pagar a cero y ${
+          r.asientos_revertidos ?? 0
+        } ${(r.asientos_revertidos ?? 0) === 1 ? 'asiento revertido' : 'asientos revertidos'}.`,
+      };
+    }
+
+    case 'void_sales_invoice': {
+      const invoiceId = typeof payload.invoice_id === 'string' ? payload.invoice_id : '';
+      if (!invoiceId) return { ok: false, errorCode: 'bad_payload', message: 'No sé qué factura anular.' };
+      const { data, error } = await ctx.supabase.rpc('assistant_void_sales_invoice', {
+        p_organization_id: ctx.organizationId,
+        p_user_id: ctx.userId,
+        p_invoice_id: invoiceId,
+      });
+      if (error) {
+        if (error.message.includes('VOID_HAS_PAYMENTS')) {
+          return { ok: false, errorCode: 'has_payments', message: 'La factura ya tiene pagos: no se anula desde el chat. Hazlo desde Finanzas con una nota de crédito.' };
+        }
+        if (error.message.includes('INVOICE_NOT_IN_ORG')) {
+          return { ok: false, errorCode: 'not_found', message: 'No encuentro esa factura en esta organización.' };
+        }
+        return { ok: false, errorCode: 'void_failed', message: error.message };
+      }
+      const r = data as { already_void?: boolean; number?: string };
+      if (r.already_void) return { ok: true, message: 'La factura ya estaba anulada.' };
+      return { ok: true, message: `Factura ${r.number ?? ''} anulada (venta y cuenta por cobrar a cero).` };
+    }
+
     case 'cancel_purchase_order':
       return cancelIfUntouched(ctx, 'purchase_orders', intId(payload.purchase_order_id) ?? 0, 'draft', 'la orden de compra');
     case 'cancel_transfer':

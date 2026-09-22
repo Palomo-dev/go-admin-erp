@@ -68,10 +68,8 @@ export function evaluateAction(
   if (caps.enabledTools && !caps.enabledTools.includes(type)) return deny('not_enabled');
   if (!hasAnyPermission(caps, def.permissions)) return deny('no_permission');
 
-  // Los módulos solo se comprueban si se pudieron resolver: si la consulta a
-  // `organization_modules` falla, no bloqueamos por una lista vacía —
-  // "no sé" no puede significar "no".
-  if (def.requiredModule && caps.activeModules.size > 0 && !caps.activeModules.has(def.requiredModule)) {
+  // Sin módulo activo no hay autorización, aunque el usuario sea administrador.
+  if (def.requiredModule && !caps.activeModules.has(def.requiredModule)) {
     return deny('module_inactive');
   }
 

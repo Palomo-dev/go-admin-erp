@@ -203,7 +203,7 @@ export function openPosDisplay(opts: OpenPosDisplayOptions): OpenPosDisplayResul
       preload: getPreloadPath('index'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
       spellcheck: false,
       backgroundThrottling: false,
       ...(opts.session ? { session: opts.session } : {}),

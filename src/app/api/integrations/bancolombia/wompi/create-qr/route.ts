@@ -8,6 +8,7 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { wompiService } from '@/lib/services/integrations/wompi';
 import { createQrSession } from '@/lib/services/integrations/qrShared/qrSessionService';
+import { normalizeQrImageSource } from '@/lib/pos/display/payment';
 
 interface CreateQrBody {
   connectionId: string;
@@ -110,7 +111,12 @@ export async function POST(request: NextRequest) {
 
     // 6. Extraer QR de payment_method.extra
     const extra = result.data.payment_method?.extra as Record<string, unknown> | undefined;
-    const qrImage = (extra?.qr_image as string) || null;
+    // Wompi entrega `qr_image` como base64 CRUDO de un SVG (docs/integraciones/
+    // bancolombia-breb-redeban-qr-pagos.md: «data:image/svg+xml;base64,{qr_image}»).
+    // Se devuelve ya como data URL para que <img> (modal de cobro y pantalla del
+    // cliente) lo pinte tal cual; si llegara ya prefijado o vacío, se respeta.
+    const rawQrImage = (extra?.qr_image as string) || null;
+    const qrImage = rawQrImage ? normalizeQrImageSource(rawQrImage) ?? rawQrImage : null;
     const qrId = (extra?.qr_id as string) || null;
 
     // 7. Registrar sesion QR

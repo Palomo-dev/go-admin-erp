@@ -2,7 +2,7 @@ import React, { Suspense } from 'react';
 import { AppLayout } from '@/components/app-layout/AppLayout';
 import { AuthGuard } from '@/components/app-layout/AuthGuard';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
-import { MotionProvider } from '@/components/shared/MotionProvider';
+import { MotionProvider } from '@/components/shared/motion';
 import { SoftphoneShell } from '@/components/voice/SoftphoneShell';
 import { OrganizationTimezoneProvider } from '@/lib/context/OrganizationTimezoneContext';
 

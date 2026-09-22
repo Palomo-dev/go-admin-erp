@@ -1,5 +1,18 @@
 # FASE 00 — Fundaciones: seguridad multi-tenant, cola/scheduler, registry de proveedores e higiene
 
+## Estado real (2026-09-21)
+
+> Cierre de documentación tras la aprobación de F0 (código = verdad). Verificado con `ls`/`grep`/`wc -l` sobre el árbol de trabajo, no de memoria.
+
+- **Cola/scheduler**: `src/lib/jobs/` completo (`runner.ts`, `registry.ts`, `enqueue.ts`, `schedule.ts`, `scheduledOrgs.ts`, `orgTimezone.ts`, `dispatch/`, `handlers/`, `scheduled/`). Rutas `GET/POST /api/crm/jobs`, `/api/crm/jobs/[id]`, `/api/crm/jobs/[id]/retry`, `POST /api/crm/jobs/run` existen. `vercel.json` tiene 3 crons a `/api/crm/jobs/run` (`*/2 * * * *`, `*/5 * * * *`, `30 8 * * *`): es el scheduler **PRIMARIO**. Los 3 jobs espejo de pg_cron (`crm-jobs-every-minute`, `crm-campaigns-5min`, `crm-daily-maintenance`) siguen **`active=false`** a propósito — respaldo apagado, ver `supabase/migrations/20260915233000_crm_v4_f00_41_pg_cron_alineado_con_vercel.sql`.
+- **Seguridad**: 165 archivos bajo `src/app/api/crm/**` resuelven la organización por `getServerOrgContext`/`withOrg` (directo o vía `withWhatsAppRoute`, que lo envuelve — `src/lib/services/crm/whatsapp/http.ts:8,30`); no se encontró ninguna ruta CRM que la tome del body. Rate limit persistente: `rate_limit_buckets` + `fn_rate_limit_hit` (`20260916000000_crm_v4_f0sec_rate_limit_buckets.sql`, aplicada); falta `RATE_LIMIT_STORE=db` en Vercel para salir del modo memoria (hoy `RATE_LIMIT_STORE=memory` en `.env.example`).
+- **Migraciones F0 aplicadas**: 47 archivos `crm_v4_f00_01`…`f00_45` + `f0sec_rate_limit_buckets` (`ls supabase/migrations | grep -iE "crm_v4_f00|f0sec"`). Por bloque: revocación de RPCs de crédito a anon/public/authenticated (27, 28, 34, 40); triggers reparados (11, 29, 32, 33, 35); `ai_settings` solo por RPC (38); guardas de `decrement/refund_ai_credits` y cupo único del plan de IA (39, 43); scheduler alineado con `vercel.json` (41); índice de idempotencia de mensajes (42); timezone válida de la organización (44); rate limit persistente (f0sec); permisos de cola `crm.jobs.view`/`crm.jobs.retry` (45).
+- **Tests anti-regresión**: `src/__tests__/guardrails.test.ts` (1574 líneas) es el central, con **20** reglas numeradas F0 (antes 9, ver nota en §1) más ~24 suites adicionales con sufijo `f0sec`/`f0Reg`/`F0` bajo `src/__tests__`, `src/app/api/__tests__` y `src/lib/security/__tests__`.
+- **Calificación (`docs/crm-revenue-os/PROGRESS.md`, ronda 5, 2026-09-15/16, en `main`)**: F0 global **9,55/10 APROBADA**. Subtracks: F0-DB **9,5** (ronda 4 QA); F0-SEC **9,5** (A+B ronda 4 QA 9,5; C+D ronda 3 QA 9,5); F0-JOBS **9,6** (QA r5, condición `canRetry = view ∧ retry` cumplida); F0-REG **9,6** (QA r4).
+- **Sin verificar** en esta pasada: si `RATE_LIMIT_STORE=db` ya está puesto en Vercel (dato fuera del repo); conteo actual de funciones `SECURITY DEFINER` ejecutables por `anon` (el documento cita 184 al 2026-09-16, pudo cambiar); contenido exacto de las ~24 suites `f0sec`/`f0Reg` más allá de sus nombres.
+
+---
+
 > Fecha: 2026-09-08 · Estado: **reescrito V4** (sustituye íntegramente el V3)
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj` · Repo: `go-admin-erp` (Next.js 15.5 App Router + React 19 + Supabase + Vercel iad1 + Railway ws-server)
 > Dependencias: ninguna (es la base). Bloquea: F1–F16 (nada arranca sin F0 completa).
@@ -75,6 +88,7 @@ Fuente: `audit-telephony.md`, `audit-messaging.md`, `audit-ai-automations.md`, `
 | `mobile/android/app/src/main/AndroidManifest.xml`, `mobile/templates/Info.plist:37` | 🟡 | Sin `RECORD_AUDIO`/`MODIFY_AUDIO_SETTINGS`; plist solo `NSCameraUsageDescription` |
 | `electron/src/main/index.ts:52`, `windows/mainWindow.ts:117-123` | 🟡 | Sin `setPermissionRequestHandler` → getUserMedia puede denegarse silenciosamente |
 | `src/__tests__/guardrails.test.ts:221,331,434,473,497` | ✅ r1 SEC | 9 reglas: (1) org=1, (2) tablas plataforma, (3) display_order, (4) `callService.ts` no existe, (5) org del body sin `getServerOrgContext` (allow-list legacy explícita + detección de entradas obsoletas), (6) `@/lib/supabase/config` en server (allow-list legacy), (7) webhooks importan `verify*` (allow-list facebook/instagram/email), (8) sin `comm_settings.limit(1).single()`, (9) `enums.ts` == `src/lib/crm/__fixtures__/db-checks.json` (snapshot de `pg_constraint`, con `planned_extras`) |
+> **Obsoleto (2026-09-21):** la cifra de 9 reglas es de la ronda 1. `src/__tests__/guardrails.test.ts` (1574 líneas) tiene hoy **20** `describe` numerados dentro de "F0 Guardarraíles" (10–20 se sumaron en rondas posteriores: reembolsos de créditos, `app_branch_access`, `onAuthStateChange`, vista materializada de salud, `vercel.json` ↔ `schedule.ts`, `consumeAICredits` como punto único, filtro por `status='active'`), más los casos 21/22 fuera del bloque F0. No se lista cada regla nueva aquí; ver el archivo directamente.
 | Código muerto: `callService.ts` (292L), `realtimeSession.ts`, `elevenLabsTTS.ts`, `deepgramSTT.ts`, `voiceAgent/voiceAgentService.ts`, `twilio/voice/media-stream` (410), `pipeline/EmailNotifications.ts/.tsx`, `AutomationSettings.tsx` (tabla inexistente), `followupEngineService.ts` + `followup/run`, `KanbanBoard/KanbanColumn/OpportunityCard` | 🟡 | Ver audits §2/§B; `automations` legacy tiene 1 fila (migrar en F8) → **r1 (REG):** eliminados por REG `voiceAgent/{realtimeSession,elevenLabsTTS,deepgramSTT,voiceAgentService}.ts` (+ exports en `voiceAgent/index.ts`), `pipeline/EmailNotifications.ts/.tsx`, `pipeline/AutomationSettings.tsx`; `OpportunityAutomations.tsx` deja `sendStageChangeNotification` como no-op con TODO F8; `callService.ts`, `media-stream`, `followupEngineService`/`followup/run` los eliminó SEC; Kanban* queda para F9 |
 
 ---
@@ -1185,6 +1199,8 @@ Middleware (`src/middleware.ts`): se añadieron `/api/voice/` y `/api/integratio
 ---
 
 ## 10. Definition of Done
+
+> **Obsoleto:** esta checklist quedó sin marcar desde el diseño original (pre-ronda 1) y sus cifras son de esa fecha ("9 migraciones", "10 reglas" de guardarraíles). F0 está **APROBADA** (9,55/10, ver `PROGRESS.md` y "Estado real" al inicio del documento) con 47 migraciones aplicadas y 20 reglas F0 en `guardrails.test.ts`; los puntos de fondo (webhooks fail-closed, cron verificado por `net._http_response`, nav CRM único, `.env.example` completo) están cubiertos, verificados en las secciones §1/§3/§4/§13, no en estas casillas.
 
 - [ ] Las 9 migraciones aplicadas; las consultas de §3.3 devuelven exactamente lo esperado.
 - [ ] `has_column_privilege('authenticated','provider_configs','credentials','SELECT')` = false; ídem `comm_settings.twilio_subaccount_auth_token` y `channel_credentials.credentials`.

@@ -1,6 +1,20 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId, getBranchFilter, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { isRealtimePublished } from '@/components/crm/shared/realtimeTables';
+import { isDesktop } from '@/lib/utils/desktop';
+import {
+  applyOutboxSalesToSummary,
+  enqueueCashMovement,
+  enqueueCashSessionClose,
+  enqueueCashSessionOpen,
+  getLocalCashSessionById,
+  getLocalOpenCashSession,
+  isCashSessionClosedLocally,
+  listPendingOutboxMovements,
+  outboxSalesDeltas,
+  removeLocalCashSession,
+  shouldOperateCashOffline,
+} from '@/lib/offline/cashOutbox';
 import type {
   CashSession,
   CashMovement,
@@ -16,6 +30,25 @@ import type {
   SessionPaymentDetail,
   SessionMovementType
 } from './types';
+
+/** Venta de una sesión de caja (columnas seleccionadas en `getSessionSales`). */
+export interface SessionSaleRow {
+  id: string;
+  total: number;
+  status: string;
+  payment_status: string;
+  created_at: string;
+  customer_id: string | null;
+  source: string | null;
+}
+
+interface InvoiceSaleRef { id: string; number: string | null; customer_id: string | null; sale_id: string | null }
+interface InvoicePurchaseRef { id: string; number_ext: string | null; supplier_id: string | null }
+interface SaleRef { id: string; table_session_id: string | null; customer_id: string | null; include_in_cash_register: boolean | null }
+interface ArRef { id: string; invoice_id: string | null; customer_id: string | null }
+interface ApRef { id: string; invoice_id: string | null; supplier_id: string | null }
+interface CustomerRef { id: string; full_name: string | null; company_name: string | null }
+interface SupplierRef { id: string; name: string | null }
 
 export class CajasService {
   // Se leen en tiempo de llamada (no en import) para reflejar la organización/sucursal activa
@@ -78,6 +111,24 @@ export class CajasService {
 
       const mode = await this.getCashSessionMode();
 
+      // Desktop sin red (fase 4F): estado local de caja + réplica.
+      if (shouldOperateCashOffline()) {
+        return this.getActiveSessionOffline(mode);
+      }
+
+      return this.findActiveSessionRemote(mode);
+    } catch (error) {
+      console.error('Error getting active session:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Búsqueda de la caja abierta en Supabase (o en la réplica local cuando el
+   * Desktop no tiene red: los GET a `cash_sessions` se resuelven allí).
+   */
+  private static async findActiveSessionRemote(mode: 'branch' | 'user'): Promise<CashSession | null> {
+    {
       // Modo 'user': la caja activa es la del usuario actual en la sucursal actual
       if (mode === 'user' && this.branchId) {
         const userId = await getCurrentUserId();
@@ -145,16 +196,51 @@ export class CajasService {
       }
 
       return null;
-    } catch (error) {
-      console.error('Error getting active session:', error);
-      throw error;
     }
+  }
+
+  /**
+   * Fase 4F — caja activa sin red, en este orden:
+   *  1. La réplica local (`cash_sessions` replicada en 4C), salvo que esa
+   *     sesión ya se haya cerrado sin red (cierre en el outbox).
+   *  2. El estado local (`cashOutbox`): sesiones abiertas sin red (id negativo)
+   *     o ya sincronizadas pero que la réplica aún no conoce. Si la réplica
+   *     ya conoce una sesión sincronizada, manda la réplica y el estado local
+   *     sobra.
+   */
+  private static async getActiveSessionOffline(mode: 'branch' | 'user'): Promise<CashSession | null> {
+    const organizationId = this.organizationId as number;
+    let remote: CashSession | null = null;
+    try {
+      remote = await this.findActiveSessionRemote(mode);
+    } catch (error) {
+      console.warn('[CajasService] Sin red y sin réplica de cash_sessions; se usa el estado local:', error);
+    }
+    if (remote && !(await isCashSessionClosedLocally(organizationId, remote.uuid))) {
+      return remote;
+    }
+    const userId = mode === 'user' ? await getCurrentUserId() : null;
+    const local = await getLocalOpenCashSession({ organizationId, branchId: this.branchId, mode, userId });
+    if (!local) return null;
+    if (local.id > 0) {
+      // Apertura ya sincronizada: si la réplica la conoce, ella decide.
+      try {
+        const { data } = await supabase.from('cash_sessions').select('id, status').eq('organization_id', organizationId).eq('id', local.id).maybeSingle();
+        if (data) {
+          await removeLocalCashSession(organizationId, local.uuid);
+          return data.status === 'open' ? { ...local, pending_sync: false } : null;
+        }
+      } catch {
+        // réplica no disponible: se confía en el estado local
+      }
+    }
+    return local;
   }
 
   /**
    * Enriquece una sesión con nombres de cajero y sucursal
    */
-  private static async enrichSession(session: any): Promise<CashSession> {
+  private static async enrichSession(session: CashSession): Promise<CashSession> {
     // Obtener nombre del cajero
     if (session?.opened_by) {
       const { data: profileData } = await supabase
@@ -221,7 +307,7 @@ export class CajasService {
       if (error) throw error;
 
       // Obtener nombres de cajeros y sucursales
-      const sessions = (data || []) as any[];
+      const sessions = (data || []) as CashSession[];
       const userIds = sessions.map(s => s.opened_by).filter(Boolean);
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase
@@ -302,7 +388,7 @@ export class CajasService {
       if (error) throw error;
 
       // Obtener nombres de cajeros y sucursales
-      const sessions = (data || []) as any[];
+      const sessions = (data || []) as CashSession[];
       const userIds = sessions.map(s => s.opened_by).filter(Boolean);
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase
@@ -375,7 +461,7 @@ export class CajasService {
       // Verificar que no haya ya una caja abierta para el mismo alcance
       let checkQuery = supabase
         .from('cash_sessions')
-        .select('id')
+        .select('id, uuid')
         .eq('organization_id', this.organizationId)
         .eq('status', 'open');
 
@@ -389,14 +475,41 @@ export class CajasService {
         }
       }
 
+      const offline = shouldOperateCashOffline();
+      const alreadyOpenMessage = scope === 'global'
+        ? 'Ya hay una caja global abierta. Ciérrala antes de abrir otra.'
+        : (mode === 'user'
+          ? 'Ya tienes una caja abierta en esta sucursal. Ciérrala antes de abrir otra.'
+          : 'Ya hay una caja abierta en esta sucursal. Ciérrala antes de abrir otra.');
+
+      // Sin red el GET se resuelve en la réplica local; una sesión cerrada sin
+      // red sigue `open` allí hasta sincronizar, así que se descarta aparte.
       const { data: existingSession } = await checkQuery.maybeSingle();
 
-      if (existingSession) {
-        throw new Error(scope === 'global'
-          ? 'Ya hay una caja global abierta. Ciérrala antes de abrir otra.'
-          : (mode === 'user'
-            ? 'Ya tienes una caja abierta en esta sucursal. Ciérrala antes de abrir otra.'
-            : 'Ya hay una caja abierta en esta sucursal. Ciérrala antes de abrir otra.'));
+      if (existingSession && !(offline && (await isCashSessionClosedLocally(this.organizationId as number, String(existingSession.uuid))))) {
+        throw new Error(alreadyOpenMessage);
+      }
+
+      if (offline) {
+        // Fase 4F: apertura sin red → outbox + estado local, id negativo hasta sincronizar.
+        const localOpen = await getLocalOpenCashSession({
+          organizationId: this.organizationId as number,
+          branchId: scope === 'global' ? null : this.branchId,
+          mode,
+          userId,
+        });
+        if (localOpen && (scope === 'global' ? localOpen.branch_id === null : localOpen.branch_id === this.branchId)) {
+          throw new Error(alreadyOpenMessage);
+        }
+        const session = await enqueueCashSessionOpen({
+          organizationId: this.organizationId as number,
+          branchId: targetBranchId,
+          openedBy: userId,
+          initialAmount: data.initial_amount,
+          notes: data.notes || 'Apertura de caja',
+        });
+        console.log('Sesión de caja abierta sin red (pendiente de sincronizar):', session.id);
+        return session;
       }
 
       const { data: session, error } = await supabase
@@ -441,6 +554,22 @@ export class CajasService {
       const summary = await this.getCashSummary(activeSession.id);
       const difference = data.final_amount - summary.expected_amount;
 
+      if (shouldOperateCashOffline()) {
+        // Fase 4F: cierre sin red → outbox con el resumen calculado sobre
+        // réplica + ventas/movimientos locales; la sesión queda cerrada en local.
+        const closed = await enqueueCashSessionClose({
+          session: activeSession,
+          closedBy: userId,
+          finalAmount: data.final_amount,
+          difference,
+          notes: data.notes || activeSession.notes || null,
+          summary,
+          summaryPartial: this.lastSummaryWasPartial,
+        });
+        console.log('Sesión de caja cerrada sin red (pendiente de sincronizar):', closed.id);
+        return closed;
+      }
+
       const { data: session, error } = await supabase
         .from('cash_sessions')
         .update({
@@ -456,6 +585,11 @@ export class CajasService {
         .single();
 
       if (error) throw error;
+
+      // Si esta sesión nació sin red, su estado local ya sobra.
+      if (isDesktop() && activeSession.uuid) {
+        removeLocalCashSession(activeSession.organization_id, activeSession.uuid).catch(() => {});
+      }
 
       console.log('Sesión de caja cerrada:', session.id);
       return session;
@@ -478,6 +612,20 @@ export class CajasService {
       const activeSession = await this.getActiveSession();
       if (!activeSession) {
         throw new Error('No hay sesión de caja abierta');
+      }
+
+      if (shouldOperateCashOffline()) {
+        // Fase 4F: movimiento sin red → outbox (uuid del cliente, id negativo).
+        const movement = await enqueueCashMovement({
+          session: activeSession,
+          type: data.type,
+          concept: data.concept,
+          amount: data.amount,
+          userId,
+          notes: data.notes ?? null,
+        });
+        console.log('Movimiento registrado sin red (pendiente de sincronizar):', movement.id);
+        return movement;
       }
 
       const { data: movement, error } = await supabase
@@ -509,26 +657,64 @@ export class CajasService {
    */
   static async getSessionMovements(sessionId: number): Promise<CashMovement[]> {
     try {
+      // Fase 4F (Desktop): los movimientos hechos sin red viven en el outbox
+      // hasta sincronizar; se suman a los de Supabase/réplica.
+      const pendingLocal = isDesktop() ? await this.pendingOutboxMovements(sessionId) : [];
+      if (sessionId < 0) return pendingLocal;
+
       const { data, error } = await supabase
         .from('cash_movements')
         .select('*')
         .eq('cash_session_id', sessionId)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        if (shouldOperateCashOffline()) {
+          console.warn('[CajasService] Sin red y sin réplica de cash_movements; solo movimientos locales:', error);
+          return pendingLocal;
+        }
+        throw error;
+      }
 
-      return data || [];
+      const remote = (data || []) as CashMovement[];
+      if (pendingLocal.length === 0) return remote;
+      const known = new Set(remote.map((m) => m.uuid).filter(Boolean));
+      return [...remote, ...pendingLocal.filter((m) => !m.uuid || !known.has(m.uuid))].sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
     } catch (error) {
       console.error('Error getting session movements:', error);
       throw error;
     }
   }
 
+  /** Movimientos del outbox de caja de una sesión (por id local o real, y por uuid si se conoce). */
+  private static async pendingOutboxMovements(sessionId: number): Promise<CashMovement[]> {
+    try {
+      const local = this.organizationId ? await getLocalCashSessionById(this.organizationId, sessionId) : null;
+      return await listPendingOutboxMovements({ id: sessionId, uuid: local?.session.uuid ?? null });
+    } catch (error) {
+      console.warn('[CajasService] No se pudo leer el outbox de caja:', error);
+      return [];
+    }
+  }
+
   /**
-   * Calcula el resumen de efectivo para una sesión
+   * Fase 4F: true si el último `getCashSummary` sin red no pudo leer la
+   * réplica de `payments` y solo cuenta el outbox. Se guarda en el cierre.
+   */
+  private static lastSummaryWasPartial = false;
+
+  /**
+   * Calcula el resumen de efectivo para una sesión.
+   *
+   * Desktop (fase 4F): las consultas a `payments`/`returns`/`folio_items` sin
+   * red se resuelven en la réplica local; a eso se suman las ventas del
+   * outbox (aún sin `payments`) y los movimientos del outbox, con las mismas
+   * reglas de alcance (sucursal, fechas, cajero en modo `user`).
    */
   static async getCashSummary(sessionId: number): Promise<CashSummary> {
     try {
+      this.lastSummaryWasPartial = false;
+      const offline = shouldOperateCashOffline();
       const session = await this.getSessionById(sessionId);
       const movements = await this.getSessionMovements(sessionId);
 
@@ -552,9 +738,16 @@ export class CajasService {
       if (filterByCashier) {
         cashPaymentsQuery = cashPaymentsQuery.eq('created_by', session.opened_by);
       }
-      const { data: cashPayments, error: paymentsError } = await cashPaymentsQuery;
+      const cashPaymentsRes = await cashPaymentsQuery;
+      const paymentsError = cashPaymentsRes.error;
+      let cashPayments = cashPaymentsRes.data;
 
-      if (paymentsError) throw paymentsError;
+      if (paymentsError) {
+        if (!offline) throw paymentsError;
+        console.warn('[CajasService] Sin red y sin réplica de payments; el resumen solo cuenta el outbox:', paymentsError);
+        this.lastSummaryWasPartial = true;
+        cashPayments = [];
+      }
 
       const PURCHASE_SOURCES = ['invoice_purchase', 'account_payable'];
       const AR_SOURCE = 'account_receivable';
@@ -631,9 +824,15 @@ export class CajasService {
       if (filterByCashier) {
         allPaymentsQuery = allPaymentsQuery.eq('created_by', session.opened_by);
       }
-      const { data: allPayments, error: allPaymentsError } = await allPaymentsQuery;
+      const allPaymentsRes = await allPaymentsQuery;
+      const allPaymentsError = allPaymentsRes.error;
+      let allPayments = allPaymentsRes.data;
 
-      if (allPaymentsError) throw allPaymentsError;
+      if (allPaymentsError) {
+        if (!offline) throw allPaymentsError;
+        this.lastSummaryWasPartial = true;
+        allPayments = [];
+      }
 
       const EXPENSE_SOURCES = ['invoice_purchase', 'account_payable'];
       // Sources que corresponden a ventas (POS, mesa o factura de venta)
@@ -667,7 +866,7 @@ export class CajasService {
         0,
       ) - changeTotal;
 
-      return {
+      const summary: CashSummary = {
         initial_amount: Number(session.initial_amount),
         sales_cash: salesCash,
         cash_in: cashIn,
@@ -688,6 +887,18 @@ export class CajasService {
         sales_total: salesTotal,
         sales_by_method: salesByMethod,
       };
+
+      if (!isDesktop()) return summary;
+
+      // Fase 4F: ventas del outbox (4B) que aún no tienen `payments` en Supabase.
+      try {
+        const { listOutboxSales } = await import('@/lib/offline/salesOutbox');
+        const pendingSales = await listOutboxSales(['pending', 'syncing', 'needs_review']);
+        return applyOutboxSalesToSummary(summary, outboxSalesDeltas(session, pendingSales, { filterByCashier }));
+      } catch (outboxError) {
+        console.warn('[CajasService] No se pudo leer el outbox de ventas para el resumen:', outboxError);
+        return summary;
+      }
     } catch (error) {
       console.error('Error calculating cash summary:', error);
       throw error;
@@ -699,6 +910,13 @@ export class CajasService {
    */
   static async getSessionById(sessionId: number): Promise<CashSession> {
     try {
+      // Fase 4F: id local negativo = sesión abierta sin red (aún sin fila en Supabase).
+      if (sessionId < 0) {
+        const local = this.organizationId ? await getLocalCashSessionById(this.organizationId, sessionId) : null;
+        if (!local) throw new Error(`La sesión de caja local ${sessionId} ya no existe en este equipo`);
+        return local.session;
+      }
+
       const { data, error } = await supabase
         .from('cash_sessions')
         .select('*')
@@ -727,7 +945,7 @@ export class CajasService {
 
       if (error) throw error;
 
-      const session = data as any;
+      const session = data as CashSession;
 
       // Obtener nombre del cajero
       if (session?.opened_by) {
@@ -814,7 +1032,7 @@ export class CajasService {
 
       if (sessionError) throw sessionError;
 
-      const session = sessionData as any;
+      const session = sessionData as CashSession;
       // Obtener nombre del cajero desde profiles (no hay FK directa)
       if (session?.opened_by) {
         const { data: profileData } = await supabase
@@ -1062,7 +1280,7 @@ export class CajasService {
   /**
    * Obtiene ventas por UUID de sesión
    */
-  static async getSessionSalesByUuid(uuid: string): Promise<any[]> {
+  static async getSessionSalesByUuid(uuid: string): Promise<SessionSaleRow[]> {
     const session = await this.getSessionByUuid(uuid);
     return this.getSessionSales(session.id);
   }
@@ -1078,7 +1296,7 @@ export class CajasService {
   /**
    * Obtiene las ventas de una sesión de caja
    */
-  static async getSessionSales(sessionId: number): Promise<any[]> {
+  static async getSessionSales(sessionId: number): Promise<SessionSaleRow[]> {
     try {
       const session = await this.getSessionById(sessionId);
 
@@ -1103,7 +1321,7 @@ export class CajasService {
 
       if (error) throw error;
 
-      return data || [];
+      return (data || []) as SessionSaleRow[];
     } catch (error) {
       console.error('Error getting session sales:', error);
       throw error;
@@ -1148,39 +1366,44 @@ export class CajasService {
       const [invoiceSalesRes, invoicePurchaseRes, salesRes, arRes, apRes] = await Promise.all([
         invoiceSaleIds.length
           ? supabase.from('invoice_sales').select('id, number, customer_id, sale_id').in('id', invoiceSaleIds)
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as InvoiceSaleRef[] }),
         invoicePurchaseIds.length
           ? supabase.from('invoice_purchase').select('id, number_ext, supplier_id').in('id', invoicePurchaseIds)
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as InvoicePurchaseRef[] }),
         saleIds.length
           ? supabase.from('sales').select('id, table_session_id, customer_id, include_in_cash_register').in('id', saleIds)
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as SaleRef[] }),
         arIds.length
           ? supabase.from('accounts_receivable').select('id, invoice_id, customer_id').in('id', arIds)
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as ArRef[] }),
         apIds.length
           ? supabase.from('accounts_payable').select('id, invoice_id, supplier_id').in('id', apIds)
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as ApRef[] }),
       ]);
 
-      const invoiceSalesMap = new Map((invoiceSalesRes.data || []).map((i: any) => [i.id, i]));
-      const invoicePurchaseMap = new Map((invoicePurchaseRes.data || []).map((i: any) => [i.id, i]));
-      const salesMap = new Map((salesRes.data || []).map((s: any) => [s.id, s]));
-      const arMap = new Map((arRes.data || []).map((a: any) => [a.id, a]));
-      const apMap = new Map((apRes.data || []).map((a: any) => [a.id, a]));
+      const invoiceSalesRows = (invoiceSalesRes.data || []) as InvoiceSaleRef[];
+      const invoicePurchaseRows = (invoicePurchaseRes.data || []) as InvoicePurchaseRef[];
+      const salesRows = (salesRes.data || []) as SaleRef[];
+      const arRows = (arRes.data || []) as ArRef[];
+      const apRows = (apRes.data || []) as ApRef[];
+      const invoiceSalesMap = new Map(invoiceSalesRows.map((i) => [i.id, i]));
+      const invoicePurchaseMap = new Map(invoicePurchaseRows.map((i) => [i.id, i]));
+      const salesMap = new Map(salesRows.map((s) => [s.id, s]));
+      const arMap = new Map(arRows.map((a) => [a.id, a]));
+      const apMap = new Map(apRows.map((a) => [a.id, a]));
 
       // Excluir payments de ventas/facturas que no entran en caja (include_in_cash_register=false).
       // Esto incluye ventas web, reservas, CRM y facturas marcadas como "no incluir en caja".
       const excludedSaleIds = new Set(
-        (salesRes.data || [])
-          .filter((s: any) => s.include_in_cash_register === false)
-          .map((s: any) => s.id)
+        salesRows
+          .filter((s) => s.include_in_cash_register === false)
+          .map((s) => s.id)
       );
       // Para invoices de venta, verificar si su sale_id está excluido
       const excludedInvoiceIds = new Set(
-        (invoiceSalesRes.data || [])
-          .filter((i: any) => i.sale_id && excludedSaleIds.has(i.sale_id))
-          .map((i: any) => i.id)
+        invoiceSalesRows
+          .filter((i) => i.sale_id && excludedSaleIds.has(i.sale_id))
+          .map((i) => i.id)
       );
       // Si una invoice no tiene sale_id pero proviene de una sale excluida,
       // no podemos saberlo directamente. Sin embargo, las invoices creadas desde
@@ -1195,25 +1418,25 @@ export class CajasService {
       });
 
       const customerIds = new Set<string>();
-      (invoiceSalesRes.data || []).forEach((i: any) => i.customer_id && customerIds.add(i.customer_id));
-      (salesRes.data || []).forEach((s: any) => s.customer_id && customerIds.add(s.customer_id));
-      (arRes.data || []).forEach((a: any) => a.customer_id && customerIds.add(a.customer_id));
+      invoiceSalesRows.forEach((i) => i.customer_id && customerIds.add(i.customer_id));
+      salesRows.forEach((s) => s.customer_id && customerIds.add(s.customer_id));
+      arRows.forEach((a) => a.customer_id && customerIds.add(a.customer_id));
 
       const supplierIds = new Set<string>();
-      (invoicePurchaseRes.data || []).forEach((i: any) => i.supplier_id && supplierIds.add(i.supplier_id));
-      (apRes.data || []).forEach((a: any) => a.supplier_id && supplierIds.add(a.supplier_id));
+      invoicePurchaseRows.forEach((i) => i.supplier_id && supplierIds.add(i.supplier_id));
+      apRows.forEach((a) => a.supplier_id && supplierIds.add(a.supplier_id));
 
       const [customersRes, suppliersRes] = await Promise.all([
         customerIds.size
           ? supabase.from('customers').select('id, full_name, company_name').in('id', Array.from(customerIds))
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as CustomerRef[] }),
         supplierIds.size
           ? supabase.from('suppliers').select('id, name').in('id', Array.from(supplierIds))
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as SupplierRef[] }),
       ]);
 
-      const customersMap = new Map((customersRes.data || []).map((c: any) => [c.id, c.company_name || c.full_name]));
-      const suppliersMap = new Map((suppliersRes.data || []).map((s: any) => [s.id, s.name]));
+      const customersMap = new Map(((customersRes.data || []) as CustomerRef[]).map((c) => [c.id, c.company_name || c.full_name || undefined]));
+      const suppliersMap = new Map(((suppliersRes.data || []) as SupplierRef[]).map((s) => [s.id, s.name || undefined]));
 
       const details: SessionPaymentDetail[] = filteredPayments.map(p => {
         let type: SessionMovementType = 'otro';
@@ -1227,14 +1450,14 @@ export class CajasService {
           type = 'venta_factura';
           direction = 'in';
           label = 'Factura de Venta';
-          reference = inv?.number;
+          reference = inv?.number ?? undefined;
           counterparty = inv?.customer_id ? customersMap.get(inv.customer_id) : undefined;
         } else if (p.source === 'invoice_purchase') {
           const inv = invoicePurchaseMap.get(p.source_id);
           type = 'compra_factura';
           direction = 'out';
           label = 'Factura de Compra';
-          reference = inv?.number_ext;
+          reference = inv?.number_ext ?? undefined;
           counterparty = inv?.supplier_id ? suppliersMap.get(inv.supplier_id) : undefined;
         } else if (p.source === 'sale') {
           const sale = salesMap.get(p.source_id);

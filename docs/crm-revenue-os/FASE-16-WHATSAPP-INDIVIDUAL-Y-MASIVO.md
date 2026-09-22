@@ -1,5 +1,15 @@
 # FASE 16 — WhatsApp individual y masivo desde el CRM
 
+## Estado real (2026-09-21)
+
+- **Rutas API**: WhatsApp del CRM en `src/app/api/crm/whatsapp/**` (`channels`, `reply`, `send`, `settings`, `templates`, `templates/[id]`, `templates/[id]/preview`, `templates/[id]/submit`, `templates/sync`, `window/[customerId]`); campañas en `src/app/api/crm/campaigns/**` (`route`, `[id]`, `[id]/materialize`, `[id]/launch`, `[id]/pause`, `[id]/resume`, `[id]/cancel`, `[id]/stats`, `[id]/contacts`) — coincide con §4.1. Webhooks/canal existentes: `src/app/api/integrations/whatsapp/webhook`, `.../oauth/callback`, `.../qr/**`; alternativo `src/app/api/integrations/twilio/send-whatsapp`.
+- **Servicios** (`src/lib/services/crm/whatsapp/`, 20 archivos, 4.040 líneas sin tests): `outboundService.ts` (331L), `templateService.ts` (325L), `campaignService.ts` (216L), más `campaignStore.ts`, `campaignMaterialize.ts`, `campaignBatch.ts`, `campaignEvents.ts`, `channelService.ts`, `consent.ts` (no `consentService.ts`), `costs.ts`, `allowedHours.ts`, `templateRender.ts`, `webhookTemplateStatus.ts`, `windowService.ts` (74L), `inboundService.ts` (112L), `http.ts`, `schemas.ts`, `types.ts`, `index.ts` (barrel) — muchos más archivos y otros nombres que los 4 servicios de §4.2.
+- **UI**: diálogo `src/components/crm/whatsapp/ComposeWhatsAppDialog.tsx` + `compose/*`; plantillas HSM en `src/components/crm/whatsapp/WhatsAppTemplatesTab.tsx` y `HsmEditorDialog.tsx` (no bajo `crm/plantillas/whatsapp/` como en §5.1); campañas en `/app/crm/campanas`, `/app/crm/campanas/nuevo` (no `/nueva`), `/app/crm/campanas/[id]`; configuración en `src/components/configuracion/crm/WhatsAppTab.tsx` (no `WhatsAppSettingsTab.tsx`).
+- **Migraciones**: no hay `202609_crm_v4_f16_conversations_last_inbound` independiente; `conversations.last_inbound_at` viene de `baseline_schema.sql`/`f00_01`. `fn_whatsapp_window` (§3.1) **no existe en BD**: `windowService.ts` lo calcula en TypeScript (comentario explícito en el archivo fuente).
+- **Variables de entorno**: `META_APP_ID`, `META_APP_SECRET`, `META_EMBEDDED_SIGNUP_CONFIG_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`; canal alterno con `TWILIO_WHATSAPP_NUMBER` + credenciales Twilio.
+- **Tests**: 16 archivos en `src/lib/services/crm/whatsapp/__tests__/` más contrato fuera del directorio (`crm/whatsapp/settings/__tests__/defaultCountry.f16.test.ts`, `integrations/whatsapp/send/__tests__/to.f16.test.ts`, `integrations/twilio/send-whatsapp/__tests__/optOut.f16.test.ts`, `crm/shared/__tests__/callTargetCountry.f16.test.ts`).
+- **Calificación** (`docs/crm-revenue-os/PROGRESS.md`, "Fase: F16 — Ronda 6 evaluada — 2026-09-15", la más reciente): **APROBADA 9,5/10**, 23 suites / 343 verdes, fase cerrada. Rondas previas: r5 9,0, r4 8,5, r3 7,5.
+
 > Fecha: 2026-09-08 · Estado: **nuevo en V4** (antes el WhatsApp del CRM estaba repartido entre F7/F8 sin diseño propio)
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj`
 > Depende de: **F0** (IDOR C2/C4 y firma del webhook C3 cerrados; `outbound_jobs` + pg_cron + `/api/crm/jobs/run` + `fn_claim_jobs`; `contact_consents` + `fn_can_contact`; `messages.related_opportunity_id`; `activities.message_id`; `provider_pricing`; secretos cifrados), **F7** (tabla `templates` unificada, `interpolate` y `VARIABLE_CATALOG` reutilizados para variables HSM; `outbound_jobs` kind `email_batch` para campañas de email), **F9** (timeline + `QuickActionsBar` + `WhatsAppEntry`).
@@ -149,6 +159,8 @@ Pausa: status 'paused' → el handler no reclama; Reanudar → 'sending' + job; 
 Patrón RLS `org_member` de `calls`. Migraciones solo vía MCP `apply_migration`.
 
 ### 3.1 Migraciones
+
+> **Obsoleto:** no se aplicó como migración `f16` independiente. `conversations.last_inbound_at`, el trigger `update_conversation_last_message` y el índice llegaron por `supabase/migrations/00000000000000_baseline_schema.sql` / `20260908214513_crm_v4_f00_01_reconciliacion_checks_columnas.sql`. **`fn_whatsapp_window` nunca se creó en la base de datos**: `src/lib/services/crm/whatsapp/windowService.ts` trae en su cabecera el comentario `fn_whatsapp_window no existe en BD → se calcula en TS a partir de conversations.last_inbound_at` y reimplementa el cálculo en TypeScript (`computeWindow`/`getWindow`/`getWindowByConversation`).
 
 #### `202609_crm_v4_f16_conversations_last_inbound`
 
@@ -620,6 +632,8 @@ Se eliminan/redirigen: `/api/integrations/whatsapp/send` (301 lógico: devuelve 
 
 ### 4.2 Servicios (`src/lib/services/crm/whatsapp/`)
 
+> **Obsoleto:** los archivos reales no llevan el prefijo `whatsapp` (`whatsappOutboundService.ts` → `outboundService.ts`, `whatsappTemplateService.ts` → `templateService.ts`, `consentService.ts` → `consent.ts`) y las campañas se dividieron en varios archivos en vez de un `campaignService.ts` único: `campaignStore.ts` (CRUD), `campaignMaterialize.ts` (audiencia/`fn_campaign_materialize`), `campaignBatch.ts` (`runBatch`), `campaignEvents.ts` (eventos/webhook), y `campaignService.ts` (216L, orquesta launch/pause/resume/cancel/stats). Además existen `channelService.ts`, `costs.ts`, `allowedHours.ts`, `templateRender.ts`, `webhookTemplateStatus.ts`, `windowService.ts`, `inboundService.ts`, `http.ts`, `schemas.ts`, `types.ts` y un `index.ts` que re-exporta todo el módulo (ver `src/lib/services/crm/whatsapp/index.ts`).
+
 #### `whatsappOutboundService.ts`
 
 ```ts
@@ -834,6 +848,8 @@ Ninguna nueva. Reutiliza `twilio ^6.1` (F0 lo sube), `zod`, `@dnd-kit` (no aplic
 ## 5. UI
 
 ### 5.1 Rutas / páginas
+
+> **Obsoleto:** la ruta real de creación es `/app/crm/campanas/nuevo` (no `/nueva`); la pestaña de plantillas HSM vive en `src/components/crm/whatsapp/WhatsAppTemplatesTab.tsx` + `HsmEditorDialog.tsx` (no bajo `crm/plantillas/whatsapp/`); la configuración es `src/components/configuracion/crm/WhatsAppTab.tsx` (no `WhatsAppSettingsTab.tsx`, plana como el resto de tabs de `configuracion/crm/`).
 
 | Ruta | Archivo | Propósito |
 |---|---|---|

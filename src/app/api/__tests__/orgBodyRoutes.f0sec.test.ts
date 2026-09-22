@@ -48,9 +48,24 @@ jest.mock('@/lib/services/crm/whatsapp/outboundService', () => ({
   sendWhatsApp: (...a: unknown[]) => sendWhatsApp(...(a as [])),
 }));
 
-const assistantChat = jest.fn(async () => ({ content: 'hola', usage: null, action: null }));
+const assistantChat = jest.fn(async () => ({
+  content: 'hola', model: 'modelo-prueba',
+  usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 }, action: null,
+}));
 jest.mock('@/lib/services/aiAssistantService', () => ({
   aiAssistantService: { sendMessage: (...a: unknown[]) => assistantChat(...(a as [])) },
+}));
+// /chat ahora abre el hilo y persiste ambos mensajes antes de responder.
+// Se doblan los límites de persistencia, NO readOrgBody ni la validación tenant.
+const resolveConversation = jest.fn(async () => ({ id: 'conversation-test', isNew: true }));
+const loadMessages = jest.fn(async () => []);
+const appendMessage = jest.fn(async () => 'message-test');
+const ensureTitle = jest.fn(async () => undefined);
+jest.mock('@/lib/ai/agent/conversationStore', () => ({
+  resolveConversation: (...a: unknown[]) => resolveConversation(...(a as [])),
+  loadMessages: (...a: unknown[]) => loadMessages(...(a as [])),
+  appendMessage: (...a: unknown[]) => appendMessage(...(a as [])),
+  ensureTitle: (...a: unknown[]) => ensureTitle(...(a as [])),
 }));
 jest.mock('@/lib/ai/assistant/capabilities', () => ({ getAssistantCapabilities: jest.fn(async () => ({ modules: [], permissions: [], actions: [] })) }));
 jest.mock('@/lib/ai/assistant/actionGuard', () => ({ evaluateAction: jest.fn(() => ({ allowed: false })) }));
@@ -105,13 +120,32 @@ describe('POST /api/ai-assistant/chat', () => {
     expect(await res.json()).toMatchObject({ code: 'FOREIGN_ORGANIZATION' });
     expectForeignWarn();
     expect(assistantChat).not.toHaveBeenCalled();
+    expect(resolveConversation).not.toHaveBeenCalled();
+    expect(loadMessages).not.toHaveBeenCalled();
+    expect(appendMessage).not.toHaveBeenCalled();
+    expect(ensureTitle).not.toHaveBeenCalled();
   });
 
   test('sin organización, o la de la sesión (organizationId camelCase) → camino feliz', async () => {
-    expect((await chatPost(json('/api/ai-assistant/chat', 'POST', { message: 'hola' }))).status).not.toBe(403);
-    expect((await chatPost(json('/api/ai-assistant/chat', 'POST', { message: 'hola', organizationId: 120 }))).status).not.toBe(403);
+    const withoutOrg = await chatPost(json('/api/ai-assistant/chat', 'POST', { message: 'hola' }));
+    const withSessionOrg = await chatPost(json('/api/ai-assistant/chat', 'POST', { message: 'hola', organizationId: 120 }));
+    expect(withoutOrg.status).toBe(200);
+    expect(withSessionOrg.status).toBe(200);
+    expect(await withoutOrg.json()).toMatchObject({ conversationId: 'conversation-test', historySaved: true });
+    expect(await withSessionOrg.json()).toMatchObject({ conversationId: 'conversation-test', historySaved: true });
     expect(warn).not.toHaveBeenCalledWith(expect.stringMatching(/ajeno/), expect.anything());
     expect(assistantChat).toHaveBeenCalledTimes(2);
+    expect(resolveConversation).toHaveBeenCalledTimes(2);
+    expect(resolveConversation).toHaveBeenCalledWith(session.supabase, 120, 'u-1', null, null);
+    expect(appendMessage).toHaveBeenCalledTimes(4);
+    expect(appendMessage).toHaveBeenCalledWith(session.supabase, expect.objectContaining({
+      conversationId: 'conversation-test', organizationId: 120, role: 'user', content: 'hola',
+    }));
+    expect(appendMessage).toHaveBeenCalledWith(session.supabase, expect.objectContaining({
+      conversationId: 'conversation-test', organizationId: 120, role: 'assistant', content: 'hola',
+    }));
+    expect(assistantChat).toHaveBeenCalledWith('hola', [], expect.objectContaining({ organizationId: 120 }),
+      expect.anything(), { supabase: session.supabase, userId: 'u-1' });
   });
 });
 

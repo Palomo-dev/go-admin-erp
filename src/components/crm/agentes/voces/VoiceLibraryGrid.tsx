@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/use-toast";
 import { Loader2, Music4 } from "lucide-react";
 import { LoadErrorState } from "@/components/common/LoadErrorState";
-import { FadeIn } from "@/components/shared/motion/primitives";
+import { FadeIn } from "@/components/shared/motion";
 import { fetchJson } from "@/lib/utils/fetchJson";
 import { describeError } from "@/lib/utils/errorMessage";
 import type { LibraryVoice } from "@/lib/services/crm/voiceLibrary";
@@ -102,7 +102,7 @@ export function VoiceLibraryGrid({ ownedVoiceIds, onAdded, account }: Props) {
       />
 
       {lib.loading && (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy="true" aria-label="Cargando voces">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy="true" aria-label="Cargando voces">
           {SKELETONS.map((i) => (
             <li key={i} className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
               <div className="flex items-center gap-3">
@@ -140,9 +140,9 @@ export function VoiceLibraryGrid({ ownedVoiceIds, onAdded, account }: Props) {
       )}
 
       {!lib.loading && !lib.error && lib.voices.length > 0 && (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label="Voces de la biblioteca">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label="Voces de la biblioteca">
           {lib.voices.map((v, i) => (
-            <li key={v.voice_id} className="h-full">
+            <li key={v.voice_id} className="h-full min-w-0">
               <FadeIn transition={{ duration: 0.2, delay: Math.min(i % 24, 12) * 0.02 }} className="h-full">
                 <VoiceCard
                   voice={v}

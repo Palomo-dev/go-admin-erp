@@ -219,22 +219,18 @@ async function printViaSystem(printer: PrinterRow, jobType: PrintJobRow['job_typ
     }
   }
 
-  // 2. Fallback: texto plano con node-printer
-  const nodePrinter = tryRequire('printer');
-  if (nodePrinter) {
+  // 2. Fallback (agente standalone sin Electron, o Electron falló): texto
+  // plano en RAW por el spooler de Windows (PowerShell, sin módulos nativos).
+  // Antes se usaba el paquete nativo `printer` (0.4.0, 2016), que no compila
+  // contra Node 20 y por tanto nunca estaba disponible; se retiró el
+  // 2026-09-21 (auditoría desktop §2.9).
+  if (process.platform === 'win32') {
     const text = renderPlainText(jobType, payload, paper);
-    return new Promise((resolve, reject) => {
-      nodePrinter.printDirect({
-        data: text,
-        printer: printerName,
-        type: 'RAW',
-        success: () => resolve(),
-        error: (err: any) => reject(new Error(`Error imprimiendo en impresora del sistema "${printerName}": ${err}`)),
-      });
-    });
+    await sendRawToPrinter(printerName, Buffer.from(text, 'utf-8'));
+    return;
   }
 
-  throw new Error(`No se pudo imprimir en "${printerName}": Electron print no disponible y módulo printer no instalado`);
+  throw new Error(`No se pudo imprimir en "${printerName}": Electron print no disponible y no hay spooler RAW en ${process.platform}`);
 }
 
 /**

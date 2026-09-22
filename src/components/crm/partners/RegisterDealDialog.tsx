@@ -83,7 +83,7 @@ export function RegisterDealDialog({ open, partner, onOpenChange, onRegister, re
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next); }}>
       <DialogContent onCloseAutoFocus={onCloseAutoFocus} className="max-h-[90vh] max-w-lg overflow-y-auto bg-white dark:bg-gray-950">
-        <DialogHeader>
+        <DialogHeader className="pr-6 text-left">
           <DialogTitle className="text-gray-900 dark:text-gray-100">Registrar deal de {partner?.name}</DialogTitle>
           <DialogDescription className="text-gray-600 dark:text-gray-400">
             La comisión se calcula con el monto de la oportunidad y la tasa {partner && Number(partner.commission_rate) > 0 ? 'propia del partner' : 'de su tier'} ({partner ? formatRate(partner.effective_rate) : ''}). Queda pendiente de aprobar; no se paga nada aquí.
@@ -107,7 +107,7 @@ export function RegisterDealDialog({ open, partner, onOpenChange, onRegister, re
           <div>
             <Label htmlFor="deal-type" className="text-xs text-gray-700 dark:text-gray-300">Tipo de deal</Label>
             <Select value={dealType} onValueChange={(v) => setDealType(v as DealType)}>
-              <SelectTrigger id="deal-type"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="deal-type" className="text-left [&>span]:line-clamp-1"><SelectValue /></SelectTrigger>
               <SelectContent>{DEAL_TYPES.map((t) => <SelectItem key={t} value={t}>{DEAL_TYPE_LABELS[t]}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -119,7 +119,7 @@ export function RegisterDealDialog({ open, partner, onOpenChange, onRegister, re
           )}
           <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">Registrar</button>
         </form>
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 [&>button]:h-11 sm:[&>button]:h-9">
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving} onClick={() => void submit()}>{saving ? 'Registrando…' : 'Registrar deal'}</Button>
         </DialogFooter>

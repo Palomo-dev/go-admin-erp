@@ -8,6 +8,18 @@
 
 ---
 
+## Estado real (2026-09-21)
+
+- **Rutas API** verificadas con `ls`: `src/app/api/crm/timeline/[type]/[id]/route.ts` (92 L), `src/app/api/crm/notes/route.ts` (existe), `src/app/api/crm/tasks/route.ts` (existe, 3017 B) y `src/app/api/crm/activities/route.ts` (existe). `/api/tasks` (PM) que el plan da por existente en §4.1/§4.5/§5.3 **no existe en el repo** — confirmado también por el propio §1 de este documento; toda esta fase usa `/api/crm/tasks`.
+- **Servicios** (`wc -l`): `timelineService.ts` 172 L, `activityService.ts` 195 L, `taskService.ts` 198 L (además de `meetingsService.ts` 251 L y `opportunityStageService.ts` 216 L, citados en §1).
+- **UI real**: timeline único en `src/components/crm/timeline/{OpportunityTimeline.tsx,TimelineFilters.tsx,TimelineEntryCard.tsx,utils.ts,hooks/useTimeline.ts,entries/*}` (10 entradas ≤ 158 L); Kanban en `src/components/crm/pipeline/{KanbanBoardV2.tsx (280 L),KanbanColumnV2.tsx,OpportunityCardV2.tsx}` **sin** el subdirectorio `kanban/` que describe §5.2; drawer en `src/components/crm/pipeline/OpportunityDrawer.tsx` (204 L) + `drawer/*`; detalle en `src/components/crm/oportunidades/OpportunityDetail.tsx` (189 L). Diálogos rápidos reales: `QuickNoteDialog.tsx` y `TaskDialog.tsx` (no `NoteQuickDialog.tsx`/`TaskQuickDialog.tsx` de §5.2); `ComposeWhatsAppDialog.tsx` vive en `src/components/crm/whatsapp/`, no en `shared/`.
+- **Migraciones f09**: solo `20260909190500_crm_v4_f09_stage_write_hardening.sql` lleva ese prefijo (endurece `update_stage_without_triggers` y añade el guardián de `is_won`/`is_lost`). Los índices y la publicación realtime de esta fase se aplicaron con prefijo `f00` (`20260909042908_crm_v4_f00_26_realtime_notes_indices_timeline.sql`). La RPC `fn_crm_timeline` de §3.1/§4.2 **no existe** (sin DDL en `supabase/migrations`; confirmado también en el comentario de `timelineService.ts:31` y en la fila "Pendiente" de §1): el timeline hidrata con hasta 8 consultas TS, no con una función SQL.
+- **Variables de entorno**: ninguna propia de F9 (usa `NEXT_PUBLIC_SUPABASE_*` de siempre), tal como dice §4.6.
+- **Tests que protegen esta fase**: `src/lib/services/crm/__tests__/{timelineService,activityService,meetingsService,opportunityStageService,f9Routes.smoke,f9Round3Builder,timelineAdversarial,timelineR2Adversarial,sequenceTimeline,callActivityService}.test.ts` + `src/components/crm/shared/__tests__/quickActionsConfig.test.ts` + `src/components/crm/timeline/__tests__/utils.test.ts`. `@testing-library/react` de §4.7 no está en `package.json`: no hay tests de render, tal como el propio §1 ya declara.
+- **Calificación** (`docs/crm-revenue-os/PROGRESS.md`, solo lectura): **F9 — APROBADA — 9,5/10** (4,0→6,0→7,5→8,5→9,5 a lo largo de la ronda 1 y sus tres re-verificaciones).
+
+---
+
 ## 0. Objetivo y alcance
 
 Al terminar, en una org de prueba con F0-F7 desplegadas:
@@ -241,6 +253,8 @@ EXPLAIN (ANALYZE) SELECT * FROM fn_crm_timeline(7,'opportunity','<uuid>',NULL,NU
 | POST | `/api/crm/meetings` **NUEVO** | sesión | `{ title; start_at; end_at; timezone?: string (default org); location?: string; description?: string; customer_id?: uuid; opportunity_id?: uuid; assigned_to?: uuid; attendees?: string[] (emails); send_invite?: boolean }` | `201 {success, data:{ event: CalendarEvent, activity_id, email_message_id? }}` | 400; 409 solapamiento con `calendar_events` del mismo `assigned_to` (advertencia, no bloqueo salvo `strict=true`) | `client_key` |
 | PATCH | `/api/crm/meetings/[id]` **NUEVO** | sesión | subconjunto + `status: 'scheduled'|'done'|'canceled'` | `{success, data}` | 404 | — |
 | POST | `/api/tasks` (existe, PM) | sesión | `related_to_type/related_to_id` | — | — | — |
+
+> **Obsoleto:** `/api/tasks` no existe en el repo (confirmado con `ls`). La tarea rápida de F9 se sirve por `POST /api/crm/tasks` (creada en esta fase, ver §1 y la fila del propio §1 "`/api/tasks` (PM) no existe… → se creó `/api/crm/tasks`"). Las referencias a `/api/tasks` en §4.5 (patrón del handler), §5.2 (`TaskEntry.tsx` con `PATCH /api/tasks/[id]`) y §5.3 (flujo "Tarea rápida") deben leerse igual: es `/api/crm/tasks`.
 | PATCH | `/api/crm/opportunities/[id]/stage` **NUEVO** | sesión | `{ stage_id; ignore_gate?: boolean; won_data?: object; loss_data?: LossReasonData }` | `{success, data:{opportunity, gate?: GateResult}}` | 409 `{gate}` si `ok=false` y `!ignore_gate`; 403 `ignore_gate` sin permiso | — |
 | GET | `/api/crm/opportunities/[id]` (existe vía `opportunitiesService.getOpportunityById`; se expone como ruta) | sesión | `?include=customer,stage,salesperson,counts` | `OpportunityFull` con `salesperson_id` (fix B12) | 404 | — |
 
@@ -513,6 +527,8 @@ Estado: `openDialog: 'email'|'whatsapp'|'meeting'|'task'|'note'|'ai'|null`. Hook
 
 **`src/components/crm/shared/NoteQuickDialog.tsx`** (≤ 120 L) y **`TaskQuickDialog.tsx`** (≤ 180 L): `POST /api/crm/activities {activity_type:'note'}` y `POST /api/tasks` (`related_to_type/id`, `assigned_to` default usuario, `status:'open'`, `priority:'med'`).
 
+> **Obsoleto:** los nombres reales, verificados con `ls src/components/crm/shared`, son `QuickNoteDialog.tsx` y `TaskDialog.tsx` (no `NoteQuickDialog.tsx`/`TaskQuickDialog.tsx`), y llaman a `POST /api/crm/tasks` (no `/api/tasks`, que no existe — ver la nota de §4.1). También `ComposeWhatsAppDialog.tsx`, citado como si estuviera en `shared/`, vive en `src/components/crm/whatsapp/`.
+
 **`src/components/crm/timeline/OpportunityTimeline.tsx`** (NUEVO, ≤ 280 L)
 
 ```ts
@@ -572,6 +588,10 @@ Header sticky (`src/components/crm/pipeline/drawer/DrawerHeader.tsx` ≤ 200 L):
 **`src/components/crm/oportunidades/OpportunityDetail.tsx`** (reducir a ≤ 300 L): header + embudo existentes; `QuickActionsBar variant="detail"`; `Tabs` con `ResumenTab`-equivalente inline (productos/espacios/conceptos ya existentes se extraen a `ProductsTab.tsx`, `SpacesTab.tsx`, `CustomLinesTab.tsx` ≤ 200 L cada uno) + `ActividadTab`, `TareasTab`, `NotasTab`, `DocumentosTab`, `IATab` compartidos + `AnalyticsTab` existente.
 
 **Kanban**: `src/components/crm/pipeline/kanban/KanbanBoardV2.tsx` (≤ 280 L: `DragDropContext`, columnas, modales gate/won/lost, realtime), `KanbanColumnV2.tsx` (≤ 160 L; color de etapa con `style={{ borderTopColor: stage.color }}`, no clase dinámica: fix B5), `OpportunityCardV2.tsx` (≤ 200 L), `hooks/useKanbanBoard.ts` (≤ 250 L: carga pipeline/stages/opportunities, `subscribeToStages`/`subscribeToOpportunities` con merge, optimistic update/revert, `changeStage`). Props de la tarjeta:
+
+> **Obsoleto:** no existe el subdirectorio `pipeline/kanban/`. Los tres componentes y el hook quedaron directamente en `src/components/crm/pipeline/` (`KanbanBoardV2.tsx` 280 L, `KanbanColumnV2.tsx`, `OpportunityCardV2.tsx`, `hooks/useKanbanBoard.ts`), junto con `KanbanSummary.tsx` (no estaba en el plan). Las rutas `kanban/...` de los bloques de código más abajo (líneas ~598-610 de este documento) deben leerse sin ese prefijo.
+
+Props de la tarjeta:
 
 ```ts
 export interface OpportunityCardV2Props { opportunity: KanbanOpportunity; index: number; onOpen(id: string): void; compact?: boolean }

@@ -1,6 +1,6 @@
 appId: io.goadmin.desktop
 productName: Go Admin ERP
-copyright: Copyright © 2025 GO Admin
+copyright: Copyright © 2025 GO Admin S.A.S.
 
 # Con versión: antes era GoAdminERP-Setup.${ext} y cada release de GitHub
 # pisaba el asset anterior, un .exe suelto no decía qué versión era, y los
@@ -50,22 +50,38 @@ win:
   # certificado y cambiar esto a true.
   verifyUpdateCodeSignature: false
 
+# macOS (F5/F15-B: llamadas del CRM). Hoy solo se publica Windows; esta
+# sección deja listo lo que macOS exige para que el micrófono funcione:
+# sin NSMicrophoneUsageDescription el sistema no muestra el prompt y
+# getUserMedia falla; sin la entitlement audio-input, con hardened runtime,
+# el proceso no puede abrir el micrófono aunque el usuario lo permita.
+mac:
+  category: public.app-category.business
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    NSMicrophoneUsageDescription: GO Admin ERP usa el micrófono para las llamadas del CRM y las notas de voz.
+    NSCameraUsageDescription: GO Admin ERP usa la cámara para escanear códigos de barras y QR.
+
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
   # Los accesos directos los crea installer.nsh según lo que marque el
   # usuario en la página de opciones (customInstall) y los borra
-  # customUnInstall.
+  # customUnInstall. shortcutName y uninstallDisplayName siguen el manual de
+  # marca («GO Admin ERP»); productName, appId y el nombre del .exe NO
+  # cambian: romperían las actualizaciones y los accesos directos existentes.
   createDesktopShortcut: false
   createStartMenuShortcut: false
-  shortcutName: Go Admin ERP
+  shortcutName: GO Admin ERP
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico
   installerHeader: build/installer-header.bmp
   installerSidebar: build/installer-sidebar.bmp
-  uninstallDisplayName: Go Admin ERP
+  uninstallDisplayName: GO Admin ERP
   include: build/installer.nsh
   license: build/license.txt
   installerLanguages: es

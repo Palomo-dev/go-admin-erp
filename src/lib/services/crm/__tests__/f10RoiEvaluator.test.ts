@@ -100,6 +100,22 @@ describe('F10 roiEvaluator — entradas hostiles', () => {
     expect(() => tokenize('a $ b')).toThrow();
     expect(() => tokenize('a; b')).toThrow();
   });
+
+  // de tester r1 (D1/D2): batería hostil adicional (1e400, acceso a propiedades, Unicode de ancho completo,
+  // espacio de ancho cero, «1..2», «1e», NaN/Infinity literales, unario +, 400 dígitos, 40 negaciones) y lo válido que sigue valiendo
+  const hostile = [
+    '1e400', 'a.constructor', 'a.__proto__', 'constructor', '('.repeat(40) + '1' + ')'.repeat(40), '0/0', 'a/(b-3)',
+    '１+１', 'a' + String.fromCharCode(0x200b) + '+1', '1;2', '1..2', '1e', 'NaN', 'Infinity', 'this', 'a=1', '+1',
+    '1' + '+1'.repeat(5000), '-'.repeat(40) + '1', '9'.repeat(400),
+  ];
+  it.each(hostile.map((h) => [h.length > 40 ? `${h.slice(0, 40)}… (${h.length})` : h, h]))('D1 %s → ok:false', (_label, expr) => {
+    expect(evaluateExpression(expr, { a: 2, b: 3 }).ok).toBe(false);
+  });
+
+  it('D2 lo válido sigue valiendo: --1 = 1 y la precedencia con paréntesis', () => {
+    expect(evaluateExpression('--1', {})).toEqual({ ok: true, value: 1 });
+    expect(evaluateExpression('a + b * 2 - (a - b) / 5', { a: 2, b: 3 })).toEqual({ ok: true, value: 2 + 6 + 0.2 });
+  });
 });
 
 describe('F10 roiEvaluator — fórmula en cadena', () => {

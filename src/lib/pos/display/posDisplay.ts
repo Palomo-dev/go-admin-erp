@@ -23,10 +23,12 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { DisplayEmitter } from './emitter';
 import type { DisplayPresenceEnvironment } from './presence';
 import {
+  getCachedCustomerDisplaySettings,
   hasCustomerDisplaySettingsCache,
   isCustomerDisplayEnabled,
   loadCustomerDisplaySettings,
   refreshCustomerDisplaySettings,
+  toDisplayPresentationSettings,
 } from './settings';
 import { getOrCreateLocalTerminalId } from './terminal';
 import { BroadcastChannelTransport, isBroadcastChannelSupported, type DisplayTransport } from './transport';
@@ -104,12 +106,23 @@ export function getPosDisplayEnvironment(): DisplayPresenceEnvironment {
   };
 }
 
+/**
+ * Go Admin Desktop: este módulo NO escribe nada en el proceso principal a
+ * partir de lo que LEE del interruptor de la organización (ni `setEnabled`
+ * ni `close()` del puente). `config.json` solo cambia por una acción del
+ * usuario en esta máquina (tarjeta o «Activar y abrir»): ver desktopDisplay.ts,
+ * cabecera, punto 4. Así una carga fallida del interruptor (arranque sin red,
+ * RLS) deja el emisor y la ventana del escritorio exactamente como estaban.
+ */
+
 /** Emisor de esta ventana de caja. Se crea perezosamente; en servidor (SSR) también existe pero nunca abre transporte. */
 export function getPosDisplayEmitter(): DisplayEmitter {
   if (!instance) {
     instance = new DisplayEmitter({
       createTransport: createBrowserTransport,
       isEnabled: () => isCustomerDisplayEnabled(getOrganizationId()),
+      // Fase 2: los ajustes de presentación viajan en hello.settings desde la misma caché.
+      getSettings: () => toDisplayPresentationSettings(getCachedCustomerDisplaySettings(getOrganizationId())),
     });
   }
   return instance;
@@ -202,6 +215,29 @@ export interface StartPosDisplayOptions {
 let startGeneration = 0;
 
 /**
+ * Cerrar la PESTAÑA o la ventana de la caja no ejecuta el cleanup de React de
+ * /app/pos, así que sin esto la pantalla no recibía `bye` y dependía del
+ * watchdog (hasta 3,5 s). Con `pagehide` se despide en el acto, igual que
+ * hace la pantalla en useDisplayReceiver. Un solo listener por ventana.
+ */
+let pagehideRegistered = false;
+function ensurePagehideStop(): void {
+  // Solo en un documento real: los tests usan `window` falsos que disparan
+  // todos sus listeners con eventos de `storage`, y aquí no hay página que cerrar.
+  if (pagehideRegistered || typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (typeof window.addEventListener !== 'function') return;
+  pagehideRegistered = true;
+  window.addEventListener('pagehide', (event: Event) => {
+    if (event?.type !== 'pagehide') return;
+    try {
+      stopPosDisplay();
+    } catch {
+      // la ventana se está cerrando: nada que hacer
+    }
+  });
+}
+
+/**
  * Arranque desde la página del POS: carga el interruptor (una consulta,
  * cacheada), arranca el emisor y queda a la escucha de cambios del
  * interruptor hechos en otras ventanas. Devuelve el emisor para encadenar
@@ -213,6 +249,7 @@ let startGeneration = 0;
 export async function startPosDisplay(options: StartPosDisplayOptions): Promise<DisplayEmitter> {
   const emitter = getPosDisplayEmitter();
   const generation = ++startGeneration;
+  ensurePagehideStop();
 
   // La identidad de esta caja (pos_terminal_id) se crea SIEMPRE al abrir el POS,
   // esté o no encendido el interruptor maestro. Antes solo se creaba al abrir el
@@ -274,8 +311,10 @@ export function stopPosDisplay(): void {
 }
 
 /**
- * Aplica el interruptor que YA está en la caché de settings.ts, sin leer la
- * BD: encendido → el emisor abre el transporte y saluda; apagado → lo cierra.
+ * Aplica los ajustes que YA están en la caché de settings.ts, sin leer la
+ * BD: encendido → el emisor abre el transporte y saluda; apagado → lo cierra;
+ * encendido y ya abierto → vuelve a saludar con los ajustes nuevos (Fase 2:
+ * propina, calificación… sin recargar la pantalla, PLAN §5.2).
  * La tarjeta de configuración lo llama tras guardar: el servicio fijó la
  * caché con el valor recién escrito (`primeCustomerDisplaySettings`), así
  * que releer sería una consulta de más y, si fallara, apagaría una caja que

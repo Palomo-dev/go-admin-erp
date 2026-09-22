@@ -66,7 +66,7 @@ export function ReferralProgramsSheet({ open, programs, currency, canManage, onO
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="flex w-full flex-col gap-0 overflow-y-auto bg-gray-50 p-0 dark:bg-gray-950 sm:max-w-xl">
-        <SheetHeader className="border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-900">
+        <SheetHeader className="text-left border-b border-gray-200 bg-white px-6 pr-8 py-4 dark:border-gray-800 dark:bg-gray-900">
           <SheetTitle className="text-gray-900 dark:text-gray-100">Programas de referidos</SheetTitle>
           <SheetDescription className="text-gray-600 dark:text-gray-400">Qué recompensa se da, a quién, y si el programa está activo.</SheetDescription>
         </SheetHeader>

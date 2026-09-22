@@ -20,7 +20,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/use-toast";
 import { AlertTriangle, ChevronDown, Info, Library, Mic, SlidersHorizontal } from "lucide-react";
 import { LoadErrorState } from "@/components/common/LoadErrorState";
-import { FadeIn } from "@/components/shared/motion/primitives";
+import { FadeIn } from "@/components/shared/motion";
 import { fetchJson } from "@/lib/utils/fetchJson";
 import { describeError } from "@/lib/utils/errorMessage";
 import { describeVoiceRemoval } from "@/lib/services/crm/voiceLibrary";
@@ -156,10 +156,10 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
         <CollapsibleTrigger asChild>
           <button type="button" className="flex w-full items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-left text-sm text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-100">
             <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="flex-1">
+            <span className="min-w-0 flex-1 break-words">
               Voz por defecto: <strong>{defaultVoice ? defaultVoice.name : "ninguna (voz estándar de Google)"}</strong>. ¿Cómo se elige la voz de una llamada?
             </span>
-            <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${howOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+            <ChevronDown className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${howOpen ? "rotate-180" : ""}`} aria-hidden="true" />
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -182,7 +182,7 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
       )}
 
       {loading && (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Cargando mis voces">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Cargando mis voces">
           {[0, 1, 2].map((i) => (
             <li key={i} className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
               <div className="flex items-center gap-3"><Skeleton className="h-12 w-12 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-3 w-1/3" /></div></div>
@@ -215,9 +215,9 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
       )}
 
       {!loading && !error && voices.length > 0 && (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Mis voces" aria-busy={refreshing || undefined}>
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Mis voces" aria-busy={refreshing || undefined}>
           {voices.map((v, i) => (
-            <li key={v.id} className="h-full">
+            <li key={v.id} className="h-full min-w-0">
               <FadeIn transition={{ duration: 0.2, delay: Math.min(i, 8) * 0.03 }} className="h-full">
                 <MyVoiceCard
                   voice={v}
@@ -241,10 +241,18 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
 
       <Collapsible open={moreOpen} onOpenChange={setMoreOpen}>
         <CollapsibleTrigger asChild>
-          <Button type="button" variant="ghost" size="sm" className="gap-2 text-gray-600 dark:text-gray-300">
-            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-            Más opciones: importar el workspace de ElevenLabs o registrar una voz por identificador
-            <ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+          {/* UX móvil: el texto envuelve (antes `whitespace-nowrap` medía 598 px a 375 px). */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-auto w-full justify-start gap-2 whitespace-normal py-2 text-left text-gray-600 dark:text-gray-300 sm:w-auto"
+          >
+            <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              Más opciones: importar el workspace de ElevenLabs o registrar una voz por identificador
+            </span>
+            <ChevronDown className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${moreOpen ? "rotate-180" : ""}`} aria-hidden="true" />
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="pt-3">

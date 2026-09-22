@@ -38,7 +38,8 @@ interface Props {
 
 export function hitButtonClass(active: boolean): string {
   return cn(
-    'flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors',
+    // UX móvil r1 (tester UXM-A): apilado en móvil (título y subtítulo completos), fila desde `sm` como antes.
+    'flex w-full flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left text-sm transition-colors sm:flex-row sm:items-center sm:justify-between sm:gap-2',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950',
     active
       ? 'border-blue-600 bg-blue-50 text-blue-900 dark:border-blue-400 dark:bg-blue-950/60 dark:text-blue-100'
@@ -75,8 +76,8 @@ export function EntitySearchList({ id, label, placeholder, query, onQueryChange,
         {hits.map((h) => (
           <li key={h.id}>
             <button type="button" aria-pressed={selectedId === h.id} className={hitButtonClass(selectedId === h.id)} onClick={() => onSelect(h)}>
-              <span className="truncate font-medium">{h.title}</span>
-              {h.subtitle && <span className="truncate text-xs text-gray-600 dark:text-gray-400">{h.subtitle}</span>}
+              <span className="max-w-full truncate font-medium">{h.title}</span>
+              {h.subtitle && <span className="max-w-full truncate text-xs text-gray-600 dark:text-gray-400">{h.subtitle}</span>}
             </button>
           </li>
         ))}

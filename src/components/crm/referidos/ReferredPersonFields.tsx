@@ -50,7 +50,7 @@ export function ReferredPersonFields({ form, errors, programs, currency, onChang
       <div>
         <Label htmlFor="referral-program" className="text-xs text-gray-700 dark:text-gray-300">Programa</Label>
         <Select value={form.program_id || NO_PROGRAM} onValueChange={(v) => onChange({ ...form, program_id: v === NO_PROGRAM ? '' : v })}>
-          <SelectTrigger id="referral-program" aria-describedby="referral-program-hint"><SelectValue /></SelectTrigger>
+          <SelectTrigger id="referral-program" className="text-left [&>span]:line-clamp-1" aria-describedby="referral-program-hint"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value={NO_PROGRAM}>Sin programa</SelectItem>
             {programs.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}

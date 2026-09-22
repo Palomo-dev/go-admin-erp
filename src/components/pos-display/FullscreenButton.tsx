@@ -1,25 +1,24 @@
 'use client';
 
 /**
- * Botón discreto de pantalla completa (PLAN §10). Se oculta en Electron
- * (`window.electronAPI`, donde la ventana kiosco ya lo resuelve), cuando el
- * documento ya está a pantalla completa y cuando el navegador no lo soporta.
+ * Botón discreto de pantalla completa (PLAN §10). Se oculta en Go Admin
+ * Desktop (`isDesktop()`: el proceso principal ya abre la ventana a pantalla
+ * completa en el monitor del cliente, y con un solo monitor la deja como
+ * ventana normal a propósito), cuando el documento ya está a pantalla
+ * completa y cuando el navegador no lo soporta.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { Maximize2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-
-function isElectron(): boolean {
-  return typeof window !== 'undefined' && !!(window as unknown as { electronAPI?: unknown }).electronAPI;
-}
+import { isDesktop } from '@/lib/utils/desktop';
 
 export function FullscreenButton() {
   const t = useTranslations('posDisplay');
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (isElectron() || typeof document === 'undefined' || !document.documentElement.requestFullscreen) return;
+    if (isDesktop() || typeof document === 'undefined' || !document.documentElement.requestFullscreen) return;
     const sync = () => setVisible(!document.fullscreenElement);
     sync();
     document.addEventListener('fullscreenchange', sync);

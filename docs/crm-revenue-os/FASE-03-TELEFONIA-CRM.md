@@ -1,5 +1,18 @@
 # FASE 03 — Llamar desde el pipeline y la oportunidad (navegador) con grabación y consentimiento
 
+## Estado real (2026-09-21)
+
+**APROBADA — ronda 8 (2026-09-15), 9,6/10** (`docs/crm-revenue-os/PROGRESS.md`, tabla de fases). El detalle ronda a ronda vive en §13-§15 de este mismo documento; esta sección solo ancla lo verificado con `ls`/`grep` hoy.
+
+- **Rutas** (`src/app/api/voice/**`): `call`, `dial-complete`, `recording` (+ `recording/[id]/stream`), `status`, `token`, `twiml/{inbound,outbound,agent-leg,customer-leg,consent-whisper,ai-agent}`. La legacy `src/app/api/integrations/twilio/voice/incoming` **sigue existiendo** (delega en `twiml/inbound`, ver nota en §1.1): no se borró como planeaba el objetivo 8.
+- **Servicios** (`src/lib/services/crm/`): `twimlBuilders.ts` (222L), `callStateMachine.ts` (281L), `callManagementService.ts` (699L), `callCreditsService.ts` (224L), `consentService.ts` (387L, único escritor de `call_consents`), `consentReconcileService.ts` (290L), `recordingStorageService.ts` (235L), `phoneNumberService.ts` (158L), `telephonySettingsService.ts` (85L).
+- **UI**: `src/components/voice/**` (`SoftphoneDock`+`dock/{DockHeader,Keypad,CallControls,LiveNote}`, `SoftphoneProvider`, `IncomingCallToast`, `CallButton`, `CallsTable`+`CallRow`+`CallRowDetail`); página `src/app/app/crm/llamadas/page.tsx`; tab en `src/components/configuracion/crm/TelefoniaTab.tsx` (no `TelephonySettingsTab.tsx` como decía el plan).
+- **Migraciones**: sin tag `crm_v4_f03` propio. El esquema que este documento pide en §3.1 (`user_comm_preferences`, `provider_pricing`, trigger `trg_calls_completed_activity`, índices de `calls`) se aplicó dentro de las migraciones de F0 (`20260908214724_..._f00_03_...`, `20260908220220_..._f00_11_...`). `calls`/`call_recordings`/`call_consents`/`phone_numbers` vienen de `00000000000000_baseline_schema.sql`.
+- **Variables de entorno** (`.env.example`): `TWILIO_MASTER_ACCOUNT_SID/AUTH_TOKEN`, `TWILIO_API_KEY/API_SECRET`, `TWILIO_TWIML_APP_SID`, `TWILIO_PHONE_NUMBER`, `VOICE_ALLOW_PLATFORM_CALLER_ID`, `VOICE_LEGACY_REST_OUTBOUND`, `TWILIO_WEBHOOK_BASE_URL`, `VOICE_CALLBACK_SECRET`, `WS_SESSION_SECRET`.
+- **Tests**: no hay `__tests__` bajo `src/app/api/voice/**`; los route handlers reales se ejercen desde `src/lib/services/crm/__tests__/f3f5Round{3..8}*.test.ts`, `f3Round3VoiceCall.test.ts`, `callStateMachine.test.ts`, `callCreditsService.test.ts`. `src/__tests__/guardrails.test.ts` (caso 7) protege la firma fail-closed en todo `/api/voice` e `/api/integrations/twilio`.
+
+---
+
 > Fecha: 2026-09-08 · Estado: **reescrito V4** (sustituye la V3 completa)
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj` · Repo: `go-admin-erp` (Next.js 15.5 App Router, React 19, Vercel iad1)
 > Depende de: **F0** (fix `resolveOrgFromExternal`, firmas fail-closed, CHECKs de `calls`/`call_recordings` reconciliados en TS, bucket `crm-call-recordings`, `outbound_jobs` + pg_cron, registry `provider_configs` con credenciales cifradas y fallback env, permisos de micrófono Capacitor/Electron) y **F2** (timeline unificado + `activities.call_id`; si F2 no ha corrido, F3 aplica la parte mínima de forma idempotente, ver 3.1).
@@ -699,6 +712,8 @@ await device.audio.setInputDevice(inputId); device.audio.speakerDevices.set(outp
 | `src/components/configuracion/crm/telephony/MyMobileSection.tsx` | NUEVO ≤160L (compartido con F5) | — | Mi celular (E.164) + OTP (F5), modo de llamada por defecto, caller id por defecto, dispositivos de audio. |
 | `src/components/app-layout/AppLayout.tsx:127-138` y `src/config/moduleConfig.ts:136-141` | modificar | — | Añadir `{name:'Llamadas', href:'/app/crm/llamadas', icon:<Phone/>}` y `{name:'Leads', href:'/app/crm/leads'}`. |
 | `src/components/crm/pipeline/drawer/ActivityActions.tsx` | modificar | — | Eliminar `CallDialog` (`:229-454`) y el botón `:116`; la barra la sustituye `QuickActionsBar`. |
+
+> **Obsoleto:** varios nombres de esta tabla no son los que quedaron en `src/`. `CallModeMenu.tsx` nunca se creó como archivo aparte: el menú de "Llamar" vive inline en `src/components/crm/shared/QuickActionsBar.tsx`, que además importa directamente `MobileCallDialog.tsx` (F5) en vez de un `CallModeMenu` compartido. `dock/DialPad.tsx` se llamó `dock/Keypad.tsx`. `CallDetailSheet.tsx` (un `Sheet`) no existe: la fila expandible quedó en `CallRowDetail.tsx`, como ya documenta §1.1. `configuracion/crm/telephony/*` (inglés) quedó en `configuracion/crm/telefonia/*` (español) y `TelephonySettingsTab.tsx` es `TelefoniaTab.tsx`.
 
 ### 5.3 Flujos de usuario
 

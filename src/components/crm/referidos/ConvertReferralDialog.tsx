@@ -90,7 +90,7 @@ export function ConvertReferralDialog({ open, referral, onOpenChange, onConvert,
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next); }}>
       <DialogContent onCloseAutoFocus={onCloseAutoFocus} className="max-h-[90vh] max-w-lg overflow-y-auto bg-white dark:bg-gray-950">
-        <DialogHeader>
+        <DialogHeader className="pr-6 text-left">
           <DialogTitle className="text-gray-900 dark:text-gray-100">Convertir «{referral?.referred_name}» en lead</DialogTitle>
           <DialogDescription className="text-gray-600 dark:text-gray-400">
             Se crea la ficha de cliente y un lead con origen «referido» en el pipeline por defecto. El referido queda como convertido.
@@ -136,7 +136,7 @@ export function ConvertReferralDialog({ open, referral, onOpenChange, onConvert,
           )}
           <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">Convertir</button>
         </form>
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 [&>button]:h-11 sm:[&>button]:h-9">
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving} onClick={() => void submit()}>
             {saving ? 'Convirtiendo…' : 'Crear lead'}

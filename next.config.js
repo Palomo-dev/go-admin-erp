@@ -16,12 +16,24 @@ const nextConfig = {
   // "Cannot find module webpack-runtime.js". Sin la variable, `.next` de siempre.
   distDir: process.env.NEXT_DIST_DIR || '.next',
   eslint: {
-    // Permite que el build en producción complete aunque haya errores de ESLint
+    // DEUDA (auditoría desktop §4.6, 2026-09-21): sigue en true porque
+    // `npm run lint` no está verde: miles de `@typescript-eslint/no-explicit-any`
+    // preexistentes en todo src/. Activarlo hoy rompería el despliegue sin
+    // corregir nada. Cuando el lint quede en 0, pasar a false. Mientras tanto,
+    // cada archivo que se toque debe quedar limpio (regla de CLAUDE.md).
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // Permite que el build en producción complete aunque haya errores de TypeScript
-    ignoreBuildErrors: true,
+    // Auditoría desktop §4.6 [CERRADO 2026-09-21]: la compuerta de tipos es
+    // el job `typecheck` de .github/workflows/ci-web.yml (`tsc --noEmit` con
+    // 8 GB de heap en un runner de 16 GB), NO el chequeo dentro de `next build`:
+    // el repo necesita ~8 GB para tipar y con menos hace thrashing de GC —
+    // Vercel (6 GB, 1 CPU) se quedó 45 min en «Checking validity of types»
+    // y abortó por tiempo (eaa36422); el runner de Windows del desktop (7 GB)
+    // murió por OOM (0.2.2). Por eso Vercel (vercel.json) y el desktop
+    // (desktop-release.yml) pasan NEXT_SKIP_TYPECHECK=1. Un `next build` local
+    // sin la variable sigue comprobando tipos.
+    ignoreBuildErrors: process.env.NEXT_SKIP_TYPECHECK === '1',
   },
   // Limitar workers de webpack para evitar OOM en Vercel (8GB RAM).
   // cpus: 1 = solo 1 worker de webpack (en vez de 4 por defecto).

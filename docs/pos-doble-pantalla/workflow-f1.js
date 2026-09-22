@@ -7,7 +7,7 @@ export const meta = {
 const PLAN = args.plan
 const DATE = args.date
 const UMBRAL = 9.5
-const MAX_RONDAS = 3
+const MAX_RONDAS = 4 // ronda 4 = ronda de cierre con alcance congelado por el orquestador (D1–D8)
 
 const REGLAS = `
 Reglas del repositorio (además del CLAUDE.md que ya tienes):
@@ -21,24 +21,20 @@ Reglas del repositorio (además del CLAUDE.md que ya tienes):
 const CONTEXTO = `
 Contexto verificado (úsalo, no lo re-descubras):
 - Plan completo en ${PLAN}: lee §9 (Electron), §10 (web), §5.2 (tarjeta de configuración) y §12 Fase 1.
-- La Fase 0 ya existe y está aprobada: src/lib/pos/display/ (protocolo, proyección, transporte, terminal, emitter), ruta src/app/pos-display/, indicador en src/app/app/pos/page.tsx y tarjeta "Pantalla del cliente" en src/components/pos/configuracion/ConfiguracionPage.tsx (+ ConfigModals.tsx). Léelos antes de tocar nada.
-- Electron: electron/src/main/windows/mainWindow.ts (crea mainWindow y splash; tiene isPositionVisible() y usa screen.getAllDisplays(); carga WEB_APP_URL de electron/src/main/constants.ts con allowedHosts). IPC en electron/src/main/ipc.ts (ipcMain.handle 'dominio:accion'). Persistencia en electron/src/main/store.ts (interface DesktopConfig, loadConfig/saveConfig). Preload en electron/src/preload/index.ts expone window.goAdminDesktop via contextBridge (contextIsolation: true, nodeIntegration: false).
-- Lado web: src/lib/utils/desktop.ts tiene isDesktopApp() y getDesktopBridge(); el tipo del bridge está en src/types/go-admin-desktop.d.ts (interface GoAdminDesktopBridge). El bridge se llama goAdminDesktop, NO electronAPI.
-- ERROR HEREDADO A CORREGIR: en la Fase 0, el botón de pantalla completa de /pos-display y el botón "Abrir" del indicador/tarjeta pueden estar comprobando window.electronAPI. Debe ser el bridge real (isDesktopApp() / getDesktopBridge().posDisplay). Búscalo con grep electronAPI en src/ y corrígelo.
+- LA PARTE ELECTRON YA ESTÁ HECHA por otra sesión (commit a923cc57): electron/src/main/posDisplayIpc.ts (relay 'pos-display:message' a todos menos el emisor; open/close/status/list-displays/set-enabled), electron/src/main/windows/posDisplayWindow.ts (ventana hija con la misma session en el monitor secundario, display-removed/added, Ctrl+Shift+D), store.ts (posDisplay {enabled, displayId}) y preload/index.ts que expone window.goAdminDesktop.posDisplay = { send, onMessage, open, close, status, onStatus, listDisplays, setEnabled }. NO toques electron/**: si algo del puente no te sirve, dilo en pendientes.
+- Lado web YA hecho: src/lib/pos/display/desktopChannel.ts (canal por el relay, elegido automáticamente por posDisplay.ts y useDisplayReceiver.ts), openDisplay.ts llama a nativeApi.open({ origin }) si el puente existe, y el contrato tipado está en src/lib/utils/desktop.ts (DesktopPosDisplayBridge, DesktopDisplayInfo, DesktopPosDisplayStatus). isDesktopApp() y getDesktopBridge() viven en src/lib/utils/desktop.ts. El bridge se llama goAdminDesktop, NO electronAPI.
+- Fase 0 (aprobada/en cierre): tarjeta "Pantalla del cliente" en src/components/pos/configuracion/pantalla-cliente/PantallaClienteContent.tsx (+ ConfigModals/ConfiguracionPage), indicador en src/components/pos/display/CustomerDisplayIndicator.tsx con useCustomerDisplayPresence, botón de pantalla completa en src/components/pos-display/FullscreenButton.tsx, ruta src/app/pos-display/.
+- Prueba manual del puente documentada por la otra sesión en electron/scripts/smoke-pos-display.md.
 `
 
 const ALCANCE = `
-1. electron/src/main/windows/displayWindow.ts (nuevo):
-   - openDisplayWindow(displayId?: number): elige el monitor secundario (todo display cuyo id !== screen.getPrimaryDisplay().id; si hay varios y no se pasa displayId, el primero; si no hay secundario, devuelve { ok: false, reason: 'sin-monitor-secundario' } sin abrir nada).
-   - BrowserWindow con fullscreen: true, frame: false, autoHideMenuBar: true, backgroundColor gris neutro, x/y/width/height del display elegido, webPreferences IGUALES a mainWindow (mismo preload, misma partition/session para compartir localStorage y BroadcastChannel), y carga la MISMA base URL que mainWindow + '/pos-display' con los mismos allowedHosts.
-   - closeDisplayWindow(), getDisplayStatus() -> { open, displayId, displays: [{id, label, bounds, isPrimary}] }.
-   - screen.on('display-removed'): si el monitor de la ventana desaparece, ciérrala (reutiliza la idea de isPositionVisible). screen.on('display-added'): si posDisplay.enabled en el store, reábrela.
-   - La ventana del cliente nunca debe robar el foco de la caja al abrirse (focusable/show sin activar; documenta cómo).
-   - Atajo global Ctrl+Shift+D (globalShortcut) que cierra la ventana del cliente desde cualquier sitio; desregístralo al salir.
-2. store.ts: añade a DesktopConfig posDisplay?: { enabled: boolean; displayId?: number }. Al arrancar la app (donde se crea mainWindow tras 'ready'), si posDisplay.enabled, abrir la ventana con ese displayId.
-3. ipc.ts: handlers 'pos-display:open' (displayId?), 'pos-display:close', 'pos-display:status', 'pos-display:list-displays', 'pos-display:set-enabled' (persiste en store). preload: window.goAdminDesktop.posDisplay = { open, close, status, listDisplays, setEnabled }. Actualiza src/types/go-admin-desktop.d.ts con el tipo.
-4. Web: en la tarjeta "Pantalla del cliente" (ConfiguracionPage/ConfigModals), cuando isDesktopApp(): selector de monitor (listDisplays) y el botón "Abrir ahora" usa el bridge; cuando no, el window.open de la Fase 0. En /pos-display, el botón de pantalla completa se oculta si isDesktopApp(). Corrige cualquier referencia a electronAPI.
-5. Sin lógica de negocio en Electron: solo abrir y colocar.
+Integrar el puente de escritorio en la web (sin tocar electron/**):
+1. Tarjeta "Pantalla del cliente" (PantallaClienteContent.tsx): cuando isDesktopApp() y el puente expone listDisplays, mostrar un selector de monitor (etiqueta + tamaño + "principal"), persistirlo con setEnabled(enabled, displayId) además del interruptor de organization_settings (el interruptor de la organización sigue mandando; el displayId es de esta máquina), y "Abrir ahora" por el puente con open({ origin: window.location.origin, displayId }). Mostrar el estado de la ventana (abierta/cerrada, en qué monitor) con status() + onStatus(). Si el puente no expone listDisplays (Desktop < 0.2.1), comportamiento web actual sin errores.
+2. Indicador del POS (CustomerDisplayIndicator + useCustomerDisplayPresence): "Cerrar" usa close() del puente cuando existe (ya hay canCloseViaNativeBridge: úsalo con el nombre real goAdminDesktop); la presencia sigue viniendo de display_alive por el relay. Si status() dice abierta pero no hay display_alive en 3 s, etiqueta "Pantalla abierta, sin señal" (i18n) para distinguir ventana viva de canal roto.
+3. /pos-display: FullscreenButton se oculta si isDesktopApp(). El botón "Actualice la pantalla" y el resto no cambian.
+4. Limpieza: grep -rn electronAPI src/ debe quedar en cero (todo por goAdminDesktop / getDesktopBridge()). Corrige src/lib/pos/display/openDisplay.ts si aún acepta electronAPI.
+5. Tests (jest, .ts en src/__tests__/pos-display/): lógica pura extraída (elección de etiqueta del monitor, estado "abierta sin señal", fallback cuando el puente no tiene listDisplays) con un puente falso; sin renderizar React.
+6. Prueba de humo: si existe electron/release/win-unpacked (la otra sesión avisa cuando genere la 0.2.1), sigue electron/scripts/smoke-pos-display.md y reporta; si no existe, dilo en pendientes: NO lo simules.
 `
 
 const BUILD_SCHEMA = { type: 'object', properties: {
@@ -64,6 +60,20 @@ const QA_SCHEMA = { type: 'object', properties: {
     required: ['severidad', 'descripcion', 'accion'] } },
   paraElDiez: { type: 'array', items: { type: 'string' } }, veredicto: { type: 'string', enum: ['aprobado', 'requiere-nueva-ronda'] } },
   required: ['calificacion', 'fortalezas', 'problemas', 'paraElDiez', 'veredicto'] }
+
+
+const DECISIONES_R4 = `
+RONDA DE CIERRE (ronda 4). Las rondas 1–3 no convergieron (8 → 8 → 7) porque el alcance creció: la «sincronía hacia abajo» (organización apagada ⇒ config.json ⇒ cerrar ventana huérfana) introdujo una regresión al arrancar SIN RED y estado de módulo frágil. El orquestador CONGELA el alcance con estas decisiones; no las discutas, aplícalas y no añadas nada más:
+D1. ELIMINAR la sincronía hacia abajo por completo: syncDesktopDisplayEnabledDown, hasEmitted, openedManuallyHere, lastPersistedEnabled y todo cierre automático de «ventana huérfana» desaparecen de posDisplay.ts, desktopDisplay.ts y PantallaClienteContent.tsx (y sus tests). config.json.enabled/displayId se escriben SOLO cuando el usuario actúa en ESTA máquina: interruptor o monitor en la tarjeta, o «Activar y abrir» del indicador (que sí persiste enabled=true). Si la organización apaga la pantalla desde otra máquina, la ventana abierta simplemente muestra «Conectando… active la pantalla del cliente en Configuración › POS» (ya existe) y se cierra con «Cerrar» o al cerrar la app. Documentar esta decisión en un comentario de cabecera de desktopDisplay.ts.
+D2. settings.ts y ConfiguracionService.getCustomerDisplayConfig NO deben confundir «no se pudo leer» con «apagado»: si en la ronda 3 se añadió lógica de caché-por-fallo para la sincronía, déjala solo si es inocua y está testeada; si era exclusiva de D1, quítala. El arranque sin red debe dejar el emisor como estaba (test: loadCustomerDisplaySettings falla ⇒ isEmitting no cambia y no se llama a close() del puente).
+D3. «Pantalla abierta, sin señal»: la gracia de 3 s se cuenta desde max(openedAt, emittingSince) y NUNCA se antepone a reason 'disabled' ni 'loading' (con la organización apagada el indicador dice «Pantalla desactivada» con «Activar y abrir»). Con «Abrir ahora» que cierra y reabre, openedAt se reinicia (status open→open con displayId distinto o un nuevo onStatus cuenta como reapertura).
+D4. closeCustomerDisplay devuelve 'none' cuando el puente no tenía ventana (status().open === false) y no hay ventana propia; el ítem «Cerrar» del indicador se deshabilita en ese caso.
+D5. readSavedDisplayChoice: solo /^-?\d+$/ (Number.parseInt estricto); '', ' ', '1e3', '0x10' ⇒ desconocido.
+D6. Apagar desde la tarjeta manda setEnabled UNA vez. La tarjeta relee listDisplays también al recibir foco de ventana (visibilitychange/focus), además de onStatus.
+D7. Corregir la cabecera de needsReopenForDisplayChange para que diga lo que hace el código (o el código lo que dice la cabecera): con {open:true, displayId:null} y elección numérica SÍ se reabre.
+D8. electron/** sucio es de otras sesiones: no es fallo de esta fase (el tester no debe contarlo). La prueba de humo en hardware NO es requisito de la nota: no hay paquete con la web actual; se anota en paraElDiez. Se califica código + tests + degradación sin puente.
+Compuerta de esta ronda: npx jest src/__tests__/pos-display src/__tests__/guardrails.test.ts en verde; npx eslint de los archivos tocados limpio; grep -rn electronAPI src/ = 0; grep -rn "syncDesktopDisplayEnabledDown\|openedManuallyHere\|lastPersistedEnabled" src/ = 0.
+`
 
 function fb(test, qa) {
   const a = (qa?.problemas || []).map((p, i) => `${i + 1}. [qa · ${p.severidad}] ${p.descripcion}\n   Acción: ${p.accion}`)
@@ -91,10 +101,10 @@ ${ALCANCE}
 Lo que el builder dice que hizo (verifícalo):
 ${JSON.stringify(build, null, 2)}
 Qué hacer:
-1. cd electron && npx tsc -p . : reporta errores. Revisa que displayWindow use EXACTAMENTE las mismas webPreferences/partition que mainWindow (si no, localStorage y BroadcastChannel no se comparten y la pantalla nunca conecta: eso sería crítico).
-2. Revisa allowedHosts, que la ventana no robe foco, display-removed/added, el atajo Ctrl+Shift+D y su desregistro, y que al arrancar con posDisplay.enabled se abra sola.
+1. cd electron && npx tsc -p . debe seguir en exit 0 (el builder NO debía tocar electron/**: si git status muestra cambios ahí, es un fallo alto). Lee electron/src/main/posDisplayIpc.ts y windows/posDisplayWindow.ts solo para verificar que la web usa el contrato correctamente (open con origin, onStatus, setEnabled con displayId).
+2. Revisa que la tarjeta y el indicador degraden sin errores cuando el puente no existe (navegador) o no expone listDisplays (Desktop viejo), y que el interruptor de la organización siga mandando sobre el displayId local.
 3. Web: npx eslint de los archivos tocados; grep -rn electronAPI src/ debe dar cero; el tipo GoAdminDesktopBridge debe incluir posDisplay; npx jest src/__tests__/pos-display en verde.
-4. No puedes ejecutar Electron aquí: dilo explícitamente en noProbado (arranque real, colocación en monitor, foco). Si puedes extraer lógica pura (elección de monitor a partir de una lista de displays) a una función y probarla con jest en electron/ o en src/__tests__/, hazlo y lístalo en testsAgregados.
+4. Si existe electron/release/win-unpacked, intenta la prueba de humo de electron/scripts/smoke-pos-display.md y reporta con evidencia; si no existe o no puedes ejecutarla, dilo en noProbado sin simularla.
 Calificación de robustez 1-10 con justificación en evidencia.`, { label: `tester:F1:r${ronda}`, phase: 'Fase 1 Electron', schema: TEST_SCHEMA })
 
   const qa = await agent(`Eres el QA-REVIEWER de la Fase 1 (Electron) del POS de doble pantalla, ronda ${ronda}. No construyes: auditas, calificas 1-10 y das acciones concretas. Verifica el código tú mismo.
@@ -103,12 +113,12 @@ Alcance:
 ${ALCANCE}
 Builder: ${JSON.stringify(build, null, 2)}
 Tester: ${JSON.stringify(test, null, 2)}
-Rubric de 5 dimensiones (2 puntos cada una): funcionalidad completa; robustez (monitor que desaparece, sin monitor secundario, atajo, arranque); consistencia con mainWindow (webPreferences, partition, allowedHosts, store, patrón de IPC/preload/tipos); resultados del tester (un crítico limita a 6); trazabilidad. Ten en cuenta que Electron no se pudo ejecutar: califica el código y las pruebas posibles, y anota en paraElDiez qué debe verificarse en el hardware real. Nunca 10 automático. Si < 9,5, acciones concretas y verificables.`, { label: `qa:F1:r${ronda}`, phase: 'Fase 1 Electron', schema: QA_SCHEMA, effort: 'high' })
+${ronda === 4 ? 'Esta es la RONDA DE CIERRE con alcance congelado por el orquestador (D1–D8 en el feedback del builder): califica contra ESE alcance; no pidas de vuelta la sincronía hacia abajo ni la prueba en hardware. ' : ''}Rubric de 5 dimensiones (2 puntos cada una): funcionalidad completa; robustez (monitor que desaparece, sin monitor secundario, atajo, arranque); consistencia con mainWindow (webPreferences, partition, allowedHosts, store, patrón de IPC/preload/tipos); resultados del tester (un crítico limita a 6); trazabilidad. Ten en cuenta que Electron no se pudo ejecutar: califica el código y las pruebas posibles, y anota en paraElDiez qué debe verificarse en el hardware real. Nunca 10 automático. Si < 9,5, acciones concretas y verificables.`, { label: `qa:F1:r${ronda}`, phase: 'Fase 1 Electron', schema: QA_SCHEMA, effort: 'high' })
 
   rondas.push({ ronda, build, test, qa })
   const nota = qa?.calificacion ?? 0
   log(`Fase 1 — ronda ${ronda}: QA ${nota}/10, tester ${test?.robustez ?? '?'}/10, ${qa?.veredicto ?? '?'}`)
   if (nota >= UMBRAL) break
-  feedback = fb(test, qa)
+  feedback = ronda === 3 ? DECISIONES_R4 + '\nHallazgos concretos de la ronda 3 (solo los compatibles con D1-D8):\n' + fb(test, qa) : fb(test, qa)
 }
 return { fecha: DATE, fase: 'F1', rondas }

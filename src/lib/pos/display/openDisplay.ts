@@ -2,11 +2,14 @@
  * Abrir y cerrar la ventana de la pantalla del cliente desde la caja
  * (PLAN §5.1, §9 y §10).
  *
- * - Escritorio: si el puente nativo expone `posDisplay.open()` (llega en la
- *   Fase 1 con `displayWindow.ts`), se usa: coloca la ventana en el monitor
- *   secundario en modo kiosco. Se busca en `window.electronAPI.posDisplay`
- *   (nombre acordado en el PLAN) y en `window.goAdminDesktop.posDisplay`
- *   (el puente real que hoy inyecta el preload).
+ * - Escritorio: si el puente nativo expone `posDisplay.open()` (Go Admin
+ *   Desktop >= 0.2.1, `posDisplayWindow.ts`), se usa: coloca la ventana en el
+ *   monitor secundario (o en el `displayId` elegido en Configuración) a
+ *   pantalla completa. El puente se llama `window.goAdminDesktop.posDisplay`
+ *   (contrato en `src/lib/utils/desktop.ts`); no hay ningún otro nombre.
+ *   `open()` resuelve `{ ok, reason }`: un `ok: false` (origen no permitido,
+ *   opciones inválidas) cuenta como fallo y se cae al camino web, igual que
+ *   un rechazo.
  * - Web: `window.open('/pos-display', 'pos-display', 'popup,…')`. El nombre
  *   fijo evita duplicados: si la ventana ya existe se enfoca en vez de abrir
  *   otra. El navegador no puede mover una ventana a otro monitor sin permiso,
@@ -17,8 +20,9 @@
  *   si la UI no llegó a pintarlo.
  * - El puente nativo es asíncrono (en F1 será `ipcRenderer.invoke`): se
  *   espera su promesa y, si rechaza, se cae al camino web.
- * - Cerrar: puente nativo (solo si sabe cerrar: `canCloseViaNativeBridge`)
- *   → referencia propia → 'none'. Si el puente cierra pero además hay una
+ * - Cerrar: puente nativo (solo si sabe cerrar: `canCloseViaNativeBridge`, y
+ *   solo si TIENE ventana: `bridgeWindowOpen`, o `status()` del puente si no
+ *   se pasa) → referencia propia → 'none'. Si el puente cierra pero además hay una
  *   ventana web propia viva (F1: `open()` del puente falló por monitor ausente
  *   y se cayó al camino web), se cierra también; si no, quedaría huérfana y
  *   «Cerrar» parecería haber funcionado. Sin referencia propia (la caja se
@@ -33,6 +37,7 @@
  */
 
 import { CUSTOMER_DISPLAY_ROUTE } from './route';
+import { isDesktopPosDisplayStatus, readSavedDisplayIdFromBrowser } from './desktopDisplay';
 
 // La ruta vive en route.ts (junto a isCustomerDisplayPath, que usa el layout raíz); se reexporta por compatibilidad.
 export { CUSTOMER_DISPLAY_ROUTE };
@@ -50,8 +55,15 @@ export interface NativePosDisplayApi {
    * comparten BroadcastChannel; con el relay del proceso principal da igual,
    * pero la marca y el localStorage del terminal sí dependen del origen).
    */
-  open(opts?: { origin?: string; displayId?: number }): unknown;
+  open(opts?: { origin?: string; displayId?: number | null }): unknown;
   close?(): unknown;
+  /** Estado de la ventana hija (`{ open, displayId }`); `closeCustomerDisplay` lo consulta si no le pasan `bridgeWindowOpen`. */
+  status?(): unknown;
+}
+
+/** Respuesta de `open()` del puente real (`posDisplayIpc.ts`): `{ ok, reason? }`. Otros valores cuentan como éxito. */
+function openWasRejected(result: unknown): result is { ok: false; reason?: string } {
+  return typeof result === 'object' && result !== null && (result as { ok?: unknown }).ok === false;
 }
 
 /** Subconjunto de `Window` que se usa; permite inyectar uno en pruebas. */
@@ -75,6 +87,13 @@ export interface OpenCustomerDisplayDeps {
   storage?: HintStorage | null;
   /** null fuerza el camino web aunque exista puente (pruebas). undefined = detectar. */
   nativeApi?: NativePosDisplayApi | null;
+  /**
+   * Monitor en el que abrir (solo escritorio). `undefined` = el elegido en
+   * Configuración › POS para esta máquina (localStorage, desktopDisplay.ts),
+   * o automático si no hay; `null` = automático a la fuerza: el proceso
+   * principal elige el secundario. En web se ignora.
+   */
+  displayId?: number | null;
 }
 
 export type OpenCustomerDisplayResult =
@@ -93,15 +112,14 @@ export type CloseCustomerDisplayResult = 'electron' | 'handle' | 'none';
 let displayWindow: DisplayWindowHandle | null = null;
 
 type BridgeCarrier = {
-  electronAPI?: { posDisplay?: Partial<NativePosDisplayApi> };
   goAdminDesktop?: { posDisplay?: Partial<NativePosDisplayApi> };
 };
 
-/** Puente nativo si existe y sabe abrir; null en el navegador o en escritorio sin F1. */
+/** Puente nativo (`window.goAdminDesktop.posDisplay`) si existe y sabe abrir; null en el navegador o en un Desktop < 0.2.1. */
 export function resolveNativePosDisplayApi(carrier: unknown = typeof window === 'undefined' ? undefined : window): NativePosDisplayApi | null {
   if (typeof carrier !== 'object' || carrier === null) return null;
-  const { electronAPI, goAdminDesktop } = carrier as BridgeCarrier;
-  const candidate = electronAPI?.posDisplay ?? goAdminDesktop?.posDisplay;
+  const { goAdminDesktop } = carrier as BridgeCarrier;
+  const candidate = goAdminDesktop?.posDisplay;
   if (!candidate || typeof candidate.open !== 'function') return null;
   return candidate as NativePosDisplayApi;
 }
@@ -191,8 +209,16 @@ export async function openCustomerDisplay(deps: OpenCustomerDisplayDeps = {}): P
   if (nativeApi) {
     try {
       // `await` cubre tanto un puente síncrono como uno que devuelva promesa (IPC de F1).
-      await nativeApi.open({ origin: currentOrigin(deps.win) });
-      return { via: 'electron' };
+      // El proceso principal no consulta su monitor guardado al abrir a petición (solo al arrancar),
+      // así que se le pasa el elegido en esta máquina; sin elección, automático.
+      const displayId = deps.displayId === undefined ? readSavedDisplayIdFromBrowser() : deps.displayId;
+      const result = await nativeApi.open({ origin: currentOrigin(deps.win), displayId });
+      if (openWasRejected(result)) {
+        // El proceso principal contestó, pero no abrió (origen no interno, opciones inválidas): mismo trato que un rechazo.
+        console.warn('[pos-display] el puente de escritorio no abrió la pantalla', result.reason ?? 'sin motivo');
+      } else {
+        return { via: 'electron' };
+      }
     } catch (err) {
       // El puente falló: se sigue por el camino web, que en Electron abre una ventana normal (F0).
       console.warn('[pos-display] el puente de escritorio no pudo abrir la pantalla', err);
@@ -231,9 +257,19 @@ export interface CloseCustomerDisplayDeps {
    * Reservado: que el monitor de presencia vea una pantalla NO basta para
    * alcanzarla (puede haberla abierto otra pestaña). Se ignora hasta que el
    * protocolo tenga el mensaje de bajada `close` (Parte A); entonces servirá
-   * para decidir si se envía.
+   * para decidir si se envía. No confundir con `bridgeWindowOpen`.
    */
   knownOpen?: boolean;
+  /**
+   * ¿El puente de escritorio TIENE ventana hija (`status().open`)? Lo pasa el
+   * indicador, que ya lo sabe por `useDesktopDisplayWindow`. Con `false` no se
+   * llama a `close()` del puente (sería un no-op silencioso que se daba por
+   * cierre) y se sigue a la referencia propia → 'handle' o 'none' (con el
+   * toast «ciérrela donde la abrió»), igual que en el navegador. `undefined`
+   * = consultar `status()` del puente si lo tiene; sin `status` se cierra
+   * como antes.
+   */
+  bridgeWindowOpen?: boolean;
 }
 
 /** Cierra la ventana abierta por esta pestaña, si sigue viva, y olvida la referencia. Devuelve si había una. */
@@ -249,9 +285,28 @@ function closeOwnWindow(): boolean {
   return true;
 }
 
+/**
+ * ¿El puente tiene ventana que cerrar? `bridgeWindowOpen` explícito manda;
+ * si no, se pregunta a `status()` (validado: basura o fallo cuentan como
+ * «no se sabe» → se cierra como antes). Nunca lanza.
+ */
+async function bridgeHasWindow(nativeApi: NativePosDisplayApi, bridgeWindowOpen: boolean | undefined): Promise<boolean> {
+  if (typeof bridgeWindowOpen === 'boolean') return bridgeWindowOpen;
+  if (typeof nativeApi.status !== 'function') return true;
+  try {
+    const raw: unknown = await nativeApi.status();
+    return isDesktopPosDisplayStatus(raw) ? raw.open : true;
+  } catch {
+    return true;
+  }
+}
+
 export async function closeCustomerDisplay(deps: CloseCustomerDisplayDeps = {}): Promise<CloseCustomerDisplayResult> {
   const nativeApi = deps.nativeApi === undefined ? resolveNativePosDisplayApi() : deps.nativeApi;
-  if (nativeApi && typeof nativeApi.close === 'function') {
+  // Con presencia por el relay pero sin ventana hija (emergente web abierta como fallback tras un
+  // open() rechazado, y la caja recargada), close() del puente no cerraba nada y devolvía 'electron':
+  // el cajero no recibía el aviso de cerrarla donde la abrió. Solo se va por el puente si tiene ventana.
+  if (nativeApi && typeof nativeApi.close === 'function' && (await bridgeHasWindow(nativeApi, deps.bridgeWindowOpen))) {
     try {
       await nativeApi.close();
       // Si además esta pestaña abrió una ventana web (el puente no pudo abrir y

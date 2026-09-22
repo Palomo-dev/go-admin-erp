@@ -441,14 +441,16 @@ describe('S5 · ai-assistant/{attachments,transcribe}: 403 con code por cada ali
     expect(warn).toHaveBeenCalledTimes(2);
   });
 
-  test('ambas: JSON / form-urlencoded en vez de multipart → 400 (formData() falla en el try de parseo), no 403 ni 500', async () => {
+  test('JSON: transcribe sigue requiriendo multipart (400); attachments valida organización del contrato firmado (403)', async () => {
     const t = await import('@/app/api/ai-assistant/transcribe/route');
     const a = await import('@/app/api/ai-assistant/attachments/route');
     const json = (url: string) => new NextRequest(`http://localhost${url}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ organization_id: FOREIGN }) });
     expect((await t.POST(json('/api/ai-assistant/transcribe'))).status).toBe(400);
     const ra = await a.POST(json('/api/ai-assistant/attachments'));
-    expect(ra.status).toBe(400);
-    expect(await ra.json()).toMatchObject({ code: 'BAD_REQUEST' });
+    // prepare/finalize admite JSON para que el binario vaya directo a Storage.
+    // Ya no es un error de formato: una organización ajena debe rechazarse.
+    expect(ra.status).toBe(403);
+    expect(await ra.json()).toMatchObject({ code: 'FOREIGN_ORGANIZATION' });
   });
 
   test('CERRADO (deuda C): ?organization_id=999 en la query de estas rutas → 403 { code } y warn where: query (sobrecarga síncrona con { request })', async () => {

@@ -343,7 +343,11 @@ describe('guardas: foco sin rAF, MotionConfig, R1 con StrictMode', () => {
     }
   });
   test('la pestaña Voces respeta prefers-reduced-motion con MotionConfig', () => {
-    expect(read('components/crm/agentes/VoicesPanel.tsx')).toContain('<MotionConfig reducedMotion="user">');
+    // F15 (2026-09-21): un único `MotionConfig reducedMotion="user"` en el provider compartido,
+    // montado en el layout de /app; las páginas ya no lo duplican.
+    expect(read('components/shared/motion/MotionProvider.tsx')).toContain('reducedMotion="user"');
+    expect(read('app/app/layout.tsx')).toContain('<MotionProvider>');
+    expect(read('components/crm/agentes/VoicesPanel.tsx')).not.toContain('<MotionConfig');
   });
   test('R1: el foco al título compara el paso anterior, no un guard de montaje (StrictMode ejecuta el efecto dos veces)', () => {
     const wizard = read('components/crm/agentes/voces/CloneVoiceWizard.tsx');

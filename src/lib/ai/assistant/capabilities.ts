@@ -11,9 +11,9 @@
  *
  *   nivel de capacidad de la organización  ∩  permisos del usuario  ∩  módulos activos
  *
- * El nivel vive en `ai_assistant_settings` y arranca en `off`: una organización
- * que no ha configurado nada ve el asistente de siempre (responde y guía) sin
- * ninguna herramienta de escritura. Es el contrato de no regresión §3.2.
+ * Por decisión del propietario del producto (2026-09-19), todas las
+ * organizaciones tienen write_full por defecto. Los permisos, módulos y la
+ * confirmación humana siguen siendo obligatorios. Un admin puede restringirlo.
  */
 
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
@@ -99,7 +99,11 @@ export async function getAssistantCapabilities(
     : [];
 
   return {
-    level: settings?.capability_level ?? 'off',
+    // Sin fila no equivale a fallo: es una organización nueva. Un error real
+    // al consultar autorización sí cierra la escritura, incluso para admins.
+    level: settingsRes.error || permsRes.error || modulesRes.error
+      ? 'off'
+      : settings?.capability_level ?? 'write_full',
     enabledTools: settings?.enabled_tools ?? null,
     permissions: new Set(codes),
     isAdmin,

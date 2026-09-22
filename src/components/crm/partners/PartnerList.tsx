@@ -9,8 +9,7 @@
 
 import { Award, BadgeCheck, CircleOff, Handshake, Mail, Pencil, Phone, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StaggerItem, StaggerList } from '@/components/shared/motion/staggerList';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, StaggerItem, StaggerList } from '@/components/shared/motion';
 import type { PartnerView } from '@/lib/services/crm/partnerService';
 import { formatMoney, formatRate } from '@/lib/services/crm/partnerModel';
 import { cn } from '@/utils/Utils';

@@ -146,7 +146,7 @@ const SKELETON_FIRST_LOAD = (src: string) => {
 };
 const RAF = /requestAnimationFrame\s*\(/;
 const ISO_SPLIT = /toISOString\(\)\.split/;
-const STAGGER_IMPORT = /from\s*['"]@\/components\/shared\/motion\/staggerList['"]/;
+const STAGGER_IMPORT = /\bStaggerList\b[^;]*from\s*['"]@\/components\/shared\/motion['"]/;
 const REDUCED_MOTION = (src: string) => openingTags(src, 'MotionConfig').some((t) => attrLiteral(t, 'reducedMotion') === 'user');
 const PROGRESSBAR = (src: string) => openingTags(src, 'div').some((t) => attrLiteral(t, 'role') === 'progressbar' && hasAttr(t, 'aria-valuenow'));
 const ICON_BUTTONS_UNLABELLED = (src: string) => openingTags(src, 'Button').filter((t) => attrLiteral(t, 'size') === 'icon' && !hasAttr(t, 'aria-label'));
@@ -253,7 +253,10 @@ describe('accesibilidad (brief §4)', () => {
 
   it('la página respeta prefers-reduced-motion y usa las primitivas compartidas', () => {
     const page = read('src/components/crm/objeciones/ObjecionesPage.tsx');
-    expect(REDUCED_MOTION(page)).toBe(true);
+    // F15 (2026-09-21): un solo `MotionConfig reducedMotion="user"` en el provider compartido
+    // (montado en src/app/app/layout.tsx); la página no lo anida.
+    expect(REDUCED_MOTION(read('src/components/shared/motion/MotionProvider.tsx'))).toBe(true);
+    expect(openingTags(page, 'MotionConfig')).toEqual([]);
     expect(page).toMatch(STAGGER_IMPORT);
     expect(exists('src/components/crm/objeciones/motion.tsx')).toBe(false);
   });

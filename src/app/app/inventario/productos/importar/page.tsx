@@ -1854,20 +1854,21 @@ export default function ImportarProductosPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="min-h-screen bg-gray-50 px-3 py-3 dark:bg-gray-900 sm:px-6 sm:py-6">
+      <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <Link href="/app/inventario/productos">
-              <Button variant="ghost" size="sm" className="text-gray-600 dark:text-gray-400">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
+          <div className="mb-2 flex items-center gap-3">
+            <Button asChild variant="ghost" size="sm" className="-ml-2 text-gray-600 dark:text-gray-400">
+              <Link href="/app/inventario/productos">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Volver a productos
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Upload className="h-6 w-6 text-blue-600" />
+          <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white sm:text-2xl">
+            <Upload className="h-5 w-5 shrink-0 text-blue-600 sm:h-6 sm:w-6" />
             Importar Productos
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
@@ -1875,12 +1876,12 @@ export default function ImportarProductosPage() {
           </p>
         </div>
 
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={exportProducts} disabled={isExporting}>
+        <div className="grid grid-cols-1 gap-2 sm:flex">
+          <Button className="w-full sm:w-auto" variant="outline" onClick={exportProducts} disabled={isExporting}>
             {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
             {isExporting ? 'Exportando...' : 'Exportar Productos'}
           </Button>
-          <Button variant="outline" onClick={downloadTemplate}>
+          <Button className="w-full sm:w-auto" variant="outline" onClick={downloadTemplate}>
             <FileSpreadsheet className="h-4 w-4 mr-2" />
             Descargar Plantilla
           </Button>
@@ -1889,11 +1890,11 @@ export default function ImportarProductosPage() {
 
       {/* Step: Upload */}
       {step === 'upload' && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Archivo principal: Gestión de productos */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex items-center gap-2 text-base text-gray-900 dark:text-white sm:text-lg">
                 <FileSpreadsheet className="h-5 w-5 text-blue-600" />
                 Archivo de Productos
               </CardTitle>
@@ -1901,13 +1902,22 @@ export default function ImportarProductosPage() {
                 Selecciona el archivo XLSX/CSV de "Gestión de productos y servicios" (Siigo)
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
               <div 
-                className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-12 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer"
+                className="cursor-pointer rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition-colors hover:border-blue-500 dark:border-gray-600 dark:hover:border-blue-400 sm:p-12"
                 onClick={() => fileInputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
+                aria-label="Seleccionar archivo de productos"
               >
-                <FileSpreadsheet className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <FileSpreadsheet className="mx-auto mb-3 h-10 w-10 text-gray-400 sm:mb-4 sm:h-12 sm:w-12" />
+                <p className="mb-2 break-all text-base font-medium text-gray-700 dark:text-gray-300 sm:text-lg">
                   {file ? file.name : 'Arrastra un archivo aquí o haz clic para seleccionar'}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -1922,11 +1932,11 @@ export default function ImportarProductosPage() {
                 />
               </div>
 
-              <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <h4 className="font-medium text-blue-800 dark:text-blue-300 mb-2">
-                  Columnas soportadas:
-                </h4>
-                <ul className="text-sm text-blue-700 dark:text-blue-400 space-y-1">
+              <details className="group mt-4 rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20 sm:mt-6">
+                <summary className="cursor-pointer font-medium text-blue-800 marker:text-blue-600 dark:text-blue-300">
+                  Ver columnas y formatos compatibles
+                </summary>
+                <ul className="mt-3 grid gap-x-6 gap-y-1 text-sm text-blue-700 dark:text-blue-400 md:grid-cols-2">
                   <li>• <strong>SKU</strong> - Código único del producto (requerido)</li>
                   <li>• <strong>Nombre</strong> - Nombre del producto (requerido)</li>
                   <li>• <strong>Tipo</strong> - Producto o Servicio</li>
@@ -1954,21 +1964,21 @@ export default function ImportarProductosPage() {
                   <li>• <strong>Modificadores</strong> - Formato: Grupo|modo|min|max|requerido|opcion1=precio,opcion2=precio; Grupo2|... (separar grupos con ;)</li>
                   <li>• <strong>Estado</strong> - active/inactive</li>
                 </ul>
-                <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                <p className="mt-3 text-xs leading-relaxed text-blue-600 dark:text-blue-400">
                   Compatible con archivos de Siigo ("Gestión de productos y servicios") y
                   formato Space (Producto, Categoría, P. Venta, Descuento, Promoción 2x).
                   El formato Space autogenera SKUs, detecta tamaños (Pequeño/Mediano/Grande/Extragrande)
                   como variantes, y marca la promo 2x1 en notas para configurar después
                   en /app/pos/promociones (tipo buy_x_get_y).
                 </p>
-              </div>
+              </details>
             </CardContent>
           </Card>
 
           {/* Archivo opcional: Saldos de inventario */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex items-start gap-2 text-base text-gray-900 dark:text-white sm:items-center sm:text-lg">
                 <Package className="h-5 w-5 text-green-600" />
                 Archivo de Saldos de Inventario (Opcional)
               </CardTitle>
@@ -1976,13 +1986,22 @@ export default function ImportarProductosPage() {
                 Selecciona el archivo XLSX de "Saldos de inventario" para importar cantidades y costos reales
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
               <div 
-                className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center hover:border-green-500 dark:hover:border-green-400 transition-colors cursor-pointer"
+                className="cursor-pointer rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition-colors hover:border-green-500 dark:border-gray-600 dark:hover:border-green-400 sm:p-8"
                 onClick={() => stockFileRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    stockFileRef.current?.click();
+                  }
+                }}
+                aria-label="Seleccionar archivo de saldos de inventario"
               >
                 <Package className="h-10 w-10 mx-auto text-gray-400 mb-3" />
-                <p className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <p className="mb-1 break-all text-base font-medium text-gray-700 dark:text-gray-300">
                   {stockFile ? stockFile.name : 'Seleccionar archivo de saldos'}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -2005,38 +2024,38 @@ export default function ImportarProductosPage() {
       {(step === 'preview' || step === 'importing' || step === 'complete') && (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-4">
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Total filas</p>
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-xl font-bold text-gray-900 dark:text-white sm:text-2xl">{stats.total}</div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">Total filas</p>
               </CardContent>
             </Card>
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold text-green-600">{stats.success}</div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Importados</p>
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-xl font-bold text-green-600 sm:text-2xl">{stats.success}</div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">Importados</p>
               </CardContent>
             </Card>
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold text-red-600">{stats.errors}</div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Errores</p>
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-xl font-bold text-red-600 sm:text-2xl">{stats.errors}</div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">Errores</p>
               </CardContent>
             </Card>
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Pendientes</p>
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-xl font-bold text-yellow-600 sm:text-2xl">{stats.pending}</div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">Pendientes</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Preview Table */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-gray-900 dark:text-white">
+            <CardHeader className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+              <div className="min-w-0">
+                <CardTitle className="break-all text-base text-gray-900 dark:text-white sm:text-lg">
                   {file?.name}
                 </CardTitle>
                 <CardDescription>
@@ -2046,15 +2065,18 @@ export default function ImportarProductosPage() {
                 </CardDescription>
               </div>
               {step !== 'importing' && (
-                <Button variant="ghost" size="sm" onClick={resetImport}>
+                <Button className="w-full sm:w-auto" variant="ghost" size="sm" onClick={resetImport}>
                   <X className="h-4 w-4 mr-2" />
                   Cancelar
                 </Button>
               )}
             </CardHeader>
-            <CardContent>
-              <div className="max-h-[400px] overflow-auto">
-                <Table>
+            <CardContent className="px-0 pb-4 sm:px-6 sm:pb-6">
+              <p className="px-4 pb-2 text-xs text-gray-500 dark:text-gray-400 sm:hidden">
+                Desliza horizontalmente para revisar todas las columnas.
+              </p>
+              <div className="max-h-[60vh] w-full overflow-auto border-y sm:max-h-[400px] sm:rounded-md sm:border">
+                <Table className="min-w-[1800px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-12">#</TableHead>
@@ -2144,7 +2166,7 @@ export default function ImportarProductosPage() {
                 </Table>
               </div>
               {previewData.length > 100 && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-4 text-center">
+                <p className="mt-4 px-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   Mostrando 100 de {previewData.length} filas
                 </p>
               )}
@@ -2154,7 +2176,7 @@ export default function ImportarProductosPage() {
           {/* Import Mode Selector */}
           {step === 'preview' && (
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              <CardContent className="pt-4">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-blue-600" />
@@ -2162,10 +2184,11 @@ export default function ImportarProductosPage() {
                       Modo de importación:
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap">
                     <button
                       onClick={() => setImportMode('create_and_update')}
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      aria-pressed={importMode === 'create_and_update'}
+                      className={`min-h-10 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                         importMode === 'create_and_update'
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -2175,7 +2198,8 @@ export default function ImportarProductosPage() {
                     </button>
                     <button
                       onClick={() => setImportMode('create_only')}
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      aria-pressed={importMode === 'create_only'}
+                      className={`min-h-10 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                         importMode === 'create_only'
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -2185,7 +2209,8 @@ export default function ImportarProductosPage() {
                     </button>
                     <button
                       onClick={() => setImportMode('update_only')}
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      aria-pressed={importMode === 'update_only'}
+                      className={`min-h-10 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                         importMode === 'update_only'
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -2205,15 +2230,15 @@ export default function ImportarProductosPage() {
           )}
 
           {/* Actions */}
-          <div className="flex justify-end gap-3">
+          <div className="sticky bottom-0 z-20 flex flex-col-reverse gap-2 border-t border-gray-200 bg-gray-50/95 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 sm:static sm:flex-row sm:justify-end sm:gap-3 sm:border-0 sm:bg-transparent sm:py-0 sm:backdrop-blur-none dark:sm:bg-transparent">
             {step === 'preview' && (
               <>
-                <Button variant="outline" onClick={resetImport}>
+                <Button className="w-full sm:w-auto" variant="outline" onClick={resetImport}>
                   Cancelar
                 </Button>
                 <Button
                   onClick={handleImport}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="w-full bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
                 >
                   <Upload className="h-4 w-4 mr-2" />
                   Importar {stats.total} Productos
@@ -2221,26 +2246,27 @@ export default function ImportarProductosPage() {
               </>
             )}
             {step === 'importing' && (
-              <Button disabled>
+              <Button className="w-full sm:w-auto" disabled>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Importando...
               </Button>
             )}
             {step === 'complete' && (
               <>
-                <Button variant="outline" onClick={resetImport}>
+                <Button className="w-full sm:w-auto" variant="outline" onClick={resetImport}>
                   Importar Otro Archivo
                 </Button>
-                <Link href="/app/inventario/productos">
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button asChild className="w-full bg-blue-600 text-white hover:bg-blue-700 sm:w-auto">
+                  <Link href="/app/inventario/productos">
                     Ver Productos
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </>
             )}
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

@@ -650,11 +650,11 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      <div className="flex-1 overflow-y-auto px-6 pt-6 space-y-6 min-h-0">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="min-h-0 min-w-0 flex-1 space-y-4 sm:space-y-6">
         {/* Información Básica */}
         <Card className="border-gray-200 dark:border-gray-800">
-          <CardContent className="pt-6">
+          <CardContent className="p-4 sm:p-6">
             <InformacionBasica 
               formData={formData}
               updateFormData={updateFormData}
@@ -664,7 +664,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
 
         {/* Precios y Costos */}
         <Card className="border-gray-200 dark:border-gray-800">
-          <CardContent className="pt-6">
+          <CardContent className="p-4 sm:p-6">
             <PreciosYCostos 
               formData={formData}
               updateFormData={updateFormData}
@@ -674,7 +674,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
 
         {/* Inventario */}
         <Card className="border-gray-200 dark:border-gray-800">
-          <CardContent className="pt-6">
+          <CardContent className="p-4 sm:p-6">
             <Inventario 
               formData={formData}
               updateFormData={updateFormData}
@@ -685,7 +685,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
 
         {/* Envío */}
         <Card className="border-gray-200 dark:border-gray-800">
-          <CardContent className="pt-6">
+          <CardContent className="p-4 sm:p-6">
             <Envio
               formData={formData}
               updateFormData={updateFormData}
@@ -695,7 +695,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
 
         {/* Imágenes */}
         <Card className="border-gray-200 dark:border-gray-800">
-          <CardContent className="pt-6">
+          <CardContent className="p-4 sm:p-6">
             <Imagenes
               formData={formData}
               updateFormData={updateFormData}
@@ -705,7 +705,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
 
         {/* Variantes */}
         <Card className="border-gray-200 dark:border-gray-800">
-          <CardContent className="pt-6">
+          <CardContent className="p-4 sm:p-6">
             <Variantes 
               formData={formData}
               updateFormData={updateFormData}
@@ -715,7 +715,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
 
         {/* Trazabilidad de Seriales */}
         <Card className="border-gray-200 dark:border-gray-800">
-          <CardContent className="pt-6">
+          <CardContent className="p-4 sm:p-6">
             <TrazabilidadSeccion
               formData={formData}
               updateFormData={updateFormData}
@@ -725,7 +725,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
 
         {/* Notas */}
         <Card className="border-gray-200 dark:border-gray-800">
-          <CardContent className="pt-6">
+          <CardContent className="p-4 sm:p-6">
             <Notas 
               formData={formData}
               updateFormData={updateFormData}
@@ -735,7 +735,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
 
         {/* Etiquetas */}
         <Card className="border-gray-200 dark:border-gray-800">
-          <CardContent className="pt-6">
+          <CardContent className="p-4 sm:p-6">
             <Etiquetas 
               formData={formData}
               updateFormData={updateFormData}
@@ -745,7 +745,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
       </div>
 
       {/* Botones de acción */}
-      <div className="shrink-0 flex flex-col sm:flex-row sm:justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="sticky bottom-0 z-20 mt-4 flex shrink-0 flex-col-reverse gap-2 border-t border-gray-200 bg-white/95 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 sm:mt-6 sm:flex-row sm:justify-end sm:gap-3 sm:px-6 sm:py-4">
         <Button
           type="button"
           variant="outline"

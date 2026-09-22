@@ -19,6 +19,8 @@ export interface CashSession {
   opened_by_name?: string;
   closed_by_name?: string;
   branch_name?: string;
+  /** Desktop fase 4F: apertura/cierre hechos sin red, aún no en Supabase. `id` negativo mientras no se sincroniza la apertura. */
+  pending_sync?: boolean;
 }
 
 export interface CashMovement {
@@ -34,6 +36,10 @@ export interface CashMovement {
   updated_at: string;
   // Campos adicionales para UI
   user_name?: string;
+  /** Desktop fase 4F: movimiento registrado sin red, aún no en Supabase (`id` negativo). */
+  pending_sync?: boolean;
+  /** `cash_movements.uuid`, generado en el cliente cuando nace sin red. */
+  uuid?: string;
 }
 
 // Arqueo de caja

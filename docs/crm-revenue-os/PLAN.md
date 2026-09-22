@@ -619,6 +619,33 @@ El calendario de §7.1 supone dos builders secuenciales. El dueño pidió pasar 
 | **4** | **F6** (agente IA: handler ConversationRelay agent-aware, `ttsProvider="ElevenLabs" voice="{voice_id}-flash_v2_5"`, `voices` + IVC con consentimiento, tools CRM vivas incl. `book_meeting`, `stage_agents`, motor secundario `elevenlabs_agent`, páginas `/app/crm/agentes-ia`) + **F8** (motor único: reglas `automation_rules` + `sequences` sobre `crm_events`/`outbound_jobs`, steps completos, eliminación de los 3 sistemas legacy, builders `/app/crm/secuencias` y `/app/crm/automatizaciones`) | Ola 3 aprobada | DoD global §14 puntos 10–14 |
 | **5** | **QA E2E global** (§14 completo con una org de prueba distinta de GoAdmin; Web, PWA, Electron, Capacitor) + **F10–F15 reconciliados** según `ANEXO-C` §6: seeds de configuración (`ANEXO-C` §7), montaje de los componentes V3 huérfanos (`ObjecionesList`, `DiscoveryWizard`, `ProposalBuilderDialog`, `OnboardingChecklist`), páginas faltantes (`/app/crm/{objeciones,partners,referidos}`), cuotas/dashboard de vendedor, dashboard Revenue OS, permisos móviles restantes, kinds `health_recalculate`/`renewals_sync` en el job diario | Ola 4 aprobada | DoD global §14 puntos 15–20 + DoD de cada FASE V3 |
 
+### 7.3 Estado final por fase (2026-09-21)
+
+Todas las fases de implementación listadas abajo están **APROBADAS ≥ 9,5/10** según la tabla de `PROGRESS.md` (fuente de verdad, no se edita desde aquí). El código es la verdad; esta fila resume, no reemplaza, esa tabla.
+
+| Fase | Ronda final | Calificación | Nota |
+|---|---|---|---|
+| F0 (DB · SEC · JOBS · REG) | 4–5 | 9,55/10 media (DB 9,5 · SEC 9,5 · JOBS 9,6 · REG 9,6) | 4 builders en paralelo, `main` `5c4150f4` |
+| F2 | 3 | 9,6/10 | Objeciones y discovery en la superficie del vendedor |
+| F3 | 8 | 9,6/10 | La más iterada (repara R2/R3/R4/R7/R9 del diagnóstico) |
+| F4 | 7 | 9,6/10 | |
+| F5 | 5 | 9,5/10 | |
+| F6 | 3 | 9,5/10 | |
+| F7 | 4 | 9,5/10 | |
+| F8 | 3 | 9,5/10 | |
+| F9 | 3 | 9,5/10 | |
+| F16 | 6 | 9,5/10 | |
+| F10 | 4 | 9,6/10 | |
+| F11 | 2 | 9,6/10 | |
+| F12 | 1 | 9,6/10 | |
+| F13 | 3 | 9,6/10 | |
+| F14 | 2 | 9,6/10 | |
+| UX-Automatizaciones/Secuencias/Voces (`BRIEF-UX-CRM.md`) | 4 | 9,6/10 | |
+
+**F1 y F15 no aparecen en la tabla de `PROGRESS.md` de V4**: siguen en el estado "Conservada V3" de la tabla de §7 (no se reabrieron como ronda propia en esta ejecución). No lo cuentes como pendiente de V4 sin confirmarlo primero contra el código.
+
+Documentación (este mismo plan y los `FASE-XX.md`): en curso de cierre 2026-09-21 (ver tabla de `PROGRESS.md`, filas `PLAN-V4`/`DOC-*`).
+
 Reglas de coordinación (vigentes para todas las olas; detalle en `scratchpad/rules-implementacion.md`):
 
 1. **Un solo agente aplica DDL** (F0-DB, luego el agente "DB" de cada ola) y solo con MCP `apply_migration` (`crm_v4_fXX_<descripcion>`); prohibido crear `.sql` en el repo. Los demás piden columnas/funciones en la sección "Necesito de DB" de su informe.
@@ -741,6 +768,27 @@ Estado: **N** = nueva · **M** = modificada · **=** = sin cambios · **E** = el
 | `/api/crm/leads/[id]/convert` | POST | sesión | — | = | |
 | `/api/crm/health/recalculate` · `/renewals/sync` | POST | cron | — | = | Ya fail-closed |
 
+### 8.7 Discrepancias previsto → real (2026-09-21, verificado con `ls`/`grep`)
+
+Las tablas de §8.1–8.6 son el diseño de V4 (2026-09-08). Lo que se construyó difiere en estos puntos (verificado uno por uno, no de memoria):
+
+| Ruta prevista | Estado real |
+|---|---|
+| `/api/integrations/twilio/voice/incoming` (planeada **E**, duplicado de `twiml/inbound`) | **Sigue existiendo** (`route.ts` presente). No se confirmó si sigue montada en el número de Twilio o quedó huérfana; queda como NO VERIFICADO. |
+| `/api/integrations/twilio/voice/media-stream` (planeada **E**) | Eliminada, coincide con el plan. |
+| `/api/voice/relay/after` (planeada **N**, action de `<Connect>`) | No existe con ese nombre. El status del agente IA se resuelve en `/api/voice/ai-agent/status`, que sí existe. |
+| `/api/crm/agent-tools/[tool]` (planeada **N**) | No existe esa ruta genérica. |
+| `/api/webhooks/elevenlabs` (planeada **N**) | Implementada en `/api/crm/webhooks/elevenlabs`, no en `/api/webhooks/elevenlabs` (esa carpeta solo tiene `facebook` e `instagram`, de otro producto de IA — ver CLAUDE.md "dos productos distintos"). |
+| `/api/crm/voice-agents/[id]/test-chat`, `/start-call` (planeadas **N**) | No existen como rutas propias; lo más cercano es `/api/crm/voice-agents/[id]/dispatch`. |
+| `/api/crm/automations/rules`, `/api/crm/automations/runs` (planeadas **N**) | La ruta real es `/api/crm/automation-rules` (con `[id]` y `[id]/trigger`) y `/api/crm/automation-runs` — mismo propósito, nombre distinto. |
+| `/api/crm/messages/send` (planeada **N**, envío único WhatsApp/SMS) | No existe esa shape única; el envío real va por `/api/crm/whatsapp/send` (y SMS por `/api/integrations/twilio/send-sms`), canales separados en vez de una sola ruta. |
+| `/api/crm/campaigns/[id]/send` (planeada **N**) | La ruta real es `/api/crm/campaigns/[id]/launch` (además de `pause`/`resume`/`cancel`/`materialize`/`stats`/`contacts`, no previstas explícitamente). |
+| `/api/email/ai-draft` (planeada **N**) | El draft de IA para email vive en `/api/crm/ia/draft-email`, no bajo `/api/email/`. |
+| `/api/email/preview` (planeada **N**, preview general) | Solo existe `/api/email/templates/preview` (preview por plantilla). |
+| `/api/integrations/whatsapp/qr/send`, `qr/mark-read`, `whatsapp/mark-read` (planeadas **E** al cerrar F16) | **Siguen existiendo.** No se encontró ningún componente ni servicio que las importe (`grep` sin resultados en `src/components`/`src/lib`); podrían ser rutas muertas, pero no se verificó el gateway Evolution (WhatsApp QR) ni Edge Functions externas — NO VERIFICADO si algo externo las sigue llamando. |
+
+Lo no mencionado en esta lista se verificó presente y coincide razonablemente con el diseño (nombre de archivo o de ruta puede variar en detalles menores no relevantes).
+
 ---
 
 ## 9. Mapa de rutas UI finales
@@ -772,9 +820,32 @@ Estado: **N** = nueva · **M** = modificada · **=** = sin cambios · **E** = el
 
 Pipeline · Leads · Oportunidades · Clientes · Actividades · **Llamadas** · Campañas · Segmentos · **Plantillas** · **Secuencias** · **Automatizaciones** · **Agentes IA** · Equipo · Pronóstico · Salud Clientes · Identidades. (Negrita = nuevas en el nav.) `CRMQuickNav.tsx:112` apunta a `/app/configuracion?modulo=crm`.
 
+### 9.4 Discrepancias previsto → real (2026-09-21, verificado con `find`)
+
+| Previsto | Real |
+|---|---|
+| `/app/crm/agentes-ia` · `/nuevo` · `/[id]` (lista + editor en ruta propia) | Solo existe `src/app/app/crm/agentes-ia` como página única (sin subrutas `/nuevo` o `/[id]`); el editor se resuelve con diálogo/drawer sobre la misma página, no con navegación de Next.js. |
+| `/app/crm/plantillas` · `/nueva` · `/[id]` | Sí existen las tres rutas (`plantillas`, `plantillas/nueva`, `plantillas/[id]`) — coincide con el plan. |
+| `/app/crm/secuencias` · `/nueva` · `/[id]` | Solo existe `src/app/app/crm/secuencias` como página única, igual que agentes-ia: sin subrutas propias. |
+| `/app/crm/automatizaciones` | Coincide (página única, como estaba previsto). |
+| `/unsubscribe/[token]` (baja de email, pública) | No existe esa ruta bajo `src/app`. La baja de email queda como NO VERIFICADO: revisar si se resuelve por otro mecanismo (enlace firmado a una ruta de API) antes de asumir que falta. |
+| `/app/configuracion?modulo=crm&tab=proveedores` | Confirmado: la ruta real usa exactamente esos nombres de query param (`modulo`, `tab`), ver `src/components/configuracion/panels/crm/CrmConfigTabs.tsx` y los enlaces en `src/components/voice/dock/DockHeader.tsx` y `src/components/crm/agentes/useVoiceCatalog.ts`. |
+
 ---
 
 ## 10. Código a ELIMINAR (con fase)
+
+### 10.1 Verificación al cierre (2026-09-21)
+
+Verificado archivo por archivo con `find`/`grep` (no de memoria):
+
+**Confirmado eliminado (coincide con el plan):** `src/lib/services/callService.ts`; `…/voiceAgent/realtimeSession.ts`; `…/voiceAgent/elevenLabsTTS.ts`; `…/voiceAgent/deepgramSTT.ts`; `…/voiceAgent/voiceAgentService.ts` (el de Media Stream); `src/app/api/integrations/twilio/voice/media-stream/route.ts`; `EmailNotifications.ts`/`.tsx`; `AutomationSettings.tsx`; `followupEngineService.ts` + `/api/crm/followup/run`; `/api/crm/sequences/run`; `KanbanBoard.tsx`/`KanbanColumn.tsx`/`OpportunityCard.tsx`; `ActivityActions.tsx`; `src/components/crm/configuracion/ConfiguracionHub.tsx`; `customers/CustomersList.tsx` (no aparece en ninguna ruta del repo).
+
+**Sigue existiendo, con o sin justificación:**
+- `src/app/api/integrations/twilio/voice/incoming/route.ts` — planeado **E** en F3, sigue presente. NO VERIFICADO si algo lo invoca todavía (no se pudo confirmar la configuración del número en Twilio desde el repo).
+- `…/voiceAgent/voiceAgentTools.ts`, `…/voiceAgentPrompts.ts` y `…/voiceAgent/conversationRelayHandler.ts` (el trío original de PMS/hotel) — siguen en el repo y siguen importándose entre sí, pero **ninguna ruta bajo `src/app/api` importa `conversationRelayHandler`**: es una cadena muerta que nadie invoca, no fue borrada. El agente de voz vivo usa `src/lib/services/crm/voiceAgentTools.ts` (otro archivo, dentro de `crm/`), tal como preveía el plan. Candidato real a borrado, pendiente de que alguien lo confirme con el dueño antes de eliminar.
+- `src/lib/services/integrations/sendgrid/sendgridService.ts` y las rutas `/api/integrations/sendgrid/*` — siguen existiendo **a propósito**: el propio plan las deja como proveedor de fallback detrás de `providerRegistry` (`category='email', provider='sendgrid'`). Coincide con el diseño, no es una desviación.
+- `/api/integrations/whatsapp/qr/send`, `qr/mark-read`, `whatsapp/mark-read` — planeadas **E** en F16, siguen presentes. Sin referencias desde `src/components` ni `src/lib` (posible código muerto), pero no se verificó si el gateway Evolution (WhatsApp QR, self-hosted, ver `.env.example` líneas 74-75) las sigue llamando externamente. NO VERIFICADO.
 
 | Archivo / ruta | Motivo | Fase |
 |---|---|---|

@@ -1168,7 +1168,13 @@ export class DisplayEmitter {
     // completed ya no son un pedido pendiente que mostrar.
     if (this.cart.status !== 'active' && this.cart.status !== 'hold') return null;
     const totals = this.totalsOverride && this.totalsOverride.cartId === this.cart.id ? this.totalsOverride.totals : null;
-    return projectCartForDisplay(this.cart, { currency: this.currency, totals, lastChangedLineId: null });
+    // `showCustomerName` se aplica AQUÍ y no solo al pintar: con el ajuste
+    // apagado (el valor por defecto, «privacidad primero» del PLAN §5.2) el
+    // nombre no debe salir del emisor, o seguiría cruzando el canal remoto de
+    // una tableta y viéndose en sus herramientas de desarrollo. El filtro de
+    // la pantalla se conserva como defensa para emisores anteriores.
+    const includeCustomerName = this.presentationSettings?.showCustomerName === true;
+    return projectCartForDisplay(this.cart, { currency: this.currency, totals, lastChangedLineId: null, includeCustomerName });
   }
 
   /**

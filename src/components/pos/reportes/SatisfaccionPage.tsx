@@ -27,7 +27,7 @@ import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz, toPlainDate } from '@/lib/utils/dateDisplay';
 import { useBranch } from '@/lib/context/BranchContext';
 import { ReportesService } from './reportesService';
-import { aggregateSatisfaction, getSatisfactionReport, type SatisfactionGroup, type SatisfactionReport } from './satisfaccionService';
+import { aggregateSatisfaction, getSatisfactionReport, hasRegisteredTerminals, SATISFACTION_ROWS_LIMIT, type SatisfactionGroup, type SatisfactionReport } from './satisfaccionService';
 
 /** Etiqueta de cada nota, de peor a mejor. Solo texto: el informe no es un juego de emojis. */
 const RATING_LABELS: Record<1 | 2 | 3 | 4 | 5, string> = {
@@ -47,6 +47,13 @@ export function SatisfaccionPage() {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [report, setReport] = useState<SatisfactionReport>(() => aggregateSatisfaction([]));
+  /**
+   * `false` cuando el informe sale vacío Y no hay ninguna caja vinculada a
+   * `pos_terminals`: sin vínculo las calificaciones se pierden (404 de la
+   * ruta), y quien mira el informe tiene que enterarse aquí, no en la tarjeta
+   * de ajustes. `null` = no se pudo comprobar o no hace falta.
+   */
+  const [sinCajasVinculadas, setSinCajasVinculadas] = useState<boolean | null>(null);
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
 
   const [startDate, setStartDate] = useState(() => {
@@ -77,6 +84,9 @@ export function SatisfaccionPage() {
         ]);
         setReport(data);
         setBranches(branchesData);
+        // Solo si no hay nada que mostrar: una consulta de más en el caso
+        // normal no se paga.
+        setSinCajasVinculadas(data.total === 0 ? (await hasRegisteredTerminals()) === false : null);
       } catch (error) {
         console.error('Error cargando satisfacción:', error);
         toast({ title: 'Error', description: 'No se pudo cargar la satisfacción en caja', variant: 'destructive' });
@@ -188,10 +198,24 @@ export function SatisfaccionPage() {
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="text-gray-900 dark:text-white">Distribución</CardTitle>
+          {report.total >= SATISFACTION_ROWS_LIMIT && (
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              Mostrando las {SATISFACTION_ROWS_LIMIT.toLocaleString('es-CO')} calificaciones más recientes del rango: acorte las fechas para ver el
+              promedio exacto.
+            </p>
+          )}
         </CardHeader>
         <CardContent className="space-y-2">
           {report.total === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">Sin calificaciones en el rango elegido.</p>
+            <div className="space-y-2">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Sin calificaciones en el rango elegido.</p>
+              {sinCajasVinculadas === true && (
+                <p className="text-sm text-amber-700 dark:text-amber-300" role="alert">
+                  Ninguna caja está vinculada a una terminal, así que las calificaciones no se están guardando. Se vincula en
+                  Configuración › POS › Pantalla del cliente.
+                </p>
+              )}
+            </div>
           ) : (
             RATING_ORDER.map((value) => {
               const count = report.distribution[value];

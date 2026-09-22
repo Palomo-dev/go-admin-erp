@@ -234,6 +234,16 @@ describe('F4 · nombre del cliente (ajuste showCustomerName)', () => {
     expect(projectCartForDisplay(cart({ full_name: 42 }), { currency: 'COP' }).customerName).toBeNull();
   });
 
+  it('con el ajuste apagado el nombre NO viaja: se corta en el emisor, no al pintar', () => {
+    // «Privacidad primero» (PLAN §5.2): si el filtro viviera solo en la
+    // pantalla, el nombre seguiría cruzando el canal remoto de una tableta y
+    // se vería en sus herramientas de desarrollo.
+    expect(projectCartForDisplay(cart({ full_name: 'Ana Pérez' }), { currency: 'COP', includeCustomerName: false }).customerName).toBeNull();
+    expect(projectCartForDisplay(cart({ full_name: 'Ana Pérez' }), { currency: 'COP', includeCustomerName: true }).customerName).toBe('Ana Pérez');
+    // Sin la opción (llamadores anteriores) se conserva el comportamiento.
+    expect(projectCartForDisplay(cart({ full_name: 'Ana Pérez' }), { currency: 'COP' }).customerName).toBe('Ana Pérez');
+  });
+
   it('la pantalla lo sanea al recibirlo (un emisor anterior no lo manda)', () => {
     const base = {
       id: 'c1',

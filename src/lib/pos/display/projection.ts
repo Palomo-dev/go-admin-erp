@@ -66,6 +66,14 @@ export interface ProjectCartOptions {
    * finito o 0; descuento nunca negativo).
    */
   totals?: DisplayTotalsOverride | null;
+  /**
+   * ¿Puede viajar el nombre del cliente? Por defecto sí, por compatibilidad
+   * con quien no lo pase. El emisor lo ata a `showCustomerName` (PLAN §5.2,
+   * «privacidad primero»): con el ajuste apagado el nombre no se filtra solo
+   * al pintar, no sale del emisor, así que tampoco cruza el canal remoto ni
+   * aparece en las herramientas de desarrollo de la pantalla.
+   */
+  includeCustomerName?: boolean;
 }
 
 /** Moneda de respaldo cuando la Parte B no pasa una válida. */
@@ -251,6 +259,6 @@ export function projectCartForDisplay(cart: Cart | null | undefined, opts: Proje
     total: toAmount(totals ? totals.total : cart.total),
     // Solo se resalta una línea que exista en el carrito proyectado.
     lastChangedLineId: lastChangedLineId !== null && lines.some((l) => l.id === lastChangedLineId) ? lastChangedLineId : null,
-    customerName: projectCustomerName(cart),
+    customerName: opts.includeCustomerName === false ? null : projectCustomerName(cart),
   };
 }

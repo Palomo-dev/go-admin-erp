@@ -1969,7 +1969,6 @@
       "seconds": "segundos (10 a 3600)",
       "locale": "Idioma da tela",
       "localeHint": "Caso a tela deva usar outro idioma que não o do ERP.",
-      "phase4Hint": "Disponível na fase 4: já fica salvo, mas a tela do cliente ainda não o aplica.",
       "localeOrg": "O da organização",
       "touch": "Forçar toque / sem toque",
       "touchHint": "Somente se a detecção automática errar com o hardware.",

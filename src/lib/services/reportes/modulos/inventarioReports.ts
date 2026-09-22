@@ -11,7 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { getOrgDateRange } from '@/lib/utils/timezone';
-import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
+import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -71,9 +71,12 @@ export const inventarioReports: ReportDefinition[] = [
           qty_reserved,
           min_level,
           avg_cost,
-          products!inner(id, sku, name, category_id, track_stock, status, is_parent, parent_product_id, organization_id, categories(name)),
-          branches(id, name),
-          product_costs(cost, effective_from, effective_to)
+          products!inner(
+            id, sku, name, category_id, track_stock, status, is_parent, parent_product_id, organization_id,
+            categories(name),
+            product_costs(cost, effective_from, effective_to)
+          ),
+          branches(id, name)
         `)
         .eq('products.organization_id', orgId)
         .eq('products.status', 'active')
@@ -137,7 +140,10 @@ export const inventarioReports: ReportDefinition[] = [
         const stockActual = Number(sl.qty_on_hand ?? 0);
         const minimo = Number(sl.min_level ?? 0);
         const avgCost = Number(sl.avg_cost ?? 0);
-        const costo = getEffectiveCost(avgCost, sl.product_costs as ProductCostRef[] | null);
+        // product_costs cuelga de products (FK product_costs.product_id), no de
+        // stock_levels: no hay relación entre esas dos tablas y PostgREST
+        // respondía 400 al intentar incrustarla desde stock_levels.
+        const costo = getEffectiveCost(avgCost, producto.product_costs as ProductCostRef[] | null);
         const sucursal = sl.branches as Record<string, unknown> | null;
         const categoria = producto.categories as Record<string, unknown> | null;
         const sucursalName = sucursal?.name ? String(sucursal.name) : '—';
@@ -253,7 +259,7 @@ export const inventarioReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
-        p_branch_id: branchId ?? null,
+        p_branch_id: normalizeBranchParam(branchId),
       });
       if (error) throw error;
 
@@ -264,7 +270,7 @@ export const inventarioReports: ReportDefinition[] = [
         .map((m) => String(m.producto_id ?? ''))
         .filter(Boolean);
 
-      let productosMap: Record<string, { nombre: string; sku: string }> = {};
+      const productosMap: Record<string, { nombre: string; sku: string }> = {};
       if (productoIds.length) {
         const { data: productos } = await db
           .from('products')
@@ -350,7 +356,7 @@ export const inventarioReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
-        p_branch_id: branchId ?? null,
+        p_branch_id: normalizeBranchParam(branchId),
       });
       if (error) throw error;
 

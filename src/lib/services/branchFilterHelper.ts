@@ -50,6 +50,30 @@ export function applyBranchFilter<T extends SupabaseFilterBuilder>(
 }
 
 /**
+ * Normaliza el filtro de sucursal para pasarlo como parámetro de una RPC
+ * (`p_branch_id`), con la MISMA semántica que `applyBranchFilter`.
+ *
+ * Devuelve siempre `number` o `null`, nunca `undefined`, `NaN` ni string:
+ * el id llega a Postgres como número o como NULL, y un valor basura degrada a
+ * "todas las sucursales" en vez de reventar la consulta o, peor, colarse en el
+ * SQL como un tipo inesperado.
+ *
+ * - number finito y > 0 → ese id (entero)
+ * - null / undefined / NaN / <= 0 → null ("Todas las sucursales")
+ */
+export function normalizeBranchParam(branchFilter?: number | null): number | null {
+  if (
+    branchFilter != null &&
+    typeof branchFilter === 'number' &&
+    Number.isFinite(branchFilter) &&
+    branchFilter > 0
+  ) {
+    return Math.trunc(branchFilter);
+  }
+  return null;
+}
+
+/**
  * Aplica filtro de sucursal para configuración global + por sucursal.
  * - null = registros globales → .is('branch_id', null)
  * - number = sucursal específica → .eq('branch_id', n)

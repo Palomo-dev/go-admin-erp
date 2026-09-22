@@ -11,7 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { getOrgDateRange } from '@/lib/utils/timezone';
-import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
+import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -55,7 +55,7 @@ export const ventasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
-        p_branch_id: branchId ?? null,
+        p_branch_id: normalizeBranchParam(branchId),
       });
       if (error) throw error;
 
@@ -182,7 +182,7 @@ export const ventasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
-        p_branch_id: branchId ?? null,
+        p_branch_id: normalizeBranchParam(branchId),
       });
       if (error) throw error;
 
@@ -293,7 +293,7 @@ export const ventasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
-        p_branch_id: branchId ?? null,
+        p_branch_id: normalizeBranchParam(branchId),
       });
       if (error) throw error;
 
@@ -357,7 +357,7 @@ export const ventasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
-        p_branch_id: branchId ?? null,
+        p_branch_id: normalizeBranchParam(branchId),
       });
       if (error) throw error;
 
@@ -368,7 +368,7 @@ export const ventasReports: ReportDefinition[] = [
         .map((v) => String(v.vendedor_id ?? ''))
         .filter(Boolean);
 
-      let nombresMap: Record<string, string> = {};
+      const nombresMap: Record<string, string> = {};
       if (vendedorIds.length) {
         const { data: perfiles } = await db
           .from('profiles')
@@ -635,7 +635,6 @@ export const ventasReports: ReportDefinition[] = [
       const totalValor = filas.reduce((s, f) => s + f.total, 0);
       const totalEnvios = filas.reduce((s, f) => s + f.envio, 0);
       const totalPropinas = filas.reduce((s, f) => s + f.propina, 0);
-      const totalDescuentos = filas.reduce((s, f) => s + f.descuento, 0);
       const entregados = pedidos.filter((p) => p.status === 'delivered').length;
       const cancelados = pedidos.filter((p) => p.status === 'cancelled').length;
       const tasaConversion = totalPedidos > 0 ? Math.round((entregados / totalPedidos) * 100) : 0;

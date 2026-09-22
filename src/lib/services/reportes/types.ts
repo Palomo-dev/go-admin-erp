@@ -73,8 +73,19 @@ export type CategoriaReporte =
  * Cliente de Supabase con el que se ejecuta un reporte (F0-SEC r3, tester r2
  * fallo 3). En el navegador es el cliente browser con la sesión del usuario; en
  * un route handler es el cliente de sesión de `getServerOrgContext()`. Nunca el
- * service role: las RPC `fn_reporte_*` exigen `auth.uid()` miembro de la
- * organización y rechazan al service role a propósito.
+ * service role.
+ *
+ * OJO — este comentario decía que las RPC `fn_reporte_*` «exigen `auth.uid()`
+ * miembro de la organización». Verificado por MCP el 2026-09-22: **no es cierto
+ * para 19 de las 21**. Solo `fn_reporte_crm_funnel` y
+ * `fn_reporte_crm_ranking_vendedores` comprueban la membresía; las demás son
+ * SECURITY DEFINER, tienen EXECUTE concedido a `anon` y a PUBLIC, y se creen el
+ * `p_organization_id` que les pasa quien llama. Es decir: **la organización la
+ * decide el parámetro, no la sesión**, y hoy la única barrera real es que el
+ * frontend siempre pase la organización de la sesión.
+ * No confíes en esta capa para el aislamiento entre tenants mientras eso siga
+ * así; hace falta una migración que añada la guarda de pertenencia y revoque
+ * `anon` en las 19 restantes.
  */
 export type ReportesClient = SupabaseClient;
 

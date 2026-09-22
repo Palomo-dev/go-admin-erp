@@ -24,7 +24,9 @@ import {
   isBiometricAvailable,
   canUseBiometricLogin,
   getBiometricEmail,
-  getBiometricPassword,
+  getBiometricRefreshToken,
+  saveBiometricCredentials,
+  purgeLegacyStoredPassword,
 } from '@/lib/services/biometricService';
 import { supabase } from '@/lib/supabase/config';
 import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
@@ -175,25 +177,27 @@ function LoginContent() {
         return;
       }
 
-      // Recuperar credenciales guardadas via biometricService (mismo formato que rememberMe)
+      // Restaurar la sesión con el refresh token guardado (nunca con la
+      // contraseña, que ya no se almacena en el dispositivo).
       const email = getBiometricEmail();
-      const password = getBiometricPassword();
-      if (!email || !password) {
+      const refreshToken = getBiometricRefreshToken();
+      if (!email || !refreshToken) {
         setError('No hay credenciales guardadas. Inicia sesión con contraseña primero y activa "Recordarme".');
         setLoading(false);
         return;
       }
 
-      // Login con Supabase usando credenciales guardadas
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { data, error: signInError } = await supabase.auth.refreshSession({
+        refresh_token: refreshToken,
       });
       if (signInError || !data.session) {
         setError(signInError?.message || 'No se pudo restaurar la sesión');
         setLoading(false);
         return;
       }
+
+      // Los refresh tokens rotan: se guarda el nuevo para el próximo desbloqueo.
+      saveBiometricCredentials(email, data.session.refresh_token);
 
       // Proceder con el flujo normal de post-login
       proceedWithLogin(true, email);
@@ -227,16 +231,20 @@ function LoginContent() {
       return;
     }
 
-    // Guardar o eliminar credenciales segun rememberMe
+    // Guardar o eliminar credenciales segun rememberMe.
+    // Solo el CORREO: la contraseña nunca se guarda en el dispositivo. Antes se
+    // escribía en `userPassword` con `btoa()` + reverse, que se revierte en una
+    // línea, y la pantalla de sesión expirada no la borraba
+    // (auditoría de acceso, 2026-09-22). El desbloqueo biométrico usa ahora un
+    // refresh token revocable, que se guarda más abajo tras abrir sesión.
     if (rememberMe) {
       localStorage.setItem('userEmail', btoa(email).split('').reverse().join(''));
-      localStorage.setItem('userPassword', btoa(password).split('').reverse().join(''));
       localStorage.setItem('rememberMe', 'true');
     } else {
       localStorage.removeItem('userEmail');
-      localStorage.removeItem('userPassword');
       localStorage.removeItem('rememberMe');
     }
+    localStorage.removeItem('userPassword');
 
     await handleEmailLogin({
       email,
@@ -384,16 +392,9 @@ function LoginContent() {
       }
     }
 
-    // Cargar contraseña guardada si rememberMe estaba activo
-    const savedPassword = localStorage.getItem('userPassword');
-    if (savedPassword) {
-      try {
-        const decodedPassword = atob(savedPassword.split('').reverse().join(''));
-        setPassword(decodedPassword);
-      } catch (e) {
-        localStorage.removeItem('userPassword');
-      }
-    }
+    // La contraseña ya no se guarda ni se rellena: se purga la que hubieran
+    // dejado versiones anteriores en este dispositivo.
+    purgeLegacyStoredPassword();
     
     // Limpiar cualquier token de Supabase que pudiera estar en localStorage
     // para asegurar que solo se usen cookies para la autenticación

@@ -78,58 +78,86 @@ export async function authenticateWithBiometric(
 }
 
 /**
- * Verifica si el usuario puede usar login biométrico.
- * Combina disponibilidad de hardware + existencia de credenciales guardadas.
- *
- * Las credenciales se guardan en localStorage (base64 + reverse) tras un login
- * exitoso con email/password, solo si el usuario activa la opción "Recordarme".
- *
- * Reutiliza las mismas claves de localStorage que rememberMe (`userEmail`/`userPassword`)
- * con el mismo encoding (btoa + reverse), para evitar duplicación y mantener consistencia.
+ * Clave donde se guarda el refresh token de Supabase para el desbloqueo
+ * biométrico. Antes se guardaba la CONTRASEÑA del usuario en `userPassword`,
+ * codificada con `btoa()` + reverse —reversible en una línea—, y además la
+ * pantalla de sesión expirada no la borraba (auditoría de acceso, 2026-09-22).
+ * Un refresh token es revocable, caduca y no sirve para entrar en otros
+ * sistemas donde el usuario repita la contraseña.
  */
-export async function canUseBiometricLogin(): Promise<boolean> {
-  const availability = await isBiometricAvailable();
-  if (!availability.available) return false;
+const BIOMETRIC_TOKEN_KEY = 'biometricRefreshToken';
 
-  // Reutiliza las credenciales de rememberMe (mismas claves, mismo encoding)
-  const hasCredentials = localStorage.getItem('userEmail') && localStorage.getItem('userPassword');
-  return !!hasCredentials;
+function encode(value: string): string {
+  return btoa(value).split('').reverse().join('');
 }
 
-/**
- * Elimina las credenciales guardadas (también usadas por rememberMe).
- * Se llama al cerrar sesión.
- */
-export function clearBiometricCredentials(): void {
-  localStorage.removeItem('userEmail');
-  localStorage.removeItem('userPassword');
-  localStorage.removeItem('rememberMe');
-}
-
-/**
- * Recupera el email guardado para login biométrico.
- * Usa el mismo encoding que rememberMe: atob(reverse(base64)).
- */
-export function getBiometricEmail(): string | null {
-  const encoded = localStorage.getItem('userEmail');
-  if (!encoded) return null;
+function decode(value: string): string | null {
   try {
-    return atob(encoded.split('').reverse().join(''));
+    return atob(value.split('').reverse().join(''));
   } catch {
     return null;
   }
 }
 
 /**
- * Recupera la contraseña guardada para login biométrico.
- * Usa el mismo encoding que rememberMe: atob(reverse(base64)).
+ * Guarda las credenciales del desbloqueo biométrico: el correo (para mostrarlo
+ * y para el «Recordarme») y el refresh token de la sesión recién abierta.
+ * NUNCA se guarda la contraseña.
  */
-export function getBiometricPassword(): string | null {
-  const encoded = localStorage.getItem('userPassword');
-  if (!encoded) return null;
+export function saveBiometricCredentials(email: string, refreshToken: string): void {
   try {
-    return atob(encoded.split('').reverse().join(''));
+    localStorage.setItem('userEmail', encode(email));
+    localStorage.setItem(BIOMETRIC_TOKEN_KEY, encode(refreshToken));
   } catch {
-    return null;
+    // Almacenamiento no disponible (modo privado): el biométrico simplemente
+    // no quedará activado.
+  }
+}
+
+export async function canUseBiometricLogin(): Promise<boolean> {
+  const availability = await isBiometricAvailable();
+  if (!availability.available) return false;
+
+  return Boolean(
+    localStorage.getItem('userEmail') && localStorage.getItem(BIOMETRIC_TOKEN_KEY)
+  );
+}
+
+/**
+ * Elimina las credenciales guardadas (también usadas por rememberMe).
+ * Se llama al cerrar sesión. Incluye la limpieza de `userPassword`, que pudo
+ * quedar guardada por versiones anteriores.
+ */
+export function clearBiometricCredentials(): void {
+  localStorage.removeItem('userEmail');
+  localStorage.removeItem('rememberMe');
+  localStorage.removeItem(BIOMETRIC_TOKEN_KEY);
+  localStorage.removeItem('userPassword'); // heredado: se purga siempre
+}
+
+/** Correo guardado para el desbloqueo biométrico. */
+export function getBiometricEmail(): string | null {
+  const encoded = localStorage.getItem('userEmail');
+  if (!encoded) return null;
+  return decode(encoded);
+}
+
+/** Refresh token guardado para el desbloqueo biométrico. */
+export function getBiometricRefreshToken(): string | null {
+  const encoded = localStorage.getItem(BIOMETRIC_TOKEN_KEY);
+  if (!encoded) return null;
+  return decode(encoded);
+}
+
+/**
+ * Purga cualquier contraseña guardada por versiones anteriores. Se llama al
+ * cargar la pantalla de acceso, para que nadie conserve la suya en el
+ * dispositivo tras actualizar.
+ */
+export function purgeLegacyStoredPassword(): void {
+  try {
+    localStorage.removeItem('userPassword');
+  } catch {
+    // sin almacenamiento: nada que purgar
   }
 }

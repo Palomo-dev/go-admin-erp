@@ -75,17 +75,26 @@ export type CategoriaReporte =
  * un route handler es el cliente de sesión de `getServerOrgContext()`. Nunca el
  * service role.
  *
- * OJO — este comentario decía que las RPC `fn_reporte_*` «exigen `auth.uid()`
- * miembro de la organización». Verificado por MCP el 2026-09-22: **no es cierto
- * para 19 de las 21**. Solo `fn_reporte_crm_funnel` y
- * `fn_reporte_crm_ranking_vendedores` comprueban la membresía; las demás son
- * SECURITY DEFINER, tienen EXECUTE concedido a `anon` y a PUBLIC, y se creen el
- * `p_organization_id` que les pasa quien llama. Es decir: **la organización la
- * decide el parámetro, no la sesión**, y hoy la única barrera real es que el
- * frontend siempre pase la organización de la sesión.
- * No confíes en esta capa para el aislamiento entre tenants mientras eso siga
- * así; hace falta una migración que añada la guarda de pertenencia y revoque
- * `anon` en las 19 restantes.
+ * Aislamiento entre inquilinos (F-53, corregido el 2026-09-22 en
+ * `20260922233000_reportes_cerrar_anon_y_guarda_pertenencia.sql`): las 21
+ * `fn_reporte_*` son SECURITY DEFINER y reciben la organización por parámetro,
+ * así que el aislamiento no lo da esta capa — lo da la propia RPC, con las dos
+ * mitades juntas:
+ *   (a) una guarda de pertenencia al principio del cuerpo, que exige que
+ *       `auth.uid()` sea miembro activo del `p_organization_id` recibido y
+ *       lanza 42501 si no lo es;
+ *   (b) `EXECUTE` revocado a `anon` y a PUBLIC, conservado en `authenticated`
+ *       y `service_role`.
+ * Con el service role la guarda falla cerrada (`auth.uid()` es NULL), de ahí
+ * que aquí nunca se pase ese cliente: no es una convención, es un requisito.
+ * Antes de esa migración, 19 de las 21 no tenían ninguna de las dos mitades y
+ * la sola clave publicable del navegador leía los datos de cualquier
+ * organización cambiando un número. Ver `docs/hallazgos/F-53.md`.
+ *
+ * Cuidado al tocar estas funciones: un `DROP` + `CREATE` posterior reconstruye
+ * los GRANT por defecto del esquema y reabre (b) sin avisar — ya pasó con
+ * `20260922210000`. `seguridadRpc.test.ts` lee el estado efectivo de todas las
+ * migraciones en orden justamente para que eso salga en rojo.
  */
 export type ReportesClient = SupabaseClient;
 

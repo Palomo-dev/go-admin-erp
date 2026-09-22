@@ -47,7 +47,8 @@ const state: {
   insertError: { code?: string; message: string } | null;
   readError: boolean;
   promotions: Array<Record<string, unknown>>;
-} = { feedback: [], terminals: [], secrets: [], insertError: null, readError: false, promotions: [] };
+  organizationTimezone: string | null;
+} = { feedback: [], terminals: [], secrets: [], insertError: null, readError: false, promotions: [], organizationTimezone: 'America/Bogota' };
 
 function matches(row: Record<string, unknown>, call: RecordedCall): boolean {
   return call.filters.every(([op, col, value]) => {
@@ -86,6 +87,10 @@ function serviceResponder(call: RecordedCall) {
     return { data: row, error: null };
   }
   if (call.table === 'promotions') return { data: state.promotions, error: null };
+  // La cartelera lee la zona horaria de la organización para saber QUÉ DÍA es
+  // (filtra `applicable_days`). Si no se puede leer, la ruta usa la de
+  // respaldo: aquí se responde siempre, y las pruebas del respaldo fijan el error.
+  if (call.table === 'organizations') return { data: state.organizationTimezone === null ? null : { timezone: state.organizationTimezone }, error: null };
   throw new Error(`tabla inesperada: ${call.table}`);
 }
 
@@ -284,10 +289,18 @@ describe('F4 · promociones del reposo: la cartelera es la de ESA terminal', () 
         ['eq', 'applies_to_pos', true],
       ]),
     );
-    // Vigencia: empezada y sin fin o con fin futuro; y la sucursal de la terminal (7), no una del cliente.
+    // Lo barato e indexable se queda en SQL: ya empezadas.
     expect(call?.filters.some(([op, col]) => op === 'lte' && col === 'start_date')).toBe(true);
-    expect(call?.filters.some(([op, expr]) => op === 'or' && String(expr).startsWith('end_date.is.null'))).toBe(true);
-    expect(call?.filters.some(([op, expr]) => op === 'or' && String(expr).includes('branches.cs.[7]'))).toBe(true);
+    // El fin de vigencia, el día de la semana y la sucursal se deciden en
+    // memoria sobre unas decenas de filas (lo que PostgREST no expresa bien
+    // sobre jsonb), así que se comprueba el RESULTADO, no el SQL.
+    state.promotions = [
+      { id: 'vencida', name: 'Ayer', end_date: new Date(Date.now() - 86_400_000).toISOString() },
+      { id: 'otra-sucursal', name: 'De la 9', end_date: null, branches: [9] },
+      { id: 'vale', name: 'Vale', end_date: null, branches: [7] },
+    ];
+    const res2 = await get(`?terminalId=${T1}`);
+    expect((await res2.json()).data.promotions.map((p: { id: string }) => p.id)).toEqual(['vale']);
   });
 
   it('una terminal de otra organización: 404 y ninguna lectura de promociones', async () => {

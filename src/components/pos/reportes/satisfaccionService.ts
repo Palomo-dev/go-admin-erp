@@ -121,6 +121,34 @@ export function aggregateSatisfaction(rows: readonly SatisfactionRow[], names: S
   };
 }
 
+/**
+ * ¿Tiene la organización ALGUNA terminal registrada en `pos_terminals`?
+ *
+ * Un informe vacío tiene dos causas muy distintas y hasta ahora se pintaban
+ * igual (ronda 2 · QA-5): «nadie ha calificado todavía» y «ninguna caja está
+ * vinculada, así que la ruta responde 404 y no se guardará nunca nada». La
+ * segunda tiene arreglo y hay que decirla.
+ *
+ * Va aparte de `getSatisfactionReport` a propósito: solo hace falta cuando
+ * el informe sale vacío, y el informe no debe pagar una consulta más en el
+ * caso normal. Nunca lanza: si no se puede comprobar devuelve `null` y la
+ * página se calla.
+ */
+export async function hasRegisteredTerminals(
+  client: SatisfactionClient = supabase as unknown as SatisfactionClient,
+  organizationId: number = getOrganizationId(),
+): Promise<boolean | null> {
+  if (!organizationId) return null;
+  try {
+    const { data, error } = await client.from('pos_terminals').select('id').eq('organization_id', organizationId).limit(1);
+    if (error) throw new Error(error.message);
+    return Array.isArray(data) && data.length > 0;
+  } catch (err) {
+    console.warn('[pos-display] no se pudo comprobar si hay cajas vinculadas:', err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 /** Cliente mínimo de Supabase que usa este servicio (para inyectar un doble en las pruebas). */
 export interface SatisfactionClient {
   from(table: string): {

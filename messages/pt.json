@@ -1956,6 +1956,7 @@
       "tipAllowCustom": "Permitir valor \"Outro\"",
       "rating": "Avaliação ao final",
       "ratingHint": "Após a venda, 1 a 5 com um único toque. Só atua em telas sensíveis ao toque.",
+      "unlinkedTerminal": "Este caixa não está vinculado a nenhum terminal: as avaliações não serão salvas e o modo de repouso não poderá mostrar promoções. Vincule-o em «Este caixa», aqui mesmo.",
       "taxBreakdown": "Detalhamento de impostos",
       "taxBreakdownHint": "Desligado mostra \"Imposto incluído\"; ligado, detalhado como no recibo.",
       "customerName": "Mostrar nome do cliente",

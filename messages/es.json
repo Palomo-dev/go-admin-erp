@@ -2064,6 +2064,7 @@
       "tipAllowCustom": "Permitir «Otro» importe",
       "rating": "Calificación al final",
       "ratingHint": "Tras la venta, 1 a 5 con una sola pulsación. Solo actúa en pantallas táctiles.",
+      "unlinkedTerminal": "Esta caja no está vinculada a ninguna terminal: las calificaciones no se guardarán y el reposo no podrá mostrar promociones. Vincúlela en «Esta caja», aquí mismo.",
       "taxBreakdown": "Desglose de impuestos",
       "taxBreakdownHint": "Apagado muestra «IVA incluido»; encendido, desglosado como en el recibo.",
       "customerName": "Mostrar nombre del cliente",

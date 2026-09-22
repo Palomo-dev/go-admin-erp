@@ -13,6 +13,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { localeNames, locales } from '@/i18n/config';
 import { ConfiguracionService } from '../configuracionService';
 import { applyPosDisplaySettings } from '@/lib/pos/display/posDisplay';
+import { readLocalTerminalId } from '@/lib/pos/display/terminal';
+import { PosTerminalsService } from '@/lib/services/posTerminalsService';
 import {
   DEFAULT_CUSTOMER_DISPLAY_SETTINGS,
   IDLE_AFTER_SECONDS_MAX,
@@ -28,6 +30,46 @@ import {
   type IdleMode,
 } from '@/lib/pos/display/settings';
 import type { DisplayTouchOverride } from '@/lib/pos/display/protocol';
+
+/**
+ * ¿Está esta caja vinculada a una fila de `pos_terminals`? (ronda 2 · QA-5.)
+ *
+ * Mientras nadie use «Esta caja», `pos_terminal_id` es un UUID que solo
+ * existe en el localStorage del equipo. Las rutas de la Fase 4
+ * (`/feedback`, `/promotions`) resuelven organización y sucursal desde
+ * `pos_terminals` y responden 404 TERMINAL_NOT_FOUND, y la caja se limita a
+ * un `console.warn`: el dueño enciende «calificación», cobra todo el día y
+ * el informe de satisfacción se queda vacío para siempre sin que nada se lo
+ * diga. Aquí se dice, justo donde se toma la decisión.
+ *
+ * Tres estados, no dos: `null` es «todavía no se sabe» (consulta en vuelo o
+ * caída) y NO pinta el aviso — avisar de algo que no se ha podido comprobar
+ * es peor que callar.
+ */
+function useTerminalLinked(): boolean | null {
+  const [linked, setLinked] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const localId = readLocalTerminalId();
+    if (!localId) {
+      setLinked(false);
+      return;
+    }
+    PosTerminalsService.getTerminalById(localId)
+      .then((terminal) => {
+        if (!cancelled) setLinked(terminal !== null);
+      })
+      .catch((err) => {
+        // No se pudo comprobar: se calla (null), no se acusa.
+        console.warn('No se pudo comprobar si esta caja está vinculada:', err);
+        if (!cancelled) setLinked(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return linked;
+}
 
 /** Valor del selector de idioma para «el de la organización» (el Select de shadcn no admite '' ni null). */
 const ORG_LOCALE_VALUE = 'org';
@@ -217,8 +259,27 @@ export function AjustesPantallaSection({ settings, disabled, onSaved, onSavingCh
 
   const controlsDisabled = disabled || saving;
 
+  /**
+   * El aviso solo sale si además hay algo que dependa de la terminal: la
+   * calificación (que se escribe contra `pos_terminals`) o un modo reposo
+   * que pide promociones al servidor. Con la marca y sin calificación, la
+   * caja sin vincular funciona perfectamente y no hay nada que advertir.
+   */
+  const terminalLinked = useTerminalLinked();
+  const needsTerminal = draft.rating.enabled || draft.idle.mode === 'promotions';
+  const showUnlinkedWarning = terminalLinked === false && needsTerminal;
+
   return (
     <div className="space-y-3">
+      {showUnlinkedWarning && (
+        <p
+          role="alert"
+          data-testid="pd-unlinked-terminal"
+          className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200 break-words"
+        >
+          {tPres('unlinkedTerminal')}
+        </p>
+      )}
       {/* Propina en pantalla */}
       <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3">
         <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">

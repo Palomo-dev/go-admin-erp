@@ -1956,6 +1956,7 @@
       "tipAllowCustom": "Autoriser un montant « Autre »",
       "rating": "Note à la fin",
       "ratingHint": "Après la vente, 1 à 5 d'une seule pression. N'agit que sur les écrans tactiles.",
+      "unlinkedTerminal": "Cette caisse n'est liée à aucun terminal : les évaluations ne seront pas enregistrées et le mode veille ne pourra pas afficher de promotions. Liez-la dans « Cette caisse », ici même.",
       "taxBreakdown": "Détail des taxes",
       "taxBreakdownHint": "Désactivé : « TVA incluse » ; activé : détaillé comme sur le reçu.",
       "customerName": "Afficher le nom du client",

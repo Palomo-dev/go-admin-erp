@@ -40,9 +40,14 @@ const bodySchema = z
  * y, si la carrera la gana otro, el índice único
  * `pos_display_feedback_venta_unica (terminal_id, sale_id)` devuelve 23505 y
  * la ruta responde 200 `{ duplicate: true }` igual. Sin `saleId` no hay clave
- * única posible y se deduplica por tiempo (`FEEDBACK_ANONYMOUS_WINDOW_MS`).
- * En los dos casos la respuesta es la misma para el cliente: la pantalla ya
- * dio las gracias y no debe enterarse de si esta fue la primera.
+ * única posible y se deduplica por tiempo (`FEEDBACK_ANONYMOUS_WINDOW_MS`,
+ * definido en `feedback.ts` y compartido con la caja). En los dos casos la
+ * respuesta es la misma para el cliente: la pantalla ya dio las gracias y no
+ * debe enterarse de si esta fue la primera.
+ *
+ * Venta todavía en el outbox del escritorio: `sale_id` es una FK a `sales`,
+ * así que un id que aún no se ha sincronizado da 23503. No se pierde la
+ * calificación: se reintenta sin venta (ver más abajo).
  */
 export async function POST(request: Request) {
   let body: unknown;
@@ -87,14 +92,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ data: { registered: false, duplicate: true } }, { headers: NO_STORE });
     }
 
-    const { error: insertError } = await service
-      .from('pos_display_feedback')
-      .insert({ organization_id: organizationId, branch_id: branchId, terminal_id: terminalId, sale_id: saleId, rating });
+    const fila = { organization_id: organizationId, branch_id: branchId, terminal_id: terminalId, rating };
+    const { error: insertError } = await service.from('pos_display_feedback').insert({ ...fila, sale_id: saleId });
     if (insertError) {
       // 23505: otro intento ganó la carrera por la misma venta. Es el mismo
       // resultado deseado (una calificación por venta), no un error.
       if (insertError.code === '23505') {
         return NextResponse.json({ data: { registered: false, duplicate: true } }, { headers: NO_STORE });
+      }
+      // 23503: la venta AÚN NO EXISTE en `sales`. Pasa en el escritorio sin
+      // conexión: la venta se guarda en el outbox y se reproduce después, y
+      // si vuelve la red en ese hueco el cliente califica una venta que la FK
+      // no encuentra. La opinión del cliente vale más que la venta a la que
+      // se cuelga, así que se guarda sin venta —el mismo caso anónimo que ya
+      // contempla esta ruta— en vez de perderse con un 503 (ronda 1, QA bajo).
+      if (insertError.code === '23503' && saleId !== null) {
+        const { error: retryError } = await service.from('pos_display_feedback').insert({ ...fila, sale_id: null });
+        if (!retryError) {
+          return NextResponse.json({ data: { registered: true, duplicate: false, unlinkedSale: true } }, { headers: NO_STORE });
+        }
+        console.error('[pos-display/feedback] reintento sin venta falló:', retryError.message);
+        return NextResponse.json({ error: 'No se pudo registrar la calificación', code: 'FEEDBACK_UNAVAILABLE' }, { status: 503, headers: NO_STORE });
       }
       console.error('[pos-display/feedback] inserción falló:', insertError.message);
       return NextResponse.json({ error: 'No se pudo registrar la calificación', code: 'FEEDBACK_UNAVAILABLE' }, { status: 503, headers: NO_STORE });

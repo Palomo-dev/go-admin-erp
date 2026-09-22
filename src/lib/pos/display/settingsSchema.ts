@@ -9,7 +9,35 @@
  */
 
 import { z } from 'zod';
-import type { DisplayIdleMode, DisplayPresentationSettings, DisplayTouchOverride } from './protocol';
+import type { DisplayPresentationSettings, DisplayTouchOverride } from './protocol';
+import {
+  DEFAULT_IDLE_AFTER_SECONDS,
+  IDLE_AFTER_SECONDS_MAX,
+  IDLE_AFTER_SECONDS_MIN,
+  IDLE_MEDIA_URLS_MAX,
+  IDLE_MODES,
+  MEDIA_URL_PATTERN,
+  isValidMediaUrl,
+  type IdleMode,
+} from './idleRules';
+
+/**
+ * Los límites y el predicado de URL del reposo viven en `idleRules.ts`
+ * (módulo puro, sin zod) porque los comparte la PANTALLA
+ * (components/pos-display/idle.ts), que no debe arrastrar el validador.
+ * Se re-exportan desde aquí para no romper a quien ya los importaba de este
+ * módulo: la definición sigue siendo una sola (CLAUDE.md §7).
+ */
+export {
+  DEFAULT_IDLE_AFTER_SECONDS,
+  IDLE_AFTER_SECONDS_MAX,
+  IDLE_AFTER_SECONDS_MIN,
+  IDLE_MEDIA_URLS_MAX,
+  IDLE_MODES,
+  MEDIA_URL_PATTERN,
+  isValidMediaUrl,
+};
+export type { IdleMode };
 
 export const POS_CUSTOMER_DISPLAY_KEY = 'pos_customer_display';
 
@@ -28,14 +56,6 @@ export const TIP_PRESETS_COUNT = 3;
  */
 export const TIP_PRESET_MIN = 1;
 export const TIP_PRESET_MAX = 100;
-/** Tiempo hasta reposo en segundos: entre 10 s y una hora (PLAN §5.2: 90 s por defecto). */
-export const IDLE_AFTER_SECONDS_MIN = 10;
-export const IDLE_AFTER_SECONDS_MAX = 3600;
-/** Cuántas imágenes propias admite el reposo (cada una una URL http(s)). */
-export const IDLE_MEDIA_URLS_MAX = 20;
-
-export const IDLE_MODES = ['brand', 'promotions', 'media'] as const satisfies readonly DisplayIdleMode[];
-export type IdleMode = (typeof IDLE_MODES)[number];
 export const TOUCH_OVERRIDES = ['auto', 'touch', 'no-touch'] as const satisfies readonly DisplayTouchOverride[];
 
 /**
@@ -76,40 +96,6 @@ const tipsSchema = z
 
 const ratingSchema = z.object({ enabled: z.boolean().catch(false) }).catch(() => ({ enabled: false }));
 
-/**
- * URL de imagen del reposo: http(s) absoluta y SIN espacios en blanco ni
- * controles dentro. ÚNICA definición: la tarjeta (AjustesPantallaSection) la
- * importa de aquí en vez de redefinirla. `z.string().url()` por sí sola se
- * apoya en `new URL()` (WHATWG), que tolera espacios y descarta saltos de
- * línea y tabuladores: aceptaba `https://x.com/a b` y
- * `https://a.com\nhttps://b.com` como UNA URL, la tarjeta las rechazaba y el
- * round-trip por el textarea (join('\n') + split) las partía en dos (ronda 3
- * de F2-A, QA bajo #4).
- */
-export const MEDIA_URL_PATTERN = /^https?:\/\/\S+$/i;
-
-/**
- * ÚNICO predicado de «URL de imagen de reposo válida» (ronda 4 de F2-A, QA
- * bajo): el patrón Y `new URL()` sin lanzar. Antes la tarjeta solo aplicaba
- * el patrón y el esquema además `.url()` (que es `new URL()`): `https://%` y
- * `http://[` pasaban la tarjeta, el guardado las descartaba en silencio y el
- * usuario veía «guardado» con la URL desaparecida. Lo usan `mediaUrlSchema`
- * (aquí) y `validateDraft` (AjustesPantallaSection): ni una más ni una menos.
- * Recorta blancos alrededor (el textarea ya lo hace; el esquema también).
- * Nunca lanza; una entrada que no es cadena → false.
- */
-export function isValidMediaUrl(raw: unknown): raw is string {
-  if (typeof raw !== 'string') return false;
-  const value = raw.trim();
-  if (!MEDIA_URL_PATTERN.test(value)) return false;
-  try {
-    new URL(value);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /** URL http(s) absoluta sin blancos; otras (javascript:, data:, relativas, con espacio o salto, mal formadas) se descartan una a una. */
 const mediaUrlSchema = z.string().trim().refine(isValidMediaUrl, 'solo http(s) bien formada y sin espacios');
 
@@ -126,9 +112,9 @@ const idleSchema = z
           .slice(0, IDLE_MEDIA_URLS_MAX),
       )
       .catch(() => [] as string[]),
-    idleAfterSeconds: z.number().int().min(IDLE_AFTER_SECONDS_MIN).max(IDLE_AFTER_SECONDS_MAX).catch(90),
+    idleAfterSeconds: z.number().int().min(IDLE_AFTER_SECONDS_MIN).max(IDLE_AFTER_SECONDS_MAX).catch(DEFAULT_IDLE_AFTER_SECONDS),
   })
-  .catch(() => ({ mode: 'brand' as IdleMode, mediaUrls: [] as string[], idleAfterSeconds: 90 }));
+  .catch(() => ({ mode: 'brand' as IdleMode, mediaUrls: [] as string[], idleAfterSeconds: DEFAULT_IDLE_AFTER_SECONDS }));
 
 /** `locale`: null (idioma de la organización) o etiqueta BCP 47; cualquier otra cosa → null. */
 const localeSchema = z.union([z.null(), z.string().trim().regex(LOCALE_PATTERN)]).catch(null);
@@ -162,7 +148,7 @@ export const DEFAULT_CUSTOMER_DISPLAY_SETTINGS: Readonly<CustomerDisplaySettings
   rating: Object.freeze({ enabled: false }),
   showTaxBreakdown: false,
   showCustomerName: false,
-  idle: Object.freeze({ mode: 'brand' as IdleMode, mediaUrls: Object.freeze([] as string[]) as string[], idleAfterSeconds: 90 }),
+  idle: Object.freeze({ mode: 'brand' as IdleMode, mediaUrls: Object.freeze([] as string[]) as string[], idleAfterSeconds: DEFAULT_IDLE_AFTER_SECONDS }),
   locale: null,
   touch: 'auto',
 });

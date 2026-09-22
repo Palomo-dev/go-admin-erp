@@ -76,6 +76,8 @@ function responder(call: RecordedCall) {
     return { data: estado.terminales.find((r) => cumple(r as unknown as Record<string, unknown>, call)) ?? null, error: null };
   }
   if (call.table === 'promotions') return { data: estado.promociones, error: null };
+  // La cartelera lee la zona horaria para saber qué día es (applicable_days).
+  if (call.table === 'organizations') return { data: { timezone: 'America/Bogota' }, error: null };
   throw new Error(`tabla inesperada: ${call.table}`);
 }
 
@@ -281,7 +283,7 @@ describe('TESTER F4 · una calificación por venta', () => {
 // ---------------------------------------------------------------------------
 
 describe('TESTER F4 · memoria de la caja (feedback.ts)', () => {
-  it('DEFECTO: sin venta, la caja solo manda la PRIMERA calificación de la ventana del navegador; las de los clientes siguientes se tiran', async () => {
+  it('CORREGIDO: sin venta la caja deduplica solo dentro de la ventana anónima; pasada, la siguiente calificación sí sale', async () => {
     // Reproducción: POS abierto todo el día, ventas a crédito
     // (CartView.handleHoldWithDebt llama a setMode('thanks') SIN saleId), así
     // que `sendDisplayRating` recibe siempre saleId null.
@@ -297,22 +299,22 @@ describe('TESTER F4 · memoria de la caja (feedback.ts)', () => {
     expect(cliente3).toEqual({ ok: true, alreadySent: true });
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    // Y no es cosa del tiempo: la clave `terminal|sin-venta` no caduca nunca.
+    // Pasada la ventana anónima, la caja vuelve a mandar: la clave caduca.
     jest.useFakeTimers();
     try {
       jest.setSystemTime(new Date(Date.now() + 8 * 60 * 60 * 1000)); // ocho horas después
       const finDeJornada = await sendDisplayRating({ terminalId: T1, saleId: null, rating: 2 }, fetchMock as unknown as typeof fetch);
-      expect(finDeJornada.alreadySent).toBe(true);
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(finDeJornada.alreadySent).toBe(false);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
     } finally {
       jest.useRealTimers();
     }
   });
 
-  it('el servidor SÍ está preparado para ese caso: su ventana anónima es de 2 minutos', () => {
+  it('caja y servidor comparten la ventana anónima de 2 minutos', () => {
     expect(FEEDBACK_ANONYMOUS_WINDOW_MS).toBe(2 * 60 * 1000);
-    // …pero la caja nunca llega a preguntárselo (ver DEFECTO de arriba).
-    expect(leer('src/lib/pos/display/feedback.ts')).toContain("sin venta, por terminal");
+    // La caja usa la MISMA ventana, así que no manda lo que el servidor va a descartar.
+    expect(leer('src/lib/pos/display/feedback.ts')).toContain('FEEDBACK_ANONYMOUS_WINDOW_MS');
   });
 
   it('un rechazo del servidor no se recuerda: el cliente puede volver a pulsar', async () => {
@@ -409,10 +411,12 @@ describe('TESTER F4 · reposo: ajustes hostiles', () => {
     expect(idle.mediaUrls).toEqual(['https://ejemplo.com/1.png', 'https://ejemplo.com/2.png']);
   });
 
-  it('DEFECTO menor: el predicado de URL de reposo está duplicado (idle.ts e isValidMediaUrl de settingsSchema.ts)', () => {
-    expect(leer('src/components/pos-display/idle.ts')).toContain('function isMediaUrl');
-    expect(leer('src/components/pos-display/idle.ts')).not.toContain('isValidMediaUrl');
-    expect(leer('src/lib/pos/display/settingsSchema.ts')).toContain('export function isValidMediaUrl');
+  it('CORREGIDO: una sola definición del predicado de URL de reposo (isValidMediaUrl de settingsSchema.ts)', () => {
+    expect(leer('src/components/pos-display/idle.ts')).toContain('isValidMediaUrl');
+    expect(leer('src/components/pos-display/idle.ts')).not.toContain('function isMediaUrl');
+    // La definición vive en idleRules.ts (sin zod) y de ahí la toman idle.ts y settingsSchema.ts.
+    expect(leer('src/lib/pos/display/idleRules.ts')).toContain('export function isValidMediaUrl');
+    expect(leer('src/lib/pos/display/settingsSchema.ts')).toContain('idleRules');
   });
 
   it('modo «media» sin ninguna imagen válida cae a la marca', () => {
@@ -493,19 +497,21 @@ describe('TESTER F4 · reposo: ajustes hostiles', () => {
 // ---------------------------------------------------------------------------
 
 describe('TESTER F4 · cartelera del reposo', () => {
-  it('DEFECTO: la ruta no filtra `applicable_days`, así que la pantalla puede anunciar una promoción que el POS no aplicará hoy', async () => {
-    // promotionEngine.loadActivePromotions descarta en memoria las que no son
-    // del día (`applicable_days`); la ruta de la pantalla no lo hace, ni en SQL
-    // ni al proyectar. Resultado: cartel de «solo sábados» un martes.
-    estado.promociones = [{ id: 'p-sabado', name: 'Solo sábados', description: '2x1', applicable_days: ['saturday'], end_date: null }];
+  it('CORREGIDO: la ruta filtra `applicable_days`, así que no se anuncia una promoción que el POS no aplicará hoy', async () => {
+    // `promotionEngine.loadActivePromotions` descarta en memoria las que no
+    // son del día; la ruta hace lo mismo con el día de la zona horaria de la
+    // organización, así que un «solo sábados» no sale un martes.
+    const hoy = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Bogota' }).toLowerCase();
+    const otroDia = hoy === 'saturday' ? 'monday' : 'saturday';
+    estado.promociones = [
+      { id: 'p-otro-dia', name: 'Otro día', description: '2x1', applicable_days: [otroDia], end_date: null },
+      { id: 'p-hoy', name: 'Hoy', description: '3x2', applicable_days: [hoy], end_date: null },
+    ];
     const res = await get(`?terminalId=${T1}`);
     expect(res.status).toBe(200);
-    expect((await res.json()).data.promotions).toEqual([{ id: 'p-sabado', name: 'Solo sábados', description: '2x1', endsAt: null }]);
-    // Y la consulta no menciona la columna siquiera:
+    expect((await res.json()).data.promotions.map((p: { id: string }) => p.id)).toEqual(['p-hoy']);
     const call = servicio.calls.find((c) => c.table === 'promotions');
-    expect(call?.columns).not.toContain('applicable_days');
-    expect(call?.filters.some(([, col]) => String(col).includes('applicable_days'))).toBe(false);
-    expect(leer('src/lib/services/promotionEngine.ts')).toContain('applicable_days');
+    expect(call?.columns).toContain('applicable_days');
   });
 
   it('la cartelera no lleva importes, reglas ni cupos', async () => {
@@ -536,11 +542,18 @@ describe('TESTER F4 · cartelera del reposo', () => {
   });
 
   it('la organización y la sucursal salen de la terminal, no de la query', async () => {
-    estado.promociones = [{ id: 'p1', name: 'Promo' }];
-    await get(`?terminalId=${T1}&organizationId=999&branchId=3`);
+    // La sucursal de la terminal es la 7. Una promoción de la 9 no sale
+    // aunque la query pida otra organización u otra sucursal.
+    estado.promociones = [
+      { id: 'p1', name: 'Promo', branches: [7] },
+      { id: 'de-la-9', name: 'Ajena', branches: [9] },
+    ];
+    const res = await get(`?terminalId=${T1}&organizationId=999&branchId=3`);
+    expect((await res.json()).data.promotions.map((p: { id: string }) => p.id)).toEqual(['p1']);
     const call = servicio.calls.find((c) => c.table === 'promotions');
     expect(call?.filters).toEqual(expect.arrayContaining([['eq', 'organization_id', 120]]));
-    expect(call?.filters.some(([op, expr]) => op === 'or' && String(expr).includes('branches.cs.[7]'))).toBe(true);
+    // El día y la sucursal se filtran en memoria (jsonb): lo que no puede
+    // pasar es que la organización o la sucursal de la QUERY lleguen al SQL.
     expect(call?.filters.some(([, , v]) => v === 999 || v === 3)).toBe(false);
   });
 
@@ -555,21 +568,16 @@ describe('TESTER F4 · cartelera del reposo', () => {
     expect(res.status).toBe(400);
   });
 
-  it('DEFECTO: el modo reposo sale SOLO de hello.settings, así que una tableta emparejada con el POS cerrado nunca rota promociones ni imágenes', () => {
-    // El bootstrap de la tableta ya trae los ajustes completos
-    // (`/api/pos/display/bootstrap` devuelve `settings` con `idle`), y el
-    // idioma sí cae al bootstrap cuando no hay saludo. El reposo no: se lee
-    // de `link.hello?.settings` y punto. Sin caja hablando no hay `hello`,
-    // así que la tableta se queda en la marca con el reloj… que es justo el
-    // caso que la ruta /promotions decía querer cubrir («la tableta puede
-    // estar en reposo con el POS cerrado»).
+  it('CORREGIDO: el reposo cae a los ajustes del bootstrap, así que una tableta con el POS cerrado sigue rotando', () => {
+    // Sin caja hablando no hay `hello`; el bootstrap de la tableta ya trae
+    // los ajustes completos (`/api/pos/display/bootstrap` devuelve `settings`
+    // con `idle`), que es justo el caso que la ruta /promotions quería cubrir
+    // («la tableta puede estar en reposo con el POS cerrado»).
     const pantalla = leer('src/components/pos-display/CustomerDisplay.tsx');
     expect(pantalla).toMatch(/const settings = link\.hello\?\.settings/);
-    expect(pantalla).toMatch(/sanitizeIdleSettings\(settings\?\.idle\)/);
-    // El idioma sí tiene respaldo del bootstrap; el reposo no.
+    expect(pantalla).toMatch(/sanitizeIdleSettings\(settings\?\.idle \?\? bootstrapSettings\?\.idle\)/);
+    // Mismo respaldo que ya tenía el idioma.
     expect(pantalla).toMatch(/settingsLocale \?\? bootstrapLocale/);
-    expect(pantalla).not.toMatch(/bootstrap\.settings/);
-    // Y el bootstrap sí los manda: el dato está, solo que nadie lo lee.
     expect(leer('src/app/api/pos/display/bootstrap/route.ts')).toMatch(/settings,/);
     expect(leer('src/lib/pos/display/remoteDisplay.ts')).toContain('settings: Record<string, unknown>');
   });
@@ -682,6 +690,7 @@ describe('TESTER F4 · caja sin terminal registrada', () => {
 
     // La caja no reintenta ni avisa: solo console.warn.
     expect(leer('src/lib/pos/display/feedback.ts')).toContain('console.warn');
-    expect(leer('src/components/pos/configuracion/pantalla-cliente/AjustesPantallaSection.tsx')).not.toContain('TERMINAL_NOT_FOUND');
+    // La tarjeta ya documenta el caso (cabecera de AjustesPantallaSection).
+    expect(leer('src/components/pos/configuracion/pantalla-cliente/AjustesPantallaSection.tsx')).toContain('TERMINAL_NOT_FOUND');
   });
 });

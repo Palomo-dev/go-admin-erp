@@ -222,7 +222,17 @@ export type UpMessage =
   | (UpEnvelope & { t: 'tip_selected'; cartId: string; kind: TipKind; value: number })
   /** Solo avisa al cajero; no confirma ningún pago. */
   | (UpEnvelope & { t: 'qr_paid_claim'; cartId: string })
-  | (UpEnvelope & { t: 'rating'; saleId: string | null; rating: Rating })
+  /**
+   * Calificación del cliente (Fase 4). `saleId` se ignora en la caja a
+   * propósito (lo pone ella; ver feedback.ts). `thanksId` es el identificador
+   * del «Gracias» que la pantalla estaba pintando al pulsar: la caja lo
+   * coteja con el suyo y descarta la calificación si ya no es la misma venta.
+   * Cubre la carrera del canal remoto —el cliente pulsa al final de los 8 s de
+   * la venta A y el mensaje llega con la venta B ya confirmada— que antes
+   * colgaba la nota de la venta equivocada. Opcional: una pantalla de la
+   * ronda 1 no lo manda y la caja la sigue aceptando.
+   */
+  | (UpEnvelope & { t: 'rating'; saleId: string | null; rating: Rating; thanksId?: string | null })
   /**
    * Presencia de la pantalla (PLAN §5.1: «punto verde: pantalla conectada /
    * gris: sin pantalla»). La pantalla lo emite cada HEARTBEAT_INTERVAL_MS
@@ -277,7 +287,13 @@ export interface DisplayState {
    * null mientras se pregunta.
    */
   tip: { presets: number[]; allowCustom: boolean; selected: TipSelectedMessage | null; base?: number } | null;
-  thanks: { total: number; askRating: boolean } | null;
+  /**
+   * `id` (Fase 4, ronda 2): identifica ESTE «Gracias». Viaja de vuelta en el
+   * mensaje `rating` para que la caja sepa si la calificación es de la venta
+   * que está agradeciendo o de la anterior. Opcional: los emisores previos no
+   * lo mandan.
+   */
+  thanks: { total: number; askRating: boolean; id?: string } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -523,6 +539,7 @@ export function isUpMessage(value: unknown): value is UpMessage {
       return isNonEmptyString(value.cartId);
     case 'rating':
       return (
+        (value.thanksId === undefined || value.thanksId === null || isNonEmptyString(value.thanksId)) &&
         (value.saleId === null || isNonEmptyString(value.saleId)) &&
         isFiniteNumber(value.rating) &&
         Number.isInteger(value.rating) &&

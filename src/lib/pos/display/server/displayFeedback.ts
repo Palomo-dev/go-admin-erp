@@ -13,14 +13,20 @@ export const FEEDBACK_RATE_LIMIT = { limit: 20, windowMs: 60 * 1000 } as const;
 export const FEEDBACK_RATE_LIMIT_PREFIX = 'pos-display:feedback:terminal:';
 
 /**
- * Ventana en la que una calificación SIN venta (`saleId` null) se considera
- * repetida en la misma terminal. La unicidad de la base es
- * `(terminal_id, sale_id) WHERE sale_id IS NOT NULL`: sin venta no hay clave
- * que la base pueda deduplicar, así que se mira el reloj. Dos minutos cubren
- * de sobra los 8 s de «Gracias» sin tapar la calificación del cliente
- * siguiente en una caja con cola.
+ * Ventana de la calificación SIN venta. La definición está en `feedback.ts`
+ * (módulo puro, lado caja) y se re-exporta aquí: la caja y el servidor deben
+ * decidir «repetida» con el MISMO número. Cuando eran dos constantes, la de
+ * la caja ni siquiera se consultaba (ronda 1, defecto alto). CLAUDE.md §7.
  */
-export const FEEDBACK_ANONYMOUS_WINDOW_MS = 2 * 60 * 1000;
+export { FEEDBACK_ANONYMOUS_WINDOW_MS } from '../feedback';
+
+/**
+ * Cuántas filas de `promotions` lee la cartelera antes de filtrar en memoria
+ * por vigencia, día de la semana y sucursal. Holgado respecto a las diez que
+ * se rotan: si se recortara antes de filtrar, un comercio con muchas
+ * promociones de otros días se quedaría sin cartel.
+ */
+export const PROMOTIONS_READ_LIMIT = 200;
 
 /** La pantalla relee la cartelera cada pocos minutos; 10 por minuto y terminal sobra. */
 export const PROMOTIONS_RATE_LIMIT = { limit: 10, windowMs: 60 * 1000 } as const;

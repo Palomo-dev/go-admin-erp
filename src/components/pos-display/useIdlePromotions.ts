@@ -17,7 +17,7 @@
  * pantalla.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { sanitizeDisplayPromotions, type DisplayPromotion } from '@/lib/pos/display/promotions';
 import { readStoredRemoteDisplay } from '@/lib/pos/display/remoteDisplay';
 
@@ -50,9 +50,11 @@ export function readPromotionsPayload(payload: unknown): DisplayPromotion[] {
  * @param enabled    false si el reposo no es 'promotions': entonces no se pide nada.
  */
 export function useIdlePromotions(terminalId: string | null, enabled: boolean): DisplayPromotion[] {
+  // El estado ya conserva la última lista entre recargas del efecto: un fallo
+  // de red no la borra, así que la cartelera no parpadea. (Había además un
+  // `useRef` que se escribía y no se leía nunca, con un comentario que
+  // atribuía a ese ref lo que hace el propio estado: ronda 1, QA bajo.)
   const [promotions, setPromotions] = useState<DisplayPromotion[]>([]);
-  // La última lista se conserva entre recargas del efecto para no parpadear.
-  const latest = useRef<DisplayPromotion[]>([]);
 
   useEffect(() => {
     if (!enabled || !terminalId) return;
@@ -70,7 +72,6 @@ export function useIdlePromotions(terminalId: string | null, enabled: boolean): 
         }
         const next = readPromotionsPayload(await response.json());
         if (cancelled) return;
-        latest.current = next;
         setPromotions(next);
       } catch (err) {
         console.warn('[pos-display] no se pudieron leer las promociones del reposo:', err instanceof Error ? err.message : err);

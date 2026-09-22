@@ -254,6 +254,16 @@ export function getPosDisplayEmitter(): DisplayEmitter {
     // 8 s de «Gracias», cuando el modal de cobro ya puede estar cerrado.
     instance.onUp((msg) => {
       if (msg.t !== 'rating') return;
+      // Calificación que llega TARDE (ronda 2, QA bajo): la pantalla remota
+      // manda el `thanksId` del «Gracias» que estaba pintando. Si la caja ya
+      // está agradeciendo otra venta —o ya salió de «Gracias»— la nota no es
+      // de esta venta y se descarta, en vez de colgarla de la que toque en
+      // ese instante. Una pantalla vieja no manda `thanksId` y se acepta.
+      const thanksId = typeof msg.thanksId === 'string' && msg.thanksId.length > 0 ? msg.thanksId : null;
+      if (thanksId !== null && thanksId !== (instance?.ratingThanksId ?? null)) {
+        console.warn('[pos-display] calificación de un «Gracias» que ya no es el actual; se descarta');
+        return;
+      }
       const saleId = instance?.ratingSaleId ?? null;
       // El `saleId` del mensaje se ignora a propósito: lo pone la caja.
       void sendDisplayRating({ terminalId: getOrCreateLocalTerminalId(), saleId, rating: msg.rating });

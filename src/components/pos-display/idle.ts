@@ -18,33 +18,35 @@
  */
 
 import type { DisplayIdleMode, DisplayIdleSettings } from '@/lib/pos/display/protocol';
+import {
+  DEFAULT_IDLE_AFTER_SECONDS,
+  IDLE_AFTER_SECONDS_MAX,
+  IDLE_AFTER_SECONDS_MIN,
+  IDLE_MEDIA_URLS_MAX,
+  clampIdleAfterSeconds,
+  isIdleMode,
+  isValidMediaUrl,
+} from '@/lib/pos/display/idleRules';
+
+/**
+ * Los límites del ajuste y el predicado de URL NO se redefinen aquí: vienen
+ * de `idleRules.ts`, que es también de donde los saca `settingsSchema.ts`
+ * (CLAUDE.md §7). Había dos copias equivalentes; en cuanto una cambiara, las
+ * imágenes se habrían caído en silencio en un lado. `idleRules.ts` no
+ * arrastra zod, así que la pantalla sigue sin pagar el validador.
+ */
+export {
+  DEFAULT_IDLE_AFTER_SECONDS,
+  IDLE_AFTER_SECONDS_MAX,
+  IDLE_AFTER_SECONDS_MIN,
+  IDLE_MEDIA_URLS_MAX,
+  isValidMediaUrl,
+};
 
 /** Cuánto dura cada lámina del reposo (PLAN: 8 s por promoción). */
 export const IDLE_SLIDE_MS = 8_000;
 /** Fundido entre láminas. Ninguna animación de la pantalla pasa de 300 ms. */
 export const IDLE_FADE_MS = 300;
-/** Valor por defecto de `idleAfterSeconds` (PLAN §5.2). */
-export const DEFAULT_IDLE_AFTER_SECONDS = 90;
-/** Límites del ajuste, los mismos que valida `settingsSchema.ts`. */
-export const IDLE_AFTER_SECONDS_MIN = 10;
-export const IDLE_AFTER_SECONDS_MAX = 3600;
-/** Cuántas imágenes propias se admiten, como en los ajustes. */
-export const IDLE_MEDIA_URLS_MAX = 20;
-
-const IDLE_MODES: ReadonlySet<string> = new Set<DisplayIdleMode>(['brand', 'promotions', 'media']);
-
-/** http(s) absoluta y sin blancos: el mismo criterio que la tarjeta de configuración. */
-function isMediaUrl(value: unknown): value is string {
-  if (typeof value !== 'string') return false;
-  const url = value.trim();
-  if (!/^https?:\/\/\S+$/i.test(url)) return false;
-  try {
-    new URL(url);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Ajustes de reposo saneados. `hello.settings.idle` es una PISTA: puede no
@@ -53,15 +55,11 @@ function isMediaUrl(value: unknown): value is string {
  */
 export function sanitizeIdleSettings(value: unknown): DisplayIdleSettings {
   const raw = typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
-  const mode = typeof raw.mode === 'string' && IDLE_MODES.has(raw.mode) ? (raw.mode as DisplayIdleMode) : 'brand';
+  const mode = isIdleMode(raw.mode) ? raw.mode : 'brand';
   const mediaUrls = Array.isArray(raw.mediaUrls)
-    ? raw.mediaUrls.filter(isMediaUrl).map((url) => url.trim()).slice(0, IDLE_MEDIA_URLS_MAX)
+    ? raw.mediaUrls.filter(isValidMediaUrl).map((url) => url.trim()).slice(0, IDLE_MEDIA_URLS_MAX)
     : [];
-  const seconds = typeof raw.idleAfterSeconds === 'number' && Number.isInteger(raw.idleAfterSeconds) ? raw.idleAfterSeconds : Number.NaN;
-  const idleAfterSeconds = Number.isFinite(seconds)
-    ? Math.min(IDLE_AFTER_SECONDS_MAX, Math.max(IDLE_AFTER_SECONDS_MIN, seconds))
-    : DEFAULT_IDLE_AFTER_SECONDS;
-  return { mode, mediaUrls, idleAfterSeconds };
+  return { mode, mediaUrls, idleAfterSeconds: clampIdleAfterSeconds(raw.idleAfterSeconds) };
 }
 
 export interface IdleContentInput {

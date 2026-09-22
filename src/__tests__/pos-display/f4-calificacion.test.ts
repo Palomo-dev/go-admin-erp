@@ -54,7 +54,7 @@ describe('F4 · quién decide que se pregunte', () => {
   it('con el ajuste encendido la pide sin que CheckoutDialog tenga que saberlo', () => {
     const e = emitter(settings({ rating: { enabled: true } }));
     e.setMode('thanks', { total: 10_000, saleId: SALE });
-    expect(e.getState().thanks).toEqual({ total: 10_000, askRating: true });
+    expect(e.getState().thanks).toEqual({ total: 10_000, askRating: true, id: expect.any(String) });
   });
 
   it('quien confirma la venta puede decir lo contrario explícitamente', () => {

@@ -2064,6 +2064,7 @@
       "tipAllowCustom": "Allow \"Other\" amount",
       "rating": "Rating at the end",
       "ratingHint": "After the sale, 1 to 5 with a single tap. Only acts on touch screens.",
+      "unlinkedTerminal": "This register is not linked to a terminal: ratings will not be saved and idle mode cannot show promotions. Link it under “This register”, right here.",
       "taxBreakdown": "Tax breakdown",
       "taxBreakdownHint": "Off shows \"Tax included\"; on, itemised as on the receipt.",
       "customerName": "Show customer name",

@@ -173,6 +173,16 @@ export function CustomerDisplay() {
    */
   const currentLocale = useLocale();
   const settings = link.hello?.settings;
+  /**
+   * Ajustes que el SERVIDOR le dio a la tableta al emparejarse
+   * (`/api/pos/display/bootstrap` devuelve `settings` completo). Son el
+   * respaldo cuando la caja no está hablando: una tableta emparejada con el
+   * POS cerrado no recibe ningún `hello`, y sin esto el reposo degradaba a la
+   * marca justo en el escenario para el que se hizo la cartelera (ronda 1,
+   * defecto alto). El saludo sigue mandando: lo que el cajero cambia en
+   * Configuración llega por ahí sin recargar la tableta.
+   */
+  const bootstrapSettings = remotePhase.kind === 'ready' ? remotePhase.bootstrap.settings : null;
   const settingsLocale = typeof settings?.locale === 'string' ? settings.locale : null;
   const bootstrapLocale = remotePhase.kind === 'ready' ? remotePhase.bootstrap.locale : null;
   useEffect(() => {
@@ -226,8 +236,9 @@ export function CustomerDisplay() {
   const muted = view === 'connecting' || view === 'update_required';
 
   // Reposo (F4, PLAN §5.2). Los ajustes se sanean campo a campo: un emisor de
-  // las fases 0-3 no manda `idle` y la pantalla se queda en la marca de siempre.
-  const idle = useMemo(() => sanitizeIdleSettings(settings?.idle), [settings?.idle]);
+  // las fases 0-3 no manda `idle` y la pantalla cae al bootstrap; si tampoco
+  // lo hay (pantalla local sin saludo), a la marca de siempre.
+  const idle = useMemo(() => sanitizeIdleSettings(settings?.idle ?? bootstrapSettings?.idle), [settings?.idle, bootstrapSettings?.idle]);
   const idlePromotions = useIdlePromotions(link.terminalId, view === 'idle' && idle.mode === 'promotions');
   const idleSettled = useIdleSettled(view === 'idle', idle.idleAfterSeconds);
 
@@ -248,9 +259,13 @@ export function CustomerDisplay() {
   /**
    * Calificación (F4, PLAN §4.2): la pantalla solo AVISA; quien la registra
    * es la caja, que es la única que sabe qué venta acaba de confirmar
-   * (`saleId` viaja como null a propósito: ver feedback.ts).
+   * (`saleId` viaja como null a propósito: ver feedback.ts). Sí viaja el
+   * `thanksId` del «Gracias» que se está pintando, como el `cartId` de
+   * `tip_selected` y `qr_paid_claim`: con él la caja descarta una nota que
+   * llegó tarde por el canal remoto y que ya no es de la venta actual.
    */
-  const onRate = useCallback((rating: Rating) => sendUp({ t: 'rating', saleId: null, rating }), [sendUp]);
+  const thanksId = state?.mode === 'thanks' && typeof state.thanks?.id === 'string' ? state.thanks.id : null;
+  const onRate = useCallback((rating: Rating) => sendUp({ t: 'rating', saleId: null, rating, thanksId }), [sendUp, thanksId]);
   // Solo se pregunta si la caja lo pide Y la pantalla es táctil (PLAN §4.4).
   const askRating = state?.mode === 'thanks' && state.thanks?.askRating === true && touch;
 

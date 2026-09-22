@@ -423,6 +423,20 @@ function warn(where: string, err: unknown): void {
   console.warn(`[pos-display] ${where} falló:`, err);
 }
 
+/**
+ * Identificador corto y único por ventana para cada «Gracias» (Fase 4). No
+ * es un secreto ni un id de negocio: solo tiene que distinguir una venta de
+ * la siguiente dentro de la misma caja, así que un contador con una sal de
+ * arranque basta y no obliga a `crypto.randomUUID` (que falta en contextos
+ * no seguros, justo donde corre parte de estas cajas).
+ */
+let thanksCounter = 0;
+const thanksSalt = Math.random().toString(36).slice(2, 8);
+function nextThanksId(): string {
+  thanksCounter += 1;
+  return `t${thanksSalt}${thanksCounter}`;
+}
+
 export class DisplayEmitter {
   private readonly createTransport: () => DisplayTransport | null;
   private readonly isEnabled: () => boolean;
@@ -480,6 +494,13 @@ export class DisplayEmitter {
    * por quien escriba en el canal. Se olvida al salir de «Gracias».
    */
   private thanksSaleId: string | null = null;
+  /**
+   * Identificador del «Gracias» en curso (Fase 4, ronda 2). Viaja en el
+   * `state` y vuelve en el mensaje `rating`: si no coincide, la calificación
+   * es de una venta anterior que llegó tarde por el canal remoto y se
+   * descarta. Se renueva en cada `setMode('thanks')` y se olvida al salir.
+   */
+  private thanksId: string | null = null;
   private closed = false;
 
   private pendingFlush: Cancel | null = null;
@@ -953,7 +974,12 @@ export class DisplayEmitter {
           // de la organización (`rating.enabled`). Así CheckoutDialog no
           // tiene que conocer los ajustes de la pantalla para preguntar.
           const askRating = extra?.askRating === undefined ? this.ratingEnabled() : extra.askRating === true;
-          this.thanks = { total, askRating };
+          // El id existe para que una calificación no se cuente dos veces
+          // (la pantalla lo devuelve en el mensaje `rating`). Sin pregunta no
+          // hay nada que deduplicar, así que el estado no lo lleva: los
+          // frames de «Gracias» de las fases anteriores no cambian de forma.
+          this.thanksId = askRating ? nextThanksId() : null;
+          this.thanks = this.thanksId ? { total, askRating, id: this.thanksId } : { total, askRating };
           this.thanksSaleId = typeof extra?.saleId === 'string' && extra.saleId.length > 0 ? extra.saleId : null;
           this.armThanksTimer();
           break;
@@ -1074,6 +1100,15 @@ export class DisplayEmitter {
    */
   get ratingSaleId(): string | null {
     return this.thanks ? this.thanksSaleId : null;
+  }
+
+  /**
+   * Identificador del «Gracias» que la caja está mostrando, o null si ya no
+   * hay ninguno. La caja compara con el `thanksId` del mensaje `rating` antes
+   * de registrar nada (ver posDisplay.ts).
+   */
+  get ratingThanksId(): string | null {
+    return this.thanks ? this.thanksId : null;
   }
 
   /** ¿La organización pide calificación al terminar la venta? (ajuste `rating.enabled`). */
@@ -1499,6 +1534,7 @@ export class DisplayEmitter {
       this.thanksTimer = null;
       this.thanks = null;
       this.thanksSaleId = null;
+      this.thanksId = null;
       this.requestFlush();
     }, this.thanksDurationMs);
     const maybeUnref = this.thanksTimer as unknown as { unref?: () => void };
@@ -1515,5 +1551,6 @@ export class DisplayEmitter {
     this.clearThanksTimer();
     this.thanks = null;
     this.thanksSaleId = null;
+    this.thanksId = null;
   }
 }

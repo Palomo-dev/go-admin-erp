@@ -1160,7 +1160,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       saleConfirmedRef.current = true;
       // `saleId` (Fase 4): la pantalla puede pedir calificación durante
       // «Gracias» y la caja la registra contra ESTA venta (feedback.ts).
-      getPosDisplayEmitter().setMode('thanks', { total: cartTotal, saleId: sale.id });
+      // Con la venta en el outbox del escritorio (`pending_sync`) todavía NO
+      // hay fila en `sales`, y `pos_display_feedback.sale_id` es una FK: el
+      // insert fallaría con 23503 y la calificación se perdería. Va como
+      // anónima, que es un caso ya contemplado (ventana de 2 minutos).
+      getPosDisplayEmitter().setMode('thanks', { total: cartTotal, saleId: isPendingSync ? null : sale.id });
 
       // Haptic feedback de venta exitosa (no-op en web)
       hapticNotification('success');

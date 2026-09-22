@@ -76,7 +76,9 @@ beforeEach(() => {
 });
 
 const ROOT = path.resolve(__dirname, '../../..');
-const readSettingsSource = () => fs.readFileSync(path.join(ROOT, 'src/lib/pos/display/settings.ts'), 'utf8');
+/** F3-A: el esquema (y `mediaUrlSchema`) vive en settingsSchema.ts (módulo puro); settings.ts lo re-exporta. Se leen los dos. */
+const readSettingsSource = () =>
+  fs.readFileSync(path.join(ROOT, 'src/lib/pos/display/settingsSchema.ts'), 'utf8') + '\n' + fs.readFileSync(path.join(ROOT, 'src/lib/pos/display/settings.ts'), 'utf8');
 
 /**
  * Helpers puros de AjustesPantallaSection (TSX: ts-jest con jsx preserve no lo

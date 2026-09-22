@@ -17,10 +17,13 @@
  * `it` normales y ahora vigilan que no reincidan.
  *
  * Plazos: `until`/`untilReceived` corren con reloj REAL, así que su tope
- * depende de la carga del runner. En el run completo de `pos-display` (77+
+ * depende de la carga del runner. En el run completo de `pos-display` (99
  * suites en paralelo) el caso «stop() de la caja manda bye…» vencía su tope
- * de 520 ms y pasaba en aislamiento (QA F2-C r12): los topes de ese caso son
- * holgados a propósito; solo acotan un cuelgue, no miden latencia.
+ * de 520 ms y pasaba en aislamiento (QA F2-C r12), y en la ronda 1 de F3-B
+ * volvió a verse un fallo intermitente del mismo tipo. TODOS los topes de
+ * este archivo son holgados a propósito: acotan un cuelgue, no miden
+ * latencia, y el gate de cierre de fase no puede depender de la carga de la
+ * máquina (F3-B ronda 2 · 11).
  */
 
 import type { Cart, CartItem } from '@/components/pos/types';
@@ -45,10 +48,27 @@ const TERMINAL = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 const OTHER_TERMINAL = 'ffffffff-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 const START = { organizationId: 120, currency: 'COP' };
 
+/**
+ * El tope por defecto de jest (5 s) no da para un `until` holgado en una
+ * máquina con ocho workers compitiendo. Aquí ningún `until` mide latencia:
+ * solo acota un cuelgue, así que el tope del archivo puede ser generoso
+ * (F3-B ronda 2 · 11: el gate de «todo verde» no debe depender de la carga).
+ */
+jest.setTimeout(60_000);
+
 const tick = (ms = 0) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-/** Espera (hasta `timeoutMs`) a que se cumpla la condición; evita ventanas fijas que fallan bajo carga (ronda 4: sin tick(n) fijos). */
-async function until(done: () => boolean, timeoutMs = 2000): Promise<void> {
+/**
+ * Espera (hasta `timeoutMs`) a que se cumpla la condición; evita ventanas
+ * fijas que fallan bajo carga (ronda 4: sin tick(n) fijos). El tope por
+ * defecto es MUY holgado a propósito: es un detector de cuelgues, no un
+ * presupuesto de tiempo. Con el de 2 s anterior, la corrida completa de
+ * pos-display (99 suites en paralelo) fallaba de vez en cuando aquí por
+ * carga de la máquina y no por un defecto (F3-B ronda 2 · 11). Una condición
+ * que se cumple tarda milisegundos: el tope solo se alcanza si nunca se
+ * cumple, y entonces da igual esperar 2 s o 20.
+ */
+async function until(done: () => boolean, timeoutMs = 20_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (!done()) {
     if (Date.now() > deadline) throw new Error('until: condición no cumplida a tiempo');
@@ -56,8 +76,20 @@ async function until(done: () => boolean, timeoutMs = 2000): Promise<void> {
   }
 }
 
-/** Igual que `until`, sobre lo recibido por el receptor. */
-async function untilReceived(received: DownMessage[], done: (ms: DownMessage[]) => boolean, timeoutMs = 2000): Promise<void> {
+/**
+ * Presupuesto por espera de los casos que dependen del reloj real
+ * (BroadcastChannel + timers cortos). F3-B ronda 4 · 5: el veredicto de la
+ * suite no puede depender de la carga de la máquina. Con la corrida completa
+ * (110+ suites en paralelo) una entrega que normalmente tarda milisegundos
+ * llegaba fuera del presupuesto anterior y el caso se ponía rojo sin que el
+ * código hubiera cambiado. El tope solo se alcanza si la condición NUNCA se
+ * cumple, así que darle holgura no alarga la corrida buena ni un milisegundo:
+ * solo cambia cuánto tarda en declararse un cuelgue de verdad.
+ */
+const LOADED_RUNNER_MS = 20_000;
+
+/** Igual que `until`, sobre lo recibido por el receptor. Presupuesto holgado por defecto (ver `LOADED_RUNNER_MS`). */
+async function untilReceived(received: DownMessage[], done: (ms: DownMessage[]) => boolean, timeoutMs = LOADED_RUNNER_MS): Promise<void> {
   await until(() => done(received), timeoutMs);
 }
 
@@ -734,7 +766,9 @@ describe('Parte B · extremo a extremo con BroadcastChannel', () => {
       ]);
       const bytes = JSON.stringify(last).length;
       expect(bytes).toBeLessThan(120_000);
-      expect(Date.now() - t0).toBeLessThan(500);
+      // Guarda contra un coste cuadrático al proyectar 200 líneas, no una
+      // medida de latencia: el margen cubre una máquina cargada (ronda 2 · 11).
+      expect(Date.now() - t0).toBeLessThan(5_000);
     } finally {
       x.close();
     }
@@ -742,9 +776,10 @@ describe('Parte B · extremo a extremo con BroadcastChannel', () => {
 
   itBC('stop() de la caja manda bye y la pantalla lo recibe; «Gracias» vence y vuelve a idle si el carrito activo ya no tiene líneas', async () => {
     const x = e2e();
-    // Reloj real: bajo la carga del run completo (77+ suites) el BroadcastChannel
+    // Reloj real: bajo la carga del run completo (110+ suites) el BroadcastChannel
     // y el timer de «Gracias» (20 ms) llegan tarde; el tope solo acota un cuelgue.
-    const LOADED_RUNNER_MS = 10_000;
+    // Presupuesto compartido `LOADED_RUNNER_MS` (ronda 4 · 5), y el tope de jest
+    // de abajo deja margen sobre la SUMA de las cuatro esperas.
     try {
       x.emitter.start(START);
       x.emitter.setActiveCart(cart({ items: [item({ id: 'l1' })], total: 5000 }));
@@ -762,7 +797,7 @@ describe('Parte B · extremo a extremo con BroadcastChannel', () => {
     } finally {
       x.close();
     }
-  }, 4 * 10_000 + 5000);
+  }, 4 * LOADED_RUNNER_MS + 30_000);
 
   it('THANKS_DURATION_MS sigue siendo 8 s', () => {
     expect(THANKS_DURATION_MS).toBe(8000);

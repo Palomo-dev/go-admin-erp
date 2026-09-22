@@ -14,7 +14,10 @@
  * - Al perder la caja se suelta la instancia activa, se OLVIDA el último
  *   estado y hello (una caja nueva que latiera sin anunciarse no debe
  *   resucitar un carrito viejo) y se vuelve a pedir snapshot cada
- *   resnapshotIntervalMs hasta que alguien conteste.
+ *   resnapshotIntervalMs hasta que alguien conteste; pasado
+ *   disconnectedToIdleMs sin caja, al ritmo más lento de
+ *   idleResnapshotIntervalMs (en local son el mismo; en remoto cada pregunta
+ *   es un mensaje facturado: ronda 4 · QA-1).
  * - Caja viva pero SIN estado aceptado (adoptada por un latido tras bye o
  *   silencio): la vista queda en Conectando (logic.ts · resolveView) y se
  *   sigue pidiendo need_snapshot cada resnapshotIntervalMs a esa instancia
@@ -122,6 +125,16 @@ export interface DisplayLinkOptions {
   now?: () => number;
   staleAfterMs?: number;
   resnapshotIntervalMs?: number;
+  /**
+   * Ritmo del `need_snapshot` una vez la caja lleva `disconnectedToIdleMs`
+   * callada (la vista ya cayó a Reposo). Por defecto el mismo
+   * `resnapshotIntervalMs`: en local un mensaje no cuesta nada y el
+   * comportamiento no cambia. El transporte remoto pasa uno más lento
+   * (REMOTE_IDLE_RESNAPSHOT_INTERVAL_MS): preguntar cada pocos segundos a
+   * una caja que lleva más de un minuto sin contestar no la despierta, y
+   * cada pregunta es un mensaje facturado (ronda 4 · QA-1).
+   */
+  idleResnapshotIntervalMs?: number;
   healthIntervalMs?: number;
   disconnectedToIdleMs?: number;
 }
@@ -171,6 +184,7 @@ export function startDisplayLink(options: DisplayLinkOptions): DisplayLink {
   const now = options.now ?? Date.now;
   const staleAfterMs = options.staleAfterMs ?? STALE_AFTER_MS;
   const resnapshotIntervalMs = options.resnapshotIntervalMs ?? RESNAPSHOT_INTERVAL_MS;
+  const idleResnapshotIntervalMs = options.idleResnapshotIntervalMs ?? resnapshotIntervalMs;
   const healthIntervalMs = options.healthIntervalMs ?? HEALTH_INTERVAL_MS;
   const disconnectedToIdleMs = options.disconnectedToIdleMs ?? DISCONNECTED_TO_IDLE_MS;
 
@@ -227,7 +241,14 @@ export function startDisplayLink(options: DisplayLinkOptions): DisplayLink {
     if (before !== null && before !== declaredTouch) receiver.startPresence(declared);
   };
 
-  const shouldAskAgain = (at: number) => lastSnapshotAt === null || at - lastSnapshotAt >= resnapshotIntervalMs;
+  /**
+   * ¿Toca repetir el `need_snapshot`? Con la caja callada MÁS de
+   * `disconnectedToIdleMs` (`idle`) se usa el ritmo lento: la pantalla ya
+   * pinta Reposo y seguir preguntando al ritmo corto no la despierta
+   * (ronda 4 · QA-1). En local los dos ritmos son el mismo.
+   */
+  const shouldAskAgain = (at: number, idle = false) =>
+    lastSnapshotAt === null || at - lastSnapshotAt >= (idle ? idleResnapshotIntervalMs : resnapshotIntervalMs);
 
   /** Sin caja no hay estado que mostrar: lo que llegue después será un snapshot completo. Devuelve el parche a publicar. */
   const forgetCashier = (): Partial<DisplayLinkSnapshot> => {
@@ -272,10 +293,11 @@ export function startDisplayLink(options: DisplayLinkOptions): DisplayLink {
     }
 
     if (!alive) {
-      if (shouldAskAgain(at)) askSnapshot();
-      if (disconnectedSince !== null && at - disconnectedSince >= disconnectedToIdleMs) {
-        patch.disconnectedTooLong = true;
-      }
+      // El «lleva demasiado callada» se calcula ANTES de preguntar: es lo que
+      // decide el ritmo del need_snapshot (ronda 4 · QA-1).
+      const idle = disconnectedSince !== null && at - disconnectedSince >= disconnectedToIdleMs;
+      if (idle) patch.disconnectedTooLong = true;
+      if (shouldAskAgain(at, idle)) askSnapshot();
     } else if (fromTimer && previousState === null && shouldAskAgain(at)) {
       // Caja viva (adoptada por latido, o hello cuyo state no llegó) que no
       // ha dicho qué tiene: se le sigue pidiendo el snapshot hasta que

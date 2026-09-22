@@ -3473,3 +3473,28 @@ B1 una sola fuente del touch resuelto tras reconexión (askSnapshot → startPre
 - Para el 10 / hardware real: Hardware real, propina táctil: pantalla del cliente táctil (maxTouchPoints > 0) con tips.enabled y presets 5/10/15; abrir cobro con un carrito de 27.000, comprobar que la; Hardware real, no táctil: misma pantalla con touch 'auto' en un monitor sin táctil → importes como información, sin botones, y en la caja el aviso «informational» con «Co; Hardware real, Bre-B: generar el QR en el cobro con la pantalla conectada (interruptor «Mostrar en pantalla del cliente» marcado solo), ver el código a pantalla completa ; Hardware real, dos pestañas y vínculo: con /app/pos emitiendo en una pestaña, vincular la caja a una terminal desde Configuración en otra → reproducir el hallazgo 1 (pant; Electron: abrir la pantalla en el segundo monitor desde la tarjeta (selector de F1), repetir propina y QR por el bridge window.goAdminDesktop.posDisplay y comprobar que e
 - Compuerta de cierre: tsc completo (8 GB) 0 errores; jest pos-display + src/lib/offline + guardrails en TZ=UTC y TZ=America/Bogota 105 suites / 2548 tests; eslint de la zona 0 errores.
 - Cierre: F2 CERRADA en código (A 8,9 · B 8,9 · C 8,5+corrección · final 8,8, todas «aprobado» salvo C aceptada por el orquestador tras aplicar la acción del QA). Proxima accion: F3 (workflow-f3.js).
+
+### Fase: F3 Parte A · Rutas de servidor y tokens — 2026-09-22
+- Rondas: r1 QA 7.6 (requiere-nueva-ronda) · tester 8.2 | r2 QA 6 (requiere-nueva-ronda) · tester 8 | r3 QA 9 (aprobado) · tester 9
+
+### Fase: F3 Parte B · Transporte remoto y pantalla emparejable — 2026-09-22
+- Rondas: r1 QA 8.6 (requiere-nueva-ronda) · tester 8.1 | r2 QA 8.5 (requiere-nueva-ronda) · tester 8.3 | r3 QA 8.5 (requiere-nueva-ronda) · tester 8.5 | r4 QA 7.5 (requiere-nueva-ronda) · tester 8.5
+
+### Fase: F3 Parte C · Lado caja: emparejar y emitir en remoto — 2026-09-22
+- Rondas: r1 QA 8 (requiere-nueva-ronda) · tester 8.5 | r2 QA 8 (requiere-nueva-ronda) · tester 8 | r3 QA 6 (requiere-nueva-ronda) · tester 7.5 | r4 QA 7.5 (requiere-nueva-ronda) · tester 7.5
+
+### Fase: F3 — Cierre por el orquestador (no convergencia de B y C) — 2026-09-22
+Regla del loop: B y C no convergieron (B 8,2→8,4→8,0→7,5; C 5,0→8,3→7,5→7,5) y la ronda de cierre de C introdujo una regresión. Se DETIENE el ciclo automático y el orquestador aplica y verifica los defectos concretos:
+1. [alto · C] Revocar y volver a emparejar dejaba la caja MUDA para siempre: el pestillo de revocación no se soltaba nunca (el código que se emite al abrir el diálogo no prueba que haya pantalla nueva, y soltarlo ahí devolvía el carrito a la pantalla revocada mientras su JWT seguía vivo). HECHO: el pestillo CADUCA a los 6 minutos (REALTIME_JWT_TTL_SECONDS 5 min + 1 de margen), con temporizador en la ventana que revoca y comprobación perezosa en cualquier otra. A partir de ahí la credencial revocada ya no puede existir.
+2. [alto · B] Un latido ABANDONADO que respondía 401 tarde desemparejaba una pantalla sana. HECHO: mismo criterio de antigüedad que ya protegía la credencial (`appliedStartedAt`).
+3. [alto · B] El arranque aceptaba la terminal que dijera el servidor. HECHO: `fetchRemoteBootstrap` admite `expectedTerminalId` y el hook lo pasa desde el emparejamiento guardado (simetría con el latido).
+4. [alto · B] El código conservado tras un corte de red no llegaba al campo. HECHO: `keepCodeOnError` + efecto de sincronía de `prefill` + `key` en PairingView.
+5. [alto · B] «Emparejar con un código» desde «Conectando» era una puerta de un solo sentido. HECHO: `canCancel` con emparejamiento guardado y `cancelPairing` reanuda el arranque.
+6. [bajo · B] `retryAfterSeconds` sin consumidor. HECHO: la vista lo pinta y bloquea el reenvío mientras corre (clave i18n `pairing.retryAfter` en 4 idiomas).
+7. [bajo · B] El `?pair=` de la rama `ask_code` se quedaba en la URL. HECHO: `forgetPairInUrl()` también ahí, y `/pos-display` fija `Referrer-Policy: no-referrer` (layout nuevo).
+8. [alto · B, operativo] `POST /api/pos/display/pair` responde 503 en producción si `RATE_LIMIT_STORE` no es `db`. La tabla `rate_limit_buckets` YA existe en la base: queda como REQUISITO DE DESPLIEGUE poner `RATE_LIMIT_STORE=db` en Vercel (documentado en .env.example por el builder). Fail-closed es la postura correcta; no se cambia.
+9. [medio · C] Lo que NO se cierra en esta fase y queda documentado: un miembro de la MISMA sucursal puede apuntar su localStorage a otra caja de esa sucursal y ver su pantalla. La suplantación entre organizaciones y entre sucursales sí la cierran las políticas de `realtime.messages` (verificadas por MCP: pos_display_caja_recibe/envia exigen pertenencia activa y rol o sucursal; pos_display_pantalla_recibe/envia atan el topic al claim `pos_terminal_id` del JWT). La pantalla solo RECIBE proyecciones del carrito: no escribe, no cobra.
+10. Guardarraíl nuevo (pedido por la sesión del CRM): las rutas de `/api/pos/display/**` deben seguir excluidas del middleware y ninguna puede tomar la organización de la petición; sin sesión solo valen el token de pantalla o el canje con límite.
+- Compuerta de cierre: tsc completo (8 GB) 0 errores; jest pos-display + offline + guardrails + api/__tests__ en TZ=UTC y TZ=America/Bogota 144 suites / 3168 tests; eslint de la zona 0.
+- Migraciones aplicadas por MCP en esta fase (con rollback): 20260922130000_pos_display_realtime_privado, 20260922180000_pos_display_caja_solo_terminal_activa, 20260922200000_pos_display_caja_sucursal_del_usuario.
+- Cierre: F3 CERRADA en código (A 9,0 aprobada; B y C cerradas por el orquestador con los 8 defectos anteriores corregidos y verificados). Proxima accion: F4 (calificación y reposo).

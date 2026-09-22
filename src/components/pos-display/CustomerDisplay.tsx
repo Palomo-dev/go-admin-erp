@@ -8,19 +8,38 @@
  * Tipografías fluidas con clamp(): el TOTAL mide ≥ 96 px a 1920×1080 y sigue
  * legible a 1024×768 (PLAN §4.1 y §13). Sin scroll, sin sonidos, ninguna
  * animación mayor de 300 ms.
+ *
+ * Fase 3 (parte B): antes del receptor decide useRemoteDisplay. En `local`
+ * todo sigue igual (BroadcastChannel / relay); en `ready` el receptor es el
+ * remoto (Supabase Broadcast), la marca sale del bootstrap y el idioma del
+ * comercio (`bootstrap.locale`) se aplica a la tableta; `pairing`,
+ * `bootstrapping` y `unavailable` pintan sus vistas sin tocar el enlace.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
+import { changeLanguage } from '@/i18n/provider';
+import { offersPairingFromBootstrap, resolveRemoteLocale } from '@/lib/pos/display/remoteDisplay';
 import { BrandHeader } from './BrandHeader';
 import { FullscreenButton } from './FullscreenButton';
 import { OrderView } from './OrderView';
+import { PairingView } from './PairingView';
 import { TipView } from './TipView';
-import { resolveDisplayCurrency, resolveTouch, resolveView, viewShowsAmounts } from './logic';
+import { offersPairing, resolveDisplayCurrency, resolveShellContent, resolveTouch, resolveView, viewShowsAmounts } from './logic';
 import { markRenderHealthy } from './retryBackoff';
-import { useDisplayBrand } from './useDisplayBrand';
+import { NEUTRAL_DISPLAY_BRAND, brandFromBootstrap, useLocalDisplayBrand, type DisplayBrand } from './useDisplayBrand';
 import { useDisplayReceiver } from './useDisplayReceiver';
-import { ConnectingView, IdleView, PaymentView, ThanksView, UnsupportedView, UpdateRequiredView } from './views';
+import { useRemoteDisplay } from './useRemoteDisplay';
+import {
+  ConnectingView,
+  IdleView,
+  PaymentView,
+  RemoteBootstrappingView,
+  RemoteUnavailableView,
+  ThanksView,
+  UnsupportedView,
+  UpdateRequiredView,
+} from './views';
 
 /** Cuánto dura la vista Gracias antes de volver a Reposo (PLAN §4.2). */
 export const THANKS_MS = 8_000;
@@ -85,9 +104,31 @@ function useThanksExpired(thanksTotal: number | null): boolean {
 
 export function CustomerDisplay() {
   const t = useTranslations('posDisplay');
-  const link = useDisplayReceiver();
-  const brand = useDisplayBrand(link.hello?.organizationId ?? null);
+  const remote = useRemoteDisplay();
+  const remotePhase = remote.phase;
+  const remoteSource = remotePhase.kind === 'ready' ? remotePhase.source : null;
+  // El receptor solo se abre cuando ya se sabe si la pantalla es local o remota.
+  const link = useDisplayReceiver(remoteSource, remotePhase.kind === 'local' || remotePhase.kind === 'ready');
+  // Remoto: la marca viene del bootstrap (la tableta no tiene sesión). Se memoriza por bootstrap
+  // para no construir un objeto nuevo en cada render.
+  const remoteBrand = useMemo(() => (remotePhase.kind === 'ready' ? brandFromBootstrap(remotePhase.bootstrap.brand) : null), [remotePhase]);
   const state = link.state;
+
+  /**
+   * Idioma de la pantalla REMOTA (ronda 4 · QA-4). `bootstrap.locale` sale
+   * del ajuste `pos_customer_display` de la organización, resuelto en el
+   * servidor; hasta ahora se validaba, viajaba y no se usaba, así que una
+   * tableta recién sacada de la caja pintaba en el idioma de su navegador y
+   * no en el del comercio. `changeLanguage` carga los mensajes y avisa al
+   * proveedor sin recargar. `resolveRemoteLocale` devuelve null si el idioma
+   * ya es ese o no es uno de los de la app: el efecto no puede ciclar.
+   */
+  const currentLocale = useLocale();
+  const bootstrapLocale = remotePhase.kind === 'ready' ? remotePhase.bootstrap.locale : null;
+  useEffect(() => {
+    const next = resolveRemoteLocale(bootstrapLocale, currentLocale);
+    if (next) changeLanguage(next);
+  }, [bootstrapLocale, currentLocale]);
 
   const thanksExpired = useThanksExpired(state?.mode === 'thanks' && state.thanks ? state.thanks.total : null);
   // Táctil (PLAN §4.4): detección del navegador + forzado de los ajustes de la organización.
@@ -140,49 +181,124 @@ export function CustomerDisplay() {
     [sendUp, tipCartId],
   );
 
-  let content: React.ReactNode;
-  if (!link.supported) {
-    content = <UnsupportedView />;
-  } else if (view === 'connecting') {
-    content = <ConnectingView brand={brand} hasTerminal={link.terminalId !== null} />;
-  } else if (view === 'update_required') {
-    content = <UpdateRequiredView brand={brand} />;
-  } else if (view === 'order' && state?.cart) {
-    content = <OrderView cart={state.cart} highlightUntil={link.highlightUntil} brand={brand} />;
-  } else if ((view === 'payment_cash' || view === 'payment_card' || view === 'payment_qr') && state?.payment) {
-    content = (
-      <PaymentView
-        payment={state.payment}
-        currency={currency}
-        brand={brand}
-        touch={touch}
-        onQrPaidClaim={paymentCartId ? onQrPaidClaim : undefined}
-      />
-    );
-  } else if (view === 'tip' && state?.cart && state.tip) {
-    content = <TipView cart={state.cart} tip={state.tip} currency={currency} brand={brand} touch={touch} onSelect={tipCartId ? onTipSelect : undefined} />;
-  } else if (view === 'thanks' && state?.thanks) {
-    content = <ThanksView total={state.thanks.total} currency={currency} brand={brand} />;
-  } else {
-    content = <IdleView brand={brand} />;
-  }
+  /**
+   * Todo lo que necesita la marca, como función: así la marca LOCAL —que
+   * arrastra `useOrganization()`— solo se monta cuando la pantalla es local
+   * (ronda 2 · 5). En remoto la marca es el bootstrap; en emparejamiento y
+   * bootstrap todavía no se sabe de qué comercio es (marca neutra).
+   */
+  const renderShell = (brand: DisplayBrand) => {
+    // Qué bloque se pinta y si se ofrece emparejar: regla pura en logic.ts
+    // (ronda 3 · 1), para que «no compatible» deje de tapar el único acceso
+    // al emparejamiento en un navegador sin BroadcastChannel.
+    const shell = resolveShellContent(remotePhase.kind, link.supported);
+    const onPair = offersPairing(shell, remotePhase.kind, link.terminalId !== null) ? remote.openPairing : undefined;
+    let content: React.ReactNode;
+    if (shell === 'deciding') {
+      // Primer render: aún no se leyó la URL ni el storage. Un fotograma en blanco antes que un texto equivocado.
+      content = <div className="flex-1" data-deciding="true" />;
+    } else if (shell === 'pairing' && remotePhase.kind === 'pairing') {
+      content = (
+        <PairingView
+          // `key` por prefill: un código conservado tras un fallo de red entra
+          // aunque la vista ya estuviera montada (el campo se inicializa una
+          // sola vez); el efecto de sincronía lo cubre igual, y esto lo hace
+          // evidente en el árbol.
+          key={`pairing:${remotePhase.prefill}`}
+          busy={remotePhase.busy}
+          error={remotePhase.error}
+          prefill={remotePhase.prefill}
+          keepCodeOnError={remotePhase.keepCode === true}
+          retryAfterSeconds={remotePhase.retryAfterSeconds ?? null}
+          touch={link.touchDetected}
+          onSubmit={remote.submitCode}
+          onCancel={remotePhase.canCancel ? remote.cancelPairing : undefined}
+        />
+      );
+    } else if (shell === 'bootstrapping' && remotePhase.kind === 'bootstrapping') {
+      // Tras tres fallos seguidos que no son 401 se ofrece teclear un
+      // código (ronda 4 · B4): la fase reintenta para siempre y, si el token
+      // guardado ya no sirve por algo que el servidor no dice con un 401, sin
+      // esto no hay salida desde la propia pantalla.
+      content = (
+        <RemoteBootstrappingView
+          failureCode={remotePhase.failure === null ? null : remotePhase.failure.kind === 'http' ? remotePhase.failure.code : 'NETWORK'}
+          onPair={offersPairingFromBootstrap(remotePhase.attempt, remotePhase.failure) ? remote.openPairing : undefined}
+        />
+      );
+    } else if (shell === 'unavailable') {
+      content = <RemoteUnavailableView />;
+    } else if (shell === 'unsupported') {
+      content = <UnsupportedView onPair={onPair} />;
+    } else if (view === 'connecting') {
+      content = (
+        <ConnectingView
+          brand={brand}
+          hasTerminal={link.terminalId !== null}
+          onPair={onPair}
+          remoteChannelDown={remoteSource !== null && remote.channelStatus !== 'SUBSCRIBED'}
+        />
+      );
+    } else if (view === 'update_required') {
+      content = <UpdateRequiredView brand={brand} />;
+    } else if (view === 'order' && state?.cart) {
+      content = <OrderView cart={state.cart} highlightUntil={link.highlightUntil} brand={brand} />;
+    } else if ((view === 'payment_cash' || view === 'payment_card' || view === 'payment_qr') && state?.payment) {
+      content = (
+        <PaymentView
+          payment={state.payment}
+          currency={currency}
+          brand={brand}
+          touch={touch}
+          onQrPaidClaim={paymentCartId ? onQrPaidClaim : undefined}
+        />
+      );
+    } else if (view === 'tip' && state?.cart && state.tip) {
+      content = <TipView cart={state.cart} tip={state.tip} currency={currency} brand={brand} touch={touch} onSelect={tipCartId ? onTipSelect : undefined} />;
+    } else if (view === 'thanks' && state?.thanks) {
+      content = <ThanksView total={state.thanks.total} currency={currency} brand={brand} />;
+    } else {
+      content = <IdleView brand={brand} />;
+    }
 
-  return (
-    <div
-      className="flex h-[100dvh] w-screen select-none flex-col overflow-hidden bg-white text-neutral-900"
-      style={SCALE_STYLE}
-      data-view={view}
-      data-shows-amounts={viewShowsAmounts(view) ? 'true' : 'false'}
-    >
-      <style>{`@keyframes pdTick { from { transform: scale(1.04); } to { transform: scale(1); } } .pd-tick { animation: pdTick 200ms ease-out; }`}</style>
-      {view === 'idle' ? null : <BrandHeader brand={brand} cashierName={cashierName} muted={muted} />}
-      <main key={view} className="flex min-h-0 flex-1 flex-col animate-fade-in">
-        {content}
-      </main>
-      <footer className="px-[var(--pd-gutter)] py-2 text-right text-[max(11px,calc(var(--pd-small)*0.7))] text-neutral-300">
-        {t('poweredBy')}
-      </footer>
-      <FullscreenButton />
-    </div>
-  );
+    return (
+      <div
+        className="flex h-[100dvh] w-screen select-none flex-col overflow-hidden bg-white text-neutral-900"
+        style={SCALE_STYLE}
+        data-view={view}
+        data-shows-amounts={viewShowsAmounts(view) ? 'true' : 'false'}
+      >
+        <style>{`@keyframes pdTick { from { transform: scale(1.04); } to { transform: scale(1); } } .pd-tick { animation: pdTick 200ms ease-out; }`}</style>
+        {view === 'idle' ? null : <BrandHeader brand={brand} cashierName={cashierName} muted={muted} />}
+        <main key={view} className="flex min-h-0 flex-1 flex-col animate-fade-in">
+          {content}
+        </main>
+        <footer className="px-[var(--pd-gutter)] py-2 text-right text-[max(11px,calc(var(--pd-small)*0.7))] text-neutral-300">
+          {t('poweredBy')}
+        </footer>
+        <FullscreenButton />
+      </div>
+    );
+  };
+
+  if (remoteBrand) return renderShell(remoteBrand);
+  if (remotePhase.kind === 'local') return <LocalBrandShell organizationId={link.hello?.organizationId ?? null} render={renderShell} />;
+  return renderShell(NEUTRAL_DISPLAY_BRAND);
+}
+
+/**
+ * Monta la marca LOCAL y pinta con ella. Existe para que `useOrganization()`
+ * —y su reintento de 1,5 s en un equipo sin sesión— no se monte nunca en una
+ * pantalla remota: las reglas de los hooks no dejan saltárselo dentro del
+ * hook, pero sí no montar el componente que lo llama.
+ */
+function LocalBrandShell({
+  organizationId,
+  render,
+}: {
+  organizationId: number | null;
+  render: (brand: DisplayBrand) => React.ReactElement;
+}): React.ReactElement {
+  const brand = useLocalDisplayBrand(organizationId);
+  return render(brand);
 }

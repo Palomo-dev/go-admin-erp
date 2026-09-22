@@ -314,7 +314,20 @@ export function ThanksView({ total, currency, brand }: { total: number; currency
   );
 }
 
-export function ConnectingView({ brand, hasTerminal }: { brand: DisplayBrand; hasTerminal: boolean }) {
+export interface ConnectingViewProps {
+  brand: DisplayBrand;
+  hasTerminal: boolean;
+  /**
+   * Fase 3 (parte B): sin caja en este equipo, la pantalla puede ser una
+   * tableta. Si se pasa, se ofrece «Emparejar con un código» (useRemoteDisplay
+   * · openPairing). Con caja local no se muestra: aquí la pantalla es local.
+   */
+  onPair?: () => void;
+  /** Remoto: el canal aún no está unido (JWT rechazado, red). Cambia el texto de ayuda. */
+  remoteChannelDown?: boolean;
+}
+
+export function ConnectingView({ brand, hasTerminal, onPair, remoteChannelDown = false }: ConnectingViewProps) {
   const t = useTranslations('posDisplay');
   return (
     <Centered muted>
@@ -325,8 +338,65 @@ export function ConnectingView({ brand, hasTerminal }: { brand: DisplayBrand; ha
         // Con identidad de caja pero sin señal, la causa habitual es el interruptor
         // maestro apagado en la caja (por defecto lo está) o el POS cerrado. Se dice
         // en pequeño para que el cajero sepa qué tocar sin que el cliente lo sufra.
-        <p className="mt-2 text-[length:calc(var(--pd-line)*0.7)] text-neutral-500">{t('connectingHint')}</p>
+        <p className="mt-2 text-[length:calc(var(--pd-line)*0.7)] text-neutral-500">{remoteChannelDown ? t('pairing.channelDown') : t('connectingHint')}</p>
       )}
+      {!hasTerminal && onPair && <PairButton onPair={onPair} />}
+    </Centered>
+  );
+}
+
+/**
+ * Acceso a la pantalla de emparejamiento. Lo usan «Conectando» (sin caja en
+ * este equipo) y «no compatible» (ronda 3 · 1): en un navegador sin
+ * BroadcastChannel era el único camino y quedaba tapado, aunque el
+ * transporte remoto no necesita BroadcastChannel para nada.
+ */
+function PairButton({ onPair }: { onPair: () => void }) {
+  const t = useTranslations('posDisplay');
+  return (
+    <button
+      type="button"
+      onClick={onPair}
+      className="mt-4 rounded-full border-2 border-neutral-400 px-[var(--pd-gutter)] py-[calc(var(--pd-gutter)*0.3)] text-[length:calc(var(--pd-line)*0.8)] font-semibold text-neutral-800"
+      data-pair-button="true"
+    >
+      {t('pairing.open')}
+    </button>
+  );
+}
+
+/**
+ * Remoto (parte B): hay token y se está pidiendo `/bootstrap`. Con `failure`
+ * el servidor o la red fallaron y se reintenta con retroceso; 503
+ * `REALTIME_NOT_CONFIGURED` se dice tal cual para que quien instala sepa qué
+ * falta (no es un error de emparejamiento).
+ *
+ * Con `onPair` se ofrece además teclear un código (ronda 4 · B4): la fase no
+ * sale nunca por sí sola mientras el fallo no sea un 401, así que tras tres
+ * fallos seguidos —la regla está en `offersPairingFromBootstrap`— hace falta
+ * una salida que no pase por el sistema operativo del quiosco. El reintento
+ * sigue corriendo por debajo: si la red vuelve, la pantalla arranca sola.
+ */
+export function RemoteBootstrappingView({ failureCode, onPair }: { failureCode: string | null; onPair?: () => void }) {
+  const t = useTranslations('posDisplay');
+  const text = failureCode === null ? t('pairing.bootstrapping') : failureCode === 'REALTIME_NOT_CONFIGURED' ? t('pairing.notConfigured') : t('pairing.retrying');
+  return (
+    <Centered muted>
+      <p className="text-[length:var(--pd-big)] font-semibold text-neutral-900">{t('pairing.title')}</p>
+      <p className="max-w-[min(92vw,900px)] text-[length:var(--pd-line)] text-neutral-600" aria-live="polite">
+        {text}
+      </p>
+      {onPair && <PairButton onPair={onPair} />}
+    </Centered>
+  );
+}
+
+/** Remoto: faltan `NEXT_PUBLIC_SUPABASE_*` en este bundle: no hay cliente que construir. */
+export function RemoteUnavailableView() {
+  const t = useTranslations('posDisplay');
+  return (
+    <Centered muted>
+      <p className="text-[length:var(--pd-big)] font-semibold text-neutral-900">{t('pairing.unavailable')}</p>
     </Centered>
   );
 }
@@ -342,11 +412,18 @@ export function UpdateRequiredView({ brand }: { brand: DisplayBrand }) {
   );
 }
 
-export function UnsupportedView() {
+/**
+ * Este navegador no puede ser pantalla LOCAL (sin BroadcastChannel ni puente
+ * de escritorio). Con `onPair` se ofrece igualmente el emparejamiento remoto
+ * (ronda 3 · 1): el canal remoto va por WebSocket y no depende de nada de
+ * esto, así que un callejón sin salida sería mentira.
+ */
+export function UnsupportedView({ onPair }: { onPair?: () => void }) {
   const t = useTranslations('posDisplay');
   return (
     <Centered muted>
       <p className="text-[length:var(--pd-big)] font-semibold text-neutral-900">{t('unsupported')}</p>
+      {onPair && <PairButton onPair={onPair} />}
     </Centered>
   );
 }

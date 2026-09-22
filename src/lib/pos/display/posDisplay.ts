@@ -17,6 +17,20 @@
  * escribe no recibe su propio evento; como el servicio ya fijó la caché con
  * el valor recién guardado (`primeCustomerDisplaySettings`), la tarjeta llama
  * a `applyPosDisplaySettings()`, que aplica la caché sin volver a leer la BD.
+ *
+ * Fase 3, parte C (pantalla en otro dispositivo): el transporte sigue siendo
+ * UNO (`BroadcastChannelTransport`, un solo seq y una sola instancia), pero
+ * su canal es el compuesto de cajaChannel.ts: la pata local (relay de
+ * escritorio o BroadcastChannel) siempre, y la pata remota (Supabase
+ * Broadcast, canal privado `pos-display:<pos_terminals.id>`, parte B) solo
+ * si esta caja está VINCULADA a esa terminal y la fila EXISTE, activa y de
+ * esta organización, según el SERVIDOR (`PosTerminalsService.getTerminalById`,
+ * una lectura con RLS por apertura del transporte). Si la lectura falla o no
+ * devuelve fila no se abre el canal remoto (fail closed) y el indicador del
+ * POS lo dice (`getRemoteDisplayLegStatus`). La pata remota publica únicamente mientras una pantalla
+ * remota da señal (multiChannel.ts, compuerta de oyente): sin tableta, cero
+ * mensajes por Realtime. Los dobles de prueba de Supabase no traen
+ * `channel`: entonces no hay pata remota y todo es idéntico a F0–F2.
  */
 
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
@@ -31,8 +45,13 @@ import {
   toDisplayPresentationSettings,
 } from './settings';
 import { getOrCreateLocalTerminalId } from './terminal';
-import { BroadcastChannelTransport, isBroadcastChannelSupported, type DisplayTransport } from './transport';
+import { BroadcastChannelTransport, createBroadcastDisplayChannel, isBroadcastChannelSupported, type DisplayTransport } from './transport';
 import { isDisplayTransportAvailable, resolveDisplayChannelFactory } from './desktopChannel';
+import { createCajaDisplayChannel } from './cajaChannel';
+import type { SupabaseClientLike } from './supabaseBroadcastTransport';
+import { supabase } from '@/lib/supabase/config';
+import { PosTerminalsService } from '@/lib/services/posTerminalsService';
+import { applyRemoteDisplayRevocationEvent } from './revocation';
 
 export { isBroadcastChannelSupported };
 
@@ -44,8 +63,8 @@ export const DEFAULT_DISPLAY_CURRENCY = 'COP';
 
 /** Subconjunto de `Window` para el evento `storage`; permite inyectar uno en pruebas. */
 export interface SettingsChangeSource {
-  addEventListener(type: 'storage', listener: (event: { key: string | null }) => void): void;
-  removeEventListener(type: 'storage', listener: (event: { key: string | null }) => void): void;
+  addEventListener(type: 'storage', listener: (event: { key: string | null; newValue?: string | null }) => void): void;
+  removeEventListener(type: 'storage', listener: (event: { key: string | null; newValue?: string | null }) => void): void;
 }
 
 export interface SettingsChangeStorage {
@@ -56,15 +75,119 @@ let instance: DisplayEmitter | null = null;
 /** Baja del listener `storage` registrado por startPosDisplay; null si no hay ninguno. */
 let unsubscribeSettingsChanges: (() => void) | null = null;
 
+/** Cliente Realtime de la sesión, si el módulo de Supabase lo expone (los dobles de prueba solo traen `from`). */
+function resolveRealtimeClient(): SupabaseClientLike | null {
+  const candidate = supabase as unknown as Partial<SupabaseClientLike> | null | undefined;
+  return candidate && typeof candidate.channel === 'function' ? (candidate as SupabaseClientLike) : null;
+}
+
+/**
+ * Por qué esta caja tiene (o no tiene) pata remota. Lo lee el indicador del
+ * POS para no callarse cuando la pantalla remota simplemente no va a
+ * funcionar (F3-C ronda 4 · C1).
+ * - 'pendiente': todavía se está comprobando (o no hay transporte).
+ * - 'colgada': la terminal se verificó contra el servidor y la pata quedó puesta.
+ * - 'sin-vinculo': esta caja no está vinculada a una fila de `pos_terminals`
+ *   de esta organización, o la fila está desactivada. No hay nada que emparejar.
+ * - 'sin-verificar': la comprobación FALLÓ (sin sesión, sin red, RLS). Se
+ *   falla cerrado: no se abre el canal remoto.
+ * - 'no-aplica': este entorno no tiene cliente de Realtime (SSR, dobles de prueba).
+ */
+export type RemoteDisplayLegStatus = 'pendiente' | 'colgada' | 'sin-vinculo' | 'sin-verificar' | 'no-aplica';
+
+let estadoPataRemota: RemoteDisplayLegStatus = 'pendiente';
+
+/** Estado de la pata remota de ESTA ventana de caja (para el indicador del POS). */
+export function getRemoteDisplayLegStatus(): RemoteDisplayLegStatus {
+  return estadoPataRemota;
+}
+
+/**
+ * ¿Esta caja puede emitir por el canal remoto de `terminalId`? Dos
+ * condiciones, y las dos tienen que darse (F3-C ronda 4 · C1):
+ *
+ * 1. La caja está VINCULADA a esa terminal: el id que el transporte estampa
+ *    en el sobre es el que esta caja tiene vinculado en localStorage. Un
+ *    UUID local de la Fase 0 no es una terminal y no abre nada.
+ * 2. Esa fila EXISTE, está activa y es de esta organización según el
+ *    SERVIDOR: se lee `pos_terminals` por ese id exacto con el cliente de la
+ *    sesión (RLS), no se deduce de localStorage. Si la lectura falla o no
+ *    devuelve fila, no hay pata remota —fail closed— y el indicador lo dice.
+ *
+ * Antes esto era `isRegisteredActiveTerminal`, que llamaba a
+ * `getLinkedTerminal()`: la guarda leía el id de localStorage y lo comparaba
+ * con otro id de localStorage, así que la comprobación era circular y no
+ * distinguía «no se pudo comprobar» de «no es una terminal». Se borró.
+ *
+ * LÍMITE RESIDUAL, DECLARADO (F3-C ronda 4 · C1 c). La suplantación ENTRE
+ * ORGANIZACIONES y entre SUCURSALES la cierra la base: las políticas
+ * `pos_display_caja_recibe` / `pos_display_caja_envia` sobre
+ * `realtime.messages` exigen que la terminal del topic sea de la organización
+ * del miembro y que ese miembro sea admin/manager/super o tenga la sucursal
+ * de la terminal. Lo que queda abierto es que un miembro de ESA MISMA
+ * SUCURSAL apunte su localStorage a otra caja de la sucursal y vea su
+ * carrito: el id de la terminal sigue saliendo del cliente. Cerrarlo exige
+ * atar la terminal a algo que el cliente no elija (un claim de terminal en la
+ * sesión, o un canal por usuario y terminal), que es cambio de esquema y de
+ * políticas: queda en pendientes, no se inventa aquí.
+ */
+async function terminalVinculadaYVerificada(terminalId: string): Promise<boolean> {
+  const vinculada = PosTerminalsService.getLocalTerminalId();
+  if (vinculada === null || vinculada !== terminalId) {
+    estadoPataRemota = 'sin-vinculo';
+    return false;
+  }
+  let row: Awaited<ReturnType<typeof PosTerminalsService.getTerminalById>>;
+  try {
+    row = await PosTerminalsService.getTerminalById(terminalId);
+  } catch (err) {
+    // Fail closed y con motivo: «no se pudo comprobar» no es «no existe».
+    console.warn('[pos-display] no se pudo comprobar la terminal en el servidor; sin pantalla remota', err);
+    estadoPataRemota = 'sin-verificar';
+    return false;
+  }
+  if (row === null || row.is_active !== true || row.id !== terminalId) {
+    estadoPataRemota = 'sin-vinculo';
+    return false;
+  }
+  estadoPataRemota = 'colgada';
+  return true;
+}
+
 function createBrowserTransport(): DisplayTransport | null {
   if (typeof window === 'undefined' || !isDisplayTransportAvailable()) return null;
-  // En Go Admin Desktop el canal va por el relay del proceso principal (enlaza
-  // sin red y aunque las ventanas carguen orígenes distintos); en el navegador,
-  // BroadcastChannel. La lógica del transporte es la misma en ambos casos.
-  return new BroadcastChannelTransport({
+  // En Go Admin Desktop el canal local va por el relay del proceso principal
+  // (enlaza sin red y aunque las ventanas carguen orígenes distintos); en el
+  // navegador, BroadcastChannel. Fase 3, parte C: además, si esta caja está
+  // vinculada a una terminal registrada, el MISMO sobre sale también por el
+  // canal privado de Supabase Broadcast de esa terminal (cajaChannel.ts):
+  // un solo transporte, un solo seq, dos tubos. La lógica del transporte es
+  // la misma en todos los casos.
+  const realtime = resolveRealtimeClient();
+  estadoPataRemota = realtime ? 'pendiente' : 'no-aplica';
+  // La compuerta del tubo remoto necesita el `instanceId` del transporte para
+  // aplicar el MISMO filtro que `receive` (ronda 4 · 4), pero el canal se abre
+  // DENTRO del constructor, cuando todavía no hay referencia: se resuelve en
+  // diferido con esta celda, que queda rellena en cuanto el constructor vuelve
+  // —mucho antes de que llegue el primer mensaje de una pantalla—.
+  const instancia: { id: string | null } = { id: null };
+  const transport = new BroadcastChannelTransport({
     terminalId: getOrCreateLocalTerminalId(),
-    channelFactory: resolveDisplayChannelFactory(),
+    channelFactory: (terminalId) =>
+      createCajaDisplayChannel(terminalId, {
+        local: resolveDisplayChannelFactory() ?? createBroadcastDisplayChannel,
+        realtime,
+        isRegisteredTerminal: terminalVinculadaYVerificada,
+        instanceId: () => instancia.id,
+        onRemoteStatus: (status, err) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.warn('[pos-display] canal remoto de la pantalla:', status, err?.message ?? '');
+          }
+        },
+      }),
   });
+  instancia.id = transport.instanceId;
+  return transport;
 }
 
 function defaultChangeSource(): SettingsChangeSource | null {
@@ -157,7 +280,13 @@ export function subscribeCustomerDisplaySettingsChanges(
   onChange: () => void = () => void refreshPosDisplay(organizationId),
 ): () => void {
   if (!source) return () => undefined;
-  const listener = (event: { key: string | null }) => {
+  const listener = (event: { key: string | null; newValue?: string | null }) => {
+    // Revocaciones de la pantalla remota hechas en OTRA ventana del mismo
+    // origen (ronda 5 · 2): comparten ESTE listener a propósito. Registrar uno
+    // aparte duplicaría el `storage` de la caja, y el contrato de esta función
+    // —un solo listener por ventana, que `stopPosDisplay` retira— es el que
+    // fijan las pruebas de F0–F2.
+    applyRemoteDisplayRevocationEvent(event);
     if (event.key !== CUSTOMER_DISPLAY_SETTINGS_CHANGED_KEY) return;
     onChange();
   };

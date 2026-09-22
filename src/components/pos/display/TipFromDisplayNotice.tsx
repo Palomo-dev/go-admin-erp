@@ -39,6 +39,16 @@
  * sondeo, sin quedarse un render atrás) y, como respaldo, se vuelve a aplicar
  * el mismo forzado con `presentationSettings.touch` (resolveNoticeTouch).
  *
+ * Caducidad del táctil (F3-C ronda 5 · 1): las capacidades solo se borran en
+ * el transporte con un `display_bye`, nunca por silencio, así que una tableta
+ * táctil que muere sin despedirse dejaba `touch: true` pegado mientras el
+ * monitor NO táctil del mostrador siguiera latiendo, y el cajero esperaba una
+ * respuesta de una pantalla apagada. Aquí se cruzan las capacidades POR ORIGEN
+ * con los orígenes VIVOS de la presencia (`combineLiveDisplayCapabilities`),
+ * que sí caduca con el umbral de cada tubo y se relee cada segundo: el aviso
+ * vuelve solo a «registre lo que indique el cliente» sin necesitar un aviso
+ * nuevo del emisor.
+ *
  * LIMITACIÓN conocida (B3 de la lista congelada de F2-B; PLAN §13): el aviso
  * depende de `presence.connected`, que es POR TERMINAL (display_alive va a
  * todas las pestañas), y no de si la pantalla sigue a ESTA instancia de
@@ -57,6 +67,8 @@ import { Button } from '@/components/ui/button';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import type { TipPhase } from '@/lib/pos/display/emitter';
 import type { DisplayCapabilities, DisplayMode } from '@/lib/pos/display/protocol';
+import type { DisplayCapabilitiesByOrigin } from '@/lib/pos/display/transport';
+import { combineLiveDisplayCapabilities } from '@/lib/pos/display/presence';
 import type { TipSelection } from '@/lib/pos/display/tip';
 import { describeTipSelection, isInformativeTipSelection, resolveNoticeTouch, resolveTipWaitingNotice } from './tipNotice';
 import { useCustomerDisplayPresence } from './useCustomerDisplayPresence';
@@ -80,6 +92,10 @@ export function TipFromDisplayNotice({ open, currency, cashierMovedOn = false, o
   const [dismissed, setDismissed] = useState(false);
   // Capacidades que la pantalla declaró (táctil resuelto): lectura inicial + onDisplayCapabilitiesChange.
   const [displayCapabilities, setDisplayCapabilities] = useState<DisplayCapabilities | null>(null);
+  // Las mismas POR ORIGEN (F3-C ronda 5 · 1): el transporte no caduca las capacidades
+  // por silencio, así que el táctil se decide cruzándolas con los orígenes VIVOS de la
+  // presencia, que sí caduca (DEFAULT_STALE_BY_ORIGIN) y se relee cada segundo.
+  const [capabilitiesByOrigin, setCapabilitiesByOrigin] = useState<DisplayCapabilitiesByOrigin | null>(null);
 
   // Fase y modo pintado: lectura inicial + suscripciones (el emisor avisa solo cuando cambian).
   useEffect(() => {
@@ -89,12 +105,14 @@ export function TipFromDisplayNotice({ open, currency, cashierMovedOn = false, o
       setSelection(null);
       setDismissed(false);
       setDisplayCapabilities(null);
+      setCapabilitiesByOrigin(null);
       return;
     }
     const emitter = getPosDisplayEmitter();
     setPhase(emitter.tipPhase);
     setDisplayMode(emitter.getState().mode);
     setDisplayCapabilities(emitter.lastDisplayCapabilities);
+    setCapabilitiesByOrigin(emitter.lastDisplayCapabilitiesByOrigin);
     // La elección ya recibida (getter congelado del emisor) es la fuente de
     // verdad, no solo lo que llegue por onTipSelected desde ahora: un
     // remontaje del aviso con la fase en «done» (StrictMode en desarrollo, o
@@ -113,7 +131,10 @@ export function TipFromDisplayNotice({ open, currency, cashierMovedOn = false, o
       setSelection(next);
       setDismissed(false);
     });
-    const offCapabilities = emitter.onDisplayCapabilitiesChange((next) => setDisplayCapabilities(next));
+    const offCapabilities = emitter.onDisplayCapabilitiesChange((next) => {
+      setDisplayCapabilities(next);
+      setCapabilitiesByOrigin(emitter.lastDisplayCapabilitiesByOrigin);
+    });
     return () => {
       offPhase();
       offState();
@@ -161,11 +182,18 @@ export function TipFromDisplayNotice({ open, currency, cashierMovedOn = false, o
   }
 
   // Táctil = lo que la pantalla PINTA: el declarado (ya resuelto) más el mismo forzado de los ajustes como respaldo.
+  // Solo cuentan los orígenes VIVOS (F3-C ronda 5 · 1): una tableta táctil que murió sin
+  // despedirse dejaba `touch: true` pegado —las capacidades no caducan en el transporte—
+  // y el cajero esperaba una respuesta de una pantalla apagada. `presence.origins` ya
+  // aplica el umbral de cada tubo y se relee cada segundo, así que el aviso cambia solo.
   const waiting = resolveTipWaitingNotice({
     phase,
     displayMode,
     connected: presence.connected,
-    touch: resolveNoticeTouch(displayCapabilities, getPosDisplayEmitter().presentationSettings?.touch),
+    touch: resolveNoticeTouch(
+      combineLiveDisplayCapabilities(capabilitiesByOrigin, displayCapabilities, presence.origins),
+      getPosDisplayEmitter().presentationSettings?.touch,
+    ),
     // Sin táctil y sin presets la pantalla no pinta importes (F2B-R7-1): nada que avisar.
     presetsCount: getPosDisplayEmitter().getState().tip?.presets.length ?? 0,
   });

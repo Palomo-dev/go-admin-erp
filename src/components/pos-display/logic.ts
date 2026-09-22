@@ -388,6 +388,52 @@ export function resolveView(input: ResolveViewInput): DisplayView {
   }
 }
 
+/**
+ * Fases de `useRemoteDisplay` tal como las ve la raíz. Se declara aquí
+ * (módulo puro, sin React ni Supabase) para poder decidir y PROBAR qué pinta
+ * la raíz sin montar nada; `RemoteDisplayPhase['kind']` debe seguir siendo
+ * asignable a esto, y si dejan de coincidir lo dice `tsc` en CustomerDisplay.
+ */
+export type ShellPhaseKind = 'deciding' | 'local' | 'pairing' | 'bootstrapping' | 'ready' | 'unavailable';
+
+/** Qué bloque pinta la raíz. `link` = lo que decida `resolveView` con el enlace. */
+export type ShellContent = 'deciding' | 'pairing' | 'bootstrapping' | 'unavailable' | 'unsupported' | 'link';
+
+/**
+ * Qué pinta la raíz antes de mirar el enlace (Fase 3, parte B). El orden
+ * importa: primero las fases remotas —que no dependen del transporte local—
+ * y solo después «este navegador no puede» (`supported`, que en local es
+ * BroadcastChannel o el puente de escritorio).
+ */
+export function resolveShellContent(phase: ShellPhaseKind, supported: boolean): ShellContent {
+  if (phase === 'deciding') return 'deciding';
+  if (phase === 'pairing') return 'pairing';
+  if (phase === 'bootstrapping') return 'bootstrapping';
+  if (phase === 'unavailable') return 'unavailable';
+  return supported ? 'link' : 'unsupported';
+}
+
+/**
+ * ¿Se le ofrece a esta pantalla el camino para teclear un código de
+ * emparejamiento? (ronda 3 · 1).
+ *
+ * El defecto era que «no compatible» tapaba el ÚNICO acceso: en un navegador
+ * sin BroadcastChannel —una tableta vieja; iOS Safari no lo tuvo hasta
+ * 15.4— la fase es `local`, `supported` es false y se pintaba `UnsupportedView`
+ * sin ningún control, aunque el camino REMOTO no necesita BroadcastChannel
+ * para nada (va por WebSocket). Lo mismo pasaba con `pos_terminal_id`
+ * guardado en ese equipo: «Conectando» tampoco ofrecía el botón porque hay
+ * terminal. Por eso el acceso se ofrece en las DOS vistas:
+ * - `unsupported`: siempre (es el callejón sin salida).
+ * - `link` con «Conectando» y sin caja en este equipo: como hasta ahora.
+ * En remoto (`ready`) no se ofrece: la pantalla ya está emparejada.
+ */
+export function offersPairing(content: ShellContent, phase: ShellPhaseKind, hasTerminal: boolean): boolean {
+  if (phase !== 'local') return false;
+  if (content === 'unsupported') return true;
+  return content === 'link' && !hasTerminal;
+}
+
 /** Solo los estados que muestran importes; en Conectando se ocultan (PLAN §4.1 «nunca miente»). */
 export function viewShowsAmounts(view: DisplayView): boolean {
   return (

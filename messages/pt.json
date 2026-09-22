@@ -1816,12 +1816,20 @@
       "unsupported": "Este navegador não suporta a tela do cliente (sem BroadcastChannel). Atualize-o ou use o aplicativo para computador.",
       "disabled": "Tela desativada",
       "openNoSignal": "Tela aberta, sem sinal",
-      "openNoSignalHint": "A janela da tela do cliente está aberta, mas o caixa não recebe o sinal dela. Feche-a e abra novamente."
+      "openNoSignalHint": "A janela da tela do cliente está aberta, mas o caixa não recebe o sinal dela. Feche-a e abra novamente.",
+      "connectedWithOrigin": "Tela do cliente conectada ({origin})",
+      "originLocal": "neste computador",
+      "originRemote": "remota",
+      "originBoth": "neste computador e remota",
+      "remoteUnlinked": "Tela remota indisponível: este caixa não está vinculado a um terminal ativo.",
+      "remoteUnverified": "Tela remota indisponível: não foi possível verificar o terminal no servidor."
     },
     "menu": {
       "open": "Abrir tela do cliente",
       "close": "Fechar",
-      "enableAndOpen": "Ativar e abrir tela do cliente"
+      "enableAndOpen": "Ativar e abrir tela do cliente",
+      "pair": "Parear outro dispositivo",
+      "revoke": "Revogar tela remota"
     },
     "toast": {
       "dragHint": "Arraste a janela para a tela do cliente e pressione F11",
@@ -1858,6 +1866,41 @@
       "monitorDisconnected": "Monitor #{id} (desconectado)",
       "monitorChangeRequiresReopen": "Feche a tela do cliente e abra-a novamente para movê-la para outro monitor",
       "monitorChangeReopened": "Tela do cliente movida para o monitor escolhido"
+    },
+    "pairing": {
+      "title": "Tela em outro dispositivo",
+      "hint": "Um tablet ou celular na mesma rede mostra a venda ao cliente. O pareamento usa um código de 6 dígitos válido por 5 minutos.",
+      "notLinked": "Vincule este caixa a um terminal (acima) para poder parear um dispositivo.",
+      "loading": "Verificando o terminal vinculado…",
+      "pairButton": "Parear outro dispositivo",
+      "revokeButton": "Revogar",
+      "lastSeenNever": "Nenhuma tela remota deu sinal ainda.",
+      "lastSeenJustNow": "Último sinal da tela remota: há menos de um minuto.",
+      "lastSeenMinutes": "Último sinal da tela remota: há {minutes} min.",
+      "dialogTitle": "Parear outro dispositivo",
+      "dialogDescription": "Digite este código no dispositivo. Vale por 5 minutos e serve para uma única tela.",
+      "codeLabel": "Código de pareamento",
+      "expiresIn": "Expira em {time}",
+      "expired": "O código expirou. Gere outro.",
+      "replacedPrevious": "Foi gerado um código novo: o anterior já não serve.",
+      "step1": "No tablet ou celular, abra {url}.",
+      "step2": "Toque em “Parear com um código” e digite o código.",
+      "step3": "Ao terminar, o indicador do caixa mudará para “conectada (remota)”.",
+      "generating": "Gerando código…",
+      "regenerate": "Gerar outro código",
+      "close": "Fechar",
+      "requestError": "Não foi possível gerar o código. Tente novamente.",
+      "forbidden": "Somente um administrador ou gerente pode parear ou revogar uma tela remota.",
+      "notFound": "Este caixa não está vinculado a um terminal registrado. Vincule-o em Configurações › POS › Tela do cliente.",
+      "inactive": "O terminal está desativado: ative-o antes de parear.",
+      "orgChanged": "A organização ativa mudou em outra aba. Recarregue a página.",
+      "revokeTitle": "Revogar a tela remota",
+      "revokeDescription": "O tablet pareado deixará de receber a venda em menos de 5 minutos. Para usá-lo de novo será preciso pareá-lo com um código novo.",
+      "revokeConfirm": "Revogar",
+      "revokeCancel": "Cancelar",
+      "revoked": "Tela remota revogada",
+      "revokeError": "Não foi possível revogar a tela remota. Tente novamente.",
+      "revokedHint": "O tablet pode continuar aparecendo como conectado por até 5 minutos, enquanto a credencial expira; depois deixa de receber a venda."
     },
     "terminals": {
       "title": "Este caixa",
@@ -1998,6 +2041,28 @@
       "deleteDigit": "Apagar",
       "base": "Base da gorjeta"
     },
-    "connectingHint": "Se não conectar, ative a tela do cliente no caixa: Configuração › POS › Tela do cliente"
+    "connectingHint": "Se não conectar, ative a tela do cliente no caixa: Configuração › POS › Tela do cliente",
+    "pairing": {
+      "title": "Parear esta tela",
+      "hint": "No caixa: Configuração › POS › Tela do cliente › Parear outro dispositivo. Digite aqui o código de 6 dígitos.",
+      "inputLabel": "Código de pareamento",
+      "busy": "Verificando o código…",
+      "retryAfter": "Muitas tentativas. Aguarde {seconds} s e tente de novo.",
+      "cancel": "Voltar",
+      "open": "Parear com um código",
+      "bootstrapping": "Conectando ao caixa…",
+      "retrying": "Não foi possível conectar ao servidor. Tentando novamente…",
+      "notConfigured": "O servidor não tem o canal em tempo real configurado (SUPABASE_JWT_SECRET). Avise o administrador.",
+      "unavailable": "Esta instalação não pode mostrar a tela remota (faltam as variáveis públicas do Supabase).",
+      "channelDown": "Sem canal com o servidor. Tentando novamente; verifique a rede do tablet.",
+      "errors": {
+        "invalid": "Código inválido ou vencido. Gere um novo no caixa.",
+        "rate_limited": "Muitas tentativas. Aguarde alguns minutos.",
+        "network": "Sem conexão com o servidor. Verifique a rede.",
+        "server": "O servidor não respondeu. Tente novamente.",
+        "revoked": "Esta tela foi despareada no caixa. Gere um novo código.",
+        "storage": "O navegador não permite guardar o pareamento (modo privado ou armazenamento bloqueado). O código já foi usado: permita o armazenamento e gere um novo no caixa."
+      }
+    }
   }
 }

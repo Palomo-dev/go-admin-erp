@@ -1816,12 +1816,20 @@
       "unsupported": "Ce navigateur ne prend pas en charge l'écran client (pas de BroadcastChannel). Mettez-le à jour ou utilisez l'application de bureau.",
       "disabled": "Écran désactivé",
       "openNoSignal": "Écran ouvert, sans signal",
-      "openNoSignalHint": "La fenêtre de l'écran client est ouverte, mais la caisse ne reçoit pas son signal. Fermez-la et rouvrez-la."
+      "openNoSignalHint": "La fenêtre de l'écran client est ouverte, mais la caisse ne reçoit pas son signal. Fermez-la et rouvrez-la.",
+      "connectedWithOrigin": "Écran client connecté ({origin})",
+      "originLocal": "sur cet ordinateur",
+      "originRemote": "distant",
+      "originBoth": "sur cet ordinateur et distant",
+      "remoteUnlinked": "Écran distant indisponible : cette caisse n'est pas liée à un terminal actif.",
+      "remoteUnverified": "Écran distant indisponible : le terminal n'a pas pu être vérifié sur le serveur."
     },
     "menu": {
       "open": "Ouvrir l'écran client",
       "close": "Fermer",
-      "enableAndOpen": "Activer et ouvrir l’écran client"
+      "enableAndOpen": "Activer et ouvrir l’écran client",
+      "pair": "Associer un autre appareil",
+      "revoke": "Révoquer l’écran distant"
     },
     "toast": {
       "dragHint": "Faites glisser la fenêtre vers l'écran client et appuyez sur F11",
@@ -1858,6 +1866,41 @@
       "monitorDisconnected": "Moniteur #{id} (déconnecté)",
       "monitorChangeRequiresReopen": "Fermez l'écran client et rouvrez-le pour le déplacer vers un autre moniteur",
       "monitorChangeReopened": "Écran client déplacé vers le moniteur choisi"
+    },
+    "pairing": {
+      "title": "Écran sur un autre appareil",
+      "hint": "Une tablette ou un téléphone sur le même réseau affiche la vente au client. L’association se fait avec un code à 6 chiffres valable 5 minutes.",
+      "notLinked": "Liez cette caisse à un terminal (ci-dessus) avant d’associer un appareil.",
+      "loading": "Vérification du terminal lié…",
+      "pairButton": "Associer un autre appareil",
+      "revokeButton": "Révoquer",
+      "lastSeenNever": "Aucun écran distant n’a encore donné signe de vie.",
+      "lastSeenJustNow": "Dernier signal de l’écran distant : il y a moins d’une minute.",
+      "lastSeenMinutes": "Dernier signal de l’écran distant : il y a {minutes} min.",
+      "dialogTitle": "Associer un autre appareil",
+      "dialogDescription": "Saisissez ce code sur l’appareil. Il est valable 5 minutes et pour un seul écran.",
+      "codeLabel": "Code d’association",
+      "expiresIn": "Expire dans {time}",
+      "expired": "Le code a expiré. Générez-en un autre.",
+      "replacedPrevious": "Un nouveau code a été généré : le précédent ne fonctionne plus.",
+      "step1": "Sur la tablette ou le téléphone, ouvrez {url}.",
+      "step2": "Appuyez sur « Associer avec un code » et saisissez le code.",
+      "step3": "Une fois terminé, l’indicateur de la caisse affichera « connecté (distant) ».",
+      "generating": "Génération du code…",
+      "regenerate": "Générer un autre code",
+      "close": "Fermer",
+      "requestError": "Le code n’a pas pu être généré. Réessayez.",
+      "forbidden": "Seul un administrateur ou un manager peut associer ou révoquer un écran distant.",
+      "notFound": "Cette caisse n’est liée à aucun terminal enregistré. Liez-la dans Configuration › POS › Écran client.",
+      "inactive": "Le terminal est désactivé : activez-le avant d’associer.",
+      "orgChanged": "L’organisation active a changé dans un autre onglet. Rechargez la page.",
+      "revokeTitle": "Révoquer l’écran distant",
+      "revokeDescription": "La tablette associée cessera de recevoir la vente en moins de 5 minutes. Pour la réutiliser, il faudra l’associer avec un nouveau code.",
+      "revokeConfirm": "Révoquer",
+      "revokeCancel": "Annuler",
+      "revoked": "Écran distant révoqué",
+      "revokeError": "L’écran distant n’a pas pu être révoqué. Réessayez.",
+      "revokedHint": "La tablette peut rester affichée comme connectée jusqu’à 5 minutes, le temps que son identifiant expire ; ensuite elle cesse de recevoir la vente."
     },
     "terminals": {
       "title": "Cette caisse",
@@ -1998,6 +2041,28 @@
       "deleteDigit": "Effacer",
       "base": "Base du pourboire"
     },
-    "connectingHint": "S’il ne se connecte pas, activez l’écran client sur la caisse : Configuration › POS › Écran client"
+    "connectingHint": "S’il ne se connecte pas, activez l’écran client sur la caisse : Configuration › POS › Écran client",
+    "pairing": {
+      "title": "Associer cet écran",
+      "hint": "Sur la caisse : Configuration › POS › Écran client › Associer un autre appareil. Saisissez ici le code à 6 chiffres.",
+      "inputLabel": "Code d’association",
+      "busy": "Vérification du code…",
+      "retryAfter": "Trop de tentatives. Attendez {seconds} s puis réessayez.",
+      "cancel": "Retour",
+      "open": "Associer avec un code",
+      "bootstrapping": "Connexion à la caisse…",
+      "retrying": "Impossible de joindre le serveur. Nouvelle tentative…",
+      "notConfigured": "Le serveur n’a pas de canal temps réel configuré (SUPABASE_JWT_SECRET). Prévenez l’administrateur.",
+      "unavailable": "Cette installation ne peut pas afficher l’écran distant (variables publiques Supabase manquantes).",
+      "channelDown": "Pas de canal avec le serveur. Nouvelle tentative automatique ; vérifiez le réseau de la tablette.",
+      "errors": {
+        "invalid": "Code invalide ou expiré. Générez-en un nouveau sur la caisse.",
+        "rate_limited": "Trop de tentatives. Patientez quelques minutes.",
+        "network": "Pas de connexion au serveur. Vérifiez le réseau.",
+        "server": "Le serveur n’a pas répondu. Réessayez.",
+        "revoked": "Cet écran a été dissocié depuis la caisse. Générez un nouveau code.",
+        "storage": "Le navigateur ne permet pas d’enregistrer l’association (mode privé ou stockage bloqué). Le code a déjà été utilisé : autorisez le stockage et générez-en un nouveau sur la caisse."
+      }
+    }
   }
 }

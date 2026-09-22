@@ -196,7 +196,7 @@ import type {
 } from './protocol';
 import { projectCartForDisplay, type DisplayTotalsOverride } from './projection';
 import { isAcceptableTipChoice, isValidTipPercent, resolveTipSelection, type DisplayTipBlock, type TipSelection } from './tip';
-import type { DisplayTransport, HelloDraft } from './transport';
+import type { DisplayCapabilitiesByOrigin, DisplaySeenByOrigin, DisplayTransport, HelloDraft } from './transport';
 
 /** Cuánto se muestra «Gracias» antes de volver al modo derivado (PLAN §4.2: 8 s o siguiente venta). */
 export const THANKS_DURATION_MS = 8000;
@@ -987,14 +987,46 @@ export class DisplayEmitter {
   }
 
   /**
+   * Última señal de la pantalla por origen (Fase 3, parte C): `local`
+   * (ventana en esta máquina) y `remote` (tableta por Supabase Broadcast).
+   * null sin transporte. Con un transporte que no distinga orígenes se lee
+   * `lastDisplaySeenAt` como local. El indicador del POS lo usa para decir
+   * «conectada (local / remota / ambas)».
+   */
+  get lastDisplaySeenByOrigin(): DisplaySeenByOrigin | null {
+    const transport = this.transport;
+    if (!transport) return null;
+    if (transport.lastDisplaySeenByOrigin) return transport.lastDisplaySeenByOrigin;
+    return { local: transport.lastDisplaySeenAt, remote: null };
+  }
+
+  /**
    * Últimas `capabilities` que la pantalla declaró (`display_alive` /
    * `need_snapshot`): táctil o no, y tamaño. null sin transporte, sin
    * pantalla, tras su `display_bye` o si el transporte no las guarda
    * (ronda 2, QA-3). La UI de la caja las usa para no prometer una respuesta
    * que una pantalla NO táctil nunca dará (PLAN §4.4).
+   *
+   * Con pantalla por los DOS tubos (F3-C) el transporte las anota por origen
+   * y devuelve la COMBINACIÓN de las vivas —táctil si alguna lo es—, no la
+   * última que habló: ver `combineDisplayCapabilities` (transport.ts). Así el
+   * aviso de propina no alterna de texto con cada latido cuando el monitor
+   * del mostrador no es táctil y la tableta sí.
    */
   get lastDisplayCapabilities(): DisplayCapabilities | null {
     return this.transport?.lastDisplayCapabilities ?? null;
+  }
+
+  /**
+   * Capacidades declaradas POR ORIGEN (F3-C ronda 5 · 1). null sin transporte
+   * o con un transporte que no las anote por origen (F0–F2). La UI de la caja
+   * lo combina con los orígenes VIVOS de la presencia
+   * (`combineLiveDisplayCapabilities`, presence.ts) para que una tableta que
+   * muere sin despedirse deje de contar: el transporte no juzga el silencio,
+   * igual que no lo juzga en `lastDisplaySeenAt`.
+   */
+  get lastDisplayCapabilitiesByOrigin(): DisplayCapabilitiesByOrigin | null {
+    return this.transport?.lastDisplayCapabilitiesByOrigin ?? null;
   }
 
   /**

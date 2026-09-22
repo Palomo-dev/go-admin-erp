@@ -872,7 +872,12 @@ describe('Regresión · ajustes, presets, subtotal 0, no táctil, terminal, dos 
     expect(isUpMessage(toA) && isUpMessage(toB)).toBe(true);
     // La regla que aplica el transporte al recibir (transport.ts): destinatario distinto → se descarta.
     const TRANSPORT = readSrc('lib/pos/display/transport.ts');
-    expect(TRANSPORT).toContain('if (data.toInstanceId !== undefined && data.toInstanceId !== this.instanceId) return;');
-    expect(TRANSPORT).toContain('if (data.terminalId !== this.terminalId) return;');
+    // F3-C ronda 4 · 4: la regla es UNA y vive en protocol.ts
+    // (`isUpMessageForInstance`), que usan igual el transporte y la compuerta
+    // del tubo remoto; antes cada uno tenía su copia y no coincidían.
+    expect(TRANSPORT).toContain('isUpMessageForInstance(data, this.terminalId, this.instanceId)');
+    const PROTOCOL = readSrc('lib/pos/display/protocol.ts');
+    expect(PROTOCOL).toContain('if (terminalId !== undefined && value.terminalId !== terminalId) return false;');
+    expect(PROTOCOL).toContain('value.toInstanceId !== undefined && value.toInstanceId !== instanceId');
   });
 });

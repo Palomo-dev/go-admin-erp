@@ -159,6 +159,7 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/email/webhook', // <-- F7: webhook de Resend (firma svix fail-closed)
     '/api/crm/webhooks/', // <-- F4: webhook de ElevenLabs Scribe (firma ElevenLabs-Signature fail-closed via constructEvent)
     '/u/', // <-- F7: página pública de baja de correo (token HMAC firmado)
+    '/api/pos/display/', // <-- Pantalla remota del POS (PLAN pos-doble-pantalla §7): fail-closed por token Bearer (displayAuth) o, en /revoke, por getServerOrgContext → 401 JSON, no redirect
     '/api/web-orders/', // <-- Excluir webhooks de pedidos web (autenticación propia via x-webhook-secret header)
     '/api/auth/invite/resend', // <-- Reenvío de magic link para invitaciones (usuario no autenticado, valida contra tabla invitations)
     '/auth/v1/',
@@ -992,6 +993,6 @@ export const config = {
      * Se enumeran de forma explicita (no por regex de extension) para no
      * arriesgar el parseo del matcher en un hotfix de produccion.
      */
-    '/((?!_next/static|_next/image|favicon.ico|favicon-32x32.png|apple-touch-icon.png|icon-192x192.png|icon-512x512.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/test|api/stripe|api/sessions|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/super-admin-cleanup|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/web-orders|api/auth).*)',
+    '/((?!_next/static|_next/image|favicon.ico|favicon-32x32.png|apple-touch-icon.png|icon-192x192.png|icon-512x512.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/test|api/stripe|api/sessions|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/super-admin-cleanup|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/pos/display/|api/web-orders|api/auth).*)',
   ],
 };

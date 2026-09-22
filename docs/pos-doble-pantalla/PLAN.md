@@ -633,6 +633,18 @@ Archivo nuevo: `electron/src/main/windows/displayWindow.ts`.
   nombre, y solo si la organización lo activa.
 - El repositorio es público: ningún nombre de organización cliente en
   fixtures, docs ni comentarios.
+- **Canal Realtime privado (Fase 3, criterio de aceptación de la parte B, no
+  opcional).** `pos-display:<terminalId>` se suscribe SIEMPRE con
+  `config: { private: true }`. Políticas sobre `realtime.messages` (migración
+  `20260922130000_pos_display_realtime_privado`, aplicada): la pantalla solo
+  recibe y emite en el canal cuyo id coincide con el claim `pos_terminal_id`
+  del JWT de `/bootstrap` (`realtime.topic() = 'pos-display:' ||
+  (auth.jwt() ->> 'pos_terminal_id')`); la caja, con su sesión, solo en los
+  canales de terminales que VE por la RLS de `pos_terminals` (miembro activo
+  de la organización). Un canal público con la clave anon permitiría a
+  cualquiera que conozca el UUID de la terminal leer el carrito y emitir
+  totales o QR falsos; por eso la parte B no puede cerrarse con canal
+  público. Detalle: `F3-A-decisiones-realtime.md`, «Ronda 2 · 1».
 
 ---
 

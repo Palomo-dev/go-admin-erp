@@ -60,16 +60,71 @@ export {
   BroadcastChannelReceiver,
   BroadcastChannelTransport,
   ADOPTION_WINDOW_MS,
+  DISPLAY_LINK_ORIGINS,
   HEARTBEAT_INTERVAL_MS,
   STALE_AFTER_MS,
+  combineDisplayCapabilities,
+  createBroadcastDisplayChannel,
   displayChannelName,
   isBroadcastChannelSupported,
+  toDisplayLinkOrigin,
   type BroadcastChannelReceiverOptions,
   type BroadcastChannelTransportOptions,
+  type DisplayCapabilitiesByOrigin,
+  type DisplayChannel,
+  type DisplayChannelEvent,
+  type DisplayChannelFactory,
+  type DisplayLinkOrigin,
   type DisplayReceiver,
+  type DisplaySeenByOrigin,
   type DisplayTransport,
   type HelloDraft,
 } from './transport';
+// Fase 3, parte C: un sobre por dos tubos (local + Supabase Broadcast) y compuerta de oyente remoto.
+export {
+  DEFAULT_LISTENER_GATE,
+  REMOTE_LISTENER_TTL_MS,
+  createFanOutDisplayChannel,
+  createListenerGatedChannel,
+  upMessageListenerGate,
+  type DisplayChannelLeg,
+  type FanOutDisplayChannel,
+  type ListenerGate,
+  type ListenerGateVerdict,
+  type ListenerGatedChannel,
+  type ListenerGatedChannelOptions,
+} from './multiChannel';
+export { SALIDA_ANTERIOR_TIMEOUT_MS, createCajaDisplayChannel, type CajaChannelDeps, type CajaDisplayChannel } from './cajaChannel';
+export {
+  REMOTE_SEEN_RECENT_MINUTES,
+  formatCountdown,
+  formatPairingCode,
+  minutesSinceRemoteSeen,
+  pairingRemainingMs,
+  resolvePairingUrl,
+} from './remotePairing';
+// Fase 3 (parte B): transporte remoto (puro: el cliente de Supabase se inyecta) y
+// formas del código/token. remoteDisplayClient.ts NO se reexporta: importa supabase-js.
+export {
+  DISPLAY_DOWN_EVENT,
+  DISPLAY_UP_EVENT,
+  // Ritmo del canal remoto (ronda 2 · 2): en Realtime cada mensaje se
+  // factura, así que el latido de 1 s del transporte local NO vale aquí.
+  REMOTE_BEAT_INTERVAL_MS,
+  REMOTE_PRESENCE_INTERVAL_MS,
+  REMOTE_STALE_AFTER_MS,
+  SupabaseBroadcastReceiver,
+  SupabaseBroadcastTransport,
+  createSupabaseDisplayChannel,
+  supabaseReceiverChannelFactory,
+  supabaseTransportChannelFactory,
+  type SupabaseBroadcastReceiverOptions,
+  type SupabaseBroadcastTransportOptions,
+  type SupabaseChannelLike,
+  type SupabaseChannelStatus,
+  type SupabaseClientLike,
+} from './supabaseBroadcastTransport';
+export { PAIRING_CODE_LENGTH, PAIRING_CODE_PATTERN, isDisplayTokenShape, isPairingCodeShape, normalizePairingCodeInput } from './pairing';
 export {
   TERMINAL_ID_STORAGE_KEY,
   generateTerminalId,
@@ -84,15 +139,26 @@ export { isCustomerDisplayPath } from './route';
 // Parte D: indicador de la caja y tarjeta de Configuración › POS.
 export {
   DEFAULT_PRESENCE_ENVIRONMENT,
+  DEFAULT_STALE_BY_ORIGIN,
   DISCONNECTED_PRESENCE,
+  DISCONNECTED_PRESENCE_VIEW,
+  describePresenceOrigins,
   isDisplayPresent,
   isSamePresence,
   readDisplayPresence,
+  readDisplayPresenceView,
   resolvePresenceReason,
+  resolvePresentOrigins,
+  staleForOrigin,
+  withPresenceOrigins,
+  type DisplayStaleByOrigin,
+  type DisplayStaleThreshold,
   type DisplayPresenceEnvironment,
   type DisplayPresenceReason,
   type DisplayPresenceSnapshot,
   type DisplayPresenceSource,
+  type DisplayPresenceView,
+  type PresenceLook,
 } from './presence';
 export {
   CUSTOMER_DISPLAY_HINT_STORAGE_KEY,

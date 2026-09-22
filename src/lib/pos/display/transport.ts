@@ -40,6 +40,14 @@
  * Lo que PLAN §8 detalla a partir de este archivo: la ventana de elección, el
  * watchdog de silencio, `releaseActiveInstance()` y los getters `lastByeAt` /
  * `lastStaleAt`.
+ * - Origen de la pantalla (Fase 3, parte C): un canal puede entregar cada
+ *   mensaje con `origin: 'local' | 'remote'` (multiChannel.ts reparte un
+ *   mismo sobre entre BroadcastChannel y Supabase Broadcast y etiqueta lo que
+ *   vuelve por cada tubo). El transporte anota la última señal de la
+ *   pantalla POR ORIGEN (`lastDisplaySeenByOrigin`); `lastDisplaySeenAt`
+ *   sigue siendo la más reciente de todas, y el `display_bye` solo borra la
+ *   de su origen. Sin etiqueta (BroadcastChannel a secas, relay de
+ *   escritorio) todo cuenta como `local`, así que nada cambia para F0–F2.
  *
  * Regla de producto — «la última caja que saluda es la que proyecta»:
  * en web es habitual abrir /app/pos en dos pestañas; comparten terminalId
@@ -83,8 +91,9 @@ import {
   PROTOCOL_VERSION,
   UP_PRESENCE_TYPES,
   isDownMessage,
+  isAuthenticatedDisplayBye,
   isIncompatibleEnvelope,
-  isUpMessage,
+  isUpMessageForInstance,
   type DisplayCapabilities,
   type DisplayState,
   type DownMessage,
@@ -96,6 +105,58 @@ import { generateTerminalId } from './terminal';
 
 /** Borrador del `hello` que publica la caja (el transporte pone el sobre). */
 export type HelloDraft = Extract<DownMessageDraft, { t: 'hello' }>;
+
+/**
+ * Por qué tubo llegó un mensaje de la pantalla (Fase 3, parte C):
+ * `local` = BroadcastChannel o relay de escritorio (misma máquina);
+ * `remote` = Supabase Broadcast (tableta en otro dispositivo).
+ */
+export type DisplayLinkOrigin = 'local' | 'remote';
+
+export const DISPLAY_LINK_ORIGINS: readonly DisplayLinkOrigin[] = Object.freeze(['local', 'remote']);
+
+/** Última señal de la pantalla por origen; null en el origen que nunca habló o que se despidió. */
+export type DisplaySeenByOrigin = Readonly<Record<DisplayLinkOrigin, number | null>>;
+
+/** Capacidades declaradas por cada origen; null en el que nunca habló o se despidió. */
+export type DisplayCapabilitiesByOrigin = Readonly<Record<DisplayLinkOrigin, DisplayCapabilities | null>>;
+
+/**
+ * Capacidades ÚNICAS que la caja debe creer cuando hay pantalla por más de un
+ * tubo (F3-C ronda 4 · 1 y 2). Regla, estable y deliberada:
+ *
+ * - `touch`: true si ALGUNA pantalla viva lo es. Nunca promete de menos: si
+ *   hay una tableta táctil, el cliente SÍ puede contestar la propina, aunque
+ *   el monitor del mostrador no sea táctil. Al revés sería peor —el aviso
+ *   diría «regístrela usted» mientras el cliente ya pulsó en la tableta—.
+ * - El resto (tamaño) sale de la primera pantalla viva en orden canónico
+ *   (local antes que remota): un valor cualquiera pero FIJO mientras no
+ *   cambie el conjunto de pantallas vivas.
+ *
+ * Por qué importa que sea fijo: antes se guardaba UNA sola capacidad y la
+ * pisaba la última pantalla que hablara. Con un monitor no táctil latiendo
+ * cada segundo y una tableta táctil cada cinco, `touch` alternaba cada 5 s y
+ * el aviso de propina del cajero cambiaba de texto Y de botón sin que nada
+ * cambiara de verdad.
+ *
+ * «Viva» = el origen tiene señal anotada (`seen !== null`): su `display_bye`
+ * la borra. La caducidad por silencio no se juzga aquí, igual que no se juzga
+ * en `lastDisplaySeenAt`: la decide la UI con `lastDisplaySeenByOrigin`.
+ */
+export function combineDisplayCapabilities(byOrigin: DisplayCapabilitiesByOrigin, seenByOrigin: DisplaySeenByOrigin): DisplayCapabilities | null {
+  const vivas: DisplayCapabilities[] = [];
+  for (const origin of DISPLAY_LINK_ORIGINS) {
+    const capabilities = byOrigin[origin];
+    if (capabilities !== null && seenByOrigin[origin] !== null) vivas.push(capabilities);
+  }
+  if (vivas.length === 0) return null;
+  return { ...vivas[0], touch: vivas.some((c) => c.touch === true) };
+}
+
+/** Solo `'remote'` cuenta como remoto: cualquier otra cosa (ausente, el `origin` textual de un MessageEvent) es local. */
+export function toDisplayLinkOrigin(value: unknown): DisplayLinkOrigin {
+  return value === 'remote' ? 'remote' : 'local';
+}
 
 /** Lado caja: emite el estado y recibe intenciones de la pantalla. */
 export interface DisplayTransport {
@@ -130,8 +191,24 @@ export interface DisplayTransport {
    * `need_snapshot`); null si nunca hubo pantalla o tras su `display_bye`.
    * Opcional (aditivo, ronda 2 de F2-B): un transporte que no las guarde se
    * lee como null y la caja no asume nada sobre la pantalla.
+   *
+   * Con pantalla por los DOS tubos (F3-C) es la COMBINACIÓN de las vivas,
+   * no la última que habló: ver `combineDisplayCapabilities`.
    */
   readonly lastDisplayCapabilities?: DisplayCapabilities | null;
+  /**
+   * Capacidades POR ORIGEN (F3-C ronda 4): el `display_bye` de la tableta
+   * solo borra las suyas. Opcional (aditivo): quien no lo guarde se lee como
+   * «todo local» a partir de `lastDisplayCapabilities`.
+   */
+  readonly lastDisplayCapabilitiesByOrigin?: DisplayCapabilitiesByOrigin;
+  /**
+   * Última señal de la pantalla POR ORIGEN (Fase 3, parte C): `local`
+   * (BroadcastChannel / relay) y `remote` (Supabase Broadcast). El
+   * `display_bye` solo borra su origen. Opcional (aditivo): un transporte
+   * que no lo guarde se lee como «todo local» a partir de `lastDisplaySeenAt`.
+   */
+  readonly lastDisplaySeenByOrigin?: DisplaySeenByOrigin;
 }
 
 /** Lado pantalla: recibe el estado y devuelve intenciones a la caja. */
@@ -223,8 +300,19 @@ function assertTerminalId(terminalId: unknown): asserts terminalId is string {
  */
 export interface DisplayChannel {
   postMessage(msg: unknown): void;
-  onmessage: ((event: { data: unknown }) => void) | null;
+  /**
+   * `origin` es opcional (Fase 3, parte C): lo pone un canal compuesto
+   * (multiChannel.ts) para decir por qué tubo llegó el mensaje. Un canal
+   * simple no lo manda y todo cuenta como local.
+   */
+  onmessage: ((event: DisplayChannelEvent) => void) | null;
   close(): void;
+}
+
+/** Lo que un canal entrega a `onmessage`. */
+export interface DisplayChannelEvent {
+  data: unknown;
+  origin?: DisplayLinkOrigin;
 }
 
 /** Fábrica de canal inyectable: `(terminalId) => DisplayChannel`. */
@@ -232,6 +320,17 @@ export type DisplayChannelFactory = (terminalId: string) => DisplayChannel;
 
 function openChannel(terminalId: string, factory?: DisplayChannelFactory): DisplayChannel {
   if (factory) return factory(terminalId);
+  return createBroadcastDisplayChannel(terminalId);
+}
+
+/**
+ * El tubo por defecto: un BroadcastChannel del mismo origen con la forma de
+ * `DisplayChannel`. Exportado (Fase 3, parte C) para que multiChannel.ts
+ * pueda combinarlo con el canal remoto sin duplicar la adaptación. Lanza si
+ * el entorno no tiene BroadcastChannel.
+ */
+export function createBroadcastDisplayChannel(terminalId: string): DisplayChannel {
+  assertTerminalId(terminalId);
   if (!isBroadcastChannelSupported()) {
     throw new Error('BroadcastChannel no está disponible en este entorno');
   }
@@ -242,13 +341,17 @@ function openChannel(terminalId: string, factory?: DisplayChannelFactory): Displ
   // BroadcastChannel cumple la forma en tiempo de ejecución, pero su `onmessage`
   // declara `this: BroadcastChannel` y `MessageEvent`, que con strictFunctionTypes
   // no es asignable al tipo más estrecho de DisplayChannel: se adapta explícitamente.
+  let current: DisplayChannel['onmessage'] = null;
   const adapted: DisplayChannel = {
     postMessage: (msg) => channel.postMessage(msg),
     get onmessage() {
-      return channel.onmessage as DisplayChannel['onmessage'];
+      return current;
     },
     set onmessage(handler) {
-      channel.onmessage = handler;
+      current = handler;
+      // Un MessageEvent trae `origin` (URL del documento): NO se pasa; solo `data`,
+      // así lo que llega por BroadcastChannel cuenta siempre como local.
+      channel.onmessage = handler === null ? null : (event: MessageEvent) => handler({ data: event.data });
     },
     close: () => channel.close(),
   };
@@ -322,8 +425,10 @@ export class BroadcastChannelTransport implements DisplayTransport {
   private readonly heartbeatIntervalMs: number;
   private seq = 0;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-  private displaySeenAt: number | null = null;
-  private displayCapabilities: DisplayCapabilities | null = null;
+  /** Última señal de la pantalla por origen (F3-C). `lastDisplaySeenAt` es la mayor de las dos. */
+  private displaySeenByOrigin: Record<DisplayLinkOrigin, number | null> = { local: null, remote: null };
+  /** Capacidades por origen (F3-C ronda 4 · 1 y 2): una sola casilla las hacía parpadear entre las dos pantallas. */
+  private displayCapabilitiesByOrigin: Record<DisplayLinkOrigin, DisplayCapabilities | null> = { local: null, remote: null };
   private closed = false;
 
   constructor(options: BroadcastChannelTransportOptions) {
@@ -333,7 +438,7 @@ export class BroadcastChannelTransport implements DisplayTransport {
     this.now = options.now ?? (() => Date.now());
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? HEARTBEAT_INTERVAL_MS;
     this.channel = openChannel(this.terminalId, options.channelFactory);
-    this.channel.onmessage = (event: { data: unknown }) => this.receive(event.data);
+    this.channel.onmessage = (event: DisplayChannelEvent) => this.receive(event.data, toDisplayLinkOrigin(event.origin));
   }
 
   /** Último seq emitido (0 si aún no se ha publicado nada). */
@@ -345,14 +450,32 @@ export class BroadcastChannelTransport implements DisplayTransport {
     return this.closed;
   }
 
-  /** Ver DisplayTransport.lastDisplaySeenAt. */
+  /** Ver DisplayTransport.lastDisplaySeenAt: la señal más reciente de cualquier origen. */
   get lastDisplaySeenAt(): number | null {
-    return this.displaySeenAt;
+    const { local, remote } = this.displaySeenByOrigin;
+    if (local === null) return remote;
+    if (remote === null) return local;
+    return Math.max(local, remote);
   }
 
-  /** Ver DisplayTransport.lastDisplayCapabilities: se actualizan con cada `display_alive` / `need_snapshot` y se borran con `display_bye`. */
+  /** Ver DisplayTransport.lastDisplaySeenByOrigin (copia: el llamador no puede mutar la cuenta). */
+  get lastDisplaySeenByOrigin(): DisplaySeenByOrigin {
+    return { ...this.displaySeenByOrigin };
+  }
+
+  /**
+   * Ver DisplayTransport.lastDisplayCapabilities: se anotan por origen con
+   * cada `display_alive` / `need_snapshot`, se borran con el `display_bye`
+   * DE ESE origen y se combinan con la regla de `combineDisplayCapabilities`
+   * («táctil si alguna viva lo es»), que no depende de cuál habló la última.
+   */
   get lastDisplayCapabilities(): DisplayCapabilities | null {
-    return this.displayCapabilities;
+    return combineDisplayCapabilities(this.displayCapabilitiesByOrigin, this.displaySeenByOrigin);
+  }
+
+  /** Ver DisplayTransport.lastDisplayCapabilitiesByOrigin (copia: el llamador no puede mutar la cuenta). */
+  get lastDisplayCapabilitiesByOrigin(): DisplayCapabilitiesByOrigin {
+    return { ...this.displayCapabilitiesByOrigin };
   }
 
   publish(draft: DownMessageDraft): void {
@@ -409,21 +532,37 @@ export class BroadcastChannelTransport implements DisplayTransport {
     this.channel.close();
   }
 
-  private receive(data: unknown): void {
-    if (this.closed || !isUpMessage(data)) return;
-    // El canal ya es por terminal; esto es defensa por si dos terminales comparten id por error.
-    if (data.terminalId !== this.terminalId) return;
-    // Intención dirigida a otra instancia (otra pestaña de la misma caja): no es para esta.
-    if (data.toInstanceId !== undefined && data.toInstanceId !== this.instanceId) return;
+  private receive(data: unknown, origin: DisplayLinkOrigin = 'local'): void {
+    // Mismo predicado que la compuerta del tubo remoto (F3-C ronda 4 · 4):
+    // bien formado, de ESTA terminal (defensa por si dos comparten id por
+    // error) y, si va dirigido, a ESTA instancia (otra pestaña de la misma
+    // caja no atiende lo que es para su vecina).
+    if (this.closed || !isUpMessageForInstance(data, this.terminalId, this.instanceId)) return;
     // Presencia de la pantalla: cualquier señal suya cuenta; su despedida la borra.
     // Con la señal viajan sus capacidades (táctil, tamaño): la caja las consulta para no
     // prometer una respuesta que una pantalla no táctil nunca dará (ronda 2 de F2-B).
+    // Se anota POR ORIGEN (F3-C): el `display_bye` de la tableta no borra la señal de la
+    // ventana local ni al revés; el indicador dice cuál de las dos (o ambas) está viva.
     if (data.t === 'display_alive' || data.t === 'need_snapshot') {
-      this.displaySeenAt = this.now();
-      this.displayCapabilities = { ...data.capabilities };
+      this.displaySeenByOrigin[origin] = this.now();
+      this.displayCapabilitiesByOrigin[origin] = { ...data.capabilities };
     } else if (data.t === 'display_bye') {
-      this.displaySeenAt = null;
-      this.displayCapabilities = null;
+      // Por el tubo REMOTO la despedida tiene que venir firmada con la instancia
+      // que esta caja le dio en el `hello` (F3-C ronda 5 · 3): ese canal lo puede
+      // escribir cualquier miembro activo de la sucursal y el `terminalId` va en
+      // el nombre del topic, así que una despedida anónima era un apagón gratis
+      // de la pantalla remota. Sin firma no se borra nada: la presencia caduca
+      // por silencio (REMOTE_STALE_AFTER_MS), que es el camino lento pero honesto.
+      // El tubo LOCAL no cambia: es del mismo origen y la misma máquina, y una
+      // pantalla de las fases anteriores se despide sin firma.
+      if (origin === 'remote' && !isAuthenticatedDisplayBye(data, this.instanceId)) {
+        dispatch(this.upHandlers, data);
+        return;
+      }
+      this.displaySeenByOrigin[origin] = null;
+      // Solo las de SU origen (ronda 4 · 2): la tableta que se apaga no puede
+      // dejar a la caja sin saber que el monitor del mostrador NO es táctil.
+      this.displayCapabilitiesByOrigin[origin] = null;
     }
     dispatch(this.upHandlers, data);
   }
@@ -603,6 +742,12 @@ export class BroadcastChannelReceiver implements DisplayReceiver {
     // todas las pestañas de la terminal para que cada una pinte su indicador.
     if (UP_PRESENCE_TYPES.has(msg.t)) {
       delete msg.toInstanceId;
+      // …pero la DESPEDIDA lleva la marca de la caja que esta pantalla seguía
+      // (F3-C ronda 5 · 3): sigue yendo a todas las pestañas, y solo la que la
+      // emitió en su `hello` la da por buena. Sin ella, un `display_bye`
+      // forjado por cualquiera con acceso al canal remoto dormía la pata de la
+      // caja y dejaba a la tableta legítima sin carrito.
+      if (msg.t === 'display_bye' && this.instanceId !== null) msg.ackInstanceId = this.instanceId;
       postSafely(this.channel, msg);
       return;
     }

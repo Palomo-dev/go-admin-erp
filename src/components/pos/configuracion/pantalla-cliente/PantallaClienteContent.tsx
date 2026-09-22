@@ -13,6 +13,7 @@ import { ConfiguracionService } from '../configuracionService';
 import { defaultCustomerDisplaySettings, type CustomerDisplaySettings } from '@/lib/pos/display/settings';
 import { AjustesPantallaSection } from './AjustesPantallaSection';
 import { EstaCajaSection } from './EstaCajaSection';
+import { DispositivoRemotoSection } from './DispositivoRemotoSection';
 import { applyPosDisplaySettings } from '@/lib/pos/display/posDisplay';
 import { closeCustomerDisplay, markCustomerDisplayHintShown, openCustomerDisplay } from '@/lib/pos/display/openDisplay';
 import {
@@ -100,6 +101,10 @@ const AUTO_DISPLAY_VALUE = 'auto';
  * dos lectura-mezcla-upsert concurrentes sobre la misma fila perdían una
  * escritura). La sección «Esta caja» (EstaCajaSection) elige, crea o
  * renombra la terminal de `pos_terminals` a la que se vincula este equipo.
+ *
+ * Fase 3 (parte C): la sección «Pantalla en otro dispositivo»
+ * (DispositivoRemotoSection) genera el código de emparejamiento de 6 dígitos
+ * para una tableta y revoca la pantalla emparejada.
  */
 export function PantallaClienteContent({ embedded = false }: { embedded?: boolean }) {
   const t = useTranslations('posCustomerDisplay.config');
@@ -396,6 +401,9 @@ export function PantallaClienteContent({ embedded = false }: { embedded?: boolea
 
       {/* Esta caja: terminal de pos_terminals a la que se vincula este equipo (Fase 2). */}
       <EstaCajaSection />
+
+      {/* Pantalla en otro dispositivo: código de emparejamiento y revocación (Fase 3, parte C). */}
+      <DispositivoRemotoSection />
 
       {/* Ajustes de presentación de la organización (Fase 2, PLAN §5.2). */}
       <AjustesPantallaSection settings={settings} disabled={loadFailed || saving} onSaved={setSettings} onSavingChange={setSaving} />

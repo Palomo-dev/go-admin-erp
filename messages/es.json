@@ -1924,12 +1924,20 @@
       "unsupported": "Este navegador no admite la pantalla del cliente (sin BroadcastChannel). Actualícelo o use la aplicación de escritorio.",
       "disabled": "Pantalla desactivada",
       "openNoSignal": "Pantalla abierta, sin señal",
-      "openNoSignalHint": "La ventana de la pantalla del cliente está abierta, pero la caja no recibe su señal. Ciérrela y vuelva a abrirla."
+      "openNoSignalHint": "La ventana de la pantalla del cliente está abierta, pero la caja no recibe su señal. Ciérrela y vuelva a abrirla.",
+      "connectedWithOrigin": "Pantalla del cliente conectada ({origin})",
+      "originLocal": "en este equipo",
+      "originRemote": "remota",
+      "originBoth": "en este equipo y remota",
+      "remoteUnlinked": "Pantalla remota no disponible: esta caja no está vinculada a una terminal activa.",
+      "remoteUnverified": "Pantalla remota no disponible: no se pudo comprobar la terminal en el servidor."
     },
     "menu": {
       "open": "Abrir pantalla del cliente",
       "close": "Cerrar",
-      "enableAndOpen": "Activar y abrir pantalla del cliente"
+      "enableAndOpen": "Activar y abrir pantalla del cliente",
+      "pair": "Emparejar otro dispositivo",
+      "revoke": "Revocar pantalla remota"
     },
     "toast": {
       "dragHint": "Arrastre la ventana a la pantalla del cliente y pulse F11",
@@ -1966,6 +1974,41 @@
       "monitorDisconnected": "Monitor #{id} (desconectado)",
       "monitorChangeRequiresReopen": "Cierre la pantalla del cliente y vuelva a abrirla para cambiarla de monitor",
       "monitorChangeReopened": "Pantalla del cliente movida al monitor elegido"
+    },
+    "pairing": {
+      "title": "Pantalla en otro dispositivo",
+      "hint": "Una tableta o un teléfono en la misma red muestra la venta al cliente. Se empareja con un código de 6 dígitos que vale 5 minutos.",
+      "notLinked": "Vincule esta caja a una terminal (arriba) para poder emparejar un dispositivo.",
+      "loading": "Comprobando la terminal vinculada…",
+      "pairButton": "Emparejar otro dispositivo",
+      "revokeButton": "Revocar",
+      "lastSeenNever": "Ninguna pantalla remota ha dado señal todavía.",
+      "lastSeenJustNow": "Última señal de la pantalla remota: hace menos de un minuto.",
+      "lastSeenMinutes": "Última señal de la pantalla remota: hace {minutes} min.",
+      "dialogTitle": "Emparejar otro dispositivo",
+      "dialogDescription": "Introduzca este código en el dispositivo. Vale 5 minutos y sirve para una sola pantalla.",
+      "codeLabel": "Código de emparejamiento",
+      "expiresIn": "Vence en {time}",
+      "expired": "El código venció. Genere otro.",
+      "replacedPrevious": "Se generó un código nuevo: el anterior ya no sirve.",
+      "step1": "En la tableta o el teléfono, abra {url}.",
+      "step2": "Pulse «Emparejar con un código» e introduzca el código.",
+      "step3": "Al terminar, el indicador de la caja pasará a «conectada (remota)».",
+      "generating": "Generando código…",
+      "regenerate": "Generar otro código",
+      "close": "Cerrar",
+      "requestError": "No se pudo generar el código. Intente de nuevo.",
+      "forbidden": "Solo un administrador o manager puede emparejar o revocar una pantalla remota.",
+      "notFound": "Esta caja no está vinculada a una terminal registrada. Vincúlela en Configuración › POS › Pantalla del cliente.",
+      "inactive": "La terminal está desactivada: actívela antes de emparejar.",
+      "orgChanged": "La organización activa cambió en otra pestaña. Recargue la página.",
+      "revokeTitle": "Revocar la pantalla remota",
+      "revokeDescription": "La tableta emparejada dejará de recibir la venta en menos de 5 minutos. Para volver a usarla habrá que emparejarla con un código nuevo.",
+      "revokeConfirm": "Revocar",
+      "revokeCancel": "Cancelar",
+      "revoked": "Pantalla remota revocada",
+      "revokeError": "No se pudo revocar la pantalla remota. Intente de nuevo.",
+      "revokedHint": "La tableta puede seguir apareciendo como conectada hasta 5 minutos, mientras caduca su credencial; después deja de recibir la venta."
     },
     "terminals": {
       "title": "Esta caja",
@@ -2106,6 +2149,28 @@
       "deleteDigit": "Borrar",
       "base": "Base de la propina"
     },
-    "connectingHint": "Si no conecta, active la pantalla del cliente en la caja: Configuración › POS › Pantalla del cliente"
+    "connectingHint": "Si no conecta, active la pantalla del cliente en la caja: Configuración › POS › Pantalla del cliente",
+    "pairing": {
+      "title": "Emparejar esta pantalla",
+      "hint": "En la caja: Configuración › POS › Pantalla del cliente › Emparejar otro dispositivo. Escriba aquí el código de 6 dígitos.",
+      "inputLabel": "Código de emparejamiento",
+      "busy": "Comprobando el código…",
+      "retryAfter": "Demasiados intentos. Espere {seconds} s y vuelva a intentarlo.",
+      "cancel": "Volver",
+      "open": "Emparejar con un código",
+      "bootstrapping": "Conectando con la caja…",
+      "retrying": "No se pudo conectar con el servidor. Reintentando…",
+      "notConfigured": "El servidor no tiene configurado el canal en tiempo real (SUPABASE_JWT_SECRET). Avise al administrador.",
+      "unavailable": "Esta instalación no puede mostrar la pantalla remota (faltan las variables públicas de Supabase).",
+      "channelDown": "Sin canal con el servidor. Se reintenta solo; compruebe la red de la tableta.",
+      "errors": {
+        "invalid": "Código inválido o vencido. Genere uno nuevo en la caja.",
+        "rate_limited": "Demasiados intentos. Espere unos minutos.",
+        "network": "Sin conexión con el servidor. Compruebe la red.",
+        "server": "El servidor no respondió. Inténtelo de nuevo.",
+        "revoked": "Esta pantalla fue desemparejada desde la caja. Genere un código nuevo.",
+        "storage": "El navegador no permite guardar el emparejamiento (modo privado o almacenamiento bloqueado). El código ya se usó: genere uno nuevo en la caja después de permitir el almacenamiento."
+      }
+    }
   }
 }

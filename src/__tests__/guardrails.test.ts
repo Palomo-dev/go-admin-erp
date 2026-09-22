@@ -556,6 +556,44 @@ describe('F0 Guardarraíles', () => {
       expect(strictViolations.sort()).toEqual([]);
     });
 
+    /**
+     * Rutas de la pantalla del cliente remota (F3): NO tienen sesión —una
+     * tableta emparejada no es un usuario— y por eso están excluidas del
+     * middleware. Lo que las sostiene es que la organización sale de la FILA
+     * de la terminal a la que apunta el token, nunca de la petición. Este
+     * caso vigila las dos mitades: que la exclusión siga escrita en el
+     * middleware y que ninguna de esas rutas lea la organización de lo que
+     * llega. Si alguien retira la exclusión, la ruta deja de responder; si
+     * alguien mete un organizationId del body, salta aquí.
+     */
+    test('las rutas sin sesión de /api/pos/display/** están excluidas del middleware y resuelven la organización desde la terminal', () => {
+      const middleware = fs.readFileSync(path.join(SRC_ROOT, 'middleware.ts'), 'utf8');
+      expect(middleware).toMatch(/\/api\/pos\/display\//);
+
+      const dir = path.join(SRC_ROOT, 'app', 'api', 'pos', 'display');
+      const rutas = walkDir(dir).filter((f) => f.endsWith('route.ts'));
+      expect(rutas.length).toBeGreaterThanOrEqual(4); // pair, bootstrap, heartbeat, revoke
+
+      const ofensores: string[] = [];
+      for (const file of rutas) {
+        const rel = path.relative(SRC_ROOT, file).split(path.sep).join('/');
+        const content = fs.readFileSync(file, 'utf8');
+        // /revoke sí tiene sesión (admin que desempareja): se rige por el
+        // contrato normal. Las demás autentican por token.
+        const conSesion = SESSION_RE.test(content);
+        const tomaOrgDeLaPeticion = BODY_ORG_PATTERNS.some((re) => re.test(content));
+        if (tomaOrgDeLaPeticion && !conSesion) ofensores.push(rel);
+        // Sin sesión solo hay dos credenciales posibles: el token de la
+        // pantalla (bootstrap, heartbeat) o el código de emparejamiento de un
+        // solo uso con rate limit (pair). Cualquier otra cosa es una ruta
+        // abierta detrás de la exclusión del middleware.
+        const conToken = /authenticateDisplayRequest|requireDisplayToken|displayAuth/.test(content);
+        const esCanje = /\bcheckRateLimit\s*\(/.test(content) && /PAIR_RATE_LIMIT|pairing_code/.test(content);
+        if (!conSesion && !conToken && !esCanje) ofensores.push(`${rel} (sin sesión, sin token y sin canje con límite)`);
+      }
+      expect(ofensores.sort()).toEqual([]);
+    });
+
     test('la allow-list estricta no contiene entradas obsoletas (ya adoptaron readOrgBody)', () => {
       if (strictStale.length > 0) {
         console.error('Quitar de STRICT_ALLOWLIST (ya cumplen):\n' + strictStale.join('\n'));

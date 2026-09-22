@@ -204,8 +204,26 @@ export type UpMessage =
    * pestaña concreta.
    */
   | (UpEnvelope & { t: 'display_alive'; at: number; capabilities: DisplayCapabilities })
-  /** La pantalla se cierra a propósito: la caja pone el indicador en gris sin esperar el silencio. */
-  | (UpEnvelope & { t: 'display_bye' });
+  /**
+   * La pantalla se cierra a propósito: la caja pone el indicador en gris sin
+   * esperar el silencio.
+   *
+   * `ackInstanceId` (F3-C ronda 5 · 3, aditivo y opcional): la instancia de
+   * caja que la pantalla venía siguiendo, es decir el `instanceId` que esa
+   * caja estampó en el `hello` que la pantalla adoptó. Existe porque el canal
+   * remoto de una terminal lo puede escribir cualquier miembro activo de la
+   * misma sucursal (política `pos_display_caja_envia`) y el `terminalId` no
+   * es secreto: va en el nombre del topic. Sin esta marca, un `display_bye`
+   * forjado dormía la pata remota de la caja y borraba la presencia de la
+   * tableta legítima. La caja solo HONRA por el tubo remoto un `display_bye`
+   * cuyo `ackInstanceId` sea el suyo; uno sin marca ni se cree ni se
+   * descarta: simplemente no renueva nada y la presencia caduca por silencio.
+   *
+   * No es un destinatario (`toInstanceId`): la despedida sigue llegando a
+   * TODAS las pestañas de la terminal, como el resto de la presencia. Solo la
+   * que la pantalla seguía puede darla por buena.
+   */
+  | (UpEnvelope & { t: 'display_bye'; ackInstanceId?: string });
 
 export type UpMessageType = UpMessage['t'];
 export type TipSelectedMessage = Extract<UpMessage, { t: 'tip_selected' }>;
@@ -462,7 +480,8 @@ export function isUpMessage(value: unknown): value is UpMessage {
     case 'display_alive':
       return isFiniteNumber(value.at) && isCapabilities(value.capabilities);
     case 'display_bye':
-      return true;
+      // `ackInstanceId` opcional (F3-C ronda 5 · 3): ausente, o string no vacío.
+      return value.ackInstanceId === undefined || isNonEmptyString(value.ackInstanceId);
     case 'tip_selected':
       return (
         isNonEmptyString(value.cartId) &&
@@ -482,4 +501,43 @@ export function isUpMessage(value: unknown): value is UpMessage {
         value.rating <= 5
       );
   }
+}
+
+/**
+ * El filtro COMPLETO con el que la caja acepta un mensaje de subida
+ * (F3-C ronda 4 · 4): bien formado, de ESTA terminal y —si va dirigido— a
+ * ESTA instancia. Lo comparten `BroadcastChannelTransport.receive` y la
+ * compuerta de oyente del tubo remoto (multiChannel.ts): antes cada uno
+ * aplicaba su propio criterio y un `tip_selected` dirigido a OTRA pestaña de
+ * la misma caja abría la compuerta —y sacaba el carrito por Realtime— de una
+ * instancia que iba a descartar ese mismo mensaje.
+ *
+ * `terminalId` e `instanceId` son opcionales por separado: sin terminal no se
+ * compara la terminal; sin instancia (o con null, cuando todavía no se
+ * conoce) no se compara el destinatario, que es como se comportaba la
+ * compuerta antes de esta ronda.
+ */
+export function isUpMessageForInstance(value: unknown, terminalId?: string, instanceId?: string | null): value is UpMessage {
+  if (!isUpMessage(value)) return false;
+  if (terminalId !== undefined && value.terminalId !== terminalId) return false;
+  if (instanceId !== undefined && instanceId !== null && value.toInstanceId !== undefined && value.toInstanceId !== instanceId) return false;
+  return true;
+}
+
+/**
+ * ¿Este `display_bye` lo manda de verdad la pantalla que seguía a ESTA
+ * instancia de caja? (F3-C ronda 5 · 3.)
+ *
+ * El canal remoto de una terminal lo puede escribir cualquier miembro activo
+ * de su sucursal y el `terminalId` va en el nombre del topic, así que una
+ * despedida sin más es un mensaje que cualquiera sabe construir. La única
+ * marca que la pantalla emparejada conoce y un tercero tiene que haber
+ * escuchado es el `instanceId` que la caja le puso en el `hello`: se exige
+ * aquí. Sin instancia propia (aún no se conoce) no se puede comprobar nada y
+ * se responde `false`: por el tubo remoto se prefiere caducar por silencio a
+ * creerse una despedida que no se puede atribuir.
+ */
+export function isAuthenticatedDisplayBye(msg: UpMessage, instanceId: string | null): boolean {
+  if (msg.t !== 'display_bye') return false;
+  return instanceId !== null && msg.ackInstanceId === instanceId;
 }

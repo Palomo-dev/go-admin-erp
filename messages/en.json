@@ -1924,12 +1924,20 @@
       "unsupported": "This browser does not support the customer display (no BroadcastChannel). Update it or use the desktop app.",
       "disabled": "Display off",
       "openNoSignal": "Display open, no signal",
-      "openNoSignalHint": "The customer display window is open, but the register is not receiving its signal. Close it and open it again."
+      "openNoSignalHint": "The customer display window is open, but the register is not receiving its signal. Close it and open it again.",
+      "connectedWithOrigin": "Customer display connected ({origin})",
+      "originLocal": "on this computer",
+      "originRemote": "remote",
+      "originBoth": "on this computer and remote",
+      "remoteUnlinked": "Remote display unavailable: this register is not linked to an active terminal.",
+      "remoteUnverified": "Remote display unavailable: the terminal could not be verified on the server."
     },
     "menu": {
       "open": "Open customer display",
       "close": "Close",
-      "enableAndOpen": "Turn on and open customer display"
+      "enableAndOpen": "Turn on and open customer display",
+      "pair": "Pair another device",
+      "revoke": "Revoke remote display"
     },
     "toast": {
       "dragHint": "Drag the window to the customer screen and press F11",
@@ -1966,6 +1974,41 @@
       "monitorDisconnected": "Monitor #{id} (disconnected)",
       "monitorChangeRequiresReopen": "Close the customer display and open it again to move it to another monitor",
       "monitorChangeReopened": "Customer display moved to the chosen monitor"
+    },
+    "pairing": {
+      "title": "Display on another device",
+      "hint": "A tablet or phone on the same network shows the sale to the customer. It pairs with a 6-digit code valid for 5 minutes.",
+      "notLinked": "Link this register to a terminal (above) before pairing a device.",
+      "loading": "Checking the linked terminal…",
+      "pairButton": "Pair another device",
+      "revokeButton": "Revoke",
+      "lastSeenNever": "No remote display has reported yet.",
+      "lastSeenJustNow": "Last signal from the remote display: less than a minute ago.",
+      "lastSeenMinutes": "Last signal from the remote display: {minutes} min ago.",
+      "dialogTitle": "Pair another device",
+      "dialogDescription": "Enter this code on the device. It is valid for 5 minutes and for a single display.",
+      "codeLabel": "Pairing code",
+      "expiresIn": "Expires in {time}",
+      "expired": "The code has expired. Generate another one.",
+      "replacedPrevious": "A new code was generated: the previous one no longer works.",
+      "step1": "On the tablet or phone, open {url}.",
+      "step2": "Tap “Pair with a code” and enter the code.",
+      "step3": "When done, the register indicator will show “connected (remote)”.",
+      "generating": "Generating code…",
+      "regenerate": "Generate another code",
+      "close": "Close",
+      "requestError": "The code could not be generated. Try again.",
+      "forbidden": "Only an administrator or manager can pair or revoke a remote display.",
+      "notFound": "This register is not linked to a registered terminal. Link it in Settings › POS › Customer display.",
+      "inactive": "The terminal is deactivated: activate it before pairing.",
+      "orgChanged": "The active organization changed in another tab. Reload the page.",
+      "revokeTitle": "Revoke the remote display",
+      "revokeDescription": "The paired tablet will stop receiving the sale within 5 minutes. To use it again it must be paired with a new code.",
+      "revokeConfirm": "Revoke",
+      "revokeCancel": "Cancel",
+      "revoked": "Remote display revoked",
+      "revokeError": "The remote display could not be revoked. Try again.",
+      "revokedHint": "The tablet may still show as connected for up to 5 minutes while its credential expires; after that it stops receiving the sale."
     },
     "terminals": {
       "title": "This register",
@@ -2106,6 +2149,28 @@
       "deleteDigit": "Delete",
       "base": "Tip base"
     },
-    "connectingHint": "If it does not connect, turn on the customer display at the register: Settings › POS › Customer display"
+    "connectingHint": "If it does not connect, turn on the customer display at the register: Settings › POS › Customer display",
+    "pairing": {
+      "title": "Pair this display",
+      "hint": "At the register: Settings › POS › Customer display › Pair another device. Enter the 6-digit code here.",
+      "inputLabel": "Pairing code",
+      "busy": "Checking the code…",
+      "retryAfter": "Too many attempts. Wait {seconds} s and try again.",
+      "cancel": "Back",
+      "open": "Pair with a code",
+      "bootstrapping": "Connecting to the register…",
+      "retrying": "Could not reach the server. Retrying…",
+      "notConfigured": "The server has no realtime channel configured (SUPABASE_JWT_SECRET). Contact the administrator.",
+      "unavailable": "This installation cannot show the remote display (public Supabase variables are missing).",
+      "channelDown": "No channel with the server. Retrying automatically; check the tablet's network.",
+      "errors": {
+        "invalid": "Invalid or expired code. Generate a new one at the register.",
+        "rate_limited": "Too many attempts. Wait a few minutes.",
+        "network": "No connection to the server. Check the network.",
+        "server": "The server did not respond. Try again.",
+        "revoked": "This display was unpaired from the register. Generate a new code.",
+        "storage": "The browser cannot store the pairing (private mode or blocked storage). The code has already been used: allow storage and generate a new one at the register."
+      }
+    }
   }
 }

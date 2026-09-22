@@ -15,6 +15,21 @@
  * (RLS), NO se reutiliza el nombre local: se pinta vacío (inicial «•» y color
  * neutro) antes que enseñar el comercio equivocado (logic.ts ·
  * resolveBrandIdentity).
+ *
+ * Pantalla REMOTA (Fase 3, parte B): la tableta no tiene sesión ni
+ * organización local, así que nada de lo anterior puede leerse. La marca
+ * llega en el bootstrap (`/api/pos/display/bootstrap`, resuelta en el
+ * servidor desde la terminal) y se construye con `brandFromBootstrap`, una
+ * función pura: en remoto NO se monta este hook.
+ *
+ * Por qué no un parámetro `override` (ronda 2 · 5): las reglas de los hooks
+ * obligan a llamar igual a `useOrganization()` aunque el resultado se vaya a
+ * descartar, y en un dispositivo sin `userData` ni organización en
+ * localStorage —exactamente la tableta emparejada— ese hook se reprograma
+ * cada 1,5 s esperando una sesión que nunca llega: en un equipo de quiosco,
+ * un re-render para siempre. La única forma de no pagarlo es no montarlo,
+ * así que quien decide es el componente (CustomerDisplay · LocalBrandShell)
+ * y este hook es solo el camino LOCAL.
  */
 
 import { useEffect, useState } from 'react';
@@ -35,7 +50,39 @@ export interface DisplayBrand {
   timezone: string;
 }
 
-export function useDisplayBrand(organizationIdFromCashier: number | null): DisplayBrand {
+/** Marca de la pantalla remota a partir del bootstrap (misma corrección AA que la marca local). */
+export function brandFromBootstrap(brand: {
+  organizationId: number;
+  name: string;
+  logoUrl: string | null;
+  primaryColor: string | null;
+  timezone: string;
+}): DisplayBrand {
+  return {
+    organizationId: brand.organizationId,
+    name: brand.name,
+    logoUrl: brand.logoUrl,
+    primaryColor: ensureAaOnWhite(brand.primaryColor),
+    rawPrimaryColor: brand.primaryColor,
+    timezone: brand.timezone,
+  };
+}
+
+/** Marca vacía: pantalla de emparejamiento, bootstrap en curso… todavía no se sabe de qué comercio es. */
+export const NEUTRAL_DISPLAY_BRAND: DisplayBrand = {
+  organizationId: null,
+  name: '',
+  logoUrl: null,
+  primaryColor: FALLBACK_BRAND_COLOR,
+  rawPrimaryColor: null,
+  timezone: DEFAULT_TIMEZONE,
+};
+
+/**
+ * Marca de una pantalla LOCAL (misma máquina que la caja): sesión, RLS y
+ * organización de localStorage. No se monta en la pantalla remota.
+ */
+export function useLocalDisplayBrand(organizationIdFromCashier: number | null): DisplayBrand {
   const { organization } = useOrganization();
   const localOrgId = organization?.id && organization.id > 0 ? organization.id : null;
   const organizationId = organizationIdFromCashier ?? localOrgId;

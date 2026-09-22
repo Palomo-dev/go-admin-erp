@@ -1,8 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+/**
+ * SEGURIDAD (2026-09-22): esta ruta no pedía sesión, no comprobaba a qué
+ * organización pertenecía `[id]` y pintaba el PDF con lo que llegara en el
+ * cuerpo, subiéndolo con `upsert` a la ruta canónica del documento. Es decir:
+ * cualquiera podía dejar un PDF con el importe que quisiera en la factura de
+ * otra empresa, y ese PDF es el que abre el QR impreso.
+ *
+ * Ahora: sesión y membresía activa (`getServerOrgContext`), la factura debe
+ * ser de esa organización, y los importes, el estado, las fechas, el cliente
+ * y la identidad del emisor se releen de la base de datos. Del cuerpo solo se
+ * conservan campos de presentación que no alteran el valor del documento.
+ *
+ * La lectura del objeto sigue siendo pública a propósito: el QR impreso en la
+ * factura apunta a esa URL para que el cliente descargue su copia, y la ruta
+ * lleva el uuid de la factura, que no es adivinable.
+ */
+
+/** Datos autoritativos del documento, leídos del servidor. */
+async function loadInvoice(supabase: ReturnType<typeof getSupabaseAdmin>, id: string) {
+  const { data, error } = await supabase
+    .from('invoice_sales')
+    .select(
+      `id, organization_id, number, issue_date, due_date, currency, subtotal, tax_total,
+       total, balance, status, notes,
+       customer:customers(full_name, doc_number, address, phone, email),
+       items:invoice_items(description, qty, unit_price, total_line, tax_rate, tax_included, discount_amount)`
+    )
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return data as Record<string, any> | null;
+}
 
 export async function POST(
   request: NextRequest,
@@ -10,7 +44,61 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const data = await request.json();
+    const ctx = await getServerOrgContext(request);
+    const body = await request.json().catch(() => ({}));
+
+    const admin = getSupabaseAdmin();
+    const invoice = await loadInvoice(admin, id);
+    if (!invoice || invoice.organization_id !== ctx.organizationId) {
+      console.warn(
+        `[PDF API] Generación rechazada: la organización ${ctx.organizationId} pidió la factura ${id}, que no es suya`
+      );
+      return NextResponse.json({ error: 'Factura no encontrada' }, { status: 404 });
+    }
+
+    const { data: org } = await admin
+      .from('organizations')
+      .select('name, legal_name, nit, tax_id, address, phone, email, logo_url, primary_color')
+      .eq('id', ctx.organizationId)
+      .maybeSingle();
+
+    const customer = Array.isArray(invoice.customer) ? invoice.customer[0] : invoice.customer;
+
+    // El cuerpo ya no manda sobre el contenido del documento.
+    const data: Record<string, any> = {
+      ...body,
+      number: invoice.number,
+      issue_date: invoice.issue_date,
+      due_date: invoice.due_date,
+      currency: invoice.currency || 'COP',
+      subtotal: invoice.subtotal,
+      tax_total: invoice.tax_total,
+      total: invoice.total,
+      balance: invoice.balance,
+      status: invoice.status,
+      notes: invoice.notes,
+      items: invoice.items || [],
+      customer: customer
+        ? {
+            full_name: customer.full_name,
+            tax_id: customer.doc_number,
+            address: customer.address,
+            phone: customer.phone,
+            email: customer.email,
+          }
+        : undefined,
+      organization: org
+        ? {
+            name: org.legal_name || org.name,
+            tax_id: org.nit || org.tax_id,
+            address: org.address,
+            phone: org.phone,
+            email: org.email,
+            logo_url: org.logo_url,
+            primary_color: org.primary_color,
+          }
+        : undefined,
+    };
 
     const formatCurrency = (amount: number) => {
       return new Intl.NumberFormat('es-CO', {
@@ -197,7 +285,7 @@ export async function POST(
       await browser.close();
 
       // Subir PDF a Supabase Storage con admin client (service role key)
-      const supabase = getSupabaseAdmin();
+      const supabase = admin;
 
       const filePath = `facturas-venta/${id}.pdf`;
       const { error: uploadError } = await supabase.storage
@@ -223,6 +311,9 @@ export async function POST(
       throw innerErr;
     }
   } catch (error) {
+    if (error instanceof OrgContextError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
+    }
     console.error('Error generando PDF:', error);
     return NextResponse.json(
       { error: 'Error al generar PDF' },

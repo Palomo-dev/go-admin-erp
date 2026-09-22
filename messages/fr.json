@@ -1991,6 +1991,22 @@
   "posDisplay": {
     "welcome": "Bienvenue",
     "cashier": "Servi par {name}",
+    "customer": "Client : {name}",
+    "rating": {
+      "question": "Comment s’est passé votre accueil ?",
+      "sent": "Merci pour votre évaluation !",
+      "level": {
+        "1": "Très mauvais",
+        "2": "Mauvais",
+        "3": "Moyen",
+        "4": "Bon",
+        "5": "Très bon"
+      }
+    },
+    "idle": {
+      "promotionsTitle": "Promotion",
+      "validUntil": "Jusqu’au {date}"
+    },
     "connecting": "Connexion à la caisse…",
     "noTerminal": "Ouvrez le point de vente sur cet ordinateur pour relier l’écran",
     "updateRequired": "Veuillez mettre à jour l’écran",

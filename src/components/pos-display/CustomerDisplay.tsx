@@ -19,13 +19,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { changeLanguage } from '@/i18n/provider';
+import type { Rating } from '@/lib/pos/display/protocol';
 import { offersPairingFromBootstrap, resolveRemoteLocale } from '@/lib/pos/display/remoteDisplay';
 import { BrandHeader } from './BrandHeader';
 import { FullscreenButton } from './FullscreenButton';
 import { OrderView } from './OrderView';
 import { PairingView } from './PairingView';
 import { TipView } from './TipView';
-import { offersPairing, resolveDisplayCurrency, resolveShellContent, resolveTouch, resolveView, viewShowsAmounts } from './logic';
+import { sanitizeIdleSettings } from './idle';
+import { useIdlePromotions } from './useIdlePromotions';
+import {
+  offersPairing,
+  resolveDisplayCurrency,
+  resolveDisplayLocaleTag,
+  resolveShellContent,
+  resolveTouch,
+  resolveView,
+  viewShowsAmounts,
+} from './logic';
 import { markRenderHealthy } from './retryBackoff';
 import { NEUTRAL_DISPLAY_BRAND, brandFromBootstrap, useLocalDisplayBrand, type DisplayBrand } from './useDisplayBrand';
 import { useDisplayReceiver } from './useDisplayReceiver';
@@ -102,6 +113,40 @@ function useThanksExpired(thanksTotal: number | null): boolean {
   return expired;
 }
 
+/**
+ * ¿Lleva la pantalla `idleAfterSeconds` sin nada que contar? (F4, PLAN §5.2).
+ *
+ * El reloj empieza cuando la vista pasa a Reposo y se reinicia en cuanto la
+ * caja vuelve a hablar (un pedido, un cobro, unas gracias): el modo reposo
+ * —promociones o imágenes propias— es para el rato muerto, no para el hueco
+ * entre dos clientes. Un toque en la pantalla también lo reinicia: si alguien
+ * está delante, la cartelera no debe arrancarle en la cara.
+ */
+function useIdleSettled(isIdle: boolean, idleAfterSeconds: number): boolean {
+  const [settled, setSettled] = useState(false);
+  const [activityTick, setActivityTick] = useState(0);
+
+  useEffect(() => {
+    if (!isIdle) {
+      setSettled(false);
+      return;
+    }
+    setSettled(false);
+    const ms = Math.max(0, Number.isFinite(idleAfterSeconds) ? idleAfterSeconds : 90) * 1000;
+    const timer = setTimeout(() => setSettled(true), ms);
+    return () => clearTimeout(timer);
+  }, [isIdle, idleAfterSeconds, activityTick]);
+
+  useEffect(() => {
+    if (!isIdle) return;
+    const bump = () => setActivityTick((n) => n + 1);
+    window.addEventListener('pointerdown', bump);
+    return () => window.removeEventListener('pointerdown', bump);
+  }, [isIdle]);
+
+  return settled;
+}
+
 export function CustomerDisplay() {
   const t = useTranslations('posDisplay');
   const remote = useRemoteDisplay();
@@ -115,20 +160,27 @@ export function CustomerDisplay() {
   const state = link.state;
 
   /**
-   * Idioma de la pantalla REMOTA (ronda 4 · QA-4). `bootstrap.locale` sale
-   * del ajuste `pos_customer_display` de la organización, resuelto en el
-   * servidor; hasta ahora se validaba, viajaba y no se usaba, así que una
-   * tableta recién sacada de la caja pintaba en el idioma de su navegador y
-   * no en el del comercio. `changeLanguage` carga los mensajes y avisa al
-   * proveedor sin recargar. `resolveRemoteLocale` devuelve null si el idioma
-   * ya es ese o no es uno de los de la app: el efecto no puede ciclar.
+   * Idioma de la pantalla (ronda 4 · QA-4 de la F3; ampliado en la F4,
+   * PLAN §4.5). Sale del ajuste `pos_customer_display` de la organización por
+   * dos caminos: `hello.settings.locale`, que llega también a la pantalla
+   * LOCAL y viaja en CADA saludo (al cambiarlo en la tarjeta de Configuración
+   * la caja vuelve a saludar y la pantalla cambia de idioma sin recargar), y
+   * `bootstrap.locale`, que el servidor resuelve para la tableta remota antes
+   * de que haya ningún saludo. Manda el ajuste; el bootstrap es el respaldo.
+   * `changeLanguage` carga los mensajes y avisa al proveedor sin recargar, y
+   * `resolveRemoteLocale` devuelve null si el idioma ya es ese o no es uno de
+   * los de la app: el efecto no puede ciclar.
    */
   const currentLocale = useLocale();
+  const settings = link.hello?.settings;
+  const settingsLocale = typeof settings?.locale === 'string' ? settings.locale : null;
   const bootstrapLocale = remotePhase.kind === 'ready' ? remotePhase.bootstrap.locale : null;
   useEffect(() => {
-    const next = resolveRemoteLocale(bootstrapLocale, currentLocale);
+    const next = resolveRemoteLocale(settingsLocale ?? bootstrapLocale, currentLocale);
     if (next) changeLanguage(next);
-  }, [bootstrapLocale, currentLocale]);
+  }, [settingsLocale, bootstrapLocale, currentLocale]);
+  /** Etiqueta BCP 47 con la que se formatean importes y fechas (F4). */
+  const localeTag = resolveDisplayLocaleTag(settingsLocale, currentLocale);
 
   const thanksExpired = useThanksExpired(state?.mode === 'thanks' && state.thanks ? state.thanks.total : null);
   // Táctil (PLAN §4.4): detección del navegador + forzado de los ajustes de la organización.
@@ -164,7 +216,20 @@ export function CustomerDisplay() {
   }, [state]);
 
   const cashierName = link.connected && link.hello?.cashier?.name ? link.hello.cashier.name : null;
+  /**
+   * Nombre del cliente en la cabecera (F4, ajuste `showCustomerName`, apagado
+   * por defecto). Viaja con el carrito (protocol.ts · DisplayCart) porque el
+   * cajero puede asignarlo en mitad del pedido; en los estados sin carrito
+   * (Gracias) simplemente no hay nombre que pintar.
+   */
+  const customerName = settings?.showCustomerName === true ? state?.cart?.customerName ?? null : null;
   const muted = view === 'connecting' || view === 'update_required';
+
+  // Reposo (F4, PLAN §5.2). Los ajustes se sanean campo a campo: un emisor de
+  // las fases 0-3 no manda `idle` y la pantalla se queda en la marca de siempre.
+  const idle = useMemo(() => sanitizeIdleSettings(settings?.idle), [settings?.idle]);
+  const idlePromotions = useIdlePromotions(link.terminalId, view === 'idle' && idle.mode === 'promotions');
+  const idleSettled = useIdleSettled(view === 'idle', idle.idleAfterSeconds);
 
   // Cobro·QR: «Ya pagué» solo avisa a la caja (qr_paid_claim); la confirmación sigue siendo del cajero.
   const paymentCartId = state?.mode === 'payment' && state.cart?.id ? state.cart.id : null;
@@ -180,6 +245,14 @@ export function CustomerDisplay() {
     },
     [sendUp, tipCartId],
   );
+  /**
+   * Calificación (F4, PLAN §4.2): la pantalla solo AVISA; quien la registra
+   * es la caja, que es la única que sabe qué venta acaba de confirmar
+   * (`saleId` viaja como null a propósito: ver feedback.ts).
+   */
+  const onRate = useCallback((rating: Rating) => sendUp({ t: 'rating', saleId: null, rating }), [sendUp]);
+  // Solo se pregunta si la caja lo pide Y la pantalla es táctil (PLAN §4.4).
+  const askRating = state?.mode === 'thanks' && state.thanks?.askRating === true && touch;
 
   /**
    * Todo lo que necesita la marca, como función: así la marca LOCAL —que
@@ -242,23 +315,51 @@ export function CustomerDisplay() {
     } else if (view === 'update_required') {
       content = <UpdateRequiredView brand={brand} />;
     } else if (view === 'order' && state?.cart) {
-      content = <OrderView cart={state.cart} highlightUntil={link.highlightUntil} brand={brand} />;
+      content = (
+        <OrderView
+          cart={state.cart}
+          highlightUntil={link.highlightUntil}
+          brand={brand}
+          locale={localeTag}
+          showTaxBreakdown={settings?.showTaxBreakdown === true}
+        />
+      );
     } else if ((view === 'payment_cash' || view === 'payment_card' || view === 'payment_qr') && state?.payment) {
       content = (
         <PaymentView
           payment={state.payment}
           currency={currency}
+          locale={localeTag}
           brand={brand}
           touch={touch}
           onQrPaidClaim={paymentCartId ? onQrPaidClaim : undefined}
         />
       );
     } else if (view === 'tip' && state?.cart && state.tip) {
-      content = <TipView cart={state.cart} tip={state.tip} currency={currency} brand={brand} touch={touch} onSelect={tipCartId ? onTipSelect : undefined} />;
+      content = (
+        <TipView
+          cart={state.cart}
+          tip={state.tip}
+          currency={currency}
+          locale={localeTag}
+          brand={brand}
+          touch={touch}
+          onSelect={tipCartId ? onTipSelect : undefined}
+        />
+      );
     } else if (view === 'thanks' && state?.thanks) {
-      content = <ThanksView total={state.thanks.total} currency={currency} brand={brand} />;
+      content = (
+        <ThanksView
+          total={state.thanks.total}
+          currency={currency}
+          locale={localeTag}
+          brand={brand}
+          askRating={askRating}
+          onRate={askRating ? onRate : undefined}
+        />
+      );
     } else {
-      content = <IdleView brand={brand} />;
+      content = <IdleView brand={brand} idle={idle} promotions={idlePromotions} settled={idleSettled} locale={localeTag} />;
     }
 
     return (
@@ -269,7 +370,7 @@ export function CustomerDisplay() {
         data-shows-amounts={viewShowsAmounts(view) ? 'true' : 'false'}
       >
         <style>{`@keyframes pdTick { from { transform: scale(1.04); } to { transform: scale(1); } } .pd-tick { animation: pdTick 200ms ease-out; }`}</style>
-        {view === 'idle' ? null : <BrandHeader brand={brand} cashierName={cashierName} muted={muted} />}
+        {view === 'idle' ? null : <BrandHeader brand={brand} cashierName={cashierName} customerName={customerName} muted={muted} />}
         <main key={view} className="flex min-h-0 flex-1 flex-col animate-fade-in">
           {content}
         </main>

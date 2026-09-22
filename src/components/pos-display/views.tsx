@@ -6,18 +6,22 @@
  * «Actualice la pantalla». Ninguna calcula nada: pintan lo que llega.
  */
 
-import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from 'react';
+import { Component, useEffect, useMemo, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { QRCodeSVG } from 'qrcode.react';
-import type { DisplayPayment } from '@/lib/pos/display/protocol';
+import type { DisplayIdleSettings, DisplayPayment, Rating } from '@/lib/pos/display/protocol';
+import type { DisplayPromotion } from '@/lib/pos/display/promotions';
 import { formatDateInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
-import { formatCurrency } from '@/utils/Utils';
 import { BrandLogo } from './BrandHeader';
-import { capitalizeFirst, formatCountdown, resolveQrPresentation } from './logic';
+import { capitalizeFirst, formatCountdown, formatDisplayMoney, resolveQrPresentation } from './logic';
+import { IDLE_FADE_MS, IDLE_SLIDE_MS, idleSlideIndex, resolveIdleContent } from './idle';
 import { TotalRow } from './OrderView';
 import type { DisplayBrand } from './useDisplayBrand';
 
 const LOCALE_TAGS: Record<string, string> = { es: 'es-CO', en: 'en-US', pt: 'pt-BR', fr: 'fr-FR' };
+
+/** Las cinco caras de la calificación (PLAN §4.2): una sola pulsación, sin texto. */
+const RATINGS: readonly Rating[] = [1, 2, 3, 4, 5];
 
 const MINUTE_MS = 60_000;
 
@@ -61,7 +65,52 @@ function Centered({ children, muted = false }: { children: React.ReactNode; mute
   );
 }
 
-export function IdleView({ brand }: { brand: DisplayBrand }) {
+export interface IdleViewProps {
+  brand: DisplayBrand;
+  /**
+   * Modo reposo de la organización (F4, PLAN §5.2), ya saneado. Ausente =
+   * 'brand', que es lo que hacía la pantalla hasta la Fase 3.
+   */
+  idle?: DisplayIdleSettings;
+  /** Promociones activas para el modo 'promotions'; vacío = se cae a la marca. */
+  promotions?: DisplayPromotion[];
+  /**
+   * ¿Ya pasó `idleAfterSeconds` sin actividad? Mientras sea false se ve la
+   * marca con el reloj: el reposo no entra en cuanto la caja se queda quieta
+   * un segundo.
+   */
+  settled?: boolean;
+  /** Etiqueta BCP 47 para las fechas de vigencia (F4). */
+  locale?: string;
+}
+
+export function IdleView({ brand, idle, promotions = [], settled = false, locale }: IdleViewProps) {
+  const content = resolveIdleContent({
+    mode: idle?.mode ?? 'brand',
+    promotions: promotions.length,
+    media: idle?.mediaUrls.length ?? 0,
+    settled,
+  });
+  if (content === 'promotions') {
+    return (
+      <IdleRotation count={promotions.length} label="promotions">
+        {(index) => <IdlePromotion promotion={promotions[index]} brand={brand} timezone={brand.timezone} locale={locale} />}
+      </IdleRotation>
+    );
+  }
+  if (content === 'media') {
+    const urls = idle?.mediaUrls ?? [];
+    return (
+      <IdleRotation count={urls.length} label="media">
+        {(index) => <IdleImage url={urls[index]} />}
+      </IdleRotation>
+    );
+  }
+  return <IdleBrand brand={brand} />;
+}
+
+/** Reposo de siempre: logo, nombre, reloj de la organización y saludo. */
+function IdleBrand({ brand }: { brand: DisplayBrand }) {
   const t = useTranslations('posDisplay');
   const { time, date } = useClock(brand.timezone);
   return (
@@ -77,27 +126,108 @@ export function IdleView({ brand }: { brand: DisplayBrand }) {
   );
 }
 
-/** Importe o «—»: un campo que no es un número finito nunca se pinta como $ 0,00 (PLAN §4.1.3: «nunca miente»). */
-function moneyOrDash(value: unknown, currency: string): string {
-  return typeof value === 'number' && Number.isFinite(value) ? formatCurrency(value, currency) : '—';
+/**
+ * Rotación del reposo: una lámina cada IDLE_SLIDE_MS, con un fundido de
+ * IDLE_FADE_MS y sin sonido (PLAN §5.2). El índice sale del RELOJ y no de un
+ * contador que se incrementa: si la pestaña estuvo en segundo plano y el
+ * navegador no entregó los intervalos, al volver se pinta la lámina que toca
+ * y no la siguiente a la última pintada.
+ */
+function IdleRotation({ count, label, children }: { count: number; label: string; children: (index: number) => ReactNode }) {
+  const startedAt = useRef<number>(Date.now());
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    startedAt.current = Date.now();
+    setIndex(0);
+    if (count <= 1) return;
+    const timer = setInterval(() => setIndex(idleSlideIndex(Date.now() - startedAt.current, count)), IDLE_SLIDE_MS);
+    return () => clearInterval(timer);
+  }, [count]);
+
+  const safeIndex = count > 0 ? index % count : 0;
+  if (count === 0) return null;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col" data-idle={label} data-idle-index={safeIndex}>
+      <style>{`@keyframes pdIdleFade { from { opacity: 0; } to { opacity: 1; } } .pd-idle-slide { animation: pdIdleFade ${IDLE_FADE_MS}ms ease-in; }`}</style>
+      <div key={safeIndex} className="pd-idle-slide flex min-h-0 flex-1 flex-col">
+        {children(safeIndex)}
+      </div>
+    </div>
+  );
+}
+
+/** Una promoción: nombre grande, descripción corta y hasta cuándo vale. */
+function IdlePromotion({
+  promotion,
+  brand,
+  timezone,
+  locale,
+}: {
+  promotion: DisplayPromotion | undefined;
+  brand: DisplayBrand;
+  timezone: string;
+  locale?: string;
+}) {
+  const t = useTranslations('posDisplay');
+  const until = useMemo(() => {
+    if (!promotion?.endsAt) return null;
+    const formatted = formatDateInTz(promotion.endsAt, timezone, { locale: locale ?? 'es-CO', day: 'numeric', month: 'long' });
+    return formatted ? capitalizeFirst(formatted, locale ?? 'es-CO') : null;
+  }, [promotion?.endsAt, timezone, locale]);
+  if (!promotion) return null;
+  return (
+    <Centered>
+      <p className="text-[length:var(--pd-small)] uppercase tracking-[0.2em] text-neutral-400">{t('idle.promotionsTitle')}</p>
+      <p className="max-w-[min(92vw,1100px)] text-[length:var(--pd-big)] font-bold leading-tight" style={{ color: brand.primaryColor }}>
+        {promotion.name}
+      </p>
+      {promotion.description ? (
+        <p className="max-w-[min(90vw,1000px)] text-[length:var(--pd-line)] text-neutral-700">{promotion.description}</p>
+      ) : null}
+      {until ? <p className="text-[length:var(--pd-small)] text-neutral-500">{t('idle.validUntil', { date: until })}</p> : null}
+    </Centered>
+  );
+}
+
+/** Una imagen propia del comercio, a pantalla completa y sin recortar. */
+function IdleImage({ url }: { url: string | undefined }) {
+  if (!url) return null;
+  return (
+    <div className="flex min-h-0 flex-1 items-center justify-center p-[var(--pd-gutter)]">
+      {/* eslint-disable-next-line @next/next/no-img-element -- imagen propia de la organización (URL configurada), sin optimizador */}
+      <img src={url} alt="" className="max-h-full max-w-full object-contain" draggable={false} />
+    </div>
+  );
+}
+
+/**
+ * Importe o «—»: un campo que no es un número finito nunca se pinta como
+ * $ 0,00 (PLAN §4.1.3: «nunca miente»). `locale` (F4) es la etiqueta BCP 47
+ * de la organización, resuelta en la raíz (`resolveDisplayLocaleTag`).
+ */
+function moneyOrDash(value: unknown, currency: string, locale?: string): string {
+  return formatDisplayMoney(value, currency, locale);
 }
 
 function PaymentFrame({
   brand,
   total,
   currency,
+  locale,
   children,
 }: {
   brand: DisplayBrand;
   total: number;
   currency: string;
+  locale?: string;
   children: React.ReactNode;
 }) {
   const t = useTranslations('posDisplay');
   return (
     <div className="flex min-h-0 flex-1 flex-col justify-between px-[var(--pd-gutter)] py-[var(--pd-gutter)]">
       <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">{children}</div>
-      <TotalRow label={t('total')} value={moneyOrDash(total, currency)} color={brand.primaryColor} />
+      <TotalRow label={t('total')} value={moneyOrDash(total, currency, locale)} color={brand.primaryColor} />
     </div>
   );
 }
@@ -105,6 +235,8 @@ function PaymentFrame({
 export interface PaymentViewProps {
   payment: DisplayPayment;
   currency: string;
+  /** Etiqueta BCP 47 con la que se formatean los importes (F4, PLAN §4.5). */
+  locale?: string;
   brand: DisplayBrand;
   /** Cobro·QR (Fase 2): ¿se puede mostrar el botón «Ya pagué»? (resolveTouch: detección + forzado). */
   touch?: boolean;
@@ -112,13 +244,13 @@ export interface PaymentViewProps {
   onQrPaidClaim?: () => void;
 }
 
-export function PaymentView({ payment, currency, brand, touch = false, onQrPaidClaim }: PaymentViewProps) {
+export function PaymentView({ payment, currency, locale, brand, touch = false, onQrPaidClaim }: PaymentViewProps) {
   const t = useTranslations('posDisplay');
-  const money = (value: unknown) => moneyOrDash(value, currency);
+  const money = (value: unknown) => moneyOrDash(value, currency, locale);
 
   if (payment.method === 'cash') {
     return (
-      <PaymentFrame brand={brand} total={payment.total} currency={currency}>
+      <PaymentFrame brand={brand} total={payment.total} currency={currency} locale={locale}>
         <p className="text-[length:var(--pd-heading)] uppercase tracking-wider text-neutral-500">{t('payment.cash')}</p>
         <div className="grid w-full grid-cols-2 gap-8">
           <div>
@@ -140,7 +272,7 @@ export function PaymentView({ payment, currency, brand, touch = false, onQrPaidC
 
   if (payment.method === 'card') {
     return (
-      <PaymentFrame brand={brand} total={payment.total} currency={currency}>
+      <PaymentFrame brand={brand} total={payment.total} currency={currency} locale={locale}>
         <p className="text-[length:var(--pd-heading)] uppercase tracking-wider text-neutral-500">
           {payment.provider ? t('payment.cardWith', { provider: payment.provider }) : t('payment.card')}
         </p>
@@ -149,7 +281,7 @@ export function PaymentView({ payment, currency, brand, touch = false, onQrPaidC
     );
   }
 
-  return <QrPaymentView payment={payment} currency={currency} brand={brand} touch={touch} onQrPaidClaim={onQrPaidClaim} />;
+  return <QrPaymentView payment={payment} currency={currency} locale={locale} brand={brand} touch={touch} onQrPaidClaim={onQrPaidClaim} />;
 }
 
 /** Reloj de 1 s para la cuenta atrás del QR; se para cuando no hay vencimiento. */
@@ -213,6 +345,7 @@ class QrCodeBoundary extends Component<{ fallback: ReactNode; children: ReactNod
 export function QrPaymentView({
   payment,
   currency,
+  locale,
   brand,
   touch = false,
   onQrPaidClaim,
@@ -238,11 +371,11 @@ export function QrPaymentView({
     typeof payment.amount === 'number' && Number.isFinite(payment.amount) && payment.amount !== payment.total ? payment.amount : null;
 
   return (
-    <PaymentFrame brand={brand} total={payment.total} currency={currency}>
+    <PaymentFrame brand={brand} total={payment.total} currency={currency} locale={locale}>
       <p className="text-[length:var(--pd-heading)] uppercase tracking-wider text-neutral-500">{label}</p>
       {partialAmount !== null && (
         <p className="text-[length:var(--pd-line)] font-semibold tabular-nums text-neutral-900" data-qr-amount={partialAmount}>
-          {t('payment.qrAmountOfTotal', { total: moneyOrDash(payment.total, currency), amount: moneyOrDash(partialAmount, currency) })}
+          {t('payment.qrAmountOfTotal', { total: moneyOrDash(payment.total, currency, locale), amount: moneyOrDash(partialAmount, currency, locale) })}
         </p>
       )}
       {view.kind === 'fallback' ? (
@@ -300,7 +433,23 @@ export function QrPaymentView({
   );
 }
 
-export function ThanksView({ total, currency, brand }: { total: number; currency: string; brand: DisplayBrand }) {
+export interface ThanksViewProps {
+  total: number;
+  currency: string;
+  /** Etiqueta BCP 47 con la que se formatea el importe (F4). */
+  locale?: string;
+  brand: DisplayBrand;
+  /**
+   * Calificación (F4, PLAN §4.2 y §4.4): se pregunta solo si la caja lo pide
+   * (`thanks.askRating`, que sale del ajuste `rating.enabled`) Y la pantalla
+   * es táctil. Sin `onRate` no se pinta nada: una pantalla no táctil no
+   * muestra un control que no se puede usar.
+   */
+  askRating?: boolean;
+  onRate?: (rating: Rating) => void;
+}
+
+export function ThanksView({ total, currency, locale, brand, askRating = false, onRate }: ThanksViewProps) {
   const t = useTranslations('posDisplay');
   return (
     <Centered>
@@ -308,11 +457,62 @@ export function ThanksView({ total, currency, brand }: { total: number; currency
       <p className="text-[length:var(--pd-big)] font-semibold text-neutral-900">{t('thanks.title')}</p>
       <p className="text-[length:var(--pd-line)] text-neutral-500">{t('thanks.paid')}</p>
       <p className="text-[length:var(--pd-total)] font-bold leading-none tabular-nums" style={{ color: brand.primaryColor }}>
-        {moneyOrDash(total, currency)}
+        {moneyOrDash(total, currency, locale)}
       </p>
+      {askRating && onRate ? <RatingPicker brand={brand} onRate={onRate} /> : null}
     </Centered>
   );
 }
+
+/**
+ * Cinco caras, una sola pulsación y ningún texto obligatorio (PLAN §4.2).
+ * Cada botón mide al menos 88 px de lado (dedo, no ratón) y lleva su propia
+ * etiqueta accesible: quien use lector de pantalla oye «Muy malo… Muy bueno»,
+ * no «1… 5».
+ *
+ * Solo se puede pulsar UNA vez: después se agradece y los botones
+ * desaparecen. La caja además deduplica por venta (feedback.ts), así que un
+ * segundo aviso no crearía una segunda calificación; esto es para que el
+ * cliente no se quede dudando si su pulsación contó.
+ */
+function RatingPicker({ brand, onRate }: { brand: DisplayBrand; onRate: (rating: Rating) => void }) {
+  const t = useTranslations('posDisplay');
+  const [chosen, setChosen] = useState<Rating | null>(null);
+
+  if (chosen !== null) {
+    return (
+      <p className="text-[length:var(--pd-line)] font-semibold" style={{ color: brand.primaryColor }} aria-live="polite" data-rating-sent={chosen}>
+        {t('rating.sent')}
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <p className="text-[length:var(--pd-line)] text-neutral-700">{t('rating.question')}</p>
+      <div className="flex flex-wrap items-center justify-center gap-[calc(var(--pd-gutter)*0.5)]" role="group" aria-label={t('rating.question')}>
+        {RATINGS.map((value) => (
+          <button
+            key={value}
+            type="button"
+            data-rating={value}
+            aria-label={t(`rating.level.${value}` as 'rating.level.1')}
+            onClick={() => {
+              setChosen(value);
+              onRate(value);
+            }}
+            className="flex h-[max(88px,calc(var(--pd-line)*2.4))] w-[max(88px,calc(var(--pd-line)*2.4))] items-center justify-center rounded-2xl border-2 border-neutral-200 bg-white text-[length:var(--pd-big)] leading-none shadow-sm transition-transform active:scale-95"
+          >
+            <span aria-hidden="true">{RATING_FACES[value]}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Caras de 1 a 5. Emoji y no imágenes: no hay descarga que pueda fallar en el mostrador. */
+const RATING_FACES: Record<Rating, string> = { 1: '\u{1F641}', 2: '\u{1F615}', 3: '\u{1F610}', 4: '\u{1F642}', 5: '\u{1F60A}' };
 
 export interface ConnectingViewProps {
   brand: DisplayBrand;

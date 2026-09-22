@@ -341,10 +341,12 @@ describe('1 · ajustes guardados en la tarjeta → hello.settings nuevo sin reca
       showCustomerName: false,
       locale: null,
       touch: 'auto',
+      // F4: el reposo viaja en el saludo (la pantalla local no tiene otra
+      // fuente de ajustes); por defecto, la marca de siempre a los 90 s.
+      idle: { mode: 'brand', mediaUrls: [], idleAfterSeconds: 90 },
     });
-    // Nunca viajan `enabled` ni `idle` (PLAN §8).
+    // `enabled` (interruptor maestro) nunca viaja (PLAN §8).
     expect(hello.settings).not.toHaveProperty('enabled');
-    expect(hello.settings).not.toHaveProperty('idle');
     expect(display.link.snapshot.hello?.settings).toEqual(hello.settings);
   });
 

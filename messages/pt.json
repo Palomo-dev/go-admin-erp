@@ -1991,6 +1991,22 @@
   "posDisplay": {
     "welcome": "Bem-vindo",
     "cashier": "Atendido por {name}",
+    "customer": "Cliente: {name}",
+    "rating": {
+      "question": "Como foi o atendimento?",
+      "sent": "Obrigado pela sua avaliação!",
+      "level": {
+        "1": "Muito ruim",
+        "2": "Ruim",
+        "3": "Regular",
+        "4": "Bom",
+        "5": "Muito bom"
+      }
+    },
+    "idle": {
+      "promotionsTitle": "Promoção",
+      "validUntil": "Até {date}"
+    },
     "connecting": "Conectando ao caixa…",
     "noTerminal": "Abra o ponto de venda neste computador para vincular a tela",
     "updateRequired": "Atualize a tela",

@@ -9,7 +9,7 @@
  */
 
 import { z } from 'zod';
-import type { DisplayPresentationSettings, DisplayTouchOverride } from './protocol';
+import type { DisplayIdleMode, DisplayPresentationSettings, DisplayTouchOverride } from './protocol';
 
 export const POS_CUSTOMER_DISPLAY_KEY = 'pos_customer_display';
 
@@ -34,7 +34,7 @@ export const IDLE_AFTER_SECONDS_MAX = 3600;
 /** Cuántas imágenes propias admite el reposo (cada una una URL http(s)). */
 export const IDLE_MEDIA_URLS_MAX = 20;
 
-export const IDLE_MODES = ['brand', 'promotions', 'media'] as const;
+export const IDLE_MODES = ['brand', 'promotions', 'media'] as const satisfies readonly DisplayIdleMode[];
 export type IdleMode = (typeof IDLE_MODES)[number];
 export const TOUCH_OVERRIDES = ['auto', 'touch', 'no-touch'] as const satisfies readonly DisplayTouchOverride[];
 
@@ -201,7 +201,10 @@ export function parseCustomerDisplaySettings(raw: unknown): CustomerDisplaySetti
 
 /**
  * Lo que viaja a la pantalla en `hello.settings` (protocol.ts): todo menos
- * `enabled` (apagado = no hay hello) e `idle` (recursos de la pantalla, F4).
+ * `enabled` (apagado = no hay hello). Desde la Fase 4 también `idle`: la
+ * pantalla LOCAL no tiene otra fuente de ajustes que el saludo (la remota lo
+ * recibe además en su bootstrap), y sin él el modo reposo no se puede
+ * aplicar en la caja del mostrador.
  */
 export function toDisplayPresentationSettings(settings: Readonly<CustomerDisplaySettings>): DisplayPresentationSettings {
   return {
@@ -211,5 +214,6 @@ export function toDisplayPresentationSettings(settings: Readonly<CustomerDisplay
     showCustomerName: settings.showCustomerName,
     locale: settings.locale,
     touch: settings.touch,
+    idle: { mode: settings.idle.mode, mediaUrls: [...settings.idle.mediaUrls], idleAfterSeconds: settings.idle.idleAfterSeconds },
   };
 }

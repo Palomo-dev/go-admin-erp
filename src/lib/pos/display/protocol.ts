@@ -96,6 +96,15 @@ export interface DisplayCart {
   total: number;
   /** Línea que acaba de cambiar, para el resaltado de 600 ms. */
   lastChangedLineId: string | null;
+  /**
+   * Nombre del cliente de la venta (Fase 4), o null si la venta es anónima.
+   * Solo se PINTA si los ajustes lo piden (`showCustomerName`, apagado por
+   * defecto: privacidad primero). Viaja con el carrito y no en el `hello`
+   * porque el cajero puede asignar el cliente en mitad del pedido y el
+   * saludo no se reemite con cada cambio del carrito. Opcional y aditivo:
+   * un emisor anterior no lo manda y la pantalla lo sanea a null.
+   */
+  customerName?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -158,6 +167,26 @@ export interface DisplayPresentationSettings {
   /** BCP 47 (p. ej. "es-CO"); null = el de la organización. */
   locale: string | null;
   touch: DisplayTouchOverride;
+  /**
+   * Modo reposo (Fase 4, PLAN §5.2). Opcional y aditivo: un emisor de las
+   * fases 0-3 no lo manda y la pantalla se queda en 'brand', que es lo que
+   * hacía hasta ahora. Viaja aquí —y no por un mensaje propio— porque la
+   * pantalla local no tiene otra fuente de ajustes que el `hello`; la remota
+   * lo recibe además en su `bootstrap`, y gana el último saludo (la caja
+   * vuelve a saludar al guardar la tarjeta).
+   */
+  idle?: DisplayIdleSettings;
+}
+
+/** Qué pinta la pantalla en reposo (PLAN §5.2). Mismo juego de valores que `IDLE_MODES` de settingsSchema.ts. */
+export type DisplayIdleMode = 'brand' | 'promotions' | 'media';
+
+export interface DisplayIdleSettings {
+  mode: DisplayIdleMode;
+  /** Imágenes propias del comercio (http(s) absolutas) para el modo 'media'. */
+  mediaUrls: string[];
+  /** Segundos sin actividad antes de entrar en reposo. */
+  idleAfterSeconds: number;
 }
 
 // ---------------------------------------------------------------------------

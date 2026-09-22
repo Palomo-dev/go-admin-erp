@@ -33,6 +33,11 @@ interface Chain {
   eq(column: string, value: unknown): Chain;
   neq(column: string, value: unknown): Chain;
   gt(column: string, value: unknown): Chain;
+  gte(column: string, value: unknown): Chain;
+  lte(column: string, value: unknown): Chain;
+  /** `col IS null` de PostgREST (F4: la ruta de calificación busca ventas sin id). */
+  is(column: string, value: unknown): Chain;
+  in(column: string, values: readonly unknown[]): Chain;
   /** Filtro `or` de PostgREST (`col.is.null,col.lt.valor`); se registra como `['or', expr, undefined]`. */
   or(expression: string): Chain;
   order(column: string, opts?: unknown): Chain;
@@ -85,6 +90,22 @@ export function makeSupabaseDouble(responder: Responder): SupabaseDouble {
         },
         gt: (column, value) => {
           call.filters.push(['gt', column, value]);
+          return chain;
+        },
+        gte: (column, value) => {
+          call.filters.push(['gte', column, value]);
+          return chain;
+        },
+        lte: (column, value) => {
+          call.filters.push(['lte', column, value]);
+          return chain;
+        },
+        is: (column, value) => {
+          call.filters.push(['is', column, value]);
+          return chain;
+        },
+        in: (column, values) => {
+          call.filters.push(['in', column, values]);
           return chain;
         },
         or: (expression) => {

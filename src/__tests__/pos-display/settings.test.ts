@@ -334,7 +334,13 @@ describe('settings.ts · parseCustomerDisplaySettings degrada sin lanzar', () =>
 });
 
 describe('settings.ts · toDisplayPresentationSettings (hello.settings)', () => {
-  it('lleva propina, calificación, desglose, nombre, idioma y táctil; NO enabled ni idle', () => {
+  /**
+   * F4: `idle` SÍ viaja desde la Fase 4 (antes no). La pantalla local no
+   * tiene otra fuente de ajustes que el saludo, y sin él no hay modo reposo
+   * en la caja del mostrador. `enabled` sigue sin viajar: apagado = no hay
+   * hello.
+   */
+  it('lleva propina, calificación, desglose, nombre, idioma, táctil y reposo; NO enabled', () => {
     const settings = parseCustomerDisplaySettings({ enabled: true, tips: { enabled: true, presets: [8, 12, 18] }, locale: 'en', touch: 'touch' });
     const presentation = toDisplayPresentationSettings(settings);
     expect(presentation).toEqual({
@@ -344,12 +350,14 @@ describe('settings.ts · toDisplayPresentationSettings (hello.settings)', () => 
       showCustomerName: false,
       locale: 'en',
       touch: 'touch',
+      idle: { mode: 'brand', mediaUrls: [], idleAfterSeconds: 90 },
     });
     expect(presentation).not.toHaveProperty('enabled');
-    expect(presentation).not.toHaveProperty('idle');
     // Copia: mutar el hello no toca la caché.
     presentation.tips.presets.push(99);
     expect(settings.tips.presets).toEqual([8, 12, 18]);
+    presentation.idle?.mediaUrls.push('https://x.test/a.png');
+    expect(settings.idle.mediaUrls).toEqual([]);
   });
 });
 

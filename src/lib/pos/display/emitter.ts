@@ -473,6 +473,13 @@ export class DisplayEmitter {
   private lastCapabilitiesJson: string | null = null;
   private thanks: DisplayState['thanks'] = null;
   private thanksTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Venta que la pantalla está agradeciendo (Fase 4). La calificación que
+   * llega de la pantalla NO trae el id de la venta: lo pone la caja desde
+   * aquí. Un `saleId` que viniera por el cable sería un id de venta elegido
+   * por quien escriba en el canal. Se olvida al salir de «Gracias».
+   */
+  private thanksSaleId: string | null = null;
   private closed = false;
 
   private pendingFlush: Cancel | null = null;
@@ -932,7 +939,7 @@ export class DisplayEmitter {
    *   la cierran tip_selected / skipTip(). Se ignora.
    * Con la caja sin arrancar (CheckoutDialog en mesas o nueva venta) se ignora.
    */
-  setMode(mode: DisplayMode, extra?: { total?: number; askRating?: boolean }): void {
+  setMode(mode: DisplayMode, extra?: { total?: number; askRating?: boolean; saleId?: string | null }): void {
     try {
       if (!this.started) return;
       switch (mode) {
@@ -942,7 +949,12 @@ export class DisplayEmitter {
           this.resetTip();
           this.tipBase = null; // la venta terminó: la base no vale para la siguiente
           this.closed = false;
-          this.thanks = { total, askRating: extra?.askRating === true };
+          // Fase 4: si quien confirma la venta no dice nada, manda el ajuste
+          // de la organización (`rating.enabled`). Así CheckoutDialog no
+          // tiene que conocer los ajustes de la pantalla para preguntar.
+          const askRating = extra?.askRating === undefined ? this.ratingEnabled() : extra.askRating === true;
+          this.thanks = { total, askRating };
+          this.thanksSaleId = typeof extra?.saleId === 'string' && extra.saleId.length > 0 ? extra.saleId : null;
           this.armThanksTimer();
           break;
         }
@@ -1055,6 +1067,20 @@ export class DisplayEmitter {
    * la caja aplique el MISMO forzado táctil que la pantalla
    * (`settings.touch`, PLAN §4.4) sin conocer settings.ts ni la organización.
    */
+  /**
+   * Venta que la pantalla está agradeciendo ahora mismo, o null. La usa la
+   * caja para registrar la calificación del cliente contra la venta correcta
+   * (ver `thanksSaleId`).
+   */
+  get ratingSaleId(): string | null {
+    return this.thanks ? this.thanksSaleId : null;
+  }
+
+  /** ¿La organización pide calificación al terminar la venta? (ajuste `rating.enabled`). */
+  private ratingEnabled(): boolean {
+    return this.presentationSettings?.rating?.enabled === true;
+  }
+
   get presentationSettings(): DisplayPresentationSettings | null {
     if (!this.getSettings) return null;
     try {
@@ -1472,6 +1498,7 @@ export class DisplayEmitter {
     this.thanksTimer = setTimeout(() => {
       this.thanksTimer = null;
       this.thanks = null;
+      this.thanksSaleId = null;
       this.requestFlush();
     }, this.thanksDurationMs);
     const maybeUnref = this.thanksTimer as unknown as { unref?: () => void };
@@ -1487,5 +1514,6 @@ export class DisplayEmitter {
   private clearThanks(): void {
     this.clearThanksTimer();
     this.thanks = null;
+    this.thanksSaleId = null;
   }
 }

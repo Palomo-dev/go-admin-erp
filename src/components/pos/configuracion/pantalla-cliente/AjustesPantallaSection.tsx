@@ -276,36 +276,33 @@ export function AjustesPantallaSection({ settings, disabled, onSaved, onSavingCh
         )}
       </div>
 
-      {/* Calificación, desglose, nombre del cliente */}
+      {/* Calificación, desglose, nombre del cliente. Fase 4: la pantalla ya
+          consume los tres, así que se editan como cualquier otro ajuste (la
+          nota «Disponible en la fase 4» se retiró al entregarlos). */}
       {(
         [
-          // La pantalla aún no consume estos tres (QA final F2): se ven y se
-          // guardan, pero deshabilitados y con la nota «Disponible en la fase 4»
-          // para no prometer algo que hoy no cambia nada en el cliente.
           { key: 'rating', label: tPres('rating'), hint: tPres('ratingHint'), checked: draft.rating.enabled, set: (v: boolean) => update('rating', { enabled: v }) },
           { key: 'tax', label: tPres('taxBreakdown'), hint: tPres('taxBreakdownHint'), checked: draft.showTaxBreakdown, set: (v: boolean) => update('showTaxBreakdown', v) },
           { key: 'customer', label: tPres('customerName'), hint: tPres('customerNameHint'), checked: draft.showCustomerName, set: (v: boolean) => update('showCustomerName', v) },
         ] as const
       ).map((row) => (
-        <div key={row.key} className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg opacity-70">
+        <div key={row.key} className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
           <div className="min-w-0">
             <p className="font-medium text-gray-900 dark:text-white break-words">{row.label}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 break-words">{row.hint}</p>
-            <p className="text-xs text-amber-700 dark:text-amber-300 break-words">{tPres('phase4Hint')}</p>
           </div>
-          <Switch checked={row.checked} onCheckedChange={row.set} disabled aria-label={row.label} />
+          <Switch checked={row.checked} onCheckedChange={row.set} disabled={controlsDisabled} aria-label={row.label} />
         </div>
       ))}
 
-      {/* Modo reposo (la pantalla lo aplica en la fase 4: se guarda, deshabilitado) */}
-      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3 opacity-70">
+      {/* Modo reposo (Fase 4: la pantalla ya lo aplica) */}
+      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3">
         <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="font-medium text-gray-900 dark:text-white break-words">{tPres('idle')}</p>
-            <p className="text-xs text-amber-700 dark:text-amber-300 break-words">{tPres('phase4Hint')}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 break-words">{tPres('idleHint')}</p>
           </div>
-          <Select value={draft.idle.mode} onValueChange={(v) => update('idle', { ...draft.idle, mode: v as IdleMode })} disabled>
+          <Select value={draft.idle.mode} onValueChange={(v) => update('idle', { ...draft.idle, mode: v as IdleMode })} disabled={controlsDisabled}>
             <SelectTrigger className="w-full sm:w-64" aria-label={tPres('idle')}>
               <SelectValue />
             </SelectTrigger>
@@ -328,7 +325,7 @@ export function AjustesPantallaSection({ settings, disabled, onSaved, onSavingCh
               value={mediaText}
               onChange={(e) => setMediaText(e.target.value)}
               placeholder="https://…"
-              disabled
+              disabled={controlsDisabled}
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">{tPres('idleMediaHint', { max: IDLE_MEDIA_URLS_MAX })}</p>
           </div>
@@ -347,7 +344,7 @@ export function AjustesPantallaSection({ settings, disabled, onSaved, onSavingCh
             className="w-28"
             value={Number.isFinite(draft.idle.idleAfterSeconds) ? draft.idle.idleAfterSeconds : ''}
             onChange={(e) => update('idle', { ...draft.idle, idleAfterSeconds: e.target.value === '' ? Number.NaN : Number(e.target.value) })}
-            disabled
+            disabled={controlsDisabled}
           />
           <span className="text-sm text-gray-500 dark:text-gray-400">{tPres('seconds')}</span>
         </div>
@@ -359,12 +356,11 @@ export function AjustesPantallaSection({ settings, disabled, onSaved, onSavingCh
           <div className="min-w-0">
             <p className="font-medium text-gray-900 dark:text-white break-words">{tPres('locale')}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 break-words">{tPres('localeHint')}</p>
-            <p className="text-xs text-amber-700 dark:text-amber-300 break-words">{tPres('phase4Hint')}</p>
           </div>
           <Select
             value={draft.locale ?? ORG_LOCALE_VALUE}
             onValueChange={(v) => update('locale', v === ORG_LOCALE_VALUE ? null : v)}
-            disabled
+            disabled={controlsDisabled}
           >
             <SelectTrigger className="w-full sm:w-64" aria-label={tPres('locale')}>
               <SelectValue />

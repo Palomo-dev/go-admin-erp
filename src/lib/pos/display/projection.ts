@@ -183,6 +183,19 @@ function resolveTaxIncluded(items: CartItem[], cartFlag: unknown): boolean {
   return items.some((item) => Boolean(item.tax_included));
 }
 
+/**
+ * Nombre del cliente del carrito (Fase 4) o null. Solo `customer.full_name`
+ * (columna GENERATED de la BD); nunca documento, teléfono ni correo: a la
+ * pantalla del cliente no viaja ningún otro dato personal. Recortado y, si
+ * queda vacío, null. La pantalla solo lo pinta con `showCustomerName`.
+ */
+function projectCustomerName(cart: Cart): string | null {
+  const raw = (cart.customer as { full_name?: unknown } | undefined)?.full_name;
+  if (typeof raw !== 'string') return null;
+  const name = raw.trim();
+  return name.length > 0 ? name : null;
+}
+
 /** DisplayCart sin carrito: lo que se proyecta cuando la caja no tiene carrito activo. */
 function emptyDisplayCart(currency: string): DisplayCart {
   return {
@@ -196,6 +209,7 @@ function emptyDisplayCart(currency: string): DisplayCart {
     taxIncluded: false,
     total: 0,
     lastChangedLineId: null,
+    customerName: null,
   };
 }
 
@@ -237,5 +251,6 @@ export function projectCartForDisplay(cart: Cart | null | undefined, opts: Proje
     total: toAmount(totals ? totals.total : cart.total),
     // Solo se resalta una línea que exista en el carrito proyectado.
     lastChangedLineId: lastChangedLineId !== null && lines.some((l) => l.id === lastChangedLineId) ? lastChangedLineId : null,
+    customerName: projectCustomerName(cart),
   };
 }

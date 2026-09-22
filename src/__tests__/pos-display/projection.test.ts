@@ -104,6 +104,8 @@ describe('proyección · contrato básico', () => {
       taxIncluded: false,
       total: 0,
       lastChangedLineId: null,
+      // F4: solo se PINTA con el ajuste `showCustomerName`; sin cliente, null.
+      customerName: null,
     });
   });
 
@@ -610,6 +612,7 @@ describe('proyección · sin carrito y moneda inválida', () => {
         taxIncluded: false,
         total: 0,
         lastChangedLineId: null,
+        customerName: null,
       });
     }
   });

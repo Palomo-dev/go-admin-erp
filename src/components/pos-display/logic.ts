@@ -274,6 +274,78 @@ export function taxLabelKind(cart: Pick<DisplayCart, 'taxTotal' | 'taxIncluded' 
   return 'mixed';
 }
 
+/**
+ * Fila de impuestos de la vista Pedido (F4, ajuste `showTaxBreakdown`).
+ *
+ * - `none`: no hay impuesto que mostrar.
+ * - `label`: solo la etiqueta «IVA incluido», SIN importe. Es lo que se pinta
+ *   cuando el impuesto va dentro del precio y la organización NO pidió
+ *   desglose: el cliente ya ve el total y el importe del impuesto no le
+ *   añade nada.
+ * - `amount`: etiqueta e importe, como en el recibo. Siempre que el impuesto
+ *   se SUMA al subtotal (aunque el desglose esté apagado): si no, subtotal +
+ *   nada ≠ total y la pantalla parecería mentir (PLAN §4.1.3).
+ *
+ * `mixed` (unas líneas con impuesto incluido y otras no) siempre muestra
+ * importe: la etiqueta sola no describiría un carrito mixto.
+ */
+export type TaxRowKind = 'none' | 'label' | 'amount';
+
+export function resolveTaxRowKind(kind: TaxLabelKind, showTaxBreakdown: boolean): TaxRowKind {
+  if (kind === 'none') return 'none';
+  if (showTaxBreakdown) return 'amount';
+  return kind === 'included' ? 'label' : 'amount';
+}
+
+// ---------------------------------------------------------------------------
+// Idioma e importes (PLAN §4.5, ajuste `locale`)
+// ---------------------------------------------------------------------------
+
+/** Etiqueta BCP 47 de respaldo cuando ni los ajustes ni la organización dicen otra cosa. */
+export const FALLBACK_LOCALE_TAG = 'es-CO';
+
+/** Idioma de la app → etiqueta completa con la que se formatean los importes. */
+const LOCALE_TAGS: Record<string, string> = { es: 'es-CO', en: 'en-US', pt: 'pt-BR', fr: 'fr-FR' };
+
+/** ¿Es una etiqueta BCP 47 con la forma que `Intl` acepta? (idioma + subetiquetas). */
+function isLocaleTag(value: unknown): value is string {
+  return typeof value === 'string' && /^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$/.test(value.trim());
+}
+
+/**
+ * Con qué etiqueta se formatean los importes y las fechas de la pantalla
+ * (PLAN §4.5). Prioridad: `locale` de los ajustes de la organización →
+ * idioma en el que la pantalla está pintando (el de la organización, que
+ * ya aplicó next-intl) → FALLBACK_LOCALE_TAG. Un idioma de dos letras se
+ * expande a su etiqueta completa (`es` → `es-CO`) para que el separador de
+ * miles sea el del país y no el que elija el navegador.
+ */
+export function resolveDisplayLocaleTag(settingsLocale: unknown, appLocale?: string | null): string {
+  const fromSettings = isLocaleTag(settingsLocale) ? settingsLocale.trim() : null;
+  const candidate = fromSettings ?? (isLocaleTag(appLocale) ? appLocale.trim() : null);
+  if (candidate === null) return FALLBACK_LOCALE_TAG;
+  return LOCALE_TAGS[candidate.toLowerCase()] ?? candidate;
+}
+
+/**
+ * Importe con la moneda de la caja y el idioma de la pantalla. Es el ÚNICO
+ * formateador de importes de /pos-display: `formatCurrency` de
+ * `@/utils/Utils` fija `es-CO` y no sirve para una pantalla configurada en
+ * otro idioma (PLAN §4.5). Un valor que no es un número finito devuelve
+ * «—»: la pantalla nunca inventa un $ 0,00 (PLAN §4.1.3).
+ */
+export function formatDisplayMoney(value: unknown, currency: string, locale: string = FALLBACK_LOCALE_TAG): string {
+  const amount = typeof value === 'number' ? value : Number(value);
+  if (value === null || value === undefined || !Number.isFinite(amount)) return '—';
+  const code = typeof currency === 'string' && currency.trim().length > 0 ? currency.trim() : FALLBACK_CURRENCY;
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: code, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+  } catch {
+    // Etiqueta o moneda que Intl no conoce: el importe se sigue leyendo.
+    return `${code} ${amount.toFixed(2)}`;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Resolución de vista
 // ---------------------------------------------------------------------------
@@ -547,6 +619,8 @@ export function sanitizeDisplayCart(value: unknown): DisplayCart | null {
     taxIncluded: Boolean(value.taxIncluded),
     total,
     lastChangedLineId: lastChangedLineId !== null && seen.has(lastChangedLineId) ? lastChangedLineId : null,
+    // F4: solo se PINTA con `showCustomerName`; aquí solo se normaliza.
+    customerName: nonEmptyString(value.customerName)?.trim() ?? null,
   };
 }
 

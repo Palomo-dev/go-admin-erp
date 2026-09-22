@@ -2099,6 +2099,22 @@
   "posDisplay": {
     "welcome": "Welcome",
     "cashier": "Served by {name}",
+    "customer": "Customer: {name}",
+    "rating": {
+      "question": "How was our service?",
+      "sent": "Thank you for your rating!",
+      "level": {
+        "1": "Very bad",
+        "2": "Bad",
+        "3": "Fair",
+        "4": "Good",
+        "5": "Very good"
+      }
+    },
+    "idle": {
+      "promotionsTitle": "Promotion",
+      "validUntil": "Until {date}"
+    },
     "connecting": "Connecting to the register…",
     "noTerminal": "Open the point of sale on this computer to link the display",
     "updateRequired": "Please update the display",

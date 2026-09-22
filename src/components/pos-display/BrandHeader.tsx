@@ -11,6 +11,12 @@ import type { DisplayBrand } from './useDisplayBrand';
 interface BrandHeaderProps {
   brand: DisplayBrand;
   cashierName: string | null;
+  /**
+   * Nombre del cliente de la venta (F4, ajuste `showCustomerName`). La raíz
+   * ya decide si se pasa: aquí solo se pinta. Apagado por defecto en los
+   * ajustes, así que lo normal es que llegue null.
+   */
+  customerName?: string | null;
   muted?: boolean;
 }
 
@@ -33,7 +39,7 @@ export function BrandLogo({ brand, className = '' }: { brand: DisplayBrand; clas
   );
 }
 
-export function BrandHeader({ brand, cashierName, muted = false }: BrandHeaderProps) {
+export function BrandHeader({ brand, cashierName, customerName = null, muted = false }: BrandHeaderProps) {
   const t = useTranslations('posDisplay');
   return (
     <header
@@ -45,8 +51,15 @@ export function BrandHeader({ brand, cashierName, muted = false }: BrandHeaderPr
           {brand.name}
         </h1>
       </div>
-      {cashierName ? (
-        <p className="shrink-0 text-[length:var(--pd-small)] text-neutral-500">{t('cashier', { name: cashierName })}</p>
+      {customerName || cashierName ? (
+        <div className="flex min-w-0 shrink-0 flex-col items-end text-[length:var(--pd-small)] text-neutral-500">
+          {customerName ? (
+            <p className="max-w-[40vw] truncate font-medium text-neutral-700" data-customer-name="true">
+              {t('customer', { name: customerName })}
+            </p>
+          ) : null}
+          {cashierName ? <p className="truncate">{t('cashier', { name: cashierName })}</p> : null}
+        </div>
       ) : null}
     </header>
   );

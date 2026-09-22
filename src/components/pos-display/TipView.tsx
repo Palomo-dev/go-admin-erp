@@ -19,7 +19,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { DisplayCart, TipKind } from '@/lib/pos/display/protocol';
 import { TIP_CUSTOM_MAX_DIGITS, resolveTipBase, tipOptions, type DisplayTipBlock } from '@/lib/pos/display/tip';
-import { formatCurrency } from '@/utils/Utils';
+import { formatDisplayMoney } from './logic';
 import { TotalRow } from './OrderView';
 import type { DisplayBrand } from './useDisplayBrand';
 
@@ -27,6 +27,8 @@ export interface TipViewProps {
   cart: DisplayCart;
   tip: DisplayTipBlock;
   currency: string;
+  /** Etiqueta BCP 47 con la que se formatean los importes (F4, PLAN §4.5). */
+  locale?: string;
   brand: DisplayBrand;
   /** resolveTouch: detección + forzado de los ajustes. Sin táctil no hay botones. */
   touch: boolean;
@@ -36,7 +38,7 @@ export interface TipViewProps {
 
 const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '000', '0', '⌫'] as const;
 
-export function TipView({ cart, tip, currency, brand, touch, onSelect }: TipViewProps) {
+export function TipView({ cart, tip, currency, locale, brand, touch, onSelect }: TipViewProps) {
   const t = useTranslations('posDisplay');
   const base = resolveTipBase(tip, cart);
   const options = tipOptions(base, tip.presets);
@@ -57,7 +59,7 @@ export function TipView({ cart, tip, currency, brand, touch, onSelect }: TipView
     setSent(choice);
     onSelect?.(choice);
   };
-  const money = (value: number) => formatCurrency(value, currency);
+  const money = (value: number) => formatDisplayMoney(value, currency, locale);
   const customAmount = digits.length > 0 ? Number(digits) : 0;
 
   const buttonBase =

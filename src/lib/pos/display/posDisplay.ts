@@ -45,6 +45,7 @@ import {
   toDisplayPresentationSettings,
 } from './settings';
 import { getOrCreateLocalTerminalId } from './terminal';
+import { sendDisplayRating } from './feedback';
 import { BroadcastChannelTransport, createBroadcastDisplayChannel, isBroadcastChannelSupported, type DisplayTransport } from './transport';
 import { isDisplayTransportAvailable, resolveDisplayChannelFactory } from './desktopChannel';
 import { createCajaDisplayChannel } from './cajaChannel';
@@ -246,6 +247,16 @@ export function getPosDisplayEmitter(): DisplayEmitter {
       isEnabled: () => isCustomerDisplayEnabled(getOrganizationId()),
       // Fase 2: los ajustes de presentación viajan en hello.settings desde la misma caché.
       getSettings: () => toDisplayPresentationSettings(getCachedCustomerDisplaySettings(getOrganizationId())),
+    });
+    // Fase 4: la calificación del cliente la registra la caja, no la pantalla
+    // (ver feedback.ts). Se suscribe UNA vez por ventana, al crear el emisor,
+    // y no al montar un componente: la pantalla puede calificar durante los
+    // 8 s de «Gracias», cuando el modal de cobro ya puede estar cerrado.
+    instance.onUp((msg) => {
+      if (msg.t !== 'rating') return;
+      const saleId = instance?.ratingSaleId ?? null;
+      // El `saleId` del mensaje se ignora a propósito: lo pone la caja.
+      void sendDisplayRating({ terminalId: getOrCreateLocalTerminalId(), saleId, rating: msg.rating });
     });
   }
   return instance;

@@ -860,10 +860,12 @@ describe('Regresión · ajustes, presets, subtotal 0, no táctil, terminal, dos 
     const parsed = parseCustomerDisplaySettings({ tips: { enabled: true, presets: '5,10,15' } });
     expect(parsed.tips.enabled).toBe(true);
     expect(parsed.tips.presets).toEqual([...DEFAULT_CUSTOMER_DISPLAY_SETTINGS.tips.presets]);
-    // toDisplayPresentationSettings no expone `enabled` maestro ni `idle`.
+    // toDisplayPresentationSettings no expone el `enabled` maestro. `idle` SÍ
+    // viaja desde la F4 (la pantalla lo necesita para el modo reposo) y llega
+    // ya saneado: un modo inventado sale como 'brand'.
     const shipped = toDisplayPresentationSettings(parsed) as unknown as Record<string, unknown>;
     expect(shipped).not.toHaveProperty('enabled');
-    expect(shipped).not.toHaveProperty('idle');
+    expect(shipped.idle).toEqual({ mode: 'brand', mediaUrls: [], idleAfterSeconds: 90 });
   });
 
   it('presets vacíos: [] sin «Otro» es null (cae a pedido); [] con «Otro» se acepta y en pantalla NO táctil cae al cobro, en táctil se pregunta', () => {

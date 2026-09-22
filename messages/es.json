@@ -2099,6 +2099,22 @@
   "posDisplay": {
     "welcome": "Bienvenido",
     "cashier": "Le atiende {name}",
+    "customer": "Cliente: {name}",
+    "rating": {
+      "question": "¿Cómo fue su atención?",
+      "sent": "¡Gracias por su calificación!",
+      "level": {
+        "1": "Muy mala",
+        "2": "Mala",
+        "3": "Regular",
+        "4": "Buena",
+        "5": "Muy buena"
+      }
+    },
+    "idle": {
+      "promotionsTitle": "Promoción",
+      "validUntil": "Hasta el {date}"
+    },
     "connecting": "Conectando con la caja…",
     "noTerminal": "Abra el punto de venta en este equipo para enlazar la pantalla",
     "updateRequired": "Actualice la pantalla",

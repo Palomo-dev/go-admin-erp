@@ -110,15 +110,30 @@ function storageCon(valor: string | null): DisplayIdStorage & { data: Map<string
   };
 }
 
-type GlobalConVentana = typeof globalThis & { window?: unknown };
+/**
+ * `window` de pruebas: solo lo que el código de la pantalla toca (puente,
+ * origin, localStorage, open). Se declara OPCIONAL para poder borrarla en
+ * afterEach (TS2790) y sustituye a la `Window` completa de `typeof globalThis`
+ * (con la intersección original TypeScript exigía Location/Storage enteras:
+ * deuda de tipos de la Fase 1, saldada en F2-A ronda 4).
+ */
+interface VentanaFalsa {
+  goAdminDesktop?: GoAdminDesktopBridge;
+  location: Location;
+  localStorage: Storage;
+  open: (url: string) => { closed: boolean; focus(): void; close(): void };
+}
+type GlobalConVentana = Omit<typeof globalThis, 'window'> & { window?: VentanaFalsa };
+const globalConVentana = globalThis as unknown as GlobalConVentana;
+
 /** window falso: puente + origin + localStorage + window.open (camino web) que registra si se usó. */
 function instalarVentana(posDisplay: unknown, savedDisplayId: string | null = null) {
   const opened: string[] = [];
   const ls = storageCon(savedDisplayId);
-  (globalThis as GlobalConVentana).window = {
-    goAdminDesktop: { posDisplay },
-    location: { origin: 'http://localhost:47800' },
-    localStorage: ls,
+  globalConVentana.window = {
+    goAdminDesktop: { posDisplay } as Partial<GoAdminDesktopBridge> as unknown as GoAdminDesktopBridge,
+    location: { origin: 'http://localhost:47800' } as Partial<Location> as unknown as Location,
+    localStorage: ls as Partial<Storage> as unknown as Storage,
     open: (url: string) => {
       opened.push(url);
       return { closed: false, focus() {}, close() {} };
@@ -147,7 +162,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete (globalThis as GlobalConVentana).window;
+  delete globalConVentana.window;
   expect(isDesktop()).toBe(false);
   stopPosDisplay();
   jest.restoreAllMocks();
@@ -236,7 +251,7 @@ describe('B · D2 solo llegó a la tarjeta: sin red el indicador del POS afirma 
 describe('C · degradación: navegador (sin puente) y Desktop < 0.2.1 (puente sin listDisplays)', () => {
   it('sin puente: ni selector, ni estado, ni persistencia; abrir va por window.open y cerrar por la referencia propia', async () => {
     const { opened } = instalarVentana(undefined);
-    delete ((globalThis as GlobalConVentana).window as { goAdminDesktop?: unknown }).goAdminDesktop;
+    delete globalConVentana.window?.goAdminDesktop;
     expect(resolveNativePosDisplayApi()).toBeNull();
     expect(supportsDesktopDisplayPicker(null)).toBe(false);
     expect(supportsDesktopDisplayStatus(null)).toBe(false);

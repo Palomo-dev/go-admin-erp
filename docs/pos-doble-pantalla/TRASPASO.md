@@ -172,6 +172,9 @@ Notas sueltas que no hay que perder:
 
 ## 6. Otros pendientes heredados (no son de este loop)
 
+- **Vercel (resuelto 2026-09-22):** `RATE_LIMIT_STORE=db` ya está en Production
+  y Preview; el canje del emparejamiento de la Fase 3 no responde 503.
+
 - **goadmin-websites:** diseño *stale-while-error* pendiente en el lookup de organización
   (`8a67a16`): `unstable_cache` no cachea excepciones, así que justo en una caída de la
   base el caché desaparece. `product_count` con tope de 2000 filas documentado.

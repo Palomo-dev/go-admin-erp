@@ -3498,3 +3498,6 @@ Regla del loop: B y C no convergieron (B 8,2→8,4→8,0→7,5; C 5,0→8,3→7,
 - Compuerta de cierre: tsc completo (8 GB) 0 errores; jest pos-display + offline + guardrails + api/__tests__ en TZ=UTC y TZ=America/Bogota 144 suites / 3168 tests; eslint de la zona 0.
 - Migraciones aplicadas por MCP en esta fase (con rollback): 20260922130000_pos_display_realtime_privado, 20260922180000_pos_display_caja_solo_terminal_activa, 20260922200000_pos_display_caja_sucursal_del_usuario.
 - Cierre: F3 CERRADA en código (A 9,0 aprobada; B y C cerradas por el orquestador con los 8 defectos anteriores corregidos y verificados). Proxima accion: F4 (calificación y reposo).
+
+### Fase: F3 — requisito de despliegue RESUELTO — 2026-09-22
+`RATE_LIMIT_STORE=db` ya está configurada en Vercel (Production y Preview, añadida el 2026-09-21; confirmado por el dueño con captura del panel). La tabla `rate_limit_buckets` existe desde la migración 20260916000000. Con eso `POST /api/pos/display/pair` atiende en producción en cuanto se despliegue b816199b, sin el 503 RATE_LIMIT_STORE_REQUIRED. Deja de ser pendiente.

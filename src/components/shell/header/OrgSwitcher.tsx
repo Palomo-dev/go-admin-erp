@@ -347,9 +347,9 @@ export function OrgSwitcher({ variante, organizacionId, organizacionNombre }: Or
     <CreateOrganizationDialog
       isOpen={creandoOrg}
       onClose={() => setCreandoOrg(false)}
-      onSuccess={(data: { id?: number; name?: string; logo_url?: string; subdomain?: string } | null) => {
+      onSuccess={(data) => {
         void recargar();
-        if (data?.id) void cambiarOrganizacionActiva({ id: data.id, name: data.name, logo_url: data.logo_url, subdomain: data.subdomain });
+        if (data?.id) void cambiarOrganizacionActiva({ id: data.id, name: data.name, logo_url: data.logo_url ?? undefined });
       }}
     />
   );

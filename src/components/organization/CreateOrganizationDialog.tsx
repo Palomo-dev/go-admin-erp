@@ -6,22 +6,30 @@ import CreateOrganizationWizard from './CreateOrganizationWizard';
 import { X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
+/** Lo que devuelve el asistente al crear la organización. */
+export interface OrganizacionCreada {
+  id: number;
+  name: string;
+  logo_url?: string | null;
+}
+
 interface CreateOrganizationDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Sin uso: el asistente toma el correo de la sesión. Se conserva por compatibilidad. */
   defaultEmail?: string;
-  onSuccess?: (data: any) => void;
+  onSuccess?: (data: OrganizacionCreada) => void;
 }
 
 export default function CreateOrganizationDialog({
   isOpen,
   onClose,
-  defaultEmail = '',
   onSuccess
 }: CreateOrganizationDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const t = useTranslations('org.createOrgDialog');
+  const tHeader = useTranslations('header');
   
   // Cerrar el diálogo al hacer clic fuera del contenido
   useEffect(() => {
@@ -84,7 +92,9 @@ export default function CreateOrganizationDialog({
             {t('title')}
           </h2>
           <button
+            type="button"
             onClick={onClose}
+            aria-label={tHeader('close')}
             className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 focus:outline-none"
           >
             <X size={20} />

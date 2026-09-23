@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import CreateOrganizationForm from './CreateOrganizationForm';
 import BranchStep from '@/components/auth/BranchStep';
 import SubscriptionStep from '@/components/auth/SubscriptionStep';
 import PaymentMethodStep from '@/components/auth/PaymentMethodStep';
+import type { CouponData } from '@/components/auth/PriceSummary';
 import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { setOrganizationDefaultTaxByCode, type CodigoTarifaPorDefecto } from '@/lib/services/defaultTaxService';
 
@@ -53,7 +55,7 @@ interface WizardData {
   billingPeriod: 'monthly' | 'yearly';
   skipTrial: boolean;
   couponCode?: string;
-  validatedCoupon?: any;
+  validatedCoupon?: CouponData | null;
   // Método de pago
   stripeCustomerId?: string;
   stripePaymentMethodId?: string;
@@ -81,6 +83,7 @@ const DEFAULT_WIZARD_DATA: WizardData = {
 };
 
 export default function CreateOrganizationWizard({ onSuccess, onCancel }: CreateOrganizationWizardProps) {
+  const t = useTranslations('org.createOrgWizard');
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -300,7 +303,7 @@ export default function CreateOrganizationWizard({ onSuccess, onCancel }: Create
         ? new Date(stripeTrialEnd).toISOString()
         : new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000).toISOString();
 
-      const updatePayload: any = {
+      const updatePayload: Record<string, unknown> = {
         plan_id: planId,
         billing_period: wizardData.billingPeriod || 'monthly',
         ...(wizardData.skipTrial
@@ -313,14 +316,15 @@ export default function CreateOrganizationWizard({ onSuccess, onCancel }: Create
       await supabase.from('subscriptions').update(updatePayload).eq('organization_id', orgId);
 
       onSuccess({ id: orgId, name: wizardData.organizationName, logo_url: wizardData.logoUrl });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creando organización:', err);
-      setError(err.message || 'Error al crear la organización');
+      // Los errores de Supabase no son `Error`, pero traen `message`.
+      setError((err as { message?: string } | null)?.message || t('createError'));
       setLoading(false);
     }
   };
 
-  const stepLabels = ['Organización', 'Sucursal', 'Plan', 'Pago'];
+  const stepLabels = [t('steps.organization'), t('steps.branch'), t('steps.plan'), t('steps.payment')];
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -357,7 +361,7 @@ export default function CreateOrganizationWizard({ onSuccess, onCancel }: Create
 
       {step === 1 && (
         <CreateOrganizationForm
-          onSuccess={(data: any) => {
+          onSuccess={(data) => {
             updateFormData({
               organizationName: data.name,
               organizationLegalName: data.legal_name,
@@ -370,7 +374,7 @@ export default function CreateOrganizationWizard({ onSuccess, onCancel }: Create
               organizationState: data.state,
               organizationCountry: data.country,
               organizationCountryCode: data.country_code,
-              organizationMunicipalityId: data.municipality_id,
+              organizationMunicipalityId: data.municipality_id ?? undefined,
               organizationPostalCode: data.postal_code,
               organizationTaxId: data.tax_id,
               organizationNit: data.nit,

@@ -1366,6 +1366,89 @@
       "invalidImage": "Por favor, selecione uma imagem válida",
       "maxSize": "A imagem não deve exceder 2MB",
       "uploadError": "Erro ao enviar a imagem. Tente novamente."
+    },
+    "createOrgForm": {
+      "errors": {
+        "loadTypes": "Não foi possível carregar os tipos de organização.",
+        "loadCountries": "Não foi possível carregar os países.",
+        "nameRequired": "O nome é obrigatório",
+        "legalNameRequired": "A razão social é obrigatória",
+        "typeRequired": "Selecione um tipo de organização",
+        "emailRequired": "O e-mail é obrigatório",
+        "emailInvalid": "Digite um e-mail válido",
+        "taxIdRequired": "O NIT/RUT é obrigatório",
+        "subdomainTaken": "Esse subdomínio já está em uso",
+        "subdomainTooShort": "O subdomínio deve ter pelo menos 3 caracteres",
+        "planRequired": "Selecione um plano",
+        "noSession": "Não encontramos sua sessão. Entre novamente.",
+        "createError": "Não foi possível criar a organização."
+      },
+      "steps": {
+        "basicInfo": "Informações básicas",
+        "additionalDetails": "Detalhes adicionais",
+        "plan": "Plano",
+        "selectPlan": "Escolha seu plano"
+      },
+      "fields": {
+        "name": "Nome da organização",
+        "legalName": "Razão social",
+        "type": "Tipo de organização",
+        "select": "Selecionar…",
+        "email": "E-mail",
+        "usingAccountEmail": "Usando o e-mail da sua conta",
+        "taxId": "NIT/RUT",
+        "taxIdPlaceholder": "Ex.: 900123456",
+        "dvPlaceholder": "Auto",
+        "dvManual": "Editado manualmente",
+        "dvAuto": "Calculado a partir do NIT",
+        "phone": "Telefone",
+        "primaryColor": "Cor primária",
+        "secondaryColor": "Cor secundária",
+        "colorOption": "Cor {color}",
+        "customColor": "Cor personalizada",
+        "colorHint": "Esta cor será usada na interface da sua organização",
+        "description": "Descrição",
+        "address": "Endereço",
+        "country": "País",
+        "selectCountry": "Selecionar país…",
+        "state": "Estado / província / departamento",
+        "city": "Cidade / município",
+        "postalCode": "CEP",
+        "subdomain": "Subdomínio do seu site",
+        "subdomainPlaceholder": "minhaempresa",
+        "checkingAvailability": "Verificando disponibilidade…",
+        "subdomainAvailable": "Disponível! Seu site será:",
+        "subdomainTakenHint": "Este subdomínio já está em uso. Tente outro.",
+        "subdomainHint": "Será o link do seu site público. Apenas letras e números, sem espaços nem caracteres especiais.",
+        "restoreSuggestion": "Restaurar sugestão",
+        "website": "Site externo (opcional)",
+        "defaultTax": "Alíquota de IVA padrão",
+        "defaultTaxHint": "Aplica-se aos produtos aos quais você não atribuir um imposto. Você pode alterá-la depois em Finanças › Impostos."
+      },
+      "taxOptions": {
+        "IVA_19": "IVA 19% (alíquota geral)",
+        "IVA_5": "IVA 5%",
+        "NINGUNA": "Nenhuma: vendo produtos excluídos ou isentos"
+      },
+      "trialIncluded": "{days, plural, one {Inclui # dia de teste} other {Inclui # dias de teste}}",
+      "customPrice": "Sob medida",
+      "perMonth": "/mês",
+      "cancel": "Cancelar",
+      "back": "Voltar",
+      "creating": "Criando…",
+      "nextLoading": "Próximo…",
+      "verifying": "Verificando…",
+      "create": "Criar organização",
+      "next": "Próximo"
+    },
+    "createOrgWizard": {
+      "steps": {
+        "organization": "Organização",
+        "branch": "Filial",
+        "plan": "Plano",
+        "payment": "Pagamento"
+      },
+      "createError": "Não foi possível criar a organização."
     }
   },
   "branding": {

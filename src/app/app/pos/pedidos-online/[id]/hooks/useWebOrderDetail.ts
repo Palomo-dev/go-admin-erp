@@ -315,17 +315,46 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
 
       if (error) throw error;
 
-      // Si hay sale_id vinculado, actualizar el sale también
+      // Si hay una venta vinculada, el cobro se registra como PAGO, nunca
+      // escribiendo el saldo a mano: insertar en `payments` dispara los
+      // disparadores que recalculan la factura y la cartera. Antes se ponía
+      // `sales.balance = 0` y `status = 'paid'` sin crear ningún pago, así que
+      // la venta quedaba cobrada sin nada que la respaldara y el dinero no
+      // aparecía por ninguna parte (auditoría de pedidos online, 2026-09-22).
       if (order.sale_id) {
-        await supabase
-          .from('sales')
-          .update({
-            payment_status: 'paid',
-            balance: 0,
-            status: 'paid',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', order.sale_id);
+        const { data: invoice } = await supabase
+          .from('invoice_sales')
+          .select('id, balance, currency, branch_id')
+          .eq('sale_id', order.sale_id)
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (invoice && Number(invoice.balance) > 0) {
+          const { data: userData } = await supabase.auth.getUser();
+          const { error: paymentError } = await supabase.from('payments').insert({
+            organization_id: organizationId,
+            branch_id: invoice.branch_id ?? order.branch_id,
+            amount: Number(invoice.balance),
+            method: order.payment_method || 'cash',
+            currency: invoice.currency || 'COP',
+            status: 'completed',
+            reference: order.payment_reference || null,
+            source: 'invoice_sales',
+            source_id: String(invoice.id),
+            created_by: userData?.user?.id ?? null,
+          });
+          if (paymentError) throw paymentError;
+        } else if (!invoice) {
+          // Sin factura no hay contra qué registrar el pago: se deja constancia
+          // en el pedido y se avisa, en vez de fingir que la venta está cobrada.
+          toast({
+            title: 'Pedido marcado como pagado',
+            description:
+              'La venta vinculada no tiene factura, así que no se registró el pago en caja. Regístralo desde la factura cuando exista.',
+          });
+        }
       }
 
       toast({ title: 'Pedido marcado como pagado' });

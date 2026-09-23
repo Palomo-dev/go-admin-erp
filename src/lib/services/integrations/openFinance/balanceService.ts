@@ -6,6 +6,25 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { openFinanceService } from './openFinanceService';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { plainDayOfInstant } from '@/lib/services/businessInstant';
+import { addPlainDays, getDateRange, nextPlainDay, todayInTz } from '@/lib/utils/timezone';
+
+// ============================================================
+// Fase B, tanda 9. `open_finance_transactions.transaction_date` es
+// **timestamptz** (verificado en `information_schema.columns`). La curva de
+// saldo lo filtraba y lo agrupaba con dias UTC, asi que todo movimiento de la
+// tarde en America aparecia en el escalon del dia siguiente.
+//
+// DE DONDE SALE LA ZONA (ADR-003): este servicio recibia solo `bankAccountId`,
+// sin organizacion. No se le anade un `timezone?: string` —el ADR lo prohibe—
+// ni se cambia la firma para pedir la organizacion al llamador: la cuenta
+// bancaria YA se consulta aqui, y `bank_accounts` lleva `organization_id` y
+// `branch_id`. Basta pedir esas dos columnas y resolver la zona con la
+// identidad del propio dato. La zona es la de la SUCURSAL duena de la cuenta:
+// el historial de una cuenta de la sucursal de Madrid se corta en Madrid
+// aunque lo mire alguien desde Bogota.
+// ============================================================
 
 /** Saldo en tiempo real de una cuenta bancaria */
 export interface RealTimeBalance {
@@ -40,6 +59,7 @@ export interface BalanceHistoryEntry {
 interface BankAccountRow {
   id: number;
   organization_id: number;
+  branch_id: number | null;
   name: string;
   currency: string | null;
   balance: number;
@@ -363,9 +383,11 @@ export class BalanceService {
       const supabase = getSupabaseAdmin();
 
       // Obtener la cuenta bancaria para saldo inicial
+      // `organization_id` y `branch_id` se piden aqui para resolver la zona:
+      // son la identidad del dato, no un parametro nuevo del servicio.
       const { data: bankAccount, error: bankError } = await supabase
         .from('bank_accounts')
-        .select('id, balance')
+        .select('id, balance, organization_id, branch_id')
         .eq('id', bankAccountId)
         .single();
 
@@ -373,23 +395,26 @@ export class BalanceService {
         throw new Error('Cuenta bancaria no encontrada');
       }
 
-      const currentBalance = (bankAccount as BankAccountRow).balance;
+      const cuenta = bankAccount as BankAccountRow;
+      const currentBalance = cuenta.balance;
 
-      // Calcular rango de fechas
-      const dateTo = new Date();
-      const dateFrom = new Date();
-      dateFrom.setDate(dateFrom.getDate() - days);
+      const timezone = await resolveTimezone(cuenta.organization_id, cuenta.branch_id);
 
-      const dateFromStr = dateFrom.toISOString().split('T')[0];
-      const dateToStr = dateTo.toISOString().split('T')[0];
+      // Rango de dias calendario de la sucursal, y su par de instantes para la
+      // consulta. `days` dias hacia atras se cuentan en el calendario, no en
+      // horas: restar `days * 24 h` a un instante pierde o gana un dia en el
+      // cambio de hora.
+      const dateToStr = todayInTz(timezone);
+      const dateFromStr = addPlainDays(dateToStr, -days);
+      const ventana = getDateRange(dateFromStr, dateToStr, timezone);
 
       // Consultar transacciones de Open Finance de la cuenta
       const { data: transactions, error: txError } = await supabase
         .from('open_finance_transactions')
         .select('id, transaction_date, amount')
         .eq('account_id', String(bankAccountId))
-        .gte('transaction_date', dateFromStr)
-        .lte('transaction_date', dateToStr)
+        .gte('transaction_date', ventana.start)
+        .lte('transaction_date', ventana.end)
         .order('transaction_date', { ascending: true });
 
       if (txError) {
@@ -401,7 +426,7 @@ export class BalanceService {
       // Agrupar transacciones por dia y calcular saldo proyectado
       const dailyChanges = new Map<string, number>();
       for (const tx of txList) {
-        const date = tx.transaction_date.split('T')[0];
+        const date = plainDayOfInstant(tx.transaction_date, timezone);
         const current = dailyChanges.get(date) ?? 0;
         dailyChanges.set(date, current + tx.amount);
       }
@@ -414,9 +439,8 @@ export class BalanceService {
         runningBalance -= tx.amount;
       }
 
-      const cursor = new Date(dateFrom);
-      while (cursor <= dateTo) {
-        const dateStr = cursor.toISOString().split('T')[0];
+      let dateStr = dateFromStr;
+      while (dateStr <= dateToStr) {
         const change = dailyChanges.get(dateStr) ?? 0;
         runningBalance += change;
         history.push({
@@ -424,7 +448,7 @@ export class BalanceService {
           balance: runningBalance,
           change,
         });
-        cursor.setDate(cursor.getDate() + 1);
+        dateStr = nextPlainDay(dateStr);
       }
 
       return history;

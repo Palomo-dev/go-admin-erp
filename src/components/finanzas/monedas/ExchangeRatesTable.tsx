@@ -28,19 +28,33 @@ import { useToast } from '@/components/ui/use-toast';
 import { DatePicker } from '@/components/ui/date-picker';
 import CurrencyConverter from './CurrencyConverter';
 import { TrendingDown, TrendingUp } from 'lucide-react';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { addPlainDays } from '@/lib/utils/timezone';
+
+// ============================================================
+// Fase B, tanda 10. Esta pantalla LEE el catalogo global `currency_rates`.
+// ADR-004 deja su escritura con el dia del sistema, pero prohibe expresamente
+// leerlo con el dia UTC: las ventanas de "ultimos 5 dias" y "hay datos de hoy"
+// son preguntas del negocio y se responden con el dia de la organizacion.
+// ============================================================
 
 // Componente de minigráfica interactiva para mostrar histórico de 5 días
 const MiniSparkline = ({ currencyCode }: { currencyCode: string }) => {
   const [historicalData, setHistoricalData] = React.useState<{rate: number, date: string}[]>([]);
   const [hoveredPoint, setHoveredPoint] = React.useState<{rate: number, date: string, x: number, y: number} | null>(null);
+  const { getToday } = useFormatDate();
 
   React.useEffect(() => {
     const fetchHistoricalData = async () => {
+      // Cinco dias CALENDARIO atras en la zona de la organizacion. Restar
+      // `5 * 24 h` a un instante y quedarse con su dia UTC daba seis dias en el
+      // cambio de hora y cuatro al otro lado del cambio de dia.
+      const desde = addPlainDays(getToday(), -5);
       const { data, error } = await supabase
         .from('currency_rates')
         .select('rate, rate_date')
         .eq('code', currencyCode)
-        .gte('rate_date', new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .gte('rate_date', desde)
         .order('rate_date', { ascending: true })
         .limit(6);
 
@@ -53,7 +67,7 @@ const MiniSparkline = ({ currencyCode }: { currencyCode: string }) => {
     };
 
     fetchHistoricalData();
-  }, [currencyCode]);
+  }, [currencyCode, getToday]);
 
   if (historicalData.length < 2) {
     return <div className="w-16 h-8 bg-gray-100 dark:bg-gray-700 rounded animate-pulse"></div>;
@@ -207,6 +221,7 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
   const [previousRates, setPreviousRates] = useState<CurrencyRate[]>([]);
   const [tipoMonedaBase, setTipoMonedaBase] = useState<'base'|'preferencia'|'usd'|'primera'|'global'>('base');
   const { toast } = useToast();
+  const { getToday } = useFormatDate();
 
   // Estado para datos reales
   const [fillingRealData, setFillingRealData] = useState(false);
@@ -256,7 +271,10 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
   async function checkDailyDataAvailability() {
     try {
       setDailyDataStatus('checking');
-      const today = format(new Date(), 'yyyy-MM-dd');
+      // "Hoy" es el dia de la organizacion. `format(new Date(), ...)` daba el
+      // dia del NAVEGADOR: desde otro huso, la pantalla creia que faltaban los
+      // datos del dia y disparaba una precarga que no hacia falta.
+      const today = getToday();
       
       const { data, error } = await supabase
         .from('currency_rates')
@@ -716,7 +734,12 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
       const ratesByDate: { [key: string]: CurrencyRate[] } = {};
       
       data.forEach(rate => {
-        const dateKey = rate.rate_date.split('T')[0];
+        // `currency_rates.rate_date` es una columna **date**: PostgREST la
+        // devuelve ya como 'YYYY-MM-DD', sin parte de hora. El `split('T')[0]`
+        // que habia aqui era inofensivo pero pedia al lector volver a
+        // demostrarlo; se quita para que no se copie a una columna timestamptz,
+        // donde si descartaria el offset (regla 2).
+        const dateKey = rate.rate_date;
         if (!ratesByDate[dateKey]) {
           ratesByDate[dateKey] = [];
         }

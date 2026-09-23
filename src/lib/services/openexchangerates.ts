@@ -12,6 +12,44 @@
 
 import { supabase } from '@/lib/supabase/config';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { addPlainDays, nextPlainDay, toPlainDate, todayInTz } from '@/lib/utils/timezone';
+
+// ============================================================
+// Fase B, tanda 10 — ADR-004: el catalogo de tasas se queda con el dia del
+// sistema, a proposito.
+//
+// `currency_rates` NO tiene `organization_id` ni `branch_id` (verificado en
+// `information_schema.columns`): es un catalogo global compartido. No existe
+// "la organizacion" de una tasa de cambio, asi que aqui NO se resuelve ninguna
+// zona de organizacion. Si dos organizaciones en husos distintos escribieran su
+// propio dia, la clave `(code, rate_date)` tendria dos verdades para el mismo
+// instante y ganaria la ultima en escribir: peor que el defecto que se corrige.
+//
+// Lo que si cambia es que el dia deja de salir de `toISOString()` —que daba el
+// dia UTC, o peor, el dia del NAVEGADOR restando `getTimezoneOffset()`— y pasa
+// a salir de una zona con nombre, la misma que usa la base.
+// ============================================================
+
+/**
+ * Zona horaria de sistema del catalogo global de tasas. Gemelo en el cliente de
+ * `fn_today_system()` en Postgres, que es literalmente
+ * `(now() AT TIME ZONE 'America/Bogota')::date` y es el `DEFAULT` de
+ * `currency_rates.rate_date`.
+ *
+ * NO es un fallback ni la zona de ninguna organizacion: es la zona del SaaS.
+ * La regla 6 de `docs/reglas-fechas-timezone.md` prohibe cablear la zona de una
+ * organizacion; esta no lo es, y ADR-004 la autoriza explicitamente. Si
+ * `fn_today_system()` cambia, esta constante cambia con ella o el catalogo
+ * queda con dos criterios de dia dentro de la misma tabla.
+ */
+export const ZONA_DEL_CATALOGO_GLOBAL = 'America/Bogota';
+
+/**
+ * Zona en la que el proveedor fecha sus cierres. OpenExchangeRates publica el
+ * `timestamp` de cada tanda en UTC; reetiquetarlo con el dia de una
+ * organizacion no lo hace mas cierto, lo desalinea del origen (ADR-004, §4).
+ */
+const ZONA_DEL_PROVEEDOR = 'UTC';
 
 // Fechas faltantes identificadas en la base de datos
 const FECHAS_FALTANTES = [
@@ -143,7 +181,7 @@ export async function obtenerTasasHistoricas(targetDate: string, baseCurrency: s
       base: data.base, 
       timestamp: data.timestamp, 
       fecha_objetivo: targetDate,
-      fecha_api: new Date(data.timestamp * 1000).toISOString().split('T')[0],
+      fecha_api: toPlainDate(new Date(data.timestamp * 1000), ZONA_DEL_PROVEEDOR),
       monedas: Object.keys(data.rates).length 
     });
 
@@ -152,7 +190,7 @@ export async function obtenerTasasHistoricas(targetDate: string, baseCurrency: s
       return {
         ...data,
         requested_date: targetDate,
-        actual_date: new Date(data.timestamp * 1000).toISOString().split('T')[0]
+        actual_date: toPlainDate(new Date(data.timestamp * 1000), ZONA_DEL_PROVEEDOR)
       };
     }
 
@@ -184,7 +222,7 @@ export async function obtenerTasasHistoricas(targetDate: string, baseCurrency: s
       rates: convertedRates,
       timestamp: data.timestamp,
       requested_date: targetDate,
-      actual_date: new Date(data.timestamp * 1000).toISOString().split('T')[0]
+      actual_date: toPlainDate(new Date(data.timestamp * 1000), ZONA_DEL_PROVEEDOR)
     };
   } catch (error: any) {
     console.warn(`Error al obtener datos históricos para ${targetDate}:`, error.message);
@@ -336,15 +374,17 @@ export async function guardarTasasDeCambio(
   const supabase = client ?? (await import('@/lib/supabase/config')).supabase;
   
   try {
-    // Formatear fecha para la base de datos en formato YYYY-MM-DD
-    const formattedDate = date ? new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
-      .toISOString()
-      .split('T')[0] : undefined;
-    
+    // Dia del catalogo (ADR-004): zona del sistema, nunca la del navegador.
+    // Lo anterior era `date.getTime() - date.getTimezoneOffset() * 60000` y
+    // luego `toISOString()`, es decir el dia de la maquina de quien pulsaba el
+    // boton: dos administradores en husos distintos guardaban la misma tanda de
+    // tasas bajo dos `rate_date` diferentes.
+    const formattedDate = date ? toPlainDate(date, ZONA_DEL_CATALOGO_GLOBAL) : undefined;
+
     console.log('Guardando tasas con moneda base:', base_currency_code, 'para fecha:', formattedDate || 'hoy');
-    
+
     // Validar que tenemos todos los parámetros necesarios
-    const finalDate = formattedDate || new Date().toISOString().split('T')[0];
+    const finalDate = formattedDate || todayInTz(ZONA_DEL_CATALOGO_GLOBAL);
     const finalTimestamp = api_timestamp || Math.floor(Date.now() / 1000);
     
     // Ir directamente a la inserción en la tabla ya que la función RPC está desactualizada
@@ -498,7 +538,10 @@ export async function actualizarTasasViaRPC(): Promise<{
       };
     }
 
-    const currentDate = new Date().toISOString().split('T')[0];
+    // `rate_date` que recibe la RPC: mismo criterio que el DEFAULT de la
+    // columna (`fn_today_system()`), para que la fila salga igual venga de
+    // donde venga.
+    const currentDate = todayInTz(ZONA_DEL_CATALOGO_GLOBAL);
     
     console.log('Llamando RPC update_global_exchange_rates con:', {
       rates: Object.keys(exchangeRatesData.rates).length + ' monedas',
@@ -600,7 +643,7 @@ export async function actualizarTasasDeCambio(orgId: number, fecha?: Date) {
     
     // 3. Guardar las tasas en la base de datos para la fecha seleccionada o actual
     const fechaActual = fecha || new Date();
-    console.log('Guardando tasas para fecha:', fechaActual.toISOString().split('T')[0]);
+    console.log('Guardando tasas para fecha:', toPlainDate(fechaActual, ZONA_DEL_CATALOGO_GLOBAL));
     
     // Guardar tasas usando la nueva estructura normalizada siempre con USD como base
     const resultado = await guardarTasasDeCambio(
@@ -684,7 +727,8 @@ export async function actualizarTasasDeCambioGlobal(client?: SupabaseClient): Pr
     
     // 4. Guardar tasas en la base de datos
     const date = new Date(exchangeRatesData.timestamp * 1000);
-    const formattedDate = date.toISOString().split('T')[0];
+    // (habia aqui un `formattedDate` derivado del dia UTC que no usaba nadie;
+    // el dia lo pone `guardarTasasDeCambio` a partir de este mismo `date`)
     let updatedCount = 0;
     
     // Guardar las tasas directamente en la base de datos
@@ -1147,19 +1191,23 @@ export async function llenarFechasFaltantesConDatosReales() {
  */
 async function obtenerFechasFaltantes(): Promise<string[]> {
   try {
-    // Generar fechas desde hace 15 días hasta hoy
-    const fechas = [];
-    const fechaInicio = new Date();
-    fechaInicio.setDate(fechaInicio.getDate() - 15);
-    
-    for (let i = 0; i <= 15; i++) {
-      const fecha = new Date(fechaInicio);
-      fecha.setDate(fecha.getDate() + i);
-      
-      // Excluir domingos (día 0) y fechas futuras
-      if (fecha.getDay() !== 0 && fecha <= new Date()) {
-        fechas.push(fecha.toISOString().split('T')[0]);
+    // Generar fechas desde hace 15 días hasta hoy, en dias CALENDARIO del
+    // catalogo. Antes se iteraba sobre `Date` con `setDate`, que trabaja en la
+    // hora de pared del navegador: en el cambio de hora el bucle repetia o se
+    // saltaba un dia, y el ultimo dia podia ser el de manana.
+    const fechas: string[] = [];
+    const hoy = todayInTz(ZONA_DEL_CATALOGO_GLOBAL);
+    let fecha = addPlainDays(hoy, -15);
+
+    while (fecha <= hoy) {
+      // Excluir domingos. El dia de la semana se lee del propio dia calendario
+      // (medianoche UTC de esa fecha), no de un instante con zona: asi no
+      // depende de donde corra el proceso.
+      const diaSemana = new Date(`${fecha}T00:00:00Z`).getUTCDay();
+      if (diaSemana !== 0) {
+        fechas.push(fecha);
       }
+      fecha = nextPlainDay(fecha);
     }
     
     // Verificar qué fechas ya tienen datos reales

@@ -29,6 +29,15 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+
+// ============================================================
+// Fase B, tanda 9. El rango "anio actual hasta hoy" que esta pantalla manda al
+// endpoint de concentracion salia de `toISOString()`: el dia UTC. El 1 de enero
+// a las 00:30 en Bogota (05:30 UTC) el anio ya habia cambiado en UTC pero no en
+// el negocio, y el rango arrancaba doce meses tarde; el 31 de diciembre a las
+// 20:00 pasaba lo contrario. Ahora el dia sale de la zona de la organizacion.
+// ============================================================
 
 // Tipos espejo del servicio (para uso en cliente)
 interface AccountPosition {
@@ -128,6 +137,7 @@ export function TesoreriaPage() {
   const [concentration, setConcentration] = useState<PaymentConcentration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { getToday } = useFormatDate();
 
   // Carga todos los datos de tesoreria en paralelo
   const loadData = useCallback(async () => {
@@ -139,11 +149,10 @@ export function TesoreriaPage() {
     }
 
     try {
-      // Rango de fechas para concentracion: anio actual hasta hoy
-      const today = new Date();
-      const yearStart = new Date(today.getFullYear(), 0, 1);
-      const dateFrom = yearStart.toISOString().split('T')[0];
-      const dateTo = today.toISOString().split('T')[0];
+      // Rango de fechas para concentracion: anio actual hasta hoy, con el dia
+      // y el anio de la organizacion.
+      const dateTo = getToday();
+      const dateFrom = `${dateTo.slice(0, 4)}-01-01`;
 
       const [posRes, projRes, alertsRes, concRes] = await Promise.all([
         fetch(
@@ -177,7 +186,7 @@ export function TesoreriaPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [getToday]);
 
   useEffect(() => {
     loadData();

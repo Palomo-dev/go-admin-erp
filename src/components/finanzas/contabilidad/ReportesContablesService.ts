@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
-import { getDateRange, getDayRange } from '@/lib/utils/timezone';
+import { getDateRange, getDayRange, todayInTz } from '@/lib/utils/timezone';
 
 // ============================================================
 // `journal_entries.entry_date` es **timestamptz**, no `date` (verificado en
@@ -110,12 +110,27 @@ export class ReportesContablesService {
     return org?.id || 0;
   }
 
+  /**
+   * Tasa vigente de una moneda para un dia contable.
+   *
+   * `currency_rates` es el catalogo GLOBAL: no tiene organizacion y su
+   * `rate_date` lo escribe el sistema (ADR-004). Pero ADR-004 dice tambien que
+   * eso "no autoriza LEER el catalogo con el dia UTC": quien pregunta por la
+   * tasa de hoy para un informe contable pregunta por su dia de negocio. Por
+   * eso el dia objetivo sale de la zona de la organizacion (ADR-003: la
+   * identidad ya esta en la clase, `getOrganizationId()`), y la busqueda es
+   * `rate_date <= dia` ordenada hacia atras: la vigente a ese dia, que es lo
+   * unico que tiene sentido cuando el catalogo puede ir un dia por detras.
+   */
   static async getExchangeRate(currencyCode: string, date?: string): Promise<ExchangeRateInfo | null> {
+    const diaContable =
+      date ?? todayInTz(await resolveTimezone(this.getOrganizationId()));
+
     if (!currencyCode || currencyCode === 'COP') {
-      return { currency_code: 'COP', rate: 1.0, rate_date: date || new Date().toISOString().split('T')[0], source: 'base' };
+      return { currency_code: 'COP', rate: 1.0, rate_date: diaContable, source: 'base' };
     }
 
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    const targetDate = diaContable;
 
     const { data, error } = await supabase
       .from('currency_rates')

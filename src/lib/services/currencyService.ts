@@ -1,4 +1,19 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/timezone';
+
+// ============================================================
+// Fase B, tanda 10. Ojo con la diferencia respecto a `openexchangerates.ts`:
+// alli la tabla es `currency_rates`, el catalogo GLOBAL, cuyo dia es el del
+// sistema (ADR-004). Aqui la tabla es `exchange_rates`, que SI lleva
+// `organization_id` (verificado en `information_schema.columns`), asi que su
+// `effective_date` —una columna `date`— es el dia calendario de esa
+// organizacion. `exchange_rates` no lleva `branch_id`: la tasa es de la
+// organizacion entera, no de una sucursal.
+//
+// La zona entra por identidad (ADR-003): `organizationId` ya estaba en las dos
+// firmas, no se anade ningun `timezone?: string`.
+// ============================================================
 
 export interface ExchangeRate {
   id: number;
@@ -181,8 +196,8 @@ class CurrencyService {
       const compositeRate = rateToUSD * rateFromUSD;
       const cacheKey = `${organizationId}:${fromCurrency}:${toCurrency}`;
       
-      const today = new Date().toISOString().split('T')[0];
-      
+      const today = todayInTz(await resolveTimezone(organizationId));
+
       const exchangeRate: ExchangeRate = {
         id: -1, // ID temporal, no existe realmente en la base
         organization_id: organizationId,
@@ -246,9 +261,14 @@ class CurrencyService {
     targetCurrency: string,
     rate: number,
     source: string = 'manual',
-    effectiveDate: string = new Date().toISOString().split('T')[0]
+    // Sin valor por defecto en la firma: el dia depende de la organizacion, y
+    // un `default` no puede esperar a `resolveTimezone`. Se resuelve dentro.
+    effectiveDate?: string
   ): Promise<boolean> {
     try {
+      const fechaEfectiva =
+        effectiveDate ?? todayInTz(await resolveTimezone(organizationId));
+
       // Buscar si existe la tasa para esta fecha
       const { data: existingRate } = await supabase
         .from('exchange_rates')
@@ -256,7 +276,7 @@ class CurrencyService {
         .eq('organization_id', organizationId)
         .eq('base_currency', baseCurrency)
         .eq('target_currency', targetCurrency)
-        .eq('effective_date', effectiveDate)
+        .eq('effective_date', fechaEfectiva)
         .limit(1);
 
       if (existingRate && existingRate.length > 0) {
@@ -281,7 +301,7 @@ class CurrencyService {
           target_currency: targetCurrency,
           rate,
           source,
-          effective_date: effectiveDate,
+          effective_date: fechaEfectiva,
           is_default: false
         });
 

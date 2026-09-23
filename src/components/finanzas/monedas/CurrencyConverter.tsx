@@ -16,6 +16,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRightLeft, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { previousPlainDay } from '@/lib/utils/timezone';
+
+// ============================================================
+// Fase B, tanda 10. Este componente LEE el catalogo global `currency_rates`.
+// Segun ADR-004 el catalogo se escribe con el dia del sistema, pero leerlo con
+// el dia UTC no esta autorizado: quien convierte 1000 USD "hoy" pregunta por su
+// dia de negocio. De ahi que el dia salga de `useFormatDate()`, es decir de la
+// zona de la organizacion, y que la consulta conserve el respaldo que ya tenia
+// (si no hay filas para ese dia, se usa la fecha mas reciente disponible), que
+// es justo lo que ADR-004 llama "buscar la vigente".
+// ============================================================
 
 interface Currency {
   code: string;
@@ -68,6 +80,7 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
   const [localRates, setLocalRates] = useState<any[]>(rates);
   const [localCurrencies, setLocalCurrencies] = useState<Currency[]>(currencies);
   const [loading, setLoading] = useState<boolean>(loadGlobalCurrencies);
+  const { getToday, toDate } = useFormatDate();
 
   // Cargar monedas y tasas cuando el componente se monta
   useEffect(() => {
@@ -98,7 +111,8 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
       console.log('Monedas globales cargadas:', globalCurrencies?.length || 0);
       
       // Cargar tasas actuales usando la fecha proporcionada o la fecha actual
-      const formattedDate = date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      // El dia de la fecha elegida (o el de hoy), en la zona de la organizacion.
+      const formattedDate = date ? toDate(date) : getToday();
       console.log('Cargando tasas para la fecha:', formattedDate);
       
       const { data: currentRates, error: ratesError } = await supabase
@@ -202,15 +216,10 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
           // Incrementar el updateKey para forzar re-renderizado
           setUpdateKey(Date.now());
           
-          // Asegurar que yesterday sea realmente el día anterior
-          const today = new Date();
-          const yesterday = new Date(today);
-          yesterday.setDate(yesterday.getDate() - 1);
-          
-          console.log('Cargando tasas de ayer:', yesterday.toISOString().split('T')[0], 
-                     'para comparar con fecha actual:', today.toISOString().split('T')[0]);
-          
-          await loadPreviousRate(yesterday);
+          // "Ayer" es el dia calendario anterior de la organizacion, no
+          // `now - 24 h`: en el cambio de hora eso da el mismo dia o se salta uno.
+          const ayer = previousPlainDay(getToday());
+          await loadPreviousRate(ayer);
         };
         
         loadYesterdayRate();
@@ -218,18 +227,17 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
     };
     
     loadPreviousRateData();
-  }, [fromCurrency, toCurrency, localRates, date]);
+  }, [fromCurrency, toCurrency, localRates, date, getToday]);
 
-  // Cargar la tasa del día anterior para comparación
-  const loadPreviousRate = async (previousDate: Date) => {
+  // Cargar la tasa del día anterior para comparación.
+  // `previousDate` es un dia calendario YYYY-MM-DD de la organizacion, no un
+  // `Date`: pasar un `Date` obligaba a volver a decidir aqui en que zona se
+  // lee, y ese era el punto donde se colaba el dia UTC.
+  const loadPreviousRate = async (previousDate: string) => {
     try {
       console.log('Cargando tasas del día anterior para', fromCurrency, 'a', toCurrency);
       const { supabase } = await import('@/lib/supabase/config');
-      
-      // Obtener la fecha actual y la del día anterior
-      const today = new Date(previousDate);
-      const todayFormatted = today.toISOString().split('T')[0];
-      
+
       // Resetear los valores previos antes de cargar nuevos
       setRateDiff(null);
       setPreviousRate(null);
@@ -261,11 +269,9 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
       // Calcular tasa de conversión actual
       const currentRate = currentToRate / currentFromRate;
       
-      // Buscar tasas del día anterior exacto (ayer)
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayFormatted = yesterday.toISOString().split('T')[0];
-      
+      // Buscar tasas del día anterior exacto (el que pidio el llamador)
+      const yesterdayFormatted = previousDate;
+
       console.log('BUSCANDO TASAS PARA AYER:', yesterdayFormatted);
       
       // Consultar tasas específicamente del día anterior

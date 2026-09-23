@@ -1771,3 +1771,242 @@ quedan a cero ocurrencias, comprobado antes de subir la regla a `error`.
   116.
 - Cero escrituras en la base de datos. Ninguna migracion: no hizo falta DDL.
 - Sin `git add`, `commit`, `push`, `stash` ni cambio de rama.
+
+
+---
+
+## Fase B — tandas 9 y 10: open finance, tesoreria y monedas (2026-09-23)
+
+Dos tandas en un mismo modulo (finanzas) que **no comparten regla**, y esa distincion es lo
+principal que deja escrito este commit:
+
+- **Tanda 9** filtra tablas que llevan organizacion y cuyas columnas de fecha son
+  `timestamptz`. Ahi el dia es el de la organizacion (o el de la sucursal duena del dato) y
+  ademas hay que convertirlo a instantes antes de tocar la consulta.
+- **Tanda 10** escribe y lee `currency_rates`, un catalogo **global sin organizacion**.
+  [ADR-004](adr/ADR-004-dia-utc-en-el-catalogo-global-de-tasas.md) decide que su dia es el del
+  sistema y que **no** se le fuerza la zona de ninguna organizacion. Lo que si lleva la zona de
+  la organizacion es **leer** ese catalogo para un informe contable.
+
+### Lo que el inventario no contaba, y aparecio al abrir los archivos
+
+`accounts_receivable.due_date`, `accounts_payable.due_date`, `payments.payment_date`,
+`bank_transactions.trans_date` y `open_finance_transactions.transaction_date` son **todas
+`timestamp with time zone`** (comprobado por MCP en `information_schema.columns`). El servicio
+de tesoreria las filtraba con una cadena `'YYYY-MM-DD'`. Eso son **dos errores encadenados**, no
+uno: primero el dia se derivaba en UTC, y segundo, Postgres lee esa cadena como la medianoche
+UTC. En Bogota el corte de «hoy» caia a las 19:00 del dia anterior. Una factura que vence hoy a
+las 20:00 entraba en el flujo de caja de manana y, peor, salia en la lista de **vencidas**.
+
+Por eso la tanda 9 toco tres sitios mas de los que el inventario listaba:
+`detectInterAccountTransfers` y `getPaymentConcentration` (mismos filtros de dia contra
+`timestamptz`) y `anomalyDetectionService`, que mete el **dia** dentro de la clave con la que
+agrupa duplicados: dos cargos identicos a las 18:00 y a las 20:00 en Bogota caian en grupos
+distintos —un dia UTC cada uno— y el duplicado no se detectaba. Eso es pagar dos veces la
+misma factura.
+
+### Como se aplico ADR-004, literal
+
+**Escribir el catalogo:** `src/lib/services/openexchangerates.ts` no resuelve ninguna zona de
+organizacion. Se introdujo una constante con nombre, `ZONA_DEL_CATALOGO_GLOBAL`, gemela en el
+cliente de `fn_today_system()` en Postgres, y una prueba comprueba que `guardarTasasDeCambio`
+**no llama a `resolveTimezone` ni una vez**, aunque la organizacion activa este en Katmandu.
+Lo que si desaparecio es que el dia saliera del reloj del navegador: la version anterior hacia
+`date.getTime() - date.getTimezoneOffset() * 60000` y luego recortaba el ISO, asi que dos
+administradores en husos distintos guardaban la misma tanda de tasas bajo dos `rate_date`
+diferentes. Las tres fechas que vienen del proveedor (`fecha_api`, `actual_date`) quedan en la
+zona del proveedor, `UTC`, con su constante y su motivo escrito (ADR-004 §4).
+
+**Leer el catalogo:** ADR-004 dice tambien que eso «no autoriza leer el catalogo con el dia
+UTC». Ahi si entra la organizacion, en tres sitios:
+
+- `ReportesContablesService.getExchangeRate` — el dia contable sale de
+  `resolveTimezone(this.getOrganizationId())`, y la busqueda sigue siendo
+  `rate_date <= dia` ordenada hacia atras: **la vigente**, que es lo unico que tiene sentido
+  cuando el catalogo puede ir un dia por detras del negocio.
+- `CurrencyConverter` y `ExchangeRatesTable` — `useFormatDate()`, conservando el respaldo que
+  ya tenian (si no hay filas para ese dia, la fecha mas reciente disponible).
+
+Y `exchange_rates` —que **si** lleva `organization_id`— pasa a escribir su `effective_date` con
+el dia de esa organizacion. La misma llamada desde una organizacion en Bogota y otra en Katmandu
+escribe dias distintos, y eso es lo correcto: es la diferencia exacta con `currency_rates`.
+
+### Tabla fila por fila
+
+Zona: `org` = organizacion · `branch` = sucursal duena del dato · `ctx` = contexto de React ·
+`sistema` = zona del SaaS (ADR-004) · `proveedor` = UTC del proveedor.
+
+| Archivo:linea (antes) | Destino real (tabla.columna · tipo) | Arreglo | Zona |
+|---|---|---|---|
+| `treasuryService.ts:268,269` | `accounts_receivable/payable.due_date` · **timestamptz** (filtro) | `todayInTz` + `addPlainDays` + `getDateRange` | org |
+| `treasuryService.ts:311,318` | idem (lectura) | `plainDayOfInstant` | org |
+| `treasuryService.ts:331` | iteracion dia a dia de la proyeccion | dias planos + `nextPlainDay` | org |
+| `treasuryService.ts:418` *(no inventariado)* | `bank_transactions.trans_date` · **timestamptz** (filtro) | `getDateRange` | org |
+| `treasuryService.ts:524` *(no inventariado)* | `payments.payment_date` · **timestamptz** (filtro) | `getDateRange` | org |
+| `treasuryService.ts:652,655` | `accounts_payable.due_date` · timestamptz (vencidas / proximas) | `todayInTz` + `getDayRange().start` + `getDateRange` | org |
+| `treasuryService.ts:700` | texto de la alerta | `plainDayOfInstant` | org |
+| `treasuryService.ts:707,710` | inicio de anio de la concentracion | `todayStr.slice(0,4)` | org |
+| `balanceService.ts:383,384` | `open_finance_transactions.transaction_date` · **timestamptz** | `todayInTz` + `addPlainDays` + `getDateRange` | **branch** |
+| `balanceService.ts:404` | idem (agrupacion diaria) | `plainDayOfInstant` | branch |
+| `balanceService.ts:419` | curva diaria de saldo | dias planos + `nextPlainDay` | branch |
+| `transactionSyncService.ts:62,63` | ventana por defecto que se pide al proveedor | `todayInTz` + `addPlainDays` | org del link |
+| `transactionSyncService.ts:401,403,404` | `open_finance_links.last_sync_at` · **timestamptz** | `plainDayOfInstant` + `addPlainDays` | org del link |
+| `anomalyDetectionService.ts:158,175,218` *(arrastre)* | `bank_transactions.trans_date`, `open_finance_transactions.transaction_date` · timestamptz | `plainDayOfInstant` | org |
+| `TesoreriaPage.tsx:145,146` | rango «anio actual hasta hoy» del endpoint | `getToday()` + `slice(0,4)` | ctx |
+| `open-finance/page.tsx:143` | `open_finance_transactions.transaction_date` · timestamptz (conteo 30 dias) | `addPlainDays` + `getDayRange().start` | ctx |
+| `openexchangerates.ts:146,155,187` | `fecha_api` / `actual_date` del proveedor | `toPlainDate(x, 'UTC')` + constante con motivo | **proveedor** |
+| `openexchangerates.ts:340-342,347` | `currency_rates.rate_date` · **date** (upsert) | `toPlainDate(date, ZONA_DEL_CATALOGO_GLOBAL)` / `todayInTz(...)` | **sistema** |
+| `openexchangerates.ts:501` | parametro `rate_date` de la RPC `update_global_exchange_rates` | `todayInTz(ZONA_DEL_CATALOGO_GLOBAL)` | sistema |
+| `openexchangerates.ts:603` | solo `console.log` | `toPlainDate(..., ZONA_...)` | sistema |
+| `openexchangerates.ts:687` | variable muerta (`formattedDate` que no usaba nadie) | borrada | — |
+| `openexchangerates.ts:1161` | lista de dias habiles a consultar al proveedor | `todayInTz` + `addPlainDays` + `nextPlainDay`; dia de la semana leido del propio dia plano | sistema |
+| `currencyService.ts:184` | `exchange_rates.effective_date` · **date** (entrada de cache) | `todayInTz(await resolveTimezone(organizationId))` | org |
+| `currencyService.ts:249` | `exchange_rates.effective_date` · date (filtro + insert) | idem; **muere el valor por defecto de la firma** | org |
+| `CurrencyConverter.tsx:101` | filtro `currency_rates.rate_date` · date | `toDate(date)` / `getToday()` | ctx |
+| `CurrencyConverter.tsx:210,211,231` | `console.log` y una variable muerta | borrados; `loadPreviousRate` pasa a recibir un **dia plano**, no un `Date` | ctx |
+| `CurrencyConverter.tsx:267` | filtro `rate_date` de «ayer» | `previousPlainDay(getToday())` | ctx |
+| `ExchangeRatesTable.tsx:43` | filtro `rate_date >= hoy-5` · date | `addPlainDays(getToday(), -5)` | ctx |
+| `ExchangeRatesTable.tsx:259` *(no inventariado)* | «hay datos de hoy» → `format(new Date(), 'yyyy-MM-dd')` | `getToday()` | ctx |
+| `ExchangeRatesTable.tsx:719` | `.split('T')[0]` sobre una columna **date** | quitado el no-op, con el motivo escrito | — |
+| `ExchangeRateHistory.tsx:181` *(no inventariado)* | nombre del CSV descargado | `getToday()` | ctx |
+| `ReportesContablesService.ts:115,118` | filtro `currency_rates.rate_date` · date (tasa vigente) | `todayInTz(await resolveTimezone(getOrganizationId()))` | **org** |
+
+Cambios de contrato, para que nadie los descubra por sorpresa:
+
+- `currencyService.updateExchangeRate` **pierde** el valor por defecto que derivaba el dia en
+  UTC dentro de la propia firma y pasa a `effectiveDate?: string`, resuelto dentro. Un `default`
+  en la firma no puede esperar a `resolveTimezone`.
+- `CurrencyConverter.loadPreviousRate(previousDate)` recibe ahora un `YYYY-MM-DD`, no un `Date`.
+  Pasar un `Date` obligaba a decidir otra vez dentro en que zona se lee, y ese era el punto por
+  el que se colaba el dia UTC.
+- `BalanceService.getBalanceHistory` **no cambia de firma**: la identidad sale de la fila que ya
+  consultaba (`bank_accounts.organization_id` y `.branch_id`). Es lo que pide ADR-003 —
+  identidad, no zona— sin tocar a ningun llamador y sin colar un `timezone?: string`.
+- `TransactionSyncService.syncTransactions` consulta el link **antes** que nada, porque de el
+  sale la organizacion y de la organizacion la zona de las fechas por defecto.
+
+### Nuevo en la capa compartida
+
+`addPlainDays(dia, n)` en `src/lib/utils/dateCore.ts`, reexportada por `utils/timezone.ts` y
+`utils/dateDisplay.ts`. Generaliza `nextPlainDay`/`previousPlainDay` y existe porque «hoy + 90
+dias» y «hoy - 30 dias» aparecian en seis servicios resueltos con
+`const d = new Date(); d.setDate(d.getDate() + n)`, que trabaja sobre la hora de pared del
+navegador. Es aritmetica de dias **calendario**: sumar 1 avanza un dia tambien en los dias de
+23 h y 25 h del cambio de hora, donde sumar `24 * 60 * 60 * 1000` a un instante no lo hace.
+Otras sesiones que toquen `dateCore.ts` deben contar con esta funcion.
+
+### Recuento
+
+Metrica 1 (el `grep` del inventario), en **mis rutas**:
+
+| Archivo | Antes | Despues |
+|---|---:|---:|
+| `treasuryService.ts` | 6 | 0 |
+| `balanceService.ts` | 3 | 0 |
+| `transactionSyncService.ts` | 5 | 0 |
+| `TesoreriaPage.tsx` | 2 | 0 |
+| `app/finanzas/open-finance/page.tsx` | 1 | 0 |
+| **Tanda 9** | **17** | **0** |
+| `openexchangerates.ts` | 8 | 0 |
+| `currencyService.ts` | 2 | 0 |
+| `CurrencyConverter.tsx` | 6 | 0 |
+| `ExchangeRatesTable.tsx` | 1 | 0 |
+| `ReportesContablesService.ts` | 2 | 0 |
+| **Tanda 10** | **19** | **0** |
+| `ExchangeRateHistory.tsx` (para poder subir `monedas/**` a `error`) | 1 | 0 |
+| **Total** | **37** | **0** |
+
+Ademas, **4** ocurrencias de `.split('T')[0]` sobre valores de la BD (regla 2) en
+`anomalyDetectionService.ts` (3, sobre `timestamptz`) y `ExchangeRatesTable.tsx` (1, sobre una
+columna `date`, inofensiva pero quitada). El `grep` de la metrica 1 **no las ve**: son el mismo
+bug por el lado que el contador no mide.
+
+El total global del repositorio no se atribuye aqui: el arbol es compartido y otras sesiones
+estan reduciendolo en paralelo durante las mismas horas.
+
+Rutas anadidas al bloque `overrides` de `.eslintrc.json` con la regla en `error`:
+`src/lib/services/integrations/openFinance/**`,
+`src/components/finanzas/bancos/TesoreriaPage.tsx`, `src/app/app/finanzas/open-finance/**`,
+`src/lib/services/openexchangerates.ts`, `src/lib/services/currencyService.ts`,
+`src/components/finanzas/monedas/**`,
+`src/components/finanzas/contabilidad/ReportesContablesService.ts` y
+`src/lib/utils/dateCore.ts`. Los globs quedan a **cero** ocurrencias antes de subir la regla;
+por eso se arreglaron tambien `anomalyDetectionService.ts` y `ExchangeRateHistory.tsx`, que
+caen dentro de ellos sin estar en el encargo.
+
+### Pruebas
+
+`src/__tests__/timezone/openFinanceYMonedas.test.ts`, **23 casos**, verde en `TZ=UTC`,
+`TZ=America/Bogota`, `TZ=Europe/Madrid`, `TZ=Asia/Kathmandu` y `TZ=America/Santiago`. El reloj
+es falso en todos: sin eso cada caso solo fallaria unas horas al dia.
+
+Los instantes estan elegidos para que las tres lecturas posibles den **dias distintos**:
+
+- `2026-03-28T23:30:00Z` — en Madrid ya es el 29, y el 29 es el dia en que el reloj salta de
+  +01:00 a +02:00. El rango de la proyeccion sale con **un offset en cada extremo**
+  (`...+01:00` la salida, `...+02:00` la llegada): el cambio de hora ocurre *dentro* del rango.
+- `2026-06-15T18:30:00Z` — Katmandu (+05:45) ya esta en el dia siguiente. El filtro lleva
+  `+05:45`, no `+06:00` ni `Z`.
+- `2026-06-16T02:00:00Z` — UTC dice 16, el sistema (Bogota) dice 15 y Katmandu dice 16. Es el
+  instante que separa ADR-004 de lo demas.
+- `2026-01-01T02:00:00Z` — en Bogota siguen siendo las 21:00 del 31 de diciembre de 2025, asi
+  que el «anio actual hasta hoy» tiene que ser el 2025 entero.
+
+**Mutaciones: 15 aplicadas, 15 muertas.** Cada una devuelve una linea al codigo viejo (el dia a
+UTC, el filtro a cadena de dia, la agrupacion al dia UTC del `timestamptz`, la zona de la
+sucursal a la de la organizacion, `addPlainDays` a `days - 1`, y `ZONA_DEL_CATALOGO_GLOBAL` a
+`'UTC'`). Dos sobrevivieron en la primera pasada —las de `anomalyDetectionService`— porque el
+par de transacciones de prueba estaba elegido donde el dia UTC y el dia de Bogota coinciden; se
+reescribio el caso para que los dos cargos queden a caballo de la medianoche UTC **y** el
+primero del grupo tenga el dia UTC distinto del suyo de negocio. Copia de ruta completa y `md5`
+de los 8 archivos antes y despues: los 8 coinciden tras restaurar.
+
+### Deuda anotada
+
+1. **`fn_today_system()` no es el dia UTC.** ADR-004 se titula «el dia UTC» y razona sobre
+   `CURRENT_DATE` (UTC en este servidor), pero su §3 se apoya en que
+   `currency_rates.rate_date` tiene `DEFAULT fn_today_system()`. Comprobado por MCP:
+   `fn_today_system()` es `(now() AT TIME ZONE 'America/Bogota')::date`. O sea que **la propia
+   tabla ya tiene dos criterios de dia**: el `DEFAULT` escribe el dia de Bogota y las siete
+   funciones de la lista blanca escriben el dia UTC; entre las 00:00 y las 05:00 UTC discrepan.
+   El cliente se ha alineado con `fn_today_system()`, que es lo que pedia el encargo.
+   Reconciliarlos es DDL y **no se ha tocado**.
+2. **`balanceService.getBalanceHistory` filtra por una columna que nunca casa.** Usa
+   `.eq('account_id', String(bankAccountId))` contra `open_finance_transactions.account_id`, que
+   es un **uuid** que referencia `open_finance_accounts.id`, mientras que `bankAccountId` es el
+   entero de `bank_accounts.id`. Bug preexistente y ajeno a las fechas; no se ha tocado, pero
+   significa que esa curva de saldo hoy sale plana en produccion.
+3. **Fase C en los mismos archivos.** `ExchangeRatesTable` compara `date > new Date()` y
+   `date.getDate() === today.getDate()` con el reloj del navegador (lineas ~484 y ~521), y pinta
+   `new Date(rate.rate_date).toLocaleDateString('es')` sobre una columna **date** (~944, ~951),
+   que es justamente el caso que `formatPlainDate` existe para evitar.
+   `app/finanzas/open-finance/page.tsx:82` formatea un `timestamptz` con
+   `toLocaleString('es-CO')` sin zona.
+4. **El contrato de `getPaymentConcentration` / `detectInterAccountTransfers`** es ahora
+   «`dateFrom` y `dateTo` son dias calendario de la organizacion». El route handler
+   `/api/integrations/open-finance/treasury/concentration` los toma del query string y solo
+   comprueba que existan: no valida el formato. `TesoreriaPage` ya manda `YYYY-MM-DD`.
+5. Los ~250 `toLocaleString` de importes y numeros siguen intactos, como manda el inventario.
+
+### NO VERIFICADO
+
+- `next build`: **no se ejecuta** (lo excluye el encargo). `npx tsc --noEmit -p tsconfig.json`
+  completo, con `--max-old-space-size=8192` para que no sea el falso «0 errores» por falta de
+  heap: **5 errores, todos en `src/__tests__/services/crmOportunidadesRonda.test.ts`**, un
+  archivo ajeno a este encargo. **Cero** en los archivos tocados.
+- ESLint sobre los archivos tocados: **cero** `no-restricted-syntax` y cero
+  `no-restricted-imports`. Siguen los errores **preexistentes** de `no-explicit-any` y
+  `no-unused-vars` de `CurrencyConverter.tsx`, `ExchangeRatesTable.tsx` y
+  `ExchangeRateHistory.tsx`, que no se han limpiado: son de antes y limpiarlos es reescribir
+  1.100 lineas de un componente que esta fuera del alcance de la fecha.
+- **Nada probado en navegador.** No se ha visto la pantalla de tesoreria ni la de monedas.
+- `src/__tests__/timezone` completo mas `guardrails.test.ts`: **548/548** en `TZ=UTC` y en
+  `TZ=America/Bogota`. En `TZ=Asia/Kathmandu` fallan 3 casos de
+  `src/__tests__/timezone/pmsParkingReportes.test.ts` y, en una de las pasadas, 3 de
+  `src/__tests__/timezone/transporte.test.ts`: **ambos son archivos sin seguimiento en git** de
+  otras sesiones trabajando en paralelo en este mismo arbol, y ninguno toca archivos de este
+  encargo. La suite de estas dos tandas pasa sola en las cinco zonas. Los fallos aparecen y
+  desaparecen entre pasadas porque esos archivos se estan editando mientras corren.
+- Cero escrituras en la base de datos. **Ninguna migracion**: el esquema se consulto por MCP
+  (`information_schema.columns` y `pg_get_functiondef`) y no hizo falta DDL.
+- Sin `git add`, `commit`, `push`, `stash` ni cambio de rama.

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -51,6 +52,10 @@ interface ExchangeRateHistoryProps {
 }
 
 export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateHistoryProps) {
+  // Solo para el nombre del archivo exportado; aun asi sale del dia de la
+  // organizacion, para que dos usuarios que exportan a la vez desde husos
+  // distintos no se manden ficheros con nombres de dias distintos.
+  const { getToday } = useFormatDate();
   const [rates, setRates] = useState<ExchangeRateRecord[]>([]);
   const [filteredRates, setFilteredRates] = useState<ExchangeRateRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -178,7 +183,7 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `tasas_cambio_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `tasas_cambio_${getToday()}.csv`;
     link.click();
 
     toast({

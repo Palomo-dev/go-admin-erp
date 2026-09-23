@@ -6,6 +6,30 @@
  */
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { plainDayOfInstant } from '@/lib/services/businessInstant';
+import { addPlainDays, getDateRange, getDayRange, nextPlainDay, todayInTz } from '@/lib/utils/timezone';
+
+// ============================================================
+// Fase B, tanda 9. `accounts_receivable.due_date`, `accounts_payable.due_date`,
+// `payments.payment_date` y `bank_transactions.trans_date` son **timestamptz**
+// (verificado en `information_schema.columns`), no `date`. Este servicio los
+// filtraba con una cadena `'YYYY-MM-DD'` derivada de `toISOString()`: dos
+// errores encadenados. Primero el dia era el UTC, no el de la organizacion; y
+// segundo, Postgres lee esa cadena como la medianoche UTC, asi que en Bogota el
+// corte de "hoy" caia a las 19:00 del dia anterior. Una factura que vence hoy a
+// las 20:00 en Bogota se contaba en el flujo de caja de manana.
+//
+// Ahora el dia sale de la zona de la organizacion (ADR-003: el servicio recibe
+// identidad y resuelve la zona) y se convierte al par de INSTANTES que lo cubre
+// antes de tocar la consulta.
+//
+// POR QUE LA ZONA DE LA ORGANIZACION Y NO LA DE LA SUCURSAL: las cuatro tablas
+// llevan `branch_id`, pero tesoreria consolida TODAS las sucursales en una sola
+// proyeccion. Un rango por fila haria que dos sucursales en husos distintos
+// pidieran ventanas distintas y el total no cuadraria consigo mismo. El corte
+// es uno solo, el de la organizacion, y asi queda dicho.
+// ============================================================
 
 // ============================================================
 // Tipos publicos
@@ -262,11 +286,15 @@ export class TreasuryService {
     try {
       const supabase = getSupabaseAdmin();
 
-      const today = new Date();
-      const horizon = new Date();
-      horizon.setDate(horizon.getDate() + days);
-      const todayStr = today.toISOString().split('T')[0];
-      const horizonStr = horizon.toISOString().split('T')[0];
+      const timezone = await resolveTimezone(organizationId);
+      const todayStr = todayInTz(timezone);
+      const horizonStr = addPlainDays(todayStr, days);
+
+      // `due_date` es timestamptz: el filtro va contra instantes, no contra
+      // dias. `start` es la medianoche de hoy en la zona de la organizacion y
+      // `end` el ultimo milisegundo del dia del horizonte, con el offset real
+      // de cada extremo (un horizonte de 90 dias puede cruzar un cambio de hora).
+      const ventana = getDateRange(todayStr, horizonStr, timezone);
 
       // Saldo consolidado actual como base de la proyeccion
       const consolidated =
@@ -282,8 +310,8 @@ export class TreasuryService {
         .select('id, customer_id, amount, balance, due_date, status')
         .eq('organization_id', organizationId)
         .in('status', ['pending', 'partial', 'open'])
-        .gte('due_date', todayStr)
-        .lte('due_date', horizonStr);
+        .gte('due_date', ventana.start)
+        .lte('due_date', ventana.end);
 
       if (recError) {
         throw new Error(`Error al listar cuentas por cobrar: ${recError.message}`);
@@ -295,8 +323,8 @@ export class TreasuryService {
         .select('id, supplier_id, amount, balance, due_date, status')
         .eq('organization_id', organizationId)
         .in('status', ['pending', 'partial', 'open'])
-        .gte('due_date', todayStr)
-        .lte('due_date', horizonStr);
+        .gte('due_date', ventana.start)
+        .lte('due_date', ventana.end);
 
       if (payError) {
         throw new Error(`Error al listar cuentas por pagar: ${payError.message}`);
@@ -308,14 +336,17 @@ export class TreasuryService {
 
       for (const rec of (receivables || []) as AccountsReceivableRow[]) {
         if (!rec.due_date) continue;
-        const date = rec.due_date.split('T')[0];
+        // El valor que llega es un timestamptz con offset: `split('T')[0]` se
+        // quedaba con el dia UTC y movia al dia siguiente todo lo que vence de
+        // tarde en America.
+        const date = plainDayOfInstant(rec.due_date, timezone);
         const amount = Number(rec.balance) || Number(rec.amount) || 0;
         inflowByDate.set(date, (inflowByDate.get(date) || 0) + amount);
       }
 
       for (const pay of (payables || []) as AccountsPayableRow[]) {
         if (!pay.due_date) continue;
-        const date = pay.due_date.split('T')[0];
+        const date = plainDayOfInstant(pay.due_date, timezone);
         const amount = Number(pay.balance) || Number(pay.amount) || 0;
         outflowByDate.set(date, (outflowByDate.get(date) || 0) + amount);
       }
@@ -326,9 +357,11 @@ export class TreasuryService {
       let totalInflow = 0;
       let totalOutflow = 0;
 
-      const cursor = new Date(today);
-      while (cursor <= horizon) {
-        const dateStr = cursor.toISOString().split('T')[0];
+      // Iteracion sobre dias CALENDARIO, no sobre instantes: un `+ 24 h` sobre
+      // un Date se salta o repite un dia en el cambio de hora, y la proyeccion
+      // se quedaba con 89 o 91 filas.
+      let dateStr = todayStr;
+      while (dateStr <= horizonStr) {
         const inflow = inflowByDate.get(dateStr) || 0;
         const outflow = outflowByDate.get(dateStr) || 0;
         const netFlow = inflow - outflow;
@@ -350,7 +383,7 @@ export class TreasuryService {
 
         totalInflow += inflow;
         totalOutflow += outflow;
-        cursor.setDate(cursor.getDate() + 1);
+        dateStr = nextPlainDay(dateStr);
       }
 
       return {
@@ -378,6 +411,12 @@ export class TreasuryService {
   ): Promise<InterAccountTransfer[]> {
     try {
       const supabase = getSupabaseAdmin();
+
+      // `dateFrom`/`dateTo` son dias calendario de la organizacion; la columna
+      // es timestamptz. Sin esta conversion el ultimo dia del rango se cortaba
+      // a las 19:00 (Bogota) y las transferencias de la tarde desaparecian.
+      const timezone = await resolveTimezone(organizationId);
+      const ventana = getDateRange(dateFrom, dateTo, timezone);
 
       // Obtener cuentas bancarias para identificar cuentas propias
       const { data: bankAccounts, error: bankError } = await supabase
@@ -415,8 +454,8 @@ export class TreasuryService {
           'id, bank_account_id, trans_date, description, amount, reference, transaction_type',
         )
         .eq('organization_id', organizationId)
-        .gte('trans_date', dateFrom)
-        .lte('trans_date', dateTo)
+        .gte('trans_date', ventana.start)
+        .lte('trans_date', ventana.end)
         .order('trans_date', { ascending: true });
 
       if (txError) {
@@ -515,14 +554,19 @@ export class TreasuryService {
     try {
       const supabase = getSupabaseAdmin();
 
+      // Mismo caso: `payments.payment_date` es timestamptz y aqui llegan dos
+      // dias calendario de la organizacion.
+      const timezone = await resolveTimezone(organizationId);
+      const ventana = getDateRange(dateFrom, dateTo, timezone);
+
       // Pagos del periodo con source='supplier' (source_id = supplier_id)
       const { data: payments, error: payError } = await supabase
         .from('payments')
         .select('id, source, source_id, amount, payment_date, status')
         .eq('organization_id', organizationId)
         .eq('source', 'supplier')
-        .gte('payment_date', dateFrom)
-        .lte('payment_date', dateTo)
+        .gte('payment_date', ventana.start)
+        .lte('payment_date', ventana.end)
         .in('status', ['completed', 'confirmed', 'approved']);
 
       if (payError) {
@@ -648,11 +692,15 @@ export class TreasuryService {
       }
 
       const supabase = getSupabaseAdmin();
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
-      const sevenDays = new Date();
-      sevenDays.setDate(sevenDays.getDate() + 7);
-      const sevenDaysStr = sevenDays.toISOString().split('T')[0];
+      const timezone = await resolveTimezone(organizationId);
+      const todayStr = todayInTz(timezone);
+      const sevenDaysStr = addPlainDays(todayStr, 7);
+
+      // "Vencida" = antes de que empiece HOY en la zona de la organizacion.
+      // Con la cadena de dia, Postgres comparaba contra la medianoche UTC y en
+      // Bogota daba por vencidas las que vencen hoy despues de las 19:00.
+      const inicioDeHoy = getDayRange(todayStr, timezone).start;
+      const proximos7 = getDateRange(todayStr, sevenDaysStr, timezone);
 
       // 2. Cuentas por pagar vencidas
       const { data: overdue, error: overdueError } = await supabase
@@ -660,7 +708,7 @@ export class TreasuryService {
         .select('id, supplier_id, amount, balance, due_date, status, days_overdue')
         .eq('organization_id', organizationId)
         .in('status', ['pending', 'partial', 'open'])
-        .lt('due_date', todayStr);
+        .lt('due_date', inicioDeHoy);
 
       if (overdueError) {
         throw new Error(`Error al listar CxP vencidas: ${overdueError.message}`);
@@ -684,8 +732,8 @@ export class TreasuryService {
         .select('id, supplier_id, amount, balance, due_date, status')
         .eq('organization_id', organizationId)
         .in('status', ['pending', 'partial', 'open'])
-        .gte('due_date', todayStr)
-        .lte('due_date', sevenDaysStr);
+        .gte('due_date', proximos7.start)
+        .lte('due_date', proximos7.end);
 
       if (upcomingError) {
         throw new Error(`Error al listar CxP proximas: ${upcomingError.message}`);
@@ -697,17 +745,20 @@ export class TreasuryService {
           id: `upcoming-${pay.id}`,
           type: 'upcoming_payable',
           severity: 'medium',
-          message: `Cuenta por pagar por vencer el ${pay.due_date?.split('T')[0]} por ${amount.toFixed(2)}`,
+          message: `Cuenta por pagar por vencer el ${plainDayOfInstant(pay.due_date, timezone)} por ${amount.toFixed(2)}`,
           amount,
           supplierId: pay.supplier_id,
         });
       }
 
       // 4. Concentracion de pagos (>30% en un proveedor)
-      const yearStart = new Date(today.getFullYear(), 0, 1);
+      // El anio sale del dia de la organizacion: el 1 de enero a las 00:30 en
+      // Bogota, `new Date().getFullYear()` en un servidor UTC ya daba el anio
+      // nuevo y el rango arrancaba doce meses tarde.
+      const yearStart = `${todayStr.slice(0, 4)}-01-01`;
       const concentrations = await TreasuryService.getPaymentConcentration(
         organizationId,
-        yearStart.toISOString().split('T')[0],
+        yearStart,
         todayStr,
       );
 

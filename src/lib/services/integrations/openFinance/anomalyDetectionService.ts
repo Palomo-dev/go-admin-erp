@@ -5,6 +5,18 @@
  */
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { plainDayOfInstant } from '@/lib/services/businessInstant';
+
+// ============================================================
+// Fase B, tanda 9 (arrastre). `bank_transactions.trans_date` y
+// `open_finance_transactions.transaction_date` son **timestamptz**. La clave de
+// agrupacion de duplicados incluye el DIA, y ese dia se sacaba con
+// `valor.split('T')[0]`, que la regla 2 de `docs/reglas-fechas-timezone.md`
+// prohibe: se queda con el dia UTC. Dos cargos identicos hechos a las 19:30 y a
+// las 20:30 en Bogota (mismo dia del negocio) caian en grupos distintos y el
+// duplicado no se detectaba.
+// ============================================================
 
 /** Alerta de transaccion duplicada */
 export interface DuplicateAlert {
@@ -131,6 +143,10 @@ export class AnomalyDetectionService {
       const supabase = getSupabaseAdmin();
       const alerts: DuplicateAlert[] = [];
 
+      // El dia con el que se agrupa sale de la zona de la organizacion
+      // (ADR-003: el servicio ya recibe la identidad).
+      const timezone = await resolveTimezone(organizationId);
+
       // Consultar transacciones bancarias en el rango
       let query = supabase
         .from('bank_transactions')
@@ -155,7 +171,7 @@ export class AnomalyDetectionService {
       // Agrupar por (amount, fecha, descripcion) en memoria
       const groups = new Map<string, BankTransactionRow[]>();
       for (const tx of txList) {
-        const dateStr = tx.trans_date ? tx.trans_date.split('T')[0] : 'sin-fecha';
+        const dateStr = plainDayOfInstant(tx.trans_date, timezone) || 'sin-fecha';
         const desc = (tx.description || '').trim().toLowerCase();
         const key = `${tx.amount}|${dateStr}|${desc}`;
         const existing = groups.get(key);
@@ -172,7 +188,7 @@ export class AnomalyDetectionService {
         if (group.length > 1) {
           alertIndex += 1;
           const first = group[0];
-          const dateStr = first.trans_date ? first.trans_date.split('T')[0] : '';
+          const dateStr = plainDayOfInstant(first.trans_date, timezone);
           // Severidad: high si 3 o mas duplicados, medium si 2
           const severity: 'high' | 'medium' = group.length >= 3 ? 'high' : 'medium';
           alerts.push({
@@ -215,7 +231,7 @@ export class AnomalyDetectionService {
         if (group.length > 1) {
           alertIndex += 1;
           const first = group[0];
-          const dateStr = first.transaction_date ? first.transaction_date.split('T')[0] : '';
+          const dateStr = plainDayOfInstant(first.transaction_date, timezone);
           const severity: 'high' | 'medium' = group.length >= 3 ? 'high' : 'medium';
           alerts.push({
             id: `dup-of-${alertIndex}`,

@@ -147,3 +147,15 @@ duplica el activo en toda venta de contado con pago → ADR-CC-001.
   v_salud_contable solo abiertos. ADR-CC-010.
 - Venta de prueba en la 149: un devengo y un solo costo. 0 rechazos abiertos.
 - Última migración reconciliada: `20260923170107`.
+
+## 2026-09-23 · F-67, pedido web confirmado dos veces (17:30–18:30 UTC)
+
+- Causa: webhook de Wompi y botón «Confirmar pedido» en carrera, leer y luego
+  escribir sin bloqueo. 1 de 628 ventas web.
+- `20260923174820` neutraliza el caso (se conserva FACT-0076; etiqueta `F-63`,
+  número que ya era de otra sesión). `20260923175006` función con FOR UPDATE +
+  `sales.web_order_id` único parcial. `20260923175318` disparador que protege el
+  código desplegado. `20260923182400` «Facturas Hoy» sin anuladas. ADR-CC-011.
+- Código: los dos caminos llaman a `fn_confirmar_pedido_web`; tests nuevos.
+- F-68 abierto (recetas autorreferidas, org 144, anterior al cierre).
+- Última migración reconciliada: `20260923182400`.

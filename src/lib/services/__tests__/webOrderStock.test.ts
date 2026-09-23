@@ -202,8 +202,14 @@ describe('F11 — confirmOrder usa customerId resuelto', () => {
     const client = makeMockClient({
       customerExists: { id: 'auto-cust' },
     });
-    // Mock RPC decrement_stock_with_recipe para que no falle
-    (client as any).rpc.mockResolvedValue({ data: null, error: null });
+    // fn_confirmar_pedido_web crea la venta; decrement_stock_with_recipe no falla
+    (client as any).rpc.mockImplementation((fn: string) =>
+      Promise.resolve(
+        fn === 'fn_confirmar_pedido_web'
+          ? { data: { sale_id: 'sale-1', creada: true }, error: null }
+          : { data: null, error: null }
+      )
+    );
 
     const order: any = {
       id: 'order-1',

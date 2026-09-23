@@ -322,3 +322,47 @@ generan costo porque el producto no tiene costo cargado (F-36).
 
 Los 3 rechazos de sonda de la org 149 se marcaron resueltos como pruebas.
 
+---
+
+## 10. F-67 · pedido web confirmado dos veces (2026-09-23, 17:30–18:30 UTC)
+
+Reportado por el dueño con captura: una venta web registrada dos veces (dos
+facturas, doble descuento de stock). Pedido `WO-145-MUEBYTM3-HRB5`, org 145.
+
+- **Causa:** el webhook de Wompi y el botón «Confirmar pedido» corrieron a la vez;
+  los dos crean la venta tras leer `sale_id`, sin bloqueo. No lo introdujo el
+  cierre contable: ese código no cambió; es la primera vez que coincidieron
+  (1 de 628 ventas web).
+- **Arreglo (ADR-CC-011):** `fn_confirmar_pedido_web` con `FOR UPDATE`,
+  `sales.web_order_id` con índice único parcial y disparador que liga las ventas
+  del código ya desplegado. Código de los dos caminos pendiente de desplegar.
+- **Caso neutralizado** sin borrar (`20260923174820`): se conserva FACT-0076;
+  FACT-0075 anulada, contra-asientos del devengo y del cobro, costo devuelto por
+  el kardex, referencia de Wompi en el pago vivo.
+
+| Chequeo | Resultado |
+|---|---|
+| ventas vivas del pedido | 1 |
+| salida neta del producto 66306 por el pedido | 1 |
+| 1110 por el pedido | 40.000 |
+| 1305 / 4105 / 6105-01 por el pedido | 0 / −40.000 / 30.000 |
+| balance de la org 145 | cuadrado |
+| cartera del cliente | 0 |
+| org 149: segunda confirmación | devuelve la misma venta, `creada = false` |
+| org 149: INSERT directo de una segunda venta | rechazado por `uq_sales_web_order_viva` |
+
+**«Una factura de más» en el inicio:** «Facturas Hoy» contaba la anulada
+(FACT-0075). `20260923182400` excluye anuladas y notas crédito; hoy la org 145
+pasa de 3 a 2.
+
+**Revisión pedida por el dueño («una venta de 83 marcó 160»):** los 30 pedidos
+web pagados de la org 145 en 3 días tienen venta, líneas, factura y pago iguales
+al pedido; la venta de 83.400 tiene un devengo y un cobro de 83.400. La factura de
+158.800 (FACT-0074) es de otro pedido, hecho el 22 y pagado el 23. En todas las
+organizaciones, 7 días: 0 ventas con ingreso doble, 0 ventas con más facturas que
+su total, 0 pedidos con dos ventas vivas.
+
+Hallazgos laterales: F-68 (recetas autorreferidas en la org 144, desde el 17);
+las salidas de venta web se costean al precio de venta (la corrección
+`250aeec7` está en `main`, no en producción).
+

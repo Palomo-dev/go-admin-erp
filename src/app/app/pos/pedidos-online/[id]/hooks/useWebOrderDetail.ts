@@ -144,6 +144,16 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
         transitMs,
         markAsPaid,
       });
+      if (result.yaConfirmado) {
+        toast({
+          title: 'El pedido ya estaba confirmado',
+          description: 'La venta se creó cuando llegó el pago; no se creó otra.',
+        });
+        setConfirmDialogOpen(false);
+        setMarkAsPaid(false);
+        loadOrder();
+        return;
+      }
       const parts = [`Venta creada · Comanda enviada a cocina · Listo: ${formatEstimatedTime(prepTime)}`];
       if (isDelivery && transitMs > 0) parts.push(`· Entrega: ${formatEstimatedTime(transitTime)}`);
       if (markAsPaid) parts.push('· Marcado como pagado');

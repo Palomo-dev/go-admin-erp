@@ -307,6 +307,40 @@ export const webOrderServerConfirmation = {
   },
 
   /**
+   * Cuando el pedido ya tenía venta (la confirmó otro camino), la referencia de
+   * la pasarela debe quedar en el pago que sobrevive: si el pago de la factura
+   * de esa venta no la tiene, se le pone la del pedido. Ver ADR-CC-011.
+   */
+  async conservarReferenciaPasarela(
+    supabase: SupabaseClient,
+    order: WebOrder,
+    saleId: string
+  ): Promise<void> {
+    const referencia = order.payment_reference;
+    if (!referencia) return;
+
+    const { data: factura } = await supabase
+      .from('invoice_sales')
+      .select('id')
+      .eq('sale_id', saleId)
+      .neq('status', 'void')
+      .limit(1)
+      .maybeSingle();
+    if (!factura) return;
+
+    const { error } = await supabase
+      .from('payments')
+      .update({ reference: referencia })
+      .eq('source', 'invoice_sales')
+      .eq('source_id', factura.id)
+      .eq('status', 'completed')
+      .is('reference', null);
+    if (error) {
+      console.error('[webOrderServerConfirmation] No se pudo conservar la referencia de la pasarela:', error.message);
+    }
+  },
+
+  /**
    * Resuelve un user_id válido para registros que requieren NOT NULL (sales.user_id).
    * Prioriza `confirmed_by` del pedido; si es null (pedido auto-confirmado por
    * webhook del website sin sesión de usuario), usa `organizations.created_by`
@@ -381,38 +415,27 @@ export const webOrderServerConfirmation = {
     // usar organizations.created_by como fallback.
     const userId = await this.resolveUserId(supabase, order);
 
-    // ── 1. Crear sale (venta web) ──
-    // source='web' e include_in_cash_register=false para que no aparezca en caja POS.
-    // sale_date usa la fecha original del pedido (created_at), no la fecha de
-    // reconciliación, para que las estadísticas diarias sean correctas.
-    // confirmed_at puede tener la fecha de la reconciliación, no la del pedido.
+    // ── 1. Crear la venta (una sola vez por pedido) ──
+    // fn_confirmar_pedido_web toma el pedido con FOR UPDATE: si otro camino
+    // (el botón «Confirmar pedido» de Pedidos online) ya creó la venta, la
+    // devuelve con creada=false y aquí no se crea nada más. Ver ADR-CC-011.
+    // La venta es source='web', fuera de caja POS, con la fecha del pedido.
     const saleDate = order.created_at || now;
-    const { data: sale, error: saleError } = await supabase
-      .from('sales')
-      .insert({
-        organization_id: order.organization_id,
-        branch_id: order.branch_id,
-        customer_id: customerId,
-        user_id: userId,
-        sale_date: saleDate,
-        total: Number(order.total) || 0,
-        subtotal: Number(order.subtotal) || 0,
-        tax_total: Number(order.tax_total) || 0,
-        discount_total: Number(order.discount_total) || 0,
-        delivery_fee: Number(order.delivery_fee) || 0,
-        tip_amount: Number(order.tip_amount) || 0,
-        balance: 0,
-        status: 'paid',
-        payment_status: 'paid',
-        source: 'web',
-        include_in_cash_register: false,
-        notes: `Pedido web: ${order.order_number}`,
-      })
-      .select('id')
-      .single();
+    const { data: confirmacion, error: saleError } = await supabase.rpc('fn_confirmar_pedido_web', {
+      p_order_id: order.id,
+      p_customer_id: customerId,
+      p_user_id: userId,
+      p_pagado: true,
+    });
 
     if (saleError) throw new Error(`Error creando sale: ${saleError.message}`);
-    const saleId = sale.id;
+    const { sale_id: saleId, creada } = (confirmacion ?? {}) as { sale_id?: string; creada?: boolean };
+    if (!saleId) throw new Error(`El pedido ${order.order_number} no devolvió venta`);
+
+    if (!creada) {
+      await this.conservarReferenciaPasarela(supabase, order, saleId);
+      return { saleId, stockErrors };
+    }
 
     // ── 2. Crear sale_items ──
     // El descuento de pedido (cupón/promoción del sitio web) se prorratea en

@@ -30,7 +30,10 @@ function mapWebPaymentMethodToInvoice(method: string | null | undefined): string
 
 export interface ConfirmOrderResult {
   saleId: string;
-  kitchenTicketId: number;
+  /** Sin comanda cuando el pedido ya estaba confirmado por otro camino. */
+  kitchenTicketId?: number;
+  /** El pedido ya tenía venta (p. ej. la creó el webhook de la pasarela): no se creó nada. */
+  yaConfirmado?: boolean;
   tipId?: string;
   shipmentId?: string;
   couponRedemptionId?: string;
@@ -78,8 +81,12 @@ class WebOrderConfirmationService {
     const effectivePaymentStatus = markAsPaid ? 'paid' : order.payment_status;
     const orderForSale = markAsPaid ? { ...order, payment_status: 'paid' as const } : order;
 
-    // 1. Crear sale (venta POS)
-    const saleId = await this.createSale(orderForSale, userId);
+    // 1. Crear la venta, una sola vez por pedido (ADR-CC-011). Si el webhook
+    //    de la pasarela ya la creó, se devuelve esa venta y no se crea nada más.
+    const { saleId, creada } = await this.createSale(orderForSale, userId);
+    if (!creada) {
+      return { saleId, yaConfirmado: true };
+    }
 
     // 2. Crear sale_items y obtener los IDs insertados
     const insertedSaleItems = await this.createSaleItems(order, saleId);
@@ -199,38 +206,28 @@ class WebOrderConfirmationService {
    * source='web' e include_in_cash_register=false para que no aparezca en caja POS.
    * sale_date usa la fecha original del pedido, no la fecha de confirmación.
    */
-  private async createSale(order: WebOrder, userId: string): Promise<string> {
-    const saleDate = order.created_at || new Date().toISOString();
-    const { data: sale, error } = await supabase
-      .from('sales')
-      .insert({
-        organization_id: order.organization_id,
-        branch_id: order.branch_id,
-        customer_id: order.customer_id || null,
-        user_id: userId,
-        sale_date: saleDate,
-        total: order.total,
-        subtotal: order.subtotal,
-        tax_total: order.tax_total,
-        discount_total: order.discount_total,
-        delivery_fee: Number(order.delivery_fee) || 0,
-        tip_amount: Number(order.tip_amount) || 0,
-        balance: order.payment_status === 'paid' ? 0 : order.total,
-        status: order.payment_status === 'paid' ? 'paid' : 'pending',
-        payment_status: order.payment_status || 'pending',
-        source: 'web',
-        include_in_cash_register: false,
-        notes: `Pedido web: ${order.order_number}`,
-      })
-      .select('id')
-      .single();
+  private async createSale(
+    order: WebOrder,
+    userId: string
+  ): Promise<{ saleId: string; creada: boolean }> {
+    // fn_confirmar_pedido_web toma el pedido con FOR UPDATE: si otro camino ya
+    // creó la venta, la devuelve con creada=false. El usuario lo toma la base de
+    // la sesión; aquí solo se pasa para el caso sin sesión.
+    const { data, error } = await supabase.rpc('fn_confirmar_pedido_web', {
+      p_order_id: order.id,
+      p_customer_id: order.customer_id || null,
+      p_user_id: userId,
+      p_pagado: order.payment_status === 'paid',
+    });
 
     if (error) {
       console.error('Error creando sale:', error);
       throw new Error(`Error al crear venta: ${error.message}`);
     }
 
-    return sale.id;
+    const { sale_id: saleId, creada } = (data ?? {}) as { sale_id?: string; creada?: boolean };
+    if (!saleId) throw new Error(`El pedido ${order.order_number} no devolvió venta`);
+    return { saleId, creada: creada === true };
   }
 
   /**

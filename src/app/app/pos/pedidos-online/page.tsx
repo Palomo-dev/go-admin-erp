@@ -323,6 +323,16 @@ export default function PedidosOnlinePage() {
         transitMs: order.delivery_type !== 'pickup' ? timeToMs(transitTime) : 0,
         markAsPaid,
       });
+      if (result.yaConfirmado) {
+        toast({
+          title: 'El pedido ya estaba confirmado',
+          description: 'La venta se creó cuando llegó el pago; no se creó otra.',
+        });
+        setConfirmDialog({ open: false, orderId: null });
+        setMarkAsPaid(false);
+        loadOrders();
+        return;
+      }
       const parts = ['Venta creada', 'Comanda enviada a cocina', `Listo: ${formatEstimatedTime(prepTime)}`];
       if (order.delivery_type !== 'pickup' && transitTime.value > 0) parts.push(`Entrega: ${formatEstimatedTime(transitTime)}`);
       if (markAsPaid) parts.push('Marcado como pagado');

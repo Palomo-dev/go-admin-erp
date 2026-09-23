@@ -22,6 +22,10 @@ import { Loader2, PlusCircle, Trash2, Upload, FileText } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { opportunitiesService } from '@/components/crm/oportunidades/opportunitiesService';
 import type { Pipeline, Stage } from '@/components/crm/oportunidades/types';
+import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { mensajeErrorTelefono } from '@/lib/utils/telefono';
+import { resolverClienteDeFila } from './bulkOpportunityCustomer';
 
 interface BulkCreateOpportunitiesDialogProps {
   isOpen: boolean;
@@ -60,6 +64,8 @@ export default function BulkCreateOpportunitiesDialog({
       loadData();
       setSelectedPipelineId(pipelineId || '');
     }
+    // loadData solo debe correr al abrir el diálogo o cambiar el pipeline inicial.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, pipelineId]);
 
   useEffect(() => {
@@ -142,42 +148,28 @@ export default function BulkCreateOpportunitiesDialog({
       return;
     }
 
+    // El teléfono de la grilla no usa PhoneInput (la celda es muy angosta):
+    // se valida aquí antes de crear nada, fila por fila.
+    const filaConTelefonoInvalido = validRows.findIndex((r) => mensajeErrorTelefono(r.customerPhone));
+    if (filaConTelefonoInvalido >= 0) {
+      toast({
+        title: 'Teléfono inválido',
+        description: `Fila ${filaConTelefonoInvalido + 1}: ${mensajeErrorTelefono(validRows[filaConTelefonoInvalido].customerPhone)}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSaving(true);
     let created = 0;
     let failed = 0;
+    let primerError: string | null = null;
 
     try {
+      const organizationId = getOrganizationId();
       for (const row of validRows) {
         try {
-          let customerId: string | undefined;
-
-          // Crear cliente si hay nombre de cliente
-          if (row.customerName.trim()) {
-            const { supabase } = await import('@/lib/supabase/config');
-            const { getOrganizationId } = await import('@/lib/hooks/useOrganization');
-            const { data: existing } = await supabase
-              .from('customers')
-              .select('id')
-              .eq('organization_id', getOrganizationId())
-              .ilike('full_name', row.customerName.trim())
-              .limit(1);
-
-            if (existing && existing.length > 0) {
-              customerId = existing[0].id;
-            } else {
-              const { data: newCustomer } = await supabase
-                .from('customers')
-                .insert({
-                  organization_id: getOrganizationId(),
-                  full_name: row.customerName.trim(),
-                  email: row.customerEmail.trim() || null,
-                  phone: row.customerPhone.trim() || null,
-                })
-                .select('id')
-                .single();
-              if (newCustomer) customerId = newCustomer.id;
-            }
-          }
+          const customerId = await resolverClienteDeFila(supabase, organizationId, row);
 
           await opportunitiesService.createOpportunity({
             pipeline_id: selectedPipelineId,
@@ -188,19 +180,26 @@ export default function BulkCreateOpportunitiesDialog({
             currency,
           });
           created++;
-        } catch {
+        } catch (error) {
           failed++;
+          if (!primerError) {
+            primerError = `«${row.name.trim()}»: ${error instanceof Error ? error.message : 'error al crear'}`;
+          }
         }
       }
 
       if (created > 0) {
         toast({
           title: 'Oportunidades creadas',
-          description: `${created} creadas${failed > 0 ? `, ${failed} fallidas` : ''}`,
+          description: `${created} creadas${failed > 0 ? `, ${failed} fallidas. ${primerError ?? ''}` : ''}`,
         });
       }
       if (failed > 0 && created === 0) {
-        toast({ title: 'Error', description: `No se pudieron crear ${failed} oportunidades`, variant: 'destructive' });
+        toast({
+          title: 'Error',
+          description: `No se pudieron crear ${failed} oportunidades. ${primerError ?? ''}`,
+          variant: 'destructive',
+        });
       }
 
       if (created > 0) {
@@ -208,7 +207,7 @@ export default function BulkCreateOpportunitiesDialog({
         onClose();
         setRows([{ name: '', amount: '', customerName: '', customerEmail: '', customerPhone: '' }]);
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error inesperado', variant: 'destructive' });
     } finally {
       setIsSaving(false);
@@ -319,12 +318,24 @@ export default function BulkCreateOpportunitiesDialog({
                     placeholder="email@..."
                     className="h-8 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                   />
-                  <Input
-                    value={row.customerPhone}
-                    onChange={(e) => updateRow(index, 'customerPhone', e.target.value)}
-                    placeholder="Teléfono"
-                    className="h-8 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700"
-                  />
+                  {(() => {
+                    const errorTelefono = mensajeErrorTelefono(row.customerPhone);
+                    return (
+                      <Input
+                        type="tel"
+                        inputMode="tel"
+                        value={row.customerPhone}
+                        onChange={(e) => updateRow(index, 'customerPhone', e.target.value)}
+                        placeholder="Teléfono"
+                        aria-label={`Teléfono del cliente, fila ${index + 1}`}
+                        aria-invalid={errorTelefono ? true : undefined}
+                        title={errorTelefono ?? undefined}
+                        className={`h-8 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 ${
+                          errorTelefono ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-200 dark:border-gray-700'
+                        }`}
+                      />
+                    );
+                  })()}
                   <Button
                     type="button"
                     variant="ghost"
@@ -370,7 +381,7 @@ export default function BulkCreateOpportunitiesDialog({
           <Button
             type="button"
             onClick={handleCreate}
-            disabled={isSaving || validRows.length === 0}
+            disabled={isSaving || isLoadingData || validRows.length === 0}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

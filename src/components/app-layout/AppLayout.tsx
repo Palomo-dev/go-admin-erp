@@ -940,10 +940,13 @@ export const AppLayout = ({
               setSidebarOpen(false);
               abrirReportarProblema();
             }}
-            className="flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-fg-secondary hover:bg-hover"
+            // Misma fila que un módulo del drawer (NavItem, 48 px con chip de 28).
+            className="group flex h-12 w-full items-center gap-2.5 rounded-lg pl-1.5 pr-2 outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand"
           >
-            <Bug className="h-5 w-5" aria-hidden="true" />
-            {tHeader('reportProblem')}
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-subtle text-fg-secondary group-hover:text-fg">
+              <Bug size={18} strokeWidth={1.75} aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1 truncate text-left text-sm font-medium text-fg">{tHeader('reportProblemShort')}</span>
           </button>
         }
       />

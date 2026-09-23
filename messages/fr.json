@@ -2144,7 +2144,10 @@
     "mySubscription": "Mon abonnement",
     "signOut": "Se déconnecter",
     "signingOut": "Déconnexion…",
-    "purchasedCredits": "Plus {count} crédits achetés, sans expiration"
+    "purchasedCredits": "Plus {count} crédits achetés, sans expiration",
+    "creditsAvailable": "{count} disponibles",
+    "languageHint": "Change l'interface instantanément.",
+    "close": "Fermer"
   },
   "header": {
     "all": "Toutes",
@@ -2241,6 +2244,7 @@
     "unread": "Non lue",
     "upToDate": "À jour",
     "yesterday": "hier",
-    "feedbackCapturing": "Capture en cours…"
+    "feedbackCapturing": "Capture en cours…",
+    "reportProblemShort": "Signaler un problème"
   }
 }

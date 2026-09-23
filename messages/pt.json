@@ -2144,7 +2144,10 @@
     "mySubscription": "Minha assinatura",
     "signOut": "Sair",
     "signingOut": "Saindo…",
-    "purchasedCredits": "Mais {count} créditos comprados, que não expiram com o ciclo"
+    "purchasedCredits": "Mais {count} créditos comprados, que não expiram com o ciclo",
+    "creditsAvailable": "{count} disponíveis",
+    "languageHint": "Muda a interface na hora.",
+    "close": "Fechar"
   },
   "header": {
     "all": "Todas",
@@ -2241,6 +2244,7 @@
     "unread": "Não lida",
     "upToDate": "Em dia",
     "yesterday": "ontem",
-    "feedbackCapturing": "Fazendo a captura…"
+    "feedbackCapturing": "Fazendo a captura…",
+    "reportProblemShort": "Relatar problema"
   }
 }

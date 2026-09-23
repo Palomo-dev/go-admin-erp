@@ -2252,7 +2252,10 @@
     "mySubscription": "My subscription",
     "signOut": "Sign out",
     "signingOut": "Signing out…",
-    "purchasedCredits": "Plus {count} purchased credits that do not expire with the cycle"
+    "purchasedCredits": "Plus {count} purchased credits that do not expire with the cycle",
+    "creditsAvailable": "{count} available",
+    "languageHint": "Changes the interface instantly.",
+    "close": "Close"
   },
   "header": {
     "all": "All",
@@ -2349,6 +2352,7 @@
     "unread": "Unread",
     "upToDate": "All caught up",
     "yesterday": "yesterday",
-    "feedbackCapturing": "Taking the screenshot…"
+    "feedbackCapturing": "Taking the screenshot…",
+    "reportProblemShort": "Report a problem"
   }
 }

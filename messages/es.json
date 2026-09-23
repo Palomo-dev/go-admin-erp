@@ -2252,7 +2252,10 @@
     "mySubscription": "Mi suscripción",
     "signOut": "Cerrar sesión",
     "signingOut": "Cerrando sesión…",
-    "purchasedCredits": "Además, {count} créditos comprados, que no caducan con el ciclo"
+    "purchasedCredits": "Además, {count} créditos comprados, que no caducan con el ciclo",
+    "creditsAvailable": "{count} disponibles",
+    "languageHint": "Cambia la interfaz al instante.",
+    "close": "Cerrar"
   },
   "header": {
     "all": "Todas",
@@ -2349,6 +2352,7 @@
     "unread": "Sin leer",
     "upToDate": "Al día",
     "yesterday": "ayer",
-    "feedbackCapturing": "Tomando la captura…"
+    "feedbackCapturing": "Tomando la captura…",
+    "reportProblemShort": "Reportar problema"
   }
 }

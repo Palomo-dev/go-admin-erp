@@ -175,6 +175,9 @@ export function Sidebar({
               </div>
             ))
           )}
+          {/* Acciones del drawer (p. ej. «Reportar problema»): un elemento más del
+              menú, al final de la lista (Figma MobileDrawer 30:954). */}
+          {drawer && accionesDrawer && !cargando && <div className="flex flex-col gap-0.5 pt-3">{accionesDrawer}</div>}
         </nav>
 
         {/* Pie */}
@@ -192,7 +195,6 @@ export function Sidebar({
               </button>
             </div>
           )}
-          {drawer && accionesDrawer && <div className="border-t border-line px-4 py-2">{accionesDrawer}</div>}
           {pie}
         </div>
       </aside>

@@ -48,6 +48,8 @@ import { locales, localeNames, type Locale } from '@/i18n/config';
 import { isDesktop } from '@/lib/utils/desktop';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz } from '@/lib/utils/dateDisplay';
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { DownloadDesktopDialog } from '@/components/pos/configuracion/printers/DownloadDesktopDialog';
 import {
   MAX_SAVED_ACCOUNTS,
@@ -78,6 +80,8 @@ interface PanelSesionProps {
   cerrandoSesion: boolean;
   /** Cierra el popover o la hoja (al navegar, al cambiar de cuenta). */
   onCerrar: () => void;
+  /** drawer = hoja móvil: el selector de idioma abre su propia hoja inferior. */
+  modo?: 'rail' | 'expanded' | 'drawer';
 }
 
 // Limpia lo que dependía de la cuenta anterior antes de entrar con otra.
@@ -186,6 +190,113 @@ function InterruptorVisual({ encendido }: { encendido: boolean }) {
         )}
       />
     </span>
+  );
+}
+
+// Orden del diseño (Figma LanguagePicker 78:3173).
+const ORDEN_IDIOMAS: Locale[] = (['es', 'en', 'fr', 'pt'] as Locale[]).filter((l) => locales.includes(l));
+
+/**
+ * Selector de idioma (Figma `02 Componentes` › LanguagePicker 78:3173).
+ * Escritorio: sub-panel de 280 px anclado a la derecha de la fila «Idioma».
+ * Móvil (hoja de sesión): hoja inferior propia con título y cerrar.
+ */
+function SelectorIdioma({
+  locale,
+  abierto,
+  onAbrir,
+  onElegir,
+  enHoja,
+}: {
+  locale: Locale;
+  abierto: boolean;
+  onAbrir: (abierto: boolean) => void;
+  onElegir: (l: Locale) => void;
+  enHoja: boolean;
+}) {
+  const t = useTranslations('session');
+  const fila = (
+    <Fila
+      icono={Globe}
+      titulo={t('language')}
+      onClick={() => onAbrir(!abierto)}
+      cola={
+        <span className="flex items-center gap-1 text-xs font-medium text-fg-secondary">
+          {localeNames[locale]}
+          <ChevronRight size={16} aria-hidden="true" className="text-fg-muted" />
+        </span>
+      }
+    />
+  );
+  const opciones = (
+    <div role="radiogroup" aria-label={t('language')} className="flex flex-col gap-0.5">
+      {ORDEN_IDIOMAS.map((l) => {
+        const activo = l === locale;
+        return (
+          <button
+            key={l}
+            type="button"
+            role="radio"
+            aria-checked={activo}
+            lang={l}
+            onClick={() => onElegir(l)}
+            className={cn(
+              'flex w-full items-center gap-2.5 rounded-lg px-2.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand',
+              enHoja ? 'py-3' : 'py-2',
+              activo ? 'bg-brand-tint' : 'hover:bg-hover'
+            )}
+          >
+            <span className={cn('w-6 shrink-0 text-xs font-semibold', activo ? 'text-brand-deep' : 'text-fg-muted')}>{l.toUpperCase()}</span>
+            <span className={cn('flex-1 text-sm font-medium', activo ? 'text-brand-deep' : 'text-fg')}>{localeNames[l]}</span>
+            {activo && <Check size={16} aria-hidden="true" className="shrink-0 text-brand-deep" />}
+          </button>
+        );
+      })}
+      <p className="pl-2.5 pt-1.5 text-xs font-medium text-fg-muted">{t('languageHint')}</p>
+    </div>
+  );
+
+  if (enHoja) {
+    return (
+      <>
+        {fila}
+        <Sheet open={abierto} onOpenChange={onAbrir}>
+          <SheetContent side="bottom" hideCloseButton className="rounded-t-2xl border-line bg-surface px-2 pb-[max(2rem,env(safe-area-inset-bottom))] pt-2">
+            <div className="mx-auto mb-1 h-1 w-9 rounded-full bg-line-strong" aria-hidden="true" />
+            <div className="flex items-center justify-between pb-1.5 pl-2 pt-1">
+              <SheetTitle className="text-base font-semibold text-fg">{t('language')}</SheetTitle>
+              <button
+                type="button"
+                onClick={() => onAbrir(false)}
+                aria-label={t('close')}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover"
+              >
+                <X size={20} aria-hidden="true" />
+              </button>
+            </div>
+            {opciones}
+          </SheetContent>
+        </Sheet>
+      </>
+    );
+  }
+
+  return (
+    <Popover open={abierto} onOpenChange={onAbrir}>
+      <PopoverAnchor asChild>
+        <div>{fila}</div>
+      </PopoverAnchor>
+      <PopoverContent
+        side="right"
+        align="start"
+        sideOffset={12}
+        collisionPadding={8}
+        className="w-[280px] rounded-xl border-line bg-surface p-2 text-fg shadow-md"
+      >
+        <p className="pb-1.5 pl-2 pt-1 text-sm font-medium text-fg">{t('language')}</p>
+        {opciones}
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -331,8 +442,14 @@ function UsoDelPlan({ uso, onCerrar }: { uso: PlanSesion['uso']; onCerrar: () =>
       {fila(t('branches'), uso.sucursales.actual, uso.sucursales.maximo, t('branchesUnit'))}
       <BarraUso
         etiqueta={t('aiCredits')}
-        valor={cupoMensual ? t('xOfY', { x: ENTERO.format(restantesPlan), y: ENTERO.format(cupoMensual), unit: '' }).trim() : ENTERO.format(restantesPlan)}
-        porcentaje={pctRestante}
+        valor={
+          // Si quedan más que el cupo (bono o cambio de plan), «1.000 de 500» no
+          // tiene sentido: se muestran solo los disponibles.
+          cupoMensual && restantesPlan <= cupoMensual
+            ? t('xOfY', { x: ENTERO.format(restantesPlan), y: ENTERO.format(cupoMensual), unit: '' }).trim()
+            : t('creditsAvailable', { count: ENTERO.format(restantesPlan) })
+        }
+        porcentaje={pctRestante === null ? null : Math.min(100, pctRestante)}
         tono={tonoCreditos}
       />
       {comprados > 0 && (
@@ -348,7 +465,7 @@ function UsoDelPlan({ uso, onCerrar }: { uso: PlanSesion['uso']; onCerrar: () =>
   );
 }
 
-export function PanelSesion({ usuario, organizacion, tema, onAlternarTema, onCerrarSesion, cerrandoSesion, onCerrar }: PanelSesionProps) {
+export function PanelSesion({ usuario, organizacion, tema, onAlternarTema, onCerrarSesion, cerrandoSesion, onCerrar, modo }: PanelSesionProps) {
   const t = useTranslations('session');
   const router = useRouter();
   const locale = useLocale() as Locale;
@@ -608,29 +725,13 @@ export function PanelSesion({ usuario, organizacion, tema, onAlternarTema, onCer
         encendido={tema === 'dark'}
         cola={<InterruptorVisual encendido={tema === 'dark'} />}
       />
-      <Fila
-        icono={Globe}
-        titulo={t('language')}
-        onClick={() => setVerIdiomas((v) => !v)}
-        cola={<span className="text-xs font-medium text-fg-secondary">{localeNames[locale]} ›</span>}
+      <SelectorIdioma
+        locale={locale}
+        abierto={verIdiomas}
+        onAbrir={setVerIdiomas}
+        onElegir={elegirIdioma}
+        enHoja={modo === 'drawer'}
       />
-      {verIdiomas && (
-        <ul className="ml-11 flex flex-col gap-0.5 pb-1" aria-label={t('language')}>
-          {locales.map((l) => (
-            <li key={l}>
-              <button
-                type="button"
-                onClick={() => elegirIdioma(l)}
-                aria-current={l === locale ? 'true' : undefined}
-                className="flex h-8 w-full items-center justify-between rounded-md px-2 text-[13px] text-fg outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                {localeNames[l]}
-                {l === locale && <Check size={14} aria-hidden="true" className="text-brand" />}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
       <Fila
         icono={CreditCard}
         titulo={t('mySubscription')}

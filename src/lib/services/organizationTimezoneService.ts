@@ -10,8 +10,10 @@
 // (fn_today_for_org se ejecuta por fila en triggers y necesita O(1)).
 // ============================================================
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
+import { avisarFallbackZonaHoraria } from '@/lib/utils/timezoneFallback';
 
 // Cache en memoria: organizationId -> timezone
 const timezoneCache = new Map<number, string>();
@@ -46,9 +48,16 @@ function isValidTimezone(tz: string | null | undefined): boolean {
  * Si cae al fallback final, emite un console.warn para visibilidad.
  *
  * @param organizationId ID de la organizacion
+ * @param db Cliente Supabase. En el navegador se omite (cliente browser con la
+ *   sesion). En route handlers es OBLIGATORIO pasar el cliente de sesion
+ *   (`ctx.supabase`) o el service-role tras comprobar la membresia: alli el
+ *   cliente browser no tiene sesion y leeria como `anon`.
  * @returns Timezone IANA (ej: 'America/Bogota', 'America/Mexico_City')
  */
-export async function getOrganizationTimezone(organizationId: number): Promise<string> {
+export async function getOrganizationTimezone(
+  organizationId: number,
+  db: SupabaseClient = supabase
+): Promise<string> {
   // 1. Cache
   const cached = timezoneCache.get(organizationId);
   if (cached) return cached;
@@ -63,7 +72,7 @@ export async function getOrganizationTimezone(organizationId: number): Promise<s
       // maybeSingle, no single: con una organizacion que la sesion no puede
       // leer (RLS, id inexistente) single hace que PostgREST responda 406 y
       // ensucie la consola en cada intento; data null cae al siguiente respaldo.
-      const { data: orgData, error: orgError } = await supabase
+      const { data: orgData, error: orgError } = await db
         .from('organizations')
         .select('timezone')
         .eq('id', organizationId)
@@ -79,7 +88,7 @@ export async function getOrganizationTimezone(organizationId: number): Promise<s
       }
 
       // 3. Fallback legacy: organization_settings clave 'calendar'
-      const { data: settingsData, error: settingsError } = await supabase
+      const { data: settingsData, error: settingsError } = await db
         .from('organization_settings')
         .select('settings')
         .eq('organization_id', organizationId)
@@ -95,15 +104,24 @@ export async function getOrganizationTimezone(organizationId: number): Promise<s
         }
       }
 
-      // 4. Fallback final
-      console.warn(
-        `[timezone] Organizacion ${organizationId} sin timezone configurado. ` +
-        `Usando fallback '${DEFAULT_TIMEZONE}'.`
-      );
+      // 4. Fallback final. El aviso sale una sola vez por organizacion
+      //    (fase A2, punto 4): con la cache esto ya ocurria, pero el
+      //    contador vive ahora en timezoneFallback y ademas deja miga en
+      //    Sentry cuando el SDK esta cargado.
+      avisarFallbackZonaHoraria({
+        donde: 'getOrganizationTimezone',
+        organizationId,
+        motivo: 'sin-dato',
+      });
       timezoneCache.set(organizationId, DEFAULT_TIMEZONE);
       return DEFAULT_TIMEZONE;
     } catch (err) {
-      console.warn('[timezone] Error en getOrganizationTimezone:', err);
+      avisarFallbackZonaHoraria({
+        donde: 'getOrganizationTimezone',
+        organizationId,
+        motivo: 'error',
+        valor: err instanceof Error ? err.message : String(err),
+      });
       return DEFAULT_TIMEZONE;
     } finally {
       inflight.delete(organizationId);

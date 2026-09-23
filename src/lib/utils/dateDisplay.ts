@@ -11,7 +11,8 @@
 //
 // REGLAS (ver docs/PROMPT-fix-fechas-timezone.md seccion 3):
 // 1. Un instante (timestamptz) se formatea con formatDateInTz (convierte a la TZ de la org).
-// 2. Un dia calendario (columna date pura, YYYY-MM-DD) se formatea con formatPlainDate (NO convierte).
+// 2. Un dia calendario (columna date pura, YYYY-MM-DD) se formatea con
+//    formatPlainDate (NO convierte).
 // 3. toISOString().split('T')[0] esta prohibido para derivar una fecha.
 // 4. La zona horaria nunca se hardcodea; sale de getOrganizationTimezone.
 //
@@ -19,12 +20,22 @@
 // - valor que viene de un timestamptz -> formatDateInTz (convierte)
 // - valor que viene de un date -> formatPlainDate (NO convierte)
 // Confundir estos dos casos es exactamente lo que produjo el bug original.
+//
+// ALCANCE (fase A2): aqui solo vive el FORMATEO para la interfaz. El
+// calculo de dias, instantes y offsets esta en dateCore.ts y los rangos
+// en dateRanges.ts; '@/lib/utils/timezone' es la fachada de todo ello.
 // ============================================================
 
-import { getToday, getOffsetMinutesForTimezone, offsetMinutesToISO } from '@/lib/utils/timezone';
+import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 
-/** Zona horaria IANA por defecto (Colombia). Usar solo como fallback. */
-const DEFAULT_TIMEZONE = 'America/Bogota';
+// Dia calendario e instantes: una sola implementacion, en dateCore.ts.
+// Se reexportan aqui porque la mitad del repositorio los importa de
+// '@/lib/utils/dateDisplay' y la documentacion los nombra en este modulo.
+export {
+  plainDateToInstant,
+  toPlainDate,
+  todayInTz,
+} from '@/lib/utils/dateCore';
 
 /**
  * Brand type para distinguir un dia calendario puro (YYYY-MM-DD)
@@ -131,7 +142,8 @@ export function formatTimeInTz(
   const date = typeof value === 'string' ? new Date(value) : value;
   if (isNaN(date.getTime())) return '';
 
-  const { locale: _locale, ...formatOpts } = (opts ?? {}) as Intl.DateTimeFormatOptions & { locale?: string };
+  const opciones = (opts ?? {}) as Intl.DateTimeFormatOptions & { locale?: string };
+  const { locale: _locale, ...formatOpts } = opciones;
   const hasFormatOpts = Object.keys(formatOpts).length > 0;
   const dtf = new Intl.DateTimeFormat('es-ES', {
     timeZone: timezone,
@@ -174,62 +186,4 @@ export function formatPlainDate(
 
   const [year, month, day] = datePart.split('-');
   return `${day}/${month}/${year}`;
-}
-
-/**
- * Devuelve el dia calendario actual en la zona horaria dada como
- * YYYY-MM-DD. Reexporta getToday de timezone.ts para tener una sola
- * API de fechas en la app.
- *
- * @param timezone Zona horaria IANA (default: America/Bogota)
- * @returns Fecha actual en formato YYYY-MM-DD
- */
-export function todayInTz(timezone: string = DEFAULT_TIMEZONE): string {
-  return getToday(timezone);
-}
-
-/**
- * Convierte un Date local del navegador (de un <DatePicker/>) a
- * YYYY-MM-DD en la zona horaria de la organizacion.
- *
- * Esto es necesario porque el DatePicker devuelve un Date a medianoche
- * local, y necesitamos saber que dia calendario representa en la zona
- * de la organizacion (no en la zona del navegador del usuario).
- *
- * @param date Date del navegador (ej: de un DatePicker)
- * @param timezone Zona horaria IANA de la organizacion
- * @returns Dia calendario en la zona de la org como YYYY-MM-DD
- */
-export function toPlainDate(date: Date, timezone: string = DEFAULT_TIMEZONE): string {
-  if (isNaN(date.getTime())) return '';
-  const dtf = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  // en-CA produce YYYY-MM-DD directamente
-  return dtf.format(date);
-}
-
-/**
- * Construye un instante ISO con offset a partir de un dia calendario
- * (YYYY-MM-DD) y una hora opcional en la zona horaria de la organizacion.
- * Listo para guardar en una columna timestamptz.
- *
- * @param plain Dia calendario en formato YYYY-MM-DD
- * @param timezone Zona horaria IANA de la organizacion
- * @param time Hora en formato HH:mm (default: "00:00")
- * @returns String ISO con offset (ej: "2026-09-10T20:30:00-05:00")
- */
-export function plainDateToInstant(
-  plain: string,
-  timezone: string = DEFAULT_TIMEZONE,
-  time: string = '00:00',
-): string {
-  // Reusa el calculo de offset de timezone.ts (unica implementacion).
-  const refDate = new Date(`${plain}T12:00:00Z`);
-  const offsetMinutes = getOffsetMinutesForTimezone(timezone, refDate);
-  const offsetISO = offsetMinutesToISO(offsetMinutes);
-  return `${plain}T${time}:00.000${offsetISO}`;
 }

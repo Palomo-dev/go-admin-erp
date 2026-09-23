@@ -10,6 +10,8 @@
  * codigo de `printing/` se compila tanto con el tsconfig del agente como con
  * el de Next.js.
  */
+import type { MoneyFormat } from './money';
+
 
 export interface KitchenTicketItemModifier {
   name: string;
@@ -98,7 +100,7 @@ export interface SaleTicketDeliveryInfo {
   instructions?: string;
 }
 
-export interface SaleTicketPrintPayload {
+export interface SaleTicketPrintPayload extends MoneyFormat {
   saleId: string;
   saleNumber?: string;
   customerName?: string;
@@ -157,7 +159,7 @@ export type TicketKind = 'kitchen_ticket' | 'pre_cuenta' | 'sale_ticket' | 'ship
  * Datos de una factura electrónica validada por DIAN para impresión.
  * Contiene campos específicos como CUFE, QR, número de validación y entorno.
  */
-export interface ElectronicInvoicePrintPayload {
+export interface ElectronicInvoicePrintPayload extends MoneyFormat {
   /** Número de factura asignado por Factus/DIAN (ej: FE1234). */
   invoiceNumber: string;
   /** CUFE - Código Único de Factura Electrónica. */
@@ -241,7 +243,7 @@ export interface ShipmentGuideDriverPayload {
   licenseCategory?: string;
 }
 
-export interface ShipmentGuidePrintPayload {
+export interface ShipmentGuidePrintPayload extends MoneyFormat {
   shipmentId: string;
   trackingNumber?: string;
   shipmentNumber?: string;
@@ -285,7 +287,6 @@ export interface ShipmentGuidePrintPayload {
   insuranceCost?: number;
   codAmount?: number;
   totalCost?: number;
-  currency?: string;
 
   notes?: string;
 }

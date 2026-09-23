@@ -21,6 +21,7 @@ import { pdfExportService, type OrganizationInfo } from '@/lib/services/reportes
 import { ReportesChatSheet } from '@/components/reportes/chat/ReportesChatSheet';
 import { registrarCierreConsolidado, obtenerHistorialCierres, obtenerDatosOrganizacion, generarNumeroDocumento, type CierreHistorico } from '@/lib/services/reportes/reportExecutionService';
 import { supabase } from '@/lib/supabase/config';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { PeriodoCierre, ReportDefinition, ReportData } from '@/lib/services/reportes/types';
 
 export default function ReportesPage() {
@@ -95,10 +96,21 @@ export default function ReportesPage() {
     setSheetOpen(true);
   }, []);
 
-  const orgInfo: OrganizationInfo = {
-    id: organization?.id ?? 0,
-    name: organization?.name ?? 'Organización',
-  };
+  // Moneda base + locale del país: los PDF no suponen pesos.
+  const monedaOrg = useMonedaOrganizacion();
+  const moneda = useMemo(
+    () => ({ code: monedaOrg.code, decimals: monedaOrg.decimals, locale: monedaOrg.locale }),
+    [monedaOrg.code, monedaOrg.decimals, monedaOrg.locale]
+  );
+
+  const orgInfo: OrganizationInfo = useMemo(
+    () => ({
+      id: organization?.id ?? 0,
+      name: organization?.name ?? 'Organización',
+      moneda,
+    }),
+    [organization?.id, organization?.name, moneda]
+  );
 
   const handleExportCierre = useCallback(async () => {
     if (!orgId) return;
@@ -132,6 +144,7 @@ export default function ReportesPage() {
             logoUrl: orgData.logoUrl,
             state: orgData.state,
             country: orgData.country,
+            moneda,
           }
         : orgInfo;
 
@@ -170,7 +183,7 @@ export default function ReportesPage() {
     } finally {
       setIsExporting(false);
     }
-  }, [orgId, periodo, moduleCodes, orgInfo, toast]);
+  }, [orgId, periodo, moduleCodes, orgInfo, moneda, toast]);
 
   const handleExportIndividual = useCallback((data: ReportData, comparisonData?: ReportData) => {
     try {
@@ -216,6 +229,7 @@ export default function ReportesPage() {
             logoUrl: orgData.logoUrl,
             state: orgData.state,
             country: orgData.country,
+            moneda,
           }
         : orgInfo;
 
@@ -230,7 +244,7 @@ export default function ReportesPage() {
     } catch (err) {
       toast({ title: 'Error al regenerar PDF', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
     }
-  }, [orgId, moduleCodes, orgInfo, toast]);
+  }, [orgId, moduleCodes, orgInfo, moneda, toast]);
 
   // Cargar KPIs globales al montar y cuando cambie el período
   useEffect(() => {

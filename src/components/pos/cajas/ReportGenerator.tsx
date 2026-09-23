@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { FileText, Printer, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { CajasService } from './CajasService';
@@ -21,6 +21,9 @@ interface ReportGeneratorProps {
 const METHOD_LABELS = getPaymentMethodLabel;
 
 export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
+  // Montos en la moneda base de la organización (fuente única:
+  // monedaOrganizacion.ts), también en el documento exportado. Nunca pesos fijos.
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const [loading, setLoading] = useState(false);
   const { showExpected } = useBlindCloseMode();
   const { timezone } = useFormatDate();

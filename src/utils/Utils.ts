@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 /**
  * Combina clases CSS de manera condicional y las procesa con tailwind-merge
@@ -58,34 +59,17 @@ export function parseLocalDate(dateString: string): Date {
 }
 
 /**
- * Formatea un valor decimal como una cadena de moneda
- * 
- * @param value - Monto a formatear
- * @param currency - Código de moneda (por defecto COP)
- * @returns Cadena formateada como moneda
+ * Formatea un valor decimal como una cadena de moneda.
+ *
+ * @deprecated Para documentos (PDF, tickets, exportaciones) usar
+ * `formatMoneda` de `@/lib/utils/moneda` con el contexto de la organización
+ * (`useMonedaOrganizacion()` o `resolverContextoMoneda()`): esta función no
+ * conoce la moneda base ni el país, y supone COP si no se le pasa moneda.
+ * Se conserva por compatibilidad (dos decimales, locale es-CO) y delega en
+ * `formatMoneda`.
  */
-// Esta función queda obsoleta y solo redirige al servicio
-// Se mantiene por compatibilidad con el código existente
 export function formatCurrency(value: number | string | null | undefined, currency: string = "COP"): string {
-  const num = Number(value);
-  if (isNaN(num) || value === null || value === undefined) {
-    return new Intl.NumberFormat("es-CO", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(0);
-  }
-  try {
-    return new Intl.NumberFormat("es-CO", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(num);
-  } catch (error) {
-    return `${currency} ${num.toFixed(2)}`;
-  }
+  return formatMoneda(value, currency, { decimals: 2 });
 }
 
 /**

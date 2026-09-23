@@ -8,6 +8,8 @@
  * §2.3—, objeciones, ROI calculado y productos) y el vendedor la edita.
  */
 
+import { formatMoneda, LOCALE_RESPALDO, normalizarCodigoMoneda } from '@/lib/utils/moneda';
+
 export const SECTION_KEYS = ['situacion', 'problemas', 'solucion', 'roi', 'pricing'] as const;
 export type SectionKey = (typeof SECTION_KEYS)[number];
 
@@ -87,12 +89,15 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : typeof value === 'number' ? String(value) : '';
 }
 
-export function formatMoney(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: currency || 'COP', maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `${currency} ${Math.round(amount).toLocaleString('es-CO')}`;
-  }
+/**
+ * Importe en la moneda de la propuesta (la de la cotización u oportunidad; el
+ * servidor rellena la base de la organización si no la trae). Delegado en
+ * `formatMoneda`: decimales de la moneda y locale del país. Sin moneda, el
+ * número sin símbolo: nunca se suponen pesos.
+ */
+export function formatMoney(amount: number, currency: string, locale?: string): string {
+  if (!normalizarCodigoMoneda(currency)) return new Intl.NumberFormat(locale ?? LOCALE_RESPALDO, { maximumFractionDigits: 0 }).format(amount);
+  return formatMoneda(amount, currency, { locale: locale ?? LOCALE_RESPALDO });
 }
 
 /** Construye las cinco secciones desde el contexto de la oportunidad. */
@@ -251,6 +256,8 @@ export interface ProposalRenderMeta {
   organizationName: string;
   validUntil: string | null;
   currency: string;
+  /** Locale de formato de la organización (`es-<país>`); respaldo es-CO. */
+  locale?: string;
 }
 
 /**
@@ -258,11 +265,11 @@ export interface ProposalRenderMeta {
  * pasa por `escapeHtml`; el estilo es inline para que sobreviva al correo.
  */
 export function renderProposalHtml(sections: ProposalSections, meta: ProposalRenderMeta): string {
-  const currency = sections.pricing.currency || meta.currency || 'COP';
+  const currency = sections.pricing.currency || meta.currency;
   const rows = sections.pricing.lines
-    .map((l) => `<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${escapeHtml(l.description)}</td><td style="padding:6px 8px;text-align:right;border-bottom:1px solid #e5e7eb">${l.qty}</td><td style="padding:6px 8px;text-align:right;border-bottom:1px solid #e5e7eb">${escapeHtml(formatMoney(l.unit_price, currency))}</td><td style="padding:6px 8px;text-align:right;border-bottom:1px solid #e5e7eb">${escapeHtml(formatMoney(l.total, currency))}</td></tr>`)
+    .map((l) => `<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${escapeHtml(l.description)}</td><td style="padding:6px 8px;text-align:right;border-bottom:1px solid #e5e7eb">${l.qty}</td><td style="padding:6px 8px;text-align:right;border-bottom:1px solid #e5e7eb">${escapeHtml(formatMoney(l.unit_price, currency, meta.locale))}</td><td style="padding:6px 8px;text-align:right;border-bottom:1px solid #e5e7eb">${escapeHtml(formatMoney(l.total, currency, meta.locale))}</td></tr>`)
     .join('');
-  const table = `<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:14px"><thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #2563eb">Concepto</th><th style="text-align:right;padding:6px 8px;border-bottom:2px solid #2563eb">Cant.</th><th style="text-align:right;padding:6px 8px;border-bottom:2px solid #2563eb">Unitario</th><th style="text-align:right;padding:6px 8px;border-bottom:2px solid #2563eb">Total</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="3" style="padding:8px;text-align:right;font-weight:600">Total</td><td style="padding:8px;text-align:right;font-weight:600">${escapeHtml(formatMoney(sections.pricing.total, currency))}</td></tr></tfoot></table>`;
+  const table = `<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:14px"><thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #2563eb">Concepto</th><th style="text-align:right;padding:6px 8px;border-bottom:2px solid #2563eb">Cant.</th><th style="text-align:right;padding:6px 8px;border-bottom:2px solid #2563eb">Unitario</th><th style="text-align:right;padding:6px 8px;border-bottom:2px solid #2563eb">Total</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="3" style="padding:8px;text-align:right;font-weight:600">Total</td><td style="padding:8px;text-align:right;font-weight:600">${escapeHtml(formatMoney(sections.pricing.total, currency, meta.locale))}</td></tr></tfoot></table>`;
   const block = (key: SectionKey) => {
     const s = sections[key];
     return `<section style="margin:0 0 20px"><h2 style="font-size:16px;color:#1f2937;margin:0 0 6px">${escapeHtml(s.title)}</h2><p style="margin:0;line-height:1.55;color:#374151">${paragraph(s.content)}</p>${key === 'pricing' && sections.pricing.lines.length ? table : ''}</section>`;

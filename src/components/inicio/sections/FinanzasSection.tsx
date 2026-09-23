@@ -6,7 +6,8 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toastError } from '@/components/ui/use-toast';
 import ModuloSection from '../ModuloSection';
 import {
@@ -33,7 +34,6 @@ import type {
   ExportOrganizationInfo,
 } from '@/lib/services/inicio/dashboardSectionExport';
 
-const CURRENCY_CODE = 'COP';
 
 function getDefaultFilters(): DashboardFilters {
   // Usar fecha local (no UTC) para que fechaFin sea el día actual en la
@@ -58,30 +58,31 @@ function buildExportData(
   clientes: TopClienteProveedor[],
   proveedores: TopClienteProveedor[],
   periodo: string,
+  moneda: ContextoMoneda,
 ): SectionExportData | null {
   if (!kpis) return null;
 
   const kpiList: SectionKPI[] = [
-    { label: 'Ingresos', value: formatCurrency(kpis.ingresos, CURRENCY_CODE), kind: 'ingreso' },
-    { label: 'Egresos', value: formatCurrency(kpis.egresos, CURRENCY_CODE), kind: 'egreso' },
-    { label: 'Utilidad bruta', value: formatCurrency(kpis.utilidadBruta, CURRENCY_CODE), kind: 'ingreso' },
-    { label: 'Cartera vencida', value: formatCurrency(kpis.carteraVencida, CURRENCY_CODE), kind: 'neutro' },
-    { label: 'Caja', value: formatCurrency(kpis.caja, CURRENCY_CODE), kind: 'ingreso' },
-    { label: 'Bancos', value: formatCurrency(kpis.bancos, CURRENCY_CODE), kind: 'ingreso' },
-    { label: 'Cuentas por cobrar', value: formatCurrency(kpis.cuentasPorCobrar, CURRENCY_CODE), kind: 'neutro' },
-    { label: 'Cuentas por pagar', value: formatCurrency(kpis.cuentasPorPagar, CURRENCY_CODE), kind: 'egreso' },
+    { label: 'Ingresos', value: formatMoneda(kpis.ingresos, moneda), kind: 'ingreso' },
+    { label: 'Egresos', value: formatMoneda(kpis.egresos, moneda), kind: 'egreso' },
+    { label: 'Utilidad bruta', value: formatMoneda(kpis.utilidadBruta, moneda), kind: 'ingreso' },
+    { label: 'Cartera vencida', value: formatMoneda(kpis.carteraVencida, moneda), kind: 'neutro' },
+    { label: 'Caja', value: formatMoneda(kpis.caja, moneda), kind: 'ingreso' },
+    { label: 'Bancos', value: formatMoneda(kpis.bancos, moneda), kind: 'ingreso' },
+    { label: 'Cuentas por cobrar', value: formatMoneda(kpis.cuentasPorCobrar, moneda), kind: 'neutro' },
+    { label: 'Cuentas por pagar', value: formatMoneda(kpis.cuentasPorPagar, moneda), kind: 'egreso' },
   ];
 
   const filas: SectionDataRow[] = [
     ...clientes.map((c) => ({
       tipo: 'Cliente',
       nombre: c.nombre,
-      monto: formatCurrency(c.monto, CURRENCY_CODE),
+      monto: formatMoneda(c.monto, moneda),
     })),
     ...proveedores.map((p) => ({
       tipo: 'Proveedor',
       nombre: p.nombre,
-      monto: formatCurrency(p.monto, CURRENCY_CODE),
+      monto: formatMoneda(p.monto, moneda),
     })),
   ];
 
@@ -99,6 +100,8 @@ function buildExportData(
 }
 
 export default function FinanzasSection() {
+  // Montos en la moneda base de la organización (nunca pesos fijos).
+  const moneda = useMonedaOrganizacion();
   const { branchFilter } = useBranch();
   const { timezone } = useOrgTimezone();
   const [isLoading, setIsLoading] = useState(true);
@@ -189,8 +192,8 @@ export default function FinanzasSection() {
   }, [filters, branchFilter]);
 
   const exportData = useMemo(
-    () => buildExportData(kpis, clientes, proveedores, periodoLabel),
-    [kpis, clientes, proveedores],
+    () => buildExportData(kpis, clientes, proveedores, periodoLabel, moneda),
+    [kpis, clientes, proveedores, moneda],
   );
 
   return (
@@ -207,21 +210,21 @@ export default function FinanzasSection() {
       reportesContent={<ReportesPage />}
     >
       <div className="space-y-6">
-        <KPICards data={kpis ?? emptyKPIs} isLoading={isLoading} currencyCode={CURRENCY_CODE} />
+        <KPICards data={kpis ?? emptyKPIs} isLoading={isLoading} currencyCode={moneda.code} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <VentasComprasChart data={ventasCompras} isLoading={isLoading} currencyCode={CURRENCY_CODE} />
-          <AgingChart data={aging} isLoading={isLoading} currencyCode={CURRENCY_CODE} />
+          <VentasComprasChart data={ventasCompras} isLoading={isLoading} currencyCode={moneda.code} />
+          <AgingChart data={aging} isLoading={isLoading} currencyCode={moneda.code} />
         </div>
 
-        <FlujoProyectadoChart data={flujo} isLoading={isLoading} currencyCode={CURRENCY_CODE} />
+        <FlujoProyectadoChart data={flujo} isLoading={isLoading} currencyCode={moneda.code} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <TopClientesProveedores
             clientes={clientes}
             proveedores={proveedores}
             isLoading={isLoading}
-            currencyCode={CURRENCY_CODE}
+            currencyCode={moneda.code}
           />
           <AlertasCard alertas={alertas} isLoading={isLoading} maxItems={5} />
         </div>

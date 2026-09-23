@@ -18,7 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/use-toast';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { transferenciasService, BankTransfer } from '@/lib/services/transferenciasService';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
@@ -39,6 +40,9 @@ const statusLabels: Record<string, string> = {
 };
 
 export function TransferenciaDetalle({ id }: TransferenciaDetalleProps) {
+  // Montos en la moneda base de la organización (fuente única:
+  // monedaOrganizacion.ts), también en el documento exportado. Nunca pesos fijos.
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const router = useRouter();
   const [transfer, setTransfer] = useState<BankTransfer | null>(null);
   const [isLoading, setIsLoading] = useState(true);

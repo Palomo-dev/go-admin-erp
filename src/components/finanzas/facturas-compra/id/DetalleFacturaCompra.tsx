@@ -42,8 +42,10 @@ import { ResumenTotalesFactura } from './ResumenTotalesFactura';
 import { InfoProveedorFactura } from './InfoProveedorFactura';
 import { CuentaPorPagarInfo } from './CuentaPorPagarInfo';
 import { HistorialPagos } from './HistorialPagos';
-import { formatCurrency, formatDate, cn, parseLocalDate } from '@/utils/Utils';
+import { formatDate, cn, parseLocalDate } from '@/utils/Utils';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { PDFService, InvoiceDataForPDF } from '@/lib/services/pdfService';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 
@@ -56,6 +58,11 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
   const pathname = usePathname();
   const [factura, setFactura] = useState<InvoicePurchase | null>(null);
   const [salespersonName, setSalespersonName] = useState<string | null>(null);
+  // Montos del documento impreso: moneda de la factura o base de la organización.
+  const monedaOrg = useMonedaOrganizacion();
+  // Montos en la moneda de la factura (o la base), con el locale del país.
+  const formatCurrency = (valor: number | null | undefined, monedaDocumento?: string | null) =>
+    formatMoneda(valor ?? 0, monedaOrg.paraDocumento(monedaDocumento));
 
   // Cargar nombre del vendedor desde profiles
   useEffect(() => {
@@ -215,7 +222,8 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
       issue_date: factura.issue_date || '',
       due_date: factura.due_date || '',
       status: factura.status,
-      currency: factura.currency,
+      currency: factura.currency || monedaOrg.code,
+      moneda: monedaOrg.paraDocumento(factura.currency),
       subtotal: factura.subtotal,
       tax_total: factura.tax_total,
       total: factura.total,
@@ -250,7 +258,8 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
       issue_date: factura.issue_date || '',
       due_date: factura.due_date || '',
       status: factura.status,
-      currency: factura.currency,
+      currency: factura.currency || monedaOrg.code,
+      moneda: monedaOrg.paraDocumento(factura.currency),
       subtotal: factura.subtotal,
       tax_total: factura.tax_total,
       total: factura.total,

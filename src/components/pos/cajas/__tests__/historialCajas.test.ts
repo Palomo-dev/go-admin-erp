@@ -108,10 +108,10 @@ describe('resumenCajasAbiertas', () => {
 describe('formato', () => {
   it('dinero sin centavos y con signo visible', () => {
     const limpiar = (s: string) => s.replace(/\s/g, ' ');
-    expect(limpiar(dinero(1068400))).toBe('$ 1.068.400');
-    expect(limpiar(dineroConSigno(30000))).toBe('+$ 30.000');
-    expect(limpiar(dineroConSigno(-12000))).toBe('−$ 12.000');
-    expect(limpiar(dineroConSigno(0))).toBe('$ 0');
+    expect(limpiar(dinero(1068400, 'COP'))).toBe('$ 1.068.400');
+    expect(limpiar(dineroConSigno(30000, 'COP'))).toBe('+$ 30.000');
+    expect(limpiar(dineroConSigno(-12000, 'COP'))).toBe('−$ 12.000');
+    expect(limpiar(dineroConSigno(0, 'COP'))).toBe('$ 0');
   });
 
   it('haceCuanto', () => {

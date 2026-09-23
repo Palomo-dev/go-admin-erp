@@ -23,6 +23,7 @@ import { MOTIVO_NO_PUEDE_CERRAR, puedeCerrarCaja } from '@/lib/pos/cajas/reglasC
 import type { CashSession, CashSummary } from '../types';
 import { cajaCoincide, dinero, dineroConSigno, haceCuanto } from '../historialCajas';
 import { MOTIVO_CIERRE_CIEGO, Oculto, SucursalCaja } from './comunes';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 type FiltroCajero = 'todas' | 'mias' | 'otros';
 
@@ -65,6 +66,8 @@ export function CajasAbiertasTab({
   nombreSucursal,
   pestanas,
 }: CajasAbiertasTabProps) {
+  // Moneda base de la organización (fuente única: monedaOrganizacion.ts).
+  const moneda = useMonedaOrganizacion();
   const router = useRouter();
   const { formatDateTime } = useFormatDate();
   const [busqueda, setBusqueda] = useState('');
@@ -137,7 +140,7 @@ export function CajasAbiertasTab({
         </div>
       ),
     },
-    { id: 'inicial', encabezado: 'Inicial', variante: 'importe', celda: (s) => <span className="font-medium">{dinero(s.initial_amount)}</span> },
+    { id: 'inicial', encabezado: 'Inicial', variante: 'importe', celda: (s) => <span className="font-medium">{dinero(s.initial_amount, moneda)}</span> },
     {
       id: 'ventas',
       encabezado: 'Ventas efectivo',
@@ -146,7 +149,7 @@ export function CajasAbiertasTab({
       celda: (s) =>
         celdaResumen(s, (r) => (
           <div className="flex flex-col items-end">
-            <span className="font-medium">{dinero(r.sales_cash)}</span>
+            <span className="font-medium">{dinero(r.sales_cash, moneda)}</span>
             <span className="text-xs text-fg-secondary">
               {r.sales_cash_count ?? 0} {(r.sales_cash_count ?? 0) === 1 ? 'venta' : 'ventas'}
             </span>
@@ -163,7 +166,7 @@ export function CajasAbiertasTab({
           const n = (r.cash_in_count ?? 0) + (r.cash_out_count ?? 0);
           return (
             <div className="flex flex-col items-end">
-              <span className="font-medium">{dineroConSigno(r.cash_in - r.cash_out)}</span>
+              <span className="font-medium">{dineroConSigno(r.cash_in - r.cash_out, moneda)}</span>
               <span className="text-xs text-fg-secondary">
                 {n} {n === 1 ? 'movimiento' : 'movimientos'}
               </span>
@@ -175,7 +178,7 @@ export function CajasAbiertasTab({
       id: 'esperado',
       encabezado: 'Esperado',
       variante: 'importe',
-      celda: (s) => (showExpected ? celdaResumen(s, (r) => <span className="font-medium">{dinero(r.expected_amount)}</span>) : <Oculto />),
+      celda: (s) => (showExpected ? celdaResumen(s, (r) => <span className="font-medium">{dinero(r.expected_amount, moneda)}</span>) : <Oculto />),
     },
   ];
 
@@ -272,8 +275,8 @@ export function CajasAbiertasTab({
               icono={Banknote}
               titulo={`${s.opened_by_name || 'Cajero'} · #${s.id}`}
               subtitulo={`${s.branch_name ?? ''} · abierta ${haceCuanto(s.opened_at)}`}
-              meta={s.opened_by === userId ? 'Tu caja' : `Inicial ${dinero(s.initial_amount)}`}
-              valor={showExpected ? (resumenes.get(s.id) ? dinero(resumenes.get(s.id)?.expected_amount) : undefined) : undefined}
+              meta={s.opened_by === userId ? 'Tu caja' : `Inicial ${dinero(s.initial_amount, moneda)}`}
+              valor={showExpected ? (resumenes.get(s.id) ? dinero(resumenes.get(s.id)?.expected_amount, moneda) : undefined) : undefined}
               estado={showExpected ? undefined : <Oculto />}
               onClick={showExpected ? () => irADetalle(s) : undefined}
               acciones={accionesDe(s)}

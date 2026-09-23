@@ -21,7 +21,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva, getOrganizationId } from '@/lib/hooks/useOrganization';
 import { CotizacionesService, type Quotation } from '@/lib/services/cotizacionesService';
@@ -65,6 +66,10 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
   const [duplicating, setDuplicating] = useState(false);
   const [sending, setSending] = useState(false);
   const [cotActual, setCotActual] = useState(cotizacion);
+  // Montos en la moneda de la cotización o en la base de la organización.
+  const monedaOrg = useMonedaOrganizacion();
+  const monedaCotizacion = monedaOrg.paraDocumento(cotActual?.currency);
+  const formatCurrency = crearFormateadorMoneda(monedaCotizacion);
 
   const organizationId = getOrganizationId();
   const org = obtenerOrganizacionActiva();
@@ -115,7 +120,8 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
       issue_date: cotActual.issue_date,
       due_date: cotActual.valid_until || cotActual.issue_date,
       status: cotActual.status,
-      currency: cotActual.currency || 'COP',
+      currency: monedaCotizacion.code,
+      moneda: monedaCotizacion,
       subtotal: cotActual.subtotal || 0,
       tax_total: cotActual.tax_total || 0,
       total: cotActual.total || 0,

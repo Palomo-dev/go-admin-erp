@@ -14,13 +14,17 @@ import { AccountStatusBadge } from './AccountStatusBadge';
 import { PaymentHistoryCard } from './PaymentHistoryCard';
 import { AccountActionsCard } from './AccountActionsCard';
 import { InstallmentsCard } from './InstallmentsCard';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { parseLocalDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface CuentaPorCobrarDetailPageProps {
   accountId: string;
 }
 
 export function CuentaPorCobrarDetailPage({ accountId }: CuentaPorCobrarDetailPageProps) {
+  // Montos en la moneda base de la organización (fuente única:
+  // monedaOrganizacion.ts), también en el documento exportado. Nunca pesos fijos.
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const router = useRouter();
   const [account, setAccount] = useState<CuentaPorCobrarDetalle | null>(null);
   const [agingInfo, setAgingInfo] = useState<AgingInfo | null>(null);

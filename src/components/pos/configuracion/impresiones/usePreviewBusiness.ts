@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import type { PreviewBusiness } from './sampleData';
+import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
 
 interface PreviewBusinessState {
   business?: PreviewBusiness;
@@ -55,6 +56,9 @@ export function usePreviewBusiness(): PreviewBusinessState {
           ? await branchQuery.eq('id', branch_id).maybeSingle()
           : await branchQuery.eq('is_main', true).maybeSingle();
 
+        // Moneda base + locale del país: el ticket real sale así.
+        const moneda = await resolverContextoMoneda(supabase, organizationId);
+
         if (cancelled) return;
 
         setState({
@@ -76,6 +80,9 @@ export function usePreviewBusiness(): PreviewBusinessState {
                 branchName: branch?.name || undefined,
                 branchAddress: branch?.address || undefined,
                 branchPhone: branch?.phone || undefined,
+                currency: moneda.code,
+                locale: moneda.locale,
+                currencyDecimals: moneda.decimals,
               }
             : undefined,
         });

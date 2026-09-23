@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { CuentaPorCobrarDetalle, AccountActions } from './types';
 import { CuentaPorCobrarDetailService } from './service';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { plainDayOfInstant } from '@/lib/services/businessInstant';
 
@@ -33,6 +33,9 @@ interface AccountActionsCardProps {
 }
 
 export function AccountActionsCard({ account, actions, onUpdate }: AccountActionsCardProps) {
+  // Montos en la moneda base de la organización (fuente única:
+  // monedaOrganizacion.ts), también en el documento exportado. Nunca pesos fijos.
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   // Todo lo que se toca aqui es timestamptz: `payments.payment_date`,
   // `accounts_receivable.due_date`, `.last_reminder_date` y el `invoice_date`
   // que viene de `invoice_sales.issue_date`. Se formatea y se compara en la

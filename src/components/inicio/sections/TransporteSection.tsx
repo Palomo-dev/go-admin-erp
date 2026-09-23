@@ -5,7 +5,8 @@ import { Truck } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toastError } from '@/components/ui/use-toast';
 import ModuloSection from '../ModuloSection';
 import {
@@ -24,7 +25,6 @@ import type {
   ExportOrganizationInfo,
 } from '@/lib/services/inicio/dashboardSectionExport';
 
-const CURRENCY_CODE = 'COP';
 
 interface TransportEvent {
   id: string;
@@ -41,6 +41,7 @@ interface TransportEvent {
 function buildExportData(
   stats: TransportStats | null,
   events: TransportEvent[],
+  moneda: ContextoMoneda,
 ): SectionExportData | null {
   if (!stats) return null;
 
@@ -60,7 +61,7 @@ function buildExportData(
     { label: 'Boletos vendidos', value: String(stats.tickets.sold_today), kind: 'ingreso' },
     {
       label: 'Ingresos boletos',
-      value: formatCurrency(stats.tickets.revenue_today, CURRENCY_CODE),
+      value: formatMoneda(stats.tickets.revenue_today, moneda),
       kind: 'ingreso',
     },
     { label: 'Ocupación media', value: `${stats.tickets.occupancy_avg}%`, kind: 'neutro' },
@@ -90,6 +91,8 @@ function buildExportData(
 }
 
 export default function TransporteSection() {
+  // Montos en la moneda base de la organización (nunca pesos fijos).
+  const moneda = useMonedaOrganizacion();
   const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<TransportStats | null>(null);
@@ -152,8 +155,8 @@ export default function TransporteSection() {
   }, [branchFilter]);
 
   const exportData = useMemo(
-    () => buildExportData(stats, events),
-    [stats, events],
+    () => buildExportData(stats, events, moneda),
+    [stats, events, moneda],
   );
 
   return (

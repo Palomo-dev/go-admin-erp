@@ -72,6 +72,7 @@ import {
 } from '@/components/ui/select';
 import { type EstimatedTime, type TimeUnit, timeToMs, formatEstimatedTime } from './[id]/components';
 import { CopyableId } from '@/components/common/CopyableId';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface LocalFilters {
   status?: WebOrderStatus[];
@@ -89,6 +90,8 @@ type DatePreset = 'today' | 'yesterday' | 'last7' | 'last30' | 'custom';
 const ITEMS_PER_PAGE = 20;
 
 export default function PedidosOnlinePage() {
+  // Moneda base de la organización para la impresión y la exportación.
+  const moneda = useMonedaOrganizacion();
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -500,14 +503,14 @@ export default function PedidosOnlinePage() {
               <tr style="border-bottom:1px solid #eee;">
                 <td style="padding:4px 0;">${item.product_name}</td>
                 <td style="padding:4px 8px;text-align:center;">${item.quantity}</td>
-                <td style="padding:4px 8px;text-align:right;">$${Number(item.unit_price || 0).toLocaleString()}</td>
-                <td style="padding:4px 0;text-align:right;">$${Number(item.total || 0).toLocaleString()}</td>
+                <td style="padding:4px 8px;text-align:right;">${moneda.formatear(Number(item.unit_price || 0))}</td>
+                <td style="padding:4px 0;text-align:right;">${moneda.formatear(Number(item.total || 0))}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
         <div style="text-align:right;margin-top:8px;">
-          <strong style="font-size:18px;">Total: $${order.total.toLocaleString()}</strong>
+          <strong style="font-size:18px;">Total: ${moneda.formatear(order.total)}</strong>
         </div>
         ${order.customer_notes ? `<div style="margin-top:8px;padding:8px;background:#fffbea;border-radius:4px;"><strong>Notas:</strong> ${order.customer_notes}</div>` : ''}
         <p style="margin-top:12px;color:#999;font-size:12px;">Método de pago: ${getPaymentLabel(order.payment_method)} · ${order.payment_status}</p>
@@ -526,7 +529,8 @@ export default function PedidosOnlinePage() {
   const handleBulkExport = () => {
     const selected = getSelectedOrders();
     if (selected.length === 0) return;
-    const headers = ['Pedido', 'Cliente', 'Email', 'Telefono', 'Estado', 'Entrega', 'Total', 'Metodo Pago', 'Fecha'];
+    // La moneda va en el encabezado: el número queda crudo para la hoja de cálculo.
+    const headers = ['Pedido', 'Cliente', 'Email', 'Telefono', 'Estado', 'Entrega', `Total (${moneda.code})`, 'Metodo Pago', 'Fecha'];
     const rows = selected.map(o => [
       o.order_number,
       o.customer_name || o.customer?.full_name || '',

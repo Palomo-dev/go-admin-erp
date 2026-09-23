@@ -15,6 +15,8 @@ import { readDesktopCache, writeDesktopCache } from '@/lib/utils/desktopLocalCac
 import { rasterizeLogo } from './logoRasterService';
 import { PrintService } from './printService';
 import { getOrganizationTimezone } from './organizationTimezoneService';
+import { resolverContextoMoneda } from './monedaOrganizacion';
+import type { MoneyFormat } from '@printing';
 
 /** Campos de cabecera que comparten el ticket de venta y la pre-cuenta. */
 interface BusinessHeader {
@@ -116,6 +118,35 @@ async function resolveTimezone(provided?: string): Promise<string> {
   } catch (error) {
     console.warn('No se pudo resolver el timezone de la organizacion:', error);
     return (isDesktop() ? readDesktopCache<string>(cacheKey) : null) ?? 'America/Bogota';
+  }
+}
+
+/**
+ * Moneda de los montos del documento impreso (moneda del documento o, en su
+ * defecto, la base de la organización; nunca pesos fijos).
+ *
+ * Mismo principio que `resolveTimezone`: el agente no tiene contexto de React
+ * y lo que no viaje en el JSON no existe. En Desktop sin red se usa la última
+ * resuelta.
+ */
+async function resolveMoneyFormat(monedaDocumento?: string | null): Promise<MoneyFormat> {
+  const orgId = getOrganizationId();
+  const cacheKey = `org-money-format:${orgId}`;
+  if (isDesktop() && !(await isDesktopOnline())) {
+    const cached = readDesktopCache<MoneyFormat>(cacheKey);
+    if (cached) return monedaDocumento ? { ...cached, currency: monedaDocumento, currencyDecimals: undefined } : cached;
+  }
+  try {
+    const base = await resolverContextoMoneda(supabase, orgId);
+    const baseFmt: MoneyFormat = { currency: base.code, locale: base.locale, currencyDecimals: base.decimals };
+    if (isDesktop()) writeDesktopCache(cacheKey, baseFmt);
+    const doc = (monedaDocumento ?? '').trim().toUpperCase();
+    return /^[A-Z]{3}$/.test(doc) && doc !== base.code
+      ? { currency: doc, locale: base.locale, currencyDecimals: undefined }
+      : baseFmt;
+  } catch (error) {
+    console.warn('No se pudo resolver la moneda de la organizacion:', error);
+    return (isDesktop() ? readDesktopCache<MoneyFormat>(cacheKey) : null) ?? {};
   }
 }
 
@@ -484,6 +515,8 @@ export class PrintJobsService {
     sale: {
       saleId: string;
       saleNumber?: string;
+      /** Moneda de la venta; sin ella se usa la base de la organización. */
+      currency?: string | null;
       customerName?: string;
       customerDocType?: string;
       customerDocNumber?: string;
@@ -526,8 +559,10 @@ export class PrintJobsService {
     const header = await resolveBusinessHeader(sale);
     const logoRasters = await buildLogoRasters(header.businessLogoUrl, printers);
     const timezone = await resolveTimezone();
+    const money = await resolveMoneyFormat(sale.currency);
 
     const payload: SaleTicketPrintPayload = {
+      ...money,
       saleId: sale.saleId,
       saleNumber: sale.saleNumber,
       customerName: sale.customerName,
@@ -615,8 +650,10 @@ export class PrintJobsService {
     const header = await resolveBusinessHeader(preCuenta);
     const logoRasters = await buildLogoRasters(header.businessLogoUrl, printers);
     const timezone = await resolveTimezone();
+    const money = await resolveMoneyFormat();
 
     const payload = {
+      ...money,
       saleId: `pre-${preCuenta.tableId}`,
       title: 'PRE-CUENTA',
       tableName: preCuenta.tableName,
@@ -845,6 +882,9 @@ export class PrintJobsService {
 
     const payload: ShipmentGuidePrintPayload = {
       ...guide,
+      // Después de `...guide`: una clave `currency: undefined` no puede
+      // borrar la moneda resuelta.
+      ...(await resolveMoneyFormat(guide.currency)),
       timezone: guide.timezone || (await resolveTimezone()),
       businessName: header.businessName,
       businessNit: header.businessNit,
@@ -895,6 +935,8 @@ export class PrintJobsService {
     invoice: {
       invoiceId: string;
       invoiceNumber: string;
+      /** Moneda de la factura; sin ella se usa la base de la organización. */
+      currency?: string | null;
       cufe: string;
       qrData: string;
       environment: 'production' | 'test';
@@ -939,8 +981,10 @@ export class PrintJobsService {
     const header = await resolveBusinessHeader(invoice);
     const logoRasters = await buildLogoRasters(header.businessLogoUrl, printers);
     const timezone = await resolveTimezone();
+    const money = await resolveMoneyFormat(invoice.currency);
 
     const payload: SharedElectronicInvoicePrintPayload = {
+      ...money,
       internalInvoiceId: invoice.invoiceId,
       invoiceNumber: invoice.invoiceNumber,
       cufe: invoice.cufe,

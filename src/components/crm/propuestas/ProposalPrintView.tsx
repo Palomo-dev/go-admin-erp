@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { renderProposalHtml } from '@/lib/services/crm/proposalNarrative';
 import { proposalApi, type ProposalDetail } from './proposalApi';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 /**
  * F10 — vista imprimible de la propuesta. El repo no tiene un generador de PDF
@@ -17,6 +18,8 @@ import { proposalApi, type ProposalDetail } from './proposalApi';
 export function ProposalPrintView({ proposalId }: { proposalId: string }) {
   const [proposal, setProposal] = useState<ProposalDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Locale del país de la organización y moneda base de respaldo.
+  const moneda = useMonedaOrganizacion();
 
   useEffect(() => {
     let cancelled = false;
@@ -34,7 +37,8 @@ export function ProposalPrintView({ proposalId }: { proposalId: string }) {
     organizationName: proposal.organizationName ?? '',
     // `valid_until` es columna `date`: se pinta tal cual (regla canónica 5), sin pasar por la zona horaria.
     validUntil: proposal.valid_until ? formatPlainDate(proposal.valid_until) : null,
-    currency: proposal.currency,
+    currency: proposal.currency || moneda.code,
+    locale: moneda.locale,
   });
 
   return (

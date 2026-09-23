@@ -14,7 +14,8 @@ import { AccountStatusBadge } from './AccountStatusBadge';
 import { PaymentHistoryCard } from './PaymentHistoryCard';
 import { AccountActionsCard } from './AccountActionsCard';
 import { InstallmentsCard } from './InstallmentsCard';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { useTimezoneFor } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz, formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { todayInTz } from '@/lib/utils/timezone';
@@ -24,8 +25,13 @@ interface CuentaPorPagarDetailPageProps {
 }
 
 export function CuentaPorPagarDetailPage({ accountId }: CuentaPorPagarDetailPageProps) {
+  // Montos en la moneda base de la organización (fuente única:
+  // monedaOrganizacion.ts), también en el documento exportado. Nunca pesos fijos.
+  const monedaOrg = useMonedaOrganizacion();
   const router = useRouter();
   const [account, setAccount] = useState<CuentaPorPagarDetalle | null>(null);
+  // La cuenta por pagar hereda la moneda de la factura del proveedor.
+  const formatCurrency = crearFormateadorMoneda(monedaOrg.paraDocumento(account?.invoice_currency));
   // Zona de la sucursal DUEÑA de la cuenta (`accounts_payable.branch_id`), no
   // la de la organizacion: el vencimiento de una cuenta de otra sucursal se
   // lee en la zona de esa sucursal. Mientras la cuenta no ha cargado, la

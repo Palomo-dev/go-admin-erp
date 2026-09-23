@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { getServerUserClient } from '@/lib/supabase/server-user';
+import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
+import { crearFormateadorMoneda, normalizarCodigoMoneda } from '@/lib/utils/moneda';
 
 export async function POST(request: NextRequest) {
   try {
+    // Sesión obligatoria: la moneda base sale de la organización de la sesión.
+    const ctx = await getServerOrgContext(request);
     const data = await request.json();
-    
-    const formatCurrency = (amount: number) => {
-      return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: data.currency || 'COP',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-      }).format(amount);
-    };
+
+    // Moneda del documento (solo si es un código ISO válido) o, en su
+    // defecto, la base de la organización. Nunca pesos fijos.
+    const moneda = await resolverContextoMoneda(
+      await getServerUserClient(),
+      ctx.organizationId,
+      normalizarCodigoMoneda(data.currency)
+    );
+    const formatCurrency = crearFormateadorMoneda(moneda);
 
     const formatDate = (dateString: string) => {
       return new Date(dateString).toLocaleDateString('es-CO', {
@@ -125,7 +131,7 @@ export async function POST(request: NextRequest) {
             </div>
             <div>
               <label>Moneda</label>
-              <span>${data.currency || 'COP'}</span>
+              <span>${moneda.code}</span>
             </div>
           </div>
           
@@ -199,6 +205,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    if (error instanceof OrgContextError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
+    }
     console.error('Error generando PDF:', error);
     return NextResponse.json(
       { error: 'Error al generar el documento' },

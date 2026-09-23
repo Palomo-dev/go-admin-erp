@@ -1,6 +1,6 @@
 'use client';
 
-import { formatCurrency } from '@/utils/Utils';
+import { contextoMoneda, crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 
 export interface InvoiceDataForPDF {
   id: string;
@@ -48,6 +48,18 @@ export interface InvoiceDataForPDF {
   }[];
   // Monto de notas de crédito / saldo a favor aplicado a esta factura (informativo)
   credit_applied?: number;
+  /**
+   * Formato de los montos: moneda del documento (o la base de la
+   * organización), decimales y locale del país. Lo arma el llamador con
+   * `useMonedaOrganizacion().paraDocumento(doc.currency)`. Sin él, se formatea
+   * en `currency` con locale de respaldo; nunca se suponen pesos.
+   */
+  moneda?: ContextoMoneda;
+}
+
+/** Contexto de formato del documento. */
+function monedaDe(data: InvoiceDataForPDF): ContextoMoneda {
+  return data.moneda ?? contextoMoneda(data.currency);
 }
 
 export class PDFService {
@@ -112,6 +124,8 @@ export class PDFService {
   static generateInvoiceHTML(data: InvoiceDataForPDF, qrUrl?: string): string {
     const primaryColor = data.organization?.primary_color || '#2563eb';
     const secondaryColor = data.organization?.secondary_color || '#1e40af';
+    const moneda = monedaDe(data);
+    const formatCurrency = crearFormateadorMoneda(moneda);
     const qrData = qrUrl || `Factura: ${data.number} | Total: ${formatCurrency(data.total)} | Saldo: ${formatCurrency(data.balance)} | ${data.organization?.name || ''}`;
 
     const formatDate = (dateString: string) => {
@@ -252,7 +266,7 @@ export class PDFService {
             </div>
             <div>
               <label>Moneda</label>
-              <span>${data.currency || 'COP'}</span>
+              <span>${moneda.code}</span>
             </div>
           </div>
           
@@ -366,6 +380,8 @@ export class PDFService {
   static generatePurchaseInvoiceHTML(data: InvoiceDataForPDF): string {
     const primaryColor = data.organization?.primary_color || '#2563eb';
     const secondaryColor = data.organization?.secondary_color || '#1e40af';
+    const moneda = monedaDe(data);
+    const formatCurrency = crearFormateadorMoneda(moneda);
 
     const formatDate = (dateString: string) => {
       if (!dateString) return '-';
@@ -489,7 +505,7 @@ export class PDFService {
             </div>
             <div>
               <label>Moneda</label>
-              <span>${data.currency || 'COP'}</span>
+              <span>${moneda.code}</span>
             </div>
           </div>
           

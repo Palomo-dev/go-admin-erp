@@ -1,5 +1,7 @@
 'use client';
 
+import { formatMoneda, LOCALE_RESPALDO, type ContextoMoneda } from '@/lib/utils/moneda';
+
 export interface EntryTicketData {
   // Datos de la organización
   organization_name: string;
@@ -33,6 +35,11 @@ export interface ExitTicketData extends EntryTicketData {
   amount: number;
   payment_method?: string;
   invoice_number?: string;
+  /**
+   * Moneda base de la organización (`useMonedaOrganizacion()`). Sin ella el
+   * total sale como número sin símbolo: nunca se suponen pesos.
+   */
+  moneda?: ContextoMoneda;
 }
 
 const VEHICLE_TYPE_LABELS: Record<string, string> = {
@@ -447,7 +454,7 @@ class ParkingTicketService {
           <div class="total-section">
             <div class="total-row">
               <span>TOTAL:</span>
-              <span>$${data.amount.toLocaleString('es-CO')}</span>
+              <span>${data.moneda ? formatMoneda(data.amount, data.moneda) : data.amount.toLocaleString(LOCALE_RESPALDO)}</span>
             </div>
           </div>
 

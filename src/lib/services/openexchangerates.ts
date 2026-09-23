@@ -852,256 +852,37 @@ export async function actualizarTasasDeCambioGlobal(client?: SupabaseClient): Pr
 }
 
 /**
- * Obtiene la moneda base para una organización con sistema de fallback
- * Implementa un sistema de 4 niveles de fallback para garantizar que siempre se encuentre una moneda base:
- * 1. Moneda marcada con is_base=true en organization_currencies
- * 2. Moneda predeterminada en preferencias de organización
- * 3. USD como fallback estándar
- * 4. Primera moneda disponible
- * 
+ * Obtiene la moneda base de una organización con su fila del catálogo
+ * `currencies`. Delegado en la fuente única `resolveOrgCurrency`
+ * (`src/lib/services/monedaOrganizacion.ts`), que aplica la cadena de
+ * respaldo: is_base → preferencia → USD asignado → primera asignada → moneda
+ * del país → USD.
+ *
  * @param orgId - ID de la organización
- * @returns Información de la moneda base y su tipo/origen
+ * @returns Información de la moneda base y su origen (`tipo` = `source`)
  */
 export async function obtenerMonedaBase(orgId: number) {
   const { supabase } = await import('@/lib/supabase/config');
-  
-  console.log(`Buscando moneda base para organización ${orgId}`);
-  
-  // Validación de entrada
+  const { resolveOrgCurrency } = await import('@/lib/services/monedaOrganizacion');
+
   if (!orgId || isNaN(orgId)) {
     throw new Error(`ID de organización inválido: ${orgId}`);
   }
-  
-  // Nivel 1: Buscar moneda marcada con is_base=true en organization_currencies
-  console.log('Nivel 1: Buscando moneda marcada como base');
-  let { data: baseMonedaInfo, error: errorBaseCurrency } = await supabase
-    .from('organization_currencies')
-    .select('currency_code, is_base')
-    .eq('organization_id', orgId)
-    .eq('is_base', true)
-    .single();
-    
-  if (errorBaseCurrency && errorBaseCurrency.code !== 'PGRST116') { // PGRST116 = no encontrado
-    console.error(`Error al buscar moneda base: ${errorBaseCurrency.message}`);
-  }
-    
-  let tipoMonedaBase = 'base';
-  let baseMoneda = null;
-    
-  // Si encontramos la moneda base, obtenemos sus datos completos del catálogo global
-  if (baseMonedaInfo?.currency_code) {
-    console.log(`Moneda base encontrada: ${baseMonedaInfo.currency_code}`);
-    const { data: monedaDetalle, error: errorDetalle } = await supabase
-      .from('currencies')
-      .select('*')
-      .eq('code', baseMonedaInfo.currency_code)
-      .single();
-      
-    if (errorDetalle) {
-      console.error(`Error al obtener detalles de moneda ${baseMonedaInfo.currency_code}: ${errorDetalle.message}`);
-    }
-      
-    if (monedaDetalle) {
-      baseMoneda = {
-        ...monedaDetalle,
-        is_base: true
-      };
-    }
-  } else {
-    console.log('No se encontró moneda marcada como base');
-  }
-  
-    
-  if (!baseMoneda) {
-    // Nivel 2: Preferencia de organización
-    console.log('Nivel 2: Buscando moneda en preferencias de organización');
-    const { data: orgPrefs, error: errorPrefs } = await supabase
-      .from('organization_preferences')
-      .select('settings')
-      .eq('organization_id', orgId)
-      .single();
-    
-    if (errorPrefs && errorPrefs.code !== 'PGRST116') {
-      console.error(`Error al obtener preferencias de organización: ${errorPrefs.message}`);
-    }
-      
-    if (orgPrefs?.settings?.finance?.default_currency) {
-      const currencyCode = orgPrefs.settings.finance.default_currency;
-      console.log(`Moneda predeterminada en preferencias: ${currencyCode}`);
-      
-      // Verificar si existe en organization_currencies
-      const { data: orgCurrencyExists, error: errorOrgCurrency } = await supabase
-        .from('organization_currencies')
-        .select('currency_code')
-        .eq('organization_id', orgId)
-        .eq('currency_code', currencyCode)
-        .maybeSingle();
-      
-      if (errorOrgCurrency) {
-        console.error(`Error al verificar si la moneda ${currencyCode} existe para la organización: ${errorOrgCurrency.message}`);
-      }
-        
-      if (orgCurrencyExists?.currency_code) {
-        console.log(`La moneda ${currencyCode} existe para la organización`);
-        const { data: monedaDetalle, error: errorDetalle } = await supabase
-          .from('currencies')
-          .select('*')
-          .eq('code', currencyCode)
-          .single();
-        
-        if (errorDetalle) {
-          console.error(`Error al obtener detalles de moneda ${currencyCode}: ${errorDetalle.message}`);
-        }
-          
-        if (monedaDetalle) {
-          baseMoneda = {
-            ...monedaDetalle,
-            is_base: false
-          };
-          tipoMonedaBase = 'preferencia';
-          console.log(`Se usará la moneda de preferencia: ${currencyCode}`);
-        }
-      } else {
-        console.log(`La moneda ${currencyCode} no está asignada a la organización`);
-      }
-    } else {
-      console.log('No se encontró moneda predeterminada en preferencias');
-    }
-  }
-  
-  // Nivel 3: USD como fallback estándar
-  if (!baseMoneda) {
-    console.log('Nivel 3: Buscando USD como fallback');
-    const { data: usdCurrency, error: errorUsd } = await supabase
-      .from('organization_currencies')
-      .select('currency_code')
-      .eq('organization_id', orgId)
-      .eq('currency_code', 'USD')
-      .maybeSingle();
-    
-    if (errorUsd && errorUsd.code !== 'PGRST116') {
-      console.error(`Error al buscar USD para la organización: ${errorUsd.message}`);
-    }
-      
-    if (usdCurrency?.currency_code) {
-      console.log('USD encontrado para la organización');
-      const { data: usdDetalle, error: errorUsdDetalle } = await supabase
-        .from('currencies')
-        .select('*')
-        .eq('code', 'USD')
-        .single();
-      
-      if (errorUsdDetalle) {
-        console.error(`Error al obtener detalles de USD: ${errorUsdDetalle.message}`);
-      }
-        
-      if (usdDetalle) {
-        baseMoneda = {
-          ...usdDetalle,
-          is_base: false
-        };
-        tipoMonedaBase = 'usd';
-        console.log('Se usará USD como fallback');
-      }
-    } else {
-      console.log('USD no está disponible para la organización');
-    }
-  }
-  
-  // Nivel 4: Primera moneda disponible
-  if (!baseMoneda) {
-    console.log('Nivel 4: Buscando cualquier moneda disponible');
-    const { data: cualquierMoneda, error: errorCualquier } = await supabase
-      .from('organization_currencies')
-      .select('currency_code')
-      .eq('organization_id', orgId)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    
-    if (errorCualquier && errorCualquier.code !== 'PGRST116') {
-      console.error(`Error al buscar cualquier moneda: ${errorCualquier.message}`);
-    }
-      
-    if (cualquierMoneda?.currency_code) {
-      console.log(`Se encontró la moneda ${cualquierMoneda.currency_code} como última opción`);
-      const { data: monedaDetalle, error: errorDetalle } = await supabase
-        .from('currencies')
-        .select('*')
-        .eq('code', cualquierMoneda.currency_code)
-        .single();
-      
-      if (errorDetalle) {
-        console.error(`Error al obtener detalles de moneda ${cualquierMoneda.currency_code}: ${errorDetalle.message}`);
-      }
-        
-      if (monedaDetalle) {
-        baseMoneda = {
-          ...monedaDetalle,
-          is_base: false
-        };
-        tipoMonedaBase = 'primera';
-        console.log(`Se usará la primera moneda disponible: ${cualquierMoneda.currency_code}`);
-      }
-    } else {
-      console.log('No se encontró ninguna moneda para la organización');
-    }
-  }
-  
-  // Nivel 5: Usar monedas del catálogo global si no hay monedas específicas de la organización
-  if (!baseMoneda) {
-    console.log('Nivel 5: Consultando catálogo global de monedas');
-    
-    // Primero intentamos con USD del catálogo global
-    const { data: usdGlobal, error: errorUsdGlobal } = await supabase
-      .from('currencies')
-      .select('*')
-      .eq('code', 'USD')
-      .single();
-    
-    if (errorUsdGlobal && errorUsdGlobal.code !== 'PGRST116') {
-      console.error(`Error al buscar USD en catálogo global: ${errorUsdGlobal.message}`);
-    }
-    
-    if (usdGlobal) {
-      console.log('Se utilizará USD del catálogo global');
-      baseMoneda = {
-        ...usdGlobal,
-        is_base: false
-      };
-      tipoMonedaBase = 'global_usd';
-    } else {
-      // Si no hay USD, usamos la primera moneda disponible del catálogo global
-      const { data: primeraGlobal, error: errorPrimeraGlobal } = await supabase
-        .from('currencies')
-        .select('*')
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      
-      if (errorPrimeraGlobal) {
-        console.error(`Error al buscar monedas en catálogo global: ${errorPrimeraGlobal.message}`);
-      }
-      
-      if (primeraGlobal) {
-        console.log(`Se utilizará ${primeraGlobal.code} del catálogo global`);
-        baseMoneda = {
-          ...primeraGlobal,
-          is_base: false
-        };
-        tipoMonedaBase = 'global_primera';
-      }
-    }
-  }
-  
-  // Si no se encontró ninguna moneda, lanzamos error
-  if (!baseMoneda) {
-    console.error(`No se encontró ninguna moneda para la organización ${orgId}`);
-    throw new Error(`No se encontró ninguna moneda para la organización ${orgId}`);
-  }
-  
-  console.log(`Moneda base final: ${baseMoneda.code} (${tipoMonedaBase})`);
-  return { moneda: baseMoneda, tipo: tipoMonedaBase };
+
+  const resuelta = await resolveOrgCurrency(supabase, orgId);
+  const { data: detalle } = await supabase
+    .from('currencies')
+    .select('*')
+    .eq('code', resuelta.code)
+    .maybeSingle();
+
+  return {
+    moneda: {
+      ...(detalle ?? { code: resuelta.code, symbol: resuelta.symbol, decimals: resuelta.decimals }),
+      is_base: resuelta.source === 'base',
+    },
+    tipo: resuelta.source,
+  };
 }
 
 /**

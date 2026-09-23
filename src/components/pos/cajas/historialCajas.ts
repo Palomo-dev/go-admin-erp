@@ -4,20 +4,22 @@
  * `__tests__/historialCajas.test.ts`.
  */
 import type { CashSession, ResultadoCierre } from './types';
+import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 
-const PESOS = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 });
-
-/** «$ 1.068.400» (sin centavos, como en las cifras de Figma). */
-export function dinero(valor: number | null | undefined): string {
-  return PESOS.format(Math.round(Number(valor ?? 0)) || 0);
+/**
+ * «$ 1.068.400» (sin centavos, como en las cifras de Figma) en la moneda base
+ * de la organización (`useMonedaOrganizacion()`); nunca pesos fijos.
+ */
+export function dinero(valor: number | null | undefined, moneda: ContextoMoneda | string): string {
+  return formatMoneda(Math.round(Number(valor ?? 0)) || 0, moneda, { decimals: 0 });
 }
 
 /** «+$ 30.000», «−$ 12.000» o «$ 0»: el signo siempre visible salvo en cero. */
-export function dineroConSigno(valor: number | null | undefined): string {
+export function dineroConSigno(valor: number | null | undefined, moneda: ContextoMoneda | string): string {
   const n = Math.round(Number(valor ?? 0)) || 0;
-  if (n > 0) return `+${dinero(n)}`;
-  if (n < 0) return `−${dinero(Math.abs(n))}`;
-  return dinero(0);
+  if (n > 0) return `+${dinero(n, moneda)}`;
+  if (n < 0) return `−${dinero(Math.abs(n), moneda)}`;
+  return dinero(0, moneda);
 }
 
 /** Una diferencia de menos de medio peso se da por cuadrada (redondeos de caja). */

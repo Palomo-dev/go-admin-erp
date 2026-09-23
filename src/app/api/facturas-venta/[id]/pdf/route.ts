@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -64,13 +66,17 @@ export async function POST(
 
     const customer = Array.isArray(invoice.customer) ? invoice.customer[0] : invoice.customer;
 
+    // Moneda: la de la factura; si no la trae, la base de la organización de
+    // la SESIÓN. Nunca pesos fijos ni un valor del cuerpo.
+    const moneda = await resolverContextoMoneda(admin, ctx.organizationId, invoice.currency);
+
     // El cuerpo ya no manda sobre el contenido del documento.
     const data: Record<string, any> = {
       ...body,
       number: invoice.number,
       issue_date: invoice.issue_date,
       due_date: invoice.due_date,
-      currency: invoice.currency || 'COP',
+      currency: moneda.code,
       subtotal: invoice.subtotal,
       tax_total: invoice.tax_total,
       total: invoice.total,
@@ -100,14 +106,7 @@ export async function POST(
         : undefined,
     };
 
-    const formatCurrency = (amount: number) => {
-      return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: data.currency || 'COP',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(amount);
-    };
+    const formatCurrency = crearFormateadorMoneda(moneda);
 
     const formatDate = (dateString: string) => {
       if (!dateString) return '-';
@@ -215,7 +214,7 @@ export async function POST(
   <div class="dates">
     <div><label>Fecha de Emisión</label><span>${formatDate(data.issue_date)}</span></div>
     <div><label>Fecha de Vencimiento</label><span>${formatDate(data.due_date)}</span></div>
-    <div><label>Moneda</label><span>${data.currency || 'COP'}</span></div>
+    <div><label>Moneda</label><span>${moneda.code}</span></div>
   </div>
 
   <table>

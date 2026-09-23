@@ -43,6 +43,7 @@ import {
   type ResumenDiferencias,
 } from '../historialCajas';
 import { MOTIVO_CIERRE_CIEGO, Oculto, SucursalCaja } from './comunes';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 const CAMPOS_ORDEN: readonly CampoOrdenHistorial[] = ['opened_at', 'closed_at', 'difference'];
 
@@ -67,6 +68,8 @@ export interface HistorialTabProps {
 }
 
 export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabProps) {
+  // Moneda base de la organización (fuente única: monedaOrganizacion.ts).
+  const moneda = useMonedaOrganizacion();
   const router = useRouter();
   const { formatDateTime, getToday, toInstant } = useFormatDate();
   const hoy = getToday();
@@ -192,7 +195,7 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
     if (!r) return <span className="text-fg-muted">—</span>;
     return (
       <div className="flex flex-col items-end">
-        <span className={cn('font-medium', TONO_RESULTADO[r])}>{r === 'cuadrada' ? dinero(0) : dineroConSigno(s.difference)}</span>
+        <span className={cn('font-medium', TONO_RESULTADO[r])}>{r === 'cuadrada' ? dinero(0, moneda) : dineroConSigno(s.difference, moneda)}</span>
         <span className="text-xs text-fg-secondary">{ETIQUETA_RESULTADO[r]}</span>
       </div>
     );
@@ -221,12 +224,12 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
     },
     { id: 'cajero', encabezado: 'Cajero', celda: (s) => <span className="font-medium">{s.opened_by_name || '—'}</span> },
     { id: 'sucursal', encabezado: 'Sucursal', ocultarDebajo: 'xl', celda: (s) => <SucursalCaja sesion={s} /> },
-    { id: 'inicial', encabezado: 'Inicial', variante: 'importe', celda: (s) => dinero(s.initial_amount) },
+    { id: 'inicial', encabezado: 'Inicial', variante: 'importe', celda: (s) => dinero(s.initial_amount, moneda) },
     {
       id: 'final',
       encabezado: 'Final',
       variante: 'importe',
-      celda: (s) => (showExpected ? (s.final_amount === null || s.final_amount === undefined ? '—' : dinero(s.final_amount)) : <Oculto />),
+      celda: (s) => (showExpected ? (s.final_amount === null || s.final_amount === undefined ? '—' : dinero(s.final_amount, moneda)) : <Oculto />),
     },
     {
       id: 'diferencia',
@@ -256,7 +259,7 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
           etiqueta="Faltantes"
           icono={DollarSign}
           cargando={cargando && !r}
-          valor={oculto ? <Oculto /> : dineroConSigno(r?.faltantes ?? 0)}
+          valor={oculto ? <Oculto /> : dineroConSigno(r?.faltantes ?? 0, moneda)}
           detalle={oculto ? 'cierre ciego' : r?.cajasConFaltante ? `${r.cajasConFaltante} ${r.cajasConFaltante === 1 ? 'caja' : 'cajas'} con faltante` : 'ninguna caja'}
           tono={!oculto && r?.cajasConFaltante ? 'peligro' : 'neutro'}
           tendencia={!oculto && r?.cajasConFaltante ? 'baja' : undefined}
@@ -266,7 +269,7 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
           etiqueta="Sobrantes"
           icono={DollarSign}
           cargando={cargando && !r}
-          valor={oculto ? <Oculto /> : dineroConSigno(r?.sobrantes ?? 0)}
+          valor={oculto ? <Oculto /> : dineroConSigno(r?.sobrantes ?? 0, moneda)}
           detalle={oculto ? 'cierre ciego' : r?.cajasConSobrante ? `${r.cajasConSobrante} ${r.cajasConSobrante === 1 ? 'caja' : 'cajas'} con sobrante` : 'ninguna caja'}
           tono={!oculto && r?.cajasConSobrante ? 'exito' : 'neutro'}
           tendencia={!oculto && r?.cajasConSobrante ? 'sube' : undefined}
@@ -276,8 +279,8 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
           etiqueta="Diferencia neta"
           icono={DollarSign}
           cargando={cargando && !r}
-          valor={oculto ? <Oculto /> : dineroConSigno(r?.neta ?? 0)}
-          detalle={oculto ? 'cierre ciego' : r?.sesiones ? `${r.cuadradas} cuadraron en ${dinero(0)}` : 'sin cierres'}
+          valor={oculto ? <Oculto /> : dineroConSigno(r?.neta ?? 0, moneda)}
+          detalle={oculto ? 'cierre ciego' : r?.sesiones ? `${r.cuadradas} cuadraron en ${dinero(0, moneda)}` : 'sin cierres'}
         />
       </KpiStrip>
 
@@ -361,7 +364,7 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
               titulo={`#${s.id} · ${s.opened_by_name || 'Cajero'}`}
               subtitulo={`${formatDateTime(s.opened_at)} → ${s.closed_at ? formatDateTime(s.closed_at) : '—'}`}
               meta={s.closed_by_name ? `Cerró: ${s.closed_by_name}` : undefined}
-              valor={showExpected ? (res === 'cuadrada' ? dinero(0) : dineroConSigno(s.difference)) : undefined}
+              valor={showExpected ? (res === 'cuadrada' ? dinero(0, moneda) : dineroConSigno(s.difference, moneda)) : undefined}
               estado={
                 !showExpected ? (
                   <Oculto />

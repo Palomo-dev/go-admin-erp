@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { toast } from 'sonner';
 import { CuentaPorPagarDetalle, AccountActions } from './types';
 import { CuentaPorPagarDetailService } from './service';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { useTimezoneFor } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
 
@@ -31,6 +32,11 @@ interface Installment {
 }
 
 export function AccountActionsCard({ account, actions, onUpdate }: AccountActionsCardProps) {
+  // Montos en la moneda base de la organización (fuente única:
+  // monedaOrganizacion.ts), también en el documento exportado. Nunca pesos fijos.
+  const monedaOrg = useMonedaOrganizacion();
+  // La cuenta por pagar hereda la moneda de la factura del proveedor.
+  const formatCurrency = crearFormateadorMoneda(monedaOrg.paraDocumento(account.invoice_currency));
   // Zona de la SUCURSAL DUEÑA de la cuenta, no la de la organizacion ni la del
   // selector de la barra superior. `obtenerDetalleCuentaPorPagar` consulta
   // `accounts_payable` directamente (no un RPC) y esa tabla si tiene

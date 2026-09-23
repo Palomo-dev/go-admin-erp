@@ -4,7 +4,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Users } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toastError } from '@/components/ui/use-toast';
 import ModuloSection from '../ModuloSection';
 import {
@@ -28,7 +29,6 @@ import type {
   ExportOrganizationInfo,
 } from '@/lib/services/inicio/dashboardSectionExport';
 
-const CURRENCY_CODE = 'COP';
 const PERIODO_LABEL = 'Estado actual';
 
 const emptyKPIs: HRMKPIs = {
@@ -44,6 +44,7 @@ function buildExportData(
   kpis: HRMKPIs | null,
   departments: DepartmentSummary[],
   currentPeriod: PayrollPeriodInfo | null,
+  moneda: ContextoMoneda,
 ): SectionExportData | null {
   if (!kpis) return null;
 
@@ -59,7 +60,7 @@ function buildExportData(
   if (currentPeriod?.totalNet) {
     kpiList.push({
       label: 'Nómina del período',
-      value: formatCurrency(currentPeriod.totalNet, CURRENCY_CODE),
+      value: formatMoneda(currentPeriod.totalNet, moneda),
       kind: 'egreso',
     });
   }
@@ -82,6 +83,8 @@ function buildExportData(
 }
 
 export default function HrmSection() {
+  // Montos en la moneda base de la organización (nunca pesos fijos).
+  const moneda = useMonedaOrganizacion();
   const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<HRMKPIs | null>(null);
@@ -161,8 +164,8 @@ export default function HrmSection() {
   }, [branchFilter]);
 
   const exportData = useMemo(
-    () => buildExportData(kpis, departments, currentPeriod),
-    [kpis, departments, currentPeriod],
+    () => buildExportData(kpis, departments, currentPeriod, moneda),
+    [kpis, departments, currentPeriod, moneda],
   );
 
   return (

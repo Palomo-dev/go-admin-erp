@@ -1992,3 +1992,107 @@ describe('27. RLS del catálogo: filas globales de solo lectura y nada abierto a
     expect(escrituras).toEqual([]);
   });
 });
+
+/**
+ * 28. Documentos impresos y exportados: ni pesos fijos ni el formateador que
+ * los supone. Regla del dueño (2026-09-23): los montos van en la moneda del
+ * documento o, en su defecto, en la moneda base de la organización
+ * (`src/lib/services/monedaOrganizacion.ts`), con el locale de su país
+ * (`src/lib/utils/moneda.ts`). Un literal 'COP' en un generador es exactamente
+ * el bug que se corrigió: una organización mexicana recibía facturas en pesos
+ * colombianos.
+ */
+describe('28. Generadores de documentos: sin moneda fija', () => {
+  const PRINT_AGENT = path.join(REPO_ROOT, 'print-agent', 'src', 'printing');
+
+  /** Generadores de PDF, tickets, recibos, guías, estados de cuenta y exportaciones. */
+  const GENERADORES = [
+    'lib/services/pdfService.ts',
+    'app/api/facturas-venta/[id]/pdf/route.ts',
+    'app/api/pdf/invoice/route.ts',
+    'lib/services/reportes/pdfExportService.ts',
+    'lib/services/inicio/dashboardSectionExport.ts',
+    'lib/services/printService.ts',
+    'lib/services/printJobsService.ts',
+    'lib/services/mobileEscposAdapter.ts',
+    'lib/services/parkingTicketService.ts',
+    'lib/services/crm/proposalNarrative.ts',
+    'components/parking/sesiones/SessionReceipt.tsx',
+    'components/pos/cajas/ReportGenerator.tsx',
+    'components/pos/cajas/historialCajas.ts',
+    'components/pos/configuracion/impresiones/sampleData.ts',
+    'components/transporte/envios/shipmentLabelPrinter.ts',
+    'components/crm/propuestas/ProposalPrintView.tsx',
+    'components/finanzas/facturas-venta/id/DetalleFactura.tsx',
+    'components/finanzas/cotizaciones/id/DetalleCotizacion.tsx',
+    'components/finanzas/facturas-compra/id/DetalleFacturaCompra.tsx',
+    'components/finanzas/cuentas-por-pagar/id/service.ts',
+    'components/finanzas/cuentas-por-cobrar/id/CuentaPorCobrarDetailPage.tsx',
+    'components/finanzas/cuentas-por-pagar/id/CuentaPorPagarDetailPage.tsx',
+    'components/finanzas/egresos/EgresoDetalle.tsx',
+    'components/finanzas/ingresos/IngresoDetalle.tsx',
+    'components/finanzas/transferencias/TransferenciaDetalle.tsx',
+    'app/app/parking/sesiones/[id]/page.tsx',
+    'app/app/pos/pedidos-online/page.tsx',
+  ];
+
+  /**
+   * Allow-list de 'COP' literal, cada una con su motivo:
+   * - money.ts (plantillas del agente): tabla de monedas SIN decimales
+   *   (COP, CLP) para cuando el payload no trae `currencyDecimals`. No elige la
+   *   moneda: solo sabe cuántos decimales tiene.
+   * - mobileEscposAdapter.ts: lista de monedas que se escriben con «$» (el único
+   *   símbolo seguro en CP437). Tampoco elige la moneda.
+   */
+  const PERMITIDOS_COP = new Set(['print-agent/printing/money.ts', 'lib/services/mobileEscposAdapter.ts']);
+
+  function archivos(): Array<{ nombre: string; ruta: string }> {
+    const fijos = GENERADORES.map((r) => ({ nombre: r, ruta: path.join(SRC_ROOT, r) }));
+    const secciones = walkDir(path.join(SRC_ROOT, 'components', 'inicio', 'sections')).map((f) => ({ nombre: rel(f), ruta: f }));
+    const agente = fs
+      .readdirSync(PRINT_AGENT)
+      .filter((f) => f.endsWith('.ts'))
+      .map((f) => ({ nombre: `print-agent/printing/${f}`, ruta: path.join(PRINT_AGENT, f) }));
+    return [...fijos, ...secciones, ...agente];
+  }
+
+  test('la lista de generadores existe (si se mueve un archivo, se actualiza aquí)', () => {
+    const faltan = GENERADORES.filter((r) => !fs.existsSync(path.join(SRC_ROOT, r)));
+    expect(faltan).toEqual([]);
+  });
+
+  test("ningún generador cablea 'COP' (salvo la allow-list documentada)", () => {
+    const infracciones: string[] = [];
+    for (const { nombre, ruta } of archivos()) {
+      if (PERMITIDOS_COP.has(nombre)) continue;
+      const codigo = stripAllComments(readFile(ruta));
+      codigo.split('\n').forEach((linea, i) => {
+        if (/['"`]COP['"`]/.test(linea)) infracciones.push(`${nombre}:${i + 1}: ${linea.trim().slice(0, 100)}`);
+      });
+    }
+    expect(infracciones).toEqual([]);
+  });
+
+  test('ningún generador importa formatCurrency de @/utils/Utils (supone COP y es-CO)', () => {
+    const infracciones = archivos()
+      .filter(({ ruta }) => /import\s*\{[^}]*\bformatCurrency\b[^}]*\}\s*from\s*['"]@\/utils\/Utils['"]/.test(readFile(ruta)))
+      .map(({ nombre }) => nombre);
+    expect(infracciones).toEqual([]);
+  });
+
+  test('ningún generador pega un «$» fijo delante de un importe interpolado', () => {
+    // `$${total.toLocaleString()}` supone que la moneda se escribe con «$» y con
+    // separadores colombianos. mobileEscposAdapter lo hace a propósito, solo
+    // para las monedas de MONEDAS_CON_PESO.
+    const infracciones: string[] = [];
+    for (const { nombre, ruta } of archivos()) {
+      if (nombre === 'lib/services/mobileEscposAdapter.ts') continue;
+      stripAllComments(readFile(ruta))
+        .split('\n')
+        .forEach((linea, i) => {
+          if (/\$\$\{[^}]*toLocaleString/.test(linea)) infracciones.push(`${nombre}:${i + 1}`);
+        });
+    }
+    expect(infracciones).toEqual([]);
+  });
+});

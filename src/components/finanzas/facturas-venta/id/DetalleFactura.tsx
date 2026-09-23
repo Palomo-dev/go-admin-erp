@@ -56,7 +56,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { instantForDayInTz, plainDayOfInstant } from '@/lib/services/businessInstant';
 import { ItemsDetalle } from './ItemsDetalle';
@@ -133,6 +134,11 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   // sucursal. `issue_date` y `payments.payment_date` son timestamptz.
   const { timezone, formatDate: formatDateInOrg, getToday } = useFormatDate(factura?.branch_id);
   const diaEmision = plainDayOfInstant(factura?.issue_date, timezone);
+  // Montos en la moneda de la factura o, si no la trae, en la base de la
+  // organización (fuente única: monedaOrganizacion.ts). Nunca pesos fijos.
+  const monedaOrg = useMonedaOrganizacion();
+  const monedaFactura = monedaOrg.paraDocumento(factura?.currency);
+  const formatCurrency = crearFormateadorMoneda(monedaFactura);
   const [isPaid, setIsPaid] = useState(factura.status === 'paid');
   const [dialogPagoOpen, setDialogPagoOpen] = useState(false);
   const [dialogNotaCreditoOpen, setDialogNotaCreditoOpen] = useState(false);
@@ -396,7 +402,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
           source_id: facturaActual.id,
           method: 'cash', // Efectivo por defecto
           amount: facturaActual.balance,
-          currency: facturaActual.currency || 'COP',
+          currency: facturaActual.currency || monedaOrg.code,
           reference: 'Pago total automático',
           status: 'completed',
           created_by: user?.id, // Agregar el ID del usuario que creó el pago
@@ -457,7 +463,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       issue_date: facturaActual.issue_date,
       due_date: facturaActual.due_date,
       status: facturaActual.status,
-      currency: facturaActual.currency || 'COP',
+      currency: facturaActual.currency || monedaOrg.code,
       subtotal: facturaActual.subtotal || 0,
       tax_total: facturaActual.tax_total || 0,
       total: facturaActual.total || 0,
@@ -466,6 +472,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       tax_included: facturaActual.tax_included,
       discount_total: totalDescuentos > 0 ? totalDescuentos : undefined,
       credit_applied: creditoAplicado || undefined,
+      moneda: monedaOrg.paraDocumento(facturaActual.currency),
       organization: organizationData || undefined,
       customer: factura.customers ? {
         full_name: factura.customers.full_name,
@@ -678,7 +685,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       const params = new URLSearchParams({
         duplicar: facturaActual.id,
         cliente: facturaActual.customer_id || '',
-        moneda: facturaActual.currency || 'COP',
+        moneda: facturaActual.currency || monedaOrg.code,
         terminos: facturaActual.payment_terms?.toString() || '30',
         metodo_pago: facturaActual.payment_method || '',
         notas: facturaActual.notes || ''

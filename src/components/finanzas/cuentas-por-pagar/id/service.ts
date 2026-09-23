@@ -5,6 +5,8 @@ import { DEFAULT_TIMEZONE, getToday } from '@/lib/utils/timezone';
 import { plainDateToInstant, toPlainDate, formatDateInTz } from '@/lib/utils/dateDisplay';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { sumarMesesAlDia } from '@/lib/services/fiscalCalendar';
+import { resolverContextoMoneda, resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { crearFormateadorMoneda, monedaDelDocumento } from '@/lib/utils/moneda';
 
 export class CuentaPorPagarDetailService {
   private static getOrganizationId(): number {
@@ -315,6 +317,19 @@ export class CuentaPorPagarDetailService {
     if (!branchId) throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
 
     try {
+      // Moneda del pago: la de la factura del proveedor o, si no la trae, la
+      // base de la organización. Antes se escribía pesos fijos.
+      const { data: cuenta } = await supabase
+        .from('accounts_payable')
+        .select('invoice_purchase:invoice_id(currency)')
+        .eq('id', accountId)
+        .eq('organization_id', organizationId)
+        .maybeSingle();
+      const factura = (cuenta as { invoice_purchase?: { currency?: string | null } | Array<{ currency?: string | null }> | null } | null)
+        ?.invoice_purchase;
+      const monedaFactura = Array.isArray(factura) ? factura[0]?.currency : factura?.currency;
+      const monedaPago = monedaDelDocumento(monedaFactura, (await resolveOrgCurrency(supabase, organizationId)).code);
+
       // Crear registro de pago
       const paymentData: any = {
         organization_id: organizationId,
@@ -326,7 +341,7 @@ export class CuentaPorPagarDetailService {
         method: method,
         reference: reference,
         status: 'completed',
-        currency: 'COP',
+        currency: monedaPago,
         payment_date: paymentDate ? new Date(paymentDate + 'T' + new Date().toTimeString().split(' ')[0]).toISOString() : new Date().toISOString()
       };
 
@@ -504,8 +519,11 @@ export class CuentaPorPagarDetailService {
     const installments = await this.obtenerCuotas(accountId);
     
     const formatDate = (date: string) => formatDateInTz(date, timezone);
-    const formatCurrency = (amount: number) => 
-      new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(amount);
+    // Moneda de la factura del proveedor o, en su defecto, la base de la
+    // organización (fuente única: monedaOrganizacion.ts). Nunca pesos fijos.
+    const formatCurrency = crearFormateadorMoneda(
+      await resolverContextoMoneda(supabase, account.organization_id, account.invoice_currency)
+    );
 
     let content = `
 ESTADO DE CUENTA

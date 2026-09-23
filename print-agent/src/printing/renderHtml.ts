@@ -1,15 +1,7 @@
 ﻿import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload } from './types';
+import { moneyFormatter } from './money';
 import type { PaperSpec } from './paper';
 
-function formatMoney(value: number): string {
-  // `style: 'currency'` separa el simbolo del importe con U+00A0 (espacio
-  // duro). Ese byte es 0xA0, que las impresoras termicas interpretan en CP437
-  // como "a" acentuada: en papel salia "$a36.480". Se normaliza a espacio
-  // normal, que es identico en pantalla y correcto en la impresora.
-  return value
-    .toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 })
-    .replace(/\u00a0/g, ' ');
-}
 
 const FISCAL_LABELS: Record<string, string> = {
   O_23: 'Gran contribuyente',
@@ -275,6 +267,7 @@ function buildCss(paper: PaperSpec): string {
 }
 
 export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: PaperSpec): string {
+  const formatMoney = moneyFormatter(payload, { symbol: true });
   const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
   const title = payload.title || 'TICKET DE VENTA';
   const dateObj = new Date(payload.createdAt);
@@ -548,6 +541,7 @@ export function buildKitchenTicketsHTML(payloads: KitchenTicketPrintPayload[], p
 }
 
 function buildShipmentGuideBody(payload: ShipmentGuidePrintPayload): string {
+  const formatMoney = moneyFormatter(payload, { symbol: true });
   const tracking = payload.trackingNumber || payload.shipmentNumber || payload.shipmentId;
   const dateStr = new Date(payload.createdAt).toLocaleDateString('es-CO', payload.timezone ? { timeZone: payload.timezone } : {});
   const timeStr = new Date(payload.createdAt).toLocaleTimeString('es-CO', { ...(payload.timezone ? { timeZone: payload.timezone } : {}), hour: '2-digit', minute: '2-digit', hour12: false });
@@ -643,6 +637,7 @@ export function buildShipmentGuidesHTML(payloads: ShipmentGuidePrintPayload[], p
 }
 
 function buildElectronicInvoiceBody(payload: ElectronicInvoicePrintPayload): string {
+  const formatMoney = moneyFormatter(payload, { symbol: true });
   const dateObj = new Date(payload.createdAt);
   const dateStr = dateObj.toLocaleDateString('es-CO', payload.timezone ? { timeZone: payload.timezone } : {});
   const timeStr = dateObj.toLocaleTimeString('es-CO', { ...(payload.timezone ? { timeZone: payload.timezone } : {}), hour: '2-digit', minute: '2-digit', hour12: false });

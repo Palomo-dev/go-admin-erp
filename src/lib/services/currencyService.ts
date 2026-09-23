@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase/config';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { todayInTz } from '@/lib/utils/timezone';
+import { resolveOrgCurrency, resetOrgCurrencyCache } from '@/lib/services/monedaOrganizacion';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 // ============================================================
 // Fase B, tanda 10. Ojo con la diferencia respecto a `openexchangerates.ts`:
@@ -33,47 +35,18 @@ export interface ExchangeRate {
  */
 class CurrencyService {
   private exchangeRatesCache: Map<string, ExchangeRate> = new Map();
-  private baseCurrencyCache: Map<number, string> = new Map(); // organizationId -> baseCurrency
   private cacheExpiration: Date = new Date();
 
   /**
-   * Obtiene la moneda base para una organización
+   * Obtiene la moneda base para una organización.
+   * Delegado en la fuente única `resolveOrgCurrency`
+   * (`src/lib/services/monedaOrganizacion.ts`). Antes devolvía 'USD' siempre,
+   * sin leer `organization_currencies`.
    * @param organizationId ID de la organización
-   * @returns Código de moneda base (ISO 4217), por defecto 'USD'
+   * @returns Código de moneda base (ISO 4217)
    */
   async getBaseCurrency(organizationId: number): Promise<string> {
-    // Si tenemos la moneda base en caché y no ha expirado, la usamos
-    if (this.baseCurrencyCache.has(organizationId) && new Date() < this.cacheExpiration) {
-      return this.baseCurrencyCache.get(organizationId) || 'USD';
-    }
-
-    try {
-      // Obtener la configuración de la organización
-      // Primero verificamos si existe la columna base_currency
-      const { data: orgData, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('id', organizationId)
-        .single();
-
-      if (error) {
-        console.error('Error al obtener la moneda base:', error);
-        return 'USD'; // Valor por defecto
-      }
-
-      // Como la columna base_currency no existe, usamos USD por defecto
-      // En un futuro podrías extender la tabla organizations para incluir esta columna
-      const baseCurrency = 'USD';
-      
-      // Actualizar caché
-      this.baseCurrencyCache.set(organizationId, baseCurrency);
-      this.cacheExpiration = new Date(Date.now() + 3600000); // Caché válida por 1 hora
-      
-      return baseCurrency;
-    } catch (error) {
-      console.error('Error al obtener la moneda base:', error);
-      return 'USD'; // Valor por defecto en caso de error
-    }
+    return (await resolveOrgCurrency(supabase, organizationId)).code;
   }
 
   /**
@@ -366,25 +339,16 @@ class CurrencyService {
    */
   invalidateCache(): void {
     this.exchangeRatesCache.clear();
-    this.baseCurrencyCache.clear();
+    resetOrgCurrencyCache();
     this.cacheExpiration = new Date(0); // Fecha en el pasado para forzar recarga
   }
 
   /**
-   * Formatea un valor monetario según la moneda
+   * Formatea un valor monetario según la moneda (dos decimales, es-CO).
+   * Delegado en `formatMoneda` (`src/lib/utils/moneda.ts`).
    */
   formatCurrency(amount: number, currency: string = 'USD'): string {
-    try {
-      return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: currency,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(amount);
-    } catch (error) {
-      // Si hay error con el formato (ej: moneda inválida), usar formato simple
-      return `${currency} ${amount.toFixed(2)}`;
-    }
+    return formatMoneda(amount, currency, { decimals: 2 });
   }
 }
 

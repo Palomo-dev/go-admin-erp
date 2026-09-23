@@ -5,7 +5,8 @@ import { Package } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toastError } from '@/components/ui/use-toast';
 import ModuloSection from '../ModuloSection';
 import {
@@ -29,12 +30,12 @@ import type {
   ExportOrganizationInfo,
 } from '@/lib/services/inicio/dashboardSectionExport';
 
-const CURRENCY_CODE = 'COP';
 const PERIODO_LABEL = 'Estado actual';
 
 function buildExportData(
   kpis: InventoryKPIs | null,
   branchSummaries: BranchSummary[],
+  moneda: ContextoMoneda,
 ): SectionExportData | null {
   if (!kpis) return null;
 
@@ -45,7 +46,7 @@ function buildExportData(
     { label: 'Sin stock', value: String(kpis.outOfStockProducts), kind: 'neutro' },
     {
       label: 'Valor inventario',
-      value: formatCurrency(kpis.totalInventoryValue, CURRENCY_CODE),
+      value: formatMoneda(kpis.totalInventoryValue, moneda),
       kind: 'ingreso',
     },
     { label: 'Categorías', value: String(kpis.totalCategories), kind: 'neutro' },
@@ -56,7 +57,7 @@ function buildExportData(
     stock: b.totalStock,
     lowStock: b.lowStockCount,
     outOfStock: b.outOfStockCount,
-    valor: formatCurrency(b.inventoryValue, CURRENCY_CODE),
+    valor: formatMoneda(b.inventoryValue, moneda),
   }));
 
   return {
@@ -75,6 +76,8 @@ function buildExportData(
 }
 
 export default function InventarioSection() {
+  // Montos en la moneda base de la organización (nunca pesos fijos).
+  const moneda = useMonedaOrganizacion();
   const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<InventoryKPIs | null>(null);
@@ -140,8 +143,8 @@ export default function InventarioSection() {
   }, [branchFilter]);
 
   const exportData = useMemo(
-    () => buildExportData(kpis, branchSummaries),
-    [kpis, branchSummaries],
+    () => buildExportData(kpis, branchSummaries, moneda),
+    [kpis, branchSummaries, moneda],
   );
 
   return (

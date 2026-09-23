@@ -1,8 +1,13 @@
 'use client';
 
 import { ParkingSession } from './SesionesTable';
+import { formatMoneda, LOCALE_RESPALDO, type ContextoMoneda } from '@/lib/utils/moneda';
 
-export function printSessionReceipt(session: ParkingSession) {
+/**
+ * @param moneda Moneda base de la organización (`useMonedaOrganizacion()`).
+ *   Sin ella el total sale sin símbolo: nunca se suponen pesos.
+ */
+export function printSessionReceipt(session: ParkingSession, moneda?: ContextoMoneda) {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
 
@@ -29,7 +34,7 @@ export function printSessionReceipt(session: ParkingSession) {
       <div class="row"><span>Entrada:</span><span>${new Date(session.entry_at).toLocaleString('es-ES')}</span></div>
       <div class="row"><span>Salida:</span><span>${session.exit_at ? new Date(session.exit_at).toLocaleString('es-ES') : '-'}</span></div>
       <div class="row"><span>Duración:</span><span>${session.duration_min || 0} min</span></div>
-      <div class="row total"><span>TOTAL:</span><span>$${session.amount?.toLocaleString('es-CO') || 0}</span></div>
+      <div class="row total"><span>TOTAL:</span><span>${moneda ? formatMoneda(session.amount ?? 0, moneda) : (session.amount ?? 0).toLocaleString(LOCALE_RESPALDO)}</span></div>
       <div class="footer">
         <p>Gracias por su visita</p>
         <p>ID: ${session.id.substring(0, 8)}</p>

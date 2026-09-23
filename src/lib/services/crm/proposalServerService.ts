@@ -23,6 +23,7 @@ import {
   type ObjectionLite,
   type DiscoveryFieldLite,
 } from '@/lib/services/crm/proposalNarrative';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export interface ProposalContextData {
   opportunityId: string;
@@ -67,7 +68,8 @@ function toRecord(row: Record<string, unknown>): ProposalRecord {
     opportunity_id: (row.opportunity_id as string | null) ?? null,
     customer_id: (row.customer_id as string | null) ?? null,
     total: Number(row.total ?? 0),
-    currency: String(row.currency ?? 'COP'),
+    // `quotations.currency` es NOT NULL (verificado el 2026-09-23): sin respaldo a pesos.
+    currency: String(row.currency ?? ''),
     valid_until: (row.valid_until as string | null) ?? null,
     issue_date: (row.issue_date as string | null) ?? null,
     payment_link_url: (row.payment_link_url as string | null) ?? null,
@@ -140,7 +142,8 @@ export async function loadProposalContext(orgId: number, opportunityId: string, 
     return { title: String(ob?.title ?? 'Objeción'), recommended_response: (ob?.recommended_response as string | null) ?? null, resolved: r.resolved === true };
   });
 
-  const currency = String(o.currency ?? 'COP');
+  // Moneda de la oportunidad o, si no la trae, la base de la organización.
+  const currency = o.currency ? String(o.currency).trim() : (await resolveOrgCurrency(supabase, orgId)).code;
   const lines: PricingLine[] = [];
   for (const p of ((productsRes as { data: Record<string, unknown>[] | null }).data ?? [])) {
     const prod = p.product as Record<string, unknown> | Record<string, unknown>[] | null;

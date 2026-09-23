@@ -4,6 +4,7 @@ import { buildShipmentGuideHTML, buildShipmentGuidesHTML, getPaperSpec, DEFAULT_
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
 import { formatDateInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
+import { formatMoneda, monedaDelDocumento, contextoMoneda, LOCALE_RESPALDO, type ContextoMoneda } from '@/lib/utils/moneda';
 
 export interface ShipmentGuideItem {
   id: string;
@@ -34,9 +35,15 @@ export interface ShipmentGuideOrgInfo {
   phone?: string;
 }
 
-function formatCurrency(value: number | undefined, currency: string = 'COP'): string {
-  if (!value || value === 0) return '$0';
-  return new Intl.NumberFormat('es-CO', { style: 'currency', currency, minimumFractionDigits: 0 }).format(value);
+/**
+ * Contexto de moneda de la guía: la del envío si la trae, si no la base de la
+ * organización (`options.moneda`, de `useMonedaOrganizacion()`).
+ */
+function monedaDeGuia(shipment: ShipmentWithDetails, options: GenerateGuideOptions): ContextoMoneda | null {
+  const base = options.moneda;
+  if (!shipment.currency && !base) return null;
+  const code = monedaDelDocumento(shipment.currency, base?.code ?? '');
+  return code === base?.code ? base : contextoMoneda(code, { locale: base?.locale });
 }
 
 function formatDate(dateStr: string | undefined, timezone: string = DEFAULT_TIMEZONE): string {
@@ -100,6 +107,8 @@ interface GenerateGuideOptions {
   driver?: ShipmentGuideDriver | null;
   orgInfo?: ShipmentGuideOrgInfo | null;
   timezone?: string;
+  /** Moneda base de la organización (nunca pesos fijos). */
+  moneda?: ContextoMoneda;
 }
 
 export function generateShipmentGuideHTML(
@@ -109,6 +118,10 @@ export function generateShipmentGuideHTML(
   const meta = (shipment.metadata as Record<string, unknown> | null) || {};
   const items = options.items || (meta.items as ShipmentGuideItem[] | undefined) || [];
   const tz = options.timezone || DEFAULT_TIMEZONE;
+  const moneda = monedaDeGuia(shipment, options);
+  // Sin moneda conocida, el número sin símbolo: no se suponen pesos.
+  const formatCurrency = (value: number | undefined): string =>
+    moneda ? formatMoneda(value ?? 0, moneda) : new Intl.NumberFormat(LOCALE_RESPALDO).format(value ?? 0);
 
   const senderName = (meta.sender_name as string) || shipment.sender_name || '-';
   const senderPhone = (meta.sender_phone as string) || shipment.sender_phone || '-';
@@ -673,6 +686,12 @@ export function buildShipmentGuidePayload(
     insuranceCost: shipment.insurance_fee,
     codAmount: shipment.cod_amount,
     totalCost: shipment.total_cost,
+
+    // Moneda del envío o base de la organización, con su locale y decimales.
+    ...(() => {
+      const moneda = monedaDeGuia(shipment, options);
+      return moneda ? { currency: moneda.code, locale: moneda.locale, currencyDecimals: moneda.decimals } : {};
+    })(),
   };
 }
 

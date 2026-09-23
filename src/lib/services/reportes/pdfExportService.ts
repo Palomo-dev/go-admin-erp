@@ -7,6 +7,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { ReportData, ReporteColumna, PeriodoCierre } from './types';
 import { formatPlainDate, formatDateInTz } from '@/lib/utils/dateDisplay';
+import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 
 // ---- Tipos ----
 
@@ -22,6 +23,11 @@ export interface OrganizationInfo {
   logoUrl?: string;
   state?: string;
   country?: string;
+  /**
+   * Moneda base de la organización con sus decimales y el locale del país
+   * (`useMonedaOrganizacion()`). Obligatoria: el PDF no supone pesos.
+   */
+  moneda: ContextoMoneda;
 }
 
 export interface CierreConsolidado {
@@ -103,13 +109,19 @@ const HEADER_HEIGHT = 38;
 
 // ---- Formateadores ----
 
-const fmtMoneda = new Intl.NumberFormat('es-CO', {
-  style: 'currency',
-  currency: 'COP',
-  minimumFractionDigits: 0,
-});
+/**
+ * Formateador de dinero del documento en curso. Lo fija `usarMonedaDe(org)` al
+ * empezar cada exportación con la moneda base de la organización; el dibujo
+ * de jsPDF es síncrono, así que no se mezclan dos documentos.
+ */
+let fmtMoneda: { format: (v: number) => string } = { format: (v) => String(v) };
+let fmtNumero: Intl.NumberFormat = new Intl.NumberFormat('es-CO');
 
-const fmtNumero = new Intl.NumberFormat('es-CO');
+function usarMonedaDe(org: OrganizationInfo): void {
+  const formatear = crearFormateadorMoneda(org.moneda);
+  fmtMoneda = { format: (v) => formatear(v) };
+  fmtNumero = new Intl.NumberFormat(org.moneda.locale);
+}
 
 function formatCelda(valor: unknown, tipo: ReporteColumna['tipo']): string {
   if (valor === null || valor === undefined) return '—';
@@ -1164,6 +1176,7 @@ export const pdfExportService = {
    */
   descargarReporte(reporte: ReportData, org: OrganizationInfo, comparisonData?: ReportData): void {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    usarMonedaDe(org);
 
     drawHeader(doc, org, reporte.titulo, reporte.periodo);
 
@@ -1224,6 +1237,9 @@ export const pdfExportService = {
     if (org.logoUrl) {
       logoDataUrl = await loadImageAsDataUrl(org.logoUrl);
     }
+
+    // Tras el await del logo: desde aquí el dibujo es síncrono.
+    usarMonedaDe(org);
 
     // Agrupar reportes por categoría
     const categorias = agruparPorCategoria(reportes);

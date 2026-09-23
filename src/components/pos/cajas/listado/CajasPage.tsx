@@ -51,8 +51,11 @@ import { CajasAbiertasTab } from './CajasAbiertasTab';
 import { HistorialTab } from './HistorialTab';
 import { MiCajaTab } from './MiCajaTab';
 import { Oculto, esPestanaCajas, type PestanaCajas } from './comunes';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 export function CajasPage() {
+  // Moneda base de la organización (fuente única: monedaOrganizacion.ts).
+  const moneda = useMonedaOrganizacion();
   const router = useRouter();
   const pathname = usePathname() ?? '/app/pos/cajas';
   const params = useSearchParams();
@@ -380,14 +383,14 @@ export function CajasPage() {
             etiqueta="Efectivo esperado"
             icono={DollarSign}
             cargando={cargandoAbiertas}
-            valor={showExpected ? dinero(resumenAbiertas.esperado) : <Oculto />}
+            valor={showExpected ? dinero(resumenAbiertas.esperado, moneda) : <Oculto />}
             detalle={showExpected ? `en ${resumenAbiertas.cajas} ${resumenAbiertas.cajas === 1 ? 'caja' : 'cajas'}` : 'cierre ciego'}
           />
           <StatCard
             etiqueta="Diferencia del día"
             icono={DollarSign}
             cargando={!delDia && cargandoAbiertas}
-            valor={showExpected ? dineroConSigno(delDia?.neta ?? 0) : <Oculto />}
+            valor={showExpected ? dineroConSigno(delDia?.neta ?? 0, moneda) : <Oculto />}
             detalle={
               !showExpected
                 ? 'cierre ciego'

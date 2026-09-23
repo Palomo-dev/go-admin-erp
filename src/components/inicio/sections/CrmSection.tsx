@@ -5,7 +5,8 @@ import { Users } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toastError } from '@/components/ui/use-toast';
 import { LoadErrorState } from '@/components/common/LoadErrorState';
 import { describeError, logError } from '@/lib/utils/errorMessage';
@@ -38,7 +39,6 @@ import type {
   ExportOrganizationInfo,
 } from '@/lib/services/inicio/dashboardSectionExport';
 
-const CURRENCY_CODE = 'COP';
 const PERIODO_LABEL = 'Últimos 30 días';
 
 function getDefaultFilters(): CRMFilters {
@@ -63,6 +63,7 @@ function formatResponseTime(seconds: number): string {
 function buildExportData(
   kpis: KPIData | null,
   topOpportunities: TopOpportunity[],
+  moneda: ContextoMoneda,
 ): SectionExportData | null {
   if (!kpis) return null;
 
@@ -71,12 +72,12 @@ function buildExportData(
     { label: 'Oportunidades abiertas', value: String(kpis.opportunitiesOpen), kind: 'neutro' },
     {
       label: 'Valor oportunidades',
-      value: formatCurrency(kpis.opportunitiesValue, CURRENCY_CODE),
+      value: formatMoneda(kpis.opportunitiesValue, moneda),
       kind: 'ingreso',
     },
     {
       label: 'Pronóstico del mes',
-      value: formatCurrency(kpis.monthForecast, CURRENCY_CODE),
+      value: formatMoneda(kpis.monthForecast, moneda),
       kind: 'ingreso',
     },
     { label: 'Clientes nuevos', value: String(kpis.newCustomers), kind: 'neutro' },
@@ -92,7 +93,7 @@ function buildExportData(
   const filas: SectionDataRow[] = topOpportunities.map((o) => ({
     oportunidad: o.name,
     cliente: o.customerName,
-    monto: formatCurrency(o.amount, o.currency || CURRENCY_CODE),
+    monto: formatMoneda(o.amount, o.currency || moneda.code, { locale: moneda.locale }),
     etapa: o.stageName,
     probabilidad: `${o.probability}%`,
   }));
@@ -113,6 +114,8 @@ function buildExportData(
 }
 
 export default function CrmSection() {
+  // Montos en la moneda base de la organización (nunca pesos fijos).
+  const moneda = useMonedaOrganizacion();
   const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<KPIData | null>(null);
@@ -212,8 +215,8 @@ export default function CrmSection() {
   }, [filters]);
 
   const exportData = useMemo(
-    () => buildExportData(kpis, topOpportunities),
-    [kpis, topOpportunities],
+    () => buildExportData(kpis, topOpportunities, moneda),
+    [kpis, topOpportunities, moneda],
   );
 
   return (

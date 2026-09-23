@@ -41,6 +41,7 @@ import {
   AssignDriverDialog,
   type AvailableDriver,
 } from '@/components/transporte/envios/id';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   draft: { label: 'Borrador', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100', icon: <Package className="h-4 w-4" /> },
@@ -66,6 +67,8 @@ export default function ShipmentDetailPage() {
   const organizationId = organization?.id;
   const { selectedBranchId } = useBranch();
   const { timezone } = useOrgTimezone();
+  // Moneda base de la organización para las guías impresas (nunca pesos fijos).
+  const moneda = useMonedaOrganizacion();
 
   const [shipment, setShipment] = useState<ShipmentWithDetails | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -367,6 +370,7 @@ export default function ShipmentDetailPage() {
           phone: orgInfo.phone,
         } : undefined,
         timezone,
+        moneda,
       },
       selectedBranchId,
     );

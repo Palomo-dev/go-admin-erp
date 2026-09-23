@@ -1,6 +1,8 @@
 import { Sale, SaleItem, Customer, Payment } from '../../components/pos/types';
-import { formatCurrency } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
+import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
+import type { ContextoMoneda } from '@/lib/utils/moneda';
+import type { MoneyFormat } from '@printing';
 // Plantillas compartidas con el agente de impresion (print-agent/src/printing).
 // Son las mismas que usan las impresoras fisicas, para que el ticket salga
 // igual imprima por donde imprima.
@@ -33,6 +35,25 @@ export interface BusinessInfo {
   email?: string;
   logoUrl?: string;
   fiscal_responsibilities?: string[];
+  /**
+   * Moneda base de la organización con decimales y locale del país. La llena
+   * `getBusinessAndBranch`; sin ella el ticket imprime el número sin símbolo
+   * (nunca supone pesos).
+   */
+  moneda?: ContextoMoneda;
+}
+
+/**
+ * Formato de dinero del payload: la moneda del documento si la trae, si no la
+ * base de la organización que viaja en `business.moneda`.
+ */
+function moneyFormatOf(business?: BusinessInfo, monedaDocumento?: string | null): MoneyFormat {
+  const base = business?.moneda;
+  const doc = (monedaDocumento ?? '').trim().toUpperCase();
+  if (/^[A-Z]{3}$/.test(doc) && doc !== base?.code) {
+    return { currency: doc, locale: base?.locale };
+  }
+  return base ? { currency: base.code, locale: base.locale, currencyDecimals: base.decimals } : {};
 }
 
 // Interfaz para datos de la sucursal
@@ -137,8 +158,11 @@ export class PrintService {
         .eq('is_main', true)
         .maybeSingle();
 
+      const moneda = await resolverContextoMoneda(supabase, organizationId);
+
       const business: BusinessInfo | undefined = org
         ? {
+            moneda,
             name: org.name || 'Mi Empresa',
             legalName: org.legal_name || undefined,
             nit: org.nit || undefined,
@@ -232,6 +256,7 @@ export class PrintService {
       : undefined;
 
     return {
+      ...moneyFormatOf(business, anySale.currency),
       saleId: String(sale.id),
       saleNumber: anySale.sale_number || undefined,
       customerName,
@@ -434,6 +459,7 @@ export class PrintService {
     timezone?: string,
   ): void {
     const payload: SaleTicketPrintPayload = {
+      ...moneyFormatOf(business),
       saleId: `pre-${tableName}`,
       title: 'PRE-CUENTA',
       tableName,

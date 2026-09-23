@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import ReservationExtrasService from './reservationExtrasService';
 
 export interface ReservationDetail {
@@ -209,22 +210,12 @@ class ReservationDetailService {
   }
 
   /**
-   * Obtener la moneda base de la organización
+   * Obtener la moneda base de la organización.
+   * Delegado en la fuente única `resolveOrgCurrency`
+   * (`src/lib/services/monedaOrganizacion.ts`).
    */
   async getBaseCurrency(organizationId: number): Promise<string> {
-    const { data, error } = await supabase
-      .from('organization_currencies')
-      .select('currency_code')
-      .eq('organization_id', organizationId)
-      .eq('is_base', true)
-      .single();
-
-    if (error || !data) {
-      console.warn('No base currency found, defaulting to COP');
-      return 'COP';
-    }
-    
-    return data.currency_code;
+    return (await resolveOrgCurrency(supabase, organizationId)).code;
   }
 }
 

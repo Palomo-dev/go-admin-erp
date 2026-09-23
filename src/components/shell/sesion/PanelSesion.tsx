@@ -43,7 +43,6 @@ import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase/config';
-import { Switch } from '@/components/ui/switch';
 import { changeLanguage } from '@/i18n/provider';
 import { locales, localeNames, type Locale } from '@/i18n/config';
 import { isDesktop } from '@/lib/utils/desktop';
@@ -120,6 +119,7 @@ function Fila({
   onClick,
   href,
   disabled,
+  encendido,
 }: {
   icono: React.ComponentType<{ size?: number; className?: string; 'aria-hidden'?: boolean }>;
   titulo: string;
@@ -129,6 +129,12 @@ function Fila({
   onClick?: () => void;
   href?: string;
   disabled?: boolean;
+  /**
+   * Si se define, la fila entera es un interruptor (`role="switch"`). El
+   * interruptor que se ve al final es solo dibujo: un `<Switch>` de Radix es
+   * otro `<button>` y no puede ir dentro de este.
+   */
+  encendido?: boolean;
 }) {
   const clases = cn(
     'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left outline-none transition-colors',
@@ -150,9 +156,36 @@ function Fila({
       {cuerpo}
     </Link>
   ) : (
-    <button type="button" className={clases} onClick={onClick} disabled={disabled}>
+    <button
+      type="button"
+      className={clases}
+      onClick={onClick}
+      disabled={disabled}
+      role={encendido === undefined ? undefined : 'switch'}
+      aria-checked={encendido}
+    >
       {cuerpo}
     </button>
+  );
+}
+
+/** Dibujo del interruptor (misma medida que `ui/switch`), sin semántica propia. */
+function InterruptorVisual({ encendido }: { encendido: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent transition-colors',
+        encendido ? 'bg-brand-action' : 'bg-line-strong'
+      )}
+    >
+      <span
+        className={cn(
+          'block h-4 w-4 rounded-full bg-surface shadow-sm transition-transform',
+          encendido ? 'translate-x-4' : 'translate-x-0'
+        )}
+      />
+    </span>
   );
 }
 
@@ -415,16 +448,18 @@ export function PanelSesion({ usuario, organizacion, tema, onAlternarTema, onCer
 
   return (
     <div className="flex flex-col gap-1">
-      {/* Cabecera → Mi perfil */}
-      <div className="flex items-center gap-3 p-2">
+      {/* Cabecera → Mi perfil. El › va dentro del botón del perfil: fuera de él
+          parecía un tercer botón que no hacía nada. */}
+      <div className="flex items-center gap-1 p-1">
         <button
           type="button"
           onClick={() => {
             onCerrar();
             router.push('/app/perfil');
           }}
-          className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 text-left outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand"
           aria-label={t('viewProfile')}
+          title={t('viewProfile')}
         >
           <AvatarUsuario nombre={usuario?.name} correo={usuario?.email} foto={usuario?.avatar} tamano={48} indicador />
           <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -438,6 +473,7 @@ export function PanelSesion({ usuario, organizacion, tema, onAlternarTema, onCer
               </span>
             </span>
           </span>
+          <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-fg-muted transition-colors group-hover:text-fg" />
         </button>
         <button
           type="button"
@@ -453,7 +489,6 @@ export function PanelSesion({ usuario, organizacion, tema, onAlternarTema, onCer
           <ArrowLeftRight size={16} aria-hidden="true" />
           {verCuentas ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
         </button>
-        <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-fg-muted" />
       </div>
 
       {/* Cuentas guardadas */}
@@ -570,7 +605,8 @@ export function PanelSesion({ usuario, organizacion, tema, onAlternarTema, onCer
         icono={Moon}
         titulo={t('darkTheme')}
         onClick={onAlternarTema}
-        cola={<Switch checked={tema === 'dark'} tabIndex={-1} aria-hidden="true" className="pointer-events-none data-[state=checked]:bg-brand-action data-[state=unchecked]:bg-line-strong" />}
+        encendido={tema === 'dark'}
+        cola={<InterruptorVisual encendido={tema === 'dark'} />}
       />
       <Fila
         icono={Globe}

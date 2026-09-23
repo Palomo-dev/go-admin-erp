@@ -1884,7 +1884,7 @@ describe('26. Compras: un solo asiento por hecho, con la factura (ADR-CC-009)', 
   });
 });
 
-describe('26. RLS del catálogo: filas globales de solo lectura y nada abierto a anon', () => {
+describe('27. RLS del catálogo: filas globales de solo lectura y nada abierto a anon', () => {
   // Auditoría del catálogo (docs/design/AUDITORIA-CATALOGO-PRODUCCION.md):
   // un administrador de cualquier organización editaba `units` para todas, un
   // miembro cualquiera borraba las `unit_conversions` globales, `shared_images`

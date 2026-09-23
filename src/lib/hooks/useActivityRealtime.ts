@@ -90,7 +90,8 @@ export function useActivityRealtime() {
     if (Notification.permission === 'granted') {
       new Notification(title, {
         body,
-        icon: '/favicon.ico',
+        icon: '/icon-192x192.png',
+        badge: '/badge-96x96.png',
         tag: `activity-${activity.id}`
       })
     }
@@ -111,7 +112,8 @@ export function useActivityRealtime() {
 
     new Notification(title, {
       body,
-      icon: '/favicon.ico',
+      icon: '/icon-192x192.png',
+      badge: '/badge-96x96.png',
       tag: `call-${payload.activity_id}`
     })
   }

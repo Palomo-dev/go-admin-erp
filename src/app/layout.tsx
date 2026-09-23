@@ -24,12 +24,17 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    title: 'GoAdmin ERP',
+    title: 'GO Admin',
     statusBarStyle: 'default',
   },
+  // Íconos del manual de marca v2.0 (isotipo «GO» sobre Azul GO). Se generan con
+  // `node scripts/brand/generar-iconos.mjs`; no se editan a mano.
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.ico', sizes: '16x16 32x32 48x48' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
       { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
       { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
     ],
@@ -40,7 +45,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0f172a',
+  // Azul GO, igual que theme_color de public/manifest.json.
+  themeColor: '#4361EE',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -54,7 +60,7 @@ const iosMetaTags = (
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="GoAdmin ERP" />
+    <meta name="apple-mobile-web-app-title" content="GO Admin" />
     <meta name="format-detection" content="telephone=no" />
     {/* iOS: prevenir que enlaces internos abran Safari externo */}
     <meta name="apple-touch-fullscreen" content="yes" />

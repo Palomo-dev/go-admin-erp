@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">GoAdmin ERP</string>
-    <string name="title_activity_main">GoAdmin ERP</string>
+    <string name="app_name">GO Admin ERP</string>
+    <string name="title_activity_main">GO Admin ERP</string>
     <string name="package_name">io.goadmin.app</string>
     <string name="custom_url_scheme">io.goadmin.app</string>
 

@@ -5,13 +5,21 @@
 // respuestas redirigidas y los loops de navegacion a /.
 // ============================================================================
 
-const CACHE_NAME = 'goadmin-erp-v4';
+// v5: íconos del manual de marca (2026-09-23). Subir la versión cada vez que
+// cambie un ícono: el precache es cache-first y sin ella nadie ve el nuevo.
+const CACHE_NAME = 'goadmin-erp-v5';
 const STATIC_ASSETS = [
   '/manifest.json',
+  '/icon.svg',
   '/icon-192x192.png',
   '/icon-512x512.png',
+  '/icon-maskable-192x192.png',
+  '/icon-maskable-512x512.png',
   '/apple-touch-icon.png',
   '/favicon.ico',
+  '/favicon-16x16.png',
+  '/favicon-32x32.png',
+  '/badge-96x96.png',
 ];
 
 // Install: pre-cache static assets
@@ -54,9 +62,10 @@ self.addEventListener('fetch', (event) => {
 
   // Static assets (_next/static, icons, manifest): cache-first
   if (url.pathname.startsWith('/_next/static/') ||
-      url.pathname.startsWith('/icon-') ||
+      url.pathname.startsWith('/icon') ||
+      url.pathname.startsWith('/favicon') ||
       url.pathname === '/manifest.json' ||
-      url.pathname === '/favicon.ico' ||
+      url.pathname === '/badge-96x96.png' ||
       url.pathname === '/apple-touch-icon.png') {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -79,7 +88,7 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   if (!event) return;
 
-  let data = { title: 'GoAdmin ERP', body: 'Nueva notificación' };
+  let data = { title: 'GO Admin ERP', body: 'Nueva notificación' };
 
   try {
     if (event.data) {
@@ -94,7 +103,9 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body,
     icon: '/icon-192x192.png',
-    badge: '/icon-192x192.png',
+    // Monocromo: Android solo usa el alfa del badge; con el ícono a color se
+    // veía un cuadrado blanco en la barra de estado.
+    badge: '/badge-96x96.png',
     vibrate: [100, 50, 100],
     data: {
       url: data.url || '/',

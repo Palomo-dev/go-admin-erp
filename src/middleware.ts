@@ -993,6 +993,6 @@ export const config = {
      * Se enumeran de forma explicita (no por regex de extension) para no
      * arriesgar el parseo del matcher en un hotfix de produccion.
      */
-    '/((?!_next/static|_next/image|favicon.ico|favicon-32x32.png|apple-touch-icon.png|icon-192x192.png|icon-512x512.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/test|api/stripe|api/sessions|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/super-admin-cleanup|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/pos/display/|api/web-orders|api/auth).*)',
+    '/((?!_next/static|_next/image|favicon.ico|favicon-16x16.png|favicon-32x32.png|apple-touch-icon.png|icon.svg|icon-192x192.png|icon-512x512.png|icon-maskable-192x192.png|icon-maskable-512x512.png|badge-96x96.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/test|api/stripe|api/sessions|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/super-admin-cleanup|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/pos/display/|api/web-orders|api/auth).*)',
   ],
 };

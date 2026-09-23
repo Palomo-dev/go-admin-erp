@@ -1,0 +1,42 @@
+name: Inventario Postgres
+
+# Comprobaciones que solo tienen sentido contra la BASE VIVA, no contra los
+# `.sql` del repositorio. Viven en su propio workflow y no dentro de ci-web.yml
+# por una razon concreta: necesitan un disparador `schedule`, y un `schedule` en
+# ci-web.yml arrastraria tambien al typecheck y a las dos matrices de zonas
+# horarias todos los dias sin motivo. Ver
+# docs/adr/ADR-005-inventario-de-current-date-contra-la-base-viva.md.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Todos los dias a las 13:00 UTC (08:00 en Bogota). El disparador que de
+    # verdad importa: una funcion aplicada por MCP no deja cambio en el
+    # repositorio, asi que ningun push ni PR la delataria.
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+
+jobs:
+  current-date:
+    name: Ninguna funcion nueva decide el dia en UTC
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      # El script se SALTA con aviso (exit 0) si faltan las credenciales. Es
+      # deliberado: un `pull_request` desde un fork no recibe `secrets`, y
+      # romperle el CI a quien no puede consultar la base seria ruido, no
+      # seguridad. El repositorio principal si las recibe, y ahi la
+      # comprobacion es real y bloqueante.
+      - name: Inventario de CURRENT_DATE contra la base viva
+        run: node scripts/verificar-current-date-en-postgres.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

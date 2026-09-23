@@ -1,0 +1,17 @@
+{
+  "adr": "docs/adr/ADR-004-dia-utc-en-el-catalogo-global-de-tasas.md",
+  "porQue": "Las unicas funciones de public a las que se les permite decidir un dia con CURRENT_DATE. Todas escriben en public.currency_rates, un catalogo GLOBAL sin organization_id ni branch_id: no hay organizacion a la que preguntarle la zona. Lista cerrada: ampliarla exige volver al ADR-004 y justificarlo alli primero.",
+  "comprobadaPor": [
+    "scripts/verificar-current-date-en-postgres.mjs (base viva, en CI)",
+    "src/__tests__/timezone/diaDeLaOrganizacionEnPostgres.test.ts (repositorio, en jest)"
+  ],
+  "firmas": [
+    "auto_generate_missing_rates()",
+    "fill_historical_rates_real_api()",
+    "fill_missing_currency_dates()",
+    "insert_fallback_rates()",
+    "save_exchange_rates(integer,uuid,jsonb,text)",
+    "save_exchange_rates(integer,uuid,jsonb,text,bigint)",
+    "update_global_exchange_rates(jsonb,text,bigint,text,text)"
+  ]
+}

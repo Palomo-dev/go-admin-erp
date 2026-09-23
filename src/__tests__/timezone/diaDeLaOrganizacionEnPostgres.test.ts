@@ -11,7 +11,7 @@
 //
 // Se exige, sobre la ÚLTIMA definición vigente de cada función:
 //
-//   1. Ninguna de las 13 funciones arregladas conserva `CURRENT_DATE` — ni en
+//   1. Ninguna de las 14 funciones arregladas conserva `CURRENT_DATE` — ni en
 //      código ni en comentarios, para que el inventario por `pg_proc.prosrc`
 //      no la vuelva a contar.
 //   2. Cada una resuelve el día con `fn_today_for`, `fn_today_for_org` o
@@ -36,7 +36,7 @@
 // verdad su variante rota, para que el test no se quede verde por vacío.
 // ============================================================================
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { sqlDeMigraciones, definiciones } from './zonaHorariaPorSucursal.test';
 
@@ -45,28 +45,39 @@ const DIR_MIGRACIONES = join(RAIZ, 'supabase/migrations');
 const DIR_ROLLBACKS = join(RAIZ, 'supabase/rollbacks');
 const DIR_ADR = join(RAIZ, 'docs/adr');
 
-/** Las tres migraciones de esta fase. */
+/**
+ * Las migraciones de esta fase. Las tres primeras son el barrido original; la
+ * cuarta es el addendum: `fn_emitir_acciones` no existía cuando la fase empezó
+ * (la creó otra sesión en paralelo y apareció al repetir el inventario), así
+ * que se arregla aparte pero bajo el mismo contrato.
+ */
 const MIGRACIONES_FASE_D = [
   '20260923210000_fase_d_dia_de_la_organizacion_en_triggers.sql',
   '20260923210500_fase_d_dia_de_la_organizacion_en_numeracion.sql',
   '20260923211000_fase_d_dia_de_la_organizacion_en_el_resto.sql',
+  '20260923233000_fn_emitir_acciones_dia_de_la_organizacion.sql',
 ];
 
 const ADR_TASAS = 'ADR-004-dia-utc-en-el-catalogo-global-de-tasas.md';
 
 /**
- * Las 7 funciones que se quedan en UTC a propósito: escriben en
- * `currency_rates`, que es un catálogo GLOBAL sin `organization_id`.
- * Lista blanca cerrada. Ampliarla exige volver al ADR-004 y justificarlo.
+ * Las 7 firmas que se quedan en UTC a propósito: escriben en `currency_rates`,
+ * que es un catálogo GLOBAL sin `organization_id`. Lista blanca cerrada;
+ * ampliarla exige volver al ADR-004 y justificarlo.
+ *
+ * NO se escribe aquí: sale del MISMO archivo que lee el job de CI que comprueba
+ * la base viva (`scripts/verificar-current-date-en-postgres.mjs`). Dos copias de
+ * una lista blanca divergen, y la que divergiera sería justo la que deja pasar
+ * la función intrusa. Ver ADR-005.
  */
+const LISTA_BLANCA: { adr: string; firmas: string[] } = JSON.parse(
+  readFileSync(join(RAIZ, 'scripts/lista-blanca-current-date.json'), 'utf8'),
+);
+
+/** Nombres distintos (`save_exchange_rates` aparece con dos sobrecargas). */
 const TASAS_EN_UTC_A_PROPOSITO = [
-  'auto_generate_missing_rates',
-  'fill_historical_rates_real_api',
-  'fill_missing_currency_dates',
-  'insert_fallback_rates',
-  'save_exchange_rates',
-  'update_global_exchange_rates',
-] as const;
+  ...new Set(LISTA_BLANCA.firmas.map((f) => f.replace(/\(.*$/, '').trim())),
+].sort() as readonly string[];
 
 interface Contrato {
   /** Firma esperada, normalizada (minúsculas, sin espacios de más). */
@@ -80,7 +91,7 @@ interface Contrato {
 }
 
 /**
- * Las 13 funciones arregladas. `porSucursal: true` significa que la fila (o el
+ * Las 14 funciones arregladas. `porSucursal: true` significa que la fila (o el
  * parámetro) sí trae una sucursal y por tanto la zona tiene que bajar hasta
  * ella; `false` significa que solo hay organización y `fn_today_for_org` basta.
  */
@@ -175,6 +186,19 @@ const CONTRATOS: Record<string, Contrato> = {
     definer: true,
     porSucursal: false,
     origen: 'organizations.id, por organización dentro del bucle',
+  },
+  // --- addendum: la que se coló mientras corría la fase -----------------
+  // Decide DOS días contables: si el periodo contable está abierto
+  // (`fn_is_period_open`) y el `effective_date` del certificado de acciones.
+  // `porSucursal: false` a propósito y verificado por MCP: `fiscal_periods` es
+  // por organización, y `cap_transactions` NO tiene `branch_id`. La `v_branch`
+  // que la función calcula existe solo para rellenar `journal_entries.branch_id`
+  // y se elige con un `order by ... limit 1`: no es el lugar del hecho.
+  fn_emitir_acciones: {
+    firma: 'p_subscription_id uuid, p_admin_user_id uuid, p_referencia_tecleada text',
+    definer: true,
+    porSucursal: false,
+    origen: "investor_config.organizacion_contable_id -> v_org",
   },
 };
 
@@ -349,6 +373,24 @@ describe('Fase D — forma de las migraciones', () => {
 describe('Fase D — las 7 funciones de tasas se quedan en UTC con justificación', () => {
   const adr = join(DIR_ADR, ADR_TASAS);
 
+  test('la lista blanca tiene exactamente 7 firmas, sin repetidas', () => {
+    expect(LISTA_BLANCA.firmas).toHaveLength(7);
+    expect(new Set(LISTA_BLANCA.firmas).size).toBe(7);
+  });
+
+  test('la lista blanca guarda FIRMAS, no solo nombres', () => {
+    // `save_exchange_rates` tiene dos sobrecargas: por nombre serían 6 entradas
+    // para 7 filas, y una sobrecarga nueva con CURRENT_DATE pasaría inadvertida.
+    for (const firma of LISTA_BLANCA.firmas) {
+      expect(firma).toMatch(/^[a-z_][a-z0-9_]*\(.*\)$/);
+    }
+    expect(LISTA_BLANCA.firmas.filter((f) => f.startsWith('save_exchange_rates('))).toHaveLength(2);
+  });
+
+  test('la lista blanca apunta al ADR que la justifica', () => {
+    expect(LISTA_BLANCA.adr).toContain(ADR_TASAS);
+  });
+
   test('el ADR existe', () => {
     exige(
       existsSync(adr),
@@ -383,6 +425,67 @@ describe('Fase D — las 7 funciones de tasas se quedan en UTC con justificació
         );
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// El inventario contra la base viva sigue enchufado (ADR-005)
+// ---------------------------------------------------------------------------
+// Este archivo lee los `.sql` del repositorio, y por eso NO vio en su día a
+// `fn_emitir_acciones`: otra sesión la aplicó por MCP. La red que sí la habría
+// visto es el job de CI que consulta la base. Aquí se comprueba que ese job
+// sigue existiendo y que no se le ha quitado lo que lo hace útil.
+// ---------------------------------------------------------------------------
+describe('Fase D — la comprobación contra la base viva sigue en pie', () => {
+  const WORKFLOW = join(RAIZ, '.github/workflows/inventario-postgres.yml');
+  const SCRIPT = join(RAIZ, 'scripts/verificar-current-date-en-postgres.mjs');
+
+  test('el script de inventario existe y consulta la RPC', () => {
+    exige(existsSync(SCRIPT), `Falta ${SCRIPT} (ADR-005).`, true);
+    const texto = readFileSync(SCRIPT, 'utf8');
+    expect(texto).toContain('fn_inventario_current_date');
+    expect(texto).toContain('scripts/lista-blanca-current-date.json');
+  });
+
+  test('el script se SALTA si faltan credenciales, no falla', () => {
+    // Un fork no recibe `secrets`. Si esto se convirtiera en un fallo, toda
+    // contribución externa vería un rojo que no puede arreglar.
+    const texto = readFileSync(SCRIPT, 'utf8');
+    expect(/function\s+salta\b[\s\S]*process\.exit\(0\)/.test(texto)).toBe(true);
+  });
+
+  test('el script no lleva ninguna credencial escrita', () => {
+    const texto = readFileSync(SCRIPT, 'utf8');
+    // Nada que parezca un JWT de Supabase ni una URL de proyecto concreta.
+    expect(/eyJ[A-Za-z0-9_-]{20,}/.test(texto)).toBe(false);
+    expect(/https:\/\/[a-z0-9]{20}\.supabase\.co/.test(texto)).toBe(false);
+  });
+
+  test('el workflow existe, corre el script y tiene disparador programado', () => {
+    exige(existsSync(WORKFLOW), `Falta ${WORKFLOW} (ADR-005).`, true);
+    const texto = readFileSync(WORKFLOW, 'utf8');
+    expect(texto).toContain('node scripts/verificar-current-date-en-postgres.mjs');
+    // El `schedule` es el único disparador que ve una función aplicada por MCP
+    // sin commit: sin él, el job solo mira cuando ya hay un cambio en el repo.
+    expect(/^\s*schedule:/m.test(texto)).toBe(true);
+    expect(/cron:/.test(texto)).toBe(true);
+    // Las credenciales llegan por `secrets`, nunca escritas en el archivo.
+    expect(texto).toContain('${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}');
+    expect(/eyJ[A-Za-z0-9_-]{20,}/.test(texto)).toBe(false);
+  });
+
+  test('la migración que crea la RPC tiene su reversión', () => {
+    const mig = join(DIR_MIGRACIONES, '20260923234000_fn_inventario_current_date.sql');
+    const rollback = join(
+      DIR_ROLLBACKS,
+      '20260923234000_fn_inventario_current_date_rollback.sql',
+    );
+    expect(existsSync(mig)).toBe(true);
+    exige(existsSync(rollback), `Falta ${rollback}.`, true);
+    const texto = readFileSync(mig, 'utf8');
+    // Solo service_role: anon y authenticated no ejecutan el inventario.
+    expect(/grant\s+execute\s+on\s+function\s+public\.fn_inventario_current_date\(\)\s+to\s+service_role/i.test(texto)).toBe(true);
+    expect(/revoke\s+all\s+on\s+function\s+public\.fn_inventario_current_date\(\)\s+from\s+anon/i.test(texto)).toBe(true);
   });
 });
 

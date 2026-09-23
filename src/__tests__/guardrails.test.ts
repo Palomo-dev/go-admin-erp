@@ -313,7 +313,6 @@ describe('F0 Guardarraíles', () => {
       'app/api/subscriptions/change-billing/route.ts',
       'app/api/subscriptions/change-plan/route.ts',
       'app/api/subscriptions/payment-methods/route.ts',
-      'app/api/web-orders/route.ts', // x-webhook-secret propio
     ]);
 
     const BODY_ORG_PATTERNS = [
@@ -322,7 +321,8 @@ describe('F0 Guardarraíles', () => {
       /\{[^}]*\b(organizationId|organization_id|orgId)\b[^}]*\}\s*=\s*body\b/,
     ];
     const SESSION_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withWhatsAppRoute)\s*\(/;
-    const CRON_RE = /\b(withCron|verifyCronSecret)\s*\(/;
+    // verifyWebOrdersSecret: /api/web-orders/** (tienda web → ERP), fail-closed.
+    const CRON_RE = /\b(withCron|verifyCronSecret|verifyWebOrdersSecret)\s*\(/;
     // Solo verificaciones de FIRMA. `isPlaceholderCredential` no lo es: mencionarla
     // eximía al handler del contrato (tester r2, mutación M17).
     const WEBHOOK_RE = /\b(verifyTwilioWebhook|verifyTwilioRequest|verifyMetaSignature|verifyResendWebhook|constructEvent|verifyDocumensoWebhook|verifyElevenLabsWebhook)\s*\(|webhooks\.constructEvent/;
@@ -499,7 +499,10 @@ describe('F0 Guardarraíles', () => {
           continue;
         }
         const usesBodyOrg = BODY_ORG_PATTERNS.some((p) => p.test(h.text));
-        if (usesBodyOrg && !hasSession) offenders.push(h.method);
+        // Una llamada servidor a servidor con secreto fail-closed (cron, tienda
+        // web → `/api/web-orders`) no tiene sesión de usuario: la organización
+        // viaja en el body porque quien firma es un servidor de confianza.
+        if (usesBodyOrg && !hasSession && !isCron) offenders.push(h.method);
       }
       return offenders;
     }

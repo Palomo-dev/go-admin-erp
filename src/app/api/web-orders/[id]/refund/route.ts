@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyWebOrdersSecret, webhookErrorResponse } from '@/lib/security/webhookSignatures';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { generateInvoiceNumberWithClient } from '@/lib/utils/invoiceUtils';
 import { resolveLineTaxWith } from '@/lib/services/taxResolverCore';
@@ -34,17 +35,16 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Solo servidor a servidor (tienda web / cron): secreto obligatorio.
+  try {
+    verifyWebOrdersSecret(request);
+  } catch (err) {
+    return webhookErrorResponse(err);
+  }
   try {
     const { id: orderId } = await params;
     if (!orderId) {
       return NextResponse.json({ error: 'ID del pedido es requerido' }, { status: 400 });
-    }
-
-    // Validar secreto compartido
-    const webhookSecret = request.headers.get('x-webhook-secret');
-    const expectedSecret = process.env.CRON_SECRET;
-    if (expectedSecret && webhookSecret !== expectedSecret) {
-      return NextResponse.json({ error: 'Secreto de webhook inválido' }, { status: 401 });
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

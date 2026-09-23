@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyWebOrdersSecret, webhookErrorResponse } from '@/lib/security/webhookSignatures';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 function getSupabaseClient(): SupabaseClient {
@@ -28,6 +29,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Solo servidor a servidor (tienda web / cron): secreto obligatorio.
+  try {
+    verifyWebOrdersSecret(request);
+  } catch (err) {
+    return webhookErrorResponse(err);
+  }
   try {
     const { id: orderId } = await params;
     const supabase = getSupabaseClient();
@@ -74,6 +81,12 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Solo servidor a servidor (tienda web / cron): secreto obligatorio.
+  try {
+    verifyWebOrdersSecret(request);
+  } catch (err) {
+    return webhookErrorResponse(err);
+  }
   try {
     const { id: orderId } = await params;
     const body: UpdateOrderRequest = await request.json();
@@ -173,6 +186,12 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Solo servidor a servidor (tienda web / cron): secreto obligatorio.
+  try {
+    verifyWebOrdersSecret(request);
+  } catch (err) {
+    return webhookErrorResponse(err);
+  }
   try {
     const { id: orderId } = await params;
     const supabase = getSupabaseClient();

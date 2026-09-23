@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyWebOrdersSecret, webhookErrorResponse } from '@/lib/security/webhookSignatures';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
@@ -71,6 +72,12 @@ async function generateOrderNumber(organizationId: number): Promise<string> {
 }
 
 export async function POST(request: NextRequest) {
+  // Solo servidor a servidor (tienda web / cron): secreto obligatorio.
+  try {
+    verifyWebOrdersSecret(request);
+  } catch (err) {
+    return webhookErrorResponse(err);
+  }
   try {
     const body: CreateWebOrderRequest = await request.json();
 
@@ -325,6 +332,12 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  // Solo servidor a servidor (tienda web / cron): secreto obligatorio.
+  try {
+    verifyWebOrdersSecret(request);
+  } catch (err) {
+    return webhookErrorResponse(err);
+  }
   try {
     const { searchParams } = new URL(request.url);
     const organizationId = searchParams.get('organization_id');

@@ -160,7 +160,7 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/crm/webhooks/', // <-- F4: webhook de ElevenLabs Scribe (firma ElevenLabs-Signature fail-closed via constructEvent)
     '/u/', // <-- F7: página pública de baja de correo (token HMAC firmado)
     '/api/pos/display/', // <-- Pantalla remota del POS (PLAN pos-doble-pantalla §7): fail-closed por token Bearer (displayAuth) o, en /revoke, por getServerOrgContext → 401 JSON, no redirect
-    '/api/web-orders/', // <-- Excluir webhooks de pedidos web (autenticación propia via x-webhook-secret header)
+    '/api/web-orders/', // <-- Tienda web → ERP: cada handler exige x-webhook-secret (verifyWebOrdersSecret, fail-closed)
     '/api/auth/invite/resend', // <-- Reenvío de magic link para invitaciones (usuario no autenticado, valida contra tabla invitations)
     '/auth/v1/',
     '/auth/callback', // <-- Excluir callback de OAuth para no interferir con PKCE

@@ -249,6 +249,25 @@ export function verifyCronSecret(req: Request): void {
   }
 }
 
+/**
+ * Llamadas servidor a servidor de la tienda web (`/api/web-orders/**`):
+ * header `x-webhook-secret` (o `Authorization: Bearer`) igual a `CRON_SECRET`.
+ * Fail-closed: sin `CRON_SECRET` real => 401 siempre. Antes estas rutas
+ * aceptaban cualquier llamada si el secreto no estaba configurado, y la
+ * creación, el listado, la edición y el borrado de pedidos no lo pedían nunca.
+ */
+export function verifyWebOrdersSecret(req: Request): void {
+  const expected = requireRealSecret('CRON_SECRET', { code: 'webhook_secret_not_configured' });
+
+  const auth = req.headers.get('authorization') || '';
+  const bearer = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const provided = req.headers.get('x-webhook-secret') || bearer;
+
+  if (!provided || !safeEqual(provided, expected)) {
+    throw new WebhookError(401, 'webhook_unauthorized');
+  }
+}
+
 /** Convierte un WebhookError en Response JSON; re-lanza cualquier otro error. */
 export function webhookErrorResponse(err: unknown): Response {
   if (err instanceof WebhookError) {

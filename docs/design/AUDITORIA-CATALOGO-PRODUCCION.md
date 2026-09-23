@@ -286,7 +286,7 @@ Archivos: `components/inventario/distribucion/*` y `components/inventario/transf
 
 `suppliers` ya no tiene la política anónima con `true` que aparece en el baseline: se verificó en la base de datos actual.
 
-**Cerrado el 2026-09-23** con cuatro migraciones (`supabase/migrations/20260923133330_…` a `…133403_…`, cada una con su rollback) y el guardarraíl 26 de `src/__tests__/guardrails.test.ts`:
+**Cerrado el 2026-09-23** con cuatro migraciones (`supabase/migrations/20260923133330_…` a `…133403_…`, cada una con su rollback) y el guardarraíl 27 («RLS del catálogo») de `src/__tests__/guardrails.test.ts`:
 
 - `units`: los usuarios solo leen; escribe `service_role`. La pantalla Inventario / Unidades pasó a ser de solo lectura.
 - `unit_conversions`: las globales solo se leen; las de una organización las escriben sus miembros activos.

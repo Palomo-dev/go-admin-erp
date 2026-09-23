@@ -15,6 +15,8 @@
 export interface NivelStock {
   branch_id: number;
   qty_on_hand: number | string;
+  /** Mínimo configurado para esa sucursal; 0 o ausente = sin mínimo. */
+  min_level?: number | string | null;
 }
 
 /** Lo mínimo que necesita esta función de un producto. */
@@ -57,6 +59,16 @@ export function stockVisibleDe(
   }
 
   return filtrados.reduce((sum, sl) => sum + (Number(sl.qty_on_hand) || 0), 0);
+}
+
+/**
+ * Mínimo que corresponde a lo que se ve: el de la sucursal filtrada o la suma
+ * de todas. 0 si el producto no tiene mínimo configurado.
+ */
+export function minimoVisibleDe(p: ProductoConStock, branchFilter: number | null): number {
+  const niveles = nivelesDe(p);
+  const filtrados = branchFilter === null ? niveles : niveles.filter((sl) => sl.branch_id === branchFilter);
+  return filtrados.reduce((sum, sl) => sum + (Number(sl.min_level) || 0), 0);
 }
 
 /**

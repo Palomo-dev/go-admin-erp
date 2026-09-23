@@ -132,6 +132,8 @@ export interface NivelSucursal {
   branch_id: number;
   qty_on_hand: number;
   qty_reserved: number;
+  /** Mínimo configurado (stock_levels.min_level); 0 = sin mínimo. Padre + variantes se suman. */
+  min_level?: number;
 }
 
 export interface StockLevel {

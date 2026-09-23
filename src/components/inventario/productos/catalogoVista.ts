@@ -10,11 +10,23 @@
  *
  * Sin React ni Supabase: lo usan `CatalogoProductos` y sus tests.
  */
-import { claveOrdenStock, stockVisibleDe } from './stockVisible';
+import { claveOrdenStock, minimoVisibleDe, stockVisibleDe } from './stockVisible';
 import type { Producto } from './types';
 
-/** Por debajo de esto el stock es «bajo» (mismo corte que el color de la fila). */
+/** Corte de «stock bajo» para los productos SIN mínimo configurado. */
 export const UMBRAL_STOCK_BAJO = 5;
+
+/**
+ * Nivel de una cantidad frente a su mínimo, con el criterio de la
+ * notificación de la base (fn_notify_stock_low): agotado si <= 0; bajo si
+ * <= mínimo cuando hay mínimo, o < 5 cuando no lo hay.
+ */
+export function nivelDeCantidad(qty: number, minimo?: number | null): 'sin' | 'bajo' | 'con' {
+  if (qty <= 0) return 'sin';
+  const min = Number(minimo) || 0;
+  if (min > 0 ? qty <= min : qty < UMBRAL_STOCK_BAJO) return 'bajo';
+  return 'con';
+}
 
 export type NivelStockVista = 'sinSeguimiento' | 'sin' | 'bajo' | 'con';
 
@@ -22,9 +34,7 @@ export type NivelStockVista = 'sinSeguimiento' | 'sin' | 'bajo' | 'con';
 export function nivelStock(p: Producto, branchFilter: number | null): NivelStockVista {
   const s = stockVisibleDe(p, branchFilter);
   if (s === null) return 'sinSeguimiento';
-  if (s <= 0) return 'sin';
-  if (s < UMBRAL_STOCK_BAJO) return 'bajo';
-  return 'con';
+  return nivelDeCantidad(s, minimoVisibleDe(p, branchFilter));
 }
 
 // ─── Filtros del listado (claves de la URL) ─────────────────────────────────
@@ -53,7 +63,7 @@ export const OPCIONES_TIPO = [
 
 export const OPCIONES_STOCK = [
   { valor: 'con', etiqueta: 'Con stock' },
-  { valor: 'bajo', etiqueta: `Stock bajo (menos de ${UMBRAL_STOCK_BAJO})` },
+  { valor: 'bajo', etiqueta: 'Stock bajo (en el mínimo o por debajo)' },
   { valor: 'sin', etiqueta: 'Sin stock' },
   { valor: 'sinSeguimiento', etiqueta: 'Sin seguimiento' },
 ] as const;

@@ -59,14 +59,26 @@ describe('stockPorSucursalConVariantes', () => {
   it('suma padre y variantes por sucursal', () => {
     const p = padreConVariantes();
     expect(stockPorSucursalConVariantes(p.stock_levels, p.children)).toEqual([
-      { branch_id: CENTRO, qty_on_hand: 5, qty_reserved: 1 },
-      { branch_id: NORTE, qty_on_hand: 10, qty_reserved: 0 },
+      { branch_id: CENTRO, qty_on_hand: 5, qty_reserved: 1, min_level: 0 },
+      { branch_id: NORTE, qty_on_hand: 10, qty_reserved: 0, min_level: 0 },
+    ]);
+  });
+
+  it('el mínimo de padre y variantes también se suma por sucursal', () => {
+    expect(
+      stockPorSucursalConVariantes(
+        [{ branch_id: CENTRO, qty_on_hand: 1, min_level: 2 }],
+        [{ stock_levels: [{ branch_id: CENTRO, qty_on_hand: 4, min_level: 3 }, { branch_id: NORTE, qty_on_hand: 7 }] }],
+      ),
+    ).toEqual([
+      { branch_id: CENTRO, qty_on_hand: 5, qty_reserved: 0, min_level: 5 },
+      { branch_id: NORTE, qty_on_hand: 7, qty_reserved: 0, min_level: 0 },
     ]);
   });
 
   it('sin variantes devuelve las filas propias', () => {
     expect(stockPorSucursalConVariantes([{ branch_id: CENTRO, qty_on_hand: '2.5' }], [])).toEqual([
-      { branch_id: CENTRO, qty_on_hand: 2.5, qty_reserved: 0 },
+      { branch_id: CENTRO, qty_on_hand: 2.5, qty_reserved: 0, min_level: 0 },
     ]);
   });
 });
@@ -113,7 +125,7 @@ describe('cargarCatalogo', () => {
 
   beforeEach(() => {
     rpc.mockReset();
-    rpc.mockImplementation(async (_fn: string, args: any) => {
+    rpc.mockImplementation(async (_fn: string, args: { p_offset: number; p_limit: number }) => {
       const desde = args.p_offset;
       const hasta = Math.min(desde + args.p_limit, TOTAL);
       // El segundo lote tarda más que el tercero: llega después.

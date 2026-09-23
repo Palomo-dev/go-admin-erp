@@ -8,7 +8,7 @@ import { DataTable, ListCard, StatusBadge, type AccionFila, type ColumnaTabla, t
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/config';
 import { useOrgCurrency, formatMonedaSinDecimales } from '@/lib/hooks/useOrgCurrency';
-import { margenDe, nivelStock, rutaImagenPrincipal } from './catalogoVista';
+import { margenDe, nivelDeCantidad, nivelStock, rutaImagenPrincipal } from './catalogoVista';
 import { nivelesDe } from './stockVisible';
 import type { Producto } from './types';
 
@@ -101,14 +101,19 @@ function StockSucursales({
   const conVariantes = (producto.children?.length ?? 0) > 0 ? ' (producto y variantes)' : '';
   const niveles = nivelesDe(producto).filter((sl) => branchFilter === null || sl.branch_id === branchFilter);
 
-  const chips: { id: number | string; texto: string; qty: number }[] =
+  const chips: { id: number | string; texto: string; qty: number; minimo: number }[] =
     niveles.length > 0
-      ? niveles.map((sl) => ({ id: sl.branch_id, texto: nombre(sl.branch_id), qty: Number(sl.qty_on_hand) || 0 }))
+      ? niveles.map((sl) => ({
+          id: sl.branch_id,
+          texto: nombre(sl.branch_id),
+          qty: Number(sl.qty_on_hand) || 0,
+          minimo: Number(sl.min_level) || 0,
+        }))
       : branchFilter !== null
-        ? [{ id: branchFilter, texto: nombre(branchFilter), qty: 0 }]
-        : [{ id: 'total', texto: 'Total', qty: producto.stock ?? 0 }];
+        ? [{ id: branchFilter, texto: nombre(branchFilter), qty: 0, minimo: 0 }]
+        : [{ id: 'total', texto: 'Total', qty: producto.stock ?? 0, minimo: 0 }];
 
-  const tono = (qty: number) => TONO_STOCK[qty <= 0 ? 'sin' : qty < 5 ? 'bajo' : 'con'];
+  const tono = (qty: number, minimo: number) => TONO_STOCK[nivelDeCantidad(qty, minimo)];
   const visibles = chips.slice(0, max);
   const resto = chips.slice(max);
 
@@ -117,9 +122,9 @@ function StockSucursales({
       {visibles.map((c) => (
         <Badge
           key={c.id}
-          tono={tono(c.qty)}
+          tono={tono(c.qty, c.minimo)}
           tamano="sm"
-          title={`${c.texto}: ${c.qty} unidades${conVariantes}`}
+          title={`${c.texto}: ${c.qty} unidades${c.minimo > 0 ? ` (mínimo ${c.minimo})` : ''}${conVariantes}`}
           className="max-w-[min(140px,100%)]"
         >
           <span className="truncate">{c.texto}</span>

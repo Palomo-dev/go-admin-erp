@@ -15,6 +15,7 @@ import {
   filtrarCatalogo,
   idsNumericos,
   margenDe,
+  nivelDeCantidad,
   nivelStock,
   ordenarCatalogo,
   resumenStock,
@@ -60,6 +61,29 @@ describe('nivelStock: lo que ve el usuario según la sucursal del header', () =>
   });
   it('sin seguimiento no es «sin stock»', () => {
     expect(nivelStock(prod({ id: 2, track_stock: false }), null)).toBe('sinSeguimiento');
+  });
+});
+
+describe('stock bajo con el mínimo configurado (criterio de fn_notify_stock_low)', () => {
+  const conMinimo = (qty: number, min: number) => ({ branch_id: PRINCIPAL, qty_on_hand: qty, qty_reserved: 0, min_level: min });
+
+  it('con mínimo: bajo si la cantidad está EN el mínimo o por debajo', () => {
+    expect(nivelDeCantidad(20, 20)).toBe('bajo');
+    expect(nivelDeCantidad(21, 20)).toBe('con');
+    expect(nivelStock(prod({ id: 3, stock_sucursales: [conMinimo(8, 10)] }), PRINCIPAL)).toBe('bajo');
+  });
+  it('un mínimo alto marca «bajo» aunque haya más de 5 unidades', () => {
+    expect(nivelStock(prod({ id: 4, stock_sucursales: [conMinimo(30, 50)] }), null)).toBe('bajo');
+  });
+  it('un mínimo bajo NO marca «bajo» con menos de 5 unidades por encima de él', () => {
+    expect(nivelDeCantidad(3, 1)).toBe('con');
+  });
+  it('sin mínimo se usa el corte de 5', () => {
+    expect(nivelDeCantidad(4, 0)).toBe('bajo');
+    expect(nivelDeCantidad(5, null)).toBe('con');
+  });
+  it('agotado gana siempre', () => {
+    expect(nivelDeCantidad(0, 10)).toBe('sin');
   });
 });
 

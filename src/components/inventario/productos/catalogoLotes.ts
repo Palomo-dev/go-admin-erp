@@ -34,7 +34,42 @@ export interface RespuestaLote {
   total: number;
 }
 
-type NivelCrudo = { branch_id: number; qty_on_hand: number | string; qty_reserved?: number | string | null };
+type NivelCrudo = {
+  branch_id: number;
+  qty_on_hand: number | string;
+  qty_reserved?: number | string | null;
+  min_level?: number | string | null;
+};
+
+/** Variante tal como la devuelve la RPC (formato ligero). */
+interface VarianteCruda {
+  price?: number | string | null;
+  compare_price?: number | string | null;
+  cost?: number | string | null;
+  track_stock?: boolean | null;
+  brand?: string | null;
+  reference?: string | null;
+  stock_levels?: NivelCrudo[] | null;
+  [campo: string]: unknown;
+}
+
+/** Producto padre tal como lo devuelve la RPC. */
+interface FilaCruda {
+  organization_id?: number;
+  category_id?: number;
+  category?: { id: number; name: string } | null;
+  unit_code?: string;
+  brand?: string | null;
+  reference?: string | null;
+  track_stock?: boolean | null;
+  product_prices?: Array<{ price: number | string; compare_price?: number | string | null }>;
+  product_costs?: Array<{ cost: number | string }>;
+  stock_levels?: NivelCrudo[];
+  product_images?: Array<{ storage_path: string; is_primary?: boolean | null }>;
+  children?: VarianteCruda[];
+  modifier_groups_count?: number;
+  [campo: string]: unknown;
+}
 
 const num = (v: unknown): number => {
   const n = Number(v);
@@ -56,12 +91,13 @@ export function stockPorSucursalConVariantes(
   propio: NivelCrudo[] | undefined,
   variantes: Array<{ stock_levels?: NivelCrudo[] | null }> | undefined
 ): NivelSucursal[] {
-  const porSucursal = new Map<number, { qty_on_hand: number; qty_reserved: number }>();
+  const porSucursal = new Map<number, { qty_on_hand: number; qty_reserved: number; min_level: number }>();
   const sumar = (niveles: NivelCrudo[] | null | undefined) => {
     for (const sl of niveles ?? []) {
-      const acc = porSucursal.get(sl.branch_id) ?? { qty_on_hand: 0, qty_reserved: 0 };
+      const acc = porSucursal.get(sl.branch_id) ?? { qty_on_hand: 0, qty_reserved: 0, min_level: 0 };
       acc.qty_on_hand += num(sl.qty_on_hand);
       acc.qty_reserved += num(sl.qty_reserved);
+      acc.min_level += num(sl.min_level);
       porSucursal.set(sl.branch_id, acc);
     }
   };
@@ -69,11 +105,11 @@ export function stockPorSucursalConVariantes(
   for (const v of variantes ?? []) sumar(v.stock_levels);
   return [...porSucursal.entries()]
     .sort(([a], [b]) => a - b)
-    .map(([branch_id, n]) => ({ branch_id, qty_on_hand: n.qty_on_hand, qty_reserved: n.qty_reserved }));
+    .map(([branch_id, n]) => ({ branch_id, qty_on_hand: n.qty_on_hand, qty_reserved: n.qty_reserved, min_level: n.min_level }));
 }
 
 /** Traduce una variante de la RPC (formato ligero) al tipo `Producto`. */
-function mapearVariante(v: any, padre: any): Producto {
+function mapearVariante(v: VarianteCruda, padre: FilaCruda): Producto {
   const price = v.price != null ? num(v.price) : 0;
   const compare = v.compare_price != null ? num(v.compare_price) : 0;
   const cost = v.cost != null ? num(v.cost) : 0;
@@ -88,23 +124,23 @@ function mapearVariante(v: any, padre: any): Producto {
     price,
     compare_price: compare,
     cost,
-    stock: v.track_stock === false ? undefined : disponible(v.stock_levels),
+    stock: v.track_stock === false ? undefined : disponible(v.stock_levels ?? undefined),
     stock_levels: v.stock_levels ?? [],
     // La exportación CSV lee el precio de comparación de aquí.
     product_prices: v.price != null ? [{ price, compare_price: compare || null }] : [],
     product_costs: v.cost != null ? [{ cost }] : [],
     product_images: [],
-  } as Producto;
+  } as unknown as Producto;
 }
 
 /** Traduce un producto padre de la RPC al tipo `Producto` de la tabla. */
-export function mapearFilaCatalogo(item: any): Producto {
+export function mapearFilaCatalogo(item: FilaCruda): Producto {
   const precio = item.product_prices?.[0];
   const costo = item.product_costs?.[0];
-  const hijos: Producto[] = (item.children ?? []).map((v: any) => mapearVariante(v, item));
+  const hijos: Producto[] = (item.children ?? []).map((v) => mapearVariante(v, item));
   const rastrea = item.track_stock !== false;
   const stockSucursales = stockPorSucursalConVariantes(item.stock_levels, item.children);
-  const principal = (item.product_images ?? []).find((i: any) => i.is_primary) ?? item.product_images?.[0];
+  const principal = (item.product_images ?? []).find((i) => i.is_primary) ?? item.product_images?.[0];
 
   return {
     ...item,
@@ -119,7 +155,7 @@ export function mapearFilaCatalogo(item: any): Producto {
     children: hijos,
     variants: hijos,
     modifier_groups_count: item.modifier_groups_count ?? 0,
-  } as Producto;
+  } as unknown as Producto;
 }
 
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -148,8 +184,9 @@ export async function pedirLote(
       p_product_ids: productIds ?? null,
     });
     if (!error) {
-      const items: any[] = (data as any)?.items ?? [];
-      return { productos: items.map(mapearFilaCatalogo), total: Number((data as any)?.total ?? 0) };
+      const respuesta = (data ?? {}) as { items?: FilaCruda[]; total?: number | string };
+      const items = respuesta.items ?? [];
+      return { productos: items.map(mapearFilaCatalogo), total: Number(respuesta.total ?? 0) };
     }
     ultimoError = error;
     if (intento < REINTENTOS) await esperar(500 * 2 ** intento);

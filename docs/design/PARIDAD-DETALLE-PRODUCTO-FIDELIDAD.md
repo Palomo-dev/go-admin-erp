@@ -1,37 +1,48 @@
 # Paridad — Detalle de producto (tanda de fidelidad en Figma)
 
-Fecha: 2026-09-22. Archivo Figma «GO Admin — Sistema de diseño» (`EAvjINVRnlzFM70GVoWXgl`),
-página **`05 Producto — fidelidad`**. Fuente de verdad: `docs/design/AUDITORIA-CONTROLES-PRODUCTOS-POS.md`
-(secciones A.0–A.15, C.2, C.4, C.5, H.1, H.3). Capturas en `docs/design/figma/10-producto-*.png`.
+Fecha: 2026-09-22. Archivo Figma «GO Admin — Sistema de diseño» (`EAvjINVRnlzFM70GVoWXgl`).
+Las pantallas viven en **`04 Inventario`** (Secciones con prefijo «Producto — …») y los componentes
+nuevos en **`02 Componentes`**; la página de trabajo `05 Producto — fidelidad` se consolidó y se
+eliminó el 2026-09-22 por decisión del dueño (ver «Consolidación» al final). Fuente de verdad:
+`docs/design/AUDITORIA-CONTROLES-PRODUCTOS-POS.md` (secciones A.0–A.15, C.2, C.4, C.5, H.1, H.3).
+Capturas en `docs/design/figma/10-producto-*.png` y vista general consolidada en
+`docs/design/figma/10-consolidado-03-pantallas.png`.
 
 Convenciones de la página (no reabrir):
 
-- Se conserva la estructura de pestañas ya decidida en `03 Pantallas`: **Resumen · Inventario ·
+- Se conserva la estructura de pestañas ya decidida en `04 Inventario`: **Resumen · Inventario ·
   Precios y costos · Variantes y modificadores · Imágenes · Proveedores y etiquetas · Notas ·
   Historial**. Las 11 pestañas reales del código se mapean así: Detalles → Resumen (edición por
   `Sheet`), Variantes y Modificadores → sub-pestañas de «Variantes y modificadores», Stock y
   Seriales → sub-pestañas de «Inventario» (Lotes y Kardex quedan marcados «Nuevo»), Proveedores y
   Etiquetas → «Proveedores y etiquetas», Auditoría → «Historial».
 - Cada pantalla densa tiene sus 4 estados (listo · cargando · vacío · error) y sus diálogos abiertos.
-- Impuestos: siempre `{nombre} {tasa}` y N chips («IVA 19 %» + «INC 8 %»); el `TaxMultiSelect` lo
-  diseña la tanda POS (página `04`).
-- Marca «Nuevo» = componente local `Marca/Nuevo` (sección «Componentes — Detalle de producto»).
+- Impuestos: siempre `{nombre} {tasa}` y N chips («IVA 19 %» + «INC 8 %»); el `TaxMultiSelect` es
+  del kit (`02 Componentes › Impuestos`).
+- Marca «Nuevo» = componente del kit `Marca/Nuevo` (`02 Componentes › Átomos`, junto a `Badge`).
 - Estado (columna 4): **calcado** (existe y se dibuja tal cual) · **Nuevo** (no existe en código) ·
   **sustituido por …** (existe pero roto o fuera del kit: regla I.4.4) · **omitido: motivo**.
 
-Secciones de la página y frames:
+Secciones (en `04 Inventario`, salvo los componentes, que están en `02 Componentes`) y frames:
 
 | Sección | Frames (primer nivel) |
 |---|---|
-| Componentes — Detalle de producto | `Marca/Nuevo`, `EstadoSerial` (8 variantes), `Icon/Power`, `Icon/ShieldCheck`, `Icon/PackageCheck`, `Icon/StarOff`, `Icon/Tags`, `Icon/StickyNote`, `Icon/TrendingUp`, `Icon/PackagePlus`, plantillas escritorio y móvil |
-| 01 Variantes y modificadores | Variantes (listo · cargando · vacío · error), Modificadores (listo · cargando · vacío · error), móvil Variantes, móvil Modificadores, móvil Crear variante (sheet), diálogos Crear/Editar variante, estados del bloque Stock por sucursal, 3 ConfirmDialog, toasts |
-| 02 Seriales | Seriales (listo · cargando · vacío con filtros · sin seriales · sin track_serial · error), móvil Seriales, móvil Generar (sheet), «Generar seriales masivamente» ×2, `CreateClaimDialog` ×4 (preseleccionado · búsqueda · sin cliente · cargando), toasts |
-| 03 Cabecera y acciones | Cabecera con menú «…» abierto, AlertDialog eliminar, estado Eliminado (servicio), móvil cabecera, móvil menú ⋯ (sheet), móvil AlertDialog (sheet), badges ×5, galerías ×3, KPI ×4 variantes, toasts, página cargando (A.0), página error (A.0) |
-| 04 Detalles (Sheets) | Resumen + Sheet «Información», móvil BottomSheet «Información», Sheet «Organización y proveedor», Sheet «Trazabilidad» ×2 (switch on/off), Sheet «Imágenes», SearchSelect abierto, vacío de categorías, «Guardando...», toasts |
-| 05 Imágenes · Proveedores y etiquetas | Imágenes (listo · cargando/subiendo · vacío · error), móvil Imágenes, AlertDialog imagen, «Vista previa», toasts; Proveedores y etiquetas (listo · vacío · cargando · error), móvil, «Agregar Proveedor», «Editar Proveedor», AlertDialog proveedor, toasts |
-| 06 Notas · Historial | Notas (listo · cargando · vacío · error), móvil Notas, AlertDialog nota, estados Guardando/Subiendo, toasts; Historial (listo · cargando · vacío · error), móvil Historial |
-| 07 Stock y Precios | Stock (listo · sin seguimiento · sin sucursales · cargando · error · sucursal seleccionada), móvil Stock; Precios (listo · cargando · vacío · error), móvil Precios, «Actualizar precio», toasts |
-| 08 Catálogo | menú «…» abierto (C.2), menú ⋯ por fila (C.5), menú de selección (C.4), menú «Estado» masivo + confirmación (C.7), móvil menú ⋯ (clon de 03) |
+| `02 Componentes › Átomos` (`Marca/Nuevo`, `EstadoSerial` de 8 variantes) · `02 Componentes › Fundamentos › Iconos` (`Icon/ShieldCheck`, `Icon/PackageCheck`, `Icon/StarOff`, `Icon/Tags`, `Icon/TrendingUp`, `Icon/PackagePlus`; `Icon/Power` e `Icon/StickyNote` se unificaron con los de la tanda POS) | Las plantillas escritorio y móvil («no usar: se clona») pasaron a `99 Descartes › Restos de la tanda de fidelidad 2026-09-22` |
+| 04 Inventario › Producto — Variantes y modificadores | Variantes (listo · cargando · vacío · error), Modificadores (listo · cargando · vacío · error), móvil Variantes, móvil Modificadores, móvil Crear variante (sheet), diálogos Crear/Editar variante, estados del bloque Stock por sucursal, 3 ConfirmDialog, toasts |
+| 04 Inventario › Producto — Seriales | Seriales (listo · cargando · vacío con filtros · sin seriales · sin track_serial · error), móvil Seriales, móvil Generar (sheet), «Generar seriales masivamente» ×2, `CreateClaimDialog` ×4 (preseleccionado · búsqueda · sin cliente · cargando), toasts |
+| 04 Inventario › Producto — Cabecera | Cabecera con menú «…» abierto, AlertDialog eliminar, estado Eliminado (servicio), móvil cabecera, móvil menú ⋯ (sheet), móvil AlertDialog (sheet), badges ×5, galerías ×3, KPI ×4 variantes, toasts, página cargando (A.0), página error (A.0) |
+| 04 Inventario › Producto — Detalles | Resumen + Sheet «Información», móvil BottomSheet «Información», Sheet «Organización y proveedor», Sheet «Trazabilidad» ×2 (switch on/off), Sheet «Imágenes», SearchSelect abierto, vacío de categorías, «Guardando...», toasts |
+| 04 Inventario › Producto — Imágenes · Proveedores y etiquetas | Imágenes (listo · cargando/subiendo · vacío · error), móvil Imágenes, AlertDialog imagen, «Vista previa», toasts; Proveedores y etiquetas (listo · vacío · cargando · error), móvil, «Agregar Proveedor», «Editar Proveedor», AlertDialog proveedor, toasts |
+| 04 Inventario › Producto — Notas · Historial | Notas (listo · cargando · vacío · error), móvil Notas, AlertDialog nota, estados Guardando/Subiendo, toasts; Historial (listo · cargando · vacío · error), móvil Historial |
+| 04 Inventario › Producto — Stock y Precios | Stock (listo · sin seguimiento · sin sucursales · cargando · error · sucursal seleccionada), móvil Stock; Precios (listo · cargando · vacío · error), móvil Precios, «Actualizar precio», toasts |
+| 04 Inventario › Productos — Catálogo (menús) | menú «…» abierto (C.2), menú ⋯ por fila (C.5), menú de selección (C.4), menú «Estado» masivo + confirmación (C.7), móvil menú ⋯ (clon de 03) |
+
+Leyenda de la columna «Frame Figma» en las tablas siguientes: el prefijo numérico `NN ›` era el
+número de la sección en la página de trabajo y equivale hoy a esta Sección de `04 Inventario`:
+`01 ›` = Producto — Variantes y modificadores · `02 ›` = Producto — Seriales · `03 ›` = Producto —
+Cabecera · `04 ›` = Producto — Detalles · `05 ›` = Producto — Imágenes · Proveedores y etiquetas ·
+`06 ›` = Producto — Notas · Historial · `07 ›` = Producto — Stock y Precios · `08 ›` = Productos —
+Catálogo (menús). Los nombres de los frames no cambiaron.
 
 ## A.0 Página contenedora
 
@@ -492,3 +503,71 @@ inventados del diseño anterior (retirados) — ninguno deja fuera un control re
 5. **Capturas**: el MCP de Figma limita las exportaciones a 1024 px de ancho, por lo que los PNG
    `10-producto-*.png` son de referencia (secciones completas + 21 frames clave). Para PNG a escala 1
    hay que exportar desde Figma (seleccionar la Sección › Export › 1x).
+
+## Consolidación 2026-09-22 (decisión del dueño: solo `01 Sistema`, `02 Componentes`, `03 Pantallas`, `99 Descartes`)
+
+- Las 8 Secciones de pantallas de `05 Producto — fidelidad` se movieron a `03 Pantallas` con el
+  prefijo «Producto — …» (ver tabla de Secciones), debajo de las Secciones que ya existían, 400 px
+  entre Secciones, 0 solapes. Los frames conservan su nombre.
+- Componentes al kit (`02 Componentes`): `Marca/Nuevo` y `EstadoSerial` a «Átomos» (tras `Badge`);
+  6 iconos lucide a «Fundamentos › Iconos». `Icon/Power` e `Icon/StickyNote` estaban duplicados con
+  la tanda POS: se reapuntaron las 4 instancias al maestro de la tanda POS y los duplicados fueron a
+  `99 Descartes`.
+- Sustituidos por la versión de fidelidad (movidos a `99 Descartes › Sustituidos por fidelidad
+  2026-09-22`): `Escritorio / Detalle — Resumen`, `Escritorio / Detalle — Resumen · editando Precios
+  en Sheet`, `Escritorio / Detalle — Inventario (stock, seriales, lotes, kardex)`, `Escritorio /
+  Detalle — Precios y costos (historial y gráfico)`, `Móvil / Detalle — Resumen`. Equivalentes:
+  Producto — Cabecera / Producto — Detalles / Producto — Seriales + Stock y Precios / Producto —
+  Stock y Precios / móvil Cabecera completa + BottomSheet «Información».
+- Sin equivalente, se quedan en `03` con el «IVA 19 %» fijo sustituido por chips del kit («IVA 19 %»
+  + «INC 8 %»): `Escritorio / Nuevo producto`, `Escritorio / Editar producto`, `Escritorio /
+  Duplicar producto — «Qué copiar»`, `Móvil / Nuevo producto — paso 2 Inventario y costos`
+  (`SearchSelect` → `MultiSelect` con chips, etiqueta «Impuestos», ayuda «ya lleva los impuestos»,
+  descripción «Impuestos por producto») y `Escritorio / Importar — paso 4 previsualización`
+  (columna «Impuestos» con `TableCell Variant=chips` en el maestro `ImportWizard`).
+- En `Producto — Detalles` el resumen «IVA 19 % · INC 8 % · incluidos en el precio» pasó a chips +
+  texto, para que ningún texto suelto del archivo diga «IVA 19 %».
+- Vista general: `docs/design/figma/10-consolidado-03-pantallas.png` y
+  `docs/design/figma/10-consolidado-02-componentes.png`.
+
+
+## Reorganización por módulos (2026-09-22)
+
+Petición del dueño: «en Figma podríamos separar mejor las pantallas para que no se vea tan
+complicado, por módulos […] en este momento una sola página se está haciendo muy difícil de leer».
+Las 26 Secciones de `03 Pantallas` se repartieron por módulo, con sus frames y anotaciones intactos
+(nada se rehízo). Páginas del archivo tras la reorganización: `01 Sistema` · `02 Componentes` ·
+`03 Navegación y shell` · `04 Inventario` · `05 POS y ventas` · `06 Clientes` · `07 Finanzas` ·
+`99 Descartes`.
+
+Cada página lleva arriba a la izquierda una Sección «Índice» con el nombre del módulo y la lista de
+sus Secciones (texto de 18 px con el color `text/secondary` — pizarra — de `01 Sistema`). Dentro de
+cada página las Secciones quedan apiladas por flujo (lista → detalle → diálogos → móvil), a 400 px
+una de otra y con `x = 0`.
+
+Ninguna Sección de producto cambió de nombre (ningún prefijo quedaba repetido con «Inventario»):
+
+| Sección (antes) | Página nueva | Sección (después) |
+|---|---|---|
+| Escritorio — productos | `04 Inventario` | Escritorio — productos |
+| Productos — Catálogo (menús) | `04 Inventario` | Productos — Catálogo (menús) |
+| Producto — Cabecera | `04 Inventario` | Producto — Cabecera |
+| Producto — Detalles | `04 Inventario` | Producto — Detalles |
+| Producto — Stock y Precios | `04 Inventario` | Producto — Stock y Precios |
+| Producto — Variantes y modificadores | `04 Inventario` | Producto — Variantes y modificadores |
+| Producto — Seriales | `04 Inventario` | Producto — Seriales |
+| Producto — Imágenes · Proveedores y etiquetas | `04 Inventario` | Producto — Imágenes · Proveedores y etiquetas |
+| Producto — Notas · Historial | `04 Inventario` | Producto — Notas · Historial |
+| Móvil — productos | `04 Inventario` | Móvil — productos |
+
+Las Secciones transversales (shell, header, sesión de escritorio y móvil) quedaron en
+`03 Navegación y shell`.
+
+Chequeo por script al cerrar (las 8 páginas): 0 solapes entre Secciones, 0 solapes entre frames de
+primer nivel, 0 nodos fuera de Sección en las páginas de pantallas, 0 instancias desvinculadas
+(las instancias siguen apuntando a sus maestros de `02 Componentes`, que no se movió).
+
+
+Vistas generales de las páginas nuevas: `docs/design/figma/12-mapa-03-navegacion-y-shell.png`,
+`12-mapa-04-inventario.png`, `12-mapa-05-pos-y-ventas.png`, `12-mapa-06-clientes.png`,
+`12-mapa-07-finanzas.png`.

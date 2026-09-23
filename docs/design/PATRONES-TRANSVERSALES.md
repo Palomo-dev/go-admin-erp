@@ -385,6 +385,44 @@ Lista de comprobación antes de dar una pantalla por hecha:
    sucursal** (patrón 9).
 5. **Badges «Nuevo»** — marcan lo inventado, y van **fuera** del componente, como
    anotación; no sueltos dentro de una barra o un menú.
+6. **El primario del `ConfirmDialog` responde a su título.** Si el título
+   pregunta «¿Desactivar 3 productos?», el primario dice «Desactivar», no
+   «Regenerar» ni «Eliminar». Un primario heredado de otro diálogo hace que la
+   persona lea una acción y ejecute otra: es el defecto más grave de esta lista.
+7. **El estado dibujado coincide con el texto.** En un frame con
+   `BulkActionBar`, el número de casillas marcadas es exactamente el del
+   contador, la casilla de cabecera va en **indeterminado** si la selección es
+   parcial y marcada si es total, y «Seleccionar esta página (n)» cita las filas
+   realmente visibles.
+8. **Todo menú «⋯» instanciado se dibuja abierto al menos una vez** en su
+   sección. Un «⋯» que nunca se abre es un hueco: nadie sabe qué ofrece.
+
+**Propuesta abierta, pendiente de decisión del dueño.** «Dejar de vender aquí»
+—desactivar un producto en una sucursal concreta, desde el menú «⋯» de la fila
+de stock por sucursal— **no se dibuja** porque no existe: `stock_levels` no
+tiene bandera de activo y `products.status` es de organización. Implementarlo
+cuesta una columna nueva en `stock_levels` o una tabla de disponibilidad por
+sucursal, más su migración y su RLS.
+
+### 12.1 Ninguna anotación vive dentro de un frame de pantalla
+
+**Regla.** **Ninguna anotación, badge de documentación ni referencia a código
+vive dentro de un frame de pantalla**: van fuera, como texto de anotación a la
+izquierda o encima del frame, 12 px, pizarra, sin fondo, alineado a su borde.
+
+- Sale fuera: post-its, cajas ámbar con texto explicativo, «Decisión: …»,
+  «Nota: …», «No existe hoy», «pregunta N», referencias a la auditoría (`§`,
+  `A.6`, `B.16`, `D.17`), nombres de componentes y rutas de archivo (`*.tsx:NN`).
+- Se queda dentro: el **copy de producto** —lo que la persona lee en la
+  pantalla real—, incluidos los badges de datos («Nuevo» sobre una fila de
+  producto recién creada).
+- Si la nota explica un control concreto, fuera va la nota completa y dentro,
+  como mucho, una referencia corta («⟵ menú "…"»).
+
+**Por qué.** Dentro del frame se leen como parte del producto, tapan controles y
+ensucian cada captura. Ya van tres casos: el badge «Nuevo» del `AppHeader`, el
+badge dentro de la `BulkActionBar` y el post-it del menú «…» del catálogo, que
+tapaba el buscador y tres opciones del menú.
 
 **Por qué.** Ya van cuatro casos: los estados vacíos de `08`, el botón duplicado
 de Miembros, la `BulkActionBar` de facturas de venta con «Precios · Stock ·
@@ -434,12 +472,41 @@ no tenían ni ranura de icono**. Ocho conceptos distintos compartían `Users` en
 menú y seis compartían `BarChart3`.
 
 **Catálogo.** `docs/design/CATALOGO-ICONOS.md` — tabla de conceptos, tabla
-pantalla por pantalla con su ruta, y la lista de cambios pendientes en
-`src/config/moduleConfig.ts`.
+pantalla por pantalla con su ruta, conteo antes/después y la lista de cambios
+pendientes en `src/config/moduleConfig.ts`.
+
+**Capturas.** `docs/design/figma/29-iconos-rejilla-kit.png` (los 158 iconos del
+kit) y los dos antes/después: `29-iconos-antes-inicio.png` →
+`29-iconos-despues-inicio.png` y `29-iconos-antes-cliente.png` →
+`29-iconos-despues-cliente.png`.
 
 ---
 
-## 14. Dónde aplica cada patrón
+## 14. Decisiones de producto cerradas (2026-09-22)
+
+Decisiones del dueño, o delegadas y tomadas con su visto bueno. Cualquier
+diseño o implementación posterior parte de ellas.
+
+| # | Tema | Decisión | Por qué |
+|---|---|---|---|
+| 1 | **Nombre del plan alto** | Se queda **Ultimate**. `enterprise` sigue apagado como plan a medida, sin precio, con «Habla con ventas» | No hay que migrar suscripciones vivas ni precios de la pasarela |
+| 2 | **Límites de los planes** | Pro 12 módulos · 1 sucursal · 10 usuarios · 500 créditos · 1.000 facturas/mes · 15 días. Business 16 · 5 · 20 · 2.000 · 3.000 · 30 días. Ultimate **todos** los módulos · 15 · 60 · 10.000 · facturas **ilimitadas** · 30 días. «Todos» e «ilimitadas» = NULL | Las columnas, `features` y la web decían tres cosas distintas. Manda la columna |
+| 3 | **Monedas de los planes** | Las **diez** monedas activas, con precio fijo por moneda en `plan_prices`, nunca convertido en vivo | Publicidad fuera de Colombia; un precio que cambia a diario no se puede anunciar |
+| 4 | **Términos y privacidad** | **Se crean** y se aceptan en el registro, con enlace a cada documento | Hoy no existen aunque las claves de traducción sí |
+| 5 | **Combinación de mesas** | **Queda registrada**: hoy combinar no deja rastro y no se puede deshacer ni auditar | Sin registro, la cuenta combinada no se puede reconstruir |
+| 6 | **Cargo de servicio** | **Se implementa en el cobro**, como **línea propia de la factura**, antes de impuestos, con su regla (en sitio, mínimo de personas) y opción de quitarlo si es opcional. **NO se trata como propina**: no va a `tips` ni se reparte | Es ingreso del negocio y tributa; la propina es voluntaria, es del mesero y se reparte. Tratarlo como propina sería cobrar un ingreso sin declararlo |
+| 7 | **Descuento manual vs promoción** | **Gana el mayor descuento para el cliente**. Se muestra cuál ganó y por qué; el cajero puede forzar el suyo con un clic y motivo. Nunca se suman, salvo promoción marcada como combinable | Hoy un descuento manual de $1.000 anula una promoción de $20.000: el cliente que vio la promo paga más y reclama |
+| 8 | **Cliente en reservas** | **Obligatorio** (`CustomerPicker`), se acabó el nombre suelto | `customer_id` no se llena nunca; sin cliente no hay historial ni aviso |
+| 9 | **Exportar a banca** | Formatos reales de los bancos de los **diez países** con moneda activa, no un CSV único renombrado cuatro veces | — |
+| 10 | **Tiempo real del dashboard** | **Refresco cada 2 min con «actualizado hace N»**, no publicación de tablas en Realtime. El tiempo real se reserva a pedidos online, comandas y caja | Publicar tablas de toda la organización es el patrón que tumbó Postgres el 2026-09-14. Y hoy el panel dice «en vivo» cuando es un temporizador: además de caro, es mentira |
+| 11 | **Umbral de alerta de cartera** | Por **días de mora** (vencido · +30 · +60), configurable. El importe se muestra pero no decide el color | `> 1000` sin moneda es siempre cierto en pesos y casi siempre falso en dólares |
+| 12 | **Panel del inicio** | Paso 1 hecho: la regla sale del CRM y vive en `@/lib/dashboard/accesoPanel`. Paso 2: permiso «ver finanzas de la organización» resuelto en servidor, cuando el cargo esté poblado (hoy 20 de 138 miembros lo tienen) | Añadir un rol a la lista del CRM daba acceso a la caja y la utilidad sin que nadie lo supiera |
+| 13 | **Geolocalización de visitas** | **Aprobada**: `country`, `region`, `city` (y coordenadas si se quiere precisión) desde las cabeceras que ya envía Vercel, sin servicio externo. La IP sigue sin guardarse en claro | `country` se escribe literalmente `null` desde el registro de la visita: nunca se intentó. Solo cuenta hacia adelante |
+| 14 | **Corte contable** | La fecha la fija el dueño **después** de cerrar el bloque 1 | Fijarla antes haría nacer sucio el libro nuevo al día siguiente |
+
+---
+
+## 15. Dónde aplica cada patrón
 
 | Página de Figma | Patrones que aplican |
 |---|---|
@@ -467,27 +534,3 @@ Antes de cerrar cualquier tanda sobre el archivo de Figma, por script:
    mismo icono, ni un concepto con dos iconos—. Los frames ocultos se cuentan
    aparte: una instancia oculta no tiene hijos sobrescribibles y su icono no se
    puede fijar hasta que se muestre.
-
----
-
-## 13. Decisiones de producto cerradas (2026-09-22)
-
-Decisiones del dueño, o delegadas y tomadas con su visto bueno. Cualquier
-diseño o implementación posterior parte de ellas.
-
-| # | Tema | Decisión | Por qué |
-|---|---|---|---|
-| 1 | **Nombre del plan alto** | Se queda **Ultimate**. `enterprise` sigue apagado como plan a medida, sin precio, con «Habla con ventas» | No hay que migrar suscripciones vivas ni precios de la pasarela |
-| 2 | **Límites de los planes** | Pro 12 módulos · 1 sucursal · 10 usuarios · 500 créditos · 1.000 facturas/mes · 15 días. Business 16 · 5 · 20 · 2.000 · 3.000 · 30 días. Ultimate **todos** los módulos · 15 · 60 · 10.000 · facturas **ilimitadas** · 30 días. «Todos» e «ilimitadas» = NULL | Las columnas, `features` y la web decían tres cosas distintas. Manda la columna |
-| 3 | **Monedas de los planes** | Las **diez** monedas activas, con precio fijo por moneda en `plan_prices`, nunca convertido en vivo | Publicidad fuera de Colombia; un precio que cambia a diario no se puede anunciar |
-| 4 | **Términos y privacidad** | **Se crean** y se aceptan en el registro, con enlace a cada documento | Hoy no existen aunque las claves de traducción sí |
-| 5 | **Combinación de mesas** | **Queda registrada**: hoy combinar no deja rastro y no se puede deshacer ni auditar | Sin registro, la cuenta combinada no se puede reconstruir |
-| 6 | **Cargo de servicio** | **Se implementa en el cobro**, como **línea propia de la factura**, antes de impuestos, con su regla (en sitio, mínimo de personas) y opción de quitarlo si es opcional. **NO se trata como propina**: no va a `tips` ni se reparte | Es ingreso del negocio y tributa; la propina es voluntaria, es del mesero y se reparte. Tratarlo como propina sería cobrar un ingreso sin declararlo |
-| 7 | **Descuento manual vs promoción** | **Gana el mayor descuento para el cliente**. Se muestra cuál ganó y por qué; el cajero puede forzar el suyo con un clic y motivo. Nunca se suman, salvo promoción marcada como combinable | Hoy un descuento manual de $1.000 anula una promoción de $20.000: el cliente que vio la promo paga más y reclama |
-| 8 | **Cliente en reservas** | **Obligatorio** (`CustomerPicker`), se acabó el nombre suelto | `customer_id` no se llena nunca; sin cliente no hay historial ni aviso |
-| 9 | **Exportar a banca** | Formatos reales de los bancos de los **diez países** con moneda activa, no un CSV único renombrado cuatro veces | — |
-| 10 | **Tiempo real del dashboard** | **Refresco cada 2 min con «actualizado hace N»**, no publicación de tablas en Realtime. El tiempo real se reserva a pedidos online, comandas y caja | Publicar tablas de toda la organización es el patrón que tumbó Postgres el 2026-09-14. Y hoy el panel dice «en vivo» cuando es un temporizador: además de caro, es mentira |
-| 11 | **Umbral de alerta de cartera** | Por **días de mora** (vencido · +30 · +60), configurable. El importe se muestra pero no decide el color | `> 1000` sin moneda es siempre cierto en pesos y casi siempre falso en dólares |
-| 12 | **Panel del inicio** | Paso 1 hecho: la regla sale del CRM y vive en `@/lib/dashboard/accesoPanel`. Paso 2: permiso «ver finanzas de la organización» resuelto en servidor, cuando el cargo esté poblado (hoy 20 de 138 miembros lo tienen) | Añadir un rol a la lista del CRM daba acceso a la caja y la utilidad sin que nadie lo supiera |
-| 13 | **Geolocalización de visitas** | **Aprobada**: `country`, `region`, `city` (y coordenadas si se quiere precisión) desde las cabeceras que ya envía Vercel, sin servicio externo. La IP sigue sin guardarse en claro | `country` se escribe literalmente `null` desde el registro de la visita: nunca se intentó. Solo cuenta hacia adelante |
-| 14 | **Corte contable** | La fecha la fija el dueño **después** de cerrar el bloque 1 | Fijarla antes haría nacer sucio el libro nuevo al día siguiente |

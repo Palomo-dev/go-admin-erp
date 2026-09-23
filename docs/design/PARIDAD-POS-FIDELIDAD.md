@@ -1,6 +1,9 @@
-# Paridad POS — tanda de fidelidad (página Figma «04 POS — fidelidad»)
+# Paridad POS — tanda de fidelidad (Figma: `05 POS y ventas`, `06 Clientes`, `07 Finanzas`)
 
-Archivo Figma «GO Admin — Sistema de diseño» (`EAvjINVRnlzFM70GVoWXgl`), página `04 POS — fidelidad`.
+Archivo Figma «GO Admin — Sistema de diseño» (`EAvjINVRnlzFM70GVoWXgl`). Las pantallas viven en `05 POS y ventas`
+(Secciones «Cobro», «Cabecera y caja», «Carrito», «Buscador y grid», «Configuración › POS»), en `06 Clientes`
+(«CustomerPicker») y en `07 Finanzas` («Impuestos»); los componentes, en `02 Componentes`; la página de trabajo
+`04 POS — fidelidad` se consolidó y se eliminó el 2026-09-22 por decisión del dueño (ver «Consolidación» al final).
 Fuente de verdad: `docs/design/AUDITORIA-CONTROLES-PRODUCTOS-POS.md`. Una fila por control de la
 auditoría. Estados: **calcado** (existe en código y se dibujó igual), **Nuevo** (no existe en código;
 lleva badge «Nuevo» en Figma), **sustituido por …** (lo roto de B.19 se reemplaza por el componente
@@ -12,7 +15,7 @@ auditoría marca una tilde ausente («codigo», «Ya pague», «Sesion», «meto
 
 ## 1. Cobro — B.16 `CheckoutDialog`, B.17 QR, B.18 post-venta, B.6 seriales
 
-Sección Figma: «Cobro — B.16 CheckoutDialog · B.17 QR · B.18 post-venta · B.6 seriales».
+Sección Figma: `05 POS y ventas › Cobro` (título interno «Cobro — B.16 CheckoutDialog · B.17 QR · B.18 post-venta · B.6 seriales»).
 Frames: `Escritorio / POS — Cobro (CheckoutDialog, 2 columnas)` (1440×1829, overlay sobre el POS),
 `Móvil / POS — Cobro (Sheet a pantalla completa)` (390×2927), `CheckoutDialog — estado «Falta dinero»`,
 `CheckoutDialog — estado «Procesando...»`, `TipFromDisplayNotice — 5 estados`, `QrPaymentDialog` ×4,
@@ -106,7 +109,7 @@ Frames: `Escritorio / POS — Cobro (CheckoutDialog, 2 columnas)` (1440×1829, o
 
 ## 2. Cabecera del POS y caja — B.1, B.1a, B.1b, B.1c, B.9, B.10, B.11
 
-Sección Figma: «Cabecera del POS y caja — B.1 · B.1a · B.1b · B.1c · B.9 · B.10 · B.11».
+Sección Figma: `05 POS y ventas › Cabecera y caja` (título interno «Cabecera del POS y caja — B.1 · B.1a · B.1b · B.1c · B.9 · B.10 · B.11»).
 Frames: `Escritorio / POS — cabecera: caja abierta · «Sin conexión» 3 · reloj · pantalla conectada · 2 Activos / 1 En Espera`,
 `… sin caja («Abrir Caja») · pantalla desactivada · menú del indicador abierto`, `… caja de otro cajero («Cerrar Caja»
 deshabilitado + tooltip) · «Sin conexión» en revisión · pantalla sin señal`, `… recargando carritos (opacidad 60 %)`,
@@ -135,7 +138,7 @@ zona horaria y contadores «N Activos / N En Espera». El badge del header muest
 | B.1 #10 | indicador de pantalla del cliente | Cabecera del POS + CustomerDisplayIndicator — 4 estados | calcado |
 | B.1 #11 | badge «{N} Activos» | Cabecera del POS | calcado |
 | B.1 #12 | badge «{N} En Espera» | Cabecera del POS | calcado |
-| B.1 #13 | divisor arrastrable productos/carrito + tooltip | — | omitido: el divisor 75/25 ya está en `03 › Escritorio / POS — buscador de productos (75/25)`; el tooltip «Arrastra para ampliar…» se anota allí, no se redibuja |
+| B.1 #13 | divisor arrastrable productos/carrito + tooltip | — | omitido: el divisor 75/25 está en `POS — Cabecera y caja › Escritorio / POS — cabecera: caja abierta…` (sustituye al antiguo `buscador de productos (75/25)`, hoy en `99 Descartes`); el tooltip «Arrastra para ampliar…» se anota allí, no se redibuja |
 | B.1 #14 | skeleton inicial | `Escritorio / POS — carga inicial (skeleton)` | calcado (Skeleton del kit) |
 | B.1 #15 | «Organización no encontrada» / «Configure su organización…» | `Escritorio / POS — «Organización no encontrada»` | calcado (EmptyState error) |
 | B.1 #16 | opacidad 60 % + sin interacción al recargar | `Escritorio / POS — recargando carritos` | calcado |
@@ -226,7 +229,7 @@ zona horaria y contadores «N Activos / N En Espera». El badge del header muest
 
 ## 3. Carrito completo — B.8, B.13, B.14, B.15 (+ B.7 panel de cliente)
 
-Sección Figma: «Carrito completo — B.8 pestañas · B.13 líneas · B.14 totales · B.15 acciones · B.7 panel de cliente».
+Sección Figma: `05 POS y ventas › Carrito` (título interno «Carrito completo — B.8 pestañas · B.13 líneas · B.14 totales · B.15 acciones · B.7 panel de cliente»).
 Frames: `Escritorio / POS — carrito completo (activo…)` (1440×1421, carrito a 480 px), `Móvil / POS — carrito completo`
 (390, alto completo), `Carrito completo / hold`, `/ debt`, `/ sin caja + sin cliente`, `/ edición inline + selector abierto`,
 `/ vacío`, `/ sin carritos`, `TaxSummary — cargando`, `Badges de cocina y pestañas`, diálogos «¿Cerrar este carrito?»,
@@ -329,10 +332,10 @@ Frames: `Escritorio / POS — carrito completo (activo…)` (1440×1421, carrito
 
 ## 4. `CustomerPicker` compartido — sección F y panel de cliente B.7
 
-Componentes (en «Componentes — POS fidelidad»): `CustomerRow` (Type=person|company|space × State=default|selected|
+Componentes (en `02 Componentes › Clientes`): `CustomerRow` (Type=person|company|space × State=default|selected|
 pending|multi), `CustomerCard` (Actions=full|compact, Pending), `QuickCustomerForm`, `CustomerPicker` (Layout=popover|
-dialog|inline|sheet × State=idle|typing|loading|results|empty|error + multi). Sección de pantallas: «CustomerPicker
-compartido — F · B.7 panel de cliente del POS» con `Escritorio / POS — panel de cliente: CustomerPicker popover abierto`,
+dialog|inline|sheet × State=idle|typing|loading|results|empty|error + multi). Sección de pantallas: `06 Clientes › CustomerPicker`
+(título interno «CustomerPicker compartido — F · B.7 panel de cliente del POS») con `Escritorio / POS — panel de cliente: CustomerPicker popover abierto`,
 `Móvil / POS — «Seleccionar Cliente» (sheet)`, fila de 5 ejemplos de uso (POS, factura de venta, CRM, reserva PMS,
 envío de transporte), `QuickCustomerForm` y `Sheet «Más datos» → ClientForm completo`.
 
@@ -366,8 +369,8 @@ envío de transporte), `QuickCustomerForm` y `Sheet «Más datos» → ClientFor
 
 ## 5. Impuestos — E.2 Finanzas › Impuestos, E.3 producto
 
-Componentes: `TaxForm`, `TaxMultiSelect` (+ `/ cerrado`). Sección «Impuestos — E.2 Finanzas › Impuestos · E.3 producto ·
-sin «IVA» fijo»: `Escritorio / Finanzas › Impuestos — lista`, `Móvil / Finanzas › Impuestos — lista (cards)`, `TaxForm` ×4
+Componentes (en `02 Componentes › Impuestos`): `TaxForm`, `TaxMultiSelect` (+ `/ cerrado`). Sección `07 Finanzas ›
+Impuestos` (título interno «Impuestos — E.2 Finanzas › Impuestos · E.3 producto · sin «IVA» fijo»): `Escritorio / Finanzas › Impuestos — lista`, `Móvil / Finanzas › Impuestos — lista (cards)`, `TaxForm` ×4
 (nuevo con plantilla, editar, sin plantilla + error, guardando), «Eliminar Impuesto», `Producto › Precios y costos ›
 Impuestos`, `Estados de la lista`, `Acción masiva «Asignar impuesto»` (Nuevo), `Móvil / … «Nuevo Impuesto» (sheet)`.
 
@@ -408,7 +411,8 @@ Impuestos`, `Estados de la lista`, `Acción masiva «Asignar impuesto»` (Nuevo)
 | E.5 #5-#6 | pantalla del cliente «Desglose de impuestos» · «IVA incluido» cableado | sección 7 (Pantalla del cliente: «Impuestos incluidos») | sustituido: texto sin «IVA» (E.7 #4) |
 | E.7 #5 | placeholders y muestras con «IVA» | todos los frames nuevos usan «Impuesto general 19 %» / «Impoconsumo 8 %» | sustituido |
 
-Frames de `03 Pantallas` que quedan obsoletos por «IVA 19 %» fijo (no se editan; se sustituyen al consolidar):
+Frames de pantallas (hoy en `04 Inventario` y `05 POS y ventas`) que quedaron obsoletos por «IVA 19 %» fijo (resueltos en la consolidación del 2026-09-22, ver
+al final: los que tenían equivalente de fidelidad pasaron a `99 Descartes`; el resto sigue en `05 POS y ventas` con chips):
 `Escritorio / Nuevo producto`, `Escritorio / Editar producto`, `Escritorio / Duplicar producto — «Qué copiar»`,
 `Escritorio / Detalle — Resumen`, `Escritorio / Detalle — Resumen · editando Precios en Sheet`, `Escritorio / Detalle —
 Inventario`, `Escritorio / Detalle — Precios y costos`, `Escritorio / Importar — paso 4 previsualización`,
@@ -419,13 +423,13 @@ vender»`, `Móvil / Nuevo producto — paso 2`, `Móvil / Detalle — Resumen`,
 
 ## 6. Buscador y grid — B.2, B.3, B.4, B.5 (solo lo que faltaba)
 
-Sección «Buscador y grid — B.2 · B.3 · B.4 · B.5 (solo lo que faltaba)»: `Escritorio / POS — grid en error`, escáner
-(escritorio ×2, móvil ×2), `CategoryBar — 3 modos`, `Receta de producción` (tarjeta + diálogo ×3 estados + RecipeSheet
-del kit), `VariantSelectorDialog — validación`, `VariantSelectorDialog — lista fallback`, `Toasts (10)`.
+Sección `05 POS y ventas › Buscador y grid` (título interno «Buscador y grid — B.2 · B.3 · B.4 · B.5 (solo lo que
+faltaba)»): `Escritorio / POS — grid en error`, escáner (escritorio ×2, móvil ×2), `CategoryBar — 3 modos`, `Receta de
+producción` (tarjeta + diálogo ×3 estados; el diálogo es ahora el componente `RecipeSheet` del kit), `VariantSelectorDialog — validación`, `VariantSelectorDialog — lista fallback`, `Toasts (10)`.
 
 | # auditoría | Control | Frame Figma | Estado |
 |---|---|---|---|
-| B.2 #1-#12 | buscador, escáner, limpiar, «Mostrar:», densidad, «{total} prod.» | ya en `03 › Escritorio / POS — buscador de productos` y en `PosProductSearch` del kit | calcado (no se redibuja) |
+| B.2 #1-#12 | buscador, escáner, limpiar, «Mostrar:», densidad, «{total} prod.» | `POS — Cabecera y caja › Escritorio / POS — cabecera: caja abierta…` y `PosProductSearch` del kit (el antiguo `buscador de productos (75/25)` está en `99 Descartes`) | calcado (no se redibuja) |
 | B.2 #13 | lector físico USB/BT (wedge) | escáner escritorio (nota en el overlay) | calcado como anotación (sin UI propia) |
 | B.2 #14 | toasts «Código no encontrado» · «Producto agotado» · «Error» | Toasts (10) | calcado |
 | B.2 #15 | overlay «Escáner de código de barras» / «Apunta la cámara…» con vídeo | escáner escritorio y móvil | calcado; B.19 #1 (simulado) → lector real |
@@ -447,11 +451,11 @@ del kit), `VariantSelectorDialog — validación`, `VariantSelectorDialog — li
 | B.3 #11 | sin vacío ni carga; error solo console | «No se encontraron categorías» + «No se pudieron cargar las categorías» + «Reintentar» | sustituido (Nuevo estado de error, B.19 #13) |
 | B.4 #1-#15, #17, #19-#23 | tarjeta, badges, ★, precio, paginación | ya en `03` y `ProductCard` del kit | calcado (no se redibuja) |
 | B.4 #16 | (ChefHat) «Ver receta de producción» | `ProductCard + botón receta` | calcado |
-| B.4 #24 | skeleton del grid | `03 › POS — cargando (primera carga)` | calcado (no se redibuja) |
+| B.4 #24 | skeleton del grid | `03 › Escritorio — POS › Escritorio / POS — cargando (primera carga)` (totales con chips desde 2026-09-22) | calcado (no se redibuja) |
 | B.4 #25 | «Error al cargar productos» + «Reintentar» | `Escritorio / POS — grid en error` (PosProductSearch State=error) | calcado |
 | B.4 #26 | «No se encontraron productos» + «Limpiar filtros» | `PosProductSearch State=empty` del kit | calcado (no se redibuja) |
 | B.4 #10, #18, #27 | toasts favoritos / agotado / carga | Toasts (10) | calcado |
-| B.5 #1-#10, #13-#15 | diálogo de variantes y modificadores | `VariantModifierDialog` del kit (03) | calcado (no se redibuja) |
+| B.5 #1-#10, #13-#15 | diálogo de variantes y modificadores | `VariantModifierDialog` del kit y `03 › Escritorio — POS › Escritorio / POS — diálogo de variantes y modificadores` (totales con chips desde 2026-09-22) | calcado (no se redibuja) |
 | B.5 #8 | badge «Sin precio» | lista fallback | calcado |
 | B.5 #11 | «Selecciona una opción en "{grupo}"» / «Selecciona al menos {N} opciones en "{grupo}"» | `VariantSelectorDialog — validación` | calcado |
 | B.5 #12 | lista de variantes sin atributos: nombre · «SKU: {sku}» · precio o «-» | `VariantSelectorDialog — lista fallback` | calcado |
@@ -459,7 +463,7 @@ del kit), `VariantSelectorDialog — validación`, `VariantSelectorDialog — li
 
 ## 7. Configuración › POS — D.17
 
-Sección «Configuración › POS — D.17 (13 tarjetas + 6 diálogos + impresoras)»: `Escritorio / Configuración › POS —
+Sección `05 POS y ventas › Configuración › POS` (título interno «Configuración › POS — D.17 (13 tarjetas + 6 diálogos + impresoras)»): `Escritorio / Configuración › POS —
 página completa` (1440×3492), `Móvil / Configuración › POS — página completa`, diálogos: Consecutivos (lista + nuevo +
 editar + importar + eliminar + resetear), Previsualizar Impresiones (HTML y ESC/POS), Agente de Impresión (Desktop,
 navegador, móvil), «Go Admin Desktop» (descarga), Pantalla del cliente, «Nueva Impresora» ×3 (red, Bluetooth, sistema),
@@ -506,3 +510,84 @@ capturas a 1024 px en su lado mayor, así que las de sección son vistas general
 
 Comprobación por script al cerrar (2026-09-22): 0 solapes entre secciones, 0 solapes entre frames de primer nivel
 dentro de cada sección, 0 frames fuera de su sección, 0 nodos sueltos en la página, 0 nombres de organización cliente.
+
+## Consolidación 2026-09-22 (decisión del dueño: solo `01 Sistema`, `02 Componentes`, `03 Pantallas`, `99 Descartes`)
+
+- Las 7 Secciones de pantallas de `04 POS — fidelidad` se movieron a `03 Pantallas` con prefijo («POS — Cobro»,
+  «POS — Cabecera y caja», «POS — Carrito», «POS — CustomerPicker», «Finanzas — Impuestos», «POS — Buscador y grid»,
+  «Configuración › POS»), debajo de las Secciones de Producto, 400 px entre Secciones, 0 solapes. Los frames
+  conservan su nombre; los títulos internos con las referencias de auditoría se mantienen.
+- Componentes al kit (`02 Componentes`): 24 iconos lucide a «Fundamentos › Iconos»; `CustomerRow`, `CustomerCard`,
+  `QuickCustomerForm` y `CustomerPicker` a la Sección nueva «Clientes»; `TaxForm`, `TaxMultiSelect` y
+  `TaxMultiSelect / cerrado` a la Sección nueva «Impuestos» (tras «Formularios»).
+- `SerialPicker` y `RecipeSheet`: la versión completa con etiquetas exactas (el `SerialSelectorDialog` de «POS —
+  Cobro» y el diálogo «Receta de producción» de «POS — Buscador y grid») se convirtió en componente del kit y
+  ocupa el sitio de la versión resumida en «Productos y POS»; en las pantallas queda una instancia. Las versiones
+  resumidas están en `99 Descartes › Sustituidos por fidelidad 2026-09-22`. La nota «El kit ya tiene RecipeSheet
+  (versión resumida)» y su instancia se retiraron del frame «Receta de producción».
+- Sustituidos por la versión de fidelidad (a `99 Descartes › Sustituidos por fidelidad 2026-09-22`):
+  `Escritorio / POS — buscador de productos (75/25)` → «POS — Cabecera y caja › cabecera: caja abierta…»;
+  `Móvil / POS cobrando — sin tab bar` → «POS — Cobro › Móvil / POS — Cobro (Sheet a pantalla completa)»;
+  `Móvil / POS — carrito` → «POS — Carrito › Móvil / POS — carrito completo».
+- Sin equivalente de pantalla completa, siguen en `05 POS y ventas › Escritorio — POS` con el «IVA 19 %» del resumen del carrito
+  sustituido por chips del kit («IVA 19 %» + «INC 8 %», `Chip Variant=filter` sin acción): `diálogo de variantes y
+  modificadores`, `cargando (primera carga)`, `sin catálogo local (Desktop offline)`, `«Elige la sucursal para
+  vender»`. Sus filas se corrieron a la izquierda para cerrar el hueco.
+- Las sustituciones en los frames de productos (Nuevo/Editar/Duplicar producto, móvil paso 2, Importar paso 4,
+  Detalle — Resumen ×2, Inventario, Precios y costos, móvil Resumen) están en
+  `docs/design/PARIDAD-DETALLE-PRODUCTO-FIDELIDAD.md › Consolidación`.
+- Chequeo por script al cerrar (2026-09-22, `02` y `03`): 0 solapes entre Secciones, 0 solapes entre frames de primer
+  nivel, 0 nodos fuera de Sección, 0 instancias desvinculadas, 0 textos «IVA 19 %» fuera de un chip de impuesto.
+  Páginas del archivo: `01 Sistema`, `02 Componentes`, `03 Pantallas`, `99 Descartes`.
+- Vistas generales: `docs/design/figma/10-consolidado-02-componentes.png` y
+  `docs/design/figma/10-consolidado-03-pantallas.png`.
+
+## Sustitución por POS UX v2 (2026-09-22)
+
+- Carrito, cobro, post-venta y móvil de esta tanda se sustituyeron por la v2 (`docs/design/POS-UX-V2.md`): los
+  frames `Escritorio / POS — carrito completo…`, `Carrito completo / hold · debt · active ×3 · Col`, `Móvil / POS —
+  carrito completo`, `Escritorio / POS — Cobro (CheckoutDialog…)`, `Móvil / POS — Cobro (Sheet…)`, `CheckoutDialog —
+  «Falta dinero»`, `— «Procesando...»`, `Post-venta ×2`, `Móvil / POS — Cobro › ¡Venta Completada!` y `Móvil / POS —
+  productos` están en `99 Descartes › POS fidelidad (sustituido por v2 2026-09-22)`.
+- Se conservan en `03` con retoques (`Kbd` F9/F10/Enter): «POS — Cabecera y caja», «POS — Buscador y grid» (+ frame
+  `Escritorio / POS v2 — Grid…`), «POS — CustomerPicker», «Finanzas — Impuestos», «Configuración › POS», y los
+  diálogos, toasts y sheets de «POS — Carrito» y «POS — Cobro».
+
+## Reorganización por módulos (2026-09-22)
+
+Petición del dueño: «en Figma podríamos separar mejor las pantallas para que no se vea tan
+complicado, por módulos […] en este momento una sola página se está haciendo muy difícil de leer».
+Las 26 Secciones de `03 Pantallas` se repartieron por módulo, con sus frames y anotaciones intactos
+(nada se rehízo). Páginas del archivo tras la reorganización: `01 Sistema` · `02 Componentes` ·
+`03 Navegación y shell` · `04 Inventario` · `05 POS y ventas` · `06 Clientes` · `07 Finanzas` ·
+`99 Descartes`.
+
+Cada página lleva arriba a la izquierda una Sección «Índice» con el nombre del módulo y la lista de
+sus Secciones (texto de 18 px con el color `text/secondary` — pizarra — de `01 Sistema`). Dentro de
+cada página las Secciones quedan apiladas por flujo (lista → detalle → diálogos → móvil), a 400 px
+una de otra y con `x = 0`.
+
+Renombrados (se quitó el prefijo de módulo cuando quedaba repetido con el nombre de la página):
+
+| Sección (antes) | Página nueva | Sección (después) |
+|---|---|---|
+| POS — Cabecera y caja | `05 POS y ventas` | Cabecera y caja |
+| POS — Buscador y grid | `05 POS y ventas` | Buscador y grid |
+| POS — Carrito | `05 POS y ventas` | Carrito |
+| POS — Cobro | `05 POS y ventas` | Cobro |
+| POS — Mapa de atajos | `05 POS y ventas` | Mapa de atajos |
+| POS — Móvil v2 | `05 POS y ventas` | Móvil v2 |
+| Escritorio — POS | `05 POS y ventas` | Escritorio — POS (sin cambio: «POS» distingue la familia de Secciones por dispositivo) |
+| Móvil — POS | `05 POS y ventas` | Móvil — POS (sin cambio, misma razón) |
+| Configuración › POS | `05 POS y ventas` | Configuración › POS (sin cambio) |
+| POS — CustomerPicker | `06 Clientes` | CustomerPicker |
+| Finanzas — Impuestos | `07 Finanzas` | Impuestos |
+
+Chequeo por script al cerrar (las 8 páginas): 0 solapes entre Secciones, 0 solapes entre frames de
+primer nivel, 0 nodos fuera de Sección en las páginas de pantallas, 0 instancias desvinculadas
+(las instancias siguen apuntando a sus maestros de `02 Componentes`, que no se movió).
+
+
+Vistas generales de las páginas nuevas: `docs/design/figma/12-mapa-03-navegacion-y-shell.png`,
+`12-mapa-04-inventario.png`, `12-mapa-05-pos-y-ventas.png`, `12-mapa-06-clientes.png`,
+`12-mapa-07-finanzas.png`.

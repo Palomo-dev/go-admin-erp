@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Camera, Loader2, Building2, User } from 'lucide-react';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
@@ -24,6 +23,20 @@ interface ClienteHeaderProps {
 }
 
 // Ya no necesitamos este componente porque usaremos UserAvatar
+
+interface PersonaVinculada {
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+}
+interface EnlaceEmpresa {
+  is_primary?: boolean | null;
+  position?: string | null;
+  person?: PersonaVinculada | PersonaVinculada[] | null;
+  company?: { id?: string; full_name?: string | null } | { id?: string; full_name?: string | null }[] | null;
+}
+const uno = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
 
 // Componente para mostrar el nivel de fidelidad del cliente
 const NivelFidelidad = ({ nivel = 'Básico' }: { nivel?: string }) => {
@@ -81,8 +94,9 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
           .order('is_primary', { ascending: false });
 
         if (linkData && linkData.length > 0) {
-          const primary = linkData.find((l: any) => l.is_primary) || linkData[0];
-          const person = primary.person as any;
+          const enlaces = linkData as EnlaceEmpresa[];
+          const primary = enlaces.find((l) => l.is_primary) || enlaces[0];
+          const person = uno(primary.person);
           if (person) {
             setPrimaryContact({
               name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
@@ -111,12 +125,15 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
           .order('is_primary', { ascending: false });
 
         if (companyLinks && companyLinks.length > 0) {
-          const companies = companyLinks.map((link: any) => ({
-            id: link.company?.id || '',
-            name: link.company?.full_name || 'Sin nombre',
-            position: link.position || null,
-            is_primary: link.is_primary || false,
-          })).filter((c: any) => c.id);
+          const companies = (companyLinks as EnlaceEmpresa[]).map((link) => {
+            const company = uno(link.company);
+            return {
+              id: company?.id || '',
+              name: company?.full_name || 'Sin nombre',
+              position: link.position || null,
+              is_primary: link.is_primary || false,
+            };
+          }).filter((c) => c.id);
           setLinkedCompanies(companies);
         }
       }
@@ -168,9 +185,9 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
       setAvatarUrl(urlWithCacheBust);
       onAvatarUpdate?.(urlWithCacheBust);
       toast({ title: 'Avatar actualizado', description: 'La foto del cliente se actualizó correctamente.' });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error uploading avatar:', err);
-      toast({ title: 'Error', description: err.message || 'No se pudo subir la imagen', variant: 'destructive' });
+      toast({ title: 'Error', description: (err as Error)?.message || 'No se pudo subir la imagen', variant: 'destructive' });
     } finally {
       setUploadingAvatar(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -209,7 +226,7 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
         
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{nombreCompleto}</h1>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{nombreCompleto}</h2>
             {cliente.customer_type === 'company' ? (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
                 <Building2 className="h-3 w-3" />
@@ -262,29 +279,6 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
         </div>
       </div>
       
-      <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0 w-full md:w-auto">
-        {/* Botón para volver a la lista de clientes */}
-        <Link
-          href="/app/clientes"
-          className="flex flex-wrap items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-          </svg>
-          <span>Volver</span>
-        </Link>
-        
-        {/* Botón para editar cliente */}
-        <Link
-          href={`/app/clientes/${cliente.id}/editar`}
-          className="flex flex-wrap items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-          </svg>
-          <span>Editar</span>
-        </Link>
-      </div>
     </div>
   );
 }

@@ -417,6 +417,9 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       return;
     }
 
+    // «Nueva venta» desde la ficha o el listado de clientes: ?cliente=<id> sin duplicar.
+    if (!duplicarId && clienteParam) setSelectedCustomerId(clienteParam);
+
     // Cargar datos de factura a duplicar
     const cargarDatosDuplicacion = async () => {
       if (!duplicarId || !organizationId) return;

@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useRef, type MouseEvent as EventoRaton, type PointerEvent as EventoPuntero, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -36,7 +36,58 @@ export interface ListCardProps {
   seleccionable?: boolean;
   seleccionado?: boolean;
   onSeleccionChange?: (seleccionado: boolean) => void;
+  /**
+   * Mantener pulsada la tarjeta (500 ms) o clic derecho: entra en modo
+   * selección (Figma Clientes móvil «selección múltiple»). Con esta prop, en
+   * modo selección tocar la tarjeta alterna su casilla en lugar de abrirla.
+   */
+  onMantenerPulsado?: () => void;
   className?: string;
+}
+
+const MS_PULSACION_LARGA = 500;
+
+function usePulsacionLarga(onMantenerPulsado?: () => void) {
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const disparada = useRef(false);
+  const cancelar = () => {
+    if (temporizador.current) clearTimeout(temporizador.current);
+    temporizador.current = null;
+  };
+  if (!onMantenerPulsado) return { disparada, props: {} };
+  return {
+    disparada,
+    props: {
+      onPointerDown: (e: EventoPuntero) => {
+        if (e.button !== 0) return;
+        disparada.current = false;
+        cancelar();
+        temporizador.current = setTimeout(() => {
+          disparada.current = true;
+          onMantenerPulsado();
+        }, MS_PULSACION_LARGA);
+      },
+      onPointerUp: cancelar,
+      onPointerLeave: cancelar,
+      onPointerCancel: cancelar,
+      onPointerMove: (e: EventoPuntero) => {
+        if (Math.abs(e.movementX) + Math.abs(e.movementY) > 8) cancelar();
+      },
+      onContextMenu: (e: EventoRaton) => {
+        e.preventDefault();
+        cancelar();
+        onMantenerPulsado();
+      },
+      // La pulsación larga no debe terminar abriendo el detalle.
+      onClickCapture: (e: EventoRaton) => {
+        if (disparada.current) {
+          disparada.current = false;
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      },
+    },
+  };
 }
 
 export function ListCard({
@@ -53,10 +104,15 @@ export function ListCard({
   seleccionable,
   seleccionado,
   onSeleccionChange,
+  onMantenerPulsado,
   className,
 }: ListCardProps) {
+  const pulsacion = usePulsacionLarga(onMantenerPulsado);
+  const alTocar =
+    onMantenerPulsado && seleccionable && onSeleccionChange ? () => onSeleccionChange(!seleccionado) : onClick;
   return (
     <div
+      {...pulsacion.props}
       className={cn(
         'relative flex items-center gap-3 rounded-xl bg-surface py-3 pl-3 pr-2 transition-colors',
         seleccionado ? 'border-2 border-line-brand' : 'border border-line',
@@ -83,11 +139,11 @@ export function ListCard({
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        {onClick ? (
+        {alTocar ? (
           <button
             type="button"
             data-principal=""
-            onClick={onClick}
+            onClick={alTocar}
             className="truncate text-left text-sm font-medium leading-5 text-fg outline-none after:absolute after:inset-0 after:rounded-xl after:content-['']"
           >
             {titulo}

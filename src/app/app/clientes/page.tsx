@@ -1,1269 +1,577 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useRef } from "react";
-import { useSession } from "@/lib/hooks/useSession";
-import { supabase } from "@/lib/supabase/config";
-import { useOrganization } from "@/lib/hooks/useOrganization";
-import { PageHeaderSkeleton, FilterBarSkeleton, TableSkeleton } from "@/components/common/PageSkeletons";
-import ClientesTable from "@/components/clientes/ClientesTable";
-import ClientesFilter from "@/components/clientes/ClientesFilter";
-import ClientesActions from "@/components/clientes/ClientesActions";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Users, DollarSign, ShoppingCart, AlertTriangle, RefreshCw, Trash2, Tag, Download, X, Loader2, Tags, UserPlus, UserMinus, ChevronDown, CheckCircle, AlertCircle } from "lucide-react";
+/**
+ * Clientes — listado (Figma «GO Admin — Sistema de diseño», página 06
+ * Clientes: escritorio CAT-* y móvil 711:352480…711:352552).
+ *
+ * Todo lo que escala con el número de clientes va al servidor: búsqueda,
+ * filtros, orden y página viven en la URL (useListadoServidor) y se resuelven
+ * en `fn_clientes_listado`, que además agrega saldo, cartera y compras en la
+ * misma llamada. Ver src/lib/services/clientesListadoService.ts.
+ *
+ * `/app/crm/clientes` reutiliza esta misma página.
+ */
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Download,
+  FileSpreadsheet,
+  Plus,
+  Power,
+  RefreshCw,
+  RotateCcw,
+  Tag,
+  Tags,
+  Trash2,
+  Upload,
+  UserMinus,
+  UserPlus,
+  Users,
+  Merge,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+  BulkActionBar,
+  DataTable,
+  EmptyState,
+  FilterChips,
+  FilterPanel,
+  KpiStrip,
+  ListToolbar,
+  PageHeader,
+  Pagination,
+  RowActionsMenu,
+  SearchInput,
+  StatCard,
+  useEsEscritorio,
+  useListadoServidor,
+  type AccionFila,
+  type AccionMasiva,
+  type EstadoTabla,
+} from '@/components/kit';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz, todayInTz } from '@/lib/utils/dateDisplay';
+import { formatMonedaSinDecimales, useOrgCurrency } from '@/lib/hooks/useOrgCurrency';
+import {
+  CAMPOS_ORDEN_CLIENTES,
+  FILTROS_CLIENTES,
+  cambiarRolMasivo,
+  construirCsvClientes,
+  descargarCsv,
+  listarClientes,
+  mensajeErrorClientes,
+  nombreCliente,
+  obtenerIdsClientes,
+  obtenerOpcionesFiltroClientes,
+  obtenerResumenClientes,
+  obtenerTodasLasFilas,
+  type CriteriosClientes,
+  type FilaCliente,
+  type OpcionesFiltroClientes,
+  type ResumenClientes,
+} from '@/lib/services/clientesListadoService';
+import { construirAccionesCliente, MOTIVO_UNIFICAR, type ClienteParaAcciones } from '@/components/clientes/listado/accionesCliente';
+import { useOperacionesClientes } from '@/components/clientes/listado/useOperacionesClientes';
+import { CamposFiltroClientes, chipsClientes } from '@/components/clientes/listado/FiltrosClientes';
+import { columnasClientes, TarjetaCliente } from '@/components/clientes/listado/columnasClientes';
+import { EtiquetaMasivaDialog } from '@/components/clientes/listado/EtiquetaMasivaDialog';
+import { EliminarClientesDialog } from '@/components/clientes/listado/EliminarClientesDialog';
+import { ImportarClientesDialog, descargarPlantillaClientes } from '@/components/clientes/listado/ImportarClientesDialog';
 
-interface Customer {
-  id: string;
-  full_name: string;
-  first_name?: string;
-  last_name?: string;
-  company_name?: string;
-  trade_name?: string;
-  customer_type?: string;
-  email?: string;
-  phone?: string;
-  doc_type?: string;
-  doc_number?: string;
-  identification_type?: string;
-  identification_number?: string;
-  dv?: number | string;
-  address?: string;
-  city?: string;
-  notes?: string;
-  fiscal_municipality_id?: string;
-  municipality_name?: string;
-  roles?: string[];
-  tags?: string[];
-  preferences?: any;
-  avatar_url?: string;
-  fiscal_responsibilities?: string[];
-  parent_customer_id?: string;
-  is_active?: boolean;
-  last_purchase_date?: string;
-  balance?: number;
-  days_overdue?: number;
-  ar_status?: string | null;
-  sales_count?: number;
-  total_sales?: number;
-}
+const SUSTANTIVO = { singular: 'cliente', plural: 'clientes' } as const;
+const OPCIONES_VACIAS: OpcionesFiltroClientes = { roles: [], etiquetas: [], municipios: [] };
+const entero = (n: number) => new Intl.NumberFormat('es-CO').format(n);
 
 export default function ClientesPage() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [organizationId, setOrganizationId] = useState<number | null>(null);
-  
-  // Paginación
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
-  const [count, setCount] = useState(0);
-  
-  // Filtros
-  const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string | null>(null);
-  const [tagFilter, setTagFilter] = useState<string | null>(null);
-  const [cityFilter, setCityFilter] = useState<string | null>(null);
-  const [balanceFilter, setBalanceFilter] = useState<string | null>(null); // 'all', 'pending', 'paid'
-  const [typeFilter, setTypeFilter] = useState<string | null>(null); // 'all', 'person', 'company'
-  const [sortOrder, setSortOrder] = useState<string | null>(null);
-  
-  // Selección masiva
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isBulkLoading, setIsBulkLoading] = useState(false);
-  
-  // Ref para controlar que solo se cargue una vez
-  const hasLoadedRef = useRef(false);
-  const loadedOrgIdRef = useRef<number | null>(null);
-  
-  // Usamos el hook de sesión y organización
-  const { session } = useSession();
-  const organizationData = useOrganization();
+  return (
+    <Suspense fallback={null}>
+      <ListadoClientes />
+    </Suspense>
+  );
+}
+
+function ListadoClientes() {
+  const router = useRouter();
+  const escritorio = useEsEscritorio();
+  const { organization, isLoading: cargandoOrg, error: errorOrg } = useOrganization();
+  const orgId = organization?.id ? Number(organization.id) : null;
   const { branchFilter } = useBranch();
-  
-  // Extraemos el estado de carga de la sesión para mejor manejo
-  const { loading: sessionLoading } = useSession();
-  
+  const moneda = useOrgCurrency();
+  const { timezone } = useFormatDate();
+
+  const listado = useListadoServidor({
+    filtros: FILTROS_CLIENTES,
+    camposOrden: CAMPOS_ORDEN_CLIENTES,
+    ordenPorDefecto: { campo: 'nombre', direccion: 'asc' },
+    tamanoPorDefecto: 10,
+  });
+  const { busqueda, filtros, orden, pagina, tamano } = listado;
+  const criterios: CriteriosClientes = useMemo(() => ({ busqueda, ...filtros }), [busqueda, filtros]);
+  const claveCriterios = JSON.stringify([criterios, branchFilter]);
+
+  const [filas, setFilas] = useState<FilaCliente[]>([]);
+  const [total, setTotal] = useState(0);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [resumen, setResumen] = useState<ResumenClientes | null>(null);
+  const [opciones, setOpciones] = useState<OpcionesFiltroClientes>(OPCIONES_VACIAS);
+  const [recarga, setRecarga] = useState(0);
+  const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
+  const [ocupado, setOcupado] = useState<string | null>(null);
+
+  const [dialogoEtiqueta, setDialogoEtiqueta] = useState<'agregar' | 'quitar' | null>(null);
+  const [eliminar, setEliminar] = useState<{ ids: string[]; nombre?: string } | null>(null);
+  const [importarAbierto, setImportarAbierto] = useState(false);
+
+  const recargar = useCallback(() => setRecarga((n) => n + 1), []);
+
+  // ── Página actual ─────────────────────────────────────────────────────────
   useEffect(() => {
-    async function loadOrganizationData() {
-      // Si la sesión o la organización aún está cargando, esperamos
-      if (sessionLoading || organizationData.isLoading) {
-        // Mantenemos el estado de carga pero no mostramos mensajes de error durante la carga
-        if (!hasLoadedRef.current) {
-          setIsLoading(true);
-        }
-        setError("");
-        return;
-      }
-      
-      // Solo verificamos la sesión después de que termine de cargar
-      if (!sessionLoading && !session) {
-        console.log("Sesión verificada: No hay sesión activa después de carga completa");
-        setError('No hay sesión activa. Por favor inicie sesión.');
-        setIsLoading(false);
-        return;
-      }
-      
-      // Manejamos errores específicos de organización
-      if (organizationData.error) {
-        const errorMsg = typeof organizationData.error === 'string' 
-          ? organizationData.error 
-          : "Error cargando datos de la organización";
-        
-        console.log("Error de organización:", errorMsg);
-        setError(errorMsg);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Si tenemos organización, procedemos a cargar los clientes
-      if (organizationData.organization?.id) {
-        const orgId = organizationData.organization.id;
-        
-        // Solo cargar si no se ha cargado antes o si cambió la organización
-        if (!hasLoadedRef.current || loadedOrgIdRef.current !== orgId) {
-          console.log("Organización encontrada, cargando clientes:", orgId);
-          setOrganizationId(orgId);
-          loadedOrgIdRef.current = orgId;
-          await loadCustomers(orgId);
-          hasLoadedRef.current = true;
-        } else {
-          // Ya se cargó antes, solo actualizar el estado
-          setOrganizationId(orgId);
-          setIsLoading(false);
-        }
-      } else {
-        setError('No se encontró información de la organización');
-        setIsLoading(false);
-      }
-    }
-    
-    loadOrganizationData();
-  }, [session, sessionLoading, organizationData.isLoading, organizationData.error, organizationData.organization?.id, branchFilter]);
-
-
-  // Función para cargar clientes con paginación y última fecha de compra
-  async function loadCustomers(orgId: string | number, searchTerm?: string) {
-    setIsLoading(true);
-    console.log("Iniciando carga de clientes para organización:", orgId, "búsqueda:", searchTerm || '(sin filtro)');
-    try {
-      // Construir la consulta base
-      let countQuery = supabase
-        .from("customers")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", orgId);
-
-      let dataQuery = supabase
-        .from("customers")
-        .select("*")
-        .eq("organization_id", orgId);
-
-      // Aplicar filtro de sucursal si hay una seleccionada
-      if (branchFilter != null) {
-        countQuery = countQuery.eq("branch_id", branchFilter);
-        dataQuery = dataQuery.eq("branch_id", branchFilter);
-      }
-
-      // Aplicar filtro de búsqueda server-side si hay término
-      if (searchTerm && searchTerm.trim()) {
-        const term = searchTerm.trim();
-        const orFilter = `full_name.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%,company_name.ilike.%${term}%,trade_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%,identification_number.ilike.%${term}%,doc_number.ilike.%${term}%`;
-        countQuery = countQuery.or(orFilter);
-        dataQuery = dataQuery.or(orFilter);
-      }
-
-      // Primero obtenemos el conteo total para la paginación
-      const { count: totalCount, error: countError } = await countQuery;
-        
-      if (countError) {
-        console.error("Error al contar clientes:", countError);
-        throw countError;
-      }
-      
-      console.log("Total de clientes encontrados:", totalCount);
-      if (totalCount !== null) setCount(totalCount);
-      
-      // Si no hay clientes, terminamos el proceso aquí
-      if (totalCount === 0) {
-        console.log("No hay clientes para mostrar");
-        setCustomers([]);
-        setFilteredCustomers([]);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Obtenemos los clientes con paginación
-      const { data: customersData, error } = await dataQuery
-        .range(page * pageSize, (page + 1) * pageSize - 1);
-        
-      if (error) throw error;
-      
-      // Obtenemos los saldos de cuentas por cobrar
-      const customerIds = customersData.map(customer => customer.id);
-      
-      // Consulta para cuentas por cobrar usando función RPC (bypasea RLS)
-      const { data: balances, error: balancesError } = await supabase
-        .rpc('get_accounts_receivable_for_customers', {
-          customer_ids: customerIds,
-          org_id: orgId
-        });
-      if (balancesError) {
-        console.warn("Error obteniendo saldos:", balancesError);
-        // Continuamos sin datos de saldo en lugar de fallar toda la carga
-      }
-        
-      // Consulta para ventas con información adicional
-      const { data: salesData, error: purchasesError } = await supabase
-        .from("sales")
-        .select("customer_id, sale_date, total, balance, status, payment_status")
-        .in("customer_id", customerIds)
-        .eq("organization_id", orgId)
-        .order('sale_date', { ascending: false });
-        
-      if (purchasesError) {
-        console.warn("Error obteniendo historial de compras:", purchasesError);
-        // Continuamos sin datos de historial en lugar de fallar toda la carga
-      }
-
-      // Consulta para folios pagados de reservas del cliente
-      // Primero obtener reservas de los clientes
-      const { data: customerReservations } = await supabase
-        .from('reservations')
-        .select('id, customer_id, checkin')
-        .in('customer_id', customerIds)
-        .eq('organization_id', orgId);
-
-      const reservationCustomerMap = new Map<string, string[]>();
-      if (customerReservations) {
-        for (const r of customerReservations) {
-          const cid = r.customer_id?.toString();
-          if (!cid) continue;
-          if (!reservationCustomerMap.has(cid)) {
-            reservationCustomerMap.set(cid, []);
-          }
-          reservationCustomerMap.get(cid)!.push(r.id);
-        }
-      }
-
-      // Obtener folios cerrados (pagados) de esas reservas
-      const allReservationIds = customerReservations?.map((r: any) => r.id) || [];
-      let paidFoliosData: any[] = [];
-      if (allReservationIds.length > 0) {
-        const { data: foliosData } = await supabase
-          .from('folios')
-          .select('id, reservation_id, balance, status, created_at')
-          .in('reservation_id', allReservationIds)
-          .eq('status', 'closed');
-
-        if (foliosData) {
-          // Para cada folio cerrado, obtener el total de items (suma de amounts)
-          const folioIds = foliosData.map(f => f.id);
-          if (folioIds.length > 0) {
-            const { data: folioItems } = await supabase
-              .from('folio_items')
-              .select('folio_id, amount')
-              .in('folio_id', folioIds);
-
-            const folioTotalMap = new Map<string, number>();
-            if (folioItems) {
-              for (const fi of folioItems) {
-                const fid = fi.folio_id;
-                const amt = Number(fi.amount) || 0;
-                folioTotalMap.set(fid, (folioTotalMap.get(fid) || 0) + amt);
-              }
-            }
-
-            paidFoliosData = foliosData.map(f => ({
-              ...f,
-              total: folioTotalMap.get(f.id) || 0,
-            }));
-          }
-        }
-      }
-      
-      // Crear mapas para almacenar los datos procesados por cliente
-      const balanceMap = new Map();
-      const lastPurchaseMap = new Map();
-      const maxDaysOverdueMap = new Map();
-      const salesCountMap = new Map();
-      const totalSalesMap = new Map();
-      const arStatusMap = new Map();
-      
-      // Procesar cuentas por cobrar - agrupar por cliente y obtener estadísticas
-      if (balances) {
-        balances.forEach((item: any) => {
-          if (item.customer_id && item.balance !== undefined) {
-            const customerId = item.customer_id.toString();
-            
-            // Convertir explícitamente balance a número y acumular
-            const itemBalance = typeof item.balance === 'string' ? parseFloat(item.balance) : Number(item.balance);
-            const currentBalance = balanceMap.get(customerId) || 0;
-            const newBalance = currentBalance + itemBalance;
-            balanceMap.set(customerId, newBalance);
-            
-            // Obtener días de vencimiento máximo
-            if (item.days_overdue !== undefined && item.days_overdue !== null) {
-              const daysOverdue = Number(item.days_overdue);
-              const currentDaysOverdue = maxDaysOverdueMap.get(customerId) || 0;
-              maxDaysOverdueMap.set(customerId, Math.max(currentDaysOverdue, daysOverdue));
-            }
-            
-            // Almacenar estado de cuenta por cobrar con mayor riesgo (vencido > parcial > pendiente > pagado)
-            const currentStatus = arStatusMap.get(customerId) || '';
-            
-            // Prioridad: overdue > partial > pending > paid
-            const prioridadEstado: Record<string, number> = {
-              'overdue': 4,
-              'partial': 3,
-              'pending': 2,
-              'paid': 1,
-              '': 0
-            };
-            
-            // Verificar que el estado sea válido y tenga prioridad
-            const estadoActual = item.status || '';
-            const prioridadActual = prioridadEstado[estadoActual] || 0;
-            const prioridadAlmacenada = prioridadEstado[currentStatus] || 0;
-            
-            // Si el estado actual tiene mayor prioridad que el almacenado, actualizamos
-            if (prioridadActual > prioridadAlmacenada) {
-              arStatusMap.set(customerId, estadoActual);
-            }
-          }
-        });
-      }
-      
-      // Procesar ventas - estadísticas y última fecha
-      if (salesData) {
-        // Para cada cliente, calcular totales y encontrar la venta más reciente
-        salesData.forEach(item => {
-          if (item.customer_id) {
-            const customerId = item.customer_id.toString();
-            
-            // Conteo de ventas
-            const currentCount = salesCountMap.get(customerId) || 0;
-            salesCountMap.set(customerId, currentCount + 1);
-            
-            // Convertir explícitamente el total a número y sumarlo
-            if (item.total !== undefined && item.total !== null) {
-              const itemTotal = typeof item.total === 'string' ? parseFloat(item.total) : Number(item.total);
-              const currentTotal = totalSalesMap.get(customerId) || 0;
-              totalSalesMap.set(customerId, currentTotal + itemTotal);
-            }
-            
-            // Actualizar última fecha de compra
-            if (item.sale_date) {
-              const currentDate = lastPurchaseMap.get(customerId);
-              if (!currentDate || new Date(item.sale_date) > new Date(currentDate)) {
-                lastPurchaseMap.set(customerId, item.sale_date);
-              }
-            }
-          }
-        });
-      }
-
-      // Procesar folios pagados de reservas - contar como compras
-      if (paidFoliosData.length > 0) {
-        // Mapear reservation_id -> customer_id
-        const reservationToCustomer = new Map<string, string>();
-        if (customerReservations) {
-          for (const r of customerReservations) {
-            reservationToCustomer.set(r.id, r.customer_id?.toString() || '');
-          }
-        }
-
-        for (const folio of paidFoliosData) {
-          const customerId = reservationToCustomer.get(folio.reservation_id);
-          if (!customerId) continue;
-
-          // Contar como compra
-          const currentCount = salesCountMap.get(customerId) || 0;
-          salesCountMap.set(customerId, currentCount + 1);
-
-          // Sumar el total al total_sales
-          const folioTotal = Number(folio.total) || 0;
-          const currentTotal = totalSalesMap.get(customerId) || 0;
-          totalSalesMap.set(customerId, currentTotal + folioTotal);
-
-          // Actualizar última fecha de compra
-          if (folio.created_at) {
-            const currentDate = lastPurchaseMap.get(customerId);
-            if (!currentDate || new Date(folio.created_at) > new Date(currentDate)) {
-              lastPurchaseMap.set(customerId, folio.created_at);
-            }
-          }
-        }
-      }
-
-      // Obtener nombres de municipios para todos los clientes
-      const municipalityIds = customersData
-        .map((c: any) => c.fiscal_municipality_id)
-        .filter((id: string | null, index: number, arr: (string | null)[]) => id && arr.indexOf(id) === index);
-      const municipalityMap = new Map<string, string>();
-      if (municipalityIds.length > 0) {
-        const { data: munis } = await supabase
-          .from('municipalities')
-          .select('id, name, state_name')
-          .in('id', municipalityIds);
-        if (munis) {
-          munis.forEach((m: any) => municipalityMap.set(m.id, `${m.name} - ${m.state_name}`));
-        }
-      }
-
-      // Obtener contactos principales para empresas
-      const companyIds = customersData
-        .filter((c: any) => c.customer_type === 'company')
-        .map((c: any) => c.id);
-      const primaryContactMap = new Map<string, { name: string; position: string | null }>();
-      if (companyIds.length > 0) {
-        const { data: links } = await supabase
-          .from('customer_company_links')
-          .select(`
-            company_id,
-            is_primary,
-            position,
-            person:customers!customer_company_links_person_id_fkey(first_name, last_name)
-          `)
-          .in('company_id', companyIds)
-          .order('is_primary', { ascending: false });
-
-        if (links) {
-          for (const link of links as any[]) {
-            if (!primaryContactMap.has(link.company_id)) {
-              const person = link.person;
-              if (person) {
-                primaryContactMap.set(link.company_id, {
-                  name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
-                  position: link.position || null,
-                });
-              }
-            }
-          }
-        }
-      }
-
-      // Combinar datos asegurando compatibilidad de tipos entre UUIDs y strings
-      const enhancedCustomers = customersData.map(customer => {
-        const customerId = customer.id.toString();
-        
-        // Asegurar que todos los valores numéricos son de tipo number
-        const rawBalance = balanceMap.get(customerId);
-        const balance = Number(rawBalance || 0);
-        const sales_count = Number(salesCountMap.get(customerId) || 0);
-        const total_sales = Number(totalSalesMap.get(customerId) || 0);
-        const days_overdue = Number(maxDaysOverdueMap.get(customerId) || 0);
-        
-        // Eliminar logs una vez que hayamos identificado el problema
-        /* 
-        console.log(`Cliente ${customer.full_name} (${customerId}):`); 
-        console.log(`  - Balance: ${balance} (${typeof balance})`); 
-        console.log(`  - Ventas: ${sales_count} compras por ${total_sales}`); 
-        */
-        
-        return {
-          ...customer,
-          balance,
-          last_purchase_date: lastPurchaseMap.get(customerId) || null,
-          days_overdue,
-          ar_status: arStatusMap.get(customerId) || null,
-          sales_count, 
-          total_sales,
-          municipality_name: customer.fiscal_municipality_id ? municipalityMap.get(customer.fiscal_municipality_id) || null : null,
-          primary_contact_name: primaryContactMap.get(customer.id)?.name || null,
-          primary_contact_position: primaryContactMap.get(customer.id)?.position || null,
-        };
-      });
-      
-      console.log('Clientes cargados:', enhancedCustomers.length);
-      
-      setCustomers(enhancedCustomers);
-      setFilteredCustomers(enhancedCustomers);
-    } catch (error: any) {
-      console.error("Error cargando clientes:", error);
-      setError(error.message || "Error desconocido al cargar clientes");
-      // Aseguramos que la pantalla de carga desaparezca incluso si hay error
-      setCustomers([]);
-      setFilteredCustomers([]);
-    } finally {
-      setIsLoading(false);
-      console.log("Finalizada la carga de clientes, estado de carga:", isLoading);
-    }
-  }
-
-  // Efecto para aplicar filtros cuando cambien
-  useEffect(() => {
-    let filtered = [...customers];
-    
-    // Filtro por tipo (persona/empresa)
-    if (typeFilter && typeFilter !== "all_types") {
-      filtered = filtered.filter(customer => 
-        customer.customer_type === typeFilter
-      );
-    }
-    
-    // Filtro por rol (ignorar "all_roles")
-    if (roleFilter && roleFilter !== "all_roles") {
-      filtered = filtered.filter(customer => 
-        customer.roles?.includes(roleFilter)
-      );
-    }
-    
-    // Filtro por etiqueta (ignorar "all_tags")
-    if (tagFilter && tagFilter !== "all_tags") {
-      filtered = filtered.filter(customer => 
-        customer.tags?.includes(tagFilter)
-      );
-    }
-    
-    // Filtro por municipio (ignorar "all_cities")
-    if (cityFilter && cityFilter !== "all_cities") {
-      filtered = filtered.filter(customer => 
-        customer.municipality_name === cityFilter
-      );
-    }
-    
-    // Filtro por saldo pendiente (ignorar "all_balances")
-    if (balanceFilter && balanceFilter !== "all_balances") {
-      if (balanceFilter === 'pending') {
-        filtered = filtered.filter(customer => (customer.balance || 0) > 0);
-      } else if (balanceFilter === 'paid') {
-        filtered = filtered.filter(customer => (customer.balance || 0) === 0);
-      }
-    }
-    
-    // Aplicar ordenamiento (ignorar "no_sort")
-    if (sortOrder && sortOrder !== "no_sort") {
-      filtered = [...filtered].sort((a, b) => {
-        switch(sortOrder) {
-          case 'latest_purchase': 
-            // Si no hay fecha de última compra, colocar al final
-            if (!a.last_purchase_date) return 1;
-            if (!b.last_purchase_date) return -1;
-            return new Date(b.last_purchase_date).getTime() - new Date(a.last_purchase_date).getTime();
-          case 'oldest_purchase': 
-            if (!a.last_purchase_date) return 1;
-            if (!b.last_purchase_date) return -1;
-            return new Date(a.last_purchase_date).getTime() - new Date(b.last_purchase_date).getTime();
-          case 'balance_desc':
-            return (b.balance || 0) - (a.balance || 0);
-          case 'balance_asc':
-            return (a.balance || 0) - (b.balance || 0);
-          default:
-            return 0;
-        }
-      });
-    }
-    
-    setFilteredCustomers(filtered);
-  }, [customers, roleFilter, tagFilter, cityFilter, balanceFilter, typeFilter, sortOrder]);
-
-  // Búsqueda server-side con debounce
-  useEffect(() => {
-    if (!organizationId) return;
-    const timer = setTimeout(() => {
-      setPage(0);
-      loadCustomers(organizationId, searchQuery || undefined);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [searchQuery, organizationId]);
-
-  // Función para cambiar de página
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-    if (organizationId) loadCustomers(organizationId, searchQuery || undefined);
-  };
-
-  // Función para exportar a CSV con todos los campos reales
-  const handleExportCSV = () => {
-    if (!filteredCustomers.length) return;
-    
-    const headers = [
-      "Tipo de Cliente", "Nombre", "Apellido", "Razón Social", "Nombre Comercial",
-      "Nombre Completo", "Email", "Teléfono", "Tipo Documento", "Número Documento",
-      "DV", "Dirección", "Ciudad", "Notas", "Etiquetas", "Roles",
-      "Preferencias", "URL Avatar", "Responsabilidades Fiscales",
-      "Saldo CxC", "Última Compra", "Total Ventas", "N° Ventas"
-    ];
-    
-    const escapeCSV = (val: any) => {
-      if (val === null || val === undefined) return '';
-      const str = String(val);
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return '"' + str.replace(/"/g, '""') + '"';
-      }
-      return str;
-    };
-    
-    const csvContent = [
-      headers.join(","),
-      ...filteredCustomers.map(customer => {
-        const c = customer as any;
-        return [
-          escapeCSV(c.customer_type || 'person'),
-          escapeCSV(c.first_name || ''),
-          escapeCSV(c.last_name || ''),
-          escapeCSV(c.company_name || ''),
-          escapeCSV(c.trade_name || ''),
-          escapeCSV(c.full_name || ''),
-          escapeCSV(c.email || ''),
-          escapeCSV(c.phone || ''),
-          escapeCSV(c.doc_type || c.identification_type || ''),
-          escapeCSV(c.doc_number || c.identification_number || ''),
-          escapeCSV(c.dv || ''),
-          escapeCSV(c.address || ''),
-          escapeCSV(c.city || ''),
-          escapeCSV(c.notes || ''),
-          escapeCSV((c.tags || []).join(';')),
-          escapeCSV((c.roles || []).join(';')),
-          escapeCSV(c.preferences ? JSON.stringify(c.preferences) : ''),
-          escapeCSV(c.avatar_url || ''),
-          escapeCSV((c.fiscal_responsibilities || []).join(';')),
-          escapeCSV(c.balance || 0),
-          escapeCSV(c.last_purchase_date || ''),
-          escapeCSV(c.total_sales || 0),
-          escapeCSV(c.sales_count || 0)
-        ].join(",");
+    if (!orgId) return;
+    let cancelado = false;
+    setCargando(true);
+    setError(null);
+    listarClientes({
+      organizationId: orgId,
+      branchId: branchFilter ?? null,
+      criterios,
+      orden,
+      desde: (pagina - 1) * tamano,
+      tamano,
+    })
+      .then(({ filas: f, total: t }) => {
+        if (cancelado) return;
+        setFilas(f);
+        setTotal(t);
       })
-    ].join("\n");
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute("href", url);
-    link.setAttribute("download", `clientes_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Funciones de acciones masivas
-  const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
-    
-    if (!confirm(`¿Estás seguro de eliminar ${selectedIds.length} cliente(s)? Esta acción no se puede deshacer.`)) {
-      return;
-    }
-    
-    setIsBulkLoading(true);
-    try {
-      const { error } = await supabase
-        .from('customers')
-        .delete()
-        .in('id', selectedIds);
-      
-      if (error) throw error;
-      
-      toast.success(`${selectedIds.length} cliente(s) eliminado(s) correctamente`);
-      setSelectedIds([]);
-      if (organizationId) await loadCustomers(organizationId);
-    } catch (err: any) {
-      console.error('Error eliminando clientes:', err);
-      toast.error(err.message || 'Error al eliminar clientes');
-    } finally {
-      setIsBulkLoading(false);
-    }
-  };
-
-  const handleBulkExport = () => {
-    if (selectedIds.length === 0) return;
-    
-    const selectedCustomers = filteredCustomers.filter(c => selectedIds.includes(c.id));
-    
-    const headers = [
-      "Tipo de Cliente", "Nombre", "Apellido", "Razón Social", "Nombre Comercial",
-      "Nombre Completo", "Email", "Teléfono", "Tipo Documento", "Número Documento",
-      "DV", "Dirección", "Ciudad", "Notas", "Etiquetas", "Roles",
-      "Preferencias", "URL Avatar", "Responsabilidades Fiscales",
-      "Saldo CxC", "Última Compra", "Total Ventas", "N° Ventas"
-    ];
-    
-    const escapeCSV = (val: any) => {
-      if (val === null || val === undefined) return '';
-      const str = String(val);
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return '"' + str.replace(/"/g, '""') + '"';
-      }
-      return str;
-    };
-    
-    const csvContent = [
-      headers.join(","),
-      ...selectedCustomers.map(customer => {
-        const c = customer as any;
-        return [
-          escapeCSV(c.customer_type || 'person'),
-          escapeCSV(c.first_name || ''),
-          escapeCSV(c.last_name || ''),
-          escapeCSV(c.company_name || ''),
-          escapeCSV(c.trade_name || ''),
-          escapeCSV(c.full_name || ''),
-          escapeCSV(c.email || ''),
-          escapeCSV(c.phone || ''),
-          escapeCSV(c.doc_type || c.identification_type || ''),
-          escapeCSV(c.doc_number || c.identification_number || ''),
-          escapeCSV(c.dv || ''),
-          escapeCSV(c.address || ''),
-          escapeCSV(c.city || ''),
-          escapeCSV(c.notes || ''),
-          escapeCSV((c.tags || []).join(';')),
-          escapeCSV((c.roles || []).join(';')),
-          escapeCSV(c.preferences ? JSON.stringify(c.preferences) : ''),
-          escapeCSV(c.avatar_url || ''),
-          escapeCSV((c.fiscal_responsibilities || []).join(';')),
-          escapeCSV(c.balance || 0),
-          escapeCSV(c.last_purchase_date || ''),
-          escapeCSV(c.total_sales || 0),
-          escapeCSV(c.sales_count || 0)
-        ].join(",");
+      .catch((err) => {
+        if (cancelado) return;
+        setError(mensajeErrorClientes(err, 'Revisa tu conexión e inténtalo de nuevo.'));
       })
-    ].join("\n");
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute("href", url);
-    link.setAttribute("download", `clientes_seleccionados_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast.success(`${selectedIds.length} cliente(s) exportado(s)`);
-  };
+      .finally(() => {
+        if (!cancelado) setCargando(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+    // `criterios` y `branchFilter` van por su clave serializada.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId, claveCriterios, orden?.campo, orden?.direccion, pagina, tamano, recarga]);
 
-  // Estado para diálogo de etiquetas
-  const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
-  const [tagDialogMode, setTagDialogMode] = useState<'add' | 'remove'>('add');
-  const [tagInputValue, setTagInputValue] = useState('');
-  const [tagDialogStatus, setTagDialogStatus] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+  // ── Resumen y catálogos de filtro ─────────────────────────────────────────
+  useEffect(() => {
+    if (!orgId) return;
+    let cancelado = false;
+    obtenerResumenClientes(orgId, branchFilter ?? null)
+      .then((r) => !cancelado && setResumen(r))
+      .catch(() => !cancelado && setResumen(null));
+    return () => {
+      cancelado = true;
+    };
+  }, [orgId, branchFilter, recarga]);
 
-  const openTagDialog = (mode: 'add' | 'remove') => {
-    if (selectedIds.length === 0) return;
-    setTagDialogMode(mode);
-    setTagInputValue('');
-    setTagDialogStatus(null);
-    setIsTagDialogOpen(true);
-  };
+  useEffect(() => {
+    if (!orgId) return;
+    let cancelado = false;
+    obtenerOpcionesFiltroClientes(orgId)
+      .then((o) => !cancelado && setOpciones(o))
+      .catch(() => !cancelado && setOpciones(OPCIONES_VACIAS));
+    return () => {
+      cancelado = true;
+    };
+  }, [orgId, recarga]);
 
-  const handleBulkAddTag = async () => {
-    if (selectedIds.length === 0 || !tagInputValue.trim()) return;
-    
-    setIsBulkLoading(true);
-    setTagDialogStatus({ type: 'info', message: 'Procesando...' });
+  // Cambiar de criterio vacía la selección: nunca se actúa sobre lo que no se ve.
+  useEffect(() => {
+    setSeleccion(new Set());
+  }, [claveCriterios]);
+
+  // ── Operaciones ───────────────────────────────────────────────────────────
+  const { cambiarEstado, copiarId } = useOperacionesClientes(orgId, recargar);
+  const formatearFecha = useCallback(
+    (v: string) => formatDateInTz(v, timezone, { locale: 'es-CO', day: '2-digit', month: 'short', year: 'numeric' }),
+    [timezone],
+  );
+
+  const accionesDe = useCallback(
+    (fila: FilaCliente): AccionFila[] => {
+      const cliente: ClienteParaAcciones = { id: fila.id, nombre: nombreCliente(fila), phone: fila.phone, status: fila.status };
+      return construirAccionesCliente(cliente, {
+        navegar: (ruta) => router.push(ruta),
+        onCambiarEstado: (c, estado) => void cambiarEstado([c.id], estado, c.nombre),
+        onEliminar: (c) => setEliminar({ ids: [c.id], nombre: c.nombre }),
+        onCopiarId: (c) => void copiarId(c.id),
+      });
+    },
+    [router, cambiarEstado, copiarId],
+  );
+
+  const exportar = async (ids?: string[]) => {
+    if (!orgId) return;
+    setOcupado('exportar');
     try {
-      for (const customerId of selectedIds) {
-        const customer = customers.find(c => c.id === customerId);
-        const currentTags = customer?.tags || [];
-        if (!currentTags.includes(tagInputValue.trim())) {
-          await supabase
-            .from('customers')
-            .update({ tags: [...currentTags, tagInputValue.trim()] })
-            .eq('id', customerId);
-        }
+      const todas = await obtenerTodasLasFilas({ organizationId: orgId, branchId: branchFilter ?? null, criterios, orden, ids });
+      if (todas.length === 0) {
+        toast.info('No hay clientes para exportar');
+        return;
       }
-      
-      setTagDialogStatus({ type: 'success', message: `Etiqueta "${tagInputValue.trim()}" agregada a ${selectedIds.length} cliente(s)` });
-      toast.success(`Etiqueta "${tagInputValue.trim()}" agregada a ${selectedIds.length} cliente(s)`);
-      setSelectedIds([]);
-      if (organizationId) await loadCustomers(organizationId);
-      setTimeout(() => {
-        setIsTagDialogOpen(false);
-        setTagDialogStatus(null);
-      }, 2000);
-    } catch (err: any) {
-      console.error('Error agregando etiqueta:', err);
-      setTagDialogStatus({ type: 'error', message: err.message || 'Error al agregar etiqueta' });
-      toast.error(err.message || 'Error al agregar etiqueta');
+      const hoy = todayInTz(timezone);
+      descargarCsv(construirCsvClientes(todas, timezone), ids ? `clientes_seleccionados_${hoy}.csv` : `clientes_${hoy}.csv`);
+      toast.success(`${entero(todas.length)} ${todas.length === 1 ? 'cliente exportado' : 'clientes exportados'}`);
+    } catch (err) {
+      toast.error(mensajeErrorClientes(err, 'No se pudo exportar'));
     } finally {
-      setIsBulkLoading(false);
+      setOcupado(null);
     }
   };
 
-  const handleBulkRemoveTag = async () => {
-    if (selectedIds.length === 0 || !tagInputValue.trim()) return;
-    
-    setIsBulkLoading(true);
-    setTagDialogStatus({ type: 'info', message: 'Procesando...' });
+  const seleccionarTodos = async () => {
+    if (!orgId) return;
+    setOcupado('seleccionar');
     try {
-      for (const customerId of selectedIds) {
-        const customer = customers.find(c => c.id === customerId);
-        const currentTags = customer?.tags || [];
-        if (currentTags.includes(tagInputValue.trim())) {
-          await supabase
-            .from('customers')
-            .update({ tags: currentTags.filter(t => t !== tagInputValue.trim()) })
-            .eq('id', customerId);
-        }
-      }
-      
-      setTagDialogStatus({ type: 'success', message: `Etiqueta "${tagInputValue.trim()}" removida de ${selectedIds.length} cliente(s)` });
-      toast.success(`Etiqueta "${tagInputValue.trim()}" removida de ${selectedIds.length} cliente(s)`);
-      setSelectedIds([]);
-      if (organizationId) await loadCustomers(organizationId);
-      setTimeout(() => {
-        setIsTagDialogOpen(false);
-        setTagDialogStatus(null);
-      }, 2000);
-    } catch (err: any) {
-      console.error('Error removiendo etiqueta:', err);
-      setTagDialogStatus({ type: 'error', message: err.message || 'Error al remover etiqueta' });
-      toast.error(err.message || 'Error al remover etiqueta');
+      const ids = await obtenerIdsClientes(orgId, branchFilter ?? null, criterios);
+      setSeleccion(new Set(ids));
+      if (ids.length < total) toast.info(`Se seleccionaron los primeros ${entero(ids.length)} clientes`);
+    } catch (err) {
+      toast.error(mensajeErrorClientes(err, 'No se pudo seleccionar todo'));
     } finally {
-      setIsBulkLoading(false);
+      setOcupado(null);
     }
   };
 
-  const handleBulkChangeRole = async (role: string, action: 'add' | 'remove') => {
-    if (selectedIds.length === 0) return;
-    
-    setIsBulkLoading(true);
+  const cambiarRol = async (rol: string, quitar: boolean) => {
+    if (!orgId) return;
+    setOcupado('roles');
     try {
-      for (const customerId of selectedIds) {
-        const customer = customers.find(c => c.id === customerId);
-        const currentRoles = customer?.roles || [];
-        
-        let updatedRoles: string[];
-        if (action === 'add') {
-          updatedRoles = currentRoles.includes(role) ? currentRoles : [...currentRoles, role];
-        } else {
-          updatedRoles = currentRoles.filter(r => r !== role);
-        }
-        
-        if (JSON.stringify(currentRoles) !== JSON.stringify(updatedRoles)) {
-          await supabase
-            .from('customers')
-            .update({ roles: updatedRoles })
-            .eq('id', customerId);
-        }
-      }
-      
-      const actionLabel = action === 'add' ? 'agregado' : 'removido';
-      toast.success(`Rol "${role}" ${actionLabel} en ${selectedIds.length} cliente(s)`);
-      setSelectedIds([]);
-      if (organizationId) await loadCustomers(organizationId);
-    } catch (err: any) {
-      console.error('Error cambiando roles:', err);
-      toast.error(err.message || 'Error al cambiar roles');
+      const n = await cambiarRolMasivo(orgId, [...seleccion], rol, quitar);
+      const nombre = opciones.roles.find((r) => r.valor === rol)?.etiqueta ?? rol;
+      toast.success(`Rol «${nombre}» ${quitar ? 'quitado de' : 'agregado a'} ${n} ${n === 1 ? 'cliente' : 'clientes'}`);
+      setSeleccion(new Set());
+      recargar();
+    } catch (err) {
+      toast.error(mensajeErrorClientes(err, 'No se pudieron cambiar los roles'));
     } finally {
-      setIsBulkLoading(false);
+      setOcupado(null);
     }
   };
 
-  const handlePageSizeChange = (newSize: number) => {
-    setPageSize(newSize);
-    setPage(0);
-  };
+  // ── Estado de la tabla ────────────────────────────────────────────────────
+  const estado: EstadoTabla = error
+    ? 'error'
+    : cargando || cargandoOrg || !orgId
+      ? 'cargando'
+      : filas.length === 0 && listado.hayCriterios
+        ? 'sinResultados'
+        : 'listo';
 
-  // Calcular estadísticas
-  const stats = {
-    totalClientes: count,
-    clientesConSaldo: customers.filter(c => (c.balance || 0) > 0).length,
-    totalCuentasPorCobrar: customers.reduce((sum, c) => sum + (c.balance || 0), 0),
-    clientesVencidos: customers.filter(c => (c.days_overdue || 0) > 0 || c.ar_status === 'overdue').length,
-  };
+  const columnas = useMemo(
+    () => columnasClientes({ moneda, formatearFecha, roles: opciones.roles }),
+    [moneda, formatearFecha, opciones.roles],
+  );
+  const chips = chipsClientes(filtros, opciones);
+  const verInactivos = filtros.estado === 'inactivos';
 
-  // Función para formatear moneda
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  const subtituloMovil = resumen
+    ? `${entero(resumen.total)} clientes · ${entero(resumen.con_saldo)} con saldo · ${entero(resumen.vencidos)} vencidos`
+    : undefined;
 
-  if (isLoading && !organizationId) {
+  // ── Barra masiva ──────────────────────────────────────────────────────────
+  const idsSeleccion = [...seleccion];
+  // Solo los roles del catálogo `customer_roles` (fn_clientes_rol_masivo rechaza
+  // los demás). Los que solo existen en los datos llegan con etiqueta = valor.
+  const rolesCatalogo = opciones.roles.filter((r) => r.etiqueta && r.etiqueta !== r.valor);
+  const accionesMasivas: AccionMasiva[] = [
+    { id: 'exportar', etiqueta: 'Exportar', icono: Download, onClick: () => void exportar(idsSeleccion), cargando: ocupado === 'exportar' },
+    { id: 'etiquetar', etiqueta: 'Etiquetar', icono: Tag, onClick: () => setDialogoEtiqueta('agregar') },
+    { id: 'quitar-etiqueta', etiqueta: 'Quitar etiqueta', icono: Tags, onClick: () => setDialogoEtiqueta('quitar') },
+    {
+      id: 'roles',
+      etiqueta: 'Roles',
+      icono: Users,
+      onClick: () => undefined,
+      cargando: ocupado === 'roles',
+      menu: [
+        {
+          titulo: 'Agregar rol',
+          acciones: rolesCatalogo.map((r) => ({
+            id: `agregar-${r.valor}`,
+            etiqueta: r.etiqueta ?? r.valor,
+            icono: UserPlus,
+            onSelect: () => void cambiarRol(r.valor, false),
+          })),
+        },
+        {
+          titulo: 'Quitar rol',
+          acciones: rolesCatalogo.map((r) => ({
+            id: `quitar-${r.valor}`,
+            etiqueta: r.etiqueta ?? r.valor,
+            icono: UserMinus,
+            onSelect: () => void cambiarRol(r.valor, true),
+          })),
+        },
+      ],
+    },
+    {
+      id: 'eliminar',
+      etiqueta: 'Eliminar',
+      icono: Trash2,
+      destructiva: true,
+      onClick: () => setEliminar({ ids: idsSeleccion }),
+    },
+  ];
+  const accionesSecundarias: AccionFila[] = [
+    verInactivos
+      ? {
+          id: 'reactivar',
+          etiqueta: 'Reactivar',
+          icono: RotateCcw,
+          onSelect: () => void cambiarEstado(idsSeleccion, 'active').then(() => setSeleccion(new Set())),
+        }
+      : {
+          id: 'inactivar',
+          etiqueta: 'Marcar inactivos',
+          icono: Power,
+          onSelect: () => void cambiarEstado(idsSeleccion, 'inactive').then(() => setSeleccion(new Set())),
+        },
+    {
+      id: 'unificar',
+      etiqueta: 'Unificar duplicados',
+      icono: Merge,
+      onSelect: () => undefined,
+      deshabilitada: true,
+      motivo: MOTIVO_UNIFICAR,
+    },
+  ];
+
+  // ── Cabecera ──────────────────────────────────────────────────────────────
+  const masAcciones: AccionFila[] = [
+    { id: 'importar', etiqueta: 'Importar clientes', icono: Upload, onSelect: () => setImportarAbierto(true) },
+    { id: 'plantilla', etiqueta: 'Descargar plantilla', icono: FileSpreadsheet, onSelect: descargarPlantillaClientes },
+  ];
+  const masAccionesMovil: AccionFila[] = [
+    { id: 'exportar', etiqueta: 'Exportar', icono: Download, onSelect: () => void exportar() },
+    ...masAcciones,
+    { id: 'actualizar', etiqueta: 'Actualizar', icono: RefreshCw, onSelect: recargar },
+  ];
+
+  if ((errorOrg || !orgId) && !cargandoOrg) {
     return (
-      <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen min-w-0">
-        <PageHeaderSkeleton />
-        <FilterBarSkeleton />
-        <TableSkeleton rows={5} columns={10} />
+      <div className="min-h-full bg-canvas p-4 lg:p-6">
+        <EmptyState
+          variante="error"
+          titulo="No pudimos identificar tu organización"
+          descripcion={typeof errorOrg === 'string' ? errorOrg : 'Vuelve a iniciar sesión e inténtalo de nuevo.'}
+          onReintentar={() => window.location.reload()}
+        />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen min-w-0">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
-              <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            Gestión de Clientes
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            Administra tu cartera de clientes
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => organizationId && loadCustomers(organizationId)}
-            disabled={isLoading}
-            className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700 min-h-[40px]"
-          >
-            <RefreshCw className={`h-4 w-4 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Actualizar</span>
-          </Button>
-          <ClientesActions 
-            onExportCSV={handleExportCSV}
-            selectedCustomers={selectedIds}
-            onRefresh={() => { setSelectedIds([]); organizationId && loadCustomers(organizationId); }}
-          />
-        </div>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
-          <CardContent className="pt-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
-              <div>
-                <p className="font-medium text-red-700 dark:text-red-300">Error</p>
-                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="ml-auto border-red-300 text-red-700 hover:bg-red-100"
-                onClick={() => {
-                  setError("");
-                  setIsLoading(true);
-                  if (organizationData.organization?.id) {
-                    loadCustomers(organizationData.organization.id)
-                      .catch(err => {
-                        setError(err.message || "Error desconocido");
-                        setIsLoading(false);
-                      });
-                  } else {
-                    window.location.reload();
-                  }
-                }}
-              >
-                Reintentar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Total Clientes</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.totalClientes}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
-                <DollarSign className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Con Saldo</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.clientesConSaldo}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                <ShoppingCart className="h-5 w-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Cuentas x Cobrar</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(stats.totalCuentasPorCobrar)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
-                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Cuentas Vencidas</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.clientesVencidos}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Barra de acciones masivas */}
-      {selectedIds.length > 0 && (
-        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-          <CardContent className="py-3">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                  {selectedIds.length} cliente(s) seleccionado(s)
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedIds([])}
-                  className="h-7 text-blue-600 hover:text-blue-700 hover:bg-blue-100 dark:text-blue-400"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Limpiar
-                </Button>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {isBulkLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBulkExport}
-                  disabled={isBulkLoading}
-                  className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300"
-                >
-                  <Download className="h-4 w-4 mr-1" />
-                  Exportar
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openTagDialog('add')}
-                  disabled={isBulkLoading}
-                  className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300"
-                >
-                  <Tag className="h-4 w-4 mr-1" />
-                  Etiquetar
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openTagDialog('remove')}
-                  disabled={isBulkLoading}
-                  className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300"
-                >
-                  <Tags className="h-4 w-4 mr-1" />
-                  Quitar etiqueta
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={isBulkLoading}
-                      className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300"
-                    >
-                      <Users className="h-4 w-4 mr-1" />
-                      Roles
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-full sm:w-52">
-                    <DropdownMenuLabel>Agregar rol</DropdownMenuLabel>
-                    {['cliente', 'huesped', 'pasajero', 'proveedor', 'empleado'].map(role => (
-                      <DropdownMenuItem key={`add-${role}`} onClick={() => handleBulkChangeRole(role, 'add')}>
-                        <UserPlus className="h-4 w-4 mr-2 text-green-600 dark:text-green-400" />
-                        {role.charAt(0).toUpperCase() + role.slice(1)}
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel>Quitar rol</DropdownMenuLabel>
-                    {['cliente', 'huesped', 'pasajero', 'proveedor', 'empleado'].map(role => (
-                      <DropdownMenuItem key={`rm-${role}`} onClick={() => handleBulkChangeRole(role, 'remove')}>
-                        <UserMinus className="h-4 w-4 mr-2 text-red-500" />
-                        {role.charAt(0).toUpperCase() + role.slice(1)}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBulkDelete}
-                  disabled={isBulkLoading}
-                  className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400"
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Eliminar
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Filtros */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardContent className="pt-4">
-          <ClientesFilter 
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            roleFilter={roleFilter}
-            onRoleFilterChange={setRoleFilter}
-            tagFilter={tagFilter}
-            onTagFilterChange={setTagFilter}
-            cityFilter={cityFilter}
-            onCityFilterChange={setCityFilter}
-            balanceFilter={balanceFilter}
-            onBalanceFilterChange={setBalanceFilter}
-            typeFilter={typeFilter}
-            onTypeFilterChange={setTypeFilter}
-            sortOrder={sortOrder}
-            onSortOrderChange={setSortOrder}
-            customers={customers}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Tabla */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 min-w-0">
-        <CardContent className="p-0">
-          {customers.length > 0 ? (
-            <ClientesTable 
-              customers={filteredCustomers}
-              page={page}
-              pageSize={pageSize}
-              count={count}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-              selectedIds={selectedIds}
-              onSelectionChange={setSelectedIds}
-              isLoading={isLoading && !!organizationId}
-            />
-          ) : isLoading ? (
-            <TableSkeleton rows={5} columns={10} />
-          ) : (
-            <div className="p-8 text-center">
-              <Users className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-400 mb-4">No se encontraron clientes</p>
-              <div className="flex flex-wrap justify-center gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => organizationId && loadCustomers(organizationId)}
-                  disabled={isLoading}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Recargar
-                </Button>
-                <Button
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                  onClick={() => window.location.href = '/app/clientes/new'}
-                >
-                  Crear cliente
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Diálogo de etiquetar / quitar etiqueta */}
-      <Dialog open={isTagDialogOpen} onOpenChange={(open) => { if (!isBulkLoading) { setIsTagDialogOpen(open); if (!open) setTagDialogStatus(null); } }}>
-        <DialogContent className="sm:max-w-[425px] mx-4">
-          <DialogHeader>
-            <DialogTitle className="text-gray-900 dark:text-gray-100">
-              {tagDialogMode === 'add' ? 'Etiquetar clientes' : 'Quitar etiqueta'}
-            </DialogTitle>
-            <DialogDescription className="text-gray-600 dark:text-gray-400">
-              {tagDialogMode === 'add'
-                ? `Aplica una etiqueta a los ${selectedIds.length} clientes seleccionados.`
-                : `Quita una etiqueta de los ${selectedIds.length} clientes seleccionados.`}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="bulk-tag" className="text-gray-900 dark:text-gray-100">Etiqueta</Label>
-              <Input
-                id="bulk-tag"
-                value={tagInputValue}
-                onChange={(e) => setTagInputValue(e.target.value)}
-                placeholder="Nombre de etiqueta"
-                disabled={isBulkLoading}
-                className="min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && tagInputValue.trim()) {
-                    tagDialogMode === 'add' ? handleBulkAddTag() : handleBulkRemoveTag();
-                  }
-                }}
-              />
-            </div>
-          </div>
-
-          {tagDialogStatus && (
-            <div className={`flex items-center p-3 rounded-md text-sm ${
-              tagDialogStatus.type === 'success' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-              tagDialogStatus.type === 'error' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
-              'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-            }`}>
-              {tagDialogStatus.type === 'success' ? <CheckCircle className="h-4 w-4 mr-2" /> :
-               tagDialogStatus.type === 'error' ? <AlertCircle className="h-4 w-4 mr-2" /> :
-               <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {tagDialogStatus.message}
-            </div>
-          )}
-
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+    <div className="flex min-h-full min-w-0 flex-col gap-4 bg-canvas p-4 pb-28 lg:gap-6 lg:p-6 lg:pb-24">
+      <PageHeader
+        titulo="Gestión de Clientes"
+        subtitulo="Administra tu cartera de clientes"
+        icono={Users}
+        cargando={cargando}
+        migas={[{ etiqueta: 'Inicio', href: '/app/inicio' }, { etiqueta: 'Clientes' }]}
+        acciones={
+          <>
             <Button
               variant="outline"
-              onClick={() => setIsTagDialogOpen(false)}
-              disabled={isBulkLoading}
-              className="w-full sm:w-auto min-h-[44px] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
+              size="icon"
+              className="size-10"
+              onClick={recargar}
+              disabled={cargando}
+              aria-label="Actualizar"
+              title="Actualizar"
             >
-              Cancelar
+              <RefreshCw aria-hidden="true" className={cargando ? 'size-4 animate-spin' : 'size-4'} />
             </Button>
-            <Button
-              onClick={() => tagDialogMode === 'add' ? handleBulkAddTag() : handleBulkRemoveTag()}
-              disabled={!tagInputValue.trim() || isBulkLoading}
-              className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
-            >
-              {isBulkLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Procesando...
-                </>
-              ) : tagDialogMode === 'add' ? 'Aplicar etiqueta' : 'Quitar etiqueta'}
+            <Button variant="outline" className="h-10" onClick={() => void exportar()} disabled={ocupado === 'exportar'} title="Exportar a CSV">
+              <Download aria-hidden="true" className="mr-2 size-4" />
+              Exportar
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <Button asChild className="h-10">
+              <Link href="/app/clientes/new">
+                <Plus aria-hidden="true" className="mr-2 size-4" />
+                Nuevo cliente
+              </Link>
+            </Button>
+            <RowActionsMenu acciones={masAcciones} orientacion="horizontal" tamano="md" titulo="Más acciones" />
+          </>
+        }
+        movil={{
+          titulo: 'Clientes',
+          subtitulo: subtituloMovil,
+          ocultarBarra: seleccion.size > 0,
+          accion: (
+            <div className="flex items-center gap-1">
+              <Link
+                href="/app/clientes/new"
+                aria-label="Nuevo cliente"
+                className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
+              </Link>
+              <RowActionsMenu acciones={masAccionesMovil} orientacion="horizontal" titulo="Clientes" />
+            </div>
+          ),
+        }}
+      />
+
+      <KpiStrip etiqueta="Resumen de clientes" className="hidden lg:grid">
+        <StatCard
+          etiqueta="Total clientes"
+          icono={Users}
+          valor={resumen ? entero(resumen.total) : '—'}
+          detalle={resumen ? `+${entero(resumen.nuevos_mes)} este mes` : undefined}
+          cargando={!resumen}
+        />
+        <StatCard
+          etiqueta="Con saldo"
+          valor={resumen ? entero(resumen.con_saldo) : '—'}
+          detalle={resumen ? `de ${entero(resumen.total)} clientes` : undefined}
+          tono="advertencia"
+          cargando={!resumen}
+          onClick={() => listado.setFiltro('saldo', 'con_saldo')}
+        />
+        <StatCard
+          etiqueta="Cuentas por cobrar"
+          valor={resumen ? formatMonedaSinDecimales(resumen.cartera_total, moneda) : '—'}
+          detalle={`Moneda de la organización (${moneda})`}
+          cargando={!resumen}
+        />
+        <StatCard
+          etiqueta="Cuentas vencidas"
+          valor={resumen ? entero(resumen.vencidos) : '—'}
+          detalle={resumen ? `${formatMonedaSinDecimales(resumen.cartera_vencida, moneda)} vencidos` : undefined}
+          tono="peligro"
+          tendencia={resumen && resumen.vencidos > 0 ? 'baja' : undefined}
+          cargando={!resumen}
+          onClick={() => listado.setFiltro('saldo', 'vencido')}
+        />
+      </KpiStrip>
+
+      <ListToolbar
+        busqueda={
+          <SearchInput
+            value={busqueda}
+            onChange={listado.setBusqueda}
+            placeholder={escritorio ? 'Buscar por nombre, documento, correo o teléfono' : 'Buscar cliente, NIT o teléfono'}
+            etiqueta="Buscar clientes"
+            cargando={cargando && !!busqueda}
+          />
+        }
+        filtros={
+          <FilterPanel
+            conteo={listado.filtrosActivos}
+            onLimpiar={listado.limpiarFiltros}
+            textoVerResultados={cargando ? 'Ver resultados' : `Ver ${entero(total)} ${total === 1 ? 'cliente' : 'clientes'}`}
+          >
+            <CamposFiltroClientes listado={listado} opciones={opciones} conOrden={!escritorio} />
+          </FilterPanel>
+        }
+        chips={
+          <FilterChips chips={chips} onQuitar={(clave) => listado.setFiltro(clave, null)} onLimpiarTodo={listado.limpiarFiltros} />
+        }
+      />
+
+      <DataTable
+        etiqueta="Clientes"
+        columnas={columnas}
+        filas={filas}
+        obtenerId={(c) => c.id}
+        estado={estado}
+        orden={orden}
+        onOrdenar={listado.ordenarPor}
+        seleccion={seleccion}
+        onSeleccionChange={setSeleccion}
+        onFilaClick={(c) => router.push(`/app/clientes/${c.id}`)}
+        etiquetaFila={nombreCliente}
+        acciones={accionesDe}
+        tarjetaMovil={(c, ctx) => (
+          <TarjetaCliente
+            cliente={c}
+            ctx={ctx}
+            acciones={accionesDe(c)}
+            onAbrir={() => router.push(`/app/clientes/${c.id}`)}
+          />
+        )}
+        vacio={{
+          titulo: verInactivos ? 'No hay clientes inactivos' : 'Aún no tienes clientes',
+          descripcion: verInactivos
+            ? 'Cuando marques un cliente como inactivo aparecerá aquí.'
+            : 'Crea el primero o impórtalos desde un archivo CSV o Excel.',
+          icono: Users,
+          accion: { etiqueta: 'Nuevo cliente', href: '/app/clientes/new', icono: Plus },
+          accionSecundaria: { etiqueta: 'Importar desde CSV', onClick: () => setImportarAbierto(true), icono: Upload },
+        }}
+        sinResultados={{ descripcion: 'Prueba con otro nombre, NIT o teléfono, o quita un filtro.' }}
+        error={{ descripcion: error ?? undefined }}
+        onReintentar={recargar}
+        onLimpiarFiltros={listado.limpiarTodo}
+        termino={busqueda}
+        pie={
+          <Pagination
+            pagina={pagina}
+            tamano={tamano}
+            total={total}
+            onPaginaChange={listado.setPagina}
+            onTamanoChange={listado.setTamano}
+            sustantivo={SUSTANTIVO}
+            cargando={cargando}
+          />
+        }
+      />
+
+      <BulkActionBar
+        seleccionados={seleccion.size}
+        total={total}
+        onSeleccionarTodos={ocupado === 'seleccionar' ? undefined : () => void seleccionarTodos()}
+        sustantivo={SUSTANTIVO}
+        acciones={accionesMasivas}
+        accionesSecundarias={accionesSecundarias}
+        onLimpiar={() => setSeleccion(new Set())}
+      />
+
+      <EtiquetaMasivaDialog
+        abierto={dialogoEtiqueta !== null}
+        onAbiertoChange={(v) => !v && setDialogoEtiqueta(null)}
+        modo={dialogoEtiqueta ?? 'agregar'}
+        organizationId={orgId}
+        ids={idsSeleccion}
+        sugerencias={opciones.etiquetas}
+        onHecho={() => {
+          setSeleccion(new Set());
+          recargar();
+        }}
+      />
+
+      <EliminarClientesDialog
+        abierto={eliminar !== null}
+        onAbiertoChange={(v) => !v && setEliminar(null)}
+        organizationId={orgId}
+        ids={eliminar?.ids ?? SIN_IDS}
+        nombre={eliminar?.nombre}
+        onHecho={() => {
+          setSeleccion(new Set());
+          recargar();
+        }}
+      />
+
+      <ImportarClientesDialog
+        abierto={importarAbierto}
+        onAbiertoChange={setImportarAbierto}
+        organizationId={orgId}
+        onImportado={recargar}
+      />
     </div>
   );
 }
+
+const SIN_IDS: string[] = [];

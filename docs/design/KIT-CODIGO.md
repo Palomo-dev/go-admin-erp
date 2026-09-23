@@ -46,6 +46,7 @@ set queda por anotar en la próxima tanda.
 | Hoja de acciones móvil | captura `47-clientes-movil-hoja-de-acciones.png` | `kit/ActionSheet.tsx` (sobre `ui/sheet`) | creado |
 | `BulkActionBar` (`Layout=desktop` · `mobile`) | instancia `518:63246` | `kit/BulkActionBar.tsx` | creado |
 | `ListCard` (`Selección=no · sí`) | `580:277858` | `kit/ListCard.tsx` | creado |
+| `Avatar Size=sm Type=initials` | — (captura `15-clientes-catalogo-listo.png`) | `kit/AvatarIniciales.tsx` | creado (listado de Clientes) |
 | `EmptyState` (`empty · search · error · forbidden`) + `EmptyStateSinSucursal` | — (capturas `09-kit-listas.png`, `47-clientes-movil-sin-resultados.png`) | `kit/EmptyState.tsx` (variante `sinSucursal`) | creado |
 | `Pagination Layout=full` | instancia `518:63238` | `kit/Pagination.tsx` | creado; **`ui/DataTablePagination` pasa a delegar aquí** (24 pantallas heredan la paginación única) |
 | `Pagination Layout=compact` | captura `47-proveedores-movil-referencia.png` | `kit/PaginationCompact.tsx` | creado |
@@ -254,6 +255,10 @@ con selección; en móvil tapa el `MobileTabBar`. Contador · «Seleccionar los 
   onLimpiar={() => setSeleccion(new Set())} />
 ```
 
+Una acción con `menu: GrupoMenuMasivo[]` (`{ titulo?, acciones: AccionFila[] }`) abre un menú
+en lugar de ejecutar `onClick`: «Roles ▾» de Clientes con los grupos «Agregar rol» y «Quitar rol».
+En móvil los grupos se aplanan en la hoja («Agregar rol: Cliente», `aplanarMenuMasivo`).
+
 ### `ListCard` · Figma `580:277858`
 
 Tarjeta móvil de 358 px: icono en caja tintada de 40, título 14/20 medium en una línea,
@@ -262,6 +267,19 @@ Toda la tarjeta abre el detalle; en modo selección gana casilla y borde de marc
 
 Props: `icono`, `titulo`, `subtitulo?`, `meta?`, `valor?`, `estado?`, `onClick?`,
 `acciones?`, `seleccionable?`, `seleccionado?`, `onSeleccionChange?`.
+
+Clientes móvil pasa su avatar de iniciales por `miniatura` (`<AvatarIniciales tamano="md" />`) y
+conserva su información (nombre, Persona/Empresa, documento, contacto, correo, teléfono), un dato
+por línea con elipsis.
+
+Con `onMantenerPulsado` la tarjeta entra en modo selección al mantenerla pulsada 500 ms (o con
+clic derecho) y, en modo selección, tocarla alterna su casilla en lugar de abrir el detalle
+(Figma Clientes móvil, «selección múltiple»). En `DataTable`: `onMantenerPulsado={() => ctx.alternar(true)}`.
+
+### `AvatarIniciales`
+
+Círculo Azul GO con dos iniciales o la foto (si falla, vuelve a las iniciales). `nombre`, `src?`,
+`tamano` (`sm` 32 · `md` 40 · `lg` 64). Un solo color: en el listado el color no significa nada.
 
 ### `EmptyState`
 

@@ -24,8 +24,9 @@ export { ListToolbar, type ListToolbarProps } from './ListToolbar';
 export { DataTable, type DataTableProps, type ColumnaTabla, type EstadoTabla, type ContextoTarjeta } from './DataTable';
 export { RowActionsMenu, type RowActionsMenuProps } from './RowActionsMenu';
 export { ActionSheet, type ActionSheetProps } from './ActionSheet';
-export { BulkActionBar, type BulkActionBarProps, type AccionMasiva } from './BulkActionBar';
+export { BulkActionBar, aplanarMenuMasivo, type BulkActionBarProps, type AccionMasiva, type GrupoMenuMasivo } from './BulkActionBar';
 export { ListCard, type ListCardProps } from './ListCard';
+export { AvatarIniciales, inicialesDe, type AvatarInicialesProps } from './AvatarIniciales';
 export { TabBar, idPestana, idPanel, type TabBarProps, type PestanaTab } from './TabBar';
 export { prepararMenu, MAX_ENTRADAS_MENU, type AccionFila, type EntradaMenu } from './acciones';
 

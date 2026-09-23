@@ -2,11 +2,15 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { Loader2, X, type LucideIcon } from 'lucide-react';
+import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
+import { ChevronDown, Loader2, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { RowActionsMenu } from './RowActionsMenu';
 import type { AccionFila } from './acciones';
 import { formatearEntero, sustantivoPara, type Sustantivo } from './paginacion';
+import { aplanarMenuMasivo, type AccionMasiva } from './menuMasivo';
+
+export { aAccionFila, aplanarMenuMasivo, type AccionMasiva, type GrupoMenuMasivo } from './menuMasivo';
 
 /**
  * Barra de acciones masivas (Figma `BulkActionBar`, PATRONES §1). Aparece
@@ -22,18 +26,6 @@ import { formatearEntero, sustantivoPara, type Sustantivo } from './paginacion';
  * Las acciones son las del dominio y solo las que existen (en facturas,
  * «Anular», no «Eliminar»). Lo destructivo pasa por ConfirmDialog.
  */
-export interface AccionMasiva {
-  id: string;
-  etiqueta: string;
-  icono: LucideIcon;
-  onClick: () => void;
-  destructiva?: boolean;
-  cargando?: boolean;
-  deshabilitada?: boolean;
-  /** Si está deshabilitada, por qué (tooltip nativo y lector de pantalla). */
-  motivo?: string;
-}
-
 export interface BulkActionBarProps {
   seleccionados: number;
   /** Total del listado (todas las páginas) para «Seleccionar los N». */
@@ -50,6 +42,7 @@ export interface BulkActionBarProps {
 const SUSTANTIVO: Sustantivo = { singular: 'elemento', plural: 'elementos' };
 
 function BotonAccion({ accion, compacto }: { accion: AccionMasiva; compacto?: boolean }) {
+  if (accion.menu && accion.menu.length > 0) return <BotonMenu accion={accion} compacto={compacto} />;
   const Icono = accion.cargando ? Loader2 : accion.icono;
   return (
     <button
@@ -74,6 +67,68 @@ function BotonAccion({ accion, compacto }: { accion: AccionMasiva; compacto?: bo
   );
 }
 
+function BotonMenu({ accion, compacto }: { accion: AccionMasiva; compacto?: boolean }) {
+  const Icono = accion.cargando ? Loader2 : accion.icono;
+  return (
+    <DropdownMenuPrimitive.Root modal={false}>
+      <DropdownMenuPrimitive.Trigger asChild>
+        <button
+          type="button"
+          disabled={accion.deshabilitada || accion.cargando}
+          title={accion.deshabilitada ? accion.motivo : undefined}
+          aria-busy={accion.cargando || undefined}
+          className={cn(
+            'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-line-strong bg-surface font-medium text-fg transition-colors hover:bg-hover',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:bg-hover',
+            compacto ? 'h-10 px-3 text-sm' : 'h-8 px-3 text-[13px]',
+          )}
+        >
+          <Icono aria-hidden="true" className={cn('size-4 shrink-0', accion.cargando && 'animate-spin')} strokeWidth={1.5} />
+          <span className="truncate">{accion.etiqueta}</span>
+          <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-fg-secondary" strokeWidth={1.5} />
+        </button>
+      </DropdownMenuPrimitive.Trigger>
+      <DropdownMenuPrimitive.Portal>
+        <DropdownMenuPrimitive.Content
+          side="top"
+          align="start"
+          sideOffset={8}
+          collisionPadding={8}
+          className="z-50 max-h-[min(480px,var(--radix-dropdown-menu-content-available-height))] min-w-[200px] overflow-y-auto rounded-xl border border-line bg-surface p-1 text-fg shadow-lg outline-none"
+        >
+          {(accion.menu ?? []).map((grupo, i) => (
+            <DropdownMenuPrimitive.Group key={grupo.titulo ?? i}>
+              {i > 0 && <DropdownMenuPrimitive.Separator className="-mx-1 my-1 h-px bg-line" />}
+              {grupo.titulo && (
+                <DropdownMenuPrimitive.Label className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-fg-muted">
+                  {grupo.titulo}
+                </DropdownMenuPrimitive.Label>
+              )}
+              {grupo.acciones
+                .filter((a) => !a.oculta)
+                .map((a) => (
+                  <DropdownMenuPrimitive.Item
+                    key={a.id}
+                    disabled={a.deshabilitada}
+                    onSelect={() => a.onSelect()}
+                    className={cn(
+                      'flex min-h-9 cursor-pointer select-none items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm outline-none',
+                      'data-[highlighted]:bg-hover data-[disabled]:cursor-not-allowed data-[disabled]:opacity-60',
+                      a.destructiva ? 'text-danger-text' : 'text-fg',
+                    )}
+                  >
+                    <a.icono aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.5} />
+                    <span className="truncate">{a.etiqueta}</span>
+                  </DropdownMenuPrimitive.Item>
+                ))}
+            </DropdownMenuPrimitive.Group>
+          ))}
+        </DropdownMenuPrimitive.Content>
+      </DropdownMenuPrimitive.Portal>
+    </DropdownMenuPrimitive.Root>
+  );
+}
+
 function BotonLimpiar({ onLimpiar, grande }: { onLimpiar: () => void; grande?: boolean }) {
   return (
     <button
@@ -88,18 +143,6 @@ function BotonLimpiar({ onLimpiar, grande }: { onLimpiar: () => void; grande?: b
       <X aria-hidden="true" className="size-4" strokeWidth={1.5} />
     </button>
   );
-}
-
-function aAccionFila(a: AccionMasiva): AccionFila {
-  return {
-    id: a.id,
-    etiqueta: a.etiqueta,
-    icono: a.icono,
-    onSelect: a.onClick,
-    destructiva: a.destructiva,
-    deshabilitada: a.deshabilitada || a.cargando,
-    motivo: a.motivo,
-  };
 }
 
 export function BulkActionBar({
@@ -142,7 +185,7 @@ export function BulkActionBar({
 
   // Móvil: la primera acción visible, el resto a la hoja.
   const [primeraMovil, ...restoMovil] = acciones;
-  const secundariasMovil = [...restoMovil.map(aAccionFila), ...accionesSecundarias];
+  const secundariasMovil = [...restoMovil.flatMap(aplanarMenuMasivo), ...accionesSecundarias];
 
   return (
     <>

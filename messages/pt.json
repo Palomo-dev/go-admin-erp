@@ -2245,6 +2245,7 @@
     "upToDate": "Em dia",
     "yesterday": "ontem",
     "feedbackCapturing": "Fazendo a captura…",
-    "reportProblemShort": "Relatar problema"
+    "reportProblemShort": "Relatar problema",
+    "back": "Voltar"
   }
 }

@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase/config';
 import { isAuthenticated } from '@/lib/supabase/auth-manager';
 import { AppHeader } from '@/components/shell/header/AppHeader';
 import { abrirReportarProblema } from '@/components/shell/header/ReportarProblema';
+import { CabeceraMovilProvider } from '@/components/shell/header/cabeceraMovil';
 import type { PaginaBuscable } from './Header/GlobalSearch';
 import AIAssistantPanel from './Header/AIAssistantPanel';
 import { SidebarShell } from '@/components/shell/sidebar/SidebarShell';
@@ -918,6 +919,7 @@ export const AppLayout = ({
       {/* Indicador offline para app de escritorio */}
       <OfflineIndicator />
       
+      <CabeceraMovilProvider>
       <div className="flex h-dynamic-screen overflow-hidden">
       {/* Sidebar, panel de submenú y drawer móvil (src/components/shell/sidebar). */}
       <SidebarShell
@@ -967,8 +969,8 @@ export const AppLayout = ({
         />
         
         {/* Contenido principal con scroll */}
-        {/* En móvil deja sitio a la barra inferior (MobileTabBar, 64 px + zona segura). */}
-        <div className="flex-1 overflow-y-auto bg-canvas overscroll-contain min-w-0 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
+        {/* En móvil deja sitio a la barra inferior cuando se ve (MobileTabBar fija --shell-barra-inferior). */}
+        <div className="flex-1 overflow-y-auto bg-canvas overscroll-contain min-w-0 max-lg:pb-[var(--shell-barra-inferior,0px)]">
           <div className="h-full min-w-0 w-full">
             {/* Desktop sin red (fase 4C): «Estás viendo datos locales del hh:mm» en todos los módulos. */}
             <LocalDataNotice className="mx-4 mt-3 sm:mx-6 lg:mx-8" />
@@ -1028,6 +1030,7 @@ export const AppLayout = ({
       )}
 
       </div>
+      </CabeceraMovilProvider>
       </BranchProvider>
       </SoftphoneProvider>
     </ModuleProvider>

@@ -118,7 +118,7 @@ export default function ModuleLimitNotification({
 
   return (
     <div
-      className="fixed bottom-4 right-4 z-50 w-[22rem] max-w-[calc(100vw-2rem)] max-lg:bottom-[calc(4.5rem+env(safe-area-inset-bottom))] animate-in slide-in-from-bottom-2 fade-in duration-300"
+      className="fixed bottom-4 right-4 z-50 w-[22rem] max-w-[calc(100vw-2rem)] max-lg:bottom-[calc(var(--shell-barra-inferior,0px)+1rem)] animate-in slide-in-from-bottom-2 fade-in duration-300"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

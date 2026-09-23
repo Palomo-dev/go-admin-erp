@@ -37,6 +37,9 @@ import { CajasService } from '@/components/pos/cajas/CajasService';
 import { useBlindCloseMode } from '@/components/pos/cajas/useBlindCloseMode';
 import type { CashSession } from '@/components/pos/cajas/types';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 
 /** Clave de localStorage con el ancho elegido para el panel de carrito/pago. */
 const POS_LAYOUT_ID = 'pos-layout-productos-carrito';
@@ -62,6 +65,17 @@ export default function POSPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isOrgAdmin, setIsOrgAdmin] = useState(false);
   const { showExpected } = useBlindCloseMode();
+  const { timezone } = useOrgTimezone();
+  // Shell móvil (Figma MobileHeader Mode=pos y MobileTabBar): la cabecera
+  // muestra el estado de la caja, y la barra inferior se oculta con el carrito
+  // abierto o cobrando, donde manda la botonera «Cobrar».
+  useCabeceraMovil({
+    modo: 'pos',
+    estadoPos: cashSession
+      ? { texto: `Caja abierta · ${formatTimeInTz(cashSession.opened_at, timezone)}`, tono: 'exito' }
+      : { texto: 'Caja cerrada', tono: 'advertencia' },
+    ocultarBarra: mobileView === 'cart' || showCheckout,
+  });
   // Escritorio (≥ lg): productos y carrito en paneles redimensionables. El
   // ancho elegido se recuerda por navegador; doble clic en el divisor lo
   // restablece. En móvil se conserva la vista de pantalla completa por sección.
@@ -794,7 +808,7 @@ export default function POSPage() {
           <button
             onClick={() => setMobileView('cart')}
             className={cn(
-              'lg:hidden fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-xl text-white font-semibold text-sm transition-all active:scale-95',
+              'lg:hidden fixed bottom-[calc(var(--shell-barra-inferior,0px)+1.5rem)] right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-xl text-white font-semibold text-sm transition-all active:scale-95',
               activeCart && activeCart.items.length > 0
                 ? 'bg-blue-600 hover:bg-blue-700'
                 : 'bg-gray-600 hover:bg-gray-700',

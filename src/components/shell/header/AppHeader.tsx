@@ -8,26 +8,38 @@
  * buscador (Ctrl K), «Reportar problema», la campana y GO Asistente. El tema y
  * el perfil ya no están aquí: viven en el bloque de sesión del sidebar.
  *
- * Móvil, 56 px: «Org / Sucursal» y la lupa. La navegación baja a la barra
- * inferior: Inicio · Ventas · GO Asistente · Alertas · Menú.
+ * Móvil, 56 px, en tres modos (cabeceraMovil.tsx): raíz con «Org / Sucursal»
+ * y la lupa; página con «←», título y acción; POS con el estado de la caja.
+ * La navegación baja a la barra inferior: Inicio · Ventas · GO Asistente ·
+ * Alertas · Menú, que se oculta en formularios, en el POS al cobrar y con el
+ * teclado abierto.
  *
  * Los avisos de prueba y de correo sin verificar van debajo, como antes.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Bell, Bot, Home, Menu, Search, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Bell, Bot, Home, Menu, Search, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import GlobalSearch, { ABRIR_BUSCADOR_EVENT, type PaginaBuscable } from '@/components/app-layout/Header/GlobalSearch';
 import { TrialBanner } from '@/components/app-layout/Header/TrialBanner';
 import { EmailVerificationBanner } from '@/components/app-layout/Header/EmailVerificationBanner';
-import type { SeccionVisible } from '@/lib/navigation/filtrar';
+import { rutaActiva, type SeccionVisible } from '@/lib/navigation/filtrar';
 import { OrgSwitcher } from './OrgSwitcher';
 import { FeedbackButton, ReportarProblemaDialog } from './ReportarProblema';
 import { DetalleNotificacion, NotificationsBell, PanelNotificaciones, textoContador } from './Notificaciones';
 import { useNotificacionesHeader, type NotificacionHeader } from './useNotificacionesHeader';
+import {
+  esFormularioPorRuta,
+  modoPorRuta,
+  rutaPadre,
+  useCabeceraMovilActual,
+  useTecladoAbierto,
+  type CabeceraMovilPagina,
+} from './cabeceraMovil';
 
 const abrirBuscador = () => window.dispatchEvent(new Event(ABRIR_BUSCADOR_EVENT));
 
@@ -57,6 +69,9 @@ export function AppHeader({
   const t = useTranslations('header');
   const notificaciones = useNotificacionesHeader(organizacionId);
   const orgNum = organizacionId ? parseInt(organizacionId, 10) : null;
+  const pagina = useCabeceraMovilActual();
+  const teclado = useTecladoAbierto();
+  const ocultarBarra = (pagina?.ocultarBarra ?? esFormularioPorRuta(pathname)) || teclado;
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -92,20 +107,13 @@ export function AppHeader({
           </button>
         </div>
 
-        {/* Móvil */}
-        <div className="flex h-14 items-center gap-2 px-4 lg:hidden">
-          <div className="min-w-0 flex-1">
-            <OrgSwitcher variante="movil" organizacionId={orgNum} organizacionNombre={organizacionNombre} />
-          </div>
-          <button
-            type="button"
-            onClick={abrirBuscador}
-            aria-label={t('search')}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-fg-secondary hover:bg-hover"
-          >
-            <Search className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
+        {/* Móvil: raíz, página o POS (ver cabeceraMovil.tsx) */}
+        <MobileHeader
+          pathname={pathname}
+          pagina={pagina}
+          organizacionId={orgNum}
+          organizacionNombre={organizacionNombre}
+        />
 
         <TrialBanner orgId={organizacionId} />
         <EmailVerificationBanner />
@@ -114,6 +122,7 @@ export function AppHeader({
       <GlobalSearch sinDisparador paginas={paginasBuscables} />
       <ReportarProblemaDialog organizacionId={orgNum} organizacionNombre={organizacionNombre} correo={correo} />
       <MobileTabBar
+        visible={!ocultarBarra}
         pathname={pathname}
         secciones={secciones}
         pendientes={notificaciones.pendientes}
@@ -126,7 +135,87 @@ export function AppHeader({
   );
 }
 
+function MobileHeader({
+  pathname,
+  pagina,
+  organizacionId,
+  organizacionNombre,
+}: {
+  pathname: string | null;
+  pagina: CabeceraMovilPagina | null;
+  organizacionId: number | null;
+  organizacionNombre: string;
+}) {
+  const t = useTranslations('header');
+  const tNav = useTranslations('nav');
+  const router = useRouter();
+  const modo = pagina?.modo ?? modoPorRuta(pathname);
+
+  const buscar = (
+    <button
+      type="button"
+      onClick={abrirBuscador}
+      aria-label={t('search')}
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-fg-secondary hover:bg-hover"
+    >
+      <Search className="h-5 w-5" aria-hidden="true" />
+    </button>
+  );
+
+  if (modo === 'page') {
+    // Título: el que declare la página, o la página del menú a la que pertenece la ruta.
+    const activa = rutaActiva(pathname);
+    const titulo = pagina?.titulo ?? activa?.pagina?.nombre ?? (activa ? tNav(activa.modulo.etiqueta) : '');
+    const subtitulo = pagina?.subtitulo ?? organizacionNombre;
+    const volver = () => {
+      if (window.history.length > 1) router.back();
+      else router.push(pagina?.volverA ?? rutaPadre(pathname));
+    };
+    return (
+      <div className="flex h-14 items-center gap-1 pl-1 pr-2 lg:hidden">
+        <button
+          type="button"
+          onClick={volver}
+          aria-label={t('back')}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover"
+        >
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+        </button>
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* <p> y no <h1>: el título principal sigue siendo el de la página. */}
+          <p className="truncate text-base font-semibold leading-[22px] text-fg">{titulo}</p>
+          {subtitulo && <p className="truncate text-xs font-medium leading-4 text-fg-secondary">{subtitulo}</p>}
+        </div>
+        {pagina?.accion ?? null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-14 items-center gap-2 px-4 lg:hidden">
+      <div className="min-w-0 flex-1">
+        <OrgSwitcher variante="movil" organizacionId={organizacionId} organizacionNombre={organizacionNombre} />
+      </div>
+      {modo === 'pos' && pagina?.estadoPos ? (
+        <span
+          className={cn(
+            'shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold',
+            pagina.estadoPos.tono === 'exito'
+              ? 'border-line-success bg-success-subtle text-success-text'
+              : 'border-line-warning bg-warning-subtle text-warning-text'
+          )}
+        >
+          {pagina.estadoPos.texto}
+        </span>
+      ) : (
+        buscar
+      )}
+    </div>
+  );
+}
+
 function MobileTabBar({
+  visible,
   pathname,
   secciones,
   pendientes,
@@ -135,6 +224,7 @@ function MobileTabBar({
   onAlternarAsistente,
   onAbrirMenu,
 }: {
+  visible: boolean;
   pathname: string | null;
   secciones: SeccionVisible[];
   pendientes: number;
@@ -146,6 +236,14 @@ function MobileTabBar({
   const t = useTranslations('header');
   const [alertas, setAlertas] = useState(false);
   const [detalle, setDetalle] = useState<NotificacionHeader | null>(null);
+
+  // El contenido y los avisos flotantes dejan sitio a la barra solo cuando se ve.
+  useEffect(() => {
+    document.documentElement.style.setProperty('--shell-barra-inferior', visible ? 'calc(4rem + env(safe-area-inset-bottom))' : '0px');
+    return () => {
+      document.documentElement.style.removeProperty('--shell-barra-inferior');
+    };
+  }, [visible]);
 
   // «Ventas» lleva al primer módulo visible de la sección Ventas (POS, PMS,
   // gimnasio…): el plan de la organización decide cuál existe.
@@ -162,6 +260,7 @@ function MobileTabBar({
 
   return (
     <>
+      {visible && (
       <nav
         aria-label={t('mobileNavigation')}
         className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-stretch border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
@@ -205,6 +304,7 @@ function MobileTabBar({
           {t('tabMenu')}
         </button>
       </nav>
+      )}
 
       <Sheet open={alertas} onOpenChange={setAlertas}>
         <SheetContent side="bottom" hideCloseButton className="max-h-[90dvh] rounded-t-2xl border-line bg-surface p-0 pb-[env(safe-area-inset-bottom)]">

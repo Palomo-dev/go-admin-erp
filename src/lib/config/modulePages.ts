@@ -1,267 +1,43 @@
 /**
- * Mapeo estático de códigos de módulo a sus páginas/submódulos.
- * Usado por: moduleManagementService, ModulesMarketplacePage, AppLayout, SidebarNavigation, SubMenuPanel.
- * Debe mantenerse sincronizado con MODULES_WITH_SUBMENU en AppLayout.tsx.
+ * Páginas de cada módulo, tal como las usan la activación de páginas por
+ * organización (`organization_module_pages`), los permisos por cargo y la
+ * redirección al primer módulo.
+ *
+ * Ya NO es una lista escrita a mano: se deriva de `src/lib/navigation/catalog.ts`,
+ * la única fuente de módulos y páginas. Antes era una tercera copia que había
+ * que «mantener sincronizada con MODULES_WITH_SUBMENU en AppLayout.tsx», y no
+ * lo estaba (el CRM tenía 10 páginas aquí y 16 en el sidebar, así que las seis
+ * restantes no se podían activar ni asignar a un cargo).
+ *
+ * La API pública no cambia.
  */
+import { CATALOGO_NAV } from '@/lib/navigation/catalog';
 
 export interface ModulePage {
   name: string;
   href: string;
 }
 
-export const MODULE_PAGES: Record<string, ModulePage[]> = {
-  clientes: [
-    { name: 'Clientes', href: '/app/clientes' },
-  ],
-  crm: [
-    { name: 'Clientes', href: '/app/crm/clientes' },
-    { name: 'Pipeline', href: '/app/crm/pipeline' },
-    { name: 'Oportunidades', href: '/app/crm/oportunidades' },
-    { name: 'Equipo', href: '/app/crm/equipo' },
-    { name: 'Pronóstico', href: '/app/crm/pronostico' },
-    { name: 'Actividades', href: '/app/crm/actividades' },
-    { name: 'Segmentos', href: '/app/crm/segmentos' },
-    { name: 'Campañas', href: '/app/crm/campanas' },
-    { name: 'Salud Clientes', href: '/app/crm/salud' },
-    { name: 'Identidades', href: '/app/crm/identidades' },
-  ],
-  hrm: [
-    { name: 'Empleados', href: '/app/hrm/empleados' },
-    { name: 'Departamentos', href: '/app/hrm/departamentos' },
-    { name: 'Cargos', href: '/app/hrm/cargos' },
-    { name: 'Turnos', href: '/app/hrm/turnos' },
-    { name: 'Marcación', href: '/app/hrm/marcacion' },
-    { name: 'Asistencia', href: '/app/hrm/asistencia' },
-    { name: 'Ausencias', href: '/app/hrm/ausencias' },
-    { name: 'Nómina', href: '/app/hrm/nomina' },
-    { name: 'Compensación', href: '/app/hrm/compensacion' },
-    { name: 'Préstamos', href: '/app/hrm/prestamos' },
-    { name: 'Reglas País', href: '/app/hrm/reglas-pais' },
-  ],
-  finance: [
-    { name: 'Facturas de venta', href: '/app/finanzas/facturas-venta' },
-    { name: 'Cotizaciones', href: '/app/finanzas/cotizaciones' },
-    { name: 'Facturas de compra', href: '/app/finanzas/facturas-compra' },
-    { name: 'Notas de crédito', href: '/app/finanzas/notas-credito' },
-    { name: 'Ingresos', href: '/app/finanzas/ingresos' },
-    { name: 'Egresos', href: '/app/finanzas/egresos' },
-    { name: 'Transferencias', href: '/app/finanzas/transferencias' },
-    { name: 'Cuentas por cobrar', href: '/app/finanzas/cuentas-por-cobrar' },
-    { name: 'Saldos a favor', href: '/app/finanzas/saldos-a-favor' },
-    { name: 'Cuentas por pagar', href: '/app/finanzas/cuentas-por-pagar' },
-    { name: 'Bancos', href: '/app/finanzas/bancos' },
-    { name: 'Contabilidad', href: '/app/finanzas/contabilidad' },
-    { name: 'Plan de Cuentas', href: '/app/finanzas/contabilidad/plan-cuentas' },
-    { name: 'Asientos', href: '/app/finanzas/contabilidad/asientos' },
-    { name: 'Balance de Comprobación', href: '/app/finanzas/contabilidad/balance-comprobacion' },
-    { name: 'Estado de Resultados', href: '/app/finanzas/contabilidad/estado-resultados' },
-    { name: 'Balance General', href: '/app/finanzas/contabilidad/balance-general' },
-    { name: 'Mayor Contable', href: '/app/finanzas/contabilidad/mayor-contable' },
-    { name: 'Reglas Contables', href: '/app/finanzas/reglas-contables' },
-    { name: 'Períodos Fiscales', href: '/app/finanzas/contabilidad/periodos-fiscales' },
-    { name: 'Centro de Costos', href: '/app/finanzas/centro-costos' },
-    { name: 'Activos Fijos', href: '/app/finanzas/activos-fijos' },
-    { name: 'Presupuestos', href: '/app/finanzas/presupuestos' },
-    { name: 'Facturación Electrónica', href: '/app/finanzas/facturacion-electronica' },
-    { name: 'Documentos Soporte', href: '/app/finanzas/documentos-soporte' },
-    { name: 'Impuestos', href: '/app/finanzas/impuestos' },
-    { name: 'Monedas', href: '/app/finanzas/monedas' },
-    { name: 'Métodos de pago', href: '/app/finanzas/metodos-pago' },
-    { name: 'Comisiones', href: '/app/finanzas/comisiones' },
-  ],
-  inventory: [
-    { name: 'Productos', href: '/app/inventario/productos' },
-    { name: 'Stock', href: '/app/inventario/stock' },
-    { name: 'Movimientos', href: '/app/inventario/movimientos' },
-    { name: 'Ajustes', href: '/app/inventario/ajustes' },
-    { name: 'Transferencias', href: '/app/inventario/transferencias' },
-    { name: 'Categorías', href: '/app/inventario/categorias' },
-    { name: 'Etiquetas', href: '/app/inventario/etiquetas' },
-    { name: 'Unidades', href: '/app/inventario/unidades' },
-    { name: 'Conversiones', href: '/app/inventario/conversiones' },
-    { name: 'Variantes - Tipos', href: '/app/inventario/variantes/tipos' },
-    { name: 'Variantes - Valores', href: '/app/inventario/variantes/valores' },
-    { name: 'Lotes', href: '/app/inventario/lotes' },
-    { name: 'Seriales', href: '/app/inventario/seriales' },
-    { name: 'Garantías', href: '/app/inventario/garantias' },
-    { name: 'Imágenes', href: '/app/inventario/imagenes' },
-    { name: 'Proveedores', href: '/app/inventario/proveedores' },
-    { name: 'Órdenes de Compra', href: '/app/inventario/ordenes-compra' },
-    { name: 'Recetas', href: '/app/inventario/recetas' },
-    { name: 'Producción', href: '/app/inventario/produccion' },
-    { name: 'Distribución', href: '/app/inventario/distribucion' },
-    { name: 'Trazabilidad', href: '/app/inventario/reportes/trazabilidad' },
-    { name: 'Costo Recetas', href: '/app/inventario/reportes/costo-recetas' },
-  ],
-  pos: [
-    { name: 'POS', href: '/app/pos' },
-    { name: 'Pedidos Online', href: '/app/pos/pedidos-online' },
-    { name: 'Ventas', href: '/app/pos/ventas' },
-    { name: 'Cajas', href: '/app/pos/cajas' },
-    { name: 'Mesas', href: '/app/pos/mesas' },
-    { name: 'Reservas Mesas', href: '/app/pos/reservas-mesas' },
-    { name: 'Comandas', href: '/app/pos/comandas' },
-    { name: 'Devoluciones', href: '/app/pos/devoluciones' },
-    { name: 'Propinas', href: '/app/pos/propinas' },
-    { name: 'Cargos Servicio', href: '/app/pos/cargos-servicio' },
-    { name: 'Cupones', href: '/app/pos/cupones' },
-    { name: 'Promociones', href: '/app/pos/promociones' },
-    { name: 'Cuentas por Cobrar', href: '/app/pos/cuentas-por-cobrar' },
-  ],
-  pms_hotel: [
-    { name: 'Calendario', href: '/app/pms/calendario' },
-    { name: 'Reservas', href: '/app/pms/reservas' },
-    { name: 'Grupos', href: '/app/pms/grupos' },
-    { name: 'Asignaciones', href: '/app/pms/asignaciones' },
-    { name: 'Llegadas (Check-in)', href: '/app/pms/checkin' },
-    { name: 'Salidas (Check-out)', href: '/app/pms/checkout' },
-    { name: 'Espacios', href: '/app/pms/espacios' },
-    { name: 'Servicios', href: '/app/pms/servicios' },
-    { name: 'Tipos de Espacio', href: '/app/pms/tipos-espacio' },
-    { name: 'Categorías', href: '/app/pms/categorias' },
-    { name: 'Tarifas', href: '/app/pms/tarifas' },
-    { name: 'Limpieza', href: '/app/pms/housekeeping' },
-    { name: 'Mantenimiento', href: '/app/pms/mantenimiento' },
-    { name: 'Consumos', href: '/app/pms/folios' },
-    { name: 'Origenes', href: '/app/pms/origenes' },
-    { name: 'Channel Manager', href: '/app/pms/channel-manager' },
-    { name: 'Parquedero', href: '/app/pms/parking' },
-  ],
-  pm: [
-    { name: 'Proyectos', href: '/app/pm/proyectos' },
-    { name: 'Metas', href: '/app/pm/metas' },
-    { name: 'Tareas', href: '/app/pm/tareas' },
-  ],
-  chat: [
-    { name: 'Bandeja', href: '/app/chat/bandeja' },
-    { name: 'Canales', href: '/app/chat/canales' },
-    { name: 'Conocimiento', href: '/app/chat/conocimiento' },
-    { name: 'IA', href: '/app/chat/ia' },
-    { name: 'Configuración', href: '/app/chat/configuracion/etiquetas' },
-    { name: 'Config. IA', href: '/app/chat/ia/configuracion' },
-    { name: 'Widget', href: '/app/chat/widget/sesiones' },
-    { name: 'Auditoría', href: '/app/chat/auditoria' },
-  ],
-  calendar: [
-    { name: 'Vista General', href: '/app/calendario' },
-    { name: 'Recurrencias', href: '/app/calendario/recurrencias' },
-    { name: 'Importar', href: '/app/calendario/importar' },
-  ],
-  organizations: [
-    { name: 'Información', href: '/app/organizacion/informacion' },
-    { name: 'Sitio Web', href: '/app/organizacion/branding' },
-    { name: 'Dominios', href: '/app/organizacion/dominios' },
-    { name: 'Miembros', href: '/app/organizacion/miembros' },
-    { name: 'Invitaciones', href: '/app/organizacion/invitaciones' },
-    { name: 'Sucursales', href: '/app/organizacion/sucursales' },
-    { name: 'Módulos', href: '/app/organizacion/modulos' },
-    { name: 'Mi Plan', href: '/app/organizacion/plan' },
-    { name: 'Mis Organizaciones', href: '/app/organizacion/mis-organizaciones' },
-  ],
-  roles: [
-    { name: 'Roles y Permisos', href: '/app/roles' },
-  ],
-  gym: [
-    { name: 'Check-in', href: '/app/gym/checkin' },
-    { name: 'Membresías', href: '/app/gym/membresias' },
-    { name: 'Planes', href: '/app/gym/planes' },
-    { name: 'Clases', href: '/app/gym/clases' },
-    { name: 'Horarios', href: '/app/gym/horarios' },
-    { name: 'Reservaciones', href: '/app/gym/reservaciones' },
-    { name: 'Instructores', href: '/app/gym/instructores' },
-  ],
-  parking: [
-    { name: 'Operación', href: '/app/parking/operacion' },
-    { name: 'Sesiones', href: '/app/parking/sesiones' },
-    { name: 'Abonados', href: '/app/parking/abonados' },
-    { name: 'Planes', href: '/app/parking/planes' },
-    { name: 'Pagos', href: '/app/parking/pagos' },
-    { name: 'Tarifas', href: '/app/parking/tarifas' },
-    { name: 'Espacios', href: '/app/parking/espacios' },
-    { name: 'Zonas', href: '/app/parking/zonas' },
-    { name: 'Mapa', href: '/app/parking/mapa' },
-  ],
-  transport: [
-    { name: 'Transportadoras', href: '/app/transporte/transportadoras' },
-    { name: 'Vehículos', href: '/app/transporte/vehiculos' },
-    { name: 'Conductores', href: '/app/transporte/conductores' },
-    { name: 'Paradas', href: '/app/transporte/paradas' },
-    { name: 'Rutas', href: '/app/transporte/rutas' },
-    { name: 'Horarios', href: '/app/transporte/horarios' },
-    { name: 'Direcciones Clientes', href: '/app/transporte/direcciones-clientes' },
-    { name: 'Viajes', href: '/app/transporte/viajes' },
-    { name: 'Boletos', href: '/app/transporte/boletos' },
-    { name: 'Tarifas Pasajeros', href: '/app/transporte/tarifas-pasajeros' },
-    { name: 'Envíos', href: '/app/transporte/envios' },
-    { name: 'Mis Envíos', href: '/app/transporte/mis-envios' },
-    { name: 'Tarifas Envío', href: '/app/transporte/tarifas-envio' },
-    { name: 'Tracking', href: '/app/transporte/tracking' },
-    { name: 'Etiquetas', href: '/app/transporte/etiquetas' },
-    { name: 'Manifiestos', href: '/app/transporte/manifiestos' },
-    { name: 'Incidentes', href: '/app/transporte/incidentes' },
-  ],
-  notifications: [
-    { name: 'Notificaciones', href: '/app/notificaciones' },
-    { name: 'Bandeja', href: '/app/notificaciones/bandeja' },
-    { name: 'Alertas', href: '/app/notificaciones/alertas' },
-    { name: 'Reglas', href: '/app/notificaciones/reglas' },
-    { name: 'Canales', href: '/app/notificaciones/canales' },
-    { name: 'Plantillas', href: '/app/notificaciones/plantillas' },
-    { name: 'Logs de Envío', href: '/app/notificaciones/logs' },
-  ],
-  integrations: [
-    { name: 'Conexiones', href: '/app/integraciones/conexiones' },
-    { name: 'Eventos', href: '/app/integraciones/eventos' },
-    { name: 'Jobs', href: '/app/integraciones/jobs' },
-    { name: 'Mapeos', href: '/app/integraciones/mapeos' },
-    { name: 'API Keys', href: '/app/integraciones/api-keys' },
-    { name: 'Webhooks', href: '/app/integraciones/webhooks-salientes' },
-  ],
-  reports: [
-    { name: 'Reportes', href: '/app/reportes' },
-  ],
-  configuracion: [
-    { name: 'Configuración', href: '/app/configuracion' },
-  ],
-};
+export const MODULE_PAGES: Record<string, ModulePage[]> = Object.fromEntries(
+  CATALOGO_NAV.filter((m) => m.codigo !== null).map((m) => [
+    m.codigo as string,
+    m.paginas.map((p) => ({ name: p.nombre, href: p.href })),
+  ])
+);
 
-/**
- * Obtener las páginas de un módulo por su código
- */
+/** Obtener las páginas de un módulo por su código. */
 export function getModulePages(moduleCode: string): ModulePage[] {
   return MODULE_PAGES[moduleCode] || [];
 }
 
-/**
- * Mapeo de href de módulo a código de módulo
- */
-export const MODULE_HREF_TO_CODE: Record<string, string> = {
-  '/app/crm': 'crm',
-  '/app/hrm': 'hrm',
-  '/app/finanzas': 'finance',
-  '/app/inventario': 'inventory',
-  '/app/pos': 'pos',
-  '/app/pms': 'pms_hotel',
-  '/app/pm': 'pm',
-  '/app/chat': 'chat',
-  '/app/calendario': 'calendar',
-  '/app/organizacion': 'organizations',
-  '/app/admin': 'roles',
-  '/app/roles': 'roles',
-  '/app/clientes': 'clientes',
-  '/app/gym': 'gym',
-  '/app/parking': 'parking',
-  '/app/transporte': 'transport',
-  '/app/notificaciones': 'notifications',
-  '/app/integraciones': 'integrations',
-  '/app/timeline': 'operations',
-  '/app/reportes': 'reports',
-  '/app/configuracion': 'configuracion',
-};
+/** Prefijo de ruta → código de módulo. */
+export const MODULE_HREF_TO_CODE: Record<string, string> = Object.fromEntries(
+  CATALOGO_NAV.filter((m) => m.codigo !== null).flatMap((m) =>
+    m.rutas.map((ruta) => [ruta, m.codigo as string])
+  )
+);
 
-/**
- * Obtener el código de módulo basado en el href
- */
+/** Obtener el código de módulo basado en el href. */
 export function getModuleCodeByHref(href: string): string | null {
   for (const [moduleHref, code] of Object.entries(MODULE_HREF_TO_CODE)) {
     if (href === moduleHref || href.startsWith(moduleHref + '/')) {

@@ -210,6 +210,22 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
     setShowForm(true);
   };
 
+  // «Crear sucursal» del selector del header (OrgSwitcher) llega con ?crear=1:
+  // abre este mismo formulario una vez cargada la lista, y limpia el parámetro.
+  const abiertoDesdeHeader = useRef(false);
+  useEffect(() => {
+    if (loading || abiertoDesdeHeader.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('crear') !== '1') return;
+    abiertoDesdeHeader.current = true;
+    params.delete('crear');
+    const resto = params.toString();
+    window.history.replaceState(null, '', window.location.pathname + (resto ? `?${resto}` : ''));
+    void handleCreate();
+    // handleCreate se recrea en cada render; basta con reaccionar al fin de la carga.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
   const handleEdit = (branch: Branch) => {
     setEditingBranch(branch);
     setError(null);

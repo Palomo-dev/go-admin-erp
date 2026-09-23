@@ -1812,3 +1812,56 @@ describe('24. Tokens de diseño: Figma → tokens.css → Tailwind', () => {
     expect(config).not.toMatch(/#0070f3/i);
   });
 });
+
+describe('25. Shell: un solo catálogo de navegación y nada decidido por el nombre del rol', () => {
+  // El menú tuvo cuatro copias (sidebar, DynamicSidebar, AppLayout y
+  // modulePages) que ya no coincidían entre sí. Desde el rediseño del shell la
+  // única fuente es `src/lib/navigation/catalog.ts`; lo demás se deriva.
+  const shellDirs = ['components/shell', 'components/app-layout'].map((d) => path.join(SRC_ROOT, d));
+  const archivosShell = shellDirs.flatMap((d) => walkDir(d)).filter((f) => !/__tests__/.test(f));
+
+  test('los componentes del shell viejo no vuelven', () => {
+    const retirados = [
+      'components/app-layout/Sidebar',
+      'components/layout/DynamicSidebar.tsx',
+      'components/layout/sidebar',
+      'components/common/BranchSelector.tsx',
+      'components/common/OrganizationSelector.tsx',
+      'components/app-layout/Header/AppHeader.tsx',
+      'components/app-layout/Header/NotificationsMenu.tsx',
+      'components/app-layout/ProfileDropdownMenu.tsx',
+    ];
+    const presentes = retirados.filter((r) => fs.existsSync(path.join(SRC_ROOT, r)));
+    expect(presentes).toEqual([]);
+  });
+
+  test('ningún archivo del shell declara su propia lista de módulos o rutas', () => {
+    const conLista = archivosShell
+      .filter((f) => {
+        const src = readFile(f);
+        const rutas = src.match(/href:\s*['"`]\/app\//g) ?? [];
+        return /(const|let|var)\s+MODULES_WITH_SUBMENU/.test(src) || rutas.length > 3;
+      })
+      .map(rel);
+    expect(conLista).toEqual([]);
+  });
+
+  test('modulePages.ts se deriva del catálogo', () => {
+    const src = readFile(path.join(SRC_ROOT, 'lib/config/modulePages.ts'));
+    expect(src).toMatch(/from '@\/lib\/navigation\/catalog'/);
+    expect(src.match(/href:\s*['"`]\/app\//g) ?? []).toEqual([]);
+  });
+
+  test('el shell y branchService no deciden permisos comparando el nombre del rol', () => {
+    const archivos = [...archivosShell, path.join(SRC_ROOT, 'lib/services/branchService.ts')];
+    // Solo comparaciones con nombres de rol de administración: `message.role ===
+    // 'user'` (rol de un mensaje del chat) no es un permiso.
+    const patron =
+      /(role_?name|\.role|rolename)\s*===?\s*['"`](super admin|admin de organización|administrador|admin|owner|propietario)['"`]|['"`](super admin|admin de organización|administrador|admin|owner|propietario)['"`]\s*===?/i;
+    // El patrón tiene que atrapar lo que se retiró de branchService.
+    expect(patron.test("isAdmin = roleName === 'Super Admin' || roleName === 'Admin de organización';")).toBe(true);
+    expect(patron.test("message.role === 'user'")).toBe(false);
+    const infractores = archivos.filter((f) => patron.test(readFile(f))).map(rel);
+    expect(infractores).toEqual([]);
+  });
+});

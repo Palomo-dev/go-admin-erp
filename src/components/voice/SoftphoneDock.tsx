@@ -82,7 +82,7 @@ export function SoftphoneDock() {
         <button
           type="button"
           onClick={() => setCollapsed(false)}
-          className="fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
+          className="fixed bottom-4 right-4 z-50 max-lg:bottom-[calc(4.5rem+env(safe-area-inset-bottom))] flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
           aria-label={`Abrir softphone (${deviceState === 'registered' ? 'listo' : deviceReason ?? deviceState})`}
           title={deviceState === 'registered' ? 'Softphone listo' : deviceReason ?? 'Softphone'}
         >
@@ -96,7 +96,7 @@ export function SoftphoneDock() {
         </button>
       ) : (
         <AnimatePresence>
-          <SlideUp className="fixed bottom-0 right-0 z-50 w-full sm:bottom-4 sm:right-4 sm:w-[340px]">
+          <SlideUp className="fixed bottom-0 right-0 z-50 w-full max-lg:bottom-[calc(4rem+env(safe-area-inset-bottom))] sm:bottom-4 sm:right-4 sm:w-[340px] sm:max-lg:bottom-[calc(4.5rem+env(safe-area-inset-bottom))]">
             <Card role="region" aria-label="Softphone" className="rounded-none border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl">
               <DockHeader deviceState={deviceState} deviceReason={deviceReason} deviceMissing={deviceMissing} deviceScope={deviceScope} callStatus={callStatus} onMinimize={() => setCollapsed(true)} onRetry={sp.retry} />
 

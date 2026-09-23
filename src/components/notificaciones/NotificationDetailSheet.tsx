@@ -11,9 +11,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Bell, ExternalLink, User, DollarSign, Hotel, Package,
   ClipboardList, CreditCard, UserPlus, Calendar, AlertTriangle,
-  MapPin, Hash, Clock, TrendingDown, Building2, Mail,
+  Hash, Clock, TrendingDown, Building2, Mail,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz, formatPlainDate } from '@/lib/utils/dateDisplay';
 
 // ── Tipos ──────────────────────────────────────────────
 interface NotificationForSheet {
@@ -21,7 +23,7 @@ interface NotificationForSheet {
   organization_id: number;
   recipient_user_id?: string | null;
   channel: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   status: string;
   read_at: string | null; // Deprecado: usar is_read_by_me
   is_read_by_me?: boolean; // true si el usuario actual tiene fila en notification_reads
@@ -36,7 +38,7 @@ interface NotificationDetailSheetProps {
 }
 
 // ── Helpers de tipo ────────────────────────────────────
-function getTypeIcon(type: string) {
+export function getTypeIcon(type: string) {
   if (type.includes('invoice') || type.includes('payment') || type.includes('ar_') || type.includes('ap_')) return DollarSign;
   if (type.includes('reservation') || type.includes('checkin') || type.includes('checkout') || type.includes('housekeeping') || type.includes('no_show')) return Hotel;
   if (type.includes('opportunity') || type.includes('task_')) return ClipboardList;
@@ -60,8 +62,8 @@ const typeLabels: Record<string, string> = {
 };
 
 function getRedirect(notif: NotificationForSheet): { url: string; label: string } | null {
-  const type = notif.payload?.type || '';
-  const p = notif.payload || {};
+  const type = String(notif.payload?.type ?? '');
+  const p = (notif.payload || {}) as Record<string, string | undefined>;
   switch (type) {
     case 'ar_overdue':
       return p.ar_id ? { url: `/app/finanzas/cuentas-por-cobrar/${p.ar_id}`, label: 'Ver cuenta por cobrar' } : { url: '/app/finanzas/cuentas-por-cobrar', label: 'Ver CxC' };
@@ -103,14 +105,19 @@ function getRedirect(notif: NotificationForSheet): { url: string; label: string 
 }
 
 // ── Fetch de datos relacionados desde tablas específicas ──
+const FECHA_CORTA: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
+
+interface PersonaFila { first_name?: string | null; last_name?: string | null; email?: string | null }
+interface ProveedorFila { name?: string | null; email?: string | null }
+interface ProductoFila { name?: string | null; sku?: string | null }
 interface RelatedData {
   label: string;
   fields: { icon: typeof Bell; label: string; value: string }[];
 }
 
-async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedData | null> {
-  const type = notif.payload?.type || '';
-  const p = notif.payload || {};
+async function fetchRelatedData(notif: NotificationForSheet, timezone: string): Promise<RelatedData | null> {
+  const type = String(notif.payload?.type ?? '');
+  const p = (notif.payload || {}) as Record<string, string | undefined>;
 
   try {
     // CxC vencida → accounts_receivable + customers
@@ -123,7 +130,7 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
 
       if (arErr) console.error('[NotifSheet] ar query error:', arErr.message);
       if (ar) {
-        let cust: any = null;
+        let cust: PersonaFila | null = null;
         if (ar.customer_id) {
           const { data: c } = await supabase
             .from('customers')
@@ -139,7 +146,7 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
             { icon: Mail, label: 'Email', value: cust?.email || '—' },
             { icon: DollarSign, label: 'Monto original', value: `$${Number(ar.amount).toLocaleString('es')}` },
             { icon: TrendingDown, label: 'Saldo pendiente', value: `$${Number(ar.balance).toLocaleString('es')}` },
-            { icon: Calendar, label: 'Fecha vencimiento', value: ar.due_date ? new Date(ar.due_date).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }) : '—' },
+            { icon: Calendar, label: 'Fecha vencimiento', value: ar.due_date ? formatDateInTz(ar.due_date, timezone, FECHA_CORTA) : '—' },
             { icon: Clock, label: 'Días vencida', value: `${ar.days_overdue ?? 0} días` },
             { icon: Hash, label: 'Estado', value: ar.status || '—' },
           ],
@@ -157,7 +164,7 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
 
       if (apErr) console.error('[NotifSheet] ap query error:', apErr.message);
       if (ap) {
-        let sup: any = null;
+        let sup: ProveedorFila | null = null;
         if (ap.supplier_id) {
           const { data: s } = await supabase
             .from('suppliers')
@@ -173,7 +180,7 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
             { icon: Mail, label: 'Email', value: sup?.email || '—' },
             { icon: DollarSign, label: 'Monto original', value: `$${Number(ap.amount).toLocaleString('es')}` },
             { icon: TrendingDown, label: 'Saldo pendiente', value: `$${Number(ap.balance).toLocaleString('es')}` },
-            { icon: Calendar, label: 'Fecha vencimiento', value: ap.due_date ? new Date(ap.due_date).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }) : '—' },
+            { icon: Calendar, label: 'Fecha vencimiento', value: ap.due_date ? formatDateInTz(ap.due_date, timezone, FECHA_CORTA) : '—' },
             { icon: Clock, label: 'Días vencida', value: `${ap.days_overdue ?? 0} días` },
             { icon: Hash, label: 'Estado', value: ap.status || '—' },
           ],
@@ -192,7 +199,7 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
 
       if (slErr) console.error('[NotifSheet] stock query error:', slErr.message);
       if (sl) {
-        let prod: any = null;
+        let prod: ProductoFila | null = null;
         const { data: pr } = await supabase
           .from('products')
           .select('name, sku, description')
@@ -224,7 +231,7 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
 
       if (resErr) console.error('[NotifSheet] reservation query error:', resErr.message);
       if (res) {
-        let cust: any = null;
+        let cust: PersonaFila | null = null;
         if (res.customer_id) {
           const { data: c } = await supabase
             .from('customers')
@@ -238,8 +245,8 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
           fields: [
             { icon: User, label: 'Huésped', value: cust ? `${cust.first_name || ''} ${cust.last_name || ''}`.trim() : '—' },
             { icon: Mail, label: 'Email', value: cust?.email || '—' },
-            { icon: Calendar, label: 'Check-in', value: res.checkin ? new Date(res.checkin).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }) : '—' },
-            { icon: Calendar, label: 'Check-out', value: res.checkout ? new Date(res.checkout).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }) : '—' },
+            { icon: Calendar, label: 'Check-in', value: res.checkin ? formatPlainDate(res.checkin, FECHA_CORTA) : '—' },
+            { icon: Calendar, label: 'Check-out', value: res.checkout ? formatPlainDate(res.checkout, FECHA_CORTA) : '—' },
             { icon: DollarSign, label: 'Total estimado', value: res.total_estimated ? `$${Number(res.total_estimated).toLocaleString('es')}` : '—' },
             { icon: UserPlus, label: 'Ocupantes', value: `${res.occupant_count ?? 1}` },
             { icon: Hash, label: 'Estado', value: res.status || '—' },
@@ -258,7 +265,7 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
 
       if (invErr) console.error('[NotifSheet] invoice query error:', invErr.message);
       if (inv) {
-        let sup: any = null;
+        let sup: ProveedorFila | null = null;
         if (inv.supplier_id) {
           const { data: s } = await supabase
             .from('suppliers')
@@ -273,7 +280,7 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
             { icon: Hash, label: 'Número', value: inv.number_ext || inv.id.substring(0, 8) },
             { icon: Building2, label: 'Proveedor', value: sup?.name || '—' },
             { icon: DollarSign, label: 'Total', value: inv.total ? `$${Number(inv.total).toLocaleString('es')}` : '—' },
-            { icon: Calendar, label: 'Vencimiento', value: inv.due_date ? new Date(inv.due_date).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }) : '—' },
+            { icon: Calendar, label: 'Vencimiento', value: inv.due_date ? formatDateInTz(inv.due_date, timezone, FECHA_CORTA) : '—' },
             { icon: Hash, label: 'Estado', value: inv.status || '—' },
           ],
         };
@@ -291,24 +298,27 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
 export function NotificationDetailSheet({ notification, open, onOpenChange, onNavigate }: NotificationDetailSheetProps) {
   const [relatedData, setRelatedData] = useState<RelatedData | null>(null);
   const [loadingRelated, setLoadingRelated] = useState(false);
+  const { timezone } = useOrgTimezone();
 
   useEffect(() => {
     if (notification && open) {
       setLoadingRelated(true);
       setRelatedData(null);
-      fetchRelatedData(notification).then(data => {
+      fetchRelatedData(notification, timezone).then(data => {
         setRelatedData(data);
         setLoadingRelated(false);
       });
     }
-  }, [notification?.id, open]);
+    // Se relee al cambiar de notificación (por id), no cuando el objeto se recrea.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notification?.id, open, timezone]);
 
   if (!notification) return null;
 
   const n = notification;
-  const type = n.payload?.type || '';
-  const title = n.payload?.title || type || 'Notificación';
-  const content = n.payload?.content || '';
+  const type = String(n.payload?.type ?? '');
+  const title = String(n.payload?.title || type || 'Notificación');
+  const content = String(n.payload?.content ?? '');
   const TypeIcon = getTypeIcon(type);
   const typeLabel = typeLabels[type] || 'Notificación';
   const redirect = getRedirect(n);
@@ -324,7 +334,8 @@ export function NotificationDetailSheet({ notification, open, onOpenChange, onNa
       return isNaN(num) ? str : `$${num.toLocaleString('es')}`;
     }
     if (key === 'due_date' && str.length > 8) {
-      try { return new Date(str).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return str; }
+      // YYYY-MM-DD es un día calendario (no se convierte); con hora es un instante.
+      return (str.length === 10 ? formatPlainDate(str, FECHA_CORTA) : formatDateInTz(str, timezone, FECHA_CORTA)) || str;
     }
     return str;
   };
@@ -374,7 +385,7 @@ export function NotificationDetailSheet({ notification, open, onOpenChange, onNa
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
               <span className="text-gray-500 dark:text-gray-400 block mb-1">Fecha</span>
               <span className="font-medium text-gray-900 dark:text-white block">
-                {new Date(n.created_at).toLocaleString('es', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                {formatDateInTz(n.created_at, timezone, { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">

@@ -1,104 +1,12 @@
-// Definición de tipos para el layout de la aplicación
-import { ReactNode } from 'react';
+// Tipos del layout de la aplicación.
+//
+// Los de la navegación y el header viejos (NavItemProps, SidebarProps,
+// AppHeaderProps, UserMenuProps…) se fueron con sus componentes: el shell nuevo
+// vive en `src/components/shell` y el catálogo en `src/lib/navigation`.
 
-// Interfaces para la navegación
-export interface SubNavItem {
-  name: string;
-  href: string;
-  icon?: ReactNode;
-}
-
-export interface NavItemProps {
-  name: string;
-  href: string;
-  icon: ReactNode;
-  submenu?: SubNavItem[];
-  moduleCode?: string;
-}
-
-export interface NavSection {
-  title: string;
-  items: NavItemProps[];
-}
-
-export interface NavSectionProps {
-  title: string;
-  items: NavItemProps[];
-  collapsed?: boolean;
-  sectionIdx?: number;
-  onNavigate?: () => void;
-}
-
-// Interfaces para datos de usuario
 export interface UserData {
   name?: string;
   email?: string;
   role?: string;
   avatar?: string;
-}
-
-// Propiedades para componentes específicos
-export interface SidebarProps {
-  navSections: NavSection[];
-  userData: UserData | null;
-  orgName?: string | null;
-  collapsed?: boolean;
-  handleSignOut: () => Promise<void>;
-  loading: boolean;
-}
-
-export interface NavItemComponentProps {
-  item: NavItemProps;
-  collapsed?: boolean;
-  onNavigate?: () => void;
-}
-
-export interface SidebarNavigationProps {
-  handleSignOut: () => Promise<void>;
-  loading: boolean;
-  userData: UserData | null;
-  orgName?: string | null;
-  collapsed?: boolean;
-  onNavigate?: () => void;
-  activeModuleCodes?: string[];
-  activeModulePages?: Record<string, string[]>;
-  jobPositionVisibleModules?: string[] | null;
-  jobPositionVisiblePages?: string[] | null;
-}
-
-export interface AppHeaderProps {
-  userData: UserData | null;
-  theme: 'light' | 'dark';
-  toggleTheme: () => void;
-  orgId: string | null;
-  handleSignOut: () => Promise<void>;
-  loading: boolean;
-  setSidebarOpen?: (open: boolean) => void;
-  aiAssistantOpen?: boolean;
-  onToggleAIAssistant?: () => void;
-}
-
-export interface UserMenuProps {
-  userData: UserData | null;
-  handleSignOut: () => Promise<void>;
-  loading: boolean;
-}
-
-export interface ThemeToggleProps {
-  theme: 'light' | 'dark';
-  toggleTheme: () => void;
-}
-
-// Tipos para el sistema Multi-Column Layout con SubMenu
-export interface SubMenuPanelProps {
-  activeModule: NavItemProps | null;
-  collapsed: boolean;
-  onNavigate?: () => void;
-  isOpen: boolean;
-  onToggle: () => void;
-}
-
-export interface ActiveModuleState {
-  module: NavItemProps | null;
-  isOpen: boolean;
 }

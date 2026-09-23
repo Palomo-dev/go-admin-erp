@@ -1,21 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, Users, Building2, Building, Briefcase, FileText, Package, User, Tags, ShoppingBag, Receipt, ShoppingCart, CalendarDays, BedDouble, Dumbbell, Car } from 'lucide-react';
-// Volvemos a la importación correcta para App Router
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/config';
-import { 
-  Command,
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-  CommandShortcut,
-} from '@/components/ui/command';
+import { useState, useRef, useEffect } from 'react';
+import { Search } from 'lucide-react';
+import { CommandDialog, CommandEmpty, CommandInput, CommandList } from '@/components/ui/command';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useDebounce } from '../../../lib/hooks/useDebounce';
 import { getOrganizationId } from '../../../lib/hooks/useOrganization';
@@ -25,12 +13,41 @@ import { SearchResultGroup } from './GlobalSearch/SearchResultGroup';
 import { searchData } from './GlobalSearch/searchService';
 import { SearchResult, SearchResultType, PAGINAS_PREDEFINIDAS, PAGINAS_INICIALES } from './GlobalSearch/types';
 
+// Formas mínimas de las filas que devuelve `searchData` (lo que aquí se pinta).
+interface FilaFactura { id: string; number?: string | null; total?: number | null; status?: string | null; customers?: { full_name?: string | null } | null }
+interface FilaPedido { id: string; order_number?: string | null; customer_name?: string | null; total?: number | null; status?: string | null }
+interface FilaReserva { id: string; checkin?: string | null; checkout?: string | null; status?: string | null; spaces?: { label?: string | null } | null; customers?: { full_name?: string | null } | null }
+interface FilaEspacio { id: string; label?: string | null; floor_zone?: string | null; status?: string | null; space_types?: { name?: string | null } | null }
+interface FilaMembresia { id: string; status?: string | null; start_date?: string | null; end_date?: string | null; membership_plans?: { name?: string | null } | null; customers?: { full_name?: string | null } | null }
+interface FilaVehiculo { id: string; plate?: string | null; brand?: string | null; model?: string | null; color?: string | null; vehicle_type?: string | null }
+
 /**
  * Componente de búsqueda global que permite buscar organizaciones, sucursales, 
  * usuarios, clientes, productos, etc.
  */
-const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
-  const router = useRouter();
+/** Evento con el que el shell abre el buscador desde cualquier disparador. */
+export const ABRIR_BUSCADOR_EVENT = 'shell:abrir-buscador';
+
+export interface PaginaBuscable {
+  id: string;
+  name: string;
+  url: string;
+  description?: string;
+}
+
+interface GlobalSearchProps {
+  forceFullBar?: boolean;
+  /**
+   * Páginas que la persona puede abrir, sacadas del menú ya filtrado
+   * (`filtrarNavegacion`). Sustituyen a las listas fijas de `types.ts`, que
+   * ofrecían páginas de módulos inactivos y rutas que no existen.
+   */
+  paginas?: PaginaBuscable[];
+  /** El disparador lo pinta el header nuevo (`SearchTrigger`). */
+  sinDisparador?: boolean;
+}
+
+const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: GlobalSearchProps) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -49,16 +66,21 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
     }, 100);
   };
 
+  const paginasRef = useRef<PaginaBuscable[] | undefined>(paginas);
+  paginasRef.current = paginas;
+  const paginasIniciales = (): SearchResult[] =>
+    (paginasRef.current ? paginasRef.current.slice(0, 6) : PAGINAS_INICIALES).map((page) => ({
+      ...page,
+      type: 'page' as SearchResultType,
+    }));
+  const paginasTodas = (): SearchResult[] =>
+    (paginasRef.current ?? PAGINAS_PREDEFINIDAS).map((page) => ({ ...page, type: 'page' as SearchResultType }));
+
   // Efecto para realizar la búsqueda cuando cambia el query debounceado
   useEffect(() => {
     // No realizar búsqueda si el query está vacío
     if (!debouncedQuery || debouncedQuery.trim().length < 1) {
-      const paginasConTipoCorrecto = PAGINAS_INICIALES.map(page => ({
-        ...page,
-        type: page.type as SearchResultType
-      }));
-      
-      setResults(paginasConTipoCorrecto);
+      setResults(paginasIniciales());
       setIsLoading(false);
       return;
     }
@@ -93,12 +115,9 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
           // Usamos una declaración de tipo más explícita
           const searchResults = [
             // Primero mostrar páginas que coincidan con la búsqueda
-            ...PAGINAS_PREDEFINIDAS.filter(page => 
+            ...paginasTodas().filter(page =>
               page.name.toLowerCase().includes(debouncedQuery.toLowerCase())
-            ).map(page => ({
-              ...page,
-              type: page.type as SearchResultType // Convertimos al tipo correcto
-            })),
+            ),
 
             // Organizaciones
             ...(data.organizaciones || []).map(org => ({
@@ -160,7 +179,7 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
             })),
 
             // Facturas de venta
-            ...(data.facturas || []).map((f: any) => ({
+            ...(data.facturas || []).map((f: FilaFactura) => ({
               id: f.id,
               name: `Factura ${f.number || 'S/N'}`,
               description: `${f.customers?.full_name || ''} - $${Number(f.total || 0).toLocaleString()} - ${f.status || ''}`,
@@ -169,7 +188,7 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
             })),
 
             // Pedidos online
-            ...(data.pedidosOnline || []).map((p: any) => ({
+            ...(data.pedidosOnline || []).map((p: FilaPedido) => ({
               id: p.id,
               name: `Pedido ${p.order_number || ''}`,
               description: `${p.customer_name || ''} - $${Number(p.total || 0).toLocaleString()} - ${p.status || ''}`,
@@ -178,7 +197,7 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
             })),
 
             // Reservas
-            ...(data.reservas || []).map((r: any) => ({
+            ...(data.reservas || []).map((r: FilaReserva) => ({
               id: r.id,
               name: `Reserva ${r.spaces?.label || ''}`,
               description: `${r.customers?.full_name || ''} - ${r.checkin || ''} → ${r.checkout || ''} - ${r.status || ''}`,
@@ -187,7 +206,7 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
             })),
 
             // Espacios
-            ...(data.espacios || []).map((e: any) => ({
+            ...(data.espacios || []).map((e: FilaEspacio) => ({
               id: e.id,
               name: e.label || 'Sin nombre',
               description: `${e.space_types?.name || ''} ${e.floor_zone ? '- ' + e.floor_zone : ''} - ${e.status || ''}`,
@@ -196,16 +215,16 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
             })),
 
             // Membresías
-            ...(data.membresias || []).map((m: any) => ({
+            ...(data.membresias || []).map((m: FilaMembresia) => ({
               id: m.id,
               name: `${m.membership_plans?.name || 'Membresía'} - ${m.customers?.full_name || ''}`,
-              description: `${m.status || ''} - ${m.start_date ? new Date(m.start_date).toLocaleDateString() : ''} → ${m.end_date ? new Date(m.end_date).toLocaleDateString() : ''}`,
+              description: `${m.status || ''} - ${formatPlainDate(m.start_date)} → ${formatPlainDate(m.end_date)}`,
               type: 'membership' as const,
               url: `/app/gym/membresias/${m.id}`
             })),
 
             // Vehículos de parqueadero
-            ...(data.vehiculosParking || []).map((v: any) => ({
+            ...(data.vehiculosParking || []).map((v: FilaVehiculo) => ({
               id: v.id,
               name: `${v.plate || 'Sin placa'}`,
               description: `${v.brand || ''} ${v.model || ''} ${v.color ? '- ' + v.color : ''} (${v.vehicle_type || ''})`,
@@ -218,7 +237,8 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
           setResults(searchResults as SearchResult[]);
           setIsLoading(false);
         }
-      } catch (error: any) {
+      } catch (err) {
+        const error = err as { name?: string; message?: string };
         // Ignorar errores de abort (request cancelada)
         if (error?.name === 'AbortError' || error?.message?.includes('abort')) {
           return;
@@ -227,11 +247,7 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
         if (isMountedRef.current && !abortController.signal.aborted) {
           setIsLoading(false);
           // En caso de error, mostrar solo las páginas predefinidas
-          const paginasConTipoCorrecto = PAGINAS_PREDEFINIDAS.map(page => ({
-            ...page,
-            type: page.type as SearchResultType // Aseguramos que el tipo es compatible
-          }));
-          setResults(paginasConTipoCorrecto);
+          setResults(paginasTodas());
         }
       } finally {
         clearTimeout(watchdog);
@@ -244,6 +260,8 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
 
     // Iniciar la búsqueda
     fetchData();
+    // Las páginas se leen por ref: cambiar de menú no debe relanzar la búsqueda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery]);
 
   // Limpiar al desmontar
@@ -271,11 +289,7 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
     if (valueChanged && value.trim().length >= 1) {
       setIsLoading(true);
     } else if (value.trim() === '') {
-      const paginasConTipoCorrecto = PAGINAS_INICIALES.map(page => ({
-        ...page,
-        type: page.type as SearchResultType
-      }));
-      setResults(paginasConTipoCorrecto);
+      setResults(paginasIniciales());
       setIsLoading(false);
     }
   };
@@ -317,12 +331,19 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
     };
     
     document.addEventListener('keydown', down);
-    return () => document.removeEventListener('keydown', down);
+    window.addEventListener(ABRIR_BUSCADOR_EVENT, openSearchDialog);
+    return () => {
+      document.removeEventListener('keydown', down);
+      window.removeEventListener(ABRIR_BUSCADOR_EVENT, openSearchDialog);
+    };
+    // openSearchDialog solo usa setters y refs estables.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <>
       {/* Campo de búsqueda en el header - Versión responsive */}
+      {!sinDisparador && (
       <div className="flex items-center justify-center">
         {/* Versión móvil - Solo icono (oculto si forceFullBar) */}
         {!forceFullBar && (
@@ -349,6 +370,7 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
           </kbd>
         </div>
       </div>
+      )}
 
       {/* Diálogo de búsqueda con estructura revisada */}
       <CommandDialog 
@@ -373,7 +395,7 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
         <CommandList className="max-h-[500px] overflow-y-auto py-2">
           {results.length === 0 && !isLoading && query.length > 0 && (
             <div className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-              No se encontraron resultados para "{query}"
+              No se encontraron resultados para «{query}»
               <p className="mt-2 text-xs">Intenta con otro término de búsqueda</p>
             </div>
           )}

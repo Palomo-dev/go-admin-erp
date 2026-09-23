@@ -1,9 +1,19 @@
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { NextResponse } from 'next/server';
 import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
-import factusService from '@/lib/services/factusService';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // /api/factus está fuera del middleware: sin esta guarda, cualquiera en
+    // internet usaba la cuenta de Factus de la plataforma.
+    try {
+      await getServerOrgContext(request);
+    } catch (err) {
+      if (err instanceof OrgContextError) {
+        return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+      }
+      throw err;
+    }
     const credentials = getCredentials();
     if (!credentials) {
       return NextResponse.json(
@@ -51,10 +61,10 @@ export async function GET() {
       data: ranges,
       raw: result,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error al obtener rangos de numeración:', error);
     return NextResponse.json(
-      { error: error.message || 'Error al obtener rangos de numeración' },
+      { error: (error instanceof Error && error.message) || 'Error al obtener rangos de numeración' },
       { status: 500 }
     );
   }

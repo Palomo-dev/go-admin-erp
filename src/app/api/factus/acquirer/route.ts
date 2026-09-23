@@ -12,12 +12,23 @@
  * - FACTUS_ENVIRONMENT: "sandbox" | "production"
  */
 
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { NextRequest, NextResponse } from 'next/server';
 import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
 import factusService from '@/lib/services/factusService';
 
 export async function GET(request: NextRequest) {
   try {
+    // /api/factus está fuera del middleware: sin esta guarda, cualquiera en
+    // internet usaba la cuenta de Factus de la plataforma.
+    try {
+      await getServerOrgContext(request);
+    } catch (err) {
+      if (err instanceof OrgContextError) {
+        return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+      }
+      throw err;
+    }
     const { searchParams } = new URL(request.url);
     const documentType = searchParams.get('documentType');
     const documentNumber = searchParams.get('documentNumber');

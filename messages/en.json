@@ -50,7 +50,49 @@
       "invalidCredentials": "Invalid credentials",
       "errorGeneric": "Login error",
       "rememberMe": "Remember me",
-      "welcomeBack": "Welcome back!"
+      "welcomeBack": "Welcome back!",
+      "features": {
+        "onePlace": "Manage your business in one place",
+        "allInOne": "POS, inventory, CRM and more in a single platform",
+        "realtime": "Real-time reports and analytics"
+      },
+      "errorExternalProvider": "Error signing in with external provider",
+      "emailNotVerified": "Your account has not been verified yet.",
+      "sessionExpired": "Your previous session has expired. Please sign in again.",
+      "sessionCorrupted": "Your session was corrupted and has been cleared. Please sign in again.",
+      "sessionParseError": "There was a problem with your previous session. Please sign in again.",
+      "authFailed": "Authentication error: {details}",
+      "unknownError": "Unknown error",
+      "oauthAccountBlocked": "This account is registered with {provider}. Please sign in with that provider.",
+      "oauthAccountHint": "This account is registered with <strong>{provider}</strong>. Use the {provider} button to sign in.",
+      "createAccount": "Create a new account",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "biometric": {
+        "reason": "Sign in to continue",
+        "failed": "Biometric authentication failed",
+        "noCredentials": "No saved credentials. Sign in with your password first and turn on “Remember me”.",
+        "restoreFailed": "Could not restore the session",
+        "error": "Biometric authentication error",
+        "signInWith": "Sign in with {method}",
+        "faceId": "Face ID",
+        "fingerprint": "Fingerprint"
+      },
+      "orgPicker": {
+        "title": "Select an organization",
+        "subtitle": "Your account is linked to multiple organizations.",
+        "searchPlaceholder": "Search organization...",
+        "empty": "No organizations found.",
+        "addFavorite": "Mark as favorite",
+        "removeFavorite": "Remove from favorites",
+        "favoritesFirst": "Organizations marked with ★ appear first"
+      },
+      "orgStatus": {
+        "active": "Active",
+        "frozen": "Frozen",
+        "deleted": "Deleted",
+        "inactive": "Inactive"
+      }
     },
     "signup": {
       "title": "Create Account",
@@ -187,7 +229,22 @@
         "paymentNotReady": "The payment system is not ready. Please try again.",
         "cardNotFound": "Card element not found",
         "errorVerifyCard": "Error verifying the card"
-      }
+      },
+      "brandPanel": {
+        "subtitle": "Create your account and your organization’s in just a few minutes.",
+        "steps": {
+          "personal": "Personal details",
+          "organization": "Organization",
+          "mainBranch": "Main branch",
+          "plan": "Plan and subscription",
+          "payment": "Payment method",
+          "verification": "Email verification"
+        }
+      },
+      "errorMainBranchNotFound": "The automatically created main branch could not be found to update",
+      "errorCreateAccount": "Error creating the account",
+      "errorCreateUser": "Could not create the user",
+      "errorUnknown": "Unknown error"
     },
     "selectOrganization": {
       "title": "Select an organization",
@@ -3444,6 +3501,19 @@
         "fusionadas": "{n, plural, other {# tags merged}}",
         "errorFusionar": "We couldn't merge the tags"
       }
+    }
+  },
+  "errorPages": {
+    "notFound": {
+      "title": "Page not found (404)",
+      "description": "The page you are looking for does not exist or has been moved. Check the address and try again.",
+      "home": "Back to home",
+      "back": "Previous page"
+    },
+    "globalError": {
+      "title": "An unexpected error occurred",
+      "description": "The team has been notified automatically. You can try reloading the page to continue.",
+      "retry": "Retry"
     }
   }
 }

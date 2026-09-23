@@ -50,7 +50,49 @@
       "invalidCredentials": "Identifiants invalides",
       "errorGeneric": "Erreur de connexion",
       "rememberMe": "Se souvenir de moi",
-      "welcomeBack": "Bienvenue !"
+      "welcomeBack": "Bienvenue !",
+      "features": {
+        "onePlace": "Gérez votre entreprise en un seul endroit",
+        "allInOne": "Caisse, inventaire, CRM et plus sur une seule plateforme",
+        "realtime": "Rapports et analyses en temps réel"
+      },
+      "errorExternalProvider": "Erreur de connexion avec le fournisseur externe",
+      "emailNotVerified": "Votre compte n’a pas encore été vérifié.",
+      "sessionExpired": "Votre session précédente a expiré. Veuillez vous reconnecter.",
+      "sessionCorrupted": "Votre session était corrompue et a été nettoyée. Veuillez vous reconnecter.",
+      "sessionParseError": "Un problème est survenu avec votre session précédente. Veuillez vous reconnecter.",
+      "authFailed": "Erreur d’authentification : {details}",
+      "unknownError": "Erreur inconnue",
+      "oauthAccountBlocked": "Ce compte est enregistré avec {provider}. Veuillez vous connecter avec ce fournisseur.",
+      "oauthAccountHint": "Ce compte est enregistré avec <strong>{provider}</strong>. Utilisez le bouton {provider} pour vous connecter.",
+      "createAccount": "Créer un nouveau compte",
+      "showPassword": "Afficher le mot de passe",
+      "hidePassword": "Masquer le mot de passe",
+      "biometric": {
+        "reason": "Connectez-vous pour continuer",
+        "failed": "Échec de l’authentification biométrique",
+        "noCredentials": "Aucun identifiant enregistré. Connectez-vous d’abord avec votre mot de passe et activez « Se souvenir de moi ».",
+        "restoreFailed": "Impossible de restaurer la session",
+        "error": "Erreur d’authentification biométrique",
+        "signInWith": "Se connecter avec {method}",
+        "faceId": "Face ID",
+        "fingerprint": "Empreinte digitale"
+      },
+      "orgPicker": {
+        "title": "Sélectionnez une organisation",
+        "subtitle": "Votre compte est associé à plusieurs organisations.",
+        "searchPlaceholder": "Rechercher une organisation...",
+        "empty": "Aucune organisation trouvée.",
+        "addFavorite": "Marquer comme favorite",
+        "removeFavorite": "Retirer des favorites",
+        "favoritesFirst": "Les organisations marquées d’une ★ apparaissent en premier"
+      },
+      "orgStatus": {
+        "active": "Active",
+        "frozen": "Gelée",
+        "deleted": "Supprimée",
+        "inactive": "Inactive"
+      }
     },
     "signup": {
       "title": "Créer un compte",
@@ -187,7 +229,22 @@
         "paymentNotReady": "Le système de paiement n'est pas prêt. Veuillez réessayer.",
         "cardNotFound": "Élément de carte introuvable",
         "errorVerifyCard": "Erreur lors de la vérification de la carte"
-      }
+      },
+      "brandPanel": {
+        "subtitle": "Créez votre compte et celui de votre organisation en quelques minutes.",
+        "steps": {
+          "personal": "Informations personnelles",
+          "organization": "Organisation",
+          "mainBranch": "Succursale principale",
+          "plan": "Forfait et abonnement",
+          "payment": "Moyen de paiement",
+          "verification": "Vérification de l’e-mail"
+        }
+      },
+      "errorMainBranchNotFound": "La succursale principale créée automatiquement est introuvable pour la mise à jour",
+      "errorCreateAccount": "Erreur lors de la création du compte",
+      "errorCreateUser": "Impossible de créer l’utilisateur",
+      "errorUnknown": "Erreur inconnue"
     },
     "selectOrganization": {
       "title": "Sélectionnez une organisation",
@@ -3339,6 +3396,19 @@
         "fusionadas": "{n, plural, other {# libellés fusionnés}}",
         "errorFusionar": "Impossible de fusionner les libellés"
       }
+    }
+  },
+  "errorPages": {
+    "notFound": {
+      "title": "Page introuvable (404)",
+      "description": "La page que vous recherchez n’existe pas ou a été déplacée. Vérifiez l’adresse et réessayez.",
+      "home": "Retour à l’accueil",
+      "back": "Page précédente"
+    },
+    "globalError": {
+      "title": "Une erreur inattendue s’est produite",
+      "description": "L’équipe a été prévenue automatiquement. Vous pouvez recharger la page pour continuer.",
+      "retry": "Réessayer"
     }
   }
 }

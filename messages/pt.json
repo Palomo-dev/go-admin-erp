@@ -50,7 +50,49 @@
       "invalidCredentials": "Credenciais inválidas",
       "errorGeneric": "Erro ao entrar",
       "rememberMe": "Lembrar-me",
-      "welcomeBack": "Bem-vindo de volta!"
+      "welcomeBack": "Bem-vindo de volta!",
+      "features": {
+        "onePlace": "Gerencie seu negócio em um só lugar",
+        "allInOne": "PDV, estoque, CRM e mais em uma única plataforma",
+        "realtime": "Relatórios e análises em tempo real"
+      },
+      "errorExternalProvider": "Erro ao entrar com provedor externo",
+      "emailNotVerified": "Sua conta ainda não foi verificada.",
+      "sessionExpired": "Sua sessão anterior expirou. Por favor, entre novamente.",
+      "sessionCorrupted": "Sua sessão estava corrompida e foi limpa. Por favor, entre novamente.",
+      "sessionParseError": "Houve um problema com sua sessão anterior. Por favor, entre novamente.",
+      "authFailed": "Erro na autenticação: {details}",
+      "unknownError": "Erro desconhecido",
+      "oauthAccountBlocked": "Esta conta está registrada com {provider}. Por favor, entre com esse provedor.",
+      "oauthAccountHint": "Esta conta está registrada com <strong>{provider}</strong>. Use o botão do {provider} para entrar.",
+      "createAccount": "Criar uma nova conta",
+      "showPassword": "Mostrar senha",
+      "hidePassword": "Ocultar senha",
+      "biometric": {
+        "reason": "Entre para continuar",
+        "failed": "Falha na autenticação biométrica",
+        "noCredentials": "Não há credenciais salvas. Entre com a senha primeiro e ative «Lembrar-me».",
+        "restoreFailed": "Não foi possível restaurar a sessão",
+        "error": "Erro na autenticação biométrica",
+        "signInWith": "Entrar com {method}",
+        "faceId": "Face ID",
+        "fingerprint": "Impressão digital"
+      },
+      "orgPicker": {
+        "title": "Selecione uma organização",
+        "subtitle": "Sua conta está associada a várias organizações.",
+        "searchPlaceholder": "Buscar organização...",
+        "empty": "Nenhuma organização encontrada.",
+        "addFavorite": "Marcar como favorita",
+        "removeFavorite": "Remover das favoritas",
+        "favoritesFirst": "As organizações marcadas com ★ aparecem primeiro"
+      },
+      "orgStatus": {
+        "active": "Ativa",
+        "frozen": "Congelada",
+        "deleted": "Excluída",
+        "inactive": "Inativa"
+      }
     },
     "signup": {
       "title": "Criar Conta",
@@ -187,7 +229,22 @@
         "paymentNotReady": "O sistema de pagamento não está pronto. Tente novamente.",
         "cardNotFound": "Elemento do cartão não encontrado",
         "errorVerifyCard": "Erro ao verificar o cartão"
-      }
+      },
+      "brandPanel": {
+        "subtitle": "Crie sua conta e a da sua organização em poucos minutos.",
+        "steps": {
+          "personal": "Dados pessoais",
+          "organization": "Organização",
+          "mainBranch": "Filial principal",
+          "plan": "Plano e assinatura",
+          "payment": "Forma de pagamento",
+          "verification": "Verificação de e-mail"
+        }
+      },
+      "errorMainBranchNotFound": "A filial principal criada automaticamente não foi encontrada para atualizar",
+      "errorCreateAccount": "Erro ao criar a conta",
+      "errorCreateUser": "Não foi possível criar o usuário",
+      "errorUnknown": "Erro desconhecido"
     },
     "selectOrganization": {
       "title": "Selecione uma organização",
@@ -3339,6 +3396,19 @@
         "fusionadas": "{n, plural, other {# tags mescladas}}",
         "errorFusionar": "Não foi possível mesclar as tags"
       }
+    }
+  },
+  "errorPages": {
+    "notFound": {
+      "title": "Página não encontrada (404)",
+      "description": "A página que você procura não existe ou foi movida. Verifique o endereço e tente novamente.",
+      "home": "Voltar ao início",
+      "back": "Página anterior"
+    },
+    "globalError": {
+      "title": "Ocorreu um erro inesperado",
+      "description": "A equipe foi notificada automaticamente. Você pode tentar recarregar a página para continuar.",
+      "retry": "Tentar novamente"
     }
   }
 }

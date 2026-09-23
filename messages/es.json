@@ -50,7 +50,49 @@
       "invalidCredentials": "Credenciales inválidas",
       "errorGeneric": "Error al iniciar sesión",
       "rememberMe": "Recordarme",
-      "welcomeBack": "¡Bienvenido de nuevo!"
+      "welcomeBack": "¡Bienvenido de nuevo!",
+      "features": {
+        "onePlace": "Gestiona tu negocio en un solo lugar",
+        "allInOne": "POS, inventario, CRM y más en una sola plataforma",
+        "realtime": "Reportes y analítica en tiempo real"
+      },
+      "errorExternalProvider": "Error al iniciar sesión con proveedor externo",
+      "emailNotVerified": "Tu cuenta aún no ha sido verificada.",
+      "sessionExpired": "Tu sesión anterior ha expirado. Por favor, inicia sesión nuevamente.",
+      "sessionCorrupted": "Tu sesión estaba corrupta y ha sido limpiada. Por favor, inicia sesión nuevamente.",
+      "sessionParseError": "Hubo un problema con tu sesión anterior. Por favor, inicia sesión nuevamente.",
+      "authFailed": "Error en la autenticación: {details}",
+      "unknownError": "Error desconocido",
+      "oauthAccountBlocked": "Esta cuenta está registrada con {provider}. Por favor, inicia sesión con ese proveedor.",
+      "oauthAccountHint": "Esta cuenta está registrada con <strong>{provider}</strong>. Usa el botón de {provider} para iniciar sesión.",
+      "createAccount": "Crear una cuenta nueva",
+      "showPassword": "Mostrar contraseña",
+      "hidePassword": "Ocultar contraseña",
+      "biometric": {
+        "reason": "Inicia sesión para continuar",
+        "failed": "Autenticación biométrica fallida",
+        "noCredentials": "No hay credenciales guardadas. Inicia sesión con contraseña primero y activa «Recordarme».",
+        "restoreFailed": "No se pudo restaurar la sesión",
+        "error": "Error en autenticación biométrica",
+        "signInWith": "Entrar con {method}",
+        "faceId": "Face ID",
+        "fingerprint": "Huella"
+      },
+      "orgPicker": {
+        "title": "Selecciona una organización",
+        "subtitle": "Tu cuenta está asociada a múltiples organizaciones.",
+        "searchPlaceholder": "Buscar organización...",
+        "empty": "No se encontraron organizaciones.",
+        "addFavorite": "Marcar como favorita",
+        "removeFavorite": "Quitar de favoritas",
+        "favoritesFirst": "Las organizaciones marcadas con ★ aparecen primero"
+      },
+      "orgStatus": {
+        "active": "Activa",
+        "frozen": "Congelada",
+        "deleted": "Eliminada",
+        "inactive": "Inactiva"
+      }
     },
     "signup": {
       "title": "Crear Cuenta",
@@ -187,7 +229,22 @@
         "paymentNotReady": "El sistema de pago no está listo. Intenta de nuevo.",
         "cardNotFound": "No se encontró el elemento de tarjeta",
         "errorVerifyCard": "Error al verificar la tarjeta"
-      }
+      },
+      "brandPanel": {
+        "subtitle": "Crea tu cuenta y la de tu organización en pocos minutos.",
+        "steps": {
+          "personal": "Datos personales",
+          "organization": "Organización",
+          "mainBranch": "Sucursal principal",
+          "plan": "Plan y suscripción",
+          "payment": "Método de pago",
+          "verification": "Verificación de email"
+        }
+      },
+      "errorMainBranchNotFound": "No se encontró la sucursal principal creada automáticamente para actualizar",
+      "errorCreateAccount": "Error al crear la cuenta",
+      "errorCreateUser": "No se pudo crear el usuario",
+      "errorUnknown": "Error desconocido"
     },
     "selectOrganization": {
       "title": "Selecciona una organización",
@@ -3444,6 +3501,19 @@
         "fusionadas": "{n, plural, other {# etiquetas fusionadas}}",
         "errorFusionar": "No pudimos fusionar las etiquetas"
       }
+    }
+  },
+  "errorPages": {
+    "notFound": {
+      "title": "Página no encontrada (404)",
+      "description": "La página que estás buscando no existe o fue movida. Verifica la dirección e intenta de nuevo.",
+      "home": "Volver al inicio",
+      "back": "Página anterior"
+    },
+    "globalError": {
+      "title": "Se ha producido un error inesperado",
+      "description": "El equipo ha sido notificado automáticamente. Puedes intentar recargar la página para continuar.",
+      "retry": "Reintentar"
     }
   }
 }

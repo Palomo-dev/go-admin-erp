@@ -75,6 +75,7 @@ vive fuera del repo, en `docs/auditoria-finanzas/` (ignorado por `.gitignore`).
 | [F-60](F-60.md) | Asientos que no se creaban sin dejar rastro (18 disparadores y el de descuento) | Alta | Corregido (2026-09-23) | Cierre contable |
 | [F-61](F-61.md) | Dos caminos para el costo de ventas: el de sale_items solo rechazaba | Media | Corregido (un solo camino, el kardex; ADR-CC-010) | Cierre contable |
 | [F-62](F-62.md) | Notas crédito históricas con excedente pendientes de decisión | Media | Abierto: decisión con cada cliente | Cierre contable |
+| [F-63](F-63.md) | Nadie podía crear turnos: el trigger buscaba la organización en una columna inexistente de `employments` | Crítica | Corregido y verificado (2026-09-23) | Hallazgo propio (visto durante la fase D) |
 
 ## Notas
 

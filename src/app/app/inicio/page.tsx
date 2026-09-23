@@ -33,7 +33,7 @@ import { WebCommerceObservability } from '@/components/pos/pedidos-online/WebCom
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useBranch } from '@/lib/context/BranchContext';
 import { usePermissionContext } from '@/hooks/usePermissionContext';
-import { STAGE_MANAGER_ROLE_IDS } from '@/lib/services/crm/stagePermissions';
+import { veePanelCompleto } from '@/lib/dashboard/accesoPanel';
 import { EmployeeDashboard } from '@/components/inicio/EmployeeDashboard';
 import { useDesktopCatalog } from '@/lib/offline/useDesktopCatalog';
 
@@ -64,15 +64,12 @@ function InicioContent() {
   const [userId, setUserId] = useState<string | null>(null);
   const greeting = useDynamicGreeting(userName, locale);
 
-  // Solo los administradores y managers de la organización (Super Admin /
-  // Admin de organización / Manager, role_id 1/2/5, o is_super_admin) pueden
-  // ver el dashboard financiero. Los empleados no ven datos financieros.
-  const canSeeFinancialDashboard = !!(
-    permContext && (
-      permContext.isSuperAdmin ||
-      STAGE_MANAGER_ROLE_IDS.includes(permContext.roleId)
-    )
-  );
+  // Quién ve el panel con datos financieros. La regla vive en
+  // `@/lib/dashboard/accesoPanel`: antes se leía la lista del CRM
+  // (`STAGE_MANAGER_ROLE_IDS`), pensada para el control de etapas de las
+  // oportunidades, así que tocarla allí cambiaba en silencio quién ve la caja
+  // y la utilidad aquí.
+  const canSeeFinancialDashboard = veePanelCompleto(permContext);
 
   // El rol está resuelto SOLO cuando el hook completó una carga para ESTA
   // organización. No vale con `permContext !== null || !loading`, que era el

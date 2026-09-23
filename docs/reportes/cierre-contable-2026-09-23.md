@@ -185,3 +185,106 @@ Balance de prueba: cuadra en las 19 antes y después.
 1. **Crear un usuario de prueba miembro solo de la org 149** y recorrer los casos por la interfaz: en especial el aviso de «producto sin impuesto» (caso f) y la llamada real a `pos_checkout_v1`, que exige un miembro activo.
 2. **Auditoría F-57** con cada cliente afectado.
 3. **Desplegar** el código de este cierre (web y build del Desktop, que carga la web): el aviso de impuesto, la tarifa por defecto, el checkout sin respaldo y las rutas migradas al resolver solo existen en `main`. `git push` no se hizo: requiere autorización.
+
+---
+
+## 8. Última ronda (2026-09-23, 13:30–13:50 UTC)
+
+### 8.1 Cuenta 2805
+
+- Medido antes: **0 saldos a favor** en `credit_notes`, así que no había asientos
+  faltantes que crear. 2805 existía en 1 de 85 planes.
+- `20260923133036`: `fn_asegurar_cuenta_anticipos(org)` y disparador en el alta
+  de organización (después del plan por defecto). Resultado: **85 de 85** planes
+  con 2805 (74 bajo `21`, 11 bajo `2100` en el plan alterno).
+
+### 8.2 F-58 implementado (ADR-CC-008)
+
+- `20260923133707` + `20260923133809`: excedente = dinero ya pagado que la nota
+  convierte en saldo del cliente; liquidación como saldo a favor
+  (`1305 D / 2805 C` con `credit_notes`) o devolución (pago negativo +
+  `1305 D / Caja|Bancos C`), idempotente y con guarda de pertenencia.
+- `NotaCreditoDialog` ofrece la elección cuando hay excedente (saldo a favor
+  preseleccionado). Tests: `notaCreditoExcedente.test.ts` (7).
+- Org 149: NC-E2E-H y NC-E2E-H2 → saldo a favor (1.190.000 y 119.000);
+  NC-E2E-D → devolución en efectivo (`1305 D / 1105 C` 23.800); NC-E2E-E sobre una
+  factura con abono → devolución por transferencia (`1305 D / 1110 C` 10.000);
+  repetir la liquidación no crea nada. **1305 = facturas abiertas = 105.000,
+  diferencia 0** (antes −1.309.000).
+- Org 2: NC-0001 (160.531) y NC-0005 (142.800) → saldo a favor.
+- 4 notas más con excedente sobre facturas parcialmente pagadas (orgs 2 y 115)
+  quedan en **F-62** para decisión con cada cliente.
+
+### 8.3 Silencio contable (F-60)
+
+- `fn_create_journal_entry` ya registraba sus rechazos (tres sondas en la
+  149: `debit_account_missing`, `amount_invalid`, `tax_account_missing`).
+- `20260923133338`: registran también `fn_create_journal_entry_with_discount` y
+  18 disparadores que salían sin regla. `20260923133424`: reaplicado sobre
+  `fn_auto_journal_stock_movement` tras una reescritura concurrente de otra
+  sesión (ADR-CC-009), coordinado con ella. **0 disparadores silenciosos.**
+- `v_salud_contable` (solo `service_role`): rechazos por organización y motivo,
+  cuadre del balance y diferencia de cartera. Hoy muestra 51 rechazos de CMV
+  sin regla en las orgs 137 y 144 (**F-61**).
+
+### 8.4 Despliegue de `3e570fe0`
+
+- **`main` no se publica en producción.** Vercel publica producción desde
+  `master`; el último despliegue de producción es el merge del PR #247
+  (`70677e58`). El push de `main` genera un despliegue de *preview*:
+  `dpl_MXtGaVW95vS5QeJGS5QPkt9HkeGv` para `3e570fe0`, estado **READY** (el build
+  compiló).
+- El código de este cierre (aviso de impuesto, tarifa por defecto, checkout sin
+  respaldo, rutas por el resolver, liquidación de notas crédito) **no está en
+  producción** hasta que se abra y se fusione el PR `main → master`, que requiere
+  autorización.
+- **La base sí es compartida:** todas las migraciones están activas para
+  producción desde que se aplicaron. Evidencia de salud desde las 08:01 UTC:
+  - runtime de producción: **0 errores** en 6 horas (Vercel);
+  - 45 ventas POS reales (30 por `pos_checkout_v1`), **45/45** facturas con su
+    devengo, **0** ventas con dos devengos, **45/45** devengos contra 1305;
+  - 0 líneas con tarifa > 0 sin `tax_code`; 0 errores del normalizador de
+    impuesto; 0 organizaciones descuadradas.
+- POS, facturación y asistente **no se recorrieron por la interfaz**: el preview
+  está detrás del SSO de Vercel y las pantallas exigen sesión; no se crean
+  cuentas ni se ingresan contraseñas. El asistente no registró mensajes hoy, así
+  que no hay uso real que revisar; sus RPC solo perdieron `anon`.
+- `next build` no se corrió en local porque otra sesión tiene un servidor de
+  desarrollo en la misma carpeta y el build reescribe `.next`; la compilación la
+  prueba el preview READY.
+
+**Commits de otras sesiones que salieron en ese push** (29 en total, 7 de este
+cierre):
+
+| Commit | Hora (COT) | Mensaje |
+|---|---|---|
+| `21b417a3` | 08:03 | fix(shell): idioma y «Reportar problema» como en Figma; créditos de IA sin «1.000 de 500» |
+| `664b935e` | 07:55 | fix(shell): el panel de sesión ya no anida botones y el › de la cabecera abre Mi perfil |
+| `a2972d39` | 04:25 | docs(diseño): catálogo y producción en Figma |
+| `eb553df2` | 03:57 | docs(diseño): existencias en Figma |
+| `f2fbf663` | 03:57 | feat(shell): sidebar y header nuevos — un solo catálogo de navegación, selector de organización y sucursal, campana y «Reportar problema» |
+| `5f473e1a` | 03:57 | docs(diseño): órdenes de compra completas en Figma |
+| `050cad80` | 03:03 | docs(diseño): barrido de iconos de menús en Figma |
+| `c9f412a0` | 03:03 | fix(ui): los avisos de sonner vuelven a verse en toda la app |
+| `6ac64b9a` | 02:45 | feat(diseño): los colores de toda la app salen de los tokens de Figma |
+| `07a03542` | 02:42 | docs(diseño): respaldo visual del shell antes del rediseño |
+| `78bd17cc` | 23:13 | docs(diseño): la auditoría control por control de los 19 módulos y su rediseño |
+| `250aeec7` | 23:04 | fix(inventario,contabilidad): el costo de lo que sale es un costo, no el precio de venta |
+| `6904f6e7` | 23:01 | fix(inventario): el kardex admite los ocho orígenes que el código llevaba catorce meses escribiendo |
+| `9dc89ebd` | 22:48 | fix(finanzas): pagar a un proveedor se automatiza como cobrar |
+| `d8090114` | 22:35 | feat(contabilidad): un solo asiento por hecho económico, y el que falla deja rastro |
+| `5cd16606` | 22:18 | fix(seguridad): las llaves de API dejan de ser predecibles |
+| `ebd64535` | 21:15 | docs(diseño): registrar las 14 decisiones de producto cerradas el 2026-09-22 |
+| `6bc46688` | 21:13 | feat(contabilidad,planes): clave del hecho económico y límites oficiales de los planes |
+| `7c25a106` | 21:02 | refactor(inicio): el panel deja de depender de la lista de roles del CRM |
+| `d1770f92` | 20:06 | fix(seguridad): cerrar las reservas de mesa y la redención anónima de cupones |
+| `136eb5cf` | 19:44 | fix(pedidos-online): «marcar como pagado» registra el pago de verdad |
+| `ad6ceb62` | 19:35 | fix(seguridad): /api/web-orders/observability exige sesión |
+
+### 8.5 Remanentes que señaló la sesión de compras (ADR-CC-009, F-59)
+
+- 5 facturas de compra en borrador con devengo (4.985 en total): mismo
+  problema que F-49, en compras.
+- `FacturasCompraService.ts:355` crea la cuenta por pagar desde el borrador; debe
+  nacer en la base al pasar a `received`, como la cartera de ventas.
+

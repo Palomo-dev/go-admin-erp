@@ -1,6 +1,6 @@
 # ADR-CC-008 · Qué pasa con el dinero cuando se acredita una factura ya pagada
 
-**Fecha:** 2026-09-23 · **Estado:** PROPUESTA, sin implementar · **Hallazgo:** F-58
+**Fecha:** 2026-09-23 · **Estado:** APROBADA y aplicada (`20260923133707`, `20260923133809`) · **Hallazgo:** F-58
 
 ## Contexto
 
@@ -62,3 +62,26 @@ factura genera el segundo hecho:
 - No se implementa en este cierre: toca el flujo de emisión (UI + RPC nueva) y
   la siembra de cuentas en 84 planes contables, y el mandato pide la propuesta
   primero.
+
+## Implementación (2026-09-23)
+
+Decisiones tomadas al implementar, además de lo propuesto:
+
+1. **El excedente es solo dinero ya pagado.** La primera versión
+   (`|nota| − lo que se debía`) daba excedente en notas mayores que su factura
+   sin ningún pago; un excedente es dinero que el cliente pagó.
+2. **La devolución es un pago negativo** en `payments` (`source='credit_note'`).
+   El cierre de caja suma los pagos completados por medio: con importe positivo
+   la salida habría inflado la caja. `fn_auto_journal_payment`,
+   `fn_recalc_invoice_balance_from_payments` y la cartera ignoran esa fuente; el
+   asiento lo hace la RPC con clave `refund:credit_note:{id}`. Efecto conocido:
+   `fn_notify_payment_registered` notifica «pago registrado» con importe
+   negativo.
+3. **No es atómico con la emisión de la nota**, porque la nota se escribe
+   desde el navegador en varias llamadas (F-17). Si la liquidación falla, la
+   nota queda y el diálogo avisa; `v_cartera_vs_documentos` la muestra
+   pendiente.
+4. **Otros emisores de notas crédito** (devoluciones del POS y reembolso de
+   pedidos web) no liquidan todavía: queda como siguiente paso.
+5. **Histórico:** se liquidaron las 4 notas del mandato. Las otras 4 que
+   encuentra la regla quedan en F-62.

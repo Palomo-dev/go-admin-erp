@@ -121,3 +121,17 @@ duplica el activo en toda venta de contado con pago → ADR-CC-001.
 - `20260923131133 vista_cartera_vs_documentos` (security_invoker, solo
   service_role).
 - Última migración reconciliada: `20260923131133`.
+
+## 2026-09-23 · Última ronda (13:30–13:50 UTC)
+
+- 2805 en los 85 planes (`20260923133036`); 0 saldos a favor preexistentes.
+- F-58 implementado (`20260923133707`, `20260923133809`, `NotaCreditoDialog`):
+  4 notas liquidadas como saldo a favor (org 2: 2; org 149: 2); 2 devoluciones
+  de prueba en la 149; cartera de la 149 con diferencia 0. F-62 abierto.
+- F-60: silencio contable registrado (`20260923133338`, `20260923133424`);
+  `v_salud_contable`. F-61 abierto (CMV sin regla, orgs 137 y 144).
+- Colisión con la sesión de compras (ADR-CC-009) resuelta y coordinada:
+  releer de la base antes de reemplazar; ADR propios desde el 010.
+- Despliegue: `main` → preview READY; producción es `master` (PR #247). El
+  código de este cierre necesita el PR `main → master`.
+- Última migración reconciliada: `20260923133809`.

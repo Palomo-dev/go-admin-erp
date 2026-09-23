@@ -18,9 +18,16 @@ import { formatCurrency } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
-import { notasCreditoService } from '@/lib/services/notasCreditoService';
+import {
+  excedenteNotaCredito,
+  liquidarExcedenteNotaCredito,
+  notasCreditoService,
+  type LiquidacionExcedente,
+} from '@/lib/services/notasCreditoService';
 import { computeLineTotal, resolveLineTax, splitGrossLine } from '@/lib/services/taxResolver';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Table, 
   TableBody, 
@@ -76,6 +83,11 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
   const [modo, setModo] = useState<'items' | 'valor'>('items');
   const [conceptoValor, setConceptoValor] = useState<string>('');
   const [montoValor, setMontoValor] = useState<number>(0);
+  // F-58: qué pasa con el dinero ya pagado si la nota supera lo que se debía.
+  const [liquidacion, setLiquidacion] = useState<LiquidacionExcedente>('saldo_a_favor');
+  const [metodoDevolucion, setMetodoDevolucion] = useState<string>('cash');
+  const tieneCliente = Boolean(factura?.customer_id);
+  const excedente = excedenteNotaCredito(montoTotal, Number(factura?.balance) || 0, Number(factura?.total) || 0);
 
   // Cargar siguiente número de nota de crédito usando servicio centralizado
   const cargarSiguienteNumero = async () => {
@@ -124,8 +136,10 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
       setModo('items');
       setConceptoValor('');
       setMontoValor(0);
+      setLiquidacion(factura?.customer_id ? 'saldo_a_favor' : 'devolucion');
+      setMetodoDevolucion('cash');
     }
-  }, [open, organizationId, items]);
+  }, [open, organizationId, items, factura?.customer_id]);
 
   // Actualizar monto total cuando cambian las selecciones o cantidades
   useEffect(() => {
@@ -180,6 +194,31 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
     }
   };
 
+  /**
+   * F-58: si la nota supera lo que aún se debía de la factura, el excedente
+   * (dinero ya pagado) se liquida como saldo a favor o como devolución. La nota
+   * ya existe en este punto: si la liquidación falla, se avisa y la nota queda
+   * pendiente de liquidar (la ve el control de cartera), sin deshacer la nota.
+   */
+  const liquidarExcedente = async (notaCreditoId: string) => {
+    if (excedente <= 0) return;
+    try {
+      const r = await liquidarExcedenteNotaCredito(notaCreditoId, liquidacion, metodoDevolucion);
+      if (r.modo === 'saldo_a_favor') {
+        toastInfo('Saldo a favor creado', `El cliente queda con ${formatCurrency(r.excedente ?? excedente)} a favor para su próxima compra.`);
+      } else if (r.modo === 'devolucion') {
+        toastInfo('Devolución registrada', `Se registró la salida de ${formatCurrency(r.excedente ?? excedente)} por ${metodoDevolucion === 'cash' ? 'caja' : 'banco'}.`);
+      }
+    } catch (liqError: unknown) {
+      const detalle = liqError instanceof Error ? liqError.message : (liqError as { message?: string })?.message;
+      console.error('Error liquidando el excedente de la nota crédito:', liqError);
+      toastError(
+        'Excedente sin liquidar',
+        `La nota de crédito se creó, pero no se pudo registrar ${liquidacion === 'saldo_a_favor' ? 'el saldo a favor' : 'la devolución'}: ${detalle || 'error desconocido'}.`,
+      );
+    }
+  };
+
   // Función para generar la nota de crédito
   const handleSubmit = async () => {
     // Obtener el ID del usuario actual
@@ -230,6 +269,11 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
     
     if (!itemsValidos) {
       toastError("Error", "Debes tener al menos un ítem con cantidad mayor que cero");
+      return;
+    }
+
+    if (excedente > 0 && liquidacion === 'saldo_a_favor' && !tieneCliente) {
+      toastError('Error', 'La factura no tiene cliente: el excedente solo se puede devolver');
       return;
     }
 
@@ -370,6 +414,8 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
             .update({ balance: nuevoSaldoARV, status: nuevoSaldoARV <= 0 ? 'current' : 'overdue' })
             .eq('id', arV.id);
         }
+
+        await liquidarExcedente(notaCreditoId);
 
         toastSuccess('Nota de crédito generada', `Se ha generado la nota de crédito ${notaNumero} por ${formatCurrency(monto)} exitosamente`);
 
@@ -546,6 +592,8 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
 
         if (arUpdateError) console.error('Error al actualizar cuentas por cobrar:', arUpdateError);
       }
+
+      await liquidarExcedente(notaCreditoId);
 
       toastSuccess("Nota de crédito generada", `Se ha generado la nota de crédito ${notaNumero} por ${formatCurrency(subtotal + taxTotal)} exitosamente`);
 
@@ -746,6 +794,60 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
           </div>
           )}
           
+          {excedente > 0 && (
+            <div className="grid gap-3 rounded-md border p-3" role="group" aria-labelledby="excedente-titulo">
+              <div>
+                <p id="excedente-titulo" className="text-sm font-medium">
+                  La nota supera lo que se debía: {formatCurrency(excedente)} ya pagados quedan a favor del cliente
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Elige qué pasa con ese dinero. Queda registrado en la contabilidad.
+                </p>
+              </div>
+              <RadioGroup
+                value={liquidacion}
+                onValueChange={(v) => setLiquidacion(v as LiquidacionExcedente)}
+                className="grid gap-2"
+              >
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem value="saldo_a_favor" id="liq-saldo" disabled={!tieneCliente} />
+                  <Label htmlFor="liq-saldo" className="font-normal leading-snug">
+                    Dejar como saldo a favor del cliente
+                    <span className="block text-xs text-muted-foreground">
+                      {tieneCliente
+                        ? 'Lo podrá usar en su próxima compra.'
+                        : 'No disponible: la factura no tiene cliente.'}
+                    </span>
+                  </Label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem value="devolucion" id="liq-devolucion" />
+                  <Label htmlFor="liq-devolucion" className="font-normal leading-snug">
+                    Devolver el dinero
+                    <span className="block text-xs text-muted-foreground">
+                      Se registra como salida de caja o banco.
+                    </span>
+                  </Label>
+                </div>
+              </RadioGroup>
+              {liquidacion === 'devolucion' && (
+                <div className="grid items-center gap-1.5 sm:max-w-xs">
+                  <Label htmlFor="metodo-devolucion">Medio de la devolución</Label>
+                  <Select value={metodoDevolucion} onValueChange={setMetodoDevolucion}>
+                    <SelectTrigger id="metodo-devolucion">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Efectivo</SelectItem>
+                      <SelectItem value="transfer">Transferencia</SelectItem>
+                      <SelectItem value="card">Tarjeta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex justify-end items-center gap-2 mt-2">
             <span className="text-sm font-medium">Total de Nota de Crédito:</span>
             <span className="text-lg font-bold">{formatCurrency(montoTotal)}</span>

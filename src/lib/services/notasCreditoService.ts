@@ -460,3 +460,43 @@ class NotasCreditoService {
 }
 
 export const notasCreditoService = new NotasCreditoService();
+
+/** Qué hacer con el dinero ya pagado que una nota crédito convierte en saldo del cliente (F-58). */
+export type LiquidacionExcedente = 'saldo_a_favor' | 'devolucion';
+
+/**
+ * Excedente que deja una nota crédito sobre su factura (F-58, ADR-CC-008): el
+ * dinero ya pagado que la nota convierte en saldo del cliente. Vista previa de
+ * la regla que calcula la base (`fn_excedente_nota_credito`):
+ *   - lo que aún se debía (`saldoFactura`) se cancela primero;
+ *   - del resto, solo cuenta lo que ya se pagó (`totalFactura − saldoFactura`):
+ *     una nota mayor que la factura no crea dinero a devolver.
+ */
+export function excedenteNotaCredito(montoNota: number, saldoFactura: number, totalFactura: number): number {
+  const monto = Math.max(0, Number(montoNota) || 0);
+  const saldo = Math.max(0, Number(saldoFactura) || 0);
+  const pagado = Math.max(0, (Number(totalFactura) || 0) - saldo);
+  const excedente = Math.min(Math.max(0, monto - saldo), pagado);
+  return Math.round(excedente * 100) / 100;
+}
+
+/**
+ * Liquida el excedente de una nota crédito ya emitida, en una sola transacción
+ * de la base: saldo a favor (1305 D / 2805 C, con su documento en
+ * credit_notes) o devolución de dinero (pago negativo + 1305 D / Caja|Bancos C).
+ * Idempotente: una nota se liquida una sola vez.
+ */
+export async function liquidarExcedenteNotaCredito(
+  notaCreditoId: string,
+  modo: LiquidacionExcedente,
+  metodo?: string | null,
+): Promise<{ modo?: string; excedente?: number; ya_liquidada?: boolean }> {
+  const { data, error } = await supabase.rpc('fn_liquidar_excedente_nota_credito', {
+    p_credit_note_id: notaCreditoId,
+    p_modo: modo,
+    p_metodo: modo === 'devolucion' ? metodo || 'cash' : null,
+    p_bank_account_id: null,
+  });
+  if (error) throw error;
+  return (data || {}) as { modo?: string; excedente?: number; ya_liquidada?: boolean };
+}

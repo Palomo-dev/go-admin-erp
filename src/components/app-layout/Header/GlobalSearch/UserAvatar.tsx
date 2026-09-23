@@ -62,9 +62,10 @@ export const UserAvatar = ({ name, avatarUrl, className = '', size = 'sm' }: Ava
     
     return (
       <div className={`relative ${sizeClasses[size]} ${className}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- URL externa con respaldo por onError */}
         <img 
           src={publicAvatarUrl} 
-          alt={`Avatar de ${name}`}
+          alt={name}
           className={`rounded-full object-cover ${sizeClasses[size]}`}
           onError={(e) => {
             // Si hay error al cargar la imagen, mostrar iniciales

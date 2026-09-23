@@ -42,7 +42,8 @@ interface Adjunto {
   url: string;
 }
 
-function navegadorYSistema(): { navegador: string; sistema: string } {
+/** Navegador y sistema del contexto; `otro` es el texto para lo que no se reconoce, ya traducido. */
+function navegadorYSistema(otro: string): { navegador: string; sistema: string } {
   const ua = navigator.userAgent;
   const version = (re: RegExp) => ua.match(re)?.[1]?.split('.')[0] ?? '';
   const navegador = /Edg\//.test(ua)
@@ -53,7 +54,7 @@ function navegadorYSistema(): { navegador: string; sistema: string } {
         ? `Firefox ${version(/Firefox\/([\d.]+)/)}`
         : /Safari\//.test(ua)
           ? `Safari ${version(/Version\/([\d.]+)/)}`
-          : 'Otro';
+          : otro;
   const sistema = /Windows NT/.test(ua)
     ? 'Windows'
     : /Android/.test(ua)
@@ -64,7 +65,7 @@ function navegadorYSistema(): { navegador: string; sistema: string } {
           ? 'macOS'
           : /Linux/.test(ua)
             ? 'Linux'
-            : 'Otro';
+            : otro;
   return { navegador: navegador.trim(), sistema };
 }
 
@@ -130,7 +131,7 @@ export function ReportarProblemaDialog({ organizacionId, organizacionNombre, cor
 
   const contexto = useMemo(() => {
     if (!abierto) return null;
-    const { navegador, sistema } = navegadorYSistema();
+    const { navegador, sistema } = navegadorYSistema(t('feedbackOther'));
     return {
       pagina: typeof document !== 'undefined' ? document.title : '',
       organizacion: organizacionNombre,
@@ -141,7 +142,7 @@ export function ReportarProblemaDialog({ organizacionId, organizacionNombre, cor
       sistema,
       ventana: `${window.innerWidth}×${window.innerHeight}`,
     };
-  }, [abierto, organizacionNombre, sucursal, versionDesktop]);
+  }, [abierto, organizacionNombre, sucursal, versionDesktop, t]);
 
   const agregar = useCallback(
     (archivos: File[]) => {

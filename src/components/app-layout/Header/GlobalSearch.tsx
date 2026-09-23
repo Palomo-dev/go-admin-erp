@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Search } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { CommandDialog, CommandEmpty, CommandInput, CommandList } from '@/components/ui/command';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -11,7 +12,7 @@ import { getOrganizationId } from '../../../lib/hooks/useOrganization';
 // Componentes modulares
 import { SearchResultGroup } from './GlobalSearch/SearchResultGroup';
 import { searchData } from './GlobalSearch/searchService';
-import { SearchResult, SearchResultType, PAGINAS_PREDEFINIDAS, PAGINAS_INICIALES } from './GlobalSearch/types';
+import { SearchResult, SearchResultType } from './GlobalSearch/types';
 
 // Formas mínimas de las filas que devuelve `searchData` (lo que aquí se pinta).
 interface FilaFactura { id: string; number?: string | null; total?: number | null; status?: string | null; customers?: { full_name?: string | null } | null }
@@ -48,6 +49,7 @@ interface GlobalSearchProps {
 }
 
 const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: GlobalSearchProps) => {
+  const t = useTranslations('header.globalSearch');
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -68,13 +70,12 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
 
   const paginasRef = useRef<PaginaBuscable[] | undefined>(paginas);
   paginasRef.current = paginas;
+  // Sin `paginas` no se ofrece ninguna: las listas fijas de `types.ts` estaban
+  // solo en español y ofrecían páginas de módulos inactivos.
   const paginasIniciales = (): SearchResult[] =>
-    (paginasRef.current ? paginasRef.current.slice(0, 6) : PAGINAS_INICIALES).map((page) => ({
-      ...page,
-      type: 'page' as SearchResultType,
-    }));
+    (paginasRef.current ?? []).slice(0, 6).map((page) => ({ ...page, type: 'page' as SearchResultType }));
   const paginasTodas = (): SearchResult[] =>
-    (paginasRef.current ?? PAGINAS_PREDEFINIDAS).map((page) => ({ ...page, type: 'page' as SearchResultType }));
+    (paginasRef.current ?? []).map((page) => ({ ...page, type: 'page' as SearchResultType }));
 
   // Efecto para realizar la búsqueda cuando cambia el query debounceado
   useEffect(() => {
@@ -123,7 +124,7 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
             ...(data.organizaciones || []).map(org => ({
               id: org.id,
               name: org.name,
-              description: 'Organización',
+              description: t('organization'),
               type: 'organization' as const,
               url: `/app/organizacion/${org.id}`
             })),
@@ -132,7 +133,7 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
             ...(data.sucursales || []).map(branch => ({
               id: branch.id,
               name: branch.name,
-              description: `Sucursal`,
+              description: t('branch'),
               type: 'branch' as const,
               url: `/app/organizacion/sucursales/${branch.id}`
             })),
@@ -143,8 +144,8 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
               const nombreCompleto = cliente.full_name || `${cliente.first_name || ''} ${cliente.last_name || ''}`.trim();
               return {
                 id: cliente.id,
-                name: nombreCompleto || 'Cliente sin nombre',
-                description: cliente.email || cliente.identification_number || 'Sin información adicional',
+                name: nombreCompleto || t('unnamedCustomer'),
+                description: cliente.email || cliente.identification_number || t('noExtraInfo'),
                 type: 'customer' as const,
                 url: `/app/clientes/${cliente.id}`,
                 avatarUrl: cliente.avatar_url
@@ -181,7 +182,7 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
             // Facturas de venta
             ...(data.facturas || []).map((f: FilaFactura) => ({
               id: f.id,
-              name: `Factura ${f.number || 'S/N'}`,
+              name: t('invoice', { number: f.number || t('noNumber') }),
               description: `${f.customers?.full_name || ''} - $${Number(f.total || 0).toLocaleString()} - ${f.status || ''}`,
               type: 'invoice' as const,
               url: `/app/finanzas/facturas-venta/${f.id}`
@@ -190,7 +191,7 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
             // Pedidos online
             ...(data.pedidosOnline || []).map((p: FilaPedido) => ({
               id: p.id,
-              name: `Pedido ${p.order_number || ''}`,
+              name: t('order', { number: p.order_number || '' }).trim(),
               description: `${p.customer_name || ''} - $${Number(p.total || 0).toLocaleString()} - ${p.status || ''}`,
               type: 'web_order' as const,
               url: `/app/pos/pedidos-online/${p.id}`
@@ -199,7 +200,7 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
             // Reservas
             ...(data.reservas || []).map((r: FilaReserva) => ({
               id: r.id,
-              name: `Reserva ${r.spaces?.label || ''}`,
+              name: t('reservation', { space: r.spaces?.label || '' }).trim(),
               description: `${r.customers?.full_name || ''} - ${r.checkin || ''} → ${r.checkout || ''} - ${r.status || ''}`,
               type: 'reservation' as const,
               url: `/app/pms/reservas/${r.id}`
@@ -208,7 +209,7 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
             // Espacios
             ...(data.espacios || []).map((e: FilaEspacio) => ({
               id: e.id,
-              name: e.label || 'Sin nombre',
+              name: e.label || t('unnamed'),
               description: `${e.space_types?.name || ''} ${e.floor_zone ? '- ' + e.floor_zone : ''} - ${e.status || ''}`,
               type: 'space' as const,
               url: `/app/pms/espacios/${e.id}`
@@ -217,7 +218,7 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
             // Membresías
             ...(data.membresias || []).map((m: FilaMembresia) => ({
               id: m.id,
-              name: `${m.membership_plans?.name || 'Membresía'} - ${m.customers?.full_name || ''}`,
+              name: `${m.membership_plans?.name || t('membership')} - ${m.customers?.full_name || ''}`,
               description: `${m.status || ''} - ${formatPlainDate(m.start_date)} → ${formatPlainDate(m.end_date)}`,
               type: 'membership' as const,
               url: `/app/gym/membresias/${m.id}`
@@ -226,7 +227,7 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
             // Vehículos de parqueadero
             ...(data.vehiculosParking || []).map((v: FilaVehiculo) => ({
               id: v.id,
-              name: `${v.plate || 'Sin placa'}`,
+              name: `${v.plate || t('noPlate')}`,
               description: `${v.brand || ''} ${v.model || ''} ${v.color ? '- ' + v.color : ''} (${v.vehicle_type || ''})`,
               type: 'parking_vehicle' as const,
               url: `/app/pms/parking`
@@ -260,7 +261,8 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
 
     // Iniciar la búsqueda
     fetchData();
-    // Las páginas se leen por ref: cambiar de menú no debe relanzar la búsqueda.
+    // Las páginas se leen por ref y `t` solo cambia con el idioma: ninguno de
+    // los dos debe relanzar la búsqueda.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery]);
 
@@ -350,7 +352,7 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
           <button
             onClick={openSearchDialog} 
             className="md:hidden p-2 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
-            aria-label="Buscar"
+            aria-label={t('search')}
           >
             <Search className="h-5 w-5" />
           </button>
@@ -363,7 +365,7 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
         >
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
           <div className="flex-grow truncate text-sm text-gray-500 dark:text-gray-400">
-            Buscar páginas, clientes, sucursales...
+            {t('triggerPlaceholder')}
           </div>
           <kbd className="ml-auto hidden lg:inline-flex h-5 select-none items-center gap-1 rounded border bg-gray-50 px-1.5 font-mono text-[10px] font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
             Ctrl+K
@@ -378,16 +380,16 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
         onOpenChange={setOpen}
       >
         {/* Título requerido para accesibilidad */}
-        <DialogTitle className="sr-only">Búsqueda global</DialogTitle>
+        <DialogTitle className="sr-only">{t('title')}</DialogTitle>
         <DialogDescription className="sr-only">
-          Buscar en organizaciones, clientes, productos y más
+          {t('description')}
         </DialogDescription>
         
         <CommandInput
           ref={inputRef}
           value={query}
           onValueChange={handleInputChange}
-          placeholder="Buscar organizaciones, clientes, productos..."
+          placeholder={t('placeholder')}
           className="flex-1 py-3 text-base outline-none placeholder:text-gray-500 h-12 px-3 border-b"
           autoFocus
         />
@@ -395,8 +397,8 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
         <CommandList className="max-h-[500px] overflow-y-auto py-2">
           {results.length === 0 && !isLoading && query.length > 0 && (
             <div className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-              No se encontraron resultados para «{query}»
-              <p className="mt-2 text-xs">Intenta con otro término de búsqueda</p>
+              {t('noResults', { query })}
+              <p className="mt-2 text-xs">{t('noResultsHint')}</p>
             </div>
           )}
 
@@ -404,7 +406,7 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
           {isLoading && (
             <div className="py-6 text-center">
               <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Buscando...</p>
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{t('searching')}</p>
             </div>
           )}
 
@@ -412,91 +414,91 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
           {!isLoading && results.length === 0 && query.length === 0 && (
             <CommandEmpty>
               <div className="py-6 text-center">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Escribe para buscar</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('typeToSearch')}</p>
               </div>
             </CommandEmpty>
           )}
 
           {/* Resultados agrupados por tipo - usando componentes modulares */}
           <SearchResultGroup 
-            heading="Páginas" 
+            heading={t('groups.pages')} 
             resultType="page" 
             results={results} 
             onSelect={handleSelect} 
           />
 
           <SearchResultGroup 
-            heading="Sucursales" 
+            heading={t('groups.branches')} 
             resultType="branch" 
             results={results} 
             onSelect={handleSelect} 
           />
 
           <SearchResultGroup 
-            heading="Clientes" 
+            heading={t('groups.customers')} 
             resultType="customer" 
             results={results} 
             onSelect={handleSelect} 
           />
 
           <SearchResultGroup 
-            heading="Productos" 
+            heading={t('groups.products')} 
             resultType="product" 
             results={results} 
             onSelect={handleSelect} 
           />
 
           <SearchResultGroup 
-            heading="Proveedores" 
+            heading={t('groups.suppliers')} 
             resultType="supplier" 
             results={results} 
             onSelect={handleSelect} 
           />
 
           <SearchResultGroup 
-            heading="Categorías" 
+            heading={t('groups.categories')} 
             resultType="category" 
             results={results} 
             onSelect={handleSelect} 
           />
 
           <SearchResultGroup 
-            heading="Facturas" 
+            heading={t('groups.invoices')} 
             resultType="invoice" 
             results={results} 
             onSelect={handleSelect} 
           />
 
           <SearchResultGroup 
-            heading="Pedidos Online" 
+            heading={t('groups.webOrders')} 
             resultType="web_order" 
             results={results} 
             onSelect={handleSelect} 
           />
 
           <SearchResultGroup 
-            heading="Reservas" 
+            heading={t('groups.reservations')} 
             resultType="reservation" 
             results={results} 
             onSelect={handleSelect} 
           />
 
           <SearchResultGroup 
-            heading="Espacios" 
+            heading={t('groups.spaces')} 
             resultType="space" 
             results={results} 
             onSelect={handleSelect} 
           />
 
           <SearchResultGroup 
-            heading="Membresías" 
+            heading={t('groups.memberships')} 
             resultType="membership" 
             results={results} 
             onSelect={handleSelect} 
           />
 
           <SearchResultGroup 
-            heading="Parqueadero" 
+            heading={t('groups.parking')} 
             resultType="parking_vehicle" 
             results={results} 
             onSelect={handleSelect} 

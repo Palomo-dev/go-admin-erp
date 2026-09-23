@@ -106,11 +106,12 @@ function limpiarEstadoDeCuentaAnterior(): void {
   }
 }
 
-/** «14 oct 2026» en la zona horaria de la organización (timestamptz → formatDateInTz). */
+/** «14 oct 2026» en la zona horaria de la organización y el idioma de la persona (timestamptz → formatDateInTz). */
 function useFechaLarga() {
   const { timezone } = useOrgTimezone();
+  const locale = useLocale();
   return (valor: string | null | undefined) =>
-    formatDateInTz(valor, timezone, { day: 'numeric', month: 'short', year: 'numeric' });
+    formatDateInTz(valor, timezone, { day: 'numeric', month: 'short', year: 'numeric', locale });
 }
 
 const COP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
@@ -531,7 +532,9 @@ export function PanelSesion({ usuario, organizacion, tema, onAlternarTema, onCer
     setErrorCambio(null);
     const r = await switchToAccount(cuenta.userId);
     if (!r.ok) {
-      setErrorCambio(r.error || t('switchError'));
+      // `switchToAccount` solo falla cuando la sesión guardada ya no sirve; su
+      // mensaje viene en español, así que se muestra el texto traducido.
+      setErrorCambio(r.error ? t('accountExpired') : t('switchError'));
       setCuentas(getSavedAccounts());
       setCambiandoId(null);
       return;

@@ -40,6 +40,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
+import { useTranslations } from 'next-intl';
 
 /** Clave de localStorage con el ancho elegido para el panel de carrito/pago. */
 const POS_LAYOUT_ID = 'pos-layout-productos-carrito';
@@ -66,14 +67,15 @@ export default function POSPage() {
   const [isOrgAdmin, setIsOrgAdmin] = useState(false);
   const { showExpected } = useBlindCloseMode();
   const { timezone } = useOrgTimezone();
+  const tHeader = useTranslations('header');
   // Shell móvil (Figma MobileHeader Mode=pos y MobileTabBar): la cabecera
   // muestra el estado de la caja, y la barra inferior se oculta con el carrito
   // abierto o cobrando, donde manda la botonera «Cobrar».
   useCabeceraMovil({
     modo: 'pos',
     estadoPos: cashSession
-      ? { texto: `Caja abierta · ${formatTimeInTz(cashSession.opened_at, timezone)}`, tono: 'exito' }
-      : { texto: 'Caja cerrada', tono: 'advertencia' },
+      ? { texto: tHeader('posCashOpen', { time: formatTimeInTz(cashSession.opened_at, timezone) }), tono: 'exito' }
+      : { texto: tHeader('posCashClosed'), tono: 'advertencia' },
     ocultarBarra: mobileView === 'cart' || showCheckout,
   });
   // Escritorio (≥ lg): productos y carrito en paneles redimensionables. El

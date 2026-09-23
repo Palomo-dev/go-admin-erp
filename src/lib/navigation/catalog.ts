@@ -13,8 +13,12 @@
  * acceso por cargo) y de las capacidades calculadas en el servidor, y lo aplica
  * `filtrarNavegacion()`. Aquí solo está el mapa completo.
  *
- * Los nombres de módulo son claves i18n (`nav.*`); los de página, texto en
- * español como hasta ahora (no tenían traducción).
+ * Los nombres de módulo son claves i18n (`nav.*`). Los de página y grupo se
+ * quedan aquí en español como valor canónico (los usan `modulePages.ts` y la
+ * configuración de páginas por organización), y en pantalla se traducen con
+ * claves derivadas: `nav.paginas.<clavePagina(href)>` y
+ * `nav.grupos.<claveGrupo(grupo)>` (ver `useNombresNav`). Una página nueva
+ * necesita su clave en es/en/fr/pt: `__tests__/traducciones.test.ts` lo exige.
  */
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -549,4 +553,28 @@ export const CATALOGO_NAV: ModuloNav[] = [
 /** Busca un módulo por su código de base de datos. */
 export function moduloPorCodigo(codigo: string): ModuloNav | undefined {
   return CATALOGO_NAV.find((m) => m.codigo === codigo);
+}
+
+/**
+ * Clave i18n de una página, derivada de su ruta: sin `/app/`, sin consulta y
+ * con `_` en lugar de `/` (next-intl usa el punto como separador, así que la
+ * clave nunca lleva puntos). `/app/finanzas/facturas-venta` →
+ * `finanzas_facturas-venta`; se lee en `nav.paginas.<clave>`.
+ */
+export function clavePagina(href: string): string {
+  const ruta = href.split(/[?#]/)[0].replace(/^\/app\/?/, '').replace(/\/+$/, '');
+  return ruta.replace(/\//g, '_').replace(/\./g, '-') || 'app';
+}
+
+/**
+ * Clave i18n de un grupo del panel de submenú: el nombre en minúsculas, sin
+ * tildes y con guiones. «Tesorería» → `tesoreria`; se lee en `nav.grupos.<clave>`.
+ */
+export function claveGrupo(grupo: string): string {
+  return grupo
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }

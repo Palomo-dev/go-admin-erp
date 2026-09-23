@@ -17,6 +17,7 @@ import { Pin, PinOff, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import type { PaginaNav } from '@/lib/navigation/catalog';
+import { useNombresNav } from '@/lib/navigation/useNombresNav';
 import type { ModuloVisible } from '@/lib/navigation/filtrar';
 
 interface Grupo {
@@ -67,6 +68,7 @@ export function ListaPaginas({
   /** Filas de 44 px para el acordeón móvil. */
   tactil?: boolean;
 }) {
+  const nombres = useNombresNav();
   return (
     <ul className="flex flex-col gap-0.5">
       {paginas.map((p) => {
@@ -85,7 +87,7 @@ export function ListaPaginas({
               )}
             >
               {activa && <span aria-hidden="true" className="h-4 w-[3px] shrink-0 rounded-sm bg-brand" />}
-              <span className="min-w-0 flex-1 truncate">{p.nombre}</span>
+              <span className="min-w-0 flex-1 truncate">{nombres.pagina(p)}</span>
             </Link>
           </li>
         );
@@ -95,10 +97,11 @@ export function ListaPaginas({
 }
 
 function BloqueGrupo({ grupo, paginaActiva, onNavegar }: { grupo: Grupo; paginaActiva: string | null; onNavegar?: () => void }) {
+  const nombres = useNombresNav();
   return (
     <div className="flex flex-col gap-0.5">
       {grupo.titulo && (
-        <p className="pb-1 pl-1.5 pt-2 text-xs font-semibold leading-4 text-fg-muted">{grupo.titulo}</p>
+        <p className="pb-1 pl-1.5 pt-2 text-xs font-semibold leading-4 text-fg-muted">{nombres.grupo(grupo.titulo)}</p>
       )}
       <ListaPaginas paginas={grupo.paginas} paginaActiva={paginaActiva} onNavegar={onNavegar} />
     </div>

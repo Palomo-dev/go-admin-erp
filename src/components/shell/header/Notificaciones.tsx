@@ -14,7 +14,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ArrowUpRight, Bell, Check, ClipboardList, Mail, MessageSquare, Smartphone, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -30,6 +30,7 @@ export function textoContador(n: number): string {
 
 function useHoraRelativa() {
   const t = useTranslations('header');
+  const locale = useLocale();
   const { timezone } = useOrgTimezone();
   return (iso: string) => {
     const fecha = new Date(iso);
@@ -40,7 +41,7 @@ function useHoraRelativa() {
     const dia = toPlainDate(fecha, timezone);
     if (dia === hoy) return t('todayAt', { time: formatTimeInTz(fecha, timezone) });
     if (dia === toPlainDate(new Date(Date.now() - 86400000), timezone)) return t('yesterday');
-    return formatDateInTz(fecha, timezone, { day: 'numeric', month: 'short' });
+    return formatDateInTz(fecha, timezone, { day: 'numeric', month: 'short', locale });
   };
 }
 

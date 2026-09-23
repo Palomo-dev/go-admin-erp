@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { MailWarning, X, Send } from 'lucide-react';
 
 const DISMISS_KEY = 'email_verification_banner_dismissed_at';
 
 export function EmailVerificationBanner() {
+  const t = useTranslations('header.emailBanner');
+  const tHeader = useTranslations('header');
   const [visible, setVisible] = useState(false);
   const [sending, setSending] = useState(false);
   const [email, setEmail] = useState('');
@@ -83,9 +86,9 @@ export function EmailVerificationBanner() {
         <div className="flex items-center gap-2 min-w-0">
           <MailWarning className="h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400" />
           <p className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-300 truncate">
-            Verifica tu correo electrónico
+            {t('title')}
             <span className="font-normal ml-1 text-amber-600 dark:text-amber-400">
-              — Revisa tu bandeja de entrada en <strong>{email}</strong> para confirmar tu cuenta.
+              — {t.rich('detail', { email, b: (partes) => <strong>{partes}</strong> })}
             </span>
           </p>
         </div>
@@ -98,17 +101,17 @@ export function EmailVerificationBanner() {
           >
             <Send className="h-3 w-3" />
             <span className="hidden sm:inline">
-              {sending ? 'Enviando...' : canResend ? 'Reenviar correo' : `Reenviar en ${resendTimer}s`}
+              {sending ? t('sending') : canResend ? t('resendEmail') : t('resendIn', { seconds: resendTimer })}
             </span>
             <span className="sm:hidden">
-              {sending ? '...' : canResend ? 'Reenviar' : `${resendTimer}s`}
+              {sending ? '…' : canResend ? t('resend') : t('seconds', { seconds: resendTimer })}
             </span>
           </button>
 
           <button
             onClick={handleDismiss}
             className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-amber-600 dark:text-amber-400"
-            aria-label="Cerrar"
+            aria-label={tHeader('close')}
           >
             <X className="h-3.5 w-3.5" />
           </button>

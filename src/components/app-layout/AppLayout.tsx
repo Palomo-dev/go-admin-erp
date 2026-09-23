@@ -13,6 +13,7 @@ import { SidebarShell } from '@/components/shell/sidebar/SidebarShell';
 import { CATALOGO_NAV } from '@/lib/navigation/catalog';
 import { filtrarNavegacion, rutaActiva } from '@/lib/navigation/filtrar';
 import { useCapacidades } from '@/lib/navigation/useCapacidades';
+import { useNombresNav } from '@/lib/navigation/useNombresNav';
 import { getOrganizationId, guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { useSubscriptionGuard } from '@/lib/hooks/useSubscriptionGuard';
 import { useTheme } from 'next-themes';
@@ -88,6 +89,7 @@ export const AppLayout = ({
   const pathname = usePathname();
   const tNav = useTranslations('nav');
   const tHeader = useTranslations('header');
+  const nombresNav = useNombresNav();
   const router = useRouter();
 
   // Verificación client-side del estado de suscripción (segunda capa después del middleware)
@@ -358,7 +360,7 @@ export const AppLayout = ({
         .eq('organization_id', currentOrgId)
         .single();
 
-      let roleName = 'Usuario';
+      let roleName = '';
       if (!roleError && userRoleData?.role_id) {
         const { data: roleData } = await supabase
           .from('roles')
@@ -366,7 +368,7 @@ export const AppLayout = ({
           .eq('id', userRoleData.role_id)
           .single();
         
-        roleName = roleData?.name || 'Usuario';
+        roleName = roleData?.name || '';
       }
 
       const finalUserData = {
@@ -524,10 +526,10 @@ export const AppLayout = ({
           // Procesar retryData igual que unifiedData abajo
           const member = Array.isArray(retryData.organization_members) ? retryData.organization_members[0] : retryData.organization_members;
           const organization = Array.isArray(member.organizations) ? member.organizations[0] : member.organizations;
-          let roleName = 'Usuario';
+          let roleName = '';
           if (member.role_id) {
             const { data: roleData } = await supabase.from('roles').select('name').eq('id', member.role_id).single();
-            roleName = roleData?.name || 'Usuario';
+            roleName = roleData?.name || '';
           }
           const finalUserData = {
             name: `${retryData.first_name || ''} ${retryData.last_name || ''}`.trim() || retryData.email,
@@ -598,7 +600,7 @@ export const AppLayout = ({
         : member.organizations;
       
       // Obtener nombre del rol con consulta separada (más confiable)
-      let roleName = 'Usuario';
+      let roleName = '';
       if (member.role_id) {
         const { data: roleData } = await supabase
           .from('roles')
@@ -606,7 +608,7 @@ export const AppLayout = ({
           .eq('id', member.role_id)
           .single();
         
-        roleName = roleData?.name || 'Usuario';
+        roleName = roleData?.name || '';
       }
 
       const finalUserData = {
@@ -896,10 +898,15 @@ export const AppLayout = ({
         s.modulos.flatMap((m) =>
           m.paginas
             .filter((p) => p.enMenu !== false)
-            .map((p) => ({ id: p.href, name: p.nombre, url: p.href, description: tNav(m.modulo.etiqueta) }))
+            .map((p) => ({ id: p.href, name: nombresNav.pagina(p), url: p.href, description: tNav(m.modulo.etiqueta) }))
         )
       ),
-    [seccionesNav, tNav]
+    [seccionesNav, tNav, nombresNav]
+  );
+  // Sin cargo en la organización se muestra «Usuario» en el idioma de la persona.
+  const usuarioSesion = useMemo(
+    () => (userData ? { ...userData, role: userData.role || tNav('user') } : null),
+    [userData, tNav]
   );
   // Sin organización no hay módulos que esperar: solo «Inicio».
   const cargandoNav = !!orgId && !modulosError && (activeModuleCodes === undefined || jobPositionVisibleModules === undefined);
@@ -928,7 +935,7 @@ export const AppLayout = ({
         activa={rutaNav}
         drawerAbierto={sidebarOpen}
         onCerrarDrawer={() => setSidebarOpen(false)}
-        usuario={userData}
+        usuario={usuarioSesion}
         organizacion={orgName}
         tema={nextTheme === 'dark' ? 'dark' : 'light'}
         onAlternarTema={toggleTheme}

@@ -28,6 +28,7 @@ import GlobalSearch, { ABRIR_BUSCADOR_EVENT, type PaginaBuscable } from '@/compo
 import { TrialBanner } from '@/components/app-layout/Header/TrialBanner';
 import { EmailVerificationBanner } from '@/components/app-layout/Header/EmailVerificationBanner';
 import { rutaActiva, type SeccionVisible } from '@/lib/navigation/filtrar';
+import { useNombresNav } from '@/lib/navigation/useNombresNav';
 import { OrgSwitcher } from './OrgSwitcher';
 import { FeedbackButton, ReportarProblemaDialog } from './ReportarProblema';
 import { DetalleNotificacion, NotificationsBell, PanelNotificaciones, textoContador } from './Notificaciones';
@@ -148,6 +149,7 @@ function MobileHeader({
 }) {
   const t = useTranslations('header');
   const tNav = useTranslations('nav');
+  const nombres = useNombresNav();
   const router = useRouter();
   const modo = pagina?.modo ?? modoPorRuta(pathname);
 
@@ -165,7 +167,7 @@ function MobileHeader({
   if (modo === 'page') {
     // Título: el que declare la página, o la página del menú a la que pertenece la ruta.
     const activa = rutaActiva(pathname);
-    const titulo = pagina?.titulo ?? activa?.pagina?.nombre ?? (activa ? tNav(activa.modulo.etiqueta) : '');
+    const titulo = pagina?.titulo ?? (activa?.pagina ? nombres.pagina(activa.pagina) : activa ? tNav(activa.modulo.etiqueta) : '');
     const subtitulo = pagina?.subtitulo ?? organizacionNombre;
     const volver = () => {
       if (window.history.length > 1) router.back();

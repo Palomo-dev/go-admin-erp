@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { CloudOff, RefreshCw } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { isMobile, getMobilePlugin, safeAddListener } from '@/lib/utils/mobile';
 import { desktopReportsConnectivity, isDesktop, isDesktopOnline, onDesktopConnectivity } from '@/lib/utils/desktop';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useDesktopCatalog } from '@/lib/offline/useDesktopCatalog';
 import { useOfflineData } from '@/lib/offline/useOfflineData';
-import { OUTBOX_CHANGED_EVENTS, pendingLabel, reviewLabel, totalOf, type OutboxCounts } from '@/lib/offline/outboxCounts';
+import { OUTBOX_CHANGED_EVENTS, totalOf, type OutboxCounts } from '@/lib/offline/outboxCounts';
 import { toast } from 'sonner';
 
 /**
@@ -31,6 +32,7 @@ import { toast } from 'sonner';
  * zona horaria de la organización.
  */
 export function OfflineIndicator() {
+  const t = useTranslations('header.offline');
   const [isOnline, setIsOnline] = useState(true);
   const [queueCount, setQueueCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -80,18 +82,22 @@ export function OfflineIndicator() {
     if (typeof window === 'undefined' || !isDesktop()) return;
     const lastShown = new Map<string, number>();
     const onRejected = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { table?: string | null; message?: string } | undefined;
+      const detail = (e as CustomEvent).detail as { table?: string | null; code?: string; message?: string } | undefined;
       const key = detail?.table ?? '*';
       const now = Date.now();
       if ((lastShown.get(key) ?? 0) > now - 5_000) return;
       lastShown.set(key, now);
-      toast.error(detail?.message || 'Sin conexión: esta acción requiere internet', {
-        description: 'Nada se guardó. Vuelve a intentarlo cuando regrese la conexión.',
-      });
+      // El mensaje del evento viene en español (offlineCache.ts); se muestra el
+      // traducido según el código del rechazo.
+      const titulo =
+        detail?.code === 'OFFLINE_OUTBOX_TABLE' && detail.table
+          ? t('writeRejectedOutboxTable', { table: detail.table })
+          : t('writeRejected');
+      toast.error(titulo, { description: t('writeRejectedDetail') });
     };
     window.addEventListener('goadmin:offline-write-rejected', onRejected);
     return () => window.removeEventListener('goadmin:offline-write-rejected', onRejected);
-  }, []);
+  }, [t]);
 
   const refreshLastSync = useCallback(async () => {
     try {
@@ -224,9 +230,20 @@ export function OfflineIndicator() {
     refreshLastSync();
   };
 
-  const pendingText = pendingLabel(pendingCounts);
-  const reviewText = reviewLabel(reviewCounts);
-  if (!showBanner && queueCount === 0 && totalOf(pendingCounts) === 0 && totalOf(reviewCounts) === 0) return null;
+  // «2 ventas · 1 cliente · 3 movimientos de caja», con el plural de cada idioma.
+  const describirConteos = (c: OutboxCounts): string =>
+    [
+      c.sales > 0 ? t('sales', { n: c.sales }) : null,
+      c.customers > 0 ? t('customers', { n: c.customers }) : null,
+      c.cash > 0 ? t('cashMovements', { n: c.cash }) : null,
+    ]
+      .filter((p): p is string => p !== null)
+      .join(' · ');
+  const totalPendiente = totalOf(pendingCounts);
+  const totalRevision = totalOf(reviewCounts);
+  const pendingText = totalPendiente > 0 ? t('pendingSync', { total: totalPendiente, items: describirConteos(pendingCounts) }) : null;
+  const reviewText = totalRevision > 0 ? t('needsReview', { total: totalRevision, items: describirConteos(reviewCounts) }) : null;
+  if (!showBanner && queueCount === 0 && totalPendiente === 0 && totalRevision === 0) return null;
 
   // Solo la hora si la última sincronización fue hoy (en la zona de la
   // organización); fecha y hora si fue otro día.
@@ -239,17 +256,17 @@ export function OfflineIndicator() {
   if (catalog.isDesktop && catalog.status && !catalog.status.isEmpty) {
     const at = catalog.status.replicatedAt ? new Date(catalog.status.replicatedAt) : null;
     const when = at ? (toDate(at) === getToday() ? formatTime(at) : formatDateTime(at)) : '—';
-    catalogLabel = `catálogo local: ${catalog.status.productsCount} productos · actualizado ${when}`;
+    catalogLabel = t('catalogReplicated', { n: catalog.status.productsCount, when });
   } else if (catalog.isDesktop) {
-    catalogLabel = 'catálogo local: sin replicar';
+    catalogLabel = t('catalogEmpty');
   }
   let replicaLabel: string | null = null;
   if (replica.isDesktop && replica.status && !replica.status.isEmpty) {
     const at = replica.status.replicatedAt ? new Date(replica.status.replicatedAt) : null;
     const when = at ? (toDate(at) === getToday() ? formatTime(at) : formatDateTime(at)) : '—';
-    replicaLabel = `datos locales actualizados ${when}`;
+    replicaLabel = t('replicaUpdated', { when });
   } else if (replica.isDesktop) {
-    replicaLabel = 'datos locales: sin replicar';
+    replicaLabel = t('replicaEmpty');
   }
 
   return (
@@ -260,12 +277,8 @@ export function OfflineIndicator() {
     >
       <CloudOff className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
       <span>
-        {isOnline ? 'Conexión restablecida' : 'Sin conexión con el servidor — Modo offline'}
-        {queueCount > 0 && (
-          <span className="ml-2 text-xs">
-            ({queueCount} acción{queueCount !== 1 ? 'es' : ''} pendiente{queueCount !== 1 ? 's' : ''})
-          </span>
-        )}
+        {isOnline ? t('connectionRestored') : t('offlineMode')}
+        {queueCount > 0 && <span className="ml-2 text-xs">({t('queuedActions', { n: queueCount })})</span>}
         {pendingText && (
           <span className="ml-2 text-xs font-semibold" data-testid="offline-pending-counts">
             — {pendingText}
@@ -278,9 +291,7 @@ export function OfflineIndicator() {
         )}
       </span>
       <span className="text-xs text-gray-800/90">
-        {lastSyncLabel
-          ? `Última sincronización correcta: ${lastSyncLabel}`
-          : 'Sin sincronización registrada en este equipo'}
+        {lastSyncLabel ? t('lastSync', { when: lastSyncLabel }) : t('noSync')}
       </span>
       {catalogLabel && <span className="text-xs text-gray-800/90">· {catalogLabel}</span>}
       {replicaLabel && <span className="text-xs text-gray-800/90">· {replicaLabel}</span>}
@@ -292,7 +303,7 @@ export function OfflineIndicator() {
           className="ml-1 inline-flex items-center gap-1 px-3 py-1 bg-gray-900 text-white rounded-md text-xs hover:bg-gray-800 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
         >
           <RefreshCw className={`h-3 w-3 ${catalog.replicating || replica.replicating ? 'animate-spin' : ''}`} aria-hidden="true" />
-          {catalog.replicating || replica.replicating ? 'Sincronizando datos...' : 'Sincronizar datos ahora'}
+          {catalog.replicating || replica.replicating ? t('syncingData') : t('syncDataNow')}
         </button>
       )}
       {isOnline && queueCount > 0 && (
@@ -303,7 +314,7 @@ export function OfflineIndicator() {
           className="ml-1 inline-flex items-center gap-1 px-3 py-1 bg-gray-900 text-white rounded-md text-xs hover:bg-gray-800 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
         >
           <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
-          {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
+          {isSyncing ? t('syncing') : t('sync')}
         </button>
       )}
     </div>

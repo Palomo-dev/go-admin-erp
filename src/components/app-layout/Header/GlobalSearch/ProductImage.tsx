@@ -26,9 +26,10 @@ export const ProductImage = ({ name, imagePath, className = '', size = 'sm' }: P
   if (imagePath) {
     return (
       <div className={`relative ${sizeClasses[size]} ${className}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- URL externa con respaldo por onError */}
         <img 
           src={imagePath} 
-          alt={`Imagen de ${name}`}
+          alt={name}
           className="rounded-md object-cover w-full h-full"
           onError={(e) => {
             // Si hay error al cargar la imagen, mostrar icono

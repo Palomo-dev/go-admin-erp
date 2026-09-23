@@ -47,6 +47,11 @@ export interface PageHeaderProps {
   /** `form`: a dónde vuelve «←». */
   volverA?: string;
   cargando?: boolean;
+  /**
+   * Barra fina de avance bajo el subtítulo (carga por lotes: «1.000 de 4.368»).
+   * Se oculta sola cuando `actual >= total`.
+   */
+  progreso?: { actual: number; total: number; etiqueta?: string } | null;
   /** Fila bajo la cabecera (BranchBadge, pestañas): se ve también en móvil. */
   debajo?: ReactNode;
   /** `false` para páginas fuera del shell: se dibuja también en móvil. */
@@ -70,6 +75,7 @@ export function PageHeader({
   variante = 'list',
   volverA,
   cargando,
+  progreso,
   debajo,
   movil = {},
   className,
@@ -119,6 +125,21 @@ export function PageHeader({
                   )}
                   {cargando && <span className="sr-only">Cargando…</span>}
                   <div className="min-w-0 truncate">{subtitulo}</div>
+                </div>
+              )}
+              {progreso && progreso.total > 0 && progreso.actual < progreso.total && (
+                <div
+                  role="progressbar"
+                  aria-label={progreso.etiqueta ?? 'Progreso de carga'}
+                  aria-valuemin={0}
+                  aria-valuemax={progreso.total}
+                  aria-valuenow={progreso.actual}
+                  className="mt-1 h-1 w-48 max-w-full overflow-hidden rounded-full bg-brand-tint"
+                >
+                  <div
+                    className="h-full rounded-full bg-brand-action transition-[width] duration-300 ease-out motion-reduce:transition-none"
+                    style={{ width: `${Math.round((progreso.actual / progreso.total) * 100)}%` }}
+                  />
                 </div>
               )}
             </div>

@@ -17,10 +17,15 @@ import type { AccionFila } from './acciones';
  * selección la tarjeta gana la casilla y el borde de marca de 2 px.
  */
 export interface ListCardProps {
-  icono: LucideIcon;
+  /** Icono de la entidad; se omite si hay `miniatura`. */
+  icono?: LucideIcon;
+  /** Foto real del registro (producto) en la caja de 40 px, en lugar del icono. */
+  miniatura?: ReactNode;
   titulo: string;
   subtitulo?: ReactNode;
   meta?: ReactNode;
+  /** Fila de badges bajo el texto (stock por sucursal, «3 var.»); puede envolver. */
+  insignias?: ReactNode;
   /** Importe o cifra a la derecha («$ 12,5 M»). */
   valor?: ReactNode;
   /** Normalmente `<StatusBadge tamano="sm" />`. */
@@ -36,9 +41,11 @@ export interface ListCardProps {
 
 export function ListCard({
   icono: Icono,
+  miniatura,
   titulo,
   subtitulo,
   meta,
+  insignias,
   valor,
   estado,
   onClick,
@@ -65,9 +72,15 @@ export function ListCard({
           className="relative z-10 size-[18px] rounded"
         />
       )}
-      <div aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
-        <Icono className="size-5" strokeWidth={1.5} />
-      </div>
+      {miniatura ? (
+        <div aria-hidden="true" className="size-10 shrink-0 self-start overflow-hidden rounded-lg">
+          {miniatura}
+        </div>
+      ) : Icono ? (
+        <div aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
+          <Icono className="size-5" strokeWidth={1.5} />
+        </div>
+      ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         {onClick ? (
@@ -84,6 +97,7 @@ export function ListCard({
         )}
         {subtitulo && <span className="line-clamp-2 text-[13px] leading-[18px] text-fg-secondary">{subtitulo}</span>}
         {meta && <span className="truncate text-xs font-medium leading-4 text-fg-muted">{meta}</span>}
+        {insignias && <div className="flex flex-wrap items-center gap-1 pt-1">{insignias}</div>}
       </div>
 
       {(valor !== undefined || estado) && (

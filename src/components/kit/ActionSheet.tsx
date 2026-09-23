@@ -75,6 +75,7 @@ export function ActionSheet({ abierto, onAbiertoChange, titulo, descripcion, acc
                   <e.accion.icono aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.5} />
                   <span className="flex min-w-0 flex-col">
                     <span>{e.accion.etiqueta}</span>
+                    {e.accion.descripcion && <span className="text-xs text-fg-secondary">{e.accion.descripcion}</span>}
                     {e.accion.deshabilitada && e.accion.motivo && (
                       <span className="text-xs text-fg-muted">{e.accion.motivo}</span>
                     )}

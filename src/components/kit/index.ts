@@ -26,6 +26,7 @@ export { RowActionsMenu, type RowActionsMenuProps } from './RowActionsMenu';
 export { ActionSheet, type ActionSheetProps } from './ActionSheet';
 export { BulkActionBar, type BulkActionBarProps, type AccionMasiva } from './BulkActionBar';
 export { ListCard, type ListCardProps } from './ListCard';
+export { TabBar, idPestana, idPanel, type TabBarProps, type PestanaTab } from './TabBar';
 export { prepararMenu, MAX_ENTRADAS_MENU, type AccionFila, type EntradaMenu } from './acciones';
 
 // Estados y paginación

@@ -107,6 +107,10 @@ const TABLA: Record<string, Fila> = {
   anulado: C('peligro'),
   void: C('peligro'),
   voided: C('peligro'),
+  // Eliminado (baja lógica de un registro, p. ej. products.status = 'deleted'): como Anulada
+  eliminado: C('peligro'),
+  eliminada: C('peligro'),
+  deleted: C('peligro'),
   // Inactivo · Cerrado · Usado · Cancelado · Procesado · Desconocido
   inactivo: S('neutro'),
   inactiva: S('neutro'),
@@ -221,6 +225,7 @@ const ETIQUETA_DB: Record<string, string> = {
   unknown: 'Desconocido',
   discontinued: 'Descontinuado',
   archived: 'Archivado',
+  deleted: 'Eliminado',
   refunded: 'Reembolsado',
   converted: 'Convertida',
   'out of stock': 'Agotado',

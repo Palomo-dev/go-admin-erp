@@ -10,6 +10,11 @@ export interface AccionFila {
   etiqueta: string;
   icono: LucideIcon;
   onSelect: () => void;
+  /**
+   * Segunda línea atenuada bajo la etiqueta (menú «Importar ▾»: «CSV o Excel ·
+   * plantilla de 26 columnas»). Solo en menús de cabecera, no en filas.
+   */
+  descripcion?: string;
   /** Rojo, al final y tras un divisor. Debe abrir un ConfirmDialog. */
   destructiva?: boolean;
   /** Divisor antes de esta acción (para agrupar las del dominio). */

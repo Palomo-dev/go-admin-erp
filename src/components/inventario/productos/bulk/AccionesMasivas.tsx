@@ -2,23 +2,22 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  DollarSign,
-  Package,
-  Power,
-  Trash2,
-  FolderTree,
-  X,
-  Loader2,
-  ChevronDown,
-  TrendingUp,
-  TrendingDown,
-  Copy,
-  Hash,
   AlertTriangle,
+  Copy,
+  DollarSign,
+  Hash,
+  Loader2,
+  Power,
+  SlidersHorizontal,
+  Tags,
+  Trash,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react';
+import { BulkActionBar, FormField, SegmentedControl, type AccionFila, type AccionMasiva } from '@/components/kit';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -27,20 +26,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchSelect } from '@/components/ui/search-select';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -60,16 +47,40 @@ import {
   ModoRedondeo,
 } from './bulkService';
 
+/**
+ * Acciones masivas del catálogo: la `BulkActionBar` del kit (flota al pie,
+ * PATRONES §1) y un diálogo por acción con los mismos campos y servicios de
+ * siempre (`bulkService.ts`).
+ *
+ * Barra: Precios · Stock · Categoría · Estado · Eliminar; en «⋯»: Precio →
+ * Comparación y Redondear precios.
+ */
 interface AccionesMasivasProps {
   selectedIds: number[];
+  /** Productos del listado (con los filtros actuales), para «Seleccionar los N». */
+  total?: number;
+  onSeleccionarTodos?: () => void;
   onClearSelection: () => void;
   onActionComplete: () => void;
 }
 
-type DialogType = 'precios' | 'stock' | 'categoria' | 'eliminar' | 'copiarComparacion' | 'redondear' | null;
+type DialogType = 'precios' | 'stock' | 'categoria' | 'estado' | 'eliminar' | 'copiarComparacion' | 'redondear' | null;
+type EstadoMasivo = 'active' | 'inactive' | 'discontinued';
+
+const SUGERENCIAS_DIGITOS = [
+  '0', '5', '9',
+  '00', '50', '90', '99',
+  '000', '500', '900', '990', '999', '050',
+  '0000', '5000', '9000', '9900', '9990', '9999',
+  '00000', '50000', '90000', '99000', '99900', '99990', '99999',
+];
+
+const MULTIPLOS = ['10', '50', '100', '500', '1000'] as const;
 
 const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   selectedIds,
+  total,
+  onSeleccionarTodos,
   onClearSelection,
   onActionComplete,
 }) => {
@@ -94,6 +105,9 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   const [categorias, setCategorias] = useState<{ id: number; name: string }[]>([]);
   const [selectedCategoria, setSelectedCategoria] = useState<string>('');
 
+  // Estado masivo (antes un menú sin confirmación)
+  const [estadoNuevo, setEstadoNuevo] = useState<EstadoMasivo>('active');
+
   // Estado para copiar precio → comparación
   const [sobrescribirComparacion, setSobrescribirComparacion] = useState(false);
 
@@ -117,6 +131,14 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     };
     load();
   }, [organization?.id, selectedBranchId]);
+
+  const n = selectedIds.length;
+  const alcance = `Se aplicará a ${n.toLocaleString('es-CO')} producto${n !== 1 ? 's' : ''}.`;
+
+  // Mientras se procesa, el diálogo no se cierra (ni con Esc ni fuera).
+  const cerrar = (abierto: boolean) => {
+    if (!abierto && !processing) setActiveDialog(null);
+  };
 
   const mostrarResultado = (accion: string, exitosos: number, fallidos: number, errores: string[]) => {
     // La tienda web cachea el catálogo 30 s: avisarle para que refleje ya
@@ -170,7 +192,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     }
   };
 
-  const handleEstado = async (status: 'active' | 'inactive' | 'discontinued') => {
+  const handleEstado = async (status: EstadoMasivo) => {
     setProcessing(true);
     try {
       const r = await bulkUpdateStatus(selectedIds, status);
@@ -241,505 +263,413 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     }
   };
 
-  if (selectedIds.length === 0) return null;
+  const acciones: AccionMasiva[] = [
+    { id: 'precios', etiqueta: 'Precios', icono: DollarSign, onClick: () => setActiveDialog('precios') },
+    { id: 'stock', etiqueta: 'Stock', icono: SlidersHorizontal, onClick: () => setActiveDialog('stock') },
+    { id: 'categoria', etiqueta: 'Categoría', icono: Tags, onClick: () => setActiveDialog('categoria') },
+    { id: 'estado', etiqueta: 'Estado', icono: Power, onClick: () => setActiveDialog('estado') },
+    {
+      id: 'eliminar',
+      etiqueta: 'Eliminar',
+      icono: Trash,
+      onClick: () => setActiveDialog('eliminar'),
+      destructiva: true,
+    },
+  ];
+
+  const secundarias: AccionFila[] = [
+    { id: 'comparacion', etiqueta: 'Precio → Comparación', icono: Copy, onSelect: () => setActiveDialog('copiarComparacion') },
+    { id: 'redondear', etiqueta: 'Redondear precios', icono: Hash, onSelect: () => setActiveDialog('redondear') },
+  ];
+
+  const pieDialogo = (textoPrimario: string, onAplicar: () => void, destructiva = false) => (
+    <DialogFooter className="gap-2 sm:gap-2">
+      <Button variant="outline" className="h-10" onClick={() => setActiveDialog(null)} disabled={processing}>
+        Cancelar
+      </Button>
+      <Button
+        variant={destructiva ? 'destructive' : 'default'}
+        className="h-10"
+        onClick={onAplicar}
+        disabled={processing}
+        aria-busy={processing || undefined}
+      >
+        {processing && <Loader2 aria-hidden="true" className="mr-2 size-4 animate-spin" />}
+        {textoPrimario}
+      </Button>
+    </DialogFooter>
+  );
+
+  const clasesDialogo = 'border-line bg-surface text-fg sm:max-w-[440px]';
+  const nDigitos = parseInt(digitosCount, 10);
 
   return (
     <>
-      {/* Barra flotante de acciones */}
-      <div className="sticky top-2 z-20 flex flex-wrap items-center gap-2 px-4 py-3 rounded-lg border shadow-md bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800">
-        <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
-          {selectedIds.length} seleccionado{selectedIds.length !== 1 ? 's' : ''}
-        </span>
+      <BulkActionBar
+        seleccionados={n}
+        total={total}
+        onSeleccionarTodos={onSeleccionarTodos}
+        sustantivo={{ singular: 'producto', plural: 'productos' }}
+        acciones={acciones}
+        accionesSecundarias={secundarias}
+        onLimpiar={onClearSelection}
+      />
 
-        <div className="flex flex-wrap items-center gap-2 ml-auto">
-          <Button variant="outline" size="sm" onClick={() => setActiveDialog('precios')} className="text-xs">
-            <DollarSign className="h-3.5 w-3.5 mr-1" />
-            Precios
-          </Button>
-
-          <Button variant="outline" size="sm" onClick={() => setActiveDialog('copiarComparacion')} className="text-xs">
-            <Copy className="h-3.5 w-3.5 mr-1" />
-            Precio → Comparación
-          </Button>
-
-          <Button variant="outline" size="sm" onClick={() => setActiveDialog('redondear')} className="text-xs">
-            <Hash className="h-3.5 w-3.5 mr-1" />
-            Redondear
-          </Button>
-
-          <Button variant="outline" size="sm" onClick={() => setActiveDialog('stock')} className="text-xs">
-            <Package className="h-3.5 w-3.5 mr-1" />
-            Stock
-          </Button>
-
-          <Button variant="outline" size="sm" onClick={() => setActiveDialog('categoria')} className="text-xs">
-            <FolderTree className="h-3.5 w-3.5 mr-1" />
-            Categoría
-          </Button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="text-xs" disabled={processing}>
-                <Power className="h-3.5 w-3.5 mr-1" />
-                Estado
-                <ChevronDown className="h-3 w-3 ml-1" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="dark:bg-gray-800 dark:border-gray-700">
-              <DropdownMenuItem onClick={() => handleEstado('active')} className="cursor-pointer">
-                <span className="w-2 h-2 rounded-full mr-2 bg-green-500" />
-                Activar
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEstado('inactive')} className="cursor-pointer">
-                <span className="w-2 h-2 rounded-full mr-2 bg-gray-400" />
-                Desactivar
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleEstado('discontinued')} className="cursor-pointer">
-                <span className="w-2 h-2 rounded-full mr-2 bg-red-500" />
-                Descontinuar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setActiveDialog('eliminar')}
-            className="text-xs"
-          >
-            <Trash2 className="h-3.5 w-3.5 mr-1" />
-            Eliminar
-          </Button>
-
-          <Button variant="ghost" size="icon" onClick={onClearSelection} className="h-8 w-8">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Dialog: Edición masiva de precios */}
-      <Dialog open={activeDialog === 'precios'} onOpenChange={(o) => !o && setActiveDialog(null)}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
+      {/* Precios */}
+      <Dialog open={activeDialog === 'precios'} onOpenChange={cerrar}>
+        <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">Edición masiva de precios</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Se aplicará a {selectedIds.length} producto{selectedIds.length !== 1 ? 's' : ''}.
-            </DialogDescription>
+            <DialogTitle>Edición masiva de precios</DialogTitle>
+            <DialogDescription>{alcance}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="dark:text-gray-300">Tipo de precio</Label>
-              <Select value={tipoPrecio} onValueChange={(v) => setTipoPrecio(v as TipoPrecio)}>
-                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                  <SelectItem value="venta">Precio de venta</SelectItem>
-                  <SelectItem value="compra">Precio de compra (costo)</SelectItem>
-                  <SelectItem value="comparacion">Precio de comparación</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="dark:text-gray-300">Modo de ajuste</Label>
-              <Select value={modoAjuste} onValueChange={(v) => setModoAjuste(v as ModoAjuste)}>
-                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                  <SelectItem value="fijo">Establecer valor fijo</SelectItem>
-                  <SelectItem value="valor">Por valor ($)</SelectItem>
-                  <SelectItem value="porcentaje">Por porcentaje (%)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="flex flex-col gap-4">
+            <FormField etiqueta="Tipo de precio">
+              {(campo) => (
+                <Select value={tipoPrecio} onValueChange={(v) => setTipoPrecio(v as TipoPrecio)}>
+                  <SelectTrigger id={campo.id} className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="venta">Precio de venta</SelectItem>
+                    <SelectItem value="compra">Costo de compra</SelectItem>
+                    <SelectItem value="comparacion">Precio de comparación</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+            <FormField etiqueta="Modo de ajuste">
+              {(campo) => (
+                <Select value={modoAjuste} onValueChange={(v) => setModoAjuste(v as ModoAjuste)}>
+                  <SelectTrigger id={campo.id} className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fijo">Establecer valor fijo</SelectItem>
+                    <SelectItem value="valor">Por valor ($)</SelectItem>
+                    <SelectItem value="porcentaje">Por porcentaje (%)</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
             {modoAjuste !== 'fijo' && (
-              <div>
-                <Label className="dark:text-gray-300">Dirección</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setDireccion('aumentar')}
-                    className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                      direccion === 'aumentar'
-                        ? 'border-green-500 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <TrendingUp className="h-4 w-4" />
-                    Aumentar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDireccion('disminuir')}
-                    className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                      direccion === 'disminuir'
-                        ? 'border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <TrendingDown className="h-4 w-4" />
-                    Disminuir
-                  </button>
-                </div>
-              </div>
+              <FormField etiqueta="Dirección">
+                {(campo) => (
+                  <SegmentedControl
+                    aria-labelledby={campo.idEtiqueta}
+                    anchoCompleto
+                    valor={direccion}
+                    onValorChange={setDireccion}
+                    opciones={[
+                      { valor: 'aumentar', etiqueta: 'Aumentar', icono: TrendingUp },
+                      { valor: 'disminuir', etiqueta: 'Disminuir', icono: TrendingDown },
+                    ]}
+                  />
+                )}
+              </FormField>
             )}
-            <div>
-              <Label className="dark:text-gray-300">
-                {modoAjuste === 'fijo' && 'Nuevo valor'}
-                {modoAjuste === 'valor' && (direccion === 'aumentar' ? 'Cantidad a aumentar ($)' : 'Cantidad a disminuir ($)')}
-                {modoAjuste === 'porcentaje' && (direccion === 'aumentar' ? 'Porcentaje a aumentar (%)' : 'Porcentaje a disminuir (%)')}
-              </Label>
+            <FormField
+              etiqueta={
+                modoAjuste === 'fijo'
+                  ? 'Nuevo valor'
+                  : modoAjuste === 'valor'
+                    ? direccion === 'aumentar' ? 'Cantidad a aumentar ($)' : 'Cantidad a disminuir ($)'
+                    : direccion === 'aumentar' ? 'Porcentaje a aumentar (%)' : 'Porcentaje a disminuir (%)'
+              }
+            >
               <Input
                 type="number"
+                inputMode="decimal"
                 min="0"
                 value={cantidadPrecio}
                 onChange={(e) => setCantidadPrecio(e.target.value)}
                 placeholder={modoAjuste === 'porcentaje' ? 'Ej: 10' : 'Ej: 5000'}
-                className="dark:bg-gray-900 dark:border-gray-600"
+                className="h-10"
               />
-            </div>
+            </FormField>
             {tipoPrecio === 'compra' && modoAjuste === 'porcentaje' && (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  Los productos <strong>sin costo previo</strong> no serán afectados
-                  (0 × % = 0). Use modo <strong>&quot;Establecer valor fijo&quot;</strong> para
-                  asignar un costo a productos que no tienen uno.
+              <div role="note" className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-subtle p-3 text-xs text-warning-text">
+                <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+                <p>
+                  Los productos <strong>sin costo previo</strong> no serán afectados (0 × % = 0). Use el modo
+                  «Establecer valor fijo» para asignar un costo a productos que no tienen uno.
                 </p>
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveDialog(null)} disabled={processing}>
-              Cancelar
-            </Button>
-            <Button onClick={handlePrecios} disabled={processing} className="bg-blue-600 hover:bg-blue-700">
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Aplicar
-            </Button>
-          </DialogFooter>
+          {pieDialogo('Aplicar', handlePrecios)}
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Actualización masiva de stock */}
-      <Dialog open={activeDialog === 'stock'} onOpenChange={(o) => !o && setActiveDialog(null)}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
+      {/* Stock */}
+      <Dialog open={activeDialog === 'stock'} onOpenChange={cerrar}>
+        <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">Actualización masiva de stock</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Se aplicará a {selectedIds.length} producto{selectedIds.length !== 1 ? 's' : ''}.
-            </DialogDescription>
+            <DialogTitle>Actualización masiva de stock</DialogTitle>
+            <DialogDescription>{alcance}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="dark:text-gray-300">Sucursal</Label>
-              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue placeholder="Seleccione sucursal" />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                  {branches.map((b) => (
-                    <SelectItem key={b.id} value={String(b.id)}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="dark:text-gray-300">Modo</Label>
-              <Select value={modoStock} onValueChange={(v) => setModoStock(v as ModoStock)}>
-                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                  <SelectItem value="set">Establecer cantidad exacta</SelectItem>
-                  <SelectItem value="add">Sumar/restar a cantidad actual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="dark:text-gray-300">Cantidad</Label>
+          <div className="flex flex-col gap-4">
+            <FormField etiqueta="Sucursal" obligatorio>
+              {(campo) => (
+                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                  <SelectTrigger id={campo.id} aria-required className="h-10">
+                    <SelectValue placeholder="Seleccione sucursal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((b) => (
+                      <SelectItem key={b.id} value={String(b.id)}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+            <FormField etiqueta="Modo">
+              {(campo) => (
+                <Select value={modoStock} onValueChange={(v) => setModoStock(v as ModoStock)}>
+                  <SelectTrigger id={campo.id} className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="set">Establecer cantidad exacta</SelectItem>
+                    <SelectItem value="add">Sumar/restar a cantidad actual</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+            <FormField etiqueta="Cantidad" obligatorio>
               <Input
                 type="number"
+                inputMode="decimal"
                 value={cantidadStock}
                 onChange={(e) => setCantidadStock(e.target.value)}
                 placeholder={modoStock === 'add' ? 'Ej: 10 o -5' : 'Ej: 100'}
-                className="dark:bg-gray-900 dark:border-gray-600"
+                className="h-10"
               />
-            </div>
+            </FormField>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveDialog(null)} disabled={processing}>
-              Cancelar
-            </Button>
-            <Button onClick={handleStock} disabled={processing} className="bg-blue-600 hover:bg-blue-700">
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Aplicar
-            </Button>
-          </DialogFooter>
+          {pieDialogo('Aplicar', handleStock)}
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Asignar categoría */}
-      <Dialog open={activeDialog === 'categoria'} onOpenChange={(o) => !o && setActiveDialog(null)}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
+      {/* Categoría */}
+      <Dialog open={activeDialog === 'categoria'} onOpenChange={cerrar}>
+        <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">Asignar categoría</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Se asignará a {selectedIds.length} producto{selectedIds.length !== 1 ? 's' : ''}.
+            <DialogTitle>Asignar categoría</DialogTitle>
+            <DialogDescription>
+              Se asignará a {n.toLocaleString('es-CO')} producto{n !== 1 ? 's' : ''}.
             </DialogDescription>
           </DialogHeader>
-          <div>
-            <Label className="dark:text-gray-300">Categoría</Label>
-            <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
-              <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                <SelectValue placeholder="Seleccione categoría" />
-              </SelectTrigger>
-              <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                {categorias.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveDialog(null)} disabled={processing}>
-              Cancelar
-            </Button>
-            <Button onClick={handleCategoria} disabled={processing} className="bg-blue-600 hover:bg-blue-700">
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Asignar
-            </Button>
-          </DialogFooter>
+          <FormField etiqueta="Categoría" obligatorio>
+            {() => (
+              <SearchSelect
+                options={categorias.map((c) => ({ value: String(c.id), label: c.name }))}
+                value={selectedCategoria}
+                onValueChange={setSelectedCategoria}
+                placeholder="Seleccione categoría"
+                searchPlaceholder="Buscar categoría…"
+                emptyText="No se encontraron categorías"
+                className="h-10"
+              />
+            )}
+          </FormField>
+          {pieDialogo('Asignar', handleCategoria)}
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Redondear precios */}
-      <Dialog open={activeDialog === 'redondear'} onOpenChange={(o) => !o && setActiveDialog(null)}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
+      {/* Estado */}
+      <Dialog open={activeDialog === 'estado'} onOpenChange={cerrar}>
+        <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">Redondear precios</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Se aplicará a {selectedIds.length} producto{selectedIds.length !== 1 ? 's' : ''} (incluye padres e hijos).
+            <DialogTitle>¿Cambiar el estado?</DialogTitle>
+            <DialogDescription>{alcance}</DialogDescription>
+          </DialogHeader>
+          <FormField etiqueta="Nuevo estado">
+            {(campo) => (
+              <SegmentedControl
+                aria-labelledby={campo.idEtiqueta}
+                anchoCompleto
+                valor={estadoNuevo}
+                onValorChange={setEstadoNuevo}
+                opciones={[
+                  { valor: 'active', etiqueta: 'Activo' },
+                  { valor: 'inactive', etiqueta: 'Inactivo' },
+                  { valor: 'discontinued', etiqueta: 'Descontinuado' },
+                ]}
+              />
+            )}
+          </FormField>
+          {pieDialogo('Cambiar estado', () => handleEstado(estadoNuevo))}
+        </DialogContent>
+      </Dialog>
+
+      {/* Redondear precios */}
+      <Dialog open={activeDialog === 'redondear'} onOpenChange={cerrar}>
+        <DialogContent className={clasesDialogo}>
+          <DialogHeader>
+            <DialogTitle>Redondear precios</DialogTitle>
+            <DialogDescription>
+              Se aplicará a {n.toLocaleString('es-CO')} producto{n !== 1 ? 's' : ''} (incluye padres e hijos).
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            {/* Tipo de precio */}
-            <div className="space-y-1.5">
-              <Label className="text-xs dark:text-gray-300">Precio a redondear</Label>
-              <Select value={tipoRedondeo} onValueChange={(v) => setTipoRedondeo(v as TipoPrecio)}>
-                <SelectTrigger className="h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                  <SelectItem value="venta">Precio de venta</SelectItem>
-                  <SelectItem value="compra">Costo de compra</SelectItem>
-                  <SelectItem value="comparacion">Precio de comparación</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="flex flex-col gap-4">
+            <FormField etiqueta="Precio a redondear">
+              {(campo) => (
+                <Select value={tipoRedondeo} onValueChange={(v) => setTipoRedondeo(v as TipoPrecio)}>
+                  <SelectTrigger id={campo.id} className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="venta">Precio de venta</SelectItem>
+                    <SelectItem value="compra">Costo de compra</SelectItem>
+                    <SelectItem value="comparacion">Precio de comparación</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
 
-            {/* Modo de redondeo */}
-            <div className="space-y-1.5">
-              <Label className="text-xs dark:text-gray-300">Modo de redondeo</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setModoRedondeo('multiplo')}
-                  className={`px-3 py-2 rounded-md text-xs font-medium border transition-colors ${
-                    modoRedondeo === 'multiplo'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  A múltiplo de N
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModoRedondeo('digitos')}
-                  className={`px-3 py-2 rounded-md text-xs font-medium border transition-colors ${
-                    modoRedondeo === 'digitos'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  Reemplazar últimos dígitos
-                </button>
-              </div>
-            </div>
+            <FormField etiqueta="Modo de redondeo">
+              {(campo) => (
+                <SegmentedControl
+                  aria-labelledby={campo.idEtiqueta}
+                  anchoCompleto
+                  valor={modoRedondeo}
+                  onValorChange={setModoRedondeo}
+                  opciones={[
+                    { valor: 'multiplo', etiqueta: 'A múltiplo de N' },
+                    { valor: 'digitos', etiqueta: 'Últimos dígitos' },
+                  ]}
+                />
+              )}
+            </FormField>
 
-            {/* Configuración según modo */}
             {modoRedondeo === 'multiplo' ? (
-              <div className="space-y-2">
-                <Label className="text-xs dark:text-gray-300">Redondear al múltiplo más cercano de</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {[10, 50, 100, 500, 1000].map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setMultiploRedondeo(String(m))}
-                      className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                        multiploRedondeo === String(m)
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">o personalizado:</span>
+              <>
+                <FormField
+                  etiqueta="Redondear al múltiplo más cercano de"
+                  ayuda="Ej: $1.234 con múltiplo 100 → $1.200 · $1.267 con múltiplo 100 → $1.300"
+                >
+                  {(campo) => (
+                    <SegmentedControl
+                      aria-labelledby={campo.idEtiqueta}
+                      anchoCompleto
+                      tamano="sm"
+                      valor={multiploRedondeo}
+                      onValorChange={setMultiploRedondeo}
+                      opciones={MULTIPLOS.map((m) => ({ valor: m, etiqueta: Number(m).toLocaleString('es-CO') }))}
+                    />
+                  )}
+                </FormField>
+                <FormField etiqueta="O un múltiplo personalizado">
                   <Input
                     type="number"
+                    inputMode="numeric"
+                    min="1"
                     value={multiploRedondeo}
                     onChange={(e) => setMultiploRedondeo(e.target.value)}
-                    className="h-8 w-24 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
-                    min="1"
+                    className="h-10 w-32"
                   />
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Ej: $1,234 con múltiplo 100 → $1,200 | $1,267 con múltiplo 100 → $1,300
-                </p>
-              </div>
+                </FormField>
+              </>
             ) : (
-              <div className="space-y-2">
+              <>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs dark:text-gray-300">¿Cuántos dígitos reemplazar?</Label>
-                    <Select value={digitosCount} onValueChange={(v) => {
-                      setDigitosCount(v);
-                      // Ajustar el valor para que tenga la misma cantidad de dígitos
-                      const padded = digitosValor.padStart(parseInt(v, 10), '0').slice(-parseInt(v, 10));
-                      setDigitosValor(padded);
-                    }}>
-                      <SelectTrigger className="h-8 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <SelectItem key={n} value={String(n)}>{n} dígito{n > 1 ? 's' : ''}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs dark:text-gray-300">Valor a poner</Label>
+                  <FormField etiqueta="Dígitos a reemplazar">
+                    {(campo) => (
+                      <Select
+                        value={digitosCount}
+                        onValueChange={(v) => {
+                          setDigitosCount(v);
+                          // Ajustar el valor para que tenga la misma cantidad de dígitos
+                          const padded = digitosValor.padStart(parseInt(v, 10), '0').slice(-parseInt(v, 10));
+                          setDigitosValor(padded);
+                        }}
+                      >
+                        <SelectTrigger id={campo.id} className="h-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5].map((d) => (
+                            <SelectItem key={d} value={String(d)}>
+                              {d} dígito{d > 1 ? 's' : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </FormField>
+                  <FormField etiqueta="Valor a poner">
                     <Input
                       type="text"
+                      inputMode="numeric"
                       value={digitosValor}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, '').slice(0, parseInt(digitosCount, 10));
-                        setDigitosValor(val);
-                      }}
-                      className="h-8 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
-                      placeholder={'0'.repeat(parseInt(digitosCount, 10))}
-                      maxLength={parseInt(digitosCount, 10)}
+                      onChange={(e) => setDigitosValor(e.target.value.replace(/[^0-9]/g, '').slice(0, nDigitos))}
+                      placeholder={'0'.repeat(nDigitos)}
+                      maxLength={nDigitos}
+                      className="h-10 font-mono"
                     />
-                  </div>
+                  </FormField>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {['000', '500', '900', '990', '999', '050'].map((v) => {
-                    if (v.length !== parseInt(digitosCount, 10)) return null;
-                    return (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setDigitosValor(v)}
-                        className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                          digitosValor === v
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                        }`}
-                      >
-                        {v}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Ej: $1,234 con últimos 3 = "990" → $1,990 | $5,678 con últimos 2 = "50" → $5,650
-                </p>
-              </div>
+                <FormField
+                  etiqueta="Valores frecuentes"
+                  ayuda='Ej: $1.234 con los últimos 3 = "990" → $1.990 · $5.678 con los últimos 2 = "50" → $5.650'
+                >
+                  {(campo) => (
+                    <SegmentedControl
+                      aria-labelledby={campo.idEtiqueta}
+                      tamano="sm"
+                      valor={digitosValor}
+                      onValorChange={setDigitosValor}
+                      opciones={SUGERENCIAS_DIGITOS.filter((v) => v.length === nDigitos).map((v) => ({ valor: v, etiqueta: v }))}
+                    />
+                  )}
+                </FormField>
+              </>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveDialog(null)} disabled={processing}>
-              Cancelar
-            </Button>
-            <Button onClick={handleRedondear} disabled={processing} className="bg-blue-600 hover:bg-blue-700">
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Aplicar
-            </Button>
-          </DialogFooter>
+          {pieDialogo('Aplicar', handleRedondear)}
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Copiar precio de venta a precio de comparación */}
-      <Dialog open={activeDialog === 'copiarComparacion'} onOpenChange={(o) => !o && setActiveDialog(null)}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
+      {/* Precio de venta → precio de comparación */}
+      <Dialog open={activeDialog === 'copiarComparacion'} onOpenChange={cerrar}>
+        <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">Precio de venta → Precio de comparación</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Se aplicará a {selectedIds.length} producto{selectedIds.length !== 1 ? 's' : ''}.
-            </DialogDescription>
+            <DialogTitle>Precio de venta → Precio de comparación</DialogTitle>
+            <DialogDescription>{alcance}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 text-sm text-blue-800 dark:text-blue-200">
-              <p className="font-medium mb-1">Comportamiento por defecto:</p>
-              <ul className="list-disc list-inside space-y-0.5 text-xs">
+          <div className="flex flex-col gap-3">
+            <div className="rounded-lg border border-line-brand bg-brand-tint p-3 text-sm text-brand-deep">
+              <p className="mb-1 font-medium">Comportamiento por defecto:</p>
+              <ul className="list-inside list-disc space-y-0.5 text-xs">
                 <li>Productos <strong>sin</strong> precio de comparación: se copia el precio de venta.</li>
                 <li>Productos <strong>con</strong> precio de comparación: se dejan igual.</li>
               </ul>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
+              <Checkbox
                 checked={sobrescribirComparacion}
-                onChange={(e) => setSobrescribirComparacion(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                onCheckedChange={(v) => setSobrescribirComparacion(v === true)}
+                className="size-[18px] rounded"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                Sobrescribir también los que ya tienen precio de comparación
-              </span>
+              Sobrescribir también los que ya tienen precio de comparación
             </label>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveDialog(null)} disabled={processing}>
-              Cancelar
-            </Button>
-            <Button onClick={handleCopiarComparacion} disabled={processing} className="bg-blue-600 hover:bg-blue-700">
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Aplicar
-            </Button>
-          </DialogFooter>
+          {pieDialogo('Aplicar', handleCopiarComparacion)}
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Eliminar */}
-      <Dialog open={activeDialog === 'eliminar'} onOpenChange={(o) => !o && setActiveDialog(null)}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
+      {/* Eliminar */}
+      <Dialog open={activeDialog === 'eliminar'} onOpenChange={cerrar}>
+        <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">¿Eliminar productos?</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Se eliminarán {selectedIds.length} producto{selectedIds.length !== 1 ? 's' : ''}. Esta acción
-              no se puede deshacer.
+            <DialogTitle>¿Eliminar {n === 1 ? 'el producto' : `${n.toLocaleString('es-CO')} productos`}?</DialogTitle>
+            <DialogDescription>
+              Se eliminarán {n.toLocaleString('es-CO')} producto{n !== 1 ? 's' : ''}. Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveDialog(null)} disabled={processing}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={handleEliminar} disabled={processing}>
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Eliminar todos
-            </Button>
-          </DialogFooter>
+          {pieDialogo('Eliminar', handleEliminar, true)}
         </DialogContent>
       </Dialog>
     </>

@@ -1,19 +1,19 @@
-import React from 'react';
+import { Suspense } from 'react';
 import CatalogoProductos from '@/components/inventario/productos/CatalogoProductos';
 
 /**
- * Página principal del catálogo de productos
- * 
- * Esta página permite la gestión completa de productos incluyendo:
- * - Listado de productos con información de stock, precios y estado
- * - Filtrado por categorías, estado y búsqueda por texto
- * - Creación, edición, duplicación y eliminación de productos
- * - Importación y exportación de datos en formato CSV
+ * Catálogo de productos: listado con búsqueda, filtros, orden, acciones
+ * masivas, importación y exportación (CSV y Facebook).
+ *
+ * `Suspense` porque el listado lee su estado (búsqueda, filtros, orden y
+ * página) de la URL con `useSearchParams`.
  */
 export default function ProductosPage() {
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <CatalogoProductos />
+    <div className="min-h-full bg-canvas p-4 sm:p-6">
+      <Suspense fallback={null}>
+        <CatalogoProductos />
+      </Suspense>
     </div>
   );
 }

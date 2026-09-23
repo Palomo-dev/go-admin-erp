@@ -344,6 +344,30 @@ const l = useListadoServidor({
 Buscar, filtrar, ordenar o cambiar el tamaño vuelven a la página 1 y reemplazan la entrada
 del historial; cambiar de página agrega una («atrás» vuelve a la página anterior).
 
+### `TabBar` · Figma `TabItem 581:277913` (Proveedores, 2026-09-23)
+
+Pestañas de un detalle con contador y subrayado de marca. `tablist` con foco itinerante
+(flechas, Inicio, Fin); en móvil desplaza en horizontal. Va en `PageHeader debajo`.
+
+| Prop | Tipo |
+|---|---|
+| `id` | prefijo de ids; `idPestana(id, valor)` e `idPanel(id, valor)` enlazan `aria-controls` / `aria-labelledby` |
+| `pestanas` | `{ valor, etiqueta, contador?, deshabilitada? }[]` |
+| `valor`, `onValorChange`, `etiqueta` | |
+
+### `FormSection`: `icono` y `colapsable` (Proveedores, 2026-09-23)
+
+Aditivo: `icono` pinta la caja tintada de 32 px junto al título (Figma «Nuevo proveedor»);
+`colapsable` convierte la cabecera en un botón con chevron y `aria-expanded`
+(`abiertaPorDefecto`, por defecto `true`). Los campos plegados siguen montados. Sin esas props
+se ve igual que antes.
+
+### `RelatedLinkCard`: alias `onClick` y `accion`
+
+Además de `onAccion` y `textoAccion`, acepta `onClick` y `accion` con el mismo efecto: hay
+pantallas escritas con cada par de nombres (Categorías usa los alias; Proveedores, los
+originales).
+
 ## Cambios en archivos compartidos fuera del kit
 
 | Archivo | Cambio | Efecto |

@@ -1,23 +1,32 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { Copy, Eye, Pencil, Plus, Trash } from 'lucide-react';
 
-import { Producto, FiltrosProductos, StockSucursal } from './types';
+import { Producto } from './types';
 import { cargarCatalogo, pedirLote, type ParametrosCatalogo } from './catalogoLotes';
+import {
+  CAMPOS_ORDEN,
+  CLAVES_FILTRO,
+  categoriaParaRpc,
+  estadoParaRpc,
+  filtrarCatalogo,
+  idsNumericos,
+  ordenarCatalogo,
+  resumenStock,
+} from './catalogoVista';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { Button } from "@/components/ui/button";
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { BranchBadgeActiva, Pagination, calcularRango, useListadoServidor, type AccionFila } from '@/components/kit';
 
-// Importaciones de los componentes
-// @ts-ignore - Ignorar errores de importación
 import ProductosPageHeader from './ProductosPageHeader';
-// @ts-ignore - Ignorar errores de importación
 import FiltrosProductosComponent from './FiltrosProductos';
-// @ts-ignore - Ignorar errores de importación
 import ProductosTable from './ProductosTable';
 import AccionesMasivas from './bulk/AccionesMasivas';
 import ScrapingProductos from './scraping/ScrapingProductos';
@@ -30,50 +39,78 @@ import {
   fetchAllProductsForFacebook,
 } from './facebookCatalogExport';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@/components/ui/dialog";
+/** 'normal' = esqueleto hasta el primer lote · 'suave' = conserva la lista (búsqueda) · 'silencioso' = reemplaza al final. */
+type ModoCarga = 'normal' | 'suave' | 'silencioso';
+
+const TAMANOS_CATALOGO = [25, 50, 100] as const;
+
+/** Lo que interesa de una fila que llega por tiempo real. */
+type FilaCambio = { id?: unknown; product_id?: unknown };
+const filaDe = (x: unknown): FilaCambio => (x && typeof x === 'object' ? (x as FilaCambio) : {});
+
+/** Grupo de modificadores tal como lo lee la exportación CSV. */
+interface GrupoModificadoresCsv {
+  product_id: number;
+  name: string;
+  selection_mode: string | null;
+  min_selections: number | null;
+  max_selections: number | null;
+  required: boolean | null;
+  product_modifiers: { name: string; extra_price: number | null; is_active: boolean | null; display_order: number | null }[] | null;
+}
+
+/** Columnas del producto que la exportación usa y el tipo `Producto` no declara. */
+type ProductoCsv = Producto & { variant_data?: unknown; station?: string | null };
+
+const mensajeDe = (e: unknown): string | undefined => (e instanceof Error ? e.message : undefined);
+const fmt = (n: number) => n.toLocaleString('es-CO');
 
 /**
- * Componente principal para el catálogo de productos
- * 
- * Este componente orquesta la visualización y gestión de productos,
- * incluyendo listado, filtrado, creación, edición y visualización de detalles.
+ * Catálogo de productos (`/app/inventario/productos`), rediseño de Figma sobre
+ * el kit compartido (`@/components/kit`).
+ *
+ * La carga no cambia: `catalogoLotes.ts` trae el catálogo completo por lotes
+ * (RPC `catalogo_productos_lote`, stock padre + variantes por sucursal), con el
+ * avance en la cabecera y el tiempo real por filas. Búsqueda, categoría y
+ * estado van a la RPC; el resto de filtros, el orden y la paginación trabajan
+ * sobre lo ya cargado (ordenar o paginar no recarga nada). El estado del
+ * listado vive en la URL (`useListadoServidor`).
  */
 const CatalogoProductos: React.FC = () => {
-  // Tema actual
-
-  // Router para navegación
   const router = useRouter();
-  // Obtener organización y sucursal del hook
   const { organization } = useOrganization();
+  // Dia de la organizacion para los nombres de descarga (CSV propio y feed de
+  // Facebook). Sin sucursal: el catalogo es de toda la organizacion.
+  const { getToday } = useFormatDate();
   const { branchFilter, branches } = useBranch();
-  
-  // Estados para gestionar la interfaz y los datos
-  const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null);
+
+  const listado = useListadoServidor({
+    filtros: CLAVES_FILTRO,
+    camposOrden: CAMPOS_ORDEN,
+    ordenPorDefecto: { campo: 'nombre', direccion: 'asc' },
+    tamanoPorDefecto: 25,
+    tamanosPermitidos: TAMANOS_CATALOGO,
+  });
+  const busquedaServidor = listado.busqueda;
+  const categoriaRpc = categoriaParaRpc(listado.filtros.categoria);
+  const estadoRpc = estadoParaRpc(listado.filtros.estado);
+
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [errorCarga, setErrorCarga] = useState<boolean>(false);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
-  const [filters, setFilters] = useState<FiltrosProductos>({
-    busqueda: '',
-    categoria: null,
-    estado: '',
-    ordenarPor: 'name',
-    mostrarEliminados: false // Nuevo estado para controlar si se muestran productos eliminados
-  });
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
-  const [productoToDelete, setProductoToDelete] = useState<number | null>(null);
-  const [stockPorSucursal, setStockPorSucursal] = useState<StockSucursal[]>([]);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [productoAEliminar, setProductoAEliminar] = useState<Producto | null>(null);
+  const [seleccion, setSeleccion] = useState<Set<string>>(() => new Set());
   const [isScrapingOpen, setIsScrapingOpen] = useState<boolean>(false);
   const [isFacebookFeedOpen, setIsFacebookFeedOpen] = useState<boolean>(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
+  // Lo que se lleva escrito en el buscador: filtra al instante lo cargado
+  // mientras el debounce (400 ms) confirma la búsqueda en el servidor.
+  const [busquedaRapida, setBusquedaRapida] = useState<string>(busquedaServidor);
+  // Productos cuya imagen principal no cargó: cuentan como «sin imagen».
+  const [imagenesFallidas, setImagenesFallidas] = useState<ReadonlySet<string>>(() => new Set());
   const lastFetchKey = useRef<string>('');
+  const ultimaCarga = useRef<string | null>(null);
   // Carga por lotes (catalogoLotes.ts): el primer lote pinta la tabla y quita
   // el skeleton; el resto llega en lotes paralelos que se van sumando EN ORDEN,
   // con el progreso visible en el encabezado.
@@ -93,23 +130,28 @@ const CatalogoProductos: React.FC = () => {
   const productosRef = useRef<Producto[]>([]);
   productosRef.current = productos;
 
+  // Si la búsqueda confirmada cambia desde fuera («Limpiar todo», atrás), el
+  // filtro rápido se alinea con ella.
+  useEffect(() => {
+    setBusquedaRapida(busquedaServidor);
+  }, [busquedaServidor]);
+
   // Filtros de la UI → parámetros de la RPC. La sucursal NO entra: el stock
   // llega por sucursal y la tabla elige cuál pintar, así que cambiar de
-  // sucursal ya no recarga el catálogo.
+  // sucursal no recarga el catálogo. El orden tampoco: se ordena en el
+  // navegador sobre lo cargado.
   const parametros = useCallback((): ParametrosCatalogo | null => {
     if (!organization?.id) return null;
     return {
       organizationId: organization.id,
-      busqueda: filters.busqueda,
-      categoria: filters.categoria ? Number(filters.categoria) : null,
-      estado: filters.mostrarEliminados ? 'todos' : (filters.estado || null),
-      ordenarPor: filters.ordenarPor || 'name',
+      busqueda: busquedaServidor,
+      categoria: categoriaRpc,
+      estado: estadoRpc,
+      ordenarPor: 'name',
     };
-  }, [organization?.id, filters]);
+  }, [organization?.id, busquedaServidor, categoriaRpc, estadoRpc]);
 
-  // silent=true: no muestra skeleton ni encoge la lista mientras recarga
-  // (tras acciones masivas); la lista se reemplaza al final.
-  const fetchProductos = useCallback(async (silent: boolean = false) => {
+  const fetchProductos = useCallback(async (modo: ModoCarga = 'normal') => {
     const p = parametros();
     if (!p) {
       setLoading(false);
@@ -126,26 +168,29 @@ const CatalogoProductos: React.FC = () => {
     const token = { cancelled: false, donePromise, resolveDone };
     backgroundAbortRef.current = token;
 
-    if (!silent) setLoading(true);
+    const silencioso = modo === 'silencioso';
+    if (modo === 'normal') setLoading(true);
     setBackgroundLoading(true);
     try {
       const lista = await cargarCatalogo(p, {
         cancelado: () => token.cancelled,
         alPrimerLote: (prods, total) => {
           setProgresoCarga({ cargados: prods.length, total });
-          if (silent) return;
+          setErrorCarga(false);
+          if (silencioso) return;
           setProductos(prods);
           setLoading(false);
         },
         alAvanzar: (prods, total) => {
           setProgresoCarga({ cargados: prods.length, total });
-          if (!silent) setProductos(prods);
+          if (!silencioso) setProductos(prods);
         },
       });
       if (lista && !token.cancelled) setProductos(lista);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (!token.cancelled) {
-        console.error('Error al cargar productos:', error?.message ?? error);
+        console.error('Error al cargar productos:', mensajeDe(error) ?? error);
+        setErrorCarga(true);
         toast({
           variant: "destructive",
           title: "Error",
@@ -168,14 +213,19 @@ const CatalogoProductos: React.FC = () => {
   const parametrosRef = useRef(parametros);
   parametrosRef.current = parametros;
 
-  // Cargar al montar y cuando cambian filtros, organización o «Actualizar».
+  // Cargar al montar y cuando cambian búsqueda, categoría, estado, organización o «Actualizar».
   useEffect(() => {
     // Evitar doble ejecución en React Strict Mode (desarrollo)
-    const fetchKey = JSON.stringify([organization?.id, filters, refreshKey]);
+    const resto = JSON.stringify([organization?.id, categoriaRpc, estadoRpc, refreshKey]);
+    const fetchKey = JSON.stringify([resto, busquedaServidor]);
     if (lastFetchKey.current === fetchKey) return;
     lastFetchKey.current = fetchKey;
-    fetchProductos(false);
-  }, [organization?.id, filters, refreshKey, fetchProductos]);
+    // Si solo cambió la búsqueda y ya hay lista, se conserva (con el filtro
+    // rápido encima) hasta que llegue el primer lote: sin parpadeo de esqueleto.
+    const soloBusqueda = ultimaCarga.current === resto && productosRef.current.length > 0;
+    ultimaCarga.current = resto;
+    fetchProductos(soloBusqueda ? 'suave' : 'normal');
+  }, [organization?.id, categoriaRpc, estadoRpc, busquedaServidor, refreshKey, fetchProductos]);
 
   // Al salir de la página, cancelar la carga en curso.
   useEffect(() => () => {
@@ -203,7 +253,7 @@ const CatalogoProductos: React.FC = () => {
       const completa = recargaCompleta;
       recargaCompleta = false;
       if (completa || ids.length > MAX_FILAS_EN_VIVO) {
-        fetchProductosRef.current(true);
+        fetchProductosRef.current('silencioso');
         return;
       }
       const p = parametrosRef.current();
@@ -238,7 +288,7 @@ const CatalogoProductos: React.FC = () => {
           return siguiente;
         });
       } catch {
-        fetchProductosRef.current(true);
+        fetchProductosRef.current('silencioso');
       }
     };
 
@@ -249,14 +299,15 @@ const CatalogoProductos: React.FC = () => {
       if (reloadTimer) clearTimeout(reloadTimer);
       reloadTimer = setTimeout(aplicar, 1500);
     };
-    const porProducto = (payload: any) => anotar(payload.new?.product_id ?? payload.old?.product_id);
+    type Cambio = RealtimePostgresChangesPayload<FilaCambio>;
+    const porProducto = (payload: Cambio) => anotar(filaDe(payload.new).product_id ?? filaDe(payload.old).product_id);
 
     const channel = supabase
       .channel('productos_catalogo_changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'products', filter: `organization_id=eq.${orgId}` },
-        (payload: any) => anotar(payload.new?.id ?? payload.old?.id)
+        (payload: Cambio) => anotar(filaDe(payload.new).id ?? filaDe(payload.old).id)
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_levels' }, porProducto)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'product_prices' }, porProducto)
@@ -269,306 +320,111 @@ const CatalogoProductos: React.FC = () => {
     };
   }, [organization?.id]);
 
-  // Función para obtener información de stock por sucursal para un producto específico
-  const fetchStockPorSucursal = async (productId: number) => {
-    try {
-      // Buscar el producto seleccionado en los productos ya cargados
-      const selectedProduct = productos.find(p => p.id === productId);
-      
-      if (selectedProduct && selectedProduct.stock_levels) {
-        // Ya tenemos la información de stock por sucursal, solo necesitamos formatearla
-        const formattedStockData: StockSucursal[] = selectedProduct.stock_levels.map((item: any) => ({
-          branch_id: item.branch_id,
-          branch_name: item.branches?.name || 'Sucursal sin nombre',
-          product_id: productId,
-          qty: (item.qty_on_hand || 0) - (item.qty_reserved || 0)
-        }));
-        
-        setStockPorSucursal(formattedStockData);
-        return;
-      }
-      
-      // Si no tenemos la información en los productos cargados, hacemos la consulta
-      const { data: stockData, error: stockError } = await supabase
-        .from('stock_levels')
-        .select('branch_id, qty_on_hand, qty_reserved, branches(id, name)')
-        .eq('product_id', productId);
-      
-      if (stockError) throw stockError;
-      
-      // Formatear datos de stock por sucursal
-      const formattedStockData: StockSucursal[] = stockData.map((item: any) => ({
-        branch_id: item.branch_id,
-        branch_name: item.branches?.name || 'Sucursal sin nombre',
-        product_id: productId,
-        qty: (item.qty_on_hand || 0) - (item.qty_reserved || 0)
-      }));
-      
-      setStockPorSucursal(formattedStockData);
-    } catch (error) {
-      console.error('Error al obtener stock por sucursal:', error);
-      setStockPorSucursal([]);
+  // ─── Lo que se ve: filtros del navegador, orden y página ──────────────────
+  const terminoRapido = busquedaRapida.trim() !== busquedaServidor ? busquedaRapida : '';
+  const filtrados = useMemo(
+    () => filtrarCatalogo(productos, { termino: terminoRapido, filtros: listado.filtros, branchFilter, imagenesFallidas }),
+    [productos, terminoRapido, listado.filtros, branchFilter, imagenesFallidas],
+  );
+  const ordenados = useMemo(() => ordenarCatalogo(filtrados, listado.orden, branchFilter), [filtrados, listado.orden, branchFilter]);
+  // La página se acota si la lista encoge (borrados, filtros): nunca una tabla vacía por estar fuera de rango.
+  const rango = calcularRango(listado.pagina, listado.tamano, ordenados.length);
+  const paginaVisible = useMemo(
+    () => ordenados.slice((rango.pagina - 1) * listado.tamano, rango.pagina * listado.tamano),
+    [ordenados, rango.pagina, listado.tamano],
+  );
+  const resumen = useMemo(() => resumenStock(productos, branchFilter), [productos, branchFilter]);
+
+  const cargandoLotes = backgroundLoading && !!progresoCarga && progresoCarga.cargados < progresoCarga.total;
+  const totalCatalogo = progresoCarga?.total ?? productos.length;
+  const hayFiltroCliente = !!terminoRapido || Object.keys(listado.filtros).some((k) => k !== 'categoria' && k !== 'estado');
+
+  const estadoTabla = (() => {
+    // Carga «normal» (entrar, cambiar categoría o estado, Actualizar): esqueleto
+    // hasta el primer lote, nunca la lista vieja bajo un filtro nuevo.
+    if (loading) return 'cargando' as const;
+    if (errorCarga && productos.length === 0) return 'error' as const;
+    if (ordenados.length === 0) {
+      if (backgroundLoading) return 'cargando' as const;
+      if (listado.hayCriterios || hayFiltroCliente) return 'sinResultados' as const;
     }
-  };
+    return 'listo' as const;
+  })();
 
-  // Funciones para gestionar los dialogos y acciones CRUD
-  const handleCrear = () => {
-    try {
-      // Preparar una estructura de datos de producto vacía como plantilla
-      const emptyProduct = {
-        id: 'new',
-        name: '',
-        description: '',
-        sku: '',
-        barcode: '',
-        status: 'active',
-        price: 0,
-        cost: 0,
-        stock: 0,
-        category_id: null,
-        organization_id: localStorage.getItem('currentOrganizationId') || sessionStorage.getItem('currentOrganizationId'),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        product_prices: [],
-        product_costs: [],
-        stock_levels: [],
-        product_images: [],
-        variants: []
-      };
-      
-      // Guardar la plantilla en sessionStorage para usar en la página de creación
-      sessionStorage.setItem('new_product_template', JSON.stringify(emptyProduct));
-      console.log('Plantilla para nuevo producto guardada en sessionStorage');
-      
-      // Redireccionar a la nueva página de creación de productos
-      router.push('/app/inventario/productos/nuevo');
-    } catch (error) {
-      console.error('Error al preparar la plantilla para nuevo producto:', error);
-      // Redireccionar de todos modos
-      router.push('/app/inventario/productos/nuevo');
-    }
-  };
+  // Subtítulo: «Consolidado · 3 sucursales · 4.368 productos · 12 sin stock · 3 con stock bajo».
+  const nombreSucursal =
+    branchFilter !== null ? branches.find((b) => b.id === branchFilter)?.name ?? `Sucursal #${branchFilter}` : null;
+  const partesSubtitulo = [
+    nombreSucursal ?? (branches.length > 1 ? `Consolidado · ${fmt(branches.length)} sucursales` : null),
+    `${fmt(totalCatalogo)} ${totalCatalogo === 1 ? 'producto' : 'productos'}`,
+    cargandoLotes && progresoCarga ? `cargando ${fmt(progresoCarga.cargados)} de ${fmt(progresoCarga.total)}` : null,
+    !cargandoLotes && resumen.sinStock > 0 ? `${fmt(resumen.sinStock)} sin stock` : null,
+    !cargandoLotes && resumen.bajo > 0 ? `${fmt(resumen.bajo)} con stock bajo` : null,
+  ].filter(Boolean);
+  const subtitulo = loading && productos.length === 0 ? 'Cargando catálogo…' : partesSubtitulo.join(' · ');
+  const subtituloMovil =
+    loading && productos.length === 0 ? 'Cargando…' : `${fmt(totalCatalogo)} ${totalCatalogo === 1 ? 'producto' : 'productos'}`;
 
-  const handleEditar = (producto: Producto) => {
-    // Usar UUID si está disponible, de lo contrario usar ID
-    const productUuid = producto.uuid || producto.id;
-    router.push(`/app/inventario/productos/${productUuid}/editar`);
-  };
-
-  const handleDuplicar = (producto: Producto) => {
-    // Usar UUID si está disponible, de lo contrario usar ID
-    const productUuid = producto.uuid || producto.id;
-    router.push(`/app/inventario/productos/${productUuid}/duplicar`);
-  };
-
-  const handleImportar = () => {
-    // Redireccionar a la página de importar
-    router.push('/app/inventario/productos/importar');
-  };
-
-  // Mantener la función anterior por compatibilidad (no usada actualmente)
-  const handleDuplicarLegacy = async (producto: Producto) => {
-    try {
-      // Obtener datos completos del producto original
-      const { data: originalProductData, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          categories(id, name),
-          children:products(
-            *,
-            categories(id, name)
-          ),
-          product_prices(id, price, compare_price, effective_from, effective_to),
-          product_costs(id, cost, effective_from, effective_to),
-          product_images(id, storage_path, is_primary)
-        `)
-        .eq('id', producto.id)
-        .single();
-        
-      if (error) throw error;
-      
-      if (originalProductData) {
-        // Preparar el producto duplicado con cambios en los campos únicos
-        const duplicatedProduct: any = {
-          ...originalProductData,
-          id: 'duplicate', // Marcar como duplicado para la página de creación
-          sku: `${originalProductData.sku}-COPIA`,
-          name: `${originalProductData.name} (Copia)`,
-          barcode: originalProductData.barcode ? `${originalProductData.barcode}-COPIA` : '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          // Mantener referencias a datos relacionados pero quitar IDs para que sean nuevos al guardar
-          product_prices: originalProductData.product_prices ? originalProductData.product_prices.map((p: any) => ({ ...p, id: 'new', product_id: 'duplicate' })) : [],
-          product_costs: originalProductData.product_costs ? originalProductData.product_costs.map((c: any) => ({ ...c, id: 'new', product_id: 'duplicate' })) : [],
-          product_images: [], // No duplicar imágenes directamente
-          // Preparar variantes (productos hijos)
-          children: originalProductData.children ? originalProductData.children.map((child: any) => ({
-            ...child,
-            id: 'new-child',
-            sku: `${child.sku}-COPIA`,
-            name: `${child.name} (Copia)`,
-            parent_product_id: 'duplicate'
-          })) : []
-        };
-        
-        // Guardar el producto duplicado en sessionStorage para la página de creación
-        sessionStorage.setItem('duplicated_product_data', JSON.stringify(duplicatedProduct));
-        console.log('Datos del producto duplicado guardados en sessionStorage');
-        
-        // Redireccionar a la página de creación con indicador de que es una duplicación
-        router.push('/app/inventario/productos/nuevo?from=duplicate');
-      } else {
-        throw new Error('No se encontraron los datos completos del producto');
-      }
-    } catch (error) {
-      console.error('Error al duplicar producto:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo duplicar el producto. Intente de nuevo más tarde."
-      });
-    }
-  };
-
-  const handleVer = async (producto: Producto) => {
-    // Usar UUID si está disponible, de lo contrario usar ID
-    const productUuid = producto.uuid || producto.id;
-    
-    try {
-      // Antes de redireccionar, asegurarse de que tenemos todos los datos del producto
-      const { data: productData, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          categories(id, name),
-          children:products(
-            *,
-            categories(id, name),
-            product_prices(id, price, compare_price, effective_from, effective_to),
-            product_costs(id, cost, effective_from, effective_to),
-            stock_levels(branch_id, qty_on_hand, qty_reserved, branches(id, name)),
-            product_images(id, storage_path, is_primary)
-          ),
-          product_prices(id, price, compare_price, effective_from, effective_to),
-          product_costs(id, cost, effective_from, effective_to),
-          stock_levels(branch_id, qty_on_hand, qty_reserved, branches(id, name)),
-          product_images(id, storage_path, is_primary)
-        `)
-        .eq('id', producto.id)
-        .single();
-        
-      if (error) throw error;
-      
-      // Almacenamos los datos completos del producto en sessionStorage
-      if (productData) {
-        sessionStorage.setItem(`product_${productUuid}_data`, JSON.stringify(productData));
-        console.log('Datos completos del producto guardados en sessionStorage');
-      }
-      
-      // Redireccionar a la página de detalle usando UUID
-      router.push(`/app/inventario/productos/${productUuid}`);
-    } catch (error) {
-      console.error('Error al obtener datos detallados del producto:', error);
-      // Redireccionar de todos modos usando UUID
-      router.push(`/app/inventario/productos/${productUuid}`);
-    }
-  };
-
-  const handleEliminarClick = async (productoId: number | string) => {
-    const id = typeof productoId === 'string' ? parseInt(productoId, 10) : productoId;
-    setProductoToDelete(id);
-    setIsDeleteDialogOpen(true);
-  };
+  // ─── Acciones por producto ────────────────────────────────────────────────
+  const handleVer = useCallback((p: Producto) => router.push(`/app/inventario/productos/${p.uuid || p.id}`), [router]);
 
   const handleConfirmDelete = async () => {
-    if (!productoToDelete) return;
-
+    const producto = productoAEliminar;
+    if (!producto) return;
+    const id = Number(producto.id);
     try {
       setActionLoading(true);
+      // Función RPC con SECURITY DEFINER para evitar problemas de RLS
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('soft_delete_product', { p_product_id: id });
+      if (rpcError) throw new Error(rpcError.message || 'Error al eliminar el producto');
+      if (!rpcResult) throw new Error('No se pudo eliminar el producto. Verifique permisos.');
 
-      if (!productoToDelete) {
-        throw new Error('No se seleccionó ningún producto para eliminar');
-      }
-
-      console.log('Eliminando producto via RPC:', { productoToDelete });
-
-      // Usar función RPC con SECURITY DEFINER para evitar problemas de RLS
-      const { data: rpcResult, error: rpcError } = await supabase
-        .rpc('soft_delete_product', {
-          p_product_id: productoToDelete
-        });
-
-      console.log('Respuesta RPC soft_delete_product:', { rpcResult, rpcError });
-
-      if (rpcError) {
-        console.error('RPC error details:', rpcError);
-        throw new Error(rpcError.message || 'Error al eliminar el producto');
-      }
-
-      if (!rpcResult) {
-        throw new Error('No se pudo eliminar el producto. Verifique permisos.');
-      }
-
-      toast({
-        title: "Producto eliminado",
-        description: "El producto ha sido eliminado correctamente."
+      toast({ title: "Producto eliminado", description: "El producto ha sido eliminado correctamente." });
+      // Quitarlo de la vista y de la selección
+      setProductos((prev) => prev.filter((p) => Number(p.id) !== id));
+      setSeleccion((prev) => {
+        if (!prev.has(String(id))) return prev;
+        const siguiente = new Set(prev);
+        siguiente.delete(String(id));
+        return siguiente;
       });
-
-      // Actualizar lista de productos (eliminarlo de la vista)
-      setProductos(productos.filter(p => p.id !== productoToDelete));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error al eliminar producto:', error);
-
-      const errorMessage = error.message || "No se pudo eliminar el producto. Intente de nuevo más tarde.";
-
       toast({
         variant: "destructive",
         title: "Error",
-        description: errorMessage
+        description: mensajeDe(error) || "No se pudo eliminar el producto. Intente de nuevo más tarde."
       });
     } finally {
-      setIsDeleteDialogOpen(false);
-      setProductoToDelete(null);
+      setProductoAEliminar(null);
       setActionLoading(false);
     }
   };
 
-  // Render de botones de acciones por producto
-  const RenderAcciones = ({ producto }: { producto: Producto }) => (
-    <div className="flex flex-row justify-end gap-2">
-      <Button
-        variant="outline"
-        onClick={() => handleEditar(producto)}
-        className={'dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700'}
-      >
-        Editar
-      </Button>
-      <Button
-        variant="outline"
-        onClick={() => handleVer(producto)}
-        className={'dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700'}
-      >
-        Ver
-      </Button>
-      <Button
-        variant="outline"
-        onClick={() => handleDuplicar(producto)}
-        className={'dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700'}
-      >
-        Duplicar
-      </Button>
-      <Button
-        variant="destructive"
-        onClick={() => handleEliminarClick(producto.id)}
-        disabled={loading}
-      >
-        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-        Eliminar
-      </Button>
-    </div>
+  const copiarId = useCallback(async (p: Producto) => {
+    try {
+      await navigator.clipboard.writeText(String(p.uuid || p.id));
+      toast({ title: 'ID copiado', description: 'El identificador del producto quedó en el portapapeles.' });
+    } catch {
+      toast({ variant: 'destructive', title: 'No se pudo copiar', description: 'El navegador no permitió usar el portapapeles.' });
+    }
+  }, []);
+
+  const accionesProducto = useCallback(
+    (p: Producto): AccionFila[] => {
+      const base = `/app/inventario/productos/${p.uuid || p.id}`;
+      return [
+        { id: 'ver', etiqueta: 'Ver detalle', icono: Eye, onSelect: () => handleVer(p) },
+        { id: 'editar', etiqueta: 'Editar', icono: Pencil, onSelect: () => router.push(`${base}/editar`) },
+        { id: 'duplicar', etiqueta: 'Duplicar', icono: Copy, onSelect: () => router.push(`${base}/duplicar`) },
+        { id: 'copiar-id', etiqueta: 'Copiar ID', icono: Copy, onSelect: () => void copiarId(p), separadorAntes: true },
+        { id: 'eliminar', etiqueta: 'Eliminar', icono: Trash, destructiva: true, onSelect: () => setProductoAEliminar(p) },
+      ];
+    },
+    [copiarId, handleVer, router],
   );
 
+  // ─── Exportar ─────────────────────────────────────────────────────────────
   const handleExportar = async () => {
     // Si la carga completa en background sigue corriendo, esperar a que termine
     // para no exportar un subconjunto parcial (ej: solo la primera página de 1000).
@@ -601,11 +457,11 @@ const CatalogoProductos: React.FC = () => {
 
     const modifiersMap = new Map<number, string>();
     if (modGroups) {
-      for (const mg of modGroups as any[]) {
+      for (const mg of modGroups as unknown as GrupoModificadoresCsv[]) {
         const opts = (mg.product_modifiers || [])
-          .filter((m: any) => m.is_active)
-          .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
-          .map((m: any) => `${m.name}=${m.extra_price ?? 0}`);
+          .filter((m) => m.is_active)
+          .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+          .map((m) => `${m.name}=${m.extra_price ?? 0}`);
         const groupStr = `${mg.name}|${mg.selection_mode || 'single'}|${mg.min_selections ?? 0}|${mg.max_selections ?? ''}|${mg.required ? 'true' : 'false'}|${opts.join(',')}`;
         const existing = modifiersMap.get(mg.product_id);
         modifiersMap.set(mg.product_id, existing ? `${existing}; ${groupStr}` : groupStr);
@@ -620,15 +476,15 @@ const CatalogoProductos: React.FC = () => {
       'Es Producto Padre', 'Estación', 'Modificadores', 'Estado'
     ];
 
-    const formatProductRow = (p: Producto, parentSku: string, isParent: boolean): string[] => {
+    const formatProductRow = (p: ProductoCsv, parentSku: string, isParent: boolean): string[] => {
       const pid = Number(p.id);
       const modifiersStr = modifiersMap.get(pid) || '';
 
       let comparePrice = '';
       if (p.product_prices && p.product_prices.length > 0) {
         const valid = p.product_prices
-          .filter((pp: any) => !pp.effective_to || new Date(pp.effective_to) > new Date())
-          .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
+          .filter((pp) => !pp.effective_to || new Date(pp.effective_to) > new Date())
+          .sort((a, b) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
         if (valid.length > 0 && valid[0].compare_price) {
           comparePrice = String(valid[0].compare_price);
         }
@@ -636,7 +492,7 @@ const CatalogoProductos: React.FC = () => {
 
       let imageUrls = '';
       if (p.product_images && p.product_images.length > 0) {
-        imageUrls = p.product_images.map((img: any) => {
+        imageUrls = p.product_images.map((img) => {
           const path = img.storage_path || '';
           if (!path) return '';
           const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(path);
@@ -645,8 +501,8 @@ const CatalogoProductos: React.FC = () => {
       }
 
       let variantData = '';
-      if ((p as any).variant_data) {
-        const vd = (p as any).variant_data;
+      if (p.variant_data) {
+        const vd = p.variant_data;
         variantData = typeof vd === 'string' ? vd : JSON.stringify(vd);
       }
 
@@ -674,7 +530,7 @@ const CatalogoProductos: React.FC = () => {
         parentSku,
         variantData,
         isParent ? 'true' : 'false',
-        (p as any).station || 'none',
+        p.station || 'none',
         modifiersStr,
         p.status || 'active',
       ];
@@ -704,11 +560,11 @@ const CatalogoProductos: React.FC = () => {
       ...rows.map((row) => row.map(escapeCSV).join(',')),
     ].join('\n');
 
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `productos_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `productos_${getToday()}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -754,109 +610,133 @@ const CatalogoProductos: React.FC = () => {
         return;
       }
 
-      const dateStr = new Date().toISOString().split('T')[0];
+      const dateStr = getToday();
       downloadCSV(csv, `facebook_catalog_${dateStr}.csv`);
 
       toast({
         title: 'Exportación a Facebook exitosa',
         description: `Se exportaron ${count} productos al formato de catálogo de Facebook.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error exportando a Facebook:', error);
       toast({
         title: 'Error de exportación',
-        description: error?.message || 'Ocurrió un error al exportar a Facebook.',
+        description: mensajeDe(error) || 'Ocurrió un error al exportar a Facebook.',
       });
     } finally {
       setActionLoading(false);
     }
   };
 
+  const recargar = () => setRefreshKey((k) => k + 1);
+  const registrarImagenFallida = useCallback((id: string) => {
+    setImagenesFallidas((prev) => {
+      if (prev.has(id)) return prev;
+      const siguiente = new Set(prev);
+      siguiente.add(id);
+      return siguiente;
+    });
+  }, []);
+
+  const selectedIds = useMemo(() => idsNumericos(seleccion), [seleccion]);
+
   return (
-    <div className="flex flex-col gap-3 sm:gap-4 lg:gap-5">
-      {/* Header con título y botón de nuevo */}
-      <ProductosPageHeader 
-        onCrearClick={handleCrear} 
-        onImportarClick={handleImportar}
-        onExportarClick={handleExportar}
-        onExportarFacebookClick={handleExportarFacebook}
-        onFacebookFeedClick={() => setIsFacebookFeedOpen(true)}
-        onScrapingClick={() => setIsScrapingOpen(true)}
-        onRefreshClick={() => {
-          setLoading(true);
-          setRefreshKey(k => k + 1);
-        }}
-        isRefreshing={loading || actionLoading || backgroundLoading}
-        totalProducts={progresoCarga?.total ?? productos.length}
-        backgroundLoading={backgroundLoading}
-        progresoCarga={progresoCarga}
+    <div className="flex flex-col gap-4">
+      <ProductosPageHeader
+        onImportarArchivo={() => router.push('/app/inventario/productos/importar')}
+        onImportarWeb={() => setIsScrapingOpen(true)}
+        onExportarCsv={handleExportar}
+        onExportarFacebook={handleExportarFacebook}
+        onFeedFacebook={() => setIsFacebookFeedOpen(true)}
+        onActualizar={recargar}
+        actualizando={loading || actionLoading || backgroundLoading}
+        subtitulo={subtitulo}
+        subtituloMovil={subtituloMovil}
+        progresoCarga={backgroundLoading ? progresoCarga : null}
       />
-      
-      {/* Filtros de búsqueda */}
-      <FiltrosProductosComponent 
-        filters={filters}
-        onFiltersChange={setFilters}
+
+      <FiltrosProductosComponent
+        listado={listado}
+        onBusquedaRapida={setBusquedaRapida}
+        buscando={backgroundLoading && !loading && busquedaServidor !== ''}
+        totalResultados={ordenados.length}
       />
-      
-      {/* Barra de acciones masivas (visible cuando hay selección) */}
-      <AccionesMasivas
-        selectedIds={selectedIds}
-        onClearSelection={() => setSelectedIds([])}
-        onActionComplete={() => fetchProductos(true)}
-      />
-      
-      {/* Tabla de productos */}
+
+      {/* La sucursal manda en el stock que se ve; en escritorio va en el subtítulo. */}
+      <div className="lg:hidden">
+        <BranchBadgeActiva />
+      </div>
+
       <ProductosTable
-        productos={productos}
-        loading={loading}
-        onEdit={(producto: Producto) => handleEditar(producto)}
-        onView={(producto: Producto) => handleVer(producto)}
-        onDelete={(id: string | number) => handleEliminarClick(id)}
-        onDuplicate={(producto: Producto) => handleDuplicar(producto)}
-        selectedIds={selectedIds}
-        onSelectionChange={setSelectedIds}
+        productos={paginaVisible}
+        estado={estadoTabla}
+        orden={listado.orden}
+        onOrdenar={listado.ordenarPor}
+        seleccion={seleccion}
+        onSeleccionChange={setSeleccion}
+        acciones={accionesProducto}
+        onVer={handleVer}
         branchFilter={branchFilter}
         branches={branches}
+        onImagenFallida={registrarImagenFallida}
+        onReintentar={recargar}
+        onLimpiarFiltros={() => {
+          setBusquedaRapida('');
+          listado.limpiarTodo();
+        }}
+        termino={busquedaRapida.trim() || undefined}
+        vacio={{
+          titulo: 'Aún no tienes productos',
+          descripcion: 'Crea tu primer producto o impórtalo desde un archivo.',
+          accion: { etiqueta: 'Nuevo producto', href: '/app/inventario/productos/nuevo', icono: Plus },
+        }}
+        pie={
+          <Pagination
+            pagina={rango.pagina}
+            tamano={listado.tamano}
+            total={ordenados.length}
+            onPaginaChange={listado.setPagina}
+            onTamanoChange={listado.setTamano}
+            opcionesTamano={TAMANOS_CATALOGO}
+            sustantivo={{ singular: 'producto', plural: 'productos' }}
+            cargando={estadoTabla === 'cargando'}
+          />
+        }
       />
-      
-      {/* Modal de scraping con IA */}
+
+      <AccionesMasivas
+        selectedIds={selectedIds}
+        total={ordenados.length}
+        onSeleccionarTodos={() => setSeleccion(new Set(ordenados.map((p) => String(p.id))))}
+        onClearSelection={() => setSeleccion(new Set())}
+        onActionComplete={() => fetchProductos('silencioso')}
+      />
+
+      {/* Importar desde una web (IA) */}
       <ScrapingProductos
         open={isScrapingOpen}
         onOpenChange={setIsScrapingOpen}
-        onImportComplete={() => setRefreshKey(k => k + 1)}
+        onImportComplete={recargar}
       />
-      
-      {/* Diálogo de confirmación para eliminar */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg dark:text-gray-100">¿Eliminar producto?</DialogTitle>
-            <DialogDescription className="text-sm dark:text-gray-400">
-              Esta acción no se puede deshacer. ¿Está seguro de que desea eliminar este producto?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
-              className="w-full sm:w-auto dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 text-sm"
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={loading}
-              className="w-full sm:w-auto text-sm"
-            >
-              {loading ? <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" /> : null}
-              Eliminar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      {/* Dialog de URL Feed para Facebook */}
+      <ConfirmDialog
+        open={productoAEliminar !== null}
+        onOpenChange={(abierto) => {
+          if (!abierto && !actionLoading) setProductoAEliminar(null);
+        }}
+        title="¿Eliminar producto?"
+        description={
+          productoAEliminar
+            ? `«${productoAEliminar.name}» dejará de verse en el catálogo. Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmLabel="Eliminar"
+        variant="destructive"
+        loading={actionLoading}
+        onConfirm={handleConfirmDelete}
+      />
+
+      {/* URL del feed para Facebook */}
       <FacebookFeedDialog
         open={isFacebookFeedOpen}
         onOpenChange={setIsFacebookFeedOpen}

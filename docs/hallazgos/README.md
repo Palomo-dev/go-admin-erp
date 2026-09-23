@@ -12,7 +12,7 @@ vive fuera del repo, en `docs/auditoria-finanzas/` (ignorado por `.gitignore`).
 
 | ID | Título | Severidad | Estado | Fase |
 |---|---|---|---|---|
-| [F-01](F-01.md) | Duplicación de asientos por trigger CxC + trigger factura | Crítica | Mitigado (trigger deshabilitado, backfill hecho) | Fase 0 |
+| [F-01](F-01.md) | Duplicación de asientos por trigger CxC + trigger factura | Crítica | Corregido (1.278 contra-asientos, 2026-09-23) | Fase 0 |
 | [F-02](F-02.md) | Reglas contables ambiguas y huérfanas | Alta | Parcial (8 reglas huérfanas pendientes) | Fase 3a |
 | [F-03](F-03.md) | Fallback de branch en fn_create_journal_entry | Alta | Corregido | Fase 0 |
 | [F-04](F-04.md) | Número de factura no único | Bloqueante | Documentado | Fase 3a |
@@ -41,7 +41,7 @@ vive fuera del repo, en `docs/auditoria-finanzas/` (ignorado por `.gitignore`).
 | [F-26](F-26.md) | Sin react-hook-form/zod; htmlFor inexistentes; sin borrador | Baja (deuda) | Documentado | Fase 3c |
 | [F-27](F-27.md) | Carga en cascada en DetalleFactura; móvil desigual | Baja (deuda) | Documentado | Fase 3c |
 | [F-28](F-28.md) | Factus no persiste el número DIAN en invoice_sales.number | Alta | Documentado | Fase 2 |
-| [F-29](F-29.md) | Reglas sale/created sin conditions → contado debitando Clientes | Alta | Corregido (reglas), pendiente contraasientos | Fase 0 |
+| [F-29](F-29.md) | Reglas sale/created sin conditions → contado debitando Clientes | Alta | Corregido (ADR-CC-001 + contra-asientos, 2026-09-23) | Fase 0 |
 | [F-30](F-30.md) | Libros contables sin auditoría | Alta | Documentado | Fase 2 |
 | [F-31](F-31.md) | document_type NULL en facturas por 4 rutas activas | Alta | Documentado | Fase 2 |
 | [F-32](F-32.md) | Asientos de factura no coinciden con el total (bug activo) | Crítica | Absorbido en F-16/F-17 | Fase 3a |
@@ -54,21 +54,27 @@ vive fuera del repo, en `docs/auditoria-finanzas/` (ignorado por `.gitignore`).
 | [F-39](F-39.md) | Fuga cross-tenant en políticas sin filtro de organización | Alta | Documentado | Fase 2 |
 | [F-40](F-40.md) | ImportLeadsCsv inserta columna GENERADA y no setea customer_type | Media | Documentado | Fase 2 |
 | [F-41](F-41.md) | stock_levels y stock_movements son dos fuentes de verdad que ya divergieron | Alta (deuda estructural) | Documentado | Fase 3c |
-| [F-42](F-42.md) | La tasa de impuesto no se persiste en la línea de factura | Bloqueante | En corrección | Fase 3a |
-| [F-43](F-43.md) | tax_account_mapping es tabla muerta y apunta a cuentas inexistentes | Baja (deuda) | Documentado | Fase 3c |
-| [F-44](F-44.md) | Bug de copiar-pegar en fn_recalc_invoice_totals (rama de compras) | Media | Documentado | Fase 3b |
-| [F-45](F-45.md) | fn_create_journal_entry invierte el IVA en ventas | Crítica | Corregido (migración 2026-09-19; backfill pendiente) | Fase 3a |
-| [F-46](F-46.md) | is_default sin poblar en 70 de 71 orgs | Media | Pendiente | Fase 3a |
-| [F-47](F-47.md) | fn_create_journal_entry ejecutable por anon y authenticated | Alta | Corregido (REVOKE) | Fase 1 |
-| [F-48](F-48.md) | Doble asiento POS por sales e invoice_sales | Crítica | Diagnóstico cerrado; reversión pendiente | Fase 3a |
-| [F-49](F-49.md) | Factura en draft con asiento posted | Alta | Documentado | Fase 3a |
-| [F-50](F-50.md) | tax_code inconsistente entre rutas | Media | Documentado | Fase 3a |
-| [F-51](F-51.md) | Divergencia de redondeo de 1 centavo entre rutas | Baja | Documentado | Fase 3b |
+| [F-42](F-42.md) | La tasa de impuesto no se persiste en la línea de factura | Bloqueante | Corregido (normalización en la base, 2026-09-23) | Fase 3a |
+| [F-43](F-43.md) | tax_account_mapping es tabla muerta y apunta a cuentas inexistentes | Baja (deuda) | Documentado (marcada OBSOLETA) | Fase 3c |
+| [F-44](F-44.md) | Bug de copiar-pegar en fn_recalc_invoice_totals (rama de compras) | Media | Corregido (preventivo; era inalcanzable) | Fase 3b |
+| [F-45](F-45.md) | fn_create_journal_entry invierte el IVA en ventas | Crítica | Corregido (2026-09-19) · histórico neutralizado (2026-09-23) | Fase 3a |
+| [F-46](F-46.md) | is_default sin poblar en 70 de 71 orgs | Media | Corregido en producto (tarifa por defecto explícita) | Fase 3a |
+| [F-47](F-47.md) | fn_create_journal_entry ejecutable por anon y authenticated | Alta | Corregido (solo service_role, 2026-09-23) | Fase 1 |
+| [F-48](F-48.md) | Doble asiento POS por sales e invoice_sales | Crítica | Corregido (2.310 duplicados neutralizados, 2026-09-23) | Fase 3a |
+| [F-49](F-49.md) | Factura en draft con asiento posted | Alta | Corregido (allow-list + disparo al emitir) | Fase 3a |
+| [F-50](F-50.md) | tax_code inconsistente entre rutas | Media | Corregido (tax_code derivado en la base) | Fase 3a |
+| [F-51](F-51.md) | Divergencia de redondeo de 1 centavo entre rutas | Baja | Corregido (un solo redondeo) | Fase 3b |
 | [F-52](F-52.md) | La ruta POS ignoraba contado frente a crédito | Crítica | Corregido y verificado (20260919235511) | Fase 3a |
+| [F-53](F-53.md) | 19 RPC `fn_reporte_*` legibles con la sola clave anon: fuga entre inquilinos | Crítica | Corregido y verificado (2026-09-22) | Seguridad |
+| [F-54](F-54.md) | Facturas sin impuesto por falta de configuración, sin aviso | Crítica | Corregido en producto; configuración por org pendiente | Cierre contable |
+| [F-55](F-55.md) | Devengo de contado + cobro duplicaban el activo | Crítica | Corregido (2026-09-23) | Cierre contable |
+| [F-56](F-56.md) | La nota crédito perdía su IVA en la cabecera | Alta | Corregido (2026-09-23) | Cierre contable |
+| [F-57](F-57.md) | Asientos cuyo documento no existe o está roto | Media | Abierto: auditoría manual | Cierre contable |
 
 ## Notas
 
 - **F-32** se absorbió en **F-16/F-17**: la race condition desaparece cuando la creación de factura pase a RPC transaccional.
 - **F-37** se unificó en **F-36**: ambos eran el mismo bug (productos cargados sin costo).
-- **F-01/F-29 (contraasientos):** opción (b) — resetear contabilidad de organizaciones de desarrollo y re-derivar desde facturas. Procedimiento en `docs/procedimientos/reversion-asientos-duplicados.md`.
+- **F-01/F-29/F-45/F-48/F-49 (contraasientos):** aplicados el 2026-09-23 con contra-asientos exactos, sin borrar nada. El reset con `DELETE` (opción b) quedó sin efecto. Procedimiento en `docs/procedimientos/reversion-asientos-duplicados.md`; reporte en `docs/reportes/cierre-contable-2026-09-23.md`.
+- **Numeración:** un prompt anterior llamó «F-53» al problema de impuestos; F-53 es la fuga de `fn_reporte_*`. El de impuestos es **F-54**.
 - `PROGRESS.md` queda congelado con su contenido histórico. La auditoría activa vive aquí.

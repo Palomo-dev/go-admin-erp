@@ -49,3 +49,59 @@ duplica el activo en toda venta de contado con pago → ADR-CC-001.
   - balance de prueba de la 149: D = C = 357.000; 1305 = 0.
 - Última migración reconciliada: `20260923080135`.
 - Falta: Bloques 2–6.
+
+## 2026-09-23 · Bloque 2 — impuestos: normalizar en la base, advertir en la UI
+
+- Migración `20260923081427 impuesto_de_linea_normalizado_en_la_base` (+ rollback):
+  disparador `trg_normalizar_impuesto_linea` (completa `tax_code`, audita
+  `total_line`, nunca bloquea), `fn_codigo_impuesto_linea`,
+  `invoice_item_tax_audit`, recálculo solo al cambiar importes, redondeo F-51.
+  Relleno: 280 líneas → `IVA_19`; auditoría: 7 `tarifa_sin_plantilla`,
+  61 `total_line_incoherente`; 0 cabeceras reescritas. ADR-CC-004.
+- TS: rutas de venta migradas a `taxResolver` (`taxResolverCore.ts` para
+  servidor); aviso `has_no_tax` en factura, cotización y POS; tarifa por
+  defecto en `/app/finanzas/impuestos` y en el alta de organización; la
+  cotización pasa al resolver los impuestos del documento.
+- `parkingFinanceService`: sin cambios (su insert nunca funcionó; arreglarlo
+  crearía cartera fantasma).
+- Migración ajena reconciliada: `20260923081833 reportes_de_problema_desde_el_header`
+  (solo `problem_reports`).
+
+## 2026-09-23 · Bloque 3 — higiene contable
+
+- Migración `20260923081953 higiene_contable_f44_f47_f49` (+ rollback). F-49
+  allow-list issued/paid/partial y `UPDATE OF status`; anular un borrador ya no
+  revierte; F-44 (inalcanzable por `chk_invoice_items_type_sales`); F-47 solo
+  `service_role`; `fn_sync_invoice_items_from_sale` con guarda; F-43 OBSOLETA.
+  ADR-CC-005. Commit `56f76ffe`.
+
+## 2026-09-23 · Bloque 4 — E2E en la org 149
+
+- 10 casos por SQL, todos correctos (reporte §4). Hallazgos del E2E:
+  - compras con el mismo doble activo que ventas → `20260923082133` (ADR-CC-006);
+  - la nota crédito perdía su IVA en la cabecera → `20260923082445` (F-56).
+- La UI no se recorrió: no se crean cuentas de acceso (ADR-CC-003).
+
+## 2026-09-23 · Bloque 5 — reversión histórica
+
+- Procedimiento reescrito antes de ejecutar; infraestructura `20260923083206`.
+- Simulación de 19 orgs → ejecución org por org, lote `cierre-contable-2026-09-23`:
+  F-48 2.310 · F-49 31 · F-45 249 · CC-001 1.564.
+- 37 devengos sin documento válido quedaron sin reemplazo → restaurados
+  (`20260923083545`) y pasados a F-57.
+- La diferencia de ingreso restante venía de F-01 (asientos de cartera):
+  `20260923083714`, lote `cierre-contable-f01-2026-09-23`, 1.278 neutralizados.
+- Al quitar F-01 apareció la cartera faltante de la org 115 (377 facturas
+  pendientes devengadas contra Caja) → `20260923083859`, 378 corregidos.
+- Resultado: 5.810 contra-asientos, 2.154 devengos corregidos, 0 orgs
+  descuadradas; Σ|dif| cxc 254,9 M → 81,9 M, IVA 17,3 M → 6,8 M, ingreso
+  416,3 M → 119,6 M. ADR-CC-007.
+
+## 2026-09-23 · Bloque 6 — cierre
+
+- `docs/hallazgos/` sincronizado (F-01, F-29, F-42…F-51; F-53 al índice;
+  F-54…F-57 nuevos).
+- Reporte final: `docs/reportes/cierre-contable-2026-09-23.md`.
+- Última migración reconciliada: `20260923083859`.
+- Pendiente humano: usuario de prueba de la 149 y recorrido por la UI;
+  auditoría F-57; despliegue (sin push: requiere autorización).

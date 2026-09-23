@@ -148,8 +148,11 @@ export function ReportesPage() {
     loadReport(activeTab);
   }, [activeTab, loadReport, selectedProductId]);
 
-  const handleExportCSV = (data: any[], filename: string) => {
-    ReportesService.exportToCSV(data, filename);
+  // `exportToCSV` es async desde que el dia del nombre de archivo lo resuelve
+  // el servicio con la zona de la organizacion. Sin el `await`, el aviso
+  // saldria antes de que el archivo se hubiera generado.
+  const handleExportCSV = async (data: any[], filename: string) => {
+    await ReportesService.exportToCSV(data, filename);
     toast({ title: 'Reporte exportado' });
   };
 

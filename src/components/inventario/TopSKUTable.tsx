@@ -1,5 +1,8 @@
+'use client';
+
 import { FC, useState, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface SKU {
   id: string;
@@ -33,6 +36,9 @@ const TopSKUTable: FC<TopSKUTableProps> = ({
   loading = false,
   itemsPorPagina = 5
 }) => {
+  // El dia del nombre de descarga sale del contexto de la organizacion
+  // (identidad), no del reloj del navegador ni de UTC.
+  const { getToday } = useFormatDate();
   // Estado para el criterio de ordenamiento
   const [criterioPrincipal, setCriterioPrincipal] = useState<OrdenamientoCriterio>('rotacion');
   
@@ -94,7 +100,7 @@ const TopSKUTable: FC<TopSKUTableProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `top_skus_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `top_skus_${getToday()}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();

@@ -12,7 +12,7 @@ import {
   PaymentApproval
 } from './types';
 import { SupplierBase, OrganizationPaymentMethod, OrganizationCurrency } from '../facturas-compra/types';
-import { DEFAULT_TIMEZONE, getToday } from '@/lib/utils/timezone';
+import { DEFAULT_TIMEZONE, getToday, todayInTz } from '@/lib/utils/timezone';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { sumarMesesAlDia } from '@/lib/services/fiscalCalendar';
 import { plainDateToInstant, toPlainDate } from '@/lib/utils/dateDisplay';
@@ -853,10 +853,17 @@ export class CuentasPorPagarService {
         throw new Error('Error obteniendo cuentas para exportar');
       }
 
+      // El dia que va en el nombre del archivo es el de la ORGANIZACION, no el
+      // de UTC ni el del navegador: la exportacion agrupa cuentas de cualquier
+      // sucursal, asi que no hay una sucursal dueña del lote a la que pedirle
+      // la zona. A las 19:00 de Bogota `toISOString()` ya escribia el dia
+      // siguiente y el lote de la noche quedaba archivado con fecha de mañana.
+      const zona = await resolveTimezone(organizationId);
+
       // Crear registro del archivo
       const nuevoArchivo = {
         organization_id: organizationId,
-        file_name: `pagos_${new Date().toISOString().split('T')[0]}.csv`,
+        file_name: `pagos_${todayInTz(zona)}.csv`,
         file_type: 'csv' as const,
         records_count: cuentas.length,
         processed_count: 0,

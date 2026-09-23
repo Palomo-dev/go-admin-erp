@@ -138,21 +138,23 @@ export function ReportesPage() {
     loadData();
   }, [loadData]);
 
-  const handleExportSales = () => {
+  // `exportToCSV` es async desde que el dia del nombre de archivo lo resuelve
+  // el servicio con la zona de la organizacion.
+  const handleExportSales = async () => {
     if (dailySales.length === 0) {
       toast({ title: 'Sin datos', description: 'No hay datos para exportar' });
       return;
     }
-    ReportesService.exportToCSV(dailySales, 'ventas_diarias');
+    await ReportesService.exportToCSV(dailySales, 'ventas_diarias');
     toast({ title: 'Exportado', description: 'Archivo CSV descargado' });
   };
 
-  const handleExportProducts = () => {
+  const handleExportProducts = async () => {
     if (topProducts.length === 0) {
       toast({ title: 'Sin datos', description: 'No hay datos para exportar' });
       return;
     }
-    ReportesService.exportToCSV(topProducts, 'productos_mas_vendidos');
+    await ReportesService.exportToCSV(topProducts, 'productos_mas_vendidos');
     toast({ title: 'Exportado', description: 'Archivo CSV descargado' });
   };
 

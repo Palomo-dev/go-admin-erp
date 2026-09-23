@@ -29,6 +29,17 @@
     ]
   },
   "overrides": [
+    // Este bloque general va PRIMERO a proposito. En ESLint gana el ultimo
+    // override que casa, asi que declararlo despues degradaba a "warn" todas
+    // las rutas ya cerradas que van debajo: ese fue el defecto que mantuvo el
+    // guardarrail apagado hasta el 2026-09-23. No lo muevas hacia abajo.
+    {
+      "files": ["src/**"],
+      "rules": {
+        "no-restricted-syntax": "warn",
+        "no-restricted-imports": "warn"
+      }
+    },
     {
       "files": [
         "src/components/pos/ventas/**",
@@ -61,13 +72,6 @@
       "rules": {
         "no-restricted-syntax": "error",
         "no-restricted-imports": "error"
-      }
-    },
-    {
-      "files": ["src/**"],
-      "rules": {
-        "no-restricted-syntax": "warn",
-        "no-restricted-imports": "warn"
       }
     },
     {

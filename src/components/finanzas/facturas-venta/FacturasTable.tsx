@@ -14,7 +14,8 @@ import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, Pagi
 import { getOrganizationId, getBranchFilter } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { useBranch } from '@/lib/context/BranchContext';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import DetalleFactura from './id/DetalleFactura';
 import { PagosFactura } from './PagosFactura';
 import { ElectronicInvoiceStatus } from '@/components/finanzas/facturacion-electronica';
@@ -104,6 +105,13 @@ const getStatusText = (status: string) => {
 export function FacturasTable({ filtros }: FacturasTableProps = {}) {
   const router = useRouter();
   const { branchFilter } = useBranch();
+  // `toDate` = `toPlainDate(fecha, zonaDeLaOrganizacion)`. El filtro compara
+  // DIAS CALENDARIO, no instantes: `invoice_sales.issue_date` es timestamptz y
+  // `parseLocalDate` se quedaba con su dia UTC, asi que una factura emitida a
+  // las 20:00 de Bogota se filtraba como si fuera del dia siguiente.
+  // Sin sucursal: la lista mezcla facturas de varias sucursales (o de todas)
+  // y el rango que teclea el usuario es uno solo, el de la organizacion.
+  const { toDate } = useFormatDate();
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -134,15 +142,13 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
         return false;
       }
       
-      // Filtro de fecha de emisión
-      if (filtros.fechaInicio) {
-        const fechaEmision = parseLocalDate(factura.issue_date);
-        if (fechaEmision < filtros.fechaInicio) return false;
-      }
-      
-      if (filtros.fechaFin) {
-        const fechaEmision = parseLocalDate(factura.issue_date);
-        if (fechaEmision > filtros.fechaFin) return false;
+      // Filtro de fecha de emisión: dia calendario de la organizacion a ambos
+      // lados. Comparar cadenas YYYY-MM-DD es comparar dias, y el orden
+      // lexicografico coincide con el cronologico.
+      if (filtros.fechaInicio || filtros.fechaFin) {
+        const diaEmision = toDate(new Date(factura.issue_date));
+        if (filtros.fechaInicio && diaEmision < toDate(filtros.fechaInicio)) return false;
+        if (filtros.fechaFin && diaEmision > toDate(filtros.fechaFin)) return false;
       }
       
       // Filtro de monto
@@ -169,7 +175,9 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
       
       return true;
     });
-  }, [facturas, filtros]);
+    // `toDate` entra en las dependencias: cambia cuando cambia la zona de la
+    // organizacion, y entonces el filtro tiene que recalcularse.
+  }, [facturas, filtros, toDate]);
   
   // Obtener el número total de páginas
   const totalItems = facturasFiltradas.length;

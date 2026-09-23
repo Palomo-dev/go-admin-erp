@@ -2010,3 +2010,201 @@ de los 8 archivos antes y despues: los 8 coinciden tras restaurar.
 - Cero escrituras en la base de datos. **Ninguna migracion**: el esquema se consulto por MCP
   (`information_schema.columns` y `pg_get_functiondef`) y no hizo falta DDL.
 - Sin `git add`, `commit`, `push`, `stash` ni cambio de rama.
+
+---
+
+## Fase B — las 16 violaciones que aparecieron al encender el guardarraíl · 2026-09-23
+
+El guardarraíl de ESLint **nunca había funcionado**. No es que fallara a veces: no rompió un
+solo build desde que se escribió. La tanda 7 ya había arreglado el primero de los dos defectos
+(los selectores no casaban con el AST) y había dejado el segundo anotado; este es el segundo,
+ya reparado fuera de esta tanda: el bloque `{"files": ["src/**"]}` con `warn` estaba declarado
+**entre** los bloques con `error`, y en ESLint gana el **último** `override` que casa, así que
+degradaba a `warn` todas las rutas cerradas en tandas anteriores. El bloque general va ahora
+primero, con un comentario que pide no moverlo.
+
+Al encenderse de verdad salieron **16 errores** en rutas dadas por cerradas. Esta tanda las
+cierra. `.eslintrc.json` no se ha tocado aquí.
+
+### Recuento de ESLint (`no-restricted-syntax` + `no-restricted-imports`, todo `src/**`)
+
+|  | Errores | Avisos |
+|---|---:|---:|
+| Antes | **16** | 172 |
+| Después | **0** | 170 |
+
+Los 170 avisos son trabajo pendiente de otras tandas y no se han tocado. Los **dos** avisos que
+desaparecen tampoco son míos: son `src/app/app/clientes/page.tsx` líneas 654 y 748, que otra
+sesión arregló en el mismo árbol mientras corría esta tanda (comprobado comparando las dos
+listas de avisos, no los totales).
+
+### Tabla archivo por archivo
+
+Trece de los dieciséis son el mismo patrón, `new Date().toISOString().split('T')[0]`, y dos son
+los `import` prohibidos de `@/utils/Utils`. **No** llevan todos la misma receta: lo que decide es
+qué hace el día, y de qué tipo es la columna a la que va (todos verificados por MCP en
+`information_schema.columns` el 2026-09-23).
+
+| Archivo (sitio) | Qué hace el día · columna destino y tipo | Arreglo |
+|---|---|---|
+| `cuentas-por-pagar/CuentasPorPagarService.ts` — `exportarParaBancaOnline` | **Se persiste**: `bank_files.file_name`. La tabla **no existe** en la base (ver deuda 1); el valor es una etiqueta de texto, no una fecha de negocio | `resolveTimezone(organizationId)` + `todayInTz(zona)` |
+| `cuentas-por-pagar/ExportarBancaModal.tsx` | nombre de descarga del archivo de banca | `useFormatDate().getToday()` |
+| `cuentas-por-pagar/id/AccountActionsCard.tsx` | nombre de descarga **y la zona de todo el formulario de pago** (`min`, `max`, día propuesto). `accounts_payable.due_date` es **timestamptz**; `ap_installments.due_date` es **date**; `accounts_payable.branch_id` **existe** | `useTimezoneFor(account.branch_id)` (antes `useOrgTimezone()`) + `todayInTz(timezone)` |
+| `cuentas-por-pagar/id/CuentaPorPagarDetailPage.tsx` | nombre de descarga y el estado de cuenta entero | `useTimezoneFor(account?.branch_id)` + `todayInTz(timezone)` |
+| `facturas-venta/FacturasTable.tsx` | **filtra** por fecha de emisión. `invoice_sales.issue_date` es **timestamptz** | `useFormatDate().toDate` a los **dos** lados del rango |
+| `hrm/reportes/ReportTable.tsx` | pinta tres fechas. `timesheets.work_date`, `leave_requests.start_date` y `.end_date` son **date** | `formatPlainDate` (**no convierte**); `first_check_in`, que sí es timestamptz, sigue con `formatTimeInTz` |
+| `inventario/TopSKUTable.tsx` | nombre de descarga | `useFormatDate().getToday()` |
+| `inventario/productos/CatalogoProductos.tsx` (×2) | nombres de descarga: CSV propio y feed de Facebook | `useFormatDate().getToday()` |
+| `inventario/proveedores/CatalogoProveedores.tsx` (×3) | nombres de descarga: csv, xlsx, pdf | `useFormatDate().getToday()` |
+| `inventario/reportes/ReportesService.ts` | nombre de descarga, desde un servicio | `resolveTimezone(getOrganizationId())` + `todayInTz(zona)`; el método pasa a `async` |
+| `inventario/reportes/costo-recetas/CostoRecetasPage.tsx` | nombre de descarga | `useFormatDate().getToday()` |
+| `inventario/reportes/trazabilidad/TrazabilidadPage.tsx` | nombre de descarga | `useFormatDate().getToday()` |
+| `pos/reportes/reportesService.ts` | nombre de descarga, desde un servicio | `resolveTimezone(getOrganizationId())` + `todayInTz(zona)`; el método pasa a `async` |
+
+Dos llamadores cambian por el `async`: `inventario/reportes/ReportesPage.tsx` y
+`pos/reportes/ReportesPage.tsx` ahora **esperan** el export. Sin el `await`, el aviso «Reporte
+exportado» salía antes de que el archivo existiera.
+
+Ningún archivo recibe un parámetro `timezone?: string` nuevo. La zona entra por **identidad**:
+`resolveTimezone(organizationId[, branchId])` en servicio y `useFormatDate` / `useTimezoneFor`
+en cliente, como manda el ADR-003. Hay un test que lo comprueba sobre los trece archivos.
+
+### Los dos casos que no eran un nombre de descarga
+
+**1. El filtro de facturas de venta estaba corrido un día.** `FacturasTable` usaba
+`parseLocalDate(factura.issue_date)`, y `parseLocalDate` hace `split('T')[0]` sobre el valor de
+la base: se queda con el **día UTC** del timestamptz. Una factura emitida a las 21:30 de Bogotá
+se filtraba como si fuera del día siguiente, así que «hasta el 23 de septiembre» la dejaba fuera
+y «desde el 24» la colaba. Ahora los dos lados se reducen al **día calendario de la
+organización** con `toDate` y se comparan como cadenas `YYYY-MM-DD`, cuyo orden lexicográfico
+es el cronológico. `toDate` entra además en las dependencias del `useMemo`: sin eso, un cambio
+de zona dejaría el filtro calculado con la anterior.
+
+El `Date` que llega del calendario se convierte con `toDate` igual que el instante de la
+factura. Es la convención que ya fija el propio `toPlainDate` («el `Date` que devuelve un
+DatePicker») y la que usa `NuevaFacturaForm`, el formulario del mismo módulo que **escribe**
+ese `issue_date`. Filtrar con una derivación del día distinta de la que se usó para guardarlo
+es precisamente lo que produce el bug; por eso aquí se copia la convención en vez de abrir una
+segunda. Queda anotado como deuda 4 el resto que esa convención arrastra.
+
+**2. HRM formateaba tres columnas `date` como si fueran instantes.** `formatDate` de
+`@/utils/Utils` pasa el valor por `parseLocalDate` y lo formatea con el reloj del **navegador**.
+Las tres columnas son `date` —días calendario ya cerrados—, así que la función correcta es
+`formatPlainDate`, que **no convierte**. Es la distinción crítica de
+`docs/reglas-fechas-timezone.md` §5, y confundirla en el otro sentido (meterle
+`formatDateInTz` a un `date`) da el día anterior en cualquier zona al oeste de Greenwich: hay
+una mutación que lo comprueba.
+
+### La deuda de `AccountActionsCard`: comprobada, no borrada
+
+La bitácora de la tanda 2 anota que `AccountActionsCard` formatea con la zona de la
+**organización** porque el RPC `get_account_receivable_detail` no devuelve `branch_id`.
+Comprobado hoy por MCP con `pg_get_function_result`: **sigue sin devolverlo**. La deuda del lado
+de **cobrar** continúa abierta tal cual estaba; añadir la columna al RPC es cambio de esquema y
+es de la fase D.
+
+Pero el archivo de esta lista es el de **pagar**, y ahí el caso es el contrario:
+`CuentaPorPagarDetailService.obtenerDetalleCuentaPorPagar` consulta `accounts_payable`
+directamente —no un RPC— y esa tabla **sí** tiene `branch_id`, que además viaja hasta el tipo
+`CuentaPorPagarDetalle`. O sea que la sucursal se conocía y no se estaba usando. Ahora se pasa.
+Importa más de lo que parece para un nombre de archivo: el mismo componente propone el día del
+pago y los `min`/`max` del formulario, mientras que `registrarPago` y `crearCuotas` ya escriben
+con `resolveTimezone(org, branch)`. Con la zona de la organización en la pantalla y la de la
+sucursal en el servicio, el día propuesto y el día guardado podían ser distintos. Lo mismo en
+`CuentaPorPagarDetailPage`.
+
+### Red
+
+`src/__tests__/timezone/guardarrail16Descargas.test.ts` — **60 casos**, verdes en `TZ=UTC`,
+`TZ=America/Bogota` y `TZ=Asia/Kathmandu`. Reloj falso en todos los casos que miran «hoy».
+
+Los dos instantes están elegidos para que las tres lecturas posibles den **días distintos**:
+
+- `2026-09-24T02:30:00Z` — UTC dice 24, Bogotá todavía dice 23. Mata cualquier mutación que
+  devuelva el día UTC.
+- `2026-06-15T18:30:00Z` — Katmandú (+05:45) ya está en el 16 y UTC sigue en el 15. Mata las
+  que «restan horas» en vez de convertir: una zona por **delante** de UTC rompe cualquier
+  arreglo que solo sepa retroceder.
+
+Los extremos del filtro de facturas se construyen a **mediodía UTC** a propósito: ese instante
+cae en el mismo día calendario en toda zona con offset menor que 12 h, así que el caso mide el
+día de la factura y no el reloj del proceso que corre la prueba.
+
+Este proyecto no tiene entorno DOM en Jest (ni `jsdom` ni `@testing-library`), así que los ocho
+archivos que son componentes no se pueden renderizar. Lo que se prueba de ellos es (a) la
+cascada y los helpers que ahora consultan, con casos de comportamiento reales, y (b) una guarda
+estática por archivo que **nombra la expresión concreta** del call-site. Es la lección de la
+tanda 2: una guarda «el archivo contiene el helper» no prueba que el helper esté donde hace
+falta, y por eso cada guarda cita el sitio, no el módulo. De los cuatro sitios que **sí** son
+código de servicio (los dos `exportToCSV` y el `file_name` de banca) hay prueba de
+comportamiento de verdad, con doble de PostgREST y doble mínimo del DOM.
+
+El propio archivo de prueba no dispara el guardarraíl que defiende: el día UTC se compone con
+`substring` y la implementación vieja de `parseLocalDate` está **copiada**, no importada.
+
+**Mutaciones: 18 aplicadas, 18 muertas, 0 supervivientes.** Cada una devuelve una línea al
+código viejo: el día a UTC en los siete nombres de descarga, la zona a `'UTC'`, la organización
+a otra, la sucursal a la organización en las dos pantallas de cartera, el día de la factura al
+día UTC, `toDate` fuera de las dependencias del `useMemo`, un `date` convertido como si fuera
+timestamptz, y el `await` quitado del llamador. Copia de ruta completa y `md5` antes y después
+de cada una: los 13 archivos coinciden tras restaurar, y la suite vuelve a verde al final.
+Script en el scratchpad de sesión (`.../scratchpad/guardarrail-16/mutar.py`).
+
+### Deuda anotada
+
+1. **`bank_files` no existe.** `CuentasPorPagarService.exportarParaBancaOnline` inserta en
+   `public.bank_files`, y esa tabla **no está en la base** (comprobado por MCP en
+   `information_schema.tables`). El `insert` lanza siempre, y como `ExportarBancaModal` llama al
+   servicio **antes** de descargar, hoy la exportación a banca online no descarga nada en
+   producción. Es exactamente el caso del que avisa la regla 3 de `CLAUDE.md` (`inventory`,
+   `orders`, `order_items`). Ajeno a las fechas y **no se ha tocado**.
+2. **`obtenerDetalleCuentaPorPagar(accountId, timezone = DEFAULT_TIMEZONE)`** y
+   `generarEstadoCuenta` llevan un `timezone` opcional con valor por defecto — la forma que el
+   ADR-003 descarta — y **ningún llamador lo rellena**, así que hoy siempre resuelven Bogotá. Es
+   hermano del ya anotado en `CuentasPorPagarService.crearCuotas`. No se ha añadido ninguno
+   nuevo, pero estos dos siguen ahí.
+3. **`TopSKUTable.tsx` es código muerto**: no lo importa nadie en todo el repositorio y sus
+   datos son de ejemplo, escritos a mano. Se ha arreglado igual (y se le ha puesto
+   `'use client'`, que le faltaba) porque estaba en la lista y porque cuesta una línea, pero
+   el candidato de verdad es borrarlo.
+4. **El `Date` de un DatePicker sigue siendo ambiguo.** `toPlainDate(fechaDelPicker, zonaOrg)`
+   es exacto cuando el navegador está en la zona de la organización, y devuelve el día anterior
+   cuando el navegador está al **este** de ella. Afecta a todos los sitios que ya siguen esa
+   convención (`NuevaFacturaForm`, `CurrencyConverter`, y ahora `FacturasTable`), no solo a
+   este. Resolverlo es decidir una convención única para los selectores de fecha —leer los
+   campos locales del `Date`, o que el selector entregue `YYYY-MM-DD`— y aplicarla de una vez;
+   abrir aquí una segunda convención habría sido peor que la deuda.
+5. **`FacturasTable.formatearFecha`** sigue haciendo `fechaStr.split('T')[0]` sobre un valor de
+   la base para pintarlo. Es la regla 2 por el lado que el selector de ESLint no ve (no hay
+   `toISOString()` delante). No entra en las 16 y no se ha tocado; es fase C de este módulo.
+
+### Árbol compartido
+
+Otra sesión reescribió `src/components/inventario/proveedores/CatalogoProveedores.tsx` entera
+**mientras corría esta tanda**. El arreglo sobrevivió —quedó mejor, de hecho: los tres
+`link.download` son ahora uno con la extensión parametrizada— pero la guarda estática que
+nombraba las tres líneas se rompió. Se reescribió para atarse a **de dónde sale el día** y no a
+la forma del código, que no es asunto de esta tanda.
+
+### NO VERIFICADO
+
+- **`next build` no se ejecuta** (lo excluye el encargo).
+- `npx tsc --noEmit -p tsconfig.json` con `NODE_OPTIONS=--max-old-space-size=8192` (sin ampliar
+  el heap el «0 errores» es falso por OOM): **0 errores** en la pasada hecha con todos mis
+  cambios ya puestos. En la pasada final salen **5**, todos de otra sesión trabajando en
+  paralelo en este mismo árbol: 2 en `src/components/inventario/categorias/DetalleCategoria.tsx`
+  —un archivo **sin seguimiento en git**, que no existía cuando empezó la tanda— y 3 en
+  `src/components/pos/cajas/CajasService.ts`. **Ninguno** de los 15 archivos tocados aquí
+  aparece en la salida de `tsc`.
+- ESLint sobre los archivos tocados: **cero** `no-restricted-syntax` y cero
+  `no-restricted-imports`. Siguen los errores **preexistentes** de `no-unused-vars` de
+  `CuentasPorPagarService.ts` (`PaymentApproval`) y de `FacturasTable.tsx` (`Printer`,
+  `getBranchFilter`, `DetalleFactura`, `facturaSeleccionadaId`, `mostrarDetalles`), que son de
+  antes y no se han limpiado: ninguno lo ha introducido esta tanda.
+- `src/__tests__/timezone` completo más `guardrails.test.ts`: **609/609** en `TZ=UTC`,
+  `TZ=America/Bogota` y `TZ=Asia/Kathmandu`. `npx jest` completo **no se ha ejecutado**.
+- **Nada probado en navegador.** No se ha visto ninguna de las pantallas.
+- **Cero escrituras en la base de datos y ninguna migración.** El esquema solo se consultó
+  (`information_schema.columns`, `information_schema.tables`, `pg_get_function_result`).
+- `.eslintrc.json` **no se ha tocado**.
+- Sin `git add`, `commit`, `push`, `stash` ni cambio de rama.

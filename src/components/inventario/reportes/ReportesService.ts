@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/timezone';
 import { StockReport, KardexEntry, RotationReport, SupplierPurchaseReport, ReportFilter } from './types';
 
 export class ReportesService {
@@ -321,8 +323,20 @@ export class ReportesService {
     }
   }
 
-  static exportToCSV(data: any[], filename: string): void {
+  /**
+   * Descarga los datos como CSV. El dia que va en el nombre del archivo es el
+   * de la ORGANIZACION, no el de UTC ni el del navegador: a partir de las 19:00
+   * de Bogota `toISOString()` ya escribia el dia siguiente y el reporte de la
+   * tarde salia archivado con fecha de mañana.
+   *
+   * La zona entra por IDENTIDAD (ADR-003): se resuelve aqui dentro a partir de
+   * la organizacion de la sesion, como hace el resto de metodos de esta clase.
+   * Por eso el metodo es `async`; no lleva ningun parametro `timezone`.
+   */
+  static async exportToCSV(data: any[], filename: string): Promise<void> {
     if (data.length === 0) return;
+
+    const zona = await resolveTimezone(getOrganizationId());
 
     const headers = Object.keys(data[0]);
     const csvContent = [
@@ -341,7 +355,7 @@ export class ReportesService {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `${filename}_${todayInTz(zona)}.csv`;
     link.click();
   }
 }

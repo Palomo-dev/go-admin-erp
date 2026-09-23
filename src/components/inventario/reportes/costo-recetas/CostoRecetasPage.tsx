@@ -26,11 +26,15 @@ import {
 } from 'lucide-react';
 import { CostoRecetasService, type RecetaCostoEntry } from './CostoRecetasService';
 import { useToast } from '@/components/ui/use-toast';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { formatCurrency } from '@/utils/Utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function CostoRecetasPage() {
   const { toast } = useToast();
+  // Dia de la organizacion para el nombre de descarga: el reporte se mira
+  // completo (todas las sucursales), asi que no hay sucursal que pasar.
+  const { getToday } = useFormatDate();
   const [data, setData] = useState<RecetaCostoEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
@@ -60,7 +64,7 @@ export function CostoRecetasPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `costo_recetas_${new Date().toISOString().split('T')[0]}.csv`;
+      link.download = `costo_recetas_${getToday()}.csv`;
       link.click();
       URL.revokeObjectURL(url);
       toast({ title: 'CSV exportado', description: `${data.length} recetas exportadas` });

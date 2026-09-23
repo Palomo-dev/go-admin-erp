@@ -1,5 +1,8 @@
+'use client';
+
 import { X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Chip de filtro activo (Figma `Chip Variant=filter`): tinte de marca, texto
@@ -14,6 +17,7 @@ export interface FilterChipProps {
 }
 
 export function FilterChip({ etiqueta, onQuitar, className }: FilterChipProps) {
+  const t = useKitT();
   return (
     <span
       className={cn(
@@ -25,7 +29,7 @@ export function FilterChip({ etiqueta, onQuitar, className }: FilterChipProps) {
       <button
         type="button"
         onClick={onQuitar}
-        aria-label={`Quitar filtro ${etiqueta}`}
+        aria-label={t('filtros.quitar', { etiqueta })}
         className="flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-brand-tint-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <X aria-hidden="true" className="size-3.5" strokeWidth={2} />

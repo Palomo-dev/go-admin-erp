@@ -7,7 +7,8 @@ import { ChevronDown, Loader2, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { RowActionsMenu } from './RowActionsMenu';
 import type { AccionFila } from './acciones';
-import { formatearEntero, sustantivoPara, type Sustantivo } from './paginacion';
+import { sustantivoPara, type Sustantivo } from './paginacion';
+import { useFormatoEntero, useKitT, useSustantivoKit } from './useIdiomaKit';
 import { aplanarMenuMasivo, type AccionMasiva } from './menuMasivo';
 
 export { aAccionFila, aplanarMenuMasivo, type AccionMasiva, type GrupoMenuMasivo } from './menuMasivo';
@@ -38,8 +39,6 @@ export interface BulkActionBarProps {
   accionesSecundarias?: readonly AccionFila[];
   onLimpiar: () => void;
 }
-
-const SUSTANTIVO: Sustantivo = { singular: 'elemento', plural: 'elementos' };
 
 function BotonAccion({ accion, compacto }: { accion: AccionMasiva; compacto?: boolean }) {
   if (accion.menu && accion.menu.length > 0) return <BotonMenu accion={accion} compacto={compacto} />;
@@ -130,11 +129,12 @@ function BotonMenu({ accion, compacto }: { accion: AccionMasiva; compacto?: bool
 }
 
 function BotonLimpiar({ onLimpiar, grande }: { onLimpiar: () => void; grande?: boolean }) {
+  const t = useKitT();
   return (
     <button
       type="button"
       onClick={onLimpiar}
-      aria-label="Limpiar selección"
+      aria-label={t('masivas.limpiar')}
       className={cn(
         'flex shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
         grande ? 'size-10' : 'size-8',
@@ -149,11 +149,15 @@ export function BulkActionBar({
   seleccionados,
   total,
   onSeleccionarTodos,
-  sustantivo = SUSTANTIVO,
+  sustantivo: sustantivoProp,
   acciones,
   accionesSecundarias = [],
   onLimpiar,
 }: BulkActionBarProps) {
+  const t = useKitT();
+  const entero = useFormatoEntero();
+  const sustantivoKit = useSustantivoKit('elemento');
+  const sustantivo = sustantivoProp ?? sustantivoKit;
   const anclaRef = React.useRef<HTMLDivElement>(null);
   const [columna, setColumna] = React.useState<{ centro: number; ancho: number } | null>(null);
   const [montado, setMontado] = React.useState(false);
@@ -178,9 +182,11 @@ export function BulkActionBar({
     };
   }, [visible]);
 
-  const texto = `${formatearEntero(seleccionados)} ${sustantivoPara(seleccionados, sustantivo)} ${
-    seleccionados === 1 ? 'seleccionado' : 'seleccionados'
-  }`;
+  const texto = t('masivas.seleccionados', {
+    count: seleccionados,
+    n: entero(seleccionados),
+    sustantivo: sustantivoPara(seleccionados, sustantivo),
+  });
   const puedeSeleccionarTodos = !!onSeleccionarTodos && total !== undefined && total > seleccionados;
 
   // Móvil: la primera acción visible, el resto a la hoja.
@@ -197,7 +203,7 @@ export function BulkActionBar({
           <>
             <div
               role="region"
-              aria-label="Acciones masivas"
+              aria-label={t('masivas.region')}
               style={columna ? { left: columna.centro, maxWidth: columna.ancho - 32 } : undefined}
               className={cn(
                 'fixed bottom-6 z-40 hidden h-[50px] w-max -translate-x-1/2 items-center gap-2 rounded-xl border border-line bg-surface pl-4 pr-2 text-fg shadow-lg lg:flex',
@@ -213,7 +219,7 @@ export function BulkActionBar({
                   onClick={onSeleccionarTodos}
                   className="whitespace-nowrap rounded-md px-1 text-[13px] font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
-                  Seleccionar los {formatearEntero(total)}
+                  {t('masivas.seleccionarTodos', { n: entero(total ?? 0) })}
                 </button>
               )}
               <span aria-hidden="true" className="mx-1 h-6 w-px bg-line" />
@@ -230,7 +236,7 @@ export function BulkActionBar({
 
             <div
               role="region"
-              aria-label="Acciones masivas"
+              aria-label={t('masivas.region')}
               className="fixed inset-x-0 bottom-0 z-50 flex min-h-[calc(4.625rem+env(safe-area-inset-bottom))] items-center gap-2 border-t border-line bg-surface px-3 pb-[env(safe-area-inset-bottom)] text-fg shadow-[0_-4px_12px_rgb(15_23_42/0.08)] lg:hidden"
             >
               <div className="flex min-w-0 flex-1 flex-col">
@@ -243,7 +249,7 @@ export function BulkActionBar({
                     onClick={onSeleccionarTodos}
                     className="self-start text-[13px] font-medium text-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
-                    Seleccionar los {formatearEntero(total)}
+                    {t('masivas.seleccionarTodos', { n: entero(total ?? 0) })}
                   </button>
                 )}
               </div>

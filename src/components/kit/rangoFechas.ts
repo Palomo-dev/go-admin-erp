@@ -42,12 +42,32 @@ function partes(fecha: string) {
   return { a, m, d };
 }
 
+/** Día plano → instante a mediodía UTC (el día no cambia al formatear en UTC). */
+function aFechaUtc(fecha: string): Date {
+  const { a, m, d } = partes(fecha);
+  return new Date(Date.UTC(a, m - 1, d, 12));
+}
+
 /**
  * «22 sep 2026» · «1 – 22 sep 2026» · «28 ago – 3 sep 2026» ·
  * «28 dic 2025 – 3 ene 2026». Formato del botón en Figma (680:407222).
+ *
+ * `locale` (el de `Intl`, p. ej. `en-US`): en otro idioma que no sea español
+ * el rango lo arma `Intl.DateTimeFormat#formatRange` («Sep 1 – 22, 2026»,
+ * «28 août – 3 sept. 2026»). Sin `locale`, o en español, el formato de Figma.
  */
-export function etiquetaRango(rango: RangoFechas): string {
+export function etiquetaRango(rango: RangoFechas, locale?: string): string {
   const { desde, hasta } = normalizarRango(rango);
+  if (locale && !/^es(-|$)/i.test(locale)) {
+    try {
+      const formato = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+      return desde === hasta
+        ? formato.format(aFechaUtc(desde))
+        : formato.formatRange(aFechaUtc(desde), aFechaUtc(hasta));
+    } catch {
+      // Locale que `Intl` no conoce: se cae al formato en español.
+    }
+  }
   const i = partes(desde);
   const f = partes(hasta);
   const mesI = MESES_CORTOS[i.m - 1];

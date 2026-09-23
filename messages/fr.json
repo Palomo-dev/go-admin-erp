@@ -2830,5 +2830,241 @@
     },
     "markedUnread": "Marquée comme non lue",
     "dismissedForYou": "Notification ignorée. Seul vous ne la voyez plus."
+  },
+  "kit": {
+    "comun": {
+      "cancelar": "Annuler",
+      "aplicar": "Appliquer",
+      "cerrar": "Fermer",
+      "acciones": "Actions",
+      "ver": "Voir",
+      "resumen": "Résumé"
+    },
+    "cabecera": {
+      "volver": "Retour",
+      "cargando": "Chargement…",
+      "progreso": "Progression du chargement"
+    },
+    "migas": {
+      "etiqueta": "Fil d'Ariane",
+      "ocultos": "Niveaux masqués"
+    },
+    "busqueda": {
+      "placeholder": "Rechercher…",
+      "borrar": "Effacer la recherche"
+    },
+    "filtros": {
+      "boton": "Filtres",
+      "botonActivos": "{etiqueta}, {count, plural, one {{n} actif} other {{n} actifs}}",
+      "titulo": "Filtres",
+      "nota": "Appliqués immédiatement · chaque filtre actif apparaît en puce sous la recherche",
+      "verResultados": "Voir les résultats",
+      "limpiar": "Effacer ({n})",
+      "cerrar": "Fermer les filtres",
+      "activos": "Filtres actifs",
+      "quitar": "Retirer le filtre {etiqueta}",
+      "limpiarTodo": "Tout effacer"
+    },
+    "rango": {
+      "etiqueta": "Période",
+      "atajos": "Raccourcis de dates",
+      "desde": "Du",
+      "hasta": "Au",
+      "hoy": "Aujourd'hui",
+      "ayer": "Hier",
+      "ultimos7": "7 derniers jours",
+      "ultimos30": "30 derniers jours",
+      "esteMes": "Ce mois-ci",
+      "mesPasado": "Le mois dernier"
+    },
+    "tabla": {
+      "seleccionarPagina": "Sélectionner cette page",
+      "seleccionarFila": "Sélectionner la ligne",
+      "seleccionar": "Sélectionner {nombre}"
+    },
+    "menu": {
+      "accionesDe": "Actions pour {titulo}",
+      "masAcciones": "Plus d'actions"
+    },
+    "masivas": {
+      "region": "Actions groupées",
+      "seleccionados": "{count, plural, one {{n} {sustantivo} sélectionné} other {{n} {sustantivo} sélectionnés}}",
+      "seleccionarTodos": "Sélectionner les {n}",
+      "limpiar": "Effacer la sélection"
+    },
+    "sustantivos": {
+      "registro": {
+        "singular": "enregistrement",
+        "plural": "enregistrements"
+      },
+      "elemento": {
+        "singular": "élément",
+        "plural": "éléments"
+      }
+    },
+    "paginacion": {
+      "etiqueta": "Pagination",
+      "resumen": "Affichage de {desde} à {hasta} sur {total} {sustantivo}",
+      "vacio": "0 {sustantivo}",
+      "porPaginaEtiqueta": "Lignes par page",
+      "porPagina": "{n} par page",
+      "primera": "Première page",
+      "anterior": "Page précédente",
+      "siguiente": "Page suivante",
+      "ultima": "Dernière page",
+      "pagina": "Page {n}",
+      "compacto": "{desde}–{hasta} sur {total}",
+      "compactoVacio": "0 sur 0",
+      "irA": "Aller à",
+      "dePaginas": "sur {count, plural, one {{n} page} other {{n} pages}}"
+    },
+    "vacio": {
+      "empty": {
+        "titulo": "Aucun enregistrement pour l'instant",
+        "descripcion": "Dès que vous créerez le premier, il apparaîtra ici."
+      },
+      "search": {
+        "titulo": "Aucun résultat",
+        "tituloTermino": "Aucun résultat pour « {termino} »",
+        "descripcion": "Essayez un autre terme ou retirez un filtre."
+      },
+      "error": {
+        "titulo": "Impossible de charger les informations",
+        "descripcion": "Vérifiez votre connexion et réessayez."
+      },
+      "forbidden": {
+        "titulo": "Vous n'avez pas l'autorisation de voir cette section",
+        "descripcion": "Demandez à un administrateur de votre organisation de vous donner l'accès."
+      },
+      "sinSucursal": {
+        "titulo": "Aucune succursale ne vous est attribuée",
+        "descripcion": "Pour voir les ventes, le stock et les factures, un administrateur doit vous attribuer au moins une succursale."
+      },
+      "limpiarFiltros": "Effacer les filtres",
+      "reintentar": "Réessayer",
+      "volverInicio": "Retour à l'accueil"
+    },
+    "sucursal": {
+      "sinSucursal": "Aucune succursale",
+      "todasN": "Toutes ({n})",
+      "todas": "Toutes les succursales",
+      "sucursal": "Succursale",
+      "numero": "Succursale #{id}",
+      "prefijo": "Succursale :",
+      "cambiar": "Succursale : {texto}. Changer de succursale"
+    },
+    "arbol": {
+      "contraer": "Réduire {titulo}",
+      "expandir": "Développer {titulo}",
+      "sinResultados": "Aucun résultat pour « {termino} »",
+      "actual": "Actuelle",
+      "seleccionar": "Sélectionner…",
+      "opciones": "Options",
+      "arrastrar": "Glissez sur une autre catégorie pour la déplacer dedans",
+      "soltarRaiz": "Déposez ici pour la laisser sans catégorie parente"
+    },
+    "formulario": {
+      "obligatorio": "(obligatoire)"
+    },
+    "estados": {
+      "abierta": "Ouverte",
+      "abierto": "Ouvert",
+      "aceptada": "Acceptée",
+      "aceptado": "Accepté",
+      "activa": "Active",
+      "activo": "Actif",
+      "agotado": "En rupture",
+      "al_dia": "À jour",
+      "alta_prioridad": "Priorité haute",
+      "alto_riesgo": "Risque élevé",
+      "anulada": "Annulée",
+      "anulado": "Annulé",
+      "aplicada": "Appliquée",
+      "aplicado": "Appliqué",
+      "archivado": "Archivé",
+      "auto_generacion": "Génération automatique",
+      "baja_prioridad": "Priorité basse",
+      "borrador": "Brouillon",
+      "caliente": "Chaud",
+      "cancelada": "Annulée",
+      "cancelado": "Annulé",
+      "cerrada": "Fermée",
+      "cerrado": "Fermé",
+      "cheque": "Chèque",
+      "clawback": "Récupération",
+      "cobrada": "Encaissée",
+      "cobrado": "Encaissé",
+      "completada": "Terminée",
+      "completado": "Terminé",
+      "conectada": "Connectée",
+      "conectado": "Connecté",
+      "confirmada": "Confirmée",
+      "confirmado": "Confirmé",
+      "convertida": "Convertie",
+      "convertido": "Converti",
+      "critica": "Critique",
+      "critico": "Critique",
+      "desconocido": "Inconnu",
+      "descontinuado": "Arrêté",
+      "efectivo": "Espèces",
+      "eliminada": "Supprimée",
+      "eliminado": "Supprimé",
+      "emitida": "Émise",
+      "emitido": "Émis",
+      "empresa": "Entreprise",
+      "en_espera": "En attente",
+      "en_proceso": "En cours",
+      "en_transito": "En transit",
+      "enviada": "Envoyée",
+      "enviado": "Envoyé",
+      "error": "Erreur",
+      "fallida": "Échouée",
+      "fallido": "Échoué",
+      "frio": "Froid",
+      "ganada": "Gagnée",
+      "garantia_vigente": "Sous garantie",
+      "inactiva": "Inactive",
+      "inactivo": "Inactif",
+      "media_prioridad": "Priorité moyenne",
+      "normal": "Normale",
+      "nueva": "Nouvelle",
+      "nuevo": "Nouveau",
+      "pagada": "Payée",
+      "pagado": "Payé",
+      "pago_parcial": "Paiement partiel",
+      "parcial": "Partiel",
+      "pendiente": "En attente",
+      "pendiente_de_sincronizar": "Synchronisation en attente",
+      "perdida": "Perdue",
+      "perdido": "Perdu",
+      "persona": "Particulier",
+      "personalizable": "Personnalisable",
+      "por_cobrar": "À encaisser",
+      "por_pagar": "À payer",
+      "por_revisar": "À vérifier",
+      "procesada": "Traitée",
+      "procesado": "Traité",
+      "procesando": "En traitement",
+      "rechazada": "Refusée",
+      "rechazado": "Refusé",
+      "recibida": "Reçue",
+      "recibido": "Reçu",
+      "reembolsada": "Remboursée",
+      "reembolsado": "Remboursé",
+      "riesgo_bajo": "Risque faible",
+      "riesgo_medio": "Risque moyen",
+      "sin_conexion": "Hors ligne",
+      "sin_seguimiento": "Non suivi",
+      "tarjeta": "Carte",
+      "tibio": "Tiède",
+      "todas_las_sucursales": "Toutes les succursales",
+      "transferencia": "Virement",
+      "trazabilidad_activa": "Traçabilité active",
+      "urgente": "Urgent",
+      "usada": "Utilisée",
+      "usado": "Utilisé",
+      "vencida": "En retard",
+      "vencido": "En retard"
+    }
   }
 }

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Home } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Arrastrar y soltar para cambiar de padre en un árbol (HTML5 nativo, sin
@@ -32,6 +33,8 @@ export interface OpcionesArrastreArbol {
   puedeSoltar: (origen: number, destino: number | null) => true | string;
   onSoltar: (origen: number, destino: number | null) => void;
   deshabilitado?: boolean;
+  /** Ayuda al pasar el ratón sobre un nodo arrastrable; por defecto la de categorías. */
+  ayuda?: string;
 }
 
 export interface ArrastreArbol {
@@ -42,7 +45,9 @@ export interface ArrastreArbol {
 
 const TIPO = 'application/x-go-arbol';
 
-export function useArrastreArbol({ puedeSoltar, onSoltar, deshabilitado }: OpcionesArrastreArbol): ArrastreArbol {
+export function useArrastreArbol({ puedeSoltar, onSoltar, deshabilitado, ayuda: ayudaProp }: OpcionesArrastreArbol): ArrastreArbol {
+  const t = useKitT();
+  const ayuda = ayudaProp ?? t('arbol.arrastrar');
   const [origen, setOrigen] = React.useState<number | null>(null);
   const [destino, setDestino] = React.useState<number | 'raiz' | null>(null);
 
@@ -59,7 +64,7 @@ export function useArrastreArbol({ puedeSoltar, onSoltar, deshabilitado }: Opcio
         esDestino: destino === id,
         props: {
           draggable: true,
-          title: 'Arrastra sobre otra categoría para moverla dentro',
+          title: ayuda,
           onDragStart: (e) => {
             e.stopPropagation();
             e.dataTransfer.effectAllowed = 'move';
@@ -87,7 +92,7 @@ export function useArrastreArbol({ puedeSoltar, onSoltar, deshabilitado }: Opcio
         },
       };
     },
-    [deshabilitado, origen, destino, puedeSoltar, onSoltar, terminar],
+    [deshabilitado, origen, destino, puedeSoltar, onSoltar, terminar, ayuda],
   );
 
   const raizValida = origen !== null && puedeSoltar(origen, null) === true;
@@ -125,7 +130,9 @@ export interface ZonaSoltarRaizProps {
 }
 
 /** Franja punteada que aparece mientras se arrastra: soltar aquí deja el nodo en la raíz. */
-export function ZonaSoltarRaiz({ visible, activa, props, etiqueta = 'Suelta aquí para dejarla sin categoría padre', className }: ZonaSoltarRaizProps) {
+export function ZonaSoltarRaiz({ visible, activa, props, etiqueta: etiquetaProp, className }: ZonaSoltarRaizProps) {
+  const t = useKitT();
+  const etiqueta = etiquetaProp ?? t('arbol.soltarRaiz');
   if (!visible) return null;
   return (
     <div

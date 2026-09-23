@@ -6,6 +6,7 @@ import { Check, ChevronDown, Home, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { SearchInput } from './SearchInput';
 import { TreeCell } from './TreeCell';
+import { useKitT } from './useIdiomaKit';
 import {
   ancestrosDe,
   aplanarArbol,
@@ -62,12 +63,13 @@ export function TreeList({
   deshabilitadas,
   actual,
   buscador = true,
-  placeholderBusqueda = 'Buscar…',
+  placeholderBusqueda,
   etiqueta,
   altoMaximo = 280,
   autoFocus,
   className,
 }: TreeListProps) {
+  const t = useKitT();
   const [busqueda, setBusqueda] = React.useState('');
   const listaRef = React.useRef<HTMLUListElement>(null);
 
@@ -199,7 +201,7 @@ export function TreeList({
           );
         })}
         {!mostrarRaiz && filas.length === 0 && (
-          <li className="px-3 py-6 text-center text-[13px] text-fg-secondary">Sin resultados para «{busqueda.trim()}»</li>
+          <li className="px-3 py-6 text-center text-[13px] text-fg-secondary">{t('arbol.sinResultados', { termino: busqueda.trim() })}</li>
         )}
       </ul>
     </div>
@@ -207,8 +209,9 @@ export function TreeList({
 }
 
 function MarcaActual() {
+  const t = useKitT();
   return (
-    <span className="shrink-0 rounded-full bg-subtle px-2 py-0.5 text-[11px] font-medium leading-4 text-fg-secondary">Actual</span>
+    <span className="shrink-0 rounded-full bg-subtle px-2 py-0.5 text-[11px] font-medium leading-4 text-fg-secondary">{t('arbol.actual')}</span>
   );
 }
 
@@ -233,8 +236,8 @@ export interface TreeSelectProps extends Omit<TreeListProps, 'etiqueta' | 'autoF
 }
 
 export function TreeSelect({
-  placeholder = 'Seleccionar…',
-  etiquetaLista = 'Opciones',
+  placeholder: placeholderProp,
+  etiquetaLista: etiquetaListaProp,
   id,
   deshabilitado,
   className,
@@ -244,6 +247,9 @@ export function TreeSelect({
   opcionRaiz,
   ...resto
 }: TreeSelectProps) {
+  const t = useKitT();
+  const placeholder = placeholderProp ?? t('arbol.seleccionar');
+  const etiquetaLista = etiquetaListaProp ?? t('arbol.opciones');
   const [abierto, setAbierto] = React.useState(false);
   const texto =
     valor === null || valor === undefined

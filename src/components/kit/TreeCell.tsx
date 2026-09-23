@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import type { PropsNodoArrastre } from './arrastreArbol';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Celda de árbol (Figma `TreeCell` 580:278007: Nivel 0/1/2 × Rama
@@ -55,6 +56,7 @@ export function TreeCell({
   sangria = 24,
   className,
 }: TreeCellProps) {
+  const t = useKitT();
   const cajaTinte: CSSProperties | undefined = color
     ? { backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)`, color }
     : undefined;
@@ -73,7 +75,7 @@ export function TreeCell({
       {tieneHijos ? (
         <button
           type="button"
-          aria-label={abierto ? `Contraer ${titulo}` : `Expandir ${titulo}`}
+          aria-label={abierto ? t('arbol.contraer', { titulo }) : t('arbol.expandir', { titulo })}
           aria-expanded={!!abierto}
           onClick={(e) => {
             e.stopPropagation();

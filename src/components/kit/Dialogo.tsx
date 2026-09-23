@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Diálogo del manual (PATRONES §8; Figma «Diálogo · Mover categoría»):
@@ -57,10 +58,12 @@ export function Dialogo({
   descripcion,
   children,
   primario,
-  textoCancelar = 'Cancelar',
+  textoCancelar: textoCancelarProp,
   ancho = 520,
   className,
 }: DialogoProps) {
+  const t = useKitT();
+  const textoCancelar = textoCancelarProp ?? t('comun.cancelar');
   const ocupado = !!primario.cargando;
   return (
     <Dialog open={abierto} onOpenChange={(v) => !ocupado && onAbiertoChange(v)}>
@@ -83,7 +86,7 @@ export function Dialogo({
           </div>
           <button
             type="button"
-            aria-label="Cerrar"
+            aria-label={t('comun.cerrar')}
             disabled={ocupado}
             onClick={() => onAbiertoChange(false)}
             className="flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"

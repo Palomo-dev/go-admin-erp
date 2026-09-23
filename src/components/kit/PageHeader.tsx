@@ -6,6 +6,7 @@ import { ArrowLeft, Loader, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 import { Breadcrumbs, type Miga } from './Breadcrumbs';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Cabecera de página única (Figma `PageHeader` 109:4573, PATRONES §4 y §13).
@@ -81,6 +82,7 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   const integrarMovil = movil !== false;
+  const t = useKitT();
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>
@@ -101,7 +103,7 @@ export function PageHeader({
             {variante === 'form' && volverA ? (
               <Link
                 href={volverA}
-                aria-label="Volver"
+                aria-label={t('cabecera.volver')}
                 className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-line-strong bg-surface text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <ArrowLeft aria-hidden="true" className="size-5" strokeWidth={1.5} />
@@ -123,14 +125,14 @@ export function PageHeader({
                   {cargando && (
                     <Loader aria-hidden="true" className="size-3.5 shrink-0 animate-spin text-brand" strokeWidth={1.5} />
                   )}
-                  {cargando && <span className="sr-only">Cargando…</span>}
+                  {cargando && <span className="sr-only">{t('cabecera.cargando')}</span>}
                   <div className="min-w-0 truncate">{subtitulo}</div>
                 </div>
               )}
               {progreso && progreso.total > 0 && progreso.actual < progreso.total && (
                 <div
                   role="progressbar"
-                  aria-label={progreso.etiqueta ?? 'Progreso de carga'}
+                  aria-label={progreso.etiqueta ?? t('cabecera.progreso')}
                   aria-valuemin={0}
                   aria-valuemax={progreso.total}
                   aria-valuenow={progreso.actual}

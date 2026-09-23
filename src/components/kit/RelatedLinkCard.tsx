@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ChevronRight, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Bloque «Cómo se conecta» (Figma `RelatedLinkCard` 580:277907, Tono =
@@ -52,7 +53,8 @@ export function RelatedLinkCard({
   className,
 }: RelatedLinkCardProps) {
   const onAccion = onAccionProp ?? onClick;
-  const textoAccion = textoAccionProp ?? textoAlias ?? 'Ver';
+  const tk = useKitT();
+  const textoAccion = textoAccionProp ?? textoAlias ?? tk('comun.ver');
   const t = TONO[tono];
   const accion = (
     <span className="flex shrink-0 items-center gap-0.5 text-[13px] font-medium text-link">

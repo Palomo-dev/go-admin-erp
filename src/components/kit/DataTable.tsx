@@ -11,6 +11,7 @@ import type { AccionFila } from './acciones';
 import type { OrdenListado } from './listadoUrl';
 import { alternarId, alternarPagina, estadoCasillaCabecera } from './seleccion';
 import { UMBRAL_VIRTUALIZACION, calcularVentana } from './virtualizacion';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * La tabla del kit (Figma `DataTable` + `TableCell` 106:3688, PATRONES §5–7).
@@ -146,6 +147,7 @@ export function DataTable<T>({
   filasEsqueleto = 8,
   className,
 }: DataTableProps<T>) {
+  const t = useKitT();
   const estado: EstadoTabla = estadoProp === 'listo' && filas.length === 0 ? 'vacio' : estadoProp;
   const seleccionable = !!onSeleccionChange;
   const sel = React.useMemo(() => seleccion ?? new Set<string>(), [seleccion]);
@@ -204,7 +206,7 @@ export function DataTable<T>({
               checked={casillaCabecera}
               disabled={estado !== 'listo'}
               onCheckedChange={() => onSeleccionChange?.(alternarPagina(sel, idsPagina))}
-              aria-label="Seleccionar esta página"
+              aria-label={t('tabla.seleccionarPagina')}
               className="size-[18px] rounded"
             />
           </th>
@@ -248,7 +250,7 @@ export function DataTable<T>({
         })}
         {conAcciones && (
           <th scope="col" className="sticky right-0 w-11 min-w-11 bg-subtle pr-2">
-            <span className="sr-only">Acciones</span>
+            <span className="sr-only">{t('comun.acciones')}</span>
           </th>
         )}
       </tr>
@@ -325,7 +327,7 @@ export function DataTable<T>({
                   <Checkbox
                     checked={marcada}
                     onCheckedChange={(v) => alternarFila(id, v === true)}
-                    aria-label={nombre ? `Seleccionar ${nombre}` : 'Seleccionar fila'}
+                    aria-label={nombre ? t('tabla.seleccionar', { nombre }) : t('tabla.seleccionarFila')}
                     className="size-[18px] rounded"
                   />
                 </td>

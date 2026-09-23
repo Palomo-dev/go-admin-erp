@@ -2935,5 +2935,241 @@
     },
     "markedUnread": "Marked as unread",
     "dismissedForYou": "Notification dismissed. Only you stop seeing it."
+  },
+  "kit": {
+    "comun": {
+      "cancelar": "Cancel",
+      "aplicar": "Apply",
+      "cerrar": "Close",
+      "acciones": "Actions",
+      "ver": "View",
+      "resumen": "Summary"
+    },
+    "cabecera": {
+      "volver": "Back",
+      "cargando": "Loading…",
+      "progreso": "Loading progress"
+    },
+    "migas": {
+      "etiqueta": "Breadcrumb",
+      "ocultos": "Hidden levels"
+    },
+    "busqueda": {
+      "placeholder": "Search…",
+      "borrar": "Clear search"
+    },
+    "filtros": {
+      "boton": "Filters",
+      "botonActivos": "{etiqueta}, {n} active",
+      "titulo": "Filters",
+      "nota": "Applied instantly · each active filter shows as a chip below the search bar",
+      "verResultados": "Show results",
+      "limpiar": "Clear ({n})",
+      "cerrar": "Close filters",
+      "activos": "Active filters",
+      "quitar": "Remove filter {etiqueta}",
+      "limpiarTodo": "Clear all"
+    },
+    "rango": {
+      "etiqueta": "Date range",
+      "atajos": "Date shortcuts",
+      "desde": "From",
+      "hasta": "To",
+      "hoy": "Today",
+      "ayer": "Yesterday",
+      "ultimos7": "Last 7 days",
+      "ultimos30": "Last 30 days",
+      "esteMes": "This month",
+      "mesPasado": "Last month"
+    },
+    "tabla": {
+      "seleccionarPagina": "Select this page",
+      "seleccionarFila": "Select row",
+      "seleccionar": "Select {nombre}"
+    },
+    "menu": {
+      "accionesDe": "Actions for {titulo}",
+      "masAcciones": "More actions"
+    },
+    "masivas": {
+      "region": "Bulk actions",
+      "seleccionados": "{n} {sustantivo} selected",
+      "seleccionarTodos": "Select all {n}",
+      "limpiar": "Clear selection"
+    },
+    "sustantivos": {
+      "registro": {
+        "singular": "record",
+        "plural": "records"
+      },
+      "elemento": {
+        "singular": "item",
+        "plural": "items"
+      }
+    },
+    "paginacion": {
+      "etiqueta": "Pagination",
+      "resumen": "Showing {desde} to {hasta} of {total} {sustantivo}",
+      "vacio": "0 {sustantivo}",
+      "porPaginaEtiqueta": "Rows per page",
+      "porPagina": "{n} per page",
+      "primera": "First page",
+      "anterior": "Previous page",
+      "siguiente": "Next page",
+      "ultima": "Last page",
+      "pagina": "Page {n}",
+      "compacto": "{desde}–{hasta} of {total}",
+      "compactoVacio": "0 of 0",
+      "irA": "Go to",
+      "dePaginas": "of {count, plural, one {{n} page} other {{n} pages}}"
+    },
+    "vacio": {
+      "empty": {
+        "titulo": "No records yet",
+        "descripcion": "Once you create the first one, it will show up here."
+      },
+      "search": {
+        "titulo": "No results",
+        "tituloTermino": "No results for “{termino}”",
+        "descripcion": "Try another search term or remove a filter."
+      },
+      "error": {
+        "titulo": "We couldn't load the information",
+        "descripcion": "Check your connection and try again."
+      },
+      "forbidden": {
+        "titulo": "You don't have permission to view this section",
+        "descripcion": "Ask an administrator in your organization to give you access."
+      },
+      "sinSucursal": {
+        "titulo": "You don't have any branch assigned",
+        "descripcion": "To see sales, inventory and invoices, an administrator needs to assign you at least one branch."
+      },
+      "limpiarFiltros": "Clear filters",
+      "reintentar": "Retry",
+      "volverInicio": "Back to home"
+    },
+    "sucursal": {
+      "sinSucursal": "No branch",
+      "todasN": "All ({n})",
+      "todas": "All branches",
+      "sucursal": "Branch",
+      "numero": "Branch #{id}",
+      "prefijo": "Branch:",
+      "cambiar": "Branch: {texto}. Change branch"
+    },
+    "arbol": {
+      "contraer": "Collapse {titulo}",
+      "expandir": "Expand {titulo}",
+      "sinResultados": "No results for “{termino}”",
+      "actual": "Current",
+      "seleccionar": "Select…",
+      "opciones": "Options",
+      "arrastrar": "Drag onto another category to move it inside",
+      "soltarRaiz": "Drop here to leave it without a parent category"
+    },
+    "formulario": {
+      "obligatorio": "(required)"
+    },
+    "estados": {
+      "abierta": "Open",
+      "abierto": "Open",
+      "aceptada": "Accepted",
+      "aceptado": "Accepted",
+      "activa": "Active",
+      "activo": "Active",
+      "agotado": "Out of stock",
+      "al_dia": "Up to date",
+      "alta_prioridad": "High priority",
+      "alto_riesgo": "High risk",
+      "anulada": "Voided",
+      "anulado": "Voided",
+      "aplicada": "Applied",
+      "aplicado": "Applied",
+      "archivado": "Archived",
+      "auto_generacion": "Auto-generation",
+      "baja_prioridad": "Low priority",
+      "borrador": "Draft",
+      "caliente": "Hot",
+      "cancelada": "Canceled",
+      "cancelado": "Canceled",
+      "cerrada": "Closed",
+      "cerrado": "Closed",
+      "cheque": "Check",
+      "clawback": "Clawback",
+      "cobrada": "Collected",
+      "cobrado": "Collected",
+      "completada": "Completed",
+      "completado": "Completed",
+      "conectada": "Connected",
+      "conectado": "Connected",
+      "confirmada": "Confirmed",
+      "confirmado": "Confirmed",
+      "convertida": "Converted",
+      "convertido": "Converted",
+      "critica": "Critical",
+      "critico": "Critical",
+      "desconocido": "Unknown",
+      "descontinuado": "Discontinued",
+      "efectivo": "Cash",
+      "eliminada": "Deleted",
+      "eliminado": "Deleted",
+      "emitida": "Issued",
+      "emitido": "Issued",
+      "empresa": "Company",
+      "en_espera": "On hold",
+      "en_proceso": "In progress",
+      "en_transito": "In transit",
+      "enviada": "Sent",
+      "enviado": "Sent",
+      "error": "Error",
+      "fallida": "Failed",
+      "fallido": "Failed",
+      "frio": "Cold",
+      "ganada": "Won",
+      "garantia_vigente": "Under warranty",
+      "inactiva": "Inactive",
+      "inactivo": "Inactive",
+      "media_prioridad": "Medium priority",
+      "normal": "Normal",
+      "nueva": "New",
+      "nuevo": "New",
+      "pagada": "Paid",
+      "pagado": "Paid",
+      "pago_parcial": "Partially paid",
+      "parcial": "Partial",
+      "pendiente": "Pending",
+      "pendiente_de_sincronizar": "Pending sync",
+      "perdida": "Lost",
+      "perdido": "Lost",
+      "persona": "Individual",
+      "personalizable": "Customizable",
+      "por_cobrar": "Receivable",
+      "por_pagar": "Payable",
+      "por_revisar": "To review",
+      "procesada": "Processed",
+      "procesado": "Processed",
+      "procesando": "Processing",
+      "rechazada": "Rejected",
+      "rechazado": "Rejected",
+      "recibida": "Received",
+      "recibido": "Received",
+      "reembolsada": "Refunded",
+      "reembolsado": "Refunded",
+      "riesgo_bajo": "Low risk",
+      "riesgo_medio": "Medium risk",
+      "sin_conexion": "Offline",
+      "sin_seguimiento": "Not tracked",
+      "tarjeta": "Card",
+      "tibio": "Warm",
+      "todas_las_sucursales": "All branches",
+      "transferencia": "Transfer",
+      "trazabilidad_activa": "Traceability on",
+      "urgente": "Urgent",
+      "usada": "Used",
+      "usado": "Used",
+      "vencida": "Overdue",
+      "vencido": "Overdue"
+    }
   }
 }

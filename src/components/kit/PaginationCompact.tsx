@@ -4,7 +4,8 @@ import * as React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { calcularRango, paginaDesdeTexto, resumenCompacto } from './paginacion';
+import { calcularRango, paginaDesdeTexto } from './paginacion';
+import { useFormatoEntero, useKitT } from './useIdiomaKit';
 
 /**
  * Paginación compacta (Figma `Pagination Layout=compact`): «‹ 1–10 de 273 ›»
@@ -24,6 +25,8 @@ const BOTON =
   'flex size-10 items-center justify-center rounded-lg border border-line-strong bg-surface text-fg transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:pointer-events-none disabled:opacity-50';
 
 export function PaginationCompact({ pagina, tamano, total, onPaginaChange, cargando, className }: PaginationCompactProps) {
+  const t = useKitT();
+  const entero = useFormatoEntero();
   const r = calcularRango(pagina, tamano, total);
   const [ir, setIr] = React.useState(String(r.pagina));
   const idIr = React.useId();
@@ -37,12 +40,12 @@ export function PaginationCompact({ pagina, tamano, total, onPaginaChange, carga
   };
 
   return (
-    <nav aria-label="Paginación" className={cn('flex items-center justify-between gap-3', className)}>
+    <nav aria-label={t('paginacion.etiqueta')} className={cn('flex items-center justify-between gap-3', className)}>
       <div className="flex items-center gap-2">
         <button
           type="button"
           className={BOTON}
-          aria-label="Página anterior"
+          aria-label={t('paginacion.anterior')}
           disabled={cargando || r.pagina <= 1}
           onClick={() => onPaginaChange(r.pagina - 1)}
         >
@@ -52,13 +55,15 @@ export function PaginationCompact({ pagina, tamano, total, onPaginaChange, carga
           <Skeleton className="h-4 w-20" />
         ) : (
           <span className="min-w-[5.5rem] text-center text-sm text-fg tabular-nums" aria-live="polite">
-            {resumenCompacto(r)}
+            {r.total === 0
+              ? t('paginacion.compactoVacio')
+              : t('paginacion.compacto', { desde: entero(r.desde), hasta: entero(r.hasta), total: entero(r.total) })}
           </span>
         )}
         <button
           type="button"
           className={BOTON}
-          aria-label="Página siguiente"
+          aria-label={t('paginacion.siguiente')}
           disabled={cargando || r.pagina >= r.totalPaginas}
           onClick={() => onPaginaChange(r.pagina + 1)}
         >
@@ -68,7 +73,7 @@ export function PaginationCompact({ pagina, tamano, total, onPaginaChange, carga
       {r.totalPaginas > 1 && (
         <div className="flex items-center gap-2">
           <label htmlFor={idIr} className="text-sm text-fg-secondary">
-            Ir a
+            {t('paginacion.irA')}
           </label>
           <input
             id={idIr}
@@ -89,7 +94,7 @@ export function PaginationCompact({ pagina, tamano, total, onPaginaChange, carga
             className="h-10 w-14 rounded-lg border border-line-strong bg-surface text-center text-sm text-fg tabular-nums outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:opacity-50"
           />
           <span id={`${idIr}-total`} className="sr-only">
-            de {r.totalPaginas} páginas
+            {t('paginacion.dePaginas', { count: r.totalPaginas, n: entero(r.totalPaginas) })}
           </span>
         </div>
       )}

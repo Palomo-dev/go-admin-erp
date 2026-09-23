@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { prepararMenu, type AccionFila } from './acciones';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Hoja de acciones móvil (Figma: «hoja de acciones» de Clientes y Proveedores
@@ -21,6 +22,7 @@ export interface ActionSheetProps {
 }
 
 export function ActionSheet({ abierto, onAbiertoChange, titulo, descripcion, acciones }: ActionSheetProps) {
+  const t = useKitT();
   const entradas = prepararMenu(acciones);
 
   const elegir = (accion: AccionFila) => {
@@ -49,13 +51,13 @@ export function ActionSheet({ abierto, onAbiertoChange, titulo, descripcion, acc
           <button
             type="button"
             onClick={() => onAbiertoChange(false)}
-            aria-label="Cerrar"
+            aria-label={t('comun.cerrar')}
             className="flex size-10 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             <X aria-hidden="true" className="size-5" strokeWidth={1.5} />
           </button>
         </div>
-        <ul role="menu" aria-label={`Acciones de ${titulo}`} className="overflow-y-auto py-1">
+        <ul role="menu" aria-label={t('menu.accionesDe', { titulo })} className="overflow-y-auto py-1">
           {entradas.map((e) =>
             e.tipo === 'separador' ? (
               <li key={e.id} role="separator" className="mx-2 my-1 h-px bg-line" />

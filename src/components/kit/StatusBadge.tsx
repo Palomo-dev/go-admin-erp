@@ -1,6 +1,9 @@
+'use client';
+
 import type { LucideIcon } from 'lucide-react';
 import { Badge, type TamanoBadge } from '@/components/ui/badge';
-import { etiquetaEstado, resolverEstado, type AparienciaBadge, type TonoBadge } from './estadoTono';
+import { resolverEstado, type AparienciaBadge, type TonoBadge } from './estadoTono';
+import { useEtiquetaEstado } from './useIdiomaKit';
 
 /**
  * Badge de estado (Figma `Badge` 7:70): el tono sale de la tabla única de
@@ -28,6 +31,7 @@ export interface StatusBadgeProps {
 }
 
 export function StatusBadge({ estado, etiqueta, tamano = 'sm', icono, tono, apariencia, className }: StatusBadgeProps) {
+  const etiquetaEstado = useEtiquetaEstado();
   const r = resolverEstado(estado);
   return (
     <Badge

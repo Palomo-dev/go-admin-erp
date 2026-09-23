@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { CircleAlert } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Campo de formulario (Figma `FormField` default · focus · error): etiqueta,
@@ -73,6 +74,7 @@ export function FormField({
   extra,
   className,
 }: FormFieldProps) {
+  const t = useKitT();
   const generado = React.useId();
   const idHijo =
     typeof children !== 'function' && React.isValidElement<{ id?: string }>(children) ? children.props.id : undefined;
@@ -115,7 +117,7 @@ export function FormField({
               <span aria-hidden="true" className="ml-0.5 text-danger-text">
                 *
               </span>
-              <span className="sr-only"> (obligatorio)</span>
+              <span className="sr-only"> {t('formulario.obligatorio')}</span>
             </>
           )}
         </label>

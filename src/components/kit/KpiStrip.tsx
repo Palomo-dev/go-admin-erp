@@ -1,5 +1,8 @@
+'use client';
+
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/Utils';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Fila de `StatCard` bajo la cabecera: 4 columnas en escritorio (16 px entre
@@ -23,7 +26,9 @@ const COLUMNAS: Record<NonNullable<KpiStripProps['columnas']>, string> = {
   6: 'lg:grid-cols-6',
 };
 
-export function KpiStrip({ children, columnas = 4, etiqueta = 'Resumen', className }: KpiStripProps) {
+export function KpiStrip({ children, columnas = 4, etiqueta: etiquetaProp, className }: KpiStripProps) {
+  const t = useKitT();
+  const etiqueta = etiquetaProp ?? t('comun.resumen');
   return (
     <section
       aria-label={etiqueta}

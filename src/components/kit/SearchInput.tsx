@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Search, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { crearDebounce } from './debounce';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Buscador único del listado (Figma `SearchBar`/`SearchInput`, PATRONES §3):
@@ -47,7 +48,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
     onChange,
     onValueChange,
     debounceMs = 400,
-    placeholder = 'Buscar…',
+    placeholder: placeholderProp,
     etiqueta,
     atajo = '/',
     cargando,
@@ -59,6 +60,8 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
   },
   refExterno,
 ) {
+  const t = useKitT();
+  const placeholder = placeholderProp ?? t('busqueda.placeholder');
   const [texto, setTexto] = React.useState(value);
   const ultimoEmitido = React.useRef(value);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
@@ -163,7 +166,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           <button
             type="button"
             onClick={limpiar}
-            aria-label="Borrar búsqueda"
+            aria-label={t('busqueda.borrar')}
             className="flex size-6 items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             <X aria-hidden="true" className="size-4" strokeWidth={1.5} />

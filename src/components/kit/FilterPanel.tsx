@@ -7,6 +7,7 @@ import { cn } from '@/utils/Utils';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { FilterButton } from './FilterButton';
 import { useEsEscritorio } from './useEsEscritorio';
+import { useFormatoEntero, useKitT } from './useIdiomaKit';
 
 /**
  * Panel de filtros (Figma `FilterPanel`, PATRONES §3 y §11) con su botón.
@@ -49,6 +50,8 @@ function Cabecera({
   onCerrar?: () => void;
   enHoja: boolean;
 }) {
+  const t = useKitT();
+  const entero = useFormatoEntero();
   return (
     <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
       {enHoja ? (
@@ -63,14 +66,14 @@ function Cabecera({
             onClick={onLimpiar}
             className="rounded-md px-1 text-[13px] font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
-            Limpiar ({conteo})
+            {t('filtros.limpiar', { n: entero(conteo) })}
           </button>
         )}
         {onCerrar && (
           <button
             type="button"
             onClick={onCerrar}
-            aria-label="Cerrar filtros"
+            aria-label={t('filtros.cerrar')}
             className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             <X aria-hidden="true" className="size-5" strokeWidth={1.5} />
@@ -85,14 +88,18 @@ export function FilterPanel({
   conteo,
   onLimpiar,
   children,
-  titulo = 'Filtros',
-  nota = 'Se aplican al instante · cada filtro activo queda como chip bajo el buscador',
-  textoVerResultados = 'Ver resultados',
+  titulo: tituloProp,
+  nota: notaProp,
+  textoVerResultados: textoVerResultadosProp,
   abierto: abiertoControlado,
   onAbiertoChange,
   etiquetaBoton,
   className,
 }: FilterPanelProps) {
+  const t = useKitT();
+  const titulo = tituloProp ?? t('filtros.titulo');
+  const nota = notaProp ?? t('filtros.nota');
+  const textoVerResultados = textoVerResultadosProp ?? t('filtros.verResultados');
   const [abiertoInterno, setAbiertoInterno] = React.useState(false);
   const abierto = abiertoControlado ?? abiertoInterno;
   const setAbierto = (v: boolean) => {

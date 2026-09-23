@@ -1,6 +1,9 @@
+'use client';
+
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Migas (Figma `Breadcrumbs` 109:4290). Caption 12/16 medium en pizarra con
@@ -19,6 +22,7 @@ export interface BreadcrumbsProps {
 }
 
 export function Breadcrumbs({ migas, maxVisibles = 3, className }: BreadcrumbsProps) {
+  const t = useKitT();
   if (migas.length === 0) return null;
   const colapsar = migas.length > maxVisibles;
   const visibles: (Miga | null)[] = colapsar
@@ -26,7 +30,7 @@ export function Breadcrumbs({ migas, maxVisibles = 3, className }: BreadcrumbsPr
     : [...migas];
 
   return (
-    <nav aria-label="Migas de pan" className={cn('min-w-0', className)}>
+    <nav aria-label={t('migas.etiqueta')} className={cn('min-w-0', className)}>
       <ol className="flex min-w-0 items-center gap-1.5 text-xs font-medium leading-4 text-fg-secondary">
         {visibles.map((miga, i) => {
           const ultima = i === visibles.length - 1;
@@ -34,7 +38,7 @@ export function Breadcrumbs({ migas, maxVisibles = 3, className }: BreadcrumbsPr
             <li key={miga ? `${i}-${miga.etiqueta}` : 'elipsis'} className="flex min-w-0 items-center gap-1.5">
               {i > 0 && <ChevronRight aria-hidden="true" className="size-3 shrink-0" />}
               {miga === null ? (
-                <span aria-label="Niveles ocultos">…</span>
+                <span aria-label={t('migas.ocultos')}>…</span>
               ) : miga.href && !ultima ? (
                 <Link
                   href={miga.href}

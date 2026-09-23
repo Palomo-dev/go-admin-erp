@@ -271,3 +271,40 @@ export function etiquetaEstado(estado: string | null | undefined): string {
 
 /** Para auditorías y tests: los estados que la tabla conoce. */
 export const ESTADOS_CONOCIDOS: readonly string[] = Object.keys(TABLA);
+
+// ── Traducción ────────────────────────────────────────────────────────────
+// La etiqueta de un estado conocido sale de `kit.estados.<clave>` (messages/*.json).
+// La clave es la forma en español normalizada, con `_` por espacio: `pagada`,
+// `pago_parcial`, `al_dia`. Un valor de la BD en inglés (`paid`) usa la clave
+// de su traducción al español (`pagada`).
+
+const SUFIJO_DIAS = /\s*[(·]?\s*\d+\s*(d|días?|dias?)?\s*\)?\s*$/iu;
+
+function aClave(normalizado: string): string {
+  return normalizado.replace(/ /g, '_');
+}
+
+/** Forma en español (normalizada) de un estado: el propio valor o su traducción de la BD. */
+function espanolDe(normalizado: string): string {
+  const traducida = ETIQUETA_DB[normalizado];
+  return traducida ? normalizarEstado(traducida) : normalizado;
+}
+
+/**
+ * Clave de traducción de un estado conocido (`kit.estados.<clave>`) y el
+ * contador de días que traía («Vencida 12 d» → `vencida` + « 12 d»).
+ * `null` si el estado no está en la tabla: se muestra tal cual.
+ */
+export function claveEtiquetaEstado(estado: string | null | undefined): { clave: string; sufijo: string } | null {
+  const original = (estado ?? '').trim();
+  if (!original) return null;
+  const espanol = espanolDe(normalizarEstado(original));
+  if (!(espanol in TABLA)) return null;
+  const sufijo = original.match(SUFIJO_DIAS)?.[0] ?? '';
+  return { clave: aClave(espanol), sufijo: sufijo.trimEnd() };
+}
+
+/** Todas las claves de `kit.estados`: el test de traducciones exige las 4 lenguas. */
+export const CLAVES_ETIQUETA_ESTADO: readonly string[] = Array.from(
+  new Set(Object.keys(TABLA).map((k) => aClave(espanolDe(k)))),
+).sort();

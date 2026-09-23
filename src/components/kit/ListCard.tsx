@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AvatarIniciales } from './AvatarIniciales';
 import { RowActionsMenu } from './RowActionsMenu';
 import type { AccionFila } from './acciones';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Tarjeta de listado móvil (Figma `ListCard` 580:277858, propiedad
@@ -195,6 +196,7 @@ function deducirInicio({ inicio, avatar, imagen, miniatura, icono }: ListCardPro
 }
 
 export function ListCard(props: ListCardProps) {
+  const t = useKitT();
   const {
     icono: Icono,
     avatar,
@@ -239,7 +241,7 @@ export function ListCard(props: ListCardProps) {
         <Checkbox
           checked={!!seleccionado}
           onCheckedChange={(v) => onSeleccionChange?.(v === true)}
-          aria-label={`Seleccionar ${titulo}`}
+          aria-label={t('tabla.seleccionar', { nombre: titulo })}
           className="relative z-10 size-[18px] shrink-0 rounded"
         />
       )}

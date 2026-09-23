@@ -7,6 +7,7 @@ import { cn } from '@/utils/Utils';
 import { ActionSheet } from './ActionSheet';
 import { prepararMenu, type AccionFila } from './acciones';
 import { useEsEscritorio } from './useEsEscritorio';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Menú «⋯» (PATRONES §6 y §11). Un icono lucide por acción; orden
@@ -49,13 +50,14 @@ export function RowActionsMenu({
   iconoBoton: IconoBoton,
   className,
 }: RowActionsMenuProps) {
+  const t = useKitT();
   const escritorio = useEsEscritorio();
   const [hojaAbierta, setHojaAbierta] = React.useState(false);
   const entradas = prepararMenu(acciones);
   if (entradas.length === 0) return null;
 
   const Icono = orientacion === 'vertical' ? EllipsisVertical : Ellipsis;
-  const etiqueta = titulo ? `Acciones de ${titulo}` : 'Más acciones';
+  const etiqueta = titulo ? t('menu.accionesDe', { titulo }) : t('menu.masAcciones');
   const clasesBoton = etiquetaBoton
     ? cn(
         'inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-sm font-medium text-fg transition-colors hover:bg-hover',
@@ -101,7 +103,7 @@ export function RowActionsMenu({
         <ActionSheet
           abierto={hojaAbierta}
           onAbiertoChange={setHojaAbierta}
-          titulo={titulo ?? etiquetaBoton ?? 'Acciones'}
+          titulo={titulo ?? etiquetaBoton ?? t('comun.acciones')}
           acciones={acciones}
         />
       </>

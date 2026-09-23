@@ -2,6 +2,7 @@
 
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { ListCard, type ListCardProps } from './ListCard';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Tarjeta de árbol para móvil (Figma: «Móvil / Categorías — listo», frames
@@ -17,6 +18,7 @@ export interface TreeCardProps extends ListCardProps {
 }
 
 export function TreeCard({ nivel, tieneHijos, abierto, onAlternar, ...card }: TreeCardProps) {
+  const t = useKitT();
   return (
     <div className="flex items-center gap-1" style={{ paddingLeft: nivel * 16 }}>
       {tieneHijos ? (
@@ -24,7 +26,7 @@ export function TreeCard({ nivel, tieneHijos, abierto, onAlternar, ...card }: Tr
           type="button"
           onClick={onAlternar}
           aria-expanded={!!abierto}
-          aria-label={abierto ? `Contraer ${card.titulo}` : `Expandir ${card.titulo}`}
+          aria-label={abierto ? t('arbol.contraer', { titulo: card.titulo }) : t('arbol.expandir', { titulo: card.titulo })}
           className="flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           {abierto ? (

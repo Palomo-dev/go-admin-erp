@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Inbox, Lock, MapPinOff, RefreshCw, Search, TriangleAlert, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Estados sin datos (Figma `EmptyState`, PATRONES §7 y §10). Todo estado lleva
@@ -42,40 +43,13 @@ export interface EmptyStateProps {
   className?: string;
 }
 
-const PREDETERMINADOS: Record<
-  VarianteEmptyState,
-  { titulo: string; descripcion: string; icono: LucideIcon; caja: string }
-> = {
-  empty: {
-    titulo: 'Aún no hay registros',
-    descripcion: 'Cuando crees el primero, aparecerá aquí.',
-    icono: Inbox,
-    caja: 'bg-brand-tint text-brand',
-  },
-  search: {
-    titulo: 'Sin resultados',
-    descripcion: 'Prueba con otro término o quita un filtro.',
-    icono: Search,
-    caja: 'bg-brand-tint text-brand',
-  },
-  error: {
-    titulo: 'No pudimos cargar la información',
-    descripcion: 'Revisa tu conexión e inténtalo de nuevo.',
-    icono: TriangleAlert,
-    caja: 'bg-danger-subtle text-danger-text',
-  },
-  forbidden: {
-    titulo: 'No tienes permiso para ver esta sección',
-    descripcion: 'Pídele a un administrador de tu organización que te dé acceso.',
-    icono: Lock,
-    caja: 'bg-subtle text-fg-secondary',
-  },
-  sinSucursal: {
-    titulo: 'No tienes ninguna sucursal asignada',
-    descripcion: 'Para ver ventas, inventario y facturas necesitas que un administrador te asigne al menos una sucursal.',
-    icono: MapPinOff,
-    caja: 'bg-subtle text-fg-secondary',
-  },
+/** Icono y color de cada variante; los textos salen de `kit.vacio.<variante>`. */
+const PREDETERMINADOS: Record<VarianteEmptyState, { icono: LucideIcon; caja: string }> = {
+  empty: { icono: Inbox, caja: 'bg-brand-tint text-brand' },
+  search: { icono: Search, caja: 'bg-brand-tint text-brand' },
+  error: { icono: TriangleAlert, caja: 'bg-danger-subtle text-danger-text' },
+  forbidden: { icono: Lock, caja: 'bg-subtle text-fg-secondary' },
+  sinSucursal: { icono: MapPinOff, caja: 'bg-subtle text-fg-secondary' },
 };
 
 function BotonAccion({ accion, primaria }: { accion: AccionEmptyState; primaria: boolean }) {
@@ -120,19 +94,21 @@ export function EmptyState({
   compacto,
   className,
 }: EmptyStateProps) {
+  const t = useKitT();
   const base = PREDETERMINADOS[variante];
   const Icono = icono ?? base.icono;
-  const tituloFinal = titulo ?? (variante === 'search' && termino ? `Sin resultados para «${termino}»` : base.titulo);
+  const tituloFinal =
+    titulo ?? (variante === 'search' && termino ? t('vacio.search.tituloTermino', { termino }) : t(`vacio.${variante}.titulo`));
 
   let principal = accion;
   if (!principal && variante === 'search' && onLimpiarFiltros) {
-    principal = { etiqueta: 'Limpiar filtros', onClick: onLimpiarFiltros };
+    principal = { etiqueta: t('vacio.limpiarFiltros'), onClick: onLimpiarFiltros };
   }
   if (!principal && variante === 'error' && onReintentar) {
-    principal = { etiqueta: 'Reintentar', onClick: onReintentar, icono: RefreshCw };
+    principal = { etiqueta: t('vacio.reintentar'), onClick: onReintentar, icono: RefreshCw };
   }
   if (!principal && variante === 'forbidden') {
-    principal = { etiqueta: 'Volver al inicio', href: '/app/inicio' };
+    principal = { etiqueta: t('vacio.volverInicio'), href: '/app/inicio' };
   }
   // En «sin resultados» y «sin permiso» la acción es secundaria (contorno), como en Figma.
   const principalEsPrimaria = variante === 'empty' || variante === 'sinSucursal';
@@ -154,7 +130,7 @@ export function EmptyState({
       </div>
       <div className="flex max-w-md flex-col gap-1">
         <h3 className="text-base font-semibold text-fg">{tituloFinal}</h3>
-        <p className="text-sm text-fg-secondary">{descripcion ?? base.descripcion}</p>
+        <p className="text-sm text-fg-secondary">{descripcion ?? t(`vacio.${variante}.descripcion`)}</p>
       </div>
       {(principal || accionSecundaria) && (
         <div className="flex flex-wrap items-center justify-center gap-2">

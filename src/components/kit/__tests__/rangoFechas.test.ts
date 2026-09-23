@@ -23,6 +23,19 @@ describe('etiquetaRango (formato del botón en Figma 680:407222)', () => {
   });
 });
 
+describe('etiquetaRango en otro idioma (locale de Intl)', () => {
+  it('es-CO conserva el formato de Figma', () => {
+    expect(etiquetaRango({ desde: '2026-09-01', hasta: '2026-09-22' }, 'es-CO')).toBe('1 – 22 sep 2026');
+  });
+  it('en-US arma el rango con Intl', () => {
+    expect(etiquetaRango({ desde: '2026-09-01', hasta: '2026-09-22' }, 'en-US')).toMatch(/Sep 1\s*–\s*22, 2026/);
+    expect(etiquetaRango({ desde: '2026-09-22', hasta: '2026-09-22' }, 'en-US')).toBe('Sep 22, 2026');
+  });
+  it('el día no se corre por la zona horaria', () => {
+    expect(etiquetaRango({ desde: '2026-01-01', hasta: '2026-01-01' }, 'fr-FR')).toMatch(/^1 janv\.? 2026$/);
+  });
+});
+
 describe('presetsRango', () => {
   const hoy = '2026-09-22';
 

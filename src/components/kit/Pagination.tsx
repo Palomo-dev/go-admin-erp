@@ -4,14 +4,8 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-r
 import { cn } from '@/utils/Utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  SUSTANTIVO_POR_DEFECTO,
-  TAMANOS_PAGINA,
-  calcularRango,
-  paginasVisibles,
-  resumenPaginacion,
-  type Sustantivo,
-} from './paginacion';
+import { TAMANOS_PAGINA, calcularRango, paginasVisibles, sustantivoPara, type Sustantivo } from './paginacion';
+import { useFormatoEntero, useKitT, useSustantivoKit } from './useIdiomaKit';
 import { PaginationCompact } from './PaginationCompact';
 
 /**
@@ -53,27 +47,38 @@ function PaginationFull({
   onPaginaChange,
   onTamanoChange,
   opcionesTamano = TAMANOS_PAGINA,
-  sustantivo = SUSTANTIVO_POR_DEFECTO,
+  sustantivo: sustantivoProp,
   cargando,
   className,
 }: Omit<PaginationProps, 'layout'>) {
+  const t = useKitT();
+  const entero = useFormatoEntero();
+  const sustantivoKit = useSustantivoKit('registro');
+  const sustantivo = sustantivoProp ?? sustantivoKit;
   const r = calcularRango(pagina, tamano, total);
   const opciones = opcionesTamano.includes(tamano) ? opcionesTamano : [...opcionesTamano, tamano].sort((a, b) => a - b);
 
   return (
-    <nav aria-label="Paginación" className={cn('flex flex-wrap items-center justify-between gap-3', className)}>
+    <nav aria-label={t('paginacion.etiqueta')} className={cn('flex flex-wrap items-center justify-between gap-3', className)}>
       <div className="flex items-center gap-3">
         {cargando ? (
           <Skeleton className="h-4 w-48" />
         ) : (
           <span className="text-sm text-fg-secondary tabular-nums" aria-live="polite">
-            {resumenPaginacion(r, sustantivo)}
+            {r.total === 0
+              ? t('paginacion.vacio', { sustantivo: sustantivo.plural })
+              : t('paginacion.resumen', {
+                  desde: entero(r.desde),
+                  hasta: entero(r.hasta),
+                  total: entero(r.total),
+                  sustantivo: sustantivoPara(r.total, sustantivo),
+                })}
           </span>
         )}
         {onTamanoChange && (
           <Select value={String(tamano)} onValueChange={(v) => onTamanoChange(Number(v))} disabled={cargando}>
             <SelectTrigger
-              aria-label="Registros por página"
+              aria-label={t('paginacion.porPaginaEtiqueta')}
               className="h-10 w-[150px] rounded-lg border-line-strong bg-surface text-sm text-fg focus:ring-brand"
             >
               <SelectValue />
@@ -81,7 +86,7 @@ function PaginationFull({
             <SelectContent>
               {opciones.map((n) => (
                 <SelectItem key={n} value={String(n)}>
-                  {n} por página
+                  {t('paginacion.porPagina', { n: entero(n) })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -95,7 +100,7 @@ function PaginationFull({
             <button
               type="button"
               className={cn(BOTON, BOTON_NORMAL)}
-              aria-label="Primera página"
+              aria-label={t('paginacion.primera')}
               disabled={cargando || r.pagina <= 1}
               onClick={() => onPaginaChange(1)}
             >
@@ -106,7 +111,7 @@ function PaginationFull({
             <button
               type="button"
               className={cn(BOTON, BOTON_NORMAL)}
-              aria-label="Página anterior"
+              aria-label={t('paginacion.anterior')}
               disabled={cargando || r.pagina <= 1}
               onClick={() => onPaginaChange(r.pagina - 1)}
             >
@@ -118,7 +123,7 @@ function PaginationFull({
               <li key={p}>
                 <button
                   type="button"
-                  aria-label={`Página ${p}`}
+                  aria-label={t('paginacion.pagina', { n: entero(p) })}
                   aria-current={p === r.pagina ? 'page' : undefined}
                   disabled={cargando}
                   onClick={() => p !== r.pagina && onPaginaChange(p)}
@@ -143,7 +148,7 @@ function PaginationFull({
             <button
               type="button"
               className={cn(BOTON, BOTON_NORMAL)}
-              aria-label="Página siguiente"
+              aria-label={t('paginacion.siguiente')}
               disabled={cargando || r.pagina >= r.totalPaginas}
               onClick={() => onPaginaChange(r.pagina + 1)}
             >
@@ -154,7 +159,7 @@ function PaginationFull({
             <button
               type="button"
               className={cn(BOTON, BOTON_NORMAL)}
-              aria-label="Última página"
+              aria-label={t('paginacion.ultima')}
               disabled={cargando || r.pagina >= r.totalPaginas}
               onClick={() => onPaginaChange(r.totalPaginas)}
             >

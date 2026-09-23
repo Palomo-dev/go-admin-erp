@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useFormatoEntero, useKitT } from './useIdiomaKit';
 
 /**
  * Botón «Filtros» con contador (Figma `FilterButton`, PATRONES §3):
@@ -16,9 +17,12 @@ export interface FilterButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLB
 }
 
 export const FilterButton = React.forwardRef<HTMLButtonElement, FilterButtonProps>(function FilterButton(
-  { conteo = 0, abierto = false, etiqueta = 'Filtros', className, ...props },
+  { conteo = 0, abierto = false, etiqueta: etiquetaProp, className, ...props },
   ref,
 ) {
+  const t = useKitT();
+  const entero = useFormatoEntero();
+  const etiqueta = etiquetaProp ?? t('filtros.boton');
   const activo = conteo > 0;
   return (
     <button
@@ -26,7 +30,7 @@ export const FilterButton = React.forwardRef<HTMLButtonElement, FilterButtonProp
       type="button"
       aria-expanded={abierto}
       aria-haspopup="dialog"
-      aria-label={activo ? `${etiqueta}, ${conteo} ${conteo === 1 ? 'activo' : 'activos'}` : etiqueta}
+      aria-label={activo ? t('filtros.botonActivos', { etiqueta, count: conteo, n: entero(conteo) }) : etiqueta}
       className={cn(
         'inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors sm:px-4',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1',

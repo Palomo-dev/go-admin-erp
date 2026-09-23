@@ -3,6 +3,7 @@
 import { Building2, ChevronDown, MapPinOff, Store } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useFormatoEntero, useKitT } from './useIdiomaKit';
 
 /**
  * Chip de sucursal (Figma `02 Componentes` › Átomos › `BranchBadge`,
@@ -38,17 +39,20 @@ const COLOR = {
   neutro: 'bg-subtle text-fg-secondary border-line',
 } as const;
 
-export function textoSucursal(alcance: AlcanceSucursal, nombre?: string, cantidad?: number): string {
-  if (alcance === 'sinAsignar') return 'Sin sucursal';
-  if (alcance === 'todas') return cantidad && cantidad >= 2 ? `Todas (${cantidad})` : 'Todas las sucursales';
-  return nombre || 'Sucursal';
-}
-
 export function BranchBadge({ alcance, nombre, cantidad, tono = 'marca', tamano = 'sm', onClick, className }: BranchBadgeProps) {
   const interactivo = !!onClick && alcance !== 'sinAsignar';
   const Icono = alcance === 'todas' ? Building2 : alcance === 'una' ? Store : MapPinOff;
   const color = tono === 'neutro' || alcance === 'sinAsignar' ? COLOR.neutro : COLOR[alcance];
-  const texto = textoSucursal(alcance, nombre, cantidad);
+  const t = useKitT();
+  const entero = useFormatoEntero();
+  const texto =
+    alcance === 'sinAsignar'
+      ? t('sucursal.sinSucursal')
+      : alcance === 'todas'
+        ? cantidad && cantidad >= 2
+          ? t('sucursal.todasN', { n: entero(cantidad) })
+          : t('sucursal.todas')
+        : nombre || t('sucursal.sucursal');
   const clases = cn(
     'inline-flex max-w-full shrink-0 items-center rounded-full border font-semibold',
     tamano === 'sm' ? 'h-6 gap-1.5 px-2.5 text-xs' : 'h-7 gap-2 px-3 text-sm',
@@ -65,14 +69,14 @@ export function BranchBadge({ alcance, nombre, cantidad, tono = 'marca', tamano 
   );
   if (interactivo) {
     return (
-      <button type="button" onClick={onClick} className={clases} aria-label={`Sucursal: ${texto}. Cambiar sucursal`}>
+      <button type="button" onClick={onClick} className={clases} aria-label={t('sucursal.cambiar', { texto })}>
         {contenido}
       </button>
     );
   }
   return (
     <span className={clases} title={texto}>
-      <span className="sr-only">Sucursal: </span>
+      <span className="sr-only">{t('sucursal.prefijo')} </span>
       {contenido}
     </span>
   );
@@ -84,10 +88,11 @@ export function BranchBadge({ alcance, nombre, cantidad, tono = 'marca', tamano 
  * cuenta, solo dice qué está mandando.
  */
 export function BranchBadgeActiva(props: Omit<BranchBadgeProps, 'alcance' | 'nombre' | 'cantidad'>) {
+  const t = useKitT();
   const { branchFilter, branches, isLoading } = useBranch();
   if (isLoading) return null;
   if (branches.length === 0) return <BranchBadge {...props} alcance="sinAsignar" />;
   if (branchFilter === null) return <BranchBadge {...props} alcance="todas" cantidad={branches.length} />;
-  const nombre = branches.find((b) => b.id === branchFilter)?.name ?? `Sucursal #${branchFilter}`;
+  const nombre = branches.find((b) => b.id === branchFilter)?.name ?? t('sucursal.numero', { id: String(branchFilter) });
   return <BranchBadge {...props} alcance="una" nombre={nombre} />;
 }

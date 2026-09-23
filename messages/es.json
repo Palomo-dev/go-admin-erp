@@ -2935,5 +2935,241 @@
     },
     "markedUnread": "Marcada como no leída",
     "dismissedForYou": "Notificación descartada. Solo deja de verla tú."
+  },
+  "kit": {
+    "comun": {
+      "cancelar": "Cancelar",
+      "aplicar": "Aplicar",
+      "cerrar": "Cerrar",
+      "acciones": "Acciones",
+      "ver": "Ver",
+      "resumen": "Resumen"
+    },
+    "cabecera": {
+      "volver": "Volver",
+      "cargando": "Cargando…",
+      "progreso": "Progreso de carga"
+    },
+    "migas": {
+      "etiqueta": "Migas de pan",
+      "ocultos": "Niveles ocultos"
+    },
+    "busqueda": {
+      "placeholder": "Buscar…",
+      "borrar": "Borrar búsqueda"
+    },
+    "filtros": {
+      "boton": "Filtros",
+      "botonActivos": "{etiqueta}, {count, plural, one {{n} activo} other {{n} activos}}",
+      "titulo": "Filtros",
+      "nota": "Se aplican al instante · cada filtro activo queda como chip bajo el buscador",
+      "verResultados": "Ver resultados",
+      "limpiar": "Limpiar ({n})",
+      "cerrar": "Cerrar filtros",
+      "activos": "Filtros activos",
+      "quitar": "Quitar filtro {etiqueta}",
+      "limpiarTodo": "Limpiar todo"
+    },
+    "rango": {
+      "etiqueta": "Rango de fechas",
+      "atajos": "Atajos de fecha",
+      "desde": "Desde",
+      "hasta": "Hasta",
+      "hoy": "Hoy",
+      "ayer": "Ayer",
+      "ultimos7": "Últimos 7 días",
+      "ultimos30": "Últimos 30 días",
+      "esteMes": "Este mes",
+      "mesPasado": "Mes pasado"
+    },
+    "tabla": {
+      "seleccionarPagina": "Seleccionar esta página",
+      "seleccionarFila": "Seleccionar fila",
+      "seleccionar": "Seleccionar {nombre}"
+    },
+    "menu": {
+      "accionesDe": "Acciones de {titulo}",
+      "masAcciones": "Más acciones"
+    },
+    "masivas": {
+      "region": "Acciones masivas",
+      "seleccionados": "{count, plural, one {{n} {sustantivo} seleccionado} other {{n} {sustantivo} seleccionados}}",
+      "seleccionarTodos": "Seleccionar los {n}",
+      "limpiar": "Limpiar selección"
+    },
+    "sustantivos": {
+      "registro": {
+        "singular": "registro",
+        "plural": "registros"
+      },
+      "elemento": {
+        "singular": "elemento",
+        "plural": "elementos"
+      }
+    },
+    "paginacion": {
+      "etiqueta": "Paginación",
+      "resumen": "Mostrando {desde} a {hasta} de {total} {sustantivo}",
+      "vacio": "0 {sustantivo}",
+      "porPaginaEtiqueta": "Registros por página",
+      "porPagina": "{n} por página",
+      "primera": "Primera página",
+      "anterior": "Página anterior",
+      "siguiente": "Página siguiente",
+      "ultima": "Última página",
+      "pagina": "Página {n}",
+      "compacto": "{desde}–{hasta} de {total}",
+      "compactoVacio": "0 de 0",
+      "irA": "Ir a",
+      "dePaginas": "de {count, plural, one {{n} página} other {{n} páginas}}"
+    },
+    "vacio": {
+      "empty": {
+        "titulo": "Aún no hay registros",
+        "descripcion": "Cuando crees el primero, aparecerá aquí."
+      },
+      "search": {
+        "titulo": "Sin resultados",
+        "tituloTermino": "Sin resultados para «{termino}»",
+        "descripcion": "Prueba con otro término o quita un filtro."
+      },
+      "error": {
+        "titulo": "No pudimos cargar la información",
+        "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+      },
+      "forbidden": {
+        "titulo": "No tienes permiso para ver esta sección",
+        "descripcion": "Pídele a un administrador de tu organización que te dé acceso."
+      },
+      "sinSucursal": {
+        "titulo": "No tienes ninguna sucursal asignada",
+        "descripcion": "Para ver ventas, inventario y facturas necesitas que un administrador te asigne al menos una sucursal."
+      },
+      "limpiarFiltros": "Limpiar filtros",
+      "reintentar": "Reintentar",
+      "volverInicio": "Volver al inicio"
+    },
+    "sucursal": {
+      "sinSucursal": "Sin sucursal",
+      "todasN": "Todas ({n})",
+      "todas": "Todas las sucursales",
+      "sucursal": "Sucursal",
+      "numero": "Sucursal #{id}",
+      "prefijo": "Sucursal:",
+      "cambiar": "Sucursal: {texto}. Cambiar sucursal"
+    },
+    "arbol": {
+      "contraer": "Contraer {titulo}",
+      "expandir": "Expandir {titulo}",
+      "sinResultados": "Sin resultados para «{termino}»",
+      "actual": "Actual",
+      "seleccionar": "Seleccionar…",
+      "opciones": "Opciones",
+      "arrastrar": "Arrastra sobre otra categoría para moverla dentro",
+      "soltarRaiz": "Suelta aquí para dejarla sin categoría padre"
+    },
+    "formulario": {
+      "obligatorio": "(obligatorio)"
+    },
+    "estados": {
+      "abierta": "Abierta",
+      "abierto": "Abierto",
+      "aceptada": "Aceptada",
+      "aceptado": "Aceptado",
+      "activa": "Activa",
+      "activo": "Activo",
+      "agotado": "Agotado",
+      "al_dia": "Al día",
+      "alta_prioridad": "Alta prioridad",
+      "alto_riesgo": "Alto riesgo",
+      "anulada": "Anulada",
+      "anulado": "Anulado",
+      "aplicada": "Aplicada",
+      "aplicado": "Aplicado",
+      "archivado": "Archivado",
+      "auto_generacion": "Auto generación",
+      "baja_prioridad": "Baja prioridad",
+      "borrador": "Borrador",
+      "caliente": "Caliente",
+      "cancelada": "Cancelada",
+      "cancelado": "Cancelado",
+      "cerrada": "Cerrada",
+      "cerrado": "Cerrado",
+      "cheque": "Cheque",
+      "clawback": "Clawback",
+      "cobrada": "Cobrada",
+      "cobrado": "Cobrado",
+      "completada": "Completada",
+      "completado": "Completado",
+      "conectada": "Conectada",
+      "conectado": "Conectado",
+      "confirmada": "Confirmada",
+      "confirmado": "Confirmado",
+      "convertida": "Convertida",
+      "convertido": "Convertido",
+      "critica": "Crítica",
+      "critico": "Crítico",
+      "desconocido": "Desconocido",
+      "descontinuado": "Descontinuado",
+      "efectivo": "Efectivo",
+      "eliminada": "Eliminada",
+      "eliminado": "Eliminado",
+      "emitida": "Emitida",
+      "emitido": "Emitido",
+      "empresa": "Empresa",
+      "en_espera": "En espera",
+      "en_proceso": "En proceso",
+      "en_transito": "En tránsito",
+      "enviada": "Enviada",
+      "enviado": "Enviado",
+      "error": "Error",
+      "fallida": "Fallida",
+      "fallido": "Fallido",
+      "frio": "Frío",
+      "ganada": "Ganada",
+      "garantia_vigente": "Garantía vigente",
+      "inactiva": "Inactiva",
+      "inactivo": "Inactivo",
+      "media_prioridad": "Media prioridad",
+      "normal": "Normal",
+      "nueva": "Nueva",
+      "nuevo": "Nuevo",
+      "pagada": "Pagada",
+      "pagado": "Pagado",
+      "pago_parcial": "Pago parcial",
+      "parcial": "Parcial",
+      "pendiente": "Pendiente",
+      "pendiente_de_sincronizar": "Pendiente de sincronizar",
+      "perdida": "Perdida",
+      "perdido": "Perdido",
+      "persona": "Persona",
+      "personalizable": "Personalizable",
+      "por_cobrar": "Por cobrar",
+      "por_pagar": "Por pagar",
+      "por_revisar": "Por revisar",
+      "procesada": "Procesada",
+      "procesado": "Procesado",
+      "procesando": "Procesando",
+      "rechazada": "Rechazada",
+      "rechazado": "Rechazado",
+      "recibida": "Recibida",
+      "recibido": "Recibido",
+      "reembolsada": "Reembolsada",
+      "reembolsado": "Reembolsado",
+      "riesgo_bajo": "Riesgo bajo",
+      "riesgo_medio": "Riesgo medio",
+      "sin_conexion": "Sin conexión",
+      "sin_seguimiento": "Sin seguimiento",
+      "tarjeta": "Tarjeta",
+      "tibio": "Tibio",
+      "todas_las_sucursales": "Todas las sucursales",
+      "transferencia": "Transferencia",
+      "trazabilidad_activa": "Trazabilidad activa",
+      "urgente": "Urgente",
+      "usada": "Usada",
+      "usado": "Usado",
+      "vencida": "Vencida",
+      "vencido": "Vencido"
+    }
   }
 }

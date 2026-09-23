@@ -4,7 +4,8 @@ import * as React from 'react';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
-import { esFechaPlana, etiquetaRango, normalizarRango, presetDe, presetsRango, type RangoFechas } from './rangoFechas';
+import { esFechaPlana, normalizarRango, presetDe, presetsRango, type IdPresetRango, type RangoFechas } from './rangoFechas';
+import { useEtiquetaRango, useKitT } from './useIdiomaKit';
 
 /**
  * Botón de rango de fechas de la barra de un listado (Figma 680:407222:
@@ -28,6 +29,16 @@ export interface DateRangeButtonProps {
   className?: string;
 }
 
+/** Clave de `kit.rango.*` de cada atajo. */
+const CLAVE_PRESET: Record<IdPresetRango, string> = {
+  hoy: 'hoy',
+  ayer: 'ayer',
+  '7d': 'ultimos7',
+  '30d': 'ultimos30',
+  mes: 'esteMes',
+  mesPasado: 'mesPasado',
+};
+
 const CAMPO =
   'h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
 
@@ -35,11 +46,14 @@ export function DateRangeButton({
   valor,
   onValorChange,
   hoy,
-  etiqueta = 'Rango de fechas',
+  etiqueta: etiquetaProp,
   max,
   deshabilitado,
   className,
 }: DateRangeButtonProps) {
+  const t = useKitT();
+  const etiquetaRango = useEtiquetaRango();
+  const etiqueta = etiquetaProp ?? t('rango.etiqueta');
   const [abierto, setAbierto] = React.useState(false);
   const [borrador, setBorrador] = React.useState<RangoFechas>(valor);
   const idDesde = React.useId();
@@ -83,7 +97,7 @@ export function DateRangeButton({
         collisionPadding={8}
         className="z-50 w-[320px] rounded-xl border border-line bg-surface p-3 text-fg shadow-lg outline-none"
       >
-        <div role="group" aria-label="Atajos de fecha" className="grid grid-cols-2 gap-1">
+        <div role="group" aria-label={t('rango.atajos')} className="grid grid-cols-2 gap-1">
           {presetsRango(hoy).map((p) => (
             <button
               key={p.id}
@@ -95,7 +109,7 @@ export function DateRangeButton({
                 presetActivo === p.id ? 'bg-brand-tint font-medium text-brand-deep' : 'text-fg hover:bg-hover',
               )}
             >
-              {p.etiqueta}
+              {t(`rango.${CLAVE_PRESET[p.id]}`)}
             </button>
           ))}
         </div>
@@ -110,7 +124,7 @@ export function DateRangeButton({
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col gap-1">
               <label htmlFor={idDesde} className="text-xs font-medium text-fg-secondary">
-                Desde
+                {t('rango.desde')}
               </label>
               <input
                 id={idDesde}
@@ -123,7 +137,7 @@ export function DateRangeButton({
             </div>
             <div className="flex flex-col gap-1">
               <label htmlFor={idHasta} className="text-xs font-medium text-fg-secondary">
-                Hasta
+                {t('rango.hasta')}
               </label>
               <input
                 id={idHasta}
@@ -141,14 +155,14 @@ export function DateRangeButton({
               onClick={() => setAbierto(false)}
               className="h-9 rounded-lg border border-line-strong bg-surface px-3 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
-              Cancelar
+              {t('comun.cancelar')}
             </button>
             <button
               type="submit"
               disabled={!valido}
               className="h-9 rounded-lg bg-brand-action px-3 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Aplicar
+              {t('comun.aplicar')}
             </button>
           </div>
         </form>

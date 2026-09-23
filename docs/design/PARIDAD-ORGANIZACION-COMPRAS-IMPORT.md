@@ -499,3 +499,21 @@ Frame **«Relación con el ImportWizard del kit»** (Sección 11 de `04`), con u
 - El código de sucursal sigue siendo de solo lectura (`Asignado automáticamente`): es una
   decisión de producto, no un fallo.
 - Los precios de los planes salen de `PlanOption` (Sección 12), no se inventan aquí.
+
+---
+
+## Adenda 2026-09-23 — proveedores y categorías que crea el importador
+
+Esta adenda se añade al final, sin reescribir lo anterior.
+
+El importador web crea proveedores y categorías (decisión D4). Esos registros ahora tienen pantalla propia en `04 Inventario`:
+
+- Proveedores: sección `589:311642`.
+- Categorías: sección `586:290667`.
+
+Allí es donde se completan o se desactivan. Dos piezas del diseño cierran lo que D4 deja abierto:
+
+- **«Alta rápida de proveedor»**: QuickCreateDialog con nombre, documento y condición de pago, y aviso de NIT repetido.
+- **«Sin NIT registrado»**: KPI del listado de proveedores. Es donde aparecen los proveedores creados a partir de la marca, que llegan solo con nombre.
+
+Ver `PARIDAD-CATALOGO-PRODUCCION.md` §2 y §5.

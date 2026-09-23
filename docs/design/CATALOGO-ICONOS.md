@@ -466,3 +466,27 @@ Comprobado por script después de aplicar, en todo el alcance:
    estaban en `State=default` pasaron a `State=destructive`, como pedía la
    referencia. «Quitar proveedor» y «Quitar del equipo» son reversibles: si el
    rojo resulta excesivo ahí, se devuelven a `default` sin tocar el icono.
+
+---
+
+## Adenda 2026-09-23 — conceptos de catálogo y producción de Inventario
+
+Se añade al final, sin reescribir la tabla §2. Las pantallas están en `04 Inventario`, carril x = 62.000, y se describen en `PARIDAD-CATALOGO-PRODUCCION.md`. Los iconos marcados «nuevo» se importaron de lucide a `02 Componentes › Fundamentos › Iconos`.
+
+| Concepto | Icono (lucide) | Nota |
+|---|---|---|
+| Proveedor | `Truck` | Ya tiene pantalla (sección `589:311642`) |
+| Categoría | `Tags` | Ya tiene pantalla (sección `586:290667`) |
+| Etiqueta de producto (tag) | `Tag` | Distinto de `Tags`. Las etiquetas impresas usan su propio flujo |
+| Unidad de medida | `Ruler` | El menú usa hoy `Hash` (`SidebarNavigation.tsx:212`) |
+| Conversión de unidades | `Scale` (nuevo) | El menú usa hoy `ArrowLeftRight`, que queda para Traslado |
+| Imagen / biblioteca | `Images` (nuevo) | `Image` sigue prohibido como icono de pantalla |
+| Receta | `CookingPot` (nuevo) | El menú usa hoy `ChefHat`, que es Comanda |
+| Costo de recetas | `Calculator` | El menú usa hoy `DollarSign` |
+| Producción | `Factory` (nuevo) | — |
+| Distribución | `Route` (nuevo) | El menú usa hoy `Truck`, que es Proveedor |
+| Traslado | `ArrowLeftRight` | — |
+
+**Cambios pendientes en el código:**
+- `SidebarNavigation.tsx:210-226` y `SubMenuPanel.tsx:164-179`: aplicar esta tabla.
+- `moduleConfig.ts:127 · 129`: Categorías pasa de `Grid3X3` a `Tags` y Proveedores de `Users` a `Truck`, como ya decía §4.

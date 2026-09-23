@@ -1353,3 +1353,29 @@ más 37 selectores repartidos por el resto de la aplicación.
 - **Proveedores sin acciones masivas ni KPIs y categorías sin acciones masivas**: si el rediseño
   las añade, hay que diseñar también el estado de selección y la barra flotante, que hoy no
   existen en ninguna de las dos pantallas.
+
+---
+
+## J. Adenda 2026-09-23 — diseño en Figma y novedades del código
+
+Esta adenda se añade al final; no reescribe nada de lo anterior. El detalle está en `AUDITORIA-CATALOGO-PRODUCCION.md` y `PARIDAD-CATALOGO-PRODUCCION.md`.
+
+- **Ya están diseñadas en Figma.** Hasta hoy no existían: solo había la pestaña «Proveedores y etiquetas» del producto, el `SupplierPicker` y el `QuickCategoryForm`.
+  - Página `04 Inventario`, sección «Categorías — árbol, detalle y formularios (Nuevo)» (`586:290667`).
+  - Página `04 Inventario`, sección «Proveedores — listado, detalle, formulario y diálogos (Nuevo)» (`589:311642`).
+  - Las dos están en el carril x = 62.000.
+- **Corregido desde la auditoría anterior:**
+  - `supplierService.updateSupplier` ya es parcial (`setIfPresent`, `supplierService.ts:330-374`). Queda sin efecto el punto G.1.1 en lo que toca al servicio.
+  - `CategoryForm` ya no regenera `slug` ni `meta_title` al editar (`CategoryForm.tsx:105-118`). Queda sin efecto G.1.2 en esos dos campos.
+- **Sigue abierto:**
+  - `EditarProveedorForm` inicializa y envía `identification_document_code '31'` y `legal_organization_code '1'` cuando vienen vacíos (`EditarProveedorForm.tsx:35-36 · 85-87`). Una persona natural queda con el código DIAN de empresa.
+  - `CategoryForm` sigue pisando `meta_description` al escribir el nombre o la descripción (`:117 · 125`).
+- **Nuevo hallazgo:** la tarjeta «Productos vinculados» del detalle de proveedor siempre sale vacía. Pide `products(..., is_active)` y esa columna no existe (`ProveedorDetalle.tsx:96`).
+- **Cifras de BD (2026-09-23):**
+  - 1.604 proveedores en 21 organizaciones: 0 inactivos, 0 con `rating`, 0 personas naturales.
+  - 11.863 `product_suppliers`.
+  - 1.113 categorías en 24 organizaciones: 4 con padre, 0 con `branch_id`, 0 reglas de categoría.
+  - 35.087 de 53.319 productos sin categoría.
+- **RLS:**
+  - `categories` conserva «Allow anon select categories» con `USING (true)`.
+  - `suppliers` ya **no** tiene la política anónima que figura en el baseline.

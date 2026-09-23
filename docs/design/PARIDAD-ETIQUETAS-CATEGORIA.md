@@ -292,3 +292,30 @@ ancho en el que deje de leerse**; conviene redefinir el criterio antes de la pr�
 5. **Los 176 códigos repetidos.** El índice único no se puede crear sin limpiarlos antes.
    ¿Los renumeramos automáticamente con el correlativo nuevo (y se reimprimen sus etiquetas), o
    se listan para que alguien decida uno por uno?
+
+---
+
+## Adenda 2026-09-23 — «Etiquetas» (tags) y la pantalla de categorías
+
+Esta adenda se añade al final, sin reescribir lo anterior.
+
+**Colisión de nombre (duda 1).** Se resolvió en el diseño:
+
+- La pantalla de tags se titula **«Etiquetas de producto»** y usa el icono `Tag`. Está en la sección `591:325136`.
+- «Imprimir etiquetas» (x = 13.000) sigue siendo el papel y no se tocó.
+
+**Uso de las secciones de esta tanda:**
+
+- El `QuickCategoryForm` completo de esta tanda (`513:259550`) se **instancia** en la sección de Categorías (`586:290667`), en sus estados «listo» y «duplicado».
+- Esa sección añade:
+  - el árbol con `TreeCell` (Nuevo);
+  - el detalle;
+  - el formulario completo de edición, con el slug bloqueado;
+  - el diálogo «Mover a…», que deshabilita los descendientes.
+
+**Cifras de la base de datos sobre los tags:**
+
+- 729 etiquetas en total. Solo 4 tienen uso, con 163 relaciones.
+- Hay 4 pares con el mismo nombre en distinta mayúscula.
+
+El diseño añade «Fusionar» y «Eliminar sin usar».

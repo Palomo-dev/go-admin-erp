@@ -31,6 +31,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DB_CHECK_ENUMS } from '@/lib/crm/enums';
 import { DRAIN_INTERVAL_MIN, DRAIN_SCHEDULE, JOBS_RUN_PATH, JOBS_RUN_SCHEDULES, VERCEL_SCHEDULE_KINDS } from '@/lib/jobs/schedule';
+import { ORIGENES_MOVIMIENTO_STOCK, esOrigenMovimientoValido } from '@/lib/inventario/origenesMovimientoStock';
 
 const SRC_ROOT = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(SRC_ROOT, '..');
@@ -1569,53 +1570,169 @@ describe('21. Ningún .ts/.tsx bajo src/ contiene bytes de control (< 0x20 salvo
   });
 });
 
-// === Caso 22: F-52 — las ventas POS escogen la regla contable según saldo ===
-describe('22. F-52: fn_auto_journal_sale_pos discrimina contado y crédito', () => {
-  const migrationPath = path.join(
+// === Caso 22: el asiento de devengo de una venta es uno solo ===
+/**
+ * 22. El asiento de devengo de una venta es UNO, y se ancla al hecho.
+ *
+ * Antes este guardarraíl vigilaba la migración F-52, que exigía tres consultas
+ * de reglas filtrando por `is_credit` y la idempotencia por `(source,
+ * source_id)`. Ese diseño quedó superado el 2026-09-23: la migración del bloque
+ * 1 contable lo sustituye porque, tal cual, **dos organizaciones sin
+ * `conditions` no generaban ningún asiento de venta POS** y la idempotencia por
+ * origen no veía el duplicado —la misma venta contabilizada por `sales` y por
+ * `invoice_sales`—. Se apunta al archivo nuevo y se comprueba el diseño nuevo;
+ * mantenerlo sobre el archivo viejo era vigilar algo que ya no se ejecuta.
+ */
+describe('22. Asiento de venta: un solo hecho, clave natural y respaldo sin conditions', () => {
+  const migracion = path.join(
     REPO_ROOT,
     'supabase',
     'migrations',
-    '20260919235511_f52_sale_pos_is_credit.sql'
+    '20260923040000_asiento_de_venta_unico_por_hecho.sql'
   );
-  const rollbackPath = path.join(
+  const rollback = path.join(
     REPO_ROOT,
     'supabase',
     'rollbacks',
-    '20260919235511_f52_sale_pos_is_credit_rollback.sql'
+    '20260923040000_asiento_de_venta_unico_por_hecho_rollback.sql'
   );
   let sql = '';
 
   beforeAll(() => {
-    expect(fs.existsSync(migrationPath)).toBe(true);
-    expect(fs.existsSync(rollbackPath)).toBe(true);
-    sql = readFile(migrationPath);
+    expect(fs.existsSync(migracion)).toBe(true);
+    expect(fs.existsSync(rollback)).toBe(true);
+    sql = readFile(migracion);
   });
 
-  test('deriva is_credit del saldo y no de payment_status', () => {
-    expect(sql).toMatch(/v_is_credit\s*:=\s*COALESCE\(NEW\.balance,\s*0\)\s*>\s*0/);
+  test('las dos funciones derivan contado/crédito del saldo real', () => {
+    const derivaciones = sql.match(/v_is_credit\s*:=\s*COALESCE\(NEW\.balance,\s*0\)\s*>\s*0/g) ?? [];
+    expect(derivaciones).toHaveLength(2);
+    expect(sql).not.toMatch(/v_is_credit\s*:=\s*\(?NEW\.payment_method/);
     expect(sql).not.toMatch(/v_is_credit\s*:=\s*\(?NEW\.payment_status/);
   });
 
-  test('las tres búsquedas de reglas filtran por is_credit', () => {
-    const filters = sql.match(/\(conditions->>'is_credit'\)::boolean\s*=\s*v_is_credit/g) ?? [];
-    expect(filters).toHaveLength(3);
+  test('una regla sin conditions sirve de respaldo, y la de la condición contraria nunca', () => {
+    const respaldos =
+      sql.match(
+        /conditions->>'is_credit'\s+IS\s+NULL\s+OR\s+\(conditions->>'is_credit'\)::boolean\s*=\s*v_is_credit/g
+      ) ?? [];
+    expect(respaldos).toHaveLength(2);
   });
 
-  test('la idempotencia queda acotada por organización', () => {
-    const idempotencyBlock = sql.match(
-      /SELECT\s+id\s+INTO\s+v_existing_id[\s\S]*?LIMIT\s+1;/
-    )?.[0];
-    expect(idempotencyBlock).toBeDefined();
-    expect(idempotencyBlock).toMatch(/FROM\s+(?:public\.)?journal_entries/);
-    expect(idempotencyBlock).toMatch(/organization_id\s*=\s*NEW\.organization_id/);
-    expect(idempotencyBlock).toMatch(/source\s*=\s*'sales'/);
-    expect(idempotencyBlock).toMatch(/source_id\s*=\s*NEW\.id::text/);
+  test('las dos vías emiten la misma clave del hecho para la misma venta', () => {
+    expect(sql).toMatch(/'accrual:sale:'\s*\|\|\s*NEW\.sale_id::text/);
+    expect(sql).toMatch(/'accrual:sale:'\s*\|\|\s*NEW\.id::text/);
+    const claves = sql.match(/p_fact_key\s*:=\s*v_fact_key/g) ?? [];
+    expect(claves).toHaveLength(2);
   });
 
-  test('la función SECURITY DEFINER fija search_path y no queda ejecutable directamente por roles cliente', () => {
-    expect(sql).toMatch(/SECURITY\s+DEFINER[\s\S]*?SET\s+search_path\s+TO\s+'public',\s*'pg_temp'/);
+  test('el disparador del POS es diferido, para que la factura mande cuando exista', () => {
     expect(sql).toMatch(
-      /REVOKE\s+ALL\s+ON\s+FUNCTION\s+public\.fn_auto_journal_sale_pos\(\)\s+FROM\s+PUBLIC,\s*anon,\s*authenticated/
+      /create\s+constraint\s+trigger\s+trg_auto_journal_sale_pos[\s\S]*?deferrable\s+initially\s+deferred/i
     );
+  });
+
+  test('las dos funciones SECURITY DEFINER fijan search_path', () => {
+    const definidas =
+      sql.match(/security\s+definer\s+set\s+search_path\s+to\s+'public',\s*'pg_temp'/gi) ?? [];
+    expect(definidas).toHaveLength(2);
+  });
+});
+
+/**
+ * 23. El kardex admite exactamente los orígenes que el código escribe.
+ *
+ * Durante catorce meses `stock_movements_source_check` rechazó ocho valores que
+ * el código escribía. Seis fallaban en silencio —el error moría en un
+ * `console.warn` y las existencias quedaban modificadas sin movimiento— y dos
+ * reventaban el traslado. Ninguna recepción de orden de compra ni ningún
+ * traslado llegó al kardex en ese tiempo.
+ *
+ * Este guardarraíl exige que las tres cosas digan lo mismo: la migración del
+ * CHECK, la lista de TypeScript y lo que el código escribe de verdad.
+ */
+describe('23. stock_movements.source: CHECK, lista de TS y código coinciden', () => {
+  const migracion = path.join(
+    REPO_ROOT,
+    'supabase',
+    'migrations',
+    '20260923100000_stock_movements_admite_los_origenes_que_el_codigo_escribe.sql'
+  );
+
+  /** Valores del `check (source = any (array[...]))` de la migración. */
+  function origenesDeLaMigracion(): string[] {
+    const sql = readFile(migracion);
+    const bloque = sql.match(/add\s+constraint\s+stock_movements_source_check[\s\S]*?\]\)\)/i)?.[0];
+    expect(bloque).toBeDefined();
+    return Array.from(bloque!.matchAll(/'([a-z_]+)'/g)).map((m) => m[1]);
+  }
+
+  /**
+   * Orígenes que el código escribe: los literales de `source:` en un INSERT a
+   * `stock_movements`, y los que se pasan a `stockMovementService`, que los
+   * formatea siempre como un argumento en su propia línea.
+   */
+  function origenesDelCodigo(): Map<string, string[]> {
+    const encontrados = new Map<string, string[]>();
+    const anota = (valor: string, archivo: string) => {
+      const donde = encontrados.get(valor) ?? [];
+      donde.push(path.relative(REPO_ROOT, archivo));
+      encontrados.set(valor, donde);
+    };
+
+    for (const archivo of walkDir(SRC_ROOT).filter((f) => !f.includes('__tests__'))) {
+      const lineas = readFile(archivo).split('\n');
+
+      for (let i = 0; i < lineas.length; i += 1) {
+        const abreInsert = lineas[i].includes("from('stock_movements')");
+        const abreServicio = /stockMovementService\.\w+\(/.test(lineas[i]);
+        if (!abreInsert && !abreServicio) continue;
+
+        for (let j = i; j < Math.min(i + 20, lineas.length); j += 1) {
+          if (abreInsert) {
+            const m = lineas[j].match(/\bsource:\s*'([a-z_]+)'/);
+            if (m) anota(m[1], archivo);
+          }
+          if (abreServicio) {
+            // El origen viaja como último argumento, solo en su línea.
+            const m = lineas[j].match(/^\s*'([a-z_]+)',?\s*$/);
+            if (m) anota(m[1], archivo);
+          }
+        }
+      }
+    }
+
+    return encontrados;
+  }
+
+  test('la lista de TypeScript es exactamente la de la migración', () => {
+    expect([...ORIGENES_MOVIMIENTO_STOCK].sort()).toEqual(origenesDeLaMigracion().sort());
+  });
+
+  test('todo origen que el código escribe está admitido por el CHECK', () => {
+    const admitidos = new Set(origenesDeLaMigracion());
+    const escritos = origenesDelCodigo();
+
+    // Que el rastreo siga encontrando algo: si un cambio de formato lo deja a
+    // cero, este guardarraíl pasaría sin comprobar nada.
+    expect(escritos.size).toBeGreaterThanOrEqual(10);
+    expect([...escritos.keys()]).toEqual(expect.arrayContaining(['purchase_order', 'transfer_in']));
+
+    const rechazados = [...escritos.entries()]
+      .filter(([valor]) => !admitidos.has(valor))
+      .map(([valor, archivos]) => `${valor} (${archivos.join(', ')})`);
+
+    // Si esto falla: añade el valor a origenesMovimientoStock.ts Y a una
+    // migración que amplíe el CHECK, en el mismo commit. Quitarlo de aquí deja
+    // el movimiento sin escribir y el kardex incompleto, sin ningún error
+    // visible.
+    expect(rechazados).toEqual([]);
+  });
+
+  test('esOrigenMovimientoValido reconoce los que antes se rechazaban', () => {
+    for (const valor of ['purchase_order', 'transfer_out', 'transfer_in', 'invoice_void']) {
+      expect(esOrigenMovimientoValido(valor)).toBe(true);
+    }
+    expect(esOrigenMovimientoValido('no_existe')).toBe(false);
   });
 });

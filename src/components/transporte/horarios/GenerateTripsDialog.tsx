@@ -19,6 +19,7 @@ import { RouteSchedule, transportRoutesService } from '@/lib/services/transportR
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz } from '@/lib/utils/timezone';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
 
 interface GenerateTripsDialogProps {
   open: boolean;
@@ -39,9 +40,11 @@ export function GenerateTripsDialog({
 }: GenerateTripsDialogProps) {
   const { timezone } = useOrgTimezone();
   const today = todayInTz(timezone);
-  const nextWeekDate = new Date(`${today}T12:00:00`);
-  nextWeekDate.setDate(nextWeekDate.getDate() + 7);
-  const nextWeek = nextWeekDate.toISOString().split('T')[0];
+  // Fin del rango por defecto: siete dias calendario despues de hoy. El truco
+  // del `new Date(dia + 'T12:00:00')` para «esquivar» la zona del navegador
+  // dejaba de funcionar en cuanto el offset pasaba de 12 h, y el
+  // `toISOString()` final devolvia otra vez el dia UTC.
+  const nextWeek = sumarDiasAlDia(today, 7);
 
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(nextWeek);

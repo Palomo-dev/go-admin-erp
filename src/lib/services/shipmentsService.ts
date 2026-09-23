@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateDisplay';
+import { getDayRange } from '@/lib/utils/dateRanges';
 
 export interface AvailableDriver {
   id: string;
@@ -421,7 +424,14 @@ class ShipmentsService {
     let totalWeight = 0;
     let totalDeclaredValue = 0;
     let unassignedPending = 0;
-    const today = new Date().toISOString().split('T')[0];
+    // `shipments.created_at` es **timestamptz**. El conteo «envios de hoy» se
+    // hacia con `created_at.startsWith(diaUTC)`: doble error del mismo signo,
+    // dia UTC contra prefijo UTC de un instante. Se comparan instantes contra
+    // el rango real del dia de la sucursal, con su offset y su DST.
+    const zona = await resolveTimezone(organizationId, branchId);
+    const rangoDeHoy = getDayRange(todayInTz(zona), zona);
+    const inicioDeHoy = new Date(rangoDeHoy.start).getTime();
+    const finDeHoy = new Date(rangoDeHoy.end).getTime();
     let shipmentsToday = 0;
 
     for (const s of shipments) {
@@ -429,7 +439,10 @@ class ShipmentsService {
       statusCounts[st] = (statusCounts[st] || 0) + 1;
       totalWeight += Number(s.weight_kg) || 0;
       totalDeclaredValue += Number(s.declared_value) || 0;
-      if (s.created_at && s.created_at.startsWith(today)) shipmentsToday++;
+      if (s.created_at) {
+        const creado = new Date(s.created_at).getTime();
+        if (creado >= inicioDeHoy && creado <= finDeHoy) shipmentsToday++;
+      }
       const meta = s.metadata as Record<string, unknown> | null;
       if (st === 'pending' && !meta?.driver_id) unassignedPending++;
     }
@@ -460,7 +473,13 @@ class ShipmentsService {
   }
 
   async getTrips(organizationId: number) {
-    const today = new Date().toISOString().split('T')[0];
+    // `trips.trip_date` es `date`: se compara dia con dia. El listado es de
+    // TODA la organizacion (no filtra sucursal), asi que el corte «de hoy en
+    // adelante» usa la zona de la organizacion. Deuda anotada en
+    // docs/PROGRESO-zonas-horarias.md: si el selector de viajes llegara a
+    // filtrar por sucursal, este «hoy» debe pasar a esa sucursal.
+    const zona = await resolveTimezone(organizationId);
+    const today = todayInTz(zona);
 
     const { data, error } = await supabase
       .from('trips')

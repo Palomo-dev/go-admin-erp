@@ -1031,3 +1031,516 @@ son la tanda 8; `gym/clases/page.tsx` es la tanda 11; el resto son nombres de ar
   no toca ninguno de los archivos de estas tandas. Queda anotado por si reaparece.
 - Cero escrituras en la base de datos. Ninguna migracion: las tres tandas se resuelven en codigo.
 - Sin `git add`, `commit`, `push` ni cambio de rama. El arbol sigue en `gosec/bloque-a`.
+
+## Anexo 2026-09-23 — hallazgo ajeno a la fase D, visto al recorrer los disparadores
+
+Al inventariar los disparadores de Postgres para la fase D apareció un defecto
+**crítico y sin relación con zonas horarias**: nadie podía crear turnos.
+`public.fn_notify_shift_assigned()` (disparador `trg_notify_shift_assigned`,
+`AFTER INSERT ON shift_assignments`) abortaba todo `INSERT` con
+`42703: column e.organization_id does not exist`, porque `employments` no tiene
+`organization_id` — la organización vive en `organization_members` y la unión va
+por `employments.organization_member_id = organization_members.id`. En el mismo
+cuerpo había una segunda referencia rota, `NEW.date`, cuando la columna se llama
+`work_date`.
+
+**No forma parte de la fase D** y no se contabiliza en ella: la función no decide
+ningún día calendario. `work_date` es una columna `date`, un día ya fijado, así
+que no se convierte de zona (regla 5) y aquí NO intervienen `fn_today_for` ni
+`fn_today_for_org`.
+
+Corregido y verificado el mismo día en
+`supabase/migrations/20260923231500_fn_notify_shift_assigned_organizacion_por_membresia.sql`.
+Detalle completo, evidencia y pendientes: `docs/hallazgos/F-63.md`.
+
+---
+
+## Fase D — addendum resuelto: `fn_emitir_acciones`, y el inventario a CI · 2026-09-23
+
+Dos encargos. El primero cierra el addendum que la fase D dejo anotado; el segundo es el que
+evita que vuelva a pasar.
+
+### Encargo 1 — `fn_emitir_acciones` deja de decidir el dia en UTC
+
+`public.fn_emitir_acciones(p_subscription_id uuid, p_admin_user_id uuid, p_referencia_tecleada text)`
+tenia dos `current_date`, y los dos deciden un dia contable:
+
+| Sitio | Que decide | Columna · tipo | Arreglo |
+|---|---|---|---|
+| `fn_is_period_open(v_org, current_date)` | si el periodo contable esta abierto | `fiscal_periods.start_date`/`.end_date` · **date** | `fn_today_for_org(v_org)` |
+| `insert into cap_transactions (... effective_date ...)` | fecha efectiva del certificado de acciones | `cap_transactions.effective_date` · **date** | `fn_today_for_org(v_org)` |
+
+**Por organizacion y no por sucursal**, comprobado por MCP antes de escribir nada:
+
+- `fn_is_period_open(p_organization_id integer, p_date date)` resuelve contra `fiscal_periods`,
+  que es por organizacion. La sucursal no entra en la decision. Ademas, en ese punto del cuerpo
+  `v_branch` **todavia no esta asignada**: se calcula tres lineas mas abajo.
+- `cap_transactions` **no tiene `branch_id`** (verificado en `information_schema.columns`). El
+  libro de accionistas es de la sociedad entera, no de una sede.
+- La `v_branch` que la funcion calcula existe solo para rellenar `journal_entries.branch_id`, y
+  se elige con `order by (is_main and is_active) desc, is_active desc, id limit 1`. Es un
+  relleno; fechar un certificado con la zona de una sucursal elegida asi seria peor que no
+  hacerlo.
+
+El dia se resuelve **una sola vez** (`v_dia_contable := public.fn_today_for_org(v_org)`) y se usa
+en los dos sitios: si se resolviera dos veces, una emision que cruce la medianoche local podria
+comprobar un periodo y fechar el certificado en dias distintos.
+
+**Lo que NO se toco**: `journal_entries.entry_date` es `timestamptz` y se escribe con `now()`.
+Igual `issued_at` y `updated_at`. Convertirlos a un dia seria el error contrario (regla 5 de
+`docs/reglas-fechas-timezone.md`).
+
+Migracion `supabase/migrations/20260923233000_fn_emitir_acciones_dia_de_la_organizacion.sql`,
+aplicada por `apply_migration`, con reversion real en `supabase/rollbacks/`.
+
+**Invariantes, antes y despues** (`pg_proc`):
+
+```
+firma          fn_emitir_acciones(uuid,uuid,text)      -> igual
+owner          postgres                                 -> igual
+provolatile    v (volatile)                             -> igual
+prosecdef      true (SECURITY DEFINER)                  -> igual
+proconfig      search_path=public, pg_temp              -> igual
+proparallel    u   procost 100   prorows 1000           -> igual
+acl            postgres=X/postgres | service_role=X/postgres  -> igual
+sobrecargas    1                                        -> 1 (ninguna nueva)
+current_date en el cuerpo     2                         -> 0
+fn_today_for_org en el cuerpo 0                         -> 1
+```
+
+`anon` y `authenticated` siguen sin privilegio de ejecucion, antes y despues.
+
+#### Las dos pruebas en seco
+
+Ambas con `DO ... RAISE EXCEPTION`, que aborta la transaccion: **nada se commitea**. Cada una
+crea una organizacion SINTETICA dentro de la propia transaccion (cero `UPDATE` sobre datos
+reales) y le monta dos periodos contables: `2026-09-01..09-23` abierto y `2026-09-24..09-30`
+cerrado. Servidor en `TimeZone = UTC`, hora de la prueba `2026-09-23 17:36Z`.
+
+**Con UTC+14** (`Pacific/Kiritimati`), antes de la migracion:
+
+```
+current_date (dia UTC)                        = 2026-09-23
+fn_today_for_org(v_org)                       = 2026-09-24
+fn_is_period_open(org, current_date)          = t   <-- lo que decidia
+fn_is_period_open(org, fn_today_for_org(org)) = f   <-- lo que deberia
+effective_date que se escribiria: 2026-09-23  vs  2026-09-24
+ocurrencias de current_date en el cuerpo VIVO = 2
+```
+
+Es decir: la emision pasaba el control **aunque el periodo contable de la organizacion estuviera
+cerrado**, y fechaba el certificado un dia antes de lo que dice su calendario.
+
+**Con UTC+14**, despues:
+
+```
+cuerpo VIVO: current_date=0   fn_today_for_org(v_org)=1
+dia UTC=2026-09-23   dia contable (organizacion)=2026-09-24
+fn_is_period_open(org, v_dia_contable) = f  -> la emision se BLOQUEA
+effective_date que se escribiria = 2026-09-24  (antes: 2026-09-23)
+```
+
+**Sin UTC+14** (la organizacion de prueba en `America/Bogota`, como las 85 reales):
+
+```
+current_date=2026-09-23   fn_today_for_org=2026-09-23   iguales=t
+periodo(UTC)=t  periodo(org)=t  -> la prueba NO distingue nada
+```
+
+Esa tercera ejecucion es la que justifica las otras dos: **sin mover la organizacion a un huso al
+este de Greenwich, la prueba acierta por casualidad**. A las 17:36Z, Bogota y UTC estan en el
+mismo dia y cualquiera de las dos versiones de la funcion pasa.
+
+Comprobado despues: `select count(*) from organizations where id in (169,170) or name like 'ZZ dry-run%'`
+da **0**. Lo unico que sobrevive a las tres pruebas es el avance de `organizations_id_seq`, que no
+es transaccional; un hueco en los ids, nada mas.
+
+#### Inventario
+
+```
+antes:   8 filas   (las 7 del ADR-004 + fn_emitir_acciones)
+despues: 7 filas   (exactamente las 7 del ADR-004)
+```
+
+### Encargo 2 — el inventario corre contra la base viva, en CI
+
+La leccion que la fase D dejo escrita: **un test que lee los `.sql` del repositorio no ve una
+funcion que otra sesion aplica por MCP**. Asi se colo esta. Ahora hay una red que si la ve.
+
+Tres piezas y un ADR (`docs/adr/ADR-005-inventario-de-current-date-contra-la-base-viva.md`):
+
+1. **`public.fn_inventario_current_date()`** — migracion
+   `20260923234000_fn_inventario_current_date.sql`. Devuelve `(firma, proname)` de las funciones
+   de `public` cuyo `prosrc` casa con `\mCURRENT_DATE\M`. `LANGUAGE sql`, `STABLE`,
+   **`SECURITY INVOKER`** (los catalogos `pg_proc`/`pg_namespace` son legibles por cualquier rol:
+   no hay que elevar privilegios ni engordar el inventario de `SECURITY DEFINER`). Permisos:
+   `execute` solo a `service_role`; `revoke all` a `public`, `anon` y `authenticated`. ACL
+   resultante: `postgres=X/postgres | service_role=X/postgres`.
+2. **`scripts/verificar-current-date-en-postgres.mjs`** — Node, sin dependencias nuevas: usa
+   `@supabase/supabase-js`, que ya estaba en `package.json`. Compara el resultado de la RPC con
+   `scripts/lista-blanca-current-date.json` y sale 1 si sobra o falta alguna, con un mensaje que
+   **nombra la funcion intrusa** y explica el arreglo (`fn_today_for_org` / `fn_today_for`, o
+   justificarla primero en el ADR-004).
+3. **`.github/workflows/inventario-postgres.yml`** — job propio, no dentro de `ci-web.yml`.
+
+Decisiones que no son obvias, todas razonadas en el ADR-005:
+
+- **RPC por HTTPS y no conexion `pg` directa.** El repositorio no depende de `pg`; si depende de
+  `@supabase/supabase-js`. Y el secreto que necesita CI es la clave de `service_role`, no la
+  contrasena de la base. Ademas, las conexiones directas de Supabase van por IPv6 y el runner de
+  GitHub no tiene IPv6: habria que mantener la URL del pooler.
+- **Workflow aparte.** El disparador que de verdad importa es `schedule` (diario, 13:00 UTC):
+  una funcion aplicada por MCP **no deja cambio en el repositorio**, asi que ningun `push` ni
+  `PR` la delataria. Un `schedule` dentro de `ci-web.yml` arrastraria cada dia al `typecheck` y a
+  las dos matrices de zonas horarias. Tampoco lleva filtro `paths`, por lo mismo.
+- **Sin secretos: se salta, no falla.** Un `pull_request` desde un fork no recibe `secrets`. El
+  script sale 0 imprimiendo por que se salto y que variables faltan. Ruidoso a proposito, para
+  que nadie lo confunda con un verde.
+- **La lista blanca vive en un solo archivo.** `scripts/lista-blanca-current-date.json` lo leen
+  **tanto** el script de CI **como** `diaDeLaOrganizacionEnPostgres.test.ts`. Dos copias de una
+  lista blanca divergen, y la que divergiera seria justo la que deja pasar la intrusa. Guarda
+  **firmas completas**, no nombres: `save_exchange_rates` tiene dos sobrecargas (por nombre serian
+  6 entradas para 7 filas) y una sobrecarga nueva con `CURRENT_DATE` pasaria inadvertida.
+
+#### Como se corre en local
+
+```bash
+node scripts/verificar-current-date-en-postgres.mjs
+```
+
+Lee `.env.local` (`NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`) si existe; si no, se
+salta con aviso y sale 0. No escribe nada: la RPC es `stable` y solo lee catalogos.
+
+**Salida real, con las credenciales de `.env.local`:**
+
+```
+  Inventario CURRENT_DATE: OK - 7 funciones, las 7 del ADR-004.
+    . auto_generate_missing_rates()
+    . fill_historical_rates_real_api()
+    . fill_missing_currency_dates()
+    . insert_fallback_rates()
+    . save_exchange_rates(integer,uuid,jsonb,text)
+    . save_exchange_rates(integer,uuid,jsonb,text,bigint)
+    . update_global_exchange_rates(jsonb,text,bigint,text,text)
+
+exit=0
+```
+
+**Salida real simulando un fork** (copia del script en un arbol sin `.env.local` y sin variables
+de entorno):
+
+```
+  Inventario CURRENT_DATE: SALTADO
+  Faltan credenciales: SUPABASE_URL (o NEXT_PUBLIC_SUPABASE_URL) y SUPABASE_SERVICE_ROLE_KEY.
+  No es un fallo. Un fork no tiene los secretos del proyecto ...
+
+exit=0
+```
+
+### Red
+
+`src/__tests__/timezone/diaDeLaOrganizacionEnPostgres.test.ts`:
+
+- `fn_emitir_acciones` entra en el mapa `CONTRATOS` (firma exacta, `SECURITY DEFINER`,
+  `porSucursal: false` con el porque escrito al lado).
+- La migracion nueva entra en `MIGRACIONES_FASE_D`: se le exige reversion real y que no lleve
+  `DROP FUNCTION` ni `UPDATE`/`DELETE` de primer nivel.
+- `TASAS_EN_UTC_A_PROPOSITO` deja de estar escrita en el test y sale del JSON compartido. Tres
+  casos nuevos: la lista tiene exactamente 7 firmas sin repetidas, guarda firmas y no nombres
+  (`save_exchange_rates` dos veces), y apunta al ADR-004.
+- Bloque nuevo «la comprobacion contra la base viva sigue en pie»: el script existe y consulta la
+  RPC, se salta si faltan credenciales, no lleva ninguna credencial escrita (ni un JWT ni una URL
+  de proyecto), el workflow corre el script y conserva el `schedule`/`cron`, las credenciales
+  llegan por `secrets`, y la migracion de la RPC tiene reversion y concede `execute` solo a
+  `service_role`.
+
+`npx jest src/__tests__/timezone`: **14 suites, 368 pruebas, todo en verde.**
+
+### Mutaciones
+
+**8 mutaciones, 8 detectadas, 0 supervivientes.** md5 de los 6 archivos identico antes y despues
+(copias y `mutar.mjs` en el scratchpad de sesion, `emitir-acciones/`).
+
+| # | Mutacion | Quien la mata | Veredicto |
+|---|---|---|---|
+| M1 | quitar `insert_fallback_rates()` de la lista blanca | el script sale **1** nombrando `public.insert_fallback_rates()` como intrusa; jest falla («exactamente 7 firmas») | muerta |
+| M2 | anadir a la lista blanca una firma que no existe | el script sale **1** («la lista blanca nombra 1 funcion que ya NO esta»); jest falla en 2 casos | muerta |
+| M3 | en el script, que la lista de intrusas sea siempre vacia | con el escenario de M1 el script pasa de **1** a **0**: un rojo se vuelve verde falso | muerta |
+| M4 | `~` (sensible a mayusculas) en vez de `~*` en la consulta | la linea real que tenia la funcion, `if not public.fn_is_period_open(v_org, current_date) then`, **no** casa con el regex sensible y si con el insensible. Las 7 de tasas escriben `CURRENT_DATE` en mayusculas, asi que el conteo hoy no cambiaria: la mutacion se habria comido **justo la intrusa de esta ronda** | muerta |
+| M5 | que la falta de secretos falle en vez de saltarse | la corrida tipo fork pasa de **0** a **1**; jest falla («el script se SALTA si faltan credenciales») | muerta |
+| M6 | quitar el `schedule`/`cron` del workflow | jest falla («el workflow ... tiene disparador programado») | muerta |
+| M7 | pegar una credencial (falsa) dentro del script | jest falla («el script no lleva ninguna credencial escrita») | muerta |
+| M8 | devolver `current_date` al cuerpo de `fn_emitir_acciones` en el `.sql` | jest falla en 2 casos («su definicion vigente no conserva CURRENT_DATE» y «resuelve el dia con las funciones de la fase A») | muerta |
+
+Matiz honesto sobre **M3**: con la lista blanca intacta, esa mutacion **no** se nota — no hay
+intrusa que reportar. Solo se nota en el escenario que el job existe para cubrir. Es la misma
+leccion de las tandas 4 y 5 de la fase B: una prueba que no elige el escenario a proposito no
+prueba nada.
+
+Matiz sobre **M4**: es la unica que no se aplico tocando un archivo, sino evaluando las dos
+formas del regex en la base (solo lectura), porque mutarla de verdad habria exigido DDL sobre la
+funcion viva.
+
+### NO VERIFICADO
+
+- `npx tsc --noEmit` **completo** y `next build`: no se ejecutan (el encargo los excluye por el
+  arbol compartido). El `tsc` **acotado** a los dos archivos de test tocados da **0 errores**.
+  Aviso para quien repita la medicion: un `tsconfig` acotado que viva fuera del repositorio
+  necesita `typeRoots` explicito, o `tsc` inventa 20 errores de «Cannot find name 'describe'» que
+  no existen.
+- ESLint sobre los archivos tocados: **salida vacia**. Se quito de paso un `readdirSync`
+  importado y no usado que ya estaba ahi. (`scripts/lista-blanca-current-date.json` no se pasa por
+  ESLint: es JSON y el parser de TS lo rechaza.)
+- El job de CI **no se ha ejecutado en GitHub Actions**: no hay push. Lo que si se ejecuto de
+  verdad, en local y contra la base real, son las dos rutas del script: con credenciales
+  (salida OK, exit 0) y sin ellas simulando un fork (salida SALTADO, exit 0). La ruta de fallo se
+  ejecuto ocho veces durante las mutaciones.
+- Falta dar de alta los `secrets` `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en el repositorio
+  de GitHub. **Mientras no esten, el job se saltara con aviso en cada ejecucion** — verde, pero
+  sin comprobar nada. Es el unico paso pendiente para que la red del encargo 2 este viva.
+- `get_advisors` (security): ni `fn_emitir_acciones` ni `fn_inventario_current_date` aparecen en
+  ningun aviso. Los 8 WARN y 1 INFO que hay son preexistentes y ajenos.
+- Nada probado en navegador. Ninguna escritura de datos: las tres pruebas en seco se abortan y no
+  hubo ni un `UPDATE` sobre datos reales.
+- Sin `git add`, `commit`, `push` ni cambio de rama.
+
+#### Nota de cierre (minutos despues, mismo encargo)
+
+Al repetir la ultima corrida, `npx jest src/__tests__/timezone` pasa de **14 suites / 368
+pruebas en verde** a **16 suites / 432 pruebas con 3 rojas**. Los tres fallos estan en
+`openFinanceYMonedas.test.ts`, un archivo que **no existia** al empezar la corrida anterior: lo
+creo otra sesion en paralelo mientras esta cerraba, junto con `pmsParkingReportes.test.ts` y
+`transporte.test.ts`. Es el mismo patron que produjo el addendum de la fase D.
+
+`diaDeLaOrganizacionEnPostgres.test.ts`, el archivo de este encargo, da **127 pruebas en verde**
+por separado y dentro del lote. Ningun rojo es de esta ronda.
+
+---
+
+## Fase B — tanda 7 (transporte) · 2026-09-23
+
+Viajes, manifiestos, envíos, tiquetes, tracking, rutas, `transportService` y `mis-envios`.
+Transporte es el módulo donde la cascada de ADR-001 más importa: un viaje sale de **una**
+sucursal, y esa sucursal puede estar en otra zona que la sede. Por eso aquí se pasa el
+`branch_id` del dato siempre que el dato lo tenga, y se anota como deuda cuando no lo tiene.
+
+### Recuento
+
+| | Antes | Después |
+|---|---:|---:|
+| Ocurrencias en las 11 rutas de la tanda | 27 | 0 |
+
+El inventario listaba 26 en 11 archivos. El barrido sobre las mismas rutas encontró **27**:
+las dos que faltaban son `tripsService.ts:511` (el «hoy» por defecto de `getTripStats`) y
+`mis-envios/page.tsx:330` (`created_at.split('T')[0]` sobre un **timestamptz**, que además
+es una de las idas y vueltas por cadena del §4 y no estaba anotada como tal). Las dos se
+arreglan en esta tanda.
+
+Lo que queda en estas rutas: cero. Fuera de ellas y dentro de transporte queda
+`src/components/transporte/incidentes/IncidentDialog.tsx:49`
+(`new Date().toISOString().slice(0, 16)` como valor por defecto de un
+`<input type="datetime-local">` para `transport_incidents.occurred_at`). **No pertenece a
+ninguna tanda del inventario** — se le escapó al barrido original, que buscaba
+`.split('T')[0]` — y por eso `src/components/transporte/**` no entra entero en el
+`overrides` de ESLint: solo `src/components/transporte/horarios/**`.
+
+### Tabla fila por fila
+
+| Archivo:línea | Destino real (tabla.columna · tipo) | Arreglo aplicado | Zona |
+|---|---|---|---|
+| `manifestsService.ts:294` | `dispatch_manifests.manifest_date` · **date** | `todayInTz(resolveTimezone(org, branch))` al duplicar | sucursal del manifiesto original |
+| `tripsService.ts:199` | `trips.trip_date` · **date**, y el `trip_code` que sale de él | `todayInTz(...)`; el código deja de contradecir su propia fecha | `trip.branch_id` |
+| `tripsService.ts:511` | filtro `trips.trip_date = hoy` · date | `todayInTz(...)` | `branchId` de la firma |
+| `shipmentsService.ts:424` | `shipments.created_at` · **timestamptz** ⚠ | `getDayRange` + comparación de instantes, en vez de `created_at.startsWith(díaUTC)` | `branchId` de la firma |
+| `shipmentsService.ts:463` | filtro `trips.trip_date >= hoy` · date | `todayInTz(...)` | organización (**deuda**) |
+| `ticketsService.ts:208` | `trip_tickets.created_at` · **timestamptz** ⚠ | `getDayRange`: `gte`/`lte` con offset real, antes `día + 'T00:00:00'` sin offset y sin cerrar por arriba | organización (**deuda**) |
+| `ticketsService.ts:231` | filtro `trips.trip_date >= hoy` · date | `todayInTz(...)` | organización (**deuda**) |
+| `trackingService.ts:147` | `transport_events.event_time` · **timestamptz** ⚠ | `getDayRange`; antes era una cadena de día contra un instante | organización |
+| `transportRoutesService.ts:661` | generación de `trips` desde `route_schedules` | iteración por `sumarDiasAlDia` y día de la semana por `diaDeLaSemanaDelDia` | ninguna (días calendario puros) |
+| `transportService.ts:216-220` | rango del tablero sobre `trip_date` · date y `created_at` · **timestamptz** ⚠ | `toPlainDate(fecha, zona)` / `todayInTz`, y `getDateRange` para los `created_at` de `shipments` y `trip_tickets` | sucursal del filtro |
+| `transportService.ts:333` | filtro `trips.trip_date >= hoy` · date | `todayInTz(...)` | `branchId` de la firma |
+| `transportService.ts:577` | `vehicles.*_expiry <= hoy + N` · date | `sumarDiasAlDia(todayInTz(zona), N)` | organización |
+| `transportService.ts:720` | `driver_credentials.license_expiry` / `.medical_certificate_expiry <= hoy + N` · date | ídem | organización (la tabla no tiene organización propia) |
+| `viajes/page.tsx:99` | filtro `trip_date` desde el datepicker | `toPlainDate(fecha, zonaDelFiltro)` | sucursal seleccionada en el filtro |
+| `viajes/page.tsx:193` | `trips.trip_date` de mañana (duplicar viaje) | `sumarDiasAlDia(todayInTz(zonaDelViaje), 1)` | `trip.branch_id` |
+| `GenerateTripsDialog.tsx:44` | fin del rango de generación | `sumarDiasAlDia(hoy, 7)` | contexto de la organización |
+| `mis-envios/page.tsx:286-312` | rangos del filtro (hoy, ayer, 7/15/30 días, personalizado) | aritmética de día calendario sobre `todayInTz(timezone)` | organización |
+| `mis-envios/page.tsx:330` | `shipments.created_at` · **timestamptz** ⚠ | `plainDayOfInstant(created_at, zonaDeSuSucursal)` | `shipment.branch_id`, fila a fila |
+| `tracking/page.tsx:103` | nombre del CSV de descarga | `getToday()` | contexto de la organización |
+
+Columnas `timestamptz` de esta tanda (las marcadas ⚠): en las cinco se arregla **escritura y
+lectura en el mismo cambio**, como manda la regla de oro del §6 del inventario. Ninguna es
+una escritura de dato: son filtros y conteos, así que la «ida» es el filtro y la «vuelta» es
+la comparación del resultado. En `mis-envios` las dos mitades estaban en la misma función y
+se cancelaban entre sí; arreglar solo una habría corrido el filtro un día.
+
+### Verificación del esquema por MCP (antes de tocar una sola consulta)
+
+- `trips.trip_date` y `dispatch_manifests.manifest_date`: `date`. Ambas tablas tienen
+  `branch_id`.
+- `shipments`: `branch_id` sí; `created_at` **timestamptz**; `expected_pickup_date` y
+  `expected_delivery_date` `date`.
+- `trip_tickets`: tiene `organization_id`, **no** tiene `branch_id`. La sucursal está en el
+  viaje. `created_at` es **timestamptz**.
+- `transport_events`: tiene `organization_id`, **no** `branch_id`; `event_time` es
+  **timestamptz**.
+- `route_schedules`: `organization_id`, sin `branch_id`; `valid_from`/`valid_until` `date`;
+  `departure_time`/`arrival_time` son `time without time zone`.
+- `driver_credentials`: **no tiene ni `organization_id` ni `branch_id`**. Se llega a la
+  organización por `employment_id → employments → organization_members`, que es justo lo
+  que hace la política RLS de la tabla y el filtro en Node de `getDriversWithExpiringDocs`.
+- `drivers`: **confirmado que no existe**, como decía el inventario. Ningún archivo de esta
+  tanda la consulta; el servicio de transporte usa `driver_credentials`.
+- `vehicles`: `branch_id` sí; columnas de vencimiento `soat_expiry`, `techno_expiry`,
+  `insurance_expiry`, `operating_card_expiry`, todas `date`.
+
+### Deuda anotada
+
+1. **`vehicles.tech_review_expiry` no existe.**
+   `transportService.getVehiclesWithExpiringDocs` construye
+   `.or('soat_expiry.lte.X,tech_review_expiry.lte.X,insurance_expiry.lte.X')`. La columna
+   real es **`techno_expiry`**. PostgREST rechaza la consulta entera, así que la función
+   **lanza siempre**: hoy no vigila ningún documento de vehículo. No se corrige aquí porque
+   cambia qué documentos se vigilan y eso no es zona horaria; queda el aviso en el propio
+   archivo, junto a la línea. Es el mismo patrón que `drivers` y `space_blocks`: código que
+   apunta a un esquema que no está.
+2. **Tres «hoy» que no pueden usar la sucursal.** `shipmentsService.getTrips`,
+   `ticketsService.getTrips` y `ticketsService.getTicketStats` listan o cuentan de toda la
+   organización: no hay `branch_id` que pasar (en `trip_tickets` ni siquiera existe la
+   columna). La zona es la de la organización. Si algún día el selector de viajes filtra
+   por sucursal, esos tres «hoy» deben pasar a la sucursal.
+3. **`trackingService.getTrackingStats` no filtra por `organization_id`** en las cuatro
+   consultas a `transport_events` (total, de hoy, por tipo). La RLS de la tabla acota por
+   pertenencia, así que no hay fuga a otro inquilino, pero un usuario que pertenezca a dos
+   organizaciones ve la suma de las dos. Fuera del alcance de la fase; anotado.
+4. **`mis-envios`, presets de 7/15/30 días.** El rango es `[hoy − N, hoy)`: **excluye hoy**.
+   Se ha conservado la semántica exacta al migrar (la tanda arregla la zona, no el rango),
+   pero «últimos 7 días» sin el día de hoy parece un error de producto, no de zona.
+5. **`IncidentDialog.tsx:49`**, ya descrito arriba: `toISOString().slice(0, 16)` para el
+   valor por defecto de `transport_incidents.occurred_at`. No está en ninguna tanda.
+
+### Dos defectos del propio guardarraíl de ESLint, encontrados al añadir las rutas
+
+Al añadir las rutas de la tanda con `error` y comprobar que la regla saltaba, resultó que
+**no saltaba nunca, en ningún archivo del repositorio**:
+
+1. **Los selectores no casaban con el AST.** Eran
+   `CallExpression[callee.object.property.name='toISOString'][callee.property.name='split']`.
+   En `new Date().toISOString().split('T')`, el `callee.object` es la **llamada**
+   `new Date().toISOString()`, que no tiene `.property`: tiene `.callee.property`. El
+   selector correcto es
+   `CallExpression[callee.property.name='split'][callee.object.callee.property.name='toISOString']`.
+   Comprobado con un archivo de sonda: con el selector viejo, 0 avisos; con el nuevo, 2.
+2. **El bloque `src/**` con `warn` está declarado DESPUÉS del bloque con `error`.** En
+   ESLint gana el último `override` que casa, así que ese `warn` pisaba el `error` de todos
+   los directorios ya migrados. Es decir: aunque los selectores hubieran funcionado, todo
+   habría sido `warn`.
+
+Arreglado el (1), que es condición necesaria para que cualquier ruta en `error` signifique
+algo. Para el (2) **no se ha reordenado el bloque histórico**: hacerlo pondría en `error`
+de golpe unas 16 violaciones que siguen vivas dentro de esos directorios (nombres de
+descarga de las tandas 12 y 13, sobre todo) y rompería el `lint` de módulos que no son de
+esta tanda. En su lugar, las rutas de la tanda 7 van en un **bloque propio al final**, que
+por orden gana al `src/**`. Verificado inyectando una violación en `trackingService.ts`:
+sale como `error`. Cuando las tandas 12 y 13 cierren los nombres de descarga, el bloque
+histórico se puede mover detrás del `src/**` y fundirse con este.
+
+Rutas añadidas (bloque nuevo, `no-restricted-syntax` y `no-restricted-imports` en `error`):
+`src/app/app/transporte/**`, `src/components/transporte/horarios/**`,
+`src/lib/services/fiscalCalendar.ts`, `manifestsService.ts`, `shipmentsService.ts`,
+`ticketsService.ts`, `trackingService.ts`, `transportRoutesService.ts`,
+`transportService.ts`, `tripsService.ts`.
+
+### El bug de la recurrencia semanal
+
+`getScheduleDates` no era un caso de zona de organización: era un caso de mezclar dos
+relojes en la misma función. `new Date('2026-09-23')` se interpreta como medianoche **UTC**,
+pero `current.getDay()` devuelve el día de la semana **local**. En cualquier navegador al
+oeste de Greenwich esos dos no son el mismo día, así que un horario «los miércoles»
+generaba los viajes del **martes**. Un día de la semana de un día calendario no depende de
+ninguna zona, así que el arreglo no mete zona: mete `diaDeLaSemanaDelDia(plainDate)` en
+`fiscalCalendar.ts`, aritmética entera sobre `Date.UTC`, hermana de `sumarDiasAlDia`. La
+iteración y el recorte por vigencia pasan igualmente a comparación de cadenas `YYYY-MM-DD`.
+
+### Red
+
+`src/__tests__/timezone/transporte.test.ts` — 19 casos, con el doble de PostgREST
+(`dobleSupabase.ts`) que registra tabla, operación, payload y filtros: sin eso no se puede
+afirmar *qué valor se escribe* ni *con qué extremos se filtra*. Reloj falso en todos.
+
+Casos que cubren lo que pedía el encargo:
+
+- **UTC**: el runtime por defecto de `npm run test:tz-utc`.
+- **`America/Bogota`**: el mismo instante que da el día 24 en Katmandú sigue siendo el 23 en
+  Bogotá.
+- **DST (`Europe/Madrid`)**: la jornada del **25 de octubre de 2026** dura 25 horas y sus
+  dos extremos llevan offsets **distintos** — `2026-10-25T00:00:00.000+02:00` y
+  `2026-10-25T23:59:59.999+01:00` —; y un rango del 20 al 30 de octubre empieza en `+02:00`
+  y termina en `+01:00`. También el horizonte de 30 días que cruza el cambio: sumar
+  30 × 24 h desde el 20 de octubre a las 23:30 UTC cae el 19 de noviembre, no el 20.
+- **Offset no entero (`Asia/Kathmandu`, +05:45)**: el manifiesto duplicado a las 19:00 UTC
+  se fecha el **24**, y el rango del día lleva `+05:45`, no `+06:00` ni `Z`. Es el único
+  caso que descarta una implementación «por horas enteras».
+- **La sucursal manda**: el mismo envío cuenta como de hoy o de mañana según esté su
+  sucursal en Bogotá o en Katmandú, y las pruebas comprueban además **con qué identidad** se
+  llamó a `resolveTimezone` (organización *y* `branch_id`), que es el contrato de ADR-003.
+- **Prefijo de cadena contra instante**: tres envíos alrededor de la medianoche de Bogotá.
+  El criterio viejo contaba 1 (el de ayer, porque su cadena UTC empieza por el día de hoy);
+  el nuevo cuenta 2 (los dos que de verdad son de hoy).
+
+`npx jest src/__tests__/timezone` verde. El archivo nuevo pasa en las **seis** zonas del
+`test:tz-all` (UTC, Bogotá, Madrid, Katmandú, Santiago, Ciudad de México): 526 pruebas, 16
+suites, verde en las seis.
+
+### Mutaciones
+
+**12 mutaciones, 12 muertas, 0 supervivientes**, y el md5 de cada uno de los ocho archivos
+de servicio idéntico antes y después (script y resultados en el scratchpad de sesión,
+`.../scratchpad/tz-t7/mutar.py` y `mutaciones.json`; `restauracion_ok: true`).
+
+Volver al día UTC del manifiesto · ignorar la sucursal al duplicar el manifiesto · código de
+viaje con el día UTC · estadísticas de viajes que ignoran la sucursal · envíos de hoy por
+prefijo de cadena · tiquetes filtrados con una cadena sin offset · tracking filtrado con un
+día en crudo contra un `timestamptz` · datepicker leído en UTC · horizonte de vencimientos
+en bloques de 24 h · recurrencia semanal con `new Date(dia).getDay()` · tablero que ignora
+la sucursal seleccionada · vigencia del horario recortada con `Date` en vez de con días.
+
+Once mueren con `TZ=UTC`. La duodécima —la del `getDay()` local— **solo muere con
+`TZ=America/Bogota`**, y es lógico: bajo `TZ=UTC` el código viejo acierta por casualidad,
+porque el reloj del proceso coincide con el reloj en el que se interpretó la cadena. Es la
+misma lección de las tandas 2 y 4 en otra forma: **una prueba de zona horaria que no elige
+el instante —o la zona del proceso— a propósito no prueba nada.** Queda anotado en la
+propia prueba y en el guion de mutaciones, que declara para cada mutación en qué zona debe
+morir.
+
+### NO VERIFICADO
+
+- `npx tsc --noEmit` **completo** y `next build`: no se ejecutan (el encargo los excluye).
+  El `tsc` acotado a los 12 archivos tocados más la prueba nueva da **0 errores**.
+  Comprobado que ese `tsc` acotado sí detecta errores —se le inyectó uno a propósito y lo
+  reportó—, para descartar el falso «0 errores» por falta de heap ya anotado en sesiones
+  anteriores.
+- ESLint: **0 problemas nuevos**. En los archivos siguen los 51 errores **preexistentes**
+  de `no-explicit-any`, `no-unused-vars` y un `prefer-const` en `manifestsService`, y un
+  aviso de `react-hooks/exhaustive-deps` en `GenerateTripsDialog` que ya estaba. El recuento
+  total de problemas sobre estas rutas es el mismo antes y después: 52.
+- **Las cuatro páginas cliente no tienen prueba unitaria.** El proyecto no tiene
+  `@testing-library` ni entorno `jsdom` (`jest.config.js` usa `testEnvironment: 'node'`), y
+  montar uno para esta tanda es más cambio que la tanda. `viajes/page.tsx`,
+  `mis-envios/page.tsx`, `tracking/page.tsx` y `GenerateTripsDialog.tsx` quedan cubiertos
+  solo por `tsc`, por el `error` de ESLint y por las pruebas de los helpers que ahora usan
+  (`sumarDiasAlDia`, `toPlainDate`, `plainDayOfInstant`, `getDayRange`). Es la mayor
+  debilidad de esta tanda y conviene decirlo así.
+- Nada probado en navegador.
+- **Ninguna escritura en la base de datos y ninguna migración**: la tanda se resuelve en
+  código. Del MCP solo se usó `execute_sql` contra `information_schema` y `pg_policies`,
+  en lectura.
+- **Rojos ajenos en el árbol compartido.** `npm run test:tz-all` no llega al final por
+  `src/__tests__/timezone/openFinanceYMonedas.test.ts` (1 caso, año de la concentración de
+  pagos), que es trabajo **sin commitear de otra sesión** (tandas 9 y 10: el archivo de
+  prueba está sin rastrear y `treasuryService`/`balanceService`/`transactionSyncService`
+  aparecen modificados). En una segunda pasada con `TZ=America/Bogota` cayó además un caso
+  de `pmsParkingReportes.test.ts` (tandas 6 y 8) que en la pasada anterior estaba verde, y
+  `timezoneFallback.test.ts` falló una vez en lote y pasó en solitario. Ninguno toca
+  archivos de esta tanda. Excluyendo `openFinanceYMonedas`, las seis zonas dan verde.
+- Sin `git add`, `commit`, `push`, `stash` ni cambio de rama.

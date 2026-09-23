@@ -1,6 +1,8 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateDisplay';
 
 // Interfaces
 export interface DispatchManifest {
@@ -290,8 +292,16 @@ class ManifestsService {
     const original = await this.getManifestById(manifestId);
     if (!original) throw new Error('Manifiesto no encontrado');
 
+    // `dispatch_manifests.manifest_date` es `date` (verificado en
+    // information_schema): el dia de despacho del manifiesto copiado es HOY en
+    // la zona de la SUCURSAL duena del manifiesto original, no el dia UTC ni el
+    // del navegador de quien pulsa «duplicar». Un despacho de una sucursal al
+    // este de Greenwich duplicado a las 20:00 de Bogota se guardaba con el dia
+    // siguiente y aparecia fuera de la hoja de ruta del dia.
+    const zona = await resolveTimezone(original.organization_id, original.branch_id ?? null);
+
     const newManifest = await this.createManifest(original.organization_id, {
-      manifest_date: new Date().toISOString().split('T')[0],
+      manifest_date: todayInTz(zona),
       manifest_type: original.manifest_type,
       carrier_id: original.carrier_id,
       vehicle_id: original.vehicle_id,

@@ -1,6 +1,7 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import { diaDeLaSemanaDelDia, sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
 
 export interface TransportRoute {
   id: string;
@@ -643,23 +644,31 @@ export const transportRoutesService = {
     return result;
   },
 
-  // Obtener fechas según tipo de recurrencia
+  // Obtener fechas según tipo de recurrencia.
+  //
+  // Todo lo que entra y sale de aqui son DIAS CALENDARIO `YYYY-MM-DD`
+  // (`route_schedules.valid_from`/`.valid_until` y `trips.trip_date` son `date`,
+  // verificado en information_schema), asi que no hay ninguna zona que
+  // resolver: la iteracion es aritmetica de dias y la comparacion, de cadenas
+  // `YYYY-MM-DD`, que ordenan igual que las fechas.
+  //
+  // Lo que habia antes pasaba por `new Date(dia)`, que interpreta la cadena en
+  // **UTC**, y luego leia `current.getDay()`, que es el dia de la semana
+  // **local**. En cualquier navegador al oeste de Greenwich esos dos no son el
+  // mismo dia: un horario semanal «los miercoles» generaba los viajes del
+  // martes, y `current.setDate(+1)` sobre ese `Date` ademas se salta o repite
+  // un dia al cruzar un cambio de horario.
   getScheduleDates(schedule: RouteSchedule, startDate: string, endDate: string): string[] {
     const dates: string[] = [];
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const validFrom = new Date(schedule.valid_from);
-    const validUntil = schedule.valid_until ? new Date(schedule.valid_until) : null;
 
-    // Ajustar fechas según vigencia del horario
-    if (start < validFrom) start.setTime(validFrom.getTime());
-    if (validUntil && end > validUntil) end.setTime(validUntil.getTime());
-
-    const current = new Date(start);
+    // Recorte por la vigencia del horario, sobre dias calendario.
+    let current = startDate < schedule.valid_from ? schedule.valid_from : startDate;
+    const end =
+      schedule.valid_until && endDate > schedule.valid_until ? schedule.valid_until : endDate;
 
     while (current <= end) {
-      const dateStr = current.toISOString().split('T')[0];
-      const dayOfWeek = current.getDay();
+      const dateStr = current;
+      const dayOfWeek = diaDeLaSemanaDelDia(dateStr);
 
       switch (schedule.recurrence_type) {
         case 'daily':
@@ -677,7 +686,7 @@ export const transportRoutesService = {
           break;
       }
 
-      current.setDate(current.getDate() + 1);
+      current = sumarDiasAlDia(current, 1);
     }
 
     return dates;

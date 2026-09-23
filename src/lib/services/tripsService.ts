@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateDisplay';
 
 // =====================================================
 // TIPOS E INTERFACES
@@ -196,7 +198,14 @@ class TripsService {
   async createTrip(trip: Partial<TripWithDetails>): Promise<TripWithDetails> {
     // Generar código de viaje si no existe
     if (!trip.trip_code) {
-      const date = trip.trip_date || new Date().toISOString().split('T')[0];
+      // `trips.trip_date` es `date`. Cuando el llamador no lo trae, el viaje es
+      // «de hoy» — y hoy es el dia de la SUCURSAL que opera el viaje, que en
+      // transporte puede estar en otra zona que la sede principal. El codigo
+      // `VJ-AAAAMMDD-nnn` sale de esa misma fecha, asi que con el dia UTC un
+      // viaje creado a las 19:00 en Bogota se llamaba ya como el del dia
+      // siguiente y no coincidia con su propio `trip_date`.
+      const zona = await resolveTimezone(trip.organization_id ?? 0, trip.branch_id ?? null);
+      const date = trip.trip_date || todayInTz(zona);
       const dateCode = date.replace(/-/g, '');
       const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
       trip.trip_code = `VJ-${dateCode}-${random}`;
@@ -508,7 +517,10 @@ class TripsService {
   // ==================== ESTADÍSTICAS ====================
 
   async getTripStats(organizationId: number, date?: string, branchId?: number | null) {
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    // Sin fecha explicita, las estadisticas son las de HOY en la zona de la
+    // sucursal cuyos viajes se estan contando (`trips.branch_id`).
+    const zona = await resolveTimezone(organizationId, branchId);
+    const targetDate = date || todayInTz(zona);
 
     let query = supabase
       .from('trips')

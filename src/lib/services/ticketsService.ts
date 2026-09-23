@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateDisplay';
+import { getDayRange } from '@/lib/utils/dateRanges';
 
 // =====================================================
 // TIPOS E INTERFACES
@@ -205,13 +208,23 @@ class TicketsService {
   }
 
   async getTicketStats(organizationId: number) {
-    const today = new Date().toISOString().split('T')[0];
+    // `trip_tickets.created_at` es **timestamptz** y `trip_tickets` NO tiene
+    // `branch_id` (verificado en information_schema): la sucursal esta en el
+    // viaje, no en el tiquete, asi que la zona es la de la organizacion.
+    //
+    // El filtro era `gte(diaUTC + 'T00:00:00')`, una cadena SIN offset: Postgres
+    // la interpreta en la zona del servidor, no en la de la organizacion. Con
+    // `getDayRange` se comparan instantes con offset real, y el rango se cierra
+    // por arriba: antes, «hoy» incluia todo el futuro.
+    const zona = await resolveTimezone(organizationId);
+    const { start, end } = getDayRange(todayInTz(zona), zona);
 
     const { data, error } = await supabase
       .from('trip_tickets')
       .select('status, payment_status, total')
       .eq('organization_id', organizationId)
-      .gte('created_at', `${today}T00:00:00`);
+      .gte('created_at', start)
+      .lte('created_at', end);
 
     if (error) throw error;
 
@@ -228,7 +241,10 @@ class TicketsService {
   }
 
   async getTrips(organizationId: number) {
-    const today = new Date().toISOString().split('T')[0];
+    // `trips.trip_date` es `date`. Listado de toda la organizacion: la zona es
+    // la de la organizacion (deuda anotada, igual que en `shipmentsService`).
+    const zona = await resolveTimezone(organizationId);
+    const today = todayInTz(zona);
     
     const { data, error } = await supabase
       .from('trips')

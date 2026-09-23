@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateDisplay';
+import { getDayRange } from '@/lib/utils/dateRanges';
 
 export interface TrackingEvent {
   id: string;
@@ -144,11 +147,22 @@ class TrackingService {
   }
 
   async getTrackingStats(organizationId: number): Promise<TrackingStats> {
-    const today = new Date().toISOString().split('T')[0];
+    // `transport_events.event_time` es **timestamptz** y la tabla NO tiene
+    // `branch_id` (verificado en information_schema): la zona es la de la
+    // organizacion. El filtro era `gte('event_time', 'AAAA-MM-DD')` con el dia
+    // UTC — una cadena de dia contra un instante, sin offset y sin cerrar por
+    // arriba: los eventos de la tarde caian en el dia siguiente y el conteo
+    // «de hoy» incluia tambien los del futuro.
+    const zona = await resolveTimezone(organizationId);
+    const { start, end } = getDayRange(todayInTz(zona), zona);
 
     const [allEventsResult, todayEventsResult, stoppedTripsResult, stoppedShipmentsResult] = await Promise.all([
       supabase.from('transport_events').select('reference_type', { count: 'exact', head: true }),
-      supabase.from('transport_events').select('id', { count: 'exact', head: true }).gte('event_time', today),
+      supabase
+        .from('transport_events')
+        .select('id', { count: 'exact', head: true })
+        .gte('event_time', start)
+        .lte('event_time', end),
       supabase.from('trips').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).in('status', ['delayed', 'incident']),
       supabase.from('shipments').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).in('status', ['pending', 'received']),
     ]);

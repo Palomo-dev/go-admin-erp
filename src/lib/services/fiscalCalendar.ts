@@ -111,6 +111,22 @@ export function sumarDiasAlDia(plainDate: string, dias: number): string {
 }
 
 /**
+ * Día de la semana de un día calendario: 0 = domingo … 6 = sábado, la misma
+ * numeración que `Date.prototype.getDay()` y que `route_schedules.days_of_week`.
+ *
+ * No recibe zona a propósito: que el 2026-09-23 sea miércoles es un hecho del
+ * calendario, no del reloj de nadie. Lo que sí dependía de la zona era el
+ * cálculo anterior, `new Date('2026-09-23').getDay()`: esa cadena se interpreta
+ * como medianoche **UTC**, así que en cualquier navegador al oeste de Greenwich
+ * el `Date` cae en el día anterior y `getDay()` devuelve martes. Un horario
+ * semanal «los miércoles» generaba entonces los viajes del martes.
+ */
+export function diaDeLaSemanaDelDia(plainDate: string): number {
+  const { year, month, day } = partesDelDia(plainDate);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
+/**
  * Días calendario entre dos días (`hasta − desde`). Enteros, sin horas y sin
  * zona: entre el 1 y el 3 hay 2 días, se haya cambiado el reloj o no.
  *

@@ -9,7 +9,7 @@ import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { enqueueOfflineSale, shouldCheckoutOffline, newLocalUuid, newSaleId } from '@/lib/offline/salesOutbox';
-import { buildCheckoutEnvelope, callCheckoutRpc, isCheckoutRpcAvailable } from '@/lib/offline/checkoutRpc';
+import { buildCheckoutEnvelope, callCheckoutRpc } from '@/lib/offline/checkoutRpc';
 import { enqueueOfflineCustomer, findLocalCustomerDuplicate, type OfflineCustomerPayload } from '@/lib/offline/customersOutbox';
 import { posOfflineReads } from '@/lib/offline/posOfflineReads';
 import { isDesktop } from '@/lib/utils/desktop';
@@ -1801,7 +1801,6 @@ export class POSService {
 
       // Si el carrito ya tiene sale_id (viene de hold_with_debt), actualizar la venta existente
       const isDebtCheckout = !!(cart.sale_id && cart.invoice_id);
-      let saleData: any;
 
       // commission_amount de la factura (misma fórmula en la RPC y en el respaldo)
       const invoiceCommissionAmount = checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0
@@ -1816,9 +1815,11 @@ export class POSService {
       // o entra todo o no entra nada, idempotente por `sale_id`. El cobro de
       // una deuda (`cart.sale_id` + `cart.invoice_id`) actualiza una venta
       // que ya existe y sigue por el camino de siempre.
-      // Si la RPC no existe en este entorno (PGRST202), `callCheckoutRpc`
-      // devuelve null y se sigue con el respaldo de la fase 4B.
-      if (!isDebtCheckout && isCheckoutRpcAvailable() !== false) {
+      // Una venta nueva SOLO se guarda por la RPC. Si no está disponible, la
+      // venta falla con un error visible: degradarse en silencio a N inserts
+      // en transacciones separadas es lo que dejaba el asiento a merced del
+      // orden de llegada (F-48, docs/decisiones/ADR-CC-002).
+      if (!isDebtCheckout) {
         const rpcBranchId = cart.branch_id || getCurrentBranchId();
         if (!rpcBranchId) {
           throw new Error('No hay sucursal seleccionada: la venta no se guardó.');
@@ -1852,145 +1853,41 @@ export class POSService {
           await this.removeCart(cart.id);
           return { ...rpcResult.sale, replayed: rpcResult.replayed };
         }
+        throw new Error(
+          'No se pudo registrar la venta: el servicio de cobro no está disponible. '
+          + 'La venta NO se guardó; inténtalo de nuevo en unos segundos.',
+        );
       }
 
-      // ── Respaldo temporal (fase 4B): N inserts desde el cliente ──
-      // Solo se llega aquí si la RPC `pos_checkout_v1` no existe en el
-      // entorno (o en el cobro de una deuda). Se conserva hasta que la
-      // migración esté en producción en todos los entornos; después se
-      // elimina en favor de la RPC.
-      //
-      // Idempotencia por id de cliente: si el POS trajo `saleId` y esa venta
-      // ya existe en la organización (reproducción repetida de un sobre
-      // offline, o un intento anterior que murió a mitad), se reutiliza y
-      // cada bloque hijo comprueba por `sale_id` qué existe antes de
-      // insertar. Sin `saleId` (navegador) no se hace ninguna consulta extra.
-      let resumingExisting = false;
-      const clientSaleId = !isDebtCheckout && checkoutData.saleId ? checkoutData.saleId : null;
-      const saleTimestamp = checkoutData.createdAt || new Date().toISOString();
-      if (clientSaleId) {
-        const { data: existingSale, error: existingError } = await supabase
-          .from('sales')
-          .select('*')
-          .eq('id', clientSaleId)
-          .eq('organization_id', cart.organization_id)
-          .maybeSingle();
-        if (existingError) throw existingError;
-        if (existingSale) {
-          console.log(`♻️ Venta ${clientSaleId} ya existe: se completa lo que falte sin duplicar`);
-          saleData = existingSale;
-          resumingExisting = true;
-        }
-      }
+      // ── Cobro de una deuda ──
+      // Solo el cobro de una deuda (`cart.sale_id` + `cart.invoice_id`) llega
+      // aquí: la venta, sus líneas, el stock y la factura ya existen desde que
+      // se fió. Se actualizan venta y factura, y se registran comisión, pagos
+      // y propina.
+      console.log(`💰 Checkout de deuda existente - sale_id: ${cart.sale_id}, invoice_id: ${cart.invoice_id}`);
+      const { data: updatedSale, error: saleError } = await supabase
+        .from('sales')
+        .update({
+          balance: Math.max(0, finalTotal - checkoutData.total_paid),
+          status: checkoutData.total_paid >= finalTotal ? 'paid' : 'pending',
+          payment_status: checkoutData.total_paid >= finalTotal ? 'paid' : 'partial',
+          tax_included: checkoutData.tax_included || false,
+          tax_breakdown: checkoutData.tax_breakdown || null,
+          salesperson_id: checkoutData.salesperson_id || null,
+          commission_rate: checkoutData.commission_rate || 0,
+          commission_type: checkoutData.commission_type || 'none',
+          delivery_fee: shippingFee > 0 ? shippingFee : 0,
+          tip_amount: tipAmount > 0 ? tipAmount : null
+        })
+        .eq('id', cart.sale_id)
+        .select()
+        .single();
 
-      if (resumingExisting) {
-        // Nada que insertar en `sales`: ya está.
-      } else if (isDebtCheckout) {
-        console.log(`💰 Checkout de deuda existente - sale_id: ${cart.sale_id}, invoice_id: ${cart.invoice_id}`);
-        const { data: updatedSale, error: saleError } = await supabase
-          .from('sales')
-          .update({
-            balance: Math.max(0, finalTotal - checkoutData.total_paid),
-            status: checkoutData.total_paid >= finalTotal ? 'paid' : 'pending',
-            payment_status: checkoutData.total_paid >= finalTotal ? 'paid' : 'partial',
-            tax_included: checkoutData.tax_included || false,
-            tax_breakdown: checkoutData.tax_breakdown || null,
-            salesperson_id: checkoutData.salesperson_id || null,
-            commission_rate: checkoutData.commission_rate || 0,
-            commission_type: checkoutData.commission_type || 'none',
-            delivery_fee: shippingFee > 0 ? shippingFee : 0,
-            tip_amount: tipAmount > 0 ? tipAmount : null
-          })
-          .eq('id', cart.sale_id)
-          .select()
-          .single();
-
-        if (saleError) throw saleError;
-        saleData = updatedSale;
-      } else {
-        // Crear la venta en la base de datos (flujo normal)
-        const { data: newSale, error: saleError } = await supabase
-          .from('sales')
-          .insert({
-            // Id generado en el cliente (fase 4B); sin él, lo pone la BD.
-            ...(clientSaleId ? { id: clientSaleId, created_at: saleTimestamp } : {}),
-            organization_id: cart.organization_id,
-            branch_id: getCurrentBranchId(),
-            customer_id: cart.customer_id,
-            user_id: checkoutData.userId || (await supabase.auth.getUser()).data.user?.id,
-            subtotal: effectiveSubtotal,
-            tax_total: effectiveTaxTotal,
-            discount_total: effectiveDiscount,
-            total: finalTotal,
-            balance: Math.max(0, finalTotal - checkoutData.total_paid),
-            status: checkoutData.total_paid >= finalTotal ? 'paid' : 'pending',
-            payment_status: checkoutData.total_paid >= finalTotal ? 'paid' : 'partial',
-            tax_included: checkoutData.tax_included || false,
-            tax_breakdown: checkoutData.tax_breakdown || null,
-            sale_date: saleTimestamp,
-            salesperson_id: checkoutData.salesperson_id || null,
-            commission_rate: checkoutData.commission_rate || 0,
-            commission_type: checkoutData.commission_type || 'none',
-            delivery_fee: shippingFee > 0 ? shippingFee : 0,
-            tip_amount: tipAmount > 0 ? tipAmount : null
-          })
-          .select()
-          .single();
-
-        if (saleError) {
-          // 23505: otra reproducción insertó el mismo id entre el SELECT y el
-          // INSERT. Se toma la existente y se sigue en modo "completar".
-          if (clientSaleId && (saleError as { code?: string }).code === '23505') {
-            const { data: raced } = await supabase
-              .from('sales')
-              .select('*')
-              .eq('id', clientSaleId)
-              .eq('organization_id', cart.organization_id)
-              .maybeSingle();
-            if (!raced) throw saleError;
-            saleData = raced;
-            resumingExisting = true;
-          } else {
-            throw saleError;
-          }
-        } else {
-          saleData = newSale;
-        }
-      }
-
-      // Al completar una venta existente, cada bloque hijo pregunta por
-      // `sale_id` antes de insertar. Fuera de ese modo no cuesta ninguna
-      // consulta (devuelve false sin ir a la BD).
-      const childExists = async (table: string, filters: Record<string, string | number>): Promise<boolean> => {
-        if (!resumingExisting) return false;
-        const { count, error } = await supabase
-          .from(table)
-          .select('id', { count: 'exact', head: true })
-          .match(filters);
-        if (error) throw error;
-        return (count || 0) > 0;
-      };
-
-      // Registrar el uso de las promociones aplicadas (contador que muestra la
-      // pantalla de promociones). Solo en ventas nuevas: el checkout de deuda
-      // ya contó cuando se creó la venta. RPC atómica (usage_count + 1 en un
-      // UPDATE), filtrada por organización; con RLS, el cajero debe ser miembro
-      // activo. Es estadística: si falla, se registra y la venta sigue.
-      // Al completar una venta existente no se vuelve a contar (no hay forma
-      // de saber si ya se contó): límite documentado de la fase 4B.
-      if (!isDebtCheckout && !resumingExisting && promocionesUsadas.length > 0) {
-        const { error: promoUsageError } = await supabase.rpc('increment_promotion_usage', {
-          p_organization_id: cart.organization_id,
-          p_promotion_ids: promocionesUsadas,
-        });
-        if (promoUsageError) {
-          console.warn('[posService] No se pudo registrar el uso de promociones:', promoUsageError);
-        }
-      }
+      if (saleError) throw saleError;
+      const saleData = updatedSale;
 
       // Crear registro de comisión si aplica
-      if (checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0 && checkoutData.commission_type !== 'none'
-          && !(await childExists('commissions', { source_type: 'sale', source_id: saleData.id }))) {
+      if (checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0 && checkoutData.commission_type !== 'none') {
         try {
           const { data: profileData } = await supabase
             .from('profiles')
@@ -2031,387 +1928,86 @@ export class POSService {
         }
       }
 
-      // Crear los items de venta (solo si no es checkout de deuda - ya fueron creados)
-      const saleItemsAlreadyExist = await childExists('sale_items', { sale_id: saleData.id });
-      if (!isDebtCheckout && !saleItemsAlreadyExist) {
-        const saleItems = cart.items.map((item, itemIdx) => {
-          const notesObj: Record<string, any> = { product_name: item.product?.name };
-          if (item.notes) notesObj.extra = item.notes;
-          if (item.modifiers && item.modifiers.length > 0) notesObj.modifiers = item.modifiers;
-
-          const calc = itemCalcs[itemIdx];
-
-          return {
-            sale_id: saleData.id,
-            product_id: item.product_id,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total: calc ? calc.total : (item.unit_price || 0) * (item.quantity || 1) - (item.discount_amount || 0),
-            tax_amount: calc ? calc.taxAmount : 0,
-            tax_rate: calc ? calc.taxRate : 0,
-            discount_amount: calc ? calc.discount : (item.discount_amount || 0),
-            notes: notesObj
-          };
-        });
-
-        const { error: itemsError } = await supabase
-          .from('sale_items')
-          .insert(saleItems);
-
-        if (itemsError) throw itemsError;
-      }
-
-      // Descontar stock por cada item vendido (solo si no es deuda - ya fue descontado)
-      // Al completar una venta existente, los movimientos ya registrados con
-      // source='sale' y source_id=<venta> marcan que este paso se hizo.
-      if (!isDebtCheckout && !(await childExists('stock_movements', { source: 'sale', source_id: saleData.id }))) {
-        try {
-        const fallbackBranchId = getCurrentBranchIdWithFallback();
-        if (!fallbackBranchId) {
-          console.warn('⚠️ No se pudo descontar stock: no hay branch_id seleccionado');
-        } else {
-          const stockResult = await stockMovementService.decrementOnSale(
-            cart.organization_id,
-            fallbackBranchId,
-            saleData.id,
-            cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price })),
-            'sale'
-          );
-          if (stockResult.errors.length > 0) {
-            console.warn('⚠️ Algunos items no descontaron stock:', stockResult.errors);
-          }
-          console.log(`📦 Stock descontado: ${cart.items.length - stockResult.skipped} items procesados`);
-        }
-        } catch (stockError) {
-          console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
-        }
-
-        // Vender seriales si hay productos serializados con seriales seleccionados.
-        // Va atado al descuento de stock: al completar una venta cuyo stock
-        // ya se descontó, los seriales ya se marcaron como vendidos.
-        if (checkoutData.serial_selections) {
-          try {
-            const serialUserId = await getCurrentUserId();
-            for (const item of cart.items) {
-              const serialIds = checkoutData.serial_selections[item.product_id];
-              if (!serialIds || serialIds.length === 0) continue;
-
-              const { success: serialOk, errors: serialErrors } = await serialTrackingService.sellSerials(
-                serialIds,
-                {
-                  sale_id: saleData.id,
-                  customer_id: cart.customer_id,
-                  sold_by_user_id: serialUserId ?? undefined,
-                  sale_channel: 'pos',
-                  price_at_sale: item.unit_price,
-                  branch_id: cart.branch_id,
-                },
-                serialUserId ?? undefined
-              );
-
-              if (!serialOk) {
-                console.warn(`⚠️ Errores vendiendo seriales para producto ${item.product_id}:`, serialErrors);
-              } else {
-                console.log(`✅ ${serialIds.length} seriales vendidos para producto ${item.product_id}`);
-              }
-            }
-          } catch (serialError) {
-            console.warn('⚠️ Error vendiendo seriales (no bloquea la venta):', serialError);
-          }
-        }
-      }
-
-      // Crear o actualizar la factura (invoice_sales)
+      // Actualizar la factura existente de la deuda
       const baseCurrency = await this.getBaseCurrency();
-      let invoiceData: any = null;
-      let invoiceError: any = null;
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from('invoice_sales')
+        .update({
+          balance: saleData.balance,
+          status: saleData.balance > 0 ? 'partial' : 'paid',
+          tax_included: checkoutData.tax_included || false,
+          payment_method: payments.length > 0 ? payments[0].method : 'cash',
+          payment_terms: 0,
+          due_date: new Date().toISOString(),
+        })
+        .eq('id', cart.invoice_id)
+        .select()
+        .single();
 
-      // Al completar una venta existente: si ya tiene factura, se reutiliza
-      // (no se consume otro consecutivo).
-      let existingInvoice: Record<string, unknown> | null = null;
-      if (resumingExisting) {
-        const { data: foundInvoice, error: foundInvoiceError } = await supabase
-          .from('invoice_sales')
-          .select('*')
-          .eq('sale_id', saleData.id)
-          .eq('organization_id', cart.organization_id)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        if (foundInvoiceError) throw foundInvoiceError;
-        existingInvoice = foundInvoice;
-      }
-
-      if (existingInvoice) {
-        invoiceData = existingInvoice;
-      } else if (isDebtCheckout) {
-        // Actualizar factura existente de la deuda
-        const { data: updatedInvoice, error: updateInvError } = await supabase
-          .from('invoice_sales')
-          .update({
-            balance: saleData.balance,
-            status: saleData.balance > 0 ? 'partial' : 'paid',
-            tax_included: checkoutData.tax_included || false,
-            payment_method: payments.length > 0 ? payments[0].method : 'cash',
-            payment_terms: 0,
-            due_date: new Date().toISOString(),
-          })
-          .eq('id', cart.invoice_id)
-          .select()
-          .single();
-
-        invoiceData = updatedInvoice;
-        invoiceError = updateInvError;
-
-        if (updateInvError) {
-          console.error('Error updating debt invoice:', updateInvError);
-        } else {
-          console.log('Debt invoice updated successfully:', invoiceData.number);
-        }
+      if (invoiceError) {
+        console.error('Error updating debt invoice:', invoiceError);
       } else {
-        // Crear nueva factura (flujo normal)
-        const invoiceNumber = await this.generateInvoiceNumber();
-        const { data: newInvoice, error: newInvError } = await supabase
-          .from('invoice_sales')
-          .insert({
-            organization_id: cart.organization_id,
-            branch_id: getCurrentBranchId(),
-            customer_id: cart.customer_id,
-            sale_id: saleData.id,
-            number: invoiceNumber,
-            issue_date: saleTimestamp,
-            due_date: saleTimestamp,
-            currency: baseCurrency.code,
-            subtotal: effectiveSubtotal,
-            tax_total: effectiveTaxTotal,
-            total: finalTotal,
-            balance: saleData.balance,
-            status: saleData.balance > 0 ? 'partial' : 'paid',
-            tax_included: checkoutData.tax_included || false,
-            payment_method: payments.length > 0 ? payments[0].method : 'cash',
-            payment_terms: 0,
-            created_by: (await supabase.auth.getUser()).data.user?.id,
-            notes: `Factura generada automáticamente desde POS - Venta #${saleData.id}`,
-            salesperson_id: checkoutData.salesperson_id || null,
-            commission_rate: checkoutData.commission_rate || 0,
-            commission_type: checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0 ? (checkoutData.commission_type || 'salesperson') : 'none',
-            commission_method: checkoutData.commission_method || 'percentage',
-            commission_amount: invoiceCommissionAmount
-          })
-          .select()
-          .single();
-
-        invoiceData = newInvoice;
-        invoiceError = newInvError;
-
-        if (newInvError) {
-          console.error('Error creating invoice:', newInvError);
-        } else {
-          console.log('Invoice created successfully:', invoiceData.number);
-        }
+        console.log('Debt invoice updated successfully:', invoiceData.number);
       }
 
-      // Crear los pagos - asociar con la factura (invoice_sales)
-      //
-      // IMPORTANTE: los pagos se insertan ANTES de los invoice_items.
-      // El trigger fn_recalc_invoice_totals (en invoice_items) recalcula
-      // balance = total - pagos_completados. Si los items se insertan primero, el
-      // pago todavia no existe y el trigger escribe balance = total, pisando el
-      // balance correcto y dejando la factura como 'paid' con saldo pendiente.
+      // Pagos, asociados a la factura (o a la venta si la factura falló).
       const currentUser = await supabase.auth.getUser();
       const userId = currentUser.data.user?.id;
-
-      // Al completar una venta existente: los pagos se insertan uno a uno, así
-      // que un intento anterior pudo dejar solo algunos. Se cuentan los que ya
-      // hay (por factura o por venta) y se insertan únicamente los que faltan,
-      // en el mismo orden.
-      let paymentsAlreadyInserted = 0;
-      if (resumingExisting) {
-        const paymentFilters = invoiceData && !invoiceError
-          ? { source: 'invoice_sales', source_id: String(invoiceData.id) }
-          : { source: 'sale', source_id: String(saleData.id) };
-        const { count: paymentCount, error: paymentCountError } = await supabase
-          .from('payments')
-          .select('id', { count: 'exact', head: true })
-          .match(paymentFilters);
-        if (paymentCountError) throw paymentCountError;
-        paymentsAlreadyInserted = paymentCount || 0;
-      }
-
       const changeAmount = checkoutData.change || 0;
       let changeAssigned = false;
-      let paymentIndex = 0;
       for (const payment of payments) {
-        if (payment.amount > 0) {
-          const alreadyInserted = paymentIndex < paymentsAlreadyInserted;
-          paymentIndex++;
-          // El cambio se asigna al primer pago en efectivo, exista ya o no.
-          const takesChange = !changeAssigned && changeAmount > 0 && payment.method === 'cash';
-          if (takesChange) changeAssigned = true;
-          if (alreadyInserted) continue;
-          const paymentData: any = {
-            organization_id: cart.organization_id,
-            branch_id: getCurrentBranchId(), // Usar branch_id actual del usuario
-            amount: payment.amount,
-            method: payment.method,
-            currency: baseCurrency.code,
-            status: 'completed',
-            change_amount: takesChange ? changeAmount : 0,
-          };
-
-          // Asociar con la factura si existe, sino con la venta
-          if (invoiceData && !invoiceError) {
-            paymentData.source = 'invoice_sales';
-            paymentData.source_id = invoiceData.id;
-          } else {
-            paymentData.source = 'sale';
-            paymentData.source_id = saleData.id;
-          }
-          
-          // Asignar created_by si hay usuario autenticado
-          if (userId) {
-            paymentData.created_by = userId;
-          }
-          
-          console.log('Creating payment:', paymentData);
-          
-          const { data: paymentResult, error: paymentError } = await supabase
-            .from('payments')
-            .insert(paymentData)
-            .select()
-            .single();
-
-          if (paymentError) {
-            console.error('Error creating payment:', {
-              error: paymentError,
-              paymentData: paymentData
-            });
-            throw paymentError;
-          } else {
-            console.log('Payment created successfully:', paymentResult);
-          }
+        if (payment.amount <= 0) continue;
+        // El cambio se asigna al primer pago en efectivo.
+        const takesChange = !changeAssigned && changeAmount > 0 && payment.method === 'cash';
+        if (takesChange) changeAssigned = true;
+        const paymentData: Record<string, unknown> = {
+          organization_id: cart.organization_id,
+          branch_id: getCurrentBranchId(),
+          amount: payment.amount,
+          method: payment.method,
+          currency: baseCurrency.code,
+          status: 'completed',
+          change_amount: takesChange ? changeAmount : 0,
+          source: invoiceData && !invoiceError ? 'invoice_sales' : 'sale',
+          source_id: invoiceData && !invoiceError ? invoiceData.id : saleData.id,
+        };
+        if (userId) {
+          paymentData.created_by = userId;
         }
-      }
 
-      // Crear los invoice_items basados en cart.items (solo si no es deuda - ya existen)
-      if (invoiceData && !invoiceError && !isDebtCheckout
-          && !(await childExists('invoice_items', { invoice_id: invoiceData.id }))) {
-        try {
-          // Obtener información de productos para las descripciones
-          const productIds = cart.items.map(item => item.product_id).filter(id => id);
-          const { data: productsData } = await supabase
-            .from('products')
-            .select('id, name, description, parent_product_id, parent:products!parent_product_id(name)')
-            .in('id', productIds);
-            
-          const productMap = new Map((productsData || []).map(p => [p.id, p]));
-          
-          const invoiceItems = cart.items.map((cartItem: any, cartItemIdx: number) => {
-            const product = productMap.get(cartItem.product_id);
-            let description = product 
-              ? product.name
-              : `Producto ID: ${cartItem.product_id}`;
+        const { error: paymentError } = await supabase
+          .from('payments')
+          .insert(paymentData)
+          .select()
+          .single();
 
-            // Si es un producto derivado, incluir el nombre del principal
-            if (product?.parent_product_id && (product as any).parent?.name) {
-              description = `${(product as any).parent.name} - ${description}`;
-            }
-
-            // Agregar modificadores del item (sin mencionar la palabra "modificador")
-            if (cartItem.modifiers && cartItem.modifiers.length > 0) {
-              const modNames = cartItem.modifiers.map((m: any) => m.name).filter(Boolean);
-              if (modNames.length > 0) {
-                description += ` (${modNames.join(', ')})`;
-              }
-            }
-
-            const calc = itemCalcs[cartItemIdx];
-            const fallbackNet = (cartItem.unit_price || 0) * (cartItem.quantity || 0) - (cartItem.discount_amount || 0);
-
-            return {
-              invoice_id: invoiceData.id, // Campo correcto según schema
-              invoice_sales_id: invoiceData.id, // Mantener para relación
-              invoice_type: 'sale',
-              product_id: cartItem.product_id,
-              description: description.substring(0, 255), // Limitar longitud
-              qty: cartItem.quantity,
-              unit_price: cartItem.unit_price,
-              total_line: calc ? calc.total : fallbackNet,
-              tax_rate: calc ? calc.taxRate : (cartItem.tax_rate || 0),
-              tax_included: calc ? calc.taxIncluded : (cartItem.tax_included ?? (checkoutData.tax_included || false)),
-              discount_amount: calc ? calc.discount : (cartItem.discount_amount || 0)
-            };
-          });
-          
-          console.log('Creating invoice items:', invoiceItems);
-          
-          const { error: itemsError } = await supabase
-            .from('invoice_items')
-            .insert(invoiceItems);
-            
-          if (itemsError) {
-            console.error('Error creating invoice items:', {
-              error: itemsError,
-              message: itemsError.message,
-              details: itemsError.details,
-              hint: itemsError.hint,
-              code: itemsError.code,
-              invoiceItems: invoiceItems
-            });
-          } else {
-            console.log(`Invoice items created successfully: ${invoiceItems.length} items`);
-          }
-        } catch (itemsError) {
-          console.error('Exception creating invoice items:', itemsError);
+        if (paymentError) {
+          console.error('Error creating payment:', { error: paymentError, paymentData });
+          throw paymentError;
         }
-      }
-
-      // Si hay balance pendiente, crear cuenta por cobrar (solo si no es deuda - ya existe)
-      if (saleData.balance > 0 && cart.customer_id && !isDebtCheckout
-          && !(await childExists('accounts_receivable', { sale_id: saleData.id }))) {
-        const { error: arError } = await supabase
-          .from('accounts_receivable')
-          .insert({
-            organization_id: cart.organization_id,
-            customer_id: cart.customer_id,
-            sale_id: saleData.id,
-            amount: saleData.total,
-            balance: saleData.balance,
-            due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 días
-            status: 'partial'
-          });
-
-        if (arError) throw arError;
       }
 
       // Guardar propina si existe
-      if (checkoutData.tip_amount && checkoutData.tip_amount > 0
-          && !(await childExists('tips', { sale_id: saleData.id }))) {
+      if (checkoutData.tip_amount && checkoutData.tip_amount > 0) {
         const tipPayment = payments.find(p => p.amount > 0);
-        const tipData = {
-          organization_id: cart.organization_id,
-          branch_id: getCurrentBranchId(),
-          sale_id: saleData.id,
-          server_id: checkoutData.tip_server_id || userId,
-          amount: checkoutData.tip_amount,
-          // tips.tip_type solo admite cash/card/split/pooled (CHECK en la BD):
-          // 'transfer' violaba la restricción y todo lo que no es efectivo
-          // (tarjeta, datáfono, transferencia, QR Bre-B/Nequi/Bold…) es
-          // propina electrónica → 'card'. Misma regla que pos_checkout_v1.
-          tip_type: !tipPayment || tipPayment.method === 'cash' ? 'cash' : 'card',
-          is_distributed: false,
-          notes: `Propina de venta #${saleData.id.slice(-8)}`
-        };
-        
         const { error: tipError } = await supabase
           .from('tips')
-          .insert(tipData);
-        
+          .insert({
+            organization_id: cart.organization_id,
+            branch_id: getCurrentBranchId(),
+            sale_id: saleData.id,
+            server_id: checkoutData.tip_server_id || userId,
+            amount: checkoutData.tip_amount,
+            // tips.tip_type solo admite cash/card/split/pooled (CHECK en la BD):
+            // todo lo que no es efectivo es propina electrónica → 'card'.
+            // Misma regla que pos_checkout_v1.
+            tip_type: !tipPayment || tipPayment.method === 'cash' ? 'cash' : 'card',
+            is_distributed: false,
+            notes: `Propina de venta #${saleData.id.slice(-8)}`
+          });
         if (tipError) {
-          console.error('Error creating tip:', tipError);
           // No lanzamos error para que no falle todo el checkout
-        } else {
-          console.log('Tip created successfully:', checkoutData.tip_amount);
+          console.error('Error creating tip:', tipError);
         }
       }
 
@@ -2420,7 +2016,6 @@ export class POSService {
 
       // Eliminar el carrito del localStorage
       await this.removeCart(cart.id);
-
       return saleData;
     } catch (error) {
       console.error('Error during checkout:', error);

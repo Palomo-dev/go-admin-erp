@@ -281,36 +281,26 @@ describe('checkout atómico por RPC (pos_checkout_v1)', () => {
     expect(fake.ops.filter((o) => o.action === 'insert' || o.action === 'update')).toHaveLength(0);
   });
 
-  test('RPC ausente (PGRST202): respaldo de N inserts y un único aviso por sesión', async () => {
+  test('RPC ausente (PGRST202): la venta falla visible, sin N inserts y con un único aviso por sesión', async () => {
     installWindow({ desktop: true });
     seedCarts();
     fake.setHandler((op) => {
       if (op.table === RPC_TABLE) {
         return { error: { code: 'PGRST202', message: `Could not find the function public.${POS_CHECKOUT_RPC}(p_envelope) in the schema cache` } };
       }
-      if (op.action === 'insert') {
-        const row = Array.isArray(op.payload) ? op.payload[0] : (op.payload as Record<string, unknown>);
-        return { data: { id: (row.id as string) || `${op.table}-new`, ...row, balance: 0 } };
-      }
-      if (op.countOnly) return { count: 0 };
-      if (op.table === 'products') return { data: [{ id: 1001, name: 'A' }, { id: 1002, name: 'B' }] };
       return { data: null };
     });
 
-    const first = await POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT }));
-    expect(first.id).toBe(SALE_ID);
+    await expect(POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT }))).rejects.toThrow(/servicio de cobro no está disponible/);
     expect(isCheckoutRpcAvailable()).toBe(false);
-    expect(fake.ops.filter((o) => o.table === 'sales' && o.action === 'insert')).toHaveLength(1);
-    expect(fake.ops.filter((o) => o.table === 'payments' && o.action === 'insert')).toHaveLength(2);
-    expect(generateInvoiceNumber).toHaveBeenCalledTimes(1);
-    const avisos = warnSpy.mock.calls.filter((c) => String(c[0]).includes('pos_checkout_v1 no existe'));
-    expect(avisos).toHaveLength(1);
+    expect(fake.ops.filter((o) => o.action === 'insert' || o.action === 'update')).toHaveLength(0);
+    expect(generateInvoiceNumber).not.toHaveBeenCalled();
 
-    // Segunda venta en la misma sesión: ni se intenta la RPC ni se repite el aviso.
+    // Segunda venta en la misma sesión: tampoco se degrada a N inserts.
     seedCarts();
     fake.reset();
-    await POSService.checkout(makeCheckout({ saleId: '33333333-3333-4333-8333-333333333333' }));
-    expect(rpcCalls()).toHaveLength(0);
+    await expect(POSService.checkout(makeCheckout({ saleId: '33333333-3333-4333-8333-333333333333' }))).rejects.toThrow(/La venta NO se guardó/);
+    expect(fake.ops.filter((o) => o.action === 'insert' || o.action === 'update')).toHaveLength(0);
     expect(warnSpy.mock.calls.filter((c) => String(c[0]).includes('pos_checkout_v1 no existe'))).toHaveLength(1);
   });
 

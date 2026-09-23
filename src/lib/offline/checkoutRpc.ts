@@ -5,10 +5,9 @@
  * totales) y lo envía en una sola llamada: o entra todo o no entra nada.
  *
  * La RPC se detecta una vez por sesión: si Supabase responde que la función
- * no existe (`PGRST202`), `POSService.checkout` cae al camino de N inserts
- * de la fase 4B (respaldo temporal hasta que la migración
- * `20260921100000_pos_checkout_v1_rpc_atomica` esté en producción) y lo
- * avisa una sola vez por consola.
+ * no existe (`PGRST202`), `POSService.checkout` rechaza la venta con un error
+ * visible —ya no hay respaldo de N inserts (F-48, ADR-CC-002)— y lo avisa una
+ * sola vez por consola.
  *
  * Este módulo no importa Supabase: recibe el cliente por parámetro para que
  * los tests lo ejerzan con el cliente de mentira.
@@ -212,8 +211,8 @@ function markRpcMissing(): void {
   if (!warnedMissing) {
     warnedMissing = true;
     console.warn(
-      `[checkoutRpc] La RPC ${POS_CHECKOUT_RPC} no existe en este entorno; el checkout usa el respaldo `
-      + 'de N inserts desde el cliente (fase 4B) hasta que la migración 20260921100000_pos_checkout_v1_rpc_atomica esté aplicada.',
+      `[checkoutRpc] La RPC ${POS_CHECKOUT_RPC} no existe en este entorno; las ventas nuevas no se pueden `
+      + 'guardar hasta que la migración 20260921100000_pos_checkout_v1_rpc_atomica esté aplicada.',
     );
   }
 }
@@ -232,8 +231,8 @@ export class CheckoutRpcError extends Error {
 }
 
 /**
- * Llama a la RPC. Devuelve `null` si la función no existe (respaldo del
- * llamador); lanza `CheckoutRpcError` con el código de Postgres en cualquier
+ * Llama a la RPC. Devuelve `null` si la función no existe (el llamador
+ * rechaza la venta); lanza `CheckoutRpcError` con el código de Postgres en cualquier
  * otro error. Como la RPC es una transacción, un error significa que NO se
  * escribió nada.
  */

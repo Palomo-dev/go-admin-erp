@@ -1,23 +1,20 @@
 /**
- * `POSService.checkout` con id generado en el cliente (fase 4B): camino de
- * RESPALDO de N inserts, que desde la fase 4E solo se usa cuando la RPC
- * `pos_checkout_v1` no existe en el entorno (aquí el cliente de mentira
- * responde PGRST202). El camino principal por RPC se prueba en
- * `checkoutRpc.test.ts`.
+ * `POSService.checkout` sin la RPC `pos_checkout_v1` y sin red.
  *
  * Contrato que fijan estos tests:
  *   - Desktop sin red: no se emite ninguna operación a Supabase; el sobre va
  *     al outbox, el carrito se cierra y la venta provisional lleva el número
  *     local que el ticket imprime como «Pendiente de sincronizar».
- *   - Navegador: comportamiento de siempre (insert sin id, aunque no haya red).
- *   - Con `saleId`: el insert en `sales` usa ese id y `createdAt`.
- *   - Venta ya existente: no se repite nada.
- *   - Reproducción que murió a mitad: el reintento completa solo lo que falta.
+ *   - Con red, una venta nueva SOLO se guarda por la RPC. Si la RPC no existe
+ *     (PGRST202), la venta falla con un error visible, no escribe nada y el
+ *     carrito sigue abierto: ya no hay respaldo de N inserts en transacciones
+ *     separadas (F-48, ADR-CC-002). La idempotencia por id de cliente la da la
+ *     RPC (`replayed`) y se prueba en `checkoutRpc.test.ts`.
  *
  * Datos inventados: organización 120, sucursal 7, usuario `user-cajero`.
  */
 
-import { createFakeSupabase, writesTo, type FakeHandler, type FakeOp, type FakeResult } from './fakeSupabase';
+import { createFakeSupabase, type FakeOp, type FakeResult } from './fakeSupabase';
 
 const fake = createFakeSupabase(() => ({ data: null }));
 
@@ -53,7 +50,6 @@ jest.spyOn(console, 'error').mockImplementation(() => {});
 import { installWindow, uninstallWindow, freshIndexedDb } from './testEnv';
 import { isAppOnline } from '@/lib/utils/offlineCache';
 import { stockMovementService } from '@/lib/services/stockMovementService';
-import { generateInvoiceNumber } from '@/lib/utils/invoiceUtils';
 import { POSService } from '@/lib/services/posService';
 import type { CheckoutData } from '@/components/pos/types';
 import { __resetOutboxForTests, getOutboxSale, listOutboxSales, ticketSaleNumber } from '../salesOutbox';
@@ -100,11 +96,6 @@ function makeCheckout(overrides: Partial<CheckoutData> = {}): CheckoutData {
 /** La RPC atómica no existe en este entorno: PostgREST responde PGRST202. */
 const RPC_MISSING: FakeResult = { error: { code: 'PGRST202', message: `Could not find the function public.${POS_CHECKOUT_RPC}(p_envelope) in the schema cache` } };
 
-/** Envuelve un handler para que la RPC atómica «no exista» (camino de respaldo). */
-function withRpcMissing(handler: FakeHandler): FakeHandler {
-  return (op: FakeOp) => (op.table === `rpc:${POS_CHECKOUT_RPC}` ? RPC_MISSING : handler(op));
-}
-
 /** Respuesta "todo nuevo": nada existe, cada insert devuelve su fila. */
 function freshDbHandler(op: FakeOp) {
   if (op.table === `rpc:${POS_CHECKOUT_RPC}`) return RPC_MISSING;
@@ -127,7 +118,7 @@ function seedCarts() {
   );
 }
 
-describe('POSService.checkout — ids de cliente e idempotencia', () => {
+describe('POSService.checkout — sin RPC y sin red', () => {
   beforeEach(() => {
     freshIndexedDb();
     __resetOutboxForTests();
@@ -136,7 +127,6 @@ describe('POSService.checkout — ids de cliente e idempotencia', () => {
     fake.setHandler(freshDbHandler);
     isAppOnlineMock.mockReturnValue(true);
     (stockMovementService.decrementOnSale as jest.Mock).mockClear();
-    (generateInvoiceNumber as jest.Mock).mockClear();
     emitter.onCartsSaved.mockClear();
   });
 
@@ -186,156 +176,29 @@ describe('POSService.checkout — ids de cliente e idempotencia', () => {
     expect(await listOutboxSales()).toHaveLength(0);
   });
 
-  test('navegador sin red: comportamiento de siempre (va a Supabase, sin id de cliente)', async () => {
+  test('navegador sin red y sin RPC: la venta falla visible, sin escribir nada y con el carrito abierto', async () => {
     installWindow({ desktop: false });
     isAppOnlineMock.mockReturnValue(false);
     seedCarts();
 
-    const sale = await POSService.checkout(makeCheckout());
+    await expect(POSService.checkout(makeCheckout())).rejects.toThrow(/servicio de cobro no está disponible/);
 
-    const [salesInsert] = writesTo(fake.ops, 'sales');
-    expect(salesInsert.action).toBe('insert');
-    const row = salesInsert.payload as Record<string, unknown>;
-    expect(row.id).toBeUndefined();
-    expect(row.created_at).toBeUndefined();
-    expect(row.user_id).toBe('user-sync');
-    expect(sale.id).toBe('sales-new');
-    expect(await listOutboxSales()).toHaveLength(0);
-    // Sin saleId no hay ni un SELECT de idempotencia sobre sales.
-    expect(fake.ops.filter((o) => o.table === 'sales' && o.action === 'select')).toHaveLength(0);
-  });
-
-  test('con saleId y createdAt el insert en sales usa ese id, esa fecha y el usuario del sobre', async () => {
-    installWindow({ desktop: true });
-    seedCarts();
-
-    const sale = await POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT, userId: 'user-cajero', replayFromOutbox: true }));
-
-    const selects = fake.ops.filter((o) => o.table === 'sales' && o.action === 'select');
-    expect(selects).toHaveLength(1);
-    expect(selects[0].filters).toEqual({ id: SALE_ID, organization_id: 120 });
-
-    const [salesInsert] = writesTo(fake.ops, 'sales');
-    const row = salesInsert.payload as Record<string, unknown>;
-    expect(row.id).toBe(SALE_ID);
-    expect(row.created_at).toBe(CREATED_AT);
-    expect(row.sale_date).toBe(CREATED_AT);
-    expect(row.user_id).toBe('user-cajero');
-    expect(sale.id).toBe(SALE_ID);
-
-    const invoiceRow = writesTo(fake.ops, 'invoice_sales')[0].payload as Record<string, unknown>;
-    expect(invoiceRow.issue_date).toBe(CREATED_AT);
-    expect(invoiceRow.sale_id).toBe(SALE_ID);
-
-    expect(writesTo(fake.ops, 'sale_items')).toHaveLength(1);
-    expect(writesTo(fake.ops, 'payments')).toHaveLength(2);
-    expect(writesTo(fake.ops, 'invoice_items')).toHaveLength(1);
-    expect(writesTo(fake.ops, 'tips')).toHaveLength(1);
-    expect(stockMovementService.decrementOnSale).toHaveBeenCalledTimes(1);
-    // Al no ser una venta existente, no se consultan tablas hijas.
-    expect(fake.ops.filter((o) => o.countOnly)).toHaveLength(0);
-  });
-
-  test('venta ya existente: devuelve la existente y no repite ningún insert', async () => {
-    installWindow({ desktop: true });
-    const existing = { id: SALE_ID, organization_id: 120, branch_id: 7, total: 13500, balance: 0, status: 'paid' };
-    const invoice = { id: 'inv-1', sale_id: SALE_ID, number: 'FACT-000001', balance: 0 };
-    fake.setHandler(withRpcMissing((op) => {
-      if (op.table === 'sales' && op.action === 'select') return { data: existing };
-      if (op.table === 'invoice_sales' && op.action === 'select') return { data: invoice };
-      if (op.countOnly) return { count: 2 };
-      if (op.action === 'insert') throw new Error(`No debía insertar en ${op.table}`);
-      return { data: null };
-    }));
-
-    const sale = await POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT, replayFromOutbox: true }));
-
-    expect(sale).toEqual(existing);
     expect(fake.ops.filter((o) => o.action === 'insert' || o.action === 'update')).toHaveLength(0);
-    // Las únicas RPC permitidas son la lectura de monedas y el intento (fallido:
-    // PGRST202) de la atómica; ninguna de escritura (promociones, stock).
-    expect(fake.ops.filter((o) => o.action === 'rpc' && o.table !== 'rpc:get_organization_currencies' && o.table !== `rpc:${POS_CHECKOUT_RPC}`)).toHaveLength(0);
-    expect(stockMovementService.decrementOnSale).not.toHaveBeenCalled();
-    expect(generateInvoiceNumber).not.toHaveBeenCalled();
+    expect(await listOutboxSales()).toHaveLength(0);
+    const carts = JSON.parse(localStorage.getItem('pos_carts_120') || '[]') as Array<{ id: string }>;
+    expect(carts.map((c) => c.id)).toEqual(['cart-77', 'cart-78']);
   });
 
-  test('reproducción que murió tras sale_items y stock: el reintento crea factura, pagos, líneas de factura y propina, sin duplicar', async () => {
-    installWindow({ desktop: true });
-    const existing = { id: SALE_ID, organization_id: 120, branch_id: 7, total: 13500, balance: 0, status: 'paid' };
-    fake.setHandler(withRpcMissing((op) => {
-      if (op.table === 'sales' && op.action === 'select') return { data: existing };
-      if (op.table === 'invoice_sales' && op.action === 'select') return { data: null };
-      if (op.countOnly) {
-        if (op.table === 'sale_items') return { count: 2 };
-        if (op.table === 'stock_movements') return { count: 2 };
-        return { count: 0 };
-      }
-      return freshDbHandler(op);
-    }));
-
-    await POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT, replayFromOutbox: true }));
-
-    expect(writesTo(fake.ops, 'sales')).toHaveLength(0);
-    expect(writesTo(fake.ops, 'sale_items')).toHaveLength(0);
-    expect(stockMovementService.decrementOnSale).not.toHaveBeenCalled();
-    expect(writesTo(fake.ops, 'invoice_sales')).toHaveLength(1);
-    expect(writesTo(fake.ops, 'payments')).toHaveLength(2);
-    expect(writesTo(fake.ops, 'invoice_items')).toHaveLength(1);
-    expect(writesTo(fake.ops, 'tips')).toHaveLength(1);
-  });
-
-  test('reproducción que murió con 1 de 2 pagos insertados: el reintento inserta solo el que falta', async () => {
-    installWindow({ desktop: true });
-    const existing = { id: SALE_ID, organization_id: 120, branch_id: 7, total: 13500, balance: 0, status: 'paid' };
-    const invoice = { id: 'inv-1', sale_id: SALE_ID, number: 'FACT-000001', balance: 0 };
-    fake.setHandler(withRpcMissing((op) => {
-      if (op.table === 'sales' && op.action === 'select') return { data: existing };
-      if (op.table === 'invoice_sales' && op.action === 'select') return { data: invoice };
-      if (op.countOnly) {
-        if (op.table === 'payments') {
-          expect(op.filters).toEqual({ source: 'invoice_sales', source_id: 'inv-1' });
-          return { count: 1 };
-        }
-        if (op.table === 'invoice_items' || op.table === 'tips') return { count: 0 };
-        return { count: 2 };
-      }
-      return freshDbHandler(op);
-    }));
-
-    await POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT, replayFromOutbox: true, change: 0 }));
-
-    const paymentInserts = writesTo(fake.ops, 'payments');
-    expect(paymentInserts).toHaveLength(1);
-    const row = paymentInserts[0].payload as Record<string, unknown>;
-    expect(row.method).toBe('card');
-    expect(row.amount).toBe(3000);
-    expect(row.source_id).toBe('inv-1');
-    expect(writesTo(fake.ops, 'invoice_sales')).toHaveLength(0);
-    expect(generateInvoiceNumber).not.toHaveBeenCalled();
-  });
-
-  test('carrera 23505 al insertar sales: se toma la existente y se completa en vez de fallar', async () => {
+  test('reproducción del outbox sin RPC: falla sin tocar sales ni degradarse a N inserts', async () => {
     installWindow({ desktop: true });
     seedCarts();
-    const existing = { id: SALE_ID, organization_id: 120, branch_id: 7, total: 13500, balance: 0, status: 'paid' };
-    let salesSelects = 0;
-    fake.setHandler(withRpcMissing((op) => {
-      if (op.table === 'sales' && op.action === 'select') {
-        salesSelects++;
-        return { data: salesSelects === 1 ? null : existing };
-      }
-      if (op.table === 'sales' && op.action === 'insert') return { error: { code: '23505', message: 'duplicate key' } };
-      if (op.table === 'invoice_sales' && op.action === 'select') return { data: null };
-      if (op.countOnly) return { count: op.table === 'sale_items' || op.table === 'stock_movements' ? 2 : 0 };
-      return freshDbHandler(op);
-    }));
 
-    const sale = await POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT, replayFromOutbox: true }));
+    await expect(
+      POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT, userId: 'user-cajero', replayFromOutbox: true })),
+    ).rejects.toThrow(/La venta NO se guardó/);
 
-    expect(sale.id).toBe(SALE_ID);
-    expect(salesSelects).toBe(2);
-    expect(writesTo(fake.ops, 'sale_items')).toHaveLength(0);
-    expect(writesTo(fake.ops, 'invoice_sales')).toHaveLength(1);
-    expect(writesTo(fake.ops, 'payments')).toHaveLength(2);
+    expect(fake.ops.filter((o) => o.table === 'sales')).toHaveLength(0);
+    expect(fake.ops.filter((o) => o.action === 'insert' || o.action === 'update')).toHaveLength(0);
+    expect(stockMovementService.decrementOnSale).not.toHaveBeenCalled();
   });
 });

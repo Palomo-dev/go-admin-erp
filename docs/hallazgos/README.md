@@ -76,6 +76,11 @@ vive fuera del repo, en `docs/auditoria-finanzas/` (ignorado por `.gitignore`).
 | [F-61](F-61.md) | Dos caminos para el costo de ventas: el de sale_items solo rechazaba | Media | Corregido (un solo camino, el kardex; ADR-CC-010) | Cierre contable |
 | [F-62](F-62.md) | Notas crédito históricas con excedente pendientes de decisión | Media | Abierto: decisión con cada cliente | Cierre contable |
 | [F-63](F-63.md) | Nadie podía crear turnos: el trigger buscaba la organización en una columna inexistente de `employments` | Crítica | Corregido y verificado (2026-09-23) | Hallazgo propio (visto durante la fase D) |
+| [F-64](F-64.md) | La comisión de una oportunidad ganada se cargaba a «la sucursal 1», la de quien fuera | Crítica | Corregido y verificado (2026-09-23) · 18 filas históricas sin tocar | CRM / comisiones |
+| [F-65](F-65.md) | El asiento de comisión de OTA llama a `fn_create_journal_entry` con una firma que no existe | Alta | Abierto: la reordenación de argumentos es decisión contable | CRM / comisiones |
+| [F-66](F-66.md) | Los leads del formulario web caían en el embudo de onboarding | Alta | Corregido y verificado (2026-09-23) · 23 leads históricos sin tocar | CRM / captación web |
+| [F-67](F-67.md) | Un pedido web confirmado dos veces: dos ventas, facturas, pagos y salidas de stock | Alta | Corregido y verificado (2026-09-23, ADR-CC-011; migraciones con etiqueta `F-63`) | Cierre contable |
+| [F-68](F-68.md) | Tres productos de la org 144 son ingrediente de su propia receta y descuentan stock dos veces | Media | Abierto: decisión de la organización | Cierre contable |
 
 ## Notas
 

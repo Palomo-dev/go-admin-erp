@@ -1,6 +1,20 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateCore';
+import { sumarMesesAlDia } from '@/lib/services/fiscalCalendar';
+
+// Zona horaria de este servicio (Fase B, tanda 3).
+//
+// `employee_loans` NO tiene `branch_id` (verificado en
+// `information_schema.columns`): un prestamo es del empleado y de la
+// organizacion, no de una sede. Por eso aqui la cascada se corta en la
+// organizacion y `resolveTimezone` se llama SIEMPRE sin sucursal.
+//
+// Todas las columnas de dia que toca este servicio son `date` puro
+// (`disbursement_date`, `last_payment_date`, `loan_installments.due_date`):
+// se escribe el DIA de la organizacion, nunca un instante.
 
 export interface EmployeeLoan {
   id: string;
@@ -225,6 +239,8 @@ class EmployeeLoansService {
     if (!loan) throw new Error('Préstamo no encontrado');
     if (loan.status !== 'requested') throw new Error('El préstamo no está en estado solicitado');
 
+    const zona = await resolveTimezone(this.organizationId);
+
     // Update loan status
     const { error: updateError } = await supabase
       .from('employee_loans')
@@ -232,7 +248,7 @@ class EmployeeLoansService {
         status: 'active',
         approved_by: approvedBy,
         approved_at: new Date().toISOString(),
-        disbursement_date: new Date().toISOString().split('T')[0],
+        disbursement_date: todayInTz(zona),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id);
@@ -310,6 +326,7 @@ class EmployeeLoansService {
 
     const newAmountPaid = (installment.amount_paid || 0) + amount;
     const isPaid = newAmountPaid >= installment.amount;
+    const zona = await resolveTimezone(this.organizationId);
 
     // Update installment
     const { data: updatedInstallment, error: updateError } = await supabase
@@ -337,7 +354,7 @@ class EmployeeLoansService {
       .update({
         balance: Math.max(0, newBalance),
         installments_paid: newInstallmentsPaid,
-        last_payment_date: new Date().toISOString().split('T')[0],
+        last_payment_date: todayInTz(zona),
         status: newBalance <= 0 ? 'paid' : 'active',
         updated_at: new Date().toISOString(),
       })
@@ -360,19 +377,27 @@ class EmployeeLoansService {
     }
 
     const installments = [];
-    const firstDate = new Date(loan.first_payment_date!);
-    
+
+    // `first_payment_date` es una columna `date`: llega como 'YYYY-MM-DD'. Se
+    // recorta por si algun llamador la trajera con hora pegada; NO se convierte
+    // a `Date`, porque `new Date('2026-01-31')` es medianoche UTC y en cualquier
+    // zona al oeste de Greenwich retrocede al dia 30.
+    const primerVencimiento = String(loan.first_payment_date ?? '').slice(0, 10);
+
     const principalPortion = loan.principal / loan.installments_total;
     const interestPortion = (loan.total_interest || 0) / loan.installments_total;
 
     for (let i = 1; i <= loan.installments_total; i++) {
-      const dueDate = new Date(firstDate);
-      dueDate.setMonth(dueDate.getMonth() + (i - 1));
+      // `sumarMesesAlDia` recorta al ultimo dia del mes destino: un prestamo
+      // cuya primera cuota vence el 31 de enero tiene la segunda el 28 (o 29)
+      // de febrero. `Date.setMonth` la habria desbordado al 3 de marzo, y eso
+      // deja febrero sin cuota y marzo con dos.
+      const dueDate = sumarMesesAlDia(primerVencimiento, i - 1);
 
       installments.push({
         loan_id: loanId,
         installment_number: i,
-        due_date: dueDate.toISOString().split('T')[0],
+        due_date: dueDate,
         amount: loan.installment_amount,
         principal_portion: Math.round(principalPortion * 100) / 100,
         interest_portion: Math.round(interestPortion * 100) / 100,
@@ -410,7 +435,7 @@ class EmployeeLoansService {
     overdueInstallments: number;
   }> {
     const loans = await this.getAll();
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInTz(await resolveTimezone(this.organizationId));
 
     const active = loans.filter(l => l.status === 'active').length;
     const pending = loans.filter(l => l.status === 'requested').length;

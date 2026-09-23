@@ -154,7 +154,9 @@ export function CuotasPage({ accountId }: CuotasPageProps) {
         account.balance,
         createForm.numberOfInstallments,
         new Date(),
-        createForm.interestRate
+        account.organization_id,
+        account.branch_id ?? null,
+        createForm.interestRate,
       );
       
       toast.success('Plan de cuotas creado exitosamente');

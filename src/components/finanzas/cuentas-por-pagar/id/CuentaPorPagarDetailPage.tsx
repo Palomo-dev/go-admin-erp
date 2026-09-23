@@ -440,6 +440,8 @@ Fecha de Generación: ${formatDateInTz(new Date().toISOString(), timezone)}
         <InstallmentsCard
           accountId={account.id}
           totalAmount={account.balance}
+          organizationId={account.organization_id}
+          branchId={account.branch_id ?? null}
           onUpdate={handleRefresh}
         />
       </div>

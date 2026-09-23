@@ -32,6 +32,8 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PromotionsService } from '../promotionsService';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { plainDayOfInstant } from '@/lib/services/businessInstant';
 import {
   CreatePromotionData,
   PromotionType,
@@ -59,8 +61,20 @@ const WIZARD_STEPS = [
   { id: 'rules', title: 'Reglas', icon: Filter },
 ];
 
+/**
+ * Dia calendario que debe mostrar un `<input type="date">` para un valor que
+ * puede llegar como instante (timestamptz de la base) o ya como dia.
+ */
+function diaDelFormulario(valor: string, timezone: string): string {
+  return valor.length <= 10 ? valor : plainDayOfInstant(valor, timezone);
+}
+
 export function PromotionWizard({ initialData, promotionId, onSuccess }: PromotionWizardProps) {
   const router = useRouter();
+  // `promotions.start_date` / `.end_date` son timestamptz. En el formulario se
+  // manejan como dias de la organizacion; el servicio los convierte a instantes
+  // al guardar (00:00 y 23:59:59.999 de esa zona).
+  const { getToday, timezone } = useFormatDate();
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
@@ -77,7 +91,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     min_purchase_amount: undefined,
     max_discount_amount: undefined,
     applies_to: 'all',
-    start_date: new Date().toISOString().split('T')[0],
+    start_date: getToday(),
     end_date: undefined,
     is_active: true,
     usage_limit: undefined,
@@ -88,7 +102,18 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     applies_to_finances: false,
     applicable_days: null,
     rules: [],
-    ...initialData
+    ...initialData,
+    // `initialData` viene de la base, donde las dos columnas son timestamptz:
+    // se traen al dia de la organizacion UNA vez. A partir de aqui el estado
+    // del formulario es siempre un dia calendario, y el servicio lo vuelve a
+    // convertir a instante al guardar. Con `.split('T')[0]` se veia el dia UTC:
+    // una promocion que empieza el 1 en Bogota se abria como si fuera el 31.
+    ...(initialData?.start_date
+      ? { start_date: diaDelFormulario(initialData.start_date, timezone) }
+      : {}),
+    ...(initialData?.end_date
+      ? { end_date: diaDelFormulario(initialData.end_date, timezone) }
+      : {}),
   });
 
   // Al editar, las reglas existentes deben cargarse en la selección. Antes estos
@@ -494,7 +519,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                   <Label className="dark:text-gray-200">Fecha de Inicio *</Label>
                   <Input
                     type="date"
-                    value={formData.start_date?.split('T')[0] || ''}
+                    value={formData.start_date || ''}
                     onChange={(e) => handleChange('start_date', e.target.value)}
                     className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
                   />
@@ -503,7 +528,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                   <Label className="dark:text-gray-200">Fecha de Fin (opcional)</Label>
                   <Input
                     type="date"
-                    value={formData.end_date?.split('T')[0] || ''}
+                    value={formData.end_date || ''}
                     onChange={(e) => handleChange('end_date', e.target.value || undefined)}
                     className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
                   />

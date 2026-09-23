@@ -832,3 +832,202 @@ ESLint: los archivos nuevos y los tests estan limpios; en los archivos tocados q
 **preexistentes** de `no-explicit-any` y de variables e importaciones sin usar
 (`DetalleFactura`, `RegistrarPagoDialog`, `ImportarCSVDialog`, los dos `service.ts` de cartera)
 que no se han limpiado en esta tanda. Nada se ha probado en navegador.
+
+---
+
+## Fase B — tandas 3, 4 y 5 (nomina/HRM y vigencias que cortan servicio) · 2026-09-23
+
+Encargo: las tandas 3 (nomina y HRM), 4 (vigencias que cortan servicio) y el arreglo de
+`crearCuotas` de cuentas por pagar. Sin commit: los cambios quedan en el arbol.
+
+### Correccion al inventario
+
+El inventario da por hecho que `employeeLoansService`, `employmentCompensationService`,
+`payrollService`, `attendanceService`, `timesheetConsolidationService` y `hrmDashboardService`
+«no reciben la organizacion en ninguna firma». **No es asi**: los seis son clases con
+`constructor(organizationId)` y ya la guardan en `this.organizationId`. No hubo que cambiar
+ninguna firma en nomina; basto llamar a `resolveTimezone(this.organizationId, ...)`. Quien
+planifique las tandas 7, 9 y 11 deberia comprobarlo antes de presupuestar cambios de firma.
+
+Tambien: el inventario dice que `membership_freezes` no tiene `branch_id`. Si lo tiene
+(`bigint`, nullable); lo que no tiene es `organization_id`. Verificado por MCP.
+
+### Tanda 3 — nomina y HRM
+
+| Call-site | Columna destino · tipo | Arreglo | Zona |
+|---|---|---|---|
+| `payrollService.ts:getCountryRules` | filtro `country_payroll_rules.valid_from` · **date** | `todayInTz` | organizacion |
+| `employeeLoansService.ts:approve` | `employee_loans.disbursement_date` · **date** | `todayInTz` | organizacion (la tabla no tiene `branch_id`) |
+| `employeeLoansService.ts:registerPayment` | `employee_loans.last_payment_date` · **date** | `todayInTz` | organizacion |
+| `employeeLoansService.ts:generateInstallments` | `loan_installments.due_date` · **date** | `sumarMesesAlDia` sobre el dia, sin `Date` | no hace falta: aritmetica de dia |
+| `employeeLoansService.ts:getStats` | comparacion de mora | `todayInTz` | organizacion |
+| `employmentCompensationService.ts:144,223` | vigencia `effective_from`/`effective_to` · **date** | `todayInTz` | organizacion |
+| `employmentsService.ts:updateStatus` | `employments.termination_date` · **date** | `todayInTz` + `zonaDelContrato(id)` | **sucursal del contrato** |
+| `employmentsService.ts:duplicate` | `employments.hire_date` · **date** | `todayInTz` | sucursal del contrato original |
+| `attendanceService.ts:getEvents` | filtro sobre `attendance_events.event_at` · **timestamptz** | `getDateRange` | sucursal filtrada, si la hay |
+| `attendanceService.ts:getTodayEvents/getAnomalies/getStats` | dia objetivo | `todayInTz` | sucursal / organizacion |
+| `timesheetConsolidationService.ts:consolidateDay` | filtro sobre `event_at` · **timestamptz** | `getDayRange` | sucursal |
+| `timesheetConsolidationService.ts:consolidateDateRange` | iteracion dia a dia | `diasEntreDias` + `nextPlainDay` | — |
+| `timesheetConsolidationService.ts:getPendingConsolidation` | dia y filtro de `event_at` | `todayInTz` + `getDayRange` | organizacion |
+| `hrmDashboardService.ts:getKPIs/getAlerts` | `timesheets`/`shift_assignments`/`employments` · **date** | `todayInTz` + `sumarDiasAlDia` | sucursal del filtro |
+| `hrm/compensacion/asignaciones/page.tsx:56,173` | `employment_compensation.effective_to` · **date** | `getToday()` | contexto |
+| `hrm/prestamos/[id]/page.tsx:219` | mora de `loan_installments.due_date` | `getToday()` | contexto |
+| `hrm/asistencia/timesheets/page.tsx:82` | dia a consolidar | `getToday()` | contexto |
+| `hrm/reportes/page.tsx:43,44` | rango del mes en curso | `getToday()` + `primerDiaDelMes`/`ultimoDiaDelMes` | contexto |
+
+El que mas consecuencias tiene es `getCountryRules`: el dia elige **que tabla de retenciones**
+se aplica. Con el dia UTC, una nomina liquidada el 31 de diciembre a las 20:00 en Bogota ya es
+1 de enero en UTC y cogia la norma del ano siguiente; y una liquidada a las 00:30 del 1 de enero
+en Madrid cogia la del anterior. Los dos casos estan en la red.
+
+Tambien se quito un `const currentYear = new Date().getFullYear()` que no se usaba en la consulta.
+
+### Tanda 4 — vigencias que cortan servicio
+
+Aqui la columna manda, y en gimnasio, promociones y cupones es **timestamptz**. La regla que se
+adopta, escrita en los tres servicios: **el dia de inicio empieza a las 00:00 de la zona de la
+organizacion y el dia de fin termina a las 23:59:59.999 de esa misma zona**. Una vigencia «hasta
+el dia X» cubre el dia X entero, que es lo que entiende quien paga. Antes se mandaba
+`'YYYY-MM-DD'` a un `timestamptz`, o sea medianoche UTC: en Madrid la membresia caducaba a las
+02:00 del ultimo dia y el socio perdia la jornada que habia pagado.
+
+| Call-site | Columna destino · tipo | Arreglo | Zona |
+|---|---|---|---|
+| `gymService.createMembership` | `memberships.start_date`/`.end_date` · **timestamptz** ⚠ | `plainDateToInstant` 00:00 / `getDayRange().end` | organizacion |
+| `gymService.renewMembership` | idem | `sumarDiasAlDia` + los dos helpers | organizacion de la membresia |
+| `gymService.freezeMembership` | `membership_freezes.start_date` · **date** | `todayInTz` | organizacion, via `memberships.organization_id` |
+| `gymService.unfreezeMembership` | `membership_freezes.end_date` · **date** y `memberships.end_date` · **timestamptz** | `todayInTz`, `diasEntreDias`, `sumarDiasAlDia` | idem |
+| `gymService.getDaysRemaining` | lectura ⚠ | dias calendario en la zona; **firma nueva** `(endDate, timezone)` | del llamador |
+| `gymService.getGymStats` / `getTodayCheckins` | cortes del dia sobre `checkin_at`, `created_at`, `end_date` | `getDayRange` | organizacion/sucursal |
+| `MembershipDialog.tsx` | fin de vigencia del formulario | `sumarDiasAlDia` | contexto |
+| `parkingService.getStats` | `parking_sessions.exit_at` · **timestamptz** ⚠ | `getDayRange` y comparacion de instantes | organizacion/sucursal |
+| `parkingService.checkPlateHasActivePass` | `parking_passes.end_date` · **date** | `todayInTz` | organizacion (la tabla no tiene `branch_id`) |
+| `parking/abonados/page.tsx:148,150,195,197` | `parking_passes.start_date`/`.end_date` · **date** | `getToday()` + `sumarDiasAlDia` | contexto |
+| `parking/operacion/page.tsx:168` | filtro `parking_passes.end_date` · **date** | `getToday()` | contexto |
+| `promotionsService.create/update` | `promotions.start_date`/`.end_date` · **timestamptz** ⚠ | `vigenciaEnInstantes` | organizacion |
+| `PromotionWizard.tsx:80,497,506` | lectura y valor por defecto ⚠ | `getToday()` + `plainDayOfInstant` una sola vez al sembrar el estado | contexto |
+| `couponsService.create/update` | `coupons.start_date`/`.end_date` · **timestamptz** ⚠ | `vigenciaEnInstantes` | organizacion |
+| `CouponForm.tsx:60,61` | lectura ⚠ (`.split('T')[0]` sobre timestamptz) | `plainDayOfInstant` | contexto |
+
+**Escritura y lectura en el mismo commit**, como exige la regla de oro del inventario: las cinco
+columnas ⚠ de arriba tienen aqui los dos lados. Para `memberships` eso obligo a cambiar la firma
+de `getDaysRemaining` y a tocar sus 8 llamadores (`CheckinResult`, `ExpiringMemberships`,
+`MembershipHeader`, `MembershipSummary`, `MembershipCard`, `MembershipExpiringSection`,
+`MembershipStats`, `GymSection`): todos ya usaban `useFormatDate()`, asi que basto con sacar
+`timezone` del hook. Si solo se hubiera arreglado la escritura, todas esas pantallas habrian
+empezado a decir «1 dia restante» a una membresia que muere esta noche.
+
+**Por que gimnasio no cambia de firma.** `freezeMembership` y compania ya cargan la membresia, y
+`memberships.organization_id` es la identidad de la fila que se esta tocando. Anadir un parametro
+`organizationId` habria permitido que el llamador pasara una organizacion distinta de la duena del
+dato, que es peor que no tenerlo. `membership_freezes` no tiene `organization_id`: se llega por
+`membership_id`, el salto de un nivel que el encargo autoriza y que queda documentado en el propio
+archivo. Para `parking_passes` (sin `branch_id`) y `promotions`/`coupons` (sin `branch_id`) la zona
+es la de la organizacion, tambien anotado en el codigo.
+
+### Tanda 5 — `crearCuotas` de cuentas por pagar
+
+El `timezone?: string = DEFAULT_TIMEZONE` que el anexo de la tanda 2 dejo apuntado **ya no existe**.
+Las dos `crearCuotas` (`CuentasPorPagarService` y `CuentaPorPagarDetailService`) piden ahora
+identidad obligatoria y resuelven la zona dentro:
+
+```
+crearCuotas(accountId, totalAmount, numberOfInstallments,
+            primerVencimiento: Date, organizationId: number, branchId: number | null,
+            interestRate = 0)
+```
+
+Los parametros nuevos van **antes** de `interestRate` a proposito: asi el compilador senala a todos
+los llamadores en vez de dejar pasar una llamada con un argumento de menos. Llamadores
+actualizados: `CuotasPage.tsx` (tiene `account` cargado) e `InstallmentsCard.tsx`, al que se le
+anadieron las props `organizationId` y `branchId`, que le pasa `CuentaPorPagarDetailPage.tsx`.
+`CuentaPorPagarDetalle` gana `branch_id` (la consulta ya lo traia con `select('*')`, pero el tipo
+no lo declaraba y por eso nadie podia usarlo). `ap_installments.due_date` es `date`, asi que se
+escribe el dia; el bucle pasa de `Date.setMonth` a `sumarMesesAlDia`, con lo que una cuenta creada
+el 31 de enero vence el 28 de febrero y no el 3 de marzo.
+
+`CuentasPorPagarService.crearCuotas` **no tiene ningun llamador** (los tres pasan por
+`CuentaPorPagarDetailService`). Se arreglo igualmente para que nadie la use manana con la firma
+vieja; si se decide borrarla, es candidata.
+
+### Red
+
+- `src/__tests__/timezone/nominaHrm.test.ts` — 12 casos.
+- `src/__tests__/timezone/vigenciasQueCortanServicio.test.ts` — 13 casos.
+- `src/__tests__/timezone/dobleSupabase.ts` — doble encadenable del cliente de PostgREST que
+  **registra tabla, operacion, payload y filtros**. Sin el no se puede afirmar «que valor se
+  escribe»; un mock que solo devuelve datos deja pasar exactamente el bug que se persigue.
+
+Todos con reloj falso (`jest.setSystemTime`). Los casos que pedia el encargo:
+
+- Una membresia «hasta el 30» en una organizacion de Madrid guarda
+  `2026-09-30T23:59:59.999+02:00` y a las 23:30 de ese dia sigue viva. `getDaysRemaining` devuelve
+  **0** a las 09:00 y a las 23:30 del mismo dia, y **-1** a las 00:30 del dia siguiente en Madrid
+  aunque en UTC siga siendo el 30.
+- Un prestamo cuya primera cuota cae el **31 de enero**: 31/01, 28/02, 31/03, 30/04. Y el bisiesto:
+  31/01/2028 -> 29/02/2028.
+- Renovacion de 30 dias que cruza el cambio de horario de Madrid (25/10): da el 14 de noviembre,
+  no el 13.
+- La caja del dia de parqueadero con dos sesiones cuyo `exit_at` esta al otro lado de medianoche
+  UTC: la del dia entra, la de la vispera no.
+
+Verde en `TZ=UTC` y `TZ=America/Mexico_City`, tanto los dos archivos nuevos como
+`src/__tests__/timezone` completo mas `guardrails.test.ts` (**14 suites, 448 pruebas**), y
+`src/__tests__/pos` mas `promotionEngine.clienteReal` (**130 suites, 3048 pruebas**).
+
+### Mutaciones
+
+**22 mutaciones, 22 muertas, 0 supervivientes**, md5 de cada archivo identico antes y despues
+(script y resultados en el scratchpad de sesion, `.../scratchpad/tz-b345/mutar.py`,
+`mutaciones-t3.json`, `mutaciones-t45.json` y sus `-resultado.json`).
+
+Tanda 3 (9): volver a `toISOString().split`, zona del navegador en vez de la de la organizacion,
+`Date.setMonth` que desborda febrero, desembolso con el dia UTC, cadena sin offset contra un
+`timestamptz`, ignorar la sucursal del filtro, offset cableado a `America/Bogota`, alta de contrato
+con el dia UTC, retiro con la zona de la organizacion en vez de la de la sede.
+
+Tandas 4 y 5 (13): fin de vigencia a las 00:00, dia calendario sin zona, congelamiento con el dia
+UTC, renovacion en bloques de 24 h, dias restantes por resta de instantes, dias restantes en la
+zona del navegador, prefijo de cadena sobre `exit_at`, pase vigente contra el dia UTC, dia en crudo
+a una columna `timestamptz`, fin de promocion a medianoche, `Date.setMonth` en las cuotas, ignorar
+la sucursal de la cuenta, primer vencimiento por `toISOString`.
+
+La primera pasada de las tandas 4 y 5 dejo **tres supervivientes**, y las tres por lo mismo: el
+caso de prueba estaba elegido en un instante en el que el error y el acierto coinciden. La
+renovacion arrancaba a las 09:00, donde `+30 x 24 h` y `+30 dias` caen el mismo dia; el conteo de
+dias restantes se medía en una hora en la que el dia de Madrid y el del proceso de pruebas son el
+mismo; y el primer vencimiento se pedia en un instante cuyo dia UTC coincidia con el de la
+organizacion. Corregidos los tres instantes (00:30 de Madrid, 22:30Z, 02:00Z), las tres mueren.
+Es la leccion de la tanda 2 otra vez, en otra forma: **una prueba de zona horaria que no elige el
+instante a proposito no prueba nada**.
+
+### Metrica
+
+Metrica 1 (escritura de dia en UTC): **256 antes / 222 despues**, −34, que es exactamente el
+numero de ocurrencias de estas tres tandas. En los archivos tocados: 34 -> 0.
+
+Lo que queda en estos modulos son 23 ocurrencias que **no** pertenecen a este encargo:
+`parkingDashboardService`, `parkingReportService`, `ReportesFilters` y `parking/reportes/page.tsx`
+son la tanda 8; `gym/clases/page.tsx` es la tanda 11; el resto son nombres de archivo de descarga
+(tandas 12 y 13).
+
+### NO VERIFICADO
+
+- `npx tsc --noEmit` **completo** y `next build`: no se ejecutan (el encargo los excluye por el
+  arbol compartido). El `tsc` acotado a los 37 archivos tocados da **0 errores propios**; el unico
+  que sale es `src/lib/utils/desktop.ts(237)`, y es artefacto del `tsconfig` acotado, que no incluye
+  `src/types/go-admin-desktop.d.ts`. Aviso para quien repita la medicion: el `tsc` completo de este
+  repositorio termino con codigo 0 y **sin imprimir nada**, que es el falso «0 errores» por falta de
+  heap ya anotado en las notas de sesion; el acotado si encontro un error real
+  (`getToday` sin declarar en `hrm/prestamos/[id]/page.tsx`).
+- ESLint: **0 problemas nuevos en las lineas tocadas** (medido cruzando `eslint --format json` con
+  las lineas anadidas segun `git diff -U0`). En los archivos siguen los errores **preexistentes**
+  de `no-explicit-any` y de variables sin usar de `gymService`, `parkingService`, `payrollService`
+  y `timesheetConsolidationService`, que no se han limpiado en estas tandas.
+- Nada probado en navegador.
+- `src/__tests__/pos-display/tester-f2c-r10.test.ts` fallo **una vez** con 12 pruebas en rojo al
+  correr en lote con `TZ=UTC`, y paso en solitario y en la repeticion del mismo lote. Parece
+  inestabilidad propia de esa suite (arbol compartido, varias sesiones escribiendo), no del cambio:
+  no toca ninguno de los archivos de estas tandas. Queda anotado por si reaparece.
+- Cero escrituras en la base de datos. Ninguna migracion: las tres tandas se resuelven en codigo.
+- Sin `git add`, `commit`, `push` ni cambio de rama. El arbol sigue en `gosec/bloque-a`.

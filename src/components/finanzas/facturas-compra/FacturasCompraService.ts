@@ -2,6 +2,8 @@ import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva, getOrganizationId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { stockMovementService, describeSkippedItems } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { instantForDayInTz } from '@/lib/services/businessInstant';
 import { 
   InvoicePurchase, 
   SupplierBase, 
@@ -835,6 +837,10 @@ export class FacturasCompraService {
         throw new Error('El monto del pago no puede exceder el balance pendiente');
       }
       
+      // `payments.payment_date` es timestamptz: el dia que eligio el usuario se
+      // combina con la hora de pared de la sucursal, no con la del navegador.
+      const timezone = await resolveTimezone(this.organizationId, branchId);
+
       // Registrar el pago
       const { data: payment, error: paymentError } = await supabase
         .from('payments')
@@ -848,7 +854,9 @@ export class FacturasCompraService {
           currency: factura.currency || 'COP',
           reference: pagoData.reference || null,
           status: 'completed',
-          payment_date: pagoData.payment_date ? new Date(pagoData.payment_date + 'T' + new Date().toTimeString().split(' ')[0]).toISOString() : new Date().toISOString()
+          payment_date: pagoData.payment_date
+            ? instantForDayInTz(pagoData.payment_date, timezone)
+            : new Date().toISOString()
         })
         .select()
         .single();

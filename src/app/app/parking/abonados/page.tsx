@@ -17,6 +17,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import parkingService, { type ParkingPass, type ParkingPassType } from '@/lib/services/parkingService';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
 import {
   PassesHeader,
   PassesFilters,
@@ -36,6 +38,11 @@ const initialFilters: PassFiltersState = {
 export default function AbonadosPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
+  // `parking_passes.start_date` / `.end_date` son `date` y la tabla no tiene
+  // `branch_id`: el abono es de la organizacion, y su vigencia se cuenta en
+  // dias calendario de esa zona. `Date.now() + n * 24 h` ademas pierde una
+  // hora en cada cambio de horario y acaba recortando un dia al abonado.
+  const { getToday } = useFormatDate();
 
   const [passes, setPasses] = useState<ParkingPass[]>([]);
   const [passTypes, setPassTypes] = useState<ParkingPassType[]>([]);
@@ -145,9 +152,8 @@ export default function AbonadosPage() {
       ...pass,
       id: undefined,
       status: 'active' as const,
-      start_date: new Date().toISOString().split('T')[0],
-      end_date: new Date(Date.now() + (pass.pass_type?.duration_days || 30) * 24 * 60 * 60 * 1000)
-        .toISOString().split('T')[0],
+      start_date: getToday(),
+      end_date: sumarDiasAlDia(getToday(), pass.pass_type?.duration_days || 30),
     };
     setSelectedPass(duplicatedPass as unknown as ParkingPass);
     setShowFormDialog(true);
@@ -192,9 +198,8 @@ export default function AbonadosPage() {
       ...pass,
       id: undefined,
       status: 'active' as const,
-      start_date: new Date().toISOString().split('T')[0],
-      end_date: new Date(Date.now() + (pass.pass_type?.duration_days || 30) * 24 * 60 * 60 * 1000)
-        .toISOString().split('T')[0],
+      start_date: getToday(),
+      end_date: sumarDiasAlDia(getToday(), pass.pass_type?.duration_days || 30),
     };
     setSelectedPass(renewedPass as unknown as ParkingPass);
     setShowFormDialog(true);

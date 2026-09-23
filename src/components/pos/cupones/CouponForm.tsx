@@ -17,6 +17,8 @@ import { Coupon, CreateCouponData, UpdateCouponData, DiscountType, DISCOUNT_TYPE
 import { CouponsService } from './couponsService';
 import { cn } from '@/utils/Utils';
 import { toast } from 'sonner';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { plainDayOfInstant } from '@/lib/services/businessInstant';
 
 interface CouponFormProps {
   open: boolean;
@@ -42,6 +44,7 @@ export function CouponForm({ open, onOpenChange, coupon, onSuccess }: CouponForm
     applies_to_first_purchase: false
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { timezone } = useOrgTimezone();
 
   const isEditing = !!coupon;
 
@@ -57,8 +60,11 @@ export function CouponForm({ open, onOpenChange, coupon, onSuccess }: CouponForm
           max_discount_amount: coupon.max_discount_amount,
           usage_limit: coupon.usage_limit,
           usage_limit_per_customer: coupon.usage_limit_per_customer,
-          start_date: coupon.start_date?.split('T')[0],
-          end_date: coupon.end_date?.split('T')[0],
+          // timestamptz -> dia de la organizacion. `.split('T')[0]` daba el dia
+          // UTC: un cupon que empieza el 1 en Bogota se abria en el formulario
+          // como si empezara el 31 (regla 2 de docs/reglas-fechas-timezone.md).
+          start_date: plainDayOfInstant(coupon.start_date, timezone) || undefined,
+          end_date: plainDayOfInstant(coupon.end_date, timezone) || undefined,
           is_active: coupon.is_active,
           applies_to_first_purchase: coupon.applies_to_first_purchase
         });

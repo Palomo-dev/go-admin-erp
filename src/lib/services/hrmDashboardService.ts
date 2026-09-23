@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateCore';
+import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
 
 export interface HRMKPIs {
   activeEmployees: number;
@@ -50,6 +53,15 @@ class HRMDashboardService {
   constructor(organizationId: number, branchId?: number | null) {
     this.organizationId = organizationId;
     this.branchId = branchId ?? null;
+  }
+
+  /**
+   * Zona del tablero: la de la sucursal seleccionada en el filtro si la hay,
+   * y si no la de la organizacion. Aqui SI vale la sucursal del filtro, porque
+   * el tablero mira «el dia de la sede que estoy mirando», no el de una fila.
+   */
+  private zona(): Promise<string> {
+    return resolveTimezone(this.organizationId, this.branchId);
   }
 
   // Obtiene los IDs de employments activos de la organización, filtrados por sucursal.
@@ -112,7 +124,7 @@ class HRMDashboardService {
   }
 
   async getKPIs(): Promise<HRMKPIs> {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInTz(await this.zona());
     const memberIds = await this.getMemberIds();
 
     // Empleados activos (filtrar por organization_member_id de esta org)
@@ -206,7 +218,7 @@ class HRMDashboardService {
 
   async getAlerts(): Promise<HRMAlert[]> {
     const alerts: HRMAlert[] = [];
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInTz(await this.zona());
     const memberIds = await this.getMemberIds();
 
     // Timesheets por aprobar
@@ -262,10 +274,10 @@ class HRMDashboardService {
       });
     }
 
-    // Turnos sin asignar (para hoy o mañana)
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    // Turnos sin asignar (para hoy o mañana). `work_date` es `date`: el
+    // «manana» es el dia calendario siguiente al de la organizacion, no
+    // `Date.now() + 24 h` (que en el cambio de horario se queda en el mismo dia).
+    const tomorrowStr = sumarDiasAlDia(today, 1);
 
     let unassignedShiftsQuery = supabase
       .from('shift_assignments')
@@ -320,9 +332,7 @@ class HRMDashboardService {
     }
 
     // Contratos por vencer (próximos 30 días) — filtrar por members de esta org
-    const thirtyDaysLater = new Date();
-    thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
-    const thirtyDaysStr = thirtyDaysLater.toISOString().split('T')[0];
+    const thirtyDaysStr = sumarDiasAlDia(today, 30);
 
     let expiringContractsQuery = supabase
       .from('employments')

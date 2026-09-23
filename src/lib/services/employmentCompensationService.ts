@@ -1,6 +1,17 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateCore';
+
+// Zona horaria de este servicio (Fase B, tanda 3).
+//
+// `employment_compensation` no tiene `organization_id` ni `branch_id`
+// (verificado en `information_schema.columns`): se llega a la organizacion por
+// `employment_id -> employments`, y el servicio ya la recibe en el constructor.
+// La sucursal del contrato no se usa aqui a proposito: una vigencia salarial es
+// del contrato, y `effective_from` / `effective_to` son `date` puro. Lo unico
+// que hace falta es el DIA de hoy en la organizacion.
 
 export interface EmploymentCompensation {
   id: string;
@@ -141,7 +152,7 @@ class EmploymentCompensationService {
   }
 
   async getCurrentAssignment(employmentId: string): Promise<EmploymentCompensation | null> {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInTz(await resolveTimezone(this.organizationId));
     const assignments = await this.getAll({ 
       employment_id: employmentId,
       effective_date: today
@@ -220,7 +231,7 @@ class EmploymentCompensationService {
     ended: number;
   }> {
     const all = await this.getAll();
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInTz(await resolveTimezone(this.organizationId));
     
     const active = all.filter(a => {
       const isActive = a.effective_from <= today && (!a.effective_to || a.effective_to >= today);

@@ -1,6 +1,8 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateCore';
 
 // Interfaces
 export interface PayrollPeriod {
@@ -560,14 +562,28 @@ class PayrollService {
   }
 
   // Country Rules
+  /**
+   * Tabla de retenciones vigente HOY para un pais.
+   *
+   * El dia decide QUE NORMA se aplica: `country_payroll_rules.valid_from` es
+   * `date` y las tablas entran en vigor el 1 de enero. Con el dia UTC, una
+   * nomina liquidada el 31 de diciembre a las 20:00 en Bogota (ya 1 de enero en
+   * UTC) cogia la tabla del ANO SIGUIENTE, y una liquidada el 1 de enero a las
+   * 00:30 en Madrid cogia la del anterior. Por eso el dia sale de la zona de la
+   * organizacion y no del reloj del servidor.
+   *
+   * `country_payroll_rules` es un catalogo por pais, sin organizacion: la zona
+   * es la de la organizacion que liquida, que es quien tiene el calendario
+   * laboral. No hay sucursal en juego.
+   */
   async getCountryRules(countryCode: string = 'CO'): Promise<CountryPayrollRules | null> {
-    const currentYear = new Date().getFullYear();
+    const hoy = todayInTz(await resolveTimezone(this.organizationId));
     const { data, error } = await supabase
       .from('country_payroll_rules')
       .select('*')
       .eq('country_code', countryCode)
       .eq('is_active', true)
-      .lte('valid_from', new Date().toISOString().split('T')[0])
+      .lte('valid_from', hoy)
       .order('year', { ascending: false })
       .limit(1)
       .single();

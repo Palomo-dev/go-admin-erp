@@ -20,6 +20,10 @@ import { asPlainDate, formatPlainDate } from '@/lib/utils/dateDisplay';
 interface InstallmentsCardProps {
   accountId: string;
   totalAmount: number;
+  /** Organizacion dueña de la cuenta: de ella sale la zona de los vencimientos. */
+  organizationId: number;
+  /** Sucursal dueña de la cuenta, si la tiene. Manda sobre la organizacion. */
+  branchId: number | null;
   onUpdate?: () => void;
 }
 
@@ -46,7 +50,13 @@ const statusConfig: Record<string, { label: string; className: string; icon: any
   }
 };
 
-export function InstallmentsCard({ accountId, totalAmount, onUpdate }: InstallmentsCardProps) {
+export function InstallmentsCard({
+  accountId,
+  totalAmount,
+  organizationId,
+  branchId,
+  onUpdate,
+}: InstallmentsCardProps) {
   const { timezone } = useOrgTimezone();
   const [installments, setInstallments] = useState<APInstallment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,7 +120,9 @@ export function InstallmentsCard({ accountId, totalAmount, onUpdate }: Installme
         totalAmount,
         formData.numberOfInstallments,
         new Date(),
-        formData.interestRate
+        organizationId,
+        branchId,
+        formData.interestRate,
       );
       
       toast.success('Cuotas creadas exitosamente');

@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/config';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 export default function TimesheetsPage() {
   const router = useRouter();
@@ -73,13 +74,17 @@ export default function TimesheetsPage() {
     setLocalBranchFilter(globalBranchFilter?.toString() || 'all');
   }, [globalBranchFilter]);
 
+  // `timesheets.work_date` es `date`: el dia a consolidar es el de la
+  // organizacion, no el dia UTC del navegador de quien abre el dialogo.
+  const { getToday } = useFormatDate();
+
   // Dialogs
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isConsolidating, setIsConsolidating] = useState(false);
   const [showConsolidateDialog, setShowConsolidateDialog] = useState(false);
-  const [consolidateDate, setConsolidateDate] = useState(new Date().toISOString().split('T')[0]);
+  const [consolidateDate, setConsolidateDate] = useState(() => getToday());
   const [selectedTimesheet, setSelectedTimesheet] = useState<Timesheet | null>(null);
   const [showDetailDrawer, setShowDetailDrawer] = useState(false);
 

@@ -13,6 +13,8 @@ import {
 } from './types';
 import { SupplierBase, OrganizationPaymentMethod, OrganizationCurrency } from '../facturas-compra/types';
 import { DEFAULT_TIMEZONE, getToday } from '@/lib/utils/timezone';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { sumarMesesAlDia } from '@/lib/services/fiscalCalendar';
 import { plainDateToInstant, toPlainDate } from '@/lib/utils/dateDisplay';
 import { logError } from '@/lib/utils/errorMessage';
 
@@ -934,20 +936,43 @@ export class CuentasPorPagarService {
   }
 
   // Crear cuotas para una cuenta por pagar
+  /**
+   * Crea el plan de cuotas de una cuenta por pagar.
+   *
+   * La firma pide IDENTIDAD, no zona (ADR-003). Antes terminaba en
+   * `timezone: string = DEFAULT_TIMEZONE`, un opcional que ningun llamador
+   * rellenaba: todas las cuotas del sistema se calculaban con Bogota cableada,
+   * y el parametro no fallaba de forma visible. Es la misma forma del bug de
+   * impresion de la ronda 4.
+   *
+   * `ap_installments.due_date` es `date` NOT NULL: se escribe un dia
+   * calendario. `accounts_payable` si tiene `branch_id`, y la zona es la de la
+   * sucursal dueña de la cuenta.
+   *
+   * @param primerVencimiento Instante desde el que se cuenta la primera cuota.
+   * @param organizationId Organizacion dueña de la cuenta.
+   * @param branchId Sucursal dueña de la cuenta, si la tiene.
+   */
   static async crearCuotas(
-    accountId: string, 
-    totalAmount: number, 
+    accountId: string,
+    totalAmount: number,
     numberOfInstallments: number,
-    startDate: Date,
-    timezone: string = DEFAULT_TIMEZONE
+    primerVencimiento: Date,
+    organizationId: number,
+    branchId: number | null,
   ): Promise<void> {
     try {
+      const zona = await resolveTimezone(organizationId, branchId);
       const installmentAmount = Math.round((totalAmount / numberOfInstallments) * 100) / 100;
       const installments = [];
+      // Vencimientos por mes calendario, recortando al ultimo dia del mes
+      // destino: una cuenta creada el 31 de enero vence el 28 de febrero, no el
+      // 3 de marzo. `Date.setMonth` desborda, y eso deja febrero sin cuota y
+      // marzo con dos.
+      const diaBase = toPlainDate(primerVencimiento, zona);
 
       for (let i = 1; i <= numberOfInstallments; i++) {
-        const dueDate = new Date(startDate);
-        dueDate.setMonth(dueDate.getMonth() + (i - 1));
+        const dueDate = sumarMesesAlDia(diaBase, i - 1);
 
         const amount = i === numberOfInstallments 
           ? totalAmount - (installmentAmount * (numberOfInstallments - 1))
@@ -956,7 +981,7 @@ export class CuentasPorPagarService {
         installments.push({
           account_payable_id: accountId,
           installment_number: i,
-          due_date: toPlainDate(dueDate, timezone),
+          due_date: dueDate,
           amount: amount,
           balance: amount,
           status: 'pending',

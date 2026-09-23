@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { rangoDelMes } from '@/lib/services/fiscalCalendar';
 
 export interface FiscalPeriod {
   id: string;
@@ -142,17 +143,19 @@ export class PeriodosContablesService {
     const organizationId = this.getOrganizationId();
     const periodos = [];
 
+    // `date` puro: los limites del mes no dependen de la zona. Ver
+    // `rangoDelMes` y la cabecera de `fiscalCalendar.ts` para por que no se
+    // puede pasar por un `Date` local.
     for (let month = 1; month <= 12; month++) {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0);
+      const { start, end } = rangoDelMes(year, month);
 
       periodos.push({
         organization_id: organizationId,
         year,
         month,
         period_type: 'monthly',
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
+        start_date: start,
+        end_date: end,
         status: 'open'
       });
     }

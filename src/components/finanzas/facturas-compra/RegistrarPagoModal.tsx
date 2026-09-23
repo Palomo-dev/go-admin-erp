@@ -24,6 +24,8 @@ import { FacturasCompraService } from './FacturasCompraService';
 import { InvoicePurchase, OrganizationPaymentMethod } from './types';
 import { formatCurrency } from '@/utils/Utils';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { plainDayOfInstant } from '@/lib/services/businessInstant';
 
 interface RegistrarPagoModalProps {
   open: boolean;
@@ -51,12 +53,19 @@ export function RegistrarPagoModal({
   const [metodosPago, setMetodosPago] = useState<OrganizationPaymentMethod[]>([]);
   const [montoExcedido, setMontoExcedido] = useState(false);
   
+  // `payments.payment_date` e `invoice_purchase.issue_date` son timestamptz.
+  // El formulario trabaja con el DIA de la sucursal dueña de la factura; el
+  // instante lo compone el servicio. `issue_date` se lee con la zona, nunca
+  // con `.toISOString()`, que se queda con el dia UTC.
+  const { getToday, timezone } = useFormatDate(factura?.branch_id);
+  const diaEmision = plainDayOfInstant(factura?.issue_date, timezone);
+
   const [formData, setFormData] = useState<FormData>({
     amount: '',
     payment_method: '',
     reference: '',
     notes: '',
-    payment_date: new Date().toISOString().split('T')[0]
+    payment_date: ''
   });
   const [fechaError, setFechaError] = useState(false);
 
@@ -69,7 +78,7 @@ export function RegistrarPagoModal({
         setFormData(prev => ({
           ...prev,
           amount: factura.balance.toString(),
-          payment_date: new Date().toISOString().split('T')[0]
+          payment_date: getToday()
         }));
         setFechaError(false);
       }
@@ -131,7 +140,7 @@ export function RegistrarPagoModal({
       payment_method: metodosPago.length > 0 ? metodosPago[0].payment_method_code : '',
       reference: '',
       notes: '',
-      payment_date: new Date().toISOString().split('T')[0]
+      payment_date: getToday()
     });
     setMontoExcedido(false);
     setFechaError(false);
@@ -160,12 +169,9 @@ export function RegistrarPagoModal({
     }
 
     // Validar que la fecha de pago no sea anterior a la fecha de emisión
-    if (factura.issue_date) {
-      const fechaEmision = new Date(factura.issue_date).toISOString().split('T')[0];
-      if (formData.payment_date < fechaEmision) {
-        alert(`La fecha de pago no puede ser anterior a la fecha de emisión (${fechaEmision})`);
-        return;
-      }
+    if (diaEmision && formData.payment_date < diaEmision) {
+      alert(`La fecha de pago no puede ser anterior a la fecha de emisión (${diaEmision})`);
+      return;
     }
 
     try {
@@ -309,13 +315,12 @@ export function RegistrarPagoModal({
               value={formData.payment_date}
               onChange={(e) => {
                 setFormData(prev => ({ ...prev, payment_date: e.target.value }));
-                if (factura.issue_date) {
-                  const fechaEmision = new Date(factura.issue_date).toISOString().split('T')[0];
-                  setFechaError(e.target.value < fechaEmision);
+                if (diaEmision) {
+                  setFechaError(e.target.value < diaEmision);
                 }
               }}
-              max={new Date().toISOString().split('T')[0]}
-              min={factura.issue_date ? new Date(factura.issue_date).toISOString().split('T')[0] : undefined}
+              max={getToday()}
+              min={diaEmision || undefined}
               className={`h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${fechaError ? 'border-red-500 dark:border-red-500' : ''}`}
             />
             {fechaError && (

@@ -4,6 +4,9 @@ import { SupplierBase } from '../../facturas-compra/types';
 export interface CuentaPorPagarDetalle {
   id: string;
   organization_id: number;
+  /** Sucursal dueña de la cuenta. Manda sobre la organizacion para la zona
+   *  horaria de sus vencimientos (ADR-001). */
+  branch_id?: number | null;
   supplier_id: number;
   invoice_id?: string;
   amount: number;

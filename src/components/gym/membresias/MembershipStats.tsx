@@ -6,6 +6,7 @@ import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { Users, Snowflake, AlertTriangle, XCircle, TrendingUp } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Membership, getDaysRemaining } from '@/lib/services/gymService';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface MembershipStatsProps {
   memberships: Membership[];
@@ -49,6 +50,9 @@ function StatCard({ title, value, icon, color, subtitle, onClick }: StatCardProp
 }
 
 export function MembershipStats({ memberships, isLoading }: MembershipStatsProps) {
+  // `memberships.end_date` es timestamptz y ahora cierra al final del dia de la
+  // organizacion: los cortes "activa" / "vencida" se cuentan con esa zona.
+  const { timezone } = useFormatDate();
   const stats = React.useMemo(() => {
     const now = new Date();
     
@@ -58,7 +62,7 @@ export function MembershipStats({ memberships, isLoading }: MembershipStatsProps
     const cancelled = memberships.filter(m => m.status === 'cancelled');
     const expiringIn7Days = memberships.filter(m => {
       if (m.status !== 'active') return false;
-      const days = getDaysRemaining(m.end_date);
+      const days = getDaysRemaining(m.end_date, timezone);
       return days >= 0 && days <= 7;
     });
 
@@ -69,7 +73,7 @@ export function MembershipStats({ memberships, isLoading }: MembershipStatsProps
       cancelled: cancelled.length,
       expiringSoon: expiringIn7Days.length
     };
-  }, [memberships]);
+  }, [memberships, timezone]);
 
   if (isLoading) {
     return <StatsSkeleton count={5} />;

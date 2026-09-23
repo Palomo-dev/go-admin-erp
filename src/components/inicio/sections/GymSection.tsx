@@ -82,7 +82,7 @@ function buildExportData(
 }
 
 export default function GymSection() {
-  const { formatDate } = useFormatDate();
+  const { formatDate, timezone } = useFormatDate();
   const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<GymStatsType | null>(null);
@@ -154,7 +154,7 @@ export default function GymSection() {
 
   const expiringMemberships = useMemo(
     () => memberships.filter((m) => {
-      const days = getDaysRemaining(m.end_date);
+      const days = getDaysRemaining(m.end_date, timezone);
       return days <= 7 && m.status === 'active';
     }),
     [memberships],

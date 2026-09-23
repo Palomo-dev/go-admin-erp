@@ -9,6 +9,46 @@ import {
   CreatePromotionRuleData
 } from './types';
 
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { toPlainDate, plainDateToInstant } from '@/lib/utils/dateCore';
+import { getDayRange } from '@/lib/utils/dateRanges';
+
+// ============================================================
+// Vigencias en zona de la organizacion (Fase B, tanda 4).
+//
+// `promotions.start_date` y `.end_date` son **timestamptz**, no `date`
+// (verificado en `information_schema.columns`). El formulario entrega
+// 'YYYY-MM-DD' y Postgres lo lee a medianoche del `TimeZone` de la sesion
+// (UTC). El motor que decide si una promocion esta vigente compara INSTANTES
+// (`lte('start_date', ahora)` y el predicado de `end_date`), asi que una
+// vigencia "del 1 al 30" empezaba en Bogota a las 19:00 del 31 anterior y se
+// apagaba a las 19:00 del 29: un dia de descuento perdido por cada extremo.
+//
+// Regla: el dia de inicio empieza a las 00:00 de la zona de la organizacion y
+// el dia de fin termina a las 23:59:59.999 de esa misma zona.
+// ============================================================
+
+/** Dia calendario 'YYYY-MM-DD' de un valor que puede venir ya como instante. */
+function diaDe(valor: string, timezone: string): string {
+  return valor.length <= 10 ? valor : toPlainDate(new Date(valor), timezone);
+}
+
+/** Convierte los dias del formulario en los instantes que van a la columna. */
+async function vigenciaEnInstantes(
+  organizationId: number,
+  datos: { start_date?: string | null; end_date?: string | null },
+): Promise<Record<string, string | null>> {
+  const zona = await resolveTimezone(organizationId);
+  const convertido: Record<string, string | null> = {};
+  if (datos.start_date) {
+    convertido.start_date = plainDateToInstant(diaDe(datos.start_date, zona), zona, '00:00');
+  }
+  if (datos.end_date) {
+    convertido.end_date = getDayRange(diaDe(datos.end_date, zona), zona).end;
+  }
+  return convertido;
+}
+
 export class PromotionsService {
   private static getOrganizationId(): number {
     const org = obtenerOrganizacionActiva();
@@ -159,11 +199,13 @@ export class PromotionsService {
       const { data: userData } = await supabase.auth.getUser();
 
       const { rules, ...promotionData } = data;
+      const vigencia = await vigenciaEnInstantes(organizationId, promotionData);
 
       const { data: result, error } = await supabase
         .from('promotions')
         .insert([{
           ...promotionData,
+          ...vigencia,
           organization_id: organizationId,
           created_by: userData?.user?.id,
           is_active: data.is_active ?? true,
@@ -198,11 +240,13 @@ export class PromotionsService {
     try {
       const organizationId = this.getOrganizationId();
       const { rules, ...promotionData } = data;
+      const vigencia = await vigenciaEnInstantes(organizationId, promotionData);
 
       const { data: result, error } = await supabase
         .from('promotions')
         .update({
           ...promotionData,
+          ...vigencia,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)

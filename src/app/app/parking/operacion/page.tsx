@@ -27,6 +27,7 @@ import parkingPaymentService, {
 import parkingFinanceService from '@/lib/services/parkingFinanceService';
 import parkingTicketService, { type EntryTicketData } from '@/lib/services/parkingTicketService';
 import type { ParkingZone } from '@/components/parking/espacios/types';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface ParkingSpace {
   id: string;
@@ -46,6 +47,11 @@ export default function ParkingOperacionPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
   const { branchFilter } = useBranch();
+  // `parking_passes.end_date` es `date` y la tabla no tiene `branch_id`: el
+  // abono vale hasta el final de su dia en la zona de la organizacion. Con el
+  // dia UTC, en Bogota el abonado dejaba de tener pase a las 19:00 de la
+  // vispera y la talanquera le cobraba como ocasional.
+  const { getToday } = useFormatDate();
 
   const [isLoading, setIsLoading] = useState(true);
   const [branchId, setBranchId] = useState<number | null>(null);
@@ -159,13 +165,14 @@ export default function ParkingOperacionPage() {
       const processedSessions: ActiveSession[] = await Promise.all(
         sessions.map(async (session) => {
           // Verificar si tiene pase activo
+          const hoy = getToday();
           const { data: passData } = await supabase
             .from('parking_passes')
             .select('id, plan_name, end_date, status')
             .eq('vehicle_plate', session.vehicle_plate)
             .eq('organization_id', organization.id)
             .eq('status', 'active')
-            .gte('end_date', new Date().toISOString().split('T')[0])
+            .gte('end_date', hoy)
             .limit(1);
 
           const space = spacesResult.data?.find(

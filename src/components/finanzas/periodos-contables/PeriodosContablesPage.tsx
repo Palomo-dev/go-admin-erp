@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Calendar, Plus, Lock, Unlock, Loader2, Trash2, Edit, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Calendar, Plus, Lock, Unlock, Loader2, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PeriodosContablesService, FiscalPeriod } from './PeriodosContablesService';
+import { rangoDelMes } from '@/lib/services/fiscalCalendar';
 import { getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
@@ -56,15 +57,16 @@ export function PeriodosContablesPage() {
   const handleCreatePeriodo = async () => {
     try {
       setIsProcessing(true);
-      const startDate = new Date(newPeriodo.year, newPeriodo.month - 1, 1);
-      const endDate = new Date(newPeriodo.year, newPeriodo.month, 0);
+      // `date` puro y limites de mes: aritmetica de dia calendario, nunca un
+      // `Date` local convertido a UTC (ver `fiscalCalendar.ts`).
+      const { start, end } = rangoDelMes(newPeriodo.year, newPeriodo.month);
 
       await PeriodosContablesService.crearPeriodo({
         year: newPeriodo.year,
         month: newPeriodo.month,
         period_type: newPeriodo.period_type,
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0]
+        start_date: start,
+        end_date: end
       });
 
       toast.success('Periodo creado exitosamente');

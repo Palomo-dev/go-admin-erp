@@ -1,6 +1,10 @@
 'use client';
 
 import { createSupabaseClient } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz, nextPlainDay } from '@/lib/utils/dateCore';
+import { getDayRange } from '@/lib/utils/dateRanges';
+import { diasEntreDias } from '@/lib/services/fiscalCalendar';
 
 const createClient = () => createSupabaseClient();
 
@@ -95,6 +99,14 @@ export class TimesheetConsolidationService {
     const results: ConsolidationResult[] = [];
 
     // 1. Obtener todos los eventos del día
+    // `attendance_events.event_at` es timestamptz: el dia laboral se acota con
+    // instantes con offset, no con `${date}T00:00:00` (que Postgres lee en
+    // UTC y corre la jornada completa el offset de la sucursal).
+    const rangoDelDia = getDayRange(
+      date,
+      await resolveTimezone(this.organizationId, branchId ?? null),
+    );
+
     let query = supabase
       .from('attendance_events')
       .select(`
@@ -110,8 +122,8 @@ export class TimesheetConsolidationService {
         )
       `)
       .eq('organization_id', this.organizationId)
-      .gte('event_at', `${date}T00:00:00`)
-      .lte('event_at', `${date}T23:59:59`);
+      .gte('event_at', rangoDelDia.start)
+      .lte('event_at', rangoDelDia.end);
 
     if (branchId) {
       query = query.eq('branch_id', branchId);
@@ -160,14 +172,16 @@ export class TimesheetConsolidationService {
     branchId?: number
   ): Promise<ConsolidationSummary> {
     const allResults: ConsolidationResult[] = [];
-    const startDate = new Date(dateFrom);
-    const endDate = new Date(dateTo);
 
-    // Iterar día por día
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
-      const daySummary = await this.consolidateDay(dateStr, branchId);
+    // Iteracion sobre DIAS CALENDARIO, no sobre instantes. `d.setDate(d+1)`
+    // sobre un `Date` suma 24 h de reloj: en el dia en que se adelanta la hora
+    // ese salto se come un dia y la consolidacion lo deja sin timesheets.
+    const total = diasEntreDias(dateFrom, dateTo);
+    let dia = dateFrom;
+    for (let i = 0; i <= total; i++) {
+      const daySummary = await this.consolidateDay(dia, branchId);
       allResults.push(...daySummary.results);
+      dia = nextPlainDay(dia);
     }
 
     return {
@@ -406,15 +420,17 @@ export class TimesheetConsolidationService {
     pending: number;
   }[]> {
     const supabase = createClient();
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    const zona = await resolveTimezone(this.organizationId);
+    const targetDate = date || todayInTz(zona);
+    const rangoDelDia = getDayRange(targetDate, zona);
 
     // Contar empleados con eventos
     const { data: eventsCount } = await supabase
       .from('attendance_events')
       .select('employment_id')
       .eq('organization_id', this.organizationId)
-      .gte('event_at', `${targetDate}T00:00:00`)
-      .lte('event_at', `${targetDate}T23:59:59`);
+      .gte('event_at', rangoDelDia.start)
+      .lte('event_at', rangoDelDia.end);
 
     const uniqueEmployeesWithEvents = new Set((eventsCount || []).map(e => e.employment_id)).size;
 

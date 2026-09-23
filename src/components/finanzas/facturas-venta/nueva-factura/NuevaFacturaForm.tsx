@@ -29,6 +29,9 @@ import { formatCurrency } from '@/utils/Utils';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { resolveLineTax } from '@/lib/services/taxResolver';
+import { tasaImpuestosDelDocumento } from '@/lib/services/taxCoverage';
+import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
+import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 
 // Tipo para un ítem de factura
 export type InvoiceItem = {
@@ -153,6 +156,27 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const { resolveRate: resolveCommissionRate } = useCommissionRate();
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({}); // Indicador de impuestos aplicados
   const [appliedTaxTotals, setAppliedTaxTotals] = useState<{[key: string]: any}>({}); // Totales de impuestos aplicados
+
+  // Advertencia previa a emitir: líneas que el resolver dejaría en 0 por falta
+  // de impuesto en el producto y de tarifa por defecto en la organización.
+  const lineasParaAviso = useMemo(
+    () => items.map((it) => ({
+      nombre: it.description || it.product_name || '',
+      productId: it.product_id ?? null,
+      taxRate: it.tax_rate ?? null,
+      taxCode: it.tax_code ?? null,
+    })),
+    [items],
+  );
+  const docTaxRate = useMemo(
+    () => tasaImpuestosDelDocumento(appliedTaxes, appliedTaxTotals),
+    [appliedTaxes, appliedTaxTotals],
+  );
+  const { sinImpuesto: lineasSinImpuesto, indices: indicesSinImpuesto } = useLineasSinImpuesto(
+    organizationId ? Number(organizationId) : null,
+    lineasParaAviso,
+    docTaxRate,
+  );
   const [subtotal, setSubtotal] = useState<number>(0);
   const [taxTotal, setTaxTotal] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
@@ -1277,6 +1301,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           organizationId={organizationId ? Number(organizationId) : undefined}
           serialSelections={serialSelections}
           onSerialSelectionsChange={setSerialSelections}
+          lineasSinImpuesto={indicesSinImpuesto}
         />
       </div>
       
@@ -1560,6 +1585,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           </div>
         )}
       </div>
+
+      <AvisoSinImpuesto lineas={lineasSinImpuesto} accion="se facturará" />
 
       {/* Botones de Acción */}
       <div className="

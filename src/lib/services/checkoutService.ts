@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { resolveLineTax, type ResolveTaxInput } from '@/lib/services/taxResolver';
 
 export interface CheckoutReservation {
   id: string;
@@ -757,7 +758,7 @@ class CheckoutService {
     // Obtener impuestos de la organización
     const { data: orgTaxes } = await supabase
       .from('organization_taxes')
-      .select('id, name, rate, is_default, is_active')
+      .select('id, name, rate, is_default, is_active, tax_templates(code)')
       .eq('organization_id', reservation.organization_id)
       .eq('is_active', true);
 
@@ -920,19 +921,66 @@ class CheckoutService {
         console.error('createSaleFromFolio: Error generando factura:', invoiceError);
         throw invoiceError;
       } else {
-        // Crear invoice_items
-        const invoiceItems = saleableItems.map((item: any) => ({
-          invoice_id: invoice.id,
-          invoice_type: 'sale',
-          invoice_sales_id: invoice.id,
-          product_id: item.product_id || null,
-          description: item.description?.substring(0, 255) || 'Cargo',
-          qty: Number(item.quantity) || 1,
-          unit_price: Number(item.unit_price) || Number(item.amount),
-          tax_rate: 0,
-          total_line: Number(item.amount),
-          discount_amount: 0,
-          tax_included: taxIncluded,
+        // Crear invoice_items.
+        // F-42: la tarifa de cada línea sale del resolver único, con los
+        // impuestos aplicados en el diálogo de checkout como impuestos del
+        // documento (los mismos con los que se calculó la cabecera). Si el
+        // documento no lleva ningún impuesto, la línea queda en 0 de forma
+        // definitiva: la cabecera se calculó sin impuesto y la línea no puede
+        // añadir uno que el huésped no pagó.
+        const appliedDocTaxes: NonNullable<ResolveTaxInput['appliedTaxes']> = {};
+        const appliedDocTaxTotals: NonNullable<ResolveTaxInput['appliedTaxTotals']> = {};
+        for (const tax of (orgTaxes || []) as Array<{
+          id: string;
+          name: string;
+          rate: number | string;
+          tax_templates?: { code?: string | null } | { code?: string | null }[] | null;
+        }>) {
+          if (!appliedTaxes[tax.id]) continue;
+          const rate = Number(tax.rate) || 0;
+          const template = Array.isArray(tax.tax_templates) ? tax.tax_templates[0] : tax.tax_templates;
+          const key = template?.code || `TAX_${rate}`;
+          appliedDocTaxes[key] = true;
+          const previous = appliedDocTaxTotals[key];
+          appliedDocTaxTotals[key] = {
+            rate: (previous?.rate || 0) + rate,
+            base: 0,
+            amount: 0,
+            name: tax.name,
+            included: taxIncluded,
+          };
+        }
+        const documentoSinImpuesto = !Object.values(appliedDocTaxTotals).some((t) => t.rate > 0);
+
+        const invoiceItems = await Promise.all(saleableItems.map(async (item: { product_id?: number | null; description?: string | null; quantity?: number | string | null; unit_price?: number | string | null; amount?: number | string | null }) => {
+          const qty = Number(item.quantity) || 1;
+          const unitPrice = Number(item.unit_price) || Number(item.amount);
+          const resolved = await resolveLineTax({
+            itemTaxRate: 0,
+            itemTaxIsFinal: documentoSinImpuesto,
+            appliedTaxes: appliedDocTaxes,
+            appliedTaxTotals: appliedDocTaxTotals,
+            productId: item.product_id || null,
+            organizationId: reservation.organization_id,
+            taxIncluded,
+            qty,
+            unitPrice,
+            discountAmount: 0,
+          });
+          return {
+            invoice_id: invoice.id,
+            invoice_type: 'sale',
+            invoice_sales_id: invoice.id,
+            product_id: item.product_id || null,
+            description: item.description?.substring(0, 255) || 'Cargo',
+            qty,
+            unit_price: unitPrice,
+            tax_rate: resolved.tax_rate,
+            tax_code: resolved.tax_code,
+            total_line: resolved.total_line,
+            discount_amount: 0,
+            tax_included: resolved.tax_included,
+          };
         }));
 
         await supabase.from('invoice_items').insert(invoiceItems);

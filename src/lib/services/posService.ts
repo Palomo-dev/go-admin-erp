@@ -1990,21 +1990,22 @@ export class POSService {
       // Guardar propina si existe
       if (checkoutData.tip_amount && checkoutData.tip_amount > 0) {
         const tipPayment = payments.find(p => p.amount > 0);
+        const tipData = {
+          organization_id: cart.organization_id,
+          branch_id: getCurrentBranchId(),
+          sale_id: saleData.id,
+          server_id: checkoutData.tip_server_id || userId,
+          amount: checkoutData.tip_amount,
+          // tips.tip_type solo admite cash/card/split/pooled (CHECK en la BD):
+          // todo lo que no es efectivo es propina electrónica → 'card'.
+          // Misma regla que pos_checkout_v1.
+          tip_type: !tipPayment || tipPayment.method === 'cash' ? 'cash' : 'card',
+          is_distributed: false,
+          notes: `Propina de venta #${saleData.id.slice(-8)}`
+        };
         const { error: tipError } = await supabase
           .from('tips')
-          .insert({
-            organization_id: cart.organization_id,
-            branch_id: getCurrentBranchId(),
-            sale_id: saleData.id,
-            server_id: checkoutData.tip_server_id || userId,
-            amount: checkoutData.tip_amount,
-            // tips.tip_type solo admite cash/card/split/pooled (CHECK en la BD):
-            // todo lo que no es efectivo es propina electrónica → 'card'.
-            // Misma regla que pos_checkout_v1.
-            tip_type: !tipPayment || tipPayment.method === 'cash' ? 'cash' : 'card',
-            is_distributed: false,
-            notes: `Propina de venta #${saleData.id.slice(-8)}`
-          });
+          .insert(tipData);
         if (tipError) {
           // No lanzamos error para que no falle todo el checkout
           console.error('Error creating tip:', tipError);

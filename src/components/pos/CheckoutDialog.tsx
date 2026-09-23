@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User, ShoppingCart, Wallet, Plus, Trash2, X, Percent, Truck, MapPin, Phone, Navigation, UserCircle, Clock, QrCode, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,6 +53,8 @@ import { TipFromDisplayNotice } from '@/components/pos/display/TipFromDisplayNot
 import { applyTipToPrefilledPayment } from '@/components/pos/display/tipNotice';
 import { isDesktop } from '@/lib/utils/desktop';
 import { newSaleId, ticketSaleNumber } from '@/lib/offline/salesOutbox';
+import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
+import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 
 interface CheckoutDialogProps {
   cart: Cart;
@@ -240,6 +242,22 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const remaining = Math.max(0, cartTotal - totalPaid);
   const change = Math.max(0, totalPaid - cartTotal);
   const canComplete = totalPaid >= cartTotal;
+
+  // Advertencia (no bloquea el cobro): líneas que se cobrarán sin IVA porque ni
+  // el producto ni la organización tienen impuesto configurado.
+  const lineasParaAviso = useMemo(
+    () => cart.items.map((it) => ({
+      nombre: it.product?.name ?? '',
+      productId: it.product_id ?? null,
+      taxRate: it.tax_rate ?? null,
+      taxExcluded: it.tax_excluded ?? null,
+    })),
+    [cart.items],
+  );
+  const { sinImpuesto: lineasSinImpuesto } = useLineasSinImpuesto(
+    open ? cart.organization_id : null,
+    lineasParaAviso,
+  );
 
   // Pantalla del cliente (PLAN §4.2 «Cobro» y §12 Fase 0). Mientras el
   // cobro está abierto se proyecta el estado según el ÚLTIMO medio elegido:
@@ -1821,6 +1839,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
             <div className="overflow-y-auto max-h-[calc(90vh-80px)] bg-gray-50 dark:bg-gray-900">
              <div className="p-5 sm:p-8">
+            {/* Arriba del contenido y no junto al pie: el diálogo tiene alto fijo
+                y un bloque extra fuera del área con scroll recortaría el botón. */}
+            <AvisoSinImpuesto lineas={lineasSinImpuesto} accion="se cobrará" className="mb-4" />
             <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-4 lg:space-y-0">
               {/* COLUMNA IZQUIERDA: Resumen + Totales */}
               <div className="space-y-3">

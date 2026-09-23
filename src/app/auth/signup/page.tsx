@@ -15,6 +15,7 @@ import PaymentMethodStep from '../../../components/auth/PaymentMethodStep';
 import { supabase } from '@/lib/supabase/config';
 import { extractGoogleUserNames } from '@/lib/auth/googleAuth';
 import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { setOrganizationDefaultTaxByCode, type CodigoTarifaPorDefecto } from '@/lib/services/defaultTaxService';
 import { useTranslations } from 'next-intl';
 import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
 
@@ -54,6 +55,7 @@ interface SignupData {
   organizationSecondaryColor?: string;
   organizationSubdomain?: string;
   logoUrl?: string; // NUEVO - Storage path del logo
+  defaultTaxCode?: CodigoTarifaPorDefecto; // Tarifa por defecto para productos sin impuesto
   // Si se une con código
   invitationCode: string;
   // Datos de sucursal principal
@@ -364,6 +366,17 @@ function SignupContent() {
           throw memberError;
         }
         console.log('✅ Membresía creada exitosamente');
+
+        // Tarifa por defecto elegida en el paso de organización. El disparador
+        // setup_organization_defaults ya sembró los impuestos; aquí solo se
+        // marca is_default. No bloquea el registro.
+        if (signupData.defaultTaxCode) {
+          try {
+            await setOrganizationDefaultTaxByCode(supabase, orgId, signupData.defaultTaxCode);
+          } catch (taxError) {
+            console.warn('⚠️ No se pudo guardar la tarifa por defecto (no bloquea signup):', taxError);
+          }
+        }
         
         // Registrar vendedor si viene con código de referido
         if (signupData.referralCode) {
@@ -690,6 +703,7 @@ function SignupContent() {
               organizationSecondaryColor: signupData.organizationSecondaryColor,
               organizationSubdomain: signupData.organizationSubdomain,
               logoUrl: signupData.logoUrl,
+              defaultTaxCode: signupData.defaultTaxCode,
               // Código de invitación
               invitationCode: signupData.invitationCode,
               // Datos de sucursal

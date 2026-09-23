@@ -5,6 +5,7 @@ import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/
 import { stockMovementService } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
+import { resolveLineTax } from '@/lib/services/taxResolver';
 import {
   calculateItemTaxes,
   type OrganizationTax as TaxUtilOrganizationTax,
@@ -1055,7 +1056,7 @@ export class PedidosService {
           const { data: saleItems } = await supabase
             .from('sale_items')
             .select(`
-              id, product_id, quantity, unit_price, total, tax_amount, tax_rate, notes
+              id, product_id, quantity, unit_price, total, tax_amount, tax_rate, discount_amount, notes
             `)
             .eq('sale_id', saleId);
 
@@ -1068,11 +1069,29 @@ export class PedidosService {
 
             const productMap = new Map((productsData || []).map(p => [p.id, p]));
 
-            const invoiceItems = saleItems.map(item => {
+            // F-42: la tarifa de cada línea sale del resolver único. Manda la
+            // tarifa guardada en sale_items si la hay; si no, el resolver sigue
+            // con los impuestos del producto y los de la organización por
+            // defecto, que son los mismos que usó la mesa para calcular el
+            // impuesto al agregar el producto. El modo incluido/no incluido es
+            // el de la factura, y el descuento de la línea (promociones) entra
+            // en total_line para que la línea sea coherente con la cabecera.
+            const taxIncludedFactura = data.tax_included || false;
+            const invoiceItems = await Promise.all(saleItems.map(async (item) => {
               const product = productMap.get(item.product_id);
               const description = product
                 ? `${product.name}${product.description ? ' - ' + product.description : ''}`
                 : `Producto ID: ${item.product_id}`;
+              const discountAmount = Number(item.discount_amount) || 0;
+              const resolved = await resolveLineTax({
+                itemTaxRate: Number(item.tax_rate) || 0,
+                productId: item.product_id || null,
+                organizationId: saleData.organization_id,
+                taxIncluded: taxIncludedFactura,
+                qty: Number(item.quantity) || 0,
+                unitPrice: Number(item.unit_price) || 0,
+                discountAmount,
+              });
 
               return {
                 invoice_id: invoiceId,
@@ -1082,11 +1101,13 @@ export class PedidosService {
                 description: description.substring(0, 255),
                 qty: item.quantity,
                 unit_price: item.unit_price,
-                total_line: item.total,
-                tax_rate: item.tax_rate || 0,
-                tax_included: data.tax_included || false,
+                total_line: resolved.total_line,
+                tax_rate: resolved.tax_rate,
+                tax_code: resolved.tax_code,
+                tax_included: resolved.tax_included,
+                discount_amount: discountAmount,
               };
-            });
+            }));
 
             const { error: itemsError } = await supabase
               .from('invoice_items')

@@ -63,6 +63,17 @@ export interface QuotationFilters {
   customer_id?: string;
 }
 
+/**
+ * Impuestos marcados en el documento (ImpuestosFactura). Se pasan al resolver
+ * para que una línea sin tarifa propia tome la del documento, igual que en la
+ * factura: sin esto la cotización mostraba IVA en los totales y guardaba sus
+ * líneas en 0 %.
+ */
+export interface QuotationTaxContext {
+  appliedTaxes?: { [key: string]: boolean };
+  appliedTaxTotals?: { [key: string]: { rate: number; base: number; amount: number; name: string; included: boolean } };
+}
+
 export class CotizacionesService {
   static async generateQuotationNumber(organizationId: number): Promise<string> {
     try {
@@ -165,7 +176,8 @@ export class CotizacionesService {
 
   static async createQuotation(
     quotationData: Omit<Quotation, 'id' | 'created_at' | 'updated_at'>,
-    items: QuotationItem[]
+    items: QuotationItem[],
+    taxContext: QuotationTaxContext = {}
   ): Promise<Quotation> {
     try {
       // --- Evaluar promociones activas para Finanzas (cotizaciones) ---
@@ -209,6 +221,8 @@ export class CotizacionesService {
               itemTaxCode: item.tax_code,
               productId: item.product_id,
               organizationId: quotationData.organization_id,
+              appliedTaxes: taxContext.appliedTaxes,
+              appliedTaxTotals: taxContext.appliedTaxTotals,
               taxIncluded: item.tax_included,
               qty: Number(item.qty) || 0,
               unitPrice: Number(item.unit_price) || 0,
@@ -255,7 +269,8 @@ export class CotizacionesService {
   static async updateQuotation(
     id: string,
     updates: Partial<Quotation>,
-    items?: QuotationItem[]
+    items?: QuotationItem[],
+    taxContext: QuotationTaxContext = {}
   ): Promise<Quotation> {
     try {
       const { data, error } = await supabase
@@ -279,6 +294,8 @@ export class CotizacionesService {
               // envían en `updates` y con 0 el resolver no encuentra el impuesto
               // por defecto de la organización.
               organizationId: updates.organization_id ?? data.organization_id,
+              appliedTaxes: taxContext.appliedTaxes,
+              appliedTaxTotals: taxContext.appliedTaxTotals,
               taxIncluded: item.tax_included,
               qty: Number(item.qty) || 0,
               unitPrice: Number(item.unit_price) || 0,

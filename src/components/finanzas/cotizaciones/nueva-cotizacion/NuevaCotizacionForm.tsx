@@ -23,6 +23,8 @@ import type { InvoiceItem } from '@/components/finanzas/facturas-venta/nueva-fac
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 import { PageBackHeader } from './PageBackHeader';
+import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
+import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 
 interface NuevaCotizacionFormProps {
   cotizacionId?: string;
@@ -63,6 +65,23 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
   const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   const [opportunities, setOpportunities] = useState<{ id: string; name: string; customer_id?: string | null }[]>([]);
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string>('none');
+
+  // Advertencia previa a guardar: líneas que `resolveLineTax` dejará en 0 por
+  // falta de impuesto en el producto y de tarifa por defecto. La cotización no
+  // pasa los impuestos del documento al resolver, así que aquí tampoco cuentan.
+  const lineasParaAviso = useMemo(
+    () => items.map((it) => ({
+      nombre: it.description || it.product_name || '',
+      productId: it.product_id ?? null,
+      taxRate: it.tax_rate ?? null,
+      taxCode: it.tax_code ?? null,
+    })),
+    [items],
+  );
+  const { sinImpuesto: lineasSinImpuesto, indices: indicesSinImpuesto } = useLineasSinImpuesto(
+    organizationId ? Number(organizationId) : null,
+    lineasParaAviso,
+  );
 
   useEffect(() => {
     if (organizationId) {
@@ -297,11 +316,11 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
           notes: notes || null,
           terms_conditions: termsConditions || null,
           salesperson_id: salespersonId !== 'none' ? salespersonId : null,
-        }, quotationItems);
+        }, quotationItems, { appliedTaxes, appliedTaxTotals: taxTotals });
         toastSuccess('Cotización actualizada', 'Los cambios se guardaron correctamente');
         router.push(`/app/finanzas/cotizaciones/${cotizacionId}`);
       } else {
-        const created = await CotizacionesService.createQuotation(quotationData, quotationItems);
+        const created = await CotizacionesService.createQuotation(quotationData, quotationItems, { appliedTaxes, appliedTaxTotals: taxTotals });
         toastSuccess('Cotización creada', `Cotización ${created.number} creada exitosamente`);
         router.push(`/app/finanzas/cotizaciones/${created.id}`);
       }
@@ -452,6 +471,7 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
             branchId={branchId ?? undefined}
             serialSelections={serialSelections}
             onSerialSelectionsChange={setSerialSelections}
+            lineasSinImpuesto={indicesSinImpuesto}
           />
         </Card>
 
@@ -536,6 +556,8 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
             </div>
           </div>
         </Card>
+
+        <AvisoSinImpuesto lineas={lineasSinImpuesto} accion="se cotizará" />
 
         {/* Botones */}
         <div className="flex justify-end gap-3 pb-6">

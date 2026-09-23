@@ -5,7 +5,13 @@ import { deliveryIntegrationService } from './deliveryIntegrationService';
 import { stockMovementService } from './stockMovementService';
 import { generateInvoiceNumber } from '@/lib/utils/invoiceUtils';
 import type { WebOrder } from './webOrdersService';
-import { avisarSiNoCuadra, lineasFacturaDesdePedidoWeb, repartirTotalesPedidoWeb } from './webOrderTotals';
+import {
+  avisarSiNoCuadra,
+  facturaWebConImpuestoIncluido,
+  lineasFacturaWebConImpuesto,
+  repartirTotalesPedidoWeb,
+} from './webOrderTotals';
+import { resolveLineTax } from './taxResolver';
 
 /**
  * Sub-métodos de Wompi (pasarela de pago del website).
@@ -426,6 +432,7 @@ class WebOrderConfirmationService {
       const discountTotal = Number(order.discount_total) || 0;
       const deliveryFee = Number(order.delivery_fee) || 0;
       const total = Number(order.total) || (subtotal + taxTotal - discountTotal + deliveryFee);
+      const reparto = repartirTotalesPedidoWeb(order);
 
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoice_sales')
@@ -445,6 +452,9 @@ class WebOrderConfirmationService {
           status: 'paid',
           payment_method: mapWebPaymentMethodToInvoice(order.payment_method),
           payment_terms: 0,
+          // El trigger fn_recalc_invoice_totals deriva la base con el modo de la
+          // cabecera: tiene que ser el mismo de las líneas (F-42).
+          tax_included: facturaWebConImpuestoIncluido(reparto),
           created_by: userId,
           notes: `Factura generada automáticamente desde pedido web ${order.order_number}`,
         })
@@ -459,8 +469,9 @@ class WebOrderConfirmationService {
       // Líneas de la factura. El trigger fn_recalc_invoice_totals pisa
       // invoice_sales.total con SUM(total_line): las líneas deben reproducir
       // order.total (descuento de pedido prorrateado, envío y propina como
-      // líneas). Ver `webOrderTotals.ts`.
-      const invoiceItems = lineasFacturaDesdePedidoWeb(order, invoice.id);
+      // líneas). Ver `webOrderTotals.ts`. Tarifa, código y modo de cada línea
+      // salen del resolver único (F-42).
+      const invoiceItems = await lineasFacturaWebConImpuesto(order, invoice.id, resolveLineTax, reparto);
 
       if (invoiceItems.length > 0) {
         const { error: itemsError } = await supabase

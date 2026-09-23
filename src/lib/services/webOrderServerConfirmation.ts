@@ -1,7 +1,13 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { generateInvoiceNumberWithClient } from '@/lib/utils/invoiceUtils';
 import type { WebOrder } from './webOrdersService';
-import { avisarSiNoCuadra, lineasFacturaDesdePedidoWeb, repartirTotalesPedidoWeb } from './webOrderTotals';
+import {
+  avisarSiNoCuadra,
+  facturaWebConImpuestoIncluido,
+  lineasFacturaWebConImpuesto,
+  repartirTotalesPedidoWeb,
+} from './webOrderTotals';
+import { resolveLineTaxWith } from './taxResolverCore';
 
 /**
  * Sub-métodos de Wompi (pasarela de pago del website).
@@ -575,6 +581,9 @@ export const webOrderServerConfirmation = {
           status: 'paid',
           payment_method: mapWebPaymentMethodToInvoice(order.payment_method),
           payment_terms: 0,
+          // El trigger fn_recalc_invoice_totals deriva la base con el modo de la
+          // cabecera: tiene que ser el mismo de las líneas (F-42).
+          tax_included: facturaWebConImpuestoIncluido(reparto),
           created_by: userId,
           notes: `Factura generada automáticamente desde pedido web ${order.order_number}`,
         })
@@ -593,7 +602,14 @@ export const webOrderServerConfirmation = {
         // pedido prorrateado, envío y propina como líneas propias. Si falta
         // cualquiera de esos componentes, la factura queda con saldo fantasma
         // (descuento) o con sobrepago (envío/propina). Ver `webOrderTotals.ts`.
-        const invoiceItems = lineasFacturaDesdePedidoWeb(order, invoice.id, reparto);
+        // Tarifa, código y modo de cada línea salen del resolver único (F-42),
+        // con el cliente de servidor de esta confirmación.
+        const invoiceItems = await lineasFacturaWebConImpuesto(
+          order,
+          invoice.id,
+          (input) => resolveLineTaxWith(supabase, input),
+          reparto,
+        );
 
         if (invoiceItems.length > 0) {
           const { error: invItemsError } = await supabase

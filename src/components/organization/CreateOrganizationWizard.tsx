@@ -7,6 +7,7 @@ import BranchStep from '@/components/auth/BranchStep';
 import SubscriptionStep from '@/components/auth/SubscriptionStep';
 import PaymentMethodStep from '@/components/auth/PaymentMethodStep';
 import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { setOrganizationDefaultTaxByCode, type CodigoTarifaPorDefecto } from '@/lib/services/defaultTaxService';
 
 interface WizardData {
   // Organización
@@ -30,6 +31,7 @@ interface WizardData {
   organizationPrimaryColor?: string;
   organizationSecondaryColor?: string;
   logoUrl?: string;
+  defaultTaxCode?: CodigoTarifaPorDefecto;
   // Sucursal principal
   branchName: string;
   branchCode: string;
@@ -168,6 +170,16 @@ export default function CreateOrganizationWizard({ onSuccess, onCancel }: Create
           is_active: true,
         });
       if (memberError) throw memberError;
+
+      // Tarifa por defecto elegida en el formulario (el disparador de la base
+      // ya sembró los organization_taxes). No bloquea la creación.
+      if (wizardData.defaultTaxCode) {
+        try {
+          await setOrganizationDefaultTaxByCode(supabase, orgId, wizardData.defaultTaxCode);
+        } catch (taxError) {
+          console.warn('No se pudo guardar la tarifa por defecto de la organización:', taxError);
+        }
+      }
 
       guardarOrganizacionActiva({ id: orgId, name: wizardData.organizationName });
       await supabase.from('profiles').update({ last_org_id: orgId }).eq('id', userId);
@@ -367,6 +379,7 @@ export default function CreateOrganizationWizard({ onSuccess, onCancel }: Create
               organizationPrimaryColor: data.primary_color,
               organizationSecondaryColor: data.secondary_color,
               logoUrl: data.logo_url || undefined,
+              defaultTaxCode: data.default_tax_code,
             });
             nextStep();
           }}

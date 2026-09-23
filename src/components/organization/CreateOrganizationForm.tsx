@@ -5,6 +5,12 @@ import { supabase } from '@/lib/supabase/config';
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
 import LogoUploader from './LogoUploader';
 import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
+import {
+  OPCIONES_TARIFA_POR_DEFECTO,
+  TARIFA_POR_DEFECTO_INICIAL,
+  setOrganizationDefaultTaxByCode,
+  type CodigoTarifaPorDefecto,
+} from '@/lib/services/defaultTaxService';
 
 interface OrganizationData {
   name: string;
@@ -27,6 +33,8 @@ interface OrganizationData {
   primary_color?: string;
   secondary_color?: string;
   logo_url?: string | null;
+  /** Tarifa por defecto para productos sin impuesto (no es columna de organizations). */
+  default_tax_code?: CodigoTarifaPorDefecto;
 }
 
 interface MunicipalityOption {
@@ -80,6 +88,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     primaryColor: '#3B82F6', 
     secondaryColor: '#F59E0B', 
     logoUrl: null as string | null,
+    defaultTaxCode: TARIFA_POR_DEFECTO_INICIAL as CodigoTarifaPorDefecto,
   });
   const [municipalities, setMunicipalities] = useState<MunicipalityOption[]>([]);
   const [loadingMunicipalities, setLoadingMunicipalities] = useState(false);
@@ -357,7 +366,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
       if (isSignupMode) {
         // In signup flow, just pass data to parent component
         console.log('Signup mode: Pasando datos de organización al componente padre');
-        onSuccess(organizationData);
+        onSuccess({ ...organizationData, default_tax_code: formData.defaultTaxCode });
       } else {
         // In standalone mode, create organization directly in database
         const { data: { session } } = await supabase.auth.getSession();
@@ -395,6 +404,15 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
 
         if (memberError) {
           throw new Error(memberError.message);
+        }
+
+        // Tarifa por defecto elegida en el paso 2. El disparador de la base ya
+        // sembró los organization_taxes; aquí solo se marca is_default. Si
+        // falla, la organización queda creada y se ajusta en Finanzas › Impuestos.
+        try {
+          await setOrganizationDefaultTaxByCode(supabase, orgData.id, formData.defaultTaxCode);
+        } catch (taxError) {
+          console.warn('No se pudo guardar la tarifa por defecto de la organización:', taxError);
         }
 
         // Update user's last_org_id
@@ -1047,6 +1065,34 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           </div>
           
           {renderFormField('website', 'Sitio Web Externo (opcional)', 'url')}
+
+          {/* Tarifa por defecto para productos sin impuesto asignado */}
+          <fieldset aria-describedby="default-tax-help">
+            <legend className="block text-sm font-medium text-fg mb-1">
+              Tarifa de IVA por defecto
+            </legend>
+            <p id="default-tax-help" className="text-xs text-fg-secondary mb-2">
+              Se aplica a los productos a los que no les asignes un impuesto. Puedes cambiarla después en Finanzas › Impuestos.
+            </p>
+            <div className="space-y-2">
+              {OPCIONES_TARIFA_POR_DEFECTO.map((opcion) => (
+                <label
+                  key={opcion.value}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg has-[:checked]:border-line-brand has-[:checked]:bg-brand-tint"
+                >
+                  <input
+                    type="radio"
+                    name="defaultTaxCode"
+                    value={opcion.value}
+                    checked={formData.defaultTaxCode === opcion.value}
+                    onChange={() => setFormData({ ...formData, defaultTaxCode: opcion.value })}
+                    className="h-4 w-4 accent-brand-action"
+                  />
+                  {opcion.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
         </div>
       </div>
     </div>

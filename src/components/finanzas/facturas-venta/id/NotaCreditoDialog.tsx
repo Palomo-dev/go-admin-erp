@@ -19,6 +19,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
 import { notasCreditoService } from '@/lib/services/notasCreditoService';
+import { computeLineTotal, resolveLineTax, splitGrossLine } from '@/lib/services/taxResolver';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Table, 
@@ -28,6 +29,30 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+
+/**
+ * Tarifa de la línea original que revierte la nota crédito. Si la línea no la
+ * guardó (NULL), se usa la tasa efectiva de la factura, como antes.
+ */
+function tarifaLineaOriginal(item: { tax_rate?: number | string | null }, tasaEfectiva: number): number {
+  return item.tax_rate != null ? Number(item.tax_rate) || 0 : tasaEfectiva;
+}
+
+/**
+ * Descuento de la línea original que corresponde a las unidades devueltas: la
+ * nota crédito revierte exactamente lo facturado, así que si se devuelve una
+ * parte de la línea, se devuelve la misma parte de su descuento.
+ */
+function descuentoProporcional(
+  item: { qty?: number | string | null; discount_amount?: number | string | null },
+  cantidad: number,
+): number {
+  const descuento = Number(item.discount_amount) || 0;
+  const qtyOriginal = Number(item.qty) || 0;
+  if (descuento === 0 || qtyOriginal === 0) return 0;
+  if (cantidad >= qtyOriginal) return descuento;
+  return Math.round((descuento * cantidad / qtyOriginal) * 100) / 100;
+}
 
 interface NotaCreditoDialogProps {
   open: boolean;
@@ -111,17 +136,22 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
     const facturaSubtotal = Math.abs(Number(factura.subtotal) || 0);
     const facturaTaxTotal = Math.abs(Number(factura.tax_total) || 0);
     const tasaEfectiva = facturaSubtotal > 0 ? (facturaTaxTotal / facturaSubtotal) * 100 : 0;
+    const taxIncludedFactura = Boolean(factura.tax_included);
 
     let total = 0;
-    
+
+    // Misma regla de total_line que el resolver (F-42): lo que se muestra es lo
+    // que se va a acreditar.
     items.forEach(item => {
       if (itemsSeleccionados[item.id]) {
         const cantidad = Math.min(cantidades[item.id] || 0, item.qty);
-        const precioUnitario = item.unit_price || 0;
-        const lineaTotal = cantidad * precioUnitario;
-        const impuestoTasa = item.tax_rate != null ? Number(item.tax_rate) : tasaEfectiva;
-        const impuestoMonto = (lineaTotal * impuestoTasa) / 100;
-        total += lineaTotal + impuestoMonto;
+        total += computeLineTotal(
+          cantidad,
+          Number(item.unit_price) || 0,
+          descuentoProporcional(item, cantidad),
+          tarifaLineaOriginal(item, tasaEfectiva),
+          taxIncludedFactura,
+        );
       }
     });
     
@@ -266,6 +296,22 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
       if (modo === 'valor') {
         const monto = Number(montoValor) || 0;
 
+        // F-42: la nota por valor es un concepto libre sin impuesto (así se
+        // confirman sus totales más abajo). La tarifa 0 es definitiva: no se
+        // buscan impuestos del producto ni por defecto. La línea se guarda en
+        // negativo, como el resto de la nota.
+        const resueltoValor = await resolveLineTax({
+          itemTaxRate: 0,
+          itemTaxCode: null,
+          itemTaxIsFinal: true,
+          productId: null,
+          organizationId: Number(organizationId),
+          taxIncluded: false,
+          qty: 1,
+          unitPrice: monto,
+          discountAmount: 0,
+        });
+
         const { error: itemValorError } = await supabase
           .from('invoice_items')
           .insert({
@@ -276,10 +322,10 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
             description: conceptoValor,
             qty: 1,
             unit_price: monto,
-            tax_code: null,
-            tax_rate: 0,
-            tax_included: false,
-            total_line: -monto,
+            tax_code: resueltoValor.tax_code,
+            tax_rate: resueltoValor.tax_rate,
+            tax_included: resueltoValor.tax_included,
+            total_line: -resueltoValor.total_line,
             discount_amount: 0
           });
 
@@ -368,26 +414,32 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
           const item = items.find(i => i.id === itemId);
           if (item) {
             const cantidad = cantidades[itemId];
-            const precioUnitario = item.unit_price || 0;
-            // Usar tax_rate del item si existe, si no, usar tasa efectiva de la factura
-            const impuestoTasa = item.tax_rate != null ? Number(item.tax_rate) : tasaEfectiva;
-            const lineaTotal = cantidad * precioUnitario;
+            const precioUnitario = Number(item.unit_price) || 0;
+            const descuento = descuentoProporcional(item, cantidad);
 
-            let baseImponible = lineaTotal;
-            let impuestoMonto = 0;
+            // F-42: la nota revierte exactamente lo facturado. La tarifa y el
+            // código son los de la línea original y son definitivos (también si
+            // la línea era exenta); si la línea no guardó tarifa, se usa la tasa
+            // efectiva de la factura, como antes.
+            const resuelto = await resolveLineTax({
+              itemTaxRate: tarifaLineaOriginal(item, tasaEfectiva),
+              itemTaxCode: item.tax_code || null,
+              itemTaxIsFinal: true,
+              productId: item.product_id || null,
+              organizationId: Number(organizationId),
+              taxIncluded,
+              qty: cantidad,
+              unitPrice: precioUnitario,
+              discountAmount: descuento,
+            });
 
-            if (taxIncluded && impuestoTasa > 0) {
-              // Precios con impuesto incluido: extraer la base del precio total
-              baseImponible = lineaTotal / (1 + impuestoTasa / 100);
-              baseImponible = Math.round(baseImponible * 100) / 100;
-              impuestoMonto = lineaTotal - baseImponible;
-            } else if (!taxIncluded && impuestoTasa > 0) {
-              // Precios sin impuesto: calcular impuesto sobre la base
-              impuestoMonto = (lineaTotal * impuestoTasa) / 100;
-              impuestoMonto = Math.round(impuestoMonto * 100) / 100;
-            }
-
-            const totalLinea = taxIncluded ? lineaTotal : (lineaTotal + impuestoMonto);
+            // Base e impuesto con la misma regla que fn_recalc_invoice_totals:
+            // incluido → base redondeada por línea e impuesto por resta (F-51);
+            // no incluido → la base es el neto y el impuesto lo que sobra.
+            const netoLinea = Math.round((cantidad * precioUnitario - descuento) * 100) / 100;
+            const { base: baseImponible, tax: impuestoMonto } = resuelto.tax_included
+              ? splitGrossLine(resuelto.total_line, resuelto.tax_rate)
+              : { base: netoLinea, tax: Math.round((resuelto.total_line - netoLinea) * 100) / 100 };
 
             itemsNotaCredito.push({
               invoice_id: notaCreditoId,
@@ -397,11 +449,11 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
               description: item.description,
               qty: cantidad,
               unit_price: precioUnitario,
-              tax_code: item.tax_code,
-              tax_rate: impuestoTasa,
-              tax_included: taxIncluded,
-              total_line: -totalLinea, // Negativo
-              discount_amount: item.discount_amount || 0
+              tax_code: resuelto.tax_code,
+              tax_rate: resuelto.tax_rate,
+              tax_included: resuelto.tax_included,
+              total_line: -resuelto.total_line, // Negativo
+              discount_amount: descuento
             });
 
             subtotal += baseImponible;

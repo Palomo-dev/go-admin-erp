@@ -4,6 +4,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { warrantyClaimsService } from '@/lib/services/warrantyClaimsService';
+import { resolveLineTax } from '@/lib/services/taxResolver';
 import { 
   Return,
   SaleForReturn, 
@@ -1413,18 +1414,52 @@ export class DevolucionesService {
 
       // Crear items de nota de crédito
       if (originalItems && originalItems.length > 0) {
-        const creditNoteItems = originalItems.map(item => ({
-          invoice_id: creditNoteData.id,
-          invoice_sales_id: creditNoteData.id,
-          invoice_type: 'sale',
-          product_id: item.product_id,
-          description: item.description || 'Item de nota de crédito',
-          qty: -item.qty,
-          unit_price: item.unit_price,
-          total_line: -item.total_line,
-          tax_rate: item.tax_rate || 0,
-          discount_amount: item.discount_amount ? -item.discount_amount : 0,
-          tax_included: item.tax_included || false
+        // F-42: la nota revierte exactamente lo facturado. Cada línea conserva la
+        // tarifa y el código de la línea original como definitivos (también si
+        // era exenta: no se buscan impuestos del producto ni por defecto), con
+        // el modo incluido/no incluido de la factura original. Cantidad y
+        // descuento van en negativo, como hasta ahora, y la regla de total_line
+        // conserva ese signo.
+        const organizationId = this.getOrganizationId();
+        const taxIncludedOriginal = Boolean(originalInvoice.tax_included);
+        const creditNoteItems = await Promise.all(originalItems.map(async (item) => {
+          const qty = -(Number(item.qty) || 0);
+          const unitPrice = Number(item.unit_price) || 0;
+          const discountAmount = item.discount_amount ? -(Number(item.discount_amount) || 0) : 0;
+          const resolved = await resolveLineTax({
+            itemTaxRate: Number(item.tax_rate) || 0,
+            itemTaxCode: item.tax_code || null,
+            itemTaxIsFinal: true,
+            productId: item.product_id || null,
+            organizationId,
+            taxIncluded: taxIncludedOriginal,
+            qty,
+            unitPrice,
+            discountAmount,
+          });
+          // Si la línea original no seguía la regla de total_line (líneas
+          // antiguas), manda lo que se facturó: la nota debe anularlo al centavo.
+          const totalOriginal = -(Number(item.total_line) || 0);
+          const totalLine = Math.abs(resolved.total_line - totalOriginal) > 0.01
+            ? totalOriginal
+            : resolved.total_line;
+          if (totalLine !== resolved.total_line) {
+            console.warn(`[devoluciones] La línea ${item.id} de la factura original no sigue la regla de total_line; se revierte lo facturado (${totalOriginal}).`);
+          }
+          return {
+            invoice_id: creditNoteData.id,
+            invoice_sales_id: creditNoteData.id,
+            invoice_type: 'sale',
+            product_id: item.product_id,
+            description: item.description || 'Item de nota de crédito',
+            qty,
+            unit_price: item.unit_price,
+            total_line: totalLine,
+            tax_rate: resolved.tax_rate,
+            tax_code: resolved.tax_code,
+            discount_amount: discountAmount,
+            tax_included: resolved.tax_included
+          };
         }));
 
         const { error: itemsError } = await supabase

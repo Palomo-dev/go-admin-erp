@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { generateInvoiceNumberWithClient } from '@/lib/utils/invoiceUtils';
+import { resolveLineTaxWith } from '@/lib/services/taxResolverCore';
+import type { WebOrder } from '@/lib/services/webOrdersService';
+import {
+  facturaWebConImpuestoIncluido,
+  lineasFacturaWebConImpuesto,
+  lineasNotaCreditoWeb,
+  repartirTotalesPedidoWeb,
+  type LineaFacturaOriginal,
+} from '@/lib/services/webOrderTotals';
 
 /**
  * POST /api/web-orders/[id]/refund
@@ -92,7 +101,7 @@ export async function POST(
     // 2. Buscar la factura original (invoice_sales con sale_id = order.sale_id)
     const { data: originalInvoice } = await supabase
       .from('invoice_sales')
-      .select('id, number, total, balance, status')
+      .select('id, number, total, balance, status, tax_included')
       .eq('sale_id', order.sale_id)
       .eq('document_type', 'invoice')
       .limit(1)
@@ -101,6 +110,12 @@ export async function POST(
     // 3. Crear nota crédito
     let creditNoteId: string | undefined;
     let creditNoteNumber: string | undefined;
+    // Modo de impuesto de la nota: el de la factura que revierte. Si no hay
+    // factura, el que habría tenido la del pedido (F-42).
+    const creditNoteTaxIncluded: boolean = originalInvoice
+      ? Boolean(originalInvoice.tax_included)
+      : facturaWebConImpuestoIncluido(repartirTotalesPedidoWeb(order as WebOrder));
+    const resolverImpuesto = (input: Parameters<typeof resolveLineTaxWith>[1]) => resolveLineTaxWith(supabase, input);
 
     try {
       creditNoteNumber = await generateInvoiceNumberWithClient(
@@ -134,6 +149,7 @@ export async function POST(
           status: 'paid',
           payment_method: order.payment_method || 'card',
           payment_terms: 0,
+          tax_included: creditNoteTaxIncluded,
           document_type: 'credit_note',
           notes: `Nota crédito por reembolso web - Pedido ${order.order_number}. ${reason}`,
         })
@@ -146,33 +162,43 @@ export async function POST(
         creditNoteId = creditNote.id;
         creditNoteNumber = creditNote.number;
 
-        // Crear invoice_items para la nota crédito
-        const itemsToRefund = partialItems.length > 0
-          ? (order.items || []).filter((item: any) =>
-              partialItems.some(pi => pi.product_id === item.product_id)
-            )
-          : (order.items || []);
+        // Crear invoice_items para la nota crédito.
+        // F-42: la nota copia las líneas de la factura original (tarifa y código
+        // definitivos, resolver para el total), así revierte exactamente lo
+        // facturado. Si el pedido no tiene factura, se parte de las líneas que
+        // la habrían formado. Antes estas líneas iban con invoice_type
+        // 'credit_note', que la restricción de invoice_items rechaza: la nota
+        // quedaba sin líneas. Ver `lineasNotaCreditoWeb`.
+        let lineasOriginales: LineaFacturaOriginal[] = [];
+        if (originalInvoice) {
+          const { data: originalLines } = await supabase
+            .from('invoice_items')
+            .select('id, product_id, description, qty, unit_price, discount_amount, tax_rate, tax_code, total_line')
+            .eq('invoice_sales_id', originalInvoice.id);
+          lineasOriginales = (originalLines || []) as LineaFacturaOriginal[];
+        }
+        if (lineasOriginales.length === 0) {
+          lineasOriginales = await lineasFacturaWebConImpuesto(order as WebOrder, creditNote.id, resolverImpuesto);
+        }
 
-        const creditNoteItems = itemsToRefund.map((item: any) => {
-          const partialQty = partialItems.find(pi => pi.product_id === item.product_id)?.quantity;
-          const qty = partialQty || item.quantity;
-          return {
-            invoice_id: creditNote.id,
-            invoice_sales_id: creditNote.id,
-            invoice_type: 'credit_note',
-            product_id: item.product_id,
-            description: `Devolución: ${item.product_name || 'Producto web'}`.substring(0, 255),
-            qty: qty,
-            unit_price: Number(item.unit_price) || 0,
-            total_line: (Number(item.unit_price) || 0) * qty,
-            tax_rate: 0,
-            discount_amount: 0,
-            tax_included: false,
-          };
-        });
+        const creditNoteItems = await lineasNotaCreditoWeb(
+          {
+            creditNoteId: creditNote.id,
+            organizationId: order.organization_id,
+            orderNumber: order.order_number,
+            lineasOriginales,
+            taxIncluded: creditNoteTaxIncluded,
+            itemsParciales: partialItems,
+            montoParcial: !isFullRefund && partialItems.length === 0 ? effectiveRefundAmount : null,
+          },
+          resolverImpuesto,
+        );
 
         if (creditNoteItems.length > 0) {
-          await supabase.from('invoice_items').insert(creditNoteItems);
+          const { error: cnItemsError } = await supabase.from('invoice_items').insert(creditNoteItems);
+          if (cnItemsError) {
+            console.error('[Refund] Error creando líneas de la nota crédito:', cnItemsError);
+          }
         }
       }
     } catch (cnError) {

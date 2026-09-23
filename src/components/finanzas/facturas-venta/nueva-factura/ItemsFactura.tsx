@@ -18,6 +18,7 @@ import { InvoiceItem } from './NuevaFacturaForm';
 import { formatCurrency } from '@/utils/Utils';
 import { SerialSelectorDialog } from '@/components/pos/SerialSelectorDialog';
 import type { CartItem } from '@/components/pos/types';
+import { EtiquetaSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 
 type ItemsFacturaProps = {
   items: InvoiceItem[];
@@ -27,9 +28,11 @@ type ItemsFacturaProps = {
   organizationId?: number;
   serialSelections: Record<number, number[]>;
   onSerialSelectionsChange: (selections: Record<number, number[]>) => void;
+  /** Índices de las líneas que saldrán sin impuesto por falta de configuración. */
+  lineasSinImpuesto?: Set<number>;
 };
 
-export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branchId, organizationId, serialSelections, onSerialSelectionsChange }: ItemsFacturaProps) {
+export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branchId, organizationId, serialSelections, onSerialSelectionsChange, lineasSinImpuesto }: ItemsFacturaProps) {
   const [showSerialSelector, setShowSerialSelector] = useState(false);
 
   // Items que requieren captura de seriales
@@ -356,6 +359,9 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{item.tax_rate}%</span>
                       ) : (
                         <span className="text-sm text-gray-500 dark:text-gray-400">N/A</span>
+                      )}
+                      {lineasSinImpuesto?.has(index) && (
+                        <EtiquetaSinImpuesto className="mt-1" />
                       )}
                       {item.tax_code && (
                         <div className="flex items-center gap-1 mt-1">

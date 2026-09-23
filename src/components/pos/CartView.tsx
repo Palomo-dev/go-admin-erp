@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, ReceiptText, Send, ChefHat, CheckCircle, Check, StickyNote, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,6 +19,8 @@ import { Cart, Sale, SaleItem, Customer, Product, Category, Payment } from './ty
 import { formatCurrency, cn } from '@/utils/Utils';
 import { TaxSummary, type TaxSummaryTotals } from './TaxSummary';
 import { CachedProductImage } from './CachedProductImage';
+import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
+import { EtiquetaSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { toast } from 'sonner';
 import DetalleFactura from '@/components/finanzas/facturas-venta/id/DetalleFactura';
@@ -149,6 +151,19 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   // con las que los calculó (`linesSignature`, Fase 2): el emisor descarta un
   // reenvío de totales viejos cuando las líneas ya cambiaron (misma id, otra
   // firma), en vez de mostrarlos durante los cientos de ms del recálculo.
+  // Líneas que se cobrarán sin IVA porque ni el producto ni la organización
+  // tienen impuesto configurado (misma regla que resolveLineTax en el cobro).
+  const lineasParaAviso = useMemo(
+    () => cart.items.map((it) => ({
+      nombre: it.product?.name ?? '',
+      productId: it.product_id ?? null,
+      taxRate: it.tax_rate ?? null,
+      taxExcluded: it.tax_excluded ?? null,
+    })),
+    [cart.items],
+  );
+  const { indices: indicesSinImpuesto } = useLineasSinImpuesto(cart.organization_id, lineasParaAviso);
+
   const cartId = cart.id;
   const cartDiscountTotal = cart.discount_total;
   const handleTotalsChange = useCallback(
@@ -685,7 +700,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                 <p className="text-[0.65rem] sm:text-xs mt-1">Busca productos para agregar</p>
               </div>
             ) : (
-              cart.items.map((item) => {
+              cart.items.map((item, itemIndex) => {
                 const cartProduct = item.product as CartProduct | undefined;
                 const productImage = cartProduct?.image;
                 const variantEntries = cartProduct?.variant_data
@@ -718,6 +733,10 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                             <h4 className="font-medium text-xs sm:text-sm dark:text-gray-100 text-gray-900 break-words whitespace-normal leading-tight" title={item.product.name}>
                               {item.product.name}
                             </h4>
+
+                            {indicesSinImpuesto.has(itemIndex) && (
+                              <EtiquetaSinImpuesto className="mt-1" />
+                            )}
 
                             {/* Badge de estado de cocina si el ticket fue enviado */}
                             {cart.kitchen_ticket_id && kitchenStatus && (() => {

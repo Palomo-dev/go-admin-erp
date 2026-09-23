@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { NuevaFacturaForm } from '../nueva-factura/NuevaFacturaForm';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
+import { resolveLineTax } from '@/lib/services/taxResolver';
 
 interface EditarFacturaVentaProps {
   facturaId: string;
@@ -155,7 +156,27 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
         if (deleteError) throw deleteError;
       }
 
+      // F-42: cada línea pasa por el resolver único antes de persistirse. La
+      // tarifa elegida en el formulario manda; si viene en 0, el resolver sigue
+      // con los impuestos del producto y los de la organización por defecto.
+      // El modo incluido/no incluido es el del documento, que es el que lee
+      // fn_recalc_invoice_totals para derivar la base.
+      const documentoTaxIncluded = Boolean(datosFactura.tax_included);
       for (const item of datosFactura.items) {
+        const qty = Number(item.qty) || 0;
+        const unitPrice = Number(item.unit_price) || 0;
+        const discountAmount = Number(item.discount_amount) || 0;
+        const resolved = await resolveLineTax({
+          itemTaxRate: item.tax_rate,
+          itemTaxCode: item.tax_code,
+          productId: item.product_id || null,
+          organizationId: Number(organizationId),
+          taxIncluded: documentoTaxIncluded,
+          qty,
+          unitPrice,
+          discountAmount,
+        });
+
         const itemData = {
           invoice_sales_id: factura.id,
           invoice_id: factura.id,
@@ -164,11 +185,11 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
           description: item.description,
           qty: item.qty,
           unit_price: item.unit_price,
-          tax_code: item.tax_code || null,
-          tax_rate: item.tax_rate || 0,
-          tax_included: item.tax_included || false,
-          total_line: item.total_line,
-          discount_amount: item.discount_amount || 0
+          tax_code: resolved.tax_code,
+          tax_rate: resolved.tax_rate,
+          tax_included: resolved.tax_included,
+          total_line: resolved.total_line,
+          discount_amount: discountAmount
         };
 
         if (item.id) {

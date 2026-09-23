@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import CreateOrganizationForm from '@/components/organization/CreateOrganizationForm';
 import { useTranslations } from 'next-intl';
+import type { CodigoTarifaPorDefecto } from '@/lib/services/defaultTaxService';
 
 interface FormData {
   joinType: 'create' | 'join';
@@ -28,6 +29,7 @@ interface FormData {
   invitationCode: string;
   email?: string;
   logoUrl?: string; // Opcional, puede ser undefined
+  defaultTaxCode?: CodigoTarifaPorDefecto;
 }
 
 interface OrganizationData {
@@ -51,6 +53,7 @@ interface OrganizationData {
   secondary_color?: string;
   subdomain?: string;
   logo_url?: string | null;
+  default_tax_code?: CodigoTarifaPorDefecto;
   opening_hours?: string;
   features?: string;
 }
@@ -188,7 +191,8 @@ export default function OrganizationStep({
                       organizationSubdomain: data.subdomain,
                       organizationPrimaryColor: data.primary_color,
                       organizationSecondaryColor: data.secondary_color,
-                      logoUrl: data.logo_url || undefined
+                      logoUrl: data.logo_url || undefined,
+                      defaultTaxCode: data.default_tax_code
                     });
                     console.log('OrganizationStep: Datos actualizados, avanzando al paso 3 (sucursal)');
                     onNext();

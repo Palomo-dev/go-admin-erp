@@ -20,6 +20,7 @@ import { formatPercent } from '@/utils/Utils';
 import { useToast } from '@/components/ui/use-toast';
 import TaxForm from './TaxForm';
 import DeleteTaxDialog from './DeleteTaxDialog';
+import TarifaPorDefectoCard from './TarifaPorDefectoCard';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import {
   Select,
@@ -222,6 +223,13 @@ const TaxesTable = () => {
 
   return (
     <div className="space-y-4">
+      {organizationId && (!loading || taxes.length > 0) && (
+        <TarifaPorDefectoCard
+          organizationId={organizationId}
+          taxes={taxes}
+          onSaved={fetchTaxes}
+        />
+      )}
       <Card className="dark:bg-gray-800/50 bg-white border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-3 px-4 sm:px-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">

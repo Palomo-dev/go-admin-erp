@@ -312,3 +312,29 @@ Rápida» (duplica el menú lateral). Cero omitidos sin motivo.
 Además se dibujaron **18 piezas nuevas** que no salen de ningún control existente y por eso no
 cuentan en el total: las seis del kardex, las seis de lotes, las dos sub-pestañas embebidas y
 las cuatro del POS.
+
+---
+
+## Actualización 2026-09-23
+
+Correcciones sobre lo dibujado en la tanda anterior, pedidas por el dueño («no está manejando los
+componentes, ni el manual de marca») y hechas en su sitio. Detalle y motivos en
+`AUDITORIA-KARDEX-LOTES.md` §P.2.
+
+| Frame o componente | Cambio |
+|---|---|
+| `L-listo` `518:59166`, `L-masivo` `518:63078` | Chips coherentes con las filas; «Filtros» sin contador; paginación a 6 páginas |
+| `L-masivo` `518:63078` | `BulkActionBar` con acciones de lote y «Seleccionar los 148»; cabecera en indeterminado |
+| `L-menú` `520:66769`, `L-sheet` `532:66599` | Un icono por acción; ninguno `Icon/Monitor` |
+| Nuevo · `Escritorio / Lotes — menú ⋯ de cabecera abierto` `596:352246` | «⋯» de cabecera dibujado abierto con tres acciones de lote |
+| Nuevos · Lotes sin permiso `596:352714`, sin sucursal `596:353168`; móvil `597:351966`, `597:352129` | Estados que faltaban |
+| Nuevos · Kardex sin permiso `596:353629`; móvil `597:352293` | Estado que faltaba |
+| `K-listo` `516:270498` y resto del kardex | Subtítulo del producto, chip único, paginación a 4, panel sin referencias de código |
+| Todas las filas de Kardex, Lotes y detalle de producto | 49 badges → instancias; 47 «⋯» de texto → `IconButton` |
+| `L-cargando` `518:60184` | Esqueleto del aviso en su sitio |
+| `BadgeOrigenMovimiento` `530:65022` | 22 variantes y movido a `02 Componentes` |
+| `BadgeVencimiento`, `LotPicker`, `SaldoCorridoCell` | Movidos a `02 Componentes` (`580:275505`); la sección de la página 04 queda con una nota que apunta allí |
+
+Chequeo por script al cerrar (junto con las secciones de Existencias): 0 solapes, 0 nodos fuera
+de sección, 0 instancias rotas, 0 textos truncados, 0 `Icon/Monitor`, 0 anotaciones dentro de
+frames. Capturas: `figma/34-existencias-lotes-*.png` y `figma/34-existencias-kardex-listo-corregido.png`.

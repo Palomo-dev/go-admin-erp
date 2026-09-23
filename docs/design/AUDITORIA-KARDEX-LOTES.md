@@ -1120,3 +1120,49 @@ funcionando.
    fase 1: si el dueño fija la fecha antes, el arreglo del costo entra limpio en el libro nuevo.
 3. **El umbral de «por vencer»** depende de que exista una pantalla de ajustes de inventario
    donde configurarlo; hoy no la hay.
+
+---
+
+## P. Actualización 2026-09-23 — lo que cambió en la base y lo que se corrigió en Figma
+
+### P.1 Hechos nuevos verificados
+
+- **El CHECK de `stock_movements.source` admite hoy 22 valores** (commit 6904f6e7): los 14 de
+  H.2 más `purchase_order`, `purchase_invoice`, `invoice_void`, `credit_note`, `web_refund`,
+  `folio_item_reversal`, `transfer_out` y `transfer_in`. **`purchase_void` sigue fuera**: si
+  `fn_void_purchase_invoice` se usa, la transacción revienta (E.0).
+- **El costo de una venta ya no es el precio** (commit 250aeec7): `decrement_stock_on_sale`
+  toma `stock_levels.avg_cost`. El histórico (2.063 de 2.122 movimientos afectados) no se repara.
+- Conteos al 23/09: `stock_movements` 13.007 filas (1 con lote, 7.262 sin costo, 8.370 sin
+  documento, 11.344 sin autor); `stock_levels` 44.627 (0 con lote, 25 en negativo); `lots` 3.
+- **Consecuencia que no estaba en E**: `fn_auto_journal_stock_movement` excluye solo `initial`,
+  `purchase` y `transfer`. Con el CHECK ampliado, `transfer_out`, `transfer_in`,
+  `purchase_order` y `purchase_invoice` pueden generar asientos de ajuste en cuanto se
+  escriban. Ver `AUDITORIA-EXISTENCIAS.md` §A.3 y §K.1.1: se decide antes de reparar traslados.
+- El traslado tampoco mueve existencias aunque el CHECK ya acepte sus orígenes: el servicio
+  filtra `stock_levels` por un `organization_id` que no existe (`AUDITORIA-EXISTENCIAS.md` §E).
+
+### P.2 Correcciones hechas en Figma sobre lo ya dibujado
+
+| # | Qué estaba mal | Qué se hizo |
+|---|---|---|
+| 1 | Botón «⋯» junto a «Nuevo lote» sin explicación | Se queda y se dibuja abierto en `Escritorio / Lotes — menú ⋯ de cabecera abierto` (`596:352246`): «Configurar aviso de vencimiento», «Rastrear un lote» (Trazabilidad) e «Imprimir etiquetas de lote», con descripción |
+| 2 | Menú de fila del lote y hoja móvil con `Icon/Monitor` en las seis entradas | Iconos por acción: Ver movimientos `History`, Editar `Pencil`, Ajustar cantidad `SlidersHorizontal`, Marcar como vencido `CalendarX` (nuevo; `CalendarClock` es «Reserva de mesa»), Dar de baja por merma `PackageMinus` (nuevo), Eliminar `Trash` en rojo (`520:66769`, `532:66599`) |
+| 3 | `BulkActionBar` de Lotes con «Precios · Stock · Categoría · Estado» y «Seleccionar los 4.368» | Acciones del lote: Exportar, Marcar vencidos, Dar de baja, Imprimir etiquetas, «⋯» y Eliminar; contador «Seleccionar los 148»; cabecera de la tabla en indeterminado (`Checkbox State=mixed`, nuevo) |
+| 4 | Paginación «1 2 3 … 175» con 148 lotes (y 175 en el kardex de un producto con 96 movimientos) | 6 páginas en Lotes y 4 en Kardex; resumen «de 96 movimientos» |
+| 5 | Chips activos que contradecían las filas (Lotes: «Por vencer · Vencido» e «Importadora Andina» con filas vigentes de otros proveedores; Kardex: «Tipo: Venta · Recepción» con ajustes y traslados) | Lotes listo y selección sin chips y con «Filtros» sin contador; Kardex solo con «Producto: Zapatilla urbana Nova 42» |
+| 6 | Kardex con subtítulo «13.412 movimientos» filtrado por un producto | «Zapatilla urbana Nova 42 · SKU ZAP-0042 · 96 movimientos» |
+| 7 | 49 badges dibujados como frames sueltos (33 de origen, 16 de vencimiento) | Sustituidos por instancias de `BadgeOrigenMovimiento` y `BadgeVencimiento` |
+| 8 | 47 «⋯» de fila escritos como texto | Sustituidos por `IconButton` ghost sm con `MoreHorizontal` (Kardex, Lotes y detalle de producto) |
+| 9 | Panel de filtros del kardex con referencias de código dentro del frame («ProductPicker del kit», «stock_movements.updated_by», «Los 23 orígenes que acepta la base») | Copy de producto: «Escribe nombre, SKU o código de barras», «Quién registró el movimiento», «Venta, compra, traslado, ajuste, merma…» |
+| 10 | Esqueleto del aviso de Lotes al final de la página en «cargando» | Movido bajo los KPI |
+| 11 | Faltaban «sin permiso» (Lotes y Kardex) y «sin sucursal» (Lotes), escritorio y móvil | Dibujados: `596:352714`, `596:353168`, `596:353629`, `597:351966`, `597:352129`, `597:352293` |
+| 12 | Los cuatro componentes nuevos vivían en la página 04 | Consolidados en `02 Componentes › Inventario — Existencias (Nuevo)` (`580:275505`); `BadgeOrigenMovimiento` pasa de 14 a 22 variantes |
+
+### P.3 Relación con la tanda de Existencias
+
+Stock, Movimientos, Ajustes, Traslados, Seriales, Garantías y Trazabilidad se auditaron y
+dibujaron en `docs/design/AUDITORIA-EXISTENCIAS.md` y `docs/design/PARIDAD-EXISTENCIAS.md`.
+Decisión que afecta a este documento: **Movimientos es la bitácora de la organización y Kardex
+es el libro de un producto con saldo corrido**; la pestaña kardex de informes
+(`ReportesPage.tsx:294-497`) desaparece a favor del Kardex.

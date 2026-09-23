@@ -12,6 +12,8 @@
  *   inactivo, para que el `limit` no las entierre;
  * - la suscripción Realtime vive en su propio efecto y su canal lleva la
  *   organización, para no entregar eventos de otra;
+ * - «Descartar» y «Marcar como no leída» son por persona
+ *   (`notification_dismissals`, `notification_reads`): no afectan a los demás;
  * - la lectura es por persona (`notification_reads`) y «marcar todas» va por
  *   RPC atómica.
  */
@@ -36,6 +38,9 @@ export interface NotificacionHeader {
 
 export type AlcanceNotificaciones = 'mine' | 'all';
 
+/** Filas de más que se piden para que, tras quitar las descartadas, la lista siga llena. */
+const MARGEN_DESCARTADAS = 20;
+
 const TIPOS_TAREA = '("task_assigned","task_completed","task_agent","task_rescheduled","task_reschedule_summary")';
 
 export function useNotificacionesHeader(organizationId: string | null) {
@@ -49,7 +54,7 @@ export function useNotificacionesHeader(organizationId: string | null) {
   const orgNum = organizationId ? parseInt(organizationId, 10) : undefined;
   const { canAccessModule } = useOptimizedModules(orgNum);
   const pmActivo = canAccessModule('pm');
-  const { taskReminders, loading: cargandoTareas } = useTaskReminders(organizationId);
+  const { taskReminders, loading: cargandoTareas, refreshReminders } = useTaskReminders(organizationId);
 
   const cargarRef = useRef<(silencioso?: boolean) => Promise<void>>(async () => {});
 
@@ -69,14 +74,14 @@ export function useNotificacionesHeader(organizationId: string | null) {
           .neq('status', 'deleted')
           .eq('recipient_user_id', userId)
           .order('created_at', { ascending: false })
-          .limit(15);
+          .limit(15 + MARGEN_DESCARTADAS);
         let consultaTodas = supabase
           .from('notifications')
           .select('*')
           .eq('organization_id', organizationId)
           .neq('status', 'deleted')
           .order('created_at', { ascending: false })
-          .limit(20);
+          .limit(20 + MARGEN_DESCARTADAS);
         if (!pmActivo) {
           consultaMias = consultaMias.not('payload->>type', 'in', TIPOS_TAREA);
           consultaTodas = consultaTodas.not('payload->>type', 'in', TIPOS_TAREA);
@@ -93,19 +98,25 @@ export function useNotificacionesHeader(organizationId: string | null) {
 
         const filasMias = (rMias.data ?? []) as NotificacionHeader[];
         const filasTodas = (rTodas.data ?? []) as NotificacionHeader[];
-        const ids = [...filasMias, ...filasTodas].map((n) => n.id);
+        const ids = Array.from(new Set([...filasMias, ...filasTodas].map((n) => n.id)));
         let leidas = new Set<string>();
+        let descartadas = new Set<string>();
         if (ids.length > 0) {
-          const { data } = await supabase
-            .from('notification_reads')
-            .select('notification_id')
-            .eq('user_id', userId)
-            .in('notification_id', ids);
-          leidas = new Set((data ?? []).map((r: { notification_id: string }) => r.notification_id));
+          const [rLeidas, rDescartadas] = await Promise.all([
+            supabase.from('notification_reads').select('notification_id').eq('user_id', userId).in('notification_id', ids),
+            supabase.from('notification_dismissals').select('notification_id').eq('user_id', userId).in('notification_id', ids),
+          ]);
+          leidas = new Set((rLeidas.data ?? []).map((r: { notification_id: string }) => r.notification_id));
+          descartadas = new Set((rDescartadas.data ?? []).map((r: { notification_id: string }) => r.notification_id));
         }
+        const visibles = (lista: NotificacionHeader[], tope: number) =>
+          lista
+            .filter((n) => !descartadas.has(n.id))
+            .slice(0, tope)
+            .map((n) => ({ ...n, is_read_by_me: leidas.has(n.id) }));
 
-        setMias(filasMias.map((n) => ({ ...n, is_read_by_me: leidas.has(n.id) })));
-        setTodas(filasTodas.map((n) => ({ ...n, is_read_by_me: leidas.has(n.id) })));
+        setMias(visibles(filasMias, 15));
+        setTodas(visibles(filasTodas, 20));
         setNoLeidasMias((rNoLeidasMias.data as number | null) ?? 0);
         setNoLeidasTodas((rNoLeidasTodas.data as number | null) ?? 0);
       } catch (e) {
@@ -183,20 +194,42 @@ export function useNotificacionesHeader(organizationId: string | null) {
     [orgNum]
   );
 
-  const descartar = useCallback(async (n: NotificacionHeader) => {
-    const { error } = await supabase.from('notifications').update({ status: 'deleted' }).eq('id', n.id);
-    if (error) {
-      console.error('[useNotificacionesHeader] descartar', error.message);
-      return;
-    }
-    const quitar = (lista: NotificacionHeader[]) => lista.filter((x) => x.id !== n.id);
-    setMias(quitar);
-    setTodas(quitar);
-    if (!n.is_read_by_me) {
-      setNoLeidasMias((c) => Math.max(0, c - 1));
-      setNoLeidasTodas((c) => Math.max(0, c - 1));
-    }
-  }, []);
+  /** Solo para quien la descarta (antes la borraba para toda la organización). También la marca leída. */
+  const descartar = useCallback(
+    async (n: NotificacionHeader) => {
+      if (!userId) return;
+      const { error } = await supabase.from('notification_dismissals').insert({ notification_id: n.id, user_id: userId });
+      if (error && error.code !== '23505') {
+        console.error('[useNotificacionesHeader] descartar', error.message);
+        return false;
+      }
+      if (!n.is_read_by_me) await marcarLeida(n);
+      const quitar = (lista: NotificacionHeader[]) => lista.filter((x) => x.id !== n.id);
+      setMias(quitar);
+      setTodas(quitar);
+      return true;
+    },
+    [userId, marcarLeida]
+  );
+
+  /** Borra la lectura propia: vuelve a contar como pendiente solo para esta persona. */
+  const marcarNoLeida = useCallback(
+    async (n: NotificacionHeader) => {
+      if (!userId) return false;
+      const { error } = await supabase.from('notification_reads').delete().eq('notification_id', n.id).eq('user_id', userId);
+      if (error) {
+        console.error('[useNotificacionesHeader] marcar no leída', error.message);
+        return false;
+      }
+      const desmarcar = (lista: NotificacionHeader[]) => lista.map((x) => (x.id === n.id ? { ...x, is_read_by_me: false } : x));
+      setMias(desmarcar);
+      setTodas(desmarcar);
+      if (n.recipient_user_id === userId) setNoLeidasMias((c) => c + 1);
+      setNoLeidasTodas((c) => c + 1);
+      return true;
+    },
+    [userId]
+  );
 
   const recordatorios = pmActivo ? taskReminders : [];
 
@@ -214,6 +247,9 @@ export function useNotificacionesHeader(organizationId: string | null) {
     marcarLeida,
     marcarTodas,
     descartar,
+    marcarNoLeida,
+    /** Tras completar o posponer una tarea desde la vista rápida. */
+    refrescarTareas: refreshReminders,
   };
 }
 

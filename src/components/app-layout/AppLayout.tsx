@@ -22,7 +22,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import type { AssistantContext } from '@/lib/services/aiAssistantService';
 
 // Importaciones estándar para evitar ChunkLoadError
-import ModuleLimitNotification from '@/components/notifications/ModuleLimitNotification';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { ModuleProvider } from '@/lib/context/ModuleContext';
 // F3: dock del softphone y aviso de llamada entrante. Se montan AQUI y no en
@@ -874,10 +873,7 @@ export const AppLayout = ({
   // Qué parte del catálogo ve esta persona: módulos y páginas activos de la
   // organización, acceso del cargo y capacidades calculadas en el servidor
   // (`/api/me/capacidades`: nada se decide por el nombre del rol).
-  const { datos: capacidades, navegacion: capacidadesNav } = useCapacidades();
-  // Admin según el servidor (is_super_admin o rol 1/2), no por consulta propia:
-  // controla, por ejemplo, ModuleLimitNotification.
-  const isOrgAdmin = capacidades?.esAdmin ?? false;
+  const { navegacion: capacidadesNav } = useCapacidades();
   const seccionesNav = useMemo(() => {
     // Si la carga de módulos falla se muestran todos (como hacía el sidebar
     // viejo): ocultar el menú entero dejaría a la persona sin salida, y la
@@ -999,12 +995,9 @@ export const AppLayout = ({
         </button>
       )}
       
-      {/* Notificación de límites de módulos (solo visible para el administrador de la organización) */}
-      {isOrgAdmin && (
-        <ModuleLimitNotification 
-          organizationId={orgId ? parseInt(orgId) : undefined}
-        />
-      )}
+      {/* El aviso flotante «Límite de módulos alcanzado» se retiró (2026-09-23,
+          decisión del dueño: invasivo). El uso del plan vive en «Mi cuenta»
+          (PlanUsageMeter) y en Mi organización › Módulos. */}
 
       {/* Telefonia: el SoftphoneProvider ya está activo arriba con
           `enabled={activeModuleCodes?.includes('crm')}`. Aquí solo se montan

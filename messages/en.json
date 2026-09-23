@@ -2114,7 +2114,8 @@
       "personas": "People",
       "tiempo": "Time",
       "pagos": "Pay"
-    }
+    },
+    "backToMenu": "Menu"
   },
   "crm": {
     "title": "CRM",
@@ -2876,7 +2877,63 @@
       "wholeOrganization": "Whole organization",
       "payloadData": "Notification data",
       "noRelated": "No additional details for this item",
-      "close": "Close"
-    }
+      "close": "Close",
+      "onlyYou": "Only you",
+      "relatedTitle": "Related data · {label}",
+      "relatedTitleGeneric": "Related data",
+      "relatedError": "Couldn't load the related data.",
+      "relatedErrorHint": "The notification is still available; you can retry or open the item.",
+      "retry": "Retry",
+      "noRelatedHint": "This notification doesn't include extra data about the item. You can open it with the button below.",
+      "markUnread": "Mark as unread",
+      "dismiss": "Dismiss",
+      "channels": {
+        "app": "In app",
+        "email": "Email",
+        "push": "Push",
+        "whatsapp": "WhatsApp",
+        "sms": "SMS",
+        "webhook": "Webhook"
+      }
+    },
+    "task": {
+      "task": "Task",
+      "srDescription": "Task quick view",
+      "close": "Close",
+      "completed": "Completed",
+      "completedHint": "Marked as completed. It's removed from your reminders.",
+      "undo": "Undo",
+      "overdue": "{n, plural, one {Overdue by # day} other {Overdue by # days}}",
+      "dueToday": "Due today",
+      "dueIn": "{n, plural, one {Due tomorrow} other {Due in # days}}",
+      "assignedTo": "Assigned to",
+      "unassigned": "Unassigned",
+      "customer": "Customer",
+      "project": "Project",
+      "due": "Due",
+      "noDueDate": "No due date",
+      "description": "Description",
+      "markDone": "Mark as completed",
+      "postpone": "Postpone",
+      "postponeUntil": "Postpone until",
+      "tomorrow": "Tomorrow",
+      "nextWeek": "Next week",
+      "pickDate": "Pick a date…",
+      "postponeAt": "Postpone to {time}",
+      "postponedTo": "Postponed to {date}",
+      "openInTasks": "Open in Tasks",
+      "loadError": "Couldn't load the task.",
+      "loadErrorHint": "Check your connection and try again, or open it in Tasks.",
+      "retry": "Retry",
+      "actionError": "Couldn't save the change. Try again.",
+      "priority": {
+        "critical": "Urgent",
+        "high": "High priority",
+        "med": "Medium priority",
+        "low": "Low priority"
+      }
+    },
+    "markedUnread": "Marked as unread",
+    "dismissedForYou": "Notification dismissed. Only you stop seeing it."
   }
 }

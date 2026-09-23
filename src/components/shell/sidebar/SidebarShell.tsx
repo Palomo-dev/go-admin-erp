@@ -195,6 +195,7 @@ export function SidebarShell({
             onNavegar={onCerrarDrawer}
             pie={bloque('drawer')}
             accionesDrawer={accionesDrawer}
+            drawerAbierto={drawerAbierto}
           />
         </div>
       </>

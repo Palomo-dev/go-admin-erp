@@ -6,12 +6,13 @@
  *
  * - rail 72 px: isotipo, iconos con tooltip, botón expandir, bloque de sesión colapsado.
  * - expanded 264 px: firma «GO Admin» + contraer, secciones con título, bloque de sesión.
- * - drawer 288 px (móvil): cabecera Azul GO con ×, acordeón de páginas, acciones fijas al pie.
+ * - drawer 288 px (móvil): cabecera Azul GO con ×; nivel 1 = módulos, nivel 2 = páginas del
+ *   módulo que se desliza encima (DrawerNivel2), con el bloque de sesión fijo al pie.
  *
  * Sin selector de organización: vive en el header. El contenido lo decide
  * `filtrarNavegacion()`; aquí solo se pinta.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
@@ -19,7 +20,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import type { RutaActiva, SeccionVisible, ModuloVisible } from '@/lib/navigation/filtrar';
 import { Firma, Isotipo } from '../marca/Firma';
 import { NavItem, type ModoSidebar } from './NavItem';
-import { ListaPaginas } from './SubMenuPanel';
+import { DrawerNivel2 } from './DrawerNivel2';
 
 interface SidebarProps {
   modo: ModoSidebar;
@@ -36,8 +37,10 @@ interface SidebarProps {
   onNavegar?: () => void;
   /** Bloque de sesión (UserBlock). */
   pie: React.ReactNode;
-  /** Acciones fijas del drawer, sobre el bloque de sesión (p. ej. «Reportar problema»). */
+  /** Acciones al final de la lista del drawer. */
   accionesDrawer?: React.ReactNode;
+  /** Drawer móvil: al abrirse vuelve al módulo de la ruta (o al nivel 1). */
+  drawerAbierto?: boolean;
 }
 
 function Esqueleto({ rail }: { rail: boolean }) {
@@ -67,13 +70,47 @@ export function Sidebar({
   onNavegar,
   pie,
   accionesDrawer,
+  drawerAbierto,
 }: SidebarProps) {
   const t = useTranslations('nav');
   const rail = modo === 'rail';
   const drawer = modo === 'drawer';
-  // En el drawer el submenú es un acordeón con un solo módulo abierto a la vez;
-  // arranca abierto el del módulo activo.
-  const [acordeon, setAcordeon] = useState<string | null>(activa?.modulo.id ?? null);
+  // Drawer por niveles (Figma MobileDrawerNivel2): `nivel2` es el módulo cuyas
+  // páginas se ven. Al abrir el drawer arranca en el módulo de la ruta si tiene
+  // submenú: lo más probable es ir a otra página del mismo módulo.
+  const modulos = secciones.flatMap((s) => s.modulos);
+  const moduloDeRuta = activa ? modulos.find((m) => m.modulo.id === activa.modulo.id && m.tieneSubmenu) ?? null : null;
+  const [nivel2, setNivel2] = useState<string | null>(moduloDeRuta?.modulo.id ?? null);
+  // Se conserva el último módulo para que el panel no se vacíe mientras sale.
+  const [ultimoNivel2, setUltimoNivel2] = useState<string | null>(nivel2);
+  const refVolver = useRef<HTMLButtonElement>(null);
+  const refNivel1 = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (drawer && drawerAbierto) {
+      setNivel2(moduloDeRuta?.modulo.id ?? null);
+      if (moduloDeRuta) setUltimoNivel2(moduloDeRuta.modulo.id);
+    }
+    // Al abrir el drawer, al cambiar de ruta y cuando termina de cargar el menú
+    // (si se abrió mientras cargaba, el módulo de la ruta aún no existía).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerAbierto, activa?.modulo.id, cargando]);
+
+  const entrar = (id: string) => {
+    setUltimoNivel2(id);
+    setNivel2(id);
+    // Tras la transición, el foco pasa a «← Menú».
+    window.setTimeout(() => refVolver.current?.focus(), 220);
+  };
+  const volver = () => {
+    const id = nivel2;
+    setNivel2(null);
+    window.setTimeout(() => {
+      refNivel1.current?.querySelector<HTMLElement>(`[data-modulo="${id}"] button, [data-modulo="${id}"] a`)?.focus();
+    }, 220);
+  };
+  const itemNivel2 = modulos.find((m) => m.modulo.id === (nivel2 ?? ultimoNivel2)) ?? null;
+  const panelNivel2Id = 'drawer-nivel-2';
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -117,12 +154,18 @@ export function Sidebar({
           </div>
         )}
 
-        {/* Navegación */}
+        {/* Navegación. En el drawer, dos paneles que se deslizan (nivel 1 / nivel 2). */}
+        <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <nav
+          ref={refNivel1}
           aria-label={t('mainNavigation')}
+          aria-hidden={drawer && nivel2 ? true : undefined}
+          inert={drawer && nivel2 ? true : undefined}
           className={cn(
             'flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden overscroll-contain pb-2 pt-1',
-            rail ? 'items-center px-3' : 'px-4'
+            rail ? 'items-center px-3' : 'px-4',
+            drawer && 'absolute inset-0 transition-transform duration-200 ease-out motion-reduce:transition-none',
+            drawer && (nivel2 ? '-translate-x-full' : 'translate-x-0')
           )}
         >
           {cargando && secciones.length <= 1 ? (
@@ -140,34 +183,19 @@ export function Sidebar({
                 <ul className={cn('flex flex-col gap-0.5', !rail && 'w-full')}>
                   {seccion.modulos.map((item) => {
                     const activo = activa?.modulo.id === item.modulo.id;
-                    const abiertoAqui = drawer ? acordeon === item.modulo.id : submenuAbierto === item.modulo.id;
-                    const acordeonId = `acordeon-${item.modulo.id}`;
+                    const abiertoAqui = drawer ? nivel2 === item.modulo.id : submenuAbierto === item.modulo.id;
                     return (
-                      <li key={item.modulo.id}>
+                      <li key={item.modulo.id} data-modulo={item.modulo.id}>
                         <NavItem
                           item={item}
                           modo={modo}
                           activo={activo}
                           abierto={abiertoAqui}
-                          controlaId={drawer ? acordeonId : submenuPanelId}
-                          onAbrirSubmenu={(it, el) =>
-                            drawer
-                              ? setAcordeon((actual) => (actual === it.modulo.id ? null : it.modulo.id))
-                              : onAbrirSubmenu(it, el)
-                          }
+                          controlaId={drawer ? panelNivel2Id : submenuPanelId}
+                          onAbrirSubmenu={(it, el) => (drawer ? entrar(it.modulo.id) : onAbrirSubmenu(it, el))}
                           onHover={rail ? onHoverModulo : undefined}
                           onNavegar={onNavegar}
                         />
-                        {drawer && item.tieneSubmenu && abiertoAqui && (
-                          <div id={acordeonId} className="ml-[18px] border-l border-line py-1 pl-3">
-                            <ListaPaginas
-                              paginas={item.paginas}
-                              paginaActiva={activo ? activa?.pagina?.href ?? null : null}
-                              onNavegar={onNavegar}
-                              tactil
-                            />
-                          </div>
-                        )}
                       </li>
                     );
                   })}
@@ -179,6 +207,26 @@ export function Sidebar({
               menú, al final de la lista (Figma MobileDrawer 30:954). */}
           {drawer && accionesDrawer && !cargando && <div className="flex flex-col gap-0.5 pt-3">{accionesDrawer}</div>}
         </nav>
+        {drawer && itemNivel2 && (
+          <div
+            aria-hidden={nivel2 ? undefined : true}
+            inert={nivel2 ? undefined : true}
+            className={cn(
+              'absolute inset-0 bg-sidebar transition-transform duration-200 ease-out motion-reduce:transition-none',
+              nivel2 ? 'translate-x-0' : 'translate-x-full'
+            )}
+          >
+            <DrawerNivel2
+              ref={refVolver}
+              id={panelNivel2Id}
+              item={itemNivel2}
+              paginaActiva={activa?.modulo.id === itemNivel2.modulo.id ? activa?.pagina?.href ?? null : null}
+              onVolver={volver}
+              onNavegar={onNavegar}
+            />
+          </div>
+        )}
+        </div>
 
         {/* Pie */}
         <div className={cn('flex shrink-0 flex-col', drawer && 'pb-safe-bottom')}>

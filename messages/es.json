@@ -2114,7 +2114,8 @@
       "personas": "Personas",
       "tiempo": "Tiempo",
       "pagos": "Pagos"
-    }
+    },
+    "backToMenu": "Menú"
   },
   "crm": {
     "title": "CRM",
@@ -2876,7 +2877,63 @@
       "wholeOrganization": "Toda la organización",
       "payloadData": "Datos de la notificación",
       "noRelated": "No hay datos adicionales del recurso",
-      "close": "Cerrar"
-    }
+      "close": "Cerrar",
+      "onlyYou": "Solo para ti",
+      "relatedTitle": "Datos relacionados · {label}",
+      "relatedTitleGeneric": "Datos relacionados",
+      "relatedError": "No se pudieron cargar los datos relacionados.",
+      "relatedErrorHint": "La notificación sigue disponible; puedes reintentar o abrir el recurso.",
+      "retry": "Reintentar",
+      "noRelatedHint": "Esta notificación no trae datos adicionales del recurso. Puedes abrirlo con el botón de abajo.",
+      "markUnread": "Marcar como no leída",
+      "dismiss": "Descartar",
+      "channels": {
+        "app": "En la app",
+        "email": "Correo",
+        "push": "Push",
+        "whatsapp": "WhatsApp",
+        "sms": "SMS",
+        "webhook": "Webhook"
+      }
+    },
+    "task": {
+      "task": "Tarea",
+      "srDescription": "Vista rápida de la tarea",
+      "close": "Cerrar",
+      "completed": "Completada",
+      "completedHint": "Marcada como completada. Se quita de tus recordatorios.",
+      "undo": "Deshacer",
+      "overdue": "{n, plural, one {Vencida hace # día} other {Vencida hace # días}}",
+      "dueToday": "Vence hoy",
+      "dueIn": "{n, plural, one {Vence mañana} other {Vence en # días}}",
+      "assignedTo": "Asignado a",
+      "unassigned": "Sin asignar",
+      "customer": "Cliente",
+      "project": "Proyecto",
+      "due": "Vence",
+      "noDueDate": "Sin fecha",
+      "description": "Descripción",
+      "markDone": "Marcar como completada",
+      "postpone": "Posponer",
+      "postponeUntil": "Posponer hasta",
+      "tomorrow": "Mañana",
+      "nextWeek": "Próxima semana",
+      "pickDate": "Elegir fecha…",
+      "postponeAt": "Posponer a las {time}",
+      "postponedTo": "Pospuesta para {date}",
+      "openInTasks": "Abrir en Tareas",
+      "loadError": "No se pudo cargar la tarea.",
+      "loadErrorHint": "Revisa la conexión y vuelve a intentar, o ábrela en Tareas.",
+      "retry": "Reintentar",
+      "actionError": "No se pudo guardar el cambio. Intenta de nuevo.",
+      "priority": {
+        "critical": "Urgente",
+        "high": "Prioridad alta",
+        "med": "Prioridad media",
+        "low": "Prioridad baja"
+      }
+    },
+    "markedUnread": "Marcada como no leída",
+    "dismissedForYou": "Notificación descartada. Solo deja de verla tú."
   }
 }

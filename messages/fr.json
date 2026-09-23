@@ -2113,7 +2113,8 @@
     },
     "emailNotConfirmed": "E-mail non confirmé",
     "sending": "Envoi...",
-    "resend": "Renvoyer"
+    "resend": "Renvoyer",
+    "backToMenu": "Menu"
   },
   "posCustomerDisplay": {
     "indicator": {
@@ -2771,7 +2772,63 @@
       "wholeOrganization": "Toute l'organisation",
       "payloadData": "Données de la notification",
       "noRelated": "Aucune donnée supplémentaire pour cet élément",
-      "close": "Fermer"
-    }
+      "close": "Fermer",
+      "onlyYou": "Vous seul",
+      "relatedTitle": "Données associées · {label}",
+      "relatedTitleGeneric": "Données associées",
+      "relatedError": "Impossible de charger les données associées.",
+      "relatedErrorHint": "La notification reste disponible ; vous pouvez réessayer ou ouvrir l'élément.",
+      "retry": "Réessayer",
+      "noRelatedHint": "Cette notification ne contient pas de données supplémentaires. Vous pouvez ouvrir l'élément avec le bouton ci-dessous.",
+      "markUnread": "Marquer comme non lue",
+      "dismiss": "Ignorer",
+      "channels": {
+        "app": "Dans l'app",
+        "email": "E-mail",
+        "push": "Push",
+        "whatsapp": "WhatsApp",
+        "sms": "SMS",
+        "webhook": "Webhook"
+      }
+    },
+    "task": {
+      "task": "Tâche",
+      "srDescription": "Aperçu de la tâche",
+      "close": "Fermer",
+      "completed": "Terminée",
+      "completedHint": "Marquée comme terminée. Elle disparaît de vos rappels.",
+      "undo": "Annuler",
+      "overdue": "{n, plural, one {En retard de # jour} other {En retard de # jours}}",
+      "dueToday": "Échéance aujourd'hui",
+      "dueIn": "{n, plural, one {Échéance demain} other {Échéance dans # jours}}",
+      "assignedTo": "Assignée à",
+      "unassigned": "Non assignée",
+      "customer": "Client",
+      "project": "Projet",
+      "due": "Échéance",
+      "noDueDate": "Pas d'échéance",
+      "description": "Description",
+      "markDone": "Marquer comme terminée",
+      "postpone": "Reporter",
+      "postponeUntil": "Reporter jusqu'à",
+      "tomorrow": "Demain",
+      "nextWeek": "Semaine prochaine",
+      "pickDate": "Choisir une date…",
+      "postponeAt": "Reporter à {time}",
+      "postponedTo": "Reportée au {date}",
+      "openInTasks": "Ouvrir dans Tâches",
+      "loadError": "Impossible de charger la tâche.",
+      "loadErrorHint": "Vérifiez la connexion et réessayez, ou ouvrez-la dans Tâches.",
+      "retry": "Réessayer",
+      "actionError": "Impossible d'enregistrer la modification. Réessayez.",
+      "priority": {
+        "critical": "Urgente",
+        "high": "Priorité haute",
+        "med": "Priorité moyenne",
+        "low": "Priorité basse"
+      }
+    },
+    "markedUnread": "Marquée comme non lue",
+    "dismissedForYou": "Notification ignorée. Seul vous ne la voyez plus."
   }
 }

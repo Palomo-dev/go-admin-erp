@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { ArrowUpRight, Bell, Check, ClipboardList, Mail, MessageSquare, Smartphone, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { NotificationDetailSheet, getTypeIcon } from '@/components/notificaciones/NotificationDetailSheet';
@@ -23,6 +24,7 @@ import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz, formatTimeInTz, toPlainDate } from '@/lib/utils/dateDisplay';
 import type { TaskReminder } from '@/lib/hooks/useTaskReminders';
 import type { AlcanceNotificaciones, NotificacionHeader, NotificacionesHeader } from './useNotificacionesHeader';
+import { VistaRapidaTarea } from './VistaRapidaTarea';
 
 export function textoContador(n: number): string {
   return n > 99 ? '99+' : String(n);
@@ -96,17 +98,19 @@ export function PanelNotificaciones({
   datos,
   onCerrar,
   onAbrir,
+  onAbrirTarea,
   enHoja = false,
 }: {
   datos: NotificacionesHeader;
   onCerrar: () => void;
   /** Abre el detalle; lo pinta quien monta el panel, fuera del popover. */
   onAbrir: (n: NotificacionHeader) => void;
+  /** Abre la vista rápida de una tarea (TaskQuickView), también fuera del popover. */
+  onAbrirTarea: (tareaId: string) => void;
   /** En la hoja móvil se muestra la X de cerrar. */
   enHoja?: boolean;
 }) {
   const t = useTranslations('header');
-  const router = useRouter();
   const hora = useHoraRelativa();
   const [pestana, setPestana] = useState<'notificaciones' | 'tareas'>('notificaciones');
   const [alcance, setAlcance] = useState<AlcanceNotificaciones>('mine');
@@ -205,10 +209,7 @@ export function PanelNotificaciones({
               <FilaTarea
                 key={r.id}
                 r={r}
-                onAbrir={() => {
-                  onCerrar();
-                  router.push(`/app/pm/tareas?taskId=${r.id}`);
-                }}
+                onAbrir={() => onAbrirTarea(r.id)}
               />
             ))
           )
@@ -275,9 +276,21 @@ export function PanelNotificaciones({
   );
 }
 
-/** Hoja de detalle de una notificación, montada fuera del popover o de la hoja móvil. */
-export function DetalleNotificacion({ notificacion, onCerrar }: { notificacion: NotificacionHeader | null; onCerrar: () => void }) {
+/**
+ * Hoja de detalle de una notificación, montada fuera del popover o de la hoja
+ * móvil. «Marcar como no leída» y «Descartar» son solo para quien la abre.
+ */
+export function DetalleNotificacion({
+  notificacion,
+  onCerrar,
+  datos,
+}: {
+  notificacion: NotificacionHeader | null;
+  onCerrar: () => void;
+  datos: NotificacionesHeader;
+}) {
   const router = useRouter();
+  const t = useTranslations('header');
   return (
     <NotificationDetailSheet
       notification={notificacion}
@@ -287,6 +300,26 @@ export function DetalleNotificacion({ notificacion, onCerrar }: { notificacion: 
         onCerrar();
         router.push(url);
       }}
+      onMarkUnread={
+        notificacion
+          ? async () => {
+              if (await datos.marcarNoLeida(notificacion)) {
+                toast.success(t('markedUnread'));
+                onCerrar();
+              }
+            }
+          : undefined
+      }
+      onDismiss={
+        notificacion
+          ? async () => {
+              if (await datos.descartar(notificacion)) {
+                toast.success(t('dismissedForYou'));
+                onCerrar();
+              }
+            }
+          : undefined
+      }
     />
   );
 }
@@ -305,6 +338,7 @@ export function NotificationsBell({ datos }: { datos: NotificacionesHeader }) {
   const t = useTranslations('header');
   const [abierto, setAbierto] = useState(false);
   const [detalle, setDetalle] = useState<NotificacionHeader | null>(null);
+  const [tareaId, setTareaId] = useState<string | null>(null);
   const n = datos.pendientes;
   return (
     <>
@@ -331,10 +365,15 @@ export function NotificationsBell({ datos }: { datos: NotificacionesHeader }) {
             setAbierto(false);
             setDetalle(x);
           }}
+          onAbrirTarea={(id) => {
+            setAbierto(false);
+            setTareaId(id);
+          }}
         />
       </PopoverContent>
     </Popover>
-    <DetalleNotificacion notificacion={detalle} onCerrar={() => setDetalle(null)} />
+    <DetalleNotificacion notificacion={detalle} onCerrar={() => setDetalle(null)} datos={datos} />
+    <VistaRapidaTarea tareaId={tareaId} onCerrar={() => setTareaId(null)} onCambio={datos.refrescarTareas} />
     </>
   );
 }

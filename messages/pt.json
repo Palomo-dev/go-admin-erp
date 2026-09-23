@@ -2113,7 +2113,8 @@
     },
     "emailNotConfirmed": "E-mail não confirmado",
     "sending": "Enviando...",
-    "resend": "Reenviar"
+    "resend": "Reenviar",
+    "backToMenu": "Menu"
   },
   "posCustomerDisplay": {
     "indicator": {
@@ -2771,7 +2772,63 @@
       "wholeOrganization": "Toda a organização",
       "payloadData": "Dados da notificação",
       "noRelated": "Sem dados adicionais deste item",
-      "close": "Fechar"
-    }
+      "close": "Fechar",
+      "onlyYou": "Só para você",
+      "relatedTitle": "Dados relacionados · {label}",
+      "relatedTitleGeneric": "Dados relacionados",
+      "relatedError": "Não foi possível carregar os dados relacionados.",
+      "relatedErrorHint": "A notificação continua disponível; você pode tentar de novo ou abrir o item.",
+      "retry": "Tentar de novo",
+      "noRelatedHint": "Esta notificação não traz dados adicionais do item. Você pode abri-lo com o botão abaixo.",
+      "markUnread": "Marcar como não lida",
+      "dismiss": "Descartar",
+      "channels": {
+        "app": "No app",
+        "email": "E-mail",
+        "push": "Push",
+        "whatsapp": "WhatsApp",
+        "sms": "SMS",
+        "webhook": "Webhook"
+      }
+    },
+    "task": {
+      "task": "Tarefa",
+      "srDescription": "Visão rápida da tarefa",
+      "close": "Fechar",
+      "completed": "Concluída",
+      "completedHint": "Marcada como concluída. Sai dos seus lembretes.",
+      "undo": "Desfazer",
+      "overdue": "{n, plural, one {Vencida há # dia} other {Vencida há # dias}}",
+      "dueToday": "Vence hoje",
+      "dueIn": "{n, plural, one {Vence amanhã} other {Vence em # dias}}",
+      "assignedTo": "Atribuída a",
+      "unassigned": "Sem responsável",
+      "customer": "Cliente",
+      "project": "Projeto",
+      "due": "Vence",
+      "noDueDate": "Sem data",
+      "description": "Descrição",
+      "markDone": "Marcar como concluída",
+      "postpone": "Adiar",
+      "postponeUntil": "Adiar até",
+      "tomorrow": "Amanhã",
+      "nextWeek": "Próxima semana",
+      "pickDate": "Escolher data…",
+      "postponeAt": "Adiar para as {time}",
+      "postponedTo": "Adiada para {date}",
+      "openInTasks": "Abrir em Tarefas",
+      "loadError": "Não foi possível carregar a tarefa.",
+      "loadErrorHint": "Verifique a conexão e tente de novo, ou abra em Tarefas.",
+      "retry": "Tentar de novo",
+      "actionError": "Não foi possível salvar a alteração. Tente de novo.",
+      "priority": {
+        "critical": "Urgente",
+        "high": "Prioridade alta",
+        "med": "Prioridade média",
+        "low": "Prioridade baixa"
+      }
+    },
+    "markedUnread": "Marcada como não lida",
+    "dismissedForYou": "Notificação descartada. Só você deixa de vê-la."
   }
 }

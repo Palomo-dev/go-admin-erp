@@ -20,13 +20,13 @@ import type { PaginaNav } from '@/lib/navigation/catalog';
 import { useNombresNav } from '@/lib/navigation/useNombresNav';
 import type { ModuloVisible } from '@/lib/navigation/filtrar';
 
-interface Grupo {
+export interface Grupo {
   titulo: string | null;
   paginas: PaginaNav[];
 }
 
 /** Agrupa conservando el orden del catálogo. */
-function agrupar(paginas: PaginaNav[]): Grupo[] {
+export function agrupar(paginas: PaginaNav[]): Grupo[] {
   const grupos: Grupo[] = [];
   for (const p of paginas) {
     const titulo = p.grupo ?? null;

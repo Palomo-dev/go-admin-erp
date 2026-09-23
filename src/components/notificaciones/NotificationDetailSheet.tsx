@@ -2,18 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
+  Sheet, SheetContent, SheetTitle, SheetDescription,
 } from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Bell, ExternalLink, User, DollarSign, Hotel, Package,
   ClipboardList, CreditCard, UserPlus, Calendar, AlertTriangle,
-  Hash, Clock, TrendingDown, Building2, Mail,
+  Hash, Clock, TrendingDown, Building2, Mail, Info, AlertCircle, RefreshCw, Trash2, X,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { supabase } from '@/lib/supabase/config';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz, formatPlainDate } from '@/lib/utils/dateDisplay';
@@ -36,7 +34,30 @@ interface NotificationDetailSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onNavigate: (url: string) => void;
+  /** «Marcar como no leída» (solo para quien la abre). Sin él no se muestra. */
+  onMarkUnread?: () => void;
+  /** «Descartar» (solo para quien la abre). Sin él no se muestra. */
+  onDismiss?: () => void;
 }
+
+/** Tono del tipo (Badge y chip del icono, manual de marca: tinte + texto profundo). */
+type Tono = 'peligro' | 'advertencia' | 'info' | 'marca' | 'neutro';
+
+export function getTypeTone(type: string): Tono {
+  if (type === 'ar_overdue' || type === 'ap_overdue' || type === 'stock_out' || type === 'payment_failed' || type.endsWith('_cancelled') || type === 'no_show' || type === 'opportunity_lost') return 'peligro';
+  if (type.startsWith('stock_') || type === 'trial_expiring' || type === 'ai_credits_low' || type === 'transfer_rejected') return 'advertencia';
+  if (type.includes('invoice') || type.includes('payment') || type.startsWith('cash_') || type.startsWith('payroll')) return 'info';
+  if (type.startsWith('task_') || type.startsWith('opportunity_') || type.startsWith('reservation') || type.startsWith('calendar_')) return 'marca';
+  return 'neutro';
+}
+
+const TONOS: Record<Tono, { chip: string; badge: string }> = {
+  peligro: { chip: 'bg-danger-subtle text-danger-text', badge: 'border-line-danger bg-danger-subtle text-danger-text' },
+  advertencia: { chip: 'bg-warning-subtle text-warning-text', badge: 'border-line-warning bg-warning-subtle text-warning-text' },
+  info: { chip: 'bg-info-subtle text-info-text', badge: 'border-line-info bg-info-subtle text-info-text' },
+  marca: { chip: 'bg-brand-tint text-brand-deep', badge: 'border-line-brand bg-brand-tint text-brand-deep' },
+  neutro: { chip: 'bg-subtle text-fg-secondary', badge: 'border-line bg-subtle text-fg-secondary' },
+};
 
 // ── Helpers de tipo ────────────────────────────────────
 export function getTypeIcon(type: string) {
@@ -119,7 +140,7 @@ interface ProveedorFila { name?: string | null; email?: string | null }
 interface ProductoFila { name?: string | null; sku?: string | null }
 interface RelatedData {
   label: string;
-  fields: { icon: typeof Bell; label: string; value: string }[];
+  fields: { icon: typeof Bell; label: string; value: string; peligro?: boolean }[];
 }
 
 /** Idioma y zona para los valores: los textos salen de `t`, los números y fechas de `locale`. */
@@ -145,7 +166,7 @@ async function fetchRelatedData(notif: NotificationForSheet, { t, locale, timezo
         .eq('id', p.ar_id)
         .maybeSingle();
 
-      if (arErr) console.error('[NotifSheet] ar query error:', arErr.message);
+      if (arErr) throw arErr;
       if (ar) {
         let cust: PersonaFila | null = null;
         if (ar.customer_id) {
@@ -179,7 +200,7 @@ async function fetchRelatedData(notif: NotificationForSheet, { t, locale, timezo
         .eq('id', p.ap_id)
         .maybeSingle();
 
-      if (apErr) console.error('[NotifSheet] ap query error:', apErr.message);
+      if (apErr) throw apErr;
       if (ap) {
         let sup: ProveedorFila | null = null;
         if (ap.supplier_id) {
@@ -214,7 +235,7 @@ async function fetchRelatedData(notif: NotificationForSheet, { t, locale, timezo
         .limit(1)
         .maybeSingle();
 
-      if (slErr) console.error('[NotifSheet] stock query error:', slErr.message);
+      if (slErr) throw slErr;
       if (sl) {
         let prod: ProductoFila | null = null;
         const { data: pr } = await supabase
@@ -229,7 +250,7 @@ async function fetchRelatedData(notif: NotificationForSheet, { t, locale, timezo
           fields: [
             { icon: Package, label: t('fields.product'), value: prod?.name || p.product_name || '—' },
             { icon: Hash, label: t('fields.sku'), value: prod?.sku || '—' },
-            { icon: TrendingDown, label: t('fields.currentStock'), value: t('units', { qty: numero(sl.qty_on_hand) }) },
+            { icon: TrendingDown, label: t('fields.currentStock'), value: t('units', { qty: numero(sl.qty_on_hand) }), peligro: Number(sl.qty_on_hand) < Number(sl.min_level ?? 0) },
             { icon: AlertTriangle, label: t('fields.minimumRequired'), value: t('units', { qty: numero(sl.min_level) }) },
             { icon: Package, label: t('fields.reserved'), value: t('units', { qty: numero(sl.qty_reserved) }) },
             { icon: DollarSign, label: t('fields.averageCost'), value: sl.avg_cost ? dinero(sl.avg_cost) : '—' },
@@ -246,7 +267,7 @@ async function fetchRelatedData(notif: NotificationForSheet, { t, locale, timezo
         .eq('id', p.reservation_id)
         .maybeSingle();
 
-      if (resErr) console.error('[NotifSheet] reservation query error:', resErr.message);
+      if (resErr) throw resErr;
       if (res) {
         let cust: PersonaFila | null = null;
         if (res.customer_id) {
@@ -280,7 +301,7 @@ async function fetchRelatedData(notif: NotificationForSheet, { t, locale, timezo
         .eq('id', p.invoice_id)
         .maybeSingle();
 
-      if (invErr) console.error('[NotifSheet] invoice query error:', invErr.message);
+      if (invErr) throw invErr;
       if (inv) {
         let sup: ProveedorFila | null = null;
         if (inv.supplier_id) {
@@ -306,6 +327,7 @@ async function fetchRelatedData(notif: NotificationForSheet, { t, locale, timezo
 
   } catch (err) {
     console.error('[NotifSheet] Error fetching related data:', err);
+    throw err;
   }
 
   return null;
@@ -315,40 +337,60 @@ async function fetchRelatedData(notif: NotificationForSheet, { t, locale, timezo
 const CLAVES_PAYLOAD = new Set(['balance', 'due_date', 'qty', 'min', 'product_name', 'amount', 'difference', 'new_role_id', 'priority', 'event_type']);
 
 // ── Componente principal ──────────────────────────────
-export function NotificationDetailSheet({ notification, open, onOpenChange, onNavigate }: NotificationDetailSheetProps) {
+// Figma `02 Componentes` › NotificationDetail 625:14683: hoja lateral de 440 px
+// en escritorio y hoja inferior en móvil. Cabecera con chip del tipo, título y
+// badges (tipo · canal); texto; fecha y destinatario; datos relacionados del
+// recurso con sus estados (cargando, sin datos, error con reintentar); acción
+// principal a ancho completo y, debajo, «Marcar como no leída» y «Descartar».
+export function NotificationDetailSheet({ notification, open, onOpenChange, onNavigate, onMarkUnread, onDismiss }: NotificationDetailSheetProps) {
   const t = useTranslations('header.notificationDetail');
   const locale = useLocale();
+  const movil = useMediaQuery('(max-width: 1023px)');
   const [relatedData, setRelatedData] = useState<RelatedData | null>(null);
   const [loadingRelated, setLoadingRelated] = useState(false);
+  const [errorRelated, setErrorRelated] = useState(false);
+  const [intento, setIntento] = useState(0);
   const { timezone } = useOrgTimezone();
 
   useEffect(() => {
-    if (notification && open) {
-      setLoadingRelated(true);
-      setRelatedData(null);
-      fetchRelatedData(notification, { t, locale, timezone }).then(data => {
-        setRelatedData(data);
-        setLoadingRelated(false);
-      });
-    }
-    // Se relee al cambiar de notificación (por id) o de idioma, no cuando el
-    // objeto se recrea.
+    if (!notification || !open) return;
+    let vivo = true;
+    setLoadingRelated(true);
+    setErrorRelated(false);
+    setRelatedData(null);
+    fetchRelatedData(notification, { t, locale, timezone })
+      .then((data) => vivo && setRelatedData(data))
+      .catch(() => vivo && setErrorRelated(true))
+      .finally(() => vivo && setLoadingRelated(false));
+    return () => {
+      vivo = false;
+    };
+    // Se relee al cambiar de notificación (por id), de idioma o al reintentar,
+    // no cuando el objeto se recrea.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notification?.id, open, timezone, locale]);
+  }, [notification?.id, open, timezone, locale, intento]);
 
   if (!notification) return null;
 
   const n = notification;
   const type = String(n.payload?.type ?? '');
   const title = String(n.payload?.title || type || t('notification'));
-  const content = String(n.payload?.content ?? '');
+  // Algunos emisores (p. ej. cocina) mandan el texto en `message` en vez de `content`.
+  const content = String(n.payload?.content ?? n.payload?.message ?? '');
   const TypeIcon = getTypeIcon(type);
+  const tono = TONOS[getTypeTone(type)];
   const typeLabel = TIPOS_CON_ETIQUETA.has(type) ? t(`types.${type}`) : t('notification');
   const redirect = getRedirect(n);
 
   // Payload extra (excluir keys ya mostradas)
-  const hiddenKeys = new Set(['type', 'title', 'content', 'ar_id', 'ap_id', 'invoice_id', 'reservation_id', 'product_id', 'transfer_id', 'task_id', 'opportunity_id', 'event_id']);
-  const extraPayload = Object.entries(n.payload || {}).filter(([key]) => !hiddenKeys.has(key));
+  const hiddenKeys = new Set(['type', 'title', 'content', 'message']);
+  // Los identificadores (…_id, uuids) no le dicen nada a la persona: ya van en el
+  // botón que abre el recurso. Solo se muestran valores legibles.
+  const esTecnico = (key: string, value: unknown) =>
+    key === 'id' || key.endsWith('_id') || key.endsWith('_uuid') ||
+    (typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) ||
+    (value !== null && typeof value === 'object');
+  const extraPayload = Object.entries(n.payload || {}).filter(([key, value]) => !hiddenKeys.has(key) && !esTecnico(key, value));
 
   const formatVal = (key: string, value: unknown): string => {
     const str = String(value);
@@ -364,127 +406,170 @@ export function NotificationDetailSheet({ notification, open, onOpenChange, onNa
   };
 
   const etiquetaPayload = (key: string) => (CLAVES_PAYLOAD.has(key) ? t(`payloadKeys.${key}`) : key.replace(/_/g, ' '));
+  const canal = t.has(`channels.${n.channel}`) ? t(`channels.${n.channel}`) : n.channel;
+  const fecha = [
+    formatDateInTz(n.created_at, timezone, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', locale }),
+    formatDateInTz(n.created_at, timezone, { hour: 'numeric', minute: '2-digit', locale }),
+  ].join(' · ');
+  const tituloRelacionados = relatedData ? t('relatedTitle', { label: relatedData.label }) : t('relatedTitleGeneric');
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-md w-full overflow-y-auto bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800">
-        {/* Header */}
-        <SheetHeader className="pb-4">
-          <div className="flex flex-wrap items-start gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 mt-0.5">
-              <TypeIcon className="h-5 w-5" />
+      <SheetContent
+        side={movil ? 'bottom' : 'right'}
+        hideCloseButton
+        className={cn(
+          'flex flex-col gap-0 border-line bg-surface p-0 text-fg',
+          movil ? 'max-h-[92dvh] rounded-t-2xl pb-[env(safe-area-inset-bottom)]' : 'h-full w-full sm:max-w-[440px]'
+        )}
+      >
+        {movil && <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-line-strong" aria-hidden="true" />}
+
+        {/* Cabecera */}
+        <div className="flex shrink-0 items-start gap-3 border-b border-line px-5 py-4">
+          <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', tono.chip)} aria-hidden="true">
+            <TypeIcon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <SheetTitle className="text-base font-semibold leading-[22px] text-fg">{title}</SheetTitle>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className={cn('rounded-full border px-2 py-0.5 text-xs font-semibold leading-4', tono.badge)}>{typeLabel}</span>
+              <span className="rounded-full border border-line bg-subtle px-2 py-0.5 text-xs font-semibold leading-4 text-fg-secondary">{canal}</span>
+              {!n.is_read_by_me && <span className="sr-only">{t('new')}</span>}
             </div>
-            <div className="flex-1 min-w-0">
-              <SheetTitle className="text-base leading-tight">{title}</SheetTitle>
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <Badge variant="outline" className="text-xs">{typeLabel}</Badge>
-                <Badge variant="secondary" className="text-xs capitalize">{n.channel}</Badge>
-                {n.is_read_by_me
-                  ? <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">{t('read')}</span>
-                  : <span className="inline-flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />{t('new')}</span>
-                }
-              </div>
-              <SheetDescription className="sr-only">{t('srDescription')}</SheetDescription>
-            </div>
+            <SheetDescription className="sr-only">{t('srDescription')}</SheetDescription>
           </div>
-        </SheetHeader>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            aria-label={t('close')}
+            className="-mr-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-fg-secondary outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
 
-        <Separator />
+        {/* Cuerpo */}
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-4">
+          {content && <p className="rounded-lg bg-subtle p-3 text-sm leading-5 text-fg-secondary">{content}</p>}
 
-        {/* Contenido */}
-        <div className="space-y-4 py-4">
-          {content && (
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3.5">
-              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{content}</p>
+          <dl className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <dt className="text-xs font-medium text-fg-muted">{t('date')}</dt>
+              <dd className="mt-0.5 text-fg">{fecha}</dd>
             </div>
-          )}
-
-          {/* Info básica */}
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
-              <span className="text-gray-500 dark:text-gray-400 block mb-1">{t('date')}</span>
-              <span className="font-medium text-gray-900 dark:text-white block">
-                {formatDateInTz(n.created_at, timezone, { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', locale })}
-              </span>
+            <div>
+              <dt className="text-xs font-medium text-fg-muted">{t('recipient')}</dt>
+              <dd className="mt-0.5 text-fg">{n.recipient_user_id ? t('onlyYou') : t('wholeOrganization')}</dd>
             </div>
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
-              <span className="text-gray-500 dark:text-gray-400 block mb-1">{t('recipient')}</span>
-              <span className="font-medium text-gray-900 dark:text-white block">
-                {n.recipient_user_id ? t('individual') : t('wholeOrganization')}
-              </span>
-            </div>
-          </div>
+          </dl>
 
-          {/* Payload extra */}
           {extraPayload.length > 0 && (
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3.5">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-2">{t('payloadData')}</span>
-              <div className="space-y-2">
+            <div className="rounded-lg border border-line">
+              <p className="border-b border-line px-3 py-2 text-xs font-semibold text-fg-secondary">{t('payloadData')}</p>
+              <dl className="divide-y divide-line">
                 {extraPayload.map(([key, value]) => (
-                  <div key={key} className="flex flex-wrap items-center justify-between text-xs gap-2">
-                    <span className="text-gray-500 dark:text-gray-400">{etiquetaPayload(key)}</span>
-                    <span className="font-medium text-gray-900 dark:text-white text-right">{formatVal(key, value)}</span>
+                  <div key={key} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                    <dt className="text-fg-secondary">{etiquetaPayload(key)}</dt>
+                    <dd className="text-right font-medium text-fg">{formatVal(key, value)}</dd>
                   </div>
                 ))}
-              </div>
+              </dl>
             </div>
           )}
 
-          <Separator />
-
-          {/* Datos reales de tablas relacionadas */}
-          {loadingRelated && (
-            <div className="py-4 space-y-3">
-              <Skeleton className="h-4 w-1/3" />
-              <div className="space-y-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-4 w-full" />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {relatedData && (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="h-1 w-1 rounded-full bg-blue-500" />
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">{relatedData.label}</span>
-              </div>
-              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg divide-y divide-blue-100 dark:divide-blue-800">
-                {relatedData.fields.map((field, idx) => {
-                  const FieldIcon = field.icon;
-                  return (
-                    <div key={idx} className="flex flex-wrap items-center gap-3 px-3.5 py-2.5">
-                      <FieldIcon className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
-                      <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[100px]">{field.label}</span>
-                      <span className="text-xs font-medium text-gray-900 dark:text-white ml-auto text-right">{field.value}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {!loadingRelated && !relatedData && type && (
-            <div className="text-center py-4">
-              <span className="text-xs text-gray-400 dark:text-gray-500">{t('noRelated')}</span>
-            </div>
+          {type && (
+            <section aria-busy={loadingRelated}>
+              <h3 className="mb-2 text-xs font-semibold text-fg">{tituloRelacionados}</h3>
+              {loadingRelated ? (
+                <div className="space-y-2.5 rounded-lg border border-line p-3" aria-hidden="true">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="h-3 w-2/5 animate-pulse rounded bg-subtle" />
+                  ))}
+                </div>
+              ) : errorRelated ? (
+                <div className="rounded-lg border border-line-danger bg-danger-subtle p-3" role="alert">
+                  <p className="flex items-center gap-2 text-sm font-medium text-danger-text">
+                    <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    {t('relatedError')}
+                  </p>
+                  <p className="mt-1 pl-6 text-xs text-fg-secondary">{t('relatedErrorHint')}</p>
+                  <button
+                    type="button"
+                    onClick={() => setIntento((x) => x + 1)}
+                    className="ml-4 mt-2 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-fg hover:bg-hover"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t('retry')}
+                  </button>
+                </div>
+              ) : relatedData ? (
+                <dl className="divide-y divide-line rounded-lg border border-line">
+                  {relatedData.fields.map((field, idx) => {
+                    const FieldIcon = field.icon;
+                    return (
+                      <div key={idx} className="flex items-center gap-2.5 px-3 py-2.5 text-sm">
+                        <FieldIcon className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden="true" />
+                        <dt className="text-fg-secondary">{field.label}</dt>
+                        <dd className={cn('ml-auto text-right font-medium', field.peligro ? 'text-danger-text' : 'text-fg')}>{field.value}</dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+              ) : (
+                <p className="flex gap-2 rounded-lg bg-subtle p-3 text-xs text-fg-secondary">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-fg-muted" aria-hidden="true" />
+                  {t('noRelatedHint')}
+                </p>
+              )}
+            </section>
           )}
         </div>
 
-        {/* Footer */}
-        <Separator />
-        <SheetFooter className="pt-4 gap-2 sm:gap-2">
-          <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
-            {t('close')}
-          </Button>
-          {redirect && (
-            <Button className="flex-1 gap-2" onClick={() => { onOpenChange(false); onNavigate(redirect.url); }}>
-              <ExternalLink className="h-4 w-4" />
-              {t(`actions.${redirect.accion}`)}
-            </Button>
-          )}
-        </SheetFooter>
+        {/* Pie */}
+        {(redirect || onMarkUnread || onDismiss) && (
+          <div className="shrink-0 space-y-2 border-t border-line px-5 py-4">
+            {redirect && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenChange(false);
+                  onNavigate(redirect.url);
+                }}
+                className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-brand-action text-sm font-medium text-fg-on-brand outline-none hover:bg-brand-action-hover focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              >
+                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                {t(`actions.${redirect.accion}`)}
+              </button>
+            )}
+            {(onMarkUnread || onDismiss) && (
+              <div className="flex items-center justify-between">
+                {onMarkUnread ? (
+                  <button
+                    type="button"
+                    onClick={onMarkUnread}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-fg hover:bg-hover"
+                  >
+                    <Mail className="h-4 w-4" aria-hidden="true" />
+                    {t('markUnread')}
+                  </button>
+                ) : (
+                  <span />
+                )}
+                {onDismiss && (
+                  <button
+                    type="button"
+                    onClick={onDismiss}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-fg hover:bg-hover"
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    {t('dismiss')}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );

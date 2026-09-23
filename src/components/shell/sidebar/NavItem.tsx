@@ -5,14 +5,14 @@
  *
  * - expanded: 40 px de alto, icono en chip de 28, etiqueta y › si tiene submenú.
  * - rail: 48×48, solo el chip, con tooltip a la derecha.
- * - drawer: 48 px de alto (área táctil móvil); el submenú se abre como acordeón.
+ * - drawer: 48 px de alto (área táctil móvil); el submenú se abre como nivel 2 (DrawerNivel2).
  *
  * Activo (la ruta está en el módulo): fila en Tinte GO, chip en Azul acción.
  * Un módulo con varias páginas es un botón que abre su panel; uno con una sola
  * página es un enlace directo.
  */
 import Link from 'next/link';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -24,7 +24,7 @@ interface NavItemProps {
   item: ModuloVisible;
   modo: ModoSidebar;
   activo: boolean;
-  /** true si el panel de submenú (o el acordeón) de este módulo está abierto. */
+  /** true si el panel de submenú (o el nivel 2 del drawer) de este módulo está abierto. */
   abierto: boolean;
   /** id del panel/acordeón que controla, para aria-controls. */
   controlaId?: string;
@@ -66,16 +66,8 @@ export function NavItem({ item, modo, activo, abierto, controlaId, onAbrirSubmen
           >
             {etiqueta}
           </span>
-          {item.tieneSubmenu &&
-            (modo === 'drawer' ? (
-              <ChevronDown
-                size={16}
-                aria-hidden="true"
-                className={cn('shrink-0 text-fg-muted transition-transform', abierto && 'rotate-180')}
-              />
-            ) : (
-              <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-fg-muted" />
-            ))}
+          {/* En el drawer el submenú es un nivel 2 que se desliza (no un acordeón): › igual que en escritorio. */}
+          {item.tieneSubmenu && <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-fg-muted" />}
         </>
       )}
     </>

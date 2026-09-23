@@ -32,6 +32,7 @@ import { useNombresNav } from '@/lib/navigation/useNombresNav';
 import { OrgSwitcher } from './OrgSwitcher';
 import { FeedbackButton, ReportarProblemaDialog } from './ReportarProblema';
 import { DetalleNotificacion, NotificationsBell, PanelNotificaciones, textoContador } from './Notificaciones';
+import { VistaRapidaTarea } from './VistaRapidaTarea';
 import { useNotificacionesHeader, type NotificacionHeader } from './useNotificacionesHeader';
 import {
   esFormularioPorRuta,
@@ -238,6 +239,7 @@ function MobileTabBar({
   const t = useTranslations('header');
   const [alertas, setAlertas] = useState(false);
   const [detalle, setDetalle] = useState<NotificacionHeader | null>(null);
+  const [tareaId, setTareaId] = useState<string | null>(null);
 
   // El contenido y los avisos flotantes dejan sitio a la barra solo cuando se ve.
   useEffect(() => {
@@ -320,10 +322,15 @@ function MobileTabBar({
               setAlertas(false);
               setDetalle(n);
             }}
+            onAbrirTarea={(id) => {
+              setAlertas(false);
+              setTareaId(id);
+            }}
           />
         </SheetContent>
       </Sheet>
-      <DetalleNotificacion notificacion={detalle} onCerrar={() => setDetalle(null)} />
+      <DetalleNotificacion notificacion={detalle} onCerrar={() => setDetalle(null)} datos={notificaciones} />
+      <VistaRapidaTarea tareaId={tareaId} onCerrar={() => setTareaId(null)} onCambio={notificaciones.refrescarTareas} />
     </>
   );
 }

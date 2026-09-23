@@ -46,6 +46,7 @@ set queda por anotar en la próxima tanda.
 | Hoja de acciones móvil | captura `47-clientes-movil-hoja-de-acciones.png` | `kit/ActionSheet.tsx` (sobre `ui/sheet`) | creado |
 | `BulkActionBar` (`Layout=desktop` · `mobile`) | instancia `518:63246` | `kit/BulkActionBar.tsx` | creado |
 | `ListCard` (`Selección=no · sí`) | `580:277858` | `kit/ListCard.tsx` | creado |
+| `Avatar Size=sm Type=initials` | — (captura `15-clientes-catalogo-listo.png`) | `kit/AvatarIniciales.tsx` | creado (listado de Clientes) |
 | `EmptyState` (`empty · search · error · forbidden`) + `EmptyStateSinSucursal` | — (capturas `09-kit-listas.png`, `47-clientes-movil-sin-resultados.png`) | `kit/EmptyState.tsx` (variante `sinSucursal`) | creado |
 | `Pagination Layout=full` | instancia `518:63238` | `kit/Pagination.tsx` | creado; **`ui/DataTablePagination` pasa a delegar aquí** (24 pantallas heredan la paginación única) |
 | `Pagination Layout=compact` | captura `47-proveedores-movil-referencia.png` | `kit/PaginationCompact.tsx` | creado |
@@ -256,6 +257,10 @@ con selección; en móvil tapa el `MobileTabBar`. Contador · «Seleccionar los 
   onLimpiar={() => setSeleccion(new Set())} />
 ```
 
+Una acción con `menu: GrupoMenuMasivo[]` (`{ titulo?, acciones: AccionFila[] }`) abre un menú
+en lugar de ejecutar `onClick`: «Roles ▾» de Clientes con los grupos «Agregar rol» y «Quitar rol».
+En móvil los grupos se aplanan en la hoja («Agregar rol: Cliente», `aplanarMenuMasivo`).
+
 ### `ListCard` · Figma `580:277858`
 
 Tarjeta móvil de 358 px: icono en caja tintada de 40, título 14/20 medium en una línea,
@@ -264,6 +269,19 @@ Toda la tarjeta abre el detalle; en modo selección gana casilla y borde de marc
 
 Props: `icono`, `titulo`, `subtitulo?`, `meta?`, `valor?`, `estado?`, `onClick?`,
 `acciones?`, `seleccionable?`, `seleccionado?`, `onSeleccionChange?`.
+
+Clientes móvil pasa su avatar de iniciales por `miniatura` (`<AvatarIniciales tamano="md" />`) y
+conserva su información (nombre, Persona/Empresa, documento, contacto, correo, teléfono), un dato
+por línea con elipsis.
+
+Con `onMantenerPulsado` la tarjeta entra en modo selección al mantenerla pulsada 500 ms (o con
+clic derecho) y, en modo selección, tocarla alterna su casilla en lugar de abrir el detalle
+(Figma Clientes móvil, «selección múltiple»). En `DataTable`: `onMantenerPulsado={() => ctx.alternar(true)}`.
+
+### `AvatarIniciales`
+
+Círculo Azul GO con dos iniciales o la foto (si falla, vuelve a las iniciales). `nombre`, `src?`,
+`tamano` (`sm` 32 · `md` 40 · `lg` 64). Un solo color: en el listado el color no significa nada.
 
 ### `EmptyState`
 
@@ -422,3 +440,25 @@ flechas del `SegmentedControl`.
 - `SortMenu` (orden en móvil), `ViewToggle`, `TabItem` con contador y `RelatedLinkCard`
   cuando una pantalla los pida.
 - Tests de render cuando el repo incorpore `@testing-library/react` y `jsdom`.
+
+## Adenda 2026-09-23 — árboles y diálogo con cuerpo (Categorías)
+
+Pedidos por el rediseño de Categorías (Figma `04 Inventario › 586:290667`). Archivos
+nuevos; ningún componente existente cambió de contrato.
+
+| Figma | Id | Código | Qué hace |
+|---|---|---|---|
+| `TreeCell` (Nivel 0/1/2 × Rama abierta/cerrada/hoja) | `580:278007` | `kit/TreeCell.tsx` | Sangría real de 24 px por nivel (16 en listas), chevron o hueco de hoja, icono tintado con el color propio del registro o miniatura, título y slug. `contexto` atenúa a los ancestros que solo acompañan a una coincidencia. Prop `arrastre` para cambiar de padre arrastrando |
+| Tarjeta de árbol móvil («Sangría nivel 0/1/2») | frames de `586:310471` | `kit/TreeCard.tsx` | `ListCard` desplazada 16 px por nivel, con el chevron de la rama a la izquierda |
+| Diálogo «Mover a…» · campo «Categoría padre» | `586:312245` | `kit/TreePicker.tsx` (`TreeList`, `TreeSelect`, `rutaOpcion`) | Selección sobre el árbol real: buscador que entra en ramas cerradas, opción raíz, marca «Actual» y opciones **deshabilitadas con su motivo** (las que crearían un ciclo). ↑/↓, Inicio/Fin, Enter/Espacio |
+| — (lógica) | — | `kit/arbol.ts` | `construirArbol` (huérfanos a la raíz, ciclos sin colgarse), `filtrarArbol` (coincidencias + ancestros como contexto + ramas que se abren solas), `aplanarArbol` (respeta lo que se cerró a mano), `paginarRaices` (**la paginación es por nodos raíz**: un padre y sus hijas nunca quedan en páginas distintas), `descendientesDe`, `ancestrosDe`, `idsConHijos`, `normalizarBusqueda` |
+| — (interacción) | — | `kit/arrastreArbol.tsx` (`useArrastreArbol`, `ZonaSoltarRaiz`) | Arrastrar y soltar nativo para reparentar (solo escritorio; la vía accesible es «Mover a…»). `puedeSoltar` devuelve `true` o el motivo; la franja «Suelta aquí para dejarla sin categoría padre» aparece solo mientras se arrastra |
+| Diálogo con cuerpo (PATRONES §8) | `586:312245` | `kit/Dialogo.tsx` | Cabecera (título, descripción, ×) · cuerpo con scroll · pie «Cancelar» + primario. Anchos 440 · 520 · 560 · 672 · 1024. `primario.destructiva` en rojo; deshabilitado siempre con `motivo`. Para confirmaciones de una línea sigue `ui/confirm-dialog` |
+
+`RelatedLinkCard` (`580:277907`) se escribió en esta misma tanda para el bloque «Cómo se
+conecta» (`kit/RelatedLinkCard.tsx`): `icono`, `etiqueta`, `valor`, `href` u `onAccion`
+(alias `onClick`), `textoAccion` (alias `accion`), `tono` `neutral · warning · danger`.
+
+Pruebas: `src/components/kit/__tests__/arbol.test.ts` (13 casos: niveles y orden, huérfanos,
+ciclos, descendientes, ancestros, búsqueda en ramas cerradas, rama cerrada a mano durante la
+búsqueda, paginación por raíces).

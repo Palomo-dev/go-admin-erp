@@ -36,9 +36,10 @@ export {
 export { DataTable, type DataTableProps, type ColumnaTabla, type EstadoTabla, type ContextoTarjeta } from './DataTable';
 export { RowActionsMenu, type RowActionsMenuProps } from './RowActionsMenu';
 export { ActionSheet, type ActionSheetProps } from './ActionSheet';
-export { BulkActionBar, type BulkActionBarProps, type AccionMasiva } from './BulkActionBar';
+export { BulkActionBar, aplanarMenuMasivo, type BulkActionBarProps, type AccionMasiva, type GrupoMenuMasivo } from './BulkActionBar';
 export { ListCard, type ListCardProps } from './ListCard';
 export { AccionRapida, type AccionRapidaProps } from './AccionRapida';
+export { AvatarIniciales, inicialesDe, type AvatarInicialesProps } from './AvatarIniciales';
 export { TabBar, idPestana, idPanel, type TabBarProps, type PestanaTab } from './TabBar';
 export { prepararMenu, MAX_ENTRADAS_MENU, type AccionFila, type EntradaMenu } from './acciones';
 
@@ -80,3 +81,31 @@ export {
 } from './listadoUrl';
 export { estadoCasillaCabecera, alternarPagina, alternarId } from './seleccion';
 export { useEsEscritorio } from './useEsEscritorio';
+
+// Árboles (categorías hoy; cualquier listado jerárquico) y diálogo con cuerpo
+export {
+  construirArbol,
+  filtrarArbol,
+  aplanarArbol,
+  paginarRaices,
+  descendientesDe,
+  ancestrosDe,
+  idsConHijos,
+  normalizarBusqueda,
+  type NodoPlano,
+  type NodoArbol,
+  type FilaArbol,
+  type ResultadoFiltroArbol,
+} from './arbol';
+export { TreeCell, type TreeCellProps } from './TreeCell';
+export { TreeCard, type TreeCardProps } from './TreeCard';
+export { TreeList, TreeSelect, rutaOpcion, type OpcionArbol, type TreeListProps, type TreeSelectProps } from './TreePicker';
+export {
+  useArrastreArbol,
+  ZonaSoltarRaiz,
+  type ArrastreArbol,
+  type OpcionesArrastreArbol,
+  type PropsNodoArrastre,
+  type ZonaSoltarRaizProps,
+} from './arrastreArbol';
+export { Dialogo, type DialogoProps, type AccionDialogo } from './Dialogo';

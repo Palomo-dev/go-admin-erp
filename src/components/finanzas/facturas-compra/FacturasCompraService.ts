@@ -635,7 +635,10 @@ export class FacturasCompraService {
           due_date: formData.due_date,
           updated_at: new Date().toISOString()
         })
-        .eq('invoice_purchase_id', facturaId);
+        // La columna es `invoice_id`. Decía `invoice_purchase_id`, que no
+        // existe, así que editar una factura de compra nunca actualizó su
+        // cuenta por pagar: el error se tragaba en el `console.warn` de abajo.
+        .eq('invoice_id', facturaId);
 
       if (updateAccountError) {
         console.warn('Error actualizando cuenta por pagar:', updateAccountError);
@@ -855,38 +858,12 @@ export class FacturasCompraService {
         throw paymentError;
       }
       
-      // Calcular nuevo balance y estado
-      const nuevoBalance = factura.balance - pagoData.amount;
-      const nuevoEstado = nuevoBalance <= 0 ? 'paid' : 
-                         nuevoBalance < factura.total ? 'partial' : factura.status;
-      
-      // Actualizar la factura
-      const { error: updateError } = await supabase
-        .from('invoice_purchase')
-        .update({
-          balance: nuevoBalance,
-          status: nuevoEstado
-        })
-        .eq('id', facturaId);
-        
-      if (updateError) {
-        console.error('Error actualizando factura:', updateError);
-        throw updateError;
-      }
-      
-      // Actualizar la cuenta por pagar
-      const { error: accountError } = await supabase
-        .from('accounts_payable')
-        .update({
-          balance: nuevoBalance,
-          status: nuevoBalance <= 0 ? 'paid' : 'partial'
-        })
-        .eq('invoice_id', facturaId);
-        
-      if (accountError) {
-        console.warn('Error actualizando cuenta por pagar:', accountError);
-        // No lanzamos error para no bloquear el flujo principal
-      }
+      // El saldo de la factura y el de la cuenta por pagar los recalcula la
+      // base de datos desde la suma de los pagos completados
+      // (`trg_recalc_invoice_balance_from_payments` y
+      // `tr_update_accounts_payable_on_payment`). Escribirlos también aquí
+      // restaba dos veces, y el `status` pisaba el estado `received` de la
+      // recepción de mercancía.
 
       // Nota: el asiento contable de pago se crea automaticamente en la BD
       // mediante el trigger trg_auto_journal_payment (fn_auto_journal_payment)

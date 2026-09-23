@@ -487,8 +487,10 @@ export class CuentasPorPagarService {
         throw pagoError;
       }
 
-      // Actualizar balances usando el método auxiliar
-      await this.actualizarBalancesDespuesDePago(pagoData.account_payable_id, pagoData.amount);
+      // El saldo de la cuenta por pagar y el de la factura de compra los
+      // recalcula la base de datos (`tr_update_accounts_payable_on_payment` y
+      // `trg_recalc_invoice_balance_from_payments`). Restarlos también aquí
+      // los dejaba en la mitad del saldo real.
 
       console.log(`Pago registrado exitosamente: ${pago.id}`);
       return pago;
@@ -592,64 +594,12 @@ export class CuentasPorPagarService {
   }
 
   /**
-   * Método auxiliar para actualizar balances después de un pago
+   * El saldo de una cuenta por pagar ya no se calcula aquí. Lo recalcula
+   * `fn_recalc_accounts_payable_from_payments` desde la suma de los pagos
+   * completados, igual que la cartera de clientes: restar el importe también
+   * desde el cliente dejaba el saldo en la mitad, y el `paid`/`partial` de la
+   * factura de compra pisaba el estado `received` de la recepción.
    */
-  private static async actualizarBalancesDespuesDePago(accountPayableId: string, paymentAmount: number): Promise<void> {
-    try {
-      // Obtener información de la cuenta por pagar
-      const { data: cuenta, error: cuentaError } = await supabase
-        .from('accounts_payable')
-        .select('balance, invoice_id')
-        .eq('id', accountPayableId)
-        .single();
-
-      if (cuentaError || !cuenta) {
-        console.error('Cuenta por pagar no encontrada para actualización de balance');
-        return;
-      }
-
-      // Calcular nuevo balance
-      const nuevoBalance = cuenta.balance - paymentAmount;
-      const nuevoEstado = nuevoBalance <= 0 ? 'paid' : 'partial';
-
-      // Actualizar balance de la cuenta por pagar
-      const { error: updateError } = await supabase
-        .from('accounts_payable')
-        .update({ 
-          balance: nuevoBalance,
-          status: nuevoEstado,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', accountPayableId);
-
-      if (updateError) {
-        console.error('Error actualizando balance de cuenta por pagar:', updateError);
-      }
-
-      // Actualizar balance y estado de la factura de compra correspondiente
-      if (cuenta.invoice_id) {
-        // Determinar el nuevo estado de la factura basado en el balance
-        const nuevoEstadoFactura = nuevoBalance <= 0 ? 'paid' : 'partial';
-        
-        const { error: invoiceUpdateError } = await supabase
-          .from('invoice_purchase')
-          .update({ 
-            balance: nuevoBalance,
-            status: nuevoEstadoFactura,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', cuenta.invoice_id);
-
-        if (invoiceUpdateError) {
-          console.error('Error actualizando balance y estado de factura de compra:', invoiceUpdateError);
-        } else {
-          console.log(`Balances y estado sincronizados para cuenta ${accountPayableId} y factura ${cuenta.invoice_id}. Nuevo estado: ${nuevoEstadoFactura}`);
-        }
-      }
-    } catch (error) {
-      console.error('Error en actualizarBalancesDespuesDePago:', error);
-    }
-  }
 
   /**
    * Aprueba un pago programado (cambia status a completed)
@@ -697,10 +647,8 @@ export class CuentasPorPagarService {
         throw error;
       }
 
-      // Actualizar balances si es un pago de cuenta por pagar
-      if (payment.source_id) {
-        await this.actualizarBalancesDespuesDePago(payment.source_id, payment.amount);
-      }
+      // El paso a 'completed' ya dispara el recálculo del saldo en la base de
+      // datos: el disparador escucha también el cambio de estado.
 
       console.log(`Pago aprobado: ${paymentId}`);
     } catch (error) {

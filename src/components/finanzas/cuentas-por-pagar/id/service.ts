@@ -314,38 +314,11 @@ export class CuentaPorPagarDetailService {
 
       if (paymentError) throw paymentError;
 
-      // Actualizar balance de cuenta por pagar
-      const { data: account, error: accountError } = await supabase
-        .from('accounts_payable')
-        .select('balance, invoice_id')
-        .eq('id', accountId)
-        .single();
-
-      if (accountError) throw accountError;
-
-      const newBalance = parseFloat(account.balance) - amount;
-      const newStatus = newBalance <= 0 ? 'paid' : 'partial';
-
-      await supabase
-        .from('accounts_payable')
-        .update({
-          balance: Math.max(0, newBalance),
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', accountId);
-
-      // Actualizar balance de factura de compra si existe
-      if (account.invoice_id) {
-        await supabase
-          .from('invoice_purchase')
-          .update({
-            balance: Math.max(0, newBalance),
-            status: newStatus,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', account.invoice_id);
-      }
+      // El saldo de la cuenta por pagar y el de la factura de compra los
+      // recalcula la base de datos al insertar el pago, igual que hace la
+      // cartera de clientes. Restarlos aquí además del disparador dejaba el
+      // saldo en la mitad, y el `status` que se escribía en la factura pisaba
+      // el estado `received` de la recepción de mercancía.
     } catch (error) {
       console.error('Error registrando pago:', error);
       throw error;

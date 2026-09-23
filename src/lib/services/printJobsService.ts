@@ -15,6 +15,7 @@ import { readDesktopCache, writeDesktopCache } from '@/lib/utils/desktopLocalCac
 import { rasterizeLogo } from './logoRasterService';
 import { PrintService } from './printService';
 import { getOrganizationTimezone } from './organizationTimezoneService';
+import type { ProductLabelsPrintPayload } from '@printing/labels';
 import { resolverContextoMoneda } from './monedaOrganizacion';
 import type { MoneyFormat } from '@printing';
 
@@ -1051,6 +1052,42 @@ export class PrintJobsService {
       job_type: 'open_cash_drawer',
       reference_id: null,
       payload: {} as any,
+      status: 'pending' as const,
+    }));
+
+    return dispatchPrintJobs(rows, printers);
+  }
+  /**
+   * Impresoras de la estación de caja de la sucursal (o «todas»): las que
+   * reciben las etiquetas de producto. Vacío = no hay estación y el diálogo
+   * de etiquetas no ofrece enviarlas (sin estación no se encola nada).
+   */
+  static async getProductLabelPrinters(branchId: number): Promise<Printer[]> {
+    return PrintersService.getPrintersByStation(branchId, 'cashier');
+  }
+
+  /**
+   * Encola etiquetas de producto en la estación de caja de la sucursal. El
+   * payload llega resuelto (textos, precios formateados, SVG de las barras):
+   * el agente solo maqueta (`print-agent/src/printing/labels.ts`).
+   */
+  static async enqueueProductLabels(
+    branchId: number,
+    payload: ProductLabelsPrintPayload,
+  ): Promise<EnqueueResult> {
+    const orgId = getOrganizationId();
+    // Una sola impresora: con dos en la estación, las etiquetas saldrían dobles.
+    const printers = (await this.getProductLabelPrinters(branchId)).slice(0, 1);
+    if (printers.length === 0) return { enqueued: 0, printedLocally: 0 };
+
+    const rows: PrintJobInsert[] = printers.map((printer) => ({
+      organization_id: orgId,
+      branch_id: printer.branch_id || branchId,
+      printer_id: printer.id,
+      station: 'cashier',
+      job_type: 'product_label',
+      reference_id: null,
+      payload,
       status: 'pending' as const,
     }));
 

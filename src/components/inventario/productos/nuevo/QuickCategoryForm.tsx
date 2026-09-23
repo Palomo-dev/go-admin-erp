@@ -27,6 +27,8 @@ interface QuickCategoryFormProps {
   /** Se llama al crear la categoría, con la categoría creada (el llamador la selecciona). */
   onSuccess: (category: Category) => void;
   onCancel: () => void;
+  /** Nombre ya escrito en el buscador de categorías («Crear “…”»); forma también el slug. */
+  nombreInicial?: string;
 }
 
 type EstadoSlug = 'vacio' | 'validando' | 'libre' | 'duplicado' | 'error';
@@ -41,14 +43,19 @@ type EstadoSlug = 'vacio' | 'validando' | 'libre' | 'duplicado' | 'error';
  *
  * Contrato sin cambios: `onSuccess(categoria)` / `onCancel()`.
  */
-export function QuickCategoryForm({ onSuccess, onCancel }: QuickCategoryFormProps) {
+export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickCategoryFormProps) {
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id ?? null;
 
   const [categorias, setCategorias] = useState<Category[]>([]);
   const [errorCategorias, setErrorCategorias] = useState(false);
-  const [datos, setDatos] = useState<CategoryFormData>({ ...emptyFormData });
+  const [datos, setDatos] = useState<CategoryFormData>(() => {
+    const name = (nombreInicial ?? '').trim();
+    return name
+      ? { ...emptyFormData, name, slug: generateSlug(name), meta_title: name, meta_description: `Categoría: ${name}` }
+      : { ...emptyFormData };
+  });
   const [slugTocado, setSlugTocado] = useState(false);
   const [estadoSlug, setEstadoSlug] = useState<EstadoSlug>('vacio');
   const [sugerencia, setSugerencia] = useState<string | null>(null);

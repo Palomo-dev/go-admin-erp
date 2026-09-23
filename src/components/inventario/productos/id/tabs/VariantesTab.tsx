@@ -50,6 +50,8 @@ import {
 } from '@/components/ui/select';
 import { formatCurrency } from '@/utils/Utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CampoCodigoBarras } from '../../codigos/CampoCodigoBarras';
+import { useRevisionCodigos } from '../../codigos/useRevisionCodigos';
 
 interface VariantTypeOption {
   id: number;
@@ -100,6 +102,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
 
   const router = useRouter();
   const { organization } = useOrganization();
+  const { revisar: revisarCodigosBarras } = useRevisionCodigos();
   
   const [variantes, setVariantes] = useState<Variante[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -385,6 +388,19 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
   // Guardar variante (crear o editar)
   const handleSaveVariante = async () => {
     if (!editingVariante) return;
+
+    // Código propio de la variante: formato y sin otro producto o variante que lo use.
+    if (organization?.id && editingVariante.barcode?.trim()) {
+      const problema = await revisarCodigosBarras(
+        organization.id,
+        [editingVariante.barcode],
+        editingVariante.id ? [Number(editingVariante.id)] : [],
+      );
+      if (problema) {
+        toast({ title: problema.titulo, description: problema.mensaje, variant: 'destructive' });
+        return;
+      }
+    }
     
     try {
       setLoading(true);
@@ -397,7 +413,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
             organization_id: organization?.id,
             sku: editingVariante.sku,
             name: editingVariante.name,
-            barcode: editingVariante.barcode,
+            barcode: editingVariante.barcode?.trim() || null,
             parent_product_id: producto.id,
             is_parent: false,
             track_stock: producto.track_stock !== undefined ? producto.track_stock : true,
@@ -480,7 +496,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
           .update({
             sku: editingVariante.sku,
             name: editingVariante.name,
-            barcode: editingVariante.barcode,
+            barcode: editingVariante.barcode?.trim() || null,
             variant_data: editingVariante.variant_data,
             updated_at: new Date().toISOString(),
           })
@@ -1054,16 +1070,13 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
               )}
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="barcode">Código de Barras (opcional)</Label>
-              <Input
-                id="barcode"
-                value={editingVariante?.barcode || ''}
-                onChange={(e) => handleVarianteChange('barcode', e.target.value)}
-                placeholder="Código de barras específico"
-                className="font-mono dark:bg-gray-800 dark:border-gray-700"
-              />
-            </div>
+            <CampoCodigoBarras
+              id="barcode"
+              value={editingVariante?.barcode || ''}
+              onChange={(valor) => handleVarianteChange('barcode', valor)}
+              excluirIds={editingVariante?.id ? [Number(editingVariante.id)] : []}
+              variante
+            />
           </div>
           
           <DialogFooter className="sm:justify-between">

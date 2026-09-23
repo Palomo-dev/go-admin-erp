@@ -3171,5 +3171,279 @@
       "vencida": "Overdue",
       "vencido": "Overdue"
     }
+  },
+  "inventarioEtiquetas": {
+    "catalogo": {
+      "imprimirEtiquetas": "Print labels",
+      "codigosBarras": "Barcodes",
+      "generarCodigos": "Generate barcodes",
+      "sinProductos": "There are no products in the list for this action.",
+      "demasiados": "That is more than {n, number} products: filter or select the ones you need."
+    },
+    "categoria": {
+      "titulo": "New category",
+      "descripcion": "It is created and stays selected for this product.",
+      "cerrar": "Close",
+      "crear": "Create category",
+      "crearCon": "Create “{nombre}”"
+    },
+    "doc": {
+      "sinCodigo": "No barcode",
+      "codigoInvalido": "Code cannot be printed"
+    },
+    "codigos": {
+      "titulo": "Generate barcodes",
+      "seleccionados": "{n, plural, one {# product selected} other {# products selected}}",
+      "descripcion": "{total, plural, one {# product or variant} other {# products and variants}} · {n, plural, =0 {all have a code} other {# without a code}}",
+      "cargando": "Looking for products and variants without a code…",
+      "errorCargaTitulo": "We couldn't load the products",
+      "errorCarga": "Check your connection and try again. Your selection is kept.",
+      "sinPendientesTitulo": "Nothing to generate",
+      "sinPendientes": "{n, plural, one {The selected product already has} other {The # selected products and variants already have}} a barcode. To change one, do it from the product itself: replacing codes in bulk invalidates labels already printed.",
+      "aviso": "{n, plural, one {# of the {total} selected has} other {# of the {total} selected have}} no code. Only the missing ones are generated: existing codes are left untouched.",
+      "pendientesTitulo": "Products and variants without a code ({n, number})",
+      "yMas": "and {n, number} more",
+      "formato": "Format",
+      "formatos": {
+        "ean13": {
+          "titulo": "Internal EAN-13",
+          "ayuda": "13 digits with a check digit; any scanner and register reads it. With prefix 20–29, reserved by GS1 for internal use, it doesn't overlap any manufacturer's range. If your company has its own GS1 prefix, enter it."
+        },
+        "code128": {
+          "titulo": "Internal Code128",
+          "ayuda": "Accepts letters and numbers (e.g. GO0001001). Useful if you already number products this way; some older scanners can't read it."
+        }
+      },
+      "numeracion": "Numbering",
+      "prefijo": "Organization prefix",
+      "empezarEn": "Start at",
+      "longitud": "Code length",
+      "caracteres": "{n, number} characters",
+      "notaNumeracion": "The numbering belongs to the organization and is saved when you generate. Each code is checked on the server: if another product or variant already uses it, it skips to the next one.",
+      "muestra": "Preview of the first codes",
+      "muestraVacia": "Fix the prefix or the number to see the preview.",
+      "prefijoErrores": {
+        "ean13Digitos": "An EAN-13 prefix has 1 to 10 digits.",
+        "code128Caracteres": "Use uppercase letters, numbers or hyphen (max. 10).",
+        "noCabe": "The prefix and the number don't fit in the code length."
+      },
+      "pie": "{n, plural, one {# {formato} code will be generated} other {# {formato} codes will be generated}}",
+      "pieNada": "Nothing to generate",
+      "generarN": "{n, plural, =0 {Generate codes} one {Generate # code} other {Generate # codes}}",
+      "generandoBoton": "Generating…",
+      "generandoNota": "Generating and checking that none exists…",
+      "motivoCargando": "Waiting for the products",
+      "motivoSinPendientes": "All selected products already have a code",
+      "reintentar": "Try again",
+      "generados": "{n, plural, =0 {There were no codes to generate} one {# code generated} other {# codes generated}}",
+      "errores": {
+        "rangoAgotado": "The numbering ran out with that prefix: increase the length or change the prefix.",
+        "prefijo": "The prefix is not valid for that format.",
+        "demasiados": "Too many products at once (max. 5,000).",
+        "acceso": "You don't have access to this organization.",
+        "generico": "We couldn't generate the codes. Nothing was left half-done: try again."
+      },
+      "campo": {
+        "etiqueta": "Barcode",
+        "placeholder": "Scan it, type it or generate it",
+        "generar": "Generate",
+        "generarTitulo": "Generate the organization's next free code",
+        "ayuda": "Empty: “Generate” creates one from the organization's numbering and checks it doesn't exist.",
+        "ayudaVariante": "Each variant has its own code: an empty one no longer inherits the product's.",
+        "verificando": "Checking that it's free…",
+        "libre": "{formato} · free in this organization",
+        "sinVerificar": "We couldn't check whether it's free; it will be checked again on save.",
+        "errorDigito": "The check digit doesn't match: a {formato} starting with {cuerpo} ends in {digito}.",
+        "errorLargo": "Too long for a barcode (max. 48 characters).",
+        "errorCaracteres": "Only unaccented letters, numbers and basic symbols (Code128).",
+        "duplicado": "Already used by “{nombre}”.",
+        "duplicadoVariante": "Already used by variant “{variante}” of “{nombre}”."
+      },
+      "revision": {
+        "titulo": "Check the barcode",
+        "formato": "“{codigo}” is not a valid barcode.",
+        "repetido": "“{codigo}” is repeated between the product and its variants: each one needs its own.",
+        "duplicado": "“{codigo}” is already used by “{nombre}”.",
+        "duplicadoVariante": "“{codigo}” is already used by variant “{variante}” of “{nombre}”."
+      }
+    },
+    "imprimir": {
+      "titulo": "Print labels",
+      "seleccionados": "{n, plural, one {# product selected} other {# products selected}}",
+      "todasSucursales": "All branches",
+      "cargando": "Loading products, prices and stock…",
+      "errorCarga": "We couldn't load the products. Your selection is kept.",
+      "reintentar": "Try again",
+      "sinProductos": "None of the selected products can be labeled (deleted or from another organization).",
+      "avisoSinCodigo": "{n, plural, one {# of {total} has} other {# of {total} have}} no barcode: its label prints without bars.",
+      "generarAhora": "{n, plural, one {Generate the code now} other {Generate # codes now}}",
+      "generarUno": "Generate now",
+      "generando": "Generating…",
+      "productosYCantidad": "Products and number of labels",
+      "modoCantidad": "Number of labels",
+      "cantidadFija": "Fixed quantity",
+      "segunStock": "Based on stock",
+      "stockEn": "Stock: {n, number}",
+      "cantidadDe": "Labels for {nombre}",
+      "aplicarATodos": "Apply to all:",
+      "aplicarALos": "{n, plural, one {Apply} other {Apply to all #}}",
+      "totalEtiquetas": "{n, plural, one {# label in total} other {# labels in total}}",
+      "formato": "Label format",
+      "tamano": "Paper and size",
+      "empezarEn": "Start at slot",
+      "empezarEnRollo": "Not used for rolls.",
+      "plantillas": {
+        "carta-3x8": "Letter sheet · 63.5 × 33.9 mm · 3 × 8 (24 per sheet)",
+        "carta-3x10": "Letter sheet · 66.7 × 25.4 mm · 3 × 10 (30 per sheet)",
+        "a4-3x8": "A4 sheet · 70 × 37 mm · 3 × 8 (24 per sheet)",
+        "a4-3x7": "A4 sheet · 70 × 42.3 mm · 3 × 7 (21 per sheet)",
+        "rollo-50x25": "Roll · 50 × 25 mm",
+        "rollo-40x30": "Roll · 40 × 30 mm",
+        "rollo-60x40": "Roll · 60 × 40 mm"
+      },
+      "papel": {
+        "carta": "letter",
+        "a4": "A4"
+      },
+      "queSeImprime": "What gets printed",
+      "campos": {
+        "nombre": "Product name",
+        "variante": "Variant (size, color)",
+        "precio": "Price",
+        "precioComparacion": "Compare-at price (struck through)",
+        "sku": "SKU",
+        "codigo": "Barcode"
+      },
+      "vistaPreviaTitulo": "Preview",
+      "resumenRollo": "{n, plural, one {# label} other {# labels}} · roll",
+      "resumenHojas": "{n, plural, one {# label} other {# labels}} · {hojas, plural, one {# {papel} sheet} other {# {papel} sheets}} · starts at slot {casilla, number}",
+      "motivoCero": "There are no labels to print (all quantities are 0)",
+      "motivoTope": "Maximum {n, number} labels per print",
+      "motivoCargando": "Waiting for the products",
+      "vistaPrevia": "PDF preview",
+      "imprimir": "Print",
+      "enviarEstacion": "Send to the branch printer",
+      "sinEstacion": "The branch has no printer assigned to the cashier station.",
+      "sinEstacionNota": "This branch has no station printer: labels are printed from the browser.",
+      "estacionImpreso": "Labels printed at the station",
+      "estacionEnCola": "Labels sent to the station",
+      "errorEstacion": "We couldn't send the labels to the station.",
+      "rotuloAntes": "Was",
+      "errorAlmacenamiento": "The browser didn't allow preparing the print job (storage blocked).",
+      "ventanaBloqueada": "The browser blocked the print window: allow pop-ups for this site."
+    },
+    "pagina": {
+      "titulo": "Product labels",
+      "tituloDocumento": "{n, plural, one {# label} other {# labels}}",
+      "resumen": "{n, plural, one {# label} other {# labels}} · {hojas, plural, one {# page} other {# pages}} · {plantilla}",
+      "imprimir": "Print",
+      "cerrar": "Close",
+      "sinTrabajoTitulo": "There are no labels to print",
+      "sinTrabajo": "This page opens from “Print labels” in the catalog. Open it again from there.",
+      "plantillas": {
+        "carta-3x8": "Letter 63.5 × 33.9 mm",
+        "carta-3x10": "Letter 66.7 × 25.4 mm",
+        "a4-3x8": "A4 70 × 37 mm",
+        "a4-3x7": "A4 70 × 42.3 mm",
+        "rollo-50x25": "Roll 50 × 25 mm",
+        "rollo-40x30": "Roll 40 × 30 mm",
+        "rollo-60x40": "Roll 60 × 40 mm"
+      }
+    },
+    "tags": {
+      "titulo": "Product tags",
+      "migaInventario": "Inventory",
+      "cargando": "Loading tags…",
+      "subtitulo": "{total, plural, one {# tag} other {# tags}} · {enUso, number} in use",
+      "subtituloMovil": "{total, plural, one {# tag} other {# tags}}",
+      "nueva": "New tag",
+      "sufijoCopia": "(copy)",
+      "errorCarga": "We couldn't load the tags",
+      "buscar": "Search tag",
+      "verResultados": "Show {n, plural, one {# tag} other {# tags}}",
+      "tarjetaProductos": "{n, plural, =0 {No products} one {# product} other {# products}}",
+      "sustantivo": {
+        "singular": "tag",
+        "plural": "tags"
+      },
+      "kpi": {
+        "etiqueta": "Tags summary",
+        "enUso": "In use",
+        "enUsoDetalle": "Have at least one product",
+        "sinUsar": "Unused",
+        "sinUsarDetalle": "No products · delete in bulk",
+        "sinUsarNinguna": "All of them have products",
+        "repetidos": "Duplicate names",
+        "repetidosDetalle": "{ejemplo} · merge",
+        "repetidosNinguno": "No duplicate names",
+        "productos": "Tagged products",
+        "productosDetalle": "Out of {total, number} products"
+      },
+      "filtros": {
+        "uso": "Usage",
+        "todas": "All",
+        "enUso": "In use",
+        "sinUsar": "Unused"
+      },
+      "columnas": {
+        "etiqueta": "Tag",
+        "productos": "Products",
+        "reglas": "In category rules",
+        "creada": "Created"
+      },
+      "acciones": {
+        "editar": "Edit",
+        "duplicar": "Duplicate",
+        "eliminar": "Delete",
+        "fusionar": "Merge",
+        "actualizar": "Refresh",
+        "eliminarSinUsar": "Delete unused ({n, number})",
+        "motivoEnReglas": "It's used in a category rule: remove it from the rule first",
+        "motivoNadaSinUsar": "Every tag has products",
+        "motivoFusionar": "Select at least two tags"
+      },
+      "vacio": {
+        "titulo": "You don't have tags yet",
+        "descripcion": "Tags group products (sale, new, gluten-free) to filter them and to use in category rules."
+      },
+      "form": {
+        "tituloNueva": "New tag",
+        "tituloEditar": "Edit tag",
+        "descripcion": "Group products to filter them and use them in category rules.",
+        "nombre": "Name",
+        "nombrePlaceholder": "E.g.: sale, new, gluten-free",
+        "nombreObligatorio": "The name is required",
+        "nombreExiste": "There is already a tag with that name",
+        "errorGuardar": "We couldn't save the tag. Try again.",
+        "color": "Color",
+        "colorPersonalizado": "Custom color",
+        "vistaPrevia": "Preview:",
+        "vistaPreviaTexto": "Tag",
+        "guardar": "Save"
+      },
+      "fusion": {
+        "titulo": "Merge {n, plural, one {# tag} other {# tags}}",
+        "descripcion": "Products and category rules move to the tag you keep; the others are deleted.",
+        "conservar": "Tag to keep",
+        "confirmar": "Merge",
+        "motivo": "Choose the tag to keep"
+      },
+      "eliminar": {
+        "tituloUna": "Delete “{nombre}”?",
+        "tituloVarias": "Delete {n, plural, one {# tag} other {# tags}}?",
+        "descripcion": "{productos, plural, =0 {It isn't on any product.} one {# product will lose it.} other {# products will lose it.}} This action can't be undone."
+      },
+      "toast": {
+        "creada": "Tag created",
+        "actualizada": "Tag updated",
+        "duplicada": "Tag duplicated",
+        "errorDuplicar": "We couldn't duplicate the tag",
+        "eliminadas": "{n, plural, one {# tag deleted} other {# tags deleted}}",
+        "enReglas": "A tag is used in a category rule: remove it from the rule first.",
+        "errorEliminar": "We couldn't delete the tags",
+        "fusionadas": "{n, plural, other {# tags merged}}",
+        "errorFusionar": "We couldn't merge the tags"
+      }
+    }
   }
 }

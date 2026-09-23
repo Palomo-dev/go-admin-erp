@@ -3066,5 +3066,279 @@
       "vencida": "En retard",
       "vencido": "En retard"
     }
+  },
+  "inventarioEtiquetas": {
+    "catalogo": {
+      "imprimirEtiquetas": "Imprimer des étiquettes",
+      "codigosBarras": "Codes-barres",
+      "generarCodigos": "Générer des codes-barres",
+      "sinProductos": "Aucun produit dans la liste pour cette action.",
+      "demasiados": "Plus de {n, number} produits : filtrez ou sélectionnez ceux dont vous avez besoin."
+    },
+    "categoria": {
+      "titulo": "Nouvelle catégorie",
+      "descripcion": "Elle est créée et reste sélectionnée pour ce produit.",
+      "cerrar": "Fermer",
+      "crear": "Créer une catégorie",
+      "crearCon": "Créer « {nombre} »"
+    },
+    "doc": {
+      "sinCodigo": "Sans code-barres",
+      "codigoInvalido": "Code non imprimable"
+    },
+    "codigos": {
+      "titulo": "Générer des codes-barres",
+      "seleccionados": "{n, plural, one {# produit sélectionné} other {# produits sélectionnés}}",
+      "descripcion": "{total, plural, one {# produit ou variante} other {# produits et variantes}} · {n, plural, =0 {tous ont un code} other {# sans code}}",
+      "cargando": "Recherche des produits et variantes sans code…",
+      "errorCargaTitulo": "Impossible de charger les produits",
+      "errorCarga": "Vérifiez la connexion et réessayez. La sélection est conservée.",
+      "sinPendientesTitulo": "Rien à générer",
+      "sinPendientes": "{n, plural, one {Le produit sélectionné a déjà} other {Les # produits et variantes sélectionnés ont déjà}} un code-barres. Pour en changer un, faites-le depuis le produit : le remplacer en masse invalide les étiquettes déjà imprimées.",
+      "aviso": "{n, plural, one {# des {total} sélectionnés n’a pas} other {# des {total} sélectionnés n’ont pas}} de code. Seuls les manquants sont générés : les codes existants ne sont pas modifiés.",
+      "pendientesTitulo": "Produits et variantes sans code ({n, number})",
+      "yMas": "et {n, number} de plus",
+      "formato": "Format",
+      "formatos": {
+        "ean13": {
+          "titulo": "EAN-13 interne",
+          "ayuda": "13 chiffres avec clé de contrôle ; tout lecteur et toute caisse le lisent. Avec le préfixe 20–29, réservé par GS1 à l’usage interne, il n’empiète sur la plage d’aucun fabricant. Si l’entreprise a son propre préfixe GS1, saisissez-le."
+        },
+        "code128": {
+          "titulo": "Code128 interne",
+          "ayuda": "Accepte lettres et chiffres (ex. GO0001001). Utile si vous numérotez déjà ainsi vos produits ; certains anciens lecteurs ne le lisent pas."
+        }
+      },
+      "numeracion": "Numérotation",
+      "prefijo": "Préfixe de l’organisation",
+      "empezarEn": "Commencer à",
+      "longitud": "Longueur du code",
+      "caracteres": "{n, number} caractères",
+      "notaNumeracion": "La numérotation appartient à l’organisation et est enregistrée lors de la génération. Chaque code est vérifié sur le serveur : s’il est déjà utilisé par un autre produit ou une variante, on passe au suivant.",
+      "muestra": "Aperçu des premiers codes",
+      "muestraVacia": "Corrigez le préfixe ou le numéro pour voir l’aperçu.",
+      "prefijoErrores": {
+        "ean13Digitos": "Un préfixe EAN-13 compte de 1 à 10 chiffres.",
+        "code128Caracteres": "Utilisez des majuscules, des chiffres ou un tiret (10 max.).",
+        "noCabe": "Le préfixe et le numéro ne tiennent pas dans la longueur du code."
+      },
+      "pie": "{n, plural, one {# code {formato} sera généré} other {# codes {formato} seront générés}}",
+      "pieNada": "Rien à générer",
+      "generarN": "{n, plural, =0 {Générer des codes} one {Générer # code} other {Générer # codes}}",
+      "generandoBoton": "Génération…",
+      "generandoNota": "Génération et vérification qu’aucun n’existe…",
+      "motivoCargando": "En attente des produits",
+      "motivoSinPendientes": "Tous les produits sélectionnés ont déjà un code",
+      "reintentar": "Réessayer",
+      "generados": "{n, plural, =0 {Aucun code à générer} one {# code généré} other {# codes générés}}",
+      "errores": {
+        "rangoAgotado": "La numérotation est épuisée avec ce préfixe : augmentez la longueur ou changez le préfixe.",
+        "prefijo": "Le préfixe n’est pas valide pour ce format.",
+        "demasiados": "Trop de produits à la fois (5 000 max.).",
+        "acceso": "Vous n’avez pas accès à cette organisation.",
+        "generico": "Impossible de générer les codes. Rien n’est resté à moitié : réessayez."
+      },
+      "campo": {
+        "etiqueta": "Code-barres",
+        "placeholder": "Scannez-le, saisissez-le ou générez-le",
+        "generar": "Générer",
+        "generarTitulo": "Générer le prochain code libre de l’organisation",
+        "ayuda": "Vide : « Générer » en crée un avec la numérotation de l’organisation et vérifie qu’il n’existe pas.",
+        "ayudaVariante": "Chaque variante a son propre code : vide, elle n’hérite plus de celui du produit.",
+        "verificando": "Vérification de la disponibilité…",
+        "libre": "{formato} · libre dans cette organisation",
+        "sinVerificar": "Impossible de vérifier s’il est libre ; il sera revérifié à l’enregistrement.",
+        "errorDigito": "La clé de contrôle ne correspond pas : un {formato} commençant par {cuerpo} se termine par {digito}.",
+        "errorLargo": "Trop long pour un code-barres (48 caractères max.).",
+        "errorCaracteres": "Uniquement des lettres sans accent, des chiffres et des signes de base (Code128).",
+        "duplicado": "Déjà utilisé par « {nombre} ».",
+        "duplicadoVariante": "Déjà utilisé par la variante « {variante} » de « {nombre} »."
+      },
+      "revision": {
+        "titulo": "Vérifiez le code-barres",
+        "formato": "« {codigo} » n’est pas un code-barres valide.",
+        "repetido": "« {codigo} » est répété entre le produit et ses variantes : chacune a besoin du sien.",
+        "duplicado": "« {codigo} » est déjà utilisé par « {nombre} ».",
+        "duplicadoVariante": "« {codigo} » est déjà utilisé par la variante « {variante} » de « {nombre} »."
+      }
+    },
+    "imprimir": {
+      "titulo": "Imprimer des étiquettes",
+      "seleccionados": "{n, plural, one {# produit sélectionné} other {# produits sélectionnés}}",
+      "todasSucursales": "Toutes les succursales",
+      "cargando": "Chargement des produits, prix et stock…",
+      "errorCarga": "Impossible de charger les produits. La sélection est conservée.",
+      "reintentar": "Réessayer",
+      "sinProductos": "Aucun des produits sélectionnés ne peut être étiqueté (supprimé ou d’une autre organisation).",
+      "avisoSinCodigo": "{n, plural, one {# sur {total} n’a pas} other {# sur {total} n’ont pas}} de code-barres : son étiquette s’imprime sans barres.",
+      "generarAhora": "{n, plural, one {Générer le code maintenant} other {Générer # codes maintenant}}",
+      "generarUno": "Générer maintenant",
+      "generando": "Génération…",
+      "productosYCantidad": "Produits et nombre d’étiquettes",
+      "modoCantidad": "Nombre d’étiquettes",
+      "cantidadFija": "Quantité fixe",
+      "segunStock": "Selon le stock",
+      "stockEn": "Stock : {n, number}",
+      "cantidadDe": "Étiquettes de {nombre}",
+      "aplicarATodos": "Appliquer à tous :",
+      "aplicarALos": "{n, plural, one {Appliquer} other {Appliquer aux #}}",
+      "totalEtiquetas": "{n, plural, one {# étiquette au total} other {# étiquettes au total}}",
+      "formato": "Format d’étiquette",
+      "tamano": "Papier et taille",
+      "empezarEn": "Commencer à la case",
+      "empezarEnRollo": "Sans objet pour un rouleau.",
+      "plantillas": {
+        "carta-3x8": "Feuille Letter · 63,5 × 33,9 mm · 3 × 8 (24 par feuille)",
+        "carta-3x10": "Feuille Letter · 66,7 × 25,4 mm · 3 × 10 (30 par feuille)",
+        "a4-3x8": "Feuille A4 · 70 × 37 mm · 3 × 8 (24 par feuille)",
+        "a4-3x7": "Feuille A4 · 70 × 42,3 mm · 3 × 7 (21 par feuille)",
+        "rollo-50x25": "Rouleau · 50 × 25 mm",
+        "rollo-40x30": "Rouleau · 40 × 30 mm",
+        "rollo-60x40": "Rouleau · 60 × 40 mm"
+      },
+      "papel": {
+        "carta": "Letter",
+        "a4": "A4"
+      },
+      "queSeImprime": "Ce qui est imprimé",
+      "campos": {
+        "nombre": "Nom du produit",
+        "variante": "Variante (taille, couleur)",
+        "precio": "Prix",
+        "precioComparacion": "Prix de comparaison (barré)",
+        "sku": "SKU",
+        "codigo": "Code-barres"
+      },
+      "vistaPreviaTitulo": "Aperçu",
+      "resumenRollo": "{n, plural, one {# étiquette} other {# étiquettes}} · rouleau",
+      "resumenHojas": "{n, plural, one {# étiquette} other {# étiquettes}} · {hojas, plural, one {# feuille} other {# feuilles}} {papel} · commence à la case {casilla, number}",
+      "motivoCero": "Aucune étiquette à imprimer (toutes les quantités sont à 0)",
+      "motivoTope": "{n, number} étiquettes maximum par impression",
+      "motivoCargando": "En attente des produits",
+      "vistaPrevia": "Aperçu PDF",
+      "imprimir": "Imprimer",
+      "enviarEstacion": "Envoyer à l’imprimante de la succursale",
+      "sinEstacion": "La succursale n’a pas d’imprimante affectée au poste de caisse.",
+      "sinEstacionNota": "Cette succursale n’a pas d’imprimante de poste : les étiquettes s’impriment depuis le navigateur.",
+      "estacionImpreso": "Étiquettes imprimées au poste",
+      "estacionEnCola": "Étiquettes envoyées au poste",
+      "errorEstacion": "Impossible d’envoyer les étiquettes au poste.",
+      "rotuloAntes": "Avant",
+      "errorAlmacenamiento": "Le navigateur n’a pas permis de préparer l’impression (stockage bloqué).",
+      "ventanaBloqueada": "Le navigateur a bloqué la fenêtre d’impression : autorisez les fenêtres pop-up pour ce site."
+    },
+    "pagina": {
+      "titulo": "Étiquettes de produit",
+      "tituloDocumento": "{n, plural, one {# étiquette} other {# étiquettes}}",
+      "resumen": "{n, plural, one {# étiquette} other {# étiquettes}} · {hojas, plural, one {# page} other {# pages}} · {plantilla}",
+      "imprimir": "Imprimer",
+      "cerrar": "Fermer",
+      "sinTrabajoTitulo": "Aucune étiquette à imprimer",
+      "sinTrabajo": "Cette page s’ouvre depuis « Imprimer des étiquettes » du catalogue. Rouvrez-la depuis là.",
+      "plantillas": {
+        "carta-3x8": "Letter 63,5 × 33,9 mm",
+        "carta-3x10": "Letter 66,7 × 25,4 mm",
+        "a4-3x8": "A4 70 × 37 mm",
+        "a4-3x7": "A4 70 × 42,3 mm",
+        "rollo-50x25": "Rouleau 50 × 25 mm",
+        "rollo-40x30": "Rouleau 40 × 30 mm",
+        "rollo-60x40": "Rouleau 60 × 40 mm"
+      }
+    },
+    "tags": {
+      "titulo": "Libellés de produit",
+      "migaInventario": "Inventaire",
+      "cargando": "Chargement des libellés…",
+      "subtitulo": "{total, plural, one {# libellé} other {# libellés}} · {enUso, number} utilisés",
+      "subtituloMovil": "{total, plural, one {# libellé} other {# libellés}}",
+      "nueva": "Nouveau libellé",
+      "sufijoCopia": "(copie)",
+      "errorCarga": "Impossible de charger les libellés",
+      "buscar": "Rechercher un libellé",
+      "verResultados": "Voir {n, plural, one {# libellé} other {# libellés}}",
+      "tarjetaProductos": "{n, plural, =0 {Aucun produit} one {# produit} other {# produits}}",
+      "sustantivo": {
+        "singular": "libellé",
+        "plural": "libellés"
+      },
+      "kpi": {
+        "etiqueta": "Résumé des libellés",
+        "enUso": "Utilisés",
+        "enUsoDetalle": "Ont au moins un produit",
+        "sinUsar": "Inutilisés",
+        "sinUsarDetalle": "Aucun produit · supprimer en masse",
+        "sinUsarNinguna": "Tous ont des produits",
+        "repetidos": "Noms en double",
+        "repetidosDetalle": "{ejemplo} · fusionner",
+        "repetidosNinguno": "Aucun nom en double",
+        "productos": "Produits étiquetés",
+        "productosDetalle": "Sur {total, number} produits"
+      },
+      "filtros": {
+        "uso": "Utilisation",
+        "todas": "Tous",
+        "enUso": "Utilisés",
+        "sinUsar": "Inutilisés"
+      },
+      "columnas": {
+        "etiqueta": "Libellé",
+        "productos": "Produits",
+        "reglas": "Dans les règles de catégorie",
+        "creada": "Créé"
+      },
+      "acciones": {
+        "editar": "Modifier",
+        "duplicar": "Dupliquer",
+        "eliminar": "Supprimer",
+        "fusionar": "Fusionner",
+        "actualizar": "Actualiser",
+        "eliminarSinUsar": "Supprimer les inutilisés ({n, number})",
+        "motivoEnReglas": "Il est utilisé dans une règle de catégorie : retirez-le d’abord de la règle",
+        "motivoNadaSinUsar": "Tous les libellés ont des produits",
+        "motivoFusionar": "Sélectionnez au moins deux libellés"
+      },
+      "vacio": {
+        "titulo": "Vous n’avez pas encore de libellés",
+        "descripcion": "Les libellés regroupent des produits (promo, nouveau, sans gluten) pour les filtrer et pour les règles de catégorie."
+      },
+      "form": {
+        "tituloNueva": "Nouveau libellé",
+        "tituloEditar": "Modifier le libellé",
+        "descripcion": "Regroupez des produits pour les filtrer et les utiliser dans les règles de catégorie.",
+        "nombre": "Nom",
+        "nombrePlaceholder": "Ex. : promo, nouveau, sans gluten",
+        "nombreObligatorio": "Le nom est obligatoire",
+        "nombreExiste": "Un libellé porte déjà ce nom",
+        "errorGuardar": "Impossible d’enregistrer le libellé. Réessayez.",
+        "color": "Couleur",
+        "colorPersonalizado": "Couleur personnalisée",
+        "vistaPrevia": "Aperçu :",
+        "vistaPreviaTexto": "Libellé",
+        "guardar": "Enregistrer"
+      },
+      "fusion": {
+        "titulo": "Fusionner {n, plural, one {# libellé} other {# libellés}}",
+        "descripcion": "Les produits et les règles de catégorie passent au libellé conservé ; les autres sont supprimés.",
+        "conservar": "Libellé conservé",
+        "confirmar": "Fusionner",
+        "motivo": "Choisissez le libellé à conserver"
+      },
+      "eliminar": {
+        "tituloUna": "Supprimer « {nombre} » ?",
+        "tituloVarias": "Supprimer {n, plural, one {# libellé} other {# libellés}} ?",
+        "descripcion": "{productos, plural, =0 {Il n’est sur aucun produit.} one {# produit le perdra.} other {# produits le perdront.}} Cette action est irréversible."
+      },
+      "toast": {
+        "creada": "Libellé créé",
+        "actualizada": "Libellé mis à jour",
+        "duplicada": "Libellé dupliqué",
+        "errorDuplicar": "Impossible de dupliquer le libellé",
+        "eliminadas": "{n, plural, one {# libellé supprimé} other {# libellés supprimés}}",
+        "enReglas": "Un libellé est utilisé dans une règle de catégorie : retirez-le d’abord de la règle.",
+        "errorEliminar": "Impossible de supprimer les libellés",
+        "fusionadas": "{n, plural, other {# libellés fusionnés}}",
+        "errorFusionar": "Impossible de fusionner les libellés"
+      }
+    }
   }
 }

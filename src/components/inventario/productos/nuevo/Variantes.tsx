@@ -26,6 +26,7 @@ import {
   Tags
 } from 'lucide-react'
 import { buildVariantDisplayName } from '@/utils/variantUtils'
+import { CampoCodigoBarras } from '../codigos/CampoCodigoBarras'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 
 interface VariantesProps {
@@ -785,22 +786,13 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
                             />
                           </div>
 
-                          <div className="space-y-2">
-                            <Label className="text-gray-700 dark:text-gray-300">
-                              Código de Barras
-                            </Label>
-                            <Input
-                              value={variant.barcode || ''}
-                              onChange={(e) => updateVariant(index, 'barcode', e.target.value)}
-                              placeholder={formData.barcode ? `Hereda: ${formData.barcode}` : 'Ej: 7501234567890'}
-                              className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
-                            />
-                            {!variant.barcode && formData.barcode && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Usará el código del producto padre si se deja vacío
-                              </p>
-                            )}
-                          </div>
+                          {/* Cada variante lleva su propio código: ya no hereda el del padre. */}
+                          <CampoCodigoBarras
+                            value={variant.barcode || ''}
+                            onChange={(valor) => updateVariant(index, 'barcode', valor)}
+                            excluirIds={variant.id ? [Number(variant.id)] : []}
+                            variante
+                          />
 
                           <div className="space-y-2">
                             <Label className="text-gray-700 dark:text-gray-300">

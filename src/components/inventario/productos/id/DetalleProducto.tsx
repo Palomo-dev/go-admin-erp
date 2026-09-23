@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  useMemo,
   useState,
   Suspense } from 'react';
 
@@ -24,8 +25,13 @@ import {
   Truck,
   Tag,
   StickyNote,
-  History
+  History,
+  Printer
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { RowActionsMenu } from '@/components/kit';
+import { ImprimirEtiquetasDialog } from '../etiquetas/ImprimirEtiquetasDialog';
+import { GenerarCodigosDialog } from '../etiquetas/GenerarCodigosDialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
@@ -91,6 +97,11 @@ const PRODUCT_TABS: ProductTab[] = [
 const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
 
   const router = useRouter();
+  // «…» del detalle (Figma «Detalle de producto — menú «…»»): el producto y sus variantes.
+  const tEtq = useTranslations('inventarioEtiquetas.catalogo');
+  const [dialogoEtiquetas, setDialogoEtiquetas] = useState(false);
+  const [dialogoCodigos, setDialogoCodigos] = useState(false);
+  const productoIds = useMemo(() => [Number(producto.id)], [producto.id]);
   const { organization, isLoading: loadingOrg } = useOrganization();
   const [activeTab, setActiveTab] = useState<string>('detalles');
   const [loading, setLoading] = useState<boolean>(false);
@@ -212,6 +223,22 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
         <Button variant="outline" onClick={handleDuplicateProduct} disabled={loading}>
           <Copy className="h-4 w-4 mr-2" /> Duplicar
         </Button>
+
+        <RowActionsMenu
+          orientacion="horizontal"
+          tamano="md"
+          titulo={producto.name}
+          acciones={[
+            { id: 'imprimir-etiquetas', etiqueta: tEtq('imprimirEtiquetas'), icono: Printer, onSelect: () => setDialogoEtiquetas(true) },
+            { id: 'codigos-barras', etiqueta: tEtq('codigosBarras'), icono: Barcode, onSelect: () => setDialogoCodigos(true) },
+          ]}
+        />
+        <ImprimirEtiquetasDialog
+          abierto={dialogoEtiquetas}
+          onAbiertoChange={setDialogoEtiquetas}
+          productIds={productoIds}
+        />
+        <GenerarCodigosDialog abierto={dialogoCodigos} onAbiertoChange={setDialogoCodigos} productIds={productoIds} />
 
         {/* Acciones rápidas de inventario */}
         <Button 

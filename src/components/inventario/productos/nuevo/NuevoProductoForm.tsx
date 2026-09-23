@@ -21,6 +21,8 @@ import Notas from './Notas'
 import Etiquetas from './Etiquetas'
 import TrazabilidadSeccion from './TrazabilidadSeccion'
 import { buildVariantDisplayName } from '@/utils/variantUtils'
+import { generarCodigosFaltantes } from '@/lib/services/codigosBarrasService'
+import { useRevisionCodigos } from '../codigos/useRevisionCodigos'
 
 interface ProductFormData {
   // Información básica
@@ -112,6 +114,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
   const { organization } = useOrganization()
   const { selectedBranchId } = useBranch()
   const [isLoading, setIsLoading] = useState(false)
+  const { revisar: revisarCodigosBarras } = useRevisionCodigos()
   
   const [formData, setFormData] = useState<ProductFormData>({
     sku: '',
@@ -207,6 +210,18 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
     }
 
     setIsLoading(true)
+
+    // Códigos de barras: formato, sin repetirse entre producto y variantes y
+    // sin chocar con otro producto de la organización (servidor).
+    const problemaCodigo = await revisarCodigosBarras(organization.id, [
+      formData.barcode,
+      ...(formData.has_variants ? formData.variants.map((v) => v.barcode) : []),
+    ])
+    if (problemaCodigo) {
+      toast({ title: problemaCodigo.titulo, description: problemaCodigo.mensaje, variant: "destructive" })
+      setIsLoading(false)
+      return
+    }
 
     try {
       // 1. Verificar SKU único
@@ -505,7 +520,9 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
 
         for (const variant of formData.variants) {
           try {
-            const variantBarcode = variant.barcode?.trim() || formData.barcode || null
+            // La variante NO hereda el código del padre: dos tallas con el mismo
+            // código hacían que la caja cobrara la primera que encontraba.
+            const variantBarcode = variant.barcode?.trim() || null
             // Recalcular el nombre legible de la variante a partir del nombre del padre + atributos.
             // Esto garantiza consistencia aunque el nombre no se haya actualizado en el estado.
             const variantName = buildVariantDisplayName(formData.name, variant.attributes) || variant.name
@@ -603,6 +620,16 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
             console.error(`Error creando variante ${variant.sku}:`, variantCatchError)
             variantErrors.push({ sku: variant.sku, message: msg })
           }
+        }
+      }
+
+      // Si el producto lleva código, cada variante recibe el suyo (numeración
+      // de la organización) en lugar de copiar el del padre.
+      if (formData.has_variants && variantsCreated > 0 && formData.barcode.trim()) {
+        try {
+          await generarCodigosFaltantes(organization.id, [product.id], true)
+        } catch (codigoError) {
+          console.error('No se pudieron generar los códigos de las variantes:', codigoError)
         }
       }
 

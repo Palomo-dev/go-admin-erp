@@ -33,7 +33,9 @@ export type {
 
 import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload, PrintJobType } from './printing/types';
 
-export type PrintJobPayload = KitchenTicketPrintPayload | SaleTicketPrintPayload | ShipmentGuidePrintPayload | ElectronicInvoicePrintPayload;
+import type { ProductLabelsPrintPayload } from './printing/labels';
+
+export type PrintJobPayload = KitchenTicketPrintPayload | SaleTicketPrintPayload | ShipmentGuidePrintPayload | ElectronicInvoicePrintPayload | ProductLabelsPrintPayload;
 
 export interface PrintJobRow {
   id: string;

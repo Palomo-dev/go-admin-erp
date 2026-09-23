@@ -24,6 +24,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { STATION_LABELS, type PrinterStation } from '@/components/pos/configuracion/printersService';
+import { useTranslations } from 'next-intl';
+import { CampoCodigoBarras } from '../../codigos/CampoCodigoBarras';
+import { useRevisionCodigos } from '../../codigos/useRevisionCodigos';
+import { AltaRapidaCategoria } from '../../nuevo/AltaRapidaCategoria';
 
 interface DetallesTabProps {
   producto: any;
@@ -44,6 +48,10 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
   const [proveedores, setProveedores] = useState<any[]>([]);
   const [additionalCategoryIds, setAdditionalCategoryIds] = useState<number[]>([]);
   const [showAllCategories, setShowAllCategories] = useState<boolean>(false);
+  // Alta rápida de categoría desde el selector («Crear “…”»).
+  const [nuevaCategoria, setNuevaCategoria] = useState<string | null>(null);
+  const tCat = useTranslations('inventarioEtiquetas.categoria');
+  const { revisar: revisarCodigosBarras } = useRevisionCodigos();
   const CATEGORY_PREVIEW_COUNT = 20;
   
   // Obtener el proveedor preferido desde product_suppliers
@@ -139,18 +147,16 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
     setFormData({ ...formData, track_stock: checked });
   };
   
-  // Generar código de barras único (EAN-13)
-  const generateBarcode = () => {
-    const digits = Array.from({ length: 12 }, () => Math.floor(Math.random() * 10));
-    // Calcular dígito verificador (EAN-13 checksum)
-    const sum = digits.reduce((acc, d, i) => acc + d * (i % 2 === 0 ? 1 : 3), 0);
-    const checksum = (10 - (sum % 10)) % 10;
-    const barcode = [...digits, checksum].join('');
-    setFormData({ ...formData, barcode });
-  };
-
   // Guardar cambios en el producto
   const handleSaveChanges = async () => {
+    // Código de barras: formato válido y sin otro producto o variante que lo use.
+    if (organization?.id && (formData.barcode || '').trim() !== (producto.barcode || '').trim()) {
+      const problema = await revisarCodigosBarras(organization.id, [formData.barcode], [Number(producto.id)]);
+      if (problema) {
+        toast({ title: problema.titulo, description: problema.mensaje, variant: 'destructive' });
+        return;
+      }
+    }
     setLoading(true);
     
     try {
@@ -300,29 +306,12 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
             />
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="barcode">Código de Barras</Label>
-            <div className="flex gap-2">
-              <Input
-                id="barcode"
-                name="barcode"
-                value={formData.barcode}
-                onChange={handleInputChange}
-                placeholder="Código de barras (opcional)"
-                className="font-mono dark:bg-gray-800 dark:border-gray-700 flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={generateBarcode}
-                title="Generar código de barras"
-                className="shrink-0"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          <CampoCodigoBarras
+            id="barcode"
+            value={formData.barcode}
+            onChange={(barcode) => setFormData((prev) => ({ ...prev, barcode }))}
+            excluirIds={[Number(producto.id)]}
+          />
           
           <div className="space-y-2">
             <Label htmlFor="category_id">Categoría</Label>
@@ -335,6 +324,18 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
               emptyText="No se encontraron categorías"
               noneLabel="Sin categoría"
               className="dark:bg-gray-800 dark:border-gray-700"
+              onCreate={(texto) => setNuevaCategoria(texto)}
+              createLabel={(texto) => tCat('crearCon', { nombre: texto })}
+              createEmptyLabel={tCat('crear')}
+            />
+            <AltaRapidaCategoria
+              abierto={nuevaCategoria !== null}
+              onAbiertoChange={(v) => !v && setNuevaCategoria(null)}
+              nombreInicial={nuevaCategoria ?? undefined}
+              onCreada={(categoria) => {
+                setCategorias((prev) => [...prev, categoria].sort((a, b) => String(a.name).localeCompare(String(b.name))));
+                setFormData((prev) => ({ ...prev, category_id: String(categoria.id) }));
+              }}
             />
           </div>
 

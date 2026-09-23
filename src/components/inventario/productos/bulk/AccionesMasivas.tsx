@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   AlertTriangle,
+  Barcode,
   Copy,
   DollarSign,
   Hash,
   Loader2,
   Power,
+  Printer,
   SlidersHorizontal,
   Tags,
   Trash,
@@ -33,6 +35,8 @@ import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { avisarCambioCatalogo } from '@/lib/services/website/avisarCambioCatalogo';
+import { useTranslations } from 'next-intl';
+import { AltaRapidaCategoria } from '../nuevo/AltaRapidaCategoria';
 import {
   bulkUpdatePrices,
   bulkUpdateStock,
@@ -62,6 +66,10 @@ interface AccionesMasivasProps {
   onSeleccionarTodos?: () => void;
   onClearSelection: () => void;
   onActionComplete: () => void;
+  /** «⋯ › Imprimir etiquetas» de los seleccionados. */
+  onImprimirEtiquetas?: (ids: number[]) => void;
+  /** «⋯ › Generar códigos de barras» de los seleccionados que no tienen. */
+  onGenerarCodigos?: (ids: number[]) => void;
 }
 
 type DialogType = 'precios' | 'stock' | 'categoria' | 'estado' | 'eliminar' | 'copiarComparacion' | 'redondear' | null;
@@ -83,7 +91,11 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   onSeleccionarTodos,
   onClearSelection,
   onActionComplete,
+  onImprimirEtiquetas,
+  onGenerarCodigos,
 }) => {
+  const tEtq = useTranslations('inventarioEtiquetas.catalogo');
+  const tCat = useTranslations('inventarioEtiquetas.categoria');
   const { organization } = useOrganization();
   const { selectedBranchId } = useBranch();
   const [activeDialog, setActiveDialog] = useState<DialogType>(null);
@@ -104,6 +116,8 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   // Estados para categoría
   const [categorias, setCategorias] = useState<{ id: number; name: string }[]>([]);
   const [selectedCategoria, setSelectedCategoria] = useState<string>('');
+  // Alta rápida desde el selector («Crear “…”»): el nombre escrito.
+  const [nuevaCategoria, setNuevaCategoria] = useState<string | null>(null);
 
   // Estado masivo (antes un menú sin confirmación)
   const [estadoNuevo, setEstadoNuevo] = useState<EstadoMasivo>('active');
@@ -278,7 +292,14 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   ];
 
   const secundarias: AccionFila[] = [
-    { id: 'comparacion', etiqueta: 'Precio → Comparación', icono: Copy, onSelect: () => setActiveDialog('copiarComparacion') },
+    // Figma «Catálogo — barra masiva · menú «⋯»»: entran por el «⋯», no como sexto botón.
+    ...(onImprimirEtiquetas
+      ? [{ id: 'imprimir-etiquetas', etiqueta: tEtq('imprimirEtiquetas'), icono: Printer, onSelect: () => onImprimirEtiquetas(selectedIds) }]
+      : []),
+    ...(onGenerarCodigos
+      ? [{ id: 'generar-codigos', etiqueta: tEtq('generarCodigos'), icono: Barcode, onSelect: () => onGenerarCodigos(selectedIds) }]
+      : []),
+    { id: 'comparacion', etiqueta: 'Precio → Comparación', icono: Copy, onSelect: () => setActiveDialog('copiarComparacion'), separadorAntes: !!(onImprimirEtiquetas || onGenerarCodigos) },
     { id: 'redondear', etiqueta: 'Redondear precios', icono: Hash, onSelect: () => setActiveDialog('redondear') },
   ];
 
@@ -471,12 +492,25 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
                 searchPlaceholder="Buscar categoría…"
                 emptyText="No se encontraron categorías"
                 className="h-10"
+                onCreate={(texto) => setNuevaCategoria(texto)}
+                createLabel={(texto) => tCat('crearCon', { nombre: texto })}
+                createEmptyLabel={tCat('crear')}
               />
             )}
           </FormField>
           {pieDialogo('Asignar', handleCategoria)}
         </DialogContent>
       </Dialog>
+
+      <AltaRapidaCategoria
+        abierto={nuevaCategoria !== null}
+        onAbiertoChange={(v) => !v && setNuevaCategoria(null)}
+        nombreInicial={nuevaCategoria ?? undefined}
+        onCreada={(categoria) => {
+          setCategorias((prev) => [...prev, { id: categoria.id, name: categoria.name }].sort((a, b) => a.name.localeCompare(b.name)));
+          setSelectedCategoria(String(categoria.id));
+        }}
+      />
 
       {/* Estado */}
       <Dialog open={activeDialog === 'estado'} onOpenChange={cerrar}>

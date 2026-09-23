@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useKitT } from './useIdiomaKit';
@@ -39,8 +39,14 @@ export interface DialogoProps {
   primario: AccionDialogo;
   /** Texto del botón que cierra sin hacer nada; por defecto «Cancelar». */
   textoCancelar?: string;
-  ancho?: 440 | 520 | 560 | 672 | 1024;
+  ancho?: 440 | 520 | 560 | 672 | 880 | 1024;
   className?: string;
+  /** Caja de icono de 40 px junto al título (Figma «Imprimir etiquetas», «Generar códigos»). */
+  icono?: LucideIcon;
+  /** Botones secundarios del pie, entre «Cancelar» y el primario («Vista previa PDF»). */
+  secundarios?: AccionDialogo[];
+  /** Resumen a la izquierda del pie («Se generarán 7 códigos Code128»). */
+  pie?: ReactNode;
 }
 
 const ANCHO: Record<NonNullable<DialogoProps['ancho']>, string> = {
@@ -48,6 +54,7 @@ const ANCHO: Record<NonNullable<DialogoProps['ancho']>, string> = {
   520: 'sm:max-w-[520px]',
   560: 'sm:max-w-[560px]',
   672: 'sm:max-w-[672px]',
+  880: 'sm:max-w-[880px]',
   1024: 'sm:max-w-[1024px]',
 };
 
@@ -61,6 +68,9 @@ export function Dialogo({
   textoCancelar: textoCancelarProp,
   ancho = 520,
   className,
+  icono: Icono,
+  secundarios,
+  pie,
 }: DialogoProps) {
   const t = useKitT();
   const textoCancelar = textoCancelarProp ?? t('comun.cancelar');
@@ -76,6 +86,11 @@ export function Dialogo({
         )}
       >
         <div className="flex items-start gap-3 border-b border-line px-5 py-4">
+          {Icono && (
+            <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
+              <Icono className="size-5" strokeWidth={1.5} />
+            </span>
+          )}
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <DialogTitle className="text-lg font-semibold leading-6 text-fg">{titulo}</DialogTitle>
             {descripcion ? (
@@ -97,7 +112,8 @@ export function Dialogo({
 
         {children && <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">{children}</div>}
 
-        <div className="flex flex-col-reverse gap-2 border-t border-line px-5 py-4 sm:flex-row sm:justify-end">
+        <div className="flex flex-col-reverse gap-2 border-t border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-end">
+          {pie && <div className="text-sm text-fg-secondary sm:mr-auto">{pie}</div>}
           <button
             type="button"
             disabled={ocupado}
@@ -106,6 +122,20 @@ export function Dialogo({
           >
             {textoCancelar}
           </button>
+          {secundarios?.map((s) => (
+            <button
+              key={s.etiqueta}
+              type="button"
+              onClick={s.onClick}
+              disabled={s.deshabilitada || ocupado || s.cargando}
+              aria-busy={s.cargando || undefined}
+              title={s.deshabilitada ? s.motivo : undefined}
+              className="flex h-10 items-center justify-center gap-2 rounded-lg bg-brand-tint px-4 text-sm font-medium text-brand-deep hover:bg-brand-tint-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {s.cargando && <Loader2 aria-hidden="true" className="size-4 animate-spin" />}
+              {s.etiqueta}
+            </button>
+          ))}
           <button
             type="button"
             onClick={primario.onClick}

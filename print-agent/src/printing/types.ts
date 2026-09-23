@@ -295,7 +295,7 @@ export interface ShipmentGuidePrintPayload extends MoneyFormat {
  * Tipo de trabajo tal como lo acepta `printToDevice`: los documentos de
  * `TicketKind` mas la apertura de cajon, que no imprime nada.
  */
-export type PrintJobType = TicketKind | 'open_cash_drawer';
+export type PrintJobType = TicketKind | 'open_cash_drawer' | 'product_label';
 
 /**
  * Sobre que el POS envia al agente local por `POST /print` (Go Admin Desktop:

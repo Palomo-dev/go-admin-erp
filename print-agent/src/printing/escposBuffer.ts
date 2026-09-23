@@ -15,6 +15,7 @@ import type { PrintJobPayload, PrintJobRow } from '../types';
 import type { PaperSpec } from './paper';
 import type { SaleTicketPrintPayload, KitchenTicketPrintPayload, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload } from './types';
 import { printSaleTicket, printKitchenTicket, printShipmentGuide, printElectronicInvoice } from './renderEscpos';
+import { printProductLabels, type ProductLabelsPrintPayload } from './labels';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const escpos = require('escpos');
@@ -65,6 +66,8 @@ export async function buildEscposBuffer(
     printShipmentGuide(printer, payload as ShipmentGuidePrintPayload, paper);
   } else if (jobType === 'electronic_invoice') {
     printElectronicInvoice(printer, payload as ElectronicInvoicePrintPayload, paper);
+  } else if (jobType === 'product_label') {
+    printProductLabels(printer, payload as unknown as ProductLabelsPrintPayload, paper);
   } else {
     printKitchenTicket(printer, payload as KitchenTicketPrintPayload, paper);
   }

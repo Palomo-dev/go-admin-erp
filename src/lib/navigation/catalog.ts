@@ -343,7 +343,7 @@ export const CATALOGO_NAV: ModuloNav[] = [
     paginas: [
       { href: '/app/inventario/productos', nombre: 'Productos', icono: Package, grupo: 'Catálogo' },
       { href: '/app/inventario/categorias', nombre: 'Categorías', icono: Tags, grupo: 'Catálogo' },
-      { href: '/app/inventario/etiquetas', nombre: 'Etiquetas', icono: Tag, grupo: 'Catálogo' },
+      { href: '/app/inventario/etiquetas', nombre: 'Etiquetas de producto', icono: Tag, grupo: 'Catálogo' },
       { href: '/app/inventario/variantes/tipos', nombre: 'Variantes · tipos', icono: Layers, grupo: 'Catálogo' },
       { href: '/app/inventario/variantes/valores', nombre: 'Variantes · valores', icono: Tag, grupo: 'Catálogo' },
       { href: '/app/inventario/unidades', nombre: 'Unidades', icono: Hash, grupo: 'Catálogo' },

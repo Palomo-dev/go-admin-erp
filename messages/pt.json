@@ -3066,5 +3066,279 @@
       "vencida": "Vencida",
       "vencido": "Vencido"
     }
+  },
+  "inventarioEtiquetas": {
+    "catalogo": {
+      "imprimirEtiquetas": "Imprimir etiquetas",
+      "codigosBarras": "Códigos de barras",
+      "generarCodigos": "Gerar códigos de barras",
+      "sinProductos": "Não há produtos na lista para esta ação.",
+      "demasiados": "São mais de {n, number} produtos: filtre ou selecione os que precisa."
+    },
+    "categoria": {
+      "titulo": "Nova categoria",
+      "descripcion": "É criada e fica selecionada para este produto.",
+      "cerrar": "Fechar",
+      "crear": "Criar categoria",
+      "crearCon": "Criar “{nombre}”"
+    },
+    "doc": {
+      "sinCodigo": "Sem código de barras",
+      "codigoInvalido": "Código não imprimível"
+    },
+    "codigos": {
+      "titulo": "Gerar códigos de barras",
+      "seleccionados": "{n, plural, one {# produto selecionado} other {# produtos selecionados}}",
+      "descripcion": "{total, plural, one {# produto ou variante} other {# produtos e variantes}} · {n, plural, =0 {todos com código} other {# sem código}}",
+      "cargando": "Procurando produtos e variantes sem código…",
+      "errorCargaTitulo": "Não foi possível carregar os produtos",
+      "errorCarga": "Verifique a conexão e tente novamente. A seleção é mantida.",
+      "sinPendientesTitulo": "Nada para gerar",
+      "sinPendientes": "{n, plural, one {O produto selecionado já tem} other {Os # produtos e variantes selecionados já têm}} código de barras. Para trocar um, faça isso no próprio produto: substituí-los em lote invalida etiquetas já impressas.",
+      "aviso": "{n, plural, one {# dos {total} selecionados não tem} other {# dos {total} selecionados não têm}} código. Só os que faltam são gerados: os existentes não são alterados.",
+      "pendientesTitulo": "Produtos e variantes sem código ({n, number})",
+      "yMas": "e mais {n, number}",
+      "formato": "Formato",
+      "formatos": {
+        "ean13": {
+          "titulo": "EAN-13 interno",
+          "ayuda": "13 dígitos com dígito verificador; qualquer leitor e caixa o lê. Com o prefixo 20–29, reservado pela GS1 para uso interno, não invade a faixa de nenhum fabricante. Se a empresa tem prefixo GS1 próprio, informe-o."
+        },
+        "code128": {
+          "titulo": "Code128 interno",
+          "ayuda": "Aceita letras e números (ex.: GO0001001). Útil se você já numera seus produtos assim; alguns leitores antigos não o leem."
+        }
+      },
+      "numeracion": "Numeração",
+      "prefijo": "Prefixo da organização",
+      "empezarEn": "Começar em",
+      "longitud": "Comprimento do código",
+      "caracteres": "{n, number} caracteres",
+      "notaNumeracion": "A numeração é da organização e é salva ao gerar. Cada código é verificado no servidor: se outro produto ou variante já o usa, pula para o seguinte.",
+      "muestra": "Prévia dos primeiros",
+      "muestraVacia": "Corrija o prefixo ou o número para ver a prévia.",
+      "prefijoErrores": {
+        "ean13Digitos": "Um prefixo EAN-13 tem de 1 a 10 dígitos.",
+        "code128Caracteres": "Use letras maiúsculas, números ou hífen (máx. 10).",
+        "noCabe": "O prefixo e o número não cabem no comprimento do código."
+      },
+      "pie": "{n, plural, one {Será gerado # código {formato}} other {Serão gerados # códigos {formato}}}",
+      "pieNada": "Nada para gerar",
+      "generarN": "{n, plural, =0 {Gerar códigos} one {Gerar # código} other {Gerar # códigos}}",
+      "generandoBoton": "Gerando…",
+      "generandoNota": "Gerando e verificando que nenhum exista…",
+      "motivoCargando": "Aguardando os produtos",
+      "motivoSinPendientes": "Todos os selecionados já têm código",
+      "reintentar": "Tentar novamente",
+      "generados": "{n, plural, =0 {Não havia códigos para gerar} one {# código gerado} other {# códigos gerados}}",
+      "errores": {
+        "rangoAgotado": "A numeração se esgotou com esse prefixo: aumente o comprimento ou troque o prefixo.",
+        "prefijo": "O prefixo não é válido para esse formato.",
+        "demasiados": "Produtos demais de uma vez (máx. 5.000).",
+        "acceso": "Você não tem acesso a esta organização.",
+        "generico": "Não foi possível gerar os códigos. Nada ficou pela metade: tente novamente."
+      },
+      "campo": {
+        "etiqueta": "Código de barras",
+        "placeholder": "Escaneie, digite ou gere",
+        "generar": "Gerar",
+        "generarTitulo": "Gerar o próximo código livre da organização",
+        "ayuda": "Vazio: “Gerar” cria um com a numeração da organização e verifica que não exista.",
+        "ayudaVariante": "Cada variante tem seu próprio código: vazio, não herda mais o do produto.",
+        "verificando": "Verificando se está livre…",
+        "libre": "{formato} · livre nesta organização",
+        "sinVerificar": "Não foi possível verificar se está livre; será verificado de novo ao salvar.",
+        "errorDigito": "O dígito verificador não confere: um {formato} que começa com {cuerpo} termina em {digito}.",
+        "errorLargo": "Longo demais para um código de barras (máx. 48 caracteres).",
+        "errorCaracteres": "Apenas letras sem acento, números e sinais básicos (Code128).",
+        "duplicado": "Já é usado por “{nombre}”.",
+        "duplicadoVariante": "Já é usado pela variante “{variante}” de “{nombre}”."
+      },
+      "revision": {
+        "titulo": "Revise o código de barras",
+        "formato": "“{codigo}” não é um código de barras válido.",
+        "repetido": "“{codigo}” está repetido entre o produto e suas variantes: cada uma precisa do seu.",
+        "duplicado": "“{codigo}” já é usado por “{nombre}”.",
+        "duplicadoVariante": "“{codigo}” já é usado pela variante “{variante}” de “{nombre}”."
+      }
+    },
+    "imprimir": {
+      "titulo": "Imprimir etiquetas",
+      "seleccionados": "{n, plural, one {# produto selecionado} other {# produtos selecionados}}",
+      "todasSucursales": "Todas as filiais",
+      "cargando": "Carregando produtos, preços e estoque…",
+      "errorCarga": "Não foi possível carregar os produtos. A seleção é mantida.",
+      "reintentar": "Tentar novamente",
+      "sinProductos": "Nenhum dos produtos selecionados pode ser etiquetado (excluídos ou de outra organização).",
+      "avisoSinCodigo": "{n, plural, one {# de {total} não tem} other {# de {total} não têm}} código de barras: sua etiqueta sai sem barras.",
+      "generarAhora": "{n, plural, one {Gerar o código agora} other {Gerar # códigos agora}}",
+      "generarUno": "Gerar agora",
+      "generando": "Gerando…",
+      "productosYCantidad": "Produtos e quantidade de etiquetas",
+      "modoCantidad": "Quantidade de etiquetas",
+      "cantidadFija": "Quantidade fixa",
+      "segunStock": "Conforme o estoque",
+      "stockEn": "Estoque: {n, number}",
+      "cantidadDe": "Etiquetas de {nombre}",
+      "aplicarATodos": "Aplicar a todos:",
+      "aplicarALos": "{n, plural, one {Aplicar} other {Aplicar aos #}}",
+      "totalEtiquetas": "{n, plural, one {# etiqueta no total} other {# etiquetas no total}}",
+      "formato": "Formato da etiqueta",
+      "tamano": "Papel e tamanho",
+      "empezarEn": "Começar na posição",
+      "empezarEnRollo": "Não se aplica a rolo.",
+      "plantillas": {
+        "carta-3x8": "Folha Carta · 63,5 × 33,9 mm · 3 × 8 (24 por folha)",
+        "carta-3x10": "Folha Carta · 66,7 × 25,4 mm · 3 × 10 (30 por folha)",
+        "a4-3x8": "Folha A4 · 70 × 37 mm · 3 × 8 (24 por folha)",
+        "a4-3x7": "Folha A4 · 70 × 42,3 mm · 3 × 7 (21 por folha)",
+        "rollo-50x25": "Rolo · 50 × 25 mm",
+        "rollo-40x30": "Rolo · 40 × 30 mm",
+        "rollo-60x40": "Rolo · 60 × 40 mm"
+      },
+      "papel": {
+        "carta": "Carta",
+        "a4": "A4"
+      },
+      "queSeImprime": "O que é impresso",
+      "campos": {
+        "nombre": "Nome do produto",
+        "variante": "Variante (tamanho, cor)",
+        "precio": "Preço",
+        "precioComparacion": "Preço de comparação (riscado)",
+        "sku": "SKU",
+        "codigo": "Código de barras"
+      },
+      "vistaPreviaTitulo": "Prévia",
+      "resumenRollo": "{n, plural, one {# etiqueta} other {# etiquetas}} · rolo",
+      "resumenHojas": "{n, plural, one {# etiqueta} other {# etiquetas}} · {hojas, plural, one {# folha} other {# folhas}} {papel} · começa na posição {casilla, number}",
+      "motivoCero": "Não há etiquetas para imprimir (todas as quantidades estão em 0)",
+      "motivoTope": "Máximo de {n, number} etiquetas por impressão",
+      "motivoCargando": "Aguardando os produtos",
+      "vistaPrevia": "Prévia em PDF",
+      "imprimir": "Imprimir",
+      "enviarEstacion": "Enviar para a impressora da filial",
+      "sinEstacion": "A filial não tem impressora atribuída à estação de caixa.",
+      "sinEstacionNota": "Esta filial não tem impressora de estação: as etiquetas são impressas pelo navegador.",
+      "estacionImpreso": "Etiquetas impressas na estação",
+      "estacionEnCola": "Etiquetas enviadas para a estação",
+      "errorEstacion": "Não foi possível enviar as etiquetas para a estação.",
+      "rotuloAntes": "De",
+      "errorAlmacenamiento": "O navegador não permitiu preparar a impressão (armazenamento bloqueado).",
+      "ventanaBloqueada": "O navegador bloqueou a janela de impressão: permita pop-ups para este site."
+    },
+    "pagina": {
+      "titulo": "Etiquetas de produto",
+      "tituloDocumento": "{n, plural, one {# etiqueta} other {# etiquetas}}",
+      "resumen": "{n, plural, one {# etiqueta} other {# etiquetas}} · {hojas, plural, one {# página} other {# páginas}} · {plantilla}",
+      "imprimir": "Imprimir",
+      "cerrar": "Fechar",
+      "sinTrabajoTitulo": "Não há etiquetas para imprimir",
+      "sinTrabajo": "Esta página é aberta em “Imprimir etiquetas” do catálogo. Abra-a novamente por lá.",
+      "plantillas": {
+        "carta-3x8": "Carta 63,5 × 33,9 mm",
+        "carta-3x10": "Carta 66,7 × 25,4 mm",
+        "a4-3x8": "A4 70 × 37 mm",
+        "a4-3x7": "A4 70 × 42,3 mm",
+        "rollo-50x25": "Rolo 50 × 25 mm",
+        "rollo-40x30": "Rolo 40 × 30 mm",
+        "rollo-60x40": "Rolo 60 × 40 mm"
+      }
+    },
+    "tags": {
+      "titulo": "Tags de produto",
+      "migaInventario": "Estoque",
+      "cargando": "Carregando tags…",
+      "subtitulo": "{total, plural, one {# tag} other {# tags}} · {enUso, number} em uso",
+      "subtituloMovil": "{total, plural, one {# tag} other {# tags}}",
+      "nueva": "Nova tag",
+      "sufijoCopia": "(cópia)",
+      "errorCarga": "Não foi possível carregar as tags",
+      "buscar": "Buscar tag",
+      "verResultados": "Ver {n, plural, one {# tag} other {# tags}}",
+      "tarjetaProductos": "{n, plural, =0 {Sem produtos} one {# produto} other {# produtos}}",
+      "sustantivo": {
+        "singular": "tag",
+        "plural": "tags"
+      },
+      "kpi": {
+        "etiqueta": "Resumo das tags",
+        "enUso": "Em uso",
+        "enUsoDetalle": "Têm pelo menos um produto",
+        "sinUsar": "Sem uso",
+        "sinUsarDetalle": "Nenhum produto · excluir em lote",
+        "sinUsarNinguna": "Todas têm produtos",
+        "repetidos": "Nomes repetidos",
+        "repetidosDetalle": "{ejemplo} · mesclar",
+        "repetidosNinguno": "Sem nomes repetidos",
+        "productos": "Produtos com tag",
+        "productosDetalle": "De {total, number} produtos"
+      },
+      "filtros": {
+        "uso": "Uso",
+        "todas": "Todas",
+        "enUso": "Em uso",
+        "sinUsar": "Sem uso"
+      },
+      "columnas": {
+        "etiqueta": "Tag",
+        "productos": "Produtos",
+        "reglas": "Em regras de categoria",
+        "creada": "Criada"
+      },
+      "acciones": {
+        "editar": "Editar",
+        "duplicar": "Duplicar",
+        "eliminar": "Excluir",
+        "fusionar": "Mesclar",
+        "actualizar": "Atualizar",
+        "eliminarSinUsar": "Excluir sem uso ({n, number})",
+        "motivoEnReglas": "Está em uma regra de categoria: remova-a da regra primeiro",
+        "motivoNadaSinUsar": "Todas as tags têm produtos",
+        "motivoFusionar": "Selecione pelo menos duas tags"
+      },
+      "vacio": {
+        "titulo": "Você ainda não tem tags",
+        "descripcion": "As tags agrupam produtos (oferta, novo, sem glúten) para filtrá-los e para as regras de categoria."
+      },
+      "form": {
+        "tituloNueva": "Nova tag",
+        "tituloEditar": "Editar tag",
+        "descripcion": "Agrupe produtos para filtrá-los e usá-los em regras de categoria.",
+        "nombre": "Nome",
+        "nombrePlaceholder": "Ex.: oferta, novo, sem glúten",
+        "nombreObligatorio": "O nome é obrigatório",
+        "nombreExiste": "Já existe uma tag com esse nome",
+        "errorGuardar": "Não foi possível salvar a tag. Tente novamente.",
+        "color": "Cor",
+        "colorPersonalizado": "Cor personalizada",
+        "vistaPrevia": "Prévia:",
+        "vistaPreviaTexto": "Tag",
+        "guardar": "Salvar"
+      },
+      "fusion": {
+        "titulo": "Mesclar {n, plural, one {# tag} other {# tags}}",
+        "descripcion": "Os produtos e as regras de categoria passam para a tag que você mantiver; as outras são excluídas.",
+        "conservar": "Tag que será mantida",
+        "confirmar": "Mesclar",
+        "motivo": "Escolha a tag que será mantida"
+      },
+      "eliminar": {
+        "tituloUna": "Excluir “{nombre}”?",
+        "tituloVarias": "Excluir {n, plural, one {# tag} other {# tags}}?",
+        "descripcion": "{productos, plural, =0 {Não está em nenhum produto.} one {# produto a perderá.} other {# produtos a perderão.}} Esta ação não pode ser desfeita."
+      },
+      "toast": {
+        "creada": "Tag criada",
+        "actualizada": "Tag atualizada",
+        "duplicada": "Tag duplicada",
+        "errorDuplicar": "Não foi possível duplicar a tag",
+        "eliminadas": "{n, plural, one {# tag excluída} other {# tags excluídas}}",
+        "enReglas": "Alguma tag está em uma regra de categoria: remova-a da regra primeiro.",
+        "errorEliminar": "Não foi possível excluir as tags",
+        "fusionadas": "{n, plural, other {# tags mescladas}}",
+        "errorFusionar": "Não foi possível mesclar as tags"
+      }
+    }
   }
 }

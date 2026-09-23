@@ -27,6 +27,7 @@ import Notas from '../nuevo/Notas'
 import Etiquetas from '../nuevo/Etiquetas'
 import TrazabilidadSeccion from '../nuevo/TrazabilidadSeccion'
 import { buildVariantDisplayName } from '@/utils/variantUtils'
+import { useRevisionCodigos } from '../codigos/useRevisionCodigos'
 
 // Esquema de validación con Zod (mismo que en FormularioProducto)
 const productoSchema = z.object({
@@ -105,6 +106,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
   const [initialLoading, setInitialLoading] = useState(true);
   // ID numérico del producto (se obtiene al cargar por UUID)
   const [productoId, setProductoId] = useState<number | undefined>(undefined);
+  const { revisar: revisarCodigosBarras } = useRevisionCodigos();
   // Imágenes originales cargadas de la BD (para comparar al guardar y eliminar las quitadas)
   const [originalImages, setOriginalImages] = useState<any[]>([]);
   
@@ -443,6 +445,21 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
         description: "No se ha identificado el producto a actualizar",
         variant: "destructive"
       });
+      return;
+    }
+
+    // Códigos de barras del producto y sus variantes: formato, sin repetirse
+    // entre ellos y sin chocar con otro producto de la organización.
+    const variantesCodigos = (data.variants || []) as Array<{ id?: number | string; barcode?: string }>;
+    const problemaCodigo = await revisarCodigosBarras(
+      organization_id,
+      [data.barcode, ...(data.has_variants ? variantesCodigos.map((v) => v.barcode) : [])],
+      [productoId, ...variantesCodigos.map((v) => Number(v.id))].filter((n): n is number => typeof n === 'number' && Number.isFinite(n) && n > 0),
+    );
+    if (problemaCodigo) {
+      loadingToast.dismiss();
+      toast({ title: problemaCodigo.titulo, description: problemaCodigo.mensaje, variant: "destructive" });
+      setIsLoading(false);
       return;
     }
 
@@ -1102,7 +1119,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
           <Form {...form}>
             <form onSubmit={(e) => { e.preventDefault(); }} className="space-y-4">
               <div className="grid gap-4 max-w-full overflow-hidden">
-                <InformacionBasica formData={formData} updateFormData={updateFormData} />
+                <InformacionBasica formData={formData} updateFormData={updateFormData} productId={productoId} />
                 <PrecionyCostos formData={formData} updateFormData={updateFormData} />
                 <Inventario formData={formData} updateFormData={updateFormData} />
                 <Envio formData={formData} updateFormData={updateFormData} />

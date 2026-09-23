@@ -3,7 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ClipboardCheck, Download, FileSpreadsheet, Globe, Link2, Package, Plus, RefreshCw, Upload } from 'lucide-react';
+import { Barcode, ClipboardCheck, Download, FileSpreadsheet, Globe, Link2, Package, Plus, Printer, RefreshCw, Upload } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import { PageHeader, RowActionsMenu, type AccionFila } from '@/components/kit';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,10 @@ export interface ProductosPageHeaderProps {
   onExportarFacebook: () => void;
   onFeedFacebook: () => void;
   onActualizar: () => void;
+  /** «Imprimir etiquetas» (seleccionados o, sin selección, lo filtrado). */
+  onImprimirEtiquetas?: () => void;
+  /** «Códigos de barras»: generar los que faltan (misma regla de alcance). */
+  onCodigosBarras?: () => void;
   actualizando?: boolean;
   /** Subtítulo de escritorio («Consolidado · 3 sucursales · 4.368 productos · …»). */
   subtitulo: string;
@@ -41,12 +46,15 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
   onExportarFacebook,
   onFeedFacebook,
   onActualizar,
+  onImprimirEtiquetas,
+  onCodigosBarras,
   actualizando = false,
   subtitulo,
   subtituloMovil,
   progresoCarga = null,
 }) => {
   const router = useRouter();
+  const tEtq = useTranslations('inventarioEtiquetas.catalogo');
   const cargandoLotes = !!progresoCarga && progresoCarga.cargados < progresoCarga.total;
 
   const importar: AccionFila[] = [
@@ -86,13 +94,29 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
     separadorAntes: true,
   };
 
-  const masAcciones: AccionFila[] = [...exportar, irAjustes];
+  // Etiquetas de papel y códigos de barras (Figma «Etiquetas y códigos — cómo
+  // se llega», 516:268810). «Etiquetas» a secas son los tags de clasificación.
+  const etiquetasYCodigos: AccionFila[] = [
+    ...(onImprimirEtiquetas
+      ? [{ id: 'imprimir-etiquetas', etiqueta: tEtq('imprimirEtiquetas'), icono: Printer, onSelect: onImprimirEtiquetas }]
+      : []),
+    ...(onCodigosBarras
+      ? [{ id: 'codigos-barras', etiqueta: tEtq('codigosBarras'), icono: Barcode, onSelect: onCodigosBarras }]
+      : []),
+  ];
+
+  const masAcciones: AccionFila[] = [
+    ...etiquetasYCodigos,
+    ...exportar.map((a, i) => (i === 0 && etiquetasYCodigos.length ? { ...a, separadorAntes: true } : a)),
+    irAjustes,
+  ];
 
   // Hoja móvil «Acciones del catálogo»: lo mismo que la cabecera de escritorio.
   const accionesMovil: AccionFila[] = [
     { id: 'nuevo', etiqueta: 'Nuevo producto', icono: Plus, onSelect: () => router.push(HREF_NUEVO) },
     { ...importar[0], etiqueta: 'Importar desde un archivo', descripcion: undefined, separadorAntes: true },
     { ...importar[1], etiqueta: 'Importar desde una web', descripcion: undefined },
+    ...etiquetasYCodigos.map((a, i) => (i === 0 ? { ...a, separadorAntes: true } : a)),
     { ...exportar[0], separadorAntes: true },
     { ...exportar[1], separadorAntes: false },
     exportar[2],

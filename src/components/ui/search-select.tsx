@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Check, ChevronsUpDown, Search } from 'lucide-react';
+import { Check, ChevronsUpDown, Plus, Search } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,17 @@ interface SearchSelectProps {
   noneValue?: string;
   disabled?: boolean;
   className?: string;
+  /**
+   * Ranura «crear» (Figma `SearchSelect`, propiedad «Mostrar crear»): última
+   * fila del desplegable que crea un registro con lo escrito. Recibe el texto
+   * buscado (puede ir vacío) y cierra el desplegable; quien llama abre su alta
+   * rápida y, al guardar, selecciona el nuevo valor.
+   */
+  onCreate?: (texto: string) => void;
+  /** Texto de la fila con lo buscado: `(t) => «Crear “${t}”»`. */
+  createLabel?: (texto: string) => string;
+  /** Texto de la fila sin búsqueda («Crear categoría»); sin él, solo aparece al escribir. */
+  createEmptyLabel?: string;
 }
 
 export function SearchSelect({
@@ -38,6 +49,9 @@ export function SearchSelect({
   noneValue = 'none',
   disabled = false,
   className,
+  onCreate,
+  createLabel,
+  createEmptyLabel,
 }: SearchSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
@@ -60,6 +74,16 @@ export function SearchSelect({
       (opt.sublabel?.toLowerCase().includes(lower) ?? false)
     );
   }, [options, search]);
+
+  const textoCrear = search.trim();
+  const coincideExacto = !!textoCrear && options.some((opt) => opt.label.trim().toLowerCase() === textoCrear.toLowerCase());
+  const mostrarCrear = !!onCreate && !coincideExacto && (!!textoCrear || !!createEmptyLabel);
+  const handleCreate = () => {
+    if (!onCreate) return;
+    setOpen(false);
+    setSearch('');
+    onCreate(textoCrear);
+  };
 
   const handleSelect = (selectedValue: string) => {
     onValueChange(selectedValue);
@@ -106,6 +130,13 @@ export function SearchSelect({
             ref={inputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              // Enter sin resultados = crear con lo escrito.
+              if (e.key === 'Enter' && mostrarCrear && filteredOptions.length === 0) {
+                e.preventDefault();
+                handleCreate();
+              }
+            }}
             placeholder={searchPlaceholder}
             className="h-9 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
           />
@@ -161,6 +192,20 @@ export function SearchSelect({
             })}
           </div>
         </ScrollArea>
+        {mostrarCrear && (
+          <div className="border-t border-line p-1">
+            <button
+              type="button"
+              onClick={handleCreate}
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm font-medium text-link outline-none hover:bg-hover focus-visible:bg-hover"
+            >
+              <Plus aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} />
+              <span className="truncate">
+                {textoCrear && createLabel ? createLabel(textoCrear) : createEmptyLabel ?? textoCrear}
+              </span>
+            </button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

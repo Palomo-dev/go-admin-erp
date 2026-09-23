@@ -319,3 +319,26 @@ Esta adenda se añade al final, sin reescribir lo anterior.
 - Hay 4 pares con el mismo nombre en distinta mayúscula.
 
 El diseño añade «Fusionar» y «Eliminar sin usar».
+
+## Adenda 2026-09-24 — implementación y respuestas a las dudas
+
+Se añade al final, sin reescribir lo anterior.
+
+- **Duda 1 («Etiquetas»).** Como dice la adenda anterior: «Imprimir etiquetas» es el papel y
+  «Etiquetas de producto» son los tags (título de la pantalla y del menú lateral). La pantalla de
+  tags pasó al kit: cifras, filtro de uso, «Fusionar», «Eliminar» y «Eliminar sin usar».
+- **Duda 2 (escáner de cámara).** Fuera de esta tanda: sigue simulado.
+- **Duda 3 (prefijo GS1).** Formato por defecto **EAN-13 con prefijo 20**: GS1 reserva 20–29 para
+  numeración interna, así que no invade el rango de ningún fabricante y lo lee cualquier lector y
+  la ESC/POS nativa. Si la empresa tiene prefijo GS1 propio, lo escribe en «Generar códigos».
+  Code128 queda como opción (letras y números).
+- **Duda 4 (estación de cocina).** El alta rápida ya las trae detrás de «Más opciones».
+- **Duda 5 (códigos repetidos).** Hoy son 148 grupos (847 filas, 748 variantes que heredaron el del
+  padre). **No se renumeran solos** (invalidaría etiquetas impresas) y no hay índice único todavía:
+  la unicidad se comprueba en el servidor al generar (`codigos_barras_generar_faltantes`,
+  `codigos_barras_reservar`) y al escribir o guardar a mano (`codigos_barras_verificar`). Las
+  variantes nuevas ya no heredan el código del padre.
+- **Estación.** `print_jobs.job_type` admite `product_label` (y `shipment_guide`, que faltaba). El
+  agente maqueta la etiqueta en `print-agent/src/printing/labels.ts` (ESC/POS con `GS k`, HTML con
+  el SVG que manda el ERP, texto plano). Hay que volver a empaquetar el Desktop para que el agente
+  instalado la reconozca.

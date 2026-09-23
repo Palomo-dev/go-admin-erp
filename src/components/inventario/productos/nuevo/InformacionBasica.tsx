@@ -19,12 +19,16 @@ import {
 } from '@/components/ui/select'
 import { STATION_LABELS, type PrinterStation } from '@/components/pos/configuracion/printersService'
 import { QuickCreateDialog } from './QuickCreateDialog'
-import { QuickCategoryForm } from './QuickCategoryForm'
+import { AltaRapidaCategoria } from './AltaRapidaCategoria'
 import { NuevoProveedorForm } from '@/components/inventario/proveedores/nuevo'
+import { CampoCodigoBarras } from '../codigos/CampoCodigoBarras'
+import { useTranslations } from 'next-intl'
 
 interface InformacionBasicaProps {
   formData: any
   updateFormData: (field: string, value: any) => void
+  /** Al editar: el propio producto no cuenta como duplicado de su código de barras. */
+  productId?: number | null
 }
 
 interface Category {
@@ -49,7 +53,7 @@ interface Unit {
   name: string
 }
 
-export default function InformacionBasica({ formData, updateFormData }: InformacionBasicaProps) {
+export default function InformacionBasica({ formData, updateFormData, productId }: InformacionBasicaProps) {
   const { organization } = useOrganization()
   const [categories, setCategories] = useState<Category[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -57,7 +61,9 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
   const [units, setUnits] = useState<Unit[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isImprovingDescription, setIsImprovingDescription] = useState(false)
-  const [showCategoryDialog, setShowCategoryDialog] = useState(false)
+  // Alta rápida desde el selector: el texto buscado («Crear “…”») o null.
+  const [nuevaCategoria, setNuevaCategoria] = useState<string | null>(null)
+  const tCat = useTranslations('inventarioEtiquetas.categoria')
   const [showSupplierDialog, setShowSupplierDialog] = useState(false)
   const [showAllCategories, setShowAllCategories] = useState(false)
   const CATEGORY_PREVIEW_COUNT = 20
@@ -84,9 +90,8 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
     if (data) setSuppliers(data)
   }
 
-  // Handler cuando se crea una categoría desde el diálogo
+  // Handler cuando se crea una categoría desde el diálogo: queda seleccionada
   const handleCategoryCreated = (category: { id: number }) => {
-    setShowCategoryDialog(false)
     reloadCategories()
     updateFormData('category_id', category.id)
   }
@@ -174,13 +179,6 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
     updateFormData('sku', newSku)
   }
 
-  const generateBarcode = () => {
-    const digits = Array.from({ length: 12 }, () => Math.floor(Math.random() * 10))
-    const sum = digits.reduce((acc, d, i) => acc + d * (i % 2 === 0 ? 1 : 3), 0)
-    const checksum = (10 - (sum % 10)) % 10
-    updateFormData('barcode', [...digits, checksum].join(''))
-  }
-
   const handleImproveDescription = async () => {
     if (!formData.name.trim()) {
       return
@@ -253,31 +251,13 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
           </div>
         </div>
 
-        {/* Código de Barras */}
-        <div className="space-y-2">
-          <Label htmlFor="barcode" className="text-gray-700 dark:text-gray-300">
-            Código de Barras
-          </Label>
-          <div className="flex gap-2">
-            <Input
-              id="barcode"
-              value={formData.barcode}
-              onChange={(e) => updateFormData('barcode', e.target.value)}
-              placeholder="Ej: 7501234567890"
-              className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 flex-1"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={generateBarcode}
-              title="Generar código de barras"
-              className="shrink-0 border-gray-300 dark:border-gray-700"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        {/* Código de barras: generador único (numeración de la organización) y validación */}
+        <CampoCodigoBarras
+          id="barcode"
+          value={formData.barcode || ''}
+          onChange={(valor) => updateFormData('barcode', valor)}
+          excluirIds={productId ? [productId] : []}
+        />
 
         {/* Tipo de Producto */}
         <div className="space-y-2">
@@ -361,22 +341,9 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
 
         {/* Categoría */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="category" className="text-gray-700 dark:text-gray-300">
-              Categoría
-            </Label>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowCategoryDialog(true)}
-              className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 gap-1"
-              title="Crear nueva categoría"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Nueva
-            </Button>
-          </div>
+          <Label htmlFor="category" className="text-gray-700 dark:text-gray-300">
+            Categoría
+          </Label>
           {isLoadingData ? (
             <Skeleton className="h-10 w-full" />
           ) : (
@@ -388,6 +355,9 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
               searchPlaceholder="Buscar categoría..."
               emptyText="No se encontraron categorías"
               noneLabel="Sin categoría"
+              onCreate={(texto) => setNuevaCategoria(texto)}
+              createLabel={(texto) => tCat('crearCon', { nombre: texto })}
+              createEmptyLabel={tCat('crear')}
             />
           )}
         </div>
@@ -579,18 +549,13 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
         </div>
       </div>
 
-      {/* Diálogo: crear categoría rápida */}
-      <QuickCreateDialog
-        open={showCategoryDialog}
-        onOpenChange={setShowCategoryDialog}
-        title="Nueva Categoría"
-        description="Crea una categoría y se seleccionará automáticamente para este producto."
-      >
-        <QuickCategoryForm
-          onSuccess={handleCategoryCreated}
-          onCancel={() => setShowCategoryDialog(false)}
-        />
-      </QuickCreateDialog>
+      {/* Alta rápida de categoría: «Crear “…”» dentro del selector */}
+      <AltaRapidaCategoria
+        abierto={nuevaCategoria !== null}
+        onAbiertoChange={(v) => !v && setNuevaCategoria(null)}
+        nombreInicial={nuevaCategoria ?? undefined}
+        onCreada={handleCategoryCreated}
+      />
 
       {/* Diálogo: crear proveedor rápido */}
       <QuickCreateDialog

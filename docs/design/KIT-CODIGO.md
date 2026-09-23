@@ -462,3 +462,21 @@ conecta» (`kit/RelatedLinkCard.tsx`): `icono`, `etiqueta`, `valor`, `href` u `o
 Pruebas: `src/components/kit/__tests__/arbol.test.ts` (13 casos: niveles y orden, huérfanos,
 ciclos, descendientes, ancestros, búsqueda en ramas cerradas, rama cerrada a mano durante la
 búsqueda, paginación por raíces).
+
+## Adenda 2026-09-24 — etiquetas de producto y alta rápida (catálogo)
+
+Pedidos por «Imprimir etiquetas», «Códigos de barras» y el alta rápida de categoría
+(`PARIDAD-ETIQUETAS-CATEGORIA.md`). Aditivo: ningún componente existente cambió de contrato.
+
+| Figma | Id | Código | Qué hace |
+|---|---|---|---|
+| `Doc/Código de barras` (Formato × Estado) | `511:257339` | `kit/CodigoBarras.tsx` | Barras con el paquete `jsbarcode` (sin CDN: imprime sin red), EAN-13/EAN-8 si el dígito de control cuadra y Code128 si no; número legible en HTML; franja «sin código» e «inválido». Papel: blanco y negro fijos. Textos por props |
+| `Doc/Etiqueta de producto` (Formato × Precio) | `511:257339` | `kit/EtiquetaProducto.tsx` | Etiqueta en milímetros reales: nombre (2 líneas), variante, barras, SKU y precio (comparación tachada). Letras proporcionales a la de carta 63,5 × 33,9 |
+| Hoja carta / A4 / rollo | `511:257344` | `kit/HojaEtiquetas.tsx` | Una página a tamaño real con cada casilla en su posición (plantillas de `lib/utils/etiquetasImpresion.ts`); `null` = casilla vacía |
+| Diálogo con icono y varios botones | `513:262688`, `517:269277` | `kit/Dialogo.tsx` | + `icono` (caja de 40), `secundarios` (entre «Cancelar» y el primario: «Vista previa PDF»), `pie` (resumen a la izquierda), ancho `880` |
+| `SearchSelect` «Mostrar crear» | `520:61612` | `ui/search-select.tsx` | + `onCreate(texto)`, `createLabel`, `createEmptyLabel`: última fila «Crear “…”» (Enter sin resultados también crea) |
+
+Lógica pura y probada: `src/lib/utils/codigoBarras.ts` (dígito de control GS1, validación,
+numeración espejo de `fn_codigo_barras_construir`) y `src/lib/utils/etiquetasImpresion.ts`
+(plantillas, reparto en hojas, casilla de inicio, cantidad según stock). Tests en
+`src/lib/utils/__tests__/codigoBarras.test.ts` y `etiquetasImpresion.test.ts`.

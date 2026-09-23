@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Copy, Eye, Pencil, Plus, Trash } from 'lucide-react';
+import { Barcode, Copy, Eye, Pencil, Plus, Printer, Trash } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import { Producto } from './types';
 import { cargarCatalogo, pedirLote, type ParametrosCatalogo } from './catalogoLotes';
@@ -29,15 +30,10 @@ import ProductosPageHeader from './ProductosPageHeader';
 import FiltrosProductosComponent from './FiltrosProductos';
 import ProductosTable from './ProductosTable';
 import AccionesMasivas from './bulk/AccionesMasivas';
-import ScrapingProductos from './scraping/ScrapingProductos';
-import { FacebookFeedDialog } from './FacebookFeedDialog';
-import {
-  exportToFacebookCatalog,
-  downloadCSV,
-  getOrganizationDomain,
-  getOrganizationCurrency,
-  fetchAllProductsForFacebook,
-} from './facebookCatalogExport';
+import { FacebookFeedDialog, type PestanaMeta } from './FacebookFeedDialog';
+import { ImprimirEtiquetasDialog } from './etiquetas/ImprimirEtiquetasDialog';
+import { GenerarCodigosDialog } from './etiquetas/GenerarCodigosDialog';
+import type { CodigoAsignado } from '@/lib/services/codigosBarrasService';
 
 /** 'normal' = esqueleto hasta el primer lote · 'suave' = conserva la lista (búsqueda) · 'silencioso' = reemplaza al final. */
 type ModoCarga = 'normal' | 'suave' | 'silencioso';
@@ -64,6 +60,9 @@ type ProductoCsv = Producto & { variant_data?: unknown; station?: string | null 
 
 const mensajeDe = (e: unknown): string | undefined => (e instanceof Error ? e.message : undefined);
 const fmt = (n: number) => n.toLocaleString('es-CO');
+
+/** Tope de productos para etiquetas/códigos desde la cabecera sin selección. */
+const MAX_PRODUCTOS_ETIQUETAS = 1000;
 
 /**
  * Catálogo de productos (`/app/inventario/productos`), rediseño de Figma sobre
@@ -101,9 +100,13 @@ const CatalogoProductos: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [productoAEliminar, setProductoAEliminar] = useState<Producto | null>(null);
   const [seleccion, setSeleccion] = useState<Set<string>>(() => new Set());
-  const [isScrapingOpen, setIsScrapingOpen] = useState<boolean>(false);
   const [isFacebookFeedOpen, setIsFacebookFeedOpen] = useState<boolean>(false);
+  const [pestanaMeta, setPestanaMeta] = useState<PestanaMeta>('feed');
   const [refreshKey, setRefreshKey] = useState<number>(0);
+  // Diálogos «Imprimir etiquetas» y «Códigos de barras»: los productos elegidos.
+  const [idsEtiquetas, setIdsEtiquetas] = useState<number[] | null>(null);
+  const [idsCodigos, setIdsCodigos] = useState<number[] | null>(null);
+  const tEtq = useTranslations('inventarioEtiquetas.catalogo');
   // Lo que se lleva escrito en el buscador: filtra al instante lo cargado
   // mientras el debounce (400 ms) confirma la búsqueda en el servidor.
   const [busquedaRapida, setBusquedaRapida] = useState<string>(busquedaServidor);
@@ -413,15 +416,18 @@ const CatalogoProductos: React.FC = () => {
   const accionesProducto = useCallback(
     (p: Producto): AccionFila[] => {
       const base = `/app/inventario/productos/${p.uuid || p.id}`;
+      const id = Number(p.id);
       return [
         { id: 'ver', etiqueta: 'Ver detalle', icono: Eye, onSelect: () => handleVer(p) },
         { id: 'editar', etiqueta: 'Editar', icono: Pencil, onSelect: () => router.push(`${base}/editar`) },
         { id: 'duplicar', etiqueta: 'Duplicar', icono: Copy, onSelect: () => router.push(`${base}/duplicar`) },
+        { id: 'imprimir-etiquetas', etiqueta: tEtq('imprimirEtiquetas'), icono: Printer, onSelect: () => setIdsEtiquetas([id]), separadorAntes: true },
+        { id: 'codigos-barras', etiqueta: tEtq('codigosBarras'), icono: Barcode, onSelect: () => setIdsCodigos([id]) },
         { id: 'copiar-id', etiqueta: 'Copiar ID', icono: Copy, onSelect: () => void copiarId(p), separadorAntes: true },
         { id: 'eliminar', etiqueta: 'Eliminar', icono: Trash, destructiva: true, onSelect: () => setProductoAEliminar(p) },
       ];
     },
-    [copiarId, handleVer, router],
+    [copiarId, handleVer, router, tEtq],
   );
 
   // ─── Exportar ─────────────────────────────────────────────────────────────
@@ -573,59 +579,11 @@ const CatalogoProductos: React.FC = () => {
     toast({ title: 'Exportación exitosa', description: `Se exportaron ${productosActuales.length} productos.` });
   };
 
-  const handleExportarFacebook = async () => {
-    if (!organization?.id) {
-      toast({ title: 'Error', description: 'No hay organización seleccionada.' });
-      return;
-    }
-
-    try {
-      setActionLoading(true);
-
-      const [currency, webDomain] = await Promise.all([
-        getOrganizationCurrency(organization.id),
-        getOrganizationDomain(organization.id),
-      ]);
-
-      // Consultar TODOS los productos de la BD (no depende de la UI)
-      const allProducts = await fetchAllProductsForFacebook(organization.id);
-
-      if (allProducts.length === 0) {
-        toast({ title: 'Sin productos', description: 'No hay productos activos para exportar.' });
-        setActionLoading(false);
-        return;
-      }
-
-      const { csv, count } = await exportToFacebookCatalog({
-        organizationId: organization.id,
-        products: allProducts,
-        currency,
-        webDomain: webDomain || undefined,
-        organizationName: organization.name,
-      });
-
-      if (count === 0) {
-        toast({ title: 'Sin productos válidos', description: 'No hay productos activos para exportar a Facebook.' });
-        setActionLoading(false);
-        return;
-      }
-
-      const dateStr = getToday();
-      downloadCSV(csv, `facebook_catalog_${dateStr}.csv`);
-
-      toast({
-        title: 'Exportación a Facebook exitosa',
-        description: `Se exportaron ${count} productos al formato de catálogo de Facebook.`,
-      });
-    } catch (error: unknown) {
-      console.error('Error exportando a Facebook:', error);
-      toast({
-        title: 'Error de exportación',
-        description: mensajeDe(error) || 'Ocurrió un error al exportar a Facebook.',
-      });
-    } finally {
-      setActionLoading(false);
-    }
+  // «Exportar a Facebook» y «URL del feed» abren el mismo diálogo de Meta
+  // (exportación y feed salen del mismo generador en el servidor).
+  const abrirMeta = (pestana: PestanaMeta) => {
+    setPestanaMeta(pestana);
+    setIsFacebookFeedOpen(true);
   };
 
   const recargar = () => setRefreshKey((k) => k + 1);
@@ -640,15 +598,43 @@ const CatalogoProductos: React.FC = () => {
 
   const selectedIds = useMemo(() => idsNumericos(seleccion), [seleccion]);
 
+  // Desde la cabecera: la selección o, sin ella, lo que se ve con los filtros.
+  const alcanceCabecera = (abrir: (ids: number[]) => void) => () => {
+    const ids = selectedIds.length ? selectedIds : ordenados.map((p) => Number(p.id)).filter((n) => Number.isFinite(n));
+    if (ids.length === 0) {
+      toast({ title: tEtq('sinProductos') });
+      return;
+    }
+    if (ids.length > MAX_PRODUCTOS_ETIQUETAS) {
+      toast({ variant: 'destructive', title: tEtq('demasiados', { n: MAX_PRODUCTOS_ETIQUETAS }) });
+      return;
+    }
+    abrir(ids);
+  };
+
+  // Códigos recién asignados: se pintan ya en su fila (padre o variante).
+  const aplicarCodigos = useCallback((asignados: CodigoAsignado[]) => {
+    if (asignados.length === 0) return;
+    const porId = new Map(asignados.map((a) => [a.productId, a.codigo]));
+    const conCodigo = (p: Producto): Producto => {
+      const propio = porId.get(Number(p.id));
+      const hijos = p.children?.map(conCodigo);
+      return propio !== undefined || hijos ? { ...p, ...(propio !== undefined ? { barcode: propio } : {}), ...(hijos ? { children: hijos } : {}) } : p;
+    };
+    setProductos((prev) => prev.map(conCodigo));
+  }, []);
+
   return (
     <div className="flex flex-col gap-4">
       <ProductosPageHeader
         onImportarArchivo={() => router.push('/app/inventario/productos/importar')}
-        onImportarWeb={() => setIsScrapingOpen(true)}
+        onImportarWeb={() => router.push('/app/inventario/productos/importar?origen=web')}
         onExportarCsv={handleExportar}
-        onExportarFacebook={handleExportarFacebook}
-        onFeedFacebook={() => setIsFacebookFeedOpen(true)}
+        onExportarFacebook={() => abrirMeta('exportar')}
+        onFeedFacebook={() => abrirMeta('feed')}
         onActualizar={recargar}
+        onImprimirEtiquetas={alcanceCabecera(setIdsEtiquetas)}
+        onCodigosBarras={alcanceCabecera(setIdsCodigos)}
         actualizando={loading || actionLoading || backgroundLoading}
         subtitulo={subtitulo}
         subtituloMovil={subtituloMovil}
@@ -710,14 +696,23 @@ const CatalogoProductos: React.FC = () => {
         onSeleccionarTodos={() => setSeleccion(new Set(ordenados.map((p) => String(p.id))))}
         onClearSelection={() => setSeleccion(new Set())}
         onActionComplete={() => fetchProductos('silencioso')}
+        onImprimirEtiquetas={setIdsEtiquetas}
+        onGenerarCodigos={setIdsCodigos}
       />
 
-      {/* Importar desde una web (IA) */}
-      <ScrapingProductos
-        open={isScrapingOpen}
-        onOpenChange={setIsScrapingOpen}
-        onImportComplete={recargar}
+      <ImprimirEtiquetasDialog
+        abierto={idsEtiquetas !== null}
+        onAbiertoChange={(v) => !v && setIdsEtiquetas(null)}
+        productIds={idsEtiquetas ?? []}
+        onCodigosGenerados={aplicarCodigos}
       />
+      <GenerarCodigosDialog
+        abierto={idsCodigos !== null}
+        onAbiertoChange={(v) => !v && setIdsCodigos(null)}
+        productIds={idsCodigos ?? []}
+        onGenerados={aplicarCodigos}
+      />
+
 
       <ConfirmDialog
         open={productoAEliminar !== null}
@@ -741,6 +736,7 @@ const CatalogoProductos: React.FC = () => {
         open={isFacebookFeedOpen}
         onOpenChange={setIsFacebookFeedOpen}
         organizationId={organization?.id}
+        pestanaInicial={pestanaMeta}
       />
     </div>
   );

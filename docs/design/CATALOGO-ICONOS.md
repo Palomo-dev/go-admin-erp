@@ -302,3 +302,167 @@ Se anotan porque salieron del recorrido y otra tanda los tendrá que cerrar:
    4 pide que la cabecera se mantenga también en error.
 5. **La misma ranura tiene tres nombres** (`Icono`, `Miniatura`, `Caja de icono`).
    Unificarlos obliga a tocar tres componentes publicados: se deja anotado.
+
+---
+
+## 8. Barrido de iconos de menús — 2026-09-23
+
+Queja del dueño: en el menú «⋯» de una nota («Editar nota», «Copiar texto»,
+«Eliminar nota») las tres opciones llevaban **el mismo monitor**. No era un caso
+suelto: era el icono por defecto de `MenuItem`, y toda instancia que no lo
+sobrescribía salía con él.
+
+### 8.1 Causa raíz y cambio en el maestro
+
+`02 Componentes › Tablas y listas › MenuItem` (COMPONENT_SET, variantes
+State × Trailing) ya exponía el icono como propiedad de intercambio de instancia
+(`Icono (swap)`), pero:
+
+- su valor por defecto era `Icon/Monitor`, un icono con significado propio
+  («GO Admin Desktop»), así que el olvido no se notaba;
+- no tenía **ningún valor preferido**: el selector ofrecía los 158 iconos sin orden.
+
+Cambios:
+
+1. **Nuevo `Icon/CircleDashed`** en `Fundamentos › Iconos` (hueco libre de la
+   rejilla, misma construcción: 24, trazo 1,5, cabos redondeados, trazo enlazado a
+   la variable de texto secundario). Es el **marcador neutro «icono sin elegir»**:
+   se ve incompleto a propósito y el script de verificación lo busca.
+2. **`Icono (swap)` → valor por defecto `Icon/CircleDashed`** y **81 valores
+   preferidos** de la familia `Icon/*` (las acciones de la tabla 8.2 más los
+   conceptos de §2). Las cuatro variantes `State=signing-out` llevan el icono
+   oculto y sin enlazar: también pasan al marcador.
+3. **`description` del COMPONENT_SET** ampliada con la regla: cada instancia elige
+   el icono de su acción; eliminar/quitar/anular van con `State=destructive`.
+
+Efecto del cambio en instancias ya existentes: las que no sobrescribían el icono
+pasaron del monitor al marcador neutro. Dos «Descargar GO Admin Desktop» de la
+página `03` —el único uso legítimo del monitor— dependían del defecto y se
+repararon fijándoles `Icon/Monitor` de forma explícita. Fuera del alcance
+(`01`, `02`, `99` y los carriles de la página `04` de otros agentes) no quedó
+ningún `MenuItem` visible con el marcador neutro.
+
+### 8.2 Acciones y su icono — tabla que manda en menús y hojas de acciones
+
+Se aplica a `MenuItem`, a las filas de sheet móvil y a los botones con icono.
+Regla de «Ver»: si abre **la misma entidad** de la fila, `Eye`; si navega a
+**otra entidad**, el icono de concepto de esa entidad (§2).
+
+| Acción | Icono | Nota |
+|---|---|---|
+| Ver · Ver detalle · Ver en grande · Ver comanda · Ver el pedido | `Eye` | |
+| Ver factura (de venta) · Ver facturas · Crear documento soporte | `FileText` | concepto «Factura de venta» |
+| Ver factura de compra · Ver factura de origen (cuenta por pagar) | `ReceiptText` | concepto «Factura de compra» |
+| Ver ventas de la caja · Solicitar cuenta | `Receipt` | concepto «Venta» |
+| Ver a qué productos alcanza | `Package` | concepto «Producto» |
+| Ver perfil | `User` | |
+| Ver detalles del plan | `CreditCard` | concepto «Plan» |
+| Ver kardex · Ver movimientos · Historial | `History` | |
+| Ver arqueos | `Calculator` | **nueva** |
+| Ver cuotas | `TrendingUp` | **nueva** (ver 8.4) |
+| Editar · Editar ‹cosa› | `Pencil` | |
+| Copiar · Duplicar · Copiar registros DNS | `Copy` | |
+| Eliminar · Quitar ‹cosa› · Quitar del equipo | `Trash` + `State=destructive` | |
+| Anular ‹venta · factura · cuenta · último abono · último pago› | `Ban` + `State=destructive` | antes `XCircle` o `Trash` |
+| Cancelar ‹reserva · comanda · pedido · suscripción› | `Ban` | |
+| Liberar mesa · Marcar «no se presentó» · Dar de baja (incobrable) · Rechazar pedido | `XCircle` | **nueva** |
+| Descargar · Descargar PDF · Exportar a CSV · Exportar movimientos · Exportar a Facebook | `Download` | antes `FileSpreadsheet` o `Globe` |
+| Importar (menú «Nuevo producto»: desde archivo · desde web · con asistente) | `FileSpreadsheet` · `Globe` · `Bot` | se conserva el icono del **origen** |
+| Imprimir · Reimprimir · Imprimir cierre · Imprimir comanda · Imprimir pedido | `Printer` | |
+| Enviar por correo · Enviar recordatorio | `Mail` | antes `Send` |
+| Enviar por WhatsApp · Avisar al cliente · Avisar a los clientes | `MessageSquare` | concepto «Aviso al cliente»; antes `Send` |
+| Ajustar stock · Ajustar inventario · Crear ajuste · Ajustar saldo | `SlidersHorizontal` | antes `Boxes` o `Wallet` |
+| Ajustes de inventario (ir a la pantalla) | `ClipboardCheck` | concepto §2 |
+| Definir stock mínimo | `AlertTriangle` | **nueva** (ver 8.4) |
+| Recepcionar a inventario · Marcar como entregado | `PackageCheck` | |
+| Activar · Aplicar · Confirmar · Confirmar factura · Marcar lista | `CheckCircle` | antes `Check`, `Power`, `Play` o `Send` |
+| Completar | `Check` | **nueva** |
+| Desactivar ‹cosa› · Marcar como inactivo | `Power` | |
+| Registrar pago · Registrar abono · Marcar como pagados (cobro) | `Banknote` | antes `DollarSign` o `CreditCard` |
+| Registrar pago (factura de compra, cuenta por pagar) | `HandCoins` | concepto «Cuenta por pagar» |
+| Programar pago | `Clock` | |
+| Marcar como principal · Marcar como preferido · Definir como predeterminado | `Star` | **nueva** |
+| Sincronizar con Meta | `RefreshCw` | antes `Share` |
+| Crear devolución · Generar nota crédito · Reabrir caja | `Undo` | **nueva** |
+| Cerrar caja | `Lock` | **nueva** |
+| Abrir la cuenta | `Plus` | |
+| Mover cuenta a otra mesa · Transferir | `ArrowLeftRight` | |
+| Marcar como sentada | `UtensilsCrossed` | concepto «Mesa» |
+| Asignar mesa | `Pin` | **nueva** |
+| Asignar mesero · Cambiar gerente | `UserCheck` | concepto «Miembro del equipo» |
+| Asignar miembros | `UserPlus` | |
+| Asignar sucursales | `MapPin` | concepto «Sucursal» |
+| Cambiar rol · Verificar dominio | `ShieldCheck` | **nueva** |
+| Cambiar plan | `ArrowUpCircle` | **nueva** |
+| Publicar sitio web | `Globe` | concepto «Dominio · web» |
+| Marcar en preparación | `ChefHat` | concepto «Comanda» |
+| Simular en un carrito | `ShoppingCart` | |
+| Fusionar duplicados · Unificar con otro cliente | `Users` | |
+| Tipo de tercero: Proveedor · Empleado | `Truck` · `Briefcase` | antes `Users` |
+| Descargar GO Admin Desktop | `Monitor` | **único** uso legítimo del monitor |
+
+### 8.3 Conteo por página
+
+Universo: instancias de `MenuItem` (incluidas las anidadas en otros
+componentes). En la página `04`, solo las doce secciones asignadas a esta tanda;
+los carriles de órdenes de compra, existencias, catálogo y las secciones de
+x=13.000 los corrigen sus dueños. «Oculto» = el ítem tiene `Icono` apagado
+(motivos de rechazo del pedido online): no se toca.
+
+| Página | Revisadas | Corregidas | · de ellas, monitor | · de ellas, icono que no correspondía | Ya bien | Oculto | Pasadas a tono peligro |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `03 Navegación y shell` | 53 | 2 | 2¹ | 0 | 51 | 0 | 0 |
+| `04 Inventario` (alcance) | 93 | 34 | 20 | 14 | 59 | 0 | 5 |
+| `05 POS y ventas` | 94 | 59 | 51 | 8 | 29 | 6 | 2 |
+| `06 Clientes` | 30 | 9 | 4 | 5 | 21 | 0 | 0 |
+| `07 Finanzas` | 57 | 37 | 24 | 13 | 20 | 0 | 4 |
+| `08 Acceso y organización` | 25 | 25 | 25 | 0 | 0 | 0 | 4 |
+| `09 Documentos` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `10 Configuración` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| **Total** | **352** | **166** | **126** | **40** | **180** | **6** | **15** |
+
+¹ «Descargar GO Admin Desktop»: dependían del defecto y, al cambiarlo, habrían
+quedado con el marcador; se les fijó `Icon/Monitor`.
+
+Fuera de `MenuItem` no apareció ningún botón, `IconButton` ni fila de sheet con
+el monitor por error. Los 17 monitores sueltos de la página `05` son legítimos
+(pantalla del cliente, agente de impresión, equipos «CAJA-PRINCIPAL-PC» y
+«BODEGA-PC», impresión por HTML, GO Admin Desktop).
+
+Comprobado por script después de aplicar, en todo el alcance:
+
+- **0** `MenuItem` visibles con `Icon/Monitor` fuera de «Descargar GO Admin Desktop» (quedan 9, todos en `03`).
+- **0** `MenuItem` visibles con el marcador `Icon/CircleDashed`.
+- **0** iconos de `MenuItem` fuera de 20 × 20.
+- **0** instancias rotas sobre 56.156 revisadas (`03` 3.574 · `04` 10.453 ·
+  `05` 21.782 · `06` 3.866 · `07` 7.303 · `08` 6.372 · `09` 339 · `10` 2.467).
+- Tamaño de las instancias intacto: 0 cambios de ancho o alto al pasar a
+  `State=destructive`.
+
+### 8.4 Antes y después
+
+| Caso | Antes | Después |
+|---|---|---|
+| Producto › Notas — menú «⋯» | `figma/36-iconos-antes-notas.png` | `figma/36-iconos-despues-notas.png` |
+| Producto › Variantes — menú «⋯» | `figma/36-iconos-antes-variantes.png` | `figma/36-iconos-despues-variantes.png` |
+| POS › Cajas — menú de fila | `figma/36-iconos-antes-cajas.png` | `figma/36-iconos-despues-cajas.png` |
+| Finanzas › Impuestos — menú de fila | `figma/36-iconos-antes-impuestos.png` | `figma/36-iconos-despues-impuestos.png` |
+| Organización › Miembros — menú de fila | `figma/36-iconos-antes-miembros.png` | `figma/36-iconos-despues-miembros.png` |
+| Cuenta por pagar — menú «⋯» del detalle | `figma/36-iconos-antes-cuenta-por-pagar.png` | `figma/36-iconos-despues-cuenta-por-pagar.png` |
+
+### 8.5 Casos que decide el dueño
+
+1. **Definir stock mínimo → `AlertTriangle`.** El mínimo es el umbral que dispara
+   la alerta de stock bajo; la alternativa es `Bell`. Ninguna es exacta.
+2. **Ver cuotas (Miembros) → `TrendingUp`.** Se leyó como metas de venta del
+   miembro. Si «cuotas» son otra cosa (cupos del plan, cuotas de pago), cambia.
+3. **Reabrir caja → `Undo`**, el mismo icono que «Crear devolución» y «Generar nota
+   crédito». Lo exacto sería `LockOpen`, que no está en el kit.
+4. **Importar desde archivo · web · asistente** conservan el icono del origen
+   (`FileSpreadsheet`, `Globe`, `Bot`) en vez de `Upload`: en ese menú lo que se
+   elige es el origen, no el verbo. «Seleccionar todos (4.368)» sigue con
+   `Package` y «Nueva oportunidad» con `DollarSign`: no se tocaron.
+5. **Tono peligro.** Además del icono, 15 ítems «Eliminar / Quitar / Anular» que
+   estaban en `State=default` pasaron a `State=destructive`, como pedía la
+   referencia. «Quitar proveedor» y «Quitar del equipo» son reversibles: si el
+   rojo resulta excesivo ahí, se devuelven a `default` sin tocar el icono.

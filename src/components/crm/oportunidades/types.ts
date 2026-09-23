@@ -19,9 +19,18 @@ export interface Stage {
   pipeline_id: string;
   name: string;
   position: number;
+  /**
+   * Porcentaje 0-100 (columna `stages.probability`, integer; verificado por MCP
+   * el 2026-09-23: min 0, max 100, 76 de 90 etapas por encima de 1). Quien
+   * pondere un importe con este valor tiene que dividir entre 100.
+   */
   probability: number;
   color: string;
   description?: string;
+  /** Etapa de cierre ganado. Fuente de verdad del cierre (plan V4). */
+  is_won?: boolean | null;
+  /** Etapa de cierre perdido. */
+  is_lost?: boolean | null;
   created_at: string;
   updated_at: string;
 }

@@ -107,7 +107,10 @@ export default function ClienteDetailPage() {
 
       let actQuery = supabase
         .from('activities')
-        .select('id, activity_type, title, occurred_at')
+        // `activities` NO tiene `title`: el texto de la actividad es `notes`
+        // (columnas verificadas por MCP el 2026-09-23). Con `title` la consulta
+        // fallaba con 42703 y el historial salía siempre vacío.
+        .select('id, activity_type, notes, occurred_at')
         .eq('related_id', customerId)
         .eq('related_type', 'customer')
         .eq('organization_id', orgId)
@@ -143,7 +146,7 @@ export default function ClienteDetailPage() {
         setActivities(actResult.data.map((a: Record<string, unknown>) => ({
           id: a.id as string,
           activity_type: a.activity_type as string,
-          title: a.title as string | null,
+          title: a.notes as string | null,
           occurred_at: a.occurred_at as string,
         })));
       }

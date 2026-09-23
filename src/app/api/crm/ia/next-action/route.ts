@@ -157,7 +157,9 @@ async function gatherOpportunityContext(
     // Obtener actividades recientes — filtrar por organización
     const { data: activities } = await supabase
       .from('activities')
-      .select('activity_type, title, occurred_at, description')
+      // `activities` NO tiene `title` ni `description`: el texto vive en
+      // `notes` (columnas verificadas por MCP el 2026-09-23).
+      .select('activity_type, notes, occurred_at')
       .eq('related_id', opportunityId)
       .eq('related_type', 'opportunity')
       .eq('organization_id', organizationId)
@@ -178,7 +180,7 @@ async function gatherOpportunityContext(
     // Obtener notas (actividades de tipo note)
     const notes = activityList
       .filter((a) => a.activity_type === 'note' || a.activity_type === 'call')
-      .map((a) => (a.description as string) || (a.title as string))
+      .map((a) => a.notes as string)
       .filter(Boolean)
       .slice(0, 5);
 

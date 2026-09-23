@@ -137,7 +137,10 @@ async function gatherDiscoveryContext(
     // Obtener todas las actividades — filtrar por organización
     const { data: activities } = await supabase
       .from('activities')
-      .select('activity_type, title, description, occurred_at')
+      // `activities` NO tiene `title` ni `description`: el texto vive en
+      // `notes` (columnas verificadas por MCP el 2026-09-23). Pedirlas devolvía
+      // 42703 y la lista se quedaba vacía sin que nadie mirase el `error`.
+      .select('activity_type, notes, occurred_at')
       .eq('related_id', opportunityId)
       .eq('related_type', 'opportunity')
       .eq('organization_id', organizationId)
@@ -154,7 +157,7 @@ async function gatherDiscoveryContext(
           a.activity_type === 'call' ||
           a.activity_type === 'meeting'
       )
-      .map((a) => (a.description as string) || (a.title as string))
+      .map((a) => a.notes as string)
       .filter(Boolean);
 
     return {

@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-09-23 · **Proyecto Supabase:** `jgmgphmzusbluqhuqihj`
 **Org de prueba:** **149** «TEST cierre contable E2E» (la 148 del mandato no existe; ADR-CC-003).
-**Progreso detallado:** `docs/progreso-cierre-contable.md` · **Decisiones:** `docs/decisiones/ADR-CC-001…007`.
+**Progreso detallado:** `docs/progreso-cierre-contable.md` · **Decisiones:** `docs/decisiones/ADR-CC-001…008`.
 
 ---
 
@@ -16,7 +16,7 @@
 | 4 | Aviso visible cuando una línea no tiene impuesto | **Cumplido en código**; verificación visual pendiente de una persona | Factura, cotización y POS (`AvisoSinImpuesto`); caso (f) en SQL: `tax_rate 0`, `tax_code NULL` |
 | 5 | Borrador sin asiento; al emitirse, con asiento | **Cumplido** | Caso (i): 0 asientos en borrador, 1 al emitir; anular un borrador → 0 asientos. 0 borradores con asiento vivo en toda la base |
 | 6 | Históricos neutralizados; balance de prueba cuadrado | **Cumplido** con remanente documentado | §5: 5.810 contra-asientos y 2.154 devengos corregidos en 19 organizaciones (37 restaurados por falta de documento); 0 organizaciones descuadradas, 0 pares que no neutralizan |
-| 7 | `docs/hallazgos/` refleja la base | **Cumplido** | F-01, F-29, F-42…F-51 actualizados; F-53 añadido al índice; F-54…F-57 nuevos |
+| 7 | `docs/hallazgos/` refleja la base | **Cumplido** | F-01, F-29, F-42…F-51 actualizados; F-53 añadido al índice; F-54…F-58 nuevos |
 | 8 | Reporte con evidencia | Este documento | — |
 
 ## 2. Migraciones y commits
@@ -32,6 +32,8 @@
 | `20260923083545` | `reversion_historica_restaura_sin_documento` | Bloque 5 (F-57) |
 | `20260923083714` | `reversion_historica_f01_cartera` | F-01 |
 | `20260923083859` | `reversion_historica_devengo_caja_con_saldo` | F-29 / F-55 |
+| `20260923131009` | `disparadores_contables_invoker_a_definer` | F-47 (comisión y folio quedaban INVOKER) |
+| `20260923131133` | `vista_cartera_vs_documentos` | control de cartera, solo `service_role` |
 
 Cada una con su reversión en `supabase/rollbacks/`. Ninguna cambió la firma de
 una función existente. `fn_create_journal_entry`, `fn_auto_journal_sale`,
@@ -45,7 +47,8 @@ reportes_de_problema_desde_el_header`, que no toca nada contable.
 
 Commits en `main` (sin push): `eb8c97ee` (Bloque 1), `7c44694a` (Bloque 2),
 `56f76ffe` (Bloque 3), `140e0957` (Bloque 4: F-55 compras y F-56),
-`fe8439c6` (Bloque 5) y el de este reporte (Bloque 6).
+`fe8439c6` (Bloque 5), `f0063cbf` (Bloque 6) y el de los ajustes previos al push
+(F-47, F-58, vista de control).
 
 ## 3. Decisiones tomadas por cuenta propia
 
@@ -89,8 +92,23 @@ WHERE je.organization_id = 149 GROUP BY je.id ORDER BY je.id;
 | j | Pago de factura a crédito | — | `paid`, saldo 0 | `1110 D 238.000 / 1305 C 238.000` | ✔ |
 
 Balance de prueba de la org 149: D = C = 7.253.100. 4105 = ingreso neto de los
-documentos (1.425.000). 2405 = IVA de ventas − IVA de compras (236.800). 1305 =
-cartera − notas crédito sobre facturas pagadas.
+documentos (1.425.000). 2405 = IVA de ventas − IVA de compras (236.800).
+
+**1305 no cuadra con las facturas abiertas** (`v_cartera_vs_documentos`):
+
+| Concepto | Importe |
+|---|---:|
+| 1305 en el libro | −1.154.500 |
+| Facturas abiertas (E2E-C 105.000 + E2E-E 49.500) | 154.500 |
+| Diferencia | **−1.309.000** |
+| NC-E2E-H (−1.190.000) + NC-E2E-H2 (−119.000), sobre facturas ya pagadas | −1.309.000 |
+
+Toda la diferencia es el saldo a favor que dejan las dos notas crédito sobre
+facturas pagadas, sin documento de devolución ni de saldo a favor: hallazgo
+**F-58**, solución propuesta en ADR-CC-008 (sin implementar). La vista marca
+además 1 factura «pagada sin pago» (59.500): es el fixture del camino B del
+Bloque 1, cuyo pago de prueba usa `source='web_order'` con un id inventado que
+no enlaza con la factura.
 
 Tests: `taxResolver.test.ts` (17), `taxResolverCore.test.ts` (9),
 `taxCoverage.test.ts` (16), `webOrderTotals.test.ts` (+7), contratos del
@@ -159,6 +177,8 @@ Balance de prueba: cuadra en las 19 antes y después.
 | — | Respaldo de `NuevaFacturaForm` a `fn_sync_invoice_items_from_sale` sigue en el navegador | Protegido con guarda de pertenencia (ADR-CC-005); moverlo a servidor queda como deuda |
 | — | `cotizacionesService.convertToInvoice` deriva `issue_date` con `toISOString().split('T')[0]` | Regla de fechas del repo; fuera del alcance contable |
 | F-54 | Organizaciones que venden gravado sin tarifa configurada | Decisión de cada cliente; no se siembra |
+| F-58 | Nota crédito sobre factura pagada deja saldo a favor sin documento (org 149: −1.309.000; org 2: −303.331) | Propuesta en ADR-CC-008; requiere UI + RPC y sembrar la cuenta 2805, que falta en 84 de 85 planes |
+| — | `temp_audit_amount_validation` | Código muerto (sin disparador ni llamador); marcado en su comentario, no se borró |
 
 ## 7. Requiere acción humana
 

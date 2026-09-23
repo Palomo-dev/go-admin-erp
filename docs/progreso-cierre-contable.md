@@ -105,3 +105,19 @@ duplica el activo en toda venta de contado con pago → ADR-CC-001.
 - Última migración reconciliada: `20260923083859`.
 - Pendiente humano: usuario de prueba de la 149 y recorrido por la UI;
   auditoría F-57; despliegue (sin push: requiere autorización).
+
+## 2026-09-23 · Ajustes previos al push
+
+- `20260923131009 disparadores_contables_invoker_a_definer`:
+  `fn_auto_journal_commission` y `fn_auto_journal_folio_payment` a SECURITY
+  DEFINER (`prosecdef = true` en ambas; 0 funciones INVOKER llaman ya a
+  `fn_create_journal_entry`). Insertan en `commissions` desde el navegador:
+  `posService` (cobro de deuda), `pedidosService`, `FacturasCompraService`.
+  0 comisiones y 0 pagos de folio afectados entre el revoke y el ajuste.
+  `temp_audit_amount_validation` marcada como código muerto.
+- F-58 + ADR-CC-008 (propuesta, sin implementar): nota crédito sobre factura
+  pagada. Org 149: 1305 −1.154.500 contra 154.500 abiertas; −1.309.000 = las dos
+  notas. La cuenta 2805 existe en 1 de 85 planes contables.
+- `20260923131133 vista_cartera_vs_documentos` (security_invoker, solo
+  service_role).
+- Última migración reconciliada: `20260923131133`.

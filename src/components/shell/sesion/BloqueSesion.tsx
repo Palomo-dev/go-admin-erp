@@ -93,11 +93,13 @@ export function BloqueSesion(props: BloqueSesionProps) {
     <Popover open={abierto} onOpenChange={setAbierto}>
       <PopoverTrigger asChild>{disparador}</PopoverTrigger>
       <PopoverContent
-        side={rail ? 'right' : 'top'}
-        align={rail ? 'end' : 'start'}
+        // Siempre a la derecha del sidebar, alineado abajo con el bloque
+        // (Figma «Escritorio / Sesión»), también con el sidebar expandido.
+        side="right"
+        align="end"
         sideOffset={8}
         collisionPadding={12}
-        className="max-h-[70vh] w-80 overflow-y-auto overscroll-contain rounded-xl border-line bg-surface p-2 text-fg shadow-[0_1px_3px_rgba(15,23,42,0.06),0_4px_12px_rgba(15,23,42,0.1)]"
+        className="max-h-[calc(100dvh-24px)] w-80 overflow-y-auto overscroll-contain rounded-xl border-line bg-surface p-2 text-fg shadow-[0_1px_3px_rgba(15,23,42,0.06),0_4px_12px_rgba(15,23,42,0.1)]"
       >
         {panel}
       </PopoverContent>

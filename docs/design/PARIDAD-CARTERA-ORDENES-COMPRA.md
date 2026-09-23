@@ -315,3 +315,140 @@ frames de pantalla.
 
 Capturas: `docs/design/figma/26-cartera-*.png` (18) y `26-ordenes-compra-*.png` (11). Las
 `26-*-seccion-*.png` son la vista general de cada Sección; el resto son frames a tamaño legible.
+
+---
+
+## 11. Tanda 2026-09-23 — recepción completa, PDF, selectores con filtros y conexiones
+
+Encargo del dueño: la recepción con variantes, seriales, lotes y kardex «como componente»; el PDF
+de la orden; el `SupplierPicker` real en «Nueva»; el mecanismo `FilterButton → FilterPanel →
+FilterChips` en los diálogos de producto y proveedor; el buscador de móvil con los componentes del
+sistema; y «que conecte todo con todo». Análisis de base de datos y código en
+`AUDITORIA-CARTERA-ORDENES-COMPRA.md` §I. Datos de ejemplo ficticios: Mi empresa S.A.S.,
+Distribuidora del Norte, Sucursal Norte (la orden OC-131 es la misma en todas las pantallas nuevas).
+
+### 11.1 Qué se dibujó y dónde
+
+| Página | Sección | Posición | Frames |
+|---|---|---|---|
+| `02 Componentes` | Compras — recepción de mercancía (Nuevo) | x 22.000, y 0 | 4 sets nuevos (§11.2) |
+| `02 Componentes` | Finanzas › `SupplierPicker` | set existente | 5 variantes nuevas (§11.2) |
+| `04 Inventario` | Órdenes de compra — recepción completa (Nuevo) | x 22.000 – 36.560, y 116.456 | 14: R1–R10 y M1–M4 |
+| `04 Inventario` | Órdenes de compra — selectores con filtros (Nuevo) | x 22.000 – 30.640, y 119.460 | 10: F0–F9 |
+| `04 Inventario` | Órdenes de compra — cómo se llega y a dónde lleva (Nuevo) | x 22.000 – 24.840, y 122.540 | 1 mapa (19 tarjetas) |
+| `04 Inventario` | Las tres secciones existentes (listado, detalle, nueva) | x 0 | 7 frames corregidos (§11.5) |
+| `09 Documentos` | Orden de compra — PDF (Nuevo) | x 0, y 11.990 | 3: carta, A4, carta borrador |
+
+### 11.2 Componentes
+
+| Componente | Estado | Variantes | Qué resuelve |
+|---|---|---|---|
+| `SerialCapture` | **Nuevo** | `State` vacío · capturando · duplicado · pegar-lista · completo × `Layout` escritorio · móvil (7) | Un serial por unidad: escáner con Enter, «Pegar lista» con validación previa (válidos, repetidos, sobrantes), «Generar» según `serial_pattern`, contador n de m y duplicados contra la recepción y contra el inventario de la organización. Sustituye a `SerialCaptureSection` |
+| `LotCapture` | **Nuevo** | `State` un-lote · varios-lotes · descuadre · vencimiento × `Layout` (6) | Código de lote (elige uno existente del producto o lo crea), vencimiento y cantidad; varios lotes por renglón; la suma cuadra con «Recibo ahora»; aviso de «por vencer» con el umbral de la organización y bloqueo de lo vencido |
+| `ReceiptLine` | **Nuevo** | `Tipo` simple · variante · seriales · lotes × `Layout` fila · tarjeta (8) | El renglón de la recepción: pedido, ya recibido, costo, **«Recibo ahora» incremental** y pendiente; la variante muestra talla y color como badges; los tipos con seguimiento anidan `SerialCapture` o `LotCapture` |
+| `ReceiptImpact` | **Nuevo** | `Resultado` parcial · total × `Layout` escritorio · móvil (4) | Antes de registrar: qué entra por renglón, el movimiento de kardex (uno por renglón y por lote), el costo promedio antes → después y los documentos que se crean |
+| `SupplierPicker` | Ampliado | + `Layout=field` idle · typing · selected; + `Layout=dialog` filtros-abiertos · filtrado (14 en total) | El proveedor es un **campo** del formulario (no su popover de recientes en el flujo) y el diálogo muestra cómo se filtra |
+
+Arreglo en el propio `SupplierPicker`: las filas cortaban el nombre del proveedor («Distribuidora
+del Nort») cuando llevaban badge de saldo; ahora el badge pasa a la línea siguiente y el nombre
+envuelve (8 filas con `wrap`, 9 textos que envuelven). La sección Finanzas de `02 Componentes` se
+ensanchó para contener el set, que creció.
+
+### 11.3 Recepción — control por control
+
+| # | Control | Frame | Estado |
+|---|---|---|---|
+| 1 | Diálogo en dos pasos: «qué llegó» y «confirmar» | R1 · R4 | **Nuevo**. Hoy es un solo paso sin resumen (`OrdenCompraDetalle.tsx:567-700`) |
+| 2 | «Recibo ahora» por renglón | R1 | **sustituido**: es lo que llega hoy, no el acumulado que hoy se escribe (`purchaseOrderService.ts:553`) |
+| 3 | «Todo» por renglón y «Recibir todo lo pendiente» | R1 | calcado del «Marcar recibida» del listado, dentro del diálogo |
+| 4 | Buscador de renglones con escáner y chip «Solo con seriales o lotes» | R1 · R2 · R3 | **Nuevo** |
+| 5 | Renglón con variante: talla y color visibles | R1 | **Nuevo**: hoy la recepción no trae `variant_data` (§I.3) |
+| 6 | Captura de seriales con escáner, pegar lista, generar, n de m y duplicados | R2 · M2 | **Nuevo** (hoy inalcanzable, C4–C5, y con el defecto S3) |
+| 7 | Lotes: varios por renglón, vencimiento, cuadre y vencidos | R3 · M3 | **Nuevo** (hoy imposible, §I.5) |
+| 8 | Decisión sobre lo vencido: «Recibir como avería» o «No recibir y anotar devolución» | R3 | **Nuevo** |
+| 9 | Fecha, remisión o factura del proveedor, «Entra a» (sucursal y bodega) y nota | R1 | calcado de la tanda anterior, más «Entra a» |
+| 10 | Efecto en kardex y costo promedio | R4 · R5 · M4 (`ReceiptImpact`) | **Nuevo** |
+| 11 | Completar la orden: factura con el número real del proveedor, fecha, vencimiento e impuestos por renglón; interruptor para diferirla | R5 | **sustituido**: hoy se genera sola con número `COMP-AAAA-NNNN`, sin impuestos y sin `po_id` (C16–C18, F1–F3) |
+| 12 | Imprimir etiquetas de lo recibido; avisar al proveedor de lo que falta | R4 | **Nuevo** |
+| 13 | Registrando (una sola operación) | R6 | **Nuevo**: hoy son ≈4+5N llamadas sin transacción |
+| 14 | Error: «no se guardó nada» con el motivo y dónde corregirlo | R7 | **Nuevo**: hoy los fallos de stock, factura y cuenta por pagar se tragan (C19) |
+| 15 | Sin permiso | R8 | **Nuevo**: el permiso `inventory.receive` no existe (§I.8) |
+| 16 | Nada pendiente | R9 | **Nuevo** |
+| 17 | Detalle «recibida completa»: documentos vinculados reales, «Ver en kardex», «Registrar devolución», «Cerrar la orden», toast del resultado | R10 (clonado del detalle aprobado) | **Nuevo** |
+| 18 | Móvil: sheet con buscador-escáner y `ReceiptLine Layout=tarjeta` | M1–M4 | **Nuevo** |
+
+### 11.4 Selectores con filtros y formulario
+
+| # | Control | Frame | Estado |
+|---|---|---|---|
+| 1 | Proveedor como campo (`SupplierPicker Layout=field`), recientes y resultados en capa flotante anclada bajo el campo | F0 | **sustituido**: antes el popover de recientes ocupaba el lugar del campo |
+| 2 | Barra del diálogo de productos: `SearchBar` + `FilterButton` + `ViewToggle`, sin chips si no hay filtros | F1 | **sustituido**: antes, chips «Solo del proveedor» y «Con stock» sin mecanismo |
+| 3 | `FilterPanel` popover anclado al botón: proveedor, estado, stock en la sucursal, categoría, con variantes, con serial, con lote | F2 | **Nuevo** |
+| 4 | Chips activos bajo la barra, contador en el botón igual al número de chips, «Limpiar todo» | F3 | **Nuevo** |
+| 5 | Sin resultados con filtros: `EmptyState Variant=search` que ofrece quitarlos | F4 | **Nuevo** |
+| 6 | Mismo mecanismo en «Elegir proveedor»: estado, tipo de persona, saldo, atributos | F5 · F6 | **Nuevo** (variantes del componente) |
+| 7 | Móvil: formulario con `SupplierPicker Layout=field`, `SearchBar` con escáner y `DocumentLinesTable Layout=cards` | F7 | **sustituido**: antes `Select` de proveedor, `ProductPicker` combobox de 22 px y renglones dibujados a mano |
+| 8 | Móvil: sheet de productos con `FilterButton` y `FilterChips Layout=mobile`; `FilterPanel Layout=sheet` | F8 · F9 | **Nuevo** |
+
+### 11.5 Correcciones en las tres secciones existentes
+
+- **Proveedor ficticio**: el proveedor de ejemplo anterior, que no estaba en la lista de nombres
+  ficticios aprobados, pasa a «Distribuidora del Norte» con su NIT, contacto y correo en las tres
+  secciones (25 textos).
+- **Nueva — vacía y lista**: el `SupplierPicker` pasa a `Layout=field` (idle y selected); el botón
+  «Solo los de este proveedor» se sustituye por `FilterButton` activo con contador 1; los renglones
+  de venta (zapatilla, camiseta, bordado) pasan a renglones de compra.
+- **Nueva — móvil**: proveedor con `SupplierPicker`, buscador con `SearchBar` y renglones con
+  `DocumentLinesTable Mode=edición, Layout=cards`.
+- **Detalle — recibida en parte y móvil**: «Factura de compra» dice «Al completar la orden»; con la
+  orden a medio recibir no puede existir la factura (regla del diseño: se crea al completar).
+- **Listado**: la `BulkActionBar` llevaba acciones de producto («Precios», «Stock», «Categoría») y
+  «Seleccionar los 4.368» con 33 órdenes; ahora «Enviar al proveedor», «Descargar PDF»,
+  «Exportar», «⋯» y «Cancelar órdenes», con «Seleccionar las 33», recentrada. La paginación
+  llegaba a «175» con 33 órdenes; ahora 2 páginas. Menú de fila: «Descargar PDF» con `Download` y
+  «Ver factura de compra» con `ReceiptText` (catálogo de iconos).
+- `DocumentTotals`: el badge «Impuestos agregados» se cortaba en 310 px; en estos frames se
+  sobrescribe como «Con impuestos». El componente sigue cortándolo (duda de componente, no tocado).
+
+### 11.6 Cómo se llega y a dónde lleva
+
+Mapa en `04 Inventario` con el control real de cada punto (instancia del kit con su icono de
+catálogo) y su estado hoy: 9 entradas (proveedor ×2, producto, stock bajo mínimo, factura de
+compra, cuenta por pagar, kardex, serial, GO Assistant) y 10 salidas (proveedor, producto, kardex,
+serial, lote, factura, cuenta por pagar, asiento, PDF, etiquetas). Hoy funcionan 2 de 19; 4 están
+rotas (C6, C7, `po_id`, cuenta por pagar al listado) y 13 no existen.
+
+### 11.7 PDF de la orden de compra
+
+Clonado de la variante «Cotización» del motor único (documento propio hacia un tercero), no
+dibujado de nuevo. Carta por defecto, A4 con el mismo payload, y borrador con marca de agua y sin
+consecutivo. Diferencias bloque por bloque en `DOCUMENTOS-PDF.md` §10.
+
+### 11.8 Recuento y verificación
+
+| Medida | Valor |
+|---|---|
+| Frames nuevos | 28 (14 recepción · 10 selectores · 1 mapa · 3 PDF) |
+| Frames existentes corregidos | 7 |
+| Componentes nuevos | 4 sets, 25 variantes |
+| Variantes añadidas a componentes existentes | 5 (`SupplierPicker`) |
+| Instancias en mis secciones de `04 Inventario` | 986 |
+
+Por script, tras el último cambio:
+
+| Comprobación | Resultado |
+|---|---|
+| Secciones propias que se solapan con cualquier otra de su página | 0 (en `02`, `04` y `09`) |
+| Nodos que se solapan dentro de mis secciones | 0 |
+| Nodos fuera de su sección | 0 |
+| Instancias rotas | 0 (mis secciones y las tres corregidas) |
+| Textos de mis secciones truncados o recortados por su contenedor (medidos, no solo con truncado activado) | 0 |
+| `Icon/Monitor` visibles en mis secciones y en las tres corregidas | 0 |
+| Anotaciones dentro de frames | 0: todas las notas (R·, F·, M·) viven fuera, encima de su frame |
+
+Carril respetado: todo lo nuevo de `04 Inventario` vive en x ∈ [22.000, 36.560]. No se borró,
+movió ni revirtió ningún nodo ajeno; los únicos nodos ajenos modificados son el set
+`SupplierPicker` (variantes añadidas y filas que envuelven) y el tamaño de la sección Finanzas de
+`02 Componentes` que lo contiene.
+
+Capturas: `docs/design/figma/33-oc-*.png` (36).

@@ -895,3 +895,152 @@ principios que lo gobiernan:
    `ProductSearchCombobox`; `SupplierPicker` de `02 Componentes › Finanzas` sustituye a
    `SearchSelectCombobox` y a los dos `Select` planos de «editar» y del filtro. Es el encargo
    explícito del dueño: el mismo buscador de productos en finanzas, compras e inventario.
+
+---
+
+## I. Ampliación 2026-09-23 — recepción con variantes, seriales y lotes; PDF; selectores; conexiones
+
+Segunda pasada sobre órdenes de compra, pedida por el dueño («¿cómo es la recepción cuando hay
+seriales, lotes o kardex?, ¿tiene en cuenta las variantes?, ¿y el PDF de la orden?»). Lectura de
+código en el commit `6ac64b9a` y **verificación por el MCP de Supabase en solo lectura** el
+2026-09-23. No repite §C–§H: solo añade lo que no estaba o lo que cambió desde el 2026-09-22.
+El diseño resultante está en `PARIDAD-CARTERA-ORDENES-COMPRA.md` §11.
+
+### I.1 Lo que cambió en la base desde §D
+
+| Hecho | Estado hoy | Fuente |
+|---|---|---|
+| `stock_movements_source_check` admite `purchase_order` y `purchase_invoice` | **Sí**, desde el commit `6904f6e7` (22 orígenes). Antes la recepción subía `stock_levels` y el movimiento de kardex se rechazaba en silencio | `pg_constraint` |
+| Recepciones de orden registradas desde el arreglo | **0**. `stock_movements` con `source='purchase_order'`: 0 filas; `journal_entries` con `source='purchase_order'`: 0 | recuento |
+| `fn_create_journal_entry` acepta clave del hecho | Sí: firma de 14 argumentos con `p_fact_key` (commit `d8090114`). **Ninguna función de compras la pasa** | `pg_proc` |
+| Órdenes y renglones | 33 órdenes (`draft` 18 · `received` 7 · `sent` 5 · `cancelled` 2 · `partial` 1) y **5 renglones en total**: casi todas las órdenes no tienen renglones | recuento |
+
+### I.2 Hallazgo nuevo y grave: una recepción completa generaría hasta cuatro asientos
+
+Con el `CHECK` ya corregido, la **primera** recepción que se registre dispara, sin clave común:
+
+| # | Disparador | Qué asienta | Regla (organizaciones con la regla activa) |
+|---|---|---|---|
+| 1 | `trg_auto_journal_stock_movement` por **cada** movimiento `direction='in'` | «Entrada Ajuste»: débito **1405** / crédito **6105**, por renglón. `fn_auto_journal_stock_movement` solo excluye `initial`, `purchase` y `transfer`: **no excluye `purchase_order` ni `purchase_invoice`**, así que trata la compra como un ajuste y **abona al costo de ventas** | `inventory/adjusted` 6105 ↔ 1405 (84) |
+| 2 | `trg_auto_journal_purchase_order` al pasar a `received` | «Recepción OC-N»: débito 1405 / crédito 2105 por `purchase_orders.total` completo | `purchase_order/received` 1405/2105 (84) · `received_cash` 1405/1105 (1) |
+| 3 | `trg_auto_journal_purchase` al insertar la factura automática con `status='received'` (`purchaseOrderService.ts:857-877`) | «Compra COMP-…»: débito 1405 / crédito 2105 o 1110 | `purchase/created` (156) |
+| 4 | `trg_auto_journal_ap` al insertar la cuenta por pagar (`purchaseOrderService.ts:923-933`) | «CxP - …»: la misma regla `purchase/created` otra vez | `purchase/created` |
+
+Resultado para una compra de $ 7.905.000: el inventario (1405) se debita **tres veces** más un
+abono a 6105 por renglón. Es exactamente el patrón que el bloque 1 contable cerró para ventas
+(«un solo asiento por hecho económico») y que en compras sigue abierto. **Debe corregirse antes de
+que alguien reciba una orden** (cambios B1–B3 de §I.9). La misma exclusión falta para
+`purchase_invoice` (recepción desde factura de compra, `FacturasCompraService.ts:929`).
+
+### I.3 Variantes: existen en datos y la recepción no las muestra
+
+- Las variantes son filas de `products` con `parent_product_id`: **29.094 variantes y 7.469
+  padres**. Los atributos viven en `products.variant_data` (`jsonb`, p. ej. `{"color":"Negro","talla":"S"}`).
+- El detalle y la recepción traen el renglón con `products:product_id (id, uuid, sku, name, unit_code)`
+  (`purchaseOrderService.ts:181`): **ni `variant_data` ni el padre**. Dos renglones del mismo
+  producto en talla M y L se ven como dos «Guante de nitrilo» idénticos; solo el SKU los separa.
+- `getProducts` sí trae `variant_data` y `parent_product_id` (`:1026`) y arma `parent_name`
+  (`:1103-1125`), pero **solo alimenta el combobox de alta**; lo que se guarda en la orden es el
+  `product_id` de la variante y ese contexto se pierde al volver a leerla.
+
+### I.4 Seriales: cuatro defectos que se suman a §F.C4–C5
+
+| # | Qué pasa | Dónde |
+|---|---|---|
+| S1 | **Unicidad global**: `serial_numbers_serial_key UNIQUE (serial)` sin `organization_id` ni `product_id`. Un serial ya registrado por **otra organización** impide registrarlo aquí | índice verificado por MCP |
+| S2 | La validación de pantalla filtra por organización (`validateSerialExists(trimmed, organizationId)`) y responde «libre»; el `INSERT` choca con el índice global y el error muere en un `console.warn` | `SerialCaptureSection.tsx:60` · `purchaseOrderService.ts:751-753` |
+| S3 | **Segunda recepción parcial de un producto con serial**: el diálogo precarga `serials_received` (`OrdenCompraDetalle.tsx:109`) y el servicio crea `item.serials.slice(0, delta)` (`purchaseOrderService.ts:738`): toma los **primeros** —ya creados— y los nuevos no se crean nunca; `serials_received` se sobrescribe (`:680`) | servicio |
+| S4 | Datos: 4 productos con `track_serial`, 3 con `auto_generate_serial`, 102 seriales y **0 con `purchase_order_id`**; `products.serial_pattern` existe y ninguna pantalla de compras lo usa para «Generar» | recuento |
+
+### I.5 Lotes: la recepción no puede capturarlos
+
+- `products` **no tiene marca de lote** (columnas de seguimiento: `track_stock`, `track_serial`,
+  `serial_pattern`, `auto_generate_serial`). No hay forma de saber qué producto exige lote.
+- `lots` (3 filas, 1 con vencimiento) **no tiene `organization_id` ni índice único
+  `(product_id, lot_code)`**: solo `lots_pkey`. `purchase_order_items` no tiene lote ni
+  vencimiento. `stock_levels`: **0 de 44.627** filas con lote.
+- `incrementOnPurchase` cablea `lot_id` nulo en la búsqueda, en el alta de existencias y en el
+  movimiento (`stockMovementService.ts:405`, `:438`, `:458`). Cualquier implementación con lotes
+  debe seguir el patrón `SELECT … FOR UPDATE` + `UPDATE`/`INSERT`, nunca `upsert` con
+  `onConflict` (trampa del índice con `lot_id` nulo, `AUDITORIA-KARDEX-LOTES.md` §G.4).
+
+### I.6 Factura automática: tres defectos más
+
+| # | Qué pasa | Dónde |
+|---|---|---|
+| F1 | Fechas con `new Date().toISOString().split('T')[0]`, **prohibido** por la regla 1 de fechas: toma el día UTC, no el de la organización. Entre las 19:00 y las 24:00 de Colombia la factura y su deduplicación caen en el día siguiente | `purchaseOrderService.ts:812`, `:834`, `:837` |
+| F2 | `invoice_purchase.currency` tiene **default `'USD'`**; el código cablea `'COP'`. Sin el cableado, la factura saldría en dólares | columna · `:866` |
+| F3 | La cuenta por pagar se inserta **sin `branch_id`** (lo pone `trg_branch_default`, que no es la sucursal de la orden) y la escribe la pantalla: no hay disparador que cree la cuenta por pagar al insertar la factura, como sí existe para ventas (`create_account_receivable`) | `:923-933` · triggers de `invoice_purchase` |
+
+### I.7 El PDF de la orden de compra no existe
+
+`grep` sobre `src/`: ninguna ruta, servicio ni componente genera o imprime una orden de compra.
+El botón «Descargar PDF» del detalle solo existía en Figma y el motor de documentos
+(`DOCUMENTOS-PDF.md` §5) no tenía la variante. La orden tampoco tiene **consecutivo propio**:
+«OC-129» es `purchase_orders.id`, una secuencia global de todas las organizaciones, no un número
+por organización.
+
+### I.8 Permisos, selectores y conexiones
+
+- **Permiso de recepción**: `permissions` tiene `inventory.view/create/edit/delete/adjust/transfer`;
+  **no existe uno para recibir mercancía**. Hoy recibe cualquiera que pueda abrir la orden.
+- **Selectores**: el diálogo de producto y el de proveedor mostraban chips de filtro («Solo del
+  proveedor», «Con stock», «Solo activos», «Empresa»…) sin `FilterButton` ni `FilterPanel` que los
+  expliquen; en «Nueva», el `SupplierPicker` se dibujaba como su popover de recientes metido en el
+  flujo del formulario. Resuelto en el diseño (PARIDAD §11.3).
+- **Conexiones**: 9 entradas y 10 salidas inventariadas en Figma («cómo se llega y a dónde
+  lleva»); hoy funcionan 2 de 19 (ficha del proveedor y GO Assistant). Rotas: proveedor → nueva
+  (`?supplier=` ignorado, C7), proveedor → detalle (id numérico, C6), factura de compra → orden
+  (`po_id` nulo en 56 de 56), orden → cuenta por pagar (va al listado). Inexistentes: producto,
+  stock bajo mínimo, kardex, serial, lote, asiento, PDF y etiquetas.
+- **GO Assistant**: `assistant_create_purchase_order(integer, integer, uuid, jsonb)` existe (no es
+  `SECURITY DEFINER`) y crea borradores.
+
+### I.9 Cambios de backend y base de datos que exige el diseño (no aplicados)
+
+**Base de datos — aditivos** (cada uno con su `.sql` y su reversión, `POLITICA-MIGRACIONES.md`):
+
+| # | Cambio | Para qué |
+|---|---|---|
+| D1 | `purchase_receipts` (uuid, `organization_id`, `branch_id` NOT NULL, `purchase_order_id`, `number` por organización, `received_at timestamptz`, `received_by uuid`, `supplier_document text`, `notes text`, `status` `posted`/`reversed`) con RLS por pertenencia **y** restrictiva `app_branch_access(branch_id)` | La recepción es un documento (REC-0053) con autor y fecha |
+| D2 | `purchase_receipt_items` (`receipt_id`, `purchase_order_item_id`, `product_id`, `qty > 0`, `unit_cost`, `lot_id` nulo, `condition` `available`/`damaged`, `stock_movement_id`): una fila por renglón **y por lote** | Varios lotes por renglón; averías que no entran como disponibles |
+| D3 | `serial_numbers.purchase_receipt_item_id` (nulo) | Trazar cada serial a su recepción |
+| D4 | `products.track_lots boolean default false` | Saber qué producto exige lote y vencimiento |
+| D5 | `lots.organization_id` (nulo, se rellena desde `products`) e índice único `(product_id, lot_code)` creado `concurrently` | Tenencia propia y no repetir lotes (KARDEX-LOTES §K.3) |
+| D6 | `purchase_order_items`: `tax_rate numeric`, `tax_code text`, `discount_amount numeric default 0`, `supplier_sku text` | Impuestos y referencia del proveedor en la orden, el PDF y la factura |
+| D7 | `purchase_orders`: `number integer` (consecutivo por organización), `sent_at`, `closed_at`, `cancelled_reason` | «OC-131» propio de la organización; estado `closed` alcanzable |
+| D8 | Permiso `inventory.receive` en `permissions` | Recepción con permiso propio, resuelto en servidor |
+| D9 | `stock_movements.created_by` y `avg_cost_after` (KARDEX-LOTES §K.3) | Autor y costo promedio tras cada entrada |
+
+**Base de datos — cambios de comportamiento** (requieren decisión, ver dudas del informe):
+
+| # | Cambio |
+|---|---|
+| B1 | `fn_auto_journal_stock_movement`: excluir `purchase_order` y `purchase_invoice`, igual que `purchase` |
+| B2 | Un asiento por hecho de compra con `p_fact_key` (`purchase:receipt:{id}` o `accrual:invoice_purchase:{id}`): `fn_auto_journal_purchase_order`, `fn_auto_journal_purchase` y `fn_auto_journal_ap` dejan de duplicarse |
+| B3 | Disparador `AFTER INSERT` en `invoice_purchase` que cree la cuenta por pagar (paridad con `create_account_receivable`); la aplicación deja de insertar en `accounts_payable` |
+| B4 | Unicidad de seriales por `(organization_id, product_id, serial)` en lugar de global. Toca un índice de una tabla con datos (102 filas): el nuevo se crea `concurrently` y el viejo solo se retira con autorización |
+
+**RPC** (todas `SECURITY DEFINER`, organización tomada de la sesión, `REVOKE … FROM anon`):
+
+| # | Función | Qué hace en una sola transacción |
+|---|---|---|
+| R1 | `receive_purchase_order(p_order uuid, p_payload jsonb)` | Valida `inventory.receive` y `app_branch_access`; bloquea los renglones (`FOR UPDATE`); **cantidades incrementales** con guarda de sobre-recepción; cuadre de lotes; seriales únicos; decisión sobre vencidos; crea `purchase_receipts` e `items`; suma `received_quantity`; `stock_levels` por lote con `SELECT … FOR UPDATE` (sin `onConflict`); un `stock_movements` por renglón y lote con `source_id` = renglón de recepción, autor y `avg_cost_after`; crea los seriales; deriva el estado; opcionalmente crea la factura (R3). Devuelve el resumen del toast |
+| R2 | `preview_purchase_receipt(p_order uuid, p_payload jsonb)` (solo lectura) | Lo que pinta `ReceiptImpact`: movimientos, costo promedio antes → después y estado resultante |
+| R3 | `create_invoice_from_purchase_order(p_order uuid, p_supplier_number text, p_issue_date date, p_due_date date)` | Factura con `po_id`, `number_ext` = número real del proveedor, moneda de la organización, impuestos por renglón y fechas con `fn_today_for_org`; la cuenta por pagar la crea B3 |
+| R4 | `next_purchase_order_number(p_org integer)` | Consecutivo por organización para D7, sin carrera |
+
+**Aplicación**:
+
+- `purchaseOrderService`: `receiveItems`, `receiveItemsWithSerials` y `receiveAllPending` pasan a
+  llamar a R1 (desaparecen las ≈4+5N consultas); el embed de renglones trae `variant_data`,
+  `parent_product_id`, `track_serial`, `track_lots` y el nombre del padre (C4, C5, §I.3);
+  `getProducts` mapea `track_serial`; `.single()` → `.maybeSingle()`; fuera
+  `toISOString().split('T')[0]`.
+- `NuevaOrdenCompraForm`: lee `?supplier=` y `?product=`; `SupplierPicker Layout=field`;
+  `ProductPicker Mode=purchase` con `FilterButton`, `FilterPanel` y `FilterChips`.
+- Enlaces: `ProveedorDetalle.tsx:392` por uuid (C6); `DetalleFacturaCompra` muestra «OC-N» por
+  `po_id`; `OrdenCompraDetalle` enlaza la cuenta por pagar por id; kardex, serial y lote enlazan
+  a la orden a través de la recepción.
+- PDF: variante «orden de compra» del motor único (`DOCUMENTOS-PDF.md` §10) y ruta
+  `GET /api/inventario/ordenes-compra/[uuid]/pdf` que empieza por `getServerOrgContext()`.

@@ -568,3 +568,53 @@ sitios que lo usan lo cargan desde `cdn.jsdelivr.net` en tiempo de ejecución
 (`usePrintPreview.ts:88-99` y `shipmentLabelPrinter.ts:500-549`). Una etiqueta que necesita internet
 para imprimirse no sirve en una caja sin red: el bloque de etiqueta debe usar el paquete instalado,
 igual que el resto del motor.
+
+---
+
+## 10. Orden de compra — otra variante del mismo motor (2026-09-23)
+
+Página `09 Documentos`, sección «Orden de compra — PDF (Nuevo)», debajo de todo lo anterior:
+**Carta (enviada)**, **A4 (enviada)** y **Carta (borrador)**. Capturas:
+`figma/33-oc-pdf-carta.png`, `33-oc-pdf-a4.png`, `33-oc-pdf-carta-borrador.png`.
+
+Hoy no existe: ninguna ruta ni servicio imprime una orden de compra
+(`AUDITORIA-CARTERA-ORDENES-COMPRA.md` §I.7).
+
+### 10.1 De qué variante parte
+
+De la **cotización**, no de la factura de compra. Las dos son documentos que **emite Mi empresa
+S.A.S. hacia un tercero** y ninguno es fiscal: tabla en azul de marca, sin CUFE, sin QR DIAN y con
+pie «no es una factura». La factura de compra, en cambio, la emite el proveedor y va en gris
+(§8.5). Se clonó el frame aprobado y se cambiaron solo los datos y los bloques que definen el tipo.
+
+### 10.2 Qué cambia bloque por bloque
+
+| # | Bloque | Orden de compra |
+|---|---|---|
+| 4 | Título y numeración | «Orden de compra · OC-131», prefijo OC, documento comercial. Sin QR: el hueco lo ocupa «Confirme la orden» con el correo de compras |
+| 5 | Contraparte | **Proveedor (destinatario)**: razón social, NIT y DV, dirección, contacto y plazo de crédito |
+| 6 | Metadatos | Fecha de emisión, **entrega esperada**, moneda, **comprador**, **entregar en** (sucursal), dirección de entrega, condición de pago, anticipo pactado |
+| 7 | Líneas | «Costo unit.» en lugar de «Precio unit.»; la descripción lleva la **variante** (talla y color) y la marca de seguimiento (con serial, con lote y vencimiento) y la referencia del proveedor |
+| 8 | Retenciones | **No se practican en la orden**: se calculan en la factura del proveedor. El desglose muestra solo impuestos estimados por tarifa del renglón |
+| 9 | Pagos y saldo | Sustituido por «Condiciones de la compra»: entrega, lugar, rotulado de seriales y lotes, flete; y en totales «Anticipo pactado» y «A pagar con la factura · 30 días» |
+| 11 | Términos | Aceptación tácita a los 2 días hábiles; cambios de cantidad o costo exigen una orden modificada |
+| 12 | Firma | «Aceptación del proveedor» |
+| 13 | Pie legal | «Esta orden de compra NO es una factura ni un documento soporte: no genera obligación tributaria.» |
+
+### 10.3 Tamaños y estados
+
+- **Carta por defecto** (§8.4). **A4** con el mismo payload y otro `PageSpec` (`a4`): márgenes
+  laterales de 9 mm para conservar la rejilla de 726 px y el pie baja 67 px.
+- **Borrador**: marca de agua BORRADOR, «Sin consecutivo», estado «Borrador» y pie «no enviado al
+  proveedor». Se descarga, pero no se envía.
+- **Enviada** es el estado en que el PDF sale hacia el proveedor (al pasar la orden a `sent`).
+
+### 10.4 De dónde sale cada dato y qué falta
+
+`purchase_orders` + `purchase_order_items` + `suppliers` + `products` (`variant_data`,
+`track_serial`) + los bloques comunes del motor (`organizations`, `branches`). Faltan en la base
+(`AUDITORIA-CARTERA-ORDENES-COMPRA.md` §I.9): **consecutivo por organización** (D7: hoy «OC-129»
+es el id global), **impuesto, descuento y referencia del proveedor por renglón** (D6: hoy la orden
+no guarda impuesto) y la marca de lote del producto (D4). Ruta propuesta:
+`GET /api/inventario/ordenes-compra/[uuid]/pdf`, que empieza por `getServerOrgContext()` y usa
+`buildDocumentHTML(payload, pageSpec)` como las demás variantes del motor.

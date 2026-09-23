@@ -1,12 +1,11 @@
 'use client';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { Bot, Bug } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { isAuthenticated } from '@/lib/supabase/auth-manager';
 import { AppHeader } from '@/components/shell/header/AppHeader';
-import { abrirReportarProblema } from '@/components/shell/header/ReportarProblema';
 import { CabeceraMovilProvider } from '@/components/shell/header/cabeceraMovil';
 import type { PaginaBuscable } from './Header/GlobalSearch';
 import AIAssistantPanel from './Header/AIAssistantPanel';
@@ -935,22 +934,6 @@ export const AppLayout = ({
         onAlternarTema={toggleTheme}
         onCerrarSesion={handleSignOut}
         cerrandoSesion={loading}
-        accionesDrawer={
-          <button
-            type="button"
-            onClick={() => {
-              setSidebarOpen(false);
-              abrirReportarProblema();
-            }}
-            // Misma fila que un módulo del drawer (NavItem, 48 px con chip de 28).
-            className="group flex h-12 w-full items-center gap-2.5 rounded-lg pl-1.5 pr-2 outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand"
-          >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-subtle text-fg-secondary group-hover:text-fg">
-              <Bug size={18} strokeWidth={1.75} aria-hidden="true" />
-            </span>
-            <span className="min-w-0 flex-1 truncate text-left text-sm font-medium text-fg">{tHeader('reportProblemShort')}</span>
-          </button>
-        }
       />
       
       {/* Área de contenido principal */}

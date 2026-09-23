@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  Bug,
   ArrowLeftRight,
   Building2,
   Check,
@@ -50,6 +51,7 @@ import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { abrirReportarProblema } from '../header/ReportarProblema';
 import { DownloadDesktopDialog } from '@/components/pos/configuracion/printers/DownloadDesktopDialog';
 import {
   MAX_SAVED_ACCOUNTS,
@@ -467,6 +469,7 @@ function UsoDelPlan({ uso, onCerrar }: { uso: PlanSesion['uso']; onCerrar: () =>
 
 export function PanelSesion({ usuario, organizacion, tema, onAlternarTema, onCerrarSesion, cerrandoSesion, onCerrar, modo }: PanelSesionProps) {
   const t = useTranslations('session');
+  const tHeader = useTranslations('header');
   const router = useRouter();
   const locale = useLocale() as Locale;
   const { datos, cargando } = usePlanSesion();
@@ -739,6 +742,18 @@ export function PanelSesion({ usuario, organizacion, tema, onAlternarTema, onCer
         onClick={onCerrar}
         cola={<ChevronRight size={16} aria-hidden="true" className="text-fg-muted" />}
       />
+      {/* En móvil «Reportar problema» vive en «Mi cuenta» (Figma SessionSheet);
+          en escritorio es el botón del header. */}
+      {modo === 'drawer' && (
+        <Fila
+          icono={Bug}
+          titulo={tHeader('reportProblemShort')}
+          onClick={() => {
+            onCerrar();
+            abrirReportarProblema();
+          }}
+        />
+      )}
 
       <div className="h-px bg-line" />
 

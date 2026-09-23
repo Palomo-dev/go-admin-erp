@@ -31,11 +31,19 @@ import { cambiarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { getOrganizationLogoUrl } from '@/lib/supabase/imageUtils';
 import { colorOrganizacion, identidadSucursal } from '@/lib/utils/identidadVisual';
 import { useCapacidades } from '@/lib/navigation/useCapacidades';
-import { Isotipo } from '../marca/Firma';
 import { usePlanSesion } from '../sesion/usePlanSesion';
 import { useOrganizacionesUsuario, type OrganizacionUsuario } from './useOrganizacionesUsuario';
 
 // ─── Piezas ─────────────────────────────────────────────────────────────────
+
+const PALABRAS_MENORES = new Set(['de', 'del', 'la', 'las', 'el', 'los', 'y', 'e', 'sas', 's.a.s.', 'sa', 's.a.', 'ltda', 'ltda.']);
+
+/** «Perros de Diego» → «PD»; «Mi empresa S.A.S.» → «ME». */
+export function iniciales(nombre: string): string {
+  const palabras = nombre.trim().split(/\s+/).filter((p) => p && !PALABRAS_MENORES.has(p.toLowerCase()));
+  const letras = (palabras.length ? palabras : [nombre.trim()]).slice(0, 2).map((p) => p[0] ?? '');
+  return letras.join('').toUpperCase() || '?';
+}
 
 export function AvatarOrganizacion({
   id,
@@ -53,12 +61,12 @@ export function AvatarOrganizacion({
     <span
       aria-hidden="true"
       className={cn(
-        'relative inline-flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md text-xs font-semibold text-white',
+        'relative inline-flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md text-[10px] font-semibold tracking-tight text-white',
         url ? 'bg-surface ring-1 ring-line' : colorOrganizacion(id),
         className
       )}
     >
-      {url ? <Image src={url} alt="" fill sizes="24px" className="object-cover" /> : (nombre.trim()[0] ?? '?').toUpperCase()}
+      {url ? <Image src={url} alt="" fill sizes="24px" className="object-cover" /> : iniciales(nombre)}
     </span>
   );
 }
@@ -319,7 +327,13 @@ export function OrgSwitcher({ variante, organizacionId, organizacionNombre }: Or
   const t = useTranslations('header');
   const { branches, selectedBranchId, isAllSelected, isLoading: cargandoSucursales } = useBranch();
   const { datos: plan } = usePlanSesion();
-  const { recargar } = useOrganizacionesUsuario();
+  const { organizaciones, recargar } = useOrganizacionesUsuario();
+  // Logo de la organización activa (o sus iniciales), no el isotipo de GO: así
+  // se sabe de un vistazo en qué empresa se está trabajando.
+  const actual = organizaciones?.find((o) => o.id === organizacionId) ?? null;
+  const avatarActual = organizacionId ? (
+    <AvatarOrganizacion id={organizacionId} nombre={actual?.nombre ?? organizacionNombre} logoUrl={actual?.logoUrl} />
+  ) : null;
   const [abierto, setAbierto] = useState<'org' | 'sucursal' | null>(null);
   const [creandoOrg, setCreandoOrg] = useState(false);
 
@@ -353,7 +367,7 @@ export function OrgSwitcher({ variante, organizacionId, organizacionNombre }: Or
           aria-haspopup="dialog"
           className={cn(disparador, 'max-w-full px-1')}
         >
-          <Isotipo tamano={24} />
+          {avatarActual}
           <span className="truncate">
             {organizacionNombre || t('organization')}
             {mostrarSucursal && nombreSucursal && <span className="text-fg-muted"> / {nombreSucursal}</span>}
@@ -398,7 +412,7 @@ export function OrgSwitcher({ variante, organizacionId, organizacionNombre }: Or
 
   return (
     <div className="flex min-w-0 items-center gap-0.5">
-      <Isotipo tamano={24} className="mr-1" />
+      <span className="mr-1 flex">{avatarActual}</span>
       <Popover open={abierto === 'org'} onOpenChange={(o) => setAbierto(o ? 'org' : null)}>
         <PopoverTrigger asChild>
           <button type="button" className={cn(disparador, 'max-w-[320px]')} aria-label={t('switchOrganization', { name: organizacionNombre })}>

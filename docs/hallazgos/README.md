@@ -71,6 +71,7 @@ vive fuera del repo, en `docs/auditoria-finanzas/` (ignorado por `.gitignore`).
 | [F-56](F-56.md) | La nota crédito perdía su IVA en la cabecera | Alta | Corregido (2026-09-23) | Cierre contable |
 | [F-57](F-57.md) | Asientos cuyo documento no existe o está roto | Media | Abierto: auditoría manual | Cierre contable |
 | [F-58](F-58.md) | Nota crédito sobre factura pagada deja saldo a favor del cliente sin documento | Alta | Propuesta en ADR-CC-008, sin implementar | Cierre contable |
+| [F-59](F-59.md) | La cuenta por pagar duplicaba el devengo de la factura de compra | Alta | Corregido (52 contra-asientos, ADR-CC-009, 2026-09-23) | Cierre contable |
 
 ## Notas
 

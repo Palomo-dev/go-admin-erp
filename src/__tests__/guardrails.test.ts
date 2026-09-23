@@ -1865,3 +1865,47 @@ describe('25. Shell: un solo catálogo de navegación y nada decidido por el nom
     expect(infractores).toEqual([]);
   });
 });
+
+describe('26. Compras: un solo asiento por hecho, con la factura (ADR-CC-009)', () => {
+  // La compra se contabiliza solo con la factura del proveedor
+  // (fn_auto_journal_purchase). La cuenta por pagar y la recepción de la orden
+  // generaban asientos del mismo hecho (F-59), y el disparador de ajustes de
+  // inventario trataba las entradas por compra como ajuste.
+  const dirMigraciones = path.join(REPO_ROOT, 'supabase', 'migrations');
+  const migraciones = fs
+    .readdirSync(dirMigraciones)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .map((f) => ({ nombre: f, sql: readFile(path.join(dirMigraciones, f)) }));
+
+  const ultimaQueMenciona = (patron: RegExp) => [...migraciones].reverse().find((m) => patron.test(m.sql));
+
+  test.each(['trg_auto_journal_ap', 'trg_auto_journal_purchase_order'])(
+    '%s queda deshabilitado y ninguna migración posterior lo reactiva',
+    (disparador) => {
+      const patron = String.raw`(enable|disable)\s+trigger\s+` + disparador + String.raw`\b`;
+      const ultima = ultimaQueMenciona(new RegExp(patron, 'i'));
+      expect(ultima?.nombre).toBeDefined();
+      const ordenes = [...ultima!.sql.matchAll(new RegExp(patron, 'gi'))];
+      expect(ordenes[ordenes.length - 1][1].toLowerCase()).toBe('disable');
+    }
+  );
+
+  test('el disparador de ajustes de inventario no contabiliza compras ni traslados', () => {
+    const ultima = ultimaQueMenciona(/function\s+public\.fn_auto_journal_stock_movement\s*\(/i);
+    expect(ultima).toBeDefined();
+    const cuerpo = ultima!.sql.slice(ultima!.sql.search(/function\s+public\.fn_auto_journal_stock_movement\s*\(/i));
+    const exclusion = cuerpo.match(/IF\s+NEW\.source\s+IN\s*\(([^)]*)\)\s*THEN\s*RETURN\s+NEW/i);
+    expect(exclusion).not.toBeNull();
+    for (const origen of ['purchase_order', 'purchase_invoice', 'transfer_out', 'transfer_in', 'purchase', 'transfer', 'initial']) {
+      expect(exclusion![1]).toContain(`'${origen}'`);
+    }
+  });
+
+  test('ningún servicio de compras escribe asientos por su cuenta', () => {
+    for (const archivo of ['lib/services/purchaseOrderService.ts', 'components/finanzas/facturas-compra/FacturasCompraService.ts']) {
+      const src = readFile(path.join(SRC_ROOT, archivo));
+      expect(src).not.toMatch(/from\(\s*['"`]journal_(entries|lines)['"`]\s*\)\s*\.\s*(insert|upsert)/);
+    }
+  });
+});

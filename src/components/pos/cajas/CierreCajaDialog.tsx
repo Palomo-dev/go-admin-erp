@@ -47,8 +47,10 @@ interface CierreCajaDialogProps {
 export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpen, onOpenChange }: CierreCajaDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   
-  // Usar estado controlado si se proporciona, sino usar estado interno
-  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  // Usar estado controlado si se proporciona, sino usar estado interno.
+  // Controlado = la pantalla pone su propio botón: no se dibuja el disparador.
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : internalOpen;
   const setOpen = onOpenChange || setInternalOpen;
   const [loading, setLoading] = useState(false);
   const [loadingSummary, setLoadingSummary] = useState(true);
@@ -188,7 +190,9 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
 
     setLoading(true);
     try {
-      const closedSession = await CajasService.closeSession(formData);
+      // Se cierra ESTA caja (no «la activa»): desde «Cajas abiertas» o el detalle
+      // puede ser la de otro cajero, y ese cierre lo autoriza el servidor.
+      const closedSession = await CajasService.closeSession(formData, session);
       toast.success(closedSession.pending_sync ? 'Caja cerrada sin conexión' : 'Caja cerrada exitosamente', {
         description: (showExpectedBlind ? `Diferencia total: ${formatCurrency(Math.abs(getTotalDifference()))}` : 'Caja cerrada')
           + (closedSession.pending_sync ? ' · pendiente de sincronizar (totales con las ventas locales)' : '')
@@ -208,14 +212,16 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
 
   return (
     <>
-      <Button 
-        size="lg"
-        className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
-        onClick={() => setOpen(true)}
-      >
-        <Lock className="h-5 w-5 mr-2" />
-        Cerrar Caja
-      </Button>
+      {!controlled && (
+        <Button 
+          size="lg"
+          className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+          onClick={() => setOpen(true)}
+        >
+          <Lock className="h-5 w-5 mr-2" />
+          Cerrar Caja
+        </Button>
+      )}
       {open && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
           <div className="min-h-screen px-1 sm:px-4 py-2 sm:py-8 flex items-center justify-center">

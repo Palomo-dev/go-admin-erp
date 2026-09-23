@@ -17,6 +17,9 @@ import { toast } from 'sonner';
 interface MovimientosDialogProps {
   onMovementAdded: (movement: CashMovement) => void;
   disabled?: boolean;
+  /** Modo controlado: la pantalla pone su propio botón y no se dibuja el disparador. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const CONCEPTS_IN = [
@@ -37,8 +40,11 @@ const CONCEPTS_OUT = [
   'Otro egreso'
 ];
 
-export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDialogProps) {
-  const [open, setOpen] = useState(false);
+export function MovimientosDialog({ onMovementAdded, disabled, open: controlledOpen, onOpenChange }: MovimientosDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('in');
   const [formData, setFormData] = useState<CashMovementData>({
@@ -116,16 +122,18 @@ export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDial
 
   return (
     <>
-      <Button 
-        size="lg"
-        variant="outline"
-        disabled={disabled}
-        className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-        onClick={() => setOpen(true)}
-      >
-        <Plus className="h-5 w-5 mr-2" />
-        Registrar Movimiento
-      </Button>
+      {!controlled && (
+        <Button 
+          size="lg"
+          variant="outline"
+          disabled={disabled}
+          className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          onClick={() => setOpen(true)}
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          Registrar Movimiento
+        </Button>
+      )}
       {open && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
           <div className="min-h-screen px-1 sm:px-4 py-2 sm:py-8 flex items-center justify-center">

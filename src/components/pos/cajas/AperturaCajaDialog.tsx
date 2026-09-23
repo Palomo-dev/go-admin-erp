@@ -19,10 +19,16 @@ import { toast } from 'sonner';
 interface AperturaCajaDialogProps {
   onSessionOpened: (session: CashSession) => void;
   disabled?: boolean;
+  /** Modo controlado: la pantalla pone su propio botón (PageHeader, EmptyState) y no se dibuja el disparador. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDialogProps) {
-  const [open, setOpen] = useState(false);
+export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlledOpen, onOpenChange }: AperturaCajaDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
   const [loading, setLoading] = useState(false);
   const [userName, setUserName] = useState<string>('');
   const [cashMode, setCashMode] = useState<'branch' | 'user'>('branch');
@@ -108,15 +114,17 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
 
   return (
     <>
-      <Button 
-        size="lg"
-        disabled={disabled}
-        className="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
-        onClick={() => setOpen(true)}
-      >
-        <Lock className="h-5 w-5 mr-2" />
-        Abrir Caja
-      </Button>
+      {!controlled && (
+        <Button 
+          size="lg"
+          disabled={disabled}
+          className="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+          onClick={() => setOpen(true)}
+        >
+          <Lock className="h-5 w-5 mr-2" />
+          Abrir Caja
+        </Button>
+      )}
       {open && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
           <div className="min-h-screen px-1 sm:px-4 py-2 sm:py-8 flex items-center justify-center">

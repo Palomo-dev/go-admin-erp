@@ -46,7 +46,6 @@ set queda por anotar en la próxima tanda.
 | Hoja de acciones móvil | captura `47-clientes-movil-hoja-de-acciones.png` | `kit/ActionSheet.tsx` (sobre `ui/sheet`) | creado |
 | `BulkActionBar` (`Layout=desktop` · `mobile`) | instancia `518:63246` | `kit/BulkActionBar.tsx` | creado |
 | `ListCard` (`Selección=no · sí`) | `580:277858` | `kit/ListCard.tsx` | creado |
-| `Avatar Size=sm Type=initials` | — (captura `15-clientes-catalogo-listo.png`) | `kit/AvatarIniciales.tsx` | creado (listado de Clientes) |
 | `EmptyState` (`empty · search · error · forbidden`) + `EmptyStateSinSucursal` | — (capturas `09-kit-listas.png`, `47-clientes-movil-sin-resultados.png`) | `kit/EmptyState.tsx` (variante `sinSucursal`) | creado |
 | `Pagination Layout=full` | instancia `518:63238` | `kit/Pagination.tsx` | creado; **`ui/DataTablePagination` pasa a delegar aquí** (24 pantallas heredan la paginación única) |
 | `Pagination Layout=compact` | captura `47-proveedores-movil-referencia.png` | `kit/PaginationCompact.tsx` | creado |
@@ -56,6 +55,8 @@ set queda por anotar en la próxima tanda.
 | `FormField` (default · focus · error) | — | `kit/FormField.tsx` | creado (envuelve `Input`, `PhoneInput`, `SearchSelect`, `Select`…) |
 | `SectionCard` / `FormSection` | — | `kit/FormSection.tsx` | creado |
 | `SegmentedControl` | — | `kit/SegmentedControl.tsx` | creado |
+| Botón de rango de fechas («📅 1 – 22 sep 2026 ▾») | frame `680:407222` (Cajas — historial) | `kit/DateRangeButton.tsx` + `kit/rangoFechas.ts` | creado (tanda de cajas) |
+| Acción visible de fila con motivo si está deshabilitada (ojo · «🔒 Cerrar» + tooltip) | frames `680:404395` y `680:405300` (Cajas abiertas) | `kit/AccionRapida.tsx` | creado (tanda de cajas) |
 | `Button`, `IconButton` | `9:343`, `9:384` | `ui/button.tsx` | existía; el kit pinta sus botones internos con los mismos tamaños (sm 32 · md 40) |
 | `Select`, `SearchSelect`, `PhoneInput`, `Sheet`, `Skeleton`, `ConfirmDialog`, `Tooltip` | — | `ui/*` | existían; se reutilizan sin cambios |
 | `MobileHeader Mode=page` | `48:2550` | `shell/header/cabeceraMovil.tsx` | existía; `PageHeader` lo alimenta con `useCabeceraMovil` |
@@ -255,10 +256,6 @@ con selección; en móvil tapa el `MobileTabBar`. Contador · «Seleccionar los 
   onLimpiar={() => setSeleccion(new Set())} />
 ```
 
-Una acción con `menu: GrupoMenuMasivo[]` (`{ titulo?, acciones: AccionFila[] }`) abre un menú
-en lugar de ejecutar `onClick`: «Roles ▾» de Clientes con los grupos «Agregar rol» y «Quitar rol».
-En móvil los grupos se aplanan en la hoja («Agregar rol: Cliente», `aplanarMenuMasivo`).
-
 ### `ListCard` · Figma `580:277858`
 
 Tarjeta móvil de 358 px: icono en caja tintada de 40, título 14/20 medium en una línea,
@@ -267,19 +264,6 @@ Toda la tarjeta abre el detalle; en modo selección gana casilla y borde de marc
 
 Props: `icono`, `titulo`, `subtitulo?`, `meta?`, `valor?`, `estado?`, `onClick?`,
 `acciones?`, `seleccionable?`, `seleccionado?`, `onSeleccionChange?`.
-
-Clientes móvil pasa su avatar de iniciales por `miniatura` (`<AvatarIniciales tamano="md" />`) y
-conserva su información (nombre, Persona/Empresa, documento, contacto, correo, teléfono), un dato
-por línea con elipsis.
-
-Con `onMantenerPulsado` la tarjeta entra en modo selección al mantenerla pulsada 500 ms (o con
-clic derecho) y, en modo selección, tocarla alterna su casilla en lugar de abrir el detalle
-(Figma Clientes móvil, «selección múltiple»). En `DataTable`: `onMantenerPulsado={() => ctx.alternar(true)}`.
-
-### `AvatarIniciales`
-
-Círculo Azul GO con dos iniciales o la foto (si falla, vuelve a las iniciales). `nombre`, `src?`,
-`tamano` (`sm` 32 · `md` 40 · `lg` 64). Un solo color: en el listado el color no significa nada.
 
 ### `EmptyState`
 
@@ -339,6 +323,36 @@ cajas, facturas). **Clientes y proveedores no lo llevan.**
 `opciones: { valor, etiqueta, icono?, contador?, deshabilitada?, soloIcono? }[]`, `valor`,
 `onValorChange`, `etiqueta` o `aria-labelledby`, `tamano`, `anchoCompleto`. Es un
 `radiogroup` con foco itinerante (flechas, Inicio, Fin).
+
+### `DateRangeButton` · `rangoFechas` · Figma `680:407222`
+
+Botón de 40 px de la barra del listado, junto al buscador: icono de calendario, rango
+(«1 – 22 sep 2026», «28 ago – 3 sep 2026») y chevron. Abre un panel con atajos (Hoy, Ayer,
+Últimos 7 días, Últimos 30 días, Este mes, Mes pasado) y dos campos de día.
+
+**Días calendario puros** (`YYYY-MM-DD`): el kit no decide la zona horaria. La pantalla pasa
+`hoy` con `useFormatDate().getToday()` y convierte a instantes con `toInstant(desde)` y
+`toInstant(addPlainDays(hasta, 1))` (hasta exclusivo) al consultar.
+
+| Prop | Tipo |
+|---|---|
+| `valor`, `onValorChange` | `RangoFechas = { desde, hasta }` |
+| `hoy` | día de la organización |
+| `etiqueta`, `max` (por defecto `hoy`), `deshabilitado` | |
+
+`rangoFechas.ts`: `etiquetaRango`, `presetsRango(hoy)`, `presetDe`, `normalizarRango`,
+`esFechaPlana`, `inicioDeMes`. Con `useListadoServidor` el rango va como dos filtros
+(`desde`, `hasta`) en la URL.
+
+### `AccionRapida` · Figma `680:404395`, `680:405300`
+
+La acción visible de una fila (`DataTable accionesRapidas`), 32 px: solo icono («Ver
+detalle», con tooltip) o botón con texto («🔒 Cerrar»). Con `deshabilitada` + `motivo`
+queda atenuada, **sigue siendo enfocable** (`aria-disabled`) y el motivo sale en un tooltip
+oscuro y en `aria-describedby` («Solo el cajero que abrió la caja o un administrador puede
+cerrarla»). El clic no llega a la fila.
+
+Props: `etiqueta`, `icono`, `onClick` o `href`, `soloIcono`, `deshabilitada`, `motivo`.
 
 ### `useListadoServidor`
 
@@ -408,25 +422,3 @@ flechas del `SegmentedControl`.
 - `SortMenu` (orden en móvil), `ViewToggle`, `TabItem` con contador y `RelatedLinkCard`
   cuando una pantalla los pida.
 - Tests de render cuando el repo incorpore `@testing-library/react` y `jsdom`.
-
-## Adenda 2026-09-23 — árboles y diálogo con cuerpo (Categorías)
-
-Pedidos por el rediseño de Categorías (Figma `04 Inventario › 586:290667`). Archivos
-nuevos; ningún componente existente cambió de contrato.
-
-| Figma | Id | Código | Qué hace |
-|---|---|---|---|
-| `TreeCell` (Nivel 0/1/2 × Rama abierta/cerrada/hoja) | `580:278007` | `kit/TreeCell.tsx` | Sangría real de 24 px por nivel (16 en listas), chevron o hueco de hoja, icono tintado con el color propio del registro o miniatura, título y slug. `contexto` atenúa a los ancestros que solo acompañan a una coincidencia. Prop `arrastre` para cambiar de padre arrastrando |
-| Tarjeta de árbol móvil («Sangría nivel 0/1/2») | frames de `586:310471` | `kit/TreeCard.tsx` | `ListCard` desplazada 16 px por nivel, con el chevron de la rama a la izquierda |
-| Diálogo «Mover a…» · campo «Categoría padre» | `586:312245` | `kit/TreePicker.tsx` (`TreeList`, `TreeSelect`, `rutaOpcion`) | Selección sobre el árbol real: buscador que entra en ramas cerradas, opción raíz, marca «Actual» y opciones **deshabilitadas con su motivo** (las que crearían un ciclo). ↑/↓, Inicio/Fin, Enter/Espacio |
-| — (lógica) | — | `kit/arbol.ts` | `construirArbol` (huérfanos a la raíz, ciclos sin colgarse), `filtrarArbol` (coincidencias + ancestros como contexto + ramas que se abren solas), `aplanarArbol` (respeta lo que se cerró a mano), `paginarRaices` (**la paginación es por nodos raíz**: un padre y sus hijas nunca quedan en páginas distintas), `descendientesDe`, `ancestrosDe`, `idsConHijos`, `normalizarBusqueda` |
-| — (interacción) | — | `kit/arrastreArbol.tsx` (`useArrastreArbol`, `ZonaSoltarRaiz`) | Arrastrar y soltar nativo para reparentar (solo escritorio; la vía accesible es «Mover a…»). `puedeSoltar` devuelve `true` o el motivo; la franja «Suelta aquí para dejarla sin categoría padre» aparece solo mientras se arrastra |
-| Diálogo con cuerpo (PATRONES §8) | `586:312245` | `kit/Dialogo.tsx` | Cabecera (título, descripción, ×) · cuerpo con scroll · pie «Cancelar» + primario. Anchos 440 · 520 · 560 · 672 · 1024. `primario.destructiva` en rojo; deshabilitado siempre con `motivo`. Para confirmaciones de una línea sigue `ui/confirm-dialog` |
-
-`RelatedLinkCard` (`580:277907`) se escribió en esta misma tanda para el bloque «Cómo se
-conecta» (`kit/RelatedLinkCard.tsx`): `icono`, `etiqueta`, `valor`, `href` u `onAccion`
-(alias `onClick`), `textoAccion` (alias `accion`), `tono` `neutral · warning · danger`.
-
-Pruebas: `src/components/kit/__tests__/arbol.test.ts` (13 casos: niveles y orden, huérfanos,
-ciclos, descendientes, ancestros, búsqueda en ramas cerradas, rama cerrada a mano durante la
-búsqueda, paginación por raíces).

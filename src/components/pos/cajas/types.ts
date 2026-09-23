@@ -114,6 +114,11 @@ export interface CashSummary {
   sales_total?: number;
   /** Ventas desglosadas por método de pago (solo ventas, sin abonos ni compras) */
   sales_by_method?: Record<string, number>;
+  /** Pagos de venta en efectivo que componen `sales_cash` (sin abonos ni compras). */
+  sales_cash_count?: number;
+  /** Movimientos manuales de entrada y de salida de la sesión. */
+  cash_in_count?: number;
+  cash_out_count?: number;
 }
 
 // Detalle de un movimiento pagado durante la sesion de caja
@@ -167,6 +172,27 @@ export interface CashSessionReport {
     card_sales: number;
     other_sales: number;
   };
+}
+
+/** Resultado del cierre según la diferencia entre lo contado y lo esperado. */
+export type ResultadoCierre = 'faltante' | 'sobrante' | 'cuadrada';
+
+export type CampoOrdenHistorial = 'opened_at' | 'closed_at' | 'difference';
+
+/**
+ * Filtros del historial de sesiones (pestaña «Historial» de /app/pos/cajas).
+ * `desde`/`hasta` son instantes ISO ya calculados con la zona horaria de la
+ * organización: `desde` inclusivo, `hasta` exclusivo, sobre `opened_at`.
+ */
+export interface CashHistoryFilters {
+  status?: 'open' | 'closed' | 'all';
+  branchId?: number;
+  desde?: string;
+  hasta?: string;
+  /** Número de caja o nombre del cajero que la abrió. */
+  busqueda?: string;
+  resultado?: ResultadoCierre;
+  orden?: { campo: CampoOrdenHistorial; direccion: 'asc' | 'desc' };
 }
 
 // Estados y filtros

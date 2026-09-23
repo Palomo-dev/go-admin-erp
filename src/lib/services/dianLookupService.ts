@@ -22,7 +22,7 @@
  * 6. Normalizar respuesta y guardar en cache
  */
 
-import { supabase } from '@/lib/supabase/config';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { calcularDv } from '@/lib/utils/nitDv';
 
 // ============ Tipos ============
@@ -99,6 +99,7 @@ function getProviderToken(provider: Provider): string | null {
 const CACHE_TTL_HOURS = 24;
 
 async function getFromCache(
+  supabase: SupabaseClient,
   documentType: string,
   documentNumber: string,
   provider: Provider
@@ -124,6 +125,7 @@ async function getFromCache(
 }
 
 async function saveToCache(
+  supabase: SupabaseClient,
   documentType: string,
   documentNumber: string,
   provider: Provider,
@@ -440,7 +442,7 @@ function normalizarFactus(
  * @param req Datos de consulta (tipo doc, numero, dv opcional)
  * @returns Respuesta normalizada lista para mapear a customers/suppliers
  */
-export async function consultarDian(req: DianLookupRequest): Promise<DianLookupResponse> {
+export async function consultarDian(req: DianLookupRequest, db: SupabaseClient): Promise<DianLookupResponse> {
   const { documentType, documentNumber, organizationId, userId } = req;
   if (!documentNumber) {
     return { success: false, provider: '', fromCache: false, data: {} as DianNormalizedData, error: 'Numero de documento requerido' };
@@ -449,7 +451,7 @@ export async function consultarDian(req: DianLookupRequest): Promise<DianLookupR
   const providerPrimario = getProvider();
 
   // 1. Verificar cache del proveedor primario
-  const cached = await getFromCache(documentType, documentNumber, providerPrimario);
+  const cached = await getFromCache(db, documentType, documentNumber, providerPrimario);
   if (cached) {
     return { success: true, provider: providerPrimario, fromCache: true, data: cached.data, rawResponse: cached.rawResponse };
   }
@@ -476,6 +478,7 @@ export async function consultarDian(req: DianLookupRequest): Promise<DianLookupR
 
       // 3. Guardar en cache
       await saveToCache(
+        db,
         documentType,
         documentNumber,
         provider,
@@ -505,8 +508,8 @@ export async function consultarDian(req: DianLookupRequest): Promise<DianLookupR
 /**
  * Limpia entradas expiradas del cache. Puede llamarse desde un cron job.
  */
-export async function limpiarCacheExpirado(): Promise<number> {
-  const { count } = await supabase
+export async function limpiarCacheExpirado(db: SupabaseClient): Promise<number> {
+  const { count } = await db
     .from('dian_lookup_cache')
     .delete()
     .lt('expires_at', new Date().toISOString());

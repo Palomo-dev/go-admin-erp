@@ -4,12 +4,24 @@
  * 
  * Crea una sesión de checkout de Stripe para que el usuario
  * pueda pagar y guardar su método de pago para cobros recurrentes.
+ *
+ * Seguridad: el middleware no cubre /api/stripe/. La ruta exige sesión y que
+ * el usuario sea miembro activo Y administrador (super admin, rol 1/2 o el
+ * permiso admin.full_access) de la organización para la que crea el checkout.
+ * Antes no comprobaba nada: cualquiera podía marcar para cancelar la
+ * suscripción de otra organización. El usuario sale de la sesión (antes, de
+ * una cookie `sb-user-id` que el cliente controla).
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { stripe } from '@/lib/stripe/server'
 import { getEnterprisePricing } from '@/lib/services/pricingService'
+import {
+  getServerOrgContextFor,
+  requireOrgAdminOrPermission,
+  OrgContextError,
+} from '@/lib/utils/orgContext'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -32,21 +44,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const cookieHeader = request.headers.get('cookie') || '';
-    let userId = null;
-    
-    const userIdMatch = cookieHeader.match(/sb-user-id=([^;]+)/);
-    if (userIdMatch) {
-      try {
-        userId = decodeURIComponent(userIdMatch[1]);
-      } catch (e) {
-        userId = userIdMatch[1];
-      }
-    }
-    
-    const effectiveUserId = userId || '00000000-0000-0000-0000-000000000000';
-    const supabase = createSupabaseClient();
-
     const { 
       organizationId, 
       planCode, 
@@ -63,6 +60,29 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Sesión + membresía activa + admin de ESA organización (401/403).
+    const orgIdNum = Number(organizationId)
+    if (!Number.isInteger(orgIdNum) || orgIdNum <= 0) {
+      return NextResponse.json({ error: 'organizationId inválido' }, { status: 400 })
+    }
+    let effectiveUserId: string
+    try {
+      const ctx = await getServerOrgContextFor(orgIdNum)
+      await requireOrgAdminOrPermission(ctx)
+      effectiveUserId = ctx.userId
+    } catch (err) {
+      if (err instanceof OrgContextError) {
+        if (err.statusCode === 403) {
+          console.warn('[stripe/create-checkout-session] sin permiso sobre la organización → 403', { organizationId: orgIdNum, code: err.code })
+        }
+        return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode })
+      }
+      throw err
+    }
+
+    // Service role SOLO después de la comprobación (planes, suscripción, cupones).
+    const supabase = createSupabaseClient();
 
     let priceId: string
 

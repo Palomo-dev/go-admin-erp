@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { decodeJwt } from 'jose';
-import { getProjectRef } from '@/lib/supabase/config';
+import { getProjectRef } from '@/lib/supabase/edge-rest';
 import { buildTikTokOAuthUrl } from '@/lib/services/integrations/tiktok/tiktokMarketingConfig';
 
 /**

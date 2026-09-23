@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     const roi = roiRaw && typeof roiRaw === 'object' && typeof (roiRaw as { summary?: unknown }).summary === 'string'
       ? { summary: String((roiRaw as { summary: string }).summary).slice(0, 5000), outputs: ((roiRaw as { outputs?: Record<string, number> }).outputs ?? {}) }
       : null;
-    const timezone = await getOrganizationTimezone(ctx.organizationId);
+    const timezone = await getOrganizationTimezone(ctx.organizationId, ctx.supabase);
     const result = await generateProposal(ctx.organizationId, opportunityId, ctx.supabase, { userId: ctx.userId, timezone, roi, force: body?.force === true });
     if (!result) return NextResponse.json({ success: false, error: 'Oportunidad no encontrada' }, { status: 404 });
     return NextResponse.json({ success: true, data: { ...result.proposal, isNew: result.isNew } }, { status: result.isNew ? 201 : 200 });

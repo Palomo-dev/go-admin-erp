@@ -124,7 +124,11 @@ export default function ChannelManagerPage() {
 
     // Cargar conexiones API de Booking.com
     try {
-      const res = await fetch(`/api/integrations/booking/list-connections?organizationId=${organization.id}`);
+      // Rutas con `withOrg`: sesión por cookies + organización en el header.
+      const res = await fetch(`/api/integrations/booking/list-connections?organizationId=${organization.id}`, {
+        credentials: 'same-origin',
+        headers: { 'X-Organization-Id': String(organization.id) },
+      });
       if (res.ok) {
         const data = await res.json();
         setBookingConnections((data.connections || []).map((c: any) => ({
@@ -139,7 +143,10 @@ export default function ChannelManagerPage() {
 
     // Cargar conexiones API de Expedia Group
     try {
-      const res = await fetch(`/api/integrations/expedia/list-connections?organizationId=${organization.id}`);
+      const res = await fetch(`/api/integrations/expedia/list-connections?organizationId=${organization.id}`, {
+        credentials: 'same-origin',
+        headers: { 'X-Organization-Id': String(organization.id) },
+      });
       if (res.ok) {
         const data = await res.json();
         setExpediaConnections((data.connections || []).map((c: any) => ({

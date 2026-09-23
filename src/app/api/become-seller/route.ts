@@ -1,13 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getServerUserClient } from '@/lib/supabase/server-user';
 
+/**
+ * POST /api/become-seller — convierte al usuario de la SESIÓN en vendedor.
+ *
+ * El usuario y su email salen de la sesión (cookies), nunca del body: antes
+ * se confiaba en `auth_user_id`/`email` del body con service role, así que
+ * cualquiera podía crear o vincular (por email) la ficha de vendedor de otra
+ * persona. Si el body trae un `auth_user_id` o `email` distinto → 403.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const { auth_user_id, name, email, phone, avatar_url } = await request.json();
+    const userClient = await getServerUserClient();
+    const { data: { user }, error: authError } = await userClient.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
 
-    if (!auth_user_id || !email) {
+    const body = await request.json().catch(() => ({}));
+    const { name, phone, avatar_url } = body ?? {};
+
+    if (body?.auth_user_id && body.auth_user_id !== user.id) {
+      console.warn('[api/become-seller] auth_user_id del body distinto de la sesión → 403', { userId: user.id });
+      return NextResponse.json({ error: 'Usuario no permitido' }, { status: 403 });
+    }
+    const sessionEmail = (user.email ?? '').trim();
+    if (body?.email && String(body.email).trim().toLowerCase() !== sessionEmail.toLowerCase()) {
+      console.warn('[api/become-seller] email del body distinto del de la sesión → 403', { userId: user.id });
+      return NextResponse.json({ error: 'Email no permitido' }, { status: 403 });
+    }
+
+    const auth_user_id = user.id;
+    const email = sessionEmail;
+
+    if (!email) {
       return NextResponse.json(
-        { error: 'auth_user_id y email son requeridos' },
+        { error: 'La cuenta no tiene email' },
         { status: 400 }
       );
     }

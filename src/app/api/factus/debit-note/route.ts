@@ -3,19 +3,22 @@
  * POST /api/factus/debit-note
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/lib/supabase/config';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
 import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
 import factusService, { mapPaymentMethod } from '@/lib/services/factusService';
 
-export async function POST(request: NextRequest) {
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const body = await request.json();
-    const { organizationId, invoiceId, reason, items } = body;
+    // La organización sale de la sesión (el middleware no cubre /api/factus/):
+    // un organizationId ajeno en el body o la query → 403.
+    const body = await readOrgBody(ctx, request, { route: 'factus/debit-note' });
+    const { invoiceId, reason, items } = body ?? {};
+    const organizationId = ctx.organizationId;
 
-    if (!organizationId || !invoiceId || !reason) {
+    if (!invoiceId || !reason) {
       return NextResponse.json(
-        { error: 'Se requieren organizationId, invoiceId y reason' },
+        { error: 'Se requieren invoiceId y reason' },
         { status: 400 }
       );
     }
@@ -30,12 +33,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No se pudo obtener token de Factus' }, { status: 500 });
     }
 
-    const supabase = createSupabaseClient();
+    const supabase = ctx.supabase;
 
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoice_sales')
       .select('*')
       .eq('id', invoiceId)
+      .eq('organization_id', organizationId)
       .single();
 
     if (invoiceError || !invoice) {
@@ -116,6 +120,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message, jobId: job.id }, { status: 500 });
     }
   } catch (error: any) {
+    if (error instanceof OrgContextError) throw error;
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+});

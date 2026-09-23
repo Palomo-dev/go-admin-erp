@@ -1,15 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { expediaReservationService } from '@/lib/services/integrations/expedia/expediaReservationService';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
+import { createExpediaReservationService } from '@/lib/services/integrations/expedia/expediaReservationService';
+import {
+  channelManagerClientsFor,
+  connectionBelongsToOrg,
+  CONNECTION_NOT_FOUND,
+} from '@/lib/services/integrations/channelManagerAccess';
 
 /**
  * POST /api/integrations/expedia/poll-reservations
  * Ejecutar poll de reservas desde Expedia (Booking Retrieval API).
- * Body: { connectionId: string }
+ * Body: { connectionId: string } — la conexión debe ser de la organización de la sesión.
  */
-export async function POST(request: NextRequest) {
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const body = await request.json();
-    const { connectionId } = body;
+    const body = await readOrgBody(ctx, request, { route: 'integrations/expedia/poll-reservations' });
+    const { connectionId } = body ?? {};
 
     if (!connectionId) {
       return NextResponse.json(
@@ -18,7 +24,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await expediaReservationService.pollReservations(connectionId);
+    if (!(await connectionBelongsToOrg(ctx, connectionId))) {
+      return NextResponse.json(CONNECTION_NOT_FOUND, { status: 404 });
+    }
+
+    const reservations = createExpediaReservationService(channelManagerClientsFor(ctx));
+    const result = await reservations.pollReservations(connectionId);
 
     return NextResponse.json({
       success: result.errors === 0,
@@ -37,8 +48,9 @@ export async function POST(request: NextRequest) {
       })),
     });
   } catch (error) {
+    if (error instanceof OrgContextError) throw error;
     const message = error instanceof Error ? error.message : 'Error desconocido';
     console.error('[API ExpediaPollReservations] Error:', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

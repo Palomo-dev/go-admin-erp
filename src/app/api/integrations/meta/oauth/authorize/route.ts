@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { decodeJwt } from 'jose';
-import { getProjectRef } from '@/lib/supabase/config';
+import { getProjectRef } from '@/lib/supabase/edge-rest';
 import { buildMetaOAuthUrl } from '@/lib/services/integrations/meta/metaMarketingConfig';
 
 /**

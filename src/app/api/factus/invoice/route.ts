@@ -3,11 +3,14 @@
  * POST /api/factus/invoice
  * 
  * Credenciales via variables de entorno
+ *
+ * Requiere sesión y membresía activa (`withOrg`; el middleware no cubre
+ * /api/factus/). La organización sale de la sesión: un organizationId ajeno
+ * en el body o la query → 403.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
 import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
 import factusService, { 
   FactusInvoiceRequest, 
@@ -23,14 +26,15 @@ import factusService, {
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { toPlainDate } from '@/lib/utils/dateDisplay';
 
-export async function POST(request: NextRequest) {
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const body = await request.json();
-    const { organizationId, invoiceId } = body;
+    const body = await readOrgBody(ctx, request, { route: 'factus/invoice' });
+    const { invoiceId } = body ?? {};
+    const organizationId = ctx.organizationId;
 
-    if (!organizationId || !invoiceId) {
+    if (!invoiceId) {
       return NextResponse.json(
-        { error: 'Se requieren organizationId e invoiceId' },
+        { error: 'Se requiere invoiceId' },
         { status: 400 }
       );
     }
@@ -51,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = ctx.supabase;
     const environment = credentials.environment;
 
     // Obtener datos de la factura
@@ -64,6 +68,7 @@ export async function POST(request: NextRequest) {
         organization:organizations(*)
       `)
       .eq('id', invoiceId)
+      .eq('organization_id', organizationId)
       .single();
 
     if (invoiceError || !invoice) {
@@ -164,7 +169,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Obtener timezone de la organizacion para enviar fechas en dia calendario correcto
-      const orgTimezone = await getOrganizationTimezone(Number(organizationId));
+      const orgTimezone = await getOrganizationTimezone(organizationId, supabase);
 
       // Mapear datos a formato Factus V2
       const factusRequest: FactusInvoiceRequest = {
@@ -341,10 +346,11 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error: any) {
+    if (error instanceof OrgContextError) throw error;
     console.error('Error en envío a Factus:', error);
     return NextResponse.json(
       { error: error.message || 'Error interno del servidor' },
       { status: 500 }
     );
   }
-}
+});

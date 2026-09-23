@@ -382,21 +382,17 @@ function SignupContent() {
         if (signupData.referralCode) {
           console.log('🔍 Registrando referral de vendedor:', signupData.referralCode);
           try {
-            const { data: seller, error: sellerError } = await supabase
-              .from('sellers')
-              .select('id')
-              .eq('referral_code', signupData.referralCode)
-              .eq('status', 'active')
-              .single();
+            // RPC que valida que el llamante administre la organización; la
+            // tabla sellers ya no es legible por otros usuarios.
+            const { data: registrado, error: refRpcError } = await supabase
+              .rpc('fn_registrar_referido_vendedor', {
+                p_referral_code: signupData.referralCode,
+                p_organization_id: orgId,
+              });
 
-            if (seller && !sellerError) {
-              await supabase
-                .from('seller_referrals')
-                .insert({
-                  seller_id: seller.id,
-                  organization_id: orgId,
-                  status: 'pending',
-                });
+            if (refRpcError) {
+              console.warn('⚠️ No se pudo registrar el referido:', refRpcError.message);
+            } else if (registrado) {
               console.log('✅ Referral de vendedor registrado');
             } else {
               console.warn('⚠️ Código de vendedor no encontrado:', signupData.referralCode);

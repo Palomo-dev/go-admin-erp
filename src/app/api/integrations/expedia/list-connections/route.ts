@@ -1,25 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { expediaConnectionService } from '@/lib/services/integrations/expedia';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
+import { createExpediaServices } from '@/lib/services/integrations/expedia';
+import { channelManagerClientsFor } from '@/lib/services/integrations/channelManagerAccess';
 
 /**
  * GET /api/integrations/expedia/list-connections?organizationId=123
- * Obtener todas las conexiones Expedia Group de una organización.
+ * Obtener las conexiones Expedia Group de la organización de la sesión.
+ * `organizationId` en la query es opcional; si trae otra organización → 403.
  */
-export async function GET(request: NextRequest) {
+export const GET = withOrg(async (ctx, request) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const organizationId = searchParams.get('organizationId');
+    await readOrgBody(ctx, request, { route: 'integrations/expedia/list-connections' });
 
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: 'organizationId es requerido' },
-        { status: 400 }
-      );
-    }
-
-    const connections = await expediaConnectionService.getConnections(
-      parseInt(organizationId, 10)
-    );
+    const expedia = createExpediaServices(channelManagerClientsFor(ctx));
+    const connections = await expedia.connections.getConnections(ctx.organizationId);
 
     return NextResponse.json({
       success: true,
@@ -27,8 +21,9 @@ export async function GET(request: NextRequest) {
       total: connections.length,
     });
   } catch (error) {
+    if (error instanceof OrgContextError) throw error;
     const message = error instanceof Error ? error.message : 'Error desconocido';
     console.error('[API ExpediaListConnections] Error:', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

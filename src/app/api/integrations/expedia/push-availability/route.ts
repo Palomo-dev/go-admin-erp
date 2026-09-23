@@ -1,6 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { expediaAvailabilityService } from '@/lib/services/integrations/expedia/expediaAvailabilityService';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
+import { createExpediaAvailabilityService } from '@/lib/services/integrations/expedia/expediaAvailabilityService';
 import type { ExpediaAvailabilityUpdate } from '@/lib/services/integrations/expedia/expediaTypes';
+import {
+  channelManagerClientsFor,
+  connectionBelongsToOrg,
+  CONNECTION_NOT_FOUND,
+} from '@/lib/services/integrations/channelManagerAccess';
 
 /**
  * POST /api/integrations/expedia/push-availability
@@ -11,11 +17,13 @@ import type { ExpediaAvailabilityUpdate } from '@/lib/services/integrations/expe
  *
  * Body (sync completo):
  * { connectionId, organizationId, fullSync: true }
+ *
+ * La organización efectiva es la de la sesión (si el body trae otra → 403).
  */
-export async function POST(request: NextRequest) {
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const body = await request.json();
-    const { connectionId, organizationId, fullSync } = body;
+    const body = await readOrgBody(ctx, request, { route: 'integrations/expedia/push-availability' });
+    const { connectionId, organizationId, fullSync } = body ?? {};
 
     if (!connectionId) {
       return NextResponse.json(
@@ -24,11 +32,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Sync completo
+    if (!(await connectionBelongsToOrg(ctx, connectionId))) {
+      return NextResponse.json(CONNECTION_NOT_FOUND, { status: 404 });
+    }
+
+    const availability = createExpediaAvailabilityService(channelManagerClientsFor(ctx));
+
+    // Sync completo (organizationId ya verificado: es la de la sesión)
     if (fullSync && organizationId) {
-      const result = await expediaAvailabilityService.syncFullAvailability(
+      const result = await availability.syncFullAvailability(
         connectionId,
-        parseInt(organizationId, 10),
+        ctx.organizationId,
       );
       return NextResponse.json(result);
     }
@@ -50,11 +64,12 @@ export async function POST(request: NextRequest) {
       dates,
     };
 
-    const result = await expediaAvailabilityService.pushAvailabilityAndRates(connectionId, update);
+    const result = await availability.pushAvailabilityAndRates(connectionId, update);
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof OrgContextError) throw error;
     const message = error instanceof Error ? error.message : 'Error desconocido';
     console.error('[API ExpediaPushAvailability] Error:', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

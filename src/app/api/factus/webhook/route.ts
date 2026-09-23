@@ -7,12 +7,22 @@
  * - rejected: DIAN rechazó la factura
  * - validated: Factura validada
  *
- * Seguridad: Verifica el webhook secret si está configurado
+ * Seguridad:
+ * - Firma HMAC-SHA256 del body en `x-factus-signature`, comparada en tiempo
+ *   constante, con `FACTUS_WEBHOOK_SECRET`.
+ * - Sin secreto configurado: en producción se rechaza todo (503, fail-closed)
+ *   y se registra; fuera de producción se acepta con aviso (desarrollo local).
+ * - No hay sesión: trabaja con el cliente service-role. `reference_code` se
+ *   valida antes de interpolarlo en el filtro `.or()` de PostgREST.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/lib/supabase/config';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { safeEqual } from '@/lib/security/webhookSignatures';
 import crypto from 'crypto';
+
+/** Códigos de referencia que generamos (`INV-…`, `NC-…`, `ND-…`): sin comas, paréntesis ni espacios. */
+const REFERENCE_CODE_RE = /^[A-Za-z0-9._-]{1,100}$/;
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,23 +30,32 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('x-factus-signature') || '';
     const webhookSecret = process.env.FACTUS_WEBHOOK_SECRET;
 
-    // Verificar firma si el secret está configurado
     if (webhookSecret) {
       const expectedSignature = crypto
         .createHmac('sha256', webhookSecret)
         .update(body)
         .digest('hex');
 
-      if (signature !== expectedSignature) {
+      if (!safeEqual(signature, expectedSignature)) {
         console.error('Webhook signature mismatch');
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
       }
+    } else if (process.env.NODE_ENV === 'production') {
+      console.error('[factus/webhook] FACTUS_WEBHOOK_SECRET no configurado: webhook rechazado (fail-closed)');
+      return NextResponse.json({ error: 'Webhook no configurado' }, { status: 503 });
+    } else {
+      console.warn('[factus/webhook] FACTUS_WEBHOOK_SECRET no configurado: firma NO verificada (solo fuera de producción)');
     }
 
     const event = JSON.parse(body);
-    const supabase = createSupabaseClient();
+    const supabase = getServiceClient();
 
     const { event_type, reference_code, cufe, number, status, message, errors } = event;
+
+    if (typeof reference_code !== 'string' || !REFERENCE_CODE_RE.test(reference_code)) {
+      console.warn('[factus/webhook] reference_code ausente o con caracteres no permitidos');
+      return NextResponse.json({ error: 'reference_code inválido' }, { status: 400 });
+    }
 
     // Buscar el job por reference_code
     const { data: job } = await supabase

@@ -4,23 +4,28 @@
  *
  * Endpoint para ser llamado por un cron job o scheduler.
  * Procesa jobs en estado 'pending' o 'failed' (con reintentos disponibles).
+ *
+ * Autenticación (fail-closed): `Authorization: Bearer ${FACTUS_CRON_API_KEY}`
+ * o el `CRON_SECRET` común (`verifyCronSecret`). Sin ninguno de los dos
+ * configurado → 401 siempre. Antes, sin FACTUS_CRON_API_KEY la ruta quedaba
+ * abierta. Trabaja con el cliente service-role: procesa jobs de todas las
+ * organizaciones y no hay sesión.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/lib/supabase/config';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { safeEqual, verifyCronSecret } from '@/lib/security/webhookSignatures';
+import { readRealSecret } from '@/lib/security/secrets';
 import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
 import factusService from '@/lib/services/factusService';
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar API key si está configurada
-    const authHeader = request.headers.get('authorization');
-    const apiKey = process.env.FACTUS_CRON_API_KEY;
-    if (apiKey && authHeader !== `Bearer ${apiKey}`) {
+    if (!isAuthorizedCron(request)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = createSupabaseClient();
+    const supabase = getServiceClient();
 
     // Obtener jobs pendientes o fallidos con reintentos disponibles
     const { data: pendingJobs, error } = await supabase
@@ -127,5 +132,24 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error processing pending jobs:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+/**
+ * `Bearer FACTUS_CRON_API_KEY` (si es un secreto real) o `CRON_SECRET`.
+ * Sin ninguno configurado, `verifyCronSecret` lanza → false (fail-closed).
+ */
+function isAuthorizedCron(request: Request): boolean {
+  const apiKey = readRealSecret('FACTUS_CRON_API_KEY');
+  if (apiKey) {
+    const auth = request.headers.get('authorization') || '';
+    const bearer = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+    if (bearer && safeEqual(bearer, apiKey)) return true;
+  }
+  try {
+    verifyCronSecret(request);
+    return true;
+  } catch {
+    return false;
   }
 }

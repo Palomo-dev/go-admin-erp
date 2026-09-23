@@ -16,7 +16,8 @@ import type { Producto } from './types';
  * Tabla del catálogo sobre el `DataTable` del kit (Figma «Catálogo de
  * productos», `09-catalogo-escritorio.png`): miniatura · Código · Nombre ·
  * Atributos · Categoría · Precio · Costo · Margen · Stock · Estado · «⋮».
- * En móvil (< lg) cada producto es una `ListCard` con su foto.
+ * En móvil (< lg) cada producto es una `ListCard` Inicio=imagen (foto de 48
+ * o marcador), «código · categoría», existencias por sucursal, precio y estado.
  *
  * No carga nada: recibe la página ya filtrada y ordenada de `CatalogoProductos`.
  */
@@ -80,14 +81,14 @@ function StockSucursales({
   branchFilter,
   branches,
   max = 2,
-  enLinea = false,
+  suelto = false,
 }: {
   producto: Producto;
   branchFilter: number | null;
   branches: ReadonlyArray<{ id?: number; name: string }>;
   max?: number;
-  /** Tarjeta móvil: una sola línea que no envuelve. */
-  enLinea?: boolean;
+  /** Tarjeta móvil: sin contenedor propio; los chips van sueltos en la fila de etiquetas, que envuelve. */
+  suelto?: boolean;
 }) {
   if (producto.track_stock === false) {
     return (
@@ -111,15 +112,15 @@ function StockSucursales({
   const visibles = chips.slice(0, max);
   const resto = chips.slice(max);
 
-  return (
-    <div className={enLinea ? 'flex min-w-0 shrink items-center gap-1' : 'flex flex-wrap items-center gap-1'}>
+  const contenido = (
+    <>
       {visibles.map((c) => (
         <Badge
           key={c.id}
           tono={tono(c.qty)}
           tamano="sm"
           title={`${c.texto}: ${c.qty} unidades${conVariantes}`}
-          className={enLinea ? 'min-w-0 max-w-[140px] shrink' : 'max-w-[140px]'}
+          className="max-w-[min(140px,100%)]"
         >
           <span className="truncate">{c.texto}</span>
           <span aria-hidden="true">·</span>
@@ -127,12 +128,13 @@ function StockSucursales({
         </Badge>
       ))}
       {resto.length > 0 && (
-        <Badge tono="neutro" tamano="sm" className="shrink-0" title={resto.map((c) => `${c.texto}: ${c.qty}`).join(' · ')}>
+        <Badge tono="neutro" tamano="sm" title={resto.map((c) => `${c.texto}: ${c.qty}`).join(' · ')}>
           +{resto.length}
         </Badge>
       )}
-    </div>
+    </>
   );
+  return suelto ? contenido : <div className="flex flex-wrap items-center gap-1">{contenido}</div>;
 }
 
 function Atributos({ producto }: { producto: Producto }) {
@@ -288,19 +290,15 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
       }}
       tarjetaMovil={(p, ctx) => (
         <ListCard
-          miniatura={<Miniatura producto={p} onFallo={onImagenFallida} />}
+          imagen={{ src: urlImagen(rutaImagenPrincipal(p)), onError: () => onImagenFallida(String(p.id)) }}
           titulo={p.name}
-          // Una línea por dato, con elipsis: nada se sale de la pantalla.
-          subtitulo={
-            [p.sku, p.category?.name].some(Boolean) ? (
-              <span className="block truncate">{[p.sku, p.category?.name].filter(Boolean).join(' · ')}</span>
-            ) : undefined
-          }
-          insignias={
-            <div className="flex min-w-0 max-w-full flex-nowrap items-center gap-1 overflow-hidden">
-              <StockSucursales producto={p} branchFilter={branchFilter} branches={branches} max={1} enLinea />
+          subtitulo={[p.sku, p.category?.name].filter(Boolean).join(' · ') || undefined}
+          // Existencias por sucursal y atributos: badges sm que envuelven, nunca desbordan.
+          etiquetas={
+            <>
+              <StockSucursales producto={p} branchFilter={branchFilter} branches={branches} suelto />
               <Atributos producto={p} />
-            </div>
+            </>
           }
           valor={typeof p.price === 'number' && p.price > 0 ? precio(p.price) : undefined}
           estado={<StatusBadge estado={p.status} />}

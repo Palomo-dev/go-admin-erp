@@ -83,8 +83,8 @@ const PUNTO: Record<TonoBadge, string> = {
 }
 
 const TAMANOS = {
-  /** 20 px: listas densas. */
-  sm: "h-5 gap-1 px-1.5 text-[11px] leading-4",
+  /** 22 px (Figma: padding 2/6, 11/16 semibold, borde 1): listas densas y tarjetas móviles. */
+  sm: "h-[22px] gap-1 px-1.5 py-0.5 text-[11px] leading-4",
   /** 24 px: cabeceras y tarjetas. */
   md: "h-6 gap-1 px-2 text-xs leading-4",
 } as const

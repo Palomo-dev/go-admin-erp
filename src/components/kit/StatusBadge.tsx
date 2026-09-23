@@ -18,7 +18,7 @@ export interface StatusBadgeProps {
   estado: string | null | undefined;
   /** Texto a mostrar si difiere del estado (género, plural, días). */
   etiqueta?: string;
-  /** `sm` 20 px en tablas y tarjetas densas; `md` 24 px en cabeceras. */
+  /** `sm` 22 px en tablas y tarjetas densas; `md` 24 px en cabeceras. */
   tamano?: TamanoBadge;
   icono?: LucideIcon;
   /** Solo para excepciones documentadas en SISTEMA-BADGES.md. */

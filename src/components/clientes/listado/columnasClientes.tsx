@@ -1,5 +1,6 @@
 'use client';
 
+import { Building2, IdCard, Mail, Phone, SquareUser, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   AvatarIniciales,
@@ -175,11 +176,12 @@ export function columnasClientes(ctx: ContextoColumnas): ColumnaTabla<FilaClient
 }
 
 /**
- * Tarjeta móvil (corrección del dueño, 2026-09-24): la tarjeta blanca de
- * Proveedores, pero con el AVATAR de iniciales y la misma información que ya
- * tenía la fila: nombre, Persona/Empresa, documento, contacto, correo y
- * teléfono. Un dato por línea y con elipsis: nada se sale de la pantalla; lo
- * que no cabe (saldo, compras) queda en la ficha.
+ * Tarjeta móvil (corrección del dueño, 2026-09-24; Figma `ListCard`
+ * Inicio=avatar, captura `53-movil-tarjetas-clientes-listo.png`): la tarjeta
+ * blanca de Proveedores con el AVATAR de iniciales, el nombre y su insignia
+ * Persona/Empresa, y como «datos» de una línea con icono: documento, contacto
+ * (solo empresa), correo y teléfono. Todo con elipsis: nada se sale de la
+ * pantalla; lo que no cabe (saldo, compras) queda en la ficha.
  */
 export function TarjetaCliente({
   cliente: c,
@@ -194,45 +196,24 @@ export function TarjetaCliente({
 }) {
   const nombre = nombreCliente(c);
   const doc = documentoCliente(c);
+  const empresa = c.customer_type === 'company';
   const contacto =
-    c.customer_type === 'company' && c.contacto_nombre
+    empresa && c.contacto_nombre
       ? `Contacto: ${c.contacto_nombre}${c.contacto_cargo ? ` (${c.contacto_cargo})` : ''}`
       : null;
-  const lineasSub = [contacto, doc].filter(Boolean) as string[];
-  const lineasMeta = [c.email, c.phone].filter(Boolean) as string[];
 
   return (
     <ListCard
-      miniatura={<AvatarIniciales nombre={nombre} src={c.avatar_url} tamano="md" />}
+      avatar={{ nombre, src: c.avatar_url }}
       titulo={nombre}
-      subtitulo={
-        lineasSub.length ? (
-          <>
-            {lineasSub.map((l) => (
-              <span key={l} className="block truncate">
-                {l}
-              </span>
-            ))}
-          </>
-        ) : undefined
-      }
-      meta={
-        lineasMeta.length ? (
-          <>
-            {lineasMeta.map((l) => (
-              <span key={l} className="block truncate">
-                {l}
-              </span>
-            ))}
-          </>
-        ) : undefined
-      }
-      estado={
-        <span className="flex flex-col items-end gap-1">
-          <StatusBadge estado={c.customer_type === 'company' ? 'Empresa' : 'Persona'} />
-          {c.status === 'inactive' && <StatusBadge estado="Inactivo" />}
-        </span>
-      }
+      insignia={<StatusBadge estado={empresa ? 'Empresa' : 'Persona'} icono={empresa ? Building2 : User} />}
+      datos={[
+        doc ? { icono: IdCard, texto: doc, etiqueta: 'Documento' } : null,
+        contacto ? { icono: SquareUser, texto: contacto, etiqueta: 'Contacto' } : null,
+        c.email ? { icono: Mail, texto: c.email, etiqueta: 'Correo' } : null,
+        c.phone ? { icono: Phone, texto: c.phone, etiqueta: 'Teléfono' } : null,
+      ]}
+      estado={c.status === 'inactive' ? <StatusBadge estado="Inactivo" /> : undefined}
       acciones={acciones}
       onClick={onAbrir}
       seleccionable={ctx.modoSeleccion}

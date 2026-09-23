@@ -14,6 +14,8 @@ import { UserPlus, Search, Briefcase, X, Check, ChevronRight } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { telefonoOpcionalValido } from '@/lib/utils/telefono';
 import { describeError, logError } from '@/lib/utils/errorMessage';
 import { fetchJson } from '@/lib/utils/fetchJson';
 import { useCrmLookups } from '@/components/crm/shared/useCrmLookups';
@@ -286,15 +288,14 @@ export function CallLinkPanel({
           </div>
           <div>
             <Label htmlFor="link-phone" className="text-xs">Teléfono</Label>
-            <Input
+            <PhoneInput
               id="link-phone"
               value={newPhone}
-              onChange={(e) => setNewPhone(e.target.value)}
-              className="h-8 text-sm font-mono"
+              onChange={setNewPhone}
             />
           </div>
           <div className="flex gap-2">
-            <Button size="sm" onClick={createCustomer} disabled={submitting || !newFirstName.trim()} className="h-8">
+            <Button size="sm" onClick={createCustomer} disabled={submitting || !newFirstName.trim() || !telefonoOpcionalValido(newPhone)} className="h-8">
               {submitting ? 'Guardando…' : 'Crear y vincular'}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setMode('idle')} className="h-8">

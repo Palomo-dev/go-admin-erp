@@ -12,6 +12,8 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, Loader2, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { aE164 } from '@/lib/utils/telefono';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
 import type { PhoneNumber } from '@/lib/services/crm/callManagementService';
@@ -29,6 +31,9 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
   const [code, setCode] = useState('');
   const [step, setStep] = useState<'idle' | 'sent'>('idle');
   const [busy, setBusy] = useState(false);
+  // Twilio Verify y user_comm_preferences trabajan en E.164 («+573101234567»);
+  // el campo guarda «+57 3101234567». null = número incompleto o no válido.
+  const phoneE164 = aE164(phone);
 
   const load = async () => {
     const res = await fetch('/api/crm/me/comm-preferences');
@@ -55,7 +60,7 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
   const sendOtp = async () => {
     setBusy(true);
     try {
-      const res = await fetch('/api/integrations/twilio/verify/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: phone, channel: 'sms', purpose: 'mobile_verification' }) });
+      const res = await fetch('/api/integrations/twilio/verify/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: phoneE164 ?? phone.trim(), channel: 'sms', purpose: 'mobile_verification' }) });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       setStep('sent');
@@ -70,7 +75,7 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
   const checkOtp = async () => {
     setBusy(true);
     try {
-      const res = await fetch('/api/integrations/twilio/verify/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: phone, code, purpose: 'mobile_verification' }) });
+      const res = await fetch('/api/integrations/twilio/verify/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: phoneE164 ?? phone.trim(), code, purpose: 'mobile_verification' }) });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       setStep('idle');
@@ -84,7 +89,7 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
     }
   };
 
-  const verified = Boolean(prefs?.mobile_verified_at && prefs?.mobile_phone_e164 && prefs.mobile_phone_e164 === phone.trim());
+  const verified = Boolean(prefs?.mobile_verified_at && prefs?.mobile_phone_e164 && prefs.mobile_phone_e164 === phoneE164);
 
   return (
     <section aria-labelledby="tel-mobile-title" className="space-y-4">
@@ -95,9 +100,9 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="space-y-1">
-          <Label htmlFor="tel-mobile">Número (E.164)</Label>
+          <Label htmlFor="tel-mobile">Número de celular</Label>
           <div className="flex items-center gap-2">
-            <Input id="tel-mobile" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+57 310 123 4567" className="w-48" />
+            <PhoneInput id="tel-mobile" value={phone} onChange={setPhone} autoComplete="tel" className="w-72" />
             {verified && (
               <span className="inline-flex items-center gap-1 text-xs text-green-700 dark:text-green-400">
                 <CheckCircle2 size={14} aria-hidden="true" /> Verificado
@@ -106,7 +111,7 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
           </div>
         </div>
         {step === 'idle' ? (
-          <Button size="sm" variant="outline" onClick={() => void sendOtp()} disabled={busy || !phone.trim() || verified}>
+          <Button size="sm" variant="outline" onClick={() => void sendOtp()} disabled={busy || !phoneE164 || verified}>
             {busy ? <Loader2 size={14} className="mr-1.5 animate-spin" aria-hidden="true" /> : <Smartphone size={14} className="mr-1.5" aria-hidden="true" />}
             {verified ? 'Verificado' : 'Enviar código'}
           </Button>

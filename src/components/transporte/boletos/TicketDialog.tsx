@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, telefonoOpcionalValido } from '@/components/ui/phone-input';
 import {
   Select,
   SelectContent,
@@ -250,6 +250,8 @@ export function TicketDialog({
 
   const handleSubmit = async () => {
     if (!formData.trip_id || !formData.passenger_name) return;
+    // El campo ya muestra el aviso del país: no se guarda un teléfono incompleto.
+    if (!telefonoOpcionalValido(formData.passenger_phone)) return;
 
     setIsSubmitting(true);
     try {
@@ -420,7 +422,6 @@ export function TicketDialog({
                   id="phone"
                   value={formData.passenger_phone}
                   onChange={(v) => setFormData((p) => ({ ...p, passenger_phone: v }))}
-                  placeholder="300 123 4567"
                 />
               </div>
               <div className="space-y-2">

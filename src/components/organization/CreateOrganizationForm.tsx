@@ -5,6 +5,8 @@ import { useLocale, useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
 import LogoUploader from './LogoUploader';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { mensajeErrorTelefono, paisIsoDeOrganizacion } from '@/lib/utils/telefono';
 import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
 import {
   OPCIONES_TARIFA_POR_DEFECTO,
@@ -304,6 +306,8 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
       if (!isSignupMode && !formData.taxId.trim()) {
         errors.taxId = t('errors.taxIdRequired');
       }
+      const errorTelefono = mensajeErrorTelefono(formData.phone, paisIsoDeOrganizacion(formData.countryCode, formData.country) ?? undefined);
+      if (errorTelefono) errors.phone = errorTelefono;
     }
     
     if (currentStep === 2) {
@@ -761,7 +765,22 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             </p>
           </div>
 
-          {renderFormField('phone', t('fields.phone'), 'tel', false, 'col-span-6 sm:col-span-2')}
+          <div className="col-span-6 sm:col-span-2">
+            <label htmlFor="phone" className="block text-sm font-medium text-fg-secondary mb-1">
+              {t('fields.phone')}
+            </label>
+            <PhoneInput
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={(v) => {
+                setFormData({ ...formData, phone: v });
+                if (formErrors.phone) setFormErrors({ ...formErrors, phone: '' });
+              }}
+              defaultIso={paisIsoDeOrganizacion(formData.countryCode, formData.country) ?? undefined}
+              error={formErrors.phone || undefined}
+            />
+          </div>
           
           {/* Color selector */}
           <div className="col-span-6">

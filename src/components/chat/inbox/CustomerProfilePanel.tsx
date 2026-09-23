@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { telefonoOpcionalValido } from '@/lib/utils/telefono';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -168,6 +170,8 @@ export default function CustomerProfilePanel({
 
   const saveEditing = async () => {
     if (!customer) return;
+    // El campo ya muestra por qué: no se guarda un teléfono incompleto.
+    if (!telefonoOpcionalValido(editData.phone)) return;
     setSaving(true);
     try {
       const upd: any = {
@@ -304,7 +308,7 @@ export default function CustomerProfilePanel({
             </div>
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
-              <Input value={editData.phone} onChange={e => setEditData({...editData, phone: e.target.value})} placeholder="Teléfono" className="h-7 text-sm" />
+              <PhoneInput value={editData.phone} onChange={v => setEditData({...editData, phone: v})} aria-label="Teléfono" className="min-w-0 flex-1" />
             </div>
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />

@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { mensajeErrorTelefono } from '@/lib/utils/telefono';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -104,6 +106,11 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
   const handleCreateCustomer = async () => {
     if (!newCustomer.first_name.trim() || !newCustomer.last_name.trim()) {
       alert('El nombre y apellido son requeridos');
+      return;
+    }
+    const errorTelefono = mensajeErrorTelefono(newCustomer.phone);
+    if (errorTelefono) {
+      alert(errorTelefono);
       return;
     }
 
@@ -429,12 +436,10 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Teléfono</Label>
-                <Input
+                <PhoneInput
                   id="phone"
                   value={newCustomer.phone}
-                  onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
-                  placeholder="300 123 4567"
-                  className="dark:bg-gray-800 dark:border-gray-700"
+                  onChange={(v) => setNewCustomer({ ...newCustomer, phone: v })}
                 />
               </div>
             </div>

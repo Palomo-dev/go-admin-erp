@@ -259,46 +259,9 @@ export function getCountryByIso(iso: string): CountryPhoneCode | undefined {
   return countryPhoneCodes.find((c) => c.iso === iso);
 }
 
-/**
- * Intenta detectar el país y el número a partir de un teléfono guardado.
- * Soporta formatos: "+57 300 123 4567", "573001234567", "+1 555 123 4567".
- * Devuelve { iso, dialCode, number } o null si no coincide ningún dial code.
+/*
+ * `parsePhoneString` y `formatPhoneForStorage` vivían aquí. Se reemplazaron
+ * por `parsearTelefono` y `formatearParaGuardar` de `@/lib/utils/telefono`
+ * (libphonenumber-js): la versión vieja probaba indicativos antes que el
+ * número nacional y leía «3001234567» como Grecia (+30).
  */
-export function parsePhoneString(
-  raw: string,
-): { iso: string; dialCode: string; number: string } | null {
-  if (!raw) return null;
-  const cleaned = raw.replace(/[^\d+]/g, '');
-  // Probar dial codes más largos primero para evitar coincidencias parciales (+1 vs +57)
-  const sorted = [...countryPhoneCodes].sort(
-    (a, b) => b.dialCode.length - a.dialCode.length,
-  );
-  for (const country of sorted) {
-    const dial = country.dialCode.replace('+', '');
-    if (cleaned.startsWith(`+${dial}`)) {
-      return {
-        iso: country.iso,
-        dialCode: country.dialCode,
-        number: cleaned.slice(dial.length + 1),
-      };
-    }
-    if (cleaned.startsWith(dial) && !cleaned.startsWith('+')) {
-      return {
-        iso: country.iso,
-        dialCode: country.dialCode,
-        number: cleaned.slice(dial.length),
-      };
-    }
-  }
-  return null;
-}
-
-/**
- * Combina el código de país y el número en un solo string para guardar en BD.
- * Formato resultante: "+57 3001234567"
- */
-export function formatPhoneForStorage(dialCode: string, number: string): string {
-  const trimmedNumber = (number || '').replace(/[^\d]/g, '');
-  if (!trimmedNumber) return '';
-  return `${dialCode} ${trimmedNumber}`;
-}

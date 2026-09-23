@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Save, Loader2, Building2, User, Phone, Mail, FileText, MapPin, CreditCard, Globe, Sparkles, Wand2, Landmark } from 'lucide-react';
 import { calcularDv } from '@/lib/utils/nitDv';
 import ImageUploader from '@/components/common/ImageUploader';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { mensajeErrorTelefono } from '@/lib/utils/telefono';
 import Link from 'next/link';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
@@ -135,6 +137,8 @@ export function EditarProveedorForm({ supplierUuid }: EditarProveedorFormProps) 
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) newErrors.name = 'El nombre es requerido';
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Email inválido';
+    const errorTelefono = mensajeErrorTelefono(formData.phone);
+    if (errorTelefono) newErrors.phone = errorTelefono;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -237,11 +241,8 @@ export function EditarProveedorForm({ supplierUuid }: EditarProveedorFormProps) 
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="dark:text-gray-300">Teléfono</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} placeholder="+57 300 123 4567" className="pl-10 dark:bg-gray-900 dark:border-gray-700" />
-                    </div>
+                    <Label htmlFor="supplier-phone" className="dark:text-gray-300">Teléfono</Label>
+                    <PhoneInput id="supplier-phone" value={formData.phone} onChange={(v) => handleChange('phone', v)} error={errors.phone || undefined} />
                   </div>
                   <div>
                     <Label className="dark:text-gray-300">Correo Electrónico</Label>

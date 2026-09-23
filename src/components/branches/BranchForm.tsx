@@ -9,7 +9,8 @@ import {
 import { MapPinIcon, PhoneIcon, EnvelopeIcon, BuildingOfficeIcon, IdentificationIcon, UserIcon } from '@heroicons/react/24/outline';
 import { ManagerSelector } from './ManagerSelector';
 import LocationSelector from '../common/LocationSelector';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
+import { paisIsoDeOrganizacion } from '@/lib/utils/telefono';
 import { supabase } from '@/lib/supabase/config';
 import { BuyDomainDialog, AddCustomDomainDialog } from '@/components/organization/dominios';
 import { useSession } from '@/lib/hooks/useSession';
@@ -228,6 +229,12 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
       return;
     }
 
+    const errorTelefono = mensajeErrorTelefono(form.phone);
+    if (errorTelefono) {
+      setError(`Teléfono: ${errorTelefono}`);
+      return;
+    }
+
     // --- Validaciones de formato de identidad web ---
     const slugError = validateSlug(formWithPublished.slug || '');
     if (slugError && formWithPublished.slug) { setError(slugError); return; }
@@ -408,13 +415,13 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Teléfono</label>
+              <label htmlFor="branch-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Teléfono</label>
               <PhoneInput
+                id="branch-phone"
                 name="phone"
                 value={form.phone}
                 onChange={(v) => setForm((prev) => ({ ...prev, phone: v }))}
-                placeholder="300 123 4567"
-                inputClassName="focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-300 h-10"
+                defaultIso={paisIsoDeOrganizacion(form.country_code, form.country) ?? undefined}
               />
             </div>
             <div className="relative">

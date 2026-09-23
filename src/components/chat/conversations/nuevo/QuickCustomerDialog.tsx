@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
 import { QuickCustomerData } from '@/lib/services/newConversationService';
 import { MunicipalitySearch } from '@/components/shared/MunicipalitySearch';
 
@@ -59,6 +59,11 @@ export default function QuickCustomerDialog({
   const handleSave = async () => {
     if (!formData.first_name.trim()) {
       setError('El nombre es requerido');
+      return;
+    }
+    const errorTelefono = mensajeErrorTelefono(formData.phone);
+    if (errorTelefono) {
+      setError(errorTelefono);
       return;
     }
 
@@ -135,7 +140,6 @@ export default function QuickCustomerDialog({
               id="phone"
               value={formData.phone}
               onChange={(v) => setFormData({ ...formData, phone: v })}
-              placeholder="300 123 4567"
             />
           </div>
 

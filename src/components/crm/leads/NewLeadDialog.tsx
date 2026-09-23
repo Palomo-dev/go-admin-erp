@@ -13,6 +13,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { mensajeErrorTelefono } from '@/lib/utils/telefono';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -196,6 +198,11 @@ export function NewLeadDialog({ open, onOpenChange, branchId, onCreated }: NewLe
         setFormError('El cliente nuevo necesita al menos correo o teléfono.');
         return;
       }
+      const errorTelefono = mensajeErrorTelefono(newPhone);
+      if (errorTelefono) {
+        setFormError(errorTelefono);
+        return;
+      }
     }
 
     const payload: Record<string, unknown> = {
@@ -342,12 +349,10 @@ export function NewLeadDialog({ open, onOpenChange, branchId, onCreated }: NewLe
                   <Label htmlFor="lead-customer-phone" className="text-gray-700 dark:text-gray-300">
                     Teléfono
                   </Label>
-                  <Input
+                  <PhoneInput
                     id="lead-customer-phone"
                     value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
-                    placeholder="+57 300 000 0000"
-                    className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                    onChange={setNewPhone}
                   />
                 </div>
               </div>

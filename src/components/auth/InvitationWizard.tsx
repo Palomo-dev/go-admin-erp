@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { EyeIcon, EyeSlashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { Loader2 } from 'lucide-react';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
 import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
 import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import type { EstadoCuentaInvitacion } from '@/lib/auth/cuentaInvitacion';
@@ -85,8 +85,8 @@ export default function InvitationWizard({ inviteData, accountState, sessionEmai
 
     if (!formData.phoneNumber.trim()) {
       errors.phoneNumber = 'El teléfono es obligatorio';
-    } else if (!/^\+?[\d\s-()]+$/.test(formData.phoneNumber)) {
-      errors.phoneNumber = 'Formato de teléfono inválido';
+    } else if (mensajeErrorTelefono(formData.phoneNumber)) {
+      errors.phoneNumber = mensajeErrorTelefono(formData.phoneNumber) ?? 'Formato de teléfono inválido';
     }
 
     setValidationErrors(errors);
@@ -457,7 +457,8 @@ export default function InvitationWizard({ inviteData, accountState, sessionEmai
             id="phoneNumber"
             value={formData.phoneNumber}
             onChange={(v) => handleInputChange('phoneNumber', v)}
-            className={`mt-1 ${validationErrors.phoneNumber ? '[&_button]:border-red-300 [&_input]:border-red-300' : '[&_button]:border-gray-300 [&_input]:border-gray-300 dark:[&_button]:border-gray-600 dark:[&_input]:border-gray-600 dark:[&_input]:bg-gray-700 dark:[&_input]:text-gray-100'}`}
+            className="mt-1"
+            error={!!validationErrors.phoneNumber}
           />
           {validationErrors.phoneNumber && (
             <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.phoneNumber}</p>

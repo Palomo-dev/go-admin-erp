@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { EyeIcon, EyeSlashIcon, ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import FileUpload from '@/components/common/FileUpload';
 import { useTranslations } from 'next-intl';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
 
 interface RegistrationFormProps {
   initialEmail?: string;
@@ -134,9 +134,8 @@ export default function RegistrationForm({
     // Allow empty phone if not required
     if (!isEmployee && !phone) return true;
 
-    // Permitir código de país (+), espacios, guiones y paréntesis
-    const phoneRegex = /^\+?[\d\s\-()]+$/;
-    return phoneRegex.test(phone);
+    // Longitud y prefijos según el país elegido en el selector.
+    return !!phone && !mensajeErrorTelefono(phone);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -150,7 +149,7 @@ export default function RegistrationForm({
     
     // Validate phone number
     if (!validatePhone(formData.phoneNumber)) {
-      setValidationErrors(prev => ({ ...prev, phoneNumber: t('phoneDigitsOnly') }));
+      setValidationErrors(prev => ({ ...prev, phoneNumber: mensajeErrorTelefono(formData.phoneNumber) ?? t('phoneDigitsOnly') }));
       return;
     }
     
@@ -265,8 +264,8 @@ export default function RegistrationForm({
           value={formData.phoneNumber}
           onChange={(v) => setFormData(prev => ({ ...prev, phoneNumber: v }))}
           required={isEmployee}
-          className={`mt-1 ${validationErrors.phoneNumber ? '[&_button]:border-red-500 [&_input]:border-red-500' : '[&_button]:border-gray-300 [&_input]:border-gray-300'} [&_button]:dark:border-gray-600 [&_input]:dark:border-gray-600`}
-          inputClassName="dark:bg-gray-700 dark:text-gray-100"
+          className="mt-1"
+          error={!!validationErrors.phoneNumber}
         />
         {validationErrors.phoneNumber && (
           <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.phoneNumber}</p>

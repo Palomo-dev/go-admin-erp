@@ -13,6 +13,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { mensajeErrorTelefono } from '@/lib/utils/telefono';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
@@ -70,6 +72,12 @@ export function ConvertReferralDialog({ open, referral, onOpenChange, onConvert,
       setFocusId('convert-email');
       return;
     }
+    const phoneError = useExisting ? null : mensajeErrorTelefono(phone);
+    if (phoneError) {
+      setError(phoneError);
+      setFocusId('convert-phone');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -123,7 +131,7 @@ export function ConvertReferralDialog({ open, referral, onOpenChange, onConvert,
               </div>
               <div>
                 <Label htmlFor="convert-phone" className="text-xs text-gray-700 dark:text-gray-300">Teléfono</Label>
-                <Input id="convert-phone" type="tel" value={phone} autoComplete="off" aria-describedby="convert-contact-hint" onChange={(e) => setPhone(e.target.value)} />
+                <PhoneInput id="convert-phone" value={phone} autoComplete="off" aria-describedby="convert-contact-hint" onChange={setPhone} />
               </div>
               <p id="convert-contact-hint" className="text-xs text-gray-600 dark:text-gray-400 sm:col-span-2">Al menos uno de los dos: un lead sin forma de contacto no sirve para nada.</p>
             </div>

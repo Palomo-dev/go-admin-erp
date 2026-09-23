@@ -4,6 +4,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ReferralProgram } from '@/lib/services/crm/referralsService';
 import { describeReward } from '@/lib/services/crm/referralReward';
@@ -25,6 +26,7 @@ export function ReferredPersonFields({ form, errors, programs, currency, onChang
   const reward = describeReward(selectedProgram, currency);
   const nameError = errorOf('referred_name');
   const emailError = errorOf('referred_email');
+  const phoneError = errorOf('referred_phone');
 
   return (
     <>
@@ -43,7 +45,7 @@ export function ReferredPersonFields({ form, errors, programs, currency, onChang
         </div>
         <div>
           <Label htmlFor="referral-referred_phone" className="text-xs text-gray-700 dark:text-gray-300">Teléfono (opcional)</Label>
-          <Input id="referral-referred_phone" type="tel" value={form.referred_phone} autoComplete="off" aria-describedby="referral-contact-hint" onChange={(e) => onChange({ ...form, referred_phone: e.target.value })} />
+          <PhoneInput id="referral-referred_phone" value={form.referred_phone} autoComplete="off" aria-describedby="referral-contact-hint" error={phoneError} onChange={(v) => onChange({ ...form, referred_phone: v })} />
         </div>
       </div>
       <p id="referral-contact-hint" className="text-xs text-gray-600 dark:text-gray-400">Para convertirlo en lead hará falta al menos correo o teléfono.</p>

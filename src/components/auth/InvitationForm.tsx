@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
 
 interface InvitationFormProps {
   inviteData: {
@@ -57,8 +57,8 @@ export default function InvitationForm({
 
     if (!formData.phoneNumber.trim()) {
       errors.phoneNumber = 'El teléfono es obligatorio';
-    } else if (!/^\+?[\d\s\-\(\)]+$/.test(formData.phoneNumber)) {
-      errors.phoneNumber = 'Formato de teléfono no válido';
+    } else if (mensajeErrorTelefono(formData.phoneNumber)) {
+      errors.phoneNumber = mensajeErrorTelefono(formData.phoneNumber) ?? 'Formato de teléfono no válido';
     }
 
     if (!formData.password.trim()) {
@@ -180,7 +180,8 @@ export default function InvitationForm({
                 value={formData.phoneNumber}
                 onChange={(v) => handleInputChange('phoneNumber', v)}
                 required
-                className={`mt-1 ${validationErrors.phoneNumber ? '[&_button]:border-red-300 [&_input]:border-red-300' : '[&_button]:border-gray-300 [&_input]:border-gray-300'}`}
+                className="mt-1"
+                error={!!validationErrors.phoneNumber}
               />
               {validationErrors.phoneNumber && (
                 <p className="mt-1 text-sm text-red-600">{validationErrors.phoneNumber}</p>

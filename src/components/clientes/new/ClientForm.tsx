@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { ToastAction } from '@/components/ui/toast';
 import { useToast, toastSuccess, toastError } from '@/components/ui/use-toast';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
 import { MergeModal } from './MergeModal';
 import { CompanyContactsManager } from '@/components/clientes/CompanyContactsManager';
 import LocationSelector, { type LocationData } from '@/components/common/LocationSelector';
@@ -486,6 +486,11 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   // Envío del formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errorTelefono = mensajeErrorTelefono(formData.phone);
+    if (errorTelefono) {
+      setError(`Teléfono: ${errorTelefono}`);
+      return;
+    }
     setLoading(true);
     setError('');
     
@@ -1174,7 +1179,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       name="phone"
                       value={formData.phone}
                       onChange={(v) => setFormData(prev => ({ ...prev, phone: v }))}
-                      inputClassName="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                      inputClassName="h-10"
                     />
                   </div>
                 </div>

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
 import { toast } from 'sonner';
 import {
   User,
@@ -216,6 +216,11 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
   const handleAddNewContact = async () => {
     if (!newPersonData.first_name.trim() || !newPersonData.last_name.trim()) {
       toast.error('Nombre y apellido son obligatorios');
+      return;
+    }
+    const errorTelefono = mensajeErrorTelefono(newPersonData.phone);
+    if (errorTelefono) {
+      toast.error(errorTelefono);
       return;
     }
     setAdding(true);
@@ -897,11 +902,11 @@ function AddContactModal({
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-sm font-medium">Teléfono</Label>
+                    <Label htmlFor="new-contact-phone" className="text-sm font-medium">Teléfono</Label>
                     <PhoneInput
+                      id="new-contact-phone"
                       value={newPersonData.phone}
                       onChange={(v) => onNewPersonChange({ ...newPersonData, phone: v })}
-                      placeholder="300 123 4567"
                     />
                   </div>
                 </div>

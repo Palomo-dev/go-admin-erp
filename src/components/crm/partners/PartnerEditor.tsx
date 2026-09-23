@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
@@ -83,8 +84,13 @@ export function PartnerEditor({ open, partner, tiers, onOpenChange, onSave, retu
     return (
       <div>
         <Label htmlFor={id} className="text-xs text-gray-700 dark:text-gray-300">{label}</Label>
+        {extra.type === 'tel' ? (
+          <PhoneInput id={id} value={String(form[key])} autoComplete="off" aria-invalid={!!err} showValidation={false}
+            aria-describedby={err ? `${id}-error` : extra.hint ? `${id}-hint` : undefined} onChange={(v) => update({ ...form, [key]: v })} />
+        ) : (
         <Input id={id} type={extra.type ?? 'text'} value={String(form[key])} placeholder={extra.placeholder} autoComplete="off" aria-invalid={!!err}
           aria-describedby={err ? `${id}-error` : extra.hint ? `${id}-hint` : undefined} onChange={(e) => update({ ...form, [key]: e.target.value })} />
+        )}
         {err ? <p id={`${id}-error`} role="alert" className="mt-1 text-xs text-red-700 dark:text-red-300">{err}</p>
           : extra.hint ? <p id={`${id}-hint`} className="mt-1 text-xs text-gray-600 dark:text-gray-400">{extra.hint}</p> : null}
       </div>

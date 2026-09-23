@@ -1544,3 +1544,230 @@ morir.
   `timezoneFallback.test.ts` falló una vez en lote y pasó en solitario. Ninguno toca
   archivos de esta tanda. Excluyendo `openFinanceYMonedas`, las seis zonas dan verde.
 - Sin `git add`, `commit`, `push`, `stash` ni cambio de rama.
+
+---
+
+## Fase B — tandas 6 y 8 (PMS presentacion/tape chart y parking reportes/tablero) · 2026-09-23
+
+Encargo: las tandas 6 (PMS: `pmsDashboardService`, `tapeChartService`, calendario, reservas,
+`pmsCrmLink`) y 8 (parking: `parkingDashboardService`, `parkingReportService`, filtros y pagina
+de reportes). Sin commit: los cambios quedan en el arbol.
+
+### Correcciones al inventario
+
+1. **La tanda 6 son 18 ocurrencias, no 21.** Contando las lineas que el propio inventario
+   nombra: `pmsDashboardService` 128,129,205,206,263,264,318,319,414,415 (10),
+   `tapeChartService` 296,310,379 (3), `pms/calendario/page.tsx` 66,78 (2),
+   `pms/reservas/page.tsx` 355 (1), `pmsCrmLink` 119,120 (2). La tanda 8 si son 11.
+   Medido sobre `HEAD`: 29 en los dos lotes juntos.
+
+2. **`parkingReportService` tiene mucho mas que las dos lineas del inventario.** El inventario
+   solo apunta 167 y 171 (la clave de agrupacion). Lo gordo estaba en las consultas: **los ocho
+   metodos** que filtran por fecha comparaban `parking_sessions.entry_at` y
+   `payments.created_at` —los dos **timestamptz**— contra los dias sueltos del filtro:
+
+   ```
+   .gte('entry_at', '2026-09-01').lte('entry_at', '2026-09-23')
+   ```
+
+   Postgres lee esas cadenas como medianoche UTC, asi que **el ultimo dia del informe no
+   entraba** (solo su primera hora en Bogota) y el corte iba desplazado el offset entero. Un
+   informe «del 1 al 23» perdia casi todas las sesiones del 23 y se comia las de la tarde del
+   31 del mes anterior. Eso no aparece en el recuento del inventario porque no usa
+   `toISOString()`: es el mismo bug por el otro lado.
+
+3. **Dos lecturas mas que el inventario no lista y que van en el mismo commit**, por la regla
+   de oro (columna `timestamptz` = ida y vuelta):
+   `pmsDashboardService:518` hacia `m.created_at?.split('T')[0]` sobre
+   `maintenance_orders.created_at`, y `parkingReportService.exportToCSV` imprimia
+   `new Date(entry_at).toLocaleString('es-CO')` **sin `timeZone`**.
+
+4. **`parking_passes` no tiene `branch_id`** (confirmado por MCP; solo `organization_id`), asi
+   que ahi la zona es la de la organizacion. `parking_sessions` si tiene las dos.
+
+### Tipos verificados por MCP (`information_schema.columns`, `jgmgphmzusbluqhuqihj`)
+
+| Tabla.columna | Tipo | Consecuencia |
+|---|---|---|
+| `reservations.checkin` / `.checkout` | **date** | dia calendario; basta `todayInTz` / `toPlainDate` |
+| `reservation_blocks.date_from` / `.date_to` | **date** | idem |
+| `opportunity_spaces.checkin_date` / `.checkout_date` | **date** | idem |
+| `parking_passes.start_date` / `.end_date` | **date** | idem; la tabla **no** tiene `branch_id` |
+| `maintenance_orders.created_at` | **timestamptz** | ida y vuelta: `plainDayOfInstant` |
+| `parking_sessions.entry_at` / `.exit_at` / `.created_at` | **timestamptz** | ida y vuelta: `getDayRange` / `getDateRange` |
+| `payments.created_at` | **timestamptz** | idem |
+
+Cero escrituras y cero DDL: las dos tandas se resuelven en codigo.
+
+### Tanda 6 — fila por fila
+
+| Call-site (inventario) | Destino · tipo | Arreglo | Zona |
+|---|---|---|---|
+| `pmsDashboardService:128,129` (`getDashboardStats`) | `reservations.checkin`/`.checkout` · **date** | `todayInTz(tz)` / `toPlainDate(d, tz)` | sucursal del filtro, si la hay |
+| `pmsDashboardService:205,206` (`getArrivals`) | idem | idem | idem |
+| `pmsDashboardService:263,264` (`getDepartures`) | idem | idem | idem |
+| `pmsDashboardService:318,319` (`getAlerts`) | `checkin`, `reservation_blocks.date_from` · date | `todayInTz` + `sumarDiasAlDia(hoy, 1)` | idem |
+| `pmsDashboardService:414,415` (`getWeekCalendarEvents`) | idem | `todayInTz` + `sumarDiasAlDia(hoy, 7)` | idem |
+| `pmsDashboardService:518` **(no estaba en el inventario)** | `maintenance_orders.created_at` · **timestamptz** ⚠ | `plainDayOfInstant(created_at, tz)` | idem |
+| `tapeChartService:296` (`getOccupancyData`, init del mapa) | dias del rango | `diasEntreDias` + `sumarDiasAlDia` | no hace falta: entrada ya es dia |
+| `tapeChartService:310` (bucle de ocupacion) | `checkin`/`checkout` · date | `nextPlainDay` sobre cadenas, sin `Date` | idem |
+| `tapeChartService:379` (`generateDateRange`) | dias del tape chart | `sumarDiasAlDia(startDate, i)` | idem |
+| `pms/calendario/page.tsx:66,78` | dia inicial del tape chart | el estado pasa a ser el dia `YYYY-MM-DD`; `getToday()` tras `tzLoading`, `sumarDiasAlDia` para navegar | `useFormatDate(branchFilter)` |
+| `components/pms/calendario/TapeChartHeader.tsx` **(arrastrado)** | props del encabezado | `startDay: string` / `onStartDayChange` | — |
+| `pms/reservas/page.tsx:355` | `CheckoutService.getDepartures(org, hoy)` sobre `checkout` · date | `getToday()` | `useFormatDate(branchFilter)` |
+| `crm/pmsCrmLink.ts:119,120` | `reservations.checkin`/`.checkout` · date (respaldo) | `todayInTz` + `sumarDiasAlDia(hoy, 1)` | `resolveTimezone(orgId, branchId)` |
+
+**El inventario decia que `pmsCrmLink` necesita cambio de firma. No lo necesita:** la funcion ya
+resolvia `getOrganizationId()` y `getCurrentBranchIdWithFallback()` en sus primeras lineas. La
+identidad estaba ahi; lo unico que faltaba era usarla.
+
+**Por que el calendario cambia de tipo de estado.** Guardaba un `Date` puesto a medianoche
+**local del navegador** y lo convertia con `toISOString()` cada vez que hablaba con el servicio.
+Eso es el dia UTC: en un hotel de Bogota, a partir de las 19:00 el tape chart arrancaba en el dia
+siguiente. Convertir el `Date` con `toPlainDate` no arregla el problema de raiz, porque la ida y
+la vuelta (el `Date` local del datepicker -> dia de la organizacion -> `Date` local otra vez) no
+es estable cuando el navegador y la organizacion estan en husos distintos. El estado pasa a ser
+el valor de negocio —`YYYY-MM-DD`— y el `Date` solo existe dentro del encabezado, al mediodia
+local, para que `date-fns` y el widget pinten el numero correcto.
+
+### Tanda 8 — fila por fila
+
+| Call-site (inventario) | Destino · tipo | Arreglo | Zona |
+|---|---|---|---|
+| `parkingDashboardService:68` (`getDashboardStats`) | `parking_sessions.created_at` · **timestamptz** ⚠ | `getDayRange(todayInTz(tz), tz)` y `gte`/`lte` sobre instantes | sucursal si la hay |
+| `parkingDashboardService:251,252` (`getExpiringPasses`) | `parking_passes.end_date` · **date** | `todayInTz` + `sumarDiasAlDia(hoy, N)` | organizacion (la tabla no tiene sucursal) |
+| `parkingDashboardService:326` (`getHourlyStats`) | `entry_at` · **timestamptz** ⚠ | `getDayRange`; **firma nueva** `(branchId, organizationId, date?)` | sucursal |
+| `parkingDashboardService:421` (`getDailySummary`) | dia objetivo | `todayInTz(tz)` | sucursal |
+| `parkingReportService:167,171` (`getRevenueByPeriod`) | clave de agrupacion desde `entry_at` · timestamptz ⚠ | `toPlainDate(instante, tz)`; semana con `diaDeLaSemanaDelDia` + `sumarDiasAlDia`; mes por `dia.slice(0,7)` | sucursal del filtro |
+| `parkingReportService` × 8 metodos **(no estaba en el inventario)** | filtros sobre `entry_at` / `payments.created_at` · **timestamptz** ⚠ | `getDateRange(desde, hasta, tz)` en un unico helper privado `rangoDeInstantes` | sucursal del filtro |
+| `parkingReportService.getOccupancyByHour` **(idem)** | hora de `entry_at` | hora de pared en la zona, no `getHours()` | idem |
+| `parkingReportService.exportToCSV` **(idem)** | impresion de `entry_at`/`exit_at` ⚠ | `formatDateTimeInTz` | idem |
+| `parkingDashboardService.getDaysRemaining` **(idem)** | dias restantes de un pase | `diasEntreDias(hoy, end_date)`; **firma nueva** `(endDate, hoy)` | del llamador |
+| `parkingDashboardService.getHourlyStats` (contador) **(idem)** | hora de `entry_at`/`exit_at` | hora de pared en la zona | sucursal |
+| `components/parking/reportes/ReportesFilters.tsx:53,54` | rango rapido del informe | `getToday()` + `sumarDiasAlDia` / `sumarMesesAlDia` | contexto |
+| `app/parking/reportes/page.tsx:35,36` | rango por defecto (30 dias) | `getToday()` dentro de un efecto que espera a `tzLoading` | contexto |
+
+**Dos correcciones de semantica** que van mas alla de la zona y que conviene revisar:
+
+1. **El corte de `getHourlyStats` perdia el ultimo segundo del dia** (`< ${dia}T23:59:59`).
+   `getDayRange` llega hasta `23:59:59.999`.
+2. **«Un mes atras» en el filtro rapido ya no son 30 dias.** Usa `sumarMesesAlDia`, que recorta
+   al ultimo dia del mes en vez de desbordar; el boton «1A» pasa a ser `-12` meses.
+
+Y una de comportamiento, para que nadie la descubra en produccion: el rango por defecto de
+`app/parking/reportes` **ya no pisa el que el usuario tenga guardado en `localStorage`**. Antes
+el `useState` inicial se calculaba siempre y el efecto de `localStorage` lo sobreescribia; ahora
+el defecto se calcula despues (hay que esperar a la zona), asi que solo rellena si el hueco sigue
+vacio.
+
+### Deuda anotada
+
+1. **Tablero de PMS consolidado.** Sin sucursal elegida, `pmsDashboardService` usa la zona de la
+   organizacion. Un consolidado sobre sucursales en husos distintos **no tiene un unico «hoy»**:
+   las llegadas de la sede de Madrid y las de la de Bogota no empiezan el mismo instante. Queda
+   escrito en la cabecera del servicio. Resolverlo bien es agrupar por sucursal, y eso es un
+   cambio de producto, no de zona horaria.
+2. **`pms/reservas/page.tsx`.** `ReservationListItem` no trae `branch_id` (comprobado en
+   `reservationListService`), asi que «las salidas de hoy» usan la zona de la sucursal del filtro
+   de la barra superior, no la de la reserva. Es la misma forma de deuda que `AccountActionsCard`
+   en la tanda 2: la cascada cae un nivel y da exactamente el comportamiento de hoy. Se cierra
+   anadiendo `branch_id` al `select` de la lista.
+3. **`ReportesFilters` y la pagina de reportes de parking no fijan sucursal.** `ReportFilters`
+   tiene `branchId?`, el servicio ya lo usa para resolver la zona, pero la pagina nunca lo
+   rellena: hoy todos los informes de parqueadero salen en la zona de la organizacion. En cuanto
+   la pagina ofrezca el selector de sucursal, la zona correcta viene sola.
+4. **`parking_passes` sin `branch_id`.** Un parqueadero con sedes en husos distintos calcularia
+   la vigencia de sus abonos con la zona de la organizacion. Anadir la columna es fase D.
+5. **`tapeChartService.checkConflicts`** sigue comparando con `new Date(dia)`. No se toco: los
+   dos lados de cada comparacion se interpretan como medianoche UTC, asi que el resultado es
+   correcto y el inventario no lo lista. Queda apuntado por si alguien mete ahi un `timestamptz`.
+
+### Red
+
+`src/__tests__/timezone/pmsParkingReportes.test.ts` — **45 casos**, verde en las **seis** zonas de
+`test:tz-all` (`UTC`, `America/Bogota`, `America/Mexico_City`, `Europe/Madrid`,
+`America/Santiago`, `Asia/Kathmandu`). Reutiliza `dobleSupabase.ts` de la tanda 3, que registra
+tabla, operacion, payload y filtros: sin eso no se puede afirmar «con que extremos se filtra».
+
+Los cuatro instantes del reloj falso estan elegidos para que el dia de la organizacion y el de
+UTC **no** coincidan; si coincidieran, la prueba pasaria tambien con el codigo viejo (leccion de
+la tanda 5, escrita en la cabecera del archivo):
+
+- `2026-09-24T01:00Z` — Bogota sigue en el 23 a las 20:00, UTC ya esta en el 24.
+- `2026-09-22T22:30Z` — Madrid ya esta en el 23 a las 00:30, UTC sigue en el 22.
+- `2026-10-24T22:30Z` — Madrid esta en el 25 **y ese dia dura 25 h**: `Date.now() + 86400000`
+  sigue cayendo en el 25, o sea «manana» seria «hoy». Es el caso que mata la version con 24 h.
+- `2026-09-23T19:00Z` — Katmandu (**+05:45**, offset no entero) esta en el 24 a las 00:45.
+
+Ademas: el dia de 25 h de Madrid empieza en `+02:00` y termina en `+01:00` en el mismo rango;
+una sesion del 31 de enero a las 23:00 en Bogota se agrupa en enero y no en febrero (dia, semana
+y mes); el mapa de ocupacion del tape chart cuenta desde el check-in y **no** cuenta la noche de
+salida, con el 29 de febrero bisiesto y el cruce de ano; y un pase que vence hoy dice 0 dias, no 1.
+
+### Mutaciones
+
+**24 mutaciones, 24 muertas, 0 supervivientes**, md5 de los 10 archivos identico antes y despues
+(`.../scratchpad/tz-t68/mutar.py`, `mutaciones.json`, `mutaciones-resultado.json`).
+
+Cubren: volver al dia UTC en el tablero de PMS, ignorar la sucursal del filtro, «manana» como
+24 h, la semana como 7×24 h, el dia de la orden de mantenimiento por el dia UTC, el tape chart
+de vuelta a `Date` + `setDate`, contar la noche de salida, el respaldo de CRM→PMS en UTC, la
+jornada del parqueadero como cadena sin offset, los pases por vencer en bloques de 24 h, los
+dias restantes desde el dia UTC, la hora pico con `getHours()`, el corte que pierde el final del
+dia, el rango del informe comparado contra dias sueltos, el rango resuelto en UTC, la zona que
+ignora la sucursal, el agrupador por dia UTC, el CSV con hora ajena, los rangos rapidos y el dia
+inicial del calendario calculados con el reloj del navegador, y el encabezado del tape chart de
+vuelta a un `Date`.
+
+**La primera pasada dejo una superviviente, y por la razon de siempre.** La guarda estatica de la
+pagina de reportes comprobaba `expect(fuente).toContain('tzLoading')`, y la mutacion que quitaba
+la GUARDA (`if (tzLoading || arrancado.current) return;` → `if (arrancado.current) return;`)
+dejaba intacta la **declaracion** `const { isLoading: tzLoading } = useOrgTimezone();`. El token
+seguia ahi y la guarda pasaba. Ahora exige el corto-circuito completo, literal. Es la leccion de
+la tanda 2 en otra forma: **una guarda que comprueba que aparece un nombre no prueba que ese
+nombre se use donde hace falta.**
+
+### Metrica
+
+Metrica 1 (escritura de dia en UTC), medida sobre el arbol de trabajo:
+**161 antes / 132 despues**, −29, que es exactamente el numero de ocurrencias de los dos lotes
+(10 + 3 + 2 + 1 + 2 en la tanda 6; 5 + 2 + 2 + 2 en la tanda 8). En los 10 archivos tocados:
+**29 → 0**, y los comentarios que describen el patron viejo estan redactados para **no**
+reproducirlo, de modo que no inflan el contador.
+
+Los ocho filtros de `parkingReportService` y las tres lecturas en zona ajena
+(`maintenance_orders.created_at`, `getHours()`, `toLocaleString` del CSV) **no aparecen en esta
+metrica**: son el mismo bug por el lado que el `grep` no ve.
+
+Rutas anadidas al bloque `overrides` de `.eslintrc.json` con la regla en `error`:
+`src/lib/services/pmsDashboardService.ts`, `src/lib/services/tapeChartService.ts`,
+`src/lib/services/crm/pmsCrmLink.ts`, `src/app/app/pms/calendario/**`,
+`src/app/app/pms/reservas/**`, `src/lib/services/parkingDashboardService.ts`,
+`src/lib/services/parkingReportService.ts`, `src/components/parking/reportes/**`,
+`src/app/app/parking/reportes/**`. (`src/components/pms/**` ya estaba.) Los cuatro directorios
+quedan a cero ocurrencias, comprobado antes de subir la regla a `error`.
+
+### NO VERIFICADO
+
+- `npx tsc --noEmit` **completo** y `next build`: no se ejecutan (el encargo los excluye por el
+  arbol compartido). El `tsc` acotado a los 10 archivos tocados da **0 errores**, y se comprobo
+  que ese `tsc` acotado **esta vivo**: con un `const _prueba: number = 'cadena'` inyectado a
+  proposito lo detecta (`TS2322`), asi que el silencio no es el falso «0 errores» por falta de
+  heap ya anotado en las notas de sesion.
+- ESLint: **0 problemas en las lineas nuevas** (medido cruzando `eslint --format json` con las
+  lineas anadidas segun `git diff -U0`); el archivo de pruebas esta limpio. En los archivos
+  tocados siguen los errores **preexistentes** de `no-explicit-any` (`tapeChartService`,
+  `parkingDashboardService`, `pmsCrmLink`) y dos avisos de `import/no-anonymous-default-export`,
+  que no se han limpiado en estas tandas. Si se tipo la unica fila `any` que se reescribio
+  (`FilaOcupacion` en `tapeChartService`).
+- **Nada probado en navegador.** En particular no se ha visto que el tape chart y la pagina de
+  reportes no parpadeen mientras el contexto resuelve la zona: ambas arrancan con el dia vacio a
+  proposito, y el encabezado del tape chart pinta `--/--/----` en ese hueco.
+- `src/__tests__/timezone` completo mas `guardrails.test.ts`: **548 de 549** en `TZ=UTC` y en
+  `TZ=America/Bogota`. El unico fallo es
+  `src/__tests__/timezone/openFinanceYMonedas.test.ts` (`transactionSyncService`), un archivo
+  **sin seguimiento en git** que pertenece a otra sesion trabajando en paralelo en las tandas 9 y
+  10; no toca ninguno de los archivos de este encargo. `guardrails.test.ts` en solitario: 116 de
+  116.
+- Cero escrituras en la base de datos. Ninguna migracion: no hizo falta DDL.
+- Sin `git add`, `commit`, `push`, `stash` ni cambio de rama.

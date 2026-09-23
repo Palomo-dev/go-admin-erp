@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { BarChart3, AlertCircle } from 'lucide-react';
 import parkingReportService, {
@@ -26,18 +28,21 @@ import {
   type ReportFiltersState,
 } from '@/components/parking/reportes';
 
-const getDefaultFilters = (): ReportFiltersState => {
-  const today = new Date();
-  const thirtyDaysAgo = new Date(today);
-  thirtyDaysAgo.setDate(today.getDate() - 30);
-
-  return {
-    startDate: thirtyDaysAgo.toISOString().split('T')[0],
-    endDate: today.toISOString().split('T')[0],
-    groupBy: 'day',
-    vehicleType: 'all',
-  };
+// El rango por defecto sale del dia del parqueadero, y por eso NO se puede
+// calcular a nivel de modulo: la zona la sabe el contexto, y solo despues de
+// resolverla. Con `new Date()` un informe abierto a las 20:00 en Bogota
+// arrancaba el dia siguiente y perdia la jornada en curso.
+const filtrosVacios: ReportFiltersState = {
+  startDate: '',
+  endDate: '',
+  groupBy: 'day',
+  vehicleType: 'all',
 };
+
+const rangoPorDefecto = (hoy: string): Pick<ReportFiltersState, 'startDate' | 'endDate'> => ({
+  startDate: sumarDiasAlDia(hoy, -30),
+  endDate: hoy,
+});
 
 const initialSummary: ReportSummary = {
   total_sessions: 0,
@@ -52,7 +57,10 @@ export default function ReportesPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
 
-  const [filters, setFilters] = useState<ReportFiltersState>(getDefaultFilters);
+  const { getToday } = useFormatDate();
+  const { isLoading: tzLoading } = useOrgTimezone();
+  const [filters, setFilters] = useState<ReportFiltersState>(filtrosVacios);
+  const arrancado = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Data states
@@ -71,7 +79,7 @@ export default function ReportesPage() {
 
   // Cargar datos
   const loadData = useCallback(async () => {
-    if (!organization?.id) return;
+    if (!organization?.id || !filters.startDate || !filters.endDate) return;
 
     setIsLoading(true);
     try {
@@ -117,6 +125,19 @@ export default function ReportesPage() {
       setIsLoading(false);
     }
   }, [organization?.id, filters, toast]);
+
+  // Primero la zona, luego el rango: hasta que el contexto no la resuelve no
+  // se sabe cual es «hoy» para este parqueadero. Si el usuario ya tenia un
+  // rango guardado, manda el suyo: el defecto solo rellena el hueco.
+  useEffect(() => {
+    if (tzLoading || arrancado.current) return;
+    arrancado.current = true;
+    setFilters((previos) =>
+      previos.startDate && previos.endDate
+        ? previos
+        : { ...previos, ...rangoPorDefecto(getToday()) },
+    );
+  }, [tzLoading, getToday]);
 
   useEffect(() => {
     if (organization?.id && !orgLoading) {

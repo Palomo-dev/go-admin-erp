@@ -1,4 +1,35 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateCore';
+import { getDayRange } from '@/lib/utils/dateRanges';
+import { diasEntreDias, sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
+
+// ============================================================
+// Fase B, tanda 8 — la caja y la ocupacion del dia son las del parqueadero.
+//
+// Dos familias de columnas, y el arreglo NO es el mismo (verificado en
+// `information_schema.columns`):
+//
+//   `parking_sessions.created_at` / `.entry_at` / `.exit_at` -> **timestamptz**.
+//       Acotar la jornada con `` `${dia}T00:00:00` `` es una cadena SIN offset:
+//       Postgres la lee en UTC. En Bogota eso corria el corte cinco horas y la
+//       caja del dia se comia las cinco primeras horas de la madrugada
+//       siguiente y perdia las cinco ultimas de la tarde. Se usa `getDayRange`,
+//       que devuelve los dos extremos con el offset real (DST incluido).
+//
+//   `parking_passes.start_date` / `.end_date` -> **date**.
+//       Aqui basta el dia calendario de la organizacion: `todayInTz`.
+//       `parking_passes` NO tiene `branch_id` (comprobado), asi que la zona es
+//       la de la organizacion y no la de ninguna sucursal.
+//
+// La hora de un `timestamptz` tambien es de la zona del parqueadero: las
+// «horas pico» salian en la hora del navegador, asi que la misma entrada se
+// contaba a las 08:00 desde Bogota y a las 15:00 desde Madrid.
+//
+// La zona entra por identidad (ADR-003): `resolveTimezone(organizationId,
+// branchId)`.
+// ============================================================
 
 export interface ParkingDashboardStats {
   // Ocupación
@@ -61,11 +92,23 @@ class ParkingDashboardService {
   private readonly AT_RISK_THRESHOLD_HOURS = 8; // Sesiones de más de 8 horas se consideran "en riesgo"
 
   /**
+   * Zona horaria efectiva del dato. ADR-003: identidad, nunca un `timezone`
+   * ya resuelto. Sin sucursal (vista consolidada) cae en la organizacion.
+   */
+  private zona(organizationId: number, branchId?: number | null): Promise<string> {
+    return resolveTimezone(organizationId, branchId ?? null);
+  }
+
+  /**
    * Obtener estadísticas completas del dashboard
    */
   async getDashboardStats(branchId: number | null, organizationId: number): Promise<ParkingDashboardStats> {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const tz = await this.zona(organizationId, branchId);
+      const today = todayInTz(tz);
+      // `created_at` es timestamptz: la jornada se acota con instantes que
+      // llevan el offset real de la zona, no con una cadena de dia.
+      const jornada = getDayRange(today, tz);
       const now = new Date();
 
       // Consultas en paralelo para mejor rendimiento
@@ -87,11 +130,13 @@ class ParkingDashboardService {
               .from('parking_sessions')
               .select('id, status, entry_at, exit_at, amount')
               .eq('branch_id', branchId)
-              .gte('created_at', `${today}T00:00:00`)
+              .gte('created_at', jornada.start)
+              .lte('created_at', jornada.end)
           : supabase
               .from('parking_sessions')
               .select('id, status, entry_at, exit_at, amount')
-              .gte('created_at', `${today}T00:00:00`),
+              .gte('created_at', jornada.start)
+              .lte('created_at', jornada.end),
 
         // Pases activos
         supabase
@@ -132,17 +177,17 @@ class ParkingDashboardService {
       
       // Calcular vencimientos
       const expiringIn7Days = passes.filter((p: any) => {
-        const daysRemaining = this.getDaysRemaining(p.end_date);
+        const daysRemaining = this.getDaysRemaining(p.end_date, today);
         return daysRemaining >= 0 && daysRemaining <= 7;
       }).length;
 
       const expiringIn15Days = passes.filter((p: any) => {
-        const daysRemaining = this.getDaysRemaining(p.end_date);
+        const daysRemaining = this.getDaysRemaining(p.end_date, today);
         return daysRemaining > 7 && daysRemaining <= 15;
       }).length;
 
       const expiringIn30Days = passes.filter((p: any) => {
-        const daysRemaining = this.getDaysRemaining(p.end_date);
+        const daysRemaining = this.getDaysRemaining(p.end_date, today);
         return daysRemaining > 15 && daysRemaining <= 30;
       }).length;
 
@@ -230,9 +275,10 @@ class ParkingDashboardService {
    */
   async getExpiringPasses(organizationId: number, daysAhead = 30): Promise<ExpiringPass[]> {
     try {
-      const today = new Date();
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + daysAhead);
+      // `parking_passes` no tiene `branch_id`: la zona es la de la organizacion.
+      const tz = await this.zona(organizationId);
+      const today = todayInTz(tz);
+      const futureDate = sumarDiasAlDia(today, daysAhead);
 
       const { data, error } = await supabase
         .from('parking_passes')
@@ -248,8 +294,8 @@ class ParkingDashboardService {
         `)
         .eq('organization_id', organizationId)
         .eq('status', 'active')
-        .gte('end_date', today.toISOString().split('T')[0])
-        .lte('end_date', futureDate.toISOString().split('T')[0])
+        .gte('end_date', today)
+        .lte('end_date', futureDate)
         .order('end_date', { ascending: true });
 
       if (error) {
@@ -266,7 +312,7 @@ class ParkingDashboardService {
         customer_name: (pass.customers as any)?.full_name || 'Sin nombre',
         plan_name: pass.plan_name,
         end_date: pass.end_date,
-        days_remaining: this.getDaysRemaining(pass.end_date),
+        days_remaining: this.getDaysRemaining(pass.end_date, today),
       }));
     } catch (error) {
       console.error('Error obteniendo pases por vencer:', error);
@@ -321,16 +367,21 @@ class ParkingDashboardService {
   /**
    * Obtener estadísticas por hora (horas pico)
    */
-  async getHourlyStats(branchId: number, date?: string): Promise<HourlyStats[]> {
+  async getHourlyStats(branchId: number, organizationId: number, date?: string): Promise<HourlyStats[]> {
     try {
-      const targetDate = date || new Date().toISOString().split('T')[0];
+      const tz = await this.zona(organizationId, branchId);
+      const targetDate = date || todayInTz(tz);
+      // `entry_at` es timestamptz. El corte anterior ademas se quedaba en
+      // `23:59:59`, o sea perdia el ultimo segundo del dia; `getDayRange`
+      // llega hasta `23:59:59.999` con el offset correcto.
+      const jornada = getDayRange(targetDate, tz);
 
       const { data, error } = await supabase
         .from('parking_sessions')
         .select('entry_at, exit_at')
         .eq('branch_id', branchId)
-        .gte('entry_at', `${targetDate}T00:00:00`)
-        .lt('entry_at', `${targetDate}T23:59:59`);
+        .gte('entry_at', jornada.start)
+        .lte('entry_at', jornada.end);
 
       if (error) throw error;
 
@@ -341,14 +392,16 @@ class ParkingDashboardService {
         exits: 0,
       }));
 
-      // Contar entradas y salidas por hora
+      // Contar entradas y salidas por hora DE LA ZONA DEL PARQUEADERO.
+      // `getHours()` daba la hora del navegador: las mismas entradas salian
+      // en franjas distintas segun desde donde se mirara el tablero.
       (data || []).forEach(session => {
-        const entryHour = new Date(session.entry_at).getHours();
-        hourlyData[entryHour].entries++;
+        const entryHour = this.horaEnZona(session.entry_at, tz);
+        if (entryHour !== null) hourlyData[entryHour].entries++;
 
         if (session.exit_at) {
-          const exitHour = new Date(session.exit_at).getHours();
-          hourlyData[exitHour].exits++;
+          const exitHour = this.horaEnZona(session.exit_at, tz);
+          if (exitHour !== null) hourlyData[exitHour].exits++;
         }
       });
 
@@ -418,12 +471,12 @@ class ParkingDashboardService {
     topPlates: TopPlate[];
     hourlyStats: HourlyStats[];
   }> {
-    const targetDate = date || new Date().toISOString().split('T')[0];
-    
+    const targetDate = date || todayInTz(await this.zona(organizationId, branchId));
+
     const [stats, topPlates, hourlyStats] = await Promise.all([
       this.getDashboardStats(branchId, organizationId),
       this.getTopPlates(branchId, 5),
-      this.getHourlyStats(branchId, targetDate),
+      this.getHourlyStats(branchId, organizationId, targetDate),
     ]);
 
     return {
@@ -435,12 +488,33 @@ class ParkingDashboardService {
   }
 
   // Helpers
-  private getDaysRemaining(endDate: string): number {
-    const end = new Date(endDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    end.setHours(0, 0, 0, 0);
-    return Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  /**
+   * Hora de pared (0–23) de un `timestamptz` en la zona dada, o `null` si el
+   * valor no es legible. Nunca `getHours()`, que lee el reloj del navegador.
+   */
+  private horaEnZona(valor: string | null | undefined, timezone: string): number | null {
+    if (!valor) return null;
+    const instante = new Date(valor);
+    if (isNaN(instante.getTime())) return null;
+    // `formatTimeInTz` devuelve "HH:mm" en 24 h; `parseInt` se queda con "HH".
+    const hora = parseInt(formatTimeInTz(instante, timezone), 10);
+    if (isNaN(hora)) return null;
+    return hora === 24 ? 0 : hora;
+  }
+
+  /**
+   * Dias que le quedan a un pase, contados en DIAS CALENDARIO desde el dia de
+   * la organizacion (`hoy`, `YYYY-MM-DD`), no en bloques de 24 h desde el
+   * reloj del navegador.
+   *
+   * `parking_passes.end_date` es una columna **date**, asi que aqui no hay
+   * instantes que convertir: es una resta de dias. Lo anterior (`new Date()`
+   * con `setHours(0,0,0,0)`) daba la medianoche del NAVEGADOR: desde Madrid,
+   * el pase de un parqueadero de Bogota vencia un dia antes en pantalla.
+   */
+  private getDaysRemaining(endDate: string, hoy: string): number {
+    return diasEntreDias(hoy, endDate.slice(0, 10));
   }
 }
 

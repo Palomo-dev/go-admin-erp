@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Calendar, Filter } from 'lucide-react';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { sumarDiasAlDia, sumarMesesAlDia } from '@/lib/services/fiscalCalendar';
 
 export interface ReportFiltersState {
   startDate: string;
@@ -25,33 +27,37 @@ interface ReportesFiltersProps {
 }
 
 export function ReportesFilters({ filters, onFiltersChange }: ReportesFiltersProps) {
+  // «Hoy» es el dia del parqueadero, no el del navegador ni el de UTC: el
+  // servicio convierte estos dos dias en instantes con el offset de la misma
+  // zona (`getDateRange`), asi que el rango tiene que salir de ella.
+  const { getToday } = useFormatDate();
+
   // Función para establecer rangos predefinidos
   const setPresetRange = (preset: 'today' | 'week' | 'month' | 'year') => {
-    const today = new Date();
-    let startDate: Date;
+    const today = getToday();
+    let startDate: string;
 
     switch (preset) {
       case 'today':
         startDate = today;
         break;
       case 'week':
-        startDate = new Date(today);
-        startDate.setDate(today.getDate() - 7);
+        startDate = sumarDiasAlDia(today, -7);
         break;
       case 'month':
-        startDate = new Date(today);
-        startDate.setMonth(today.getMonth() - 1);
+        // Un mes calendario atras, no 30 dias: `sumarMesesAlDia` recorta al
+        // ultimo dia del mes en vez de desbordar (31 de marzo -> 28 de febrero).
+        startDate = sumarMesesAlDia(today, -1);
         break;
       case 'year':
-        startDate = new Date(today);
-        startDate.setFullYear(today.getFullYear() - 1);
+        startDate = sumarMesesAlDia(today, -12);
         break;
     }
 
     onFiltersChange({
       ...filters,
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: today.toISOString().split('T')[0],
+      startDate,
+      endDate: today,
     });
   };
 

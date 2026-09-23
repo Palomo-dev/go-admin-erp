@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useToast } from '@/components/ui/use-toast';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
 import TapeChartService, {
   type TapeChartData,
   type OccupancyData,
@@ -30,11 +32,19 @@ export default function CalendarioPage() {
   const { branchFilter, isLoading: branchLoading } = useBranch();
   const { toast } = useToast();
 
-  const [startDate, setStartDate] = useState(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return today;
-  });
+  // El tape chart se mueve en DIAS CALENDARIO de la organizacion, no en
+  // instantes: `reservations.checkin`/`.checkout` son columnas **date**.
+  // Guardar un `Date` obligaba a convertirlo con `toISOString()`, y eso daba
+  // el dia UTC: en un hotel de Bogota, a partir de las 19:00 el calendario
+  // arrancaba en el dia siguiente. El estado es ahora el propio `YYYY-MM-DD`.
+  //
+  // Arranca vacio a proposito: el dia por defecto se pone cuando el contexto
+  // ya sabe la zona (`tzLoading`); calcularlo en el primer render daria el dia
+  // de Bogota para todas las organizaciones.
+  const { getToday } = useFormatDate(branchFilter);
+  const { isLoading: tzLoading } = useOrgTimezone();
+  const [startDay, setStartDay] = useState('');
+  const arrancado = useRef(false);
   const [daysToShow, setDaysToShow] = useState(14);
   const [chartData, setChartData] = useState<TapeChartData>({
     spaces: [],
@@ -61,25 +71,27 @@ export default function CalendarioPage() {
   const [checkinReservation, setCheckinReservation] = useState<CheckinReservation | null>(null);
   const [checkoutReservation, setCheckoutReservation] = useState<CheckoutReservation | null>(null);
 
+  useEffect(() => {
+    if (tzLoading || arrancado.current) return;
+    arrancado.current = true;
+    setStartDay(getToday());
+  }, [tzLoading, getToday]);
+
   const dates = useMemo(() => {
-    return TapeChartService.generateDateRange(
-      startDate.toISOString().split('T')[0],
-      daysToShow
-    );
-  }, [startDate, daysToShow]);
+    if (!startDay) return [];
+    return TapeChartService.generateDateRange(startDay, daysToShow);
+  }, [startDay, daysToShow]);
 
   const endDateStr = dates[dates.length - 1];
 
   const loadData = async () => {
-    if (!organization?.id) return;
+    if (!organization?.id || !startDay || !endDateStr) return;
     const branchId = branchFilter ?? undefined;
 
     try {
-      const startDateStr = startDate.toISOString().split('T')[0];
-      
       const [data, occupancy] = await Promise.all([
-        TapeChartService.getTapeChartData(organization.id, startDateStr, endDateStr, branchId),
-        TapeChartService.getOccupancyData(organization.id, startDateStr, endDateStr, branchId),
+        TapeChartService.getTapeChartData(organization.id, startDay, endDateStr, branchId),
+        TapeChartService.getOccupancyData(organization.id, startDay, endDateStr, branchId),
       ]);
 
       setChartData(data);
@@ -98,11 +110,13 @@ export default function CalendarioPage() {
   };
 
   useEffect(() => {
-    if (organization?.id && !branchLoading) {
+    if (organization?.id && !branchLoading && startDay) {
       setIsLoading(true);
       loadData();
     }
-  }, [organization?.id, branchFilter, branchLoading, startDate, daysToShow]);
+    // `loadData` se redefine en cada render; la dependencia real es el rango.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization?.id, branchFilter, branchLoading, startDay, daysToShow]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -114,21 +128,15 @@ export default function CalendarioPage() {
   };
 
   const handlePrevious = () => {
-    const newDate = new Date(startDate);
-    newDate.setDate(newDate.getDate() - daysToShow);
-    setStartDate(newDate);
+    setStartDay((dia) => (dia ? sumarDiasAlDia(dia, -daysToShow) : dia));
   };
 
   const handleNext = () => {
-    const newDate = new Date(startDate);
-    newDate.setDate(newDate.getDate() + daysToShow);
-    setStartDate(newDate);
+    setStartDay((dia) => (dia ? sumarDiasAlDia(dia, daysToShow) : dia));
   };
 
   const handleToday = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    setStartDate(today);
+    setStartDay(getToday());
   };
 
   const handleCellClick = (spaceId: string, date: string) => {
@@ -433,9 +441,9 @@ export default function CalendarioPage() {
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <TapeChartHeader
-        startDate={startDate}
+        startDay={startDay}
         daysToShow={daysToShow}
-        onStartDateChange={setStartDate}
+        onStartDayChange={setStartDay}
         onDaysToShowChange={setDaysToShow}
         onPrevious={handlePrevious}
         onNext={handleNext}

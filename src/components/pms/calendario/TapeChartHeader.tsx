@@ -23,10 +23,33 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/utils/Utils';
 
+/**
+ * `YYYY-MM-DD` -> `Date` en el calendario LOCAL del navegador, al mediodia.
+ *
+ * Es lo unico que necesitan `date-fns` y el widget de calendario: pintar el
+ * dia 23 como «23». No es un instante de negocio y no debe guardarse ni
+ * enviarse a la base: para eso esta la cadena `YYYY-MM-DD`, que es lo que
+ * viaja por las props. El mediodia evita que un desfase de horas mueva el dia
+ * pintado, que es lo que pasaba con `new Date('2026-09-23')` (medianoche UTC,
+ * o sea el dia 22 en todo el continente americano).
+ */
+function diaALocal(dia: string): Date {
+  const [anio, mes, d] = dia.split('-').map(Number);
+  return new Date(anio, mes - 1, d, 12, 0, 0, 0);
+}
+
+/** `Date` del widget -> dia calendario, leyendo su calendario local. */
+function localADia(fecha: Date): string {
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  return `${fecha.getFullYear()}-${mes}-${dia}`;
+}
+
 interface TapeChartHeaderProps {
-  startDate: Date;
+  /** Primer dia del tape chart, en dias calendario de la organizacion. */
+  startDay: string;
   daysToShow: number;
-  onStartDateChange: (date: Date) => void;
+  onStartDayChange: (dia: string) => void;
   onDaysToShowChange: (days: number) => void;
   onPrevious: () => void;
   onNext: () => void;
@@ -38,9 +61,9 @@ interface TapeChartHeaderProps {
 }
 
 export function TapeChartHeader({
-  startDate,
+  startDay,
   daysToShow,
-  onStartDateChange,
+  onStartDayChange,
   onDaysToShowChange,
   onPrevious,
   onNext,
@@ -50,8 +73,11 @@ export function TapeChartHeader({
   onNewBlock,
   isRefreshing = false,
 }: TapeChartHeaderProps) {
-  const endDate = new Date(startDate);
-  endDate.setDate(endDate.getDate() + daysToShow - 1);
+  // Mientras el contexto resuelve la zona, la pagina aun no tiene dia: no se
+  // inventa uno con el reloj del navegador.
+  const startDate = startDay ? diaALocal(startDay) : null;
+  const endDate = startDate ? new Date(startDate) : null;
+  endDate?.setDate(endDate.getDate() + daysToShow - 1);
 
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -64,7 +90,9 @@ export function TapeChartHeader({
             Tape Chart
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {format(startDate, "d 'de' MMMM", { locale: es })} - {format(endDate, "d 'de' MMMM yyyy", { locale: es })}
+            {startDate && endDate
+              ? `${format(startDate, "d 'de' MMMM", { locale: es })} - ${format(endDate, "d 'de' MMMM yyyy", { locale: es })}`
+              : ' '}
           </p>
         </div>
       </div>
@@ -103,14 +131,14 @@ export function TapeChartHeader({
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm">
               <CalendarDays className="h-4 w-4 mr-2" />
-              {format(startDate, 'dd/MM/yyyy')}
+              {startDate ? format(startDate, 'dd/MM/yyyy') : '--/--/----'}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="end">
             <Calendar
               mode="single"
-              selected={startDate}
-              onSelect={(date: Date | undefined) => date && onStartDateChange(date)}
+              selected={startDate ?? undefined}
+              onSelect={(date: Date | undefined) => date && onStartDayChange(localADia(date))}
               locale={es}
             />
           </PopoverContent>

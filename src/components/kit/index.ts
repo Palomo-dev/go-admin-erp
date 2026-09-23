@@ -67,3 +67,31 @@ export {
 } from './listadoUrl';
 export { estadoCasillaCabecera, alternarPagina, alternarId } from './seleccion';
 export { useEsEscritorio } from './useEsEscritorio';
+
+// Árboles (categorías hoy; cualquier listado jerárquico) y diálogo con cuerpo
+export {
+  construirArbol,
+  filtrarArbol,
+  aplanarArbol,
+  paginarRaices,
+  descendientesDe,
+  ancestrosDe,
+  idsConHijos,
+  normalizarBusqueda,
+  type NodoPlano,
+  type NodoArbol,
+  type FilaArbol,
+  type ResultadoFiltroArbol,
+} from './arbol';
+export { TreeCell, type TreeCellProps } from './TreeCell';
+export { TreeCard, type TreeCardProps } from './TreeCard';
+export { TreeList, TreeSelect, rutaOpcion, type OpcionArbol, type TreeListProps, type TreeSelectProps } from './TreePicker';
+export {
+  useArrastreArbol,
+  ZonaSoltarRaiz,
+  type ArrastreArbol,
+  type OpcionesArrastreArbol,
+  type PropsNodoArrastre,
+  type ZonaSoltarRaizProps,
+} from './arrastreArbol';
+export { Dialogo, type DialogoProps, type AccionDialogo } from './Dialogo';

@@ -73,7 +73,7 @@ vive fuera del repo, en `docs/auditoria-finanzas/` (ignorado por `.gitignore`).
 | [F-58](F-58.md) | Nota crédito sobre factura pagada deja saldo a favor del cliente sin documento | Alta | Corregido (liquidación al emitir, ADR-CC-008; 4 neutralizadas) | Cierre contable |
 | [F-59](F-59.md) | La cuenta por pagar duplicaba el devengo de la factura de compra | Alta | Corregido (52 contra-asientos, ADR-CC-009, 2026-09-23) | Cierre contable |
 | [F-60](F-60.md) | Asientos que no se creaban sin dejar rastro (18 disparadores y el de descuento) | Alta | Corregido (2026-09-23) | Cierre contable |
-| [F-61](F-61.md) | Ventas sin costo de ventas en las orgs 137 y 144 (sin regla inventory/confirmed) | Alta | Abierto | Cierre contable |
+| [F-61](F-61.md) | Dos caminos para el costo de ventas: el de sale_items solo rechazaba | Media | Corregido (un solo camino, el kardex; ADR-CC-010) | Cierre contable |
 | [F-62](F-62.md) | Notas crédito históricas con excedente pendientes de decisión | Media | Abierto: decisión con cada cliente | Cierre contable |
 
 ## Notas

@@ -288,3 +288,37 @@ cierre):
 - `FacturasCompraService.ts:355` crea la cuenta por pagar desde el borrador; debe
   nacer en la base al pasar a `received`, como la cartera de ventas.
 
+---
+
+## 9. F-61 · costo de ventas (2026-09-23, 16:50–17:10 UTC)
+
+**Discrepancia con el mandato.** Pedía sembrar la regla `inventory/confirmed`
+«que usa la mayoría» en 137 y 144 y regenerar los asientos rechazados. Medido:
+
+- ninguna organización tiene `inventory/confirmed`; las 85 tienen
+  `inventory/adjusted`;
+- el costo de ventas ya lo contabiliza el kardex (3.776 asientos
+  `6105 D / 1405 C`, 15 organizaciones);
+- de los 99 rechazos, 96 tienen su costo en el kardex por el mismo importe y 3
+  son recetas cuyo costo salió por ingredientes;
+- `fn_auto_journal_sale_item_cogs` nunca escribió un asiento.
+
+Sembrar la regla habría duplicado el costo de ventas. Decisión ADR-CC-010: un
+solo camino (el kardex). Migración `20260923170107`: disparador de
+`sale_items` deshabilitado; 99 de 99 rechazos resueltos con su asiento del
+kardex; `v_salud_contable` cuenta solo los abiertos. No se sembró ninguna regla.
+
+Verificación:
+
+| Chequeo | Resultado |
+|---|---|
+| rechazos `no_rule` abiertos | 0 |
+| rechazos nuevos desde el cambio | 0 (sin ventas reales en el intervalo) |
+| balance de prueba 137 / 144 / 149 | cuadra / cuadra / cuadra |
+| venta de prueba en 149 (2 × 11.900, costo 5.000) | devengo `1305 D 23.800 / 2405 C 3.800 / 4105 C 20.000`; **un** costo `6105-01 D 10.000 / 1405-01 C 10.000`; inventario 10 → 8 |
+
+Remanente: 723 salidas por venta con costo 0 (orgs 142, 144, 134, 120) no
+generan costo porque el producto no tiene costo cargado (F-36).
+
+Los 3 rechazos de sonda de la org 149 se marcaron resueltos como pruebas.
+

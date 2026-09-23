@@ -135,3 +135,15 @@ duplica el activo en toda venta de contado con pago → ADR-CC-001.
 - Despliegue: `main` → preview READY; producción es `master` (PR #247). El
   código de este cierre necesita el PR `main → master`.
 - Última migración reconciliada: `20260923133809`.
+
+## 2026-09-23 · F-61, costo de ventas (16:50–17:10 UTC)
+
+- Reconciliadas 24 migraciones ajenas (gosec, fase_d, f5–f9); ninguna toca el
+  costo de ventas.
+- La premisa del mandato no se sostiene: ninguna org tiene inventory/confirmed
+  y el kardex ya contabiliza el costo. Sembrar la regla lo duplicaba.
+- `20260923170107 costo_de_ventas_un_solo_camino` (+ rollback): disparador de
+  sale_items deshabilitado; 99/99 rechazos resueltos con su asiento del kardex;
+  v_salud_contable solo abiertos. ADR-CC-010.
+- Venta de prueba en la 149: un devengo y un solo costo. 0 rechazos abiertos.
+- Última migración reconciliada: `20260923170107`.

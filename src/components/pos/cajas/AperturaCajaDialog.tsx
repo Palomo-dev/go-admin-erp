@@ -10,11 +10,15 @@ import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/utils/Utils';
-import { CajasService } from './CajasService';
+import { CajasService, claveErrorCaja } from './CajasService';
 import type { CashSession, OpenCashSessionData } from './types';
 import { useBranch } from '@/lib/context/BranchContext';
 import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
+import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 
 interface AperturaCajaDialogProps {
   onSessionOpened: (session: CashSession) => void;
@@ -33,13 +37,17 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
   const [userName, setUserName] = useState<string>('');
   const [cashMode, setCashMode] = useState<'branch' | 'user'>('branch');
   const { branches, selectedBranchId } = useBranch();
+  const t = useTranslations('cajas.apertura');
+  const tError = useTranslations('cajas.errores');
+  const localeIntl = useLocaleIntl();
+  const { timezone } = useFormatDate();
   const [formData, setFormData] = useState<OpenCashSessionData>({
     initial_amount: 100000, // COP 100,000 por defecto
     notes: '',
     scope: 'branch'
   });
 
-  const branchName = branches.find(b => b.id === selectedBranchId)?.name || 'Sucursal no seleccionada';
+  const branchName = branches.find(b => b.id === selectedBranchId)?.name || t('sucursalNoSeleccionada');
 
   // Cargar nombre del usuario actual y modo de cajas al abrir el diálogo
   useEffect(() => {
@@ -55,7 +63,7 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
                 .eq('id', user.id)
                 .single();
               if (profile) {
-                setUserName(`${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Usuario');
+                setUserName(`${profile.first_name || ''} ${profile.last_name || ''}`.trim() || t('usuario'));
               }
             }
           } catch (err) {
@@ -69,7 +77,7 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
         .then(setCashMode)
         .catch(() => setCashMode('branch'));
     }
-  }, [open, userName]);
+  }, [open, userName, t]);
 
   const handleInputChange = (field: keyof OpenCashSessionData, value: OpenCashSessionData[keyof OpenCashSessionData]) => {
     setFormData(prev => ({
@@ -82,15 +90,16 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
     e.preventDefault();
     
     if (formData.initial_amount < 0) {
-      toast.error('El monto inicial no puede ser negativo');
+      toast.error(t('montoNegativo'));
       return;
     }
 
     setLoading(true);
     try {
       const session = await CajasService.openSession(formData);
-      toast.success(session.pending_sync ? 'Caja abierta sin conexión' : 'Caja abierta exitosamente', {
-        description: `Monto inicial: ${formatCurrency(session.initial_amount)}${session.pending_sync ? ' · pendiente de sincronizar' : ''}`
+      const monto = formatCurrency(session.initial_amount);
+      toast.success(session.pending_sync ? t('abiertaSinConexion') : t('abiertaExito'), {
+        description: session.pending_sync ? t('montoInicialPendiente', { monto }) : t('montoInicialToast', { monto })
       });
       
       onSessionOpened(session);
@@ -104,8 +113,9 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
       });
     } catch (error) {
       console.error('Error opening cash session:', error);
-      toast.error('Error al abrir caja', {
-        description: (error as Error)?.message
+      const clave = claveErrorCaja(error);
+      toast.error(t('errorAbrir'), {
+        description: clave && tError.has(clave) ? tError(clave) : (error as Error)?.message
       });
     } finally {
       setLoading(false);
@@ -122,7 +132,7 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
           onClick={() => setOpen(true)}
         >
           <Lock className="h-5 w-5 mr-2" />
-          Abrir Caja
+          {t('abrirCaja')}
         </Button>
       )}
       {open && typeof document !== 'undefined' && createPortal(
@@ -132,9 +142,9 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
               <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center space-x-2">
                   <Banknote className="h-5 w-5 text-green-600" />
-                  <span>Apertura de Caja</span>
+                  <span>{t('titulo')}</span>
                 </h2>
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700" onClick={() => setOpen(false)}>
+                <button type="button" aria-label={t('cerrar')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700" onClick={() => setOpen(false)}>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -149,24 +159,24 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
               <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
                 <Store className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Sucursal</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('sucursal')}</p>
                   <p className="text-sm font-medium dark:text-white break-words whitespace-normal">{branchName}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
                 <UserCircle className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Cajero</p>
-                  <p className="text-sm font-medium dark:text-white break-words whitespace-normal">{userName || 'Cargando...'}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('cajero')}</p>
+                  <p className="text-sm font-medium dark:text-white break-words whitespace-normal">{userName || t('cargando')}</p>
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
               <Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Fecha y hora</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t('fechaHora')}</p>
                 <p className="text-sm font-medium dark:text-white">
-                  {new Date().toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  {formatDateInTz(new Date(), timezone, { locale: localeIntl, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
             </div>
@@ -177,7 +187,7 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
           {/* Selector de alcance (oculto en modo 'user': la caja siempre es de la sucursal actual) */}
           {cashMode !== 'user' && (
           <div className="space-y-2">
-            <Label className="dark:text-gray-200 text-gray-700">Alcance de la Caja</Label>
+            <Label className="dark:text-gray-200 text-gray-700">{t('alcance')}</Label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -190,7 +200,7 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
               >
                 <Building2 className="h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
                 <div>
-                  <p className="text-sm font-medium dark:text-white text-gray-900">Esta sucursal</p>
+                  <p className="text-sm font-medium dark:text-white text-gray-900">{t('estaSucursal')}</p>
                   <p className="text-xs dark:text-gray-400 text-gray-500">{branchName}</p>
                 </div>
               </button>
@@ -205,14 +215,14 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
               >
                 <Globe className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
                 <div>
-                  <p className="text-sm font-medium dark:text-white text-gray-900">Todas las sucursales</p>
-                  <p className="text-xs dark:text-gray-400 text-gray-500">Caja global</p>
+                  <p className="text-sm font-medium dark:text-white text-gray-900">{t('todasSucursales')}</p>
+                  <p className="text-xs dark:text-gray-400 text-gray-500">{t('cajaGlobal')}</p>
                 </div>
               </button>
             </div>
             {formData.scope === 'global' && (
               <p className="text-xs text-blue-600 dark:text-blue-400">
-                Todos los usuarios de todas las sucursales registrarán ventas en esta caja.
+                {t('avisoGlobal')}
               </p>
             )}
           </div>
@@ -221,18 +231,18 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
           {/* Aviso en modo 'user': cada cajero gestiona su propia caja */}
           {cashMode === 'user' && (
             <div className="space-y-2">
-              <Label className="dark:text-gray-200 text-gray-700">Alcance de la Caja</Label>
+              <Label className="dark:text-gray-200 text-gray-700">{t('alcance')}</Label>
               <div className="flex items-center gap-2 p-3 rounded-lg border-2 border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-600">
                 <UserCircle className="h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
                 <div>
-                  <p className="text-sm font-medium dark:text-white text-gray-900">Mi caja en {branchName}</p>
+                  <p className="text-sm font-medium dark:text-white text-gray-900">{t('miCajaEn', { sucursal: branchName })}</p>
                   <p className="text-xs dark:text-gray-400 text-gray-500">
-                    Cada cajero abre y gestiona su propia caja de forma independiente.
+                    {t('modoUsuarioDescripcion')}
                   </p>
                 </div>
               </div>
               <p className="text-xs text-green-600 dark:text-green-400">
-                Esta caja registrará únicamente tus ventas y movimientos. Otros cajeros de la sucursal tendrán sus propias cajas.
+                {t('avisoModoUsuario')}
               </p>
             </div>
           )}
@@ -242,14 +252,14 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
           <Card className="dark:bg-gray-700 dark:border-gray-600 bg-gray-50 border-gray-200">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm dark:text-gray-200 text-gray-700">
-                Detalles de Apertura
+                {t('detalles')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Monto inicial */}
               <div className="space-y-2">
                 <Label htmlFor="initial_amount" className="dark:text-gray-200 text-gray-700">
-                  Monto Inicial *
+                  {t('montoInicial')}
                 </Label>
                 <Input
                   id="initial_amount"
@@ -262,7 +272,7 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
                   required
                 />
                 <p className="text-sm dark:text-gray-400 text-gray-500">
-                  Equivale a: <span className="font-medium text-green-600">
+                  {t('equivaleA')} <span className="font-medium text-green-600">
                     {formatCurrency(formData.initial_amount)}
                   </span>
                 </p>
@@ -271,12 +281,12 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
               {/* Notas */}
               <div className="space-y-2">
                 <Label htmlFor="notes" className="dark:text-gray-200 text-gray-700">
-                  Notas (Opcional)
+                  {t('notas')}
                 </Label>
                 <RichTextEditor
                   value={formData.notes || ''}
                   onChange={(html) => handleInputChange('notes', html)}
-                  placeholder="Observaciones de apertura..."
+                  placeholder={t('notasPlaceholder')}
                   className="dark:bg-gray-600 dark:border-gray-500 dark:text-white bg-white border-gray-300"
                   minHeight={60}
                 />
@@ -287,8 +297,7 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
           {/* Información importante */}
           <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Importante:</strong> Una vez abierta la caja, podrás registrar ventas, 
-              ingresos y egresos hasta el momento del cierre.
+              {t.rich('importante', { strong: (partes) => <strong>{partes}</strong> })}
             </p>
           </div>
 
@@ -301,7 +310,7 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
               onClick={() => setOpen(false)}
               disabled={loading}
             >
-              Cancelar
+              {t('cancelar')}
             </Button>
             <Button
               type="submit"
@@ -311,10 +320,10 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                  Abriendo...
+                  {t('abriendo')}
                 </>
               ) : (
-                'Abrir Caja'
+                t('abrirCaja')
               )}
             </Button>
           </div>

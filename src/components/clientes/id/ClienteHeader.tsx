@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Camera, Loader2, Building2, User } from 'lucide-react';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 import { supabase } from '@/lib/supabase/config';
@@ -38,11 +39,13 @@ interface EnlaceEmpresa {
 }
 const uno = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
 
+type Nivel = 'oro' | 'plata' | 'bronce' | 'basico';
+
 // Componente para mostrar el nivel de fidelidad del cliente
-const NivelFidelidad = ({ nivel = 'Básico' }: { nivel?: string }) => {
+const NivelFidelidad = ({ nivel, etiqueta }: { nivel: Nivel; etiqueta: string }) => {
   let color = 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
   
-  switch(nivel.toLowerCase()) {
+  switch(nivel) {
     case 'oro':
       color = 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-500';
       break;
@@ -58,19 +61,20 @@ const NivelFidelidad = ({ nivel = 'Básico' }: { nivel?: string }) => {
   
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      {nivel}
+      {etiqueta}
     </span>
   );
 };
 
 // Componente principal del encabezado del cliente
 export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeaderProps) {
+  const t = useTranslations('clientes.ficha');
   const nombreCompleto = cliente.full_name || `${cliente.first_name || ''} ${cliente.last_name || ''}`.trim();
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(cliente.avatar_url);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [primaryContact, setPrimaryContact] = useState<{ name: string; email: string | null; phone: string | null; position: string | null } | null>(null);
-  const [linkedCompanies, setLinkedCompanies] = useState<Array<{ id: string; name: string; position: string | null; is_primary: boolean }>>([]);
+  const [linkedCompanies, setLinkedCompanies] = useState<Array<{ id: string; name: string | null; position: string | null; is_primary: boolean }>>([]);
 
   useEffect(() => {
     if (!cliente.id) return;
@@ -129,7 +133,7 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
             const company = uno(link.company);
             return {
               id: company?.id || '',
-              name: company?.full_name || 'Sin nombre',
+              name: company?.full_name || null,
               position: link.position || null,
               is_primary: link.is_primary || false,
             };
@@ -150,11 +154,11 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      toast({ title: 'Error', description: 'Solo se permiten imágenes', variant: 'destructive' });
+      toast({ title: t('cabecera.error'), description: t('cabecera.soloImagenes'), variant: 'destructive' });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: 'Error', description: 'La imagen no debe superar 5MB', variant: 'destructive' });
+      toast({ title: t('cabecera.error'), description: t('cabecera.imagenMuyGrande'), variant: 'destructive' });
       return;
     }
 
@@ -184,10 +188,10 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
 
       setAvatarUrl(urlWithCacheBust);
       onAvatarUpdate?.(urlWithCacheBust);
-      toast({ title: 'Avatar actualizado', description: 'La foto del cliente se actualizó correctamente.' });
+      toast({ title: t('cabecera.avatarActualizado'), description: t('cabecera.avatarActualizadoDescripcion') });
     } catch (err) {
       console.error('Error uploading avatar:', err);
-      toast({ title: 'Error', description: (err as Error)?.message || 'No se pudo subir la imagen', variant: 'destructive' });
+      toast({ title: t('cabecera.error'), description: (err as Error)?.message || t('cabecera.errorSubir'), variant: 'destructive' });
     } finally {
       setUploadingAvatar(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -195,18 +199,18 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
   };
   
   // Determinar el nivel de fidelidad basado en tags (si existen)
-  const nivelFidelidad = cliente.tags?.includes('oro') 
-    ? 'Oro' 
-    : cliente.tags?.includes('plata') 
-      ? 'Plata' 
-      : cliente.tags?.includes('bronce') 
-        ? 'Bronce' 
-        : 'Básico';
+  const nivelFidelidad: Nivel = cliente.tags?.includes('oro')
+    ? 'oro'
+    : cliente.tags?.includes('plata')
+      ? 'plata'
+      : cliente.tags?.includes('bronce')
+        ? 'bronce'
+        : 'basico';
   
   return (
     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
       <div className="flex flex-wrap items-center gap-4">
-        <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
+        <div className="relative group cursor-pointer" onClick={handleAvatarClick} title={t('cabecera.cambiarFoto')}>
           <UserAvatar name={nombreCompleto} avatarUrl={avatarUrl} size="lg" className="w-16 h-16" />
           <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             {uploadingAvatar ? (
@@ -230,12 +234,12 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
             {cliente.customer_type === 'company' ? (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
                 <Building2 className="h-3 w-3" />
-                Empresa
+                {t('cabecera.empresa')}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
                 <User className="h-3 w-3" />
-                Persona
+                {t('cabecera.persona')}
               </span>
             )}
           </div>
@@ -243,14 +247,16 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
           {/* Mostrar contacto principal para empresas */}
           {cliente.customer_type === 'company' && primaryContact && (
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Contacto: {primaryContact.name}{primaryContact.position ? ` (${primaryContact.position})` : ''}
+              {primaryContact.position
+                ? t('cabecera.contactoConCargo', { nombre: primaryContact.name, cargo: primaryContact.position })
+                : t('cabecera.contacto', { nombre: primaryContact.name })}
             </p>
           )}
           
           {/* Mostrar empresas vinculadas para personas */}
           {cliente.customer_type !== 'company' && linkedCompanies.length > 0 && (
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-gray-500 dark:text-gray-400">Vinculado a:</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{t('cabecera.vinculadoA')}</span>
               {linkedCompanies.map((company, idx) => (
                 <span key={company.id} className="inline-flex items-center gap-1">
                   <Link 
@@ -258,7 +264,7 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
                     className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full hover:underline"
                   >
                     <Building2 className="h-3 w-3" />
-                    {company.name}
+                    {company.name ?? t('comun.sinNombre')}
                     {company.is_primary && <span className="text-blue-400">·</span>}
                   </Link>
                   {idx < linkedCompanies.length - 1 && <span className="text-gray-300">,</span>}
@@ -274,7 +280,7 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
               </span>
             )}
             
-            <NivelFidelidad nivel={nivelFidelidad} />
+            <NivelFidelidad nivel={nivelFidelidad} etiqueta={t(`cabecera.fidelidad.${nivelFidelidad}`)} />
           </div>
         </div>
       </div>

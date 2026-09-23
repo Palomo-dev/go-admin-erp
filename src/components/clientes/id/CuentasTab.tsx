@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
+import { useKitT } from '@/components/kit/useIdiomaKit';
+import { useFechasFicha } from './useFechasFicha';
 import { formatCurrency } from '@/utils/Utils';
 import { TableSkeleton } from '@/components/common/PageSkeletons';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Receipt, ExternalLink } from 'lucide-react';
@@ -39,12 +42,44 @@ interface FolioPendiente {
   space_label?: string;
 }
 
+// Filas crudas que devuelven la RPC y las consultas de PMS
+interface CuentaCruda extends Omit<CuentaPorCobrar, 'amount' | 'balance'> {
+  amount: number | string | null;
+  balance: number | string | null;
+}
+
+interface ReservaConEspacios {
+  id: string;
+  checkin?: string;
+  checkout?: string;
+  reservation_spaces?: { spaces?: { label?: string } | null }[] | null;
+}
+
+interface FolioCrudo {
+  id: string;
+  reservation_id: string;
+  balance: number | string | null;
+  status: string;
+}
+
+interface ItemFolio {
+  id: string;
+  folio_id: string;
+  amount: number | string | null;
+  payment_status: string;
+}
+
 // Opciones de tamaño de página
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
+const DIA_MES: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+
 export default function CuentasTab({ clienteId, organizationId }: CuentasTabProps) {
+  const t = useTranslations('clientes.ficha');
+  const tKit = useKitT();
+  const { instante, plana } = useFechasFicha();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
   const [cuentas, setCuentas] = useState<CuentaPorCobrar[]>([]);
   const [resumen, setResumen] = useState({
     totalDeuda: 0,
@@ -52,33 +87,33 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
     totalPendiente: 0
   });
   const [folios, setFolios] = useState<FolioPendiente[]>([]);
-  
+
   // Estados de paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  
+
   // Calcular datos paginados
   const totalItems = cuentas.length;
   const totalPages = Math.ceil(totalItems / pageSize);
-  
+
   const paginatedCuentas = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
     return cuentas.slice(startIndex, endIndex);
   }, [cuentas, currentPage, pageSize]);
-  
+
   // Resetear página cuando cambia el tamaño
   const handlePageSizeChange = (newSize: string) => {
     setPageSize(Number(newSize));
     setCurrentPage(1);
   };
-  
+
   // Funciones de navegación
   const goToFirstPage = () => setCurrentPage(1);
   const goToLastPage = () => setCurrentPage(totalPages);
   const goToPrevPage = () => setCurrentPage(prev => Math.max(1, prev - 1));
   const goToNextPage = () => setCurrentPage(prev => Math.min(totalPages, prev + 1));
-  
+
   // Calcular rango de elementos mostrados
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
@@ -88,56 +123,56 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
     const fetchCuentas = async () => {
       try {
         setLoading(true);
-        setError(null);
-        
+        setError(false);
+
         // La tabla accounts_receivable usa UUID como customer_id, no INTEGER
         // Usamos directamente el clienteId que ya es un UUID
-        
+
         if (clienteId && clienteId.length > 0) {
           try {
             // Consultar cuentas por cobrar usando el UUID del cliente directamente
             console.log('Consultando cuentas para cliente UUID:', clienteId);
             console.log('Consultando accounts_receivable con organizationId:', organizationId);
-            
+
             // Utilizamos la función RPC con SECURITY DEFINER para evitar problemas con RLS
             const { data, error } = await supabase
               .rpc('obtener_cuentas_por_cobrar_cliente', {
                 p_customer_id: clienteId,
                 p_organization_id: organizationId
               });
-            
+
             if (error) {
               console.log('Error en consulta de cuentas:', error);
-              setError('Error al cargar las cuentas por cobrar');
+              setError(true);
             } else {
               console.log('Datos recibidos de cuentas:', data);
-              
+
               if (data && data.length > 0) {
                 // Convertir los datos recibidos al formato que espera el componente
-                const cuentasFormateadas = data.map((cuenta: any) => ({
+                const cuentasFormateadas: CuentaPorCobrar[] = (data as CuentaCruda[]).map((cuenta) => ({
                   ...cuenta,
-                  amount: parseFloat(cuenta.amount || '0'),
-                  balance: parseFloat(cuenta.balance || '0')
+                  amount: parseFloat(String(cuenta.amount || '0')),
+                  balance: parseFloat(String(cuenta.balance || '0'))
                 }));
-                
+
                 console.log('Cuentas formateadas:', cuentasFormateadas);
                 setCuentas(cuentasFormateadas);
-                
+
                 // Calcular resumen de deudas con los datos ya convertidos
-                const totalDeuda = cuentasFormateadas.reduce((sum: number, cuenta: any) => 
+                const totalDeuda = cuentasFormateadas.reduce((sum, cuenta) =>
                   sum + cuenta.amount, 0);
-                const totalPendiente = cuentasFormateadas.reduce((sum: number, cuenta: any) => 
+                const totalPendiente = cuentasFormateadas.reduce((sum, cuenta) =>
                   sum + cuenta.balance, 0);
                 const totalVencido = cuentasFormateadas
-                  .filter((cuenta: any) => cuenta.days_overdue > 0 && cuenta.status !== 'paid')
-                  .reduce((sum: number, cuenta: any) => sum + cuenta.balance, 0);
-                
+                  .filter((cuenta) => cuenta.days_overdue > 0 && cuenta.status !== 'paid')
+                  .reduce((sum, cuenta) => sum + cuenta.balance, 0);
+
                 setResumen({
                   totalDeuda,
                   totalVencido,
                   totalPendiente
                 });
-                
+
                 // Ya tenemos datos, salimos de la función
                 setLoading(false);
                 return;
@@ -149,7 +184,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
             console.error('Error al consultar cuentas:', idErr);
           }
         }
-        
+
         // Si llegamos aquí, no hay datos o no pudimos hacer la consulta
         // Mostramos lista vacía
         setCuentas([]);
@@ -173,7 +208,8 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
               .eq('organization_id', organizationId);
 
           if (reservationsData && reservationsData.length > 0) {
-            const reservationIds = reservationsData.map((r: any) => r.id);
+            const reservas = reservationsData as ReservaConEspacios[];
+            const reservationIds = reservas.map((r) => r.id);
 
             const { data: foliosData } = await supabase
               .from('folios')
@@ -182,30 +218,31 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
               .order('created_at', { ascending: false });
 
             if (foliosData && foliosData.length > 0) {
-              const folioIds = foliosData.map((f: any) => f.id);
+              const foliosCrudos = foliosData as FolioCrudo[];
+              const folioIds = foliosCrudos.map((f) => f.id);
 
               const { data: folioItemsData } = await supabase
                 .from('folio_items')
                 .select('id, folio_id, amount, payment_status')
                 .in('folio_id', folioIds);
 
-              const itemsByFolio: Record<string, any[]> = {};
-              (folioItemsData || []).forEach((item: any) => {
+              const itemsByFolio: Record<string, ItemFolio[]> = {};
+              ((folioItemsData || []) as ItemFolio[]).forEach((item) => {
                 if (!itemsByFolio[item.folio_id]) itemsByFolio[item.folio_id] = [];
                 itemsByFolio[item.folio_id].push(item);
               });
 
-              const reservationMap: Record<string, any> = {};
-              reservationsData.forEach((r: any) => {
+              const reservationMap: Record<string, ReservaConEspacios> = {};
+              reservas.forEach((r) => {
                 reservationMap[r.id] = r;
               });
 
-              const foliosPendientes: FolioPendiente[] = foliosData
-                .filter((f: any) => Number(f.balance) > 0)
-                .map((f: any) => {
+              const foliosPendientes: FolioPendiente[] = foliosCrudos
+                .filter((f) => Number(f.balance) > 0)
+                .map((f) => {
                   const items = itemsByFolio[f.id] || [];
-                  const pendingItems = items.filter((i: any) => i.payment_status === 'pending');
-                  const pendingAmount = pendingItems.reduce((sum: number, i: any) => sum + Number(i.amount), 0);
+                  const pendingItems = items.filter((i) => i.payment_status === 'pending');
+                  const pendingAmount = pendingItems.reduce((sum, i) => sum + Number(i.amount), 0);
                   const reservation = reservationMap[f.reservation_id];
                   const spaceLabel = reservation?.reservation_spaces?.[0]?.spaces?.label;
 
@@ -229,7 +266,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
         } catch (folioErr) {
           console.error('Error al cargar folios:', folioErr);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error al cargar cuentas por cobrar:', err);
         // No mostramos error, simplemente lista vacía
         setCuentas([]);
@@ -245,39 +282,39 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
 
     fetchCuentas();
   }, [clienteId, organizationId]);
-  
+
   // Función para determinar el color de estado
   const getStatusColor = (status: string, daysOverdue: number) => {
     if (status === 'paid') {
       return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-500';
     }
-    
+
     if (daysOverdue > 30) {
       return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-500';
     }
-    
+
     if (daysOverdue > 0) {
       return 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-500';
     }
-    
+
     return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-500';
   };
-  
+
   // Función para mostrar texto de estado
   const getStatusText = (status: string, daysOverdue: number) => {
     if (status === 'paid') {
-      return 'Pagado';
+      return t('cuentas.estados.pagado');
     }
-    
+
     if (daysOverdue > 30) {
-      return `Vencido (${daysOverdue} días)`;
+      return t('cuentas.estados.vencido', { count: daysOverdue });
     }
-    
+
     if (daysOverdue > 0) {
-      return `Atrasado (${daysOverdue} días)`;
+      return t('cuentas.estados.atrasado', { count: daysOverdue });
     }
-    
-    return 'Pendiente';
+
+    return t('cuentas.estados.pendiente');
   };
 
   // Mostrar estado de carga
@@ -290,7 +327,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
     return (
       <div className="w-full py-8">
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-700 dark:text-red-400">{error}</p>
+          <p className="text-red-700 dark:text-red-400">{t('cuentas.errorCarga')}</p>
         </div>
       </div>
     );
@@ -305,9 +342,9 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">No hay cuentas por cobrar</h3>
+        <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">{t('cuentas.vacioTitulo')}</h3>
         <p className="mt-2 text-gray-500 dark:text-gray-400">
-          Este cliente no tiene deudas, pagos pendientes ni folios con saldo registrados en el sistema.
+          {t('cuentas.vacioDescripcion')}
         </p>
       </div>
     );
@@ -322,7 +359,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
           <div className="p-4 border-b border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-2">
               <Receipt className="h-5 w-5 text-amber-500" />
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Folios PMS con Saldo Pendiente</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{t('cuentas.foliosTitulo')}</h3>
               <span className="ml-auto text-sm font-bold text-amber-600 dark:text-amber-400">
                 {formatCurrency(folios.reduce((sum, f) => sum + f.balance, 0))}
               </span>
@@ -344,16 +381,16 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
                           ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                           : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
                       }`}>
-                        {folio.status === 'open' ? 'Abierto' : 'Cerrado'}
+                        {folio.status === 'open' ? t('cuentas.folioAbierto') : t('cuentas.folioCerrado')}
                       </span>
                     </div>
                     {folio.checkin && folio.checkout && (
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(folio.checkin).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} → {new Date(folio.checkout).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                        {plana(folio.checkin, DIA_MES)} → {plana(folio.checkout, DIA_MES)}
                       </p>
                     )}
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {folio.items_pendientes} de {folio.items_total} items pendientes
+                      {t('cuentas.itemsPendientes', { pendientes: folio.items_pendientes, count: folio.items_total })}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
@@ -364,7 +401,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
                       href={`/app/pms/folios?reservation=${folio.reservation_id}`}
                       className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
                     >
-                      Ver folio <ExternalLink className="h-3 w-3" />
+                      {t('cuentas.verFolio')} <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
                 </div>
@@ -378,21 +415,21 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
       {cuentas.length > 0 && (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Total Deuda</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('cuentas.totalDeuda')}</div>
           <div className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">
             {formatCurrency(resumen.totalDeuda)}
           </div>
         </div>
-        
+
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Monto Vencido</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('cuentas.montoVencido')}</div>
           <div className="mt-1 text-xl font-semibold text-red-600 dark:text-red-400">
             {formatCurrency(resumen.totalVencido)}
           </div>
         </div>
-        
+
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Pendiente de Pago</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('cuentas.pendientePago')}</div>
           <div className="mt-1 text-xl font-semibold text-blue-600 dark:text-blue-400">
             {formatCurrency(resumen.totalPendiente)}
           </div>
@@ -408,19 +445,19 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-700/50">
                 <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  ID Venta
+                  {t('cuentas.columnas.idVenta')}
                 </th>
                 <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  Monto
+                  {t('cuentas.columnas.monto')}
                 </th>
                 <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  Balance
+                  {t('cuentas.columnas.saldo')}
                 </th>
                 <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  Vencimiento
+                  {t('cuentas.columnas.vencimiento')}
                 </th>
                 <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  Estado
+                  {t('cuentas.columnas.estado')}
                 </th>
               </tr>
             </thead>
@@ -437,7 +474,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
                     {formatCurrency(cuenta.balance)}
                   </td>
                   <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    {new Date(cuenta.due_date).toLocaleDateString()}
+                    {instante(cuenta.due_date)}
                   </td>
                   <td className="px-3 sm:px-6 py-4 text-sm">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cuenta.status, cuenta.days_overdue)}`}>
@@ -449,7 +486,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
             </tbody>
           </table>
         </div>
-        
+
         {/* Paginación */}
         {totalItems > 0 && (
           <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
@@ -457,9 +494,12 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
               {/* Información y selector de tamaño */}
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">Mostrar</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{t('cuentas.paginacion.mostrar')}</span>
                   <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
-                    <SelectTrigger className="w-[70px] h-8 text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <SelectTrigger
+                      className="w-[70px] h-8 text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                      aria-label={tKit('paginacion.porPaginaEtiqueta')}
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -470,16 +510,22 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
                       ))}
                     </SelectContent>
                   </Select>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">por página</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{t('cuentas.paginacion.porPagina')}</span>
                 </div>
-                
+
                 <div className="hidden sm:block h-4 w-px bg-gray-300 dark:bg-gray-600" />
-                
+
                 <span className="text-sm text-gray-600 dark:text-gray-300">
-                  <span className="font-medium">{startItem}</span> - <span className="font-medium">{endItem}</span> de <span className="font-medium">{totalItems}</span> cuentas
+                  {t.rich('cuentas.paginacion.rango', {
+                    desde: startItem,
+                    hasta: endItem,
+                    total: totalItems,
+                    count: totalItems,
+                    b: (fragmento) => <span className="font-medium">{fragmento}</span>,
+                  })}
                 </span>
               </div>
-              
+
               {/* Controles de navegación */}
               <div className="flex flex-wrap items-center gap-1">
                 <Button
@@ -488,7 +534,8 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
                   className="h-8 w-8 border-gray-200 dark:border-gray-700"
                   onClick={goToFirstPage}
                   disabled={currentPage === 1}
-                  title="Primera página"
+                  title={tKit('paginacion.primera')}
+                  aria-label={tKit('paginacion.primera')}
                 >
                   <ChevronsLeft className="h-4 w-4" />
                 </Button>
@@ -498,25 +545,34 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
                   className="h-8 w-8 border-gray-200 dark:border-gray-700"
                   onClick={goToPrevPage}
                   disabled={currentPage === 1}
-                  title="Página anterior"
+                  title={tKit('paginacion.anterior')}
+                  aria-label={tKit('paginacion.anterior')}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                
+
                 {/* Indicador de página */}
                 <div className="flex flex-wrap items-center gap-1 px-2">
                   <span className="text-sm text-gray-600 dark:text-gray-300">
-                    Página <span className="font-semibold text-blue-600 dark:text-blue-400">{currentPage}</span> de <span className="font-medium">{totalPages}</span>
+                    {t.rich('cuentas.paginacion.pagina', {
+                      actual: currentPage,
+                      total: totalPages,
+                      destacado: (fragmento) => (
+                        <span className="font-semibold text-blue-600 dark:text-blue-400">{fragmento}</span>
+                      ),
+                      b: (fragmento) => <span className="font-medium">{fragmento}</span>,
+                    })}
                   </span>
                 </div>
-                
+
                 <Button
                   variant="outline"
                   size="icon"
                   className="h-8 w-8 border-gray-200 dark:border-gray-700"
                   onClick={goToNextPage}
                   disabled={currentPage === totalPages}
-                  title="Página siguiente"
+                  title={tKit('paginacion.siguiente')}
+                  aria-label={tKit('paginacion.siguiente')}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -526,7 +582,8 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
                   className="h-8 w-8 border-gray-200 dark:border-gray-700"
                   onClick={goToLastPage}
                   disabled={currentPage === totalPages}
-                  title="Última página"
+                  title={tKit('paginacion.ultima')}
+                  aria-label={tKit('paginacion.ultima')}
                 >
                   <ChevronsRight className="h-4 w-4" />
                 </Button>

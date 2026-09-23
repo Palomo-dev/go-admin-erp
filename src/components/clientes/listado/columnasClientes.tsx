@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Building2, IdCard, Mail, Phone, SquareUser, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -29,6 +30,10 @@ export interface ContextoColumnas {
   /** Fecha de un timestamptz en la zona de la organización. */
   formatearFecha: (valor: string) => string;
   roles: readonly OpcionFiltro[];
+  /** `useTranslations('clientes.listado')`. */
+  t: (clave: string, valores?: Record<string, string | number>) => string;
+  /** Entero con los separadores del idioma activo (`useFormatoEntero()`). */
+  entero: (n: number) => string;
 }
 
 const COLOR_SALDO: Record<string, string> = {
@@ -42,10 +47,11 @@ function etiquetaRol(rol: string, roles: readonly OpcionFiltro[]): string {
 }
 
 export function columnasClientes(ctx: ContextoColumnas): ColumnaTabla<FilaCliente>[] {
+  const { t } = ctx;
   return [
     {
       id: 'nombre',
-      encabezado: 'Cliente',
+      encabezado: t('columnas.cliente'),
       ordenable: true,
       ancho: 260,
       celda: (c) => {
@@ -67,8 +73,9 @@ export function columnasClientes(ctx: ContextoColumnas): ColumnaTabla<FilaClient
               </div>
               {c.customer_type === 'company' && c.contacto_nombre && (
                 <span className="truncate text-xs text-fg-muted">
-                  Contacto: {c.contacto_nombre}
-                  {c.contacto_cargo ? ` (${c.contacto_cargo})` : ''}
+                  {c.contacto_cargo
+                    ? t('celdas.contactoCargo', { nombre: c.contacto_nombre, cargo: c.contacto_cargo })
+                    : t('celdas.contacto', { nombre: c.contacto_nombre })}
                 </span>
               )}
             </div>
@@ -78,7 +85,7 @@ export function columnasClientes(ctx: ContextoColumnas): ColumnaTabla<FilaClient
     },
     {
       id: 'contacto',
-      encabezado: 'Contacto',
+      encabezado: t('columnas.contacto'),
       celda: (c) => (
         <div className="flex min-w-0 flex-col text-[13px] text-fg-secondary">
           <span className="truncate">{c.email || '—'}</span>
@@ -88,28 +95,28 @@ export function columnasClientes(ctx: ContextoColumnas): ColumnaTabla<FilaClient
     },
     {
       id: 'documento',
-      encabezado: 'Documento',
+      encabezado: t('columnas.documento'),
       ocultarDebajo: 'xl',
       celda: (c) => {
         const doc = documentoCliente({ ...c, dv: null });
-        if (!doc) return <span className="text-[13px] text-fg-muted">No registrado</span>;
+        if (!doc) return <span className="text-[13px] text-fg-muted">{t('celdas.noRegistrado')}</span>;
         return (
           <div className="flex flex-col text-[13px]">
             <span className="whitespace-nowrap tabular-nums text-fg">{doc}</span>
-            {c.dv !== null && c.dv !== undefined && <span className="text-xs text-fg-muted">DV {c.dv}</span>}
+            {c.dv !== null && c.dv !== undefined && <span className="text-xs text-fg-muted">{t('celdas.dv', { dv: c.dv })}</span>}
           </div>
         );
       },
     },
     {
       id: 'municipio',
-      encabezado: 'Municipio',
+      encabezado: t('columnas.municipio'),
       ocultarDebajo: 'xl',
       celda: (c) => <span className="text-[13px] text-fg-secondary">{c.municipio_nombre || '—'}</span>,
     },
     {
       id: 'etiquetas',
-      encabezado: 'Etiquetas',
+      encabezado: t('columnas.etiquetas'),
       ocultarDebajo: 'xl',
       celda: (c) => {
         const tags = c.tags ?? [];
@@ -132,7 +139,7 @@ export function columnasClientes(ctx: ContextoColumnas): ColumnaTabla<FilaClient
     },
     {
       id: 'saldo',
-      encabezado: 'Cuentas por cobrar',
+      encabezado: t('columnas.cuentasPorCobrar'),
       variante: 'importe',
       ordenable: true,
       celda: (c) => {
@@ -149,27 +156,27 @@ export function columnasClientes(ctx: ContextoColumnas): ColumnaTabla<FilaClient
     },
     {
       id: 'ventas',
-      encabezado: 'Ventas',
+      encabezado: t('columnas.ventas'),
       variante: 'importe',
       ordenable: true,
       celda: (c) => (
         <div className="flex flex-col items-end">
           <span className="font-medium text-fg">{formatMonedaSinDecimales(c.total_compras, ctx.moneda)}</span>
           <span className="text-xs text-fg-muted">
-            {c.compras} {c.compras === 1 ? 'compra' : 'compras'}
+            {t('celdas.compras', { count: c.compras, n: ctx.entero(c.compras) })}
           </span>
         </div>
       ),
     },
     {
       id: 'ultima_compra',
-      encabezado: 'Última compra',
+      encabezado: t('columnas.ultimaCompra'),
       ordenable: true,
       celda: (c) =>
         c.ultima_compra ? (
           <span className="whitespace-nowrap text-[13px] text-fg-secondary">{ctx.formatearFecha(c.ultima_compra)}</span>
         ) : (
-          <span className="whitespace-nowrap text-[13px] text-fg-muted">Sin compras</span>
+          <span className="whitespace-nowrap text-[13px] text-fg-muted">{t('celdas.sinCompras')}</span>
         ),
     },
   ];
@@ -194,12 +201,15 @@ export function TarjetaCliente({
   acciones: readonly AccionFila[];
   onAbrir: () => void;
 }) {
+  const t = useTranslations('clientes.listado');
   const nombre = nombreCliente(c);
   const doc = documentoCliente(c);
   const empresa = c.customer_type === 'company';
   const contacto =
     empresa && c.contacto_nombre
-      ? `Contacto: ${c.contacto_nombre}${c.contacto_cargo ? ` (${c.contacto_cargo})` : ''}`
+      ? c.contacto_cargo
+        ? t('celdas.contactoCargo', { nombre: c.contacto_nombre, cargo: c.contacto_cargo })
+        : t('celdas.contacto', { nombre: c.contacto_nombre })
       : null;
 
   return (
@@ -208,10 +218,10 @@ export function TarjetaCliente({
       titulo={nombre}
       insignia={<StatusBadge estado={empresa ? 'Empresa' : 'Persona'} icono={empresa ? Building2 : User} />}
       datos={[
-        doc ? { icono: IdCard, texto: doc, etiqueta: 'Documento' } : null,
-        contacto ? { icono: SquareUser, texto: contacto, etiqueta: 'Contacto' } : null,
-        c.email ? { icono: Mail, texto: c.email, etiqueta: 'Correo' } : null,
-        c.phone ? { icono: Phone, texto: c.phone, etiqueta: 'Teléfono' } : null,
+        doc ? { icono: IdCard, texto: doc, etiqueta: t('tarjeta.documento') } : null,
+        contacto ? { icono: SquareUser, texto: contacto, etiqueta: t('tarjeta.contacto') } : null,
+        c.email ? { icono: Mail, texto: c.email, etiqueta: t('tarjeta.correo') } : null,
+        c.phone ? { icono: Phone, texto: c.phone, etiqueta: t('tarjeta.telefono') } : null,
       ]}
       estado={c.status === 'inactive' ? <StatusBadge estado="Inactivo" /> : undefined}
       acciones={acciones}

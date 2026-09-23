@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,7 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import categoryService, { type CategoryImportRow } from '@/lib/services/categoryService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
 import * as XLSX from 'xlsx';
 import { Upload, Download, Loader2, CheckCircle, XCircle, FileSpreadsheet } from 'lucide-react';
 
@@ -142,6 +144,8 @@ function parseXlsxRows(rows: Record<string, unknown>[]): CategoryImportRow[] {
 }
 
 export function ImportCategoriesDialog({ open, onOpenChange, onSuccess }: ImportCategoriesDialogProps) {
+  const t = useTranslations('categorias');
+  const n = useFormatoEntero();
   const { toast } = useToast();
   const { selectedBranchId } = useBranch();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -182,19 +186,19 @@ export function ImportCategoriesDialog({ open, onOpenChange, onSuccess }: Import
         const jsonRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
         parsedRows = parseXlsxRows(jsonRows);
       } else {
-        toast({ title: 'Formato no soportado', description: 'Use .csv o .xlsx', variant: 'destructive' });
+        toast({ title: t('importar.toasts.formatoNoSoportado'), description: t('importar.toasts.useCsvXlsx'), variant: 'destructive' });
         return;
       }
       setRows(parsedRows);
     } catch {
-      toast({ title: 'Error al leer el archivo', variant: 'destructive' });
+      toast({ title: t('importar.toasts.errorLeer'), variant: 'destructive' });
     }
   };
 
   const handleImport = async () => {
     const orgId = getOrganizationId();
     if (!orgId) {
-      toast({ title: 'Error', description: 'No hay organización activa', variant: 'destructive' });
+      toast({ title: t('importar.toasts.error'), description: t('importar.toasts.sinOrganizacion'), variant: 'destructive' });
       return;
     }
 
@@ -203,18 +207,18 @@ export function ImportCategoriesDialog({ open, onOpenChange, onSuccess }: Import
       const res = await categoryService.importCategories(orgId, rows);
       setResult(res);
       if (res.success > 0) {
-        toast({ title: 'Importación completada', description: `${res.success} categorías importadas` });
+        toast({ title: t('importar.toasts.completada'), description: t('importar.toasts.importadas', { count: res.success, n: n(res.success) }) });
         onSuccess();
         if (res.errors.length === 0) {
           onOpenChange(false);
           handleClear();
         }
       } else {
-        toast({ title: 'No se importaron categorías', description: 'Revise los errores', variant: 'destructive' });
+        toast({ title: t('importar.toasts.ningunaImportada'), description: t('importar.toasts.revisarErrores'), variant: 'destructive' });
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Error desconocido';
-      toast({ title: 'Error de importación', description: message, variant: 'destructive' });
+      const message = err instanceof Error ? err.message : t('importar.toasts.errorDesconocido');
+      toast({ title: t('importar.toasts.errorImportacion'), description: message, variant: 'destructive' });
     } finally {
       setIsImporting(false);
     }
@@ -236,10 +240,10 @@ export function ImportCategoriesDialog({ open, onOpenChange, onSuccess }: Import
         <DialogHeader>
           <DialogTitle className="dark:text-gray-100 flex items-center gap-2">
             <Upload className="h-5 w-5" />
-            Importar Categorías
+            {t('importar.titulo')}
           </DialogTitle>
           <DialogDescription className="dark:text-gray-400">
-            Cargue categorías desde un archivo CSV o Excel. Use la plantilla para asegurar el formato correcto.
+            {t('importar.descripcion')}
           </DialogDescription>
         </DialogHeader>
 
@@ -254,11 +258,11 @@ export function ImportCategoriesDialog({ open, onOpenChange, onSuccess }: Import
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" size="sm" onClick={handleDownloadTemplate}>
               <Download className="h-4 w-4 mr-2" />
-              Descargar plantilla
+              {t('importar.descargarPlantilla')}
             </Button>
             {rows.length > 0 && (
               <Button type="button" variant="ghost" size="sm" onClick={handleClear}>
-                Limpiar
+                {t('importar.limpiar')}
               </Button>
             )}
           </div>
@@ -274,7 +278,7 @@ export function ImportCategoriesDialog({ open, onOpenChange, onSuccess }: Import
               id="import-categories-file"
             />
             <label htmlFor="import-categories-file" className="cursor-pointer text-blue-600 dark:text-blue-400 hover:underline">
-              {fileName || 'Seleccionar archivo (.csv o .xlsx)'}
+              {fileName || t('importar.seleccionarArchivo')}
             </label>
           </div>
 
@@ -283,26 +287,26 @@ export function ImportCategoriesDialog({ open, onOpenChange, onSuccess }: Import
               <div className="flex items-center gap-4 text-sm">
                 <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
                   <CheckCircle className="h-4 w-4" />
-                  {validRows.length} válidas
+                  {t('importar.validas', { count: validRows.length, n: n(validRows.length) })}
                 </span>
                 {invalidRows.length > 0 && (
                   <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
                     <XCircle className="h-4 w-4" />
-                    {invalidRows.length} inválidas
+                    {t('importar.invalidas', { count: invalidRows.length, n: n(invalidRows.length) })}
                   </span>
                 )}
-                <span className="text-gray-500 dark:text-gray-400">{rows.length} total</span>
+                <span className="text-gray-500 dark:text-gray-400">{t('importar.total', { n: n(rows.length) })}</span>
               </div>
 
               <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden max-h-64 overflow-y-auto overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
                     <tr>
-                      <th className="px-2 py-1 text-left text-gray-600 dark:text-gray-300">Estado</th>
-                      <th className="px-2 py-1 text-left text-gray-600 dark:text-gray-300">Nombre</th>
-                      <th className="px-2 py-1 text-left text-gray-600 dark:text-gray-300">Categoría Padre</th>
-                      <th className="px-2 py-1 text-left text-gray-600 dark:text-gray-300">Color</th>
-                      <th className="px-2 py-1 text-left text-gray-600 dark:text-gray-300">Estación</th>
+                      <th className="px-2 py-1 text-left text-gray-600 dark:text-gray-300">{t('importar.columnas.estado')}</th>
+                      <th className="px-2 py-1 text-left text-gray-600 dark:text-gray-300">{t('importar.columnas.nombre')}</th>
+                      <th className="px-2 py-1 text-left text-gray-600 dark:text-gray-300">{t('importar.columnas.padre')}</th>
+                      <th className="px-2 py-1 text-left text-gray-600 dark:text-gray-300">{t('importar.columnas.color')}</th>
+                      <th className="px-2 py-1 text-left text-gray-600 dark:text-gray-300">{t('importar.columnas.estacion')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -340,13 +344,13 @@ export function ImportCategoriesDialog({ open, onOpenChange, onSuccess }: Import
           {result && (
             <div className="rounded-lg p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
               <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                {result.success} categorías importadas correctamente
+                {t('importar.resultado', { count: result.success, n: n(result.success) })}
               </p>
               {result.errors.length > 0 && (
                 <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
                   {result.errors.map((err, i) => (
                     <p key={i} className="text-xs text-red-600 dark:text-red-400">
-                      Fila {err.row}: {err.error}
+                      {t('importar.fila', { fila: err.row, error: err.error })}
                     </p>
                   ))}
                 </div>
@@ -357,7 +361,7 @@ export function ImportCategoriesDialog({ open, onOpenChange, onSuccess }: Import
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} className="dark:border-gray-600 dark:text-gray-300">
-            Cancelar
+            {t('importar.cancelar')}
           </Button>
           <Button
             onClick={handleImport}
@@ -367,12 +371,12 @@ export function ImportCategoriesDialog({ open, onOpenChange, onSuccess }: Import
             {isImporting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Importando...
+                {t('importar.importando')}
               </>
             ) : (
               <>
                 <Upload className="h-4 w-4 mr-2" />
-                Importar ({validRows.length})
+                {t('importar.importarN', { n: n(validRows.length) })}
               </>
             )}
           </Button>

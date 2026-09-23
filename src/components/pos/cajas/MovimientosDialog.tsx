@@ -10,9 +10,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency } from '@/utils/Utils';
-import { CajasService } from './CajasService';
+import { CajasService, claveErrorCaja } from './CajasService';
 import type { CashMovement, CashMovementData } from './types';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 interface MovimientosDialogProps {
   onMovementAdded: (movement: CashMovement) => void;
@@ -22,23 +23,29 @@ interface MovimientosDialogProps {
   onOpenChange?: (open: boolean) => void;
 }
 
+/**
+ * Conceptos predefinidos (claves de `cajas.movimiento.conceptos`). Se guarda
+ * el texto en el idioma de quien registra, igual que un concepto escrito a mano.
+ */
 const CONCEPTS_IN = [
-  'Fondo adicional',
-  'Préstamo',
-  'Devolución',
-  'Cambio de billetes',
-  'Venta contado especial',
-  'Otro ingreso'
-];
+  'fondoAdicional',
+  'prestamo',
+  'devolucion',
+  'cambioBilletes',
+  'ventaContadoEspecial',
+  'otroIngreso'
+] as const;
 
 const CONCEPTS_OUT = [
-  'Gastos menores',
-  'Retiro de efectivo',
-  'Compra insumos',
-  'Cambio de billetes',
-  'Préstamo a empleado',
-  'Otro egreso'
-];
+  'gastosMenores',
+  'retiroEfectivo',
+  'compraInsumos',
+  'cambioBilletes',
+  'prestamoEmpleado',
+  'otroEgreso'
+] as const;
+
+type ConceptoPredefinido = (typeof CONCEPTS_IN)[number] | (typeof CONCEPTS_OUT)[number];
 
 export function MovimientosDialog({ onMovementAdded, disabled, open: controlledOpen, onOpenChange }: MovimientosDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
@@ -47,6 +54,10 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
   const setOpen = onOpenChange || setInternalOpen;
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('in');
+  const t = useTranslations('cajas.movimiento');
+  const tError = useTranslations('cajas.errores');
+  const conceptosIn = CONCEPTS_IN.map((id) => ({ id, etiqueta: t(`conceptos.${id}`) }));
+  const conceptosOut = CONCEPTS_OUT.map((id) => ({ id, etiqueta: t(`conceptos.${id}`) }));
   const [formData, setFormData] = useState<CashMovementData>({
     type: 'in',
     concept: '',
@@ -72,10 +83,10 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
     }));
   };
 
-  const handleConceptSelect = (concept: string) => {
+  const handleConceptSelect = (id: ConceptoPredefinido, etiqueta: string) => {
     setFormData(prev => ({
       ...prev,
-      concept: concept === 'Otro ingreso' || concept === 'Otro egreso' ? '' : concept
+      concept: id === 'otroIngreso' || id === 'otroEgreso' ? '' : etiqueta
     }));
   };
 
@@ -83,20 +94,21 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
     e.preventDefault();
     
     if (!formData.concept.trim()) {
-      toast.error('El concepto es requerido');
+      toast.error(t('conceptoRequerido'));
       return;
     }
 
     if (formData.amount <= 0) {
-      toast.error('El monto debe ser mayor a cero');
+      toast.error(t('montoMayorCero'));
       return;
     }
 
     setLoading(true);
     try {
       const movement = await CajasService.addMovement(formData);
-      toast.success(`${formData.type === 'in' ? 'Ingreso' : 'Egreso'} registrado${movement.pending_sync ? ' sin conexión' : ''}`, {
-        description: `${formData.concept}: ${formatCurrency(formData.amount)}${movement.pending_sync ? ' · pendiente de sincronizar' : ''}`
+      const pendiente = movement.pending_sync ? 'si' : 'no';
+      toast.success(formData.type === 'in' ? t('ingresoRegistrado', { pendiente }) : t('egresoRegistrado', { pendiente }), {
+        description: t('toastDescripcion', { concepto: formData.concept, monto: formatCurrency(formData.amount), pendiente })
       });
       
       onMovementAdded(movement);
@@ -112,8 +124,9 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
       setActiveTab('in');
     } catch (error) {
       console.error('Error adding movement:', error);
-      toast.error('Error al registrar movimiento', {
-        description: (error as Error)?.message
+      const clave = claveErrorCaja(error);
+      toast.error(t('errorRegistrar'), {
+        description: clave && tError.has(clave) ? tError(clave) : (error as Error)?.message
       });
     } finally {
       setLoading(false);
@@ -131,7 +144,7 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
           onClick={() => setOpen(true)}
         >
           <Plus className="h-5 w-5 mr-2" />
-          Registrar Movimiento
+          {t('registrarMovimiento')}
         </Button>
       )}
       {open && typeof document !== 'undefined' && createPortal(
@@ -141,9 +154,9 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
               <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center space-x-2">
                   <Plus className="h-5 w-5 text-blue-600" />
-                  <span>Registrar Movimiento</span>
+                  <span>{t('registrarMovimiento')}</span>
                 </h2>
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700" onClick={() => setOpen(false)}>
+                <button type="button" aria-label={t('cerrar')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700" onClick={() => setOpen(false)}>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -158,14 +171,14 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
               className="data-[state=active]:bg-green-600 data-[state=active]:text-white"
             >
               <ArrowUpCircle className="h-4 w-4 mr-2" />
-              Ingreso
+              {t('ingreso')}
             </TabsTrigger>
             <TabsTrigger 
               value="out"
               className="data-[state=active]:bg-red-600 data-[state=active]:text-white"
             >
               <ArrowDownCircle className="h-4 w-4 mr-2" />
-              Egreso
+              {t('egreso')}
             </TabsTrigger>
           </TabsList>
 
@@ -174,30 +187,30 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
               <Card className="dark:bg-gray-700 dark:border-gray-600 bg-green-50 border-green-200">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm text-green-600 dark:text-green-400">
-                    Ingreso de Efectivo
+                    {t('ingresoEfectivo')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {/* Conceptos predefinidos */}
                   <div className="space-y-2">
-                    <Label className="dark:text-gray-200 text-gray-700">Concepto</Label>
+                    <Label className="dark:text-gray-200 text-gray-700">{t('concepto')}</Label>
                     <div className="grid grid-cols-1 gap-2">
-                      {CONCEPTS_IN.map((concept) => (
+                      {conceptosIn.map(({ id, etiqueta }) => (
                         <Button
-                          key={concept}
+                          key={id}
                           type="button"
-                          variant={formData.concept === concept ? "default" : "outline"}
+                          variant={formData.concept === etiqueta ? "default" : "outline"}
                           size="sm"
                           className="justify-start text-left h-auto py-2"
-                          onClick={() => handleConceptSelect(concept)}
+                          onClick={() => handleConceptSelect(id, etiqueta)}
                         >
-                          {concept}
+                          {etiqueta}
                         </Button>
                       ))}
                     </div>
-                    {(formData.concept === '' || !CONCEPTS_IN.includes(formData.concept)) && (
+                    {(formData.concept === '' || !conceptosIn.some((c) => c.etiqueta === formData.concept)) && (
                       <Input
-                        placeholder="Especificar otro concepto..."
+                        placeholder={t('otroConceptoPlaceholder')}
                         value={formData.concept}
                         onChange={(e) => handleInputChange('concept', e.target.value)}
                         className="dark:bg-gray-600 dark:border-gray-500 dark:text-white"
@@ -213,30 +226,30 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
               <Card className="dark:bg-gray-700 dark:border-gray-600 bg-red-50 border-red-200">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm text-red-600 dark:text-red-400">
-                    Egreso de Efectivo
+                    {t('egresoEfectivo')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {/* Conceptos predefinidos */}
                   <div className="space-y-2">
-                    <Label className="dark:text-gray-200 text-gray-700">Concepto</Label>
+                    <Label className="dark:text-gray-200 text-gray-700">{t('concepto')}</Label>
                     <div className="grid grid-cols-1 gap-2">
-                      {CONCEPTS_OUT.map((concept) => (
+                      {conceptosOut.map(({ id, etiqueta }) => (
                         <Button
-                          key={concept}
+                          key={id}
                           type="button"
-                          variant={formData.concept === concept ? "default" : "outline"}
+                          variant={formData.concept === etiqueta ? "default" : "outline"}
                           size="sm"
                           className="justify-start text-left h-auto py-2"
-                          onClick={() => handleConceptSelect(concept)}
+                          onClick={() => handleConceptSelect(id, etiqueta)}
                         >
-                          {concept}
+                          {etiqueta}
                         </Button>
                       ))}
                     </div>
-                    {(formData.concept === '' || !CONCEPTS_OUT.includes(formData.concept)) && (
+                    {(formData.concept === '' || !conceptosOut.some((c) => c.etiqueta === formData.concept)) && (
                       <Input
-                        placeholder="Especificar otro concepto..."
+                        placeholder={t('otroConceptoPlaceholder')}
                         value={formData.concept}
                         onChange={(e) => handleInputChange('concept', e.target.value)}
                         className="dark:bg-gray-600 dark:border-gray-500 dark:text-white"
@@ -251,7 +264,7 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
             {/* Monto - común para ambas tabs */}
             <div className="space-y-2">
               <Label htmlFor="amount" className="dark:text-gray-200 text-gray-700">
-                Monto *
+                {t('monto')}
               </Label>
               <Input
                 id="amount"
@@ -265,7 +278,7 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
               />
               {formData.amount > 0 && (
                 <p className="text-sm dark:text-gray-400 text-gray-500">
-                  Equivale a: <span className={`font-medium ${activeTab === 'in' ? 'text-green-600' : 'text-red-600'}`}>
+                  {t('equivaleA')} <span className={`font-medium ${activeTab === 'in' ? 'text-green-600' : 'text-red-600'}`}>
                     {formatCurrency(formData.amount)}
                   </span>
                 </p>
@@ -275,13 +288,13 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
             {/* Notas */}
             <div className="space-y-2">
               <Label htmlFor="notes" className="dark:text-gray-200 text-gray-700">
-                Observaciones (Opcional)
+                {t('observaciones')}
               </Label>
               <Textarea
                 id="notes"
                 value={formData.notes}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
-                placeholder="Detalles adicionales..."
+                placeholder={t('observacionesPlaceholder')}
                 className="dark:bg-gray-600 dark:border-gray-500 dark:text-white bg-white border-gray-300"
                 rows={2}
               />
@@ -296,7 +309,7 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
                 onClick={() => setOpen(false)}
                 disabled={loading}
               >
-                Cancelar
+                {t('cancelar')}
               </Button>
               <Button
                 type="submit"
@@ -306,10 +319,10 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
                 {loading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                    Registrando...
+                    {t('registrando')}
                   </>
                 ) : (
-                  `Registrar ${activeTab === 'in' ? 'Ingreso' : 'Egreso'}`
+                  activeTab === 'in' ? t('registrarIngreso') : t('registrarEgreso')
                 )}
               </Button>
             </div>

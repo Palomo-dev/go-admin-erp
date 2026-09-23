@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ClipboardList, Copy, Eye, Fingerprint, Pencil, Power, PowerOff, Trash2 } from 'lucide-react';
 import type { AccionFila } from '@/components/kit';
 import { useToast } from '@/components/ui/use-toast';
@@ -30,90 +31,89 @@ interface Opciones {
 export function useAccionesProveedor({ onCambio, conVer = true, conEditar = true }: Opciones) {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useTranslations('proveedores.acciones');
   const [aEliminar, setAEliminar] = useState<ProveedorAEliminar | null>(null);
   const [duplicando, setDuplicando] = useState(false);
 
   const duplicar = useCallback(
     async (uuid: string) => {
       setDuplicando(true);
-      toast({ title: 'Duplicando proveedor…' });
+      toast({ title: t('toast.duplicando') });
       const { data, error } = await supplierService.duplicateSupplier(uuid, getOrganizationId());
       setDuplicando(false);
       if (error || !data) {
-        toast({ variant: 'destructive', title: 'No se pudo duplicar el proveedor' });
+        toast({ variant: 'destructive', title: t('toast.errorDuplicar') });
         return;
       }
-      toast({ title: 'Proveedor duplicado', description: 'Completa el documento de la copia.' });
+      toast({ title: t('toast.duplicado'), description: t('toast.duplicadoDescripcion') });
       onCambio();
       router.push(`${RUTA_PROVEEDORES}/${data.uuid}/editar`);
     },
-    [onCambio, router, toast],
+    [onCambio, router, t, toast],
   );
 
   const cambiarEstado = useCallback(
     async (ids: readonly number[], activo: boolean) => {
       const { error } = await supplierService.setSuppliersActive(getOrganizationId(), ids, activo);
       if (error) {
-        toast({ variant: 'destructive', title: activo ? 'No se pudo activar' : 'No se pudo desactivar' });
+        toast({ variant: 'destructive', title: activo ? t('toast.errorActivar') : t('toast.errorDesactivar') });
         return false;
       }
       const n = ids.length;
       toast({
-        title: activo
-          ? n === 1 ? 'Proveedor activado' : `${n} proveedores activados`
-          : n === 1 ? 'Proveedor desactivado' : `${n} proveedores desactivados`,
-        description: activo ? 'Vuelve a aparecer al comprar.' : 'Ya no aparece al comprar; su historial se conserva.',
+        title: activo ? t('toast.activados', { count: n }) : t('toast.desactivados', { count: n }),
+        description: activo ? t('toast.activadosDescripcion') : t('toast.desactivadosDescripcion'),
       });
       onCambio();
       return true;
     },
-    [onCambio, toast],
+    [onCambio, t, toast],
   );
 
   const copiarId = useCallback(
     async (uuid: string) => {
       try {
         await navigator.clipboard.writeText(uuid);
-        toast({ title: 'ID copiado', description: uuid });
+        toast({ title: t('toast.idCopiado'), description: uuid });
       } catch {
-        toast({ variant: 'destructive', title: 'No se pudo copiar el ID' });
+        toast({ variant: 'destructive', title: t('toast.errorCopiarId') });
       }
     },
-    [toast],
+    [t, toast],
   );
 
   const accionesDe = useCallback(
     (p: ProveedorAEliminar): AccionFila[] => [
       {
         id: 'ver',
-        etiqueta: 'Ver detalle',
+        etiqueta: t('verDetalle'),
         icono: Eye,
         onSelect: () => router.push(`${RUTA_PROVEEDORES}/${p.uuid}`),
         oculta: !conVer,
       },
       {
         id: 'editar',
-        etiqueta: 'Editar',
+        etiqueta: t('editar'),
         icono: Pencil,
         onSelect: () => router.push(`${RUTA_PROVEEDORES}/${p.uuid}/editar`),
         oculta: !conEditar,
       },
       {
         id: 'orden',
-        etiqueta: 'Nueva orden de compra',
+        etiqueta: t('nuevaOrden'),
         icono: ClipboardList,
         onSelect: () => router.push(rutaNuevaOrdenCompra(p.id)),
         deshabilitada: !p.is_active,
-        motivo: 'Actívalo para comprarle',
+        motivo: t('activaloParaComprar'),
       },
-      { id: 'duplicar', etiqueta: 'Duplicar', icono: Copy, onSelect: () => duplicar(p.uuid), deshabilitada: duplicando, motivo: 'Duplicando…' },
-      { id: 'copiar-id', etiqueta: 'Copiar ID', icono: Fingerprint, onSelect: () => copiarId(p.uuid) },
+      { id: 'duplicar', etiqueta: t('duplicar'), icono: Copy, onSelect: () => duplicar(p.uuid), deshabilitada: duplicando, motivo: t('duplicando') },
+      { id: 'copiar-id', etiqueta: t('copiarId'), icono: Fingerprint, onSelect: () => copiarId(p.uuid) },
       p.is_active
-        ? { id: 'desactivar', etiqueta: 'Desactivar', icono: PowerOff, onSelect: () => cambiarEstado([p.id], false), separadorAntes: true }
-        : { id: 'activar', etiqueta: 'Activar', icono: Power, onSelect: () => cambiarEstado([p.id], true), separadorAntes: true },
-      { id: 'eliminar', etiqueta: 'Eliminar', icono: Trash2, destructiva: true, onSelect: () => setAEliminar(p) },
+        ? { id: 'desactivar', etiqueta: t('desactivar'), icono: PowerOff, onSelect: () => cambiarEstado([p.id], false), separadorAntes: true }
+        : { id: 'activar', etiqueta: t('activar'), icono: Power, onSelect: () => cambiarEstado([p.id], true), separadorAntes: true },
+      { id: 'eliminar', etiqueta: t('eliminar'), icono: Trash2, destructiva: true, onSelect: () => setAEliminar(p) },
     ],
-    [cambiarEstado, conEditar, conVer, copiarId, duplicar, duplicando, router],
+    [cambiarEstado, conEditar, conVer, copiarId, duplicar, duplicando, router, t],
   );
 
   return { accionesDe, cambiarEstado, aEliminar, setAEliminar, duplicando };

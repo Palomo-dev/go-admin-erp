@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -38,8 +38,8 @@ import { CajasService } from '../CajasService';
 import { ConfiguracionService } from '@/components/pos/configuracion/configuracionService';
 import { useBlindCloseMode } from '../useBlindCloseMode';
 import type { CashSession, CashSummary, CashDenominations, CreateCashCountData } from '../types';
-import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 interface NuevoArqueoPageProps {
   sessionUuid: string;
@@ -50,6 +50,7 @@ const BILL_DENOMINATIONS = [100000, 50000, 20000, 10000, 5000, 2000, 1000];
 const COIN_DENOMINATIONS = [1000, 500, 200, 100, 50];
 
 export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
+  const t = useTranslations('cajas.detalle');
   const router = useRouter();
   const { organization, isLoading: orgLoading } = useOrganization();
   const [session, setSession] = useState<CashSession | null>(null);
@@ -66,13 +67,7 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
   const [coins, setCoins] = useState<Record<string, number>>({});
   const [methodCounts, setMethodCounts] = useState<Record<string, number>>({});
 
-  useEffect(() => {
-    if (organization?.id && sessionUuid) {
-      loadSessionData();
-    }
-  }, [organization, sessionUuid]);
-
-  const loadPaymentMethods = async () => {
+  const loadPaymentMethods = useCallback(async () => {
     try {
       const methods = await ConfiguracionService.getPaymentMethods();
       const activeMethods = methods
@@ -82,9 +77,9 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
     } catch (err) {
       console.warn('Error loading payment methods:', err);
     }
-  };
+  }, []);
 
-  const loadSessionData = async () => {
+  const loadSessionData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [sessionData, summaryData] = await Promise.all([
@@ -94,13 +89,19 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
       setSession(sessionData);
       setSummary(summaryData);
       await loadPaymentMethods();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading session:', error);
-      toast.error('Error al cargar datos de la sesión');
+      toast.error(t('comun.errorCargar'));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [sessionUuid, t, loadPaymentMethods]);
+
+  useEffect(() => {
+    if (organization?.id && sessionUuid) {
+      loadSessionData();
+    }
+  }, [organization, sessionUuid, loadSessionData]);
 
   const handleBillChange = (denomination: number, quantity: string) => {
     const qty = parseInt(quantity) || 0;
@@ -172,15 +173,17 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
 
       await CajasService.createCashCountByUuid(sessionUuid, data);
       
-      toast.success('Arqueo registrado exitosamente', {
-        description: showExpected ? `Diferencia: ${formatCurrency(difference)}` : 'Arqueo registrado'
+      toast.success(t('arqueo.toastExito'), {
+        description: showExpected
+          ? t('arqueo.toastDiferencia', { monto: formatCurrency(difference) })
+          : t('arqueo.toastRegistrado')
       });
       
       router.push(`/app/pos/cajas/${sessionUuid}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating cash count:', error);
-      toast.error('Error al registrar arqueo', {
-        description: error.message
+      toast.error(t('arqueo.toastError'), {
+        description: error instanceof Error ? error.message : undefined
       });
     } finally {
       setIsSaving(false);
@@ -210,18 +213,18 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
             <CardContent className="p-6 text-center">
               <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
               <h2 className="text-lg font-semibold mb-2 dark:text-white">
-                {!session ? 'Sesión no encontrada' : 'Sesión cerrada'}
+                {!session ? t('comun.sesionNoEncontrada') : t('comun.sesionCerrada')}
               </h2>
               <p className="text-gray-500 dark:text-gray-400 mb-4">
-                {!session 
-                  ? 'La sesión de caja solicitada no existe.'
-                  : 'No se pueden registrar arqueos en una sesión cerrada.'
+                {!session
+                  ? t('comun.sesionNoExiste')
+                  : t('arqueo.sesionCerrada')
                 }
               </p>
               <Link href="/app/pos/cajas">
                 <Button variant="outline">
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Volver a Cajas
+                  {t('comun.volverCajas')}
                 </Button>
               </Link>
             </CardContent>
@@ -243,10 +246,10 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
 
   const getMethodLabel = (code: string) => {
     switch (code) {
-      case 'cash': return 'Efectivo';
-      case 'card': return 'Tarjeta';
-      case 'transfer': return 'Transferencia';
-      case 'credit': return 'Crédito';
+      case 'cash': return t('arqueo.metodos.cash');
+      case 'card': return t('arqueo.metodos.card');
+      case 'transfer': return t('arqueo.metodos.transfer');
+      case 'credit': return t('arqueo.metodos.credit');
       default: return code.charAt(0).toUpperCase() + code.slice(1);
     }
   };
@@ -257,22 +260,22 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
         {/* Header */}
         <div className="flex items-center gap-4">
           <Link href={`/app/pos/cajas/${sessionUuid}`}>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" aria-label={t('comun.volver')}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold dark:text-white">Nuevo Arqueo</h1>
+              <h1 className="text-2xl font-bold dark:text-white">{t('arqueo.titulo')}</h1>
               {isBlindMode && !isOrgAdmin && (
                 <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 flex items-center gap-1">
                   <EyeOff className="h-3 w-3" />
-                  Cierre Ciego
+                  {t('comun.cierreCiego')}
                 </Badge>
               )}
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Sesión #{session.id} - Registrar conteo de caja
+              {t('arqueo.subtitulo', { id: session.id })}
             </p>
           </div>
         </div>
@@ -284,17 +287,17 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
               {/* Tipo de Arqueo */}
               <Card className="dark:bg-gray-800 dark:border-gray-700">
                 <CardHeader>
-                  <CardTitle className="text-lg dark:text-white">Tipo de Arqueo</CardTitle>
+                  <CardTitle className="text-lg dark:text-white">{t('arqueo.tipoTitulo')}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Select value={countType} onValueChange={(v) => setCountType(v as any)}>
+                  <Select value={countType} onValueChange={(v) => setCountType(v as 'opening' | 'partial' | 'closing')}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="opening">Apertura</SelectItem>
-                      <SelectItem value="partial">Parcial</SelectItem>
-                      <SelectItem value="closing">Cierre</SelectItem>
+                      <SelectItem value="opening">{t('comun.tipoArqueo.opening')}</SelectItem>
+                      <SelectItem value="partial">{t('comun.tipoArqueo.partial')}</SelectItem>
+                      <SelectItem value="closing">{t('comun.tipoArqueo.closing')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </CardContent>
@@ -305,10 +308,10 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-lg dark:text-white flex items-center gap-2">
                     <Wallet className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    Efectivo - Billetes
+                    {t('arqueo.billetes')}
                   </CardTitle>
                   <Button type="button" variant="ghost" size="sm" onClick={clearDenominations}>
-                    Limpiar
+                    {t('arqueo.limpiar')}
                   </Button>
                 </CardHeader>
                 <CardContent>
@@ -342,7 +345,7 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
               {/* Desglose de Monedas */}
               <Card className="dark:bg-gray-800 dark:border-gray-700">
                 <CardHeader>
-                  <CardTitle className="text-lg dark:text-white">Efectivo - Monedas</CardTitle>
+                  <CardTitle className="text-lg dark:text-white">{t('arqueo.monedas')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
@@ -371,7 +374,7 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
                   </div>
                   {cashTotal > 0 && (
                     <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg flex justify-between items-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Total Efectivo</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{t('arqueo.totalEfectivo')}</span>
                       <span className="font-bold text-green-600 dark:text-green-400">{formatCurrency(cashTotal)}</span>
                     </div>
                   )}
@@ -382,9 +385,9 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
               {paymentMethods.filter(m => m.code !== 'cash').length > 0 && (
                 <Card className="dark:bg-gray-800 dark:border-gray-700">
                   <CardHeader>
-                    <CardTitle className="text-lg dark:text-white">Otros Métodos de Pago</CardTitle>
+                    <CardTitle className="text-lg dark:text-white">{t('arqueo.otros.titulo')}</CardTitle>
                     <CardDescription className="text-gray-500 dark:text-gray-400">
-                      Registra el monto recibido en cada método de pago
+                      {t('arqueo.otros.descripcion')}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -399,7 +402,7 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
                           </Label>
                           {showExpected && summary?.income_by_method && summary.income_by_method[method.code] != null && (
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              Esperado: {formatCurrency(summary.income_by_method[method.code])}
+                              {t('arqueo.otros.esperado', { monto: formatCurrency(summary.income_by_method[method.code]) })}
                             </p>
                           )}
                         </div>
@@ -418,7 +421,7 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
                     ))}
                     {calculateMethodTotal() > 0 && (
                       <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex justify-between items-center">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Total Otros Métodos</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{t('arqueo.otros.total')}</span>
                         <span className="font-bold text-blue-600 dark:text-blue-400">{formatCurrency(calculateMethodTotal())}</span>
                       </div>
                     )}
@@ -429,13 +432,13 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
               {/* Notas */}
               <Card className="dark:bg-gray-800 dark:border-gray-700">
                 <CardHeader>
-                  <CardTitle className="text-lg dark:text-white">Notas</CardTitle>
+                  <CardTitle className="text-lg dark:text-white">{t('arqueo.notas')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <RichTextEditor
                     value={notes}
                     onChange={(html) => setNotes(html)}
-                    placeholder="Observaciones del arqueo..."
+                    placeholder={t('arqueo.notasPlaceholder')}
                     minHeight={100}
                   />
                 </CardContent>
@@ -448,29 +451,29 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
                 <CardHeader>
                   <CardTitle className="text-lg dark:text-white flex items-center gap-2">
                     <Calculator className="h-5 w-5" />
-                    Resumen
+                    {t('arqueo.resumen.titulo')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
                     {showExpected && (
                       <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                        <span className="text-gray-600 dark:text-gray-400">Monto Esperado</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('arqueo.resumen.montoEsperado')}</span>
                         <span className="font-medium dark:text-white">{formatCurrency(expectedAmount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                      <span className="text-gray-600 dark:text-gray-400">Efectivo Contado</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('arqueo.resumen.efectivoContado')}</span>
                       <span className="font-medium dark:text-white">{formatCurrency(cashTotal)}</span>
                     </div>
                     {paymentMethods.filter(m => m.code !== 'cash').length > 0 && (
                       <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                        <span className="text-gray-600 dark:text-gray-400">Otros Métodos</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('arqueo.resumen.otrosMetodos')}</span>
                         <span className="font-medium dark:text-white">{formatCurrency(calculateMethodTotal())}</span>
                       </div>
                     )}
                     <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                      <span className="text-gray-600 dark:text-gray-400">Total Contado</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('arqueo.resumen.totalContado')}</span>
                       <span className="font-bold text-xl text-blue-600 dark:text-blue-400">
                         {formatCurrency(countedAmount)}
                       </span>
@@ -480,7 +483,7 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
                       <>
                         <Separator />
                         <div className="flex justify-between items-center py-2">
-                          <span className="font-semibold dark:text-white">Diferencia</span>
+                          <span className="font-semibold dark:text-white">{t('arqueo.resumen.diferencia')}</span>
                           <div className="flex items-center gap-2">
                             {difference >= 0 ? (
                               <CheckCircle className="h-5 w-5 text-green-500" />
@@ -505,8 +508,8 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
                           )}>
                             <p className="text-sm">
                               {difference > 0 
-                                ? `Sobrante de ${formatCurrency(difference)}`
-                                : `Faltante de ${formatCurrency(Math.abs(difference))}`
+                                ? t('arqueo.resumen.sobrante', { monto: formatCurrency(difference) })
+                                : t('arqueo.resumen.faltante', { monto: formatCurrency(Math.abs(difference)) })
                               }
                             </p>
                           </div>
@@ -518,7 +521,7 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
                       <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center gap-2">
                         <EyeOff className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
                         <p className="text-sm text-purple-700 dark:text-purple-400">
-                          Cierre ciego activo. Los montos esperados y diferencias son visibles solo para administradores.
+                          {t('comun.cierreCiegoActivo')}
                         </p>
                       </div>
                     )}
@@ -532,12 +535,12 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
                     {isSaving ? (
                       <>
                         <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Guardando...
+                        {t('comun.guardando')}
                       </>
                     ) : (
                       <>
                         <Save className="h-4 w-4 mr-2" />
-                        Guardar Arqueo
+                        {t('arqueo.resumen.guardar')}
                       </>
                     )}
                   </Button>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Banknote, DollarSign, Eye, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -19,7 +20,6 @@ import {
   SegmentedControl,
   StatCard,
   esFechaPlana,
-  etiquetaRango,
   inicioDeMes,
   useListadoServidor,
   type ColumnaTabla,
@@ -27,13 +27,13 @@ import {
 } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useEtiquetaRango } from '@/components/kit/useIdiomaKit';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { addPlainDays } from '@/lib/utils/dateCore';
 import { cn } from '@/utils/Utils';
 import { CajasService } from '../CajasService';
 import type { CampoOrdenHistorial, CashHistoryFilters, CashSession, ResultadoCierre } from '../types';
 import {
-  ETIQUETA_RESULTADO,
   dinero,
   dineroConSigno,
   esResultadoCierre,
@@ -42,17 +42,12 @@ import {
   resumenDiferencias,
   type ResumenDiferencias,
 } from '../historialCajas';
-import { MOTIVO_CIERRE_CIEGO, Oculto, SucursalCaja } from './comunes';
+import { Oculto, SucursalCaja } from './comunes';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 const CAMPOS_ORDEN: readonly CampoOrdenHistorial[] = ['opened_at', 'closed_at', 'difference'];
 
-const OPCIONES_RESULTADO: { valor: 'todas' | ResultadoCierre; etiqueta: string }[] = [
-  { valor: 'todas', etiqueta: 'Todas' },
-  { valor: 'faltante', etiqueta: 'Con faltante' },
-  { valor: 'sobrante', etiqueta: 'Con sobrante' },
-  { valor: 'cuadrada', etiqueta: 'Cuadradas' },
-];
+const VALORES_RESULTADO: readonly ('todas' | ResultadoCierre)[] = ['todas', 'faltante', 'sobrante', 'cuadrada'];
 
 const TONO_RESULTADO: Record<ResultadoCierre, string> = {
   faltante: 'text-danger-text',
@@ -72,6 +67,11 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
   const moneda = useMonedaOrganizacion();
   const router = useRouter();
   const { formatDateTime, getToday, toInstant } = useFormatDate();
+  const t = useTranslations('cajas.listado.historial');
+  const tListado = useTranslations('cajas.listado');
+  const etiquetaRango = useEtiquetaRango();
+  const motivoCierreCiego = tListado('motivoCierreCiego');
+  const opcionesResultado = VALORES_RESULTADO.map((valor) => ({ valor, etiqueta: t(`filtroResultado.${valor}`) }));
   const hoy = getToday();
 
   const l = useListadoServidor({
@@ -131,11 +131,11 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
       setResumen(resumenDiferencias(diferencias));
     } catch (e) {
       console.error('Error cargando el historial de cajas:', e);
-      setError(e instanceof Error ? e.message : 'Error desconocido');
+      setError(e instanceof Error ? e.message : tListado('errorDesconocido'));
     } finally {
       setCargando(false);
     }
-  }, [filtros, l.pagina, l.tamano]);
+  }, [filtros, l.pagina, l.tamano, tListado]);
 
   useEffect(() => {
     void cargar();
@@ -155,7 +155,7 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
     try {
       const sesiones = await CajasService.getSessionHistoryForExport(filtros);
       if (sesiones.length === 0) {
-        toast.info('No hay sesiones para exportar con estos filtros');
+        toast.info(t('exportarVacio'));
         return;
       }
       const csv = historialACsv(
@@ -171,6 +171,22 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
           diferencia: s.difference === null || s.difference === undefined ? null : Number(s.difference),
         })),
         !showExpected,
+        {
+          cabecera: [
+            tListado('columnas.caja'),
+            t('columnas.apertura'),
+            t('columnas.cierre'),
+            t('columnas.cerro'),
+            tListado('columnas.cajero'),
+            tListado('columnas.sucursal'),
+            tListado('columnas.inicial'),
+            t('columnas.final'),
+            t('columnas.diferencia'),
+            t('columnas.resultado'),
+          ],
+          oculto: tListado('oculto'),
+          resultados: { faltante: t('resultados.faltante'), sobrante: t('resultados.sobrante'), cuadrada: t('resultados.cuadrada') },
+        },
       );
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
       const enlace = document.createElement('a');
@@ -178,9 +194,9 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
       enlace.download = `cajas-historial-${rango.desde}-a-${rango.hasta}.csv`;
       enlace.click();
       URL.revokeObjectURL(url);
-      toast.success(`${sesiones.length} ${sesiones.length === 1 ? 'sesión exportada' : 'sesiones exportadas'}`);
+      toast.success(t('exportadas', { count: sesiones.length }));
     } catch (e) {
-      toast.error('No se pudo exportar el historial', { description: e instanceof Error ? e.message : undefined });
+      toast.error(t('exportarError'), { description: e instanceof Error ? e.message : undefined });
     } finally {
       setExportando(false);
     }
@@ -196,44 +212,44 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
     return (
       <div className="flex flex-col items-end">
         <span className={cn('font-medium', TONO_RESULTADO[r])}>{r === 'cuadrada' ? dinero(0, moneda) : dineroConSigno(s.difference, moneda)}</span>
-        <span className="text-xs text-fg-secondary">{ETIQUETA_RESULTADO[r]}</span>
+        <span className="text-xs text-fg-secondary">{t(`resultados.${r}`)}</span>
       </div>
     );
   };
 
   const columnas: ColumnaTabla<CashSession>[] = [
-    { id: 'caja', encabezado: 'Caja', variante: 'mono', ancho: 80, celda: (s) => <span className="text-fg-secondary">#{s.id}</span> },
+    { id: 'caja', encabezado: tListado('columnas.caja'), variante: 'mono', ancho: 80, celda: (s) => <span className="text-fg-secondary">#{s.id}</span> },
     {
       id: 'apertura',
-      encabezado: 'Apertura',
+      encabezado: t('columnas.apertura'),
       ordenable: true,
       campoOrden: 'opened_at',
       celda: (s) => <span className="whitespace-nowrap tabular-nums">{formatDateTime(s.opened_at)}</span>,
     },
     {
       id: 'cierre',
-      encabezado: 'Cierre',
+      encabezado: t('columnas.cierre'),
       ordenable: true,
       campoOrden: 'closed_at',
       celda: (s) => (
         <div className="flex flex-col whitespace-nowrap">
           <span className="tabular-nums">{s.closed_at ? formatDateTime(s.closed_at) : '—'}</span>
-          {s.closed_by_name && <span className="text-xs text-fg-secondary">Cerró: {s.closed_by_name}</span>}
+          {s.closed_by_name && <span className="text-xs text-fg-secondary">{t('cerroNombre', { nombre: s.closed_by_name })}</span>}
         </div>
       ),
     },
-    { id: 'cajero', encabezado: 'Cajero', celda: (s) => <span className="font-medium">{s.opened_by_name || '—'}</span> },
-    { id: 'sucursal', encabezado: 'Sucursal', ocultarDebajo: 'xl', celda: (s) => <SucursalCaja sesion={s} /> },
-    { id: 'inicial', encabezado: 'Inicial', variante: 'importe', celda: (s) => dinero(s.initial_amount, moneda) },
+    { id: 'cajero', encabezado: tListado('columnas.cajero'), celda: (s) => <span className="font-medium">{s.opened_by_name || '—'}</span> },
+    { id: 'sucursal', encabezado: tListado('columnas.sucursal'), ocultarDebajo: 'xl', celda: (s) => <SucursalCaja sesion={s} /> },
+    { id: 'inicial', encabezado: tListado('columnas.inicial'), variante: 'importe', celda: (s) => dinero(s.initial_amount, moneda) },
     {
       id: 'final',
-      encabezado: 'Final',
+      encabezado: t('columnas.final'),
       variante: 'importe',
       celda: (s) => (showExpected ? (s.final_amount === null || s.final_amount === undefined ? '—' : dinero(s.final_amount, moneda)) : <Oculto />),
     },
     {
       id: 'diferencia',
-      encabezado: 'Diferencia',
+      encabezado: t('columnas.diferencia'),
       variante: 'importe',
       ordenable: true,
       campoOrden: 'difference',
@@ -247,40 +263,40 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
 
   return (
     <div className="flex flex-col gap-4">
-      <KpiStrip etiqueta="Resumen del historial de cajas">
+      <KpiStrip etiqueta={t('kpiEtiqueta')}>
         <StatCard
-          etiqueta="Sesiones cerradas"
+          etiqueta={t('kpiSesionesCerradas')}
           icono={DollarSign}
           cargando={cargando && !r}
           valor={r?.sesiones ?? 0}
           detalle={etiquetaRango(rango)}
         />
         <StatCard
-          etiqueta="Faltantes"
+          etiqueta={t('kpiFaltantes')}
           icono={DollarSign}
           cargando={cargando && !r}
           valor={oculto ? <Oculto /> : dineroConSigno(r?.faltantes ?? 0, moneda)}
-          detalle={oculto ? 'cierre ciego' : r?.cajasConFaltante ? `${r.cajasConFaltante} ${r.cajasConFaltante === 1 ? 'caja' : 'cajas'} con faltante` : 'ninguna caja'}
+          detalle={oculto ? tListado('cierreCiegoMinuscula') : r?.cajasConFaltante ? tListado('cajasConFaltante', { count: r.cajasConFaltante }) : t('ningunaCaja')}
           tono={!oculto && r?.cajasConFaltante ? 'peligro' : 'neutro'}
           tendencia={!oculto && r?.cajasConFaltante ? 'baja' : undefined}
           onClick={oculto ? undefined : () => l.setFiltro('resultado', 'faltante')}
         />
         <StatCard
-          etiqueta="Sobrantes"
+          etiqueta={t('kpiSobrantes')}
           icono={DollarSign}
           cargando={cargando && !r}
           valor={oculto ? <Oculto /> : dineroConSigno(r?.sobrantes ?? 0, moneda)}
-          detalle={oculto ? 'cierre ciego' : r?.cajasConSobrante ? `${r.cajasConSobrante} ${r.cajasConSobrante === 1 ? 'caja' : 'cajas'} con sobrante` : 'ninguna caja'}
+          detalle={oculto ? tListado('cierreCiegoMinuscula') : r?.cajasConSobrante ? tListado('cajasConSobrante', { count: r.cajasConSobrante }) : t('ningunaCaja')}
           tono={!oculto && r?.cajasConSobrante ? 'exito' : 'neutro'}
           tendencia={!oculto && r?.cajasConSobrante ? 'sube' : undefined}
           onClick={oculto ? undefined : () => l.setFiltro('resultado', 'sobrante')}
         />
         <StatCard
-          etiqueta="Diferencia neta"
+          etiqueta={t('kpiDiferenciaNeta')}
           icono={DollarSign}
           cargando={cargando && !r}
           valor={oculto ? <Oculto /> : dineroConSigno(r?.neta ?? 0, moneda)}
-          detalle={oculto ? 'cierre ciego' : r?.sesiones ? `${r.cuadradas} cuadraron en ${dinero(0, moneda)}` : 'sin cierres'}
+          detalle={oculto ? tListado('cierreCiegoMinuscula') : r?.sesiones ? t('cuadraron', { count: r.cuadradas, monto: dinero(0, moneda) }) : t('sinCierres')}
         />
       </KpiStrip>
 
@@ -291,20 +307,20 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
               <SearchInput
                 value={l.busqueda}
                 onChange={l.setBusqueda}
-                placeholder="Cajero o n.º de caja"
-                etiqueta="Buscar en el historial de cajas"
+                placeholder={t('buscarPlaceholder')}
+                etiqueta={t('buscarEtiqueta')}
                 cargando={cargando}
               />
             }
             filtros={
               <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
-                <DateRangeButton valor={rango} onValorChange={setRango} hoy={hoy} etiqueta="Apertura entre" />
+                <DateRangeButton valor={rango} onValorChange={setRango} hoy={hoy} etiqueta={t('aperturaEntre')} />
                 <FilterPanel
                   conteo={resultado ? 1 : 0}
                   onLimpiar={() => l.setFiltro('resultado', null)}
-                  textoVerResultados={`Ver ${total} ${total === 1 ? 'sesión' : 'sesiones'}`}
+                  textoVerResultados={t('verSesiones', { count: total })}
                 >
-                  <FormField etiqueta="Resultado del cierre">
+                  <FormField etiqueta={t('resultadoCierre')}>
                     {(c) => (
                       <SegmentedControl
                         aria-labelledby={c.idEtiqueta}
@@ -312,20 +328,20 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
                         tamano="sm"
                         valor={resultado ?? 'todas'}
                         onValorChange={(v) => l.setFiltro('resultado', v === 'todas' ? null : v)}
-                        opciones={OPCIONES_RESULTADO}
+                        opciones={opcionesResultado}
                       />
                     )}
                   </FormField>
                 </FilterPanel>
                 <Button variant="outline" className="h-10 gap-2" onClick={exportar} disabled={exportando || cargando}>
                   <FileDown aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                  {exportando ? 'Exportando…' : 'Exportar'}
+                  {exportando ? t('exportando') : t('exportar')}
                 </Button>
               </div>
             }
             chips={
               <FilterChips
-                chips={resultado ? [{ clave: 'resultado', etiqueta: `Resultado: ${OPCIONES_RESULTADO.find((o) => o.valor === resultado)?.etiqueta.toLowerCase()}` }] : []}
+                chips={resultado ? [{ clave: 'resultado', etiqueta: t('chipResultado', { valor: t(`filtroResultadoMinuscula.${resultado}`) }) }] : []}
                 onQuitar={(c) => l.setFiltro(c, null)}
                 onLimpiarTodo={l.limpiarTodo}
               />
@@ -336,7 +352,7 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
       </div>
 
       <DataTable
-        etiqueta="Historial de sesiones de caja"
+        etiqueta={t('tablaEtiqueta')}
         columnas={columnas}
         filas={filas}
         obtenerId={(s) => String(s.id)}
@@ -344,16 +360,18 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
         orden={l.orden}
         onOrdenar={l.ordenarPor}
         onFilaClick={showExpected ? irADetalle : undefined}
-        etiquetaFila={(s) => `Caja #${s.id} de ${s.opened_by_name || 'cajero'}`}
+        etiquetaFila={(s) =>
+          s.opened_by_name ? tListado('etiquetaFila', { id: s.id, nombre: s.opened_by_name }) : tListado('etiquetaFilaSinNombre', { id: s.id })
+        }
         filasEsqueleto={Math.min(l.tamano, 10)}
         accionesRapidas={(s) => (
           <AccionRapida
             soloIcono
-            etiqueta="Ver detalle"
+            etiqueta={tListado('verDetalle')}
             icono={Eye}
             onClick={() => irADetalle(s)}
             deshabilitada={!showExpected}
-            motivo={showExpected ? undefined : MOTIVO_CIERRE_CIEGO}
+            motivo={showExpected ? undefined : motivoCierreCiego}
           />
         )}
         tarjetaMovil={(s) => {
@@ -361,16 +379,16 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
           return (
             <ListCard
               icono={Banknote}
-              titulo={`#${s.id} · ${s.opened_by_name || 'Cajero'}`}
+              titulo={`#${s.id} · ${s.opened_by_name || tListado('cajero')}`}
               subtitulo={`${formatDateTime(s.opened_at)} → ${s.closed_at ? formatDateTime(s.closed_at) : '—'}`}
-              meta={s.closed_by_name ? `Cerró: ${s.closed_by_name}` : undefined}
+              meta={s.closed_by_name ? t('cerroNombre', { nombre: s.closed_by_name }) : undefined}
               valor={showExpected ? (res === 'cuadrada' ? dinero(0, moneda) : dineroConSigno(s.difference, moneda)) : undefined}
               estado={
                 !showExpected ? (
                   <Oculto />
                 ) : res ? (
                   <Badge tono={res === 'faltante' ? 'peligro' : res === 'sobrante' ? 'exito' : 'neutro'} tamano="sm">
-                    {ETIQUETA_RESULTADO[res]}
+                    {t(`resultados.${res}`)}
                   </Badge>
                 ) : undefined
               }
@@ -378,27 +396,29 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
               acciones={[
                 {
                   id: 'ver',
-                  etiqueta: 'Ver detalle',
+                  etiqueta: tListado('verDetalle'),
                   icono: Eye,
                   onSelect: () => irADetalle(s),
                   deshabilitada: !showExpected,
-                  motivo: showExpected ? undefined : MOTIVO_CIERRE_CIEGO,
+                  motivo: showExpected ? undefined : motivoCierreCiego,
                 },
               ]}
             />
           );
         }}
         vacio={{
-          titulo: 'Aún no hay cajas cerradas',
-          descripcion: `Entre el ${etiquetaRango(rango)} no se cerró ninguna caja. Amplía el rango de fechas para ver sesiones anteriores.`,
+          titulo: t('vacioTitulo'),
+          descripcion: t('vacioDescripcion', { rango: etiquetaRango(rango) }),
         }}
         sinResultados={{
-          titulo: 'No hay cajas cerradas con estos filtros',
-          descripcion: `Entre el ${etiquetaRango(rango)} no hubo cierres${resultado ? ` ${OPCIONES_RESULTADO.find((o) => o.valor === resultado)?.etiqueta.toLowerCase()}` : ''} que coincidan. Amplía el rango de fechas o quita un filtro.`,
+          titulo: t('sinResultadosTitulo'),
+          descripcion: resultado
+            ? t('sinResultadosDescripcionFiltro', { rango: etiquetaRango(rango), filtro: t(`filtroResultadoMinuscula.${resultado}`) })
+            : t('sinResultadosDescripcion', { rango: etiquetaRango(rango) }),
         }}
         onLimpiarFiltros={l.limpiarTodo}
         termino={l.busqueda || undefined}
-        error={{ titulo: 'No pudimos cargar el historial de cajas', descripcion: error ?? undefined }}
+        error={{ titulo: t('errorTitulo'), descripcion: error ?? undefined }}
         onReintentar={() => void cargar()}
         pie={
           <Pagination
@@ -407,7 +427,7 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
             total={total}
             onPaginaChange={l.setPagina}
             onTamanoChange={l.setTamano}
-            sustantivo={{ singular: 'sesión', plural: 'sesiones' }}
+            sustantivo={{ singular: t('sustantivoSingular'), plural: t('sustantivoPlural') }}
             cargando={cargando}
           />
         }

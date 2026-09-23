@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { CircleAlert, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,11 +15,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { FormField } from '@/components/kit';
-import {
-  aplicarEtiquetaMasiva,
-  mensajeErrorClientes,
-  type OpcionFiltro,
-} from '@/lib/services/clientesListadoService';
+import { useFormatoEntero, useKitT } from '@/components/kit/useIdiomaKit';
+import { useMensajeErrorClientes } from '@/components/clientes/listado/useOperacionesClientes';
+import { aplicarEtiquetaMasiva, type OpcionFiltro } from '@/lib/services/clientesListadoService';
 
 /**
  * «Etiquetar clientes» / «Quitar etiqueta»: un solo diálogo con dos modos
@@ -45,6 +44,10 @@ export function EtiquetaMasivaDialog({
   sugerencias,
   onHecho,
 }: EtiquetaMasivaDialogProps) {
+  const t = useTranslations('clientes.listado');
+  const tk = useKitT();
+  const entero = useFormatoEntero();
+  const mensajeError = useMensajeErrorClientes();
   const [etiqueta, setEtiqueta] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [procesando, setProcesando] = useState(false);
@@ -67,14 +70,12 @@ export function EtiquetaMasivaDialog({
     try {
       const n = await aplicarEtiquetaMasiva(organizationId, [...ids], valor, quitar);
       toast.success(
-        quitar
-          ? `Etiqueta «${valor}» quitada de ${n} ${n === 1 ? 'cliente' : 'clientes'}`
-          : `Etiqueta «${valor}» agregada a ${n} ${n === 1 ? 'cliente' : 'clientes'}`,
+        t(quitar ? 'etiquetaMasiva.quitada' : 'etiquetaMasiva.agregada', { etiqueta: valor, count: n, n: entero(n) }),
       );
       onHecho();
       onAbiertoChange(false);
     } catch (err) {
-      setError(mensajeErrorClientes(err, quitar ? 'No se pudo quitar la etiqueta.' : 'No se pudo agregar la etiqueta.'));
+      setError(mensajeError(err, quitar ? t('etiquetaMasiva.errorQuitar') : t('etiquetaMasiva.errorAgregar')));
     } finally {
       setProcesando(false);
     }
@@ -84,19 +85,20 @@ export function EtiquetaMasivaDialog({
     <Dialog open={abierto} onOpenChange={(v) => !procesando && onAbiertoChange(v)}>
       <DialogContent className="max-w-[460px] border-line bg-surface text-fg">
         <DialogHeader>
-          <DialogTitle className="text-fg">{quitar ? 'Quitar etiqueta' : 'Etiquetar clientes'}</DialogTitle>
+          <DialogTitle className="text-fg">{quitar ? t('etiquetaMasiva.tituloQuitar') : t('etiquetaMasiva.tituloAgregar')}</DialogTitle>
           <DialogDescription className="text-fg-secondary">
-            {quitar
-              ? `Quita una etiqueta de los ${ids.length} clientes seleccionados.`
-              : `Aplica una etiqueta a los ${ids.length} clientes seleccionados.`}
+            {t(quitar ? 'etiquetaMasiva.descripcionQuitar' : 'etiquetaMasiva.descripcionAgregar', {
+              count: ids.length,
+              n: entero(ids.length),
+            })}
           </DialogDescription>
         </DialogHeader>
 
-        <FormField etiqueta="Etiqueta" ayuda="Enter aplica la acción">
+        <FormField etiqueta={t('etiquetaMasiva.campo')} ayuda={t('etiquetaMasiva.ayuda')}>
           <Input
             value={etiqueta}
             onChange={(e) => setEtiqueta(e.target.value)}
-            placeholder="Nombre de etiqueta"
+            placeholder={t('etiquetaMasiva.placeholder')}
             maxLength={60}
             disabled={procesando}
             autoFocus
@@ -111,7 +113,7 @@ export function EtiquetaMasivaDialog({
         </FormField>
 
         {frecuentes.length > 0 && (
-          <div className="flex flex-wrap gap-1.5" aria-label="Etiquetas frecuentes">
+          <div className="flex flex-wrap gap-1.5" aria-label={t('etiquetaMasiva.frecuentes')}>
             {frecuentes.map((s) => (
               <button
                 key={s.valor}
@@ -133,11 +135,15 @@ export function EtiquetaMasivaDialog({
 
         <DialogFooter className="flex-col gap-2 sm:flex-row">
           <Button variant="outline" onClick={() => onAbiertoChange(false)} disabled={procesando}>
-            Cancelar
+            {tk('comun.cancelar')}
           </Button>
           <Button onClick={() => void aplicar()} disabled={!etiqueta.trim() || procesando}>
             {procesando && <Loader2 aria-hidden="true" className="mr-2 size-4 animate-spin" />}
-            {procesando ? 'Procesando…' : quitar ? 'Quitar etiqueta' : 'Aplicar etiqueta'}
+            {procesando
+              ? t('etiquetaMasiva.procesando')
+              : quitar
+                ? t('etiquetaMasiva.quitar')
+                : t('etiquetaMasiva.aplicar')}
           </Button>
         </DialogFooter>
       </DialogContent>

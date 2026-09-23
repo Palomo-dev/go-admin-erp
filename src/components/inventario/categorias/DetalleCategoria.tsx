@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Globe, Package, Pencil, Star, Tags, TicketPercent, TriangleAlert, Wand2 } from 'lucide-react';
 import {
   DataTable,
@@ -16,11 +17,13 @@ import {
   type ColumnaTabla,
 } from '@/components/kit';
 import { RelatedLinkCard } from '@/components/kit/RelatedLinkCard';
+import { useFormatoEntero, useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import categoryService, {
   ErrorCategoria,
@@ -28,7 +31,7 @@ import categoryService, {
   type ConexionesCategoria,
   type ProductoDeCategoria,
 } from '@/lib/services/categoryService';
-import { accionesDeCategoria } from './accionesCategoria';
+import { accionesDeCategoria, mensajeErrorCategoria } from './accionesCategoria';
 import CategoryRulesCard from './CategoryRulesCard';
 import { EliminarCategoriaDialog } from './EliminarCategoriaDialog';
 import { MoverCategoriaDialog } from './MoverCategoriaDialog';
@@ -41,15 +44,13 @@ import { etiquetaEstacion, iconoCategoria, RUTAS_CATEGORIAS } from './iconoCateg
  */
 type EstadoDetalle = 'cargando' | 'listo' | 'noEncontrada' | 'error' | 'sinPermiso';
 
-const NUM = new Intl.NumberFormat('es-CO');
-const n = (v: number) => NUM.format(v);
-const plural = (v: number, uno: string, varios: string) => `${n(v)} ${v === 1 ? uno : varios}`;
 const PRODUCTOS_POR_PAGINA = 5;
 
-const ORIGEN: Record<ProductoDeCategoria['origen'], { etiqueta: string; tono: 'neutro' | 'informacion' | 'marca' }> = {
-  principal: { etiqueta: 'Principal', tono: 'neutro' },
-  regla: { etiqueta: 'Por regla', tono: 'informacion' },
-  adicional: { etiqueta: 'Adicional', tono: 'marca' },
+/** Tono del origen; la etiqueta sale de `categorias.detalle.origen.*`. */
+const TONO_ORIGEN: Record<ProductoDeCategoria['origen'], 'neutro' | 'informacion' | 'marca'> = {
+  principal: 'neutro',
+  regla: 'informacion',
+  adicional: 'marca',
 };
 
 function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
@@ -62,11 +63,16 @@ function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactN
 }
 
 export function DetalleCategoria({ uuid }: { uuid: string }) {
+  const t = useTranslations('categorias');
+  const n = useFormatoEntero();
+  const localeIntl = useLocaleIntl();
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id ?? null;
-  const { formatDate } = useFormatDate();
+  const { timezone } = useFormatDate();
+  const formatDate = (valor: string | null | undefined) => formatDateInTz(valor, timezone, { locale: localeIntl });
+  const mensajeError = (e: unknown) => mensajeErrorCategoria(e, t);
 
   const [estado, setEstado] = useState<EstadoDetalle>('cargando');
   const [todas, setTodas] = useState<CategoriaListado[]>([]);
@@ -138,10 +144,13 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
     if (!organizationId || !categoria) return;
     try {
       await categoryService.setActivas(organizationId, [categoria.id], !categoria.is_active);
-      toast({ title: categoria.is_active ? 'Categoría desactivada' : 'Categoría activada', description: `«${categoria.name}»` });
+      toast({
+        title: categoria.is_active ? t('toasts.desactivada') : t('toasts.activada'),
+        description: t('comun.entreComillas', { nombre: categoria.name }),
+      });
       await cargar(true);
     } catch (e) {
-      toast({ title: 'No se pudo cambiar el estado', description: e instanceof Error ? e.message : undefined, variant: 'destructive' });
+      toast({ title: t('toasts.noCambioEstado'), description: mensajeError(e), variant: 'destructive' });
     }
   };
 
@@ -149,10 +158,10 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
     if (!organizationId || !categoria) return;
     try {
       const copia = await categoryService.duplicate(categoria.id, organizationId);
-      toast({ title: 'Categoría duplicada', description: `Se creó «${copia.name}».` });
+      toast({ title: t('toasts.duplicada'), description: t('toasts.seCreo', { nombre: copia.name }) });
       router.push(RUTAS_CATEGORIAS.detalle(copia.uuid));
     } catch (e) {
-      toast({ title: 'No se pudo duplicar', description: e instanceof Error ? e.message : undefined, variant: 'destructive' });
+      toast({ title: t('toasts.noDuplicar'), description: mensajeError(e), variant: 'destructive' });
     }
   };
 
@@ -162,12 +171,12 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
       await categoryService.moverCategorias(organizationId, [categoria.id], padreId);
       const destino = padreId !== null ? todas.find((c) => c.id === padreId)?.name : null;
       toast({
-        title: 'Categoría movida',
-        description: destino ? `Ahora es subcategoría de «${destino}».` : 'Quedó como categoría principal.',
+        title: t('toasts.movidas', { count: 1 }),
+        description: destino ? t('toasts.ahoraSubcategoria', { destino }) : t('toasts.quedoPrincipal'),
       });
       await cargar(true);
     } catch (e) {
-      toast({ title: 'No se pudo mover', description: e instanceof Error ? e.message : undefined, variant: 'destructive' });
+      toast({ title: t('toasts.noMover'), description: mensajeError(e), variant: 'destructive' });
       throw e;
     }
   };
@@ -176,10 +185,10 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
     if (!organizationId || !categoria) return;
     try {
       await categoryService.eliminarCategoria(organizationId, categoria.id, destino);
-      toast({ title: 'Categoría eliminada', description: `«${categoria.name}»` });
+      toast({ title: t('toasts.eliminada'), description: t('comun.entreComillas', { nombre: categoria.name }) });
       router.push(RUTAS_CATEGORIAS.listado);
     } catch (e) {
-      toast({ title: 'No se pudo eliminar', description: e instanceof Error ? e.message : undefined, variant: 'destructive' });
+      toast({ title: t('toasts.noEliminar'), description: mensajeError(e), variant: 'destructive' });
       throw e;
     }
   };
@@ -190,9 +199,9 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
     try {
       await categoryService.setFavorita(organizationId, categoria.id, nueva);
       setConexiones({ ...conexiones, favorita: nueva });
-      toast({ title: nueva ? 'Marcada como favorita del POS' : 'Ya no es favorita del POS' });
+      toast({ title: nueva ? t('toasts.favoritaMarcada') : t('toasts.favoritaQuitada') });
     } catch (e) {
-      toast({ title: 'No se pudo cambiar la favorita', description: e instanceof Error ? e.message : undefined, variant: 'destructive' });
+      toast({ title: t('toasts.noFavorita'), description: mensajeError(e), variant: 'destructive' });
     }
   };
 
@@ -200,9 +209,9 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
     if (!categoria) return;
     try {
       await navigator.clipboard.writeText(categoria.uuid);
-      toast({ title: 'ID copiado', description: categoria.uuid });
+      toast({ title: t('toasts.idCopiado'), description: categoria.uuid });
     } catch {
-      toast({ title: 'No se pudo copiar', description: categoria.uuid, variant: 'destructive' });
+      toast({ title: t('toasts.noCopiar'), description: categoria.uuid, variant: 'destructive' });
     }
   };
 
@@ -210,19 +219,19 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
 
   // ── Estados sin datos ────────────────────────────────────────────────────
   const migasBase = [
-    { etiqueta: 'Inventario', href: '/app/inventario' },
-    { etiqueta: 'Categorías', href: RUTAS_CATEGORIAS.listado },
+    { etiqueta: t('comun.inventario'), href: '/app/inventario' },
+    { etiqueta: t('comun.categorias'), href: RUTAS_CATEGORIAS.listado },
   ];
 
   if (estado !== 'listo' || !categoria) {
     return (
       <div className="flex flex-col gap-4 lg:gap-5">
         <PageHeader
-          titulo="Categoría"
+          titulo={t('detalle.titulo')}
           icono={Tags}
           variante="detail"
           cargando={estado === 'cargando'}
-          migas={[...migasBase, { etiqueta: 'Detalle' }]}
+          migas={[...migasBase, { etiqueta: t('detalle.miga') }]}
         />
         {estado === 'cargando' ? (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -240,20 +249,20 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
           <div className="rounded-xl border border-line bg-surface">
             {estado === 'noEncontrada' && (
               <EmptyState
-                titulo="No encontramos esta categoría"
-                descripcion="Puede que la hayan eliminado o que el enlace sea de otra organización."
+                titulo={t('detalle.noEncontrada.titulo')}
+                descripcion={t('detalle.noEncontrada.descripcion')}
                 icono={Tags}
-                accion={{ etiqueta: 'Volver a categorías', href: RUTAS_CATEGORIAS.listado }}
+                accion={{ etiqueta: t('detalle.noEncontrada.volver'), href: RUTAS_CATEGORIAS.listado }}
               />
             )}
             {estado === 'error' && (
-              <EmptyState variante="error" titulo="No pudimos cargar la categoría" onReintentar={() => void cargar()} />
+              <EmptyState variante="error" titulo={t('detalle.errorCarga')} onReintentar={() => void cargar()} />
             )}
             {estado === 'sinPermiso' && (
               <EmptyState
                 variante="forbidden"
-                titulo="No tienes acceso a esta categoría"
-                accion={{ etiqueta: 'Volver al inventario', href: '/app/inventario' }}
+                titulo={t('detalle.sinPermiso')}
+                accion={{ etiqueta: t('comun.volverInventario'), href: '/app/inventario' }}
               />
             )}
           </div>
@@ -272,9 +281,9 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
     alternarActiva: () => void alternarActiva(),
     copiarId: () => void copiarId(),
     eliminar: () => setEliminarAbierto(true),
-  });
+  }, t);
   const accionesMovil = [
-    { id: 'editar', etiqueta: 'Editar', icono: Pencil, onSelect: () => router.push(RUTAS_CATEGORIAS.editar(categoria.uuid)) },
+    { id: 'editar', etiqueta: t('acciones.editar'), icono: Pencil, onSelect: () => router.push(RUTAS_CATEGORIAS.editar(categoria.uuid)) },
     ...acciones.filter((a) => a.id !== 'copiar-id'),
   ];
 
@@ -282,24 +291,24 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
   const Icono = iconoCategoria(categoria.icon);
   const subtitulo = [
     `/${categoria.slug}`,
-    padre ? `subcategoría de ${padre.name}` : 'categoría principal',
-    categoria.is_active ? 'Activa' : 'Inactiva',
+    padre ? t('detalle.subcategoriaDe', { nombre: padre.name }) : t('detalle.categoriaPrincipal'),
+    categoria.is_active ? t('comun.activa') : t('comun.inactiva'),
   ].join(' · ');
 
   const columnasProductos: ColumnaTabla<ProductoDeCategoria>[] = [
-    { id: 'producto', encabezado: 'Producto', celda: (p) => <span className="font-medium">{p.name}</span> },
-    { id: 'sku', encabezado: 'SKU', variante: 'mono', ancho: 130, celda: (p) => p.sku || '—' },
+    { id: 'producto', encabezado: t('detalle.columnas.producto'), celda: (p) => <span className="font-medium">{p.name}</span> },
+    { id: 'sku', encabezado: t('detalle.columnas.sku'), variante: 'mono', ancho: 130, celda: (p) => p.sku || '—' },
     {
       id: 'origen',
-      encabezado: 'Origen',
+      encabezado: t('detalle.columnas.origen'),
       ancho: 120,
       celda: (p) => (
-        <Badge tono={ORIGEN[p.origen].tono} tamano="sm">
-          {ORIGEN[p.origen].etiqueta}
+        <Badge tono={TONO_ORIGEN[p.origen]} tamano="sm">
+          {t(`detalle.origen.${p.origen}`)}
         </Badge>
       ),
     },
-    { id: 'estado', encabezado: 'Estado', ancho: 110, celda: (p) => <StatusBadge estado={p.status ?? 'active'} /> },
+    { id: 'estado', encabezado: t('detalle.columnas.estado'), ancho: 110, celda: (p) => <StatusBadge estado={p.status ?? 'active'} /> },
   ];
   const paginaVisible = (productos ?? []).slice(
     (paginaProductos - 1) * PRODUCTOS_POR_PAGINA,
@@ -325,14 +334,14 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               <Package aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              Ver {plural(categoria.productos, 'producto', 'productos')}
+              {t('detalle.verNProductos', { count: categoria.productos, n: n(categoria.productos) })}
             </Link>
             <Link
               href={RUTAS_CATEGORIAS.editar(categoria.uuid)}
               className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
             >
               <Pencil aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              Editar
+              {t('acciones.editar')}
             </Link>
             <RowActionsMenu orientacion="horizontal" tamano="md" titulo={categoria.name} acciones={acciones} />
           </>
@@ -345,59 +354,66 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-5">
         <div className="flex min-w-0 flex-col gap-4 lg:gap-5">
-          <FormSection titulo="Resumen">
+          <FormSection titulo={t('detalle.resumen.titulo')}>
             <dl className="flex flex-col">
-              <Dato etiqueta="Categoría padre">
+              <Dato etiqueta={t('detalle.resumen.padre')}>
                 {padre ? (
                   <Link href={RUTAS_CATEGORIAS.detalle(padre.uuid)} className={enlaceTexto}>
                     {padre.name}
                   </Link>
                 ) : (
-                  'Ninguna · es una categoría principal'
+                  t('detalle.resumen.sinPadre')
                 )}
               </Dato>
-              <Dato etiqueta="Estación de cocina">{etiquetaEstacion(categoria.station)}</Dato>
-              <Dato etiqueta="Requiere preparación">
-                {categoria.requires_preparation ? 'Sí · genera comanda en el POS' : 'No'}
+              <Dato etiqueta={t('detalle.resumen.estacion')}>{etiquetaEstacion(categoria.station, t)}</Dato>
+              <Dato etiqueta={t('detalle.resumen.preparacion')}>
+                {categoria.requires_preparation ? t('detalle.resumen.generaComanda') : t('comun.no')}
               </Dato>
-              <Dato etiqueta="Orden en el POS">
+              <Dato etiqueta={t('detalle.resumen.ordenPos')}>
                 {conexiones?.posicion
-                  ? `${conexiones.posicion} de ${conexiones.hermanas} en ${padre ? padre.name : 'las categorías principales'}`
+                  ? t('detalle.resumen.posicion', {
+                      posicion: conexiones.posicion,
+                      hermanas: conexiones.hermanas,
+                      grupo: padre ? padre.name : t('detalle.resumen.lasPrincipales'),
+                    })
                   : '—'}
                 <span className="ml-2 text-xs text-fg-muted">
-                  orden {categoria.display_order ?? 0} · rank {categoria.rank ?? 0}
+                  {t('detalle.resumen.ordenRank', { orden: categoria.display_order ?? 0, rank: categoria.rank ?? 0 })}
                 </span>
               </Dato>
-              <Dato etiqueta="Descripción">
+              <Dato etiqueta={t('detalle.resumen.descripcion')}>
                 {categoria.description ? (
                   <div className="text-sm text-fg">
                     <HtmlContentRenderer html={categoria.description} />
                   </div>
                 ) : (
-                  <span className="text-fg-secondary">Sin descripción</span>
+                  <span className="text-fg-secondary">{t('detalle.resumen.sinDescripcion')}</span>
                 )}
               </Dato>
-              {categoria.meta_title && <Dato etiqueta="Título SEO">{categoria.meta_title}</Dato>}
-              {categoria.meta_description && <Dato etiqueta="Descripción SEO">{categoria.meta_description}</Dato>}
-              <Dato etiqueta="Creada">
-                {formatDate(categoria.created_at)} · actualizada {formatDate(categoria.updated_at)}
+              {categoria.meta_title && <Dato etiqueta={t('detalle.resumen.tituloSeo')}>{categoria.meta_title}</Dato>}
+              {categoria.meta_description && <Dato etiqueta={t('detalle.resumen.descripcionSeo')}>{categoria.meta_description}</Dato>}
+              <Dato etiqueta={t('detalle.resumen.creada')}>
+                {t('detalle.resumen.fechas', {
+                  creada: formatDate(categoria.created_at),
+                  actualizada: formatDate(categoria.updated_at),
+                })}
               </Dato>
-              <Dato etiqueta="ID">
+              <Dato etiqueta={t('detalle.resumen.id')}>
                 <span className="font-mono text-[13px]">{categoria.id}</span>
               </Dato>
             </dl>
           </FormSection>
 
           <FormSection
-            titulo={`Subcategorías (${hijas.length})`}
+            titulo={t('detalle.subcategorias.titulo', { n: n(hijas.length) })}
             accion={
               <Link href={RUTAS_CATEGORIAS.nueva(categoria.id)} className={enlaceTexto}>
-                Agregar subcategoría
+                {t('acciones.agregarSubcategoria')}
               </Link>
             }
           >
             {hijas.length === 0 ? (
-              <p className="text-sm text-fg-secondary">No tiene subcategorías.</p>
+              <p className="text-sm text-fg-secondary">{t('detalle.subcategorias.vacio')}</p>
             ) : (
               <ul className="flex flex-col divide-y divide-line">
                 {hijas.map((h) => {
@@ -409,7 +425,7 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
                         {h.name}
                       </Link>
                       <span className="shrink-0 text-[13px] text-fg-secondary tabular-nums">
-                        {plural(h.productos, 'producto', 'productos')}
+                        {t('comun.nProductos', { count: h.productos, n: n(h.productos) })}
                       </span>
                       <StatusBadge estado={h.is_active ? 'activa' : 'inactiva'} />
                     </li>
@@ -421,15 +437,15 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
 
           <div id="productos-de-la-categoria" className="scroll-mt-20">
             <FormSection
-              titulo={`Productos (${n(totalProductos)})`}
+              titulo={t('detalle.productos.titulo', { n: n(totalProductos) })}
               accion={
                 <Link href={RUTAS_CATEGORIAS.productos(categoria.id)} className={enlaceTexto}>
-                  Ver en el catálogo
+                  {t('detalle.productos.verCatalogo')}
                 </Link>
               }
             >
               <DataTable
-                etiqueta={`Productos de ${categoria.name}`}
+                etiqueta={t('detalle.productos.tabla', { nombre: categoria.name })}
                 columnas={columnasProductos}
                 filas={paginaVisible}
                 obtenerId={(p) => String(p.id)}
@@ -444,19 +460,19 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
                     icono={Package}
                     titulo={p.name}
                     subtitulo={p.sku || undefined}
-                    meta={ORIGEN[p.origen].etiqueta}
+                    meta={t(`detalle.origen.${p.origen}`)}
                     estado={<StatusBadge estado={p.status ?? 'active'} />}
                     onClick={() => router.push(`/app/inventario/productos/${p.uuid}`)}
                   />
                 )}
                 vacio={{
-                  titulo: 'Esta categoría no tiene productos',
-                  descripcion: 'Asígnala desde el catálogo o con una regla de asignación automática.',
+                  titulo: t('detalle.productos.vacioTitulo'),
+                  descripcion: t('detalle.productos.vacioDescripcion'),
                   icono: Package,
                   compacto: true,
-                  accion: { etiqueta: 'Ir al catálogo', href: RUTAS_CATEGORIAS.catalogo },
+                  accion: { etiqueta: t('detalle.productos.irCatalogo'), href: RUTAS_CATEGORIAS.catalogo },
                 }}
-                error={{ titulo: 'No pudimos cargar los productos', compacto: true }}
+                error={{ titulo: t('detalle.productos.error'), compacto: true }}
                 onReintentar={() => organizationId && void cargarProductos(organizationId, categoria.id)}
                 pie={
                   (productos?.length ?? 0) > PRODUCTOS_POR_PAGINA ? (
@@ -484,19 +500,19 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
         </div>
 
         <div className="flex min-w-0 flex-col gap-4 lg:gap-5">
-          <FormSection titulo="Apariencia">
+          <FormSection titulo={t('detalle.apariencia.titulo')}>
             <dl className="flex flex-col">
-              <Dato etiqueta="Color">
+              <Dato etiqueta={t('detalle.apariencia.color')}>
                 <span className="inline-flex items-center gap-2">
                   <span
                     aria-hidden="true"
                     className="size-4 shrink-0 rounded border border-line"
                     style={{ backgroundColor: categoria.color || undefined }}
                   />
-                  <span className="font-mono text-[13px]">{categoria.color || 'Sin color'}</span>
+                  <span className="font-mono text-[13px]">{categoria.color || t('detalle.apariencia.sinColor')}</span>
                 </span>
               </Dato>
-              <Dato etiqueta="Icono">
+              <Dato etiqueta={t('detalle.apariencia.icono')}>
                 <span className="inline-flex items-center gap-2">
                   <span
                     aria-hidden="true"
@@ -509,61 +525,61 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
                   >
                     <Icono className="size-4" strokeWidth={1.5} />
                   </span>
-                  {categoria.icon || 'Sin icono'}
+                  {categoria.icon || t('detalle.apariencia.sinIcono')}
                 </span>
               </Dato>
-              <Dato etiqueta="Imagen">
+              <Dato etiqueta={t('detalle.apariencia.imagen')}>
                 {categoria.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element -- URL de Storage de la organización
                   <img
                     src={categoria.image_url}
-                    alt={`Imagen de ${categoria.name}`}
+                    alt={t('detalle.apariencia.imagenDe', { nombre: categoria.name })}
                     className="h-28 w-full max-w-[220px] rounded-lg border border-line object-cover"
                   />
                 ) : (
-                  <span className="text-fg-secondary">Sin imagen</span>
+                  <span className="text-fg-secondary">{t('detalle.apariencia.sinImagen')}</span>
                 )}
               </Dato>
             </dl>
           </FormSection>
 
-          <FormSection titulo="Cómo se conecta">
+          <FormSection titulo={t('detalle.conexiones.titulo')}>
             <div className="flex flex-col gap-3">
               <RelatedLinkCard
                 icono={Package}
-                etiqueta="Productos en la categoría"
+                etiqueta={t('detalle.conexiones.productos')}
                 valor={n(conexiones?.productos ?? categoria.productos)}
                 href={RUTAS_CATEGORIAS.productos(categoria.id)}
               />
               <RelatedLinkCard
                 icono={Wand2}
-                etiqueta="Asignados por reglas"
+                etiqueta={t('detalle.conexiones.porReglas')}
                 valor={n(conexiones?.por_regla ?? 0)}
                 onClick={irAProductos}
               />
               <RelatedLinkCard
                 icono={TicketPercent}
-                etiqueta="Promociones que la usan"
+                etiqueta={t('detalle.conexiones.promociones')}
                 valor={n(conexiones?.promociones ?? 0)}
                 href={RUTAS_CATEGORIAS.promociones}
               />
               <RelatedLinkCard
                 icono={Globe}
-                etiqueta="Página y menú de la tienda web"
+                etiqueta={t('detalle.conexiones.tiendaWeb')}
                 valor={n((conexiones?.paginas_web ?? 0) + (conexiones?.menus_web ?? 0))}
                 href={RUTAS_CATEGORIAS.tiendaWeb}
               />
               <RelatedLinkCard
                 icono={Star}
-                etiqueta="Favorita en el POS"
-                valor={conexiones ? (conexiones.favorita ? 'Sí' : 'No') : '—'}
-                accion={conexiones?.favorita ? 'Quitar' : 'Marcar'}
+                etiqueta={t('detalle.conexiones.favorita')}
+                valor={conexiones ? (conexiones.favorita ? t('comun.si') : t('comun.no')) : '—'}
+                accion={conexiones?.favorita ? t('detalle.conexiones.quitar') : t('detalle.conexiones.marcar')}
                 onClick={conexiones ? () => void alternarFavorita() : undefined}
               />
               {(conexiones?.paginas_web ?? 0) + (conexiones?.menus_web ?? 0) > 0 || categoria.is_active ? (
                 <p className="flex items-start gap-2 rounded-lg bg-warning-subtle px-3 py-2.5 text-[13px] leading-[18px] text-warning-text">
                   <TriangleAlert aria-hidden="true" className="mt-px size-4 shrink-0" strokeWidth={1.5} />
-                  Cambiar el slug rompe los enlaces de la tienda web que apuntan a /{categoria.slug}.
+                  {t('detalle.conexiones.avisoSlug', { slug: categoria.slug })}
                 </p>
               ) : null}
             </div>

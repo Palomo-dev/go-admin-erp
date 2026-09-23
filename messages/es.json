@@ -3515,5 +3515,2501 @@
       "description": "El equipo ha sido notificado automáticamente. Puedes intentar recargar la página para continuar.",
       "retry": "Reintentar"
     }
+  },
+  "proveedores": {
+    "comun": {
+      "titulo": "Proveedores",
+      "inventario": "Inventario",
+      "proveedor": "Proveedor",
+      "nuevoProveedor": "Nuevo proveedor",
+      "editar": "Editar",
+      "error": "Error",
+      "noEncontrado": "Proveedor no encontrado",
+      "sustantivo": {
+        "singular": "proveedor",
+        "plural": "proveedores"
+      },
+      "nProveedores": "{count, plural, one {{n} proveedor} other {{n} proveedores}}"
+    },
+    "formato": {
+      "contado": "Contado",
+      "creditoDias": "Crédito {count, plural, one {# día} other {# días}}",
+      "sinDefinir": "Sin definir",
+      "sinDocumento": "Sin {sigla}",
+      "condiciones": {
+        "contado": "Contado",
+        "credito15": "Crédito 15 días",
+        "credito30": "Crédito 30 días",
+        "credito60": "Crédito 60 días",
+        "credito90": "Crédito 90 días"
+      },
+      "siglas": {
+        "pasaporte": "Pasaporte",
+        "docExtranjero": "Doc. extranjero"
+      },
+      "tipo": {
+        "company": "Empresa",
+        "person": "Persona"
+      },
+      "cartera": {
+        "alDia": "Al día",
+        "facturas": "{count, plural, one {# factura} other {# facturas}}",
+        "todasVencidas": "{count, plural, one {# factura vencida} other {# facturas vencidas}}",
+        "parteVencida": "{count, plural, one {# factura} other {# facturas}} · {vencidas, plural, one {# vencida} other {# vencidas}}"
+      },
+      "regimenes": {
+        "comun": "Responsable de IVA",
+        "simple": "Régimen simple",
+        "granContribuyente": "Gran contribuyente",
+        "noResponsable": "No responsable de IVA"
+      },
+      "cuentas": {
+        "savings": "Ahorros",
+        "checking": "Corriente",
+        "other": "Otro"
+      },
+      "responsabilidades": {
+        "o13": "O-13 · Gran contribuyente",
+        "o15": "O-15 · Autorretenedor",
+        "o23": "O-23 · Agente de retención IVA",
+        "o47": "O-47 · Régimen simple",
+        "r99pn": "R-99-PN · No aplica, otros"
+      },
+      "documentosDian": {
+        "nit": "31 · NIT",
+        "cc": "13 · Cédula de ciudadanía",
+        "ce": "22 · Cédula de extranjería",
+        "docExtranjero": "42 · Doc. identificación extranjero",
+        "ti": "12 · Tarjeta de identidad",
+        "pasaporte": "41 · Pasaporte",
+        "nuip": "91 · NUIP"
+      }
+    },
+    "acciones": {
+      "verDetalle": "Ver detalle",
+      "editar": "Editar",
+      "nuevaOrden": "Nueva orden de compra",
+      "activaloParaComprar": "Actívalo para comprarle",
+      "duplicar": "Duplicar",
+      "duplicando": "Duplicando…",
+      "copiarId": "Copiar ID",
+      "activar": "Activar",
+      "desactivar": "Desactivar",
+      "eliminar": "Eliminar",
+      "toast": {
+        "duplicando": "Duplicando proveedor…",
+        "errorDuplicar": "No se pudo duplicar el proveedor",
+        "duplicado": "Proveedor duplicado",
+        "duplicadoDescripcion": "Completa el documento de la copia.",
+        "errorActivar": "No se pudo activar",
+        "errorDesactivar": "No se pudo desactivar",
+        "activados": "{count, plural, one {Proveedor activado} other {# proveedores activados}}",
+        "desactivados": "{count, plural, one {Proveedor desactivado} other {# proveedores desactivados}}",
+        "activadosDescripcion": "Vuelve a aparecer al comprar.",
+        "desactivadosDescripcion": "Ya no aparece al comprar; su historial se conserva.",
+        "idCopiado": "ID copiado",
+        "errorCopiarId": "No se pudo copiar el ID"
+      }
+    },
+    "eliminar": {
+      "titulo": "¿Eliminar «{nombre}»?",
+      "revisando": "Revisando sus documentos…",
+      "conCartera": "Tiene {count, plural, one {{n} cuenta por pagar} other {{n} cuentas por pagar}}: no se puede eliminar. Desactívalo para que deje de aparecer al comprar sin perder su historial.",
+      "documentos": {
+        "ordenes": "{count, plural, one {{n} orden de compra} other {{n} órdenes de compra}}",
+        "facturas": "{count, plural, one {{n} factura de compra} other {{n} facturas de compra}}",
+        "ambos": "{ordenes} y {facturas}"
+      },
+      "conDocumentos": "Se borrarán con él {documentos}. Esta acción no se puede deshacer. Si solo quieres que no aparezca al comprar, desactívalo.",
+      "irreversible": "Esta acción no se puede deshacer.",
+      "cancelar": "Cancelar",
+      "desactivar": "Desactivar",
+      "eliminar": "Eliminar",
+      "toast": {
+        "errorEliminar": "No se pudo eliminar el proveedor",
+        "errorEliminarCartera": "Tiene cuentas por pagar registradas. Desactívalo para que no aparezca al comprar.",
+        "errorEliminarReintentar": "Inténtalo de nuevo en unos segundos.",
+        "eliminado": "Proveedor eliminado",
+        "errorDesactivar": "No se pudo desactivar el proveedor",
+        "desactivado": "Proveedor desactivado",
+        "desactivadoDescripcion": "Ya no aparece al comprar; su historial se conserva."
+      }
+    },
+    "listado": {
+      "sinDatos": "Sin datos",
+      "porcentaje": "{valor} %",
+      "subtituloActivos": "{count, plural, one {{n} activo} other {{n} activos}}",
+      "importar": "Importar",
+      "importarProveedores": "Importar proveedores",
+      "nuevaOrden": "Nueva orden de compra",
+      "nuevaOrdenA": "Nueva orden de compra a {nombre}",
+      "errorSeleccionarTodo": "No se pudo seleccionar todo",
+      "errorCarga": "No pudimos cargar los proveedores",
+      "sinResultados": "Prueba con otro nombre o NIT, o quita un filtro.",
+      "vacio": {
+        "titulo": "Aún no tienes proveedores",
+        "descripcion": "Registra a quién le compras para hacer órdenes de compra y llevar lo que les debes."
+      },
+      "exportar": {
+        "csv": "Exportar CSV (.csv)",
+        "xlsx": "Exportar Excel (.xlsx)",
+        "pdf": "Exportar PDF (.pdf)",
+        "exportando": "Exportando…",
+        "sinDatos": "Sin datos",
+        "sinDatosDescripcion": "No hay proveedores para exportar",
+        "completada": "Exportación completada",
+        "descargado": "El archivo {formato} ha sido descargado",
+        "error": "No se pudo exportar los proveedores"
+      },
+      "chips": {
+        "estadoActivos": "Estado: Activos",
+        "estadoInactivos": "Estado: Inactivos",
+        "tipoEmpresa": "Tipo: Empresa",
+        "tipoPersona": "Tipo: Persona",
+        "carteraConSaldo": "Cartera: Con saldo",
+        "carteraVencida": "Cartera: Vencida",
+        "carteraAlDia": "Cartera: Al día",
+        "sinNit": "Sin NIT registrado"
+      },
+      "columnas": {
+        "proveedor": "Proveedor",
+        "contacto": "Contacto",
+        "condicion": "Condición de pago",
+        "saldo": "Saldo por pagar",
+        "cumplimiento": "Cumplimiento",
+        "estado": "Estado"
+      },
+      "kpis": {
+        "etiqueta": "Resumen de proveedores",
+        "activos": "Proveedores activos",
+        "inactivosDetalle": "{count, plural, one {{n} inactivo} other {{n} inactivos}}",
+        "saldo": "Saldo por pagar",
+        "conSaldoDetalle": "{count, plural, one {{n} proveedor con saldo} other {{n} proveedores con saldo}}",
+        "vencido30": "Vencido más de 30 días",
+        "vencido30Detalle": "{count, plural, one {{n} proveedor} other {{n} proveedores}} · ver cartera",
+        "sinNit": "Sin NIT registrado",
+        "sinNitDetalle": "No se les puede registrar factura",
+        "todosConDocumento": "Todos tienen documento"
+      },
+      "buscar": {
+        "placeholder": "Buscar proveedor o NIT",
+        "etiqueta": "Buscar por nombre, NIT, contacto, correo o teléfono"
+      },
+      "filtros": {
+        "verN": "Ver {count, plural, one {{n} proveedor} other {{n} proveedores}}",
+        "estado": "Estado",
+        "todos": "Todos",
+        "activos": "Activos",
+        "inactivos": "Inactivos",
+        "tipo": "Tipo",
+        "cartera": "Cartera",
+        "carteraTodas": "Todas",
+        "carteraConSaldo": "Con saldo por pagar",
+        "carteraVencidas": "Con facturas vencidas",
+        "carteraAlDia": "Al día",
+        "soloSinNit": "Solo sin NIT registrado"
+      },
+      "masivas": {
+        "exportar": "Exportar",
+        "activar": "Activar",
+        "desactivar": "Desactivar"
+      }
+    },
+    "detalle": {
+      "errorCarga": "No se pudo cargar el proveedor",
+      "nuevaOrden": "Nueva orden de compra",
+      "registrarPago": "Registrar pago",
+      "sinSaldo": "No tiene saldo por pagar",
+      "pago": {
+        "elegirCuenta": "Elige la cuenta a pagar",
+        "elegirCuentaDescripcion": "Abre la cuenta por pagar y registra el pago desde allí."
+      },
+      "estadosOc": {
+        "draft": "Borrador",
+        "pending": "Pendiente",
+        "approved": "Aprobada",
+        "sent": "Enviada",
+        "partial": "Recibida en parte",
+        "received": "Recibida",
+        "completed": "Completada",
+        "cancelled": "Cancelada"
+      },
+      "estadosFactura": {
+        "draft": "Borrador",
+        "received": "Recibida",
+        "partial": "Pago parcial",
+        "paid": "Pagada",
+        "cancelled": "Anulada",
+        "void": "Anulada"
+      },
+      "estadosCxp": {
+        "vencidaDias": "Vencida {dias} d",
+        "pending": "Pendiente",
+        "partial": "Pago parcial",
+        "paid": "Pagada",
+        "overdue": "Vencida"
+      },
+      "metodos": {
+        "efectivo": "Efectivo",
+        "transferencia": "Transferencia",
+        "tarjeta": "Tarjeta",
+        "cheque": "Cheque"
+      },
+      "tiposDocumento": {
+        "orden": "Orden de compra",
+        "factura": "Factura de compra",
+        "cuenta": "Cuenta por pagar"
+      },
+      "pagoRef": "Pago {referencia}",
+      "origenFactura": "Factura",
+      "cuentaDe": {
+        "savings": "Cuenta de ahorros",
+        "checking": "Cuenta de corriente",
+        "other": "Cuenta de otro"
+      },
+      "cuentaDeOtro": "Cuenta de {tipo}",
+      "preferido": "Proveedor preferido",
+      "productoN": "Producto #{id}",
+      "diasCorto": "{dias} d",
+      "noAplica": "N/A",
+      "porcentaje": "{valor} %",
+      "columnas": {
+        "producto": "Producto",
+        "sku": "SKU",
+        "skuProveedor": "SKU proveedor",
+        "costo": "Costo",
+        "entrega": "Entrega",
+        "pedidoMinimo": "Pedido mínimo",
+        "stock": "Stock",
+        "valorStock": "Valor en stock",
+        "orden": "Orden",
+        "creada": "Creada",
+        "fechaEsperada": "Fecha esperada",
+        "estado": "Estado",
+        "total": "Total",
+        "factura": "Factura",
+        "fecha": "Fecha",
+        "vencimiento": "Vencimiento",
+        "monto": "Monto",
+        "descuento": "Descuento",
+        "saldo": "Saldo",
+        "metodo": "Método",
+        "referencia": "Referencia",
+        "origen": "Origen",
+        "documento": "Documento"
+      },
+      "pestanas": {
+        "etiqueta": "Secciones del proveedor",
+        "resumen": "Resumen",
+        "productos": "Productos que surte",
+        "ordenes": "Órdenes de compra",
+        "facturas": "Facturas de compra",
+        "cuentas": "Cuentas por pagar",
+        "pagos": "Pagos"
+      },
+      "recientes": {
+        "ordenes": "Mostrando las {mostradas} más recientes de {total} órdenes.",
+        "facturas": "Mostrando las {mostradas} más recientes de {total} facturas.",
+        "verTodas": "Ver todas"
+      },
+      "kpis": {
+        "etiqueta": "Cifras del proveedor",
+        "saldo": "Saldo por pagar",
+        "facturasAbiertas": "{count, plural, one {{n} factura abierta} other {{n} facturas abiertas}}",
+        "vencido": "Vencido",
+        "vencidoDetalle": "{count, plural, one {{n} factura} other {{n} facturas}} · {dias, plural, one {# día} other {# días}} de mora",
+        "sinVencidas": "Sin facturas vencidas",
+        "compras12m": "Compras últimos 12 meses",
+        "compras12mDetalle": "{ordenes, plural, one {# orden} other {# órdenes}} · {facturas, plural, one {# factura} other {# facturas}}",
+        "entregas": "Entregas a tiempo",
+        "entregasDetalle": "{a} de {total} recepciones",
+        "sinFechaEsperada": "Sin órdenes con fecha esperada"
+      },
+      "datos": {
+        "titulo": "Datos generales",
+        "tipo": "Tipo",
+        "documento": "Documento",
+        "nombreComercial": "Nombre comercial",
+        "empresaAsociada": "Empresa asociada",
+        "contacto": "Contacto",
+        "telefono": "Teléfono",
+        "correo": "Correo",
+        "sitioWeb": "Sitio web",
+        "direccion": "Dirección",
+        "registrado": "Registrado"
+      },
+      "fiscal": {
+        "titulo": "Fiscal y bancario",
+        "regimen": "Régimen",
+        "responsabilidades": "Responsabilidades",
+        "tipoDocumentoDian": "Tipo de documento DIAN",
+        "tipoOrganizacion": "Tipo de organización",
+        "personaNatural": "Persona natural",
+        "municipio": "Municipio",
+        "codigoPais": "Código de país",
+        "identificacionTributaria": "Identificación tributaria",
+        "condicionPago": "Condición de pago",
+        "banco": "Banco",
+        "numeroCuenta": "Número de cuenta",
+        "ocultarCuenta": "Ocultar número de cuenta",
+        "mostrarCuenta": "Mostrar número de cuenta",
+        "cuentaCopiada": "Número de cuenta copiado",
+        "errorCopiar": "No se pudo copiar",
+        "copiar": "Copiar"
+      },
+      "notas": {
+        "titulo": "Descripción y notas",
+        "internas": "Notas internas"
+      },
+      "ultimos": {
+        "titulo": "Últimos documentos",
+        "vacioTitulo": "Sin documentos todavía",
+        "vacioDescripcion": "Cuando le hagas una orden de compra aparecerá aquí."
+      },
+      "conexiones": {
+        "titulo": "Cómo se conecta",
+        "ordenesAbiertas": "Órdenes de compra · {count, plural, one {{n} abierta} other {{n} abiertas}}",
+        "cuentasAbiertas": "Cuentas por pagar abiertas",
+        "pagar": "Pagar",
+        "lotes": "Lotes recibidos de este proveedor",
+        "pagos": "Pagos registrados"
+      },
+      "valorStock": "Valor en stock de sus productos (todas las sucursales):",
+      "totalPagado": "Total pagado:",
+      "vacios": {
+        "productos": "No hay productos vinculados a este proveedor",
+        "productosDescripcion": "El vínculo se crea desde la pestaña Proveedores de cada producto.",
+        "ordenes": "No hay órdenes de compra registradas",
+        "facturas": "No hay facturas de compra registradas",
+        "cuentas": "No hay cuentas por pagar registradas",
+        "pagos": "No hay pagos registrados a este proveedor"
+      }
+    },
+    "formulario": {
+      "tituloEditar": "Editar proveedor",
+      "subtituloEditar": "Modifica la información del proveedor",
+      "subtituloNuevo": "Registra a quién le compras",
+      "seleccionar": "Seleccionar",
+      "opcional": "Opcional",
+      "generando": "Generando…",
+      "generarIa": "Generar con IA",
+      "logo": "Logo",
+      "tiposRespaldo": {
+        "taxId": "ID tributario / fiscal",
+        "nationalId": "Documento nacional",
+        "passport": "Pasaporte",
+        "other": "Otro"
+      },
+      "botones": {
+        "guardar": "Guardar",
+        "guardarCambios": "Guardar cambios",
+        "guardarProveedor": "Guardar proveedor",
+        "guardarYCrearOtro": "Guardar y crear otro",
+        "cancelar": "Cancelar",
+        "descartar": "Descartar"
+      },
+      "errores": {
+        "razonSocial": "Escribe la razón social",
+        "nombreCompleto": "Escribe el nombre completo",
+        "correo": "Correo inválido"
+      },
+      "toast": {
+        "nitPrimero": "Ingresa el NIT primero",
+        "dvCalculado": "DV calculado",
+        "dvDescripcion": "Dígito de verificación: {dv}",
+        "nombrePrimero": "Escribe el nombre primero",
+        "descripcionGenerada": "Descripción generada con IA",
+        "errorDescripcion": "No se pudo generar la descripción.",
+        "logoGenerado": "Logo generado con IA",
+        "errorLogo": "No se pudo generar el logo.",
+        "actualizado": "Proveedor actualizado",
+        "actualizadoDescripcion": "Los cambios han sido guardados correctamente",
+        "creado": "Proveedor creado",
+        "creadoDescripcion": "El proveedor ha sido creado correctamente",
+        "errorActualizar": "No se pudo actualizar el proveedor",
+        "errorCrear": "No se pudo crear el proveedor"
+      },
+      "identificacion": {
+        "titulo": "Identificación",
+        "descripcion": "Tipo, documento y nombre. Consulta la DIAN para completar.",
+        "tipoProveedor": "Tipo de proveedor",
+        "personaNatural": "Persona natural",
+        "tipoDocumento": "Tipo de documento",
+        "numero": "Número",
+        "numeroAyuda": "Sin documento no se le puede registrar factura.",
+        "dv": "DV",
+        "calcular": "Calcular",
+        "marcaAutorizacion": "Marca la autorización para consultar",
+        "consultarDian": "Consultar DIAN / RUES",
+        "razonSocial": "Razón social",
+        "nombreCompleto": "Nombre completo",
+        "razonSocialPlaceholder": "Empresa S.A.S.",
+        "nombreCompletoPlaceholder": "Nombre y apellidos",
+        "nombreComercial": "Nombre comercial",
+        "empresaAsociada": "Empresa proveedora asociada",
+        "empresaAsociadaAyuda": "Vincula esta persona como contacto o proveedor hijo de una empresa.",
+        "sinEmpresa": "Sin empresa asociada"
+      },
+      "contacto": {
+        "titulo": "Contacto",
+        "persona": "Persona de contacto",
+        "personaPlaceholder": "Nombre del contacto",
+        "telefono": "Teléfono",
+        "correo": "Correo",
+        "sitioWeb": "Sitio web"
+      },
+      "direccion": {
+        "titulo": "Dirección",
+        "direccion": "Dirección",
+        "direccionPlaceholder": "Calle, número, oficina…",
+        "ciudad": "Ciudad",
+        "departamento": "Departamento / estado",
+        "pais": "País",
+        "codigoPostal": "Código postal",
+        "municipio": "Municipio (código DIAN)",
+        "municipioAyuda": "5 dígitos, por ejemplo 05001 = Medellín."
+      },
+      "condiciones": {
+        "titulo": "Condiciones de compra",
+        "descripcion": "Se usan al crear órdenes y facturas de compra.",
+        "condicionPago": "Condición de pago",
+        "condicionPagoAyuda": "Al elegirla se llenan los días de crédito.",
+        "diasCredito": "Días de crédito",
+        "diasCreditoAyuda": "0 = contado.",
+        "regimen": "Régimen tributario",
+        "seleccionarRegimen": "Seleccionar régimen",
+        "responsabilidades": "Responsabilidades fiscales",
+        "responsabilidadesAyuda": "También se llenan al consultar la DIAN."
+      },
+      "bancarios": {
+        "titulo": "Datos bancarios",
+        "descripcion": "Para programar pagos.",
+        "banco": "Banco",
+        "bancoPlaceholder": "Nombre del banco",
+        "tipoCuenta": "Tipo de cuenta",
+        "numeroCuenta": "Número de cuenta"
+      },
+      "facturacion": {
+        "titulo": "Facturación electrónica",
+        "descripcion": "Códigos DIAN. Se llenan solos con el tipo de proveedor y de documento.",
+        "tipoDocumentoDian": "Tipo de documento DIAN",
+        "tipoOrganizacion": "Tipo de organización DIAN",
+        "organizacionEmpresa": "1 · Empresa",
+        "organizacionPersona": "2 · Persona natural",
+        "codigoPais": "Código de país"
+      },
+      "notas": {
+        "titulo": "Descripción y notas",
+        "descripcion": "Descripción",
+        "descripcionPlaceholder": "Qué vende, marcas que maneja, tiempos de entrega…",
+        "internas": "Notas internas",
+        "internasPlaceholder": "Información adicional sobre el proveedor…"
+      },
+      "estado": {
+        "titulo": "Estado",
+        "activo": "Activo · aparece al comprar",
+        "inactivo": "Inactivo · no aparece al comprar"
+      }
+    },
+    "importar": {
+      "volver": "Volver",
+      "titulo": "Importar Proveedores",
+      "subtitulo": "Importa proveedores masivamente desde un archivo CSV o Excel",
+      "archivo": {
+        "titulo": "Seleccionar Archivo",
+        "descripcion": "Sube un archivo CSV o Excel (.xlsx) con los proveedores a importar",
+        "encontrados": "{count, plural, one {# registro encontrado} other {# registros encontrados}}",
+        "otro": "Seleccionar otro archivo",
+        "arrastra": "Arrastra un archivo o haz clic para seleccionar",
+        "formatos": "Archivos CSV o Excel (.xlsx)"
+      },
+      "vistaPrevia": {
+        "titulo": "Vista Previa ({count, plural, one {# registro} other {# registros}})",
+        "validos": "{count, plural, one {# válido} other {# válidos}}",
+        "conErrores": "{count} con errores",
+        "valido": "Válido"
+      },
+      "columnas": {
+        "fila": "Fila",
+        "nombre": "Nombre",
+        "nit": "NIT",
+        "contacto": "Contacto",
+        "telefono": "Teléfono",
+        "email": "Email",
+        "estado": "Estado"
+      },
+      "validaciones": {
+        "nombreRequerido": "Nombre es requerido",
+        "emailInvalido": "Email inválido",
+        "tipoInvalido": "Tipo debe ser \"person\" o \"company\"",
+        "diasCreditoNumerico": "Días Crédito debe ser numérico"
+      },
+      "resultados": {
+        "titulo": "Resultados de Importación",
+        "importados": "{count, plural, one {# importado correctamente} other {# importados correctamente}}",
+        "errores": "Errores:",
+        "errorFila": "Fila {fila}: {error}"
+      },
+      "acciones": {
+        "titulo": "Acciones",
+        "plantilla": "Descargar Plantilla",
+        "importar": "Importar {count, plural, one {# Proveedor} other {# Proveedores}}",
+        "verProveedores": "Ver Proveedores"
+      },
+      "instrucciones": {
+        "titulo": "Instrucciones",
+        "paso1": "Descarga la plantilla CSV",
+        "paso2": "Llena los datos de proveedores",
+        "paso3": "El campo \"Nombre\" es obligatorio",
+        "paso4": "Guarda el archivo en formato CSV",
+        "paso5": "Sube el archivo y verifica la vista previa",
+        "paso6": "Haz clic en \"Importar\" para confirmar"
+      },
+      "toast": {
+        "archivoInvalido": "Archivo inválido",
+        "archivoInvalidoDescripcion": "Por favor selecciona un archivo CSV o Excel (.xlsx)",
+        "archivoVacio": "Archivo vacío",
+        "archivoVacioDescripcion": "El archivo no contiene datos para importar",
+        "errorProcesar": "No se pudo procesar el archivo",
+        "sinValidos": "Sin datos válidos",
+        "sinValidosDescripcion": "No hay proveedores válidos para importar",
+        "completada": "Importación completada",
+        "completadaDescripcion": "{count, plural, one {# proveedor importado correctamente} other {# proveedores importados correctamente}}",
+        "conErrores": "Errores en la importación",
+        "conErroresDescripcion": "{count, plural, one {# proveedor no pudo ser importado} other {# proveedores no pudieron ser importados}}",
+        "errorImportar": "No se pudo completar la importación"
+      }
+    }
+  },
+  "categorias": {
+    "comun": {
+      "inventario": "Inventario",
+      "categorias": "Categorías",
+      "nuevaCategoria": "Nueva categoría",
+      "buscarCategoria": "Buscar categoría",
+      "volverInventario": "Volver al inventario",
+      "intentaDeNuevo": "Inténtalo de nuevo.",
+      "laCategoria": "La categoría",
+      "sinNombre": "Sin nombre",
+      "si": "Sí",
+      "no": "No",
+      "activa": "Activa",
+      "inactiva": "Inactiva",
+      "generaComanda": "Genera comanda",
+      "entreComillas": "«{nombre}»",
+      "nCategorias": "{count, plural, one {{n} categoría} other {{n} categorías}}",
+      "nProductos": "{count, plural, one {{n} producto} other {{n} productos}}",
+      "nSubcategorias": "{count, plural, one {{n} subcategoría} other {{n} subcategorías}}",
+      "categoria": {
+        "singular": "categoría",
+        "plural": "categorías"
+      },
+      "principal": {
+        "singular": "categoría principal",
+        "plural": "categorías principales"
+      }
+    },
+    "acciones": {
+      "editar": "Editar",
+      "agregarSubcategoria": "Agregar subcategoría",
+      "moverA": "Mover a…",
+      "moverARaiz": "Mover a la raíz",
+      "duplicar": "Duplicar",
+      "verProductos": "Ver productos",
+      "copiarId": "Copiar ID",
+      "desactivar": "Desactivar",
+      "activar": "Activar",
+      "eliminar": "Eliminar"
+    },
+    "estaciones": {
+      "ninguna": "Sin estación",
+      "hot_kitchen": "Cocina Caliente",
+      "cold_kitchen": "Cocina Fría",
+      "bar": "Bar",
+      "cashier": "Caja",
+      "all": "Todas las estaciones"
+    },
+    "errores": {
+      "slugDuplicado": "Ya existe una categoría con esa dirección (slug) en tu organización",
+      "ciclo": "No puedes mover una categoría dentro de una de sus subcategorías",
+      "padreInvalida": "La categoría padre no existe o es de otra organización",
+      "noEncontrada": "La categoría no existe o es de otra organización",
+      "conProductos": "La categoría tiene productos: elige a qué categoría pasan antes de eliminarla",
+      "destinoInvalido": "La categoría de destino no es válida"
+    },
+    "filtros": {
+      "todas": "Todas",
+      "activas": "Activas",
+      "inactivas": "Inactivas",
+      "conProductos": "Con productos",
+      "sinProductos": "Sin productos",
+      "conEstacion": "Con estación",
+      "sinEstacion": "Sin estación",
+      "sinComanda": "Sin comanda"
+    },
+    "chips": {
+      "estado": "Estado: {valor}",
+      "estacion": "Estación: {valor}",
+      "requierePreparacion": "Requiere preparación",
+      "sinPreparacion": "Sin preparación"
+    },
+    "toasts": {
+      "noActualizo": "No se pudo actualizar",
+      "ultimaLista": "Se muestra la última lista cargada.",
+      "movidas": "{count, plural, one {Categoría movida} other {Categorías movidas}}",
+      "movidaDentro": "{nombre} ahora es subcategoría de «{destino}».",
+      "movidaRaiz": "{nombre} quedó como categoría principal.",
+      "movidasDentro": "{n} categorías ahora son subcategorías de «{destino}».",
+      "movidasRaiz": "{n} categorías quedaron como categoría principal.",
+      "ahoraSubcategoria": "Ahora es subcategoría de «{destino}».",
+      "quedoPrincipal": "Quedó como categoría principal.",
+      "noMover": "No se pudo mover",
+      "desactivada": "Categoría desactivada",
+      "activada": "Categoría activada",
+      "desactivadas": "Categorías desactivadas",
+      "activadas": "Categorías activadas",
+      "noCambioEstado": "No se pudo cambiar el estado",
+      "duplicada": "Categoría duplicada",
+      "seCreo": "Se creó «{nombre}».",
+      "noDuplicar": "No se pudo duplicar",
+      "eliminada": "Categoría eliminada",
+      "productosPasaron": "{count, plural, one {{n} producto pasó} other {{n} productos pasaron}} a «{destino}»",
+      "otraCategoria": "otra categoría",
+      "subcategoriasSubieron": "{count, plural, one {{n} subcategoría subió} other {{n} subcategorías subieron}} un nivel",
+      "tieneProductos": "Tiene productos",
+      "noEliminar": "No se pudo eliminar",
+      "exportacionLista": "Exportación lista",
+      "seDescargo": "Se descargó el archivo {formato}.",
+      "noExportar": "No se pudo exportar",
+      "favoritaMarcada": "Marcada como favorita del POS",
+      "favoritaQuitada": "Ya no es favorita del POS",
+      "noFavorita": "No se pudo cambiar la favorita",
+      "idCopiado": "ID copiado",
+      "noCopiar": "No se pudo copiar"
+    },
+    "listado": {
+      "subtitulo": "{total, plural, one {{nTotal} categoría} other {{nTotal} categorías}} en {niveles, plural, one {{nNiveles} nivel} other {{nNiveles} niveles}}",
+      "importar": "Importar",
+      "importarCategorias": "Importar categorías",
+      "tabla": "Árbol de categorías",
+      "cabecera": {
+        "exportarCsv": "Exportar CSV",
+        "exportarExcel": "Exportar Excel",
+        "exportarPdf": "Exportar PDF",
+        "expandirTodo": "Expandir todo",
+        "contraerTodo": "Contraer todo",
+        "actualizar": "Actualizar",
+        "actualizando": "Actualizando…",
+        "yaActualizando": "Ya se está actualizando"
+      },
+      "arrastre": {
+        "noExiste": "No existe",
+        "yaEsPrincipal": "Ya es una categoría principal",
+        "mismaCategoria": "Es la misma categoría",
+        "yaEstaDentro": "Ya está dentro de esa categoría",
+        "ciclo": "Crearía un ciclo"
+      },
+      "columnas": {
+        "nombre": "Nombre",
+        "productos": "Productos",
+        "subcategorias": "Subcategorías",
+        "estacion": "Estación de cocina",
+        "estado": "Estado"
+      },
+      "verProductosDe": "{count, plural, one {Ver {n} producto de {nombre}} other {Ver los {n} productos de {nombre}}}",
+      "porRegla": "+{n} por regla",
+      "kpi": {
+        "resumen": "Resumen de categorías",
+        "activasInactivas": "{activas, plural, one {{nActivas} activa} other {{nActivas} activas}} · {inactivas, plural, one {{nInactivas} inactiva} other {{nInactivas} inactivas}}",
+        "sinProductos": "Sin productos",
+        "revisalas": "Revísalas o desactívalas",
+        "todasConProductos": "Todas tienen productos",
+        "productosSinCategoria": "Productos sin categoría",
+        "deTotal": "De {total} · asignar desde el catálogo",
+        "conEstacion": "Con estación de cocina",
+        "generanComanda": "Generan comanda en el POS"
+      },
+      "busqueda": {
+        "placeholder": "Buscar por nombre o slug (entra en ramas cerradas)",
+        "placeholderMovil": "Buscar categoría",
+        "etiqueta": "Buscar categorías"
+      },
+      "filtros": {
+        "verResultados": "{count, plural, one {Ver {n} categoría principal} other {Ver {n} categorías principales}}",
+        "estado": "Estado",
+        "productos": "Productos",
+        "estacion": "Estación de cocina",
+        "preparacion": "Preparación"
+      },
+      "vacio": {
+        "titulo": "Aún no tienes categorías",
+        "descripcion": "Agrupa tus productos para encontrarlos rápido en el POS, la tienda web y los informes.",
+        "importar": "Importar desde CSV o Excel"
+      },
+      "sinResultados": "La búsqueda revisa también las ramas cerradas. Prueba con otro término o quita un filtro.",
+      "error": {
+        "titulo": "No pudimos cargar las categorías",
+        "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+      },
+      "sinPermiso": {
+        "titulo": "No tienes acceso a las categorías de esta organización",
+        "descripcion": "Pídele a un administrador que te dé acceso al inventario."
+      },
+      "masivas": {
+        "yaInactivas": "Todas las seleccionadas ya están inactivas",
+        "yaActivas": "Todas las seleccionadas ya están activas"
+      },
+      "confirmarDesactivar": {
+        "titulo": "{count, plural, one {¿Desactivar {n} categoría?} other {¿Desactivar {n} categorías?}}",
+        "descripcion": "Dejan de verse en el POS y en la tienda web. Sus productos no se borran ni cambian de categoría, y puedes volver a activarlas cuando quieras."
+      }
+    },
+    "detalle": {
+      "titulo": "Categoría",
+      "miga": "Detalle",
+      "noEncontrada": {
+        "titulo": "No encontramos esta categoría",
+        "descripcion": "Puede que la hayan eliminado o que el enlace sea de otra organización.",
+        "volver": "Volver a categorías"
+      },
+      "errorCarga": "No pudimos cargar la categoría",
+      "sinPermiso": "No tienes acceso a esta categoría",
+      "subcategoriaDe": "subcategoría de {nombre}",
+      "categoriaPrincipal": "categoría principal",
+      "verNProductos": "{count, plural, one {Ver {n} producto} other {Ver {n} productos}}",
+      "origen": {
+        "principal": "Principal",
+        "regla": "Por regla",
+        "adicional": "Adicional"
+      },
+      "columnas": {
+        "producto": "Producto",
+        "sku": "SKU",
+        "origen": "Origen",
+        "estado": "Estado"
+      },
+      "resumen": {
+        "titulo": "Resumen",
+        "padre": "Categoría padre",
+        "sinPadre": "Ninguna · es una categoría principal",
+        "estacion": "Estación de cocina",
+        "preparacion": "Requiere preparación",
+        "generaComanda": "Sí · genera comanda en el POS",
+        "ordenPos": "Orden en el POS",
+        "posicion": "{posicion} de {hermanas} en {grupo}",
+        "lasPrincipales": "las categorías principales",
+        "ordenRank": "orden {orden} · rank {rank}",
+        "descripcion": "Descripción",
+        "sinDescripcion": "Sin descripción",
+        "tituloSeo": "Título SEO",
+        "descripcionSeo": "Descripción SEO",
+        "creada": "Creada",
+        "fechas": "{creada} · actualizada {actualizada}",
+        "id": "ID"
+      },
+      "subcategorias": {
+        "titulo": "Subcategorías ({n})",
+        "vacio": "No tiene subcategorías."
+      },
+      "productos": {
+        "titulo": "Productos ({n})",
+        "verCatalogo": "Ver en el catálogo",
+        "tabla": "Productos de {nombre}",
+        "vacioTitulo": "Esta categoría no tiene productos",
+        "vacioDescripcion": "Asígnala desde el catálogo o con una regla de asignación automática.",
+        "irCatalogo": "Ir al catálogo",
+        "error": "No pudimos cargar los productos"
+      },
+      "apariencia": {
+        "titulo": "Apariencia",
+        "color": "Color",
+        "sinColor": "Sin color",
+        "icono": "Icono",
+        "sinIcono": "Sin icono",
+        "imagen": "Imagen",
+        "imagenDe": "Imagen de {nombre}",
+        "sinImagen": "Sin imagen"
+      },
+      "conexiones": {
+        "titulo": "Cómo se conecta",
+        "productos": "Productos en la categoría",
+        "porReglas": "Asignados por reglas",
+        "promociones": "Promociones que la usan",
+        "tiendaWeb": "Página y menú de la tienda web",
+        "favorita": "Favorita en el POS",
+        "quitar": "Quitar",
+        "marcar": "Marcar",
+        "avisoSlug": "Cambiar el slug rompe los enlaces de la tienda web que apuntan a /{slug}."
+      }
+    },
+    "formulario": {
+      "tituloEditar": "Editar categoría",
+      "subtitulo": "{nombre} · los cambios se ven en el POS y en la tienda web al guardar",
+      "migaNueva": "Nueva",
+      "descartar": "Descartar",
+      "guardando": "Guardando…",
+      "guardarCambios": "Guardar cambios",
+      "crear": "Crear categoría",
+      "noEncontrada": "No encontramos esta categoría en tu organización.",
+      "generando": "Generando…",
+      "generarIa": "Generar con IA",
+      "vistaPrevia": "Vista previa en el árbol",
+      "avisoGuardar": "Al guardar, el POS y la tienda web muestran los cambios. Las reglas de asignación no se recalculan solas: aplícalas desde el detalle.",
+      "toasts": {
+        "noCargar": "No se pudieron cargar las categorías",
+        "descripcionGenerada": "Descripción generada",
+        "noDescripcion": "No se pudo generar la descripción",
+        "imagenGenerada": "Imagen generada con IA",
+        "noImagen": "No se pudo generar la imagen",
+        "actualizada": "Categoría actualizada",
+        "guardada": "«{nombre}» guardada.",
+        "creada": "Categoría creada",
+        "disponible": "«{nombre}» ya está disponible."
+      },
+      "errores": {
+        "nombrePrimero": "Escribe un nombre primero",
+        "nombreObligatorio": "El nombre es obligatorio",
+        "slugVacio": "Escribe una dirección con letras o números",
+        "slugOcupado": "Ya hay una categoría con /{slug}.",
+        "noGuardar": "No se pudo guardar"
+      },
+      "general": {
+        "titulo": "General",
+        "descripcion": "Nombre, ubicación en el árbol y descripción.",
+        "nombre": "Nombre",
+        "nombrePlaceholder": "Ej.: Bebidas calientes",
+        "descripcionCampo": "Descripción",
+        "descripcionAyuda": "Se usa en la tienda web. «Generar con IA» consume créditos.",
+        "descripcionPlaceholder": "Qué agrupa esta categoría (opcional)"
+      },
+      "padre": {
+        "etiqueta": "Categoría padre",
+        "ayudaEdicion": "No puedes elegir una de sus subcategorías: crearía un ciclo.",
+        "ayudaNueva": "Déjala sin padre para que sea una categoría principal.",
+        "sinPadre": "Sin categoría padre (principal)",
+        "mismaCategoria": "Es esta misma categoría",
+        "esSubcategoria": "Es una de sus subcategorías: crearía un ciclo"
+      },
+      "cocina": {
+        "titulo": "Cocina y POS",
+        "descripcion": "Dónde se prepara y si genera comanda.",
+        "estacion": "Estación de cocina",
+        "estacionAyuda": "Los productos de esta categoría se envían a esta estación. Un producto puede cambiarla.",
+        "preparacion": "Requiere preparación",
+        "preparacionAyuda": "Genera una comanda de cocina al vender desde el POS.",
+        "siGenera": "Sí · genera comanda al vender"
+      },
+      "apariencia": {
+        "descripcion": "Color, icono e imagen en el POS y la tienda.",
+        "imagenAyuda": "Se usa en el POS (vista de imágenes), la tienda web y el catálogo."
+      },
+      "seo": {
+        "titulo": "Tienda web y SEO",
+        "descripcion": "Dirección pública de la categoría.",
+        "slug": "Slug (dirección pública)",
+        "slugBloqueado": "Bloqueado: al renombrar ya no se regenera. Editarlo rompe las páginas y los enlaces de menú que lo usan.",
+        "slugAyuda": "Se forma con el nombre; solo letras minúsculas, números y guiones.",
+        "desbloquear": "Desbloquear",
+        "slugPlaceholder": "bebidas-calientes",
+        "libre": "Libre:",
+        "tituloAyuda": "Se completa con el nombre mientras no lo cambies.",
+        "tituloPlaceholder": "Título para buscadores",
+        "contador": "{actual}/160 · {texto}",
+        "descripcionAyudaNueva": "se completa con la descripción mientras no la cambies",
+        "descripcionAyudaEdicion": "texto para buscadores",
+        "descripcionPlaceholder": "Descripción para buscadores"
+      },
+      "estado": {
+        "titulo": "Estado",
+        "etiqueta": "Categoría activa",
+        "activa": "Activa · visible en el POS y la tienda",
+        "inactiva": "Inactiva · oculta en el POS y la tienda"
+      }
+    },
+    "reglas": {
+      "titulo": "Reglas de asignación automática",
+      "tituloN": "Reglas de asignación automática ({n})",
+      "descripcion": "Los productos que cumplan las condiciones se asignan a esta categoría (además de su categoría principal). Puedes reasignarlos a mano después.",
+      "editar": "Editar reglas",
+      "descartar": "Descartar cambios",
+      "errorCarga": "No pudimos cargar las reglas.",
+      "reintentar": "Reintentar",
+      "primera": "Regla 1",
+      "siguiente": "{combinador} regla {n}",
+      "combinador": {
+        "AND": "Y",
+        "OR": "O"
+      },
+      "resumen": "{campo} {operador} «{valor}»",
+      "ultimaAplicacion": "Última aplicación",
+      "nAsignados": "{count, plural, one {{n} producto asignado} other {{n} productos asignados}}",
+      "nRetirados": "{n} retirados",
+      "asignados": "{count, plural, one {{n} producto asignado} other {{n} productos asignados}} a {nombre}",
+      "yaNoCumplian": "{n} ya no cumplían y se retiraron.",
+      "vacio": "Esta categoría no tiene reglas.",
+      "agregarPrimera": "Agregar primera regla",
+      "agregar": "Agregar regla",
+      "comoSeUne": "Cómo se une la regla {n}",
+      "campo": "Campo",
+      "operador": "Operador",
+      "valor": "Valor",
+      "seleccionar": "Seleccionar…",
+      "escribirOSeleccionar": "Escribir o seleccionar…",
+      "quitar": "Quitar la regla {n}",
+      "vistaPrevia": "Vista previa",
+      "yMas": "y {n} más…",
+      "ninguno": "Ningún producto cumple estas reglas.",
+      "completaValores": "Completa el valor de todas las reglas",
+      "guardar": "Guardar reglas",
+      "aplicar": "Aplicar y asignar",
+      "guardarSinReglas": "Guardar sin reglas",
+      "cerrarAviso": "Cerrar aviso",
+      "campos": {
+        "name": "Nombre",
+        "sku": "SKU",
+        "brand": "Marca",
+        "reference": "Referencia",
+        "barcode": "Código de barras",
+        "supplier": "Proveedor",
+        "tag": "Etiqueta",
+        "status": "Estado",
+        "product_type": "Tipo de producto",
+        "price_min": "Precio mínimo",
+        "price_max": "Precio máximo"
+      },
+      "operadores": {
+        "contains": "Contiene",
+        "not_contains": "No contiene",
+        "equals": "Es igual a",
+        "not_equals": "No es igual a",
+        "starts_with": "Empieza con",
+        "ends_with": "Termina con",
+        "gt": "Mayor que",
+        "lt": "Menor que",
+        "gte": "Mayor o igual que",
+        "lte": "Menor o igual que",
+        "in": "Está en la lista",
+        "not_in": "No está en la lista"
+      },
+      "opciones": {
+        "status": {
+          "active": "Activo",
+          "inactive": "Inactivo",
+          "discontinued": "Descontinuado"
+        },
+        "product_type": {
+          "product": "Producto",
+          "service": "Servicio",
+          "bundle": "Combo/Kit"
+        }
+      },
+      "toasts": {
+        "guardadas": "Reglas guardadas",
+        "guardadasDesc": "{count, plural, one {{n} regla} other {{n} reglas}} para «{nombre}». Aplícalas para asignar productos.",
+        "sinReglasDesc": "«{nombre}» ya no tiene reglas.",
+        "noGuardar": "No se pudieron guardar las reglas",
+        "noVistaPrevia": "No se pudo calcular la vista previa",
+        "sinReglas": "Sin reglas que aplicar",
+        "agregaUna": "Agrega al menos una regla.",
+        "retirados": "{n} ya no cumplían las reglas y se retiraron.",
+        "aplicadas": "{count, plural, one {Se aplicó {n} regla.} other {Se aplicaron {n} reglas.}}",
+        "noAplicar": "No se pudieron aplicar las reglas"
+      }
+    },
+    "mover": {
+      "tituloUna": "Mover «{nombre}»",
+      "tituloVarias": "Mover {n} categorías",
+      "descripcion": "Elige la nueva categoría padre.",
+      "descripcionConHijas": "{count, plural, one {Elige la nueva categoría padre. Su {n} subcategoría se mueve con ella.} other {Elige la nueva categoría padre. Sus {n} subcategorías se mueven con ella.}}",
+      "descripcionVarias": "Elige la nueva categoría padre. Sus subcategorías se mueven con ellas.",
+      "esLaQueMueves": "Es la categoría que mueves",
+      "estaEntreLasQueMueves": "Está entre las que mueves",
+      "subcategoriaDe": "Es subcategoría de «{origen}»: crearía un ciclo",
+      "moverAqui": "Mover aquí",
+      "eligeDestino": "Elige una categoría de destino",
+      "yaEstaAhi": "Ya está en esa categoría",
+      "nuevaPadre": "Nueva categoría padre",
+      "sinPadre": "Sin categoría padre",
+      "quedaPrincipal": "Queda como categoría principal",
+      "buscarDestino": "Buscar categoría de destino",
+      "avisoSlug": "El slug no cambia al mover: los enlaces de la tienda web siguen funcionando."
+    },
+    "eliminar": {
+      "titulo": "¿Eliminar «{nombre}»?",
+      "descripcion": "Esta acción no se puede deshacer.",
+      "moverYEliminar": "Mover productos y eliminar",
+      "eligeDestino": "Elige a qué categoría pasan sus productos",
+      "esLaQueEliminas": "Es la categoría que eliminas",
+      "laRaiz": "la raíz",
+      "tieneProductos": "{count, plural, one {Tiene {n} producto. No quedará sin categoría: elige a cuál pasa.} other {Tiene {n} productos. No quedarán sin categoría: elige a cuál pasan.}}",
+      "sinProductos": "No tiene productos asignados.",
+      "subcategoriasPasan": "{count, plural, one {Su {n} subcategoría pasa a {destino}.} other {Sus {n} subcategorías pasan a {destino}.}}",
+      "reglasSeBorran": "Las reglas de asignación y la marca de favorita del POS se borran con ella.",
+      "moverProductosA": "Mover sus productos a",
+      "elegirDestino": "Elegir categoría de destino",
+      "categoriaDestino": "Categoría de destino",
+      "sugerenciaDesactivar": "Si prefieres conservarla, desactívala: deja de verse en el POS y en la tienda web y sus productos no cambian."
+    },
+    "importar": {
+      "titulo": "Importar Categorías",
+      "descripcion": "Cargue categorías desde un archivo CSV o Excel. Use la plantilla para asegurar el formato correcto.",
+      "descargarPlantilla": "Descargar plantilla",
+      "limpiar": "Limpiar",
+      "seleccionarArchivo": "Seleccionar archivo (.csv o .xlsx)",
+      "validas": "{count, plural, one {{n} válida} other {{n} válidas}}",
+      "invalidas": "{count, plural, one {{n} inválida} other {{n} inválidas}}",
+      "total": "{n} total",
+      "columnas": {
+        "estado": "Estado",
+        "nombre": "Nombre",
+        "padre": "Categoría Padre",
+        "color": "Color",
+        "estacion": "Estación"
+      },
+      "resultado": "{count, plural, one {{n} categoría importada correctamente} other {{n} categorías importadas correctamente}}",
+      "fila": "Fila {fila}: {error}",
+      "cancelar": "Cancelar",
+      "importando": "Importando...",
+      "importarN": "Importar ({n})",
+      "toasts": {
+        "formatoNoSoportado": "Formato no soportado",
+        "useCsvXlsx": "Use .csv o .xlsx",
+        "errorLeer": "Error al leer el archivo",
+        "error": "Error",
+        "sinOrganizacion": "No hay organización activa",
+        "completada": "Importación completada",
+        "importadas": "{count, plural, one {{n} categoría importada} other {{n} categorías importadas}}",
+        "ningunaImportada": "No se importaron categorías",
+        "revisarErrores": "Revise los errores",
+        "errorDesconocido": "Error desconocido",
+        "errorImportacion": "Error de importación"
+      }
+    }
+  },
+  "clientes": {
+    "listado": {
+      "sustantivo": {
+        "singular": "cliente",
+        "plural": "clientes"
+      },
+      "nClientes": "{count, plural, one {{n} cliente} other {{n} clientes}}",
+      "cabecera": {
+        "titulo": "Gestión de Clientes",
+        "subtitulo": "Administra tu cartera de clientes",
+        "inicio": "Inicio",
+        "clientes": "Clientes",
+        "actualizar": "Actualizar",
+        "exportar": "Exportar",
+        "exportarCsv": "Exportar a CSV",
+        "nuevoCliente": "Nuevo cliente",
+        "masAcciones": "Más acciones",
+        "importarClientes": "Importar clientes",
+        "descargarPlantilla": "Descargar plantilla",
+        "subtituloMovil": "{count, plural, one {{total} cliente} other {{total} clientes}} · {conSaldo} con saldo · {vencidos} vencidos"
+      },
+      "errorOrg": {
+        "titulo": "No pudimos identificar tu organización",
+        "descripcion": "Vuelve a iniciar sesión e inténtalo de nuevo."
+      },
+      "errores": {
+        "sinPermiso": "No tienes permiso para hacer esto con clientes."
+      },
+      "kpi": {
+        "etiqueta": "Resumen de clientes",
+        "total": "Total clientes",
+        "nuevosMes": "+{n} este mes",
+        "conSaldo": "Con saldo",
+        "deTotal": "{count, plural, one {de {n} cliente} other {de {n} clientes}}",
+        "cuentasPorCobrar": "Cuentas por cobrar",
+        "monedaOrg": "Moneda de la organización ({moneda})",
+        "vencidas": "Cuentas vencidas",
+        "montoVencido": "{monto} vencidos"
+      },
+      "busqueda": {
+        "placeholderEscritorio": "Buscar por nombre, documento, correo o teléfono",
+        "placeholderMovil": "Buscar cliente, NIT o teléfono",
+        "etiqueta": "Buscar clientes"
+      },
+      "filtros": {
+        "verN": "Ver {count, plural, one {{n} cliente} other {{n} clientes}}",
+        "tipo": "Tipo",
+        "estado": "Estado",
+        "cartera": "Cartera",
+        "rol": "Rol",
+        "etiqueta": "Etiqueta",
+        "municipio": "Municipio",
+        "ordenarPor": "Ordenar por",
+        "todos": "Todos",
+        "persona": "Persona",
+        "empresa": "Empresa",
+        "activos": "Activos",
+        "inactivos": "Inactivos",
+        "todosSaldos": "Todos los saldos",
+        "conSaldoPendiente": "Con saldo pendiente",
+        "sinSaldoPendiente": "Sin saldo pendiente",
+        "conCarteraVencida": "Con cartera vencida",
+        "todosRoles": "Todos los roles",
+        "todasEtiquetas": "Todas las etiquetas",
+        "todosMunicipios": "Todos los municipios"
+      },
+      "orden": {
+        "nombreAsc": "Nombre (A–Z)",
+        "nombreDesc": "Nombre (Z–A)",
+        "ultimaCompraDesc": "Última compra (más reciente)",
+        "ultimaCompraAsc": "Última compra (más antigua)",
+        "saldoDesc": "Mayor saldo",
+        "saldoAsc": "Menor saldo",
+        "ventasDesc": "Más ventas",
+        "creadoDesc": "Más recientes"
+      },
+      "chips": {
+        "tipo": "Tipo: {valor}",
+        "estado": "Estado: {valor}",
+        "cartera": "Cartera: {valor}",
+        "rol": "Rol: {valor}",
+        "etiqueta": "Etiqueta: {valor}",
+        "municipio": "Municipio: {valor}",
+        "municipioSeleccionado": "seleccionado",
+        "valores": {
+          "persona": "Persona",
+          "empresa": "Empresa",
+          "inactivos": "Inactivos",
+          "todos": "Todos",
+          "conSaldo": "Con saldo",
+          "sinSaldo": "Sin saldo",
+          "vencido": "Vencido"
+        }
+      },
+      "columnas": {
+        "cliente": "Cliente",
+        "contacto": "Contacto",
+        "documento": "Documento",
+        "municipio": "Municipio",
+        "etiquetas": "Etiquetas",
+        "cuentasPorCobrar": "Cuentas por cobrar",
+        "ventas": "Ventas",
+        "ultimaCompra": "Última compra"
+      },
+      "celdas": {
+        "contacto": "Contacto: {nombre}",
+        "contactoCargo": "Contacto: {nombre} ({cargo})",
+        "noRegistrado": "No registrado",
+        "dv": "DV {dv}",
+        "compras": "{count, plural, one {{n} compra} other {{n} compras}}",
+        "sinCompras": "Sin compras"
+      },
+      "tarjeta": {
+        "documento": "Documento",
+        "contacto": "Contacto",
+        "correo": "Correo",
+        "telefono": "Teléfono"
+      },
+      "vacio": {
+        "titulo": "Aún no tienes clientes",
+        "descripcion": "Crea el primero o impórtalos desde un archivo CSV o Excel.",
+        "inactivosTitulo": "No hay clientes inactivos",
+        "inactivosDescripcion": "Cuando marques un cliente como inactivo aparecerá aquí.",
+        "importarCsv": "Importar desde CSV",
+        "sinResultados": "Prueba con otro nombre, NIT o teléfono, o quita un filtro."
+      },
+      "masivas": {
+        "exportar": "Exportar",
+        "etiquetar": "Etiquetar",
+        "quitarEtiqueta": "Quitar etiqueta",
+        "roles": "Roles",
+        "agregarRol": "Agregar rol",
+        "quitarRol": "Quitar rol",
+        "eliminar": "Eliminar",
+        "reactivar": "Reactivar",
+        "marcarInactivos": "Marcar inactivos",
+        "unificar": "Unificar duplicados"
+      },
+      "toasts": {
+        "sinExportar": "No hay clientes para exportar",
+        "exportados": "{count, plural, one {{n} cliente exportado} other {{n} clientes exportados}}",
+        "errorExportar": "No se pudo exportar",
+        "primerosSeleccionados": "Se seleccionaron los primeros {n} clientes",
+        "errorSeleccionar": "No se pudo seleccionar todo",
+        "rolAgregado": "Rol «{rol}» agregado a {count, plural, one {{n} cliente} other {{n} clientes}}",
+        "rolQuitado": "Rol «{rol}» quitado de {count, plural, one {{n} cliente} other {{n} clientes}}",
+        "errorRoles": "No se pudieron cambiar los roles"
+      },
+      "operaciones": {
+        "inactivado": "{quien}: marcado inactivo",
+        "reactivado": "{quien}: reactivado",
+        "inactivadoDescripcion": "Conserva su historia y su cartera. Lo encuentras con el filtro «Estado: Inactivos».",
+        "deshacer": "Deshacer",
+        "errorDeshacer": "No se pudo deshacer el cambio",
+        "errorEstado": "No se pudo cambiar el estado del cliente",
+        "idCopiado": "Identificador copiado",
+        "errorCopiar": "No se pudo copiar el identificador"
+      },
+      "acciones": {
+        "ver": "Ver detalle",
+        "editar": "Editar",
+        "registrarPago": "Registrar pago",
+        "nuevaVenta": "Nueva venta",
+        "nuevaOportunidad": "Nueva oportunidad",
+        "llamar": "Llamar",
+        "whatsapp": "WhatsApp",
+        "estadoCuenta": "Estado de cuenta",
+        "copiarId": "Copiar identificador",
+        "reactivar": "Reactivar",
+        "marcarInactivo": "Marcar inactivo",
+        "eliminar": "Eliminar"
+      },
+      "motivos": {
+        "registrarPago": "Aún no disponible: el cobro desde la ficha llega con el pago unificado. Mientras tanto, usa Cuentas por cobrar.",
+        "estadoCuenta": "Aún no disponible: el estado de cuenta en PDF está en construcción.",
+        "unificar": "Aún no disponible: la unificación que mueve ventas, cartera y reservas está en construcción.",
+        "sinTelefono": "Sin teléfono registrado",
+        "sinTelefonoValido": "Sin teléfono válido registrado"
+      },
+      "etiquetaMasiva": {
+        "tituloAgregar": "Etiquetar clientes",
+        "tituloQuitar": "Quitar etiqueta",
+        "descripcionAgregar": "{count, plural, one {Aplica una etiqueta al cliente seleccionado.} other {Aplica una etiqueta a los {n} clientes seleccionados.}}",
+        "descripcionQuitar": "{count, plural, one {Quita una etiqueta del cliente seleccionado.} other {Quita una etiqueta de los {n} clientes seleccionados.}}",
+        "campo": "Etiqueta",
+        "ayuda": "Enter aplica la acción",
+        "placeholder": "Nombre de etiqueta",
+        "frecuentes": "Etiquetas frecuentes",
+        "agregada": "Etiqueta «{etiqueta}» agregada a {count, plural, one {{n} cliente} other {{n} clientes}}",
+        "quitada": "Etiqueta «{etiqueta}» quitada de {count, plural, one {{n} cliente} other {{n} clientes}}",
+        "errorAgregar": "No se pudo agregar la etiqueta.",
+        "errorQuitar": "No se pudo quitar la etiqueta.",
+        "procesando": "Procesando…",
+        "aplicar": "Aplicar etiqueta",
+        "quitar": "Quitar etiqueta"
+      },
+      "eliminar": {
+        "tituloUno": "¿Eliminar a {nombre}?",
+        "esteCliente": "este cliente",
+        "tituloVarios": "¿Eliminar {count, plural, one {{n} cliente} other {{n} clientes}}?",
+        "descripcion": "Solo se eliminan clientes sin ventas, facturas, cartera, conversaciones ni ninguna otra relación. Los demás se pueden marcar inactivos: conservan su historia y su cartera.",
+        "revisando": "Revisando relaciones…",
+        "errorRevisar": "No pudimos revisar si se pueden eliminar.",
+        "seEliminaraUno": "Se eliminará definitivamente.",
+        "seEliminaranVarios": "Se eliminarán definitivamente {eliminables} de {total}.",
+        "noDeshacer": "Esta acción no se puede deshacer.",
+        "bloqueadoUno": "No se puede eliminar porque tiene relaciones.",
+        "bloqueadosVarios": "{count, plural, one {{n} no se puede eliminar porque tiene relaciones.} other {{n} no se pueden eliminar porque tienen relaciones.}}",
+        "sinNombre": "Sin nombre",
+        "yMas": "y {n} más…",
+        "eliminados": "{count, plural, one {Cliente eliminado} other {{n} clientes eliminados}}",
+        "errorEliminar": "No se pudo eliminar.",
+        "inactivados": "{count, plural, one {Cliente marcado inactivo} other {{n} clientes marcados inactivos}}",
+        "errorInactivar": "No se pudo marcar inactivo.",
+        "marcarInactivo": "Marcar inactivo",
+        "marcarInactivos": "Marcar inactivos ({n})",
+        "eliminar": "Eliminar",
+        "eliminarN": "Eliminar {n}",
+        "relaciones": {
+          "invoice_sales": "facturas",
+          "sales": "ventas",
+          "accounts_receivable": "cartera",
+          "credit_notes": "saldos a favor",
+          "quotations": "cotizaciones",
+          "opportunities": "oportunidades",
+          "calls": "llamadas",
+          "tasks": "tareas",
+          "calendar_events": "eventos de calendario",
+          "conversations": "conversaciones",
+          "messages": "mensajes",
+          "customer_channel_identities": "canales de contacto",
+          "customer_addresses": "direcciones",
+          "customer_company_links": "contactos de empresa",
+          "customers": "personas vinculadas",
+          "contact_consents": "consentimientos",
+          "campaign_contacts": "campañas",
+          "sequence_enrollments": "secuencias",
+          "reservations": "reservas",
+          "reservation_customers": "reservas",
+          "memberships": "membresías",
+          "class_reservations": "reservas de clases",
+          "member_checkins": "ingresos al gimnasio",
+          "customer_biometrics": "huellas",
+          "parking_passes": "pases de parqueadero",
+          "parking_vehicles": "vehículos",
+          "web_orders": "pedidos web",
+          "shipments": "envíos",
+          "trip_tickets": "tiquetes",
+          "coupons": "cupones",
+          "coupon_redemptions": "cupones redimidos",
+          "referrals": "referidos",
+          "product_reviews": "reseñas",
+          "testimonials": "testimonios",
+          "warranty_claims": "garantías",
+          "serial_numbers": "seriales",
+          "serial_tracking_events": "seriales",
+          "onboarding_instances": "onboarding",
+          "voice_agent_calls": "llamadas del agente de voz",
+          "voice_agent_call_attempts": "llamadas del agente de voz",
+          "widget_sessions": "chat web",
+          "health_score_snapshots": "historial de salud",
+          "email_messages": "correos",
+          "mobile_call_bridges": "llamadas",
+          "restaurant_reservations": "reservas de mesa",
+          "activities": "actividades",
+          "notes": "notas",
+          "documents": "documentos"
+        }
+      },
+      "importar": {
+        "titulo": "Importar clientes",
+        "pasos": {
+          "upload": "Selecciona un archivo CSV o Excel para importar clientes",
+          "preview": "Revisa los datos antes de importar",
+          "importing": "Importando clientes…",
+          "complete": "Importación completada"
+        },
+        "arrastra": "Arrastra un archivo aquí o haz clic para seleccionar",
+        "formatos": "Formatos soportados: CSV, XLS, XLSX",
+        "columnasSoportadas": "Columnas soportadas",
+        "columnasNota": "Los nombres de columna van tal cual, en español.",
+        "columnas": {
+          "tipoCliente": "Persona o Empresa",
+          "nombre": "Nombre (para personas)",
+          "apellido": "Apellido (para personas)",
+          "razonSocial": "Nombre de la empresa (para empresas)",
+          "nombreComercial": "Nombre comercial",
+          "email": "Correo electrónico",
+          "telefono": "Número de teléfono",
+          "tipoDocumento": "Cédula, NIT, Pasaporte, etc.",
+          "numeroDocumento": "Número de identificación",
+          "dv": "Dígito de verificación (para NIT)",
+          "direccion": "Dirección física",
+          "ciudad": "Ciudad",
+          "notas": "Notas internas",
+          "etiquetas": "Separadas por punto y coma (;)",
+          "roles": "Separados por punto y coma (;)",
+          "preferencias": "JSON con preferencias",
+          "responsabilidades": "Separadas por (;)",
+          "empresaPadre": "NIT de empresa vinculada"
+        },
+        "stats": {
+          "total": "Total",
+          "ok": "OK",
+          "errores": "Errores",
+          "pendientes": "Pendientes"
+        },
+        "modo": "Modo de importación",
+        "modos": {
+          "crearActualizar": "Crear y actualizar",
+          "soloCrear": "Solo crear nuevos",
+          "soloActualizar": "Solo actualizar"
+        },
+        "modosAyuda": {
+          "crearActualizar": "Los clientes nuevos se crearán y los existentes se actualizarán.",
+          "soloCrear": "Solo se crearán clientes con documento nuevo. Los existentes se omitirán.",
+          "soloActualizar": "Solo se actualizarán clientes que ya existan. Los nuevos se omitirán."
+        },
+        "tabla": {
+          "tipo": "Tipo",
+          "nombre": "Nombre",
+          "doc": "Doc",
+          "email": "Email",
+          "tel": "Tel",
+          "estado": "Estado"
+        },
+        "tipos": {
+          "persona": "Persona",
+          "empresa": "Empresa"
+        },
+        "estadoFila": {
+          "pendiente": "Pendiente",
+          "ok": "OK",
+          "error": "Error"
+        },
+        "mostrando": "Mostrando {max} de {n} filas",
+        "importarN": "Importar {count, plural, one {{n} cliente} other {{n} clientes}}",
+        "importando": "Importando…",
+        "otroArchivo": "Importar otro archivo",
+        "errorLeer": "Error al leer archivo: {detalle}",
+        "errores": {
+          "yaExiste": "Cliente ya existe (modo: solo crear)",
+          "noExiste": "Cliente no existe (modo: solo actualizar)",
+          "duplicado": "Duplicado (constraint único violado)",
+          "desconocido": "Error desconocido"
+        }
+      }
+    },
+    "ficha": {
+      "comun": {
+        "sinNombre": "Sin nombre",
+        "usuario": "Usuario"
+      },
+      "pagina": {
+        "noEncontrado": "Cliente no encontrado",
+        "noEncontradoDescripcion": "No se pudo encontrar el cliente solicitado. Si tienes una sucursal seleccionada, prueba con «Todas».",
+        "volverClientes": "Volver a clientes",
+        "migas": {
+          "inicio": "Inicio",
+          "clientes": "Clientes"
+        },
+        "movilTitulo": "Cliente",
+        "clienteDesde": "Cliente desde {fecha}",
+        "editar": "Editar",
+        "registrarPago": "Registrar pago",
+        "errores": {
+          "sinId": "ID de cliente no encontrado",
+          "noExiste": "No existe o no pertenece a tu organización.",
+          "carga": "Error al cargar datos del cliente"
+        }
+      },
+      "pestanas": {
+        "resumen": "Resumen",
+        "info": "Información",
+        "oportunidades": "Oportunidades",
+        "actividad": "Actividad",
+        "cuentas": "Cuentas por cobrar",
+        "notas": "Notas y archivos",
+        "contactos": "Contactos"
+      },
+      "cabecera": {
+        "error": "Error",
+        "soloImagenes": "Solo se permiten imágenes",
+        "imagenMuyGrande": "La imagen no debe superar 5MB",
+        "avatarActualizado": "Avatar actualizado",
+        "avatarActualizadoDescripcion": "La foto del cliente se actualizó correctamente.",
+        "errorSubir": "No se pudo subir la imagen",
+        "cambiarFoto": "Cambiar foto",
+        "empresa": "Empresa",
+        "persona": "Persona",
+        "contacto": "Contacto: {nombre}",
+        "contactoConCargo": "Contacto: {nombre} ({cargo})",
+        "vinculadoA": "Vinculado a:",
+        "fidelidad": {
+          "oro": "Oro",
+          "plata": "Plata",
+          "bronce": "Bronce",
+          "basico": "Básico"
+        }
+      },
+      "resumen": {
+        "compras": "Compras",
+        "ultima": "Última: {fecha}",
+        "ultimo": "Último: {fecha}",
+        "sinCompras": "Sin compras",
+        "estadias": "Estadías",
+        "sinEstadias": "Sin estadías",
+        "gastoTotal": "Gasto Total",
+        "gastoTotalDescripcion": "Incluye pedidos web pagados",
+        "pedidosWeb": "Pedidos Web",
+        "sinPedidosWeb": "Sin pedidos web",
+        "reservasFuturas": "Reservas Futuras",
+        "proxima": "Próxima: {fecha}",
+        "sinReservasFuturas": "Sin reservas futuras",
+        "saldoFolios": "Saldo Folios",
+        "itemsPendientes": "{count, plural, one {# item pendiente} other {# items pendientes}}",
+        "sinSaldoPendiente": "Sin saldo pendiente",
+        "historialReciente": "Historial Reciente",
+        "sinActividad": "No hay actividad reciente para este cliente.",
+        "errorCarga": "Error al cargar datos del resumen",
+        "historial": {
+          "venta": "Venta #{numero}",
+          "reserva": "Reserva {fecha}",
+          "pedido": "Pedido #{numero}",
+          "estadoReserva": "reserva"
+        }
+      },
+      "info": {
+        "titulo": "Información completa del cliente",
+        "datosEmpresa": "Datos de la empresa",
+        "datosEmpresaDescripcion": "Información de la empresa y contacto",
+        "datosPersonales": "Datos personales",
+        "datosPersonalesDescripcion": "Información básica de contacto e identificación",
+        "razonSocial": "Razón Social",
+        "nombreCompleto": "Nombre completo",
+        "personaContacto": "Persona de contacto",
+        "contactoConCargo": "{nombre} ({cargo})",
+        "nombreComercial": "Nombre Comercial",
+        "correo": "Correo electrónico",
+        "telefono": "Teléfono",
+        "identificacion": "Identificación",
+        "identificacionValor": "{tipo}: {numero}",
+        "noEspecificado": "No especificado",
+        "noDisponible": "No disponible",
+        "direccion": "Dirección",
+        "direccionDescripcion": "Datos de ubicación",
+        "direccionCompleta": "Dirección completa",
+        "municipio": "Municipio",
+        "estadoProvincia": "Estado/Provincia",
+        "codigoPostal": "Código postal",
+        "empresasVinculadas": "Empresas vinculadas",
+        "empresasVinculadasDescripcion": "Empresas con las que este contacto está asociado",
+        "principal": "Principal",
+        "datosFiscales": "Datos Fiscales",
+        "datosEmpresarialesFiscales": "Datos Empresariales y Fiscales",
+        "datosFiscalesDescripcion": "Información fiscal y comercial",
+        "digitoVerificacion": "Dígito de Verificación (DV)",
+        "responsabilidadFiscal": "Responsabilidad Fiscal (DIAN)",
+        "rolesEtiquetas": "Roles y etiquetas",
+        "rolesEtiquetasDescripcion": "Clasificación del cliente",
+        "roles": "Roles",
+        "etiquetas": "Etiquetas",
+        "sinEtiquetas": "Sin etiquetas",
+        "clienteRegistrado": "Cliente registrado",
+        "si": "Sí",
+        "no": "No",
+        "datosSistema": "Datos del sistema",
+        "datosSistemaDescripcion": "Información técnica",
+        "idCliente": "ID del cliente",
+        "idOrganizacion": "ID de organización",
+        "fechaAlta": "Fecha de alta",
+        "ultimaActualizacion": "Última actualización",
+        "notas": "Notas",
+        "notasDescripcion": "Información adicional sobre el cliente",
+        "sinNotas": "No hay notas disponibles para este cliente.",
+        "preferencias": "Preferencias",
+        "preferenciasDescripcion": "Preferencias personalizadas del cliente",
+        "sinPreferencias": "No hay preferencias registradas para este cliente.",
+        "error": "Error: {mensaje}",
+        "errorCarga": "Error al cargar información del cliente",
+        "sinDatos": "No se encontraron datos del cliente",
+        "noSePudoCargar": "No se pudo cargar la información del cliente"
+      },
+      "oportunidades": {
+        "estados": {
+          "abierta": "Abierta",
+          "ganada": "Ganada",
+          "perdida": "Perdida"
+        },
+        "errorCarga": "Error al cargar las oportunidades",
+        "vacioTitulo": "Sin oportunidades",
+        "vacioDescripcion": "Este cliente aún no tiene oportunidades en el pipeline.",
+        "total": "Total",
+        "abiertas": "Abiertas",
+        "ganadas": "Ganadas",
+        "titulo": "Oportunidades ({n})",
+        "cierreEsperado": "Cierre esperado: {fecha}"
+      },
+      "actividad": {
+        "titulo": "Historial de Actividad",
+        "vacioTitulo": "No hay actividad reciente",
+        "vacioDescripcion": "Este cliente no tiene actividades, ventas o reservaciones registradas en el sistema.",
+        "errorCarga": "Error al cargar datos del timeline",
+        "noAplica": "N/A",
+        "titulos": {
+          "venta": "Venta #{numero}",
+          "reserva": "Reservación: {fecha}",
+          "actividad": "Actividad: {tipo}",
+          "actividadOportunidad": "Actividad: {tipo} — {oportunidad}",
+          "pedidoWeb": "Pedido Web #{numero}"
+        },
+        "descripcionVenta": "Estado: {estado} | Pago: {pago}",
+        "sinDetalles": "Sin detalles",
+        "monto": "Monto: {monto}",
+        "estado": "Estado: {estado}",
+        "pago": "Pago: {pago}",
+        "espacios": "Espacio(s):",
+        "checkin": "Check-in: <b>{fecha}</b>",
+        "checkout": "Check-out: <b>{fecha}</b>",
+        "folioItems": "Folio: {count, plural, one {# item} other {# items}}",
+        "folioPendientes": "{count, plural, one {# pendiente} other {# pendientes}} · {monto}",
+        "todoPagado": "Todo pagado",
+        "saldo": "Saldo: {monto}",
+        "verFolio": "Ver folio →",
+        "sinConsumos": "Sin consumos registrados en folio",
+        "estadosPedido": {
+          "pending": "Pendiente",
+          "confirmed": "Confirmado",
+          "preparing": "Preparando",
+          "ready": "Listo",
+          "delivering": "En entrega",
+          "delivered": "Entregado",
+          "cancelled": "Cancelado",
+          "paid": "Pagado",
+          "completed": "Completado"
+        },
+        "estadosPago": {
+          "paid": "Pagado",
+          "partial": "Parcial",
+          "pending": "Pendiente",
+          "refunded": "Reembolsado",
+          "complete": "Completado",
+          "scheduled": "Programado",
+          "cancelled": "Cancelado"
+        }
+      },
+      "cuentas": {
+        "errorCarga": "Error al cargar las cuentas por cobrar",
+        "vacioTitulo": "No hay cuentas por cobrar",
+        "vacioDescripcion": "Este cliente no tiene deudas, pagos pendientes ni folios con saldo registrados en el sistema.",
+        "foliosTitulo": "Folios PMS con Saldo Pendiente",
+        "folioAbierto": "Abierto",
+        "folioCerrado": "Cerrado",
+        "itemsPendientes": "{pendientes} de {count, plural, one {# item pendiente} other {# items pendientes}}",
+        "verFolio": "Ver folio",
+        "totalDeuda": "Total Deuda",
+        "montoVencido": "Monto Vencido",
+        "pendientePago": "Pendiente de Pago",
+        "columnas": {
+          "idVenta": "ID Venta",
+          "monto": "Monto",
+          "saldo": "Balance",
+          "vencimiento": "Vencimiento",
+          "estado": "Estado"
+        },
+        "estados": {
+          "pagado": "Pagado",
+          "vencido": "{count, plural, one {Vencido (# día)} other {Vencido (# días)}}",
+          "atrasado": "{count, plural, one {Atrasado (# día)} other {Atrasado (# días)}}",
+          "pendiente": "Pendiente"
+        },
+        "paginacion": {
+          "mostrar": "Mostrar",
+          "porPagina": "por página",
+          "rango": "{count, plural, one {<b>{desde}</b> - <b>{hasta}</b> de <b>{total}</b> cuenta} other {<b>{desde}</b> - <b>{hasta}</b> de <b>{total}</b> cuentas}}",
+          "pagina": "Página <destacado>{actual}</destacado> de <b>{total}</b>"
+        }
+      },
+      "notas": {
+        "agregar": "Agregar Nota",
+        "placeholder": "Escriba una nota sobre este cliente...",
+        "guardando": "Guardando...",
+        "guardar": "Guardar Nota",
+        "titulo": "Notas ({n})",
+        "vacioTitulo": "No hay notas",
+        "vacioDescripcion": "Todavía no se han agregado notas para este cliente.",
+        "oportunidad": "Oportunidad: {nombre}",
+        "archivosTitulo": "Archivos",
+        "archivosDescripcion": "La funcionalidad de archivos estará disponible próximamente.",
+        "confirmarEliminar": "¿Está seguro de eliminar esta nota?",
+        "noAutenticado": "Usuario no autenticado",
+        "errorGuardar": "Error al guardar nota",
+        "errorActualizar": "Error al actualizar nota",
+        "errorEliminar": "Error al eliminar nota",
+        "errorCarga": "Error al cargar las notas",
+        "fijar": "Fijar nota",
+        "desfijar": "Desfijar nota",
+        "eliminar": "Eliminar nota"
+      },
+      "tareas": {
+        "titulo": "Tareas",
+        "pendientes": "Tareas Pendientes",
+        "sinPendientes": "No hay tareas pendientes para este cliente",
+        "finalizadas": "Tareas Finalizadas",
+        "sinFinalizadas": "No hay tareas finalizadas para este cliente",
+        "verTodas": "Ver todas las tareas",
+        "sinFecha": "Sin fecha",
+        "fechaInvalida": "Fecha inválida",
+        "sinAsignar": "Sin asignar",
+        "errorCarga": "Error al cargar las tareas",
+        "prioridades": {
+          "alta": "Alta",
+          "media": "Media",
+          "baja": "Baja",
+          "normal": "Normal"
+        },
+        "estados": {
+          "pendiente": "Pendiente",
+          "enProgreso": "En progreso",
+          "completada": "Completada",
+          "cancelada": "Cancelada"
+        }
+      }
+    },
+    "formulario": {
+      "paginas": {
+        "migaInicio": "Inicio",
+        "migaClientes": "Clientes",
+        "nuevo": {
+          "titulo": "Nuevo cliente",
+          "subtitulo": "Completa la información para registrar un nuevo cliente"
+        },
+        "editar": {
+          "titulo": "Editar cliente",
+          "subtitulo": "Modifica la información del cliente",
+          "migaCliente": "Cliente",
+          "migaEditar": "Editar",
+          "verLista": "Ver lista de clientes"
+        },
+        "errorOrganizacion": {
+          "titulo": "No pudimos cargar tu organización",
+          "volver": "Volver a clientes"
+        },
+        "errores": {
+          "sinSesion": "No hay sesión activa. Por favor inicie sesión para continuar.",
+          "sinOrganizacion": "No se encontró una organización asociada a tu cuenta.",
+          "carga": "Error al cargar la información de tu organización"
+        }
+      },
+      "secciones": {
+        "personal": {
+          "titulo": "Información Personal",
+          "descripcion": "Datos básicos de identificación del cliente"
+        },
+        "clasificacion": {
+          "titulo": "Clasificación y Roles",
+          "descripcion": "Roles y responsabilidades fiscales del cliente"
+        },
+        "contacto": {
+          "titulo": "Datos de Contacto",
+          "descripcion": "Información para comunicarnos con el cliente"
+        },
+        "adicional": {
+          "titulo": "Información Adicional",
+          "descripcion": "Etiquetas y notas para categorizar al cliente"
+        }
+      },
+      "campos": {
+        "foto": "Foto del cliente",
+        "fotoEditar": "Haz clic para cambiar la foto (máx. 5MB)",
+        "fotoCrear": "Puedes agregar una foto después de crear el cliente",
+        "avatarNuevaEmpresa": "Nueva Empresa",
+        "avatarNuevoCliente": "Nuevo Cliente",
+        "tipoCliente": "Tipo de Cliente",
+        "persona": "Persona",
+        "empresa": "Empresa",
+        "razonSocial": "Razón Social",
+        "razonSocialPlaceholder": "Ej: Empresa S.A.S.",
+        "nombreComercial": "Nombre Comercial",
+        "nombreComercialPlaceholder": "Ej: Mi Negocio",
+        "nombre": "Nombre",
+        "nombrePlaceholder": "Ej: Juan Carlos",
+        "apellido": "Apellido",
+        "apellidoPlaceholder": "Ej: García López",
+        "empresaPadre": "Empresa a la que pertenece (opcional)",
+        "sinEmpresa": "Sin empresa asociada",
+        "empresaPadreAyuda": "Vincula esta persona como cliente hijo de una empresa",
+        "empresaSinNombre": "Empresa sin nombre",
+        "tipoDocumento": "Tipo de Documento",
+        "numeroDocumento": "Número de Documento",
+        "numeroDocumentoPlaceholder": "Ej: 12345678",
+        "consultarDian": "Consultar DIAN/RUES",
+        "dvPlaceholder": "Ej: 3",
+        "roles": "Roles del Cliente",
+        "responsabilidadFiscal": "Responsabilidad Fiscal (DIAN)",
+        "correo": "Correo Electrónico",
+        "correoPlaceholder": "cliente@ejemplo.com",
+        "telefono": "Teléfono",
+        "direccion": "Dirección",
+        "direccionPlaceholder": "Calle 123 #45-67, Apartamento 101",
+        "ubicacion": "Ubicación",
+        "etiquetas": "Etiquetas",
+        "etiquetasPlaceholder": "premium, frecuente, corporativo (separadas por comas)",
+        "etiquetasAyuda": "Separa las etiquetas con comas para organizar mejor tus clientes",
+        "notas": "Notas Internas",
+        "notasPlaceholder": "Información relevante sobre el cliente, preferencias, historial, etc.",
+        "notasAyuda": "Estas notas son solo para uso interno y no son visibles para el cliente"
+      },
+      "acciones": {
+        "obligatorios": "Los campos marcados con <asterisco>*</asterisco> son obligatorios",
+        "actualizando": "Actualizando...",
+        "guardando": "Guardando...",
+        "guardarCambios": "Guardar Cambios",
+        "guardarCliente": "Guardar Cliente"
+      },
+      "avisos": {
+        "error": "Error",
+        "telefonoInvalido": "Teléfono: {error}",
+        "clienteNoEncontrado": "No se encontró el cliente",
+        "cargaCliente": "No se pudo cargar la información del cliente. {detalle}",
+        "errorCargarDatos": "Error al cargar datos",
+        "errorInesperado": "Ha ocurrido un error inesperado",
+        "autocompletado": "Autocompletado",
+        "datosDian": "Datos obtenidos desde DIAN",
+        "datosDianCache": "Datos obtenidos desde DIAN (cache)",
+        "sinResultados": "Sin resultados",
+        "errorDian": "No se pudo consultar DIAN",
+        "soloImagenes": "Solo se permiten imágenes",
+        "imagenGrande": "La imagen no debe superar 5MB",
+        "avatarActualizado": "Avatar actualizado",
+        "actualizado": {
+          "titulo": "Cliente actualizado",
+          "descripcion": "Se ha actualizado la información de {nombre}"
+        },
+        "creado": {
+          "titulo": "Cliente creado con éxito",
+          "empresa": "Se ha registrado la empresa {nombre}.",
+          "persona": "Se ha registrado a {nombre} como cliente."
+        },
+        "errorActualizar": {
+          "titulo": "Error al actualizar cliente",
+          "detalle": "Error al actualizar el cliente"
+        },
+        "errorCrear": {
+          "titulo": "Error al crear cliente",
+          "detalle": "Error al crear el cliente"
+        },
+        "errorSolicitud": "Ocurrió un error al procesar la solicitud",
+        "existenteActualizado": "Se ha actualizado la información del cliente existente.",
+        "duplicadoCreado": {
+          "titulo": "Cliente duplicado creado",
+          "descripcion": "Se ha creado el cliente como un registro separado."
+        },
+        "errorOperacion": "Error al procesar la operación"
+      },
+      "tiposDocumento": {
+        "nationalId": "Documento nacional",
+        "taxId": "ID Tributario / Fiscal",
+        "passport": "Pasaporte",
+        "foreignId": "ID Extranjero",
+        "other": "Otro",
+        "companyReg": "Registro mercantil / de empresa",
+        "cc": "Cédula de ciudadanía",
+        "ce": "Cédula de extranjería",
+        "ci": "Cédula de identidad",
+        "die": "Documento de identificación extranjero",
+        "nitExt": "NIT de otro país",
+        "rc": "Registro civil",
+        "te": "Tarjeta de extranjería",
+        "ti": "Tarjeta de identidad",
+        "rut": "RUT (Registro Único Tributario)",
+        "run": "RUN (Cédula de identidad)",
+        "ine": "INE / Credencial de elector",
+        "rfcExt": "Identificación fiscal extranjera",
+        "rutExt": "RUT empresa extranjera",
+        "cif": "CIF (Código de Identificación Fiscal)",
+        "nie": "NIE (Número de Identidad de Extranjero)",
+        "nif": "NIF (Número de Identificación Fiscal)"
+      },
+      "roles": {
+        "cliente": "Cliente",
+        "empleado": "Empleado",
+        "huesped": "Huésped",
+        "pasajero": "Pasajero",
+        "proveedor": "Proveedor"
+      },
+      "fiscal": {
+        "o13": "Gran contribuyente",
+        "o15": "Autorretenedor",
+        "o23": "Agente de retención IVA",
+        "o47": "Régimen simple de tributación",
+        "o48": "Responsable de IVA",
+        "o49": "No responsable de IVA",
+        "r99Pn": "No responsable (Persona Natural)"
+      },
+      "duplicado": {
+        "titulo": "Cliente Duplicado Detectado",
+        "descripcion": "Se ha encontrado un cliente con el mismo documento o correo electrónico.",
+        "existente": "Cliente Existente",
+        "nuevo": "Nuevo Cliente",
+        "nombre": "Nombre:",
+        "email": "Email:",
+        "documento": "Documento:",
+        "roles": "Roles:",
+        "pregunta": "¿Qué acción desea realizar?",
+        "instruccion": "Seleccione cómo desea proceder con este cliente duplicado.",
+        "usarExistente": "Usar Existente",
+        "actualizarExistente": "Actualizar Existente",
+        "crearNuevo": "Crear como Nuevo"
+      },
+      "contactos": {
+        "titulo": "Contactos de la Empresa",
+        "vincular": "Vincular Contacto",
+        "vacio": "No hay contactos vinculados a esta empresa",
+        "vincularPrimero": "Vincular primer contacto",
+        "nuevo": "Nuevo",
+        "principal": "Principal",
+        "cargoPlaceholderCorto": "Cargo (ej: Gerente)",
+        "sinCargo": "Sin cargo (click para editar)",
+        "marcarPrincipal": "Marcar como principal",
+        "desvincular": "Desvincular contacto",
+        "agregar": "Agregar Contacto",
+        "buscarExistente": "Buscar existente",
+        "crearPersona": "Crear nueva persona",
+        "buscarPersona": "Buscar persona existente",
+        "buscarPlaceholder": "Nombre, apellido o email...",
+        "sinResultados": "No se encontraron personas con ese criterio.",
+        "cargo": "Cargo (opcional)",
+        "cargoPlaceholder": "Ej: Gerente, Director, Asistente...",
+        "vincularBoton": "Vincular",
+        "nombre": "Nombre",
+        "nombrePlaceholder": "Ej: Juan",
+        "apellido": "Apellido",
+        "apellidoPlaceholder": "Ej: Pérez",
+        "email": "Email",
+        "emailPlaceholder": "ejemplo@correo.com",
+        "telefono": "Teléfono",
+        "tipoDocumento": "Tipo de documento",
+        "numeroDocumento": "N° documento",
+        "numeroDocumentoPlaceholder": "Ej: 12345678",
+        "ubicacion": "Ubicación",
+        "crearVincular": "Crear y vincular",
+        "tiposDocumento": {
+          "cedula": "Cédula",
+          "pasaporte": "Pasaporte",
+          "extranjero": "ID Extranjero",
+          "otro": "Otro"
+        },
+        "avisos": {
+          "errorCargar": "Error al cargar contactos",
+          "errorVincular": "Error al vincular contacto",
+          "vinculado": "Contacto vinculado correctamente",
+          "agregado": "Contacto agregado",
+          "nombreObligatorio": "Nombre y apellido son obligatorios",
+          "errorCrearPersona": "Error al crear persona",
+          "personaCreada": "Persona creada y vinculada",
+          "errorDesvincular": "Error al desvincular contacto",
+          "desvinculado": "{nombre} desvinculado",
+          "removido": "{nombre} removido",
+          "errorActualizarPrincipal": "Error al actualizar contacto principal",
+          "errorEstablecerPrincipal": "Error al establecer contacto principal",
+          "principalActualizado": "Contacto principal actualizado",
+          "errorCargo": "Error al actualizar cargo",
+          "cargoActualizado": "Cargo actualizado"
+        }
+      }
+    }
+  },
+  "cajas": {
+    "apertura": {
+      "abrirCaja": "Abrir Caja",
+      "titulo": "Apertura de Caja",
+      "cerrar": "Cerrar",
+      "sucursal": "Sucursal",
+      "sucursalNoSeleccionada": "Sucursal no seleccionada",
+      "cajero": "Cajero",
+      "usuario": "Usuario",
+      "cargando": "Cargando...",
+      "fechaHora": "Fecha y hora",
+      "alcance": "Alcance de la Caja",
+      "estaSucursal": "Esta sucursal",
+      "todasSucursales": "Todas las sucursales",
+      "cajaGlobal": "Caja global",
+      "avisoGlobal": "Todos los usuarios de todas las sucursales registrarán ventas en esta caja.",
+      "miCajaEn": "Mi caja en {sucursal}",
+      "modoUsuarioDescripcion": "Cada cajero abre y gestiona su propia caja de forma independiente.",
+      "avisoModoUsuario": "Esta caja registrará únicamente tus ventas y movimientos. Otros cajeros de la sucursal tendrán sus propias cajas.",
+      "detalles": "Detalles de Apertura",
+      "montoInicial": "Monto Inicial *",
+      "equivaleA": "Equivale a:",
+      "notas": "Notas (Opcional)",
+      "notasPlaceholder": "Observaciones de apertura...",
+      "importante": "<strong>Importante:</strong> Una vez abierta la caja, podrás registrar ventas, ingresos y egresos hasta el momento del cierre.",
+      "cancelar": "Cancelar",
+      "abriendo": "Abriendo...",
+      "montoNegativo": "El monto inicial no puede ser negativo",
+      "abiertaSinConexion": "Caja abierta sin conexión",
+      "abiertaExito": "Caja abierta exitosamente",
+      "montoInicialToast": "Monto inicial: {monto}",
+      "montoInicialPendiente": "Monto inicial: {monto} · pendiente de sincronizar",
+      "errorAbrir": "Error al abrir caja"
+    },
+    "cierre": {
+      "cerrarCaja": "Cerrar Caja",
+      "titulo": "Arqueo y Cierre de Caja",
+      "cerrar": "Cerrar",
+      "errorResumen": "Error al cargar resumen de caja",
+      "montoNegativo": "El monto final no puede ser negativo",
+      "cerradaSinConexion": "Caja cerrada sin conexión",
+      "cerradaExito": "Caja cerrada exitosamente",
+      "toastDescripcion": "{visible, select, si {Diferencia total: {diferencia}} other {Caja cerrada}}{pendiente, select, si { · pendiente de sincronizar (totales con las ventas locales)} other {}}",
+      "errorCerrar": "Error al cerrar caja",
+      "resumenMovimientos": "Resumen de Movimientos",
+      "montoInicial": "Monto inicial:",
+      "ventasEfectivo": "Ventas en efectivo:",
+      "ventasTotales": "Ventas totales:",
+      "ingresos": "Ingresos:",
+      "egresos": "Egresos:",
+      "vueltoEntregado": "Vuelto entregado:",
+      "devoluciones": "Devoluciones:",
+      "ingresosPorMetodo": "Ingresos por metodo de pago:",
+      "ventasPorMetodo": "Ventas por metodo de pago:",
+      "totalVentas": "Total ventas:",
+      "recibosCaja": "Recibos de Caja (Abonos a Cuentas por Cobrar):",
+      "totalRecibido": "Total recibido:",
+      "egresosPorMetodo": "Egresos por metodo de pago (compras):",
+      "totalPagosProveedores": "Total Pagos a Proveedores:",
+      "montoEsperado": "Monto esperado:",
+      "movimientosSesion": "Movimientos de la Sesion ({n})",
+      "tiposMovimiento": {
+        "ventaPos": "Venta POS",
+        "ventaMesa": "Venta de Mesa",
+        "ventaFactura": "Factura de Venta",
+        "compraFactura": "Factura de Compra",
+        "cuentaPorCobrar": "Cuenta por Cobrar",
+        "cuentaPorPagar": "Cuenta por Pagar",
+        "otro": "Movimiento"
+      },
+      "sinContraparte": "Sin contraparte",
+      "arqueoPorMetodo": "Arqueo por Método de Pago",
+      "esperado": "Esperado:",
+      "contadoReal": "Contado real",
+      "diferencia": "Diferencia",
+      "totalEsperado": "Total esperado (todos los métodos):",
+      "totalContado": "Total contado (todos los métodos):",
+      "diferenciaTotal": "Diferencia total:",
+      "sobranteArqueo": "Sobrante en el arqueo total",
+      "faltanteArqueo": "Faltante en el arqueo total",
+      "observaciones": "Observaciones del Cierre (Opcional)",
+      "observacionesPlaceholder": "Observaciones del cierre, novedades, etc...",
+      "advertenciaSobrante": "<strong>⚠️ Atención:</strong> Hay una diferencia total de {monto} (sobrante) en el arqueo.",
+      "advertenciaFaltante": "<strong>⚠️ Atención:</strong> Hay una diferencia total de {monto} (faltante) en el arqueo.",
+      "cancelar": "Cancelar",
+      "cerrando": "Cerrando..."
+    },
+    "movimiento": {
+      "registrarMovimiento": "Registrar Movimiento",
+      "cerrar": "Cerrar",
+      "ingreso": "Ingreso",
+      "egreso": "Egreso",
+      "ingresoEfectivo": "Ingreso de Efectivo",
+      "egresoEfectivo": "Egreso de Efectivo",
+      "concepto": "Concepto",
+      "conceptos": {
+        "fondoAdicional": "Fondo adicional",
+        "prestamo": "Préstamo",
+        "devolucion": "Devolución",
+        "cambioBilletes": "Cambio de billetes",
+        "ventaContadoEspecial": "Venta contado especial",
+        "otroIngreso": "Otro ingreso",
+        "gastosMenores": "Gastos menores",
+        "retiroEfectivo": "Retiro de efectivo",
+        "compraInsumos": "Compra insumos",
+        "prestamoEmpleado": "Préstamo a empleado",
+        "otroEgreso": "Otro egreso"
+      },
+      "otroConceptoPlaceholder": "Especificar otro concepto...",
+      "monto": "Monto *",
+      "equivaleA": "Equivale a:",
+      "observaciones": "Observaciones (Opcional)",
+      "observacionesPlaceholder": "Detalles adicionales...",
+      "cancelar": "Cancelar",
+      "registrando": "Registrando...",
+      "registrarIngreso": "Registrar Ingreso",
+      "registrarEgreso": "Registrar Egreso",
+      "conceptoRequerido": "El concepto es requerido",
+      "montoMayorCero": "El monto debe ser mayor a cero",
+      "ingresoRegistrado": "Ingreso registrado{pendiente, select, si { sin conexión} other {}}",
+      "egresoRegistrado": "Egreso registrado{pendiente, select, si { sin conexión} other {}}",
+      "toastDescripcion": "{concepto}: {monto}{pendiente, select, si { · pendiente de sincronizar} other {}}",
+      "errorRegistrar": "Error al registrar movimiento"
+    },
+    "listado": {
+      "oculto": "Oculto",
+      "sucursalNumero": "Sucursal #{id}",
+      "hace": {
+        "momento": "hace un momento",
+        "minutos": "hace {min} min",
+        "horas": "hace {h} h",
+        "horasMinutos": "hace {h} h {min} min",
+        "dias": "{count, plural, one {hace # día} other {hace # días}}"
+      },
+      "motivoCierreCiego": "Cierre ciego activo: el detalle de la caja solo lo ve un administrador",
+      "verDetalle": "Ver detalle",
+      "cerrarCaja": "Cerrar caja",
+      "abrirCaja": "Abrir caja",
+      "verHistorial": "Ver historial",
+      "cajero": "Cajero",
+      "columnas": {
+        "caja": "Caja",
+        "cajero": "Cajero",
+        "sucursal": "Sucursal",
+        "inicial": "Inicial"
+      },
+      "etiquetaFila": "Caja #{id} de {nombre}",
+      "etiquetaFilaSinNombre": "Caja #{id} de cajero",
+      "errorDesconocido": "Error desconocido",
+      "cierreCiegoMinuscula": "cierre ciego",
+      "cajasConFaltante": "{count, plural, one {# caja con faltante} other {# cajas con faltante}}",
+      "cajasConSobrante": "{count, plural, one {# caja con sobrante} other {# cajas con sobrante}}",
+      "miCaja": {
+        "vacioTituloUsuario": "No tienes caja abierta",
+        "vacioTituloSucursal": "La sucursal no tiene caja abierta",
+        "vacioDescripcion": "Abre una caja con su monto inicial para comenzar a registrar ventas y movimientos. Atajo: F9.",
+        "abrirCaja": "Abrir caja",
+        "soloCierraNombre": "Solo {nombre} o un administrador pueden cerrar esta caja.",
+        "soloCierraCajero": "Solo el cajero que la abrió o un administrador pueden cerrar esta caja."
+      },
+      "abiertas": {
+        "filtroCajero": {
+          "todas": "Todas",
+          "mias": "Mis cajas",
+          "otros": "De otros cajeros"
+        },
+        "tuCaja": "Tu caja",
+        "columnas": {
+          "abiertaDesde": "Abierta desde",
+          "ventasEfectivo": "Ventas efectivo",
+          "movimientos": "Movimientos",
+          "esperado": "Esperado"
+        },
+        "ventas": "{count, plural, one {# venta} other {# ventas}}",
+        "movimientos": "{count, plural, one {# movimiento} other {# movimientos}}",
+        "buscarPlaceholder": "Buscar por cajero, sucursal o número de caja",
+        "buscarEtiqueta": "Buscar cajas abiertas",
+        "verCajas": "Ver {count, plural, one {# caja} other {# cajas}}",
+        "chipCajero": "Cajero: {valor}",
+        "vacioTitulo": "No hay cajas abiertas",
+        "vacioDescripcion": "Cuando un cajero abra caja en {sucursal} aparecerá aquí, con su monto inicial y el efectivo esperado.",
+        "tablaEtiqueta": "Cajas abiertas",
+        "cerrar": "Cerrar",
+        "tarjetaSubtitulo": "{sucursal} · abierta {hace}",
+        "tarjetaInicial": "Inicial {monto}",
+        "sinResultadosTitulo": "No hay cajas abiertas con estos filtros",
+        "sinResultadosDescripcion": "Prueba con otro cajero o quita un filtro.",
+        "errorTitulo": "No pudimos cargar las cajas abiertas"
+      },
+      "historial": {
+        "filtroResultado": {
+          "todas": "Todas",
+          "faltante": "Con faltante",
+          "sobrante": "Con sobrante",
+          "cuadrada": "Cuadradas"
+        },
+        "filtroResultadoMinuscula": {
+          "faltante": "con faltante",
+          "sobrante": "con sobrante",
+          "cuadrada": "cuadradas"
+        },
+        "resultados": {
+          "faltante": "Faltante",
+          "sobrante": "Sobrante",
+          "cuadrada": "Cuadrada"
+        },
+        "columnas": {
+          "apertura": "Apertura",
+          "cierre": "Cierre",
+          "cerro": "Cerró",
+          "final": "Final",
+          "diferencia": "Diferencia",
+          "resultado": "Resultado"
+        },
+        "cerroNombre": "Cerró: {nombre}",
+        "exportarVacio": "No hay sesiones para exportar con estos filtros",
+        "exportadas": "{count, plural, one {# sesión exportada} other {# sesiones exportadas}}",
+        "exportarError": "No se pudo exportar el historial",
+        "exportando": "Exportando…",
+        "exportar": "Exportar",
+        "kpiEtiqueta": "Resumen del historial de cajas",
+        "kpiSesionesCerradas": "Sesiones cerradas",
+        "kpiFaltantes": "Faltantes",
+        "kpiSobrantes": "Sobrantes",
+        "kpiDiferenciaNeta": "Diferencia neta",
+        "ningunaCaja": "ninguna caja",
+        "cuadraron": "{count, plural, one {# cuadró en {monto}} other {# cuadraron en {monto}}}",
+        "sinCierres": "sin cierres",
+        "buscarPlaceholder": "Cajero o n.º de caja",
+        "buscarEtiqueta": "Buscar en el historial de cajas",
+        "aperturaEntre": "Apertura entre",
+        "verSesiones": "Ver {count, plural, one {# sesión} other {# sesiones}}",
+        "resultadoCierre": "Resultado del cierre",
+        "chipResultado": "Resultado: {valor}",
+        "tablaEtiqueta": "Historial de sesiones de caja",
+        "vacioTitulo": "Aún no hay cajas cerradas",
+        "vacioDescripcion": "Entre el {rango} no se cerró ninguna caja. Amplía el rango de fechas para ver sesiones anteriores.",
+        "sinResultadosTitulo": "No hay cajas cerradas con estos filtros",
+        "sinResultadosDescripcion": "Entre el {rango} no hubo cierres que coincidan. Amplía el rango de fechas o quita un filtro.",
+        "sinResultadosDescripcionFiltro": "Entre el {rango} no hubo cierres {filtro} que coincidan. Amplía el rango de fechas o quita un filtro.",
+        "errorTitulo": "No pudimos cargar el historial de cajas",
+        "sustantivoSingular": "sesión",
+        "sustantivoPlural": "sesiones"
+      },
+      "pagina": {
+        "titulo": "Cajas",
+        "migaPos": "Punto de venta",
+        "tusSucursales": "tus sucursales",
+        "estaSucursal": "esta sucursal",
+        "organizacion": "Organización",
+        "subtitulo": "{organizacion} · Turno del {fecha}",
+        "verDetalleMiCaja": "Ver detalle de mi caja",
+        "nuevoArqueo": "Nuevo arqueo",
+        "cerrarCajaAtajo": "Cerrar caja (F9)",
+        "abrirCajaAtajo": "Abrir caja (F9)",
+        "estado": {
+          "miCajaAbierta": "Mi caja abierta",
+          "cajaSucursalAbierta": "Caja de la sucursal abierta",
+          "sinCajaAbierta": "Sin caja abierta",
+          "sucursalSinCaja": "Sucursal sin caja abierta"
+        },
+        "pestanas": {
+          "etiqueta": "Vista de cajas",
+          "miCaja": "Mi caja",
+          "abiertas": "Cajas abiertas",
+          "historial": "Historial"
+        },
+        "recargar": "Recargar",
+        "registrarMovimiento": "Registrar movimiento",
+        "pendienteSincronizar": "Pendiente de sincronizar",
+        "cierreCiego": "Cierre ciego",
+        "actualizado": "Actualizado {hace}",
+        "errorMiCaja": "No pudimos cargar tu caja",
+        "kpi": {
+          "etiqueta": "Resumen de cajas abiertas",
+          "ningunaSucursal": "ninguna sucursal",
+          "enSucursales": "en {count, plural, one {# sucursal} other {# sucursales}}",
+          "efectivoEsperado": "Efectivo esperado",
+          "enCajas": "en {count, plural, one {# caja} other {# cajas}}",
+          "diferenciaDia": "Diferencia del día",
+          "sinCierresHoy": "sin cierres hoy",
+          "cierresSinFaltante": "{count, plural, one {# cierre sin faltante} other {# cierres sin faltante}}",
+          "movimientosTurno": "Movimientos del turno",
+          "sinTurnoAbierto": "sin turno abierto",
+          "ingresosEgresos": "{ingresos, plural, one {# ingreso} other {# ingresos}} · {egresos, plural, one {# egreso} other {# egresos}}"
+        }
+      }
+    },
+    "errores": {
+      "noAutenticado": "Usuario no autenticado",
+      "sinSucursal": "No se pudo obtener la sucursal. Seleccione una sucursal.",
+      "cajaGlobalAbierta": "Ya hay una caja global abierta. Ciérrala antes de abrir otra.",
+      "cajaPropiaAbierta": "Ya tienes una caja abierta en esta sucursal. Ciérrala antes de abrir otra.",
+      "cajaSucursalAbierta": "Ya hay una caja abierta en esta sucursal. Ciérrala antes de abrir otra.",
+      "sinCajaAbierta": "No hay sesión de caja abierta",
+      "cierreAjenoSinRed": "Sin conexión solo puedes cerrar tu propia caja. Vuelve a intentarlo cuando haya red.",
+      "cierreFallido": "No se pudo cerrar la caja",
+      "cajaInvalida": "Número de caja inválido",
+      "datosCierreInvalidos": "Datos de cierre inválidos",
+      "lecturaFallida": "No se pudo leer la caja",
+      "cajaNoEncontrada": "La caja no existe",
+      "cajaYaCerrada": "La caja ya está cerrada",
+      "sinPermiso": "Solo el cajero que abrió la caja o un administrador puede cerrarla",
+      "organizacionNoPermitida": "No tienes acceso a esta organización"
+    },
+    "detalle": {
+      "comun": {
+        "uuidInvalido": "UUID de sesión inválido",
+        "errorCargar": "Error al cargar datos de la sesión",
+        "sesionNoEncontrada": "Sesión no encontrada",
+        "sesionNoExiste": "La sesión de caja solicitada no existe.",
+        "sesionCerrada": "Sesión cerrada",
+        "volver": "Volver",
+        "volverCajas": "Volver a Cajas",
+        "guardando": "Guardando...",
+        "cierreCiego": "Cierre Ciego",
+        "cierreCiegoActivo": "Cierre ciego activo. Los montos esperados y diferencias son visibles solo para administradores.",
+        "tipoArqueo": {
+          "opening": "Apertura",
+          "partial": "Parcial",
+          "closing": "Cierre"
+        }
+      },
+      "pagina": {
+        "toastCerrada": "Caja cerrada exitosamente",
+        "titulo": "Sesión #{id}",
+        "estadoAbierta": "Abierta",
+        "estadoCerrada": "Cerrada",
+        "abiertaEl": "Abierta: {fecha}",
+        "cerradaEl": "Cerrada: {fecha}",
+        "acciones": {
+          "actualizar": "Actualizar",
+          "arqueo": "Arqueo",
+          "movimiento": "Movimiento",
+          "cerrarCaja": "Cerrar Caja"
+        },
+        "tarjetas": {
+          "montoInicial": "Monto Inicial",
+          "ventasEfectivo": "Ventas Efectivo",
+          "montoEsperado": "Monto Esperado",
+          "noVisibleCajeros": "No visible para cajeros",
+          "diferencia": "Diferencia",
+          "soloAdministradores": "Visible solo para administradores"
+        },
+        "pestanas": {
+          "resumen": "Resumen",
+          "movimientos": "Movimientos ({n})",
+          "arqueos": "Arqueos ({n})",
+          "ventas": "Ventas ({n})"
+        },
+        "info": {
+          "titulo": "Información de la Sesión",
+          "cajero": "Cajero",
+          "usuario": "Usuario",
+          "sucursal": "Sucursal",
+          "apertura": "Apertura",
+          "cierre": "Cierre",
+          "notas": "Notas"
+        },
+        "desglose": {
+          "titulo": "Desglose de Caja",
+          "montoInicial": "Monto Inicial",
+          "ventasEn": "+ Ventas en {metodo}",
+          "ventasEfectivo": "+ Ventas en Efectivo",
+          "ingresos": "+ Ingresos",
+          "egresos": "- Egresos",
+          "vuelto": "- Vuelto Entregado",
+          "devoluciones": "- Devoluciones",
+          "consumosHabitaciones": "Consumos de Habitaciones",
+          "recibosCaja": "Recibos de Caja (Abonos CxC)",
+          "pagosProveedores": "Pagos a Proveedores (CxP)",
+          "montoEsperado": "= Monto Esperado",
+          "cierreCiego": "Cierre ciego: monto esperado no visible",
+          "montoContado": "Monto Contado",
+          "diferencia": "Diferencia"
+        },
+        "pagos": {
+          "titulo": "Pagos por Método",
+          "vacio": "No hay pagos registrados",
+          "total": "Total"
+        },
+        "movimientos": {
+          "titulo": "Movimientos de Caja",
+          "nuevo": "Nuevo Movimiento",
+          "vacio": "No hay movimientos registrados",
+          "ingreso": "Ingreso",
+          "egreso": "Egreso",
+          "columnas": {
+            "fecha": "Fecha",
+            "tipo": "Tipo",
+            "concepto": "Concepto",
+            "notas": "Notas",
+            "monto": "Monto"
+          }
+        },
+        "arqueos": {
+          "titulo": "Arqueos de Caja",
+          "nuevo": "Nuevo Arqueo",
+          "vacio": "No hay arqueos registrados",
+          "columnas": {
+            "fecha": "Fecha",
+            "tipo": "Tipo",
+            "contado": "Contado",
+            "esperado": "Esperado",
+            "diferencia": "Diferencia",
+            "notas": "Notas"
+          }
+        },
+        "ventas": {
+          "titulo": "Ventas del Turno",
+          "vacio": "No hay ventas en este turno",
+          "completada": "Completada",
+          "pagado": "Pagado",
+          "columnas": {
+            "fecha": "Fecha",
+            "id": "ID",
+            "estado": "Estado",
+            "pago": "Pago",
+            "total": "Total"
+          }
+        }
+      },
+      "arqueo": {
+        "toastExito": "Arqueo registrado exitosamente",
+        "toastDiferencia": "Diferencia: {monto}",
+        "toastRegistrado": "Arqueo registrado",
+        "toastError": "Error al registrar arqueo",
+        "sesionCerrada": "No se pueden registrar arqueos en una sesión cerrada.",
+        "metodos": {
+          "cash": "Efectivo",
+          "card": "Tarjeta",
+          "transfer": "Transferencia",
+          "credit": "Crédito"
+        },
+        "titulo": "Nuevo Arqueo",
+        "subtitulo": "Sesión #{id} - Registrar conteo de caja",
+        "tipoTitulo": "Tipo de Arqueo",
+        "billetes": "Efectivo - Billetes",
+        "limpiar": "Limpiar",
+        "monedas": "Efectivo - Monedas",
+        "totalEfectivo": "Total Efectivo",
+        "otros": {
+          "titulo": "Otros Métodos de Pago",
+          "descripcion": "Registra el monto recibido en cada método de pago",
+          "esperado": "Esperado: {monto}",
+          "total": "Total Otros Métodos"
+        },
+        "notas": "Notas",
+        "notasPlaceholder": "Observaciones del arqueo...",
+        "resumen": {
+          "titulo": "Resumen",
+          "montoEsperado": "Monto Esperado",
+          "efectivoContado": "Efectivo Contado",
+          "otrosMetodos": "Otros Métodos",
+          "totalContado": "Total Contado",
+          "diferencia": "Diferencia",
+          "sobrante": "Sobrante de {monto}",
+          "faltante": "Faltante de {monto}",
+          "guardar": "Guardar Arqueo"
+        }
+      },
+      "movimiento": {
+        "toastConcepto": "Por favor ingrese un concepto",
+        "toastMonto": "Por favor ingrese un monto válido",
+        "toastRegistrado": "Movimiento registrado",
+        "toastIngreso": "Ingreso: {monto}",
+        "toastEgreso": "Egreso: {monto}",
+        "toastError": "Error al registrar movimiento",
+        "sesionCerrada": "No se pueden registrar movimientos en una sesión cerrada.",
+        "titulo": "Nuevo Movimiento",
+        "subtitulo": "Sesión #{id} - Registrar ingreso o egreso",
+        "tipoTitulo": "Tipo de Movimiento",
+        "ingreso": "Ingreso",
+        "egreso": "Egreso",
+        "detalles": "Detalles",
+        "concepto": "Concepto",
+        "seleccionarConcepto": "Seleccionar concepto",
+        "otro": "Otro (especificar)",
+        "especificar": "Especificar concepto",
+        "conceptoPlaceholder": "Ingrese el concepto...",
+        "monto": "Monto",
+        "notas": "Notas (opcional)",
+        "notasPlaceholder": "Observaciones adicionales...",
+        "cancelar": "Cancelar",
+        "guardar": "Guardar Movimiento",
+        "conceptos": {
+          "cambioEfectivo": "Cambio de efectivo",
+          "depositoBancario": "Depósito bancario",
+          "prestamoInterno": "Préstamo interno",
+          "fondoAdicional": "Fondo adicional",
+          "otroIngreso": "Otro ingreso",
+          "compraInsumos": "Compra de insumos",
+          "pagoProveedor": "Pago a proveedor",
+          "retiroDeposito": "Retiro para depósito",
+          "gastoOperativo": "Gasto operativo",
+          "devolucionCliente": "Devolución cliente",
+          "otroEgreso": "Otro egreso"
+        }
+      },
+      "resumenCaja": {
+        "titulo": "Resumen de Caja",
+        "abierta": "Caja Abierta",
+        "cerrada": "Caja Cerrada",
+        "abiertaEl": "Abierta:",
+        "cerradaEl": "Cerrada:",
+        "cajero": "Cajero",
+        "usuario": "Usuario",
+        "sucursal": "Sucursal",
+        "todasSucursales": "Todas las sucursales",
+        "inicial": "Inicial",
+        "ventasEfectivo": "Ventas en efectivo",
+        "ventasTotales": "Ventas totales",
+        "ingresos": "Ingresos",
+        "egresos": "Egresos",
+        "vuelto": "Vuelto",
+        "recibosCaja": "Recibos de Caja",
+        "pagosProveedores": "Pagos a Proveedores",
+        "devoluciones": "Devoluciones",
+        "pagosPorMetodo": "Pagos por método:",
+        "ventasPorMetodo": "Ventas por método:",
+        "totalVentas": "Total ventas:",
+        "pagosProveedoresPorMetodo": "Pagos a proveedores por método:",
+        "totalEsperado": "Total Esperado:",
+        "montoContado": "Monto Contado:",
+        "diferencia": "Diferencia:",
+        "sobrante": "📈 Sobrante de efectivo",
+        "faltante": "📉 Faltante de efectivo",
+        "observaciones": "Observaciones:"
+      },
+      "movimientosLista": {
+        "titulo": "Movimientos de Caja",
+        "ingresos": "Ingresos",
+        "egresos": "Egresos",
+        "vacio": "No hay movimientos registrados",
+        "vacioDescripcion": "Los ingresos y egresos aparecerán aquí"
+      },
+      "paginacion": {
+        "mostrar": "Mostrar",
+        "porPagina": "por página",
+        "resumen": "Mostrando <b>{desde}</b> a <b>{hasta}</b> de <b>{total}</b> {sustantivo}",
+        "sinElementos": "Sin {sustantivo}",
+        "sesiones": "sesiones"
+      },
+      "metodosPago": {
+        "efectivo": "Efectivo",
+        "tarjeta": "Tarjeta",
+        "transferencia": "Transferencia bancaria",
+        "cheque": "Cheque",
+        "credito": "Crédito",
+        "pse": "PSE - Pagos Seguros en Línea",
+        "breb": "Bre-B (Pago Inmediato)",
+        "boldLink": "Bold (Link)",
+        "boldDatafono": "Bold (Datáfono)",
+        "mixto": "Mixto",
+        "otros": "Otros"
+      }
+    }
   }
 }

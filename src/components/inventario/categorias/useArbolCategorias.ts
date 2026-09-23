@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useListadoServidor, type ChipFiltro, type OrdenListado } from '@/components/kit';
@@ -39,12 +40,20 @@ export type EstadoCarga = 'cargando' | 'listo' | 'error' | 'sinPermiso';
 
 export const FILTROS_CATEGORIAS = ['estado', 'estacion', 'productos', 'preparacion'] as const;
 
-const ETIQUETAS_FILTRO: Record<string, (v: string) => string> = {
-  estado: (v) => `Estado: ${v === 'activas' ? 'Activas' : 'Inactivas'}`,
-  estacion: (v) => `Estación: ${v === 'con' ? 'Con estación' : v === 'sin' ? 'Sin estación' : etiquetaEstacion(v)}`,
-  productos: (v) => (v === 'sin' ? 'Sin productos' : 'Con productos'),
-  preparacion: (v) => (v === 'si' ? 'Requiere preparación' : 'Sin preparación'),
-};
+type Traductor = ReturnType<typeof useTranslations>;
+
+/** Texto de cada chip de filtro activo, en el idioma activo. */
+function etiquetasFiltro(t: Traductor): Record<string, (v: string) => string> {
+  return {
+    estado: (v) => t('chips.estado', { valor: v === 'activas' ? t('filtros.activas') : t('filtros.inactivas') }),
+    estacion: (v) =>
+      t('chips.estacion', {
+        valor: v === 'con' ? t('filtros.conEstacion') : v === 'sin' ? t('filtros.sinEstacion') : etiquetaEstacion(v, t),
+      }),
+    productos: (v) => (v === 'sin' ? t('filtros.sinProductos') : t('filtros.conProductos')),
+    preparacion: (v) => (v === 'si' ? t('chips.requierePreparacion') : t('chips.sinPreparacion')),
+  };
+}
 
 function ordenarCon(orden: OrdenListado | null) {
   return (a: NodoCategoria, b: NodoCategoria): number => {
@@ -66,6 +75,7 @@ function ordenarCon(orden: OrdenListado | null) {
 }
 
 export function useArbolCategorias() {
+  const t = useTranslations('categorias');
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id ?? null;
@@ -96,12 +106,12 @@ export function useArbolCategorias() {
       } catch (e) {
         if (e instanceof ErrorCategoria && e.sinPermiso) setEstado('sinPermiso');
         else if (!refrescar) setEstado('error');
-        else toast({ title: 'No se pudo actualizar', description: 'Se muestra la última lista cargada.', variant: 'destructive' });
+        else toast({ title: t('toasts.noActualizo'), description: t('toasts.ultimaLista'), variant: 'destructive' });
       } finally {
         setRefrescando(false);
       }
     },
-    [organizationId, toast],
+    [organizationId, toast, t],
   );
 
   useEffect(() => {
@@ -223,13 +233,12 @@ export function useArbolCategorias() {
     };
   }, [nodos, arbol, datos]);
 
-  const chips: ChipFiltro[] = useMemo(
-    () =>
-      Object.entries(filtros)
-        .filter(([clave]) => ETIQUETAS_FILTRO[clave])
-        .map(([clave, valor]) => ({ clave, etiqueta: ETIQUETAS_FILTRO[clave](valor) })),
-    [filtros],
-  );
+  const chips: ChipFiltro[] = useMemo(() => {
+    const etiquetas = etiquetasFiltro(t);
+    return Object.entries(filtros)
+      .filter(([clave]) => etiquetas[clave])
+      .map(([clave, valor]) => ({ clave, etiqueta: etiquetas[clave](valor) }));
+  }, [filtros, t]);
 
   const porId = useMemo(() => new Map(nodos.map((n) => [n.id, n] as const)), [nodos]);
   const descendientes = useCallback((ids: number[]) => descendientesDe(nodos, ids), [nodos]);

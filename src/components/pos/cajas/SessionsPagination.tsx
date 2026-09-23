@@ -10,6 +10,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useKitT } from '@/components/kit/useIdiomaKit';
 
 interface SessionsPaginationProps {
   currentPage: number;
@@ -28,20 +30,23 @@ export function SessionsPagination({
   totalItems,
   onPageChange,
   onPageSizeChange,
-  itemName = 'sesiones',
+  itemName,
 }: SessionsPaginationProps) {
+  const t = useTranslations('cajas.detalle');
+  const tKit = useKitT();
+  const sustantivo = itemName ?? t('paginacion.sesiones');
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
 
   return (
     <div className="flex items-center justify-between gap-4 flex-wrap">
       <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
+        <span className="text-sm text-gray-600 dark:text-gray-400">{t('paginacion.mostrar')}</span>
         <Select
           value={pageSize.toString()}
           onValueChange={(value) => onPageSizeChange(parseInt(value))}
         >
-          <SelectTrigger className="w-[80px]">
+          <SelectTrigger className="w-[80px]" aria-label={tKit('paginacion.porPaginaEtiqueta')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -51,26 +56,26 @@ export function SessionsPagination({
             <SelectItem value="100">100</SelectItem>
           </SelectContent>
         </Select>
-        <span className="text-sm text-gray-600 dark:text-gray-400">por página</span>
+        <span className="text-sm text-gray-600 dark:text-gray-400">{t('paginacion.porPagina')}</span>
       </div>
 
       <div className="text-sm text-gray-600 dark:text-gray-400">
-        {totalItems > 0 ? (
-          <>
-            Mostrando <span className="font-medium">{startItem}</span> a{' '}
-            <span className="font-medium">{endItem}</span> de{' '}
-            <span className="font-medium">{totalItems}</span> {itemName}
-          </>
-        ) : (
-          `Sin ${itemName}`
-        )}
+        {totalItems > 0
+          ? t.rich('paginacion.resumen', {
+              desde: startItem,
+              hasta: endItem,
+              total: totalItems,
+              sustantivo,
+              b: (chunks) => <span className="font-medium">{chunks}</span>,
+            })
+          : t('paginacion.sinElementos', { sustantivo })}
       </div>
 
       <div className="flex items-center gap-1">
-        <Button variant="outline" size="sm" onClick={() => onPageChange(1)} disabled={currentPage === 1}>
+        <Button variant="outline" size="sm" onClick={() => onPageChange(1)} disabled={currentPage === 1} aria-label={tKit('paginacion.primera')}>
           <ChevronsLeft className="h-4 w-4" />
         </Button>
-        <Button variant="outline" size="sm" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>
+        <Button variant="outline" size="sm" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} aria-label={tKit('paginacion.anterior')}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
 
@@ -101,10 +106,10 @@ export function SessionsPagination({
           })}
         </div>
 
-        <Button variant="outline" size="sm" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>
+        <Button variant="outline" size="sm" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} aria-label={tKit('paginacion.siguiente')}>
           <ChevronRight className="h-4 w-4" />
         </Button>
-        <Button variant="outline" size="sm" onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages}>
+        <Button variant="outline" size="sm" onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages} aria-label={tKit('paginacion.ultima')}>
           <ChevronsRight className="h-4 w-4" />
         </Button>
       </div>

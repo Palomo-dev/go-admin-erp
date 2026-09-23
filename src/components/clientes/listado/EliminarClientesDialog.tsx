@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2, Power, Trash2, TriangleAlert } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,11 +13,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useFormatoEntero, useKitT } from '@/components/kit/useIdiomaKit';
+import { useMensajeErrorClientes } from '@/components/clientes/listado/useOperacionesClientes';
 import {
   cambiarEstadoClientes,
   eliminarClientes,
-  mensajeErrorClientes,
-  relacionesLegibles,
   type ClasificacionEliminar,
 } from '@/lib/services/clientesListadoService';
 
@@ -45,6 +46,10 @@ export function EliminarClientesDialog({
   nombre,
   onHecho,
 }: EliminarClientesDialogProps) {
+  const t = useTranslations('clientes.listado');
+  const tk = useKitT();
+  const entero = useFormatoEntero();
+  const mensajeError = useMensajeErrorClientes();
   const [clasificacion, setClasificacion] = useState<ClasificacionEliminar | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [trabajando, setTrabajando] = useState<'clasificando' | 'eliminando' | 'inactivando' | null>(null);
@@ -60,7 +65,7 @@ export function EliminarClientesDialog({
         if (!cancelado) setClasificacion(r);
       })
       .catch((err) => {
-        if (!cancelado) setError(mensajeErrorClientes(err, 'No pudimos revisar si se pueden eliminar.'));
+        if (!cancelado) setError(mensajeError(err, t('eliminar.errorRevisar')));
       })
       .finally(() => {
         if (!cancelado) setTrabajando(null);
@@ -68,7 +73,7 @@ export function EliminarClientesDialog({
     return () => {
       cancelado = true;
     };
-  }, [abierto, organizationId, ids]);
+  }, [abierto, organizationId, ids, t, mensajeError]);
 
   const eliminables = clasificacion?.eliminables.length ?? 0;
   const bloqueados = clasificacion?.bloqueados ?? [];
@@ -79,11 +84,11 @@ export function EliminarClientesDialog({
     setTrabajando('eliminando');
     try {
       const r = await eliminarClientes(organizationId, clasificacion?.eliminables ?? [], true);
-      toast.success(r.eliminados === 1 ? 'Cliente eliminado' : `${r.eliminados} clientes eliminados`);
+      toast.success(t('eliminar.eliminados', { count: r.eliminados, n: entero(r.eliminados) }));
       onHecho({ eliminados: r.eliminados, inactivados: 0 });
       onAbiertoChange(false);
     } catch (err) {
-      setError(mensajeErrorClientes(err, 'No se pudo eliminar.'));
+      setError(mensajeError(err, t('eliminar.errorEliminar')));
     } finally {
       setTrabajando(null);
     }
@@ -98,17 +103,25 @@ export function EliminarClientesDialog({
         bloqueados.map((b) => b.id),
         'inactive',
       );
-      toast.success(n === 1 ? 'Cliente marcado inactivo' : `${n} clientes marcados inactivos`);
+      toast.success(t('eliminar.inactivados', { count: n, n: entero(n) }));
       onHecho({ eliminados: 0, inactivados: n });
       onAbiertoChange(false);
     } catch (err) {
-      setError(mensajeErrorClientes(err, 'No se pudo marcar inactivo.'));
+      setError(mensajeError(err, t('eliminar.errorInactivar')));
     } finally {
       setTrabajando(null);
     }
   };
 
-  const titulo = uno ? `¿Eliminar a ${nombre ?? 'este cliente'}?` : `¿Eliminar ${ids.length} clientes?`;
+  const titulo = uno
+    ? t('eliminar.tituloUno', { nombre: nombre ?? t('eliminar.esteCliente') })
+    : t('eliminar.tituloVarios', { count: ids.length, n: entero(ids.length) });
+
+  /** Tablas que impiden borrar, en palabras del usuario y sin repetir. */
+  const relaciones = (tablas: readonly string[]) =>
+    Array.from(
+      new Set(tablas.map((tabla) => (t.has(`eliminar.relaciones.${tabla}`) ? t(`eliminar.relaciones.${tabla}`) : tabla))),
+    ).join(', ');
 
   return (
     <Dialog open={abierto} onOpenChange={(v) => !trabajando && onAbiertoChange(v)}>
@@ -116,14 +129,13 @@ export function EliminarClientesDialog({
         <DialogHeader>
           <DialogTitle className="text-fg">{titulo}</DialogTitle>
           <DialogDescription className="text-fg-secondary">
-            Solo se eliminan clientes sin ventas, facturas, cartera, conversaciones ni ninguna otra relación. Los demás
-            se pueden marcar inactivos: conservan su historia y su cartera.
+            {t('eliminar.descripcion')}
           </DialogDescription>
         </DialogHeader>
 
         {trabajando === 'clasificando' && (
           <p className="flex items-center gap-2 text-sm text-fg-secondary" role="status">
-            <Loader2 aria-hidden="true" className="size-4 animate-spin" /> Revisando relaciones…
+            <Loader2 aria-hidden="true" className="size-4 animate-spin" /> {t('eliminar.revisando')}
           </p>
         )}
 
@@ -137,24 +149,26 @@ export function EliminarClientesDialog({
           <div className="flex flex-col gap-3 text-sm">
             {eliminables > 0 && (
               <p className="text-fg">
-                {uno ? 'Se eliminará definitivamente.' : `Se eliminarán definitivamente ${eliminables} de ${ids.length}.`}{' '}
-                Esta acción no se puede deshacer.
+                {uno
+                  ? t('eliminar.seEliminaraUno')
+                  : t('eliminar.seEliminaranVarios', { eliminables: entero(eliminables), total: entero(ids.length) })}{' '}
+                {t('eliminar.noDeshacer')}
               </p>
             )}
             {bloqueados.length > 0 && (
               <div className="rounded-lg border border-line-warning bg-warning-subtle p-3 text-warning-text">
                 <p className="font-medium">
                   {uno
-                    ? 'No se puede eliminar porque tiene relaciones.'
-                    : `${bloqueados.length} no se pueden eliminar porque tienen relaciones.`}
+                    ? t('eliminar.bloqueadoUno')
+                    : t('eliminar.bloqueadosVarios', { count: bloqueados.length, n: entero(bloqueados.length) })}
                 </p>
                 <ul className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto text-xs">
                   {bloqueados.slice(0, 50).map((b) => (
                     <li key={b.id}>
-                      <span className="font-medium">{b.nombre || 'Sin nombre'}</span>: {relacionesLegibles(b.relaciones)}
+                      <span className="font-medium">{b.nombre || t('eliminar.sinNombre')}</span>: {relaciones(b.relaciones)}
                     </li>
                   ))}
-                  {bloqueados.length > 50 && <li>y {bloqueados.length - 50} más…</li>}
+                  {bloqueados.length > 50 && <li>{t('eliminar.yMas', { n: entero(bloqueados.length - 50) })}</li>}
                 </ul>
               </div>
             )}
@@ -163,7 +177,7 @@ export function EliminarClientesDialog({
 
         <DialogFooter className="flex-col gap-2 sm:flex-row">
           <Button variant="outline" onClick={() => onAbiertoChange(false)} disabled={!!trabajando}>
-            Cancelar
+            {tk('comun.cancelar')}
           </Button>
           {bloqueados.length > 0 && (
             <Button variant="outline" onClick={inactivarBloqueados} disabled={!!trabajando}>
@@ -172,7 +186,7 @@ export function EliminarClientesDialog({
               ) : (
                 <Power aria-hidden="true" className="mr-2 size-4" />
               )}
-              {uno ? 'Marcar inactivo' : `Marcar inactivos (${bloqueados.length})`}
+              {uno ? t('eliminar.marcarInactivo') : t('eliminar.marcarInactivos', { n: entero(bloqueados.length) })}
             </Button>
           )}
           {eliminables > 0 && (
@@ -182,7 +196,7 @@ export function EliminarClientesDialog({
               ) : (
                 <Trash2 aria-hidden="true" className="mr-2 size-4" />
               )}
-              {uno ? 'Eliminar' : `Eliminar ${eliminables}`}
+              {uno ? t('eliminar.eliminar') : t('eliminar.eliminarN', { n: entero(eliminables) })}
             </Button>
           )}
         </DialogFooter>

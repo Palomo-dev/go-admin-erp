@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Building2,
   CalendarDays,
@@ -36,6 +37,11 @@ import { mensajeErrorTelefono } from '@/lib/utils/telefono';
 import { cn } from '@/utils/Utils';
 import {
   CONDICIONES_PAGO,
+  etiquetaCondicion,
+  etiquetaDocumentoDian,
+  etiquetaRegimen,
+  etiquetaResponsabilidad,
+  etiquetaTipoCuenta,
   REGIMENES_TRIBUTARIOS,
   RESPONSABILIDADES_FISCALES,
   TIPOS_CUENTA,
@@ -61,13 +67,15 @@ interface TipoDocumento {
   label: string;
   forCompany: boolean;
   forPerson: boolean;
+  /** Solo los de respaldo: clave en `proveedores.formulario.tiposRespaldo` (los de la BD traen su nombre). */
+  clave?: string;
 }
 
 const TIPOS_DOC_RESPALDO: TipoDocumento[] = [
-  { value: 'tax_id', label: 'ID tributario / fiscal', forCompany: true, forPerson: true },
-  { value: 'national_id', label: 'Documento nacional', forCompany: false, forPerson: true },
-  { value: 'passport', label: 'Pasaporte', forCompany: false, forPerson: true },
-  { value: 'other', label: 'Otro', forCompany: true, forPerson: true },
+  { value: 'tax_id', label: 'ID tributario / fiscal', clave: 'taxId', forCompany: true, forPerson: true },
+  { value: 'national_id', label: 'Documento nacional', clave: 'nationalId', forCompany: false, forPerson: true },
+  { value: 'passport', label: 'Pasaporte', clave: 'passport', forCompany: false, forPerson: true },
+  { value: 'other', label: 'Otro', clave: 'other', forCompany: true, forPerson: true },
 ];
 
 const FORM_VACIO: SupplierInput = {
@@ -153,6 +161,13 @@ const CLASE_TRIGGER = 'h-10 border-line-strong bg-surface text-fg';
 export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedded = false }: ProveedorFormProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useTranslations('proveedores.formulario');
+  const tc = useTranslations('proveedores.comun');
+  const tf = useTranslations('proveedores.formato');
+  // La carga del proveedor lee los textos por ref: cambiar de idioma no debe
+  // volver a cargarlo (se perderían los cambios sin guardar).
+  const tcRef = useRef(tc);
+  tcRef.current = tc;
   const { organization } = useOrganization();
   const editando = modo === 'editar';
 
@@ -187,7 +202,7 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
       const { data, error } = await supplierService.getSupplierByUuid(supplierUuid, getOrganizationId());
       if (cancelado) return;
       if (error || !data) {
-        toast({ variant: 'destructive', title: 'Error', description: error?.message || 'Proveedor no encontrado' });
+        toast({ variant: 'destructive', title: tcRef.current('error'), description: error?.message || tcRef.current('noEncontrado') });
         router.push(RUTA_PROVEEDORES);
         return;
       }
@@ -317,20 +332,20 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
   const calcularDigito = () => {
     const nitLimpio = (form.nit || '').replace(/[^0-9]/g, '');
     if (!nitLimpio) {
-      toast({ title: 'Ingresa el NIT primero', variant: 'destructive' });
+      toast({ title: t('toast.nitPrimero'), variant: 'destructive' });
       return;
     }
     const dv = calcularDv(nitLimpio);
     if (dv !== null) {
       cambiar('dv', String(dv));
-      toast({ title: 'DV calculado', description: `Dígito de verificación: ${dv}` });
+      toast({ title: t('toast.dvCalculado'), description: t('toast.dvDescripcion', { dv }) });
     }
   };
 
   // ── IA ──────────────────────────────────────────────────────────────────
   const generarDescripcion = async () => {
     if (!form.name.trim()) {
-      toast({ title: 'Escribe el nombre primero', variant: 'destructive' });
+      toast({ title: t('toast.nombrePrimero'), variant: 'destructive' });
       return;
     }
     setGenerandoDesc(true);
@@ -343,10 +358,10 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
       if (res.ok) {
         const data = await res.json();
         if (data.improvedText) cambiar('description', data.improvedText);
-        toast({ title: 'Descripción generada con IA' });
+        toast({ title: t('toast.descripcionGenerada') });
       }
     } catch {
-      toast({ title: 'Error', description: 'No se pudo generar la descripción.', variant: 'destructive' });
+      toast({ title: tc('error'), description: t('toast.errorDescripcion'), variant: 'destructive' });
     } finally {
       setGenerandoDesc(false);
     }
@@ -354,7 +369,7 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
 
   const generarLogo = async () => {
     if (!form.name.trim()) {
-      toast({ title: 'Escribe el nombre primero', variant: 'destructive' });
+      toast({ title: t('toast.nombrePrimero'), variant: 'destructive' });
       return;
     }
     setGenerandoLogo(true);
@@ -372,10 +387,10 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
       const data = await res.json();
       if (data.imageUrl) {
         cambiar('logo_url', data.imageUrl);
-        toast({ title: 'Logo generado con IA' });
+        toast({ title: t('toast.logoGenerado') });
       }
     } catch {
-      toast({ title: 'Error', description: 'No se pudo generar el logo.', variant: 'destructive' });
+      toast({ title: tc('error'), description: t('toast.errorLogo'), variant: 'destructive' });
     } finally {
       setGenerandoLogo(false);
     }
@@ -384,8 +399,8 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
   // ── Guardar ─────────────────────────────────────────────────────────────
   const validar = (): boolean => {
     const nuevos: Record<string, string> = {};
-    if (!form.name.trim()) nuevos.name = tipo === 'company' ? 'Escribe la razón social' : 'Escribe el nombre completo';
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) nuevos.email = 'Correo inválido';
+    if (!form.name.trim()) nuevos.name = tipo === 'company' ? t('errores.razonSocial') : t('errores.nombreCompleto');
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) nuevos.email = t('errores.correo');
     const errorTelefono = mensajeErrorTelefono(form.phone);
     if (errorTelefono) nuevos.phone = errorTelefono;
     setErrores(nuevos);
@@ -405,13 +420,13 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
       if (editando && supplierUuid) {
         const { error } = await supplierService.updateSupplier(supplierUuid, orgId, payload);
         if (error) throw error;
-        toast({ title: 'Proveedor actualizado', description: 'Los cambios han sido guardados correctamente' });
+        toast({ title: t('toast.actualizado'), description: t('toast.actualizadoDescripcion') });
         router.push(`${RUTA_PROVEEDORES}/${supplierUuid}`);
         return;
       }
       const { data, error } = await supplierService.createSupplier(orgId, payload);
       if (error) throw error;
-      toast({ title: 'Proveedor creado', description: 'El proveedor ha sido creado correctamente' });
+      toast({ title: t('toast.creado'), description: t('toast.creadoDescripcion') });
       if (crearOtro) {
         setForm({ ...FORM_VACIO, doc_type: tiposVisibles[0]?.value ?? '' });
         setTipo('company');
@@ -427,9 +442,8 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
       console.error('Error guardando proveedor:', error);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description:
-          (error instanceof Error && error.message) || (editando ? 'No se pudo actualizar el proveedor' : 'No se pudo crear el proveedor'),
+        title: tc('error'),
+        description: (error instanceof Error && error.message) || (editando ? t('toast.errorActualizar') : t('toast.errorCrear')),
       });
     } finally {
       setGuardando(null);
@@ -455,7 +469,7 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
       ) : (
         <Save aria-hidden="true" className="size-4" strokeWidth={1.5} />
       )}
-      {editando ? 'Guardar cambios' : 'Guardar proveedor'}
+      {editando ? t('botones.guardarCambios') : t('botones.guardarProveedor')}
     </button>
   );
 
@@ -467,7 +481,7 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
         disabled={!!guardando}
         className="inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60"
       >
-        {embedded ? 'Cancelar' : 'Descartar'}
+        {embedded ? t('botones.cancelar') : t('botones.descartar')}
       </button>
       {!editando && !embedded && (
         <button
@@ -477,7 +491,7 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
           className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60"
         >
           {guardando === 'otro' && <Loader2 aria-hidden="true" className="size-4 animate-spin" />}
-          Guardar y crear otro
+          {t('botones.guardarYCrearOtro')}
         </button>
       )}
     </>
@@ -487,18 +501,18 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
     <PageHeader
       variante="form"
       volverA={volverA}
-      titulo={editando ? 'Editar proveedor' : 'Nuevo proveedor'}
+      titulo={editando ? t('tituloEditar') : tc('nuevoProveedor')}
       subtitulo={
         editando
-          ? form.name || 'Modifica la información del proveedor'
-          : [getOrganizationName(), 'Registra a quién le compras'].filter(Boolean).join(' · ')
+          ? form.name || t('subtituloEditar')
+          : [getOrganizationName(), t('subtituloNuevo')].filter(Boolean).join(' · ')
       }
       cargando={cargando}
       migas={[
-        { etiqueta: 'Inventario', href: '/app/inventario' },
-        { etiqueta: 'Proveedores', href: RUTA_PROVEEDORES },
-        ...(editando && supplierUuid ? [{ etiqueta: form.name || 'Proveedor', href: `${RUTA_PROVEEDORES}/${supplierUuid}` }] : []),
-        { etiqueta: editando ? 'Editar' : 'Nuevo proveedor' },
+        { etiqueta: tc('inventario'), href: '/app/inventario' },
+        { etiqueta: tc('titulo'), href: RUTA_PROVEEDORES },
+        ...(editando && supplierUuid ? [{ etiqueta: form.name || tc('proveedor'), href: `${RUTA_PROVEEDORES}/${supplierUuid}` }] : []),
+        { etiqueta: editando ? tc('editar') : tc('nuevoProveedor') },
       ]}
       acciones={
         <>
@@ -515,7 +529,7 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
             disabled={!!guardando || cargando}
             className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-semibold text-link hover:bg-hover disabled:opacity-60"
           >
-            {guardando ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : 'Guardar'}
+            {guardando ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : t('botones.guardar')}
           </button>
         ),
       }}
@@ -564,39 +578,39 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
         <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
           {/* ── Identificación ── */}
           <FormSection
-            titulo="Identificación"
-            descripcion="Tipo, documento y nombre. Consulta la DIAN para completar."
+            titulo={t('identificacion.titulo')}
+            descripcion={t('identificacion.descripcion')}
             icono={Building2}
             colapsable
           >
             <SegmentedControl
-              etiqueta="Tipo de proveedor"
+              etiqueta={t('identificacion.tipoProveedor')}
               valor={tipo}
               onValorChange={elegirTipo}
               className="w-fit"
               opciones={[
-                { valor: 'company', etiqueta: 'Empresa', icono: Building2 },
-                { valor: 'person', etiqueta: 'Persona natural', icono: User },
+                { valor: 'company', etiqueta: tf('tipo.company'), icono: Building2 },
+                { valor: 'person', etiqueta: t('identificacion.personaNatural'), icono: User },
               ]}
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_88px]">
-              <FormField etiqueta="Tipo de documento">
+              <FormField etiqueta={t('identificacion.tipoDocumento')}>
                 {(c) => (
                   <Select value={form.doc_type || undefined} onValueChange={elegirTipoDocumento}>
                     <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className={CLASE_TRIGGER}>
-                      <SelectValue placeholder="Seleccionar" />
+                      <SelectValue placeholder={t('seleccionar')} />
                     </SelectTrigger>
                     <SelectContent>
-                      {tiposVisibles.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
+                      {tiposVisibles.map((d) => (
+                        <SelectItem key={d.value} value={d.value}>
+                          {d.clave ? t(`tiposRespaldo.${d.clave}`) : d.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
               </FormField>
-              <FormField etiqueta="Número" ayuda={!form.nit ? 'Sin documento no se le puede registrar factura.' : undefined}>
+              <FormField etiqueta={t('identificacion.numero')} ayuda={!form.nit ? t('identificacion.numeroAyuda') : undefined}>
                 <Input
                   value={form.nit ?? ''}
                   onChange={(e) => cambiar('nit', e.target.value)}
@@ -607,7 +621,7 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
                 />
               </FormField>
               <FormField
-                etiqueta="DV"
+                etiqueta={t('identificacion.dv')}
                 extra={
                   <button
                     type="button"
@@ -615,7 +629,7 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
                     disabled={!form.nit}
                     className="text-xs font-medium text-link hover:underline disabled:opacity-50"
                   >
-                    Calcular
+                    {t('identificacion.calcular')}
                   </button>
                 }
               >
@@ -628,7 +642,7 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
                 type="button"
                 onClick={consultarDocumento}
                 disabled={!habeasData || consultandoDian || (form.nit ?? '').length < 4}
-                title={!habeasData ? 'Marca la autorización para consultar' : undefined}
+                title={!habeasData ? t('identificacion.marcaAutorizacion') : undefined}
                 className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-[13px] font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
               >
                 {consultandoDian ? (
@@ -636,30 +650,34 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
                 ) : (
                   <Search aria-hidden="true" className="size-4" strokeWidth={1.5} />
                 )}
-                Consultar DIAN / RUES
+                {t('identificacion.consultarDian')}
               </button>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField etiqueta={esEmpresa ? 'Razón social' : 'Nombre completo'} obligatorio error={errores.name}>
+              <FormField
+                etiqueta={esEmpresa ? t('identificacion.razonSocial') : t('identificacion.nombreCompleto')}
+                obligatorio
+                error={errores.name}
+              >
                 <Input
                   value={form.name}
                   onChange={(e) => cambiar('name', e.target.value)}
-                  placeholder={esEmpresa ? 'Empresa S.A.S.' : 'Nombre y apellidos'}
+                  placeholder={esEmpresa ? t('identificacion.razonSocialPlaceholder') : t('identificacion.nombreCompletoPlaceholder')}
                 />
               </FormField>
-              <FormField etiqueta="Nombre comercial">
-                <Input value={form.trade_name ?? ''} onChange={(e) => cambiar('trade_name', e.target.value)} placeholder="Opcional" />
+              <FormField etiqueta={t('identificacion.nombreComercial')}>
+                <Input value={form.trade_name ?? ''} onChange={(e) => cambiar('trade_name', e.target.value)} placeholder={t('opcional')} />
               </FormField>
             </div>
             {!esEmpresa && empresasPadre.length > 0 && (
-              <FormField etiqueta="Empresa proveedora asociada" ayuda="Vincula esta persona como contacto o proveedor hijo de una empresa.">
+              <FormField etiqueta={t('identificacion.empresaAsociada')} ayuda={t('identificacion.empresaAsociadaAyuda')}>
                 {(c) => (
                   <Select value={padreId || 'ninguna'} onValueChange={(v) => setPadreId(v === 'ninguna' ? '' : v)}>
                     <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-describedby={c['aria-describedby']} className={CLASE_TRIGGER}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ninguna">Sin empresa asociada</SelectItem>
+                      <SelectItem value="ninguna">{t('identificacion.sinEmpresa')}</SelectItem>
                       {empresasPadre.map((e) => (
                         <SelectItem key={e.id} value={String(e.id)}>
                           {e.name}
@@ -673,11 +691,11 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
           </FormSection>
 
           {/* ── Contacto ── */}
-          <FormSection titulo="Contacto" icono={Phone} colapsable columnas={2}>
-            <FormField etiqueta="Persona de contacto">
-              <Input value={form.contact ?? ''} onChange={(e) => cambiar('contact', e.target.value)} placeholder="Nombre del contacto" />
+          <FormSection titulo={t('contacto.titulo')} icono={Phone} colapsable columnas={2}>
+            <FormField etiqueta={t('contacto.persona')}>
+              <Input value={form.contact ?? ''} onChange={(e) => cambiar('contact', e.target.value)} placeholder={t('contacto.personaPlaceholder')} />
             </FormField>
-            <FormField etiqueta="Teléfono" error={errores.phone} id="proveedor-telefono">
+            <FormField etiqueta={t('contacto.telefono')} error={errores.phone} id="proveedor-telefono">
               {(c) => (
                 <PhoneInput
                   id={c.id}
@@ -687,32 +705,32 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
                 />
               )}
             </FormField>
-            <FormField etiqueta="Correo" error={errores.email}>
+            <FormField etiqueta={t('contacto.correo')} error={errores.email}>
               <Input type="email" value={form.email ?? ''} onChange={(e) => cambiar('email', e.target.value)} placeholder="compras@proveedor.com" />
             </FormField>
-            <FormField etiqueta="Sitio web">
+            <FormField etiqueta={t('contacto.sitioWeb')}>
               <Input value={form.website ?? ''} onChange={(e) => cambiar('website', e.target.value)} placeholder="https://www.proveedor.com" />
             </FormField>
           </FormSection>
 
           {/* ── Dirección ── */}
-          <FormSection titulo="Dirección" icono={MapPin} colapsable columnas={2}>
-            <FormField etiqueta="Dirección" className="md:col-span-2">
-              <Input value={form.address ?? ''} onChange={(e) => cambiar('address', e.target.value)} placeholder="Calle, número, oficina…" />
+          <FormSection titulo={t('direccion.titulo')} icono={MapPin} colapsable columnas={2}>
+            <FormField etiqueta={t('direccion.direccion')} className="md:col-span-2">
+              <Input value={form.address ?? ''} onChange={(e) => cambiar('address', e.target.value)} placeholder={t('direccion.direccionPlaceholder')} />
             </FormField>
-            <FormField etiqueta="Ciudad">
+            <FormField etiqueta={t('direccion.ciudad')}>
               <Input value={form.city ?? ''} onChange={(e) => cambiar('city', e.target.value)} />
             </FormField>
-            <FormField etiqueta="Departamento / estado">
+            <FormField etiqueta={t('direccion.departamento')}>
               <Input value={form.state ?? ''} onChange={(e) => cambiar('state', e.target.value)} />
             </FormField>
-            <FormField etiqueta="País">
+            <FormField etiqueta={t('direccion.pais')}>
               <Input value={form.country ?? ''} onChange={(e) => cambiar('country', e.target.value)} placeholder="Colombia" />
             </FormField>
-            <FormField etiqueta="Código postal">
+            <FormField etiqueta={t('direccion.codigoPostal')}>
               <Input value={form.postal_code ?? ''} onChange={(e) => cambiar('postal_code', e.target.value)} placeholder="110111" />
             </FormField>
-            <FormField etiqueta="Municipio (código DIAN)" ayuda="5 dígitos, por ejemplo 05001 = Medellín.">
+            <FormField etiqueta={t('direccion.municipio')} ayuda={t('direccion.municipioAyuda')}>
               <Input
                 value={form.municipality_code ?? ''}
                 onChange={(e) => cambiar('municipality_code', e.target.value.slice(0, 5))}
@@ -725,13 +743,13 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
 
           {/* ── Condiciones de compra ── */}
           <FormSection
-            titulo="Condiciones de compra"
-            descripcion="Se usan al crear órdenes y facturas de compra."
+            titulo={t('condiciones.titulo')}
+            descripcion={t('condiciones.descripcion')}
             icono={CalendarDays}
             colapsable
             columnas={2}
           >
-            <FormField etiqueta="Condición de pago" ayuda="Al elegirla se llenan los días de crédito.">
+            <FormField etiqueta={t('condiciones.condicionPago')} ayuda={t('condiciones.condicionPagoAyuda')}>
               {(c) => (
                 <Select
                   value={form.payment_terms || undefined}
@@ -742,19 +760,19 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
                   }}
                 >
                   <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-describedby={c['aria-describedby']} className={CLASE_TRIGGER}>
-                    <SelectValue placeholder="Seleccionar" />
+                    <SelectValue placeholder={t('seleccionar')} />
                   </SelectTrigger>
                   <SelectContent>
                     {CONDICIONES_PAGO.map((x) => (
                       <SelectItem key={x.valor} value={x.valor}>
-                        {x.etiqueta}
+                        {etiquetaCondicion(x.valor, tf)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
             </FormField>
-            <FormField etiqueta="Días de crédito" ayuda="0 = contado.">
+            <FormField etiqueta={t('condiciones.diasCredito')} ayuda={t('condiciones.diasCreditoAyuda')}>
               <Input
                 type="number"
                 min={0}
@@ -764,23 +782,23 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
                 placeholder="30"
               />
             </FormField>
-            <FormField etiqueta="Régimen tributario">
+            <FormField etiqueta={t('condiciones.regimen')}>
               {(c) => (
                 <Select value={form.tax_regime || undefined} onValueChange={(v) => cambiar('tax_regime', v)}>
                   <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className={CLASE_TRIGGER}>
-                    <SelectValue placeholder="Seleccionar régimen" />
+                    <SelectValue placeholder={t('condiciones.seleccionarRegimen')} />
                   </SelectTrigger>
                   <SelectContent>
                     {opcionesRegimen.map((r) => (
                       <SelectItem key={r.valor} value={r.valor}>
-                        {r.etiqueta}
+                        {etiquetaRegimen(r.valor, tf)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
             </FormField>
-            <FormField etiqueta="Responsabilidades fiscales" ayuda="También se llenan al consultar la DIAN.">
+            <FormField etiqueta={t('condiciones.responsabilidades')} ayuda={t('condiciones.responsabilidadesAyuda')}>
               {(c) => (
                 <div role="group" aria-labelledby={c.idEtiqueta} aria-describedby={c['aria-describedby']} className="flex flex-col gap-2 pt-1">
                   {RESPONSABILIDADES_FISCALES.map((r) => (
@@ -790,7 +808,7 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
                         onCheckedChange={(v) => alternarResponsabilidad(r.valor, v === true)}
                         className="size-[18px] rounded"
                       />
-                      {r.etiqueta}
+                      {etiquetaResponsabilidad(r.valor, tf)}
                     </label>
                   ))}
                   {otrasResponsabilidades.map((r) => (
@@ -806,36 +824,36 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
 
           {/* ── Datos bancarios ── */}
           <FormSection
-            titulo="Datos bancarios"
-            descripcion="Para programar pagos."
+            titulo={t('bancarios.titulo')}
+            descripcion={t('bancarios.descripcion')}
             icono={Landmark}
             colapsable
             columnas={2}
           >
-            <FormField etiqueta="Banco">
-              <Input value={form.bank_name ?? ''} onChange={(e) => cambiar('bank_name', e.target.value)} placeholder="Nombre del banco" />
+            <FormField etiqueta={t('bancarios.banco')}>
+              <Input value={form.bank_name ?? ''} onChange={(e) => cambiar('bank_name', e.target.value)} placeholder={t('bancarios.bancoPlaceholder')} />
             </FormField>
-            <FormField etiqueta="Tipo de cuenta">
+            <FormField etiqueta={t('bancarios.tipoCuenta')}>
               {(c) => (
                 <Select value={form.account_type || undefined} onValueChange={(v) => cambiar('account_type', v)}>
                   <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className={CLASE_TRIGGER}>
-                    <SelectValue placeholder="Seleccionar" />
+                    <SelectValue placeholder={t('seleccionar')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {TIPOS_CUENTA.map((t) => (
-                      <SelectItem key={t.valor} value={t.valor}>
-                        {t.etiqueta}
+                    {TIPOS_CUENTA.map((x) => (
+                      <SelectItem key={x.valor} value={x.valor}>
+                        {etiquetaTipoCuenta(x.valor, tf)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
             </FormField>
-            <FormField etiqueta="Número de cuenta">
+            <FormField etiqueta={t('bancarios.numeroCuenta')}>
               <Input
                 value={form.bank_account ?? ''}
                 onChange={(e) => cambiar('bank_account', e.target.value)}
-                placeholder="Número de cuenta"
+                placeholder={t('bancarios.numeroCuenta')}
                 inputMode="numeric"
                 autoComplete="off"
               />
@@ -844,43 +862,43 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
 
           {/* ── Facturación electrónica (códigos DIAN) ── */}
           <FormSection
-            titulo="Facturación electrónica"
-            descripcion="Códigos DIAN. Se llenan solos con el tipo de proveedor y de documento."
+            titulo={t('facturacion.titulo')}
+            descripcion={t('facturacion.descripcion')}
             icono={FileText}
             colapsable
             abiertaPorDefecto={false}
             columnas={2}
           >
-            <FormField etiqueta="Tipo de documento DIAN">
+            <FormField etiqueta={t('facturacion.tipoDocumentoDian')}>
               {(c) => (
                 <Select value={form.identification_document_code || undefined} onValueChange={(v) => cambiar('identification_document_code', v)}>
                   <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className={CLASE_TRIGGER}>
-                    <SelectValue placeholder="Seleccionar" />
+                    <SelectValue placeholder={t('seleccionar')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {TIPOS_DOCUMENTO_DIAN.map((t) => (
-                      <SelectItem key={t.valor} value={t.valor}>
-                        {t.etiqueta}
+                    {TIPOS_DOCUMENTO_DIAN.map((d) => (
+                      <SelectItem key={d.valor} value={d.valor}>
+                        {etiquetaDocumentoDian(d.valor, tf)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
             </FormField>
-            <FormField etiqueta="Tipo de organización DIAN">
+            <FormField etiqueta={t('facturacion.tipoOrganizacion')}>
               {(c) => (
                 <Select value={form.legal_organization_code || undefined} onValueChange={(v) => cambiar('legal_organization_code', v)}>
                   <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className={CLASE_TRIGGER}>
-                    <SelectValue placeholder="Seleccionar" />
+                    <SelectValue placeholder={t('seleccionar')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1 · Empresa</SelectItem>
-                    <SelectItem value="2">2 · Persona natural</SelectItem>
+                    <SelectItem value="1">{t('facturacion.organizacionEmpresa')}</SelectItem>
+                    <SelectItem value="2">{t('facturacion.organizacionPersona')}</SelectItem>
                   </SelectContent>
                 </Select>
               )}
             </FormField>
-            <FormField etiqueta="Código de país">
+            <FormField etiqueta={t('facturacion.codigoPais')}>
               <Input
                 value={form.country_code ?? ''}
                 onChange={(e) => cambiar('country_code', e.target.value.toUpperCase().slice(0, 2))}
@@ -891,9 +909,9 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
           </FormSection>
 
           {/* ── Descripción y notas ── */}
-          <FormSection titulo="Descripción y notas" icono={FileText} colapsable>
+          <FormSection titulo={t('notas.titulo')} icono={FileText} colapsable>
             <FormField
-              etiqueta="Descripción"
+              etiqueta={t('notas.descripcion')}
               extra={
                 <button
                   type="button"
@@ -902,7 +920,7 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
                   className="inline-flex items-center gap-1 text-xs font-medium text-link hover:underline disabled:opacity-50"
                 >
                   {generandoDesc ? <Loader2 aria-hidden="true" className="size-3 animate-spin" /> : <Sparkles aria-hidden="true" className="size-3" />}
-                  {generandoDesc ? 'Generando…' : 'Generar con IA'}
+                  {generandoDesc ? t('generando') : t('generarIa')}
                 </button>
               }
             >
@@ -911,18 +929,18 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
                   <RichTextEditor
                     value={form.description || ''}
                     onChange={(html) => cambiar('description', html)}
-                    placeholder="Qué vende, marcas que maneja, tiempos de entrega…"
+                    placeholder={t('notas.descripcionPlaceholder')}
                   />
                 </div>
               )}
             </FormField>
-            <FormField etiqueta="Notas internas">
+            <FormField etiqueta={t('notas.internas')}>
               {(c) => (
                 <div id={c.id} aria-labelledby={c.idEtiqueta}>
                   <RichTextEditor
                     value={form.notes || ''}
                     onChange={(html) => cambiar('notes', html)}
-                    placeholder="Información adicional sobre el proveedor…"
+                    placeholder={t('notas.internasPlaceholder')}
                   />
                 </div>
               )}
@@ -934,18 +952,18 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
         <div className="flex min-w-0 flex-col gap-4">
           <section aria-labelledby="proveedor-estado" className="rounded-xl border border-line bg-surface p-4 sm:p-6">
             <h2 id="proveedor-estado" className="mb-3 text-base font-semibold text-fg">
-              Estado
+              {t('estado.titulo')}
             </h2>
             <label className="flex items-center gap-3 text-sm text-fg-secondary">
               <Switch checked={form.is_active !== false} onCheckedChange={(v) => cambiar('is_active', v)} />
-              {form.is_active !== false ? 'Activo · aparece al comprar' : 'Inactivo · no aparece al comprar'}
+              {form.is_active !== false ? t('estado.activo') : t('estado.inactivo')}
             </label>
           </section>
 
           <section aria-labelledby="proveedor-logo" className="rounded-xl border border-line bg-surface p-4 sm:p-6">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2 id="proveedor-logo" className="text-base font-semibold text-fg">
-                Logo
+                {t('logo')}
               </h2>
               <button
                 type="button"
@@ -954,7 +972,7 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
                 className="inline-flex items-center gap-1 text-xs font-medium text-link hover:underline disabled:opacity-50"
               >
                 {generandoLogo ? <Loader2 aria-hidden="true" className="size-3 animate-spin" /> : <Wand2 aria-hidden="true" className="size-3" />}
-                {generandoLogo ? 'Generando…' : 'Generar con IA'}
+                {generandoLogo ? t('generando') : t('generarIa')}
               </button>
             </div>
             <ImageUploader

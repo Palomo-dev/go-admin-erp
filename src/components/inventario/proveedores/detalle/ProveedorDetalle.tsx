@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
   Banknote,
@@ -35,6 +36,7 @@ import {
   type ColumnaTabla,
 } from '@/components/kit';
 import { RelatedLinkCard } from '@/components/kit/RelatedLinkCard';
+import { useFormatoEntero, useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
@@ -52,17 +54,19 @@ import {
   type SupplierProductLink,
   type SupplierStockSummary,
 } from '@/lib/services/supplierService';
-import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { formatDateInTz, formatPlainDate } from '@/lib/utils/dateDisplay';
 import { DialogoEliminarProveedor } from '../DialogoEliminarProveedor';
 import {
   condicionPago,
   cuentaEnmascarada,
   documentoProveedor,
+  etiquetaDocumentoDian,
   etiquetaRegimen,
   etiquetaTipoCuenta,
   formatoMoneda,
   tipoProveedor,
-  TIPOS_DOCUMENTO_DIAN,
+  TIPOS_CUENTA,
+  type Traductor,
 } from '../formato';
 import { RUTA_PROVEEDORES, rutaNuevaOrdenCompra, useAccionesProveedor } from '../useAccionesProveedor';
 
@@ -74,52 +78,43 @@ type Pestana = 'resumen' | 'productos' | 'ordenes' | 'facturas' | 'cuentas' | 'p
 
 const ID_TABS = 'proveedor';
 
-const ESTADO_OC: Record<string, string> = {
-  draft: 'Borrador',
-  pending: 'Pendiente',
-  approved: 'Aprobada',
-  sent: 'Enviada',
-  partial: 'Recibida en parte',
-  received: 'Recibida',
-  completed: 'Completada',
-  cancelled: 'Cancelada',
-};
+/** Estados de OC y de factura con etiqueta propia (`proveedores.detalle.estadosOc|estadosFactura`). */
+const ESTADOS_OC = new Set(['draft', 'pending', 'approved', 'sent', 'partial', 'received', 'completed', 'cancelled']);
+const ESTADOS_FACTURA = new Set(['draft', 'received', 'partial', 'paid', 'cancelled', 'void']);
+const ESTADOS_CXP = new Set(['pending', 'partial', 'paid', 'overdue']);
 
-const ESTADO_FACTURA: Record<string, string> = {
-  draft: 'Borrador',
-  received: 'Recibida',
-  partial: 'Pago parcial',
-  paid: 'Pagada',
-  cancelled: 'Anulada',
-  void: 'Anulada',
-};
+const etiquetaOc = (s: string, t: Traductor) => (ESTADOS_OC.has(s) ? t(`estadosOc.${s}`) : undefined);
+const etiquetaFactura = (s: string, t: Traductor) => (ESTADOS_FACTURA.has(s) ? t(`estadosFactura.${s}`) : undefined);
 
+/** Método de pago guardado → clave de `proveedores.detalle.metodos`. */
 const METODO_PAGO: Record<string, string> = {
-  cash: 'Efectivo',
-  efectivo: 'Efectivo',
-  transfer: 'Transferencia',
-  bank_transfer: 'Transferencia',
-  transferencia: 'Transferencia',
-  card: 'Tarjeta',
-  credit_card: 'Tarjeta',
-  debit_card: 'Tarjeta',
-  check: 'Cheque',
-  cheque: 'Cheque',
+  cash: 'efectivo',
+  efectivo: 'efectivo',
+  transfer: 'transferencia',
+  bank_transfer: 'transferencia',
+  transferencia: 'transferencia',
+  card: 'tarjeta',
+  credit_card: 'tarjeta',
+  debit_card: 'tarjeta',
+  check: 'cheque',
+  cheque: 'cheque',
 };
 
-const etiquetaMetodo = (m: string | null | undefined) =>
-  m ? (METODO_PAGO[m.toLowerCase()] ?? m.charAt(0).toUpperCase() + m.slice(1)) : '—';
+const etiquetaMetodo = (m: string | null | undefined, t: Traductor) => {
+  if (!m) return '—';
+  const clave = METODO_PAGO[m.toLowerCase()];
+  return clave ? t(`metodos.${clave}`) : m.charAt(0).toUpperCase() + m.slice(1);
+};
 
 const DIA_MS = 86_400_000;
 
 /** Estado de una cuenta por pagar: «Vencida 12 d» si ya pasó y tiene saldo. */
-function estadoCxp(c: AccountPayableSummary): { estado: string; etiqueta: string } {
+function estadoCxp(c: AccountPayableSummary, t: Traductor): { estado: string; etiqueta: string } {
   if (c.status !== 'paid' && c.balance > 0 && c.due_date) {
     const dias = Math.floor((Date.now() - new Date(c.due_date).getTime()) / DIA_MS);
-    if (dias > 0) return { estado: 'vencida', etiqueta: `Vencida ${dias} d` };
+    if (dias > 0) return { estado: 'vencida', etiqueta: t('estadosCxp.vencidaDias', { dias }) };
   }
-  const etiquetas: Record<string, string> = { pending: 'Pendiente', partial: 'Pago parcial', paid: 'Pagada', overdue: 'Vencida' };
-  return { estado: c.status, etiqueta: etiquetas[c.status] ?? c.status };
+  return { estado: c.status, etiqueta: ESTADOS_CXP.has(c.status) ? t(`estadosCxp.${c.status}`) : c.status };
 }
 
 function Fila({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
@@ -158,7 +153,17 @@ const CLASE_BOTON_PRIMARIO =
 export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const { formatDate } = useFormatDate();
+  const t = useTranslations('proveedores.detalle');
+  const tc = useTranslations('proveedores.comun');
+  const tf = useTranslations('proveedores.formato');
+  const entero = useFormatoEntero();
+  const localeIntl = useLocaleIntl();
+  const { timezone } = useFormatDate();
+  // timestamptz en la zona de la organización y con el formato del idioma activo.
+  const formatDate = useCallback(
+    (v: string | null | undefined) => formatDateInTz(v, timezone, { locale: localeIntl, day: '2-digit', month: '2-digit', year: 'numeric' }),
+    [localeIntl, timezone],
+  );
   const moneda = useOrgCurrency();
   const dinero = useCallback((v: number | string | null | undefined) => formatoMoneda(v, moneda), [moneda]);
 
@@ -188,7 +193,7 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
         const { data, error } = await supplierService.getSupplierByUuid(supplierUuid, org);
         if (error) throw error;
         if (!data) {
-          toast({ variant: 'destructive', title: 'Error', description: 'Proveedor no encontrado' });
+          toast({ variant: 'destructive', title: tc('error'), description: tc('noEncontrado') });
           router.push(RUTA_PROVEEDORES);
           return;
         }
@@ -219,8 +224,8 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
         console.error('Error cargando proveedor:', error);
         toast({
           variant: 'destructive',
-          title: 'Error',
-          description: error instanceof Error ? error.message : 'No se pudo cargar el proveedor',
+          title: tc('error'),
+          description: error instanceof Error ? error.message : t('errorCarga'),
         });
         router.push(RUTA_PROVEEDORES);
       } finally {
@@ -230,7 +235,7 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
     return () => {
       cancelado = true;
     };
-  }, [supplierUuid, router, toast, recarga]);
+  }, [supplierUuid, router, toast, recarga, t, tc]);
 
   const cuentasAbiertas = useMemo(() => cuentas.filter((c) => c.status !== 'paid' && c.balance > 0), [cuentas]);
 
@@ -240,7 +245,7 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
       return;
     }
     setPestana('cuentas');
-    toast({ title: 'Elige la cuenta a pagar', description: 'Abre la cuenta por pagar y registra el pago desde allí.' });
+    toast({ title: t('pago.elegirCuenta'), description: t('pago.elegirCuentaDescripcion') });
   };
 
   // ── Stock por producto (se une a la lista de productos que surte) ───────
@@ -255,27 +260,27 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
       ...ordenes.map((o) => ({
         id: `oc-${o.id}`,
         titulo: `OC-${o.id}`,
-        tipo: 'Orden de compra',
+        tipo: t('tiposDocumento.orden'),
         fecha: o.created_at,
-        estado: <StatusBadge estado={o.status} etiqueta={ESTADO_OC[o.status]} />,
+        estado: <StatusBadge estado={o.status} etiqueta={etiquetaOc(o.status, t)} />,
         total: o.total,
         href: `/app/inventario/ordenes-compra/${o.id}`,
       })),
       ...facturas.map((f) => ({
         id: `fc-${f.id}`,
         titulo: f.number_ext ? `FC ${f.number_ext}` : `FC-${f.id.slice(0, 8)}`,
-        tipo: 'Factura de compra',
+        tipo: t('tiposDocumento.factura'),
         fecha: f.issue_date || f.created_at,
-        estado: <StatusBadge estado={f.status} etiqueta={ESTADO_FACTURA[f.status]} />,
+        estado: <StatusBadge estado={f.status} etiqueta={etiquetaFactura(f.status, t)} />,
         total: f.total,
         href: `/app/finanzas/facturas-compra/${f.id}`,
       })),
       ...cuentas.map((c) => {
-        const e = estadoCxp(c);
+        const e = estadoCxp(c, t);
         return {
           id: `cxp-${c.id}`,
           titulo: `CxP ${c.invoice_number || c.id.slice(0, 8)}`,
-          tipo: 'Cuenta por pagar',
+          tipo: t('tiposDocumento.cuenta'),
           fecha: c.created_at,
           estado: <StatusBadge estado={e.estado} etiqueta={e.etiqueta} />,
           total: c.balance,
@@ -284,15 +289,15 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
       }),
       ...pagos.map((p) => ({
         id: `pago-${p.id}`,
-        titulo: `Pago ${p.reference || p.id.slice(0, 8)}`,
-        tipo: etiquetaMetodo(p.method),
+        titulo: t('pagoRef', { referencia: p.reference || p.id.slice(0, 8) }),
+        tipo: etiquetaMetodo(p.method, t),
         fecha: p.payment_date || p.created_at,
-        estado: <StatusBadge estado="aplicado" etiqueta="Aplicado" />,
+        estado: <StatusBadge estado="aplicado" />,
         total: p.amount,
       })),
     ];
     return docs.sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0)).slice(0, 5);
-  }, [ordenes, facturas, cuentas, pagos]);
+  }, [ordenes, facturas, cuentas, pagos, t]);
 
   if (cargando && !supplier) {
     return (
@@ -311,24 +316,29 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
   if (!supplier) return null;
 
   const activo = supplier.is_active !== false;
-  const documento = documentoProveedor({ ...supplier, supplier_type: supplier.supplier_type });
-  const condicion = condicionPago(supplier.payment_terms, supplier.credit_days);
+  const documento = documentoProveedor({ ...supplier, supplier_type: supplier.supplier_type }, tf);
+  const condicion = condicionPago(supplier.payment_terms, supplier.credit_days, tf);
   const direccion = [supplier.address, supplier.city, supplier.state, supplier.country, supplier.postal_code]
     .filter(Boolean)
     .join(', ');
-  const codigoDian = TIPOS_DOCUMENTO_DIAN.find((t) => t.valor === supplier.identification_document_code)?.etiqueta;
+  const codigoDian = etiquetaDocumentoDian(supplier.identification_document_code, tf);
+  const tipoCuenta = TIPOS_CUENTA.some((x) => x.valor === supplier.account_type)
+    ? t(`cuentaDe.${supplier.account_type}`)
+    : supplier.account_type
+      ? t('cuentaDeOtro', { tipo: etiquetaTipoCuenta(supplier.account_type, tf).toLowerCase() })
+      : '';
   const entregas =
     resumen && resumen.entregas_total > 0 ? Math.round((resumen.entregas_a_tiempo * 100) / resumen.entregas_total) : null;
 
   const accionesMovil: AccionFila[] = [
-    { id: 'orden-movil', etiqueta: 'Nueva orden de compra', icono: ClipboardList, onSelect: () => router.push(rutaNuevaOrdenCompra(supplier.id)) },
+    { id: 'orden-movil', etiqueta: t('nuevaOrden'), icono: ClipboardList, onSelect: () => router.push(rutaNuevaOrdenCompra(supplier.id)) },
     {
       id: 'pagar-movil',
-      etiqueta: 'Registrar pago',
+      etiqueta: t('registrarPago'),
       icono: HandCoins,
       onSelect: registrarPago,
       deshabilitada: cuentasAbiertas.length === 0,
-      motivo: 'No tiene saldo por pagar',
+      motivo: t('sinSaldo'),
     },
     ...accionesDe({ id: supplier.id, uuid: supplier.uuid, name: supplier.name, is_active: activo }).filter((a) => a.id !== 'orden'),
   ];
@@ -337,43 +347,43 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
   const colProductos: ColumnaTabla<SupplierProductLink>[] = [
     {
       id: 'producto',
-      encabezado: 'Producto',
+      encabezado: t('columnas.producto'),
       celda: (p) => (
         <span className="inline-flex items-center gap-1.5">
-          {p.is_preferred && <Star aria-label="Proveedor preferido" className="size-3.5 fill-warning-text text-warning-text" />}
-          <span className="font-medium">{p.product?.name ?? `Producto #${p.product_id}`}</span>
+          {p.is_preferred && <Star aria-label={t('preferido')} className="size-3.5 fill-warning-text text-warning-text" />}
+          <span className="font-medium">{p.product?.name ?? t('productoN', { id: p.product_id })}</span>
         </span>
       ),
     },
-    { id: 'sku', encabezado: 'SKU', variante: 'mono', ocultarDebajo: 'md', celda: (p) => p.product?.sku || '—' },
-    { id: 'sku-prov', encabezado: 'SKU proveedor', variante: 'mono', ocultarDebajo: 'lg', celda: (p) => p.supplier_sku || '—' },
-    { id: 'costo', encabezado: 'Costo', variante: 'importe', celda: (p) => dinero(p.cost) },
+    { id: 'sku', encabezado: t('columnas.sku'), variante: 'mono', ocultarDebajo: 'md', celda: (p) => p.product?.sku || '—' },
+    { id: 'sku-prov', encabezado: t('columnas.skuProveedor'), variante: 'mono', ocultarDebajo: 'lg', celda: (p) => p.supplier_sku || '—' },
+    { id: 'costo', encabezado: t('columnas.costo'), variante: 'importe', celda: (p) => dinero(p.cost) },
     {
       id: 'entrega',
-      encabezado: 'Entrega',
+      encabezado: t('columnas.entrega'),
       ocultarDebajo: 'lg',
-      celda: (p) => (p.lead_time_days ? `${p.lead_time_days} d` : '—'),
+      celda: (p) => (p.lead_time_days ? t('diasCorto', { dias: p.lead_time_days }) : '—'),
     },
     {
       id: 'minimo',
-      encabezado: 'Pedido mínimo',
+      encabezado: t('columnas.pedidoMinimo'),
       alinear: 'derecha',
       ocultarDebajo: 'xl',
-      celda: (p) => (p.min_order_qty !== null ? p.min_order_qty.toLocaleString('es-CO') : '—'),
+      celda: (p) => (p.min_order_qty !== null ? entero(p.min_order_qty) : '—'),
     },
     {
       id: 'stock',
-      encabezado: 'Stock',
+      encabezado: t('columnas.stock'),
       alinear: 'derecha',
       celda: (p) => {
         const s = stockPorProducto.get(p.product_id);
         if (!s) return '—';
-        return s.track_stock ? s.stock_total.toLocaleString('es-CO') : 'N/A';
+        return s.track_stock ? entero(s.stock_total) : t('noAplica');
       },
     },
     {
       id: 'valor',
-      encabezado: 'Valor en stock',
+      encabezado: t('columnas.valorStock'),
       variante: 'importe',
       ocultarDebajo: 'md',
       celda: (p) => dinero(stockPorProducto.get(p.product_id)?.stock_value ?? 0),
@@ -381,79 +391,86 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
   ];
 
   const colOrdenes: ColumnaTabla<PurchaseOrderSummary>[] = [
-    { id: 'numero', encabezado: 'Orden', celda: (o) => <span className="font-medium text-link">OC-{o.id}</span> },
-    { id: 'fecha', encabezado: 'Creada', celda: (o) => formatDate(o.created_at) },
+    { id: 'numero', encabezado: t('columnas.orden'), celda: (o) => <span className="font-medium text-link">OC-{o.id}</span> },
+    { id: 'fecha', encabezado: t('columnas.creada'), celda: (o) => formatDate(o.created_at) },
     {
       id: 'esperada',
-      encabezado: 'Fecha esperada',
+      encabezado: t('columnas.fechaEsperada'),
       ocultarDebajo: 'md',
       celda: (o) => (o.expected_date ? formatPlainDate(o.expected_date) : '—'),
     },
-    { id: 'estado', encabezado: 'Estado', celda: (o) => <StatusBadge estado={o.status} etiqueta={ESTADO_OC[o.status]} /> },
-    { id: 'total', encabezado: 'Total', variante: 'importe', celda: (o) => dinero(o.total) },
+    { id: 'estado', encabezado: t('columnas.estado'), celda: (o) => <StatusBadge estado={o.status} etiqueta={etiquetaOc(o.status, t)} /> },
+    { id: 'total', encabezado: t('columnas.total'), variante: 'importe', celda: (o) => dinero(o.total) },
   ];
 
   const colFacturas: ColumnaTabla<PurchaseInvoiceSummary>[] = [
     {
       id: 'numero',
-      encabezado: 'Factura',
+      encabezado: t('columnas.factura'),
       celda: (f) => <span className="font-medium text-link">{f.number_ext || `FC-${f.id.slice(0, 8)}`}</span>,
     },
     // Antes se consultaba `issue_date` y se pintaba `created_at`.
-    { id: 'fecha', encabezado: 'Fecha', celda: (f) => formatDate(f.issue_date || f.created_at) },
-    { id: 'estado', encabezado: 'Estado', celda: (f) => <StatusBadge estado={f.status} etiqueta={ESTADO_FACTURA[f.status]} /> },
-    { id: 'total', encabezado: 'Total', variante: 'importe', celda: (f) => dinero(f.total) },
+    { id: 'fecha', encabezado: t('columnas.fecha'), celda: (f) => formatDate(f.issue_date || f.created_at) },
+    { id: 'estado', encabezado: t('columnas.estado'), celda: (f) => <StatusBadge estado={f.status} etiqueta={etiquetaFactura(f.status, t)} /> },
+    { id: 'total', encabezado: t('columnas.total'), variante: 'importe', celda: (f) => dinero(f.total) },
   ];
 
   const colCuentas: ColumnaTabla<AccountPayableSummary>[] = [
     {
       id: 'factura',
-      encabezado: 'Factura',
+      encabezado: t('columnas.factura'),
       celda: (c) => <span className="font-medium text-link">{c.invoice_number || `CxP-${c.id.slice(0, 8)}`}</span>,
     },
-    { id: 'vence', encabezado: 'Vencimiento', celda: (c) => (c.due_date ? formatDate(c.due_date) : '—') },
+    { id: 'vence', encabezado: t('columnas.vencimiento'), celda: (c) => (c.due_date ? formatDate(c.due_date) : '—') },
     {
       id: 'estado',
-      encabezado: 'Estado',
+      encabezado: t('columnas.estado'),
       celda: (c) => {
-        const e = estadoCxp(c);
+        const e = estadoCxp(c, t);
         return <StatusBadge estado={e.estado} etiqueta={e.etiqueta} />;
       },
     },
-    { id: 'monto', encabezado: 'Monto', variante: 'importe', ocultarDebajo: 'md', celda: (c) => dinero(c.amount) },
+    { id: 'monto', encabezado: t('columnas.monto'), variante: 'importe', ocultarDebajo: 'md', celda: (c) => dinero(c.amount) },
     {
       id: 'descuento',
-      encabezado: 'Descuento',
+      encabezado: t('columnas.descuento'),
       variante: 'importe',
       ocultarDebajo: 'xl',
       celda: (c) => (c.discount_amount > 0 ? dinero(c.discount_amount) : '—'),
     },
-    { id: 'saldo', encabezado: 'Saldo', variante: 'importe', celda: (c) => <span className="font-medium">{dinero(c.balance)}</span> },
+    { id: 'saldo', encabezado: t('columnas.saldo'), variante: 'importe', celda: (c) => <span className="font-medium">{dinero(c.balance)}</span> },
   ];
 
   const colPagos: ColumnaTabla<SupplierPaymentSummary>[] = [
-    { id: 'fecha', encabezado: 'Fecha', celda: (p) => formatDate(p.payment_date || p.created_at) },
-    { id: 'metodo', encabezado: 'Método', celda: (p) => etiquetaMetodo(p.method) },
-    { id: 'referencia', encabezado: 'Referencia', ocultarDebajo: 'md', celda: (p) => p.reference || '—' },
-    { id: 'origen', encabezado: 'Origen', ocultarDebajo: 'lg', celda: (p) => (p.source === 'account_payable' ? 'Cuenta por pagar' : 'Factura') },
-    { id: 'monto', encabezado: 'Monto', variante: 'importe', celda: (p) => <span className="font-medium text-success-text">{dinero(p.amount)}</span> },
+    { id: 'fecha', encabezado: t('columnas.fecha'), celda: (p) => formatDate(p.payment_date || p.created_at) },
+    { id: 'metodo', encabezado: t('columnas.metodo'), celda: (p) => etiquetaMetodo(p.method, t) },
+    { id: 'referencia', encabezado: t('columnas.referencia'), ocultarDebajo: 'md', celda: (p) => p.reference || '—' },
+    {
+      id: 'origen',
+      encabezado: t('columnas.origen'),
+      ocultarDebajo: 'lg',
+      celda: (p) => (p.source === 'account_payable' ? t('tiposDocumento.cuenta') : t('origenFactura')),
+    },
+    { id: 'monto', encabezado: t('columnas.monto'), variante: 'importe', celda: (p) => <span className="font-medium text-success-text">{dinero(p.amount)}</span> },
   ];
 
   const pestanas = [
-    { valor: 'resumen' as const, etiqueta: 'Resumen' },
-    { valor: 'productos' as const, etiqueta: 'Productos que surte', contador: resumen?.productos ?? productos.length },
-    { valor: 'ordenes' as const, etiqueta: 'Órdenes de compra', contador: resumen?.ordenes ?? ordenes.length },
-    { valor: 'facturas' as const, etiqueta: 'Facturas de compra', contador: resumen?.facturas ?? facturas.length },
-    { valor: 'cuentas' as const, etiqueta: 'Cuentas por pagar', contador: resumen?.cuentas_por_pagar ?? cuentas.length },
-    { valor: 'pagos' as const, etiqueta: 'Pagos', contador: resumen?.pagos ?? pagos.length },
+    { valor: 'resumen' as const, etiqueta: t('pestanas.resumen') },
+    { valor: 'productos' as const, etiqueta: t('pestanas.productos'), contador: resumen?.productos ?? productos.length },
+    { valor: 'ordenes' as const, etiqueta: t('pestanas.ordenes'), contador: resumen?.ordenes ?? ordenes.length },
+    { valor: 'facturas' as const, etiqueta: t('pestanas.facturas'), contador: resumen?.facturas ?? facturas.length },
+    { valor: 'cuentas' as const, etiqueta: t('pestanas.cuentas'), contador: resumen?.cuentas_por_pagar ?? cuentas.length },
+    { valor: 'pagos' as const, etiqueta: t('pestanas.pagos'), contador: resumen?.pagos ?? pagos.length },
   ];
 
-  const recientes = (total: number | undefined, mostradas: number, href: string, sustantivo: string) =>
+  const recientes = (total: number | undefined, mostradas: number, href: string, tipo: 'ordenes' | 'facturas') =>
     total !== undefined && total > mostradas ? (
       <p className="text-[13px] text-fg-secondary">
-        Mostrando las {mostradas} más recientes de {total.toLocaleString('es-CO')} {sustantivo}.{' '}
+        {tipo === 'ordenes'
+          ? t('recientes.ordenes', { mostradas, total: entero(total) })
+          : t('recientes.facturas', { mostradas, total: entero(total) })}{' '}
         <Link href={href} className="font-medium text-link hover:underline">
-          Ver todas
+          {t('recientes.verTodas')}
         </Link>
       </p>
     ) : null;
@@ -477,7 +494,7 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
         variante="detail"
         titulo={supplier.name}
         badge={<StatusBadge estado={activo ? 'activo' : 'inactivo'} tamano="md" />}
-        subtitulo={`${documento} · ${tipoProveedor(supplier.supplier_type)} · ${condicion}`}
+        subtitulo={`${documento} · ${tipoProveedor(supplier.supplier_type, tf)} · ${condicion}`}
         icono={Truck}
         miniatura={
           supplier.logo_url ? (
@@ -486,19 +503,19 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
         }
         cargando={cargando}
         migas={[
-          { etiqueta: 'Inventario', href: '/app/inventario' },
-          { etiqueta: 'Proveedores', href: RUTA_PROVEEDORES },
+          { etiqueta: tc('inventario'), href: '/app/inventario' },
+          { etiqueta: tc('titulo'), href: RUTA_PROVEEDORES },
           { etiqueta: supplier.name },
         ]}
         acciones={
           <>
             <button type="button" onClick={registrarPago} disabled={cuentasAbiertas.length === 0} className={CLASE_BOTON_SECUNDARIO}>
               <HandCoins aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              Registrar pago
+              {t('registrarPago')}
             </button>
             <Link href={rutaNuevaOrdenCompra(supplier.id)} className={CLASE_BOTON_PRIMARIO}>
               <ClipboardList aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              Nueva orden de compra
+              {t('nuevaOrden')}
             </Link>
             <RowActionsMenu
               orientacion="horizontal"
@@ -517,7 +534,7 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
         debajo={
           <TabBar
             id={ID_TABS}
-            etiqueta="Secciones del proveedor"
+            etiqueta={t('pestanas.etiqueta')}
             valor={pestana}
             onValorChange={setPestana}
             pestanas={pestanas}
@@ -529,17 +546,19 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
       {panel(
         'resumen',
         <>
-          <KpiStrip etiqueta="Cifras del proveedor">
+          <KpiStrip etiqueta={t('kpis.etiqueta')}>
             <StatCard
-              etiqueta="Saldo por pagar"
+              etiqueta={t('kpis.saldo')}
               icono={WalletCards}
               cargando={!resumen}
               valor={dinero(resumen?.saldo ?? 0)}
-              detalle={resumen ? `${resumen.facturas_abiertas} ${resumen.facturas_abiertas === 1 ? 'factura abierta' : 'facturas abiertas'}` : undefined}
+              detalle={
+                resumen ? t('kpis.facturasAbiertas', { count: resumen.facturas_abiertas, n: entero(resumen.facturas_abiertas) }) : undefined
+              }
               onClick={() => setPestana('cuentas')}
             />
             <StatCard
-              etiqueta="Vencido"
+              etiqueta={t('kpis.vencido')}
               icono={AlertTriangle}
               cargando={!resumen}
               valor={dinero(resumen?.vencido ?? 0)}
@@ -548,31 +567,35 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
               detalle={
                 resumen
                   ? resumen.facturas_vencidas > 0
-                    ? `${resumen.facturas_vencidas} ${resumen.facturas_vencidas === 1 ? 'factura' : 'facturas'} · ${resumen.max_dias_mora} días de mora`
-                    : 'Sin facturas vencidas'
+                    ? t('kpis.vencidoDetalle', {
+                        count: resumen.facturas_vencidas,
+                        n: entero(resumen.facturas_vencidas),
+                        dias: resumen.max_dias_mora,
+                      })
+                    : t('kpis.sinVencidas')
                   : undefined
               }
               onClick={() => setPestana('cuentas')}
             />
             <StatCard
-              etiqueta="Compras últimos 12 meses"
+              etiqueta={t('kpis.compras12m')}
               icono={TrendingUp}
               cargando={!resumen}
               valor={dinero(resumen?.compras_12m ?? 0)}
-              detalle={resumen ? `${resumen.ordenes_12m} órdenes · ${resumen.facturas_12m} facturas` : undefined}
+              detalle={resumen ? t('kpis.compras12mDetalle', { ordenes: resumen.ordenes_12m, facturas: resumen.facturas_12m }) : undefined}
             />
             <StatCard
-              etiqueta="Entregas a tiempo"
+              etiqueta={t('kpis.entregas')}
               icono={Truck}
               cargando={!resumen}
-              valor={entregas === null ? '—' : `${entregas} %`}
+              valor={entregas === null ? '—' : t('porcentaje', { valor: entregas })}
               tono={entregas === null ? 'neutro' : entregas >= 80 ? 'exito' : entregas >= 60 ? 'advertencia' : 'peligro'}
               tendencia={entregas !== null && entregas >= 80 ? 'sube' : undefined}
               detalle={
                 resumen
                   ? resumen.entregas_total > 0
-                    ? `${resumen.entregas_a_tiempo} de ${resumen.entregas_total} recepciones`
-                    : 'Sin órdenes con fecha esperada'
+                    ? t('kpis.entregasDetalle', { a: resumen.entregas_a_tiempo, total: resumen.entregas_total })
+                    : t('kpis.sinFechaEsperada')
                   : undefined
               }
             />
@@ -581,26 +604,26 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
             <div className="flex min-w-0 flex-col gap-4 lg:col-span-2 lg:gap-5">
               <Tarjeta
-                titulo="Datos generales"
+                titulo={t('datos.titulo')}
                 accion={
                   <Link href={`${RUTA_PROVEEDORES}/${supplier.uuid}/editar`} className="text-sm font-medium text-link hover:underline">
-                    Editar
+                    {tc('editar')}
                   </Link>
                 }
               >
                 <dl>
-                  <Fila etiqueta="Tipo">{tipoProveedor(supplier.supplier_type)}</Fila>
-                  <Fila etiqueta="Documento">{documento}</Fila>
-                  {supplier.trade_name && <Fila etiqueta="Nombre comercial">{supplier.trade_name}</Fila>}
+                  <Fila etiqueta={t('datos.tipo')}>{tipoProveedor(supplier.supplier_type, tf)}</Fila>
+                  <Fila etiqueta={t('datos.documento')}>{documento}</Fila>
+                  {supplier.trade_name && <Fila etiqueta={t('datos.nombreComercial')}>{supplier.trade_name}</Fila>}
                   {padre && (
-                    <Fila etiqueta="Empresa asociada">
+                    <Fila etiqueta={t('datos.empresaAsociada')}>
                       <Link href={`${RUTA_PROVEEDORES}/${padre.uuid}`} className="text-link hover:underline">
                         {padre.name}
                       </Link>
                     </Fila>
                   )}
-                  <Fila etiqueta="Contacto">{supplier.contact || '—'}</Fila>
-                  <Fila etiqueta="Teléfono">
+                  <Fila etiqueta={t('datos.contacto')}>{supplier.contact || '—'}</Fila>
+                  <Fila etiqueta={t('datos.telefono')}>
                     {supplier.phone ? (
                       <a href={`tel:${supplier.phone.replace(/\s+/g, '')}`} className="text-link hover:underline">
                         {supplier.phone}
@@ -609,7 +632,7 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
                       '—'
                     )}
                   </Fila>
-                  <Fila etiqueta="Correo">
+                  <Fila etiqueta={t('datos.correo')}>
                     {supplier.email ? (
                       <a href={`mailto:${supplier.email}`} className="text-link hover:underline">
                         {supplier.email}
@@ -619,7 +642,7 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
                     )}
                   </Fila>
                   {supplier.website && (
-                    <Fila etiqueta="Sitio web">
+                    <Fila etiqueta={t('datos.sitioWeb')}>
                       <a
                         href={/^https?:\/\//i.test(supplier.website) ? supplier.website : `https://${supplier.website}`}
                         target="_blank"
@@ -630,42 +653,40 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
                       </a>
                     </Fila>
                   )}
-                  <Fila etiqueta="Dirección">{direccion || '—'}</Fila>
-                  <Fila etiqueta="Registrado">{formatDate(supplier.created_at)}</Fila>
+                  <Fila etiqueta={t('datos.direccion')}>{direccion || '—'}</Fila>
+                  <Fila etiqueta={t('datos.registrado')}>{formatDate(supplier.created_at)}</Fila>
                 </dl>
               </Tarjeta>
 
-              <Tarjeta titulo="Fiscal y bancario">
+              <Tarjeta titulo={t('fiscal.titulo')}>
                 <dl>
-                  <Fila etiqueta="Régimen">{etiquetaRegimen(supplier.tax_regime)}</Fila>
-                  <Fila etiqueta="Responsabilidades">
+                  <Fila etiqueta={t('fiscal.regimen')}>{etiquetaRegimen(supplier.tax_regime, tf)}</Fila>
+                  <Fila etiqueta={t('fiscal.responsabilidades')}>
                     {supplier.fiscal_responsibilities && supplier.fiscal_responsibilities.length > 0
                       ? supplier.fiscal_responsibilities.join(' · ')
                       : '—'}
                   </Fila>
-                  <Fila etiqueta="Tipo de documento DIAN">{codigoDian ?? (supplier.identification_document_code || '—')}</Fila>
+                  <Fila etiqueta={t('fiscal.tipoDocumentoDian')}>{codigoDian ?? (supplier.identification_document_code || '—')}</Fila>
                   {supplier.legal_organization_code && (
-                    <Fila etiqueta="Tipo de organización">
-                      {supplier.legal_organization_code === '1' ? 'Empresa' : 'Persona natural'}
+                    <Fila etiqueta={t('fiscal.tipoOrganizacion')}>
+                      {supplier.legal_organization_code === '1' ? tf('tipo.company') : t('fiscal.personaNatural')}
                     </Fila>
                   )}
-                  <Fila etiqueta="Municipio">{supplier.municipality_code || '—'}</Fila>
-                  {supplier.country_code && <Fila etiqueta="Código de país">{supplier.country_code}</Fila>}
-                  {supplier.tax_id && <Fila etiqueta="Identificación tributaria">{supplier.tax_id}</Fila>}
-                  <Fila etiqueta="Condición de pago">{condicion}</Fila>
-                  <Fila etiqueta="Banco">
-                    {[supplier.bank_name, etiquetaTipoCuenta(supplier.account_type) && `Cuenta de ${etiquetaTipoCuenta(supplier.account_type).toLowerCase()}`]
-                      .filter(Boolean)
-                      .join(' · ') || '—'}
+                  <Fila etiqueta={t('fiscal.municipio')}>{supplier.municipality_code || '—'}</Fila>
+                  {supplier.country_code && <Fila etiqueta={t('fiscal.codigoPais')}>{supplier.country_code}</Fila>}
+                  {supplier.tax_id && <Fila etiqueta={t('fiscal.identificacionTributaria')}>{supplier.tax_id}</Fila>}
+                  <Fila etiqueta={t('fiscal.condicionPago')}>{condicion}</Fila>
+                  <Fila etiqueta={t('fiscal.banco')}>
+                    {[supplier.bank_name, tipoCuenta].filter(Boolean).join(' · ') || '—'}
                   </Fila>
-                  <Fila etiqueta="Número de cuenta">
+                  <Fila etiqueta={t('fiscal.numeroCuenta')}>
                     {supplier.bank_account ? (
                       <span className="inline-flex flex-wrap items-center gap-2">
                         <span className="font-mono tabular-nums">{verCuenta ? supplier.bank_account : cuentaEnmascarada(supplier.bank_account)}</span>
                         <button
                           type="button"
                           onClick={() => setVerCuenta((v) => !v)}
-                          aria-label={verCuenta ? 'Ocultar número de cuenta' : 'Mostrar número de cuenta'}
+                          aria-label={verCuenta ? t('fiscal.ocultarCuenta') : t('fiscal.mostrarCuenta')}
                           className="inline-flex size-7 items-center justify-center rounded-md text-fg-secondary hover:bg-hover"
                         >
                           {verCuenta ? <EyeOff aria-hidden="true" className="size-4" /> : <Eye aria-hidden="true" className="size-4" />}
@@ -675,14 +696,14 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
                           onClick={async () => {
                             try {
                               await navigator.clipboard.writeText(supplier.bank_account ?? '');
-                              toast({ title: 'Número de cuenta copiado' });
+                              toast({ title: t('fiscal.cuentaCopiada') });
                             } catch {
-                              toast({ variant: 'destructive', title: 'No se pudo copiar' });
+                              toast({ variant: 'destructive', title: t('fiscal.errorCopiar') });
                             }
                           }}
                           className="inline-flex items-center gap-1 text-sm font-medium text-link hover:underline"
                         >
-                          <Copy aria-hidden="true" className="size-3.5" /> Copiar
+                          <Copy aria-hidden="true" className="size-3.5" /> {t('fiscal.copiar')}
                         </button>
                       </span>
                     ) : (
@@ -693,12 +714,12 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
               </Tarjeta>
 
               {(supplier.description || supplier.notes) && (
-                <Tarjeta titulo="Descripción y notas">
+                <Tarjeta titulo={t('notas.titulo')}>
                   <div className="flex flex-col gap-4 text-sm text-fg-secondary">
                     {supplier.description && <HtmlContentRenderer html={supplier.description} />}
                     {supplier.notes && (
                       <div className="rounded-lg bg-subtle p-3">
-                        <p className="mb-1 text-xs font-medium text-fg-secondary">Notas internas</p>
+                        <p className="mb-1 text-xs font-medium text-fg-secondary">{t('notas.internas')}</p>
                         <HtmlContentRenderer html={supplier.notes} />
                       </div>
                     )}
@@ -706,14 +727,14 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
                 </Tarjeta>
               )}
 
-              <Tarjeta titulo="Últimos documentos">
+              <Tarjeta titulo={t('ultimos.titulo')}>
                 <DataTable
-                  etiqueta="Últimos documentos"
+                  etiqueta={t('ultimos.titulo')}
                   densidad="compacta"
                   columnas={[
                     {
                       id: 'doc',
-                      encabezado: 'Documento',
+                      encabezado: t('columnas.documento'),
                       celda: (d) => (
                         <div className="flex flex-col">
                           <span className="font-medium text-link">{d.titulo}</span>
@@ -721,43 +742,47 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
                         </div>
                       ),
                     },
-                    { id: 'fecha', encabezado: 'Fecha', celda: (d) => formatDate(d.fecha) },
-                    { id: 'estado', encabezado: 'Estado', ocultarDebajo: 'sm', celda: (d) => d.estado },
-                    { id: 'total', encabezado: 'Total', variante: 'importe', celda: (d) => dinero(d.total) },
+                    { id: 'fecha', encabezado: t('columnas.fecha'), celda: (d) => formatDate(d.fecha) },
+                    { id: 'estado', encabezado: t('columnas.estado'), ocultarDebajo: 'sm', celda: (d) => d.estado },
+                    { id: 'total', encabezado: t('columnas.total'), variante: 'importe', celda: (d) => dinero(d.total) },
                   ]}
                   filas={ultimos}
                   obtenerId={(d) => d.id}
                   onFilaClick={(d) => d.href && router.push(d.href)}
                   vacio={{
-                    titulo: 'Sin documentos todavía',
-                    descripcion: 'Cuando le hagas una orden de compra aparecerá aquí.',
+                    titulo: t('ultimos.vacioTitulo'),
+                    descripcion: t('ultimos.vacioDescripcion'),
                     icono: FileText,
-                    accion: { etiqueta: 'Nueva orden de compra', href: rutaNuevaOrdenCompra(supplier.id), icono: Plus },
+                    accion: { etiqueta: t('nuevaOrden'), href: rutaNuevaOrdenCompra(supplier.id), icono: Plus },
                     compacto: true,
                   }}
                 />
               </Tarjeta>
             </div>
 
-            <section aria-label="Cómo se conecta" className="flex h-fit flex-col gap-3 rounded-xl border border-line bg-surface p-4 sm:p-6">
-              <h2 className="text-base font-semibold text-fg">Cómo se conecta</h2>
+            <section aria-label={t('conexiones.titulo')} className="flex h-fit flex-col gap-3 rounded-xl border border-line bg-surface p-4 sm:p-6">
+              <h2 className="text-base font-semibold text-fg">{t('conexiones.titulo')}</h2>
               <RelatedLinkCard
                 icono={ClipboardList}
-                etiqueta={`Órdenes de compra${resumen ? ` · ${resumen.ordenes_abiertas} abiertas` : ''}`}
+                etiqueta={
+                  resumen
+                    ? t('conexiones.ordenesAbiertas', { count: resumen.ordenes_abiertas, n: entero(resumen.ordenes_abiertas) })
+                    : t('pestanas.ordenes')
+                }
                 valor={resumen?.ordenes ?? ordenes.length}
                 cargando={!resumen}
                 onAccion={() => setPestana('ordenes')}
               />
               <RelatedLinkCard
                 icono={FileText}
-                etiqueta="Facturas de compra"
+                etiqueta={t('pestanas.facturas')}
                 valor={resumen?.facturas ?? facturas.length}
                 cargando={!resumen}
                 onAccion={() => setPestana('facturas')}
               />
               <RelatedLinkCard
                 icono={HandCoins}
-                etiqueta="Cuentas por pagar abiertas"
+                etiqueta={t('conexiones.cuentasAbiertas')}
                 valor={resumen?.facturas_abiertas ?? cuentasAbiertas.length}
                 cargando={!resumen}
                 tono={(resumen?.facturas_abiertas ?? 0) > 0 ? 'warning' : 'neutral'}
@@ -766,24 +791,24 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
               {resumen && resumen.vencido > 0 && (
                 <RelatedLinkCard
                   icono={AlertTriangle}
-                  etiqueta="Vencido"
+                  etiqueta={t('kpis.vencido')}
                   valor={dinero(resumen.vencido)}
                   tono="danger"
-                  textoAccion="Pagar"
+                  textoAccion={t('conexiones.pagar')}
                   onAccion={registrarPago}
                 />
               )}
               <RelatedLinkCard
                 icono={Package}
-                etiqueta="Productos que surte"
+                etiqueta={t('pestanas.productos')}
                 valor={resumen?.productos ?? productos.length}
                 cargando={!resumen}
                 onAccion={() => setPestana('productos')}
               />
-              <RelatedLinkCard icono={Boxes} etiqueta="Lotes recibidos de este proveedor" valor={resumen?.lotes ?? 0} cargando={!resumen} />
+              <RelatedLinkCard icono={Boxes} etiqueta={t('conexiones.lotes')} valor={resumen?.lotes ?? 0} cargando={!resumen} />
               <RelatedLinkCard
                 icono={Banknote}
-                etiqueta="Pagos registrados"
+                etiqueta={t('conexiones.pagos')}
                 valor={resumen?.pagos ?? pagos.length}
                 cargando={!resumen}
                 onAccion={() => setPestana('pagos')}
@@ -798,19 +823,19 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
         <>
           {stock.length > 0 && (
             <p className="text-sm text-fg-secondary">
-              Valor en stock de sus productos (todas las sucursales): <span className="font-medium text-fg">{dinero(valorStock)}</span>
+              {t('valorStock')} <span className="font-medium text-fg">{dinero(valorStock)}</span>
             </p>
           )}
           <DataTable
-            etiqueta="Productos que surte"
+            etiqueta={t('pestanas.productos')}
             columnas={colProductos}
             filas={productos}
             obtenerId={(p) => String(p.id)}
             onFilaClick={(p) => p.product?.uuid && router.push(`/app/inventario/productos/${p.product.uuid}`)}
-            etiquetaFila={(p) => p.product?.name ?? `Producto #${p.product_id}`}
+            etiquetaFila={(p) => p.product?.name ?? t('productoN', { id: p.product_id })}
             vacio={{
-              titulo: 'No hay productos vinculados a este proveedor',
-              descripcion: 'El vínculo se crea desde la pestaña Proveedores de cada producto.',
+              titulo: t('vacios.productos'),
+              descripcion: t('vacios.productosDescripcion'),
               icono: Package,
             }}
           />
@@ -820,18 +845,18 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
       {panel(
         'ordenes',
         <>
-          {recientes(resumen?.ordenes, ordenes.length, '/app/inventario/ordenes-compra', 'órdenes')}
+          {recientes(resumen?.ordenes, ordenes.length, '/app/inventario/ordenes-compra', 'ordenes')}
           <DataTable
-            etiqueta="Órdenes de compra"
+            etiqueta={t('pestanas.ordenes')}
             columnas={colOrdenes}
             filas={ordenes}
             obtenerId={(o) => String(o.id)}
             onFilaClick={(o) => router.push(`/app/inventario/ordenes-compra/${o.id}`)}
             etiquetaFila={(o) => `OC-${o.id}`}
             vacio={{
-              titulo: 'No hay órdenes de compra registradas',
+              titulo: t('vacios.ordenes'),
               icono: ClipboardList,
-              accion: { etiqueta: 'Nueva orden de compra', href: rutaNuevaOrdenCompra(supplier.id), icono: Plus },
+              accion: { etiqueta: t('nuevaOrden'), href: rutaNuevaOrdenCompra(supplier.id), icono: Plus },
             }}
           />
         </>,
@@ -842,13 +867,13 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
         <>
           {recientes(resumen?.facturas, facturas.length, '/app/finanzas/facturas-compra', 'facturas')}
           <DataTable
-            etiqueta="Facturas de compra"
+            etiqueta={t('pestanas.facturas')}
             columnas={colFacturas}
             filas={facturas}
             obtenerId={(f) => f.id}
             onFilaClick={(f) => router.push(`/app/finanzas/facturas-compra/${f.id}`)}
             etiquetaFila={(f) => f.number_ext || `FC-${f.id.slice(0, 8)}`}
-            vacio={{ titulo: 'No hay facturas de compra registradas', icono: FileText }}
+            vacio={{ titulo: t('vacios.facturas'), icono: FileText }}
           />
         </>,
       )}
@@ -856,14 +881,14 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
       {panel(
         'cuentas',
         <DataTable
-          etiqueta="Cuentas por pagar"
+          etiqueta={t('pestanas.cuentas')}
           columnas={colCuentas}
           filas={cuentas}
           obtenerId={(c) => c.id}
           onFilaClick={(c) => router.push(`/app/finanzas/cuentas-por-pagar/${c.id}`)}
           etiquetaFila={(c) => c.invoice_number || `CxP-${c.id.slice(0, 8)}`}
-          tonoFila={(c) => (estadoCxp(c).estado === 'vencida' ? 'peligro' : undefined)}
-          vacio={{ titulo: 'No hay cuentas por pagar registradas', icono: WalletCards }}
+          tonoFila={(c) => (estadoCxp(c, t).estado === 'vencida' ? 'peligro' : undefined)}
+          vacio={{ titulo: t('vacios.cuentas'), icono: WalletCards }}
         />,
       )}
 
@@ -872,15 +897,15 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
         <>
           {pagos.length > 0 && (
             <p className="text-sm text-fg-secondary">
-              Total pagado: <span className="font-medium text-success-text">{dinero(totalPagado)}</span>
+              {t('totalPagado')} <span className="font-medium text-success-text">{dinero(totalPagado)}</span>
             </p>
           )}
           <DataTable
-            etiqueta="Pagos"
+            etiqueta={t('pestanas.pagos')}
             columnas={colPagos}
             filas={pagos}
             obtenerId={(p) => p.id}
-            vacio={{ titulo: 'No hay pagos registrados a este proveedor', icono: Banknote }}
+            vacio={{ titulo: t('vacios.pagos'), icono: Banknote }}
           />
         </>,
       )}

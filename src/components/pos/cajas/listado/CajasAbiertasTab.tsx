@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Banknote, Eye, History, Lock, Plus, Package } from 'lucide-react';
 import {
   AccionRapida,
@@ -19,19 +20,13 @@ import {
 } from '@/components/kit';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { MOTIVO_NO_PUEDE_CERRAR, puedeCerrarCaja } from '@/lib/pos/cajas/reglasCierre';
+import { puedeCerrarCaja } from '@/lib/pos/cajas/reglasCierre';
 import type { CashSession, CashSummary } from '../types';
-import { cajaCoincide, dinero, dineroConSigno, haceCuanto } from '../historialCajas';
-import { MOTIVO_CIERRE_CIEGO, Oculto, SucursalCaja } from './comunes';
+import { cajaCoincide, dinero, dineroConSigno } from '../historialCajas';
+import { Oculto, SucursalCaja, useHaceCuanto } from './comunes';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 type FiltroCajero = 'todas' | 'mias' | 'otros';
-
-const ETIQUETA_FILTRO: Record<FiltroCajero, string> = {
-  todas: 'Todas',
-  mias: 'Mis cajas',
-  otros: 'De otros cajeros',
-};
 
 export interface CajasAbiertasTabProps {
   sesiones: readonly CashSession[];
@@ -70,6 +65,13 @@ export function CajasAbiertasTab({
   const moneda = useMonedaOrganizacion();
   const router = useRouter();
   const { formatDateTime } = useFormatDate();
+  const t = useTranslations('cajas.listado.abiertas');
+  const tListado = useTranslations('cajas.listado');
+  const tError = useTranslations('cajas.errores');
+  const haceCuanto = useHaceCuanto();
+  const motivoCierreCiego = tListado('motivoCierreCiego');
+  const motivoNoPuedeCerrar = tError('sinPermiso');
+  const etiquetaFiltro = (v: FiltroCajero) => t(`filtroCajero.${v}`);
   const [busqueda, setBusqueda] = useState('');
   const [filtroCajero, setFiltroCajero] = useState<FiltroCajero>('todas');
 
@@ -95,19 +97,19 @@ export function CajasAbiertasTab({
     return [
       {
         id: 'ver',
-        etiqueta: 'Ver detalle',
+        etiqueta: tListado('verDetalle'),
         icono: Eye,
         onSelect: () => irADetalle(s),
         deshabilitada: !showExpected,
-        motivo: showExpected ? undefined : MOTIVO_CIERRE_CIEGO,
+        motivo: showExpected ? undefined : motivoCierreCiego,
       },
       {
         id: 'cerrar',
-        etiqueta: 'Cerrar caja',
+        etiqueta: tListado('cerrarCaja'),
         icono: Lock,
         onSelect: () => onCerrar(s),
         deshabilitada: !puedeCerrar,
-        motivo: puedeCerrar ? undefined : MOTIVO_NO_PUEDE_CERRAR,
+        motivo: puedeCerrar ? undefined : motivoNoPuedeCerrar,
       },
     ];
   };
@@ -118,21 +120,21 @@ export function CajasAbiertasTab({
   };
 
   const columnas: ColumnaTabla<CashSession>[] = [
-    { id: 'caja', encabezado: 'Caja', variante: 'mono', ancho: 80, celda: (s) => <span className="text-fg-secondary">#{s.id}</span> },
+    { id: 'caja', encabezado: tListado('columnas.caja'), variante: 'mono', ancho: 80, celda: (s) => <span className="text-fg-secondary">#{s.id}</span> },
     {
       id: 'cajero',
-      encabezado: 'Cajero',
+      encabezado: tListado('columnas.cajero'),
       celda: (s) => (
         <div className="flex min-w-0 flex-col">
-          <span className="truncate font-medium">{s.opened_by_name || 'Cajero'}</span>
-          <span className="text-xs text-fg-secondary">{s.opened_by === userId ? 'Tu caja' : 'Cajero'}</span>
+          <span className="truncate font-medium">{s.opened_by_name || tListado('cajero')}</span>
+          <span className="text-xs text-fg-secondary">{s.opened_by === userId ? t('tuCaja') : tListado('cajero')}</span>
         </div>
       ),
     },
-    { id: 'sucursal', encabezado: 'Sucursal', ocultarDebajo: 'xl', celda: (s) => <SucursalCaja sesion={s} /> },
+    { id: 'sucursal', encabezado: tListado('columnas.sucursal'), ocultarDebajo: 'xl', celda: (s) => <SucursalCaja sesion={s} /> },
     {
       id: 'abierta',
-      encabezado: 'Abierta desde',
+      encabezado: t('columnas.abiertaDesde'),
       celda: (s) => (
         <div className="flex flex-col whitespace-nowrap">
           <span className="tabular-nums">{formatDateTime(s.opened_at)}</span>
@@ -140,10 +142,10 @@ export function CajasAbiertasTab({
         </div>
       ),
     },
-    { id: 'inicial', encabezado: 'Inicial', variante: 'importe', celda: (s) => <span className="font-medium">{dinero(s.initial_amount, moneda)}</span> },
+    { id: 'inicial', encabezado: tListado('columnas.inicial'), variante: 'importe', celda: (s) => <span className="font-medium">{dinero(s.initial_amount, moneda)}</span> },
     {
       id: 'ventas',
-      encabezado: 'Ventas efectivo',
+      encabezado: t('columnas.ventasEfectivo'),
       variante: 'importe',
       ocultarDebajo: 'lg',
       celda: (s) =>
@@ -151,14 +153,14 @@ export function CajasAbiertasTab({
           <div className="flex flex-col items-end">
             <span className="font-medium">{dinero(r.sales_cash, moneda)}</span>
             <span className="text-xs text-fg-secondary">
-              {r.sales_cash_count ?? 0} {(r.sales_cash_count ?? 0) === 1 ? 'venta' : 'ventas'}
+              {t('ventas', { count: r.sales_cash_count ?? 0 })}
             </span>
           </div>
         )),
     },
     {
       id: 'movimientos',
-      encabezado: 'Movimientos',
+      encabezado: t('columnas.movimientos'),
       variante: 'importe',
       ocultarDebajo: 'lg',
       celda: (s) =>
@@ -168,7 +170,7 @@ export function CajasAbiertasTab({
             <div className="flex flex-col items-end">
               <span className="font-medium">{dineroConSigno(r.cash_in - r.cash_out, moneda)}</span>
               <span className="text-xs text-fg-secondary">
-                {n} {n === 1 ? 'movimiento' : 'movimientos'}
+                {t('movimientos', { count: n })}
               </span>
             </div>
           );
@@ -176,7 +178,7 @@ export function CajasAbiertasTab({
     },
     {
       id: 'esperado',
-      encabezado: 'Esperado',
+      encabezado: t('columnas.esperado'),
       variante: 'importe',
       celda: (s) => (showExpected ? celdaResumen(s, (r) => <span className="font-medium">{dinero(r.expected_amount, moneda)}</span>) : <Oculto />),
     },
@@ -189,24 +191,24 @@ export function CajasAbiertasTab({
           value={busqueda}
           onChange={setBusqueda}
           onValueChange={setBusqueda}
-          placeholder="Buscar por cajero, sucursal o número de caja"
-          etiqueta="Buscar cajas abiertas"
+          placeholder={t('buscarPlaceholder')}
+          etiqueta={t('buscarEtiqueta')}
         />
       }
       filtros={
         <FilterPanel
           conteo={filtroCajero === 'todas' ? 0 : 1}
           onLimpiar={() => setFiltroCajero('todas')}
-          textoVerResultados={`Ver ${filas.length} ${filas.length === 1 ? 'caja' : 'cajas'}`}
+          textoVerResultados={t('verCajas', { count: filas.length })}
         >
-          <FormField etiqueta="Cajero">
+          <FormField etiqueta={tListado('columnas.cajero')}>
             {(c) => (
               <SegmentedControl
                 aria-labelledby={c.idEtiqueta}
                 anchoCompleto
                 valor={filtroCajero}
                 onValorChange={setFiltroCajero}
-                opciones={(['todas', 'mias', 'otros'] as const).map((v) => ({ valor: v, etiqueta: ETIQUETA_FILTRO[v] }))}
+                opciones={(['todas', 'mias', 'otros'] as const).map((v) => ({ valor: v, etiqueta: etiquetaFiltro(v) }))}
               />
             )}
           </FormField>
@@ -214,7 +216,7 @@ export function CajasAbiertasTab({
       }
       chips={
         <FilterChips
-          chips={filtroCajero === 'todas' ? [] : [{ clave: 'cajero', etiqueta: `Cajero: ${ETIQUETA_FILTRO[filtroCajero]}` }]}
+          chips={filtroCajero === 'todas' ? [] : [{ clave: 'cajero', etiqueta: t('chipCajero', { valor: etiquetaFiltro(filtroCajero) }) }]}
           onQuitar={() => setFiltroCajero('todas')}
           onLimpiarTodo={limpiar}
         />
@@ -234,38 +236,40 @@ export function CajasAbiertasTab({
       {estado === 'listo' && filas.length === 0 ? (
         <EmptyState
           icono={Package}
-          titulo="No hay cajas abiertas"
-          descripcion={`Cuando un cajero abra caja en ${nombreSucursal} aparecerá aquí, con su monto inicial y el efectivo esperado.`}
-          accionSecundaria={{ etiqueta: 'Ver historial', icono: History, onClick: onVerHistorial }}
-          accion={onAbrirCaja ? { etiqueta: 'Abrir caja', icono: Plus, onClick: onAbrirCaja } : undefined}
+          titulo={t('vacioTitulo')}
+          descripcion={t('vacioDescripcion', { sucursal: nombreSucursal })}
+          accionSecundaria={{ etiqueta: tListado('verHistorial'), icono: History, onClick: onVerHistorial }}
+          accion={onAbrirCaja ? { etiqueta: tListado('abrirCaja'), icono: Plus, onClick: onAbrirCaja } : undefined}
         />
       ) : (
         <DataTable
-          etiqueta="Cajas abiertas"
+          etiqueta={t('tablaEtiqueta')}
           columnas={columnas}
           filas={filas}
           obtenerId={(s) => String(s.id)}
           estado={estado}
           onFilaClick={showExpected ? irADetalle : undefined}
-          etiquetaFila={(s) => `Caja #${s.id} de ${s.opened_by_name || 'cajero'}`}
+          etiquetaFila={(s) =>
+            s.opened_by_name ? tListado('etiquetaFila', { id: s.id, nombre: s.opened_by_name }) : tListado('etiquetaFilaSinNombre', { id: s.id })
+          }
           accionesRapidas={(s) => {
             const puedeCerrar = puedeCerrarCaja(s, userId, cerrarAjenas);
             return (
               <>
                 <AccionRapida
                   soloIcono
-                  etiqueta="Ver detalle"
+                  etiqueta={tListado('verDetalle')}
                   icono={Eye}
                   onClick={() => irADetalle(s)}
                   deshabilitada={!showExpected}
-                  motivo={showExpected ? undefined : MOTIVO_CIERRE_CIEGO}
+                  motivo={showExpected ? undefined : motivoCierreCiego}
                 />
                 <AccionRapida
-                  etiqueta="Cerrar"
+                  etiqueta={t('cerrar')}
                   icono={Lock}
                   onClick={() => onCerrar(s)}
                   deshabilitada={!puedeCerrar}
-                  motivo={puedeCerrar ? undefined : MOTIVO_NO_PUEDE_CERRAR}
+                  motivo={puedeCerrar ? undefined : motivoNoPuedeCerrar}
                 />
               </>
             );
@@ -273,19 +277,19 @@ export function CajasAbiertasTab({
           tarjetaMovil={(s) => (
             <ListCard
               icono={Banknote}
-              titulo={`${s.opened_by_name || 'Cajero'} · #${s.id}`}
-              subtitulo={`${s.branch_name ?? ''} · abierta ${haceCuanto(s.opened_at)}`}
-              meta={s.opened_by === userId ? 'Tu caja' : `Inicial ${dinero(s.initial_amount, moneda)}`}
+              titulo={`${s.opened_by_name || tListado('cajero')} · #${s.id}`}
+              subtitulo={t('tarjetaSubtitulo', { sucursal: s.branch_name ?? '', hace: haceCuanto(s.opened_at) })}
+              meta={s.opened_by === userId ? t('tuCaja') : t('tarjetaInicial', { monto: dinero(s.initial_amount, moneda) })}
               valor={showExpected ? (resumenes.get(s.id) ? dinero(resumenes.get(s.id)?.expected_amount, moneda) : undefined) : undefined}
               estado={showExpected ? undefined : <Oculto />}
               onClick={showExpected ? () => irADetalle(s) : undefined}
               acciones={accionesDe(s)}
             />
           )}
-          sinResultados={{ titulo: 'No hay cajas abiertas con estos filtros', descripcion: 'Prueba con otro cajero o quita un filtro.' }}
+          sinResultados={{ titulo: t('sinResultadosTitulo'), descripcion: t('sinResultadosDescripcion') }}
           onLimpiarFiltros={limpiar}
           termino={busqueda || undefined}
-          error={{ titulo: 'No pudimos cargar las cajas abiertas', descripcion: error ?? undefined }}
+          error={{ titulo: t('errorTitulo'), descripcion: error ?? undefined }}
           onReintentar={onReintentar}
         />
       )}

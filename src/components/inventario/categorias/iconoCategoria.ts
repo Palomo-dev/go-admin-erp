@@ -17,10 +17,17 @@ export function iconoCategoria(nombre: string | null | undefined): LucideIcon {
   return Tags;
 }
 
-/** Etiqueta legible de `categories.station`; nunca el valor crudo (`hot_kitchen`). */
-export function etiquetaEstacion(station: string | null | undefined): string {
-  if (!station) return 'Sin estación';
-  return STATION_LABELS[station as PrinterStation] ?? station;
+/** Traductor del namespace `categorias` (o cualquiera con las mismas claves). */
+export type TraductorCategorias = (clave: string, valores?: Record<string, string | number>) => string;
+
+/**
+ * Etiqueta legible de `categories.station`; nunca el valor crudo (`hot_kitchen`).
+ * Con `t` sale en el idioma activo (`categorias.estaciones.*`); sin él, en español.
+ */
+export function etiquetaEstacion(station: string | null | undefined, t?: TraductorCategorias): string {
+  if (!station) return t ? t('estaciones.ninguna') : 'Sin estación';
+  if (!Object.prototype.hasOwnProperty.call(STATION_LABELS, station)) return station;
+  return t ? t(`estaciones.${station}`) : STATION_LABELS[station as PrinterStation];
 }
 
 export const OPCIONES_ESTACION = Object.entries(STATION_LABELS).map(([valor, etiqueta]) => ({

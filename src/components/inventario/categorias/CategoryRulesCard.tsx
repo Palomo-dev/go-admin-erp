@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, CheckCircle2, Eye, Loader2, Package, Plus, Save, Trash2, Wand2, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { FormSection } from '@/components/kit';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -23,7 +25,6 @@ import {
   FIELD_LABELS,
   FIELD_OPTIONS,
   FIELD_TYPES,
-  OPERATOR_LABELS,
   OPERATORS_BY_TYPE,
 } from '@/lib/services/categoryRulesService';
 import { cn } from '@/utils/Utils';
@@ -52,7 +53,8 @@ interface Opcion {
   name: string;
 }
 
-const COMBINADOR: Record<LogicCombiner, string> = { AND: 'Y', OR: 'O' };
+/** Campos de regla en el orden del servicio; su etiqueta sale de `categorias.reglas.campos.*`. */
+const CAMPOS = Object.keys(FIELD_LABELS) as RuleField[];
 
 function aEntrada(r: CategoryRule): CategoryRuleInput {
   return {
@@ -77,6 +79,8 @@ export default function CategoryRulesCard({
   onProductsAssigned,
   onVerProductos,
 }: CategoryRulesCardProps) {
+  const t = useTranslations('categorias');
+  const n = useFormatoEntero();
   const { toast } = useToast();
   const [rules, setRules] = useState<CategoryRuleInput[]>([]);
   const [guardadas, setGuardadas] = useState<CategoryRule[]>([]);
@@ -141,10 +145,11 @@ export default function CategoryRulesCard({
     (r: { field: RuleField; value: string | null }) => {
       if (!r.value) return '—';
       if (r.field === 'supplier') return proveedores.find((p) => String(p.id) === r.value)?.name ?? r.value;
-      if (r.field === 'tag') return etiquetas.find((t) => String(t.id) === r.value)?.name ?? r.value;
-      return FIELD_OPTIONS[r.field]?.find((o) => o.value === r.value)?.label ?? r.value;
+      if (r.field === 'tag') return etiquetas.find((e) => String(e.id) === r.value)?.name ?? r.value;
+      const opcion = FIELD_OPTIONS[r.field]?.find((o) => o.value === r.value);
+      return opcion ? t(`reglas.opciones.${r.field}.${opcion.value}`) : r.value;
     },
-    [proveedores, etiquetas],
+    [proveedores, etiquetas, t],
   );
 
   const reglasTemporales = (): CategoryRule[] =>
@@ -204,15 +209,15 @@ export default function CategoryRulesCard({
       setDirty(false);
       if (!silencioso) {
         toast({
-          title: 'Reglas guardadas',
+          title: t('reglas.toasts.guardadas'),
           description: nuevas.length
-            ? `${nuevas.length} ${nuevas.length === 1 ? 'regla' : 'reglas'} para «${categoryName}». Aplícalas para asignar productos.`
-            : `«${categoryName}» ya no tiene reglas.`,
+            ? t('reglas.toasts.guardadasDesc', { count: nuevas.length, n: n(nuevas.length), nombre: categoryName })
+            : t('reglas.toasts.sinReglasDesc', { nombre: categoryName }),
         });
       }
       return nuevas;
     } catch (e) {
-      toast({ title: 'No se pudieron guardar las reglas', description: e instanceof Error ? e.message : 'Inténtalo de nuevo.', variant: 'destructive' });
+      toast({ title: t('reglas.toasts.noGuardar'), description: e instanceof Error ? e.message : t('comun.intentaDeNuevo'), variant: 'destructive' });
       return null;
     } finally {
       setGuardando(false);
@@ -224,7 +229,7 @@ export default function CategoryRulesCard({
     try {
       setVistaPrevia(await evaluateRules(organizationId, reglasTemporales()));
     } catch (e) {
-      toast({ title: 'No se pudo calcular la vista previa', description: e instanceof Error ? e.message : 'Inténtalo de nuevo.', variant: 'destructive' });
+      toast({ title: t('reglas.toasts.noVistaPrevia'), description: e instanceof Error ? e.message : t('comun.intentaDeNuevo'), variant: 'destructive' });
     } finally {
       setEvaluando(false);
     }
@@ -236,19 +241,21 @@ export default function CategoryRulesCard({
       const nuevas = dirty ? await guardar(true) : guardadas;
       if (!nuevas) return;
       if (!nuevas.length) {
-        toast({ title: 'Sin reglas que aplicar', description: 'Agrega al menos una regla.' });
+        toast({ title: t('reglas.toasts.sinReglas'), description: t('reglas.toasts.agregaUna') });
         return;
       }
       const r = await applyRules(categoryId, organizationId, nuevas);
       setResultado({ ...r, reglas: nuevas.length });
       onProductsAssigned?.(r);
       toast({
-        title: `${r.assigned} ${r.assigned === 1 ? 'producto asignado' : 'productos asignados'} a ${categoryName}`,
-        description: r.removed ? `${r.removed} ya no cumplían las reglas y se retiraron.` : `Se aplicaron ${nuevas.length} ${nuevas.length === 1 ? 'regla' : 'reglas'}.`,
+        title: t('reglas.asignados', { count: r.assigned, n: n(r.assigned), nombre: categoryName }),
+        description: r.removed
+          ? t('reglas.toasts.retirados', { n: n(r.removed) })
+          : t('reglas.toasts.aplicadas', { count: nuevas.length, n: n(nuevas.length) }),
       });
       setEditando(false);
     } catch (e) {
-      toast({ title: 'No se pudieron aplicar las reglas', description: e instanceof Error ? e.message : 'Inténtalo de nuevo.', variant: 'destructive' });
+      toast({ title: t('reglas.toasts.noAplicar'), description: e instanceof Error ? e.message : t('comun.intentaDeNuevo'), variant: 'destructive' });
     } finally {
       setAplicando(false);
     }
@@ -256,12 +263,12 @@ export default function CategoryRulesCard({
 
   const opcionesValor = (campo: RuleField): { value: string; label: string }[] => {
     if (campo === 'supplier') return proveedores.map((s) => ({ value: String(s.id), label: s.name }));
-    if (campo === 'tag') return etiquetas.map((t) => ({ value: String(t.id), label: t.name }));
-    return FIELD_OPTIONS[campo] || [];
+    if (campo === 'tag') return etiquetas.map((e) => ({ value: String(e.id), label: e.name }));
+    return (FIELD_OPTIONS[campo] || []).map((o) => ({ value: o.value, label: t(`reglas.opciones.${campo}.${o.value}`) }));
   };
 
   const incompletas = useMemo(() => rules.some(reglaIncompleta), [rules]);
-  const titulo = `Reglas de asignación automática${guardadas.length ? ` (${guardadas.length})` : ''}`;
+  const titulo = guardadas.length ? t('reglas.tituloN', { n: n(guardadas.length) }) : t('reglas.titulo');
 
   const botonTexto = 'text-sm font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-md';
   const boton = (primario?: boolean) =>
@@ -273,11 +280,11 @@ export default function CategoryRulesCard({
   return (
     <FormSection
       titulo={titulo}
-      descripcion="Los productos que cumplan las condiciones se asignan a esta categoría (además de su categoría principal). Puedes reasignarlos a mano después."
+      descripcion={t('reglas.descripcion')}
       accion={
         !cargando && !errorCarga && guardadas.length > 0 && !editando ? (
           <button type="button" className={botonTexto} onClick={() => setEditando(true)}>
-            Editar reglas
+            {t('reglas.editar')}
           </button>
         ) : editando && guardadas.length > 0 ? (
           <button
@@ -290,7 +297,7 @@ export default function CategoryRulesCard({
               setEditando(false);
             }}
           >
-            Descartar cambios
+            {t('reglas.descartar')}
           </button>
         ) : undefined
       }
@@ -299,27 +306,35 @@ export default function CategoryRulesCard({
         <Skeleton className="h-20 w-full" />
       ) : errorCarga ? (
         <div role="alert" className="flex items-center justify-between gap-3 rounded-lg bg-danger-subtle px-3 py-2.5 text-sm text-danger-text">
-          No pudimos cargar las reglas.
+          {t('reglas.errorCarga')}
           <button type="button" className={botonTexto} onClick={() => void cargar()}>
-            Reintentar
+            {t('reglas.reintentar')}
           </button>
         </div>
       ) : !editando && guardadas.length > 0 ? (
         <dl className="grid grid-cols-[minmax(0,10rem)_1fr] gap-x-4 gap-y-2 text-sm">
           {guardadas.map((r, i) => (
             <div key={r.id} className="contents">
-              <dt className="text-fg-secondary">{i === 0 ? 'Regla 1' : `${COMBINADOR[r.logic_combiner]} regla ${i + 1}`}</dt>
+              <dt className="text-fg-secondary">
+                {i === 0
+                  ? t('reglas.primera')
+                  : t('reglas.siguiente', { combinador: t(`reglas.combinador.${r.logic_combiner}`), n: i + 1 })}
+              </dt>
               <dd className="text-fg">
-                {FIELD_LABELS[r.field]} {OPERATOR_LABELS[r.operator].toLowerCase()} «{nombreValor(r)}»
+                {t('reglas.resumen', {
+                  campo: t(`reglas.campos.${r.field}`),
+                  operador: t(`reglas.operadores.${r.operator}`).toLowerCase(),
+                  valor: nombreValor(r),
+                })}
               </dd>
             </div>
           ))}
           {resultado && (
             <>
-              <dt className="text-fg-secondary">Última aplicación</dt>
+              <dt className="text-fg-secondary">{t('reglas.ultimaAplicacion')}</dt>
               <dd className="text-fg">
-                {resultado.assigned} {resultado.assigned === 1 ? 'producto asignado' : 'productos asignados'}
-                {resultado.removed ? ` · ${resultado.removed} retirados` : ''}
+                {t('reglas.nAsignados', { count: resultado.assigned, n: n(resultado.assigned) })}
+                {resultado.removed ? ` · ${t('reglas.nRetirados', { n: n(resultado.removed) })}` : ''}
               </dd>
             </>
           )}
@@ -327,10 +342,10 @@ export default function CategoryRulesCard({
       ) : !editando ? (
         <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-line py-6 text-center">
           <Wand2 aria-hidden="true" className="size-6 text-fg-muted" strokeWidth={1.5} />
-          <p className="text-sm text-fg-secondary">Esta categoría no tiene reglas.</p>
+          <p className="text-sm text-fg-secondary">{t('reglas.vacio')}</p>
           <button type="button" onClick={agregar} className={cn(boton(), 'flex-none')}>
             <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            Agregar primera regla
+            {t('reglas.agregarPrimera')}
           </button>
         </div>
       ) : (
@@ -345,12 +360,12 @@ export default function CategoryRulesCard({
                 {index > 0 && (
                   <div className="flex items-center gap-2 pl-1">
                     <Select value={regla.logic_combiner} onValueChange={(v) => actualizar(index, { logic_combiner: v as LogicCombiner })}>
-                      <SelectTrigger className="h-8 w-20 text-xs" aria-label={`Cómo se une la regla ${index + 1}`}>
+                      <SelectTrigger className="h-8 w-20 text-xs" aria-label={t('reglas.comoSeUne', { n: index + 1 })}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="AND">Y</SelectItem>
-                        <SelectItem value="OR">O</SelectItem>
+                        <SelectItem value="AND">{t('reglas.combinador.AND')}</SelectItem>
+                        <SelectItem value="OR">{t('reglas.combinador.OR')}</SelectItem>
                       </SelectContent>
                     </Select>
                     <div className="h-px flex-1 bg-line" />
@@ -358,22 +373,22 @@ export default function CategoryRulesCard({
                 )}
                 <div className="grid grid-cols-1 items-end gap-2 rounded-lg border border-line bg-subtle p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
                   <label className="flex flex-col gap-1 text-xs text-fg-secondary">
-                    Campo
+                    {t('reglas.campo')}
                     <Select value={regla.field} onValueChange={(v) => actualizar(index, { field: v as RuleField })}>
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.entries(FIELD_LABELS).map(([k, v]) => (
+                        {CAMPOS.map((k) => (
                           <SelectItem key={k} value={k}>
-                            {v}
+                            {t(`reglas.campos.${k}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-fg-secondary">
-                    Operador
+                    {t('reglas.operador')}
                     <Select value={regla.operator} onValueChange={(v) => actualizar(index, { operator: v as RuleOperator })}>
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue />
@@ -381,18 +396,18 @@ export default function CategoryRulesCard({
                       <SelectContent>
                         {operadores.map((op) => (
                           <SelectItem key={op} value={op}>
-                            {OPERATOR_LABELS[op]}
+                            {t(`reglas.operadores.${op}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-fg-secondary">
-                    Valor
+                    {t('reglas.valor')}
                     {tipo === 'select' && opciones.length > 0 ? (
                       <Select value={regla.value || ''} onValueChange={(v) => actualizar(index, { value: v })}>
                         <SelectTrigger className="h-9 text-sm">
-                          <SelectValue placeholder="Seleccionar…" />
+                          <SelectValue placeholder={t('reglas.seleccionar')} />
                         </SelectTrigger>
                         <SelectContent>
                           {opciones.map((o) => (
@@ -408,7 +423,7 @@ export default function CategoryRulesCard({
                           type={tipo === 'number' ? 'number' : 'text'}
                           value={regla.value || ''}
                           onChange={(e) => actualizar(index, { value: e.target.value })}
-                          placeholder={tipo === 'number' ? '0' : 'Escribir o seleccionar…'}
+                          placeholder={tipo === 'number' ? '0' : t('reglas.escribirOSeleccionar')}
                           className="h-9 text-sm"
                           list={sugerencias[regla.field]?.length ? idLista : undefined}
                         />
@@ -425,7 +440,7 @@ export default function CategoryRulesCard({
                   <button
                     type="button"
                     onClick={() => quitar(index)}
-                    aria-label={`Quitar la regla ${index + 1}`}
+                    aria-label={t('reglas.quitar', { n: index + 1 })}
                     className="flex size-9 items-center justify-center rounded-lg text-fg-secondary hover:bg-danger-subtle hover:text-danger-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
                     <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
@@ -437,7 +452,7 @@ export default function CategoryRulesCard({
 
           <button type="button" onClick={agregar} className={cn(boton(), 'w-full flex-none border-dashed')}>
             <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            Agregar regla
+            {t('reglas.agregar')}
           </button>
 
           {vistaPrevia && (
@@ -445,10 +460,10 @@ export default function CategoryRulesCard({
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-sm font-medium text-info-text">
                   <Eye aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                  Vista previa
+                  {t('reglas.vistaPrevia')}
                 </span>
                 <span className="text-xs font-medium text-info-text">
-                  {vistaPrevia.length} {vistaPrevia.length === 1 ? 'producto' : 'productos'}
+                  {t('comun.nProductos', { count: vistaPrevia.length, n: n(vistaPrevia.length) })}
                 </span>
               </div>
               {vistaPrevia.length > 0 ? (
@@ -460,12 +475,14 @@ export default function CategoryRulesCard({
                       <span className="ml-auto shrink-0 font-mono text-fg-muted">{p.sku}</span>
                     </li>
                   ))}
-                  {vistaPrevia.length > 50 && <li className="pt-1 text-xs text-fg-muted">y {vistaPrevia.length - 50} más…</li>}
+                  {vistaPrevia.length > 50 && (
+                    <li className="pt-1 text-xs text-fg-muted">{t('reglas.yMas', { n: n(vistaPrevia.length - 50) })}</li>
+                  )}
                 </ul>
               ) : (
                 <p className="flex items-center gap-1.5 text-xs text-fg-secondary">
                   <AlertCircle aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
-                  Ningún producto cumple estas reglas.
+                  {t('reglas.ninguno')}
                 </p>
               )}
             </div>
@@ -477,32 +494,32 @@ export default function CategoryRulesCard({
                 type="button"
                 onClick={() => void previsualizar()}
                 disabled={evaluando || incompletas}
-                title={incompletas ? 'Completa el valor de todas las reglas' : undefined}
+                title={incompletas ? t('reglas.completaValores') : undefined}
                 className={boton()}
               >
                 {evaluando ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <Eye aria-hidden="true" className="size-4" strokeWidth={1.5} />}
-                Vista previa
+                {t('reglas.vistaPrevia')}
               </button>
               <button type="button" onClick={() => void guardar()} disabled={guardando || !dirty} className={boton()}>
                 {guardando ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <Save aria-hidden="true" className="size-4" strokeWidth={1.5} />}
-                Guardar reglas
+                {t('reglas.guardar')}
               </button>
               <button
                 type="button"
                 onClick={() => void aplicar()}
                 disabled={aplicando || incompletas}
-                title={incompletas ? 'Completa el valor de todas las reglas' : undefined}
+                title={incompletas ? t('reglas.completaValores') : undefined}
                 className={boton(true)}
               >
                 {aplicando ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <CheckCircle2 aria-hidden="true" className="size-4" strokeWidth={1.5} />}
-                Aplicar y asignar
+                {t('reglas.aplicar')}
               </button>
             </div>
           )}
           {rules.length === 0 && dirty && (
             <button type="button" onClick={() => void guardar()} disabled={guardando} className={cn(boton(), 'flex-none')}>
               <Save aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              Guardar sin reglas
+              {t('reglas.guardarSinReglas')}
             </button>
           )}
         </div>
@@ -513,21 +530,21 @@ export default function CategoryRulesCard({
           <CheckCircle2 aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-success-text" strokeWidth={1.5} />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             <p className="text-sm font-medium text-fg">
-              {resultado.assigned} {resultado.assigned === 1 ? 'producto asignado' : 'productos asignados'} a {categoryName}
+              {t('reglas.asignados', { count: resultado.assigned, n: n(resultado.assigned), nombre: categoryName })}
             </p>
             <p className="text-[13px] text-fg-secondary">
-              Se {resultado.reglas === 1 ? 'aplicó 1 regla' : `aplicaron ${resultado.reglas} reglas`}.
-              {resultado.removed ? ` ${resultado.removed} ya no cumplían y se retiraron.` : ''}
+              {t('reglas.toasts.aplicadas', { count: resultado.reglas, n: n(resultado.reglas) })}
+              {resultado.removed ? ` ${t('reglas.yaNoCumplian', { n: n(resultado.removed) })}` : ''}
             </p>
             {onVerProductos && (
               <button type="button" className={cn(botonTexto, 'self-start text-[13px]')} onClick={onVerProductos}>
-                Ver productos
+                {t('acciones.verProductos')}
               </button>
             )}
           </div>
           <button
             type="button"
-            aria-label="Cerrar aviso"
+            aria-label={t('reglas.cerrarAviso')}
             onClick={() => setResultado(null)}
             className="flex size-7 items-center justify-center rounded-md text-fg-muted hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >

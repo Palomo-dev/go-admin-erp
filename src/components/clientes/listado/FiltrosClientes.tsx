@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { FormField, SegmentedControl, type ChipFiltro, type ListadoServidor, type OrdenListado } from '@/components/kit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { OpcionesFiltroClientes } from '@/lib/services/clientesListadoService';
@@ -13,39 +14,43 @@ import type { OpcionesFiltroClientes } from '@/lib/services/clientesListadoServi
  */
 const TODOS = '__todos__';
 
-export const ETIQUETA_TIPO: Record<string, string> = { persona: 'Persona', empresa: 'Empresa' };
-export const ETIQUETA_SALDO: Record<string, string> = {
-  con_saldo: 'Con saldo',
-  sin_saldo: 'Sin saldo',
-  vencido: 'Vencido',
-};
-export const ETIQUETA_ESTADO: Record<string, string> = { inactivos: 'Inactivos', todos: 'Todos' };
+/** Traductor del namespace `clientes.listado`. */
+export type TraductorFiltros = (clave: string, valores?: Record<string, string | number>) => string;
 
-export const OPCIONES_ORDEN: { valor: string; etiqueta: string; orden: OrdenListado }[] = [
-  { valor: 'nombre_asc', etiqueta: 'Nombre (A–Z)', orden: { campo: 'nombre', direccion: 'asc' } },
-  { valor: 'nombre_desc', etiqueta: 'Nombre (Z–A)', orden: { campo: 'nombre', direccion: 'desc' } },
-  { valor: 'ultima_compra_desc', etiqueta: 'Última compra (más reciente)', orden: { campo: 'ultima_compra', direccion: 'desc' } },
-  { valor: 'ultima_compra_asc', etiqueta: 'Última compra (más antigua)', orden: { campo: 'ultima_compra', direccion: 'asc' } },
-  { valor: 'saldo_desc', etiqueta: 'Mayor saldo', orden: { campo: 'saldo', direccion: 'desc' } },
-  { valor: 'saldo_asc', etiqueta: 'Menor saldo', orden: { campo: 'saldo', direccion: 'asc' } },
-  { valor: 'ventas_desc', etiqueta: 'Más ventas', orden: { campo: 'ventas', direccion: 'desc' } },
-  { valor: 'creado_desc', etiqueta: 'Más recientes', orden: { campo: 'creado', direccion: 'desc' } },
+/** Valor del filtro (en la URL) → clave de `clientes.listado.chips.valores`. */
+const CLAVE_TIPO: Record<string, string> = { persona: 'persona', empresa: 'empresa' };
+const CLAVE_SALDO: Record<string, string> = { con_saldo: 'conSaldo', sin_saldo: 'sinSaldo', vencido: 'vencido' };
+const CLAVE_ESTADO: Record<string, string> = { inactivos: 'inactivos', todos: 'todos' };
+
+export const OPCIONES_ORDEN: { valor: string; clave: string; orden: OrdenListado }[] = [
+  { valor: 'nombre_asc', clave: 'nombreAsc', orden: { campo: 'nombre', direccion: 'asc' } },
+  { valor: 'nombre_desc', clave: 'nombreDesc', orden: { campo: 'nombre', direccion: 'desc' } },
+  { valor: 'ultima_compra_desc', clave: 'ultimaCompraDesc', orden: { campo: 'ultima_compra', direccion: 'desc' } },
+  { valor: 'ultima_compra_asc', clave: 'ultimaCompraAsc', orden: { campo: 'ultima_compra', direccion: 'asc' } },
+  { valor: 'saldo_desc', clave: 'saldoDesc', orden: { campo: 'saldo', direccion: 'desc' } },
+  { valor: 'saldo_asc', clave: 'saldoAsc', orden: { campo: 'saldo', direccion: 'asc' } },
+  { valor: 'ventas_desc', clave: 'ventasDesc', orden: { campo: 'ventas', direccion: 'desc' } },
+  { valor: 'creado_desc', clave: 'creadoDesc', orden: { campo: 'creado', direccion: 'desc' } },
 ];
 
-/** Chips de los filtros activos, con la etiqueta legible de cada valor. */
-export function chipsClientes(filtros: Record<string, string>, opciones: OpcionesFiltroClientes): ChipFiltro[] {
+/**
+ * Chips de los filtros activos, con la etiqueta legible de cada valor.
+ * `t` es `useTranslations('clientes.listado')`.
+ */
+export function chipsClientes(filtros: Record<string, string>, opciones: OpcionesFiltroClientes, t: TraductorFiltros): ChipFiltro[] {
+  const valor = (mapa: Record<string, string>, v: string) => (mapa[v] ? t(`chips.valores.${mapa[v]}`) : v);
   const chips: ChipFiltro[] = [];
-  if (filtros.tipo) chips.push({ clave: 'tipo', etiqueta: `Tipo: ${ETIQUETA_TIPO[filtros.tipo] ?? filtros.tipo}` });
-  if (filtros.estado) chips.push({ clave: 'estado', etiqueta: `Estado: ${ETIQUETA_ESTADO[filtros.estado] ?? filtros.estado}` });
-  if (filtros.saldo) chips.push({ clave: 'saldo', etiqueta: `Cartera: ${ETIQUETA_SALDO[filtros.saldo] ?? filtros.saldo}` });
+  if (filtros.tipo) chips.push({ clave: 'tipo', etiqueta: t('chips.tipo', { valor: valor(CLAVE_TIPO, filtros.tipo) }) });
+  if (filtros.estado) chips.push({ clave: 'estado', etiqueta: t('chips.estado', { valor: valor(CLAVE_ESTADO, filtros.estado) }) });
+  if (filtros.saldo) chips.push({ clave: 'saldo', etiqueta: t('chips.cartera', { valor: valor(CLAVE_SALDO, filtros.saldo) }) });
   if (filtros.rol) {
     const r = opciones.roles.find((o) => o.valor === filtros.rol);
-    chips.push({ clave: 'rol', etiqueta: `Rol: ${r?.etiqueta ?? filtros.rol}` });
+    chips.push({ clave: 'rol', etiqueta: t('chips.rol', { valor: r?.etiqueta ?? filtros.rol }) });
   }
-  if (filtros.etiqueta) chips.push({ clave: 'etiqueta', etiqueta: `Etiqueta: ${filtros.etiqueta}` });
+  if (filtros.etiqueta) chips.push({ clave: 'etiqueta', etiqueta: t('chips.etiqueta', { valor: filtros.etiqueta }) });
   if (filtros.municipio) {
     const m = opciones.municipios.find((o) => o.valor === filtros.municipio);
-    chips.push({ clave: 'municipio', etiqueta: `Municipio: ${m?.etiqueta ?? 'seleccionado'}` });
+    chips.push({ clave: 'municipio', etiqueta: t('chips.municipio', { valor: m?.etiqueta ?? t('chips.municipioSeleccionado') }) });
   }
   return chips;
 }
@@ -94,6 +99,7 @@ export function CamposFiltroClientes({
   opciones: OpcionesFiltroClientes;
   conOrden: boolean;
 }) {
+  const t = useTranslations('clientes.listado');
   const f = listado.filtros;
   const ordenActual =
     OPCIONES_ORDEN.find((o) => o.orden.campo === listado.orden?.campo && o.orden.direccion === listado.orden?.direccion)?.valor ??
@@ -101,7 +107,7 @@ export function CamposFiltroClientes({
 
   return (
     <>
-      <FormField etiqueta="Tipo">
+      <FormField etiqueta={t('filtros.tipo')}>
         {(c) => (
           <SegmentedControl
             aria-labelledby={c.idEtiqueta}
@@ -109,15 +115,15 @@ export function CamposFiltroClientes({
             valor={f.tipo ?? 'todos'}
             onValorChange={(v) => listado.setFiltro('tipo', v === 'todos' ? null : v)}
             opciones={[
-              { valor: 'todos', etiqueta: 'Todos' },
-              { valor: 'persona', etiqueta: 'Persona' },
-              { valor: 'empresa', etiqueta: 'Empresa' },
+              { valor: 'todos', etiqueta: t('filtros.todos') },
+              { valor: 'persona', etiqueta: t('filtros.persona') },
+              { valor: 'empresa', etiqueta: t('filtros.empresa') },
             ]}
           />
         )}
       </FormField>
 
-      <FormField etiqueta="Estado">
+      <FormField etiqueta={t('filtros.estado')}>
         {(c) => (
           <SegmentedControl
             aria-labelledby={c.idEtiqueta}
@@ -125,43 +131,49 @@ export function CamposFiltroClientes({
             valor={f.estado ?? 'activos'}
             onValorChange={(v) => listado.setFiltro('estado', v === 'activos' ? null : v)}
             opciones={[
-              { valor: 'activos', etiqueta: 'Activos' },
-              { valor: 'inactivos', etiqueta: 'Inactivos' },
-              { valor: 'todos', etiqueta: 'Todos' },
+              { valor: 'activos', etiqueta: t('filtros.activos') },
+              { valor: 'inactivos', etiqueta: t('filtros.inactivos') },
+              { valor: 'todos', etiqueta: t('filtros.todos') },
             ]}
           />
         )}
       </FormField>
 
       <SelectFiltro
-        etiqueta="Cartera"
+        etiqueta={t('filtros.cartera')}
         valor={f.saldo}
         onCambio={(v) => listado.setFiltro('saldo', v)}
-        textoTodos="Todos los saldos"
+        textoTodos={t('filtros.todosSaldos')}
         opciones={[
-          { valor: 'con_saldo', etiqueta: 'Con saldo pendiente' },
-          { valor: 'sin_saldo', etiqueta: 'Sin saldo pendiente' },
-          { valor: 'vencido', etiqueta: 'Con cartera vencida' },
+          { valor: 'con_saldo', etiqueta: t('filtros.conSaldoPendiente') },
+          { valor: 'sin_saldo', etiqueta: t('filtros.sinSaldoPendiente') },
+          { valor: 'vencido', etiqueta: t('filtros.conCarteraVencida') },
         ]}
       />
-      <SelectFiltro etiqueta="Rol" valor={f.rol} onCambio={(v) => listado.setFiltro('rol', v)} textoTodos="Todos los roles" opciones={opciones.roles} />
       <SelectFiltro
-        etiqueta="Etiqueta"
+        etiqueta={t('filtros.rol')}
+        valor={f.rol}
+        onCambio={(v) => listado.setFiltro('rol', v)}
+        textoTodos={t('filtros.todosRoles')}
+        opciones={opciones.roles}
+      />
+      <SelectFiltro
+        etiqueta={t('filtros.etiqueta')}
         valor={f.etiqueta}
         onCambio={(v) => listado.setFiltro('etiqueta', v)}
-        textoTodos="Todas las etiquetas"
+        textoTodos={t('filtros.todasEtiquetas')}
         opciones={opciones.etiquetas}
       />
       <SelectFiltro
-        etiqueta="Municipio"
+        etiqueta={t('filtros.municipio')}
         valor={f.municipio}
         onCambio={(v) => listado.setFiltro('municipio', v)}
-        textoTodos="Todos los municipios"
+        textoTodos={t('filtros.todosMunicipios')}
         opciones={opciones.municipios}
       />
 
       {conOrden && (
-        <FormField etiqueta="Ordenar por">
+        <FormField etiqueta={t('filtros.ordenarPor')}>
           {(c) => (
             <Select
               value={ordenActual}
@@ -173,7 +185,7 @@ export function CamposFiltroClientes({
               <SelectContent>
                 {OPCIONES_ORDEN.map((o) => (
                   <SelectItem key={o.valor} value={o.valor}>
-                    {o.etiqueta}
+                    {t(`orden.${o.clave}`)}
                   </SelectItem>
                 ))}
               </SelectContent>

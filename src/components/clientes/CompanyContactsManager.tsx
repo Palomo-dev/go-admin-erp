@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,7 @@ import {
 } from 'lucide-react';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 import LocationSelector, { type LocationData } from '@/components/common/LocationSelector';
+import { useKitT } from '@/components/kit/useIdiomaKit';
 
 interface CompanyContactsManagerProps {
   companyId?: string;
@@ -46,7 +48,7 @@ interface ContactLink {
   avatar_url: string | null;
 }
 
-interface PendingContact {
+export interface PendingContact {
   person_id?: string;
   isNew?: boolean;
   first_name: string;
@@ -63,6 +65,21 @@ interface PendingContact {
   avatar_url: string | null;
 }
 
+/** Fila de `customer_company_links` con la persona embebida. */
+interface FilaVinculo {
+  link_id: string;
+  person_id: string;
+  position: string | null;
+  is_primary: boolean | null;
+  person: {
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+    phone: string | null;
+    avatar_url: string | null;
+  } | null;
+}
+
 interface SearchResult {
   id: string;
   first_name: string;
@@ -73,6 +90,7 @@ interface SearchResult {
 }
 
 export function CompanyContactsManager({ companyId, organizationId, branchId, onContactsChange }: CompanyContactsManagerProps) {
+  const t = useTranslations('clientes.formulario');
   const isPersisted = !!companyId;
   const [contacts, setContacts] = useState<(ContactLink | PendingContact)[]>([]);
   const [loading, setLoading] = useState(isPersisted);
@@ -121,10 +139,10 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
       .order('is_primary', { ascending: false });
 
     if (error) {
-      toast.error('Error al cargar contactos');
+      toast.error(t('contactos.avisos.errorCargar'));
       console.error(error);
     } else if (data) {
-      const mapped: ContactLink[] = (data as any[]).map((row) => ({
+      const mapped: ContactLink[] = (data as unknown as FilaVinculo[]).map((row) => ({
         link_id: row.link_id,
         person_id: row.person_id,
         first_name: row.person?.first_name ?? '',
@@ -138,7 +156,7 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
       setContacts(mapped);
     }
     setLoading(false);
-  }, [companyId, organizationId]);
+  }, [companyId, organizationId, t]);
 
   useEffect(() => {
     if (isPersisted) {
@@ -186,10 +204,10 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
       });
 
       if (error) {
-        toast.error('Error al vincular contacto');
+        toast.error(t('contactos.avisos.errorVincular'));
         console.error(error);
       } else {
-        toast.success('Contacto vinculado correctamente');
+        toast.success(t('contactos.avisos.vinculado'));
         resetModal();
         loadContacts();
       }
@@ -207,7 +225,7 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
       const updated = [...contacts, newContact] as PendingContact[];
       setContacts(updated);
       notifyChange(updated);
-      toast.success('Contacto agregado');
+      toast.success(t('contactos.avisos.agregado'));
       resetModal();
     }
     setAdding(false);
@@ -215,7 +233,7 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
 
   const handleAddNewContact = async () => {
     if (!newPersonData.first_name.trim() || !newPersonData.last_name.trim()) {
-      toast.error('Nombre y apellido son obligatorios');
+      toast.error(t('contactos.avisos.nombreObligatorio'));
       return;
     }
     const errorTelefono = mensajeErrorTelefono(newPersonData.phone);
@@ -246,7 +264,7 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
         .single();
 
       if (personError) {
-        toast.error('Error al crear persona');
+        toast.error(t('contactos.avisos.errorCrearPersona'));
         console.error(personError);
         setAdding(false);
         return;
@@ -261,10 +279,10 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
       });
 
       if (linkError) {
-        toast.error('Error al vincular contacto');
+        toast.error(t('contactos.avisos.errorVincular'));
         console.error(linkError);
       } else {
-        toast.success('Persona creada y vinculada');
+        toast.success(t('contactos.avisos.personaCreada'));
         resetModal();
         loadContacts();
       }
@@ -287,7 +305,7 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
       const updated = [...contacts, newContact] as PendingContact[];
       setContacts(updated);
       notifyChange(updated);
-      toast.success('Contacto agregado');
+      toast.success(t('contactos.avisos.agregado'));
       resetModal();
     }
     setAdding(false);
@@ -326,10 +344,10 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
         .eq('id', linkId);
 
       if (error) {
-        toast.error('Error al desvincular contacto');
+        toast.error(t('contactos.avisos.errorDesvincular'));
         console.error(error);
       } else {
-        toast.success(`${personName} desvinculado`);
+        toast.success(t('contactos.avisos.desvinculado', { nombre: personName }));
         loadContacts();
       }
     } else {
@@ -338,7 +356,7 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
       ) as PendingContact[];
       setContacts(updated);
       notifyChange(updated);
-      toast.success(`${personName} removido`);
+      toast.success(t('contactos.avisos.removido', { nombre: personName }));
     }
   };
 
@@ -353,7 +371,7 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
         .eq('is_primary', true);
 
       if (resetError) {
-        toast.error('Error al actualizar contacto principal');
+        toast.error(t('contactos.avisos.errorActualizarPrincipal'));
         return;
       }
 
@@ -363,9 +381,9 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
         .eq('id', linkId);
 
       if (error) {
-        toast.error('Error al establecer contacto principal');
+        toast.error(t('contactos.avisos.errorEstablecerPrincipal'));
       } else {
-        toast.success('Contacto principal actualizado');
+        toast.success(t('contactos.avisos.principalActualizado'));
         loadContacts();
       }
     } else {
@@ -386,9 +404,9 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
         .eq('id', linkId);
 
       if (error) {
-        toast.error('Error al actualizar cargo');
+        toast.error(t('contactos.avisos.errorCargo'));
       } else {
-        toast.success('Cargo actualizado');
+        toast.success(t('contactos.avisos.cargoActualizado'));
         loadContacts();
       }
     } else {
@@ -407,7 +425,7 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
       <div className="flex items-center justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <Building2 className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Contactos de la Empresa</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('contactos.titulo')}</h3>
           {contacts.length > 0 && (
             <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full">
               {contacts.length}
@@ -422,7 +440,7 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
           className="border-gray-200 dark:border-gray-700"
         >
           <Plus className="h-4 w-4 mr-1" />
-          Vincular Contacto
+          {t('contactos.vincular')}
         </Button>
       </div>
 
@@ -435,7 +453,7 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
           <CardContent className="py-8 text-center">
             <User className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              No hay contactos vinculados a esta empresa
+              {t('contactos.vacio')}
             </p>
             <Button
               type="button"
@@ -445,7 +463,7 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
               className="mt-3 border-gray-200 dark:border-gray-700"
             >
               <Plus className="h-4 w-4 mr-1" />
-              Vincular primer contacto
+              {t('contactos.vincularPrimero')}
             </Button>
           </CardContent>
         </Card>
@@ -506,6 +524,7 @@ function ContactRow({
   onTogglePrimary: (linkId: string, currentPrimary: boolean) => void;
   onUpdatePosition: (linkId: string, position: string) => void;
 }) {
+  const t = useTranslations('clientes.formulario');
   const [editingPosition, setEditingPosition] = useState(false);
   const [positionValue, setPositionValue] = useState(contact.position || '');
 
@@ -528,13 +547,13 @@ function ContactRow({
           </p>
           {isNew && (
             <span className="px-1.5 py-0.5 text-xs font-medium bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded">
-              Nuevo
+              {t('contactos.nuevo')}
             </span>
           )}
           {contact.is_primary && (
             <span className="flex flex-wrap items-center gap-1 px-1.5 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded">
               <Star className="h-3 w-3 fill-current" />
-              Principal
+              {t('contactos.principal')}
             </span>
           )}
         </div>
@@ -557,7 +576,7 @@ function ContactRow({
             <Input
               value={positionValue}
               onChange={(e) => setPositionValue(e.target.value)}
-              placeholder="Cargo (ej: Gerente)"
+              placeholder={t('contactos.cargoPlaceholderCorto')}
               className="h-7 text-xs max-w-[200px]"
               autoFocus
               onKeyDown={(e) => {
@@ -590,7 +609,7 @@ function ContactRow({
             onClick={() => setEditingPosition(true)}
             className="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 mt-0.5"
           >
-            {contact.position || 'Sin cargo (click para editar)'}
+            {contact.position || t('contactos.sinCargo')}
           </button>
         )}
       </div>
@@ -600,7 +619,7 @@ function ContactRow({
           <button
             type="button"
             onClick={() => onTogglePrimary(rowId, contact.is_primary)}
-            title="Marcar como principal"
+            title={t('contactos.marcarPrincipal')}
             className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-amber-500 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             <Star className="h-4 w-4" />
@@ -609,7 +628,7 @@ function ContactRow({
         <button
           type="button"
           onClick={() => onRemove(rowId, fullName)}
-          title="Desvincular contacto"
+          title={t('contactos.desvincular')}
           className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-500 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
         >
           <Trash2 className="h-4 w-4" />
@@ -665,6 +684,8 @@ function AddContactModal({
   onAddNew: () => void;
   onClose: () => void;
 }) {
+  const t = useTranslations('clientes.formulario');
+  const tk = useKitT();
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
@@ -672,10 +693,11 @@ function AddContactModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Agregar Contacto</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('contactos.agregar')}</h3>
           <button
             type="button"
             onClick={onClose}
+            aria-label={tk('comun.cerrar')}
             className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded"
           >
             <X className="h-5 w-5" />
@@ -692,7 +714,7 @@ function AddContactModal({
                 className="flex-1 py-2 px-3 text-sm font-medium rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm"
               >
                 <Search className="h-4 w-4 inline mr-1" />
-                Buscar existente
+                {t('contactos.buscarExistente')}
               </button>
               <button
                 type="button"
@@ -700,7 +722,7 @@ function AddContactModal({
                 className="flex-1 py-2 px-3 text-sm font-medium rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               >
                 <UserPlus className="h-4 w-4 inline mr-1" />
-                Crear nueva persona
+                {t('contactos.crearPersona')}
               </button>
             </div>
           )}
@@ -710,13 +732,13 @@ function AddContactModal({
             !selectedPerson ? (
               <>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Buscar persona existente</Label>
+                  <Label className="text-sm font-medium">{t('contactos.buscarPersona')}</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <Input
                       value={searchTerm}
                       onChange={(e) => onSearch(e.target.value)}
-                      placeholder="Nombre, apellido o email..."
+                      placeholder={t('contactos.buscarPlaceholder')}
                       className="pl-9"
                       autoFocus
                     />
@@ -762,7 +784,7 @@ function AddContactModal({
                 {searchTerm.length >= 2 && !searching && searchResults.length === 0 && (
                   <div className="text-center py-4 space-y-2">
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      No se encontraron personas con ese criterio.
+                      {t('contactos.sinResultados')}
                     </p>
                     <Button
                       type="button"
@@ -772,7 +794,7 @@ function AddContactModal({
                       className="border-gray-200 dark:border-gray-700"
                     >
                       <UserPlus className="h-4 w-4 mr-1" />
-                      Crear nueva persona
+                      {t('contactos.crearPersona')}
                     </Button>
                   </div>
                 )}
@@ -805,13 +827,13 @@ function AddContactModal({
 
                 <div className="space-y-2">
                   <Label htmlFor="position" className="text-sm font-medium">
-                    Cargo (opcional)
+                    {t('contactos.cargo')}
                   </Label>
                   <Input
                     id="position"
                     value={newPosition}
                     onChange={(e) => onPositionChange(e.target.value)}
-                    placeholder="Ej: Gerente, Director, Asistente..."
+                    placeholder={t('contactos.cargoPlaceholder')}
                     autoFocus
                   />
                 </div>
@@ -824,7 +846,7 @@ function AddContactModal({
                     className="flex-1"
                     disabled={adding}
                   >
-                    Cancelar
+                    {tk('comun.cancelar')}
                   </Button>
                   <Button
                     type="button"
@@ -837,7 +859,7 @@ function AddContactModal({
                     ) : (
                       <Plus className="h-4 w-4 mr-1" />
                     )}
-                    Vincular
+                    {t('contactos.vincularBoton')}
                   </Button>
                 </div>
               </>
@@ -854,7 +876,7 @@ function AddContactModal({
                   className="flex-1 py-2 px-3 text-sm font-medium rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 >
                   <Search className="h-4 w-4 inline mr-1" />
-                  Buscar existente
+                  {t('contactos.buscarExistente')}
                 </button>
                 <button
                   type="button"
@@ -862,7 +884,7 @@ function AddContactModal({
                   className="flex-1 py-2 px-3 text-sm font-medium rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm"
                 >
                   <UserPlus className="h-4 w-4 inline mr-1" />
-                  Crear nueva persona
+                  {t('contactos.crearPersona')}
                 </button>
               </div>
 
@@ -870,39 +892,39 @@ function AddContactModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-sm font-medium">
-                      Nombre <span className="text-red-500">*</span>
+                      {t('contactos.nombre')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       value={newPersonData.first_name}
                       onChange={(e) => onNewPersonChange({ ...newPersonData, first_name: e.target.value })}
-                      placeholder="Ej: Juan"
+                      placeholder={t('contactos.nombrePlaceholder')}
                       autoFocus
                     />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-sm font-medium">
-                      Apellido <span className="text-red-500">*</span>
+                      {t('contactos.apellido')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       value={newPersonData.last_name}
                       onChange={(e) => onNewPersonChange({ ...newPersonData, last_name: e.target.value })}
-                      placeholder="Ej: Pérez"
+                      placeholder={t('contactos.apellidoPlaceholder')}
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-sm font-medium">Email</Label>
+                    <Label className="text-sm font-medium">{t('contactos.email')}</Label>
                     <Input
                       type="email"
                       value={newPersonData.email}
                       onChange={(e) => onNewPersonChange({ ...newPersonData, email: e.target.value })}
-                      placeholder="ejemplo@correo.com"
+                      placeholder={t('contactos.emailPlaceholder')}
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="new-contact-phone" className="text-sm font-medium">Teléfono</Label>
+                    <Label htmlFor="new-contact-phone" className="text-sm font-medium">{t('contactos.telefono')}</Label>
                     <PhoneInput
                       id="new-contact-phone"
                       value={newPersonData.phone}
@@ -913,32 +935,32 @@ function AddContactModal({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-sm font-medium">Tipo de documento</Label>
+                    <Label className="text-sm font-medium">{t('contactos.tipoDocumento')}</Label>
                     <select
                       value={newPersonData.document_type}
                       onChange={(e) => onNewPersonChange({ ...newPersonData, document_type: e.target.value })}
                       className="h-10 w-full rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm"
                     >
-                      <option value="national_id">Cédula</option>
+                      <option value="national_id">{t('contactos.tiposDocumento.cedula')}</option>
                       <option value="tax_id">NIT</option>
-                      <option value="passport">Pasaporte</option>
-                      <option value="foreign_id">ID Extranjero</option>
-                      <option value="other">Otro</option>
+                      <option value="passport">{t('contactos.tiposDocumento.pasaporte')}</option>
+                      <option value="foreign_id">{t('contactos.tiposDocumento.extranjero')}</option>
+                      <option value="other">{t('contactos.tiposDocumento.otro')}</option>
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-sm font-medium">N° documento</Label>
+                    <Label className="text-sm font-medium">{t('contactos.numeroDocumento')}</Label>
                     <Input
                       value={newPersonData.document_number}
                       onChange={(e) => onNewPersonChange({ ...newPersonData, document_number: e.target.value })}
-                      placeholder="Ej: 12345678"
+                      placeholder={t('contactos.numeroDocumentoPlaceholder')}
                     />
                   </div>
                 </div>
 
                 {/* Ubicación: País, Departamento, Municipio */}
                 <div className="space-y-1">
-                  <Label className="text-sm font-medium">Ubicación</Label>
+                  <Label className="text-sm font-medium">{t('contactos.ubicacion')}</Label>
                   <div className="grid grid-cols-1 gap-2">
                     <LocationSelector
                       value={newPersonLocation}
@@ -949,11 +971,11 @@ function AddContactModal({
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-sm font-medium">Cargo (opcional)</Label>
+                  <Label className="text-sm font-medium">{t('contactos.cargo')}</Label>
                   <Input
                     value={newPosition}
                     onChange={(e) => onPositionChange(e.target.value)}
-                    placeholder="Ej: Gerente, Director, Asistente..."
+                    placeholder={t('contactos.cargoPlaceholder')}
                   />
                 </div>
               </div>
@@ -966,7 +988,7 @@ function AddContactModal({
                   className="flex-1"
                   disabled={adding}
                 >
-                  Cancelar
+                  {tk('comun.cancelar')}
                 </Button>
                 <Button
                   type="button"
@@ -979,7 +1001,7 @@ function AddContactModal({
                   ) : (
                     <UserPlus className="h-4 w-4 mr-1" />
                   )}
-                  Crear y vincular
+                  {t('contactos.crearVincular')}
                 </Button>
               </div>
             </>

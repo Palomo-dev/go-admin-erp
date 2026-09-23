@@ -14,6 +14,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import {
   Download,
@@ -51,6 +52,7 @@ import {
   type AccionMasiva,
   type EstadoTabla,
 } from '@/components/kit';
+import { useFormatoEntero, useKitT, useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -63,7 +65,6 @@ import {
   construirCsvClientes,
   descargarCsv,
   listarClientes,
-  mensajeErrorClientes,
   nombreCliente,
   obtenerIdsClientes,
   obtenerOpcionesFiltroClientes,
@@ -74,17 +75,15 @@ import {
   type OpcionesFiltroClientes,
   type ResumenClientes,
 } from '@/lib/services/clientesListadoService';
-import { construirAccionesCliente, MOTIVO_UNIFICAR, type ClienteParaAcciones } from '@/components/clientes/listado/accionesCliente';
-import { useOperacionesClientes } from '@/components/clientes/listado/useOperacionesClientes';
+import { construirAccionesCliente, type ClienteParaAcciones } from '@/components/clientes/listado/accionesCliente';
+import { useMensajeErrorClientes, useOperacionesClientes } from '@/components/clientes/listado/useOperacionesClientes';
 import { CamposFiltroClientes, chipsClientes } from '@/components/clientes/listado/FiltrosClientes';
 import { columnasClientes, TarjetaCliente } from '@/components/clientes/listado/columnasClientes';
 import { EtiquetaMasivaDialog } from '@/components/clientes/listado/EtiquetaMasivaDialog';
 import { EliminarClientesDialog } from '@/components/clientes/listado/EliminarClientesDialog';
 import { ImportarClientesDialog, descargarPlantillaClientes } from '@/components/clientes/listado/ImportarClientesDialog';
 
-const SUSTANTIVO = { singular: 'cliente', plural: 'clientes' } as const;
 const OPCIONES_VACIAS: OpcionesFiltroClientes = { roles: [], etiquetas: [], municipios: [] };
-const entero = (n: number) => new Intl.NumberFormat('es-CO').format(n);
 
 export default function ClientesPage() {
   return (
@@ -95,6 +94,12 @@ export default function ClientesPage() {
 }
 
 function ListadoClientes() {
+  const t = useTranslations('clientes.listado');
+  const tk = useKitT();
+  const entero = useFormatoEntero();
+  const localeIntl = useLocaleIntl();
+  const mensajeError = useMensajeErrorClientes();
+  const sustantivo = useMemo(() => ({ singular: t('sustantivo.singular'), plural: t('sustantivo.plural') }), [t]);
   const router = useRouter();
   const escritorio = useEsEscritorio();
   const { organization, isLoading: cargandoOrg, error: errorOrg } = useOrganization();
@@ -150,7 +155,7 @@ function ListadoClientes() {
       })
       .catch((err) => {
         if (cancelado) return;
-        setError(mensajeErrorClientes(err, 'Revisa tu conexión e inténtalo de nuevo.'));
+        setError(mensajeError(err, tk('vacio.error.descripcion')));
       })
       .finally(() => {
         if (!cancelado) setCargando(false);
@@ -193,8 +198,8 @@ function ListadoClientes() {
   // ── Operaciones ───────────────────────────────────────────────────────────
   const { cambiarEstado, copiarId } = useOperacionesClientes(orgId, recargar);
   const formatearFecha = useCallback(
-    (v: string) => formatDateInTz(v, timezone, { locale: 'es-CO', day: '2-digit', month: 'short', year: 'numeric' }),
-    [timezone],
+    (v: string) => formatDateInTz(v, timezone, { locale: localeIntl, day: '2-digit', month: 'short', year: 'numeric' }),
+    [timezone, localeIntl],
   );
 
   const accionesDe = useCallback(
@@ -205,9 +210,10 @@ function ListadoClientes() {
         onCambiarEstado: (c, estado) => void cambiarEstado([c.id], estado, c.nombre),
         onEliminar: (c) => setEliminar({ ids: [c.id], nombre: c.nombre }),
         onCopiarId: (c) => void copiarId(c.id),
+        t,
       });
     },
-    [router, cambiarEstado, copiarId],
+    [router, cambiarEstado, copiarId, t],
   );
 
   const exportar = async (ids?: string[]) => {
@@ -216,14 +222,14 @@ function ListadoClientes() {
     try {
       const todas = await obtenerTodasLasFilas({ organizationId: orgId, branchId: branchFilter ?? null, criterios, orden, ids });
       if (todas.length === 0) {
-        toast.info('No hay clientes para exportar');
+        toast.info(t('toasts.sinExportar'));
         return;
       }
       const hoy = todayInTz(timezone);
       descargarCsv(construirCsvClientes(todas, timezone), ids ? `clientes_seleccionados_${hoy}.csv` : `clientes_${hoy}.csv`);
-      toast.success(`${entero(todas.length)} ${todas.length === 1 ? 'cliente exportado' : 'clientes exportados'}`);
+      toast.success(t('toasts.exportados', { count: todas.length, n: entero(todas.length) }));
     } catch (err) {
-      toast.error(mensajeErrorClientes(err, 'No se pudo exportar'));
+      toast.error(mensajeError(err, t('toasts.errorExportar')));
     } finally {
       setOcupado(null);
     }
@@ -235,9 +241,9 @@ function ListadoClientes() {
     try {
       const ids = await obtenerIdsClientes(orgId, branchFilter ?? null, criterios);
       setSeleccion(new Set(ids));
-      if (ids.length < total) toast.info(`Se seleccionaron los primeros ${entero(ids.length)} clientes`);
+      if (ids.length < total) toast.info(t('toasts.primerosSeleccionados', { n: entero(ids.length) }));
     } catch (err) {
-      toast.error(mensajeErrorClientes(err, 'No se pudo seleccionar todo'));
+      toast.error(mensajeError(err, t('toasts.errorSeleccionar')));
     } finally {
       setOcupado(null);
     }
@@ -249,11 +255,11 @@ function ListadoClientes() {
     try {
       const n = await cambiarRolMasivo(orgId, [...seleccion], rol, quitar);
       const nombre = opciones.roles.find((r) => r.valor === rol)?.etiqueta ?? rol;
-      toast.success(`Rol «${nombre}» ${quitar ? 'quitado de' : 'agregado a'} ${n} ${n === 1 ? 'cliente' : 'clientes'}`);
+      toast.success(t(quitar ? 'toasts.rolQuitado' : 'toasts.rolAgregado', { rol: nombre, count: n, n: entero(n) }));
       setSeleccion(new Set());
       recargar();
     } catch (err) {
-      toast.error(mensajeErrorClientes(err, 'No se pudieron cambiar los roles'));
+      toast.error(mensajeError(err, t('toasts.errorRoles')));
     } finally {
       setOcupado(null);
     }
@@ -269,14 +275,19 @@ function ListadoClientes() {
         : 'listo';
 
   const columnas = useMemo(
-    () => columnasClientes({ moneda, formatearFecha, roles: opciones.roles }),
-    [moneda, formatearFecha, opciones.roles],
+    () => columnasClientes({ moneda, formatearFecha, roles: opciones.roles, t, entero }),
+    [moneda, formatearFecha, opciones.roles, t, entero],
   );
-  const chips = chipsClientes(filtros, opciones);
+  const chips = chipsClientes(filtros, opciones, t);
   const verInactivos = filtros.estado === 'inactivos';
 
   const subtituloMovil = resumen
-    ? `${entero(resumen.total)} clientes · ${entero(resumen.con_saldo)} con saldo · ${entero(resumen.vencidos)} vencidos`
+    ? t('cabecera.subtituloMovil', {
+        count: resumen.total,
+        total: entero(resumen.total),
+        conSaldo: entero(resumen.con_saldo),
+        vencidos: entero(resumen.vencidos),
+      })
     : undefined;
 
   // ── Barra masiva ──────────────────────────────────────────────────────────
@@ -285,18 +296,24 @@ function ListadoClientes() {
   // los demás). Los que solo existen en los datos llegan con etiqueta = valor.
   const rolesCatalogo = opciones.roles.filter((r) => r.etiqueta && r.etiqueta !== r.valor);
   const accionesMasivas: AccionMasiva[] = [
-    { id: 'exportar', etiqueta: 'Exportar', icono: Download, onClick: () => void exportar(idsSeleccion), cargando: ocupado === 'exportar' },
-    { id: 'etiquetar', etiqueta: 'Etiquetar', icono: Tag, onClick: () => setDialogoEtiqueta('agregar') },
-    { id: 'quitar-etiqueta', etiqueta: 'Quitar etiqueta', icono: Tags, onClick: () => setDialogoEtiqueta('quitar') },
+    {
+      id: 'exportar',
+      etiqueta: t('masivas.exportar'),
+      icono: Download,
+      onClick: () => void exportar(idsSeleccion),
+      cargando: ocupado === 'exportar',
+    },
+    { id: 'etiquetar', etiqueta: t('masivas.etiquetar'), icono: Tag, onClick: () => setDialogoEtiqueta('agregar') },
+    { id: 'quitar-etiqueta', etiqueta: t('masivas.quitarEtiqueta'), icono: Tags, onClick: () => setDialogoEtiqueta('quitar') },
     {
       id: 'roles',
-      etiqueta: 'Roles',
+      etiqueta: t('masivas.roles'),
       icono: Users,
       onClick: () => undefined,
       cargando: ocupado === 'roles',
       menu: [
         {
-          titulo: 'Agregar rol',
+          titulo: t('masivas.agregarRol'),
           acciones: rolesCatalogo.map((r) => ({
             id: `agregar-${r.valor}`,
             etiqueta: r.etiqueta ?? r.valor,
@@ -305,7 +322,7 @@ function ListadoClientes() {
           })),
         },
         {
-          titulo: 'Quitar rol',
+          titulo: t('masivas.quitarRol'),
           acciones: rolesCatalogo.map((r) => ({
             id: `quitar-${r.valor}`,
             etiqueta: r.etiqueta ?? r.valor,
@@ -317,7 +334,7 @@ function ListadoClientes() {
     },
     {
       id: 'eliminar',
-      etiqueta: 'Eliminar',
+      etiqueta: t('masivas.eliminar'),
       icono: Trash2,
       destructiva: true,
       onClick: () => setEliminar({ ids: idsSeleccion }),
@@ -327,35 +344,40 @@ function ListadoClientes() {
     verInactivos
       ? {
           id: 'reactivar',
-          etiqueta: 'Reactivar',
+          etiqueta: t('masivas.reactivar'),
           icono: RotateCcw,
           onSelect: () => void cambiarEstado(idsSeleccion, 'active').then(() => setSeleccion(new Set())),
         }
       : {
           id: 'inactivar',
-          etiqueta: 'Marcar inactivos',
+          etiqueta: t('masivas.marcarInactivos'),
           icono: Power,
           onSelect: () => void cambiarEstado(idsSeleccion, 'inactive').then(() => setSeleccion(new Set())),
         },
     {
       id: 'unificar',
-      etiqueta: 'Unificar duplicados',
+      etiqueta: t('masivas.unificar'),
       icono: Merge,
       onSelect: () => undefined,
       deshabilitada: true,
-      motivo: MOTIVO_UNIFICAR,
+      motivo: t('motivos.unificar'),
     },
   ];
 
   // ── Cabecera ──────────────────────────────────────────────────────────────
   const masAcciones: AccionFila[] = [
-    { id: 'importar', etiqueta: 'Importar clientes', icono: Upload, onSelect: () => setImportarAbierto(true) },
-    { id: 'plantilla', etiqueta: 'Descargar plantilla', icono: FileSpreadsheet, onSelect: descargarPlantillaClientes },
+    { id: 'importar', etiqueta: t('cabecera.importarClientes'), icono: Upload, onSelect: () => setImportarAbierto(true) },
+    {
+      id: 'plantilla',
+      etiqueta: t('cabecera.descargarPlantilla'),
+      icono: FileSpreadsheet,
+      onSelect: descargarPlantillaClientes,
+    },
   ];
   const masAccionesMovil: AccionFila[] = [
-    { id: 'exportar', etiqueta: 'Exportar', icono: Download, onSelect: () => void exportar() },
+    { id: 'exportar', etiqueta: t('cabecera.exportar'), icono: Download, onSelect: () => void exportar() },
     ...masAcciones,
-    { id: 'actualizar', etiqueta: 'Actualizar', icono: RefreshCw, onSelect: recargar },
+    { id: 'actualizar', etiqueta: t('cabecera.actualizar'), icono: RefreshCw, onSelect: recargar },
   ];
 
   if ((errorOrg || !orgId) && !cargandoOrg) {
@@ -363,8 +385,8 @@ function ListadoClientes() {
       <div className="min-h-full bg-canvas p-4 lg:p-6">
         <EmptyState
           variante="error"
-          titulo="No pudimos identificar tu organización"
-          descripcion={typeof errorOrg === 'string' ? errorOrg : 'Vuelve a iniciar sesión e inténtalo de nuevo.'}
+          titulo={t('errorOrg.titulo')}
+          descripcion={typeof errorOrg === 'string' ? errorOrg : t('errorOrg.descripcion')}
           onReintentar={() => window.location.reload()}
         />
       </div>
@@ -374,11 +396,11 @@ function ListadoClientes() {
   return (
     <div className="flex min-h-full min-w-0 flex-col gap-4 bg-canvas p-4 pb-28 lg:gap-6 lg:p-6 lg:pb-24">
       <PageHeader
-        titulo="Gestión de Clientes"
-        subtitulo="Administra tu cartera de clientes"
+        titulo={t('cabecera.titulo')}
+        subtitulo={t('cabecera.subtitulo')}
         icono={Users}
         cargando={cargando}
-        migas={[{ etiqueta: 'Inicio', href: '/app/inicio' }, { etiqueta: 'Clientes' }]}
+        migas={[{ etiqueta: t('cabecera.inicio'), href: '/app/inicio' }, { etiqueta: t('cabecera.clientes') }]}
         acciones={
           <>
             <Button
@@ -387,69 +409,77 @@ function ListadoClientes() {
               className="size-10"
               onClick={recargar}
               disabled={cargando}
-              aria-label="Actualizar"
-              title="Actualizar"
+              aria-label={t('cabecera.actualizar')}
+              title={t('cabecera.actualizar')}
             >
               <RefreshCw aria-hidden="true" className={cargando ? 'size-4 animate-spin' : 'size-4'} />
             </Button>
-            <Button variant="outline" className="h-10" onClick={() => void exportar()} disabled={ocupado === 'exportar'} title="Exportar a CSV">
+            <Button
+              variant="outline"
+              className="h-10"
+              onClick={() => void exportar()}
+              disabled={ocupado === 'exportar'}
+              title={t('cabecera.exportarCsv')}
+            >
               <Download aria-hidden="true" className="mr-2 size-4" />
-              Exportar
+              {t('cabecera.exportar')}
             </Button>
             <Button asChild className="h-10">
               <Link href="/app/clientes/new">
                 <Plus aria-hidden="true" className="mr-2 size-4" />
-                Nuevo cliente
+                {t('cabecera.nuevoCliente')}
               </Link>
             </Button>
-            <RowActionsMenu acciones={masAcciones} orientacion="horizontal" tamano="md" titulo="Más acciones" />
+            <RowActionsMenu acciones={masAcciones} orientacion="horizontal" tamano="md" titulo={t('cabecera.masAcciones')} />
           </>
         }
         movil={{
-          titulo: 'Clientes',
+          titulo: t('cabecera.clientes'),
           subtitulo: subtituloMovil,
           ocultarBarra: seleccion.size > 0,
           accion: (
             <div className="flex items-center gap-1">
               <Link
                 href="/app/clientes/new"
-                aria-label="Nuevo cliente"
+                aria-label={t('cabecera.nuevoCliente')}
                 className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
               </Link>
-              <RowActionsMenu acciones={masAccionesMovil} orientacion="horizontal" titulo="Clientes" />
+              <RowActionsMenu acciones={masAccionesMovil} orientacion="horizontal" titulo={t('cabecera.clientes')} />
             </div>
           ),
         }}
       />
 
-      <KpiStrip etiqueta="Resumen de clientes" className="hidden lg:grid">
+      <KpiStrip etiqueta={t('kpi.etiqueta')} className="hidden lg:grid">
         <StatCard
-          etiqueta="Total clientes"
+          etiqueta={t('kpi.total')}
           icono={Users}
           valor={resumen ? entero(resumen.total) : '—'}
-          detalle={resumen ? `+${entero(resumen.nuevos_mes)} este mes` : undefined}
+          detalle={resumen ? t('kpi.nuevosMes', { n: entero(resumen.nuevos_mes) }) : undefined}
           cargando={!resumen}
         />
         <StatCard
-          etiqueta="Con saldo"
+          etiqueta={t('kpi.conSaldo')}
           valor={resumen ? entero(resumen.con_saldo) : '—'}
-          detalle={resumen ? `de ${entero(resumen.total)} clientes` : undefined}
+          detalle={resumen ? t('kpi.deTotal', { count: resumen.total, n: entero(resumen.total) }) : undefined}
           tono="advertencia"
           cargando={!resumen}
           onClick={() => listado.setFiltro('saldo', 'con_saldo')}
         />
         <StatCard
-          etiqueta="Cuentas por cobrar"
+          etiqueta={t('kpi.cuentasPorCobrar')}
           valor={resumen ? formatMonedaSinDecimales(resumen.cartera_total, moneda) : '—'}
-          detalle={`Moneda de la organización (${moneda})`}
+          detalle={t('kpi.monedaOrg', { moneda })}
           cargando={!resumen}
         />
         <StatCard
-          etiqueta="Cuentas vencidas"
+          etiqueta={t('kpi.vencidas')}
           valor={resumen ? entero(resumen.vencidos) : '—'}
-          detalle={resumen ? `${formatMonedaSinDecimales(resumen.cartera_vencida, moneda)} vencidos` : undefined}
+          detalle={
+            resumen ? t('kpi.montoVencido', { monto: formatMonedaSinDecimales(resumen.cartera_vencida, moneda) }) : undefined
+          }
           tono="peligro"
           tendencia={resumen && resumen.vencidos > 0 ? 'baja' : undefined}
           cargando={!resumen}
@@ -462,8 +492,8 @@ function ListadoClientes() {
           <SearchInput
             value={busqueda}
             onChange={listado.setBusqueda}
-            placeholder={escritorio ? 'Buscar por nombre, documento, correo o teléfono' : 'Buscar cliente, NIT o teléfono'}
-            etiqueta="Buscar clientes"
+            placeholder={escritorio ? t('busqueda.placeholderEscritorio') : t('busqueda.placeholderMovil')}
+            etiqueta={t('busqueda.etiqueta')}
             cargando={cargando && !!busqueda}
           />
         }
@@ -471,7 +501,7 @@ function ListadoClientes() {
           <FilterPanel
             conteo={listado.filtrosActivos}
             onLimpiar={listado.limpiarFiltros}
-            textoVerResultados={cargando ? 'Ver resultados' : `Ver ${entero(total)} ${total === 1 ? 'cliente' : 'clientes'}`}
+            textoVerResultados={cargando ? undefined : t('filtros.verN', { count: total, n: entero(total) })}
           >
             <CamposFiltroClientes listado={listado} opciones={opciones} conOrden={!escritorio} />
           </FilterPanel>
@@ -482,7 +512,7 @@ function ListadoClientes() {
       />
 
       <DataTable
-        etiqueta="Clientes"
+        etiqueta={t('cabecera.clientes')}
         columnas={columnas}
         filas={filas}
         obtenerId={(c) => c.id}
@@ -503,15 +533,13 @@ function ListadoClientes() {
           />
         )}
         vacio={{
-          titulo: verInactivos ? 'No hay clientes inactivos' : 'Aún no tienes clientes',
-          descripcion: verInactivos
-            ? 'Cuando marques un cliente como inactivo aparecerá aquí.'
-            : 'Crea el primero o impórtalos desde un archivo CSV o Excel.',
+          titulo: verInactivos ? t('vacio.inactivosTitulo') : t('vacio.titulo'),
+          descripcion: verInactivos ? t('vacio.inactivosDescripcion') : t('vacio.descripcion'),
           icono: Users,
-          accion: { etiqueta: 'Nuevo cliente', href: '/app/clientes/new', icono: Plus },
-          accionSecundaria: { etiqueta: 'Importar desde CSV', onClick: () => setImportarAbierto(true), icono: Upload },
+          accion: { etiqueta: t('cabecera.nuevoCliente'), href: '/app/clientes/new', icono: Plus },
+          accionSecundaria: { etiqueta: t('vacio.importarCsv'), onClick: () => setImportarAbierto(true), icono: Upload },
         }}
-        sinResultados={{ descripcion: 'Prueba con otro nombre, NIT o teléfono, o quita un filtro.' }}
+        sinResultados={{ descripcion: t('vacio.sinResultados') }}
         error={{ descripcion: error ?? undefined }}
         onReintentar={recargar}
         onLimpiarFiltros={listado.limpiarTodo}
@@ -523,7 +551,7 @@ function ListadoClientes() {
             total={total}
             onPaginaChange={listado.setPagina}
             onTamanoChange={listado.setTamano}
-            sustantivo={SUSTANTIVO}
+            sustantivo={sustantivo}
             cargando={cargando}
           />
         }
@@ -533,7 +561,7 @@ function ListadoClientes() {
         seleccionados={seleccion.size}
         total={total}
         onSeleccionarTodos={ocupado === 'seleccionar' ? undefined : () => void seleccionarTodos()}
-        sustantivo={SUSTANTIVO}
+        sustantivo={sustantivo}
         acciones={accionesMasivas}
         accionesSecundarias={accionesSecundarias}
         onLimpiar={() => setSeleccion(new Set())}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ChefHat, Globe, Info, Layers, Loader2, Lock, Save, Sparkles, Tags, TriangleAlert, Wand2 } from 'lucide-react';
 import { FormField, FormSection, PageHeader } from '@/components/kit';
 import { TreeCell } from '@/components/kit/TreeCell';
@@ -27,7 +28,8 @@ import categoryService, {
 } from '@/lib/services/categoryService';
 import type { PrinterStation } from '@/components/pos/configuracion/printersService';
 import { cn } from '@/utils/Utils';
-import { iconoCategoria, OPCIONES_ESTACION, RUTAS_CATEGORIAS } from './iconoCategoria';
+import { etiquetaEstacion, iconoCategoria, OPCIONES_ESTACION, RUTAS_CATEGORIAS } from './iconoCategoria';
+import { mensajeErrorCategoria } from './accionesCategoria';
 
 /**
  * Formulario completo de categoría, uno solo para crear y editar (Figma
@@ -63,6 +65,7 @@ function textoPlano(html: string): string {
 }
 
 export default function CategoryForm({ categoryUuid, defaultParentId }: CategoryFormProps) {
+  const t = useTranslations('categorias');
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -118,7 +121,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
           });
         }
       } catch {
-        if (vivo) toast({ title: 'No se pudieron cargar las categorías', variant: 'destructive' });
+        if (vivo) toast({ title: t('formulario.toasts.noCargar'), variant: 'destructive' });
       } finally {
         if (vivo) setCargando(false);
       }
@@ -126,7 +129,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
     return () => {
       vivo = false;
     };
-  }, [organizationId, esEdicion, categoryUuid, toast]);
+  }, [organizationId, esEdicion, categoryUuid, toast, t]);
 
   const cambiar = useCallback(<K extends keyof CategoryFormData>(clave: K, valor: CategoryFormData[K], aMano = true) => {
     if (aMano) tocados.current.add(clave);
@@ -178,10 +181,10 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
   const deshabilitadas = useMemo(() => {
     const mapa = new Map<number, string>();
     if (!original) return mapa;
-    mapa.set(original.id, 'Es esta misma categoría');
-    for (const d of descendientesDe(opciones, [original.id])) mapa.set(d, 'Es una de sus subcategorías: crearía un ciclo');
+    mapa.set(original.id, t('formulario.padre.mismaCategoria'));
+    for (const d of descendientesDe(opciones, [original.id])) mapa.set(d, t('formulario.padre.esSubcategoria'));
     return mapa;
-  }, [original, opciones]);
+  }, [original, opciones, t]);
 
   const rutaPadre = useMemo(
     () =>
@@ -194,7 +197,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
   // ── Generación con IA (mismos endpoints de antes) ────────────────────────
   const generarDescripcion = async () => {
     if (!datos.name.trim()) {
-      setErrores((e) => ({ ...e, name: 'Escribe un nombre primero' }));
+      setErrores((e) => ({ ...e, name: t('formulario.errores.nombrePrimero') }));
       return;
     }
     setGenerandoDesc(true);
@@ -207,9 +210,9 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
       if (!res.ok) throw new Error();
       const r = await res.json();
       if (r.improvedText) cambiarDescripcion(r.improvedText);
-      toast({ title: 'Descripción generada' });
+      toast({ title: t('formulario.toasts.descripcionGenerada') });
     } catch {
-      toast({ title: 'No se pudo generar la descripción', variant: 'destructive' });
+      toast({ title: t('formulario.toasts.noDescripcion'), variant: 'destructive' });
     } finally {
       setGenerandoDesc(false);
     }
@@ -217,7 +220,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
 
   const generarImagen = async () => {
     if (!datos.name.trim()) {
-      setErrores((e) => ({ ...e, name: 'Escribe un nombre primero' }));
+      setErrores((e) => ({ ...e, name: t('formulario.errores.nombrePrimero') }));
       return;
     }
     setGenerandoImg(true);
@@ -235,10 +238,10 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
       const r = await res.json();
       if (r.imageUrl) {
         cambiar('image_url', r.imageUrl);
-        toast({ title: 'Imagen generada con IA' });
+        toast({ title: t('formulario.toasts.imagenGenerada') });
       }
     } catch {
-      toast({ title: 'No se pudo generar la imagen', variant: 'destructive' });
+      toast({ title: t('formulario.toasts.noImagen'), variant: 'destructive' });
     } finally {
       setGenerandoImg(false);
     }
@@ -248,12 +251,12 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
   const guardar = async () => {
     if (!organizationId) return;
     const nuevos: Errores = {};
-    if (!datos.name.trim()) nuevos.name = 'El nombre es obligatorio';
+    if (!datos.name.trim()) nuevos.name = t('formulario.errores.nombreObligatorio');
     // Un slug bloqueado se guarda tal cual: normalizarlo cambiaría una URL ya publicada.
     const slug = esEdicion && !slugDesbloqueado ? datos.slug : generateSlug(datos.slug) || generateSlug(datos.name);
-    if (!slug) nuevos.slug = 'Escribe una dirección con letras o números';
+    if (!slug) nuevos.slug = t('formulario.errores.slugVacio');
     if (original && datos.parent_id !== null && deshabilitadas.has(datos.parent_id)) {
-      nuevos.parent_id = 'No puedes elegir una de sus subcategorías: crearía un ciclo.';
+      nuevos.parent_id = t('formulario.padre.ayudaEdicion');
     }
     if (Object.keys(nuevos).length) {
       setErrores(nuevos);
@@ -267,7 +270,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
         const libre = await categoryService.sugerirSlug(organizationId, slug, original?.id);
         setSugerenciaSlug(libre);
         setSlugDesbloqueado(true);
-        setErrores({ slug: `Ya hay una categoría con /${slug}.` });
+        setErrores({ slug: t('formulario.errores.slugOcupado', { slug }) });
         return;
       }
 
@@ -275,22 +278,22 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
       let resultado: Category;
       if (esEdicion && categoryUuid) {
         resultado = await categoryService.updateByUuid(categoryUuid, aGuardar);
-        toast({ title: 'Categoría actualizada', description: `«${aGuardar.name}» guardada.` });
+        toast({ title: t('formulario.toasts.actualizada'), description: t('formulario.toasts.guardada', { nombre: aGuardar.name }) });
       } else {
         // Al final de sus hermanas, como antes.
         const hermanas = categorias.filter((c) => c.parent_id === datos.parent_id);
         const maximo = hermanas.length ? Math.max(...hermanas.map((c) => c.display_order || 0)) : 0;
         resultado = await categoryService.create(organizationId, { ...aGuardar, rank: maximo + 1, display_order: maximo + 1 });
-        toast({ title: 'Categoría creada', description: `«${aGuardar.name}» ya está disponible.` });
+        toast({ title: t('formulario.toasts.creada'), description: t('formulario.toasts.disponible', { nombre: aGuardar.name }) });
       }
       router.push(RUTAS_CATEGORIAS.detalle(resultado.uuid));
     } catch (e) {
       if (e instanceof ErrorCategoria && e.slugDuplicado) {
-        setErrores({ slug: e.message });
+        setErrores({ slug: t('errores.slugDuplicado') });
       } else if (e instanceof ErrorCategoria && e.codigo === 'CATEGORIA_CICLO') {
-        setErrores({ parent_id: e.message });
+        setErrores({ parent_id: t('errores.ciclo') });
       } else {
-        setErrores({ general: e instanceof Error ? e.message : 'No se pudo guardar' });
+        setErrores({ general: mensajeErrorCategoria(e, t, t('formulario.errores.noGuardar')) });
       }
     } finally {
       setGuardando(false);
@@ -298,8 +301,10 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
   };
 
   const volverA = original ? RUTAS_CATEGORIAS.detalle(original.uuid) : RUTAS_CATEGORIAS.listado;
-  const titulo = esEdicion ? 'Editar categoría' : 'Nueva categoría';
-  const subtitulo = `${datos.name || (esEdicion ? 'Categoría' : 'Sin nombre')} · los cambios se ven en el POS y en la tienda web al guardar`;
+  const titulo = esEdicion ? t('formulario.tituloEditar') : t('comun.nuevaCategoria');
+  const subtitulo = t('formulario.subtitulo', {
+    nombre: datos.name || (esEdicion ? t('detalle.titulo') : t('comun.sinNombre')),
+  });
 
   const botonGuardar = (compacto?: boolean) => (
     <button
@@ -313,7 +318,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
       )}
     >
       {guardando ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <Save aria-hidden="true" className="size-4" strokeWidth={1.5} />}
-      {guardando ? 'Guardando…' : esEdicion ? 'Guardar cambios' : 'Crear categoría'}
+      {guardando ? t('formulario.guardando') : esEdicion ? t('formulario.guardarCambios') : t('formulario.crear')}
     </button>
   );
 
@@ -325,9 +330,9 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
       volverA={volverA}
       cargando={cargando}
       migas={[
-        { etiqueta: 'Inventario', href: '/app/inventario' },
-        { etiqueta: 'Categorías', href: RUTAS_CATEGORIAS.listado },
-        ...(original ? [{ etiqueta: original.name, href: RUTAS_CATEGORIAS.detalle(original.uuid) }] : [{ etiqueta: 'Nueva' }]),
+        { etiqueta: t('comun.inventario'), href: '/app/inventario' },
+        { etiqueta: t('comun.categorias'), href: RUTAS_CATEGORIAS.listado },
+        ...(original ? [{ etiqueta: original.name, href: RUTAS_CATEGORIAS.detalle(original.uuid) }] : [{ etiqueta: t('formulario.migaNueva') }]),
       ]}
       acciones={
         <>
@@ -337,7 +342,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
             disabled={guardando}
             className="inline-flex h-10 items-center rounded-lg px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
-            Descartar
+            {t('formulario.descartar')}
           </button>
           {botonGuardar()}
         </>
@@ -351,7 +356,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
       <div className="flex flex-col gap-4">
         {cabecera}
         <p role="alert" className="rounded-xl border border-line bg-surface p-6 text-sm text-fg-secondary">
-          No encontramos esta categoría en tu organización.
+          {t('formulario.noEncontrada')}
         </p>
       </div>
     );
@@ -394,12 +399,12 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-5">
         <div className="flex min-w-0 flex-col gap-4 lg:gap-5">
-          <FormSection titulo="General" descripcion="Nombre, ubicación en el árbol y descripción." icono={Tags} colapsable>
-            <FormField etiqueta="Nombre" obligatorio error={errores.name}>
+          <FormSection titulo={t('formulario.general.titulo')} descripcion={t('formulario.general.descripcion')} icono={Tags} colapsable>
+            <FormField etiqueta={t('formulario.general.nombre')} obligatorio error={errores.name}>
               <Input
                 value={datos.name}
                 onChange={(e) => cambiarNombre(e.target.value)}
-                placeholder="Ej.: Bebidas calientes"
+                placeholder={t('formulario.general.nombrePlaceholder')}
                 autoFocus={!esEdicion}
                 maxLength={120}
                 className="h-10"
@@ -407,9 +412,9 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
             </FormField>
 
             <FormField
-              etiqueta="Categoría padre"
+              etiqueta={t('formulario.padre.etiqueta')}
               error={errores.parent_id}
-              ayuda={esEdicion ? 'No puedes elegir una de sus subcategorías: crearía un ciclo.' : 'Déjala sin padre para que sea una categoría principal.'}
+              ayuda={esEdicion ? t('formulario.padre.ayudaEdicion') : t('formulario.padre.ayudaNueva')}
             >
               {(c) => (
                 <TreeSelect
@@ -420,18 +425,18 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                   opciones={opciones}
                   valor={datos.parent_id}
                   onValorChange={(v) => cambiar('parent_id', v)}
-                  opcionRaiz={{ etiqueta: 'Sin categoría padre (principal)' }}
+                  opcionRaiz={{ etiqueta: t('formulario.padre.sinPadre') }}
                   deshabilitadas={deshabilitadas}
                   actual={original ? original.parent_id : undefined}
-                  etiquetaLista="Categoría padre"
-                  placeholderBusqueda="Buscar categoría"
+                  etiquetaLista={t('formulario.padre.etiqueta')}
+                  placeholderBusqueda={t('comun.buscarCategoria')}
                 />
               )}
             </FormField>
 
             <FormField
-              etiqueta="Descripción"
-              ayuda="Se usa en la tienda web. «Generar con IA» consume créditos."
+              etiqueta={t('formulario.general.descripcionCampo')}
+              ayuda={t('formulario.general.descripcionAyuda')}
               extra={
                 <button
                   type="button"
@@ -440,7 +445,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                   className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-link hover:bg-hover disabled:opacity-50"
                 >
                   {generandoDesc ? <Loader2 aria-hidden="true" className="size-3.5 animate-spin" /> : <Sparkles aria-hidden="true" className="size-3.5" strokeWidth={1.5} />}
-                  {generandoDesc ? 'Generando…' : 'Generar con IA'}
+                  {generandoDesc ? t('formulario.generando') : t('formulario.generarIa')}
                 </button>
               }
             >
@@ -448,16 +453,16 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                 <RichTextEditor
                   value={datos.description}
                   onChange={cambiarDescripcion}
-                  placeholder="Qué agrupa esta categoría (opcional)"
+                  placeholder={t('formulario.general.descripcionPlaceholder')}
                 />
               )}
             </FormField>
           </FormSection>
 
-          <FormSection titulo="Cocina y POS" descripcion="Dónde se prepara y si genera comanda." columnas={2} icono={ChefHat} colapsable>
+          <FormSection titulo={t('formulario.cocina.titulo')} descripcion={t('formulario.cocina.descripcion')} columnas={2} icono={ChefHat} colapsable>
             <FormField
-              etiqueta="Estación de cocina"
-              ayuda="Los productos de esta categoría se envían a esta estación. Un producto puede cambiarla."
+              etiqueta={t('formulario.cocina.estacion')}
+              ayuda={t('formulario.cocina.estacionAyuda')}
             >
               {(c) => (
                 <Select
@@ -468,17 +473,17 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ninguna">Sin estación</SelectItem>
+                    <SelectItem value="ninguna">{t('estaciones.ninguna')}</SelectItem>
                     {OPCIONES_ESTACION.map((o) => (
                       <SelectItem key={o.valor} value={o.valor}>
-                        {o.etiqueta}
+                        {etiquetaEstacion(o.valor, t)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
             </FormField>
-            <FormField etiqueta="Requiere preparación" ayuda="Genera una comanda de cocina al vender desde el POS.">
+            <FormField etiqueta={t('formulario.cocina.preparacion')} ayuda={t('formulario.cocina.preparacionAyuda')}>
               {(c) => (
                 <span className="flex h-10 items-center gap-3">
                   <Switch
@@ -488,19 +493,19 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                     onCheckedChange={(v) => cambiar('requires_preparation', v)}
                   />
                   <span className="text-sm text-fg-secondary">
-                    {datos.requires_preparation ? 'Sí · genera comanda al vender' : 'No'}
+                    {datos.requires_preparation ? t('formulario.cocina.siGenera') : t('comun.no')}
                   </span>
                 </span>
               )}
             </FormField>
           </FormSection>
 
-          <FormSection titulo="Apariencia" descripcion="Color, icono e imagen en el POS y la tienda." columnas={2} icono={Layers} colapsable>
-            <ColorPicker value={datos.color} onChange={(v) => cambiar('color', v)} label="Color" />
-            <IconSelector value={datos.icon} onChange={(v) => cambiar('icon', v)} label="Icono" color={datos.color} />
+          <FormSection titulo={t('detalle.apariencia.titulo')} descripcion={t('formulario.apariencia.descripcion')} columnas={2} icono={Layers} colapsable>
+            <ColorPicker value={datos.color} onChange={(v) => cambiar('color', v)} label={t('detalle.apariencia.color')} />
+            <IconSelector value={datos.icon} onChange={(v) => cambiar('icon', v)} label={t('detalle.apariencia.icono')} color={datos.color} />
             <div className="flex flex-col gap-1.5 md:col-span-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-fg">Imagen</span>
+                <span className="text-sm font-medium text-fg">{t('detalle.apariencia.imagen')}</span>
                 <button
                   type="button"
                   onClick={() => void generarImagen()}
@@ -508,7 +513,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                   className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3 text-xs font-medium text-fg hover:bg-hover disabled:opacity-50"
                 >
                   {generandoImg ? <Loader2 aria-hidden="true" className="size-3.5 animate-spin" /> : <Wand2 aria-hidden="true" className="size-3.5" strokeWidth={1.5} />}
-                  {generandoImg ? 'Generando…' : 'Generar con IA'}
+                  {generandoImg ? t('formulario.generando') : t('formulario.generarIa')}
                 </button>
               </div>
               <ImageUploader
@@ -519,19 +524,19 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                 folder="images"
                 label=""
               />
-              <p className="text-xs text-fg-muted">Se usa en el POS (vista de imágenes), la tienda web y el catálogo.</p>
+              <p className="text-xs text-fg-muted">{t('formulario.apariencia.imagenAyuda')}</p>
             </div>
           </FormSection>
 
-          <FormSection titulo="Tienda web y SEO" descripcion="Dirección pública de la categoría." icono={Globe} colapsable>
+          <FormSection titulo={t('formulario.seo.titulo')} descripcion={t('formulario.seo.descripcion')} icono={Globe} colapsable>
             <FormField
-              etiqueta="Slug (dirección pública)"
+              etiqueta={t('formulario.seo.slug')}
               obligatorio
               error={errores.slug}
               ayuda={
                 esEdicion && !slugDesbloqueado
-                  ? 'Bloqueado: al renombrar ya no se regenera. Editarlo rompe las páginas y los enlaces de menú que lo usan.'
-                  : 'Se forma con el nombre; solo letras minúsculas, números y guiones.'
+                  ? t('formulario.seo.slugBloqueado')
+                  : t('formulario.seo.slugAyuda')
               }
               extra={
                 esEdicion && !slugDesbloqueado ? (
@@ -541,7 +546,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                     className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-link hover:bg-hover"
                   >
                     <Lock aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
-                    Desbloquear
+                    {t('formulario.seo.desbloquear')}
                   </button>
                 ) : undefined
               }
@@ -554,13 +559,13 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                   setSugerenciaSlug(null);
                 }}
                 onBlur={() => datos.slug && cambiar('slug', generateSlug(datos.slug), false)}
-                placeholder="bebidas-calientes"
+                placeholder={t('formulario.seo.slugPlaceholder')}
                 className={cn('h-10 font-mono text-sm', esEdicion && !slugDesbloqueado && 'bg-subtle text-fg-secondary')}
               />
             </FormField>
             {sugerenciaSlug && (
               <p className="-mt-2 flex flex-wrap items-center gap-2 text-xs text-fg-secondary">
-                Libre:
+                {t('formulario.seo.libre')}
                 <button
                   type="button"
                   onClick={() => {
@@ -573,23 +578,26 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                 </button>
               </p>
             )}
-            <FormField etiqueta="Título SEO" ayuda={!esEdicion ? 'Se completa con el nombre mientras no lo cambies.' : undefined}>
+            <FormField etiqueta={t('detalle.resumen.tituloSeo')} ayuda={!esEdicion ? t('formulario.seo.tituloAyuda') : undefined}>
               <Input
                 value={datos.meta_title}
                 onChange={(e) => cambiar('meta_title', e.target.value)}
-                placeholder="Título para buscadores"
+                placeholder={t('formulario.seo.tituloPlaceholder')}
                 maxLength={70}
                 className="h-10"
               />
             </FormField>
             <FormField
-              etiqueta="Descripción SEO"
-              ayuda={`${datos.meta_description.length}/160 · ${!esEdicion ? 'se completa con la descripción mientras no la cambies' : 'texto para buscadores'}`}
+              etiqueta={t('detalle.resumen.descripcionSeo')}
+              ayuda={t('formulario.seo.contador', {
+                actual: datos.meta_description.length,
+                texto: !esEdicion ? t('formulario.seo.descripcionAyudaNueva') : t('formulario.seo.descripcionAyudaEdicion'),
+              })}
             >
               <Textarea
                 value={datos.meta_description}
                 onChange={(e) => cambiar('meta_description', e.target.value)}
-                placeholder="Descripción para buscadores"
+                placeholder={t('formulario.seo.descripcionPlaceholder')}
                 rows={3}
                 maxLength={320}
                 className="resize-none"
@@ -599,16 +607,16 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
         </div>
 
         <aside className="flex min-w-0 flex-col gap-4 lg:gap-5">
-          <FormSection titulo="Estado">
+          <FormSection titulo={t('formulario.estado.titulo')}>
             <label className="flex items-center gap-3">
-              <Switch checked={datos.is_active} onCheckedChange={(v) => cambiar('is_active', v)} aria-label="Categoría activa" />
+              <Switch checked={datos.is_active} onCheckedChange={(v) => cambiar('is_active', v)} aria-label={t('formulario.estado.etiqueta')} />
               <span className="text-sm text-fg-secondary">
-                {datos.is_active ? 'Activa · visible en el POS y la tienda' : 'Inactiva · oculta en el POS y la tienda'}
+                {datos.is_active ? t('formulario.estado.activa') : t('formulario.estado.inactiva')}
               </span>
             </label>
           </FormSection>
 
-          <FormSection titulo="Vista previa en el árbol">
+          <FormSection titulo={t('formulario.vistaPrevia')}>
             <div className="flex flex-col gap-1">
               {rutaPadre.map((o, i) => (
                 <TreeCell
@@ -626,7 +634,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
               ))}
               <TreeCell
                 className="bg-brand-tint p-1"
-                titulo={datos.name || 'Sin nombre'}
+                titulo={datos.name || t('comun.sinNombre')}
                 subtitulo={`/${datos.slug || generateSlug(datos.name) || '…'}`}
                 nivel={rutaPadre.length}
                 tieneHijos={false}
@@ -640,7 +648,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
 
           <p className="flex items-start gap-2 rounded-lg bg-warning-subtle px-3 py-2.5 text-[13px] leading-[18px] text-warning-text">
             <Info aria-hidden="true" className="mt-px size-4 shrink-0" strokeWidth={1.5} />
-            Al guardar, el POS y la tienda web muestran los cambios. Las reglas de asignación no se recalculan solas: aplícalas desde el detalle.
+            {t('formulario.avisoGuardar')}
           </p>
         </aside>
       </div>

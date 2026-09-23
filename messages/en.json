@@ -3515,5 +3515,2501 @@
       "description": "The team has been notified automatically. You can try reloading the page to continue.",
       "retry": "Retry"
     }
+  },
+  "proveedores": {
+    "comun": {
+      "titulo": "Suppliers",
+      "inventario": "Inventory",
+      "proveedor": "Supplier",
+      "nuevoProveedor": "New supplier",
+      "editar": "Edit",
+      "error": "Error",
+      "noEncontrado": "Supplier not found",
+      "sustantivo": {
+        "singular": "supplier",
+        "plural": "suppliers"
+      },
+      "nProveedores": "{count, plural, one {{n} supplier} other {{n} suppliers}}"
+    },
+    "formato": {
+      "contado": "Cash on delivery",
+      "creditoDias": "Credit: {count, plural, one {# day} other {# days}}",
+      "sinDefinir": "Not set",
+      "sinDocumento": "No {sigla}",
+      "condiciones": {
+        "contado": "Cash on delivery",
+        "credito15": "15-day credit",
+        "credito30": "30-day credit",
+        "credito60": "60-day credit",
+        "credito90": "90-day credit"
+      },
+      "siglas": {
+        "pasaporte": "Passport",
+        "docExtranjero": "Foreign ID"
+      },
+      "tipo": {
+        "company": "Company",
+        "person": "Individual"
+      },
+      "cartera": {
+        "alDia": "Up to date",
+        "facturas": "{count, plural, one {# invoice} other {# invoices}}",
+        "todasVencidas": "{count, plural, one {# overdue invoice} other {# overdue invoices}}",
+        "parteVencida": "{count, plural, one {# invoice} other {# invoices}} · {vencidas} overdue"
+      },
+      "regimenes": {
+        "comun": "VAT registered",
+        "simple": "Simplified regime",
+        "granContribuyente": "Large taxpayer",
+        "noResponsable": "Not VAT registered"
+      },
+      "cuentas": {
+        "savings": "Savings",
+        "checking": "Checking",
+        "other": "Other"
+      },
+      "responsabilidades": {
+        "o13": "O-13 · Large taxpayer",
+        "o15": "O-15 · Self-withholding agent",
+        "o23": "O-23 · VAT withholding agent",
+        "o47": "O-47 · Simplified regime",
+        "r99pn": "R-99-PN · Not applicable, other"
+      },
+      "documentosDian": {
+        "nit": "31 · NIT",
+        "cc": "13 · Citizenship ID card",
+        "ce": "22 · Foreigner ID card",
+        "docExtranjero": "42 · Foreign ID document",
+        "ti": "12 · Minor ID card",
+        "pasaporte": "41 · Passport",
+        "nuip": "91 · NUIP"
+      }
+    },
+    "acciones": {
+      "verDetalle": "View details",
+      "editar": "Edit",
+      "nuevaOrden": "New purchase order",
+      "activaloParaComprar": "Activate it to buy from this supplier",
+      "duplicar": "Duplicate",
+      "duplicando": "Duplicating…",
+      "copiarId": "Copy ID",
+      "activar": "Activate",
+      "desactivar": "Deactivate",
+      "eliminar": "Delete",
+      "toast": {
+        "duplicando": "Duplicating supplier…",
+        "errorDuplicar": "Couldn't duplicate the supplier",
+        "duplicado": "Supplier duplicated",
+        "duplicadoDescripcion": "Fill in the copy's ID document.",
+        "errorActivar": "Couldn't activate",
+        "errorDesactivar": "Couldn't deactivate",
+        "activados": "{count, plural, one {Supplier activated} other {# suppliers activated}}",
+        "desactivados": "{count, plural, one {Supplier deactivated} other {# suppliers deactivated}}",
+        "activadosDescripcion": "It shows up again when purchasing.",
+        "desactivadosDescripcion": "It no longer shows up when purchasing; its history is kept.",
+        "idCopiado": "ID copied",
+        "errorCopiarId": "Couldn't copy the ID"
+      }
+    },
+    "eliminar": {
+      "titulo": "Delete “{nombre}”?",
+      "revisando": "Checking its documents…",
+      "conCartera": "It has {count, plural, one {{n} account payable} other {{n} accounts payable}}, so it can’t be deleted. Deactivate it so it stops showing up when purchasing without losing its history.",
+      "documentos": {
+        "ordenes": "{count, plural, one {{n} purchase order} other {{n} purchase orders}}",
+        "facturas": "{count, plural, one {{n} purchase invoice} other {{n} purchase invoices}}",
+        "ambos": "{ordenes} and {facturas}"
+      },
+      "conDocumentos": "This will also delete {documentos}. This action can’t be undone. If you only want it to stop showing up when purchasing, deactivate it.",
+      "irreversible": "This action can’t be undone.",
+      "cancelar": "Cancel",
+      "desactivar": "Deactivate",
+      "eliminar": "Delete",
+      "toast": {
+        "errorEliminar": "Couldn't delete the supplier",
+        "errorEliminarCartera": "It has accounts payable on record. Deactivate it so it doesn’t show up when purchasing.",
+        "errorEliminarReintentar": "Try again in a few seconds.",
+        "eliminado": "Supplier deleted",
+        "errorDesactivar": "Couldn't deactivate the supplier",
+        "desactivado": "Supplier deactivated",
+        "desactivadoDescripcion": "It no longer shows up when purchasing; its history is kept."
+      }
+    },
+    "listado": {
+      "sinDatos": "No data",
+      "porcentaje": "{valor}%",
+      "subtituloActivos": "{n} active",
+      "importar": "Import",
+      "importarProveedores": "Import suppliers",
+      "nuevaOrden": "New purchase order",
+      "nuevaOrdenA": "New purchase order to {nombre}",
+      "errorSeleccionarTodo": "Couldn't select all",
+      "errorCarga": "We couldn't load the suppliers",
+      "sinResultados": "Try another name or NIT, or remove a filter.",
+      "vacio": {
+        "titulo": "You don't have any suppliers yet",
+        "descripcion": "Add who you buy from to create purchase orders and keep track of what you owe them."
+      },
+      "exportar": {
+        "csv": "Export CSV (.csv)",
+        "xlsx": "Export Excel (.xlsx)",
+        "pdf": "Export PDF (.pdf)",
+        "exportando": "Exporting…",
+        "sinDatos": "No data",
+        "sinDatosDescripcion": "There are no suppliers to export",
+        "completada": "Export complete",
+        "descargado": "The {formato} file has been downloaded",
+        "error": "Couldn't export the suppliers"
+      },
+      "chips": {
+        "estadoActivos": "Status: Active",
+        "estadoInactivos": "Status: Inactive",
+        "tipoEmpresa": "Type: Company",
+        "tipoPersona": "Type: Individual",
+        "carteraConSaldo": "Payables: With balance",
+        "carteraVencida": "Payables: Overdue",
+        "carteraAlDia": "Payables: Up to date",
+        "sinNit": "No NIT on file"
+      },
+      "columnas": {
+        "proveedor": "Supplier",
+        "contacto": "Contact",
+        "condicion": "Payment terms",
+        "saldo": "Balance due",
+        "cumplimiento": "On-time rate",
+        "estado": "Status"
+      },
+      "kpis": {
+        "etiqueta": "Supplier summary",
+        "activos": "Active suppliers",
+        "inactivosDetalle": "{n} inactive",
+        "saldo": "Balance due",
+        "conSaldoDetalle": "{count, plural, one {{n} supplier with a balance} other {{n} suppliers with a balance}}",
+        "vencido30": "Over 30 days overdue",
+        "vencido30Detalle": "{count, plural, one {{n} supplier} other {{n} suppliers}} · view payables",
+        "sinNit": "No NIT on file",
+        "sinNitDetalle": "Invoices can't be recorded for them",
+        "todosConDocumento": "All have an ID document"
+      },
+      "buscar": {
+        "placeholder": "Search supplier or NIT",
+        "etiqueta": "Search by name, NIT, contact, email or phone"
+      },
+      "filtros": {
+        "verN": "Show {count, plural, one {{n} supplier} other {{n} suppliers}}",
+        "estado": "Status",
+        "todos": "All",
+        "activos": "Active",
+        "inactivos": "Inactive",
+        "tipo": "Type",
+        "cartera": "Payables",
+        "carteraTodas": "All",
+        "carteraConSaldo": "With a balance due",
+        "carteraVencidas": "With overdue invoices",
+        "carteraAlDia": "Up to date",
+        "soloSinNit": "Only without a NIT on file"
+      },
+      "masivas": {
+        "exportar": "Export",
+        "activar": "Activate",
+        "desactivar": "Deactivate"
+      }
+    },
+    "detalle": {
+      "errorCarga": "Couldn't load the supplier",
+      "nuevaOrden": "New purchase order",
+      "registrarPago": "Record payment",
+      "sinSaldo": "No balance due",
+      "pago": {
+        "elegirCuenta": "Choose the account to pay",
+        "elegirCuentaDescripcion": "Open the account payable and record the payment from there."
+      },
+      "estadosOc": {
+        "draft": "Draft",
+        "pending": "Pending",
+        "approved": "Approved",
+        "sent": "Sent",
+        "partial": "Partially received",
+        "received": "Received",
+        "completed": "Completed",
+        "cancelled": "Canceled"
+      },
+      "estadosFactura": {
+        "draft": "Draft",
+        "received": "Received",
+        "partial": "Partially paid",
+        "paid": "Paid",
+        "cancelled": "Voided",
+        "void": "Voided"
+      },
+      "estadosCxp": {
+        "vencidaDias": "Overdue {dias} d",
+        "pending": "Pending",
+        "partial": "Partially paid",
+        "paid": "Paid",
+        "overdue": "Overdue"
+      },
+      "metodos": {
+        "efectivo": "Cash",
+        "transferencia": "Transfer",
+        "tarjeta": "Card",
+        "cheque": "Check"
+      },
+      "tiposDocumento": {
+        "orden": "Purchase order",
+        "factura": "Purchase invoice",
+        "cuenta": "Account payable"
+      },
+      "pagoRef": "Payment {referencia}",
+      "origenFactura": "Invoice",
+      "cuentaDe": {
+        "savings": "Savings account",
+        "checking": "Checking account",
+        "other": "Other account"
+      },
+      "cuentaDeOtro": "{tipo} account",
+      "preferido": "Preferred supplier",
+      "productoN": "Product #{id}",
+      "diasCorto": "{dias} d",
+      "noAplica": "N/A",
+      "porcentaje": "{valor}%",
+      "columnas": {
+        "producto": "Product",
+        "sku": "SKU",
+        "skuProveedor": "Supplier SKU",
+        "costo": "Cost",
+        "entrega": "Lead time",
+        "pedidoMinimo": "Minimum order",
+        "stock": "Stock",
+        "valorStock": "Stock value",
+        "orden": "Order",
+        "creada": "Created",
+        "fechaEsperada": "Expected date",
+        "estado": "Status",
+        "total": "Total",
+        "factura": "Invoice",
+        "fecha": "Date",
+        "vencimiento": "Due date",
+        "monto": "Amount",
+        "descuento": "Discount",
+        "saldo": "Balance",
+        "metodo": "Method",
+        "referencia": "Reference",
+        "origen": "Source",
+        "documento": "Document"
+      },
+      "pestanas": {
+        "etiqueta": "Supplier sections",
+        "resumen": "Summary",
+        "productos": "Products supplied",
+        "ordenes": "Purchase orders",
+        "facturas": "Purchase invoices",
+        "cuentas": "Accounts payable",
+        "pagos": "Payments"
+      },
+      "recientes": {
+        "ordenes": "Showing the {mostradas} most recent of {total} orders.",
+        "facturas": "Showing the {mostradas} most recent of {total} invoices.",
+        "verTodas": "View all"
+      },
+      "kpis": {
+        "etiqueta": "Supplier figures",
+        "saldo": "Balance due",
+        "facturasAbiertas": "{count, plural, one {{n} open invoice} other {{n} open invoices}}",
+        "vencido": "Overdue",
+        "vencidoDetalle": "{count, plural, one {{n} invoice} other {{n} invoices}} · {dias, plural, one {# day} other {# days}} past due",
+        "sinVencidas": "No overdue invoices",
+        "compras12m": "Purchases, last 12 months",
+        "compras12mDetalle": "{ordenes, plural, one {# order} other {# orders}} · {facturas, plural, one {# invoice} other {# invoices}}",
+        "entregas": "On-time deliveries",
+        "entregasDetalle": "{a} of {total} receipts",
+        "sinFechaEsperada": "No orders with an expected date"
+      },
+      "datos": {
+        "titulo": "General information",
+        "tipo": "Type",
+        "documento": "ID document",
+        "nombreComercial": "Trade name",
+        "empresaAsociada": "Associated company",
+        "contacto": "Contact",
+        "telefono": "Phone",
+        "correo": "Email",
+        "sitioWeb": "Website",
+        "direccion": "Address",
+        "registrado": "Added on"
+      },
+      "fiscal": {
+        "titulo": "Tax and banking",
+        "regimen": "Tax regime",
+        "responsabilidades": "Tax responsibilities",
+        "tipoDocumentoDian": "DIAN document type",
+        "tipoOrganizacion": "Organization type",
+        "personaNatural": "Individual",
+        "municipio": "Municipality",
+        "codigoPais": "Country code",
+        "identificacionTributaria": "Tax ID",
+        "condicionPago": "Payment terms",
+        "banco": "Bank",
+        "numeroCuenta": "Account number",
+        "ocultarCuenta": "Hide account number",
+        "mostrarCuenta": "Show account number",
+        "cuentaCopiada": "Account number copied",
+        "errorCopiar": "Couldn't copy",
+        "copiar": "Copy"
+      },
+      "notas": {
+        "titulo": "Description and notes",
+        "internas": "Internal notes"
+      },
+      "ultimos": {
+        "titulo": "Latest documents",
+        "vacioTitulo": "No documents yet",
+        "vacioDescripcion": "Once you create a purchase order for this supplier, it will show up here."
+      },
+      "conexiones": {
+        "titulo": "How it connects",
+        "ordenesAbiertas": "Purchase orders · {n} open",
+        "cuentasAbiertas": "Open accounts payable",
+        "pagar": "Pay",
+        "lotes": "Lots received from this supplier",
+        "pagos": "Recorded payments"
+      },
+      "valorStock": "Stock value of its products (all branches):",
+      "totalPagado": "Total paid:",
+      "vacios": {
+        "productos": "No products are linked to this supplier",
+        "productosDescripcion": "Links are created from each product's Suppliers tab.",
+        "ordenes": "No purchase orders on record",
+        "facturas": "No purchase invoices on record",
+        "cuentas": "No accounts payable on record",
+        "pagos": "No payments recorded for this supplier"
+      }
+    },
+    "formulario": {
+      "tituloEditar": "Edit supplier",
+      "subtituloEditar": "Update the supplier's information",
+      "subtituloNuevo": "Add who you buy from",
+      "seleccionar": "Select",
+      "opcional": "Optional",
+      "generando": "Generating…",
+      "generarIa": "Generate with AI",
+      "logo": "Logo",
+      "tiposRespaldo": {
+        "taxId": "Tax ID",
+        "nationalId": "National ID",
+        "passport": "Passport",
+        "other": "Other"
+      },
+      "botones": {
+        "guardar": "Save",
+        "guardarCambios": "Save changes",
+        "guardarProveedor": "Save supplier",
+        "guardarYCrearOtro": "Save and create another",
+        "cancelar": "Cancel",
+        "descartar": "Discard"
+      },
+      "errores": {
+        "razonSocial": "Enter the legal name",
+        "nombreCompleto": "Enter the full name",
+        "correo": "Invalid email"
+      },
+      "toast": {
+        "nitPrimero": "Enter the NIT first",
+        "dvCalculado": "Check digit calculated",
+        "dvDescripcion": "Check digit: {dv}",
+        "nombrePrimero": "Enter the name first",
+        "descripcionGenerada": "Description generated with AI",
+        "errorDescripcion": "Couldn't generate the description.",
+        "logoGenerado": "Logo generated with AI",
+        "errorLogo": "Couldn't generate the logo.",
+        "actualizado": "Supplier updated",
+        "actualizadoDescripcion": "Your changes have been saved",
+        "creado": "Supplier created",
+        "creadoDescripcion": "The supplier has been created",
+        "errorActualizar": "Couldn't update the supplier",
+        "errorCrear": "Couldn't create the supplier"
+      },
+      "identificacion": {
+        "titulo": "Identification",
+        "descripcion": "Type, ID document and name. Look it up in the DIAN to fill it in.",
+        "tipoProveedor": "Supplier type",
+        "personaNatural": "Individual",
+        "tipoDocumento": "ID document type",
+        "numero": "Number",
+        "numeroAyuda": "Without an ID document, invoices can't be recorded for this supplier.",
+        "dv": "Check digit",
+        "calcular": "Calculate",
+        "marcaAutorizacion": "Check the authorization to look it up",
+        "consultarDian": "Look up in DIAN / RUES",
+        "razonSocial": "Legal name",
+        "nombreCompleto": "Full name",
+        "razonSocialPlaceholder": "Company Inc.",
+        "nombreCompletoPlaceholder": "First and last name",
+        "nombreComercial": "Trade name",
+        "empresaAsociada": "Associated supplier company",
+        "empresaAsociadaAyuda": "Link this person as a contact or sub-supplier of a company.",
+        "sinEmpresa": "No associated company"
+      },
+      "contacto": {
+        "titulo": "Contact",
+        "persona": "Contact person",
+        "personaPlaceholder": "Contact name",
+        "telefono": "Phone",
+        "correo": "Email",
+        "sitioWeb": "Website"
+      },
+      "direccion": {
+        "titulo": "Address",
+        "direccion": "Address",
+        "direccionPlaceholder": "Street, number, suite…",
+        "ciudad": "City",
+        "departamento": "Department / state",
+        "pais": "Country",
+        "codigoPostal": "ZIP code",
+        "municipio": "Municipality (DIAN code)",
+        "municipioAyuda": "5 digits, e.g. 05001 = Medellín."
+      },
+      "condiciones": {
+        "titulo": "Purchase terms",
+        "descripcion": "Used when creating purchase orders and invoices.",
+        "condicionPago": "Payment terms",
+        "condicionPagoAyuda": "Choosing one fills in the credit days.",
+        "diasCredito": "Credit days",
+        "diasCreditoAyuda": "0 = cash on delivery.",
+        "regimen": "Tax regime",
+        "seleccionarRegimen": "Select regime",
+        "responsabilidades": "Tax responsibilities",
+        "responsabilidadesAyuda": "They are also filled in when looking up the DIAN."
+      },
+      "bancarios": {
+        "titulo": "Bank details",
+        "descripcion": "To schedule payments.",
+        "banco": "Bank",
+        "bancoPlaceholder": "Bank name",
+        "tipoCuenta": "Account type",
+        "numeroCuenta": "Account number"
+      },
+      "facturacion": {
+        "titulo": "E-invoicing",
+        "descripcion": "DIAN codes. They fill in automatically from the supplier and document type.",
+        "tipoDocumentoDian": "DIAN document type",
+        "tipoOrganizacion": "DIAN organization type",
+        "organizacionEmpresa": "1 · Company",
+        "organizacionPersona": "2 · Individual",
+        "codigoPais": "Country code"
+      },
+      "notas": {
+        "titulo": "Description and notes",
+        "descripcion": "Description",
+        "descripcionPlaceholder": "What they sell, brands they carry, delivery times…",
+        "internas": "Internal notes",
+        "internasPlaceholder": "Additional information about the supplier…"
+      },
+      "estado": {
+        "titulo": "Status",
+        "activo": "Active · shows up when purchasing",
+        "inactivo": "Inactive · doesn't show up when purchasing"
+      }
+    },
+    "importar": {
+      "volver": "Back",
+      "titulo": "Import suppliers",
+      "subtitulo": "Bulk import suppliers from a CSV or Excel file",
+      "archivo": {
+        "titulo": "Select file",
+        "descripcion": "Upload a CSV or Excel (.xlsx) file with the suppliers to import",
+        "encontrados": "{count, plural, one {# record found} other {# records found}}",
+        "otro": "Select another file",
+        "arrastra": "Drag a file here or click to select",
+        "formatos": "CSV or Excel (.xlsx) files"
+      },
+      "vistaPrevia": {
+        "titulo": "Preview ({count, plural, one {# record} other {# records}})",
+        "validos": "{count} valid",
+        "conErrores": "{count} with errors",
+        "valido": "Valid"
+      },
+      "columnas": {
+        "fila": "Row",
+        "nombre": "Name",
+        "nit": "NIT",
+        "contacto": "Contact",
+        "telefono": "Phone",
+        "email": "Email",
+        "estado": "Status"
+      },
+      "validaciones": {
+        "nombreRequerido": "Name is required",
+        "emailInvalido": "Invalid email",
+        "tipoInvalido": "Type must be \"person\" or \"company\"",
+        "diasCreditoNumerico": "Credit days must be a number"
+      },
+      "resultados": {
+        "titulo": "Import results",
+        "importados": "{count} imported successfully",
+        "errores": "Errors:",
+        "errorFila": "Row {fila}: {error}"
+      },
+      "acciones": {
+        "titulo": "Actions",
+        "plantilla": "Download template",
+        "importar": "Import {count, plural, one {# supplier} other {# suppliers}}",
+        "verProveedores": "View suppliers"
+      },
+      "instrucciones": {
+        "titulo": "Instructions",
+        "paso1": "Download the CSV template",
+        "paso2": "Fill in the supplier data",
+        "paso3": "The \"Nombre\" (name) column is required",
+        "paso4": "Save the file in CSV format",
+        "paso5": "Upload the file and check the preview",
+        "paso6": "Click \"Import\" to confirm"
+      },
+      "toast": {
+        "archivoInvalido": "Invalid file",
+        "archivoInvalidoDescripcion": "Please select a CSV or Excel (.xlsx) file",
+        "archivoVacio": "Empty file",
+        "archivoVacioDescripcion": "The file has no data to import",
+        "errorProcesar": "Couldn't process the file",
+        "sinValidos": "No valid data",
+        "sinValidosDescripcion": "There are no valid suppliers to import",
+        "completada": "Import complete",
+        "completadaDescripcion": "{count, plural, one {# supplier imported successfully} other {# suppliers imported successfully}}",
+        "conErrores": "Import errors",
+        "conErroresDescripcion": "{count, plural, one {# supplier could not be imported} other {# suppliers could not be imported}}",
+        "errorImportar": "Couldn't complete the import"
+      }
+    }
+  },
+  "categorias": {
+    "comun": {
+      "inventario": "Inventory",
+      "categorias": "Categories",
+      "nuevaCategoria": "New category",
+      "buscarCategoria": "Search category",
+      "volverInventario": "Back to inventory",
+      "intentaDeNuevo": "Please try again.",
+      "laCategoria": "The category",
+      "sinNombre": "Untitled",
+      "si": "Yes",
+      "no": "No",
+      "activa": "Active",
+      "inactiva": "Inactive",
+      "generaComanda": "Sends kitchen ticket",
+      "entreComillas": "“{nombre}”",
+      "nCategorias": "{count, plural, one {{n} category} other {{n} categories}}",
+      "nProductos": "{count, plural, one {{n} product} other {{n} products}}",
+      "nSubcategorias": "{count, plural, one {{n} subcategory} other {{n} subcategories}}",
+      "categoria": {
+        "singular": "category",
+        "plural": "categories"
+      },
+      "principal": {
+        "singular": "top-level category",
+        "plural": "top-level categories"
+      }
+    },
+    "acciones": {
+      "editar": "Edit",
+      "agregarSubcategoria": "Add subcategory",
+      "moverA": "Move to…",
+      "moverARaiz": "Move to top level",
+      "duplicar": "Duplicate",
+      "verProductos": "View products",
+      "copiarId": "Copy ID",
+      "desactivar": "Deactivate",
+      "activar": "Activate",
+      "eliminar": "Delete"
+    },
+    "estaciones": {
+      "ninguna": "No station",
+      "hot_kitchen": "Hot kitchen",
+      "cold_kitchen": "Cold kitchen",
+      "bar": "Bar",
+      "cashier": "Cashier",
+      "all": "All stations"
+    },
+    "errores": {
+      "slugDuplicado": "A category with that address (slug) already exists in your organization",
+      "ciclo": "You can't move a category into one of its subcategories",
+      "padreInvalida": "The parent category doesn't exist or belongs to another organization",
+      "noEncontrada": "The category doesn't exist or belongs to another organization",
+      "conProductos": "The category has products: choose which category they move to before deleting it",
+      "destinoInvalido": "The destination category is not valid"
+    },
+    "filtros": {
+      "todas": "All",
+      "activas": "Active",
+      "inactivas": "Inactive",
+      "conProductos": "With products",
+      "sinProductos": "No products",
+      "conEstacion": "With station",
+      "sinEstacion": "No station",
+      "sinComanda": "No kitchen ticket"
+    },
+    "chips": {
+      "estado": "Status: {valor}",
+      "estacion": "Station: {valor}",
+      "requierePreparacion": "Requires preparation",
+      "sinPreparacion": "No preparation"
+    },
+    "toasts": {
+      "noActualizo": "Couldn't refresh",
+      "ultimaLista": "Showing the last loaded list.",
+      "movidas": "{count, plural, one {Category moved} other {Categories moved}}",
+      "movidaDentro": "{nombre} is now a subcategory of “{destino}”.",
+      "movidaRaiz": "{nombre} is now a top-level category.",
+      "movidasDentro": "{n} categories are now subcategories of “{destino}”.",
+      "movidasRaiz": "{n} categories are now top-level categories.",
+      "ahoraSubcategoria": "It is now a subcategory of “{destino}”.",
+      "quedoPrincipal": "It is now a top-level category.",
+      "noMover": "Couldn't move",
+      "desactivada": "Category deactivated",
+      "activada": "Category activated",
+      "desactivadas": "Categories deactivated",
+      "activadas": "Categories activated",
+      "noCambioEstado": "Couldn't change the status",
+      "duplicada": "Category duplicated",
+      "seCreo": "“{nombre}” was created.",
+      "noDuplicar": "Couldn't duplicate",
+      "eliminada": "Category deleted",
+      "productosPasaron": "{count, plural, one {{n} product moved} other {{n} products moved}} to “{destino}”",
+      "otraCategoria": "another category",
+      "subcategoriasSubieron": "{count, plural, one {{n} subcategory moved} other {{n} subcategories moved}} up one level",
+      "tieneProductos": "It has products",
+      "noEliminar": "Couldn't delete",
+      "exportacionLista": "Export ready",
+      "seDescargo": "The {formato} file was downloaded.",
+      "noExportar": "Couldn't export",
+      "favoritaMarcada": "Marked as a POS favorite",
+      "favoritaQuitada": "No longer a POS favorite",
+      "noFavorita": "Couldn't change the favorite",
+      "idCopiado": "ID copied",
+      "noCopiar": "Couldn't copy"
+    },
+    "listado": {
+      "subtitulo": "{total, plural, one {{nTotal} category} other {{nTotal} categories}} across {niveles, plural, one {{nNiveles} level} other {{nNiveles} levels}}",
+      "importar": "Import",
+      "importarCategorias": "Import categories",
+      "tabla": "Category tree",
+      "cabecera": {
+        "exportarCsv": "Export CSV",
+        "exportarExcel": "Export Excel",
+        "exportarPdf": "Export PDF",
+        "expandirTodo": "Expand all",
+        "contraerTodo": "Collapse all",
+        "actualizar": "Refresh",
+        "actualizando": "Refreshing…",
+        "yaActualizando": "Already refreshing"
+      },
+      "arrastre": {
+        "noExiste": "It doesn't exist",
+        "yaEsPrincipal": "It is already a top-level category",
+        "mismaCategoria": "It's the same category",
+        "yaEstaDentro": "It's already inside that category",
+        "ciclo": "It would create a loop"
+      },
+      "columnas": {
+        "nombre": "Name",
+        "productos": "Products",
+        "subcategorias": "Subcategories",
+        "estacion": "Kitchen station",
+        "estado": "Status"
+      },
+      "verProductosDe": "{count, plural, one {View {n} product in {nombre}} other {View the {n} products in {nombre}}}",
+      "porRegla": "+{n} by rule",
+      "kpi": {
+        "resumen": "Category summary",
+        "activasInactivas": "{nActivas} active · {nInactivas} inactive",
+        "sinProductos": "No products",
+        "revisalas": "Review or deactivate them",
+        "todasConProductos": "All have products",
+        "productosSinCategoria": "Uncategorized products",
+        "deTotal": "Of {total} · assign from the catalog",
+        "conEstacion": "With kitchen station",
+        "generanComanda": "Send kitchen tickets from the POS"
+      },
+      "busqueda": {
+        "placeholder": "Search by name or slug (includes collapsed branches)",
+        "placeholderMovil": "Search category",
+        "etiqueta": "Search categories"
+      },
+      "filtros": {
+        "verResultados": "{count, plural, one {Show {n} top-level category} other {Show {n} top-level categories}}",
+        "estado": "Status",
+        "productos": "Products",
+        "estacion": "Kitchen station",
+        "preparacion": "Preparation"
+      },
+      "vacio": {
+        "titulo": "You don't have any categories yet",
+        "descripcion": "Group your products to find them quickly in the POS, the online store and reports.",
+        "importar": "Import from CSV or Excel"
+      },
+      "sinResultados": "The search also checks collapsed branches. Try another term or remove a filter.",
+      "error": {
+        "titulo": "We couldn't load the categories",
+        "descripcion": "Check your connection and try again."
+      },
+      "sinPermiso": {
+        "titulo": "You don't have access to this organization's categories",
+        "descripcion": "Ask an administrator to give you access to inventory."
+      },
+      "masivas": {
+        "yaInactivas": "All selected categories are already inactive",
+        "yaActivas": "All selected categories are already active"
+      },
+      "confirmarDesactivar": {
+        "titulo": "{count, plural, one {Deactivate {n} category?} other {Deactivate {n} categories?}}",
+        "descripcion": "They will no longer appear in the POS or the online store. Their products aren't deleted or moved to another category, and you can reactivate them anytime."
+      }
+    },
+    "detalle": {
+      "titulo": "Category",
+      "miga": "Details",
+      "noEncontrada": {
+        "titulo": "We couldn't find this category",
+        "descripcion": "It may have been deleted, or the link may belong to another organization.",
+        "volver": "Back to categories"
+      },
+      "errorCarga": "We couldn't load the category",
+      "sinPermiso": "You don't have access to this category",
+      "subcategoriaDe": "subcategory of {nombre}",
+      "categoriaPrincipal": "top-level category",
+      "verNProductos": "{count, plural, one {View {n} product} other {View {n} products}}",
+      "origen": {
+        "principal": "Primary",
+        "regla": "By rule",
+        "adicional": "Additional"
+      },
+      "columnas": {
+        "producto": "Product",
+        "sku": "SKU",
+        "origen": "Source",
+        "estado": "Status"
+      },
+      "resumen": {
+        "titulo": "Summary",
+        "padre": "Parent category",
+        "sinPadre": "None · it is a top-level category",
+        "estacion": "Kitchen station",
+        "preparacion": "Requires preparation",
+        "generaComanda": "Yes · sends a kitchen ticket from the POS",
+        "ordenPos": "Order in the POS",
+        "posicion": "{posicion} of {hermanas} in {grupo}",
+        "lasPrincipales": "the top-level categories",
+        "ordenRank": "order {orden} · rank {rank}",
+        "descripcion": "Description",
+        "sinDescripcion": "No description",
+        "tituloSeo": "SEO title",
+        "descripcionSeo": "SEO description",
+        "creada": "Created",
+        "fechas": "{creada} · updated {actualizada}",
+        "id": "ID"
+      },
+      "subcategorias": {
+        "titulo": "Subcategories ({n})",
+        "vacio": "It has no subcategories."
+      },
+      "productos": {
+        "titulo": "Products ({n})",
+        "verCatalogo": "View in catalog",
+        "tabla": "Products in {nombre}",
+        "vacioTitulo": "This category has no products",
+        "vacioDescripcion": "Assign it from the catalog or with an automatic assignment rule.",
+        "irCatalogo": "Go to catalog",
+        "error": "We couldn't load the products"
+      },
+      "apariencia": {
+        "titulo": "Appearance",
+        "color": "Color",
+        "sinColor": "No color",
+        "icono": "Icon",
+        "sinIcono": "No icon",
+        "imagen": "Image",
+        "imagenDe": "Image of {nombre}",
+        "sinImagen": "No image"
+      },
+      "conexiones": {
+        "titulo": "How it connects",
+        "productos": "Products in the category",
+        "porReglas": "Assigned by rules",
+        "promociones": "Promotions that use it",
+        "tiendaWeb": "Online store page and menu",
+        "favorita": "POS favorite",
+        "quitar": "Remove",
+        "marcar": "Mark",
+        "avisoSlug": "Changing the slug breaks online store links that point to /{slug}."
+      }
+    },
+    "formulario": {
+      "tituloEditar": "Edit category",
+      "subtitulo": "{nombre} · changes show up in the POS and the online store when you save",
+      "migaNueva": "New",
+      "descartar": "Discard",
+      "guardando": "Saving…",
+      "guardarCambios": "Save changes",
+      "crear": "Create category",
+      "noEncontrada": "We couldn't find this category in your organization.",
+      "generando": "Generating…",
+      "generarIa": "Generate with AI",
+      "vistaPrevia": "Tree preview",
+      "avisoGuardar": "When you save, the POS and the online store show the changes. Assignment rules aren't recalculated automatically: apply them from the details page.",
+      "toasts": {
+        "noCargar": "Couldn't load the categories",
+        "descripcionGenerada": "Description generated",
+        "noDescripcion": "Couldn't generate the description",
+        "imagenGenerada": "Image generated with AI",
+        "noImagen": "Couldn't generate the image",
+        "actualizada": "Category updated",
+        "guardada": "“{nombre}” saved.",
+        "creada": "Category created",
+        "disponible": "“{nombre}” is now available."
+      },
+      "errores": {
+        "nombrePrimero": "Enter a name first",
+        "nombreObligatorio": "Name is required",
+        "slugVacio": "Enter an address with letters or numbers",
+        "slugOcupado": "There is already a category with /{slug}.",
+        "noGuardar": "Couldn't save"
+      },
+      "general": {
+        "titulo": "General",
+        "descripcion": "Name, position in the tree and description.",
+        "nombre": "Name",
+        "nombrePlaceholder": "E.g.: Hot drinks",
+        "descripcionCampo": "Description",
+        "descripcionAyuda": "Used in the online store. “Generate with AI” uses credits.",
+        "descripcionPlaceholder": "What this category groups (optional)"
+      },
+      "padre": {
+        "etiqueta": "Parent category",
+        "ayudaEdicion": "You can't choose one of its subcategories: it would create a loop.",
+        "ayudaNueva": "Leave it without a parent to make it a top-level category.",
+        "sinPadre": "No parent category (top level)",
+        "mismaCategoria": "It's this same category",
+        "esSubcategoria": "It's one of its subcategories: it would create a loop"
+      },
+      "cocina": {
+        "titulo": "Kitchen and POS",
+        "descripcion": "Where it's prepared and whether it sends a kitchen ticket.",
+        "estacion": "Kitchen station",
+        "estacionAyuda": "Products in this category are sent to this station. A product can override it.",
+        "preparacion": "Requires preparation",
+        "preparacionAyuda": "Sends a kitchen ticket when sold from the POS.",
+        "siGenera": "Yes · sends a kitchen ticket when sold"
+      },
+      "apariencia": {
+        "descripcion": "Color, icon and image in the POS and the store.",
+        "imagenAyuda": "Used in the POS (image view), the online store and the catalog."
+      },
+      "seo": {
+        "titulo": "Online store and SEO",
+        "descripcion": "The category's public address.",
+        "slug": "Slug (public address)",
+        "slugBloqueado": "Locked: it's no longer regenerated when you rename. Editing it breaks the pages and menu links that use it.",
+        "slugAyuda": "Built from the name; lowercase letters, numbers and hyphens only.",
+        "desbloquear": "Unlock",
+        "slugPlaceholder": "hot-drinks",
+        "libre": "Available:",
+        "tituloAyuda": "Filled in from the name until you change it.",
+        "tituloPlaceholder": "Title for search engines",
+        "contador": "{actual}/160 · {texto}",
+        "descripcionAyudaNueva": "filled in from the description until you change it",
+        "descripcionAyudaEdicion": "text for search engines",
+        "descripcionPlaceholder": "Description for search engines"
+      },
+      "estado": {
+        "titulo": "Status",
+        "etiqueta": "Active category",
+        "activa": "Active · visible in the POS and the store",
+        "inactiva": "Inactive · hidden in the POS and the store"
+      }
+    },
+    "reglas": {
+      "titulo": "Automatic assignment rules",
+      "tituloN": "Automatic assignment rules ({n})",
+      "descripcion": "Products that meet the conditions are assigned to this category (in addition to their primary category). You can reassign them manually later.",
+      "editar": "Edit rules",
+      "descartar": "Discard changes",
+      "errorCarga": "We couldn't load the rules.",
+      "reintentar": "Retry",
+      "primera": "Rule 1",
+      "siguiente": "{combinador} rule {n}",
+      "combinador": {
+        "AND": "AND",
+        "OR": "OR"
+      },
+      "resumen": "{campo} {operador} “{valor}”",
+      "ultimaAplicacion": "Last applied",
+      "nAsignados": "{count, plural, one {{n} product assigned} other {{n} products assigned}}",
+      "nRetirados": "{n} removed",
+      "asignados": "{count, plural, one {{n} product assigned} other {{n} products assigned}} to {nombre}",
+      "yaNoCumplian": "{n} no longer matched and were removed.",
+      "vacio": "This category has no rules.",
+      "agregarPrimera": "Add first rule",
+      "agregar": "Add rule",
+      "comoSeUne": "How rule {n} is combined",
+      "campo": "Field",
+      "operador": "Operator",
+      "valor": "Value",
+      "seleccionar": "Select…",
+      "escribirOSeleccionar": "Type or select…",
+      "quitar": "Remove rule {n}",
+      "vistaPrevia": "Preview",
+      "yMas": "and {n} more…",
+      "ninguno": "No products match these rules.",
+      "completaValores": "Fill in the value of every rule",
+      "guardar": "Save rules",
+      "aplicar": "Apply and assign",
+      "guardarSinReglas": "Save without rules",
+      "cerrarAviso": "Close notice",
+      "campos": {
+        "name": "Name",
+        "sku": "SKU",
+        "brand": "Brand",
+        "reference": "Reference",
+        "barcode": "Barcode",
+        "supplier": "Supplier",
+        "tag": "Tag",
+        "status": "Status",
+        "product_type": "Product type",
+        "price_min": "Minimum price",
+        "price_max": "Maximum price"
+      },
+      "operadores": {
+        "contains": "Contains",
+        "not_contains": "Does not contain",
+        "equals": "Equals",
+        "not_equals": "Does not equal",
+        "starts_with": "Starts with",
+        "ends_with": "Ends with",
+        "gt": "Greater than",
+        "lt": "Less than",
+        "gte": "Greater than or equal to",
+        "lte": "Less than or equal to",
+        "in": "Is in the list",
+        "not_in": "Is not in the list"
+      },
+      "opciones": {
+        "status": {
+          "active": "Active",
+          "inactive": "Inactive",
+          "discontinued": "Discontinued"
+        },
+        "product_type": {
+          "product": "Product",
+          "service": "Service",
+          "bundle": "Bundle/Kit"
+        }
+      },
+      "toasts": {
+        "guardadas": "Rules saved",
+        "guardadasDesc": "{count, plural, one {{n} rule} other {{n} rules}} for “{nombre}”. Apply them to assign products.",
+        "sinReglasDesc": "“{nombre}” no longer has rules.",
+        "noGuardar": "Couldn't save the rules",
+        "noVistaPrevia": "Couldn't calculate the preview",
+        "sinReglas": "No rules to apply",
+        "agregaUna": "Add at least one rule.",
+        "retirados": "{n} no longer matched the rules and were removed.",
+        "aplicadas": "{count, plural, one {{n} rule applied.} other {{n} rules applied.}}",
+        "noAplicar": "Couldn't apply the rules"
+      }
+    },
+    "mover": {
+      "tituloUna": "Move “{nombre}”",
+      "tituloVarias": "Move {n} categories",
+      "descripcion": "Choose the new parent category.",
+      "descripcionConHijas": "{count, plural, one {Choose the new parent category. Its {n} subcategory moves with it.} other {Choose the new parent category. Its {n} subcategories move with it.}}",
+      "descripcionVarias": "Choose the new parent category. Their subcategories move with them.",
+      "esLaQueMueves": "It's the category you're moving",
+      "estaEntreLasQueMueves": "It's one of the ones you're moving",
+      "subcategoriaDe": "It is a subcategory of “{origen}”: it would create a loop",
+      "moverAqui": "Move here",
+      "eligeDestino": "Choose a destination category",
+      "yaEstaAhi": "It's already in that category",
+      "nuevaPadre": "New parent category",
+      "sinPadre": "No parent category",
+      "quedaPrincipal": "It becomes a top-level category",
+      "buscarDestino": "Search destination category",
+      "avisoSlug": "The slug doesn't change when you move it: online store links keep working."
+    },
+    "eliminar": {
+      "titulo": "Delete “{nombre}”?",
+      "descripcion": "This action can't be undone.",
+      "moverYEliminar": "Move products and delete",
+      "eligeDestino": "Choose which category its products move to",
+      "esLaQueEliminas": "It's the category you're deleting",
+      "laRaiz": "the top level",
+      "tieneProductos": "{count, plural, one {It has {n} product. It won’t be left without a category: choose where it goes.} other {It has {n} products. They won’t be left without a category: choose where they go.}}",
+      "sinProductos": "It has no assigned products.",
+      "subcategoriasPasan": "{count, plural, one {Its {n} subcategory moves to {destino}.} other {Its {n} subcategories move to {destino}.}}",
+      "reglasSeBorran": "Its assignment rules and POS favorite mark are deleted with it.",
+      "moverProductosA": "Move its products to",
+      "elegirDestino": "Choose destination category",
+      "categoriaDestino": "Destination category",
+      "sugerenciaDesactivar": "If you'd rather keep it, deactivate it: it stops appearing in the POS and the online store, and its products don't change."
+    },
+    "importar": {
+      "titulo": "Import categories",
+      "descripcion": "Upload categories from a CSV or Excel file. Use the template to make sure the format is correct.",
+      "descargarPlantilla": "Download template",
+      "limpiar": "Clear",
+      "seleccionarArchivo": "Select file (.csv or .xlsx)",
+      "validas": "{n} valid",
+      "invalidas": "{n} invalid",
+      "total": "{n} total",
+      "columnas": {
+        "estado": "Status",
+        "nombre": "Name",
+        "padre": "Parent category",
+        "color": "Color",
+        "estacion": "Station"
+      },
+      "resultado": "{count, plural, one {{n} category imported successfully} other {{n} categories imported successfully}}",
+      "fila": "Row {fila}: {error}",
+      "cancelar": "Cancel",
+      "importando": "Importing...",
+      "importarN": "Import ({n})",
+      "toasts": {
+        "formatoNoSoportado": "Unsupported format",
+        "useCsvXlsx": "Use .csv or .xlsx",
+        "errorLeer": "Error reading the file",
+        "error": "Error",
+        "sinOrganizacion": "No active organization",
+        "completada": "Import completed",
+        "importadas": "{count, plural, one {{n} category imported} other {{n} categories imported}}",
+        "ningunaImportada": "No categories were imported",
+        "revisarErrores": "Review the errors",
+        "errorDesconocido": "Unknown error",
+        "errorImportacion": "Import error"
+      }
+    }
+  },
+  "clientes": {
+    "listado": {
+      "sustantivo": {
+        "singular": "customer",
+        "plural": "customers"
+      },
+      "nClientes": "{count, plural, one {{n} customer} other {{n} customers}}",
+      "cabecera": {
+        "titulo": "Customer Management",
+        "subtitulo": "Manage your customer base",
+        "inicio": "Home",
+        "clientes": "Customers",
+        "actualizar": "Refresh",
+        "exportar": "Export",
+        "exportarCsv": "Export to CSV",
+        "nuevoCliente": "New customer",
+        "masAcciones": "More actions",
+        "importarClientes": "Import customers",
+        "descargarPlantilla": "Download template",
+        "subtituloMovil": "{count, plural, one {{total} customer} other {{total} customers}} · {conSaldo} with balance · {vencidos} overdue"
+      },
+      "errorOrg": {
+        "titulo": "We couldn't identify your organization",
+        "descripcion": "Sign in again and try again."
+      },
+      "errores": {
+        "sinPermiso": "You don't have permission to do this with customers."
+      },
+      "kpi": {
+        "etiqueta": "Customer summary",
+        "total": "Total customers",
+        "nuevosMes": "+{n} this month",
+        "conSaldo": "With balance",
+        "deTotal": "{count, plural, one {of {n} customer} other {of {n} customers}}",
+        "cuentasPorCobrar": "Accounts receivable",
+        "monedaOrg": "Organization currency ({moneda})",
+        "vencidas": "Overdue accounts",
+        "montoVencido": "{monto} overdue"
+      },
+      "busqueda": {
+        "placeholderEscritorio": "Search by name, ID, email or phone",
+        "placeholderMovil": "Search customer, NIT or phone",
+        "etiqueta": "Search customers"
+      },
+      "filtros": {
+        "verN": "Show {count, plural, one {{n} customer} other {{n} customers}}",
+        "tipo": "Type",
+        "estado": "Status",
+        "cartera": "Receivables",
+        "rol": "Role",
+        "etiqueta": "Tag",
+        "municipio": "Municipality",
+        "ordenarPor": "Sort by",
+        "todos": "All",
+        "persona": "Individual",
+        "empresa": "Company",
+        "activos": "Active",
+        "inactivos": "Inactive",
+        "todosSaldos": "All balances",
+        "conSaldoPendiente": "With outstanding balance",
+        "sinSaldoPendiente": "No outstanding balance",
+        "conCarteraVencida": "With overdue receivables",
+        "todosRoles": "All roles",
+        "todasEtiquetas": "All tags",
+        "todosMunicipios": "All municipalities"
+      },
+      "orden": {
+        "nombreAsc": "Name (A–Z)",
+        "nombreDesc": "Name (Z–A)",
+        "ultimaCompraDesc": "Last purchase (newest)",
+        "ultimaCompraAsc": "Last purchase (oldest)",
+        "saldoDesc": "Highest balance",
+        "saldoAsc": "Lowest balance",
+        "ventasDesc": "Most sales",
+        "creadoDesc": "Newest"
+      },
+      "chips": {
+        "tipo": "Type: {valor}",
+        "estado": "Status: {valor}",
+        "cartera": "Receivables: {valor}",
+        "rol": "Role: {valor}",
+        "etiqueta": "Tag: {valor}",
+        "municipio": "Municipality: {valor}",
+        "municipioSeleccionado": "selected",
+        "valores": {
+          "persona": "Individual",
+          "empresa": "Company",
+          "inactivos": "Inactive",
+          "todos": "All",
+          "conSaldo": "With balance",
+          "sinSaldo": "No balance",
+          "vencido": "Overdue"
+        }
+      },
+      "columnas": {
+        "cliente": "Customer",
+        "contacto": "Contact",
+        "documento": "ID document",
+        "municipio": "Municipality",
+        "etiquetas": "Tags",
+        "cuentasPorCobrar": "Accounts receivable",
+        "ventas": "Sales",
+        "ultimaCompra": "Last purchase"
+      },
+      "celdas": {
+        "contacto": "Contact: {nombre}",
+        "contactoCargo": "Contact: {nombre} ({cargo})",
+        "noRegistrado": "Not recorded",
+        "dv": "DV {dv}",
+        "compras": "{count, plural, one {{n} purchase} other {{n} purchases}}",
+        "sinCompras": "No purchases"
+      },
+      "tarjeta": {
+        "documento": "ID document",
+        "contacto": "Contact",
+        "correo": "Email",
+        "telefono": "Phone"
+      },
+      "vacio": {
+        "titulo": "You don't have any customers yet",
+        "descripcion": "Create your first one or import them from a CSV or Excel file.",
+        "inactivosTitulo": "No inactive customers",
+        "inactivosDescripcion": "When you mark a customer as inactive, it will show up here.",
+        "importarCsv": "Import from CSV",
+        "sinResultados": "Try another name, NIT or phone number, or remove a filter."
+      },
+      "masivas": {
+        "exportar": "Export",
+        "etiquetar": "Tag",
+        "quitarEtiqueta": "Remove tag",
+        "roles": "Roles",
+        "agregarRol": "Add role",
+        "quitarRol": "Remove role",
+        "eliminar": "Delete",
+        "reactivar": "Reactivate",
+        "marcarInactivos": "Mark as inactive",
+        "unificar": "Merge duplicates"
+      },
+      "toasts": {
+        "sinExportar": "There are no customers to export",
+        "exportados": "{count, plural, one {{n} customer exported} other {{n} customers exported}}",
+        "errorExportar": "Couldn't export",
+        "primerosSeleccionados": "The first {n} customers were selected",
+        "errorSeleccionar": "Couldn't select everything",
+        "rolAgregado": "Role “{rol}” added to {count, plural, one {{n} customer} other {{n} customers}}",
+        "rolQuitado": "Role “{rol}” removed from {count, plural, one {{n} customer} other {{n} customers}}",
+        "errorRoles": "Couldn't change the roles"
+      },
+      "operaciones": {
+        "inactivado": "{quien}: marked as inactive",
+        "reactivado": "{quien}: reactivated",
+        "inactivadoDescripcion": "Their history and receivables are kept. You can find them with the “Status: Inactive” filter.",
+        "deshacer": "Undo",
+        "errorDeshacer": "Couldn't undo the change",
+        "errorEstado": "Couldn't change the customer's status",
+        "idCopiado": "ID copied",
+        "errorCopiar": "Couldn't copy the ID"
+      },
+      "acciones": {
+        "ver": "View details",
+        "editar": "Edit",
+        "registrarPago": "Record payment",
+        "nuevaVenta": "New sale",
+        "nuevaOportunidad": "New opportunity",
+        "llamar": "Call",
+        "whatsapp": "WhatsApp",
+        "estadoCuenta": "Account statement",
+        "copiarId": "Copy ID",
+        "reactivar": "Reactivate",
+        "marcarInactivo": "Mark as inactive",
+        "eliminar": "Delete"
+      },
+      "motivos": {
+        "registrarPago": "Not available yet: collecting from the customer profile comes with unified payments. In the meantime, use Accounts receivable.",
+        "estadoCuenta": "Not available yet: the PDF account statement is under construction.",
+        "unificar": "Not available yet: merging that moves sales, receivables and bookings is under construction.",
+        "sinTelefono": "No phone number on file",
+        "sinTelefonoValido": "No valid phone number on file"
+      },
+      "etiquetaMasiva": {
+        "tituloAgregar": "Tag customers",
+        "tituloQuitar": "Remove tag",
+        "descripcionAgregar": "{count, plural, one {Apply a tag to the selected customer.} other {Apply a tag to the {n} selected customers.}}",
+        "descripcionQuitar": "{count, plural, one {Remove a tag from the selected customer.} other {Remove a tag from the {n} selected customers.}}",
+        "campo": "Tag",
+        "ayuda": "Press Enter to apply",
+        "placeholder": "Tag name",
+        "frecuentes": "Frequent tags",
+        "agregada": "Tag “{etiqueta}” added to {count, plural, one {{n} customer} other {{n} customers}}",
+        "quitada": "Tag “{etiqueta}” removed from {count, plural, one {{n} customer} other {{n} customers}}",
+        "errorAgregar": "Couldn't add the tag.",
+        "errorQuitar": "Couldn't remove the tag.",
+        "procesando": "Processing…",
+        "aplicar": "Apply tag",
+        "quitar": "Remove tag"
+      },
+      "eliminar": {
+        "tituloUno": "Delete {nombre}?",
+        "esteCliente": "this customer",
+        "tituloVarios": "Delete {count, plural, one {{n} customer} other {{n} customers}}?",
+        "descripcion": "Only customers with no sales, invoices, receivables, conversations or any other link are deleted. The rest can be marked as inactive: they keep their history and receivables.",
+        "revisando": "Checking links…",
+        "errorRevisar": "We couldn't check whether they can be deleted.",
+        "seEliminaraUno": "It will be permanently deleted.",
+        "seEliminaranVarios": "{eliminables} of {total} will be permanently deleted.",
+        "noDeshacer": "This action cannot be undone.",
+        "bloqueadoUno": "It can't be deleted because it has linked records.",
+        "bloqueadosVarios": "{count, plural, one {{n} can't be deleted because it has linked records.} other {{n} can't be deleted because they have linked records.}}",
+        "sinNombre": "No name",
+        "yMas": "and {n} more…",
+        "eliminados": "{count, plural, one {Customer deleted} other {{n} customers deleted}}",
+        "errorEliminar": "Couldn't delete.",
+        "inactivados": "{count, plural, one {Customer marked as inactive} other {{n} customers marked as inactive}}",
+        "errorInactivar": "Couldn't mark as inactive.",
+        "marcarInactivo": "Mark as inactive",
+        "marcarInactivos": "Mark as inactive ({n})",
+        "eliminar": "Delete",
+        "eliminarN": "Delete {n}",
+        "relaciones": {
+          "invoice_sales": "invoices",
+          "sales": "sales",
+          "accounts_receivable": "receivables",
+          "credit_notes": "credit balances",
+          "quotations": "quotes",
+          "opportunities": "opportunities",
+          "calls": "calls",
+          "tasks": "tasks",
+          "calendar_events": "calendar events",
+          "conversations": "conversations",
+          "messages": "messages",
+          "customer_channel_identities": "contact channels",
+          "customer_addresses": "addresses",
+          "customer_company_links": "company contacts",
+          "customers": "linked people",
+          "contact_consents": "consents",
+          "campaign_contacts": "campaigns",
+          "sequence_enrollments": "sequences",
+          "reservations": "bookings",
+          "reservation_customers": "bookings",
+          "memberships": "memberships",
+          "class_reservations": "class bookings",
+          "member_checkins": "gym check-ins",
+          "customer_biometrics": "fingerprints",
+          "parking_passes": "parking passes",
+          "parking_vehicles": "vehicles",
+          "web_orders": "web orders",
+          "shipments": "shipments",
+          "trip_tickets": "tickets",
+          "coupons": "coupons",
+          "coupon_redemptions": "redeemed coupons",
+          "referrals": "referrals",
+          "product_reviews": "reviews",
+          "testimonials": "testimonials",
+          "warranty_claims": "warranty claims",
+          "serial_numbers": "serial numbers",
+          "serial_tracking_events": "serial numbers",
+          "onboarding_instances": "onboarding",
+          "voice_agent_calls": "voice agent calls",
+          "voice_agent_call_attempts": "voice agent calls",
+          "widget_sessions": "web chat",
+          "health_score_snapshots": "health history",
+          "email_messages": "emails",
+          "mobile_call_bridges": "calls",
+          "restaurant_reservations": "table reservations",
+          "activities": "activities",
+          "notes": "notes",
+          "documents": "documents"
+        }
+      },
+      "importar": {
+        "titulo": "Import customers",
+        "pasos": {
+          "upload": "Select a CSV or Excel file to import customers",
+          "preview": "Review the data before importing",
+          "importing": "Importing customers…",
+          "complete": "Import complete"
+        },
+        "arrastra": "Drag a file here or click to select one",
+        "formatos": "Supported formats: CSV, XLS, XLSX",
+        "columnasSoportadas": "Supported columns",
+        "columnasNota": "Column names must be written exactly as shown, in Spanish.",
+        "columnas": {
+          "tipoCliente": "“Persona” (individual) or “Empresa” (company)",
+          "nombre": "First name (individuals)",
+          "apellido": "Last name (individuals)",
+          "razonSocial": "Company legal name (companies)",
+          "nombreComercial": "Trade name",
+          "email": "Email address",
+          "telefono": "Phone number",
+          "tipoDocumento": "Cédula, NIT, Passport, etc.",
+          "numeroDocumento": "ID number",
+          "dv": "Check digit (for NIT)",
+          "direccion": "Street address",
+          "ciudad": "City",
+          "notas": "Internal notes",
+          "etiquetas": "Separated by semicolons (;)",
+          "roles": "Separated by semicolons (;)",
+          "preferencias": "JSON with preferences",
+          "responsabilidades": "Separated by (;)",
+          "empresaPadre": "NIT of the linked company"
+        },
+        "stats": {
+          "total": "Total",
+          "ok": "OK",
+          "errores": "Errors",
+          "pendientes": "Pending"
+        },
+        "modo": "Import mode",
+        "modos": {
+          "crearActualizar": "Create and update",
+          "soloCrear": "Create new only",
+          "soloActualizar": "Update only"
+        },
+        "modosAyuda": {
+          "crearActualizar": "New customers will be created and existing ones will be updated.",
+          "soloCrear": "Only customers with a new ID number will be created. Existing ones will be skipped.",
+          "soloActualizar": "Only existing customers will be updated. New ones will be skipped."
+        },
+        "tabla": {
+          "tipo": "Type",
+          "nombre": "Name",
+          "doc": "ID",
+          "email": "Email",
+          "tel": "Phone",
+          "estado": "Status"
+        },
+        "tipos": {
+          "persona": "Individual",
+          "empresa": "Company"
+        },
+        "estadoFila": {
+          "pendiente": "Pending",
+          "ok": "OK",
+          "error": "Error"
+        },
+        "mostrando": "Showing {max} of {n} rows",
+        "importarN": "Import {count, plural, one {{n} customer} other {{n} customers}}",
+        "importando": "Importing…",
+        "otroArchivo": "Import another file",
+        "errorLeer": "Error reading file: {detalle}",
+        "errores": {
+          "yaExiste": "Customer already exists (mode: create only)",
+          "noExiste": "Customer doesn't exist (mode: update only)",
+          "duplicado": "Duplicate (unique constraint violated)",
+          "desconocido": "Unknown error"
+        }
+      }
+    },
+    "ficha": {
+      "comun": {
+        "sinNombre": "No name",
+        "usuario": "User"
+      },
+      "pagina": {
+        "noEncontrado": "Customer not found",
+        "noEncontradoDescripcion": "We couldn’t find the requested customer. If you have a branch selected, try “All”.",
+        "volverClientes": "Back to customers",
+        "migas": {
+          "inicio": "Home",
+          "clientes": "Customers"
+        },
+        "movilTitulo": "Customer",
+        "clienteDesde": "Customer since {fecha}",
+        "editar": "Edit",
+        "registrarPago": "Record payment",
+        "errores": {
+          "sinId": "Customer ID not found",
+          "noExiste": "It doesn’t exist or doesn’t belong to your organization.",
+          "carga": "Error loading customer data"
+        }
+      },
+      "pestanas": {
+        "resumen": "Summary",
+        "info": "Details",
+        "oportunidades": "Opportunities",
+        "actividad": "Activity",
+        "cuentas": "Accounts receivable",
+        "notas": "Notes and files",
+        "contactos": "Contacts"
+      },
+      "cabecera": {
+        "error": "Error",
+        "soloImagenes": "Only images are allowed",
+        "imagenMuyGrande": "The image must not exceed 5MB",
+        "avatarActualizado": "Avatar updated",
+        "avatarActualizadoDescripcion": "The customer’s photo was updated successfully.",
+        "errorSubir": "Couldn’t upload the image",
+        "cambiarFoto": "Change photo",
+        "empresa": "Company",
+        "persona": "Individual",
+        "contacto": "Contact: {nombre}",
+        "contactoConCargo": "Contact: {nombre} ({cargo})",
+        "vinculadoA": "Linked to:",
+        "fidelidad": {
+          "oro": "Gold",
+          "plata": "Silver",
+          "bronce": "Bronze",
+          "basico": "Basic"
+        }
+      },
+      "resumen": {
+        "compras": "Purchases",
+        "ultima": "Last: {fecha}",
+        "ultimo": "Last: {fecha}",
+        "sinCompras": "No purchases",
+        "estadias": "Stays",
+        "sinEstadias": "No stays",
+        "gastoTotal": "Total spent",
+        "gastoTotalDescripcion": "Includes paid web orders",
+        "pedidosWeb": "Web orders",
+        "sinPedidosWeb": "No web orders",
+        "reservasFuturas": "Upcoming bookings",
+        "proxima": "Next: {fecha}",
+        "sinReservasFuturas": "No upcoming bookings",
+        "saldoFolios": "Folio balance",
+        "itemsPendientes": "{count, plural, one {# pending item} other {# pending items}}",
+        "sinSaldoPendiente": "No outstanding balance",
+        "historialReciente": "Recent history",
+        "sinActividad": "There’s no recent activity for this customer.",
+        "errorCarga": "Error loading summary data",
+        "historial": {
+          "venta": "Sale #{numero}",
+          "reserva": "Booking {fecha}",
+          "pedido": "Order #{numero}",
+          "estadoReserva": "booking"
+        }
+      },
+      "info": {
+        "titulo": "Full customer details",
+        "datosEmpresa": "Company details",
+        "datosEmpresaDescripcion": "Company and contact information",
+        "datosPersonales": "Personal details",
+        "datosPersonalesDescripcion": "Basic contact and identification information",
+        "razonSocial": "Legal name",
+        "nombreCompleto": "Full name",
+        "personaContacto": "Contact person",
+        "contactoConCargo": "{nombre} ({cargo})",
+        "nombreComercial": "Trade name",
+        "correo": "Email",
+        "telefono": "Phone",
+        "identificacion": "Identification",
+        "identificacionValor": "{tipo}: {numero}",
+        "noEspecificado": "Not specified",
+        "noDisponible": "Not available",
+        "direccion": "Address",
+        "direccionDescripcion": "Location details",
+        "direccionCompleta": "Full address",
+        "municipio": "Municipality",
+        "estadoProvincia": "State/Province",
+        "codigoPostal": "Postal code",
+        "empresasVinculadas": "Linked companies",
+        "empresasVinculadasDescripcion": "Companies this contact is associated with",
+        "principal": "Primary",
+        "datosFiscales": "Tax details",
+        "datosEmpresarialesFiscales": "Business and tax details",
+        "datosFiscalesDescripcion": "Tax and business information",
+        "digitoVerificacion": "Check digit (DV)",
+        "responsabilidadFiscal": "Tax responsibilities (DIAN)",
+        "rolesEtiquetas": "Roles and tags",
+        "rolesEtiquetasDescripcion": "Customer classification",
+        "roles": "Roles",
+        "etiquetas": "Tags",
+        "sinEtiquetas": "No tags",
+        "clienteRegistrado": "Registered customer",
+        "si": "Yes",
+        "no": "No",
+        "datosSistema": "System details",
+        "datosSistemaDescripcion": "Technical information",
+        "idCliente": "Customer ID",
+        "idOrganizacion": "Organization ID",
+        "fechaAlta": "Created on",
+        "ultimaActualizacion": "Last updated",
+        "notas": "Notes",
+        "notasDescripcion": "Additional information about the customer",
+        "sinNotas": "There are no notes for this customer.",
+        "preferencias": "Preferences",
+        "preferenciasDescripcion": "Customer’s custom preferences",
+        "sinPreferencias": "There are no preferences recorded for this customer.",
+        "error": "Error: {mensaje}",
+        "errorCarga": "Error loading customer information",
+        "sinDatos": "No customer data was found",
+        "noSePudoCargar": "Couldn’t load the customer information"
+      },
+      "oportunidades": {
+        "estados": {
+          "abierta": "Open",
+          "ganada": "Won",
+          "perdida": "Lost"
+        },
+        "errorCarga": "Error loading opportunities",
+        "vacioTitulo": "No opportunities",
+        "vacioDescripcion": "This customer doesn’t have any opportunities in the pipeline yet.",
+        "total": "Total",
+        "abiertas": "Open",
+        "ganadas": "Won",
+        "titulo": "Opportunities ({n})",
+        "cierreEsperado": "Expected close: {fecha}"
+      },
+      "actividad": {
+        "titulo": "Activity history",
+        "vacioTitulo": "No recent activity",
+        "vacioDescripcion": "This customer has no activities, sales or bookings recorded in the system.",
+        "errorCarga": "Error loading timeline data",
+        "noAplica": "N/A",
+        "titulos": {
+          "venta": "Sale #{numero}",
+          "reserva": "Booking: {fecha}",
+          "actividad": "Activity: {tipo}",
+          "actividadOportunidad": "Activity: {tipo} — {oportunidad}",
+          "pedidoWeb": "Web order #{numero}"
+        },
+        "descripcionVenta": "Status: {estado} | Payment: {pago}",
+        "sinDetalles": "No details",
+        "monto": "Amount: {monto}",
+        "estado": "Status: {estado}",
+        "pago": "Payment: {pago}",
+        "espacios": "Space(s):",
+        "checkin": "Check-in: <b>{fecha}</b>",
+        "checkout": "Check-out: <b>{fecha}</b>",
+        "folioItems": "Folio: {count, plural, one {# item} other {# items}}",
+        "folioPendientes": "{count, plural, one {# pending} other {# pending}} · {monto}",
+        "todoPagado": "All paid",
+        "saldo": "Balance: {monto}",
+        "verFolio": "View folio →",
+        "sinConsumos": "No charges recorded on the folio",
+        "estadosPedido": {
+          "pending": "Pending",
+          "confirmed": "Confirmed",
+          "preparing": "Preparing",
+          "ready": "Ready",
+          "delivering": "Out for delivery",
+          "delivered": "Delivered",
+          "cancelled": "Canceled",
+          "paid": "Paid",
+          "completed": "Completed"
+        },
+        "estadosPago": {
+          "paid": "Paid",
+          "partial": "Partial",
+          "pending": "Pending",
+          "refunded": "Refunded",
+          "complete": "Completed",
+          "scheduled": "Scheduled",
+          "cancelled": "Canceled"
+        }
+      },
+      "cuentas": {
+        "errorCarga": "Error loading accounts receivable",
+        "vacioTitulo": "No accounts receivable",
+        "vacioDescripcion": "This customer has no debts, pending payments or folios with a balance recorded in the system.",
+        "foliosTitulo": "PMS folios with outstanding balance",
+        "folioAbierto": "Open",
+        "folioCerrado": "Closed",
+        "itemsPendientes": "{pendientes} of {count, plural, one {# item pending} other {# items pending}}",
+        "verFolio": "View folio",
+        "totalDeuda": "Total debt",
+        "montoVencido": "Overdue amount",
+        "pendientePago": "Outstanding",
+        "columnas": {
+          "idVenta": "Sale ID",
+          "monto": "Amount",
+          "saldo": "Balance",
+          "vencimiento": "Due date",
+          "estado": "Status"
+        },
+        "estados": {
+          "pagado": "Paid",
+          "vencido": "{count, plural, one {Overdue (# day)} other {Overdue (# days)}}",
+          "atrasado": "{count, plural, one {Late (# day)} other {Late (# days)}}",
+          "pendiente": "Pending"
+        },
+        "paginacion": {
+          "mostrar": "Show",
+          "porPagina": "per page",
+          "rango": "{count, plural, one {<b>{desde}</b> - <b>{hasta}</b> of <b>{total}</b> account} other {<b>{desde}</b> - <b>{hasta}</b> of <b>{total}</b> accounts}}",
+          "pagina": "Page <destacado>{actual}</destacado> of <b>{total}</b>"
+        }
+      },
+      "notas": {
+        "agregar": "Add note",
+        "placeholder": "Write a note about this customer...",
+        "guardando": "Saving...",
+        "guardar": "Save note",
+        "titulo": "Notes ({n})",
+        "vacioTitulo": "No notes",
+        "vacioDescripcion": "No notes have been added for this customer yet.",
+        "oportunidad": "Opportunity: {nombre}",
+        "archivosTitulo": "Files",
+        "archivosDescripcion": "File support will be available soon.",
+        "confirmarEliminar": "Are you sure you want to delete this note?",
+        "noAutenticado": "User not signed in",
+        "errorGuardar": "Error saving the note",
+        "errorActualizar": "Error updating the note",
+        "errorEliminar": "Error deleting the note",
+        "errorCarga": "Error loading notes",
+        "fijar": "Pin note",
+        "desfijar": "Unpin note",
+        "eliminar": "Delete note"
+      },
+      "tareas": {
+        "titulo": "Tasks",
+        "pendientes": "Pending tasks",
+        "sinPendientes": "There are no pending tasks for this customer",
+        "finalizadas": "Finished tasks",
+        "sinFinalizadas": "There are no finished tasks for this customer",
+        "verTodas": "View all tasks",
+        "sinFecha": "No date",
+        "fechaInvalida": "Invalid date",
+        "sinAsignar": "Unassigned",
+        "errorCarga": "Error loading tasks",
+        "prioridades": {
+          "alta": "High",
+          "media": "Medium",
+          "baja": "Low",
+          "normal": "Normal"
+        },
+        "estados": {
+          "pendiente": "Pending",
+          "enProgreso": "In progress",
+          "completada": "Completed",
+          "cancelada": "Canceled"
+        }
+      }
+    },
+    "formulario": {
+      "paginas": {
+        "migaInicio": "Home",
+        "migaClientes": "Customers",
+        "nuevo": {
+          "titulo": "New customer",
+          "subtitulo": "Fill in the details to register a new customer"
+        },
+        "editar": {
+          "titulo": "Edit customer",
+          "subtitulo": "Update the customer details",
+          "migaCliente": "Customer",
+          "migaEditar": "Edit",
+          "verLista": "View customer list"
+        },
+        "errorOrganizacion": {
+          "titulo": "We couldn't load your organization",
+          "volver": "Back to customers"
+        },
+        "errores": {
+          "sinSesion": "There is no active session. Please sign in to continue.",
+          "sinOrganizacion": "No organization is linked to your account.",
+          "carga": "Error loading your organization details"
+        }
+      },
+      "secciones": {
+        "personal": {
+          "titulo": "Personal information",
+          "descripcion": "Basic details that identify the customer"
+        },
+        "clasificacion": {
+          "titulo": "Classification and roles",
+          "descripcion": "The customer's roles and tax responsibilities"
+        },
+        "contacto": {
+          "titulo": "Contact details",
+          "descripcion": "How to get in touch with the customer"
+        },
+        "adicional": {
+          "titulo": "Additional information",
+          "descripcion": "Tags and notes to categorize the customer"
+        }
+      },
+      "campos": {
+        "foto": "Customer photo",
+        "fotoEditar": "Click to change the photo (max. 5 MB)",
+        "fotoCrear": "You can add a photo after creating the customer",
+        "avatarNuevaEmpresa": "New Company",
+        "avatarNuevoCliente": "New Customer",
+        "tipoCliente": "Customer type",
+        "persona": "Individual",
+        "empresa": "Company",
+        "razonSocial": "Legal name",
+        "razonSocialPlaceholder": "e.g., Acme LLC",
+        "nombreComercial": "Trade name",
+        "nombreComercialPlaceholder": "e.g., My Business",
+        "nombre": "First name",
+        "nombrePlaceholder": "e.g., John Michael",
+        "apellido": "Last name",
+        "apellidoPlaceholder": "e.g., Smith",
+        "empresaPadre": "Company they belong to (optional)",
+        "sinEmpresa": "No linked company",
+        "empresaPadreAyuda": "Link this person as a child customer of a company",
+        "empresaSinNombre": "Unnamed company",
+        "tipoDocumento": "Document type",
+        "numeroDocumento": "Document number",
+        "numeroDocumentoPlaceholder": "e.g., 12345678",
+        "consultarDian": "Look up in DIAN/RUES",
+        "dvPlaceholder": "e.g., 3",
+        "roles": "Customer roles",
+        "responsabilidadFiscal": "Tax responsibility (DIAN)",
+        "correo": "Email",
+        "correoPlaceholder": "customer@example.com",
+        "telefono": "Phone",
+        "direccion": "Address",
+        "direccionPlaceholder": "123 Main St, Apt 101",
+        "ubicacion": "Location",
+        "etiquetas": "Tags",
+        "etiquetasPlaceholder": "premium, frequent, corporate (comma-separated)",
+        "etiquetasAyuda": "Separate tags with commas to better organize your customers",
+        "notas": "Internal notes",
+        "notasPlaceholder": "Relevant information about the customer, preferences, history, etc.",
+        "notasAyuda": "These notes are for internal use only and are not visible to the customer"
+      },
+      "acciones": {
+        "obligatorios": "Fields marked with <asterisco>*</asterisco> are required",
+        "actualizando": "Updating...",
+        "guardando": "Saving...",
+        "guardarCambios": "Save changes",
+        "guardarCliente": "Save customer"
+      },
+      "avisos": {
+        "error": "Error",
+        "telefonoInvalido": "Phone: {error}",
+        "clienteNoEncontrado": "Customer not found",
+        "cargaCliente": "Couldn't load the customer details. {detalle}",
+        "errorCargarDatos": "Error loading data",
+        "errorInesperado": "An unexpected error occurred",
+        "autocompletado": "Autofilled",
+        "datosDian": "Data retrieved from DIAN",
+        "datosDianCache": "Data retrieved from DIAN (cache)",
+        "sinResultados": "No results",
+        "errorDian": "Couldn't reach DIAN",
+        "soloImagenes": "Only images are allowed",
+        "imagenGrande": "The image must not exceed 5 MB",
+        "avatarActualizado": "Avatar updated",
+        "actualizado": {
+          "titulo": "Customer updated",
+          "descripcion": "{nombre}'s details have been updated"
+        },
+        "creado": {
+          "titulo": "Customer created successfully",
+          "empresa": "The company {nombre} has been registered.",
+          "persona": "{nombre} has been registered as a customer."
+        },
+        "errorActualizar": {
+          "titulo": "Error updating customer",
+          "detalle": "Error updating the customer"
+        },
+        "errorCrear": {
+          "titulo": "Error creating customer",
+          "detalle": "Error creating the customer"
+        },
+        "errorSolicitud": "An error occurred while processing the request",
+        "existenteActualizado": "The existing customer's details have been updated.",
+        "duplicadoCreado": {
+          "titulo": "Duplicate customer created",
+          "descripcion": "The customer was created as a separate record."
+        },
+        "errorOperacion": "Error processing the operation"
+      },
+      "tiposDocumento": {
+        "nationalId": "National ID",
+        "taxId": "Tax ID",
+        "passport": "Passport",
+        "foreignId": "Foreign ID",
+        "other": "Other",
+        "companyReg": "Company registration number",
+        "cc": "Citizenship ID card",
+        "ce": "Foreigner ID card",
+        "ci": "Identity card",
+        "die": "Foreign identification document",
+        "nitExt": "NIT from another country",
+        "rc": "Civil registry (birth certificate)",
+        "te": "Foreigner card",
+        "ti": "Minor ID card",
+        "rut": "RUT (Single Tax Registry)",
+        "run": "RUN (identity card)",
+        "ine": "INE / Voter ID card",
+        "rfcExt": "Foreign tax ID",
+        "rutExt": "RUT (foreign company)",
+        "cif": "CIF (tax identification code)",
+        "nie": "NIE (foreigner identity number)",
+        "nif": "NIF (tax identification number)"
+      },
+      "roles": {
+        "cliente": "Customer",
+        "empleado": "Employee",
+        "huesped": "Guest",
+        "pasajero": "Passenger",
+        "proveedor": "Supplier"
+      },
+      "fiscal": {
+        "o13": "Large taxpayer",
+        "o15": "Self-withholding agent",
+        "o23": "VAT withholding agent",
+        "o47": "Simple tax regime",
+        "o48": "VAT registrant",
+        "o49": "Not a VAT registrant",
+        "r99Pn": "Not responsible (individual)"
+      },
+      "duplicado": {
+        "titulo": "Duplicate customer detected",
+        "descripcion": "A customer with the same document or email already exists.",
+        "existente": "Existing customer",
+        "nuevo": "New customer",
+        "nombre": "Name:",
+        "email": "Email:",
+        "documento": "Document:",
+        "roles": "Roles:",
+        "pregunta": "What would you like to do?",
+        "instruccion": "Choose how to proceed with this duplicate customer.",
+        "usarExistente": "Use existing",
+        "actualizarExistente": "Update existing",
+        "crearNuevo": "Create as new"
+      },
+      "contactos": {
+        "titulo": "Company contacts",
+        "vincular": "Link contact",
+        "vacio": "No contacts are linked to this company",
+        "vincularPrimero": "Link first contact",
+        "nuevo": "New",
+        "principal": "Primary",
+        "cargoPlaceholderCorto": "Job title (e.g., Manager)",
+        "sinCargo": "No job title (click to edit)",
+        "marcarPrincipal": "Mark as primary",
+        "desvincular": "Unlink contact",
+        "agregar": "Add contact",
+        "buscarExistente": "Search existing",
+        "crearPersona": "Create new person",
+        "buscarPersona": "Search for an existing person",
+        "buscarPlaceholder": "First name, last name or email...",
+        "sinResultados": "No people match that search.",
+        "cargo": "Job title (optional)",
+        "cargoPlaceholder": "e.g., Manager, Director, Assistant...",
+        "vincularBoton": "Link",
+        "nombre": "First name",
+        "nombrePlaceholder": "e.g., John",
+        "apellido": "Last name",
+        "apellidoPlaceholder": "e.g., Smith",
+        "email": "Email",
+        "emailPlaceholder": "example@email.com",
+        "telefono": "Phone",
+        "tipoDocumento": "Document type",
+        "numeroDocumento": "Document no.",
+        "numeroDocumentoPlaceholder": "e.g., 12345678",
+        "ubicacion": "Location",
+        "crearVincular": "Create and link",
+        "tiposDocumento": {
+          "cedula": "National ID card",
+          "pasaporte": "Passport",
+          "extranjero": "Foreign ID",
+          "otro": "Other"
+        },
+        "avisos": {
+          "errorCargar": "Error loading contacts",
+          "errorVincular": "Error linking contact",
+          "vinculado": "Contact linked successfully",
+          "agregado": "Contact added",
+          "nombreObligatorio": "First and last name are required",
+          "errorCrearPersona": "Error creating person",
+          "personaCreada": "Person created and linked",
+          "errorDesvincular": "Error unlinking contact",
+          "desvinculado": "{nombre} unlinked",
+          "removido": "{nombre} removed",
+          "errorActualizarPrincipal": "Error updating primary contact",
+          "errorEstablecerPrincipal": "Error setting primary contact",
+          "principalActualizado": "Primary contact updated",
+          "errorCargo": "Error updating job title",
+          "cargoActualizado": "Job title updated"
+        }
+      }
+    }
+  },
+  "cajas": {
+    "apertura": {
+      "abrirCaja": "Open register",
+      "titulo": "Open cash register",
+      "cerrar": "Close",
+      "sucursal": "Branch",
+      "sucursalNoSeleccionada": "No branch selected",
+      "cajero": "Cashier",
+      "usuario": "User",
+      "cargando": "Loading...",
+      "fechaHora": "Date and time",
+      "alcance": "Register scope",
+      "estaSucursal": "This branch",
+      "todasSucursales": "All branches",
+      "cajaGlobal": "Global register",
+      "avisoGlobal": "All users at every branch will record their sales in this register.",
+      "miCajaEn": "My register at {sucursal}",
+      "modoUsuarioDescripcion": "Each cashier opens and manages their own register independently.",
+      "avisoModoUsuario": "This register will record only your sales and transactions. Other cashiers at the branch will have their own registers.",
+      "detalles": "Opening details",
+      "montoInicial": "Opening amount *",
+      "equivaleA": "Equals:",
+      "notas": "Notes (optional)",
+      "notasPlaceholder": "Opening notes...",
+      "importante": "<strong>Important:</strong> Once the register is open, you can record sales, cash in, and cash out until it is closed.",
+      "cancelar": "Cancel",
+      "abriendo": "Opening...",
+      "montoNegativo": "The opening amount cannot be negative",
+      "abiertaSinConexion": "Register opened offline",
+      "abiertaExito": "Register opened successfully",
+      "montoInicialToast": "Opening amount: {monto}",
+      "montoInicialPendiente": "Opening amount: {monto} · pending sync",
+      "errorAbrir": "Error opening the register"
+    },
+    "cierre": {
+      "cerrarCaja": "Close register",
+      "titulo": "Cash count and register closing",
+      "cerrar": "Close",
+      "errorResumen": "Error loading the register summary",
+      "montoNegativo": "The closing amount cannot be negative",
+      "cerradaSinConexion": "Register closed offline",
+      "cerradaExito": "Register closed successfully",
+      "toastDescripcion": "{visible, select, si {Total difference: {diferencia}} other {Register closed}}{pendiente, select, si { · pending sync (totals include local sales)} other {}}",
+      "errorCerrar": "Error closing the register",
+      "resumenMovimientos": "Transaction summary",
+      "montoInicial": "Opening amount:",
+      "ventasEfectivo": "Cash sales:",
+      "ventasTotales": "Total sales:",
+      "ingresos": "Cash in:",
+      "egresos": "Cash out:",
+      "vueltoEntregado": "Change given:",
+      "devoluciones": "Returns:",
+      "ingresosPorMetodo": "Cash in by payment method:",
+      "ventasPorMetodo": "Sales by payment method:",
+      "totalVentas": "Total sales:",
+      "recibosCaja": "Cash receipts (payments on accounts receivable):",
+      "totalRecibido": "Total received:",
+      "egresosPorMetodo": "Cash out by payment method (purchases):",
+      "totalPagosProveedores": "Total supplier payments:",
+      "montoEsperado": "Expected amount:",
+      "movimientosSesion": "Session transactions ({n})",
+      "tiposMovimiento": {
+        "ventaPos": "POS sale",
+        "ventaMesa": "Table sale",
+        "ventaFactura": "Sales invoice",
+        "compraFactura": "Purchase invoice",
+        "cuentaPorCobrar": "Account receivable",
+        "cuentaPorPagar": "Account payable",
+        "otro": "Transaction"
+      },
+      "sinContraparte": "No counterparty",
+      "arqueoPorMetodo": "Count by payment method",
+      "esperado": "Expected:",
+      "contadoReal": "Actual count",
+      "diferencia": "Difference",
+      "totalEsperado": "Total expected (all methods):",
+      "totalContado": "Total counted (all methods):",
+      "diferenciaTotal": "Total difference:",
+      "sobranteArqueo": "Overage in the total count",
+      "faltanteArqueo": "Shortage in the total count",
+      "observaciones": "Closing notes (optional)",
+      "observacionesPlaceholder": "Closing notes, incidents, etc...",
+      "advertenciaSobrante": "<strong>⚠️ Warning:</strong> There is a total difference of {monto} (overage) in the count.",
+      "advertenciaFaltante": "<strong>⚠️ Warning:</strong> There is a total difference of {monto} (shortage) in the count.",
+      "cancelar": "Cancel",
+      "cerrando": "Closing..."
+    },
+    "movimiento": {
+      "registrarMovimiento": "Record transaction",
+      "cerrar": "Close",
+      "ingreso": "Cash in",
+      "egreso": "Cash out",
+      "ingresoEfectivo": "Incoming cash",
+      "egresoEfectivo": "Outgoing cash",
+      "concepto": "Description",
+      "conceptos": {
+        "fondoAdicional": "Additional float",
+        "prestamo": "Loan",
+        "devolucion": "Refund",
+        "cambioBilletes": "Bill exchange",
+        "ventaContadoEspecial": "Special cash sale",
+        "otroIngreso": "Other cash in",
+        "gastosMenores": "Petty expenses",
+        "retiroEfectivo": "Cash withdrawal",
+        "compraInsumos": "Supplies purchase",
+        "prestamoEmpleado": "Employee loan",
+        "otroEgreso": "Other cash out"
+      },
+      "otroConceptoPlaceholder": "Enter another description...",
+      "monto": "Amount *",
+      "equivaleA": "Equals:",
+      "observaciones": "Notes (optional)",
+      "observacionesPlaceholder": "Additional details...",
+      "cancelar": "Cancel",
+      "registrando": "Saving...",
+      "registrarIngreso": "Record cash in",
+      "registrarEgreso": "Record cash out",
+      "conceptoRequerido": "Description is required",
+      "montoMayorCero": "The amount must be greater than zero",
+      "ingresoRegistrado": "Cash in recorded{pendiente, select, si { while offline} other {}}",
+      "egresoRegistrado": "Cash out recorded{pendiente, select, si { while offline} other {}}",
+      "toastDescripcion": "{concepto}: {monto}{pendiente, select, si { · pending sync} other {}}",
+      "errorRegistrar": "Error recording the transaction"
+    },
+    "listado": {
+      "oculto": "Hidden",
+      "sucursalNumero": "Branch #{id}",
+      "hace": {
+        "momento": "just now",
+        "minutos": "{min} min ago",
+        "horas": "{h} h ago",
+        "horasMinutos": "{h} h {min} min ago",
+        "dias": "{count, plural, one {# day ago} other {# days ago}}"
+      },
+      "motivoCierreCiego": "Blind close is on: only an administrator can see the register details",
+      "verDetalle": "View details",
+      "cerrarCaja": "Close register",
+      "abrirCaja": "Open register",
+      "verHistorial": "View history",
+      "cajero": "Cashier",
+      "columnas": {
+        "caja": "Register",
+        "cajero": "Cashier",
+        "sucursal": "Branch",
+        "inicial": "Opening"
+      },
+      "etiquetaFila": "Register #{id} by {nombre}",
+      "etiquetaFilaSinNombre": "Register #{id} by cashier",
+      "errorDesconocido": "Unknown error",
+      "cierreCiegoMinuscula": "blind close",
+      "cajasConFaltante": "{count, plural, one {# register with a shortage} other {# registers with a shortage}}",
+      "cajasConSobrante": "{count, plural, one {# register with an overage} other {# registers with an overage}}",
+      "miCaja": {
+        "vacioTituloUsuario": "You don't have an open register",
+        "vacioTituloSucursal": "The branch doesn't have an open register",
+        "vacioDescripcion": "Open a register with its opening amount to start recording sales and transactions. Shortcut: F9.",
+        "abrirCaja": "Open register",
+        "soloCierraNombre": "Only {nombre} or an administrator can close this register.",
+        "soloCierraCajero": "Only the cashier who opened it or an administrator can close this register."
+      },
+      "abiertas": {
+        "filtroCajero": {
+          "todas": "All",
+          "mias": "My registers",
+          "otros": "Other cashiers"
+        },
+        "tuCaja": "Your register",
+        "columnas": {
+          "abiertaDesde": "Open since",
+          "ventasEfectivo": "Cash sales",
+          "movimientos": "Transactions",
+          "esperado": "Expected"
+        },
+        "ventas": "{count, plural, one {# sale} other {# sales}}",
+        "movimientos": "{count, plural, one {# transaction} other {# transactions}}",
+        "buscarPlaceholder": "Search by cashier, branch, or register number",
+        "buscarEtiqueta": "Search open registers",
+        "verCajas": "Show {count, plural, one {# register} other {# registers}}",
+        "chipCajero": "Cashier: {valor}",
+        "vacioTitulo": "No open registers",
+        "vacioDescripcion": "When a cashier opens a register at {sucursal}, it will show up here with its opening amount and expected cash.",
+        "tablaEtiqueta": "Open registers",
+        "cerrar": "Close",
+        "tarjetaSubtitulo": "{sucursal} · opened {hace}",
+        "tarjetaInicial": "Opening {monto}",
+        "sinResultadosTitulo": "No open registers match these filters",
+        "sinResultadosDescripcion": "Try another cashier or remove a filter.",
+        "errorTitulo": "We couldn't load the open registers"
+      },
+      "historial": {
+        "filtroResultado": {
+          "todas": "All",
+          "faltante": "With shortage",
+          "sobrante": "With overage",
+          "cuadrada": "Balanced"
+        },
+        "filtroResultadoMinuscula": {
+          "faltante": "with a shortage",
+          "sobrante": "with an overage",
+          "cuadrada": "that balanced"
+        },
+        "resultados": {
+          "faltante": "Shortage",
+          "sobrante": "Overage",
+          "cuadrada": "Balanced"
+        },
+        "columnas": {
+          "apertura": "Opened",
+          "cierre": "Closed",
+          "cerro": "Closed by",
+          "final": "Closing",
+          "diferencia": "Difference",
+          "resultado": "Result"
+        },
+        "cerroNombre": "Closed by: {nombre}",
+        "exportarVacio": "There are no sessions to export with these filters",
+        "exportadas": "{count, plural, one {# session exported} other {# sessions exported}}",
+        "exportarError": "Couldn't export the history",
+        "exportando": "Exporting…",
+        "exportar": "Export",
+        "kpiEtiqueta": "Register history summary",
+        "kpiSesionesCerradas": "Closed sessions",
+        "kpiFaltantes": "Shortages",
+        "kpiSobrantes": "Overages",
+        "kpiDiferenciaNeta": "Net difference",
+        "ningunaCaja": "no registers",
+        "cuadraron": "{count, plural, one {# balanced at {monto}} other {# balanced at {monto}}}",
+        "sinCierres": "no closings",
+        "buscarPlaceholder": "Cashier or register no.",
+        "buscarEtiqueta": "Search the register history",
+        "aperturaEntre": "Opened between",
+        "verSesiones": "Show {count, plural, one {# session} other {# sessions}}",
+        "resultadoCierre": "Closing result",
+        "chipResultado": "Result: {valor}",
+        "tablaEtiqueta": "Register session history",
+        "vacioTitulo": "No closed registers yet",
+        "vacioDescripcion": "No registers were closed in {rango}. Widen the date range to see earlier sessions.",
+        "sinResultadosTitulo": "No closed registers match these filters",
+        "sinResultadosDescripcion": "No closings matched in {rango}. Widen the date range or remove a filter.",
+        "sinResultadosDescripcionFiltro": "No closings {filtro} matched in {rango}. Widen the date range or remove a filter.",
+        "errorTitulo": "We couldn't load the register history",
+        "sustantivoSingular": "session",
+        "sustantivoPlural": "sessions"
+      },
+      "pagina": {
+        "titulo": "Cash registers",
+        "migaPos": "Point of sale",
+        "tusSucursales": "your branches",
+        "estaSucursal": "this branch",
+        "organizacion": "Organization",
+        "subtitulo": "{organizacion} · Shift of {fecha}",
+        "verDetalleMiCaja": "View my register details",
+        "nuevoArqueo": "New cash count",
+        "cerrarCajaAtajo": "Close register (F9)",
+        "abrirCajaAtajo": "Open register (F9)",
+        "estado": {
+          "miCajaAbierta": "My register is open",
+          "cajaSucursalAbierta": "Branch register is open",
+          "sinCajaAbierta": "No open register",
+          "sucursalSinCaja": "Branch has no open register"
+        },
+        "pestanas": {
+          "etiqueta": "Register view",
+          "miCaja": "My register",
+          "abiertas": "Open registers",
+          "historial": "History"
+        },
+        "recargar": "Reload",
+        "registrarMovimiento": "Record transaction",
+        "pendienteSincronizar": "Pending sync",
+        "cierreCiego": "Blind close",
+        "actualizado": "Updated {hace}",
+        "errorMiCaja": "We couldn't load your register",
+        "kpi": {
+          "etiqueta": "Open registers summary",
+          "ningunaSucursal": "no branches",
+          "enSucursales": "across {count, plural, one {# branch} other {# branches}}",
+          "efectivoEsperado": "Expected cash",
+          "enCajas": "across {count, plural, one {# register} other {# registers}}",
+          "diferenciaDia": "Today's difference",
+          "sinCierresHoy": "no closings today",
+          "cierresSinFaltante": "{count, plural, one {# closing with no shortage} other {# closings with no shortage}}",
+          "movimientosTurno": "Shift transactions",
+          "sinTurnoAbierto": "no open shift",
+          "ingresosEgresos": "{ingresos} cash in · {egresos} cash out"
+        }
+      }
+    },
+    "errores": {
+      "noAutenticado": "User not authenticated",
+      "sinSucursal": "Couldn't get the branch. Select a branch.",
+      "cajaGlobalAbierta": "A global register is already open. Close it before opening another one.",
+      "cajaPropiaAbierta": "You already have an open register at this branch. Close it before opening another one.",
+      "cajaSucursalAbierta": "There is already an open register at this branch. Close it before opening another one.",
+      "sinCajaAbierta": "There is no open register session",
+      "cierreAjenoSinRed": "While offline, you can only close your own register. Try again when you're back online.",
+      "cierreFallido": "Couldn't close the register",
+      "cajaInvalida": "Invalid register number",
+      "datosCierreInvalidos": "Invalid closing data",
+      "lecturaFallida": "Couldn't read the register",
+      "cajaNoEncontrada": "The register doesn't exist",
+      "cajaYaCerrada": "The register is already closed",
+      "sinPermiso": "Only the cashier who opened the register or an administrator can close it",
+      "organizacionNoPermitida": "You don't have access to this organization"
+    },
+    "detalle": {
+      "comun": {
+        "uuidInvalido": "Invalid session UUID",
+        "errorCargar": "Error loading session data",
+        "sesionNoEncontrada": "Session not found",
+        "sesionNoExiste": "The requested cash register session does not exist.",
+        "sesionCerrada": "Session closed",
+        "volver": "Back",
+        "volverCajas": "Back to Cash registers",
+        "guardando": "Saving...",
+        "cierreCiego": "Blind Close",
+        "cierreCiegoActivo": "Blind close is on. Expected amounts and differences are visible to administrators only.",
+        "tipoArqueo": {
+          "opening": "Opening",
+          "partial": "Partial",
+          "closing": "Closing"
+        }
+      },
+      "pagina": {
+        "toastCerrada": "Cash register closed successfully",
+        "titulo": "Session #{id}",
+        "estadoAbierta": "Open",
+        "estadoCerrada": "Closed",
+        "abiertaEl": "Opened: {fecha}",
+        "cerradaEl": "Closed: {fecha}",
+        "acciones": {
+          "actualizar": "Refresh",
+          "arqueo": "Cash count",
+          "movimiento": "Movement",
+          "cerrarCaja": "Close Register"
+        },
+        "tarjetas": {
+          "montoInicial": "Opening Amount",
+          "ventasEfectivo": "Cash Sales",
+          "montoEsperado": "Expected Amount",
+          "noVisibleCajeros": "Not visible to cashiers",
+          "diferencia": "Difference",
+          "soloAdministradores": "Visible to administrators only"
+        },
+        "pestanas": {
+          "resumen": "Summary",
+          "movimientos": "Movements ({n})",
+          "arqueos": "Cash counts ({n})",
+          "ventas": "Sales ({n})"
+        },
+        "info": {
+          "titulo": "Session Information",
+          "cajero": "Cashier",
+          "usuario": "User",
+          "sucursal": "Branch",
+          "apertura": "Opened",
+          "cierre": "Closed",
+          "notas": "Notes"
+        },
+        "desglose": {
+          "titulo": "Register Breakdown",
+          "montoInicial": "Opening Amount",
+          "ventasEn": "+ {metodo} sales",
+          "ventasEfectivo": "+ Cash sales",
+          "ingresos": "+ Cash in",
+          "egresos": "- Cash out",
+          "vuelto": "- Change Given",
+          "devoluciones": "- Returns",
+          "consumosHabitaciones": "Room Charges",
+          "recibosCaja": "Cash Receipts (A/R Payments)",
+          "pagosProveedores": "Supplier Payments (A/P)",
+          "montoEsperado": "= Expected Amount",
+          "cierreCiego": "Blind close: expected amount hidden",
+          "montoContado": "Counted Amount",
+          "diferencia": "Difference"
+        },
+        "pagos": {
+          "titulo": "Payments by Method",
+          "vacio": "No payments recorded",
+          "total": "Total"
+        },
+        "movimientos": {
+          "titulo": "Cash Movements",
+          "nuevo": "New Movement",
+          "vacio": "No movements recorded",
+          "ingreso": "Cash in",
+          "egreso": "Cash out",
+          "columnas": {
+            "fecha": "Date",
+            "tipo": "Type",
+            "concepto": "Description",
+            "notas": "Notes",
+            "monto": "Amount"
+          }
+        },
+        "arqueos": {
+          "titulo": "Cash Counts",
+          "nuevo": "New Cash Count",
+          "vacio": "No cash counts recorded",
+          "columnas": {
+            "fecha": "Date",
+            "tipo": "Type",
+            "contado": "Counted",
+            "esperado": "Expected",
+            "diferencia": "Difference",
+            "notas": "Notes"
+          }
+        },
+        "ventas": {
+          "titulo": "Shift Sales",
+          "vacio": "No sales in this shift",
+          "completada": "Completed",
+          "pagado": "Paid",
+          "columnas": {
+            "fecha": "Date",
+            "id": "ID",
+            "estado": "Status",
+            "pago": "Payment",
+            "total": "Total"
+          }
+        }
+      },
+      "arqueo": {
+        "toastExito": "Cash count recorded successfully",
+        "toastDiferencia": "Difference: {monto}",
+        "toastRegistrado": "Cash count recorded",
+        "toastError": "Error recording cash count",
+        "sesionCerrada": "Cash counts cannot be recorded in a closed session.",
+        "metodos": {
+          "cash": "Cash",
+          "card": "Card",
+          "transfer": "Transfer",
+          "credit": "Credit"
+        },
+        "titulo": "New Cash Count",
+        "subtitulo": "Session #{id} - Record a register count",
+        "tipoTitulo": "Count Type",
+        "billetes": "Cash - Bills",
+        "limpiar": "Clear",
+        "monedas": "Cash - Coins",
+        "totalEfectivo": "Total Cash",
+        "otros": {
+          "titulo": "Other Payment Methods",
+          "descripcion": "Enter the amount received for each payment method",
+          "esperado": "Expected: {monto}",
+          "total": "Total Other Methods"
+        },
+        "notas": "Notes",
+        "notasPlaceholder": "Cash count remarks...",
+        "resumen": {
+          "titulo": "Summary",
+          "montoEsperado": "Expected Amount",
+          "efectivoContado": "Counted Cash",
+          "otrosMetodos": "Other Methods",
+          "totalContado": "Total Counted",
+          "diferencia": "Difference",
+          "sobrante": "Overage of {monto}",
+          "faltante": "Shortage of {monto}",
+          "guardar": "Save Cash Count"
+        }
+      },
+      "movimiento": {
+        "toastConcepto": "Please enter a description",
+        "toastMonto": "Please enter a valid amount",
+        "toastRegistrado": "Movement recorded",
+        "toastIngreso": "Cash in: {monto}",
+        "toastEgreso": "Cash out: {monto}",
+        "toastError": "Error recording movement",
+        "sesionCerrada": "Movements cannot be recorded in a closed session.",
+        "titulo": "New Movement",
+        "subtitulo": "Session #{id} - Record cash in or cash out",
+        "tipoTitulo": "Movement Type",
+        "ingreso": "Cash in",
+        "egreso": "Cash out",
+        "detalles": "Details",
+        "concepto": "Description",
+        "seleccionarConcepto": "Select a description",
+        "otro": "Other (specify)",
+        "especificar": "Specify description",
+        "conceptoPlaceholder": "Enter the description...",
+        "monto": "Amount",
+        "notas": "Notes (optional)",
+        "notasPlaceholder": "Additional remarks...",
+        "cancelar": "Cancel",
+        "guardar": "Save Movement",
+        "conceptos": {
+          "cambioEfectivo": "Cash change fund",
+          "depositoBancario": "Bank deposit",
+          "prestamoInterno": "Internal loan",
+          "fondoAdicional": "Additional fund",
+          "otroIngreso": "Other cash in",
+          "compraInsumos": "Supplies purchase",
+          "pagoProveedor": "Supplier payment",
+          "retiroDeposito": "Withdrawal for deposit",
+          "gastoOperativo": "Operating expense",
+          "devolucionCliente": "Customer refund",
+          "otroEgreso": "Other cash out"
+        }
+      },
+      "resumenCaja": {
+        "titulo": "Register Summary",
+        "abierta": "Register Open",
+        "cerrada": "Register Closed",
+        "abiertaEl": "Opened:",
+        "cerradaEl": "Closed:",
+        "cajero": "Cashier",
+        "usuario": "User",
+        "sucursal": "Branch",
+        "todasSucursales": "All branches",
+        "inicial": "Opening",
+        "ventasEfectivo": "Cash sales",
+        "ventasTotales": "Total sales",
+        "ingresos": "Cash in",
+        "egresos": "Cash out",
+        "vuelto": "Change",
+        "recibosCaja": "Cash Receipts",
+        "pagosProveedores": "Supplier Payments",
+        "devoluciones": "Returns",
+        "pagosPorMetodo": "Payments by method:",
+        "ventasPorMetodo": "Sales by method:",
+        "totalVentas": "Total sales:",
+        "pagosProveedoresPorMetodo": "Supplier payments by method:",
+        "totalEsperado": "Expected Total:",
+        "montoContado": "Counted Amount:",
+        "diferencia": "Difference:",
+        "sobrante": "📈 Cash overage",
+        "faltante": "📉 Cash shortage",
+        "observaciones": "Remarks:"
+      },
+      "movimientosLista": {
+        "titulo": "Cash Movements",
+        "ingresos": "Cash in",
+        "egresos": "Cash out",
+        "vacio": "No movements recorded",
+        "vacioDescripcion": "Cash in and cash out will show up here"
+      },
+      "paginacion": {
+        "mostrar": "Show",
+        "porPagina": "per page",
+        "resumen": "Showing <b>{desde}</b> to <b>{hasta}</b> of <b>{total}</b> {sustantivo}",
+        "sinElementos": "No {sustantivo}",
+        "sesiones": "sessions"
+      },
+      "metodosPago": {
+        "efectivo": "Cash",
+        "tarjeta": "Card",
+        "transferencia": "Bank transfer",
+        "cheque": "Check",
+        "credito": "Credit",
+        "pse": "PSE - Online bank payment",
+        "breb": "Bre-B (Instant Payment)",
+        "boldLink": "Bold (Link)",
+        "boldDatafono": "Bold (Card terminal)",
+        "mixto": "Mixed",
+        "otros": "Other"
+      }
+    }
   }
 }

@@ -1,30 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
   Wallet,
-  Clock,
   RefreshCw,
   Plus,
-  FileText,
   DollarSign,
   TrendingUp,
-  TrendingDown,
   AlertCircle,
   CheckCircle,
   XCircle,
   Receipt,
   Calculator,
-  Download,
-  Printer,
   EyeOff,
   ArrowDownCircle
 } from 'lucide-react';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -40,11 +34,14 @@ import {
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { CajasService } from '../CajasService';
+import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
+import { useTranslations } from 'next-intl';
+import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
+import { CajasService, type SessionSaleRow } from '../CajasService';
 import { CierreCajaDialog } from '../CierreCajaDialog';
 import { useBlindCloseMode } from '../useBlindCloseMode';
 import type { CashSession, CashMovement, CashCount, CashSummary } from '../types';
-import { getPaymentMethodLabel } from '../paymentMethodLabels';
+import { useEtiquetaMetodoPago } from '../paymentMethodLabels';
 import { toast } from 'sonner';
 
 interface CajaDetallePageProps {
@@ -52,27 +49,25 @@ interface CajaDetallePageProps {
 }
 
 export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
-  const router = useRouter();
   const { organization, isLoading: orgLoading } = useOrganization();
-  const { formatDateTime } = useFormatDate();
+  const t = useTranslations('cajas.detalle');
+  const localeIntl = useLocaleIntl();
+  const { timezone } = useFormatDate();
+  const formatDateTime = (value: string | Date | null | undefined) =>
+    formatDateTimeInTz(value, timezone, { locale: localeIntl });
+  const getPaymentMethodLabel = useEtiquetaMetodoPago();
   const [session, setSession] = useState<CashSession | null>(null);
   const [movements, setMovements] = useState<CashMovement[]>([]);
   const [counts, setCounts] = useState<CashCount[]>([]);
   const [summary, setSummary] = useState<CashSummary | null>(null);
-  const [sales, setSales] = useState<any[]>([]);
+  const [sales, setSales] = useState<SessionSaleRow[]>([]);
   const [paymentsByMethod, setPaymentsByMethod] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('resumen');
   const [showCierreDialog, setShowCierreDialog] = useState(false);
   const { showExpected } = useBlindCloseMode();
 
-  useEffect(() => {
-    if (organization?.id && sessionUuid) {
-      loadSessionData();
-    }
-  }, [organization, sessionUuid]);
-
-  const loadSessionData = async () => {
+  const loadSessionData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [detail, salesData, paymentsData] = await Promise.all([
@@ -87,38 +82,35 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
       setSummary(detail.summary);
       setSales(salesData);
       setPaymentsByMethod(paymentsData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading session data:', error);
-      toast.error('Error al cargar datos de la sesión');
+      toast.error(t('comun.errorCargar'));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [sessionUuid, t]);
+
+  useEffect(() => {
+    if (organization?.id && sessionUuid) {
+      loadSessionData();
+    }
+  }, [organization, sessionUuid, loadSessionData]);
 
   const handleSessionClosed = (closedSession: CashSession) => {
     setSession(closedSession);
     setShowCierreDialog(false);
     loadSessionData();
-    toast.success('Caja cerrada exitosamente');
-  };
-
-  const getCountTypeLabel = (type: string) => {
-    switch (type) {
-      case 'opening': return 'Apertura';
-      case 'partial': return 'Parcial';
-      case 'closing': return 'Cierre';
-      default: return type;
-    }
+    toast.success(t('pagina.toastCerrada'));
   };
 
   const getCountTypeBadge = (type: string) => {
     switch (type) {
       case 'opening':
-        return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Apertura</Badge>;
+        return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{t('comun.tipoArqueo.opening')}</Badge>;
       case 'partial':
-        return <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">Parcial</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">{t('comun.tipoArqueo.partial')}</Badge>;
       case 'closing':
-        return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Cierre</Badge>;
+        return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">{t('comun.tipoArqueo.closing')}</Badge>;
       default:
         return <Badge variant="secondary">{type}</Badge>;
     }
@@ -140,12 +132,12 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
         <Card className="dark:bg-gray-800 max-w-md w-full">
           <CardContent className="p-6 text-center">
             <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-            <h2 className="text-lg font-semibold mb-2 dark:text-white">Sesión no encontrada</h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">La sesión de caja solicitada no existe.</p>
+            <h2 className="text-lg font-semibold mb-2 dark:text-white">{t('comun.sesionNoEncontrada')}</h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">{t('comun.sesionNoExiste')}</p>
             <Button variant="outline" asChild>
               <Link href="/app/pos/cajas">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver a Cajas
+                {t('comun.volverCajas')}
               </Link>
             </Button>
           </CardContent>
@@ -160,24 +152,24 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/app/pos/cajas">
+            <Link href="/app/pos/cajas" aria-label={t('comun.volverCajas')}>
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold dark:text-white">Sesión #{session.id}</h1>
+              <h1 className="text-xl font-bold dark:text-white">{t('pagina.titulo', { id: session.id })}</h1>
               <Badge className={cn(
                 session.status === 'open'
                   ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                   : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
               )}>
-                {session.status === 'open' ? 'Abierta' : 'Cerrada'}
+                {session.status === 'open' ? t('pagina.estadoAbierta') : t('pagina.estadoCerrada')}
               </Badge>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Abierta: {formatDateTime(session.opened_at)}
-              {session.closed_at && ` | Cerrada: ${formatDateTime(session.closed_at)}`}
+              {t('pagina.abiertaEl', { fecha: formatDateTime(session.opened_at) })}
+              {session.closed_at && ` | ${t('pagina.cerradaEl', { fecha: formatDateTime(session.closed_at) })}`}
             </p>
           </div>
         </div>
@@ -185,25 +177,25 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={loadSessionData}>
             <RefreshCw className="h-4 w-4 mr-2" />
-            Actualizar
+            {t('pagina.acciones.actualizar')}
           </Button>
           {session.status === 'open' && (
             <>
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/app/pos/cajas/${sessionUuid}/arqueos/nuevo`}>
                   <Calculator className="h-4 w-4 mr-2" />
-                  Arqueo
+                  {t('pagina.acciones.arqueo')}
                 </Link>
               </Button>
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/app/pos/cajas/${sessionUuid}/movimientos/nuevo`}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Movimiento
+                  {t('pagina.acciones.movimiento')}
                 </Link>
               </Button>
               <Button size="sm" onClick={() => setShowCierreDialog(true)}>
                 <XCircle className="h-4 w-4 mr-2" />
-                Cerrar Caja
+                {t('pagina.acciones.cerrarCaja')}
               </Button>
             </>
           )}
@@ -216,7 +208,7 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Monto Inicial</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('pagina.tarjetas.montoInicial')}</p>
                   <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {formatCurrency(summary?.initial_amount || 0)}
                   </p>
@@ -232,7 +224,7 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Ventas Efectivo</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('pagina.tarjetas.ventasEfectivo')}</p>
                   <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                     {formatCurrency(summary?.sales_cash || 0)}
                   </p>
@@ -249,7 +241,7 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Monto Esperado</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('pagina.tarjetas.montoEsperado')}</p>
                     <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                       {formatCurrency(summary?.expected_amount || 0)}
                     </p>
@@ -265,8 +257,8 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
               <CardContent className="p-4 flex items-center gap-3">
                 <EyeOff className="h-6 w-6 text-purple-600 dark:text-purple-400 shrink-0" />
                 <div>
-                  <p className="text-sm text-purple-700 dark:text-purple-400">Cierre Ciego</p>
-                  <p className="text-xs text-purple-600 dark:text-purple-500">No visible para cajeros</p>
+                  <p className="text-sm text-purple-700 dark:text-purple-400">{t('comun.cierreCiego')}</p>
+                  <p className="text-xs text-purple-600 dark:text-purple-500">{t('pagina.tarjetas.noVisibleCajeros')}</p>
                 </div>
               </CardContent>
             </Card>
@@ -277,7 +269,7 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Diferencia</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('pagina.tarjetas.diferencia')}</p>
                     <p className={cn(
                       "text-2xl font-bold",
                       (summary?.difference || 0) >= 0 
@@ -306,8 +298,8 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
               <CardContent className="p-4 flex items-center gap-3">
                 <EyeOff className="h-6 w-6 text-gray-400 dark:text-gray-500 shrink-0" />
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Diferencia</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">Visible solo para administradores</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('pagina.tarjetas.diferencia')}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">{t('pagina.tarjetas.soloAdministradores')}</p>
                 </div>
               </CardContent>
             </Card>
@@ -317,10 +309,10 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="resumen">Resumen</TabsTrigger>
-            <TabsTrigger value="movimientos">Movimientos ({movements.length})</TabsTrigger>
-            <TabsTrigger value="arqueos">Arqueos ({counts.length})</TabsTrigger>
-            <TabsTrigger value="ventas">Ventas ({sales.length})</TabsTrigger>
+            <TabsTrigger value="resumen">{t('pagina.pestanas.resumen')}</TabsTrigger>
+            <TabsTrigger value="movimientos">{t('pagina.pestanas.movimientos', { n: movements.length })}</TabsTrigger>
+            <TabsTrigger value="arqueos">{t('pagina.pestanas.arqueos', { n: counts.length })}</TabsTrigger>
+            <TabsTrigger value="ventas">{t('pagina.pestanas.ventas', { n: sales.length })}</TabsTrigger>
           </TabsList>
 
           {/* Tab Resumen */}
@@ -329,30 +321,30 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
               {/* Info de sesión */}
               <Card className="dark:bg-gray-800 dark:border-gray-700">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm dark:text-white">Información de la Sesión</CardTitle>
+                  <CardTitle className="text-sm dark:text-white">{t('pagina.info.titulo')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400">Cajero</span>
-                    <span className="font-medium dark:text-white">{(session as any).opened_by_name || 'Usuario'}</span>
+                    <span className="text-gray-500 dark:text-gray-400">{t('pagina.info.cajero')}</span>
+                    <span className="font-medium dark:text-white">{session.opened_by_name || t('pagina.info.usuario')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400">Sucursal</span>
-                    <span className="font-medium dark:text-white">{(session as any).branch_name || `#${session.branch_id}`}</span>
+                    <span className="text-gray-500 dark:text-gray-400">{t('pagina.info.sucursal')}</span>
+                    <span className="font-medium dark:text-white">{session.branch_name ||`#${session.branch_id}`}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400">Apertura</span>
+                    <span className="text-gray-500 dark:text-gray-400">{t('pagina.info.apertura')}</span>
                     <span className="dark:text-white">{formatDateTime(session.opened_at)}</span>
                   </div>
                   {session.closed_at && (
                     <div className="flex justify-between">
-                      <span className="text-gray-500 dark:text-gray-400">Cierre</span>
+                      <span className="text-gray-500 dark:text-gray-400">{t('pagina.info.cierre')}</span>
                       <span className="dark:text-white">{formatDateTime(session.closed_at)}</span>
                     </div>
                   )}
                   {session.notes && (
                     <div className="flex justify-between">
-                      <span className="text-gray-500 dark:text-gray-400">Notas</span>
+                      <span className="text-gray-500 dark:text-gray-400">{t('pagina.info.notas')}</span>
                       <span className="dark:text-white text-right max-w-[60%]">{session.notes}</span>
                     </div>
                   )}
@@ -362,11 +354,11 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
               {/* Desglose de Caja */}
               <Card className="dark:bg-gray-800 dark:border-gray-700">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm dark:text-white">Desglose de Caja</CardTitle>
+                  <CardTitle className="text-sm dark:text-white">{t('pagina.desglose.titulo')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                    <span className="text-gray-600 dark:text-gray-400">Monto Inicial</span>
+                    <span className="text-gray-600 dark:text-gray-400">{t('pagina.desglose.montoInicial')}</span>
                     <span className="font-medium dark:text-white">{formatCurrency(summary?.initial_amount || 0)}</span>
                   </div>
                   {/* Ventas por cada método de pago */}
@@ -374,40 +366,40 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                     Object.entries(summary.income_by_method).map(([method, amount]) => (
                       <div key={method} className="flex justify-between py-2 border-b dark:border-gray-700">
                         <span className="text-gray-600 dark:text-gray-400">
-                          + Ventas en {getPaymentMethodLabel(method)}
+                          {t('pagina.desglose.ventasEn', { metodo: getPaymentMethodLabel(method) })}
                         </span>
                         <span className="font-medium text-green-600 dark:text-green-400">+{formatCurrency(amount)}</span>
                       </div>
                     ))
                   ) : (
                     <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                      <span className="text-gray-600 dark:text-gray-400">+ Ventas en Efectivo</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('pagina.desglose.ventasEfectivo')}</span>
                       <span className="font-medium text-green-600 dark:text-green-400">+{formatCurrency(summary?.sales_cash || 0)}</span>
                     </div>
                   )}
                   <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                    <span className="text-gray-600 dark:text-gray-400">+ Ingresos</span>
+                    <span className="text-gray-600 dark:text-gray-400">{t('pagina.desglose.ingresos')}</span>
                     <span className="font-medium text-green-600 dark:text-green-400">+{formatCurrency(summary?.cash_in || 0)}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                    <span className="text-gray-600 dark:text-gray-400">- Egresos</span>
+                    <span className="text-gray-600 dark:text-gray-400">{t('pagina.desglose.egresos')}</span>
                     <span className="font-medium text-red-600 dark:text-red-400">-{formatCurrency(summary?.cash_out || 0)}</span>
                   </div>
                   {summary && summary.change_total > 0 && (
                     <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                      <span className="text-gray-600 dark:text-gray-400">- Vuelto Entregado</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('pagina.desglose.vuelto')}</span>
                       <span className="font-medium text-orange-600 dark:text-orange-400">-{formatCurrency(summary.change_total)}</span>
                     </div>
                   )}
                   {summary && summary.returns_total > 0 && (
                     <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                      <span className="text-gray-600 dark:text-gray-400">- Devoluciones</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('pagina.desglose.devoluciones')}</span>
                       <span className="font-medium text-red-600 dark:text-red-400">-{formatCurrency(summary.returns_total)}</span>
                     </div>
                   )}
                   {summary && summary.folio_consumptions_total > 0 && (
                     <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                      <span className="text-gray-600 dark:text-gray-400">Consumos de Habitaciones</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('pagina.desglose.consumosHabitaciones')}</span>
                       <span className="font-medium text-indigo-600 dark:text-indigo-400">{formatCurrency(summary.folio_consumptions_total)}</span>
                     </div>
                   )}
@@ -415,7 +407,7 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                     <div className="flex justify-between py-2 border-b dark:border-gray-700">
                       <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
                         <Receipt className="h-3.5 w-3.5 text-blue-500" />
-                        Recibos de Caja (Abonos CxC)
+                        {t('pagina.desglose.recibosCaja')}
                       </span>
                       <span className="font-medium text-blue-600 dark:text-blue-400">{formatCurrency(summary.cash_receipts_total)}</span>
                     </div>
@@ -424,7 +416,7 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                     <div className="flex justify-between py-2 border-b dark:border-gray-700">
                       <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
                         <ArrowDownCircle className="h-3.5 w-3.5 text-red-500" />
-                        Pagos a Proveedores (CxP)
+                        {t('pagina.desglose.pagosProveedores')}
                       </span>
                       <span className="font-medium text-red-600 dark:text-red-400">-{formatCurrency(summary.purchases_total)}</span>
                     </div>
@@ -432,23 +424,23 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                   <Separator />
                   {showExpected ? (
                     <div className="flex justify-between py-2">
-                      <span className="font-semibold dark:text-white">= Monto Esperado</span>
+                      <span className="font-semibold dark:text-white">{t('pagina.desglose.montoEsperado')}</span>
                       <span className="font-bold text-lg text-blue-600 dark:text-blue-400">{formatCurrency(summary?.expected_amount || 0)}</span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 py-2">
                       <EyeOff className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                      <span className="text-sm text-purple-700 dark:text-purple-400">Cierre ciego: monto esperado no visible</span>
+                      <span className="text-sm text-purple-700 dark:text-purple-400">{t('pagina.desglose.cierreCiego')}</span>
                     </div>
                   )}
                   {session.status === 'closed' && summary?.counted_amount !== undefined && showExpected && (
                     <>
                       <div className="flex justify-between py-2 border-t dark:border-gray-700">
-                        <span className="text-gray-600 dark:text-gray-400">Monto Contado</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('pagina.desglose.montoContado')}</span>
                         <span className="font-medium dark:text-white">{formatCurrency(summary.counted_amount)}</span>
                       </div>
                       <div className="flex justify-between py-2">
-                        <span className="font-semibold dark:text-white">Diferencia</span>
+                        <span className="font-semibold dark:text-white">{t('pagina.desglose.diferencia')}</span>
                         <span className={cn(
                           "font-bold",
                           (summary.difference || 0) >= 0 ? "text-green-600" : "text-red-600"
@@ -464,11 +456,11 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
               {/* Pagos por Método */}
               <Card className="dark:bg-gray-800 dark:border-gray-700">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm dark:text-white">Pagos por Método</CardTitle>
+                  <CardTitle className="text-sm dark:text-white">{t('pagina.pagos.titulo')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {Object.keys(paymentsByMethod).length === 0 ? (
-                    <p className="text-center text-gray-500 dark:text-gray-400 py-4">No hay pagos registrados</p>
+                    <p className="text-center text-gray-500 dark:text-gray-400 py-4">{t('pagina.pagos.vacio')}</p>
                   ) : (
                     <div className="space-y-3">
                       {Object.entries(paymentsByMethod).map(([method, amount]) => (
@@ -496,7 +488,7 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                       ))}
                       <Separator />
                       <div className="flex justify-between py-2">
-                        <span className="font-semibold dark:text-white">Total</span>
+                        <span className="font-semibold dark:text-white">{t('pagina.pagos.total')}</span>
                         <span className="font-bold text-blue-600 dark:text-blue-400">
                           {formatCurrency(Object.values(paymentsByMethod).reduce((a, b) => a + b, 0))}
                         </span>
@@ -512,28 +504,28 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
           <TabsContent value="movimientos">
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-lg dark:text-white">Movimientos de Caja</CardTitle>
+                <CardTitle className="text-lg dark:text-white">{t('pagina.movimientos.titulo')}</CardTitle>
                 {session.status === 'open' && (
                   <Button size="sm" asChild>
                     <Link href={`/app/pos/cajas/${sessionUuid}/movimientos/nuevo`}>
                       <Plus className="h-4 w-4 mr-2" />
-                      Nuevo Movimiento
+                      {t('pagina.movimientos.nuevo')}
                     </Link>
                   </Button>
                 )}
               </CardHeader>
               <CardContent>
                 {movements.length === 0 ? (
-                  <p className="text-center text-gray-500 dark:text-gray-400 py-8">No hay movimientos registrados</p>
+                  <p className="text-center text-gray-500 dark:text-gray-400 py-8">{t('pagina.movimientos.vacio')}</p>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Concepto</TableHead>
-                        <TableHead>Notas</TableHead>
-                        <TableHead className="text-right">Monto</TableHead>
+                        <TableHead>{t('pagina.movimientos.columnas.fecha')}</TableHead>
+                        <TableHead>{t('pagina.movimientos.columnas.tipo')}</TableHead>
+                        <TableHead>{t('pagina.movimientos.columnas.concepto')}</TableHead>
+                        <TableHead>{t('pagina.movimientos.columnas.notas')}</TableHead>
+                        <TableHead className="text-right">{t('pagina.movimientos.columnas.monto')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -546,7 +538,7 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                                 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                                 : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                             )}>
-                              {mov.type === 'in' ? 'Ingreso' : 'Egreso'}
+                              {mov.type === 'in' ? t('pagina.movimientos.ingreso') : t('pagina.movimientos.egreso')}
                             </Badge>
                           </TableCell>
                           <TableCell className="font-medium dark:text-white">{mov.concept}</TableCell>
@@ -570,29 +562,29 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
           <TabsContent value="arqueos">
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-lg dark:text-white">Arqueos de Caja</CardTitle>
+                <CardTitle className="text-lg dark:text-white">{t('pagina.arqueos.titulo')}</CardTitle>
                 {session.status === 'open' && (
                   <Button size="sm" asChild>
                     <Link href={`/app/pos/cajas/${sessionUuid}/arqueos/nuevo`}>
                       <Plus className="h-4 w-4 mr-2" />
-                      Nuevo Arqueo
+                      {t('pagina.arqueos.nuevo')}
                     </Link>
                   </Button>
                 )}
               </CardHeader>
               <CardContent>
                 {counts.length === 0 ? (
-                  <p className="text-center text-gray-500 dark:text-gray-400 py-8">No hay arqueos registrados</p>
+                  <p className="text-center text-gray-500 dark:text-gray-400 py-8">{t('pagina.arqueos.vacio')}</p>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead className="text-right">Contado</TableHead>
-                        {showExpected && <TableHead className="text-right">Esperado</TableHead>}
-                        {showExpected && <TableHead className="text-right">Diferencia</TableHead>}
-                        <TableHead>Notas</TableHead>
+                        <TableHead>{t('pagina.arqueos.columnas.fecha')}</TableHead>
+                        <TableHead>{t('pagina.arqueos.columnas.tipo')}</TableHead>
+                        <TableHead className="text-right">{t('pagina.arqueos.columnas.contado')}</TableHead>
+                        {showExpected && <TableHead className="text-right">{t('pagina.arqueos.columnas.esperado')}</TableHead>}
+                        {showExpected && <TableHead className="text-right">{t('pagina.arqueos.columnas.diferencia')}</TableHead>}
+                        <TableHead>{t('pagina.arqueos.columnas.notas')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -630,20 +622,20 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
           <TabsContent value="ventas">
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader>
-                <CardTitle className="text-lg dark:text-white">Ventas del Turno</CardTitle>
+                <CardTitle className="text-lg dark:text-white">{t('pagina.ventas.titulo')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {sales.length === 0 ? (
-                  <p className="text-center text-gray-500 dark:text-gray-400 py-8">No hay ventas en este turno</p>
+                  <p className="text-center text-gray-500 dark:text-gray-400 py-8">{t('pagina.ventas.vacio')}</p>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead>Pago</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead>{t('pagina.ventas.columnas.fecha')}</TableHead>
+                        <TableHead>{t('pagina.ventas.columnas.id')}</TableHead>
+                        <TableHead>{t('pagina.ventas.columnas.estado')}</TableHead>
+                        <TableHead>{t('pagina.ventas.columnas.pago')}</TableHead>
+                        <TableHead className="text-right">{t('pagina.ventas.columnas.total')}</TableHead>
                         <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -654,7 +646,7 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                           <TableCell className="font-mono text-xs">{sale.id.slice(0, 8)}...</TableCell>
                           <TableCell>
                             <Badge variant={sale.status === 'completed' ? 'default' : 'secondary'}>
-                              {sale.status === 'completed' ? 'Completada' : sale.status}
+                              {sale.status === 'completed' ? t('pagina.ventas.completada') : sale.status}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -663,7 +655,7 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                                 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                                 : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
                             )}>
-                              {sale.payment_status === 'paid' ? 'Pagado' : sale.payment_status}
+                              {sale.payment_status === 'paid' ? t('pagina.ventas.pagado') : sale.payment_status}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right font-semibold dark:text-white">

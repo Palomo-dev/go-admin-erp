@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { Info, Plus, Wallet } from 'lucide-react';
 import { EmptyState } from '@/components/kit';
 import { CashSummaryCard } from '../CashSummaryCard';
@@ -25,6 +26,7 @@ export interface MiCajaTabProps {
  * cabecera de la pantalla.
  */
 export function MiCajaTab({ sesion, modo, refreshTrigger, puedeCerrar, onAbrirCaja, pestanas }: MiCajaTabProps) {
+  const t = useTranslations('cajas.listado.miCaja');
   return (
     <div className="flex flex-col gap-4">
       <div className="flex lg:justify-end">{pestanas}</div>
@@ -33,9 +35,9 @@ export function MiCajaTab({ sesion, modo, refreshTrigger, puedeCerrar, onAbrirCa
         <div className="rounded-xl border border-line bg-surface">
           <EmptyState
             icono={Wallet}
-            titulo={modo === 'user' ? 'No tienes caja abierta' : 'La sucursal no tiene caja abierta'}
-            descripcion="Abre una caja con su monto inicial para comenzar a registrar ventas y movimientos. Atajo: F9."
-            accion={{ etiqueta: 'Abrir caja', icono: Plus, onClick: onAbrirCaja }}
+            titulo={modo === 'user' ? t('vacioTituloUsuario') : t('vacioTituloSucursal')}
+            descripcion={t('vacioDescripcion')}
+            accion={{ etiqueta: t('abrirCaja'), icono: Plus, onClick: onAbrirCaja }}
           />
         </div>
       ) : (
@@ -44,7 +46,7 @@ export function MiCajaTab({ sesion, modo, refreshTrigger, puedeCerrar, onAbrirCa
             <div role="note" className="flex items-start gap-2 rounded-lg border border-line bg-subtle px-3 py-2 text-sm text-fg-secondary">
               <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
               <span>
-                Solo {sesion.opened_by_name || 'el cajero que la abrió'} o un administrador pueden cerrar esta caja.
+                {sesion.opened_by_name ? t('soloCierraNombre', { nombre: sesion.opened_by_name }) : t('soloCierraCajero')}
               </span>
             </div>
           )}

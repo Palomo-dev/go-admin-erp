@@ -33,6 +33,30 @@ import type {
 } from './types';
 import { nombreContieneTodas, numeroDeCaja, sanitizarBusqueda } from './historialCajas';
 
+/**
+ * Error de cajas que la UI muestra. `message` sigue en español (lo leen logs y
+ * otros consumidores); `codigo` es estable y la UI lo traduce con
+ * `cajas.errores.<codigo>`, con respaldo al `message` si no hay traducción.
+ * Los códigos de `POST /api/pos/cajas/[id]/cerrar` llegan tal cual.
+ */
+export class ErrorCaja extends Error {
+  readonly codigo: string;
+  constructor(codigo: string, mensaje: string) {
+    super(mensaje);
+    this.name = 'ErrorCaja';
+    this.codigo = codigo;
+  }
+}
+
+/**
+ * Clave de traducción (`cajas.errores.<clave>`, en camelCase) del error lanzado
+ * por `CajasService`, o `null` si no trae código: `caja_ya_cerrada` → `cajaYaCerrada`.
+ */
+export function claveErrorCaja(error: unknown): string | null {
+  if (!(error instanceof ErrorCaja) || !error.codigo) return null;
+  return error.codigo.replace(/_([a-z])/g, (_, letra: string) => letra.toUpperCase());
+}
+
 /** Venta de una sesión de caja (columnas seleccionadas en `getSessionSales`). */
 export interface SessionSaleRow {
   id: string;
@@ -481,7 +505,7 @@ export class CajasService {
     try {
       const userId = await getCurrentUserId();
       if (!userId) {
-        throw new Error('Usuario no autenticado');
+        throw new ErrorCaja('no_autenticado', 'Usuario no autenticado');
       }
 
       const mode = await this.getCashSessionMode();
@@ -491,7 +515,7 @@ export class CajasService {
       const targetBranchId = scope === 'global' ? null : this.branchId;
 
       if (scope === 'branch' && !this.branchId) {
-        throw new Error('No se pudo obtener la sucursal. Seleccione una sucursal.');
+        throw new ErrorCaja('sin_sucursal', 'No se pudo obtener la sucursal. Seleccione una sucursal.');
       }
 
       // Verificar que no haya ya una caja abierta para el mismo alcance
@@ -512,18 +536,18 @@ export class CajasService {
       }
 
       const offline = shouldOperateCashOffline();
-      const alreadyOpenMessage = scope === 'global'
-        ? 'Ya hay una caja global abierta. Ciérrala antes de abrir otra.'
+      const alreadyOpen = scope === 'global'
+        ? new ErrorCaja('caja_global_abierta', 'Ya hay una caja global abierta. Ciérrala antes de abrir otra.')
         : (mode === 'user'
-          ? 'Ya tienes una caja abierta en esta sucursal. Ciérrala antes de abrir otra.'
-          : 'Ya hay una caja abierta en esta sucursal. Ciérrala antes de abrir otra.');
+          ? new ErrorCaja('caja_propia_abierta', 'Ya tienes una caja abierta en esta sucursal. Ciérrala antes de abrir otra.')
+          : new ErrorCaja('caja_sucursal_abierta', 'Ya hay una caja abierta en esta sucursal. Ciérrala antes de abrir otra.'));
 
       // Sin red el GET se resuelve en la réplica local; una sesión cerrada sin
       // red sigue `open` allí hasta sincronizar, así que se descarta aparte.
       const { data: existingSession } = await checkQuery.maybeSingle();
 
       if (existingSession && !(offline && (await isCashSessionClosedLocally(this.organizationId as number, String(existingSession.uuid))))) {
-        throw new Error(alreadyOpenMessage);
+        throw alreadyOpen;
       }
 
       if (offline) {
@@ -535,7 +559,7 @@ export class CajasService {
           userId,
         });
         if (localOpen && (scope === 'global' ? localOpen.branch_id === null : localOpen.branch_id === this.branchId)) {
-          throw new Error(alreadyOpenMessage);
+          throw alreadyOpen;
         }
         const session = await enqueueCashSessionOpen({
           organizationId: this.organizationId as number,
@@ -585,7 +609,7 @@ export class CajasService {
     try {
       const userId = await getCurrentUserId();
       if (!userId) {
-        throw new Error('Usuario no autenticado');
+        throw new ErrorCaja('no_autenticado', 'Usuario no autenticado');
       }
 
       const activeSession = await this.getActiveSession();
@@ -593,7 +617,7 @@ export class CajasService {
         return await this.closeOtherSession(target.id, data);
       }
       if (!activeSession) {
-        throw new Error('No hay sesión de caja abierta');
+        throw new ErrorCaja('sin_caja_abierta', 'No hay sesión de caja abierta');
       }
 
       // Calcular la diferencia
@@ -652,7 +676,7 @@ export class CajasService {
    */
   private static async closeOtherSession(sessionId: number, data: CloseCashSessionData): Promise<CashSession> {
     if (sessionId < 0 || shouldOperateCashOffline()) {
-      throw new Error('Sin conexión solo puedes cerrar tu propia caja. Vuelve a intentarlo cuando haya red.');
+      throw new ErrorCaja('cierre_ajeno_sin_red', 'Sin conexión solo puedes cerrar tu propia caja. Vuelve a intentarlo cuando haya red.');
     }
     const summary = await this.getCashSummary(sessionId);
     const difference = data.final_amount - summary.expected_amount;
@@ -665,9 +689,9 @@ export class CajasService {
       headers,
       body: JSON.stringify({ final_amount: data.final_amount, difference, notes: data.notes ?? null }),
     });
-    const body = (await response.json().catch(() => null)) as { session?: CashSession; error?: string } | null;
+    const body = (await response.json().catch(() => null)) as { session?: CashSession; error?: string; codigo?: string } | null;
     if (!response.ok || !body?.session) {
-      throw new Error(body?.error || 'No se pudo cerrar la caja');
+      throw new ErrorCaja(body?.codigo || 'cierre_fallido', body?.error || 'No se pudo cerrar la caja');
     }
     return body.session;
   }
@@ -679,12 +703,12 @@ export class CajasService {
     try {
       const userId = await getCurrentUserId();
       if (!userId) {
-        throw new Error('Usuario no autenticado');
+        throw new ErrorCaja('no_autenticado', 'Usuario no autenticado');
       }
 
       const activeSession = await this.getActiveSession();
       if (!activeSession) {
-        throw new Error('No hay sesión de caja abierta');
+        throw new ErrorCaja('sin_caja_abierta', 'No hay sesión de caja abierta');
       }
 
       if (shouldOperateCashOffline()) {
@@ -1216,7 +1240,7 @@ export class CajasService {
     try {
       const userId = await getCurrentUserId();
       if (!userId) {
-        throw new Error('Usuario no autenticado');
+        throw new ErrorCaja('no_autenticado', 'Usuario no autenticado');
       }
 
       // Obtener monto esperado
@@ -1255,7 +1279,7 @@ export class CajasService {
     try {
       const userId = await getCurrentUserId();
       if (!userId) {
-        throw new Error('Usuario no autenticado');
+        throw new ErrorCaja('no_autenticado', 'Usuario no autenticado');
       }
 
       const { data: movement, error } = await supabase

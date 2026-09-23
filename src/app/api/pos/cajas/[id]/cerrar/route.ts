@@ -25,6 +25,23 @@ export const dynamic = 'force-dynamic';
 
 const IMPORTE_MAXIMO = 1e12;
 
+/**
+ * `codigo` estable de cada error para que el cliente lo traduzca
+ * (`cajas.errores.<codigo>`); `error` sigue en español para los demás
+ * consumidores. Solo etiqueta la respuesta: no cambia ninguna comprobación.
+ */
+function codigoDeContexto(code: string | undefined): string {
+  switch (code) {
+    case 'UNAUTHENTICATED':
+      return 'no_autenticado';
+    case 'INVALID_BODY':
+    case 'INVALID_JSON':
+      return 'datos_cierre_invalidos';
+    default:
+      return 'organizacion_no_permitida';
+  }
+}
+
 const bodySchema = z
   .object({
     final_amount: z.number().finite().min(0).max(IMPORTE_MAXIMO),
@@ -41,7 +58,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params;
     const sessionId = Number(id);
     if (!Number.isInteger(sessionId) || sessionId <= 0) {
-      return NextResponse.json({ error: 'Número de caja inválido', code: 'INVALID_ID' }, { status: 400 });
+      return NextResponse.json({ error: 'Número de caja inválido', code: 'INVALID_ID', codigo: 'caja_invalida' }, { status: 400 });
     }
 
     const candidate =
@@ -50,7 +67,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         : body;
     const parsed = bodySchema.safeParse(candidate);
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Datos de cierre inválidos', code: 'INVALID_BODY' }, { status: 400 });
+      return NextResponse.json({ error: 'Datos de cierre inválidos', code: 'INVALID_BODY', codigo: 'datos_cierre_invalidos' }, { status: 400 });
     }
 
     const { data: caja, error: errorCaja } = await ctx.supabase
@@ -61,13 +78,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .maybeSingle();
     if (errorCaja) {
       console.error('[pos/cajas/cerrar] lectura', { sessionId, organizationId: ctx.organizationId, message: errorCaja.message });
-      return NextResponse.json({ error: 'No se pudo leer la caja' }, { status: 500 });
+      return NextResponse.json({ error: 'No se pudo leer la caja', codigo: 'lectura_fallida' }, { status: 500 });
     }
     if (!caja) {
-      return NextResponse.json({ error: 'La caja no existe', code: 'NOT_FOUND' }, { status: 404 });
+      return NextResponse.json({ error: 'La caja no existe', code: 'NOT_FOUND', codigo: 'caja_no_encontrada' }, { status: 404 });
     }
     if (caja.status !== 'open') {
-      return NextResponse.json({ error: 'La caja ya está cerrada', code: 'ALREADY_CLOSED' }, { status: 409 });
+      return NextResponse.json({ error: 'La caja ya está cerrada', code: 'ALREADY_CLOSED', codigo: 'caja_ya_cerrada' }, { status: 409 });
     }
 
     const esDeQuienCierra = caja.opened_by === ctx.userId;
@@ -78,7 +95,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         organizationId: ctx.organizationId,
         userId: ctx.userId,
       });
-      return NextResponse.json({ error: MOTIVO_NO_PUEDE_CERRAR, code: 'CLOSE_FORBIDDEN' }, { status: 403 });
+      return NextResponse.json({ error: MOTIVO_NO_PUEDE_CERRAR, code: 'CLOSE_FORBIDDEN', codigo: 'sin_permiso' }, { status: 403 });
     }
 
     const { final_amount, difference, notes } = parsed.data;
@@ -99,16 +116,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .maybeSingle();
     if (error) {
       console.error('[pos/cajas/cerrar] escritura', { sessionId, organizationId: ctx.organizationId, message: error.message });
-      return NextResponse.json({ error: 'No se pudo cerrar la caja' }, { status: 500 });
+      return NextResponse.json({ error: 'No se pudo cerrar la caja', codigo: 'cierre_fallido' }, { status: 500 });
     }
     if (!cerrada) {
-      return NextResponse.json({ error: 'La caja ya está cerrada', code: 'ALREADY_CLOSED' }, { status: 409 });
+      return NextResponse.json({ error: 'La caja ya está cerrada', code: 'ALREADY_CLOSED', codigo: 'caja_ya_cerrada' }, { status: 409 });
     }
 
     return NextResponse.json({ session: cerrada }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (err) {
     if (err instanceof OrgContextError) {
-      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+      return NextResponse.json({ error: err.message, code: err.code, codigo: codigoDeContexto(err.code) }, { status: err.statusCode });
     }
     throw err;
   }

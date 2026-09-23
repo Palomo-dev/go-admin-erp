@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { AlertCircle, CheckCircle, Download, FileSpreadsheet, Loader2, Upload, X } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { StatusBadge, SegmentedControl } from '@/components/kit';
+import { useFormatoEntero, useKitT } from '@/components/kit/useIdiomaKit';
 import { supabase } from '@/lib/supabase/config';
 
 /**
@@ -81,30 +83,49 @@ export function descargarPlantillaClientes(): void {
   link.click();
 }
 
+/**
+ * Columnas que reconoce el importador: el nombre es formato de datos (el
+ * lector lo busca en la cabecera del archivo) y NO se traduce; la
+ * descripción sí (`clientes.listado.importar.columnas.<clave>`).
+ */
 const COLUMNAS_SOPORTADAS = [
-  ['Tipo de Cliente', 'Persona o Empresa'],
-  ['Nombre', 'Nombre (para personas)'],
-  ['Apellido', 'Apellido (para personas)'],
-  ['Razón Social', 'Nombre de la empresa (para empresas)'],
-  ['Nombre Comercial', 'Nombre comercial'],
-  ['Email', 'Correo electrónico'],
-  ['Teléfono', 'Número de teléfono'],
-  ['Tipo Documento', 'Cédula, NIT, Pasaporte, etc.'],
-  ['Número Documento', 'Número de identificación'],
-  ['DV', 'Dígito de verificación (para NIT)'],
-  ['Dirección', 'Dirección física'],
-  ['Ciudad', 'Ciudad'],
-  ['Notas', 'Notas internas'],
-  ['Etiquetas', 'Separadas por punto y coma (;)'],
-  ['Roles', 'Separados por punto y coma (;)'],
-  ['Preferencias', 'JSON con preferencias'],
-  ['Responsabilidades Fiscales', 'Separadas por (;)'],
-  ['Documento Empresa Padre', 'NIT de empresa vinculada'],
+  ['Tipo de Cliente', 'tipoCliente'],
+  ['Nombre', 'nombre'],
+  ['Apellido', 'apellido'],
+  ['Razón Social', 'razonSocial'],
+  ['Nombre Comercial', 'nombreComercial'],
+  ['Email', 'email'],
+  ['Teléfono', 'telefono'],
+  ['Tipo Documento', 'tipoDocumento'],
+  ['Número Documento', 'numeroDocumento'],
+  ['DV', 'dv'],
+  ['Dirección', 'direccion'],
+  ['Ciudad', 'ciudad'],
+  ['Notas', 'notas'],
+  ['Etiquetas', 'etiquetas'],
+  ['Roles', 'roles'],
+  ['Preferencias', 'preferencias'],
+  ['Responsabilidades Fiscales', 'responsabilidades'],
+  ['Documento Empresa Padre', 'empresaPadre'],
 ] as const;
+
+/** Modo de importación → clave de `importar.modos` / `importar.modosAyuda`. */
+const CLAVE_MODO: Record<ModoImportacion, string> = {
+  create_and_update: 'crearActualizar',
+  create_only: 'soloCrear',
+  update_only: 'soloActualizar',
+};
+
+/** Máximo de filas que se previsualizan. */
+const MAX_VISTA = 100;
 
 const texto = (v: unknown) => String(v ?? '').trim();
 
 export function ImportarClientesDialog({ abierto, onAbiertoChange, organizationId, onImportado }: ImportarClientesDialogProps) {
+  const t = useTranslations('clientes.listado');
+  const tk = useKitT();
+  const entero = useFormatoEntero();
+  const enEspanol = useLocale() === 'es';
   const [archivo, setArchivo] = useState<File | null>(null);
   const [filas, setFilas] = useState<FilaImportacion[]>([]);
   const [paso, setPaso] = useState<Paso>('upload');
@@ -249,7 +270,7 @@ export function ImportarClientesDialog({ abierto, onAbiertoChange, organizationI
       setPaso('preview');
     } catch (error) {
       const e = error as Error;
-      setMensaje({ tipo: 'error', texto: `Error al leer archivo: ${e.message}` });
+      setMensaje({ tipo: 'error', texto: t('importar.errorLeer', { detalle: e.message }) });
     }
   };
 
@@ -321,13 +342,13 @@ export function ImportarClientesDialog({ abierto, onAbiertoChange, organizationI
         const existingId = (normalizedDoc && existingByDoc.get(normalizedDoc)) || (row.email && existingByEmail.get(row.email.toLowerCase()));
 
         if (existingId && modo === 'create_only') {
-          updatedRows[i] = { ...row, status: 'error', error: 'Cliente ya existe (modo: solo crear)' };
+          updatedRows[i] = { ...row, status: 'error', error: t('importar.errores.yaExiste') };
           errorCount++;
           publicar();
           continue;
         }
         if (!existingId && modo === 'update_only') {
-          updatedRows[i] = { ...row, status: 'error', error: 'Cliente no existe (modo: solo actualizar)' };
+          updatedRows[i] = { ...row, status: 'error', error: t('importar.errores.noExiste') };
           errorCount++;
           publicar();
           continue;
@@ -411,9 +432,9 @@ export function ImportarClientesDialog({ abierto, onAbiertoChange, organizationI
         successCount++;
       } catch (error) {
         const e = error as ErrorSupabase;
-        const errMsg = e?.message || e?.details || e?.hint || 'Error desconocido';
+        const errMsg = e?.message || e?.details || e?.hint || t('importar.errores.desconocido');
         if (e?.code === '23505' || errMsg.includes('duplicate key') || errMsg.includes('unique constraint')) {
-          updatedRows[i] = { ...row, status: 'error', error: 'Duplicado (constraint único violado)' };
+          updatedRows[i] = { ...row, status: 'error', error: t('importar.errores.duplicado') };
         } else {
           updatedRows[i] = { ...row, status: 'error', error: errMsg };
         }
@@ -439,13 +460,10 @@ export function ImportarClientesDialog({ abierto, onAbiertoChange, organizationI
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-fg">
             <Upload aria-hidden="true" className="size-5 text-brand" strokeWidth={1.5} />
-            Importar clientes
+            {t('importar.titulo')}
           </DialogTitle>
           <DialogDescription className="text-fg-secondary">
-            {paso === 'upload' && 'Selecciona un archivo CSV o Excel para importar clientes'}
-            {paso === 'preview' && 'Revisa los datos antes de importar'}
-            {paso === 'importing' && 'Importando clientes…'}
-            {paso === 'complete' && 'Importación completada'}
+            {t(`importar.pasos.${paso}`)}
           </DialogDescription>
         </DialogHeader>
 
@@ -458,9 +476,9 @@ export function ImportarClientesDialog({ abierto, onAbiertoChange, organizationI
             >
               <FileSpreadsheet aria-hidden="true" className="mx-auto mb-4 size-12 text-fg-muted" strokeWidth={1.5} />
               <p className="mb-2 text-base font-medium text-fg">
-                {archivo ? archivo.name : 'Arrastra un archivo aquí o haz clic para seleccionar'}
+                {archivo ? archivo.name : t('importar.arrastra')}
               </p>
-              <p className="text-sm text-fg-secondary">Formatos soportados: CSV, XLS, XLSX</p>
+              <p className="text-sm text-fg-secondary">{t('importar.formatos')}</p>
             </button>
             <input
               ref={inputRef}
@@ -476,11 +494,12 @@ export function ImportarClientesDialog({ abierto, onAbiertoChange, organizationI
             />
 
             <div className="rounded-xl bg-brand-tint p-4">
-              <h4 className="mb-2 text-sm font-medium text-brand-deep">Columnas soportadas</h4>
+              <h4 className="mb-2 text-sm font-medium text-brand-deep">{t('importar.columnasSoportadas')}</h4>
+              {!enEspanol && <p className="mb-2 text-[13px] text-brand-deep">{t('importar.columnasNota')}</p>}
               <ul className="grid gap-1 text-[13px] text-brand-deep sm:grid-cols-2">
                 {COLUMNAS_SOPORTADAS.map(([c, d]) => (
                   <li key={c}>
-                    <strong>{c}</strong>: {d}
+                    <strong>{c}</strong>: {t(`importar.columnas.${d}`)}
                   </li>
                 ))}
               </ul>
@@ -489,10 +508,10 @@ export function ImportarClientesDialog({ abierto, onAbiertoChange, organizationI
             <div className="flex items-center justify-between">
               <Button variant="outline" size="sm" onClick={descargarPlantillaClientes}>
                 <Download aria-hidden="true" className="mr-2 size-4" />
-                Descargar plantilla
+                {t('cabecera.descargarPlantilla')}
               </Button>
               <Button variant="outline" onClick={() => cerrar(false)}>
-                Cancelar
+                {tk('comun.cancelar')}
               </Button>
             </div>
           </div>
@@ -502,45 +521,51 @@ export function ImportarClientesDialog({ abierto, onAbiertoChange, organizationI
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
-                ['Total', stats.total, 'text-fg'],
-                ['OK', stats.success, 'text-success-text'],
-                ['Errores', stats.errors, 'text-danger-text'],
-                ['Pendientes', stats.pending, 'text-warning-text'],
-              ].map(([etiqueta, valor, color]) => (
-                <div key={etiqueta as string} className="rounded-lg border border-line p-3 text-center">
-                  <div className={`text-xl font-semibold tabular-nums ${color as string}`}>{valor as number}</div>
-                  <p className="text-xs text-fg-secondary">{etiqueta as string}</p>
+                { clave: 'total', etiqueta: t('importar.stats.total'), valor: stats.total, color: 'text-fg' },
+                { clave: 'ok', etiqueta: t('importar.stats.ok'), valor: stats.success, color: 'text-success-text' },
+                { clave: 'errores', etiqueta: t('importar.stats.errores'), valor: stats.errors, color: 'text-danger-text' },
+                { clave: 'pendientes', etiqueta: t('importar.stats.pendientes'), valor: stats.pending, color: 'text-warning-text' },
+              ].map(({ clave, etiqueta, valor, color }) => (
+                <div key={clave} className="rounded-lg border border-line p-3 text-center">
+                  <div className={`text-xl font-semibold tabular-nums ${color}`}>{entero(valor)}</div>
+                  <p className="text-xs text-fg-secondary">{etiqueta}</p>
                 </div>
               ))}
             </div>
 
             {paso === 'preview' && (
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-fg">Modo de importación</span>
+                <span className="text-sm font-medium text-fg">{t('importar.modo')}</span>
                 <SegmentedControl<ModoImportacion>
-                  etiqueta="Modo de importación"
+                  etiqueta={t('importar.modo')}
                   valor={modo}
                   onValorChange={setModo}
                   anchoCompleto
                   opciones={[
-                    { valor: 'create_and_update', etiqueta: 'Crear y actualizar' },
-                    { valor: 'create_only', etiqueta: 'Solo crear nuevos' },
-                    { valor: 'update_only', etiqueta: 'Solo actualizar' },
+                    { valor: 'create_and_update', etiqueta: t('importar.modos.crearActualizar') },
+                    { valor: 'create_only', etiqueta: t('importar.modos.soloCrear') },
+                    { valor: 'update_only', etiqueta: t('importar.modos.soloActualizar') },
                   ]}
                 />
               </div>
             )}
             <p className="text-xs text-fg-secondary">
-              {modo === 'create_and_update' && 'Los clientes nuevos se crearán y los existentes se actualizarán.'}
-              {modo === 'create_only' && 'Solo se crearán clientes con documento nuevo. Los existentes se omitirán.'}
-              {modo === 'update_only' && 'Solo se actualizarán clientes que ya existan. Los nuevos se omitirán.'}
+              {t(`importar.modosAyuda.${CLAVE_MODO[modo]}`)}
             </p>
 
             <div className="max-h-[300px] overflow-auto rounded-lg border border-line">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-subtle text-left text-xs text-fg-secondary">
                   <tr>
-                    {['#', 'Tipo', 'Nombre', 'Doc', 'Email', 'Tel', 'Estado'].map((h) => (
+                    {[
+                      '#',
+                      t('importar.tabla.tipo'),
+                      t('importar.tabla.nombre'),
+                      t('importar.tabla.doc'),
+                      t('importar.tabla.email'),
+                      t('importar.tabla.tel'),
+                      t('importar.tabla.estado'),
+                    ].map((h) => (
                       <th key={h} scope="col" className="px-2 py-2 font-medium">
                         {h}
                       </th>
@@ -548,10 +573,14 @@ export function ImportarClientesDialog({ abierto, onAbiertoChange, organizationI
                   </tr>
                 </thead>
                 <tbody>
-                  {filas.slice(0, 100).map((row) => (
+                  {filas.slice(0, MAX_VISTA).map((row) => (
                     <tr key={row.row} className="border-t border-line">
                       <td className="px-2 py-1.5 text-fg-muted">{row.row}</td>
-                      <td className="px-2 py-1.5">{row.customerType || (row.companyName ? 'Empresa' : 'Persona')}</td>
+                      <td className="px-2 py-1.5">
+                        {(row.customerType || (row.companyName ? 'Empresa' : 'Persona')) === 'Empresa'
+                          ? t('importar.tipos.empresa')
+                          : t('importar.tipos.persona')}
+                      </td>
                       <td className="break-words px-2 py-1.5">
                         {row.companyName || `${row.firstName || ''} ${row.lastName || ''}`.trim() || row.fullName || '-'}
                       </td>
@@ -561,7 +590,13 @@ export function ImportarClientesDialog({ abierto, onAbiertoChange, organizationI
                       <td className="px-2 py-1.5" title={row.error}>
                         <StatusBadge
                           estado={row.status === 'pending' ? 'Pendiente' : row.status === 'success' ? 'Completado' : 'Error'}
-                          etiqueta={row.status === 'pending' ? 'Pendiente' : row.status === 'success' ? 'OK' : 'Error'}
+                          etiqueta={
+                            row.status === 'pending'
+                              ? t('importar.estadoFila.pendiente')
+                              : row.status === 'success'
+                                ? t('importar.estadoFila.ok')
+                                : t('importar.estadoFila.error')
+                          }
                         />
                       </td>
                     </tr>
@@ -569,8 +604,10 @@ export function ImportarClientesDialog({ abierto, onAbiertoChange, organizationI
                 </tbody>
               </table>
             </div>
-            {filas.length > 100 && (
-              <p className="text-center text-sm text-fg-secondary">Mostrando 100 de {filas.length} filas</p>
+            {filas.length > MAX_VISTA && (
+              <p className="text-center text-sm text-fg-secondary">
+                {t('importar.mostrando', { max: entero(MAX_VISTA), n: entero(filas.length) })}
+              </p>
             )}
 
             <div className="flex items-center justify-between">
@@ -578,27 +615,27 @@ export function ImportarClientesDialog({ abierto, onAbiertoChange, organizationI
                 <>
                   <Button variant="outline" onClick={reiniciar}>
                     <X aria-hidden="true" className="mr-2 size-4" />
-                    Cancelar
+                    {tk('comun.cancelar')}
                   </Button>
                   <Button onClick={() => void importar()} disabled={procesando}>
                     <Upload aria-hidden="true" className="mr-2 size-4" />
-                    Importar {stats.total} clientes
+                    {t('importar.importarN', { count: stats.total, n: entero(stats.total) })}
                   </Button>
                 </>
               )}
               {paso === 'importing' && (
                 <p className="flex items-center gap-2 text-sm text-fg-secondary" role="status">
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" /> Importando…
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" /> {t('importar.importando')}
                 </p>
               )}
               {paso === 'complete' && (
                 <>
                   <Button variant="outline" onClick={() => cerrar(false)}>
-                    Cerrar
+                    {tk('comun.cerrar')}
                   </Button>
                   <Button variant="outline" onClick={reiniciar}>
                     <Upload aria-hidden="true" className="mr-2 size-4" />
-                    Importar otro archivo
+                    {t('importar.otroArchivo')}
                   </Button>
                 </>
               )}

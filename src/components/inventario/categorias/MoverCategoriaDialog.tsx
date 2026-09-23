@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Info } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Dialogo } from '@/components/kit/Dialogo';
 import { TreeList, type OpcionArbol } from '@/components/kit/TreePicker';
 import { descendientesDe } from '@/components/kit/arbol';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
 import { iconoCategoria } from './iconoCategoria';
 
 /**
@@ -34,6 +36,8 @@ export interface MoverCategoriaDialogProps {
 }
 
 export function MoverCategoriaDialog({ abierto, onAbiertoChange, categorias, ids, onMover }: MoverCategoriaDialogProps) {
+  const t = useTranslations('categorias');
+  const n = useFormatoEntero();
   const [destino, setDestino] = useState<number | null | undefined>(undefined);
   const [moviendo, setMoviendo] = useState(false);
 
@@ -60,7 +64,7 @@ export function MoverCategoriaDialog({ abierto, onAbiertoChange, categorias, ids
 
   const deshabilitadas = useMemo(() => {
     const mapa = new Map<number, string>();
-    for (const id of ids) mapa.set(id, ids.length === 1 ? 'Es la categoría que mueves' : 'Está entre las que mueves');
+    for (const id of ids) mapa.set(id, ids.length === 1 ? t('mover.esLaQueMueves') : t('mover.estaEntreLasQueMueves'));
     const desc = descendientesDe(categorias.map((c) => ({ id: c.id, parentId: c.parent_id })), ids);
     for (const d of desc) {
       if (mapa.has(d)) continue;
@@ -68,22 +72,24 @@ export function MoverCategoriaDialog({ abierto, onAbiertoChange, categorias, ids
       let actual = porId.get(d)?.parent_id ?? null;
       while (actual !== null && !ids.includes(actual)) actual = porId.get(actual)?.parent_id ?? null;
       const origen = actual !== null ? porId.get(actual)?.name : undefined;
-      mapa.set(d, origen ? `Es subcategoría de «${origen}»: crearía un ciclo` : 'Crearía un ciclo');
+      mapa.set(d, origen ? t('mover.subcategoriaDe', { origen }) : t('listado.arrastre.ciclo'));
     }
     return mapa;
-  }, [ids, categorias, porId]);
+  }, [ids, categorias, porId, t]);
 
   const numHijas = useMemo(
     () => (moviendoUna ? categorias.filter((c) => c.parent_id === moviendoUna.id).length : 0),
     [moviendoUna, categorias],
   );
 
-  const titulo = moviendoUna ? `Mover «${moviendoUna.name}»` : `Mover ${ids.length} categorías`;
+  const titulo = moviendoUna
+    ? t('mover.tituloUna', { nombre: moviendoUna.name })
+    : t('mover.tituloVarias', { n: n(ids.length) });
   const descripcion = moviendoUna
     ? numHijas > 0
-      ? `Elige la nueva categoría padre. Sus ${numHijas} ${numHijas === 1 ? 'subcategoría se mueve' : 'subcategorías se mueven'} con ella.`
-      : 'Elige la nueva categoría padre.'
-    : 'Elige la nueva categoría padre. Sus subcategorías se mueven con ellas.';
+      ? t('mover.descripcionConHijas', { count: numHijas, n: n(numHijas) })
+      : t('mover.descripcion')
+    : t('mover.descripcionVarias');
 
   const sinCambio = destino === undefined || (moviendoUna !== undefined && destino === padreActual);
 
@@ -95,10 +101,10 @@ export function MoverCategoriaDialog({ abierto, onAbiertoChange, categorias, ids
       descripcion={descripcion}
       ancho={520}
       primario={{
-        etiqueta: 'Mover aquí',
+        etiqueta: t('mover.moverAqui'),
         cargando: moviendo,
         deshabilitada: sinCambio,
-        motivo: destino === undefined ? 'Elige una categoría de destino' : 'Ya está en esa categoría',
+        motivo: destino === undefined ? t('mover.eligeDestino') : t('mover.yaEstaAhi'),
         onClick: async () => {
           if (destino === undefined) return;
           setMoviendo(true);
@@ -112,20 +118,20 @@ export function MoverCategoriaDialog({ abierto, onAbiertoChange, categorias, ids
       }}
     >
       <TreeList
-        etiqueta="Nueva categoría padre"
+        etiqueta={t('mover.nuevaPadre')}
         opciones={opciones}
         valor={destino}
         onValorChange={setDestino}
-        opcionRaiz={{ etiqueta: 'Sin categoría padre', detalle: 'Queda como categoría principal' }}
+        opcionRaiz={{ etiqueta: t('mover.sinPadre'), detalle: t('mover.quedaPrincipal') }}
         deshabilitadas={deshabilitadas}
         actual={padreActual}
-        placeholderBusqueda="Buscar categoría de destino"
+        placeholderBusqueda={t('mover.buscarDestino')}
         altoMaximo={262}
         autoFocus
       />
       <p className="flex items-start gap-2 rounded-lg bg-info-subtle px-3 py-2.5 text-[13px] leading-[18px] text-info-text">
         <Info aria-hidden="true" className="mt-px size-4 shrink-0" strokeWidth={1.5} />
-        El slug no cambia al mover: los enlaces de la tienda web siguen funcionando.
+        {t('mover.avisoSlug')}
       </p>
     </Dialogo>
   );

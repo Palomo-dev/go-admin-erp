@@ -12,11 +12,23 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
-import { CajasService } from './CajasService';
+import { CajasService, claveErrorCaja } from './CajasService';
 import { useBlindCloseMode } from './useBlindCloseMode';
-import type { CashSession, CashSummary, CloseCashSessionData, SessionPaymentDetail } from './types';
+import type { CashSession, CashSummary, CloseCashSessionData, SessionMovementType, SessionPaymentDetail } from './types';
 import { getPaymentMethodLabel } from './paymentMethodLabels';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
+
+/** Clave de `cajas.cierre.tiposMovimiento` para cada tipo de movimiento de la sesión. */
+const CLAVE_TIPO_MOVIMIENTO: Record<SessionMovementType, string> = {
+  venta_pos: 'ventaPos',
+  venta_mesa: 'ventaMesa',
+  venta_factura: 'ventaFactura',
+  compra_factura: 'compraFactura',
+  cuenta_por_cobrar: 'cuentaPorCobrar',
+  cuenta_por_pagar: 'cuentaPorPagar',
+  otro: 'otro',
+};
 
 const METHOD_LABELS = getPaymentMethodLabel;
 
@@ -63,6 +75,8 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
   // Estado para conteo por método de pago
   const [methodCounts, setMethodCounts] = useState<Record<string, number>>({});
   const { showExpected: showExpectedBlind, loading: blindModeLoading } = useBlindCloseMode();
+  const t = useTranslations('cajas.cierre');
+  const tError = useTranslations('cajas.errores');
 
   // Cargar resumen cuando se abre el modal y ya se resolvió el modo ciego
   useEffect(() => {
@@ -119,7 +133,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
       setMethodCounts(initialCounts);
     } catch (error) {
       console.error('Error loading cash summary:', error);
-      toast.error('Error al cargar resumen de caja');
+      toast.error(t('errorResumen'));
     } finally {
       setLoadingSummary(false);
     }
@@ -184,7 +198,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
     e.preventDefault();
     
     if (formData.final_amount < 0) {
-      toast.error('El monto final no puede ser negativo');
+      toast.error(t('montoNegativo'));
       return;
     }
 
@@ -193,17 +207,21 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
       // Se cierra ESTA caja (no «la activa»): desde «Cajas abiertas» o el detalle
       // puede ser la de otro cajero, y ese cierre lo autoriza el servidor.
       const closedSession = await CajasService.closeSession(formData, session);
-      toast.success(closedSession.pending_sync ? 'Caja cerrada sin conexión' : 'Caja cerrada exitosamente', {
-        description: (showExpectedBlind ? `Diferencia total: ${formatCurrency(Math.abs(getTotalDifference()))}` : 'Caja cerrada')
-          + (closedSession.pending_sync ? ' · pendiente de sincronizar (totales con las ventas locales)' : '')
+      toast.success(closedSession.pending_sync ? t('cerradaSinConexion') : t('cerradaExito'), {
+        description: t('toastDescripcion', {
+          visible: showExpectedBlind ? 'si' : 'no',
+          diferencia: formatCurrency(Math.abs(getTotalDifference())),
+          pendiente: closedSession.pending_sync ? 'si' : 'no',
+        })
       });
       
       onSessionClosed(closedSession);
       setOpen(false);
     } catch (error) {
       console.error('Error closing cash session:', error);
-      toast.error('Error al cerrar caja', {
-        description: (error as Error)?.message
+      const clave = claveErrorCaja(error);
+      toast.error(t('errorCerrar'), {
+        description: clave && tError.has(clave) ? tError(clave) : (error as Error)?.message
       });
     } finally {
       setLoading(false);
@@ -219,7 +237,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
           onClick={() => setOpen(true)}
         >
           <Lock className="h-5 w-5 mr-2" />
-          Cerrar Caja
+          {t('cerrarCaja')}
         </Button>
       )}
       {open && typeof document !== 'undefined' && createPortal(
@@ -229,9 +247,9 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
               <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center space-x-2">
                   <Calculator className="h-5 w-5 text-red-600" />
-                  <span>Arqueo y Cierre de Caja</span>
+                  <span>{t('titulo')}</span>
                 </h2>
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700" onClick={() => setOpen(false)}>
+                <button type="button" aria-label={t('cerrar')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700" onClick={() => setOpen(false)}>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -251,44 +269,44 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
             <Card className="dark:bg-gray-700 dark:border-gray-600 bg-gray-50 border-gray-200">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm dark:text-gray-200 text-gray-700">
-                  Resumen de Movimientos
+                  {t('resumenMovimientos')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="dark:text-gray-400 text-gray-600">Monto inicial:</span>
+                    <span className="dark:text-gray-400 text-gray-600">{t('montoInicial')}</span>
                     <p className="font-medium dark:text-white text-gray-900">
                       {summary ? mask(summary.initial_amount) : '-'}
                     </p>
                   </div>
                   <div>
-                    <span className="dark:text-gray-400 text-gray-600">Ventas en efectivo:</span>
+                    <span className="dark:text-gray-400 text-gray-600">{t('ventasEfectivo')}</span>
                     <p className="font-medium text-green-600">
                       {summary ? mask(summary.sales_cash) : '-'}
                     </p>
                   </div>
                   <div>
-                    <span className="dark:text-gray-400 text-gray-600">Ventas totales:</span>
+                    <span className="dark:text-gray-400 text-gray-600">{t('ventasTotales')}</span>
                     <p className="font-medium text-emerald-600">
                       {summary ? mask(summary.sales_total ?? summary.sales_cash) : '-'}
                     </p>
                   </div>
                   <div>
-                    <span className="dark:text-gray-400 text-gray-600">Ingresos:</span>
+                    <span className="dark:text-gray-400 text-gray-600">{t('ingresos')}</span>
                     <p className="font-medium text-blue-600">
                       {summary ? mask(summary.cash_in) : '-'}
                     </p>
                   </div>
                   <div>
-                    <span className="dark:text-gray-400 text-gray-600">Egresos:</span>
+                    <span className="dark:text-gray-400 text-gray-600">{t('egresos')}</span>
                     <p className="font-medium text-red-600">
                       {summary ? mask(summary.cash_out) : '-'}
                     </p>
                   </div>
                   {summary && summary.change_total > 0 && (
                     <div>
-                      <span className="dark:text-gray-400 text-gray-600">Vuelto entregado:</span>
+                      <span className="dark:text-gray-400 text-gray-600">{t('vueltoEntregado')}</span>
                       <p className="font-medium text-orange-600">
                         -{mask(summary.change_total)}
                       </p>
@@ -296,7 +314,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                   )}
                   {summary && summary.returns_total > 0 && (
                     <div>
-                      <span className="dark:text-gray-400 text-gray-600">Devoluciones:</span>
+                      <span className="dark:text-gray-400 text-gray-600">{t('devoluciones')}</span>
                       <p className="font-medium text-red-600">
                         -{mask(summary.returns_total)}
                       </p>
@@ -310,7 +328,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                 {summary?.income_by_method && Object.keys(summary.income_by_method).length > 0 && (
                   <div className="space-y-2">
                     <span className="text-xs font-medium flex items-center gap-1 dark:text-green-400 text-green-700">
-                      <ArrowUpCircle className="h-3.5 w-3.5" /> Ingresos por metodo de pago:
+                      <ArrowUpCircle className="h-3.5 w-3.5" /> {t('ingresosPorMetodo')}
                     </span>
                     <div className="space-y-1.5">
                       {Object.entries(summary.income_by_method).map(([method, amount]) => (
@@ -332,7 +350,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                 {summary?.sales_by_method && Object.keys(summary.sales_by_method).length > 0 && (
                   <div className="space-y-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
                     <span className="text-xs font-medium flex items-center gap-1 dark:text-emerald-400 text-emerald-700">
-                      <ShoppingCart className="h-3.5 w-3.5" /> Ventas por metodo de pago:
+                      <ShoppingCart className="h-3.5 w-3.5" /> {t('ventasPorMetodo')}
                     </span>
                     <div className="space-y-1.5">
                       {Object.entries(summary.sales_by_method).map(([method, amount]) => (
@@ -348,7 +366,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                       ))}
                       <div className="flex items-center justify-between text-sm pt-1 border-t dark:border-emerald-800 border-emerald-200">
                         <span className="font-medium dark:text-gray-300 text-gray-700">
-                          Total ventas:
+                          {t('totalVentas')}
                         </span>
                         <span className="font-bold text-emerald-600">
                           {mask(summary.sales_total ?? 0)}
@@ -362,10 +380,10 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                 {summary && summary.cash_receipts_total > 0 && (
                   <div className="space-y-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                     <span className="text-xs font-medium flex items-center gap-1 dark:text-blue-400 text-blue-700">
-                      <Receipt className="h-3.5 w-3.5" /> Recibos de Caja (Abonos a Cuentas por Cobrar):
+                      <Receipt className="h-3.5 w-3.5" /> {t('recibosCaja')}
                     </span>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="dark:text-gray-300 text-gray-700">Total recibido:</span>
+                      <span className="dark:text-gray-300 text-gray-700">{t('totalRecibido')}</span>
                       <span className="font-bold text-blue-600">{mask(summary.cash_receipts_total)}</span>
                     </div>
                     {summary.cash_receipts_by_method && Object.keys(summary.cash_receipts_by_method).length > 0 && (
@@ -388,7 +406,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                 {summary?.expense_by_method && Object.keys(summary.expense_by_method).length > 0 && (
                   <div className="space-y-2">
                     <span className="text-xs font-medium flex items-center gap-1 dark:text-red-400 text-red-700">
-                      <ArrowDownCircle className="h-3.5 w-3.5" /> Egresos por metodo de pago (compras):
+                      <ArrowDownCircle className="h-3.5 w-3.5" /> {t('egresosPorMetodo')}
                     </span>
                     <div className="space-y-1.5">
                       {Object.entries(summary.expense_by_method).map(([method, amount]) => (
@@ -404,7 +422,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                       ))}
                       <div className="flex items-center justify-between text-sm pt-1 border-t dark:border-gray-600">
                         <span className="font-medium dark:text-gray-300 text-gray-700">
-                          Total Pagos a Proveedores:
+                          {t('totalPagosProveedores')}
                         </span>
                         <span className="font-bold text-red-600">
                           -{mask(summary.purchases_total || 0)}
@@ -421,7 +439,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                     {!showExpectedBlind && (
                       <EyeOff className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                     )}
-                    Monto esperado:
+                    {t('montoEsperado')}
                   </span>
                   <span className="text-lg font-bold text-blue-600">
                     {showExpectedBlind
@@ -437,7 +455,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
               <Card className="dark:bg-gray-700 dark:border-gray-600 bg-gray-50 border-gray-200">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm dark:text-gray-200 text-gray-700">
-                    Movimientos de la Sesion ({movements.length})
+                    {t('movimientosSesion', { n: movements.length })}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -453,11 +471,11 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                           </span>
                           <div className="min-w-0">
                             <p className="font-medium dark:text-white text-gray-900 break-words whitespace-normal">
-                              {mov.label}
+                              {t(`tiposMovimiento.${CLAVE_TIPO_MOVIMIENTO[mov.type] ?? 'otro'}`)}
                               {mov.reference ? ` #${mov.reference}` : ''}
                             </p>
                             <p className="text-xs dark:text-gray-400 text-gray-500 break-words whitespace-normal">
-                              {mov.counterparty || 'Sin contraparte'}
+                              {mov.counterparty || t('sinContraparte')}
                             </p>
                           </div>
                         </div>
@@ -480,7 +498,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
             <Card className="dark:bg-gray-700 dark:border-gray-600 bg-gray-50 border-gray-200">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm dark:text-gray-200 text-gray-700">
-                  Arqueo por Método de Pago
+                  {t('arqueoPorMetodo')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -499,7 +517,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                             {METHOD_LABELS(method)}
                           </span>
                           <span className="text-xs dark:text-gray-400 text-gray-500">
-                            Esperado: <span className="font-medium">
+                            {t('esperado')} <span className="font-medium">
                               {showExpectedBlind ? formatCurrency(expected) : '****'}
                             </span>
                           </span>
@@ -507,7 +525,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                         <div className="grid grid-cols-2 gap-3 items-center">
                           <div>
                             <Label className="text-xs dark:text-gray-400 text-gray-500 mb-1 block">
-                              Contado real
+                              {t('contadoReal')}
                             </Label>
                             <Input
                               type="number"
@@ -520,7 +538,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                           </div>
                           <div className="text-right">
                             <Label className="text-xs dark:text-gray-400 text-gray-500 mb-1 block">
-                              Diferencia
+                              {t('diferencia')}
                             </Label>
                             {showExpectedBlind ? (
                               <span className={`text-sm font-bold ${
@@ -549,13 +567,13 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                 {/* Totales */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="dark:text-gray-300 text-gray-700">Total esperado (todos los métodos):</span>
+                    <span className="dark:text-gray-300 text-gray-700">{t('totalEsperado')}</span>
                     <span className="font-medium dark:text-white">
                       {showExpectedBlind ? formatCurrency(getTotalExpected()) : '****'}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="dark:text-gray-300 text-gray-700">Total contado (todos los métodos):</span>
+                    <span className="dark:text-gray-300 text-gray-700">{t('totalContado')}</span>
                     <span className="font-medium dark:text-white">{formatCurrency(getTotalCounted())}</span>
                   </div>
                   <div className="flex justify-between items-center p-3 rounded-lg dark:bg-gray-600/50 bg-gray-100">
@@ -563,7 +581,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                       {!showExpectedBlind && (
                         <EyeOff className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                       )}
-                      Diferencia total:
+                      {t('diferenciaTotal')}
                     </span>
                     {showExpectedBlind ? (
                       <span className={`text-lg font-bold ${
@@ -583,7 +601,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                   </div>
                   {showExpectedBlind && getTotalDifference() !== 0 && (
                     <p className="text-xs dark:text-gray-400 text-gray-500">
-                      {getTotalDifference() > 0 ? 'Sobrante' : 'Faltante'} en el arqueo total
+                      {getTotalDifference() > 0 ? t('sobranteArqueo') : t('faltanteArqueo')}
                     </p>
                   )}
                 </div>
@@ -591,12 +609,12 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                 {/* Notas */}
                 <div className="space-y-2">
                   <Label htmlFor="notes" className="dark:text-gray-200 text-gray-700">
-                    Observaciones del Cierre (Opcional)
+                    {t('observaciones')}
                   </Label>
                   <RichTextEditor
                     value={formData.notes || ''}
                     onChange={(html) => handleInputChange('notes', html)}
-                    placeholder="Observaciones del cierre, novedades, etc..."
+                    placeholder={t('observacionesPlaceholder')}
                     className="dark:bg-gray-600 dark:border-gray-500 dark:text-white bg-white border-gray-300"
                     minHeight={60}
                   />
@@ -608,8 +626,15 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
             {showExpectedBlind && Math.abs(getTotalDifference()) > 0 && (
               <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800">
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  <strong>⚠️ Atención:</strong> Hay una diferencia total de {formatCurrency(Math.abs(getTotalDifference()))} 
-                  {getTotalDifference() > 0 ? ' (sobrante)' : ' (faltante)'} en el arqueo.
+                  {getTotalDifference() > 0
+                    ? t.rich('advertenciaSobrante', {
+                        monto: formatCurrency(Math.abs(getTotalDifference())),
+                        strong: (partes) => <strong>{partes}</strong>,
+                      })
+                    : t.rich('advertenciaFaltante', {
+                        monto: formatCurrency(Math.abs(getTotalDifference())),
+                        strong: (partes) => <strong>{partes}</strong>,
+                      })}
                 </p>
               </div>
             )}
@@ -623,7 +648,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                 onClick={() => setOpen(false)}
                 disabled={loading}
               >
-                Cancelar
+                {t('cancelar')}
               </Button>
               <Button
                 type="submit"
@@ -633,10 +658,10 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                 {loading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                    Cerrando...
+                    {t('cerrando')}
                   </>
                 ) : (
-                  'Cerrar Caja'
+                  t('cerrarCaja')
                 )}
               </Button>
             </div>

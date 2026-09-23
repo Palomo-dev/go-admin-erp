@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ArrowUpCircle, ArrowDownCircle, Clock, User } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { ArrowUpCircle, ArrowDownCircle, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
+import { useTranslations } from 'next-intl';
+import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { CajasService } from './CajasService';
 import type { CashMovement } from './types';
 
@@ -17,15 +20,15 @@ interface MovimientosListProps {
 }
 
 export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListProps) {
-  const { formatDateTime } = useFormatDate();
+  const t = useTranslations('cajas.detalle');
+  const localeIntl = useLocaleIntl();
+  const { timezone } = useFormatDate();
+  const formatDateTime = (value: string | Date | null | undefined) =>
+    formatDateTimeInTz(value, timezone, { locale: localeIntl });
   const [movements, setMovements] = useState<CashMovement[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadMovements();
-  }, [sessionId, refreshTrigger]);
-
-  const loadMovements = async () => {
+  const loadMovements = useCallback(async () => {
     setLoading(true);
     try {
       const data = await CajasService.getSessionMovements(sessionId);
@@ -35,7 +38,11 @@ export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListPr
     } finally {
       setLoading(false);
     }
-  };
+  }, [sessionId]);
+
+  useEffect(() => {
+    loadMovements();
+  }, [loadMovements, refreshTrigger]);
 
   const getTotalByType = (type: 'in' | 'out') => {
     return movements
@@ -48,7 +55,7 @@ export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListPr
       <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
         <CardHeader>
           <CardTitle className="text-lg dark:text-white text-gray-900">
-            Movimientos de Caja
+            {t('movimientosLista.titulo')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -67,20 +74,20 @@ export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListPr
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg dark:text-white text-gray-900">
-            Movimientos de Caja
+            {t('movimientosLista.titulo')}
           </CardTitle>
           <div className="flex space-x-4 text-sm">
             <div className="text-center">
               <p className="text-green-600 font-medium">
                 {formatCurrency(getTotalByType('in'))}
               </p>
-              <p className="dark:text-gray-400 text-gray-500">Ingresos</p>
+              <p className="dark:text-gray-400 text-gray-500">{t('movimientosLista.ingresos')}</p>
             </div>
             <div className="text-center">
               <p className="text-red-600 font-medium">
                 {formatCurrency(getTotalByType('out'))}
               </p>
-              <p className="dark:text-gray-400 text-gray-500">Egresos</p>
+              <p className="dark:text-gray-400 text-gray-500">{t('movimientosLista.egresos')}</p>
             </div>
           </div>
         </div>
@@ -91,10 +98,10 @@ export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListPr
           <div className="text-center py-8">
             <Clock className="h-12 w-12 mx-auto text-gray-400 mb-4" />
             <p className="dark:text-gray-400 text-gray-500 mb-2">
-              No hay movimientos registrados
+              {t('movimientosLista.vacio')}
             </p>
             <p className="text-sm dark:text-gray-500 text-gray-400">
-              Los ingresos y egresos aparecerán aquí
+              {t('movimientosLista.vacioDescripcion')}
             </p>
           </div>
         ) : (

@@ -1,6 +1,7 @@
 'use client';
 
 import { use } from 'react';
+import { useTranslations } from 'next-intl';
 import { NuevoMovimientoPage } from '@/components/pos/cajas/movimientos';
 
 interface PageProps {
@@ -8,6 +9,7 @@ interface PageProps {
 }
 
 export default function NuevoMovimiento({ params }: PageProps) {
+  const t = useTranslations('cajas.detalle');
   const resolvedParams = use(params);
   const sessionUuid = resolvedParams.id;
 
@@ -15,7 +17,7 @@ export default function NuevoMovimiento({ params }: PageProps) {
   if (!uuidRegex.test(sessionUuid)) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 flex items-center justify-center">
-        <p className="text-red-500">UUID de sesión inválido</p>
+        <p className="text-red-500">{t('comun.uuidInvalido')}</p>
       </div>
     );
   }

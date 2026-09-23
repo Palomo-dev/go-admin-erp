@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { TriangleAlert } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Dialogo } from '@/components/kit/Dialogo';
 import { FormField } from '@/components/kit';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
 import { TreeSelect, type OpcionArbol } from '@/components/kit/TreePicker';
 import { iconoCategoria } from './iconoCategoria';
 import type { CategoriaMovible } from './MoverCategoriaDialog';
@@ -34,6 +36,8 @@ export function EliminarCategoriaDialog({
   categorias,
   onEliminar,
 }: EliminarCategoriaDialogProps) {
+  const t = useTranslations('categorias');
+  const n = useFormatoEntero();
   const [destino, setDestino] = useState<number | null | undefined>(undefined);
   const [eliminando, setEliminando] = useState(false);
 
@@ -55,29 +59,29 @@ export function EliminarCategoriaDialog({
   );
 
   const deshabilitadas = useMemo(
-    () => (categoria ? new Map([[categoria.id, 'Es la categoría que eliminas']]) : undefined),
-    [categoria],
+    () => (categoria ? new Map([[categoria.id, t('eliminar.esLaQueEliminas')]]) : undefined),
+    [categoria, t],
   );
 
   if (!categoria) return null;
 
   const padre = categoria.parent_id !== null ? categorias.find((c) => c.id === categoria.parent_id) : undefined;
   const conProductos = categoria.productos > 0;
-  const destinoSubcategorias = padre ? `«${padre.name}»` : 'la raíz';
+  const destinoSubcategorias = padre ? t('comun.entreComillas', { nombre: padre.name }) : t('eliminar.laRaiz');
 
   return (
     <Dialogo
       abierto={abierto}
       onAbiertoChange={onAbiertoChange}
-      titulo={`¿Eliminar «${categoria.name}»?`}
-      descripcion="Esta acción no se puede deshacer."
+      titulo={t('eliminar.titulo', { nombre: categoria.name })}
+      descripcion={t('eliminar.descripcion')}
       ancho={440}
       primario={{
-        etiqueta: conProductos ? 'Mover productos y eliminar' : 'Eliminar',
+        etiqueta: conProductos ? t('eliminar.moverYEliminar') : t('acciones.eliminar'),
         destructiva: true,
         cargando: eliminando,
         deshabilitada: conProductos && (destino === undefined || destino === null),
-        motivo: 'Elige a qué categoría pasan sus productos',
+        motivo: t('eliminar.eligeDestino'),
         onClick: async () => {
           setEliminando(true);
           try {
@@ -92,19 +96,19 @@ export function EliminarCategoriaDialog({
       <ul className="flex flex-col gap-1.5 text-sm leading-5 text-fg-secondary">
         <li>
           {conProductos
-            ? `Tiene ${categoria.productos} ${categoria.productos === 1 ? 'producto' : 'productos'}. No quedarán sin categoría: elige a cuál pasan.`
-            : 'No tiene productos asignados.'}
+            ? t('eliminar.tieneProductos', { count: categoria.productos, n: n(categoria.productos) })
+            : t('eliminar.sinProductos')}
         </li>
         {categoria.hijas > 0 && (
           <li>
-            {`Sus ${categoria.hijas} ${categoria.hijas === 1 ? 'subcategoría pasa' : 'subcategorías pasan'} a ${destinoSubcategorias}.`}
+            {t('eliminar.subcategoriasPasan', { count: categoria.hijas, n: n(categoria.hijas), destino: destinoSubcategorias })}
           </li>
         )}
-        <li>Las reglas de asignación y la marca de favorita del POS se borran con ella.</li>
+        <li>{t('eliminar.reglasSeBorran')}</li>
       </ul>
 
       {conProductos && (
-        <FormField etiqueta="Mover sus productos a" obligatorio>
+        <FormField etiqueta={t('eliminar.moverProductosA')} obligatorio>
           {(campo) => (
             <TreeSelect
               id={campo.id}
@@ -113,9 +117,9 @@ export function EliminarCategoriaDialog({
               valor={destino ?? undefined}
               onValorChange={(v) => setDestino(v)}
               deshabilitadas={deshabilitadas}
-              placeholder="Elegir categoría de destino"
-              etiquetaLista="Categoría de destino"
-              placeholderBusqueda="Buscar categoría"
+              placeholder={t('eliminar.elegirDestino')}
+              etiquetaLista={t('eliminar.categoriaDestino')}
+              placeholderBusqueda={t('comun.buscarCategoria')}
             />
           )}
         </FormField>
@@ -124,7 +128,7 @@ export function EliminarCategoriaDialog({
       {conProductos && (
         <p className="flex items-start gap-2 rounded-lg bg-warning-subtle px-3 py-2.5 text-[13px] leading-[18px] text-warning-text">
           <TriangleAlert aria-hidden="true" className="mt-px size-4 shrink-0" strokeWidth={1.5} />
-          Si prefieres conservarla, desactívala: deja de verse en el POS y en la tienda web y sus productos no cambian.
+          {t('eliminar.sugerenciaDesactivar')}
         </p>
       )}
     </Dialogo>

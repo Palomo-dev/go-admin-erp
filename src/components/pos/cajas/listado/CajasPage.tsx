@@ -19,6 +19,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Banknote, DollarSign, Eye, History, ListChecks, Lock, Plus, RefreshCw } from 'lucide-react';
 import {
   BranchBadgeActiva,
@@ -38,7 +39,8 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import { addPlainDays } from '@/lib/utils/dateCore';
-import { MOTIVO_NO_PUEDE_CERRAR, puedeCerrarCaja } from '@/lib/pos/cajas/reglasCierre';
+import { puedeCerrarCaja } from '@/lib/pos/cajas/reglasCierre';
+import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { AperturaCajaDialog } from '../AperturaCajaDialog';
 import { CierreCajaDialog } from '../CierreCajaDialog';
 import { MovimientosDialog } from '../MovimientosDialog';
@@ -46,11 +48,11 @@ import { CajasService } from '../CajasService';
 import { useBlindCloseMode } from '../useBlindCloseMode';
 import { usePermisosCaja } from '../usePermisosCaja';
 import type { CashSession, CashSummary } from '../types';
-import { dinero, dineroConSigno, haceCuanto, resumenCajasAbiertas, resumenDiferencias, type ResumenDiferencias } from '../historialCajas';
+import { dinero, dineroConSigno, resumenCajasAbiertas, resumenDiferencias, type ResumenDiferencias } from '../historialCajas';
 import { CajasAbiertasTab } from './CajasAbiertasTab';
 import { HistorialTab } from './HistorialTab';
 import { MiCajaTab } from './MiCajaTab';
-import { Oculto, esPestanaCajas, type PestanaCajas } from './comunes';
+import { Oculto, esPestanaCajas, useHaceCuanto, type PestanaCajas } from './comunes';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 export function CajasPage() {
@@ -64,6 +66,11 @@ export function CajasPage() {
   const { timezone, getToday, toInstant } = useFormatDate();
   const permisos = usePermisosCaja();
   const { showExpected, isBlindMode } = useBlindCloseMode();
+  const t = useTranslations('cajas.listado.pagina');
+  const tListado = useTranslations('cajas.listado');
+  const tError = useTranslations('cajas.errores');
+  const localeIntl = useLocaleIntl();
+  const haceCuanto = useHaceCuanto();
 
   // ── Pestaña (en la URL: «Ver historial» y el enlace compartido la conservan) ──
   const tabUrl = params?.get('tab');
@@ -105,11 +112,11 @@ export function CajasPage() {
       setModo(modoOrg);
     } catch (e) {
       console.error('Error loading active session:', e);
-      setErrorMiCaja(e instanceof Error ? e.message : 'Error desconocido');
+      setErrorMiCaja(e instanceof Error ? e.message : tListado('errorDesconocido'));
     } finally {
       setCargandoMiCaja(false);
     }
-  }, []);
+  }, [tListado]);
 
   const cargarAbiertas = useCallback(async () => {
     setErrorAbiertas(null);
@@ -127,10 +134,10 @@ export function CajasPage() {
       setResumenes(mapa);
     } catch (e) {
       console.error('Error loading active sessions:', e);
-      setErrorAbiertas(e instanceof Error ? e.message : 'Error desconocido');
+      setErrorAbiertas(e instanceof Error ? e.message : tListado('errorDesconocido'));
       setCargandoAbiertas(false);
     }
-  }, []);
+  }, [tListado]);
 
   const cargarDelDia = useCallback(async () => {
     try {
@@ -225,31 +232,31 @@ export function CajasPage() {
 
   // ── Cabecera ─────────────────────────────────────────────────────────────
   const nombreSucursal =
-    branchFilter === null ? 'tus sucursales' : branches.find((b) => b.id === (branchFilter ?? selectedBranchId))?.name ?? 'esta sucursal';
+    branchFilter === null ? t('tusSucursales') : branches.find((b) => b.id === (branchFilter ?? selectedBranchId))?.name ?? t('estaSucursal');
   const fechaTurno = formatDateInTz(miCaja?.opened_at ?? new Date(), timezone, {
-    locale: 'es-CO',
+    locale: localeIntl,
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
-  const subtitulo = `${organization?.name ?? 'Organización'} · Turno del ${fechaTurno}`;
+  const subtitulo = t('subtitulo', { organizacion: organization?.name ?? t('organizacion'), fecha: fechaTurno });
 
   const masAcciones: AccionFila[] = [
     {
       id: 'detalle',
-      etiqueta: 'Ver detalle de mi caja',
+      etiqueta: t('verDetalleMiCaja'),
       icono: Eye,
       onSelect: () => miCaja && router.push(`/app/pos/cajas/${miCaja.uuid}`),
       oculta: !miCaja || miCaja.id < 0,
     },
     {
       id: 'arqueo',
-      etiqueta: 'Nuevo arqueo',
+      etiqueta: t('nuevoArqueo'),
       icono: ListChecks,
       onSelect: () => miCaja && router.push(`/app/pos/cajas/${miCaja.uuid}/arqueos/nuevo`),
       oculta: !miCaja || miCaja.id < 0,
     },
-    { id: 'historial', etiqueta: 'Ver historial', icono: History, onSelect: () => setTab('historial'), separadorAntes: true },
+    { id: 'historial', etiqueta: tListado('verHistorial'), icono: History, onSelect: () => setTab('historial'), separadorAntes: true },
   ];
 
   const botonPrincipal = miCaja ? (
@@ -257,39 +264,39 @@ export function CajasPage() {
       className="h-10 gap-2"
       onClick={cerrarMiCaja}
       disabled={!puedeCerrarMiCaja}
-      title={puedeCerrarMiCaja ? 'Cerrar caja (F9)' : MOTIVO_NO_PUEDE_CERRAR}
+      title={puedeCerrarMiCaja ? t('cerrarCajaAtajo') : tError('sinPermiso')}
     >
       <Lock aria-hidden="true" className="size-4" strokeWidth={1.5} />
-      Cerrar caja
+      {tListado('cerrarCaja')}
     </Button>
   ) : (
-    <Button className="h-10 gap-2" onClick={abrirCaja} title="Abrir caja (F9)">
+    <Button className="h-10 gap-2" onClick={abrirCaja} title={t('abrirCajaAtajo')}>
       <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-      Abrir caja
+      {tListado('abrirCaja')}
     </Button>
   );
 
   const etiquetaEstado = miCaja
     ? modo === 'user'
-      ? 'Mi caja abierta'
-      : 'Caja de la sucursal abierta'
+      ? t('estado.miCajaAbierta')
+      : t('estado.cajaSucursalAbierta')
     : modo === 'user'
-      ? 'Sin caja abierta'
-      : 'Sucursal sin caja abierta';
+      ? t('estado.sinCajaAbierta')
+      : t('estado.sucursalSinCaja');
 
   const cargandoInicial = orgLoading || branchLoading || (cargandoMiCaja && !miCaja);
 
   const pestanas = (
     <SegmentedControl
-      etiqueta="Vista de cajas"
+      etiqueta={t('pestanas.etiqueta')}
       valor={tab}
       onValorChange={setTab}
       anchoCompleto
       className="lg:w-auto"
       opciones={[
-        { valor: 'mi-caja', etiqueta: 'Mi caja' },
-        { valor: 'abiertas', etiqueta: 'Cajas abiertas', contador: abiertas.length },
-        { valor: 'historial', etiqueta: 'Historial' },
+        { valor: 'mi-caja', etiqueta: t('pestanas.miCaja') },
+        { valor: 'abiertas', etiqueta: t('pestanas.abiertas'), contador: abiertas.length },
+        { valor: 'historial', etiqueta: t('pestanas.historial') },
       ]}
     />
   );
@@ -299,11 +306,11 @@ export function CajasPage() {
   return (
     <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
       <PageHeader
-        titulo="Cajas"
+        titulo={t('titulo')}
         icono={Banknote}
         subtitulo={subtitulo}
         cargando={refrescando}
-        migas={[{ etiqueta: 'Punto de venta', href: '/app/pos' }, { etiqueta: 'Cajas' }]}
+        migas={[{ etiqueta: t('migaPos'), href: '/app/pos' }, { etiqueta: t('titulo') }]}
         acciones={
           <>
             <Button
@@ -312,15 +319,15 @@ export function CajasPage() {
               className="size-10"
               onClick={() => void recargarTodo(false)}
               disabled={refrescando}
-              aria-label="Recargar"
-              title="Recargar"
+              aria-label={t('recargar')}
+              title={t('recargar')}
             >
               <RefreshCw aria-hidden="true" className={refrescando ? 'size-4 animate-spin' : 'size-4'} strokeWidth={1.5} />
             </Button>
             {miCaja && (
               <Button variant="outline" className="h-10 gap-2" onClick={() => setMovimientoAbierto(true)}>
                 <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                Registrar movimiento
+                {t('registrarMovimiento')}
               </Button>
             )}
             {botonPrincipal}
@@ -333,7 +340,7 @@ export function CajasPage() {
               type="button"
               onClick={miCaja ? cerrarMiCaja : abrirCaja}
               disabled={!!miCaja && !puedeCerrarMiCaja}
-              aria-label={miCaja ? 'Cerrar caja' : 'Abrir caja'}
+              aria-label={miCaja ? tListado('cerrarCaja') : tListado('abrirCaja')}
               className="flex size-10 items-center justify-center rounded-lg text-brand disabled:opacity-50"
             >
               {miCaja ? <Lock className="size-5" strokeWidth={1.5} /> : <Plus className="size-5" strokeWidth={1.5} />}
@@ -348,16 +355,16 @@ export function CajasPage() {
             </Badge>
             {miCaja?.pending_sync && (
               <Badge tono="advertencia" apariencia="suave" tamano="sm">
-                Pendiente de sincronizar
+                {t('pendienteSincronizar')}
               </Badge>
             )}
             {isBlindMode && (
               <Badge tono="informacion" apariencia="suave" tamano="sm">
-                Cierre ciego
+                {t('cierreCiego')}
               </Badge>
             )}
             <span className="text-xs text-fg-muted" aria-live="polite">
-              Actualizado {haceCuanto(actualizado)}
+              {t('actualizado', { hace: haceCuanto(actualizado) })}
             </span>
             <kbd className="hidden rounded border border-line bg-subtle px-1.5 font-mono text-[11px] leading-4 text-fg-secondary lg:inline">
               F9
@@ -367,51 +374,51 @@ export function CajasPage() {
       />
 
       {tab === 'abiertas' && (
-        <KpiStrip etiqueta="Resumen de cajas abiertas">
+        <KpiStrip etiqueta={t('kpi.etiqueta')}>
           <StatCard
-            etiqueta="Cajas abiertas"
+            etiqueta={t('pestanas.abiertas')}
             icono={DollarSign}
             cargando={cargandoAbiertas}
             valor={resumenAbiertas.cajas}
             detalle={
               resumenAbiertas.cajas === 0
-                ? 'ninguna sucursal'
-                : `en ${resumenAbiertas.sucursales} ${resumenAbiertas.sucursales === 1 ? 'sucursal' : 'sucursales'}`
+                ? t('kpi.ningunaSucursal')
+                : t('kpi.enSucursales', { count: resumenAbiertas.sucursales })
             }
           />
           <StatCard
-            etiqueta="Efectivo esperado"
+            etiqueta={t('kpi.efectivoEsperado')}
             icono={DollarSign}
             cargando={cargandoAbiertas}
             valor={showExpected ? dinero(resumenAbiertas.esperado, moneda) : <Oculto />}
-            detalle={showExpected ? `en ${resumenAbiertas.cajas} ${resumenAbiertas.cajas === 1 ? 'caja' : 'cajas'}` : 'cierre ciego'}
+            detalle={showExpected ? t('kpi.enCajas', { count: resumenAbiertas.cajas }) : tListado('cierreCiegoMinuscula')}
           />
           <StatCard
-            etiqueta="Diferencia del día"
+            etiqueta={t('kpi.diferenciaDia')}
             icono={DollarSign}
             cargando={!delDia && cargandoAbiertas}
             valor={showExpected ? dineroConSigno(delDia?.neta ?? 0, moneda) : <Oculto />}
             detalle={
               !showExpected
-                ? 'cierre ciego'
+                ? tListado('cierreCiegoMinuscula')
                 : !delDia?.sesiones
-                  ? 'sin cierres hoy'
+                  ? t('kpi.sinCierresHoy')
                   : delDia.cajasConFaltante
-                    ? `${delDia.cajasConFaltante} ${delDia.cajasConFaltante === 1 ? 'caja' : 'cajas'} con faltante`
-                    : `${delDia.sesiones} ${delDia.sesiones === 1 ? 'cierre' : 'cierres'} sin faltante`
+                    ? tListado('cajasConFaltante', { count: delDia.cajasConFaltante })
+                    : t('kpi.cierresSinFaltante', { count: delDia.sesiones })
             }
             tono={showExpected && delDia?.cajasConFaltante ? 'peligro' : 'neutro'}
             tendencia={showExpected && delDia?.cajasConFaltante ? 'baja' : undefined}
           />
           <StatCard
-            etiqueta="Movimientos del turno"
+            etiqueta={t('kpi.movimientosTurno')}
             icono={DollarSign}
             cargando={cargandoAbiertas}
             valor={resumenAbiertas.movimientos}
             detalle={
               resumenAbiertas.cajas === 0
-                ? 'sin turno abierto'
-                : `${resumenAbiertas.ingresos} ${resumenAbiertas.ingresos === 1 ? 'ingreso' : 'ingresos'} · ${resumenAbiertas.egresos} ${resumenAbiertas.egresos === 1 ? 'egreso' : 'egresos'}`
+                ? t('kpi.sinTurnoAbierto')
+                : t('kpi.ingresosEgresos', { ingresos: resumenAbiertas.ingresos, egresos: resumenAbiertas.egresos })
             }
           />
         </KpiStrip>
@@ -429,7 +436,7 @@ export function CajasPage() {
             <div className="rounded-xl border border-line bg-surface">
               <EmptyState
                 variante="error"
-                titulo="No pudimos cargar tu caja"
+                titulo={t('errorMiCaja')}
                 descripcion={errorMiCaja}
                 onReintentar={() => void recargarTodo(false)}
               />

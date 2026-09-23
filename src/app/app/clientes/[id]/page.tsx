@@ -9,19 +9,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { HandCoins, Pencil, User, Building2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase/config';
 import { EmptyState, PageHeader, RowActionsMenu, StatusBadge } from '@/components/kit';
-import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import { documentoCliente } from '@/lib/services/clientesListadoService';
-import {
-  construirAccionesCliente,
-  MOTIVO_REGISTRAR_PAGO,
-} from '@/components/clientes/listado/accionesCliente';
+import { construirAccionesCliente } from '@/components/clientes/listado/accionesCliente';
 import { useOperacionesClientes } from '@/components/clientes/listado/useOperacionesClientes';
 import { EliminarClientesDialog } from '@/components/clientes/listado/EliminarClientesDialog';
 
@@ -34,6 +30,7 @@ import TareasSidebar from '@/components/clientes/id/TareasSidebar';
 import InfoTab from '@/components/clientes/id/InfoTab';
 import OportunidadesTab from '@/components/clientes/id/OportunidadesTab';
 import { CompanyContactsManager } from '@/components/clientes/CompanyContactsManager';
+import { mensajeError, useFechasFicha } from '@/components/clientes/id/useFechasFicha';
 
 interface Cliente {
   id: string;
@@ -59,6 +56,9 @@ interface Cliente {
   status?: string | null;
 }
 
+/** Por qué no cargó la ficha: un código que se traduce o el mensaje de Supabase. */
+type ErrorFicha = { codigo: 'sinId' | 'noExiste' | 'carga' } | { mensaje: string };
+
 const PESTANA =
   'min-w-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm text-fg-secondary data-[state=active]:bg-surface data-[state=active]:text-fg data-[state=active]:shadow-sm';
 
@@ -66,10 +66,12 @@ export default function PerfilCliente() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
-  const { timezone } = useFormatDate();
+  const t = useTranslations('clientes.ficha');
+  const tListado = useTranslations('clientes.listado');
+  const { instante } = useFechasFicha();
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorFicha | null>(null);
   const [recarga, setRecarga] = useState(0);
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
 
@@ -81,15 +83,17 @@ export default function PerfilCliente() {
     let cancelado = false;
     const cargar = async () => {
       if (!id) {
-        setError('ID de cliente no encontrado');
+        setError({ codigo: 'sinId' });
         setLoading(false);
         return;
       }
       setError(null);
       const { data, error: err } = await supabase.from('customers').select('*').eq('id', id).maybeSingle();
       if (cancelado) return;
-      if (err) setError(err.message || 'Error al cargar datos del cliente');
-      else if (!data) setError('No existe o no pertenece a tu organización.');
+      if (err) {
+        const mensaje = mensajeError(err);
+        setError(mensaje ? { mensaje } : { codigo: 'carga' });
+      } else if (!data) setError({ codigo: 'noExiste' });
       else setCliente(data as Cliente);
       setLoading(false);
     };
@@ -125,34 +129,43 @@ export default function PerfilCliente() {
     return (
       <div className="flex min-h-full flex-col gap-4 bg-canvas p-4 lg:p-6">
         <PageHeader
-          titulo="Cliente no encontrado"
+          titulo={t('pagina.noEncontrado')}
           variante="detail"
           icono={User}
-          migas={[{ etiqueta: 'Inicio', href: '/app/inicio' }, { etiqueta: 'Clientes', href: '/app/clientes' }]}
-          movil={{ titulo: 'Cliente' }}
+          migas={[
+            { etiqueta: t('pagina.migas.inicio'), href: '/app/inicio' },
+            { etiqueta: t('pagina.migas.clientes'), href: '/app/clientes' },
+          ]}
+          movil={{ titulo: t('pagina.movilTitulo') }}
           volverA="/app/clientes"
         />
         <div className="rounded-xl border border-line bg-surface">
           <EmptyState
             variante="error"
-            titulo="Cliente no encontrado"
-            descripcion={error || 'No se pudo encontrar el cliente solicitado. Si tienes una sucursal seleccionada, prueba con «Todas».'}
-            accion={{ etiqueta: 'Volver a clientes', href: '/app/clientes' }}
+            titulo={t('pagina.noEncontrado')}
+            descripcion={
+              !error
+                ? t('pagina.noEncontradoDescripcion')
+                : 'mensaje' in error
+                  ? error.mensaje
+                  : t(`pagina.errores.${error.codigo}`)
+            }
+            accion={{ etiqueta: t('pagina.volverClientes'), href: '/app/clientes' }}
           />
         </div>
       </div>
     );
   }
 
-  const nombre = cliente.full_name || `${cliente.first_name || ''} ${cliente.last_name || ''}`.trim() || 'Sin nombre';
+  const nombre = cliente.full_name || `${cliente.first_name || ''} ${cliente.last_name || ''}`.trim() || t('comun.sinNombre');
   const esEmpresa = cliente.customer_type === 'company';
   const documento = documentoCliente({
     identification_type: cliente.identification_type ?? null,
     identification_number: cliente.identification_number ?? null,
     dv: cliente.dv ?? null,
   });
-  const desde = formatDateInTz(cliente.created_at, timezone, { locale: 'es-CO', day: 'numeric', month: 'short', year: 'numeric' });
-  const subtitulo = [desde && `Cliente desde ${desde}`, documento].filter(Boolean).join(' · ');
+  const desde = instante(cliente.created_at, { day: 'numeric', month: 'short', year: 'numeric' });
+  const subtitulo = [desde && t('pagina.clienteDesde', { fecha: desde }), documento].filter(Boolean).join(' · ');
 
   const acciones = construirAccionesCliente(
     { id: cliente.id, nombre, phone: cliente.phone, status: cliente.status ?? 'active' },
@@ -162,6 +175,7 @@ export default function PerfilCliente() {
       onEliminar: () => setEliminarAbierto(true),
       onCopiarId: (c) => void copiarId(c.id),
       omitirVer: true,
+      t: tListado,
     },
   );
 
@@ -174,8 +188,8 @@ export default function PerfilCliente() {
         icono={esEmpresa ? Building2 : User}
         badge={cliente.status === 'inactive' ? <StatusBadge estado="Inactivo" tamano="md" /> : undefined}
         migas={[
-          { etiqueta: 'Inicio', href: '/app/inicio' },
-          { etiqueta: 'Clientes', href: '/app/clientes' },
+          { etiqueta: t('pagina.migas.inicio'), href: '/app/inicio' },
+          { etiqueta: t('pagina.migas.clientes'), href: '/app/clientes' },
           { etiqueta: nombre },
         ]}
         volverA="/app/clientes"
@@ -184,15 +198,15 @@ export default function PerfilCliente() {
             <Button asChild variant="outline" className="h-10">
               <Link href={`/app/clientes/${cliente.id}/editar`}>
                 <Pencil aria-hidden="true" className="mr-2 size-4" />
-                Editar
+                {t('pagina.editar')}
               </Link>
             </Button>
-            <Button className="h-10" disabled title={MOTIVO_REGISTRAR_PAGO} aria-describedby="motivo-registrar-pago">
+            <Button className="h-10" disabled title={tListado('motivos.registrarPago')} aria-describedby="motivo-registrar-pago">
               <HandCoins aria-hidden="true" className="mr-2 size-4" />
-              Registrar pago
+              {t('pagina.registrarPago')}
             </Button>
             <span id="motivo-registrar-pago" className="sr-only">
-              {MOTIVO_REGISTRAR_PAGO}
+              {tListado('motivos.registrarPago')}
             </span>
             <RowActionsMenu acciones={acciones} orientacion="horizontal" tamano="md" titulo={nombre} />
           </>
@@ -210,14 +224,14 @@ export default function PerfilCliente() {
         <div className="col-span-1 min-w-0 lg:col-span-2">
           <Tabs defaultValue="resumen" className="w-full">
             <TabsList className="mb-6 flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-lg border border-line bg-subtle p-1">
-              <TabsTrigger value="resumen" className={PESTANA}>Resumen</TabsTrigger>
-              <TabsTrigger value="info" className={PESTANA}>Información</TabsTrigger>
-              <TabsTrigger value="oportunidades" className={PESTANA}>Oportunidades</TabsTrigger>
-              <TabsTrigger value="timeline" className={PESTANA}>Actividad</TabsTrigger>
-              <TabsTrigger value="cuentas" className={PESTANA}>Cuentas por cobrar</TabsTrigger>
-              <TabsTrigger value="notas" className={PESTANA}>Notas y archivos</TabsTrigger>
+              <TabsTrigger value="resumen" className={PESTANA}>{t('pestanas.resumen')}</TabsTrigger>
+              <TabsTrigger value="info" className={PESTANA}>{t('pestanas.info')}</TabsTrigger>
+              <TabsTrigger value="oportunidades" className={PESTANA}>{t('pestanas.oportunidades')}</TabsTrigger>
+              <TabsTrigger value="timeline" className={PESTANA}>{t('pestanas.actividad')}</TabsTrigger>
+              <TabsTrigger value="cuentas" className={PESTANA}>{t('pestanas.cuentas')}</TabsTrigger>
+              <TabsTrigger value="notas" className={PESTANA}>{t('pestanas.notas')}</TabsTrigger>
               {esEmpresa && (
-                <TabsTrigger value="contactos" className={PESTANA}>Contactos</TabsTrigger>
+                <TabsTrigger value="contactos" className={PESTANA}>{t('pestanas.contactos')}</TabsTrigger>
               )}
             </TabsList>
 

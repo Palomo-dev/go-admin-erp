@@ -145,17 +145,43 @@ export function resumenCajasAbiertas(
   return r;
 }
 
-/** «hace 3 h 20 min», «hace 5 min», «hace un momento». */
-export function haceCuanto(desde: string | Date, ahora: Date = new Date()): string {
+/**
+ * Tiempo transcurrido como clave + valores, para traducirlo en la UI con
+ * `cajas.listado.hace.<clave>` (ver `useHaceCuanto` en `listado/comunes.tsx`).
+ */
+export type PartesHaceCuanto =
+  | { clave: 'momento'; valores: Record<string, never> }
+  | { clave: 'minutos'; valores: { min: number } }
+  | { clave: 'horas'; valores: { h: number } }
+  | { clave: 'horasMinutos'; valores: { h: number; min: number } }
+  | { clave: 'dias'; valores: { count: number } };
+
+export function partesHaceCuanto(desde: string | Date, ahora: Date = new Date()): PartesHaceCuanto {
   const inicio = typeof desde === 'string' ? new Date(desde) : desde;
   const minutos = Math.max(0, Math.floor((ahora.getTime() - inicio.getTime()) / 60_000));
-  if (minutos < 1) return 'hace un momento';
-  if (minutos < 60) return `hace ${minutos} min`;
+  if (minutos < 1) return { clave: 'momento', valores: {} };
+  if (minutos < 60) return { clave: 'minutos', valores: { min: minutos } };
   const horas = Math.floor(minutos / 60);
   const resto = minutos % 60;
-  if (horas < 24) return resto ? `hace ${horas} h ${resto} min` : `hace ${horas} h`;
-  const dias = Math.floor(horas / 24);
-  return dias === 1 ? 'hace 1 día' : `hace ${dias} días`;
+  if (horas < 24) return resto ? { clave: 'horasMinutos', valores: { h: horas, min: resto } } : { clave: 'horas', valores: { h: horas } };
+  return { clave: 'dias', valores: { count: Math.floor(horas / 24) } };
+}
+
+/** «hace 3 h 20 min», «hace 5 min», «hace un momento» (español; la UI traduce `partesHaceCuanto`). */
+export function haceCuanto(desde: string | Date, ahora: Date = new Date()): string {
+  const p = partesHaceCuanto(desde, ahora);
+  switch (p.clave) {
+    case 'momento':
+      return 'hace un momento';
+    case 'minutos':
+      return `hace ${p.valores.min} min`;
+    case 'horas':
+      return `hace ${p.valores.h} h`;
+    case 'horasMinutos':
+      return `hace ${p.valores.h} h ${p.valores.min} min`;
+    case 'dias':
+      return p.valores.count === 1 ? 'hace 1 día' : `hace ${p.valores.count} días`;
+  }
 }
 
 /** Valor de celda CSV: comillas si hace falta y sin fórmulas que Excel ejecute. */
@@ -178,13 +204,31 @@ export interface FilaCsvHistorial {
   diferencia: number | null;
 }
 
+/** Textos del CSV en el idioma activo (la UI los pasa traducidos; por defecto, español). */
+export interface TextosCsvHistorial {
+  /** Las 10 columnas, en el orden de `FilaCsvHistorial` + «Resultado». */
+  cabecera: readonly string[];
+  oculto: string;
+  resultados: Record<ResultadoCierre, string>;
+}
+
+const TEXTOS_CSV_ES: TextosCsvHistorial = {
+  cabecera: ['Caja', 'Apertura', 'Cierre', 'Cerró', 'Cajero', 'Sucursal', 'Inicial', 'Final', 'Diferencia', 'Resultado'],
+  oculto: 'Oculto',
+  resultados: ETIQUETA_RESULTADO,
+};
+
 /**
  * CSV del historial (separador `;`, como lo abre Excel en es-CO) con BOM para
  * que las tildes lleguen bien. `ocultarImportes` = cierre ciego para quien no
  * puede ver el esperado: final y diferencia no se exportan.
  */
-export function historialACsv(filas: readonly FilaCsvHistorial[], ocultarImportes: boolean): string {
-  const cabecera = ['Caja', 'Apertura', 'Cierre', 'Cerró', 'Cajero', 'Sucursal', 'Inicial', 'Final', 'Diferencia', 'Resultado'];
+export function historialACsv(
+  filas: readonly FilaCsvHistorial[],
+  ocultarImportes: boolean,
+  textos: TextosCsvHistorial = TEXTOS_CSV_ES,
+): string {
+  const cabecera = textos.cabecera.map(celdaCsv);
   const lineas = filas.map((f) => {
     const resultado = resultadoDiferencia(f.diferencia);
     return [
@@ -195,9 +239,9 @@ export function historialACsv(filas: readonly FilaCsvHistorial[], ocultarImporte
       f.cajero,
       f.sucursal,
       f.inicial,
-      ocultarImportes ? 'Oculto' : f.final ?? '',
-      ocultarImportes ? 'Oculto' : f.diferencia ?? '',
-      ocultarImportes || !resultado ? '' : ETIQUETA_RESULTADO[resultado],
+      ocultarImportes ? textos.oculto : f.final ?? '',
+      ocultarImportes ? textos.oculto : f.diferencia ?? '',
+      ocultarImportes || !resultado ? '' : textos.resultados[resultado],
     ]
       .map(celdaCsv)
       .join(';');

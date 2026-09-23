@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useSession } from '@/lib/hooks/useSession';
 import { getUserOrganization } from '@/lib/supabase/config';
 import { ClientForm } from '@/components/clientes/new/ClientForm';
@@ -11,7 +12,9 @@ export default function NewClientPage() {
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [branchId, setBranchId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  // Error de carga: clave traducible o texto que devuelve getUserOrganization.
+  const [error, setError] = useState<{ clave?: 'sinSesion' | 'sinOrganizacion' | 'carga'; texto?: string } | null>(null);
+  const t = useTranslations('clientes.formulario');
   
   const { session, loading: sessionLoading } = useSession();
   
@@ -20,7 +23,7 @@ export default function NewClientPage() {
       if (sessionLoading) return;
       
       if (!session || !session.user?.id) {
-        setError('No hay sesión activa. Por favor inicie sesión para continuar.');
+        setError({ clave: 'sinSesion' });
         setIsLoading(false);
         return;
       }
@@ -29,13 +32,13 @@ export default function NewClientPage() {
         const userData = await getUserOrganization(session.user.id);
         
         if (userData.error) {
-          setError(userData.error);
+          setError({ texto: userData.error });
           setIsLoading(false);
           return;
         }
         
         if (!userData.organization?.id) {
-          setError('No se encontró una organización asociada a tu cuenta.');
+          setError({ clave: 'sinOrganizacion' });
           setIsLoading(false);
           return;
         }
@@ -56,7 +59,7 @@ export default function NewClientPage() {
         setIsLoading(false);
       } catch (err) {
         console.error('Error cargando datos de organización:', err);
-        setError('Error al cargar la información de tu organización');
+        setError({ clave: 'carga' });
         setIsLoading(false);
       }
     }
@@ -78,20 +81,24 @@ export default function NewClientPage() {
   return (
     <div className="flex min-h-full flex-col gap-4 bg-canvas p-4 lg:gap-6 lg:p-6">
       <PageHeader
-        titulo="Nuevo cliente"
-        subtitulo="Completa la información para registrar un nuevo cliente"
+        titulo={t('paginas.nuevo.titulo')}
+        subtitulo={t('paginas.nuevo.subtitulo')}
         variante="form"
         volverA={'/app/clientes'}
-        migas={[{ etiqueta: 'Inicio', href: '/app/inicio' }, { etiqueta: 'Clientes', href: '/app/clientes' }, { etiqueta: 'Nuevo cliente' }]}
+        migas={[
+          { etiqueta: t('paginas.migaInicio'), href: '/app/inicio' },
+          { etiqueta: t('paginas.migaClientes'), href: '/app/clientes' },
+          { etiqueta: t('paginas.nuevo.titulo') },
+        ]}
       />
 
       {error ? (
         <div className="rounded-xl border border-line bg-surface">
           <EmptyState
             variante="error"
-            titulo="No pudimos cargar tu organización"
-            descripcion={error}
-            accion={{ etiqueta: 'Volver a clientes', href: '/app/clientes' }}
+            titulo={t('paginas.errorOrganizacion.titulo')}
+            descripcion={error.clave ? t(`paginas.errores.${error.clave}`) : error.texto}
+            accion={{ etiqueta: t('paginas.errorOrganizacion.volver'), href: '/app/clientes' }}
           />
         </div>
       ) : organizationId ? (

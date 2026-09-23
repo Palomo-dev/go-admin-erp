@@ -34,6 +34,10 @@ type Idioma = (typeof IDIOMAS)[number];
 /** Namespace → carpetas cuyo código lo usa. */
 const MODULOS: Record<string, string[]> = {
   kit: ['src/components/kit'],
+  proveedores: ['src/components/inventario/proveedores', 'src/app/app/inventario/proveedores'],
+  categorias: ['src/components/inventario/categorias', 'src/app/app/inventario/categorias'],
+  clientes: ['src/components/clientes', 'src/app/app/clientes'],
+  cajas: ['src/components/pos/cajas', 'src/app/app/pos/cajas'],
 };
 
 type Arbol = { [clave: string]: string | Arbol };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { DollarSign, TrendingUp, TrendingDown, Wallet, RotateCcw, Coins, UserCircle, Store, Globe, EyeOff, Receipt, ArrowDownCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,10 +8,13 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
+import { useTranslations } from 'next-intl';
+import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { CajasService } from './CajasService';
 import { useBlindCloseMode } from './useBlindCloseMode';
 import type { CashSession, CashSummary } from './types';
-import { getPaymentMethodLabel } from './paymentMethodLabels';
+import { useEtiquetaMetodoPago } from './paymentMethodLabels';
 
 interface CashSummaryCardProps {
   session: CashSession;
@@ -19,16 +22,17 @@ interface CashSummaryCardProps {
 }
 
 export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProps) {
-  const { formatDateTime } = useFormatDate();
+  const t = useTranslations('cajas.detalle');
+  const localeIntl = useLocaleIntl();
+  const { timezone } = useFormatDate();
+  const formatDateTime = (value: string | Date | null | undefined) =>
+    formatDateTimeInTz(value, timezone, { locale: localeIntl });
+  const getPaymentMethodLabel = useEtiquetaMetodoPago();
   const [summary, setSummary] = useState<CashSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const { showExpected } = useBlindCloseMode();
 
-  useEffect(() => {
-    loadSummary();
-  }, [session.id, refreshTrigger]);
-
-  const loadSummary = async () => {
+  const loadSummary = useCallback(async () => {
     setLoading(true);
     try {
       const data = await CajasService.getCashSummary(session.id);
@@ -38,14 +42,18 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
     } finally {
       setLoading(false);
     }
-  };
+  }, [session.id]);
+
+  useEffect(() => {
+    loadSummary();
+  }, [loadSummary, refreshTrigger]);
 
   if (loading) {
     return (
       <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
         <CardHeader>
           <CardTitle className="text-lg dark:text-white text-gray-900">
-            Resumen de Caja
+            {t('resumenCaja.titulo')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 py-6">
@@ -62,16 +70,16 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg dark:text-white text-gray-900">
-            Resumen de Caja
+            {t('resumenCaja.titulo')}
           </CardTitle>
-          <Badge 
+          <Badge
             variant={session.status === 'open' ? "default" : "secondary"}
             className={session.status === 'open' 
               ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300" 
               : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
             }
           >
-            {session.status === 'open' ? 'Caja Abierta' : 'Caja Cerrada'}
+            {session.status === 'open' ? t('resumenCaja.abierta') : t('resumenCaja.cerrada')}
           </Badge>
         </div>
       </CardHeader>
@@ -80,14 +88,14 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
         {/* Información de la sesión */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="dark:text-gray-400 text-gray-600">Abierta:</span>
+            <span className="dark:text-gray-400 text-gray-600">{t('resumenCaja.abiertaEl')}</span>
             <p className="font-medium dark:text-white text-gray-900">
               {formatDateTime(session.opened_at)}
             </p>
           </div>
           {session.closed_at && (
             <div>
-              <span className="dark:text-gray-400 text-gray-600">Cerrada:</span>
+              <span className="dark:text-gray-400 text-gray-600">{t('resumenCaja.cerradaEl')}</span>
               <p className="font-medium dark:text-white text-gray-900">
                 {formatDateTime(session.closed_at)}
               </p>
@@ -100,9 +108,9 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
           <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
             <UserCircle className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
             <div className="min-w-0">
-              <p className="text-xs dark:text-gray-400 text-gray-500">Cajero</p>
+              <p className="text-xs dark:text-gray-400 text-gray-500">{t('resumenCaja.cajero')}</p>
               <p className="text-sm font-medium dark:text-white text-gray-900 break-words whitespace-normal">
-                {session.opened_by_name || 'Usuario'}
+                {session.opened_by_name || t('resumenCaja.usuario')}
               </p>
             </div>
           </div>
@@ -113,9 +121,9 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
               <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
             )}
             <div className="min-w-0">
-              <p className="text-xs dark:text-gray-400 text-gray-500">Sucursal</p>
+              <p className="text-xs dark:text-gray-400 text-gray-500">{t('resumenCaja.sucursal')}</p>
               <p className="text-sm font-medium dark:text-white text-gray-900 break-words whitespace-normal">
-                {session.branch_name || (session.branch_id ? `#${session.branch_id}` : 'Todas las sucursales')}
+                {session.branch_name || (session.branch_id ? `#${session.branch_id}` : t('resumenCaja.todasSucursales'))}
               </p>
             </div>
           </div>
@@ -133,7 +141,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                   <Wallet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm dark:text-gray-300 text-gray-600">Inicial</p>
+                  <p className="text-sm dark:text-gray-300 text-gray-600">{t('resumenCaja.inicial')}</p>
                   <p className="font-bold text-blue-600 dark:text-blue-400">
                     {formatCurrency(summary.initial_amount)}
                   </p>
@@ -146,7 +154,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                   <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="text-sm dark:text-gray-300 text-gray-600">Ventas en efectivo</p>
+                  <p className="text-sm dark:text-gray-300 text-gray-600">{t('resumenCaja.ventasEfectivo')}</p>
                   <p className="font-bold text-green-600 dark:text-green-400">
                     {formatCurrency(summary.sales_cash)}
                   </p>
@@ -159,7 +167,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                   <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-sm dark:text-gray-300 text-gray-600">Ventas totales</p>
+                  <p className="text-sm dark:text-gray-300 text-gray-600">{t('resumenCaja.ventasTotales')}</p>
                   <p className="font-bold text-emerald-600 dark:text-emerald-400">
                     {formatCurrency(summary.sales_total ?? summary.sales_cash)}
                   </p>
@@ -172,7 +180,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                   <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="text-sm dark:text-gray-300 text-gray-600">Ingresos</p>
+                  <p className="text-sm dark:text-gray-300 text-gray-600">{t('resumenCaja.ingresos')}</p>
                   <p className="font-bold text-green-600 dark:text-green-400">
                     {formatCurrency(summary.cash_in)}
                   </p>
@@ -185,7 +193,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                   <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
-                  <p className="text-sm dark:text-gray-300 text-gray-600">Egresos</p>
+                  <p className="text-sm dark:text-gray-300 text-gray-600">{t('resumenCaja.egresos')}</p>
                   <p className="font-bold text-red-600 dark:text-red-400">
                     {formatCurrency(summary.cash_out)}
                   </p>
@@ -199,7 +207,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                     <Coins className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                   </div>
                   <div>
-                    <p className="text-sm dark:text-gray-300 text-gray-600">Vuelto</p>
+                    <p className="text-sm dark:text-gray-300 text-gray-600">{t('resumenCaja.vuelto')}</p>
                     <p className="font-bold text-orange-600 dark:text-orange-400">
                       -{formatCurrency(summary.change_total)}
                     </p>
@@ -214,7 +222,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                     <Receipt className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-sm dark:text-gray-300 text-gray-600">Recibos de Caja</p>
+                    <p className="text-sm dark:text-gray-300 text-gray-600">{t('resumenCaja.recibosCaja')}</p>
                     <p className="font-bold text-blue-600 dark:text-blue-400">
                       {formatCurrency(summary.cash_receipts_total)}
                     </p>
@@ -229,7 +237,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                     <ArrowDownCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
                   </div>
                   <div>
-                    <p className="text-sm dark:text-gray-300 text-gray-600">Pagos a Proveedores</p>
+                    <p className="text-sm dark:text-gray-300 text-gray-600">{t('resumenCaja.pagosProveedores')}</p>
                     <p className="font-bold text-red-600 dark:text-red-400">
                       -{formatCurrency(summary.purchases_total)}
                     </p>
@@ -244,7 +252,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                     <RotateCcw className="h-4 w-4 text-red-600 dark:text-red-400" />
                   </div>
                   <div>
-                    <p className="text-sm dark:text-gray-300 text-gray-600">Devoluciones</p>
+                    <p className="text-sm dark:text-gray-300 text-gray-600">{t('resumenCaja.devoluciones')}</p>
                     <p className="font-bold text-red-600 dark:text-red-400">
                       -{formatCurrency(summary.returns_total)}
                     </p>
@@ -259,7 +267,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                 <Separator className="dark:bg-gray-700 bg-gray-200" />
                 <div>
                   <p className="text-sm font-medium dark:text-gray-200 text-gray-700 mb-2">
-                    Pagos por método:
+                    {t('resumenCaja.pagosPorMetodo')}
                   </p>
                   <div className="space-y-1.5">
                     {Object.entries(summary.income_by_method).map(([method, amount]) => {
@@ -285,7 +293,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                 <Separator className="dark:bg-gray-700 bg-gray-200" />
                 <div>
                   <p className="text-sm font-medium dark:text-gray-200 text-gray-700 mb-2">
-                    Ventas por método:
+                    {t('resumenCaja.ventasPorMetodo')}
                   </p>
                   <div className="space-y-1.5">
                     {Object.entries(summary.sales_by_method).map(([method, amount]) => {
@@ -301,7 +309,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                       );
                     })}
                     <div className="flex justify-between items-center text-sm pt-1.5 border-t dark:border-gray-700 border-gray-200">
-                      <span className="font-medium dark:text-gray-200 text-gray-700">Total ventas:</span>
+                      <span className="font-medium dark:text-gray-200 text-gray-700">{t('resumenCaja.totalVentas')}</span>
                       <span className="font-bold text-emerald-600 dark:text-emerald-400">
                         {formatCurrency(summary.sales_total ?? 0)}
                       </span>
@@ -317,7 +325,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                 <Separator className="dark:bg-gray-700 bg-gray-200" />
                 <div>
                   <p className="text-sm font-medium dark:text-gray-200 text-gray-700 mb-2">
-                    Pagos a proveedores por método:
+                    {t('resumenCaja.pagosProveedoresPorMetodo')}
                   </p>
                   <div className="space-y-1.5">
                     {Object.entries(summary.purchases_by_method).map(([method, amount]) => (
@@ -342,7 +350,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
               <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium dark:text-gray-200 text-gray-700">
-                    Total Esperado:
+                    {t('resumenCaja.totalEsperado')}
                   </span>
                   <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
                     {formatCurrency(summary.expected_amount)}
@@ -353,7 +361,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
               <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center gap-2">
                 <EyeOff className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
                 <p className="text-sm text-purple-700 dark:text-purple-400">
-                  Cierre ciego activo. Los montos esperados y diferencias son visibles solo para administradores.
+                  {t('comun.cierreCiegoActivo')}
                 </p>
               </div>
             )}
@@ -366,7 +374,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium dark:text-gray-200 text-gray-700">
-                      Monto Contado:
+                      {t('resumenCaja.montoContado')}
                     </span>
                     <span className="font-bold dark:text-white text-gray-900">
                       {formatCurrency(summary.counted_amount)}
@@ -375,7 +383,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                   
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium dark:text-gray-200 text-gray-700">
-                      Diferencia:
+                      {t('resumenCaja.diferencia')}
                     </span>
                     <span className={`font-bold ${
                       summary.difference === 0 
@@ -394,7 +402,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                         ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
                         : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300'
                     }`}>
-                      {summary.difference! > 0 ? '📈 Sobrante' : '📉 Faltante'} de efectivo
+                      {summary.difference! > 0 ? t('resumenCaja.sobrante') : t('resumenCaja.faltante')}
                     </div>
                   )}
                 </div>
@@ -407,7 +415,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                 <Separator className="dark:bg-gray-700 bg-gray-200" />
                 <div>
                   <span className="text-sm font-medium dark:text-gray-200 text-gray-700 block mb-2">
-                    Observaciones:
+                    {t('resumenCaja.observaciones')}
                   </span>
                   <p className="text-sm dark:text-gray-400 text-gray-600 bg-gray-50 dark:bg-gray-700 p-3 rounded">
                     {session.notes}

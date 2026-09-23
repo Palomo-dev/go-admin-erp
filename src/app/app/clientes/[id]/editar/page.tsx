@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,9 @@ export default function EditarClientePage() {
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [branchId, setBranchId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  // Error de carga: clave traducible o texto que devuelve getUserOrganization.
+  const [error, setError] = useState<{ clave?: 'sinSesion' | 'sinOrganizacion' | 'carga'; texto?: string } | null>(null);
+  const t = useTranslations('clientes.formulario');
   
   const { session, loading: sessionLoading } = useSession();
   
@@ -26,7 +29,7 @@ export default function EditarClientePage() {
       if (sessionLoading) return;
       
       if (!session || !session.user?.id) {
-        setError('No hay sesión activa. Por favor inicie sesión para continuar.');
+        setError({ clave: 'sinSesion' });
         setIsLoading(false);
         return;
       }
@@ -35,13 +38,13 @@ export default function EditarClientePage() {
         const userData = await getUserOrganization(session.user.id);
         
         if (userData.error) {
-          setError(userData.error);
+          setError({ texto: userData.error });
           setIsLoading(false);
           return;
         }
         
         if (!userData.organization?.id) {
-          setError('No se encontró una organización asociada a tu cuenta.');
+          setError({ clave: 'sinOrganizacion' });
           setIsLoading(false);
           return;
         }
@@ -61,7 +64,7 @@ export default function EditarClientePage() {
         setIsLoading(false);
       } catch (err) {
         console.error('Error cargando organización:', err);
-        setError('Error al cargar la información de tu organización');
+        setError({ clave: 'carga' });
         setIsLoading(false);
       }
     }
@@ -83,19 +86,19 @@ export default function EditarClientePage() {
   return (
     <div className="flex min-h-full flex-col gap-4 bg-canvas p-4 lg:gap-6 lg:p-6">
       <PageHeader
-        titulo="Editar cliente"
-        subtitulo="Modifica la información del cliente"
+        titulo={t('paginas.editar.titulo')}
+        subtitulo={t('paginas.editar.subtitulo')}
         variante="form"
         volverA={`/app/clientes/${clientId}`}
         migas={[
-          { etiqueta: 'Inicio', href: '/app/inicio' },
-          { etiqueta: 'Clientes', href: '/app/clientes' },
-          { etiqueta: 'Cliente', href: `/app/clientes/${clientId}` },
-          { etiqueta: 'Editar' },
+          { etiqueta: t('paginas.migaInicio'), href: '/app/inicio' },
+          { etiqueta: t('paginas.migaClientes'), href: '/app/clientes' },
+          { etiqueta: t('paginas.editar.migaCliente'), href: `/app/clientes/${clientId}` },
+          { etiqueta: t('paginas.editar.migaEditar') },
         ]}
         acciones={
           <Button asChild variant="outline" className="h-10">
-            <Link href="/app/clientes">Ver lista de clientes</Link>
+            <Link href="/app/clientes">{t('paginas.editar.verLista')}</Link>
           </Button>
         }
       />
@@ -104,9 +107,9 @@ export default function EditarClientePage() {
         <div className="rounded-xl border border-line bg-surface">
           <EmptyState
             variante="error"
-            titulo="No pudimos cargar tu organización"
-            descripcion={error}
-            accion={{ etiqueta: 'Volver a clientes', href: '/app/clientes' }}
+            titulo={t('paginas.errorOrganizacion.titulo')}
+            descripcion={error.clave ? t(`paginas.errores.${error.clave}`) : error.texto}
+            accion={{ etiqueta: t('paginas.errorOrganizacion.volver'), href: '/app/clientes' }}
           />
         </div>
       ) : organizationId ? (

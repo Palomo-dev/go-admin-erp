@@ -1,15 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
 import { StatsSkeleton } from '@/components/common/PageSkeletons';
-import { ShoppingBag, Calendar, DollarSign, Home, CalendarClock, CalendarX, Receipt } from 'lucide-react';
+import { useEtiquetaEstado } from '@/components/kit/useIdiomaKit';
+import { ShoppingBag, Calendar, DollarSign, Home, CalendarClock, Receipt } from 'lucide-react';
+import { mensajeError, useFechasFicha } from './useFechasFicha';
 
 interface HistorialItem {
   id: string;
   tipo: 'venta' | 'reserva' | 'web_order';
-  titulo: string;
+  /** Número de venta o de pedido; en reservas, la fecha de inicio. */
+  referencia: string;
   fecha: string;
   monto: number;
   status: string;
@@ -29,9 +33,27 @@ interface ResumenTabProps {
   organizationId: number;
 }
 
+/** Fila de reserva que usa el resumen (checkin es columna date). */
+interface ReservaResumen {
+  id: string;
+  start_date: string;
+  checkin: string | null;
+  status: string;
+}
+
+interface FolioResumen {
+  id: string;
+  balance: number | string | null;
+}
+
+const DIA_MES: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+
 export default function ResumenTab({ clienteId, organizationId }: ResumenTabProps) {
+  const t = useTranslations('clientes.ficha');
+  const etiquetaEstado = useEtiquetaEstado();
+  const { instante, plana } = useFechasFicha();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ mensaje: string | null } | null>(null);
   const [stats, setStats] = useState({
     totalCompras: 0,
     totalEstadias: 0,
@@ -50,7 +72,7 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
     reservasNoShow: 0,
     folioSaldoPendiente: 0,
     folioItemsPendientes: 0,
-    proximaReserva: null as Date | null,
+    proximaReserva: null as string | null,
   });
 
   // Cargar datos para el resumen del cliente
@@ -81,7 +103,8 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
         if (reservationsError) throw reservationsError;
 
         // 2b. Obtener folios de las reservas para saldo pendiente y total pagado
-        const reservationIds = (reservationsData || []).map((r: any) => r.id);
+        const reservas: ReservaResumen[] = reservationsData || [];
+        const reservationIds = reservas.map((r) => r.id);
         let folioSaldoPendiente = 0;
         let folioItemsPendientes = 0;
         let foliosPagadosCount = 0;
@@ -96,8 +119,9 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
             .eq('status', 'open');
 
           if (foliosOpenData) {
-            const folioIds = foliosOpenData.map((f: any) => f.id);
-            folioSaldoPendiente = foliosOpenData.reduce((sum: number, f: any) => sum + Number(f.balance), 0);
+            const foliosAbiertos: FolioResumen[] = foliosOpenData;
+            const folioIds = foliosAbiertos.map((f) => f.id);
+            folioSaldoPendiente = foliosAbiertos.reduce((sum, f) => sum + Number(f.balance), 0);
 
             if (folioIds.length > 0) {
               const { data: folioItemsData } = await supabase
@@ -120,7 +144,8 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
             .eq('status', 'closed');
 
           if (foliosClosedData && foliosClosedData.length > 0) {
-            const closedFolioIds = foliosClosedData.map((f: any) => f.id);
+            const foliosCerrados: FolioResumen[] = foliosClosedData;
+            const closedFolioIds = foliosCerrados.map((f) => f.id);
             const { data: closedFolioItems } = await supabase
               .from('folio_items')
               .select('folio_id, amount')
@@ -136,21 +161,22 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
             }
 
             foliosPagadosCount = foliosClosedData.length;
-            foliosPagadosMonto = foliosClosedData.reduce((sum: number, f: any) => sum + (folioTotalMap.get(f.id) || 0), 0);
+            foliosPagadosMonto = foliosCerrados.reduce((sum, f) => sum + (folioTotalMap.get(f.id) || 0), 0);
           }
         }
 
         // 2c. Calcular stats de reservas por estado
         const now = new Date();
-        const reservasFuturas = (reservationsData || []).filter((r: any) =>
-          new Date(r.checkin) > now && ['confirmed', 'tentative'].includes(r.status)
+        const reservasFuturas = reservas.filter((r) =>
+          new Date(r.checkin ?? '') > now && ['confirmed', 'tentative'].includes(r.status)
         ).length;
-        const reservasCanceladas = (reservationsData || []).filter((r: any) => r.status === 'cancelled').length;
-        const reservasNoShow = (reservationsData || []).filter((r: any) => r.status === 'no_show').length;
-        const proximaReservaRaw = (reservationsData || [])
-          .filter((r: any) => new Date(r.checkin) > now && ['confirmed', 'tentative'].includes(r.status))
-          .sort((a: any, b: any) => new Date(a.checkin).getTime() - new Date(b.checkin).getTime());
-        const proximaReserva = proximaReservaRaw.length > 0 ? new Date(proximaReservaRaw[0].checkin) : null;
+        const reservasCanceladas = reservas.filter((r) => r.status === 'cancelled').length;
+        const reservasNoShow = reservas.filter((r) => r.status === 'no_show').length;
+        const proximaReservaRaw = reservas
+          .filter((r) => new Date(r.checkin ?? '') > now && ['confirmed', 'tentative'].includes(r.status))
+          .sort((a, b) => new Date(a.checkin ?? '').getTime() - new Date(b.checkin ?? '').getTime());
+        // checkin es un día calendario (date): se guarda tal cual y se formatea sin zona.
+        const proximaReserva = proximaReservaRaw.length > 0 ? proximaReservaRaw[0].checkin : null;
 
         // 3. Obtener pedidos web del cliente
         const { data: webOrdersData, error: webOrdersError } = await supabase
@@ -187,19 +213,19 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
         const historial: HistorialItem[] = [
           ...(salesData || []).slice(0, 10).map(s => ({
             id: `sale-${s.id}`, tipo: 'venta' as const,
-            titulo: `Venta #${s.id.slice(0, 8)}`,
+            referencia: s.id.slice(0, 8),
             fecha: s.sale_date, monto: parseFloat(s.total) || 0,
             status: s.status || 'N/A',
           })),
           ...(reservationsData || []).slice(0, 10).map(r => ({
             id: `res-${r.id}`, tipo: 'reserva' as const,
-            titulo: `Reserva ${new Date(r.start_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`,
+            referencia: r.start_date,
             fecha: r.start_date, monto: 0,
             status: 'reserva',
           })),
           ...(webOrdersData || []).slice(0, 10).map(o => ({
             id: `web-${o.id}`, tipo: 'web_order' as const,
-            titulo: `Pedido #${o.order_number}`,
+            referencia: String(o.order_number),
             fecha: o.created_at, monto: parseFloat(o.total) || 0,
             status: o.status || 'N/A',
           })),
@@ -226,9 +252,9 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
           proximaReserva,
         });
 
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error al cargar el resumen:', err);
-        setError(err.message || 'Error al cargar datos del resumen');
+        setError({ mensaje: mensajeError(err) });
       } finally {
         setLoading(false);
       }
@@ -240,46 +266,50 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
   // Preparar tarjetas de estadísticas — 6 KPIs compactos
   const estadisticas: EstadisticaCard[] = [
     {
-      title: 'Compras',
+      title: t('resumen.compras'),
       value: stats.totalCompras,
       icon: <ShoppingBag className="h-5 w-5" />,
-      description: stats.ultimaCompra ? `Última: ${stats.ultimaCompra.toLocaleDateString()}` : 'Sin compras'
+      description: stats.ultimaCompra
+        ? t('resumen.ultima', { fecha: instante(stats.ultimaCompra) })
+        : t('resumen.sinCompras')
     },
     {
-      title: 'Estadías',
+      title: t('resumen.estadias'),
       value: stats.totalEstadias,
       icon: <Home className="h-5 w-5" />,
-      description: stats.ultimaEstadia ? `Última: ${stats.ultimaEstadia.toLocaleDateString()}` : 'Sin estadías'
+      description: stats.ultimaEstadia
+        ? t('resumen.ultima', { fecha: instante(stats.ultimaEstadia) })
+        : t('resumen.sinEstadias')
     },
     {
-      title: 'Gasto Total',
+      title: t('resumen.gastoTotal'),
       value: formatCurrency(stats.montoTotalGastado),
       icon: <DollarSign className="h-5 w-5" />,
-      description: 'Incluye pedidos web pagados'
+      description: t('resumen.gastoTotalDescripcion')
     },
     {
-      title: 'Pedidos Web',
+      title: t('resumen.pedidosWeb'),
       value: stats.totalWebOrders,
       icon: <ShoppingBag className="h-5 w-5" />,
       description: stats.ultimaWebOrder
-        ? `Último: ${stats.ultimaWebOrder.toLocaleDateString()}`
-        : 'Sin pedidos web'
+        ? t('resumen.ultimo', { fecha: instante(stats.ultimaWebOrder) })
+        : t('resumen.sinPedidosWeb')
     },
     {
-      title: 'Reservas Futuras',
+      title: t('resumen.reservasFuturas'),
       value: stats.reservasFuturas,
       icon: <CalendarClock className="h-5 w-5" />,
       description: stats.proximaReserva
-        ? `Próxima: ${stats.proximaReserva.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`
-        : 'Sin reservas futuras'
+        ? t('resumen.proxima', { fecha: plana(stats.proximaReserva, DIA_MES) })
+        : t('resumen.sinReservasFuturas')
     },
     {
-      title: 'Saldo Folios',
+      title: t('resumen.saldoFolios'),
       value: formatCurrency(stats.folioSaldoPendiente),
       icon: <Receipt className="h-5 w-5" />,
       description: stats.folioItemsPendientes > 0
-        ? `${stats.folioItemsPendientes} item(s) pendiente(s)`
-        : 'Sin saldo pendiente'
+        ? t('resumen.itemsPendientes', { count: stats.folioItemsPendientes })
+        : t('resumen.sinSaldoPendiente')
     },
   ];
 
@@ -297,7 +327,7 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
     return (
       <div className="w-full py-8">
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-700 dark:text-red-400">{error}</p>
+          <p className="text-red-700 dark:text-red-400">{error.mensaje || t('resumen.errorCarga')}</p>
         </div>
       </div>
     );
@@ -333,11 +363,18 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
       {/* Sección de historial reciente — ventas, reservas y pedidos web unificados */}
       <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
         <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-4">
-          Historial Reciente
+          {t('resumen.historialReciente')}
         </h3>
         {stats.historial.length > 0 ? (
           <div className="space-y-2">
             {stats.historial.map((item) => {
+              const titulo =
+                item.tipo === 'venta'
+                  ? t('resumen.historial.venta', { numero: item.referencia })
+                  : item.tipo === 'reserva'
+                    ? t('resumen.historial.reserva', { fecha: instante(item.referencia, DIA_MES) })
+                    : t('resumen.historial.pedido', { numero: item.referencia });
+              const estado = item.status === 'reserva' ? t('resumen.historial.estadoReserva') : etiquetaEstado(item.status);
               const iconMap = {
                 venta: <DollarSign className="h-4 w-4 text-green-500" />,
                 reserva: <Calendar className="h-4 w-4 text-blue-500" />,
@@ -356,13 +393,13 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                     {iconMap[item.tipo]}
                     <div className="min-w-0">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white block break-words whitespace-normal min-w-0">{item.titulo}</span>
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${statusColor(item.status)}`}>{item.status}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white block break-words whitespace-normal min-w-0">{titulo}</span>
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${statusColor(item.status)}`}>{estado}</span>
                     </div>
                   </div>
                   <div className="flex flex-col items-end flex-shrink-0">
                     {item.monto > 0 && <span className="text-sm font-medium text-gray-900 dark:text-white">{formatCurrency(item.monto)}</span>}
-                    <span className="text-xs text-gray-400 dark:text-gray-500">{new Date(item.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">{instante(item.fecha, DIA_MES)}</span>
                   </div>
                 </div>
               );
@@ -370,7 +407,7 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
           </div>
         ) : (
           <div className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
-            No hay actividad reciente para este cliente.
+            {t('resumen.sinActividad')}
           </div>
         )}
       </div>

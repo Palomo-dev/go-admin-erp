@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   ChefHat,
   ChevronsDownUp,
@@ -41,6 +42,7 @@ import {
   type EstadoTabla,
 } from '@/components/kit';
 import { TreeCell } from '@/components/kit/TreeCell';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
 import { TreeCard } from '@/components/kit/TreeCard';
 import { useArrastreArbol, ZonaSoltarRaiz } from '@/components/kit/arrastreArbol';
 import type { FilaArbol } from '@/components/kit/arbol';
@@ -51,7 +53,7 @@ import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz } from '@/lib/utils/dateDisplay';
 import categoryService, { ErrorCategoria } from '@/lib/services/categoryService';
 import { useArbolCategorias, type NodoCategoria } from './useArbolCategorias';
-import { accionesDeCategoria } from './accionesCategoria';
+import { accionesDeCategoria, mensajeErrorCategoria } from './accionesCategoria';
 import { MoverCategoriaDialog } from './MoverCategoriaDialog';
 import { EliminarCategoriaDialog } from './EliminarCategoriaDialog';
 import { ImportCategoriesDialog } from './ImportCategoriesDialog';
@@ -62,9 +64,6 @@ import { etiquetaEstacion, iconoCategoria, OPCIONES_ESTACION, RUTAS_CATEGORIAS }
  * de cabecera, FilterPanel, selección múltiple con BulkActionBar, «Mover a…»,
  * eliminar con destino de productos y la versión móvil con tarjetas por nivel.
  */
-const NUM = new Intl.NumberFormat('es-CO');
-const n = (v: number) => NUM.format(v);
-const plural = (v: number, uno: string, varios: string) => `${n(v)} ${v === 1 ? uno : varios}`;
 
 function descargarArchivo(blob: Blob, nombre: string) {
   const url = URL.createObjectURL(blob);
@@ -77,11 +76,10 @@ function descargarArchivo(blob: Blob, nombre: string) {
   URL.revokeObjectURL(url);
 }
 
-function mensajeError(e: unknown, respaldo: string): string {
-  return e instanceof Error && e.message ? e.message : respaldo;
-}
 
 export function ArbolCategorias() {
+  const t = useTranslations('categorias');
+  const n = useFormatoEntero();
   const router = useRouter();
   const { toast } = useToast();
   const { timezone } = useOrgTimezone();
@@ -96,6 +94,10 @@ export function ArbolCategorias() {
   const [trabajandoMasivo, setTrabajandoMasivo] = useState<string | null>(null);
 
   const recargar = useCallback(() => a.cargar(true), [a]);
+  const mensajeError = useCallback(
+    (e: unknown) => mensajeErrorCategoria(e, t, t('comun.intentaDeNuevo')),
+    [t],
+  );
 
   // ── Acciones ─────────────────────────────────────────────────────────────
   const mover = useCallback(
@@ -104,19 +106,26 @@ export function ArbolCategorias() {
       try {
         await categoryService.moverCategorias(organizationId, ids, padre);
         const destino = padre !== null ? porId.get(padre)?.name : null;
-        const quien = ids.length === 1 ? (porId.get(ids[0])?.name ?? 'La categoría') : `${ids.length} categorías`;
+        const una = ids.length === 1;
+        const nombre = porId.get(ids[0])?.name ?? t('comun.laCategoria');
         toast({
-          title: ids.length === 1 ? 'Categoría movida' : 'Categorías movidas',
-          description: destino ? `${quien} ahora ${ids.length === 1 ? 'es subcategoría' : 'son subcategorías'} de «${destino}».` : `${quien} ${ids.length === 1 ? 'quedó' : 'quedaron'} como categoría principal.`,
+          title: t('toasts.movidas', { count: ids.length }),
+          description: una
+            ? destino
+              ? t('toasts.movidaDentro', { nombre, destino })
+              : t('toasts.movidaRaiz', { nombre })
+            : destino
+              ? t('toasts.movidasDentro', { n: n(ids.length), destino })
+              : t('toasts.movidasRaiz', { n: n(ids.length) }),
         });
         a.setSeleccion(new Set());
         await recargar();
       } catch (e) {
-        toast({ title: 'No se pudo mover', description: mensajeError(e, 'Inténtalo de nuevo.'), variant: 'destructive' });
+        toast({ title: t('toasts.noMover'), description: mensajeError(e), variant: 'destructive' });
         throw e;
       }
     },
-    [organizationId, porId, toast, a, recargar],
+    [organizationId, porId, toast, a, recargar, t, n, mensajeError],
   );
 
   const alternarActiva = useCallback(
@@ -124,13 +133,16 @@ export function ArbolCategorias() {
       if (!organizationId) return;
       try {
         await categoryService.setActivas(organizationId, [cat.id], !cat.is_active);
-        toast({ title: cat.is_active ? 'Categoría desactivada' : 'Categoría activada', description: `«${cat.name}»` });
+        toast({
+          title: cat.is_active ? t('toasts.desactivada') : t('toasts.activada'),
+          description: t('comun.entreComillas', { nombre: cat.name }),
+        });
         await recargar();
       } catch (e) {
-        toast({ title: 'No se pudo cambiar el estado', description: mensajeError(e, 'Inténtalo de nuevo.'), variant: 'destructive' });
+        toast({ title: t('toasts.noCambioEstado'), description: mensajeError(e), variant: 'destructive' });
       }
     },
-    [organizationId, toast, recargar],
+    [organizationId, toast, recargar, t, mensajeError],
   );
 
   const duplicar = useCallback(
@@ -138,13 +150,13 @@ export function ArbolCategorias() {
       if (!organizationId) return;
       try {
         const copia = await categoryService.duplicate(cat.id, organizationId);
-        toast({ title: 'Categoría duplicada', description: `Se creó «${copia.name}».` });
+        toast({ title: t('toasts.duplicada'), description: t('toasts.seCreo', { nombre: copia.name }) });
         await recargar();
       } catch (e) {
-        toast({ title: 'No se pudo duplicar', description: mensajeError(e, 'Inténtalo de nuevo.'), variant: 'destructive' });
+        toast({ title: t('toasts.noDuplicar'), description: mensajeError(e), variant: 'destructive' });
       }
     },
-    [organizationId, toast, recargar],
+    [organizationId, toast, recargar, t, mensajeError],
   );
 
   const eliminar = useCallback(
@@ -153,22 +165,33 @@ export function ArbolCategorias() {
       try {
         const r = await categoryService.eliminarCategoria(organizationId, aEliminar.id, destino);
         const partes = [
-          r.productos_movidos ? `${plural(r.productos_movidos, 'producto pasó', 'productos pasaron')} a «${porId.get(destino ?? -1)?.name ?? 'otra categoría'}»` : null,
-          r.subcategorias_movidas ? `${plural(r.subcategorias_movidas, 'subcategoría subió', 'subcategorías subieron')} un nivel` : null,
+          r.productos_movidos
+            ? t('toasts.productosPasaron', {
+                count: r.productos_movidos,
+                n: n(r.productos_movidos),
+                destino: porId.get(destino ?? -1)?.name ?? t('toasts.otraCategoria'),
+              })
+            : null,
+          r.subcategorias_movidas
+            ? t('toasts.subcategoriasSubieron', { count: r.subcategorias_movidas, n: n(r.subcategorias_movidas) })
+            : null,
         ].filter(Boolean);
-        toast({ title: 'Categoría eliminada', description: partes.length ? `${partes.join(' · ')}.` : `«${aEliminar.name}»` });
+        toast({
+          title: t('toasts.eliminada'),
+          description: partes.length ? `${partes.join(' · ')}.` : t('comun.entreComillas', { nombre: aEliminar.name }),
+        });
         await recargar();
       } catch (e) {
         const conProductos = e instanceof ErrorCategoria && e.codigo === 'CATEGORIA_CON_PRODUCTOS';
         toast({
-          title: conProductos ? 'Tiene productos' : 'No se pudo eliminar',
-          description: mensajeError(e, 'Inténtalo de nuevo.'),
+          title: conProductos ? t('toasts.tieneProductos') : t('toasts.noEliminar'),
+          description: mensajeError(e),
           variant: 'destructive',
         });
         throw e;
       }
     },
-    [organizationId, aEliminar, porId, toast, recargar],
+    [organizationId, aEliminar, porId, toast, recargar, t, n, mensajeError],
   );
 
   const cambiarSeleccion = useCallback(
@@ -178,16 +201,19 @@ export function ArbolCategorias() {
       setTrabajandoMasivo(activa ? 'activar' : 'desactivar');
       try {
         await categoryService.setActivas(organizationId, ids, activa);
-        toast({ title: activa ? 'Categorías activadas' : 'Categorías desactivadas', description: plural(ids.length, 'categoría', 'categorías') });
+        toast({
+          title: activa ? t('toasts.activadas') : t('toasts.desactivadas'),
+          description: t('comun.nCategorias', { count: ids.length, n: n(ids.length) }),
+        });
         a.setSeleccion(new Set());
         await recargar();
       } catch (e) {
-        toast({ title: 'No se pudo cambiar el estado', description: mensajeError(e, 'Inténtalo de nuevo.'), variant: 'destructive' });
+        toast({ title: t('toasts.noCambioEstado'), description: mensajeError(e), variant: 'destructive' });
       } finally {
         setTrabajandoMasivo(null);
       }
     },
-    [organizationId, a, toast, recargar],
+    [organizationId, a, toast, recargar, t, n, mensajeError],
   );
 
   // ── Exportar (mismo contenido que antes: CSV, Excel y PDF) ───────────────
@@ -205,21 +231,28 @@ export function ArbolCategorias() {
         } else {
           descargar(await categoryService.exportCategoriesToPDF(organizationId), 'pdf');
         }
-        toast({ title: 'Exportación lista', description: `Se descargó el archivo ${formato.toUpperCase()}.` });
+        toast({ title: t('toasts.exportacionLista'), description: t('toasts.seDescargo', { formato: formato.toUpperCase() }) });
       } catch (e) {
-        toast({ title: 'No se pudo exportar', description: mensajeError(e, 'Inténtalo de nuevo.'), variant: 'destructive' });
+        toast({ title: t('toasts.noExportar'), description: mensajeError(e), variant: 'destructive' });
       }
     },
-    [organizationId, toast, timezone],
+    [organizationId, toast, timezone, t, mensajeError],
   );
 
   const accionesCabecera: AccionFila[] = [
-    { id: 'csv', etiqueta: 'Exportar CSV', icono: FileText, onSelect: () => void exportar('csv') },
-    { id: 'xlsx', etiqueta: 'Exportar Excel', icono: FileSpreadsheet, onSelect: () => void exportar('xlsx') },
-    { id: 'pdf', etiqueta: 'Exportar PDF', icono: Download, onSelect: () => void exportar('pdf') },
-    { id: 'expandir', etiqueta: 'Expandir todo', icono: ChevronsUpDown, onSelect: a.expandirTodo, separadorAntes: true },
-    { id: 'contraer', etiqueta: 'Contraer todo', icono: ChevronsDownUp, onSelect: a.contraerTodo },
-    { id: 'actualizar', etiqueta: a.refrescando ? 'Actualizando…' : 'Actualizar', icono: RefreshCw, onSelect: () => void recargar(), deshabilitada: a.refrescando, motivo: 'Ya se está actualizando' },
+    { id: 'csv', etiqueta: t('listado.cabecera.exportarCsv'), icono: FileText, onSelect: () => void exportar('csv') },
+    { id: 'xlsx', etiqueta: t('listado.cabecera.exportarExcel'), icono: FileSpreadsheet, onSelect: () => void exportar('xlsx') },
+    { id: 'pdf', etiqueta: t('listado.cabecera.exportarPdf'), icono: Download, onSelect: () => void exportar('pdf') },
+    { id: 'expandir', etiqueta: t('listado.cabecera.expandirTodo'), icono: ChevronsUpDown, onSelect: a.expandirTodo, separadorAntes: true },
+    { id: 'contraer', etiqueta: t('listado.cabecera.contraerTodo'), icono: ChevronsDownUp, onSelect: a.contraerTodo },
+    {
+      id: 'actualizar',
+      etiqueta: a.refrescando ? t('listado.cabecera.actualizando') : t('listado.cabecera.actualizar'),
+      icono: RefreshCw,
+      onSelect: () => void recargar(),
+      deshabilitada: a.refrescando,
+      motivo: t('listado.cabecera.yaActualizando'),
+    },
   ];
 
   const accionesFila = (cat: NodoCategoria): AccionFila[] =>
@@ -232,20 +265,20 @@ export function ArbolCategorias() {
       verProductos: () => router.push(RUTAS_CATEGORIAS.productos(cat.id)),
       alternarActiva: () => void alternarActiva(cat),
       eliminar: () => setAEliminar(cat),
-    });
+    }, t);
 
   // ── Arrastrar para cambiar de padre (atajo de escritorio de «Mover a…») ──
   const puedeSoltar = useCallback(
     (origen: number, destino: number | null): true | string => {
       const o = porId.get(origen);
-      if (!o) return 'No existe';
-      if (destino === null) return o.parent_id === null ? 'Ya es una categoría principal' : true;
-      if (destino === origen) return 'Es la misma categoría';
-      if (o.parent_id === destino) return 'Ya está dentro de esa categoría';
-      if (a.descendientes([origen]).has(destino)) return 'Crearía un ciclo';
+      if (!o) return t('listado.arrastre.noExiste');
+      if (destino === null) return o.parent_id === null ? t('listado.arrastre.yaEsPrincipal') : true;
+      if (destino === origen) return t('listado.arrastre.mismaCategoria');
+      if (o.parent_id === destino) return t('listado.arrastre.yaEstaDentro');
+      if (a.descendientes([origen]).has(destino)) return t('listado.arrastre.ciclo');
       return true;
     },
-    [porId, a],
+    [porId, a, t],
   );
   const arrastre = useArrastreArbol({
     puedeSoltar,
@@ -258,7 +291,7 @@ export function ArbolCategorias() {
     () => [
       {
         id: 'nombre',
-        encabezado: 'Nombre',
+        encabezado: t('listado.columnas.nombre'),
         ordenable: true,
         celda: (f) => (
           <TreeCell
@@ -278,7 +311,7 @@ export function ArbolCategorias() {
       },
       {
         id: 'productos',
-        encabezado: 'Productos',
+        encabezado: t('listado.columnas.productos'),
         ordenable: true,
         ancho: 130,
         celda: (f) => (
@@ -286,35 +319,35 @@ export function ArbolCategorias() {
             <Link
               href={RUTAS_CATEGORIAS.productos(f.dato.id)}
               onClick={(e) => e.stopPropagation()}
-              aria-label={`Ver los ${f.dato.productos} productos de ${f.dato.name}`}
+              aria-label={t('listado.verProductosDe', { count: f.dato.productos, n: n(f.dato.productos), nombre: f.dato.name })}
               className={f.dato.productos > 0 ? 'font-medium text-link tabular-nums hover:underline' : 'tabular-nums text-fg-muted hover:underline'}
             >
               {n(f.dato.productos)}
             </Link>
             {f.dato.productos_regla > 0 && (
-              <span className="text-xs text-fg-muted">+{n(f.dato.productos_regla)} por regla</span>
+              <span className="text-xs text-fg-muted">{t('listado.porRegla', { n: n(f.dato.productos_regla) })}</span>
             )}
           </span>
         ),
       },
       {
         id: 'subcategorias',
-        encabezado: 'Subcategorías',
+        encabezado: t('listado.columnas.subcategorias'),
         alinear: 'derecha',
         ancho: 130,
         celda: (f) => <span className="tabular-nums">{f.dato.hijas > 0 ? n(f.dato.hijas) : '—'}</span>,
       },
       {
         id: 'estacion',
-        encabezado: 'Estación de cocina',
+        encabezado: t('listado.columnas.estacion'),
         ancho: 190,
         celda: (f) => (
           <span className="flex flex-col">
-            <span className={f.dato.station ? 'text-fg' : 'text-fg-secondary'}>{etiquetaEstacion(f.dato.station)}</span>
+            <span className={f.dato.station ? 'text-fg' : 'text-fg-secondary'}>{etiquetaEstacion(f.dato.station, t)}</span>
             {f.dato.requires_preparation && (
               <span className="flex items-center gap-1 text-xs text-fg-muted">
                 <ChefHat aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
-                Genera comanda
+                {t('comun.generaComanda')}
               </span>
             )}
           </span>
@@ -322,12 +355,12 @@ export function ArbolCategorias() {
       },
       {
         id: 'estado',
-        encabezado: 'Estado',
+        encabezado: t('listado.columnas.estado'),
         ancho: 110,
         celda: (f) => <StatusBadge estado={f.dato.is_active ? 'activa' : 'inactiva'} />,
       },
     ],
-    [a, arrastre],
+    [a, arrastre, t, n],
   );
 
   const estadoTabla: EstadoTabla =
@@ -345,7 +378,7 @@ export function ArbolCategorias() {
   const cargandoKpi = a.estado === 'cargando';
   const subtitulo =
     a.estado === 'listo'
-      ? `${plural(r.total, 'categoría', 'categorías')} en ${plural(r.niveles, 'nivel', 'niveles')}`
+      ? t('listado.subtitulo', { total: r.total, nTotal: n(r.total), niveles: r.niveles, nNiveles: n(r.niveles) })
       : undefined;
 
   const nuevaCategoria = (
@@ -354,20 +387,21 @@ export function ArbolCategorias() {
       className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
     >
       <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-      Nueva categoría
+      {t('comun.nuevaCategoria')}
     </Link>
   );
 
   const soloLectura = a.estado === 'sinPermiso';
+  const activasSeleccionadas = a.seleccionadas.filter((c) => c.is_active).length;
 
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
       <PageHeader
-        titulo="Categorías"
+        titulo={t('comun.categorias')}
         subtitulo={subtitulo}
         icono={Tags}
         cargando={a.estado === 'cargando' || a.refrescando}
-        migas={[{ etiqueta: 'Inventario', href: '/app/inventario' }, { etiqueta: 'Categorías' }]}
+        migas={[{ etiqueta: t('comun.inventario'), href: '/app/inventario' }, { etiqueta: t('comun.categorias') }]}
         acciones={
           soloLectura ? undefined : (
             <>
@@ -377,10 +411,10 @@ export function ArbolCategorias() {
                 className="inline-flex h-10 items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <Upload aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                Importar
+                {t('listado.importar')}
               </button>
               {nuevaCategoria}
-              <RowActionsMenu orientacion="horizontal" tamano="md" titulo="Categorías" acciones={accionesCabecera} />
+              <RowActionsMenu orientacion="horizontal" tamano="md" titulo={t('comun.categorias')} acciones={accionesCabecera} />
             </>
           )
         }
@@ -390,15 +424,15 @@ export function ArbolCategorias() {
             <div className="flex items-center">
               <RowActionsMenu
                 orientacion="horizontal"
-                titulo="Categorías"
+                titulo={t('comun.categorias')}
                 acciones={[
-                  { id: 'importar', etiqueta: 'Importar categorías', icono: Upload, onSelect: () => setImportarAbierto(true) },
+                  { id: 'importar', etiqueta: t('listado.importarCategorias'), icono: Upload, onSelect: () => setImportarAbierto(true) },
                   ...accionesCabecera,
                 ]}
               />
               <Link
                 href={RUTAS_CATEGORIAS.nueva()}
-                aria-label="Nueva categoría"
+                aria-label={t('comun.nuevaCategoria')}
                 className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
@@ -410,40 +444,45 @@ export function ArbolCategorias() {
       />
 
       {a.estado !== 'sinPermiso' && a.estado !== 'error' && (
-        <KpiStrip etiqueta="Resumen de categorías">
+        <KpiStrip etiqueta={t('listado.kpi.resumen')}>
           <StatCard
-            etiqueta="Categorías"
+            etiqueta={t('comun.categorias')}
             icono={Tags}
             cargando={cargandoKpi}
             valor={n(r.total)}
-            detalle={`${plural(r.activas, 'activa', 'activas')} · ${plural(r.inactivas, 'inactiva', 'inactivas')}`}
+            detalle={t('listado.kpi.activasInactivas', {
+              activas: r.activas,
+              nActivas: n(r.activas),
+              inactivas: r.inactivas,
+              nInactivas: n(r.inactivas),
+            })}
             onClick={() => l.limpiarTodo()}
           />
           <StatCard
-            etiqueta="Sin productos"
+            etiqueta={t('listado.kpi.sinProductos')}
             icono={TriangleAlert}
             cargando={cargandoKpi}
             valor={n(r.sinProductos)}
             tono={r.sinProductos > 0 ? 'advertencia' : 'neutro'}
-            detalle={r.sinProductos > 0 ? 'Revísalas o desactívalas' : 'Todas tienen productos'}
+            detalle={r.sinProductos > 0 ? t('listado.kpi.revisalas') : t('listado.kpi.todasConProductos')}
             onClick={() => l.setFiltro('productos', 'sin')}
           />
           <StatCard
-            etiqueta="Productos sin categoría"
+            etiqueta={t('listado.kpi.productosSinCategoria')}
             icono={Package}
             cargando={cargandoKpi}
             valor={n(r.productosSinCategoria)}
             tono={r.productosSinCategoria > 0 ? 'peligro' : 'exito'}
             tendencia={r.productosSinCategoria > 0 ? 'baja' : undefined}
-            detalle={`De ${n(r.productosTotal)} · asignar desde el catálogo`}
+            detalle={t('listado.kpi.deTotal', { total: n(r.productosTotal) })}
             href={RUTAS_CATEGORIAS.catalogo}
           />
           <StatCard
-            etiqueta="Con estación de cocina"
+            etiqueta={t('listado.kpi.conEstacion')}
             icono={ChefHat}
             cargando={cargandoKpi}
             valor={n(r.conEstacion)}
-            detalle="Generan comanda en el POS"
+            detalle={t('listado.kpi.generanComanda')}
             onClick={() => l.setFiltro('estacion', 'con')}
           />
         </KpiStrip>
@@ -455,8 +494,8 @@ export function ArbolCategorias() {
             <SearchInput
               value={l.busqueda}
               onChange={l.setBusqueda}
-              placeholder={escritorio ? 'Buscar por nombre o slug (entra en ramas cerradas)' : 'Buscar categoría'}
-              etiqueta="Buscar categorías"
+              placeholder={escritorio ? t('listado.busqueda.placeholder') : t('listado.busqueda.placeholderMovil')}
+              etiqueta={t('listado.busqueda.etiqueta')}
               cargando={a.refrescando}
             />
           }
@@ -464,9 +503,9 @@ export function ArbolCategorias() {
             <FilterPanel
               conteo={l.filtrosActivos}
               onLimpiar={l.limpiarFiltros}
-              textoVerResultados={`Ver ${plural(a.totalRaices, 'categoría principal', 'categorías principales')}`}
+              textoVerResultados={t('listado.filtros.verResultados', { count: a.totalRaices, n: n(a.totalRaices) })}
             >
-              <FormField etiqueta="Estado">
+              <FormField etiqueta={t('listado.filtros.estado')}>
                 {(c) => (
                   <SegmentedControl
                     aria-labelledby={c.idEtiqueta}
@@ -474,14 +513,14 @@ export function ArbolCategorias() {
                     valor={l.filtros.estado ?? 'todas'}
                     onValorChange={(v) => l.setFiltro('estado', v === 'todas' ? null : v)}
                     opciones={[
-                      { valor: 'todas', etiqueta: 'Todas' },
-                      { valor: 'activas', etiqueta: 'Activas' },
-                      { valor: 'inactivas', etiqueta: 'Inactivas' },
+                      { valor: 'todas', etiqueta: t('filtros.todas') },
+                      { valor: 'activas', etiqueta: t('filtros.activas') },
+                      { valor: 'inactivas', etiqueta: t('filtros.inactivas') },
                     ]}
                   />
                 )}
               </FormField>
-              <FormField etiqueta="Productos">
+              <FormField etiqueta={t('listado.filtros.productos')}>
                 {(c) => (
                   <SegmentedControl
                     aria-labelledby={c.idEtiqueta}
@@ -489,14 +528,14 @@ export function ArbolCategorias() {
                     valor={l.filtros.productos ?? 'todas'}
                     onValorChange={(v) => l.setFiltro('productos', v === 'todas' ? null : v)}
                     opciones={[
-                      { valor: 'todas', etiqueta: 'Todas' },
-                      { valor: 'con', etiqueta: 'Con productos' },
-                      { valor: 'sin', etiqueta: 'Sin productos' },
+                      { valor: 'todas', etiqueta: t('filtros.todas') },
+                      { valor: 'con', etiqueta: t('filtros.conProductos') },
+                      { valor: 'sin', etiqueta: t('filtros.sinProductos') },
                     ]}
                   />
                 )}
               </FormField>
-              <FormField etiqueta="Estación de cocina">
+              <FormField etiqueta={t('listado.filtros.estacion')}>
                 {(c) => (
                   <Select
                     value={l.filtros.estacion ?? 'todas'}
@@ -506,19 +545,19 @@ export function ArbolCategorias() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todas">Todas</SelectItem>
-                      <SelectItem value="con">Con estación</SelectItem>
-                      <SelectItem value="sin">Sin estación</SelectItem>
+                      <SelectItem value="todas">{t('filtros.todas')}</SelectItem>
+                      <SelectItem value="con">{t('filtros.conEstacion')}</SelectItem>
+                      <SelectItem value="sin">{t('filtros.sinEstacion')}</SelectItem>
                       {OPCIONES_ESTACION.map((o) => (
                         <SelectItem key={o.valor} value={o.valor}>
-                          {o.etiqueta}
+                          {etiquetaEstacion(o.valor, t)}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
               </FormField>
-              <FormField etiqueta="Preparación">
+              <FormField etiqueta={t('listado.filtros.preparacion')}>
                 {(c) => (
                   <SegmentedControl
                     aria-labelledby={c.idEtiqueta}
@@ -526,9 +565,9 @@ export function ArbolCategorias() {
                     valor={l.filtros.preparacion ?? 'todas'}
                     onValorChange={(v) => l.setFiltro('preparacion', v === 'todas' ? null : v)}
                     opciones={[
-                      { valor: 'todas', etiqueta: 'Todas' },
-                      { valor: 'si', etiqueta: 'Genera comanda' },
-                      { valor: 'no', etiqueta: 'Sin comanda' },
+                      { valor: 'todas', etiqueta: t('filtros.todas') },
+                      { valor: 'si', etiqueta: t('comun.generaComanda') },
+                      { valor: 'no', etiqueta: t('filtros.sinComanda') },
                     ]}
                   />
                 )}
@@ -542,7 +581,7 @@ export function ArbolCategorias() {
       <ZonaSoltarRaiz {...arrastre.raiz} />
 
       <DataTable
-        etiqueta="Árbol de categorías"
+        etiqueta={t('listado.tabla')}
         columnas={columnas}
         filas={a.filas}
         obtenerId={(f) => String(f.dato.id)}
@@ -566,9 +605,9 @@ export function ArbolCategorias() {
             titulo={f.dato.name}
             subtitulo={`/${f.dato.slug}`}
             meta={[
-              plural(f.dato.productos, 'producto', 'productos'),
-              f.dato.hijas ? plural(f.dato.hijas, 'subcategoría', 'subcategorías') : null,
-              f.dato.station ? etiquetaEstacion(f.dato.station) : null,
+              t('comun.nProductos', { count: f.dato.productos, n: n(f.dato.productos) }),
+              f.dato.hijas ? t('comun.nSubcategorias', { count: f.dato.hijas, n: n(f.dato.hijas) }) : null,
+              f.dato.station ? etiquetaEstacion(f.dato.station, t) : null,
             ]
               .filter(Boolean)
               .join(' · ')}
@@ -581,18 +620,18 @@ export function ArbolCategorias() {
           />
         )}
         vacio={{
-          titulo: 'Aún no tienes categorías',
-          descripcion: 'Agrupa tus productos para encontrarlos rápido en el POS, la tienda web y los informes.',
+          titulo: t('listado.vacio.titulo'),
+          descripcion: t('listado.vacio.descripcion'),
           icono: Tags,
-          accion: { etiqueta: 'Nueva categoría', href: RUTAS_CATEGORIAS.nueva(), icono: Plus },
-          accionSecundaria: { etiqueta: 'Importar desde CSV o Excel', onClick: () => setImportarAbierto(true), icono: Upload },
+          accion: { etiqueta: t('comun.nuevaCategoria'), href: RUTAS_CATEGORIAS.nueva(), icono: Plus },
+          accionSecundaria: { etiqueta: t('listado.vacio.importar'), onClick: () => setImportarAbierto(true), icono: Upload },
         }}
-        sinResultados={{ descripcion: 'La búsqueda revisa también las ramas cerradas. Prueba con otro término o quita un filtro.' }}
-        error={{ titulo: 'No pudimos cargar las categorías', descripcion: 'Revisa tu conexión e inténtalo de nuevo.' }}
+        sinResultados={{ descripcion: t('listado.sinResultados') }}
+        error={{ titulo: t('listado.error.titulo'), descripcion: t('listado.error.descripcion') }}
         sinPermiso={{
-          titulo: 'No tienes acceso a las categorías de esta organización',
-          descripcion: 'Pídele a un administrador que te dé acceso al inventario.',
-          accion: { etiqueta: 'Volver al inventario', href: '/app/inventario' },
+          titulo: t('listado.sinPermiso.titulo'),
+          descripcion: t('listado.sinPermiso.descripcion'),
+          accion: { etiqueta: t('comun.volverInventario'), href: '/app/inventario' },
         }}
         onReintentar={() => void a.cargar()}
         onLimpiarFiltros={l.limpiarTodo}
@@ -604,7 +643,7 @@ export function ArbolCategorias() {
             total={a.totalRaices}
             onPaginaChange={l.setPagina}
             onTamanoChange={l.setTamano}
-            sustantivo={{ singular: 'categoría principal', plural: 'categorías principales' }}
+            sustantivo={{ singular: t('comun.principal.singular'), plural: t('comun.principal.plural') }}
             cargando={a.estado === 'cargando'}
           />
         }
@@ -615,27 +654,27 @@ export function ArbolCategorias() {
           seleccionados={a.seleccion.size}
           total={a.idsCoincidentes.length}
           onSeleccionarTodos={() => a.setSeleccion(new Set(a.idsCoincidentes))}
-          sustantivo={{ singular: 'categoría', plural: 'categorías' }}
+          sustantivo={{ singular: t('comun.categoria.singular'), plural: t('comun.categoria.plural') }}
           acciones={[
-            { id: 'mover', etiqueta: 'Mover a…', icono: FolderInput, onClick: () => setMoverIds(a.seleccionadas.map((c) => c.id)) },
+            { id: 'mover', etiqueta: t('acciones.moverA'), icono: FolderInput, onClick: () => setMoverIds(a.seleccionadas.map((c) => c.id)) },
             {
               id: 'desactivar',
-              etiqueta: 'Desactivar',
+              etiqueta: t('acciones.desactivar'),
               icono: PowerOff,
               onClick: () => setConfirmarDesactivar(true),
               cargando: trabajandoMasivo === 'desactivar',
               deshabilitada: a.seleccionadas.every((c) => !c.is_active),
-              motivo: 'Todas las seleccionadas ya están inactivas',
+              motivo: t('listado.masivas.yaInactivas'),
             },
           ]}
           accionesSecundarias={[
             {
               id: 'activar',
-              etiqueta: 'Activar',
+              etiqueta: t('acciones.activar'),
               icono: Power,
               onSelect: () => void cambiarSeleccion(true),
               deshabilitada: a.seleccionadas.every((c) => c.is_active),
-              motivo: 'Todas las seleccionadas ya están activas',
+              motivo: t('listado.masivas.yaActivas'),
             },
           ]}
           onLimpiar={() => a.setSeleccion(new Set())}
@@ -661,9 +700,9 @@ export function ArbolCategorias() {
       <ConfirmDialog
         open={confirmarDesactivar}
         onOpenChange={setConfirmarDesactivar}
-        title={`¿Desactivar ${plural(a.seleccionadas.filter((c) => c.is_active).length, 'categoría', 'categorías')}?`}
-        description="Dejan de verse en el POS y en la tienda web. Sus productos no se borran ni cambian de categoría, y puedes volver a activarlas cuando quieras."
-        confirmLabel="Desactivar"
+        title={t('listado.confirmarDesactivar.titulo', { count: activasSeleccionadas, n: n(activasSeleccionadas) })}
+        description={t('listado.confirmarDesactivar.descripcion')}
+        confirmLabel={t('acciones.desactivar')}
         onConfirm={() => cambiarSeleccion(false)}
       />
 

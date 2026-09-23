@@ -335,7 +335,7 @@ class InboxConfigService {
     await this.setOrgContext();
 
     const rawKey = `goak_${this.generateRandomKey(32)}`;
-    const keyHash = this.hashKey(rawKey);
+    const keyHash = await this.hashKey(rawKey);
     const keyPrefix = rawKey.substring(0, 12);
 
     const { data: key, error } = await supabase
@@ -406,20 +406,47 @@ class InboxConfigService {
     });
   }
 
+  /**
+   * Llave aleatoria criptográficamente segura.
+   *
+   * Antes usaba `Math.random()`, que no es un generador seguro: su estado se
+   * puede reconstruir observando unas pocas salidas, así que una llave así es
+   * predecible. Ahora sale de `crypto.getRandomValues` (navegador y Node 18+),
+   * con rechazo del sesgo del módulo para que todos los caracteres sean
+   * igual de probables. Auditoría de configuración, 2026-09-22.
+   */
   private generateRandomKey(length: number): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    // 256 no es múltiplo de 62: se descartan los bytes del tramo sobrante
+    // para no favorecer a los primeros caracteres del alfabeto.
+    const limite = Math.floor(256 / chars.length) * chars.length;
     let result = '';
-    for (let i = 0; i < length; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    const buffer = new Uint8Array(1);
+    while (result.length < length) {
+      crypto.getRandomValues(buffer);
+      if (buffer[0] < limite) {
+        result += chars.charAt(buffer[0] % chars.length);
+      }
     }
     return result;
   }
 
-  private hashKey(key: string): string {
-    if (typeof window !== 'undefined') {
-      return btoa(key);
-    }
-    return Buffer.from(key).toString('base64');
+  /**
+   * Huella SHA-256 de la llave, en hexadecimal.
+   *
+   * Antes devolvía `btoa(key)`, que es Base64: **no es un hash**, se revierte
+   * con un `atob`. Quien pudiera leer `channel_api_keys` recuperaba la llave en
+   * claro, y el aviso «esta es la única vez que verás la llave completa» era
+   * falso. SHA-256 es irreversible, así que ese aviso pasa a ser cierto.
+   *
+   * `crypto.subtle` es asíncrono, de ahí que el método devuelva una promesa.
+   */
+  private async hashKey(key: string): Promise<string> {
+    const datos = new TextEncoder().encode(key);
+    const digest = await crypto.subtle.digest('SHA-256', datos);
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
   }
 }
 

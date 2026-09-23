@@ -286,6 +286,15 @@ Archivos: `components/inventario/distribucion/*` y `components/inventario/transf
 
 `suppliers` ya no tiene la política anónima con `true` que aparece en el baseline: se verificó en la base de datos actual.
 
+**Cerrado el 2026-09-23** con cuatro migraciones (`supabase/migrations/20260923133330_…` a `…133403_…`, cada una con su rollback) y el guardarraíl 26 de `src/__tests__/guardrails.test.ts`:
+
+- `units`: los usuarios solo leen; escribe `service_role`. La pantalla Inventario / Unidades pasó a ser de solo lectura.
+- `unit_conversions`: las globales solo se leen; las de una organización las escriben sus miembros activos.
+- `shared_images`: las cuatro operaciones van por pertenencia activa, y las marcadas `is_public` se siguen viendo desde todas las organizaciones. De paso se descubrió que UPDATE y DELETE comparaban con `auth.jwt() ->> 'organization_id'`, un claim que ningún JWT lleva: nadie podía editar ni borrar sus propias imágenes. Ya se puede.
+- `categories` y `product_tags`: sin acceso anónimo y sin lectura entre organizaciones. La `USING (true)` era para el rol `public`, así que también dejaba a cualquier usuario autenticado ver el catálogo de las demás. La tienda web no se ve afectada: las lee desde el servidor con `service_role`.
+
+Se verificó con usuarios reales de tres organizaciones antes y después, y el rendimiento no cambió (subplan hasheado, `loops = 1`).
+
 ---
 
 ## 13. Cambios de backend y base de datos que necesita el diseño

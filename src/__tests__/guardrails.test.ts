@@ -1909,3 +1909,109 @@ describe('26. Compras: un solo asiento por hecho, con la factura (ADR-CC-009)', 
     }
   });
 });
+
+describe('26. RLS del catálogo: filas globales de solo lectura y nada abierto a anon', () => {
+  // Auditoría del catálogo (docs/design/AUDITORIA-CATALOGO-PRODUCCION.md):
+  // un administrador de cualquier organización editaba `units` para todas, un
+  // miembro cualquiera borraba las `unit_conversions` globales, `shared_images`
+  // era legible e insertable entre organizaciones, y `categories` y
+  // `product_tags` las leía anon (y cualquier usuario de otra organización).
+  // Se cerró el 2026-09-23 con cuatro migraciones; esto impide reabrirlo.
+  const MIGRACIONES = path.join(REPO_ROOT, 'supabase', 'migrations');
+  const CIERRE = [
+    '20260923133330_unidades_globales_solo_lectura.sql',
+    '20260923133342_shared_images_por_pertenencia.sql',
+    '20260923133353_categories_por_pertenencia.sql',
+    '20260923133403_product_tags_por_pertenencia.sql',
+  ];
+  const TABLAS = ['units', 'unit_conversions', 'shared_images', 'categories', 'product_tags'];
+  const sinComentariosSql = (sql: string) => sql.replace(/--.*$/gm, '');
+
+  /** Sentencias `create policy ... on public.<tabla> ...;` de un .sql. */
+  function politicas(sql: string): { tabla: string; texto: string }[] {
+    const out: { tabla: string; texto: string }[] = [];
+    const re = /create\s+policy\s+("[^"]+"|\w+)\s+on\s+(?:public\.)?(\w+)([\s\S]*?);/gi;
+    for (const m of sinComentariosSql(sql).matchAll(re)) {
+      out.push({ tabla: m[2].toLowerCase(), texto: m[0].replace(/\s+/g, ' ').toLowerCase() });
+    }
+    return out;
+  }
+
+  test('las cuatro migraciones del cierre existen, con su rollback', () => {
+    const faltan = CIERRE.filter(
+      (f) =>
+        !fs.existsSync(path.join(MIGRACIONES, f)) ||
+        !fs.existsSync(path.join(REPO_ROOT, 'supabase', 'rollbacks', f.replace(/\.sql$/, '_rollback.sql'))),
+    );
+    expect(faltan).toEqual([]);
+  });
+
+  test('en el cierre, toda política es para authenticated y va por membresía activa con (select auth.uid())', () => {
+    const malas: string[] = [];
+    for (const f of CIERRE) {
+      for (const p of politicas(readFile(path.join(MIGRACIONES, f)))) {
+        if (!/ to authenticated /.test(p.texto)) malas.push(`${f}: no es "to authenticated": ${p.texto.slice(0, 80)}`);
+        if (/\bexists\s*\(/.test(p.texto)) malas.push(`${f}: EXISTS correlacionado (usar IN): ${p.texto.slice(0, 80)}`);
+        if (/auth\.uid\(\)/.test(p.texto) && !/\(select auth\.uid\(\)\)/.test(p.texto)) {
+          malas.push(`${f}: auth.uid() sin (select ...): ${p.texto.slice(0, 80)}`);
+        }
+        if (/organization_members/.test(p.texto) && !/om\.is_active = true/.test(p.texto)) {
+          malas.push(`${f}: membresía sin is_active: ${p.texto.slice(0, 80)}`);
+        }
+      }
+    }
+    expect(malas).toEqual([]);
+  });
+
+  test('ninguna política de escritura de unit_conversions admite organization_id IS NULL', () => {
+    const sql = readFile(path.join(MIGRACIONES, CIERRE[0]));
+    const escritura = politicas(sql).filter(
+      (p) => p.tabla === 'unit_conversions' && / for (insert|update|delete|all) /.test(p.texto),
+    );
+    expect(escritura.length).toBe(3);
+    for (const p of escritura) expect(p.texto).not.toMatch(/is null/);
+  });
+
+  test('units solo tiene lectura para usuarios: ni política de escritura ni GRANT de escritura', () => {
+    const sql = sinComentariosSql(readFile(path.join(MIGRACIONES, CIERRE[0]))).toLowerCase();
+    const deUnits = politicas(sql).filter((p) => p.tabla === 'units');
+    expect(deUnits.map((p) => / for select /.test(p.texto))).toEqual([true]);
+    expect(sql).toMatch(/revoke insert, update, delete, truncate on public\.units from authenticated/);
+  });
+
+  test('ninguna migración posterior reabre estas tablas (USING/WITH CHECK true fuera de units, rol public o anon, GRANT a anon)', () => {
+    const primera = CIERRE[0].slice(0, 14);
+    const posteriores = fs
+      .readdirSync(MIGRACIONES)
+      .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= primera);
+    const infracciones: string[] = [];
+    for (const f of posteriores) {
+      const sql = readFile(path.join(MIGRACIONES, f));
+      for (const p of politicas(sql).filter((x) => TABLAS.includes(x.tabla))) {
+        const abierta = /(using|with check)\s*\(\s*true\s*\)/.test(p.texto);
+        if (abierta && !(p.tabla === 'units' && / for select /.test(p.texto))) {
+          infracciones.push(`${f}: ${p.texto.slice(0, 90)}`);
+        }
+        if (/ to (public|anon)\b/.test(p.texto) || !/ to /.test(p.texto)) {
+          infracciones.push(`${f}: política sin "to authenticated": ${p.texto.slice(0, 90)}`);
+        }
+      }
+      const grants = sinComentariosSql(sql).match(/grant\s+[^;]+?\s+on\s+(?:table\s+)?(?:public\.)?(\w+)\s+to\s+[^;]*\banon\b[^;]*;/gi) ?? [];
+      for (const g of grants) {
+        const tabla = /on\s+(?:table\s+)?(?:public\.)?(\w+)/i.exec(g)![1].toLowerCase();
+        if (TABLAS.includes(tabla)) infracciones.push(`${f}: ${g.replace(/\s+/g, ' ')}`);
+      }
+    }
+    expect(infracciones).toEqual([]);
+  });
+
+  test('el código no escribe units desde el cliente', () => {
+    const escrituras = walkDir(SRC_ROOT)
+      // Filtro propio y no el helper de exclusión: testerR4 (caso 21) prohíbe
+      // que ese helper aparezca en cualquier punto después del caso 21.
+      .filter((f) => !/__tests__|\.test\.|\.spec\./.test(f.replace(/\\/g, '/')))
+      .filter((f) => /\.from\(\s*['"`]units['"`]\s*\)\s*\.(insert|update|upsert|delete)\(/.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(escrituras).toEqual([]);
+  });
+});

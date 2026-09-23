@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 import {
   FilterChips,
@@ -17,6 +18,7 @@ import { SearchSelect, type SearchSelectOption } from '@/components/ui/search-se
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
 import {
   chipsFiltros,
   ESTADOS_PRODUCTO,
@@ -49,6 +51,8 @@ export interface FiltrosProductosProps {
 const TODOS = 'todos';
 
 const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ listado, onBusquedaRapida, buscando, totalResultados }) => {
+  const t = useTranslations('productos.filtros');
+  const entero = useFormatoEntero();
   const { organization } = useOrganization();
   const escritorio = useEsEscritorio();
   const [categorias, setCategorias] = useState<{ id: number; name: string }[]>([]);
@@ -77,8 +81,8 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ listado, onBusqueda
   );
 
   const chips = useMemo(
-    () => chipsFiltros(f, (id) => categorias.find((c) => String(c.id) === id)?.name),
-    [f, categorias],
+    () => chipsFiltros(f, (id) => categorias.find((c) => String(c.id) === id)?.name, t),
+    [f, categorias, t],
   );
 
   const setFiltro = (clave: string, valor: string | null) => listado.setFiltro(clave, valor && valor !== TODOS ? valor : null);
@@ -93,8 +97,8 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ listado, onBusqueda
           value={listado.busqueda}
           onChange={listado.setBusqueda}
           onValueChange={onBusquedaRapida}
-          placeholder="Buscar por nombre, SKU o código de barras…"
-          etiqueta="Buscar productos por nombre, SKU o código de barras"
+          placeholder={t('buscar.placeholder')}
+          etiqueta={t('buscar.etiqueta')}
           cargando={buscando}
         />
       }
@@ -102,11 +106,11 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ listado, onBusqueda
         <FilterPanel
           conteo={listado.filtrosActivos}
           onLimpiar={listado.limpiarFiltros}
-          textoVerResultados={`Ver ${totalResultados.toLocaleString('es-CO')} ${totalResultados === 1 ? 'producto' : 'productos'}`}
-          nota="Los cambios se aplican al instante · la sucursal se elige en el header"
+          textoVerResultados={t('verResultados', { count: totalResultados, n: entero(totalResultados) })}
+          nota={t('nota')}
         >
           {!escritorio && (
-            <FormField etiqueta="Ordenar por">
+            <FormField etiqueta={t('ordenarPor')}>
               {(campo) => (
                 <Select
                   value={ordenActual >= 0 ? String(ordenActual) : '0'}
@@ -121,7 +125,7 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ listado, onBusqueda
                   <SelectContent>
                     {OPCIONES_ORDEN.map((o, i) => (
                       <SelectItem key={`${o.campo}-${o.direccion}`} value={String(i)}>
-                        {o.etiqueta}
+                        {t(`orden.${o.campo}_${o.direccion}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -130,33 +134,33 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ listado, onBusqueda
             </FormField>
           )}
 
-          <FormField etiqueta="Categoría">
+          <FormField etiqueta={t('categoria')}>
             {() => (
               <SearchSelect
                 options={opcionesCategoria}
                 value={f.categoria ?? TODOS}
                 onValueChange={(v) => setFiltro('categoria', v)}
-                placeholder="Todas"
-                searchPlaceholder="Buscar categoría…"
-                emptyText="No se encontraron categorías"
-                noneLabel="Todas"
+                placeholder={t('todas')}
+                searchPlaceholder={t('buscarCategoria')}
+                emptyText={t('sinCategorias')}
+                noneLabel={t('todas')}
                 noneValue={TODOS}
                 className="h-10"
               />
             )}
           </FormField>
 
-          <FormField etiqueta="Estado" ayuda={f.estado ? undefined : 'Sin filtro se ocultan los eliminados.'}>
+          <FormField etiqueta={t('estado')} ayuda={f.estado ? undefined : t('estadoAyuda')}>
             {(campo) => (
               <Select value={f.estado ?? TODOS} onValueChange={(v) => setFiltro('estado', v)}>
                 <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']} className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={TODOS}>Todos</SelectItem>
+                  <SelectItem value={TODOS}>{t('todos')}</SelectItem>
                   {ESTADOS_PRODUCTO.map((e) => (
                     <SelectItem key={e.valor} value={e.valor}>
-                      {e.etiqueta}
+                      {t(`estados.${e.valor}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -164,41 +168,41 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ listado, onBusqueda
             )}
           </FormField>
 
-          <FormField etiqueta="Imagen">
+          <FormField etiqueta={t('imagen.etiqueta')}>
             {(campo) => (
               <SegmentedControl
                 aria-labelledby={campo.idEtiqueta}
                 anchoCompleto
                 valor={f.imagen ?? TODOS}
                 onValorChange={(v) => setFiltro('imagen', v)}
-                opciones={[{ valor: TODOS, etiqueta: 'Todas' }, ...OPCIONES_IMAGEN]}
+                opciones={[{ valor: TODOS, etiqueta: t('todas') }, ...OPCIONES_IMAGEN.map((o) => ({ valor: o.valor, etiqueta: t(`imagen.${o.valor}`) }))]}
               />
             )}
           </FormField>
 
-          <FormField etiqueta="Tipo">
+          <FormField etiqueta={t('tipo.etiqueta')}>
             {(campo) => (
               <SegmentedControl
                 aria-labelledby={campo.idEtiqueta}
                 anchoCompleto
                 valor={f.tipo ?? TODOS}
                 onValorChange={(v) => setFiltro('tipo', v)}
-                opciones={[{ valor: TODOS, etiqueta: 'Todos' }, ...OPCIONES_TIPO]}
+                opciones={[{ valor: TODOS, etiqueta: t('todos') }, ...OPCIONES_TIPO.map((o) => ({ valor: o.valor, etiqueta: t(`tipo.${o.valor}`) }))]}
               />
             )}
           </FormField>
 
-          <FormField etiqueta="Stock" ayuda="Según la sucursal elegida en el header.">
+          <FormField etiqueta={t('stock.etiqueta')} ayuda={t('stockAyuda')}>
             {(campo) => (
               <Select value={f.stock ?? TODOS} onValueChange={(v) => setFiltro('stock', v)}>
                 <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']} className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={TODOS}>Todos</SelectItem>
+                  <SelectItem value={TODOS}>{t('todos')}</SelectItem>
                   {OPCIONES_STOCK.map((o) => (
                     <SelectItem key={o.valor} value={o.valor}>
-                      {o.etiqueta}
+                      {t(`stock.${o.valor}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -213,7 +217,7 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ listado, onBusqueda
                 onCheckedChange={(v) => setFiltro('variantes', v === true ? 'si' : null)}
                 className="size-[18px] rounded"
               />
-              Con variantes
+              {t('chips.variantes')}
             </label>
             <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
               <Checkbox
@@ -221,7 +225,7 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ listado, onBusqueda
                 onCheckedChange={(v) => setFiltro('modificadores', v === true ? 'si' : null)}
                 className="size-[18px] rounded"
               />
-              Con modificadores
+              {t('chips.modificadores')}
             </label>
           </div>
         </FilterPanel>

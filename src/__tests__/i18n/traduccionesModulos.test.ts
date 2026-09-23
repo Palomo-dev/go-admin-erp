@@ -38,6 +38,7 @@ const MODULOS: Record<string, string[]> = {
   categorias: ['src/components/inventario/categorias', 'src/app/app/inventario/categorias'],
   clientes: ['src/components/clientes', 'src/app/app/clientes'],
   cajas: ['src/components/pos/cajas', 'src/app/app/pos/cajas'],
+  productos: ['src/components/inventario/productos', 'src/app/app/inventario/productos'],
 };
 
 type Arbol = { [clave: string]: string | Arbol };

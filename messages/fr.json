@@ -5906,5 +5906,241 @@
         "otros": "Autres"
       }
     }
+  },
+  "productos": {
+    "filtros": {
+      "buscar": {
+        "placeholder": "Rechercher par nom, SKU ou code-barres…",
+        "etiqueta": "Rechercher des produits par nom, SKU ou code-barres"
+      },
+      "verResultados": "{count, plural, one {Voir {n} produit} other {Voir {n} produits}}",
+      "nota": "Les changements s'appliquent immédiatement · la succursale se choisit dans l'en-tête",
+      "ordenarPor": "Trier par",
+      "orden": {
+        "nombre_asc": "Nom (A–Z)",
+        "sku_asc": "Code (SKU)",
+        "precio_asc": "Prix : croissant",
+        "precio_desc": "Prix : décroissant",
+        "stock_asc": "Stock : croissant",
+        "creado_desc": "Plus récents"
+      },
+      "categoria": "Catégorie",
+      "todas": "Toutes",
+      "todos": "Tous",
+      "buscarCategoria": "Rechercher une catégorie…",
+      "sinCategorias": "Aucune catégorie trouvée",
+      "estado": "Statut",
+      "estadoAyuda": "Sans filtre, les produits supprimés sont masqués.",
+      "estados": {
+        "active": "Actif",
+        "inactive": "Inactif",
+        "discontinued": "Arrêté",
+        "deleted": "Supprimé"
+      },
+      "imagen": {
+        "etiqueta": "Image",
+        "con": "Avec image",
+        "sin": "Sans image"
+      },
+      "tipo": {
+        "etiqueta": "Type",
+        "producto": "Produit",
+        "servicio": "Service"
+      },
+      "stock": {
+        "etiqueta": "Stock",
+        "con": "En stock",
+        "bajo": "Stock faible (au minimum ou en dessous)",
+        "sin": "En rupture",
+        "sinSeguimiento": "Non suivi"
+      },
+      "stockCorto": {
+        "con": "En stock",
+        "bajo": "Stock faible",
+        "sin": "En rupture",
+        "sinSeguimiento": "Non suivi"
+      },
+      "stockAyuda": "Selon la succursale choisie dans l'en-tête.",
+      "chips": {
+        "categoria": "Catégorie : {nombre}",
+        "estado": "Statut : {valor}",
+        "tipo": "Type : {valor}",
+        "variantes": "Avec variantes",
+        "modificadores": "Avec options"
+      }
+    },
+    "cabecera": {
+      "titulo": "Catalogue de produits",
+      "migaInventario": "Stock",
+      "migaProductos": "Produits",
+      "progreso": "Progression du chargement du catalogue",
+      "importar": "Importer",
+      "importarArchivo": "Depuis un fichier",
+      "importarArchivoDescripcion": "CSV ou Excel · modèle de 26 colonnes",
+      "importarWeb": "Depuis un site web",
+      "importarWebDescripcion": "Collez une URL et l'IA extrait les produits",
+      "importarDesdeArchivo": "Importer depuis un fichier",
+      "importarDesdeWeb": "Importer depuis un site web",
+      "exportarCsv": "Exporter en CSV",
+      "exportarFacebook": "Exporter vers Facebook (CSV)",
+      "feedFacebook": "URL du flux pour Facebook",
+      "ajustes": "Ajustements de stock",
+      "nuevoProducto": "Nouveau produit",
+      "actualizar": "Actualiser le catalogue",
+      "yaCargando": "Chargement déjà en cours",
+      "menuTitulo": "catalogue",
+      "accionesMovil": "Actions du catalogue"
+    },
+    "masivas": {
+      "sustantivo": {
+        "singular": "produit",
+        "plural": "produits"
+      },
+      "alcance": "{count, plural, one {Cela s’appliquera à {n} produit.} other {Cela s’appliquera à {n} produits.}}",
+      "error": "Erreur",
+      "resultado": {
+        "ok": "{count, plural, one {{n} produit mis à jour.} other {{n} produits mis à jour.}}",
+        "parcialTitulo": "{accion} (partiel)",
+        "parcial": "{exitosos} réussis, {fallidos} en échec. {error}",
+        "precios": "Prix mis à jour",
+        "stock": "Stock mis à jour",
+        "estado": "Statut mis à jour",
+        "categoria": "Catégorie attribuée",
+        "eliminados": "Produits supprimés",
+        "comparacion": "Prix de comparaison mis à jour",
+        "redondeados": "Prix arrondis"
+      },
+      "validacion": {
+        "cantidad": "Saisissez une valeur valide (supérieure ou égale à 0).",
+        "campos": "Remplissez tous les champs.",
+        "categoria": "Sélectionnez une catégorie.",
+        "multiplo": "Le multiple doit être supérieur à 0",
+        "digitosRango": "Le nombre de chiffres à remplacer doit être compris entre 1 et 5",
+        "digitosValor": "{count, plural, one {La valeur doit comporter # chiffre} other {La valeur doit comporter # chiffres}}"
+      },
+      "acciones": {
+        "precios": "Prix",
+        "stock": "Stock",
+        "categoria": "Catégorie",
+        "estado": "Statut",
+        "eliminar": "Supprimer",
+        "comparacion": "Prix → Comparaison",
+        "redondear": "Arrondir les prix"
+      },
+      "tipos": {
+        "venta": "Prix de vente",
+        "compra": "Coût d'achat",
+        "comparacion": "Prix de comparaison"
+      },
+      "precios": {
+        "titulo": "Modification groupée des prix",
+        "tipo": "Type de prix",
+        "modo": "Mode d'ajustement",
+        "modos": {
+          "fijo": "Définir une valeur fixe",
+          "valor": "Par montant ($)",
+          "porcentaje": "Par pourcentage (%)"
+        },
+        "direccion": "Sens",
+        "aumentar": "Augmenter",
+        "disminuir": "Diminuer",
+        "nuevoValor": "Nouvelle valeur",
+        "valorAumentar": "Montant à ajouter ($)",
+        "valorDisminuir": "Montant à retirer ($)",
+        "porcentajeAumentar": "Pourcentage d'augmentation (%)",
+        "porcentajeDisminuir": "Pourcentage de baisse (%)",
+        "ejemploPorcentaje": "Ex. : 10",
+        "ejemploValor": "Ex. : 5000",
+        "avisoCosto": "Les produits <b>sans coût antérieur</b> ne seront pas modifiés (0 × % = 0). Utilisez le mode « Définir une valeur fixe » pour attribuer un coût aux produits qui n’en ont pas."
+      },
+      "stock": {
+        "titulo": "Mise à jour groupée du stock",
+        "sucursal": "Succursale",
+        "seleccioneSucursal": "Sélectionnez une succursale",
+        "modo": "Mode",
+        "modos": {
+          "set": "Définir la quantité exacte",
+          "add": "Ajouter/retirer à la quantité actuelle"
+        },
+        "cantidad": "Quantité",
+        "ejemploSumar": "Ex. : 10 ou -5",
+        "ejemploExacto": "Ex. : 100"
+      },
+      "categoria": {
+        "titulo": "Attribuer une catégorie",
+        "alcance": "{count, plural, one {Elle sera attribuée à {n} produit.} other {Elle sera attribuée à {n} produits.}}",
+        "campo": "Catégorie",
+        "seleccione": "Sélectionnez une catégorie",
+        "buscar": "Rechercher une catégorie…",
+        "vacio": "Aucune catégorie trouvée",
+        "asignar": "Attribuer"
+      },
+      "estado": {
+        "titulo": "Changer le statut ?",
+        "nuevo": "Nouveau statut",
+        "active": "Actif",
+        "inactive": "Inactif",
+        "discontinued": "Arrêté",
+        "cambiar": "Changer le statut"
+      },
+      "redondear": {
+        "titulo": "Arrondir les prix",
+        "alcance": "{count, plural, one {Cela s’appliquera à {n} produit (parents et variantes inclus).} other {Cela s’appliquera à {n} produits (parents et variantes inclus).}}",
+        "precio": "Prix à arrondir",
+        "modo": "Mode d'arrondi",
+        "modoMultiplo": "Au multiple de N",
+        "modoDigitos": "Derniers chiffres",
+        "multiplo": "Arrondir au multiple le plus proche de",
+        "multiploAyuda": "Ex. : 1 234 $ avec multiple 100 → 1 200 $ · 1 267 $ avec multiple 100 → 1 300 $",
+        "multiploPersonalizado": "Ou un multiple personnalisé",
+        "digitos": "Chiffres à remplacer",
+        "nDigitos": "{count, plural, one {# chiffre} other {# chiffres}}",
+        "valor": "Valeur à mettre",
+        "frecuentes": "Valeurs fréquentes",
+        "frecuentesAyuda": "Ex. : 1 234 $ avec les 3 derniers = « 990 » → 1 990 $ · 5 678 $ avec les 2 derniers = « 50 » → 5 650 $"
+      },
+      "comparacion": {
+        "titulo": "Prix de vente → Prix de comparaison",
+        "porDefecto": "Comportement par défaut :",
+        "sin": "Produits <b>sans</b> prix de comparaison : le prix de vente est copié.",
+        "con": "Produits <b>avec</b> prix de comparaison : inchangés.",
+        "sobrescribir": "Écraser aussi ceux qui ont déjà un prix de comparaison"
+      },
+      "eliminar": {
+        "titulo": "{count, plural, one {Supprimer le produit ?} other {Supprimer {n} produits ?}}",
+        "descripcion": "{count, plural, one {{n} produit sera supprimé. Cette action est irréversible.} other {{n} produits seront supprimés. Cette action est irréversible.}}"
+      }
+    },
+    "tabla": {
+      "etiqueta": "Catalogue de produits",
+      "columnas": {
+        "imagen": "Image",
+        "codigo": "Code",
+        "nombre": "Nom",
+        "atributos": "Attributs",
+        "categoria": "Catégorie",
+        "precio": "Prix",
+        "costo": "Coût",
+        "margen": "Marge",
+        "stock": "Stock",
+        "estado": "Statut"
+      },
+      "sinImagen": "Sans image",
+      "sinSeguimiento": "Non suivi",
+      "total": "Total",
+      "stockTitulo": "{sucursal} : {count, plural, one {{n} unité} other {{n} unités}}{conMinimo, select, si { (minimum {minimo})} other {}}{conVariantes, select, si { (produit et variantes)} other {}}",
+      "stockCorto": "{sucursal} : {n}",
+      "servicio": "Service",
+      "variantes": "{count, plural, one {{n} variante} other {{n} variantes}}",
+      "variantesCorto": "{n} var.",
+      "modificadores": "{count, plural, one {{n} groupe d'options} other {{n} groupes d'options}}",
+      "modificadoresCorto": "{n} opt.",
+      "precioAntes": "Avant {precio} · {descuento} % de remise",
+      "sinResultados": "Essayez une autre recherche ou retirez un filtre.",
+      "error": {
+        "titulo": "Impossible de charger le catalogue",
+        "descripcion": "Vérifiez la connexion et réessayez."
+      }
+    }
   }
 }

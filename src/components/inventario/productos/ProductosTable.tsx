@@ -3,11 +3,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { Layers, Package, SlidersHorizontal, Wrench } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import { DataTable, ListCard, StatusBadge, type AccionFila, type ColumnaTabla, type DataTableProps } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/config';
 import { useOrgCurrency, formatMonedaSinDecimales } from '@/lib/hooks/useOrgCurrency';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
 import { margenDe, nivelDeCantidad, nivelStock, rutaImagenPrincipal } from './catalogoVista';
 import { nivelesDe } from './stockVisible';
 import type { Producto } from './types';
@@ -46,6 +48,7 @@ function urlImagen(ruta: string | null): string | null {
 const hrefDetalle = (p: Producto) => `/app/inventario/productos/${p.uuid || p.id}`;
 
 function Miniatura({ producto, onFallo }: { producto: Producto; onFallo: (id: string) => void }) {
+  const t = useTranslations('productos.tabla');
   const url = React.useMemo(() => urlImagen(rutaImagenPrincipal(producto)), [producto]);
   const [fallo, setFallo] = React.useState(false);
   React.useEffect(() => setFallo(false), [url]);
@@ -54,7 +57,7 @@ function Miniatura({ producto, onFallo }: { producto: Producto; onFallo: (id: st
     return (
       <div className="flex size-10 items-center justify-center rounded-lg border border-line bg-subtle text-fg-muted">
         <Package aria-hidden="true" className="size-4" strokeWidth={1.5} />
-        <span className="sr-only">Sin imagen</span>
+        <span className="sr-only">{t('sinImagen')}</span>
       </div>
     );
   }
@@ -90,15 +93,17 @@ function StockSucursales({
   /** Tarjeta móvil: sin contenedor propio; los chips van sueltos en la fila de etiquetas, que envuelve. */
   suelto?: boolean;
 }) {
+  const t = useTranslations('productos.tabla');
+  const entero = useFormatoEntero();
   if (producto.track_stock === false) {
     return (
       <Badge tono="neutro" tamano="sm">
-        Sin seguimiento
+        {t('sinSeguimiento')}
       </Badge>
     );
   }
   const nombre = (id: number) => branches.find((b) => b.id === id)?.name || `#${id}`;
-  const conVariantes = (producto.children?.length ?? 0) > 0 ? ' (producto y variantes)' : '';
+  const conVariantes = (producto.children?.length ?? 0) > 0 ? 'si' : 'no';
   const niveles = nivelesDe(producto).filter((sl) => branchFilter === null || sl.branch_id === branchFilter);
 
   const chips: { id: number | string; texto: string; qty: number; minimo: number }[] =
@@ -111,7 +116,7 @@ function StockSucursales({
         }))
       : branchFilter !== null
         ? [{ id: branchFilter, texto: nombre(branchFilter), qty: 0, minimo: 0 }]
-        : [{ id: 'total', texto: 'Total', qty: producto.stock ?? 0, minimo: 0 }];
+        : [{ id: 'total', texto: t('total'), qty: producto.stock ?? 0, minimo: 0 }];
 
   const tono = (qty: number, minimo: number) => TONO_STOCK[nivelDeCantidad(qty, minimo)];
   const visibles = chips.slice(0, max);
@@ -124,16 +129,23 @@ function StockSucursales({
           key={c.id}
           tono={tono(c.qty, c.minimo)}
           tamano="sm"
-          title={`${c.texto}: ${c.qty} unidades${c.minimo > 0 ? ` (mínimo ${c.minimo})` : ''}${conVariantes}`}
+          title={t('stockTitulo', {
+            sucursal: c.texto,
+            count: c.qty,
+            n: entero(c.qty),
+            conMinimo: c.minimo > 0 ? 'si' : 'no',
+            minimo: entero(c.minimo),
+            conVariantes,
+          })}
           className="max-w-[min(140px,100%)]"
         >
           <span className="truncate">{c.texto}</span>
           <span aria-hidden="true">·</span>
-          <span className="tabular-nums">{c.qty.toLocaleString('es-CO')}</span>
+          <span className="tabular-nums">{entero(c.qty)}</span>
         </Badge>
       ))}
       {resto.length > 0 && (
-        <Badge tono="neutro" tamano="sm" title={resto.map((c) => `${c.texto}: ${c.qty}`).join(' · ')}>
+        <Badge tono="neutro" tamano="sm" title={resto.map((c) => t('stockCorto', { sucursal: c.texto, n: entero(c.qty) })).join(' · ')}>
           +{resto.length}
         </Badge>
       )}
@@ -143,6 +155,8 @@ function StockSucursales({
 }
 
 function Atributos({ producto }: { producto: Producto }) {
+  const t = useTranslations('productos.tabla');
+  const entero = useFormatoEntero();
   const variantes = producto.children?.length ?? 0;
   const modificadores = producto.modifier_groups_count ?? 0;
   if (producto.product_type !== 'service' && variantes === 0 && modificadores === 0) return null;
@@ -150,12 +164,12 @@ function Atributos({ producto }: { producto: Producto }) {
     <>
       {producto.product_type === 'service' && (
         <Badge tono="neutro" tamano="sm" icono={Wrench}>
-          Servicio
+          {t('servicio')}
         </Badge>
       )}
       {variantes > 0 && (
-        <Badge tono="neutro" tamano="sm" icono={Layers} title={`${variantes} ${variantes === 1 ? 'variante' : 'variantes'}`}>
-          {variantes} var.
+        <Badge tono="neutro" tamano="sm" icono={Layers} title={t('variantes', { count: variantes, n: entero(variantes) })}>
+          {t('variantesCorto', { n: entero(variantes) })}
         </Badge>
       )}
       {modificadores > 0 && (
@@ -163,9 +177,9 @@ function Atributos({ producto }: { producto: Producto }) {
           tono="neutro"
           tamano="sm"
           icono={SlidersHorizontal}
-          title={`${modificadores} ${modificadores === 1 ? 'grupo de modificadores' : 'grupos de modificadores'}`}
+          title={t('modificadores', { count: modificadores, n: entero(modificadores) })}
         >
-          {modificadores} modif.
+          {t('modificadoresCorto', { n: entero(modificadores) })}
         </Badge>
       )}
     </>
@@ -192,6 +206,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   onImagenFallida,
   ...tabla
 }) => {
+  const t = useTranslations('productos.tabla');
   const moneda = useOrgCurrency();
   const precio = React.useCallback((v: number) => formatMonedaSinDecimales(v, moneda), [moneda]);
 
@@ -206,7 +221,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
           {comparacion !== null && (
             <span
               className="text-xs text-fg-muted line-through"
-              title={`Antes ${precio(comparacion)} · ${Math.round((1 - producto.price / comparacion) * 100)} % de descuento`}
+              title={t('precioAntes', { precio: precio(comparacion), descuento: String(Math.round((1 - producto.price / comparacion) * 100)) })}
             >
               {precio(comparacion)}
             </span>
@@ -214,22 +229,22 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
         </div>
       );
     },
-    [precio],
+    [precio, t],
   );
 
   const columnas = React.useMemo<ColumnaTabla<Producto>[]>(
     () => [
       {
         id: 'imagen',
-        encabezado: 'Imagen',
+        encabezado: t('columnas.imagen'),
         ancho: 56,
         className: 'pr-0',
         celda: (p) => <Miniatura producto={p} onFallo={onImagenFallida} />,
       },
-      { id: 'sku', encabezado: 'Código', variante: 'mono', ordenable: true, celda: (p) => p.sku || '—' },
+      { id: 'sku', encabezado: t('columnas.codigo'), variante: 'mono', ordenable: true, celda: (p) => p.sku || '—' },
       {
         id: 'nombre',
-        encabezado: 'Nombre',
+        encabezado: t('columnas.nombre'),
         ordenable: true,
         className: 'max-w-[280px]',
         celda: (p) => (
@@ -245,7 +260,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
       },
       {
         id: 'atributos',
-        encabezado: 'Atributos',
+        encabezado: t('columnas.atributos'),
         ocultarDebajo: 'xl',
         celda: (p) => (
           <div className="flex flex-wrap items-center gap-1">
@@ -255,34 +270,34 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
       },
       {
         id: 'categoria',
-        encabezado: 'Categoría',
+        encabezado: t('columnas.categoria'),
         ordenable: true,
         className: 'max-w-[180px]',
         celda: (p) => <span className="block truncate text-fg-secondary">{p.category?.name || '—'}</span>,
       },
-      { id: 'precio', encabezado: 'Precio', variante: 'importe', ordenable: true, celda: celdaPrecio },
+      { id: 'precio', encabezado: t('columnas.precio'), variante: 'importe', ordenable: true, celda: celdaPrecio },
       {
         id: 'costo',
-        encabezado: 'Costo',
+        encabezado: t('columnas.costo'),
         variante: 'importe',
         ocultarDebajo: 'xl',
         celda: (p) => (typeof p.cost === 'number' && p.cost > 0 ? precio(p.cost) : <span className="text-fg-muted">—</span>),
       },
-      { id: 'margen', encabezado: 'Margen', alinear: 'derecha', ordenable: true, celda: (p) => <Margen producto={p} /> },
+      { id: 'margen', encabezado: t('columnas.margen'), alinear: 'derecha', ordenable: true, celda: (p) => <Margen producto={p} /> },
       {
         id: 'stock',
-        encabezado: 'Stock',
+        encabezado: t('columnas.stock'),
         ordenable: true,
         celda: (p) => <StockSucursales producto={p} branchFilter={branchFilter} branches={branches} />,
       },
-      { id: 'estado', encabezado: 'Estado', ordenable: true, celda: (p) => <StatusBadge estado={p.status} /> },
+      { id: 'estado', encabezado: t('columnas.estado'), ordenable: true, celda: (p) => <StatusBadge estado={p.status} /> },
     ],
-    [celdaPrecio, branchFilter, branches, onImagenFallida, precio],
+    [celdaPrecio, branchFilter, branches, onImagenFallida, precio, t],
   );
 
   return (
     <DataTable<Producto>
-      etiqueta="Catálogo de productos"
+      etiqueta={t('etiqueta')}
       columnas={columnas}
       filas={productos}
       obtenerId={(p) => String(p.id)}
@@ -314,8 +329,8 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
           onSeleccionChange={ctx.alternar}
         />
       )}
-      sinResultados={{ descripcion: 'Prueba con otra búsqueda o quita algún filtro.' }}
-      error={{ titulo: 'No se pudo cargar el catálogo', descripcion: 'Revisa la conexión e inténtalo de nuevo.' }}
+      sinResultados={{ descripcion: t('sinResultados') }}
+      error={{ titulo: t('error.titulo'), descripcion: t('error.descripcion') }}
       {...tabla}
     />
   );

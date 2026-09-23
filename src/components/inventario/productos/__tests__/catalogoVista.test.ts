@@ -201,6 +201,16 @@ describe('URL → RPC y chips', () => {
     ]);
   });
 
+  it('con traductor, los chips salen de productos.filtros; un valor desconocido se muestra tal cual', () => {
+    const t = (clave: string, valores?: Record<string, string>) => `[${clave}${valores ? JSON.stringify(valores) : ''}]`;
+    const chips = chipsFiltros({ estado: 'active', stock: 'raro', variantes: 'si' }, () => undefined, t);
+    expect(chips.map((c) => c.etiqueta)).toEqual([
+      '[chips.estado{"valor":"[estados.active]"}]',
+      'raro',
+      '[chips.variantes]',
+    ]);
+  });
+
   it('la selección de la tabla (texto) pasa a ids numéricos para los servicios masivos', () => {
     expect(idsNumericos(new Set(['3', '10', 'nuevo', '0']))).toEqual([3, 10]);
   });

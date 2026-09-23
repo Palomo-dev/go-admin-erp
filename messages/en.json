@@ -6011,5 +6011,241 @@
         "otros": "Other"
       }
     }
+  },
+  "productos": {
+    "filtros": {
+      "buscar": {
+        "placeholder": "Search by name, SKU or barcode…",
+        "etiqueta": "Search products by name, SKU or barcode"
+      },
+      "verResultados": "{count, plural, one {Show {n} product} other {Show {n} products}}",
+      "nota": "Changes apply instantly · choose the branch in the header",
+      "ordenarPor": "Sort by",
+      "orden": {
+        "nombre_asc": "Name (A–Z)",
+        "sku_asc": "Code (SKU)",
+        "precio_asc": "Price: low to high",
+        "precio_desc": "Price: high to low",
+        "stock_asc": "Stock: low to high",
+        "creado_desc": "Newest first"
+      },
+      "categoria": "Category",
+      "todas": "All",
+      "todos": "All",
+      "buscarCategoria": "Search category…",
+      "sinCategorias": "No categories found",
+      "estado": "Status",
+      "estadoAyuda": "With no filter, deleted products are hidden.",
+      "estados": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "discontinued": "Discontinued",
+        "deleted": "Deleted"
+      },
+      "imagen": {
+        "etiqueta": "Image",
+        "con": "With image",
+        "sin": "No image"
+      },
+      "tipo": {
+        "etiqueta": "Type",
+        "producto": "Product",
+        "servicio": "Service"
+      },
+      "stock": {
+        "etiqueta": "Stock",
+        "con": "In stock",
+        "bajo": "Low stock (at or below minimum)",
+        "sin": "Out of stock",
+        "sinSeguimiento": "Not tracked"
+      },
+      "stockCorto": {
+        "con": "In stock",
+        "bajo": "Low stock",
+        "sin": "Out of stock",
+        "sinSeguimiento": "Not tracked"
+      },
+      "stockAyuda": "Based on the branch selected in the header.",
+      "chips": {
+        "categoria": "Category: {nombre}",
+        "estado": "Status: {valor}",
+        "tipo": "Type: {valor}",
+        "variantes": "With variants",
+        "modificadores": "With modifiers"
+      }
+    },
+    "cabecera": {
+      "titulo": "Product catalog",
+      "migaInventario": "Inventory",
+      "migaProductos": "Products",
+      "progreso": "Catalog loading progress",
+      "importar": "Import",
+      "importarArchivo": "From a file",
+      "importarArchivoDescripcion": "CSV or Excel · 26-column template",
+      "importarWeb": "From a website",
+      "importarWebDescripcion": "Paste a URL and AI extracts the products",
+      "importarDesdeArchivo": "Import from a file",
+      "importarDesdeWeb": "Import from a website",
+      "exportarCsv": "Export to CSV",
+      "exportarFacebook": "Export to Facebook (CSV)",
+      "feedFacebook": "Facebook feed URL",
+      "ajustes": "Inventory adjustments",
+      "nuevoProducto": "New product",
+      "actualizar": "Refresh catalog",
+      "yaCargando": "Already loading",
+      "menuTitulo": "catalog",
+      "accionesMovil": "Catalog actions"
+    },
+    "masivas": {
+      "sustantivo": {
+        "singular": "product",
+        "plural": "products"
+      },
+      "alcance": "{count, plural, one {This will apply to {n} product.} other {This will apply to {n} products.}}",
+      "error": "Error",
+      "resultado": {
+        "ok": "{count, plural, one {{n} product updated successfully.} other {{n} products updated successfully.}}",
+        "parcialTitulo": "{accion} (partial)",
+        "parcial": "{exitosos} succeeded, {fallidos} failed. {error}",
+        "precios": "Prices updated",
+        "stock": "Stock updated",
+        "estado": "Status updated",
+        "categoria": "Category assigned",
+        "eliminados": "Products deleted",
+        "comparacion": "Compare-at price updated",
+        "redondeados": "Prices rounded"
+      },
+      "validacion": {
+        "cantidad": "Enter a valid amount (0 or more).",
+        "campos": "Fill in all fields.",
+        "categoria": "Select a category.",
+        "multiplo": "The multiple must be greater than 0",
+        "digitosRango": "Digits to replace must be between 1 and 5",
+        "digitosValor": "{count, plural, one {The value must have # digit} other {The value must have # digits}}"
+      },
+      "acciones": {
+        "precios": "Prices",
+        "stock": "Stock",
+        "categoria": "Category",
+        "estado": "Status",
+        "eliminar": "Delete",
+        "comparacion": "Price → Compare-at",
+        "redondear": "Round prices"
+      },
+      "tipos": {
+        "venta": "Sale price",
+        "compra": "Purchase cost",
+        "comparacion": "Compare-at price"
+      },
+      "precios": {
+        "titulo": "Bulk price edit",
+        "tipo": "Price type",
+        "modo": "Adjustment mode",
+        "modos": {
+          "fijo": "Set a fixed value",
+          "valor": "By amount ($)",
+          "porcentaje": "By percentage (%)"
+        },
+        "direccion": "Direction",
+        "aumentar": "Increase",
+        "disminuir": "Decrease",
+        "nuevoValor": "New value",
+        "valorAumentar": "Amount to increase ($)",
+        "valorDisminuir": "Amount to decrease ($)",
+        "porcentajeAumentar": "Percentage to increase (%)",
+        "porcentajeDisminuir": "Percentage to decrease (%)",
+        "ejemploPorcentaje": "E.g. 10",
+        "ejemploValor": "E.g. 5000",
+        "avisoCosto": "Products <b>with no previous cost</b> won’t change (0 × % = 0). Use “Set a fixed value” to give a cost to products that don’t have one."
+      },
+      "stock": {
+        "titulo": "Bulk stock update",
+        "sucursal": "Branch",
+        "seleccioneSucursal": "Select a branch",
+        "modo": "Mode",
+        "modos": {
+          "set": "Set exact quantity",
+          "add": "Add to/subtract from current quantity"
+        },
+        "cantidad": "Quantity",
+        "ejemploSumar": "E.g. 10 or -5",
+        "ejemploExacto": "E.g. 100"
+      },
+      "categoria": {
+        "titulo": "Assign category",
+        "alcance": "{count, plural, one {It will be assigned to {n} product.} other {It will be assigned to {n} products.}}",
+        "campo": "Category",
+        "seleccione": "Select a category",
+        "buscar": "Search category…",
+        "vacio": "No categories found",
+        "asignar": "Assign"
+      },
+      "estado": {
+        "titulo": "Change the status?",
+        "nuevo": "New status",
+        "active": "Active",
+        "inactive": "Inactive",
+        "discontinued": "Discontinued",
+        "cambiar": "Change status"
+      },
+      "redondear": {
+        "titulo": "Round prices",
+        "alcance": "{count, plural, one {This will apply to {n} product (parents and variants included).} other {This will apply to {n} products (parents and variants included).}}",
+        "precio": "Price to round",
+        "modo": "Rounding mode",
+        "modoMultiplo": "To a multiple of N",
+        "modoDigitos": "Last digits",
+        "multiplo": "Round to the nearest multiple of",
+        "multiploAyuda": "E.g. $1,234 with multiple 100 → $1,200 · $1,267 with multiple 100 → $1,300",
+        "multiploPersonalizado": "Or a custom multiple",
+        "digitos": "Digits to replace",
+        "nDigitos": "{count, plural, one {# digit} other {# digits}}",
+        "valor": "Value to set",
+        "frecuentes": "Common values",
+        "frecuentesAyuda": "E.g. $1,234 with the last 3 = \"990\" → $1,990 · $5,678 with the last 2 = \"50\" → $5,650"
+      },
+      "comparacion": {
+        "titulo": "Sale price → Compare-at price",
+        "porDefecto": "Default behavior:",
+        "sin": "Products <b>without</b> a compare-at price: the sale price is copied.",
+        "con": "Products <b>with</b> a compare-at price: left as they are.",
+        "sobrescribir": "Also overwrite products that already have a compare-at price"
+      },
+      "eliminar": {
+        "titulo": "{count, plural, one {Delete the product?} other {Delete {n} products?}}",
+        "descripcion": "{count, plural, one {{n} product will be deleted. This action cannot be undone.} other {{n} products will be deleted. This action cannot be undone.}}"
+      }
+    },
+    "tabla": {
+      "etiqueta": "Product catalog",
+      "columnas": {
+        "imagen": "Image",
+        "codigo": "Code",
+        "nombre": "Name",
+        "atributos": "Attributes",
+        "categoria": "Category",
+        "precio": "Price",
+        "costo": "Cost",
+        "margen": "Margin",
+        "stock": "Stock",
+        "estado": "Status"
+      },
+      "sinImagen": "No image",
+      "sinSeguimiento": "Not tracked",
+      "total": "Total",
+      "stockTitulo": "{sucursal}: {count, plural, one {{n} unit} other {{n} units}}{conMinimo, select, si { (minimum {minimo})} other {}}{conVariantes, select, si { (product and variants)} other {}}",
+      "stockCorto": "{sucursal}: {n}",
+      "servicio": "Service",
+      "variantes": "{count, plural, one {{n} variant} other {{n} variants}}",
+      "variantesCorto": "{n} var.",
+      "modificadores": "{count, plural, one {{n} modifier group} other {{n} modifier groups}}",
+      "modificadoresCorto": "{n} mod.",
+      "precioAntes": "Was {precio} · {descuento}% off",
+      "sinResultados": "Try a different search or remove a filter.",
+      "error": {
+        "titulo": "Couldn't load the catalog",
+        "descripcion": "Check your connection and try again."
+      }
+    }
   }
 }

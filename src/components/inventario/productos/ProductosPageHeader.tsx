@@ -55,40 +55,41 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
 }) => {
   const router = useRouter();
   const tEtq = useTranslations('inventarioEtiquetas.catalogo');
+  const t = useTranslations('productos.cabecera');
   const cargandoLotes = !!progresoCarga && progresoCarga.cargados < progresoCarga.total;
 
   const importar: AccionFila[] = [
     {
       id: 'importar-archivo',
-      etiqueta: 'Desde un archivo',
-      descripcion: 'CSV o Excel · plantilla de 26 columnas',
+      etiqueta: t('importarArchivo'),
+      descripcion: t('importarArchivoDescripcion'),
       icono: FileSpreadsheet,
       onSelect: onImportarArchivo,
     },
     {
       id: 'importar-web',
-      etiqueta: 'Desde una web',
-      descripcion: 'Pega una URL y la IA extrae los productos',
+      etiqueta: t('importarWeb'),
+      descripcion: t('importarWebDescripcion'),
       icono: Globe,
       onSelect: onImportarWeb,
     },
   ];
 
   const exportar: AccionFila[] = [
-    { id: 'exportar-csv', etiqueta: 'Exportar a CSV', icono: Download, onSelect: onExportarCsv },
+    { id: 'exportar-csv', etiqueta: t('exportarCsv'), icono: Download, onSelect: onExportarCsv },
     {
       id: 'exportar-facebook',
-      etiqueta: 'Exportar a Facebook (CSV)',
+      etiqueta: t('exportarFacebook'),
       icono: Download,
       onSelect: onExportarFacebook,
       separadorAntes: true,
     },
-    { id: 'feed-facebook', etiqueta: 'URL del feed para Facebook', icono: Link2, onSelect: onFeedFacebook },
+    { id: 'feed-facebook', etiqueta: t('feedFacebook'), icono: Link2, onSelect: onFeedFacebook },
   ];
 
   const irAjustes: AccionFila = {
     id: 'ajustes',
-    etiqueta: 'Ajustes de inventario',
+    etiqueta: t('ajustes'),
     icono: ClipboardCheck,
     onSelect: () => router.push('/app/inventario/ajustes'),
     separadorAntes: true,
@@ -113,9 +114,9 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
 
   // Hoja móvil «Acciones del catálogo»: lo mismo que la cabecera de escritorio.
   const accionesMovil: AccionFila[] = [
-    { id: 'nuevo', etiqueta: 'Nuevo producto', icono: Plus, onSelect: () => router.push(HREF_NUEVO) },
-    { ...importar[0], etiqueta: 'Importar desde un archivo', descripcion: undefined, separadorAntes: true },
-    { ...importar[1], etiqueta: 'Importar desde una web', descripcion: undefined },
+    { id: 'nuevo', etiqueta: t('nuevoProducto'), icono: Plus, onSelect: () => router.push(HREF_NUEVO) },
+    { ...importar[0], etiqueta: t('importarDesdeArchivo'), descripcion: undefined, separadorAntes: true },
+    { ...importar[1], etiqueta: t('importarDesdeWeb'), descripcion: undefined },
     ...etiquetasYCodigos.map((a, i) => (i === 0 ? { ...a, separadorAntes: true } : a)),
     { ...exportar[0], separadorAntes: true },
     { ...exportar[1], separadorAntes: false },
@@ -123,22 +124,22 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
     irAjustes,
     {
       id: 'actualizar',
-      etiqueta: 'Actualizar catálogo',
+      etiqueta: t('actualizar'),
       icono: RefreshCw,
       onSelect: onActualizar,
       deshabilitada: actualizando,
-      motivo: 'Ya se está cargando',
+      motivo: t('yaCargando'),
     },
   ];
 
   return (
     <PageHeader
-      titulo="Catálogo de productos"
+      titulo={t('titulo')}
       icono={Package}
-      migas={[{ etiqueta: 'Inventario', href: '/app/inventario' }, { etiqueta: 'Productos' }]}
+      migas={[{ etiqueta: t('migaInventario'), href: '/app/inventario' }, { etiqueta: t('migaProductos') }]}
       subtitulo={subtitulo}
       cargando={cargandoLotes}
-      progreso={progresoCarga ? { actual: progresoCarga.cargados, total: progresoCarga.total, etiqueta: 'Progreso de carga del catálogo' } : null}
+      progreso={progresoCarga ? { actual: progresoCarga.cargados, total: progresoCarga.total, etiqueta: t('progreso') } : null}
       acciones={
         <>
           <Button
@@ -147,34 +148,34 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
             className="size-10"
             onClick={onActualizar}
             disabled={actualizando}
-            aria-label="Actualizar catálogo"
-            title="Actualizar catálogo"
+            aria-label={t('actualizar')}
+            title={t('actualizar')}
           >
             <RefreshCw aria-hidden="true" className={actualizando ? 'size-4 animate-spin' : 'size-4'} strokeWidth={1.5} />
           </Button>
-          <RowActionsMenu acciones={importar} etiquetaBoton="Importar" iconoBoton={Upload} />
+          <RowActionsMenu acciones={importar} etiquetaBoton={t('importar')} iconoBoton={Upload} />
           <Button asChild className="h-10 gap-2">
             <Link href={HREF_NUEVO} prefetch>
               <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              Nuevo producto
+              {t('nuevoProducto')}
             </Link>
           </Button>
-          <RowActionsMenu acciones={masAcciones} orientacion="horizontal" tamano="md" titulo="catálogo" />
+          <RowActionsMenu acciones={masAcciones} orientacion="horizontal" tamano="md" titulo={t('menuTitulo')} />
         </>
       }
       movil={{
-        titulo: 'Productos',
+        titulo: t('migaProductos'),
         subtitulo: subtituloMovil,
         accion: (
           <div className="flex items-center gap-1">
             <Link
               href={HREF_NUEVO}
-              aria-label="Nuevo producto"
+              aria-label={t('nuevoProducto')}
               className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
             </Link>
-            <RowActionsMenu acciones={accionesMovil} orientacion="horizontal" tamano="sm" titulo="Acciones del catálogo" className="size-10" />
+            <RowActionsMenu acciones={accionesMovil} orientacion="horizontal" tamano="sm" titulo={t('accionesMovil')} className="size-10" />
           </div>
         ),
       }}

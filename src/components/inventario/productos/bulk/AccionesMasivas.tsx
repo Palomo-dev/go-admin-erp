@@ -37,6 +37,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { avisarCambioCatalogo } from '@/lib/services/website/avisarCambioCatalogo';
 import { useTranslations } from 'next-intl';
 import { AltaRapidaCategoria } from '../nuevo/AltaRapidaCategoria';
+import { useFormatoEntero, useKitT } from '@/components/kit/useIdiomaKit';
 import {
   bulkUpdatePrices,
   bulkUpdateStock,
@@ -96,6 +97,9 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
 }) => {
   const tEtq = useTranslations('inventarioEtiquetas.catalogo');
   const tCat = useTranslations('inventarioEtiquetas.categoria');
+  const t = useTranslations('productos.masivas');
+  const tk = useKitT();
+  const entero = useFormatoEntero();
   const { organization } = useOrganization();
   const { selectedBranchId } = useBranch();
   const [activeDialog, setActiveDialog] = useState<DialogType>(null);
@@ -147,7 +151,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   }, [organization?.id, selectedBranchId]);
 
   const n = selectedIds.length;
-  const alcance = `Se aplicará a ${n.toLocaleString('es-CO')} producto${n !== 1 ? 's' : ''}.`;
+  const alcance = t('alcance', { count: n, n: entero(n) });
 
   // Mientras se procesa, el diálogo no se cierra (ni con Esc ni fuera).
   const cerrar = (abierto: boolean) => {
@@ -159,12 +163,12 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     // los precios, el stock o el estado que acaban de cambiar.
     if (exitosos > 0) avisarCambioCatalogo();
     if (fallidos === 0) {
-      toast({ title: accion, description: `${exitosos} productos actualizados correctamente.` });
+      toast({ title: accion, description: t('resultado.ok', { count: exitosos, n: entero(exitosos) }) });
     } else {
       toast({
         variant: 'destructive',
-        title: `${accion} (parcial)`,
-        description: `${exitosos} exitosos, ${fallidos} fallidos. ${errores[0] || ''}`,
+        title: t('resultado.parcialTitulo', { accion }),
+        description: t('resultado.parcial', { exitosos: entero(exitosos), fallidos: entero(fallidos), error: errores[0] || '' }),
       });
     }
     onActionComplete();
@@ -175,7 +179,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   const handlePrecios = async () => {
     const cantidadRaw = parseFloat(cantidadPrecio);
     if (isNaN(cantidadRaw) || cantidadRaw < 0) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Ingrese una cantidad válida (mayor o igual a 0).' });
+      toast({ variant: 'destructive', title: t('error'), description: t('validacion.cantidad') });
       return;
     }
     // Si es "Disminuir", se niega el valor para que el servicio lo reste
@@ -183,7 +187,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     setProcessing(true);
     try {
       const r = await bulkUpdatePrices(selectedIds, tipoPrecio, modoAjuste, cantidad);
-      mostrarResultado('Precios actualizados', r.exitosos, r.fallidos, r.errores);
+      mostrarResultado(t('resultado.precios'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
       setCantidadPrecio('');
@@ -193,13 +197,13 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   const handleStock = async () => {
     const cantidad = parseFloat(cantidadStock);
     if (isNaN(cantidad) || !selectedBranch) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Complete todos los campos.' });
+      toast({ variant: 'destructive', title: t('error'), description: t('validacion.campos') });
       return;
     }
     setProcessing(true);
     try {
       const r = await bulkUpdateStock(selectedIds, parseInt(selectedBranch), cantidad, modoStock);
-      mostrarResultado('Stock actualizado', r.exitosos, r.fallidos, r.errores);
+      mostrarResultado(t('resultado.stock'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
       setCantidadStock('');
@@ -210,7 +214,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     setProcessing(true);
     try {
       const r = await bulkUpdateStatus(selectedIds, status);
-      mostrarResultado('Estado actualizado', r.exitosos, r.fallidos, r.errores);
+      mostrarResultado(t('resultado.estado'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
     }
@@ -218,13 +222,13 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
 
   const handleCategoria = async () => {
     if (!selectedCategoria) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Seleccione una categoría.' });
+      toast({ variant: 'destructive', title: t('error'), description: t('validacion.categoria') });
       return;
     }
     setProcessing(true);
     try {
       const r = await bulkAssignCategory(selectedIds, parseInt(selectedCategoria));
-      mostrarResultado('Categoría asignada', r.exitosos, r.fallidos, r.errores);
+      mostrarResultado(t('resultado.categoria'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
     }
@@ -234,7 +238,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     setProcessing(true);
     try {
       const r = await bulkDelete(selectedIds);
-      mostrarResultado('Productos eliminados', r.exitosos, r.fallidos, r.errores);
+      mostrarResultado(t('resultado.eliminados'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
     }
@@ -244,7 +248,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     setProcessing(true);
     try {
       const r = await bulkCopyPriceToCompare(selectedIds, sobrescribirComparacion);
-      mostrarResultado('Precio de comparación actualizado', r.exitosos, r.fallidos, r.errores);
+      mostrarResultado(t('resultado.comparacion'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
       setSobrescribirComparacion(false);
@@ -256,35 +260,35 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     const dCount = modoRedondeo === 'digitos' ? parseInt(digitosCount, 10) : 0;
 
     if (modoRedondeo === 'multiplo' && (!multiplo || multiplo <= 0)) {
-      toast({ variant: 'destructive', title: 'Error', description: 'El múltiplo debe ser mayor a 0' });
+      toast({ variant: 'destructive', title: t('error'), description: t('validacion.multiplo') });
       return;
     }
     if (modoRedondeo === 'digitos' && (!dCount || dCount < 1 || dCount > 5)) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Los dígitos a reemplazar deben estar entre 1 y 5' });
+      toast({ variant: 'destructive', title: t('error'), description: t('validacion.digitosRango') });
       return;
     }
     if (modoRedondeo === 'digitos' && digitosValor.length !== dCount) {
-      toast({ variant: 'destructive', title: 'Error', description: `El valor debe tener ${dCount} dígitos` });
+      toast({ variant: 'destructive', title: t('error'), description: t('validacion.digitosValor', { count: dCount }) });
       return;
     }
 
     setProcessing(true);
     try {
       const r = await bulkRoundPrices(selectedIds, tipoRedondeo, modoRedondeo, multiplo, dCount, digitosValor);
-      mostrarResultado('Precios redondeados', r.exitosos, r.fallidos, r.errores);
+      mostrarResultado(t('resultado.redondeados'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
     }
   };
 
   const acciones: AccionMasiva[] = [
-    { id: 'precios', etiqueta: 'Precios', icono: DollarSign, onClick: () => setActiveDialog('precios') },
-    { id: 'stock', etiqueta: 'Stock', icono: SlidersHorizontal, onClick: () => setActiveDialog('stock') },
-    { id: 'categoria', etiqueta: 'Categoría', icono: Tags, onClick: () => setActiveDialog('categoria') },
-    { id: 'estado', etiqueta: 'Estado', icono: Power, onClick: () => setActiveDialog('estado') },
+    { id: 'precios', etiqueta: t('acciones.precios'), icono: DollarSign, onClick: () => setActiveDialog('precios') },
+    { id: 'stock', etiqueta: t('acciones.stock'), icono: SlidersHorizontal, onClick: () => setActiveDialog('stock') },
+    { id: 'categoria', etiqueta: t('acciones.categoria'), icono: Tags, onClick: () => setActiveDialog('categoria') },
+    { id: 'estado', etiqueta: t('acciones.estado'), icono: Power, onClick: () => setActiveDialog('estado') },
     {
       id: 'eliminar',
-      etiqueta: 'Eliminar',
+      etiqueta: t('acciones.eliminar'),
       icono: Trash,
       onClick: () => setActiveDialog('eliminar'),
       destructiva: true,
@@ -299,14 +303,14 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     ...(onGenerarCodigos
       ? [{ id: 'generar-codigos', etiqueta: tEtq('generarCodigos'), icono: Barcode, onSelect: () => onGenerarCodigos(selectedIds) }]
       : []),
-    { id: 'comparacion', etiqueta: 'Precio → Comparación', icono: Copy, onSelect: () => setActiveDialog('copiarComparacion'), separadorAntes: !!(onImprimirEtiquetas || onGenerarCodigos) },
-    { id: 'redondear', etiqueta: 'Redondear precios', icono: Hash, onSelect: () => setActiveDialog('redondear') },
+    { id: 'comparacion', etiqueta: t('acciones.comparacion'), icono: Copy, onSelect: () => setActiveDialog('copiarComparacion'), separadorAntes: !!(onImprimirEtiquetas || onGenerarCodigos) },
+    { id: 'redondear', etiqueta: t('acciones.redondear'), icono: Hash, onSelect: () => setActiveDialog('redondear') },
   ];
 
   const pieDialogo = (textoPrimario: string, onAplicar: () => void, destructiva = false) => (
     <DialogFooter className="gap-2 sm:gap-2">
       <Button variant="outline" className="h-10" onClick={() => setActiveDialog(null)} disabled={processing}>
-        Cancelar
+        {tk('comun.cancelar')}
       </Button>
       <Button
         variant={destructiva ? 'destructive' : 'default'}
@@ -330,7 +334,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
         seleccionados={n}
         total={total}
         onSeleccionarTodos={onSeleccionarTodos}
-        sustantivo={{ singular: 'producto', plural: 'productos' }}
+        sustantivo={{ singular: t('sustantivo.singular'), plural: t('sustantivo.plural') }}
         acciones={acciones}
         accionesSecundarias={secundarias}
         onLimpiar={onClearSelection}
@@ -340,40 +344,40 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
       <Dialog open={activeDialog === 'precios'} onOpenChange={cerrar}>
         <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle>Edición masiva de precios</DialogTitle>
+            <DialogTitle>{t('precios.titulo')}</DialogTitle>
             <DialogDescription>{alcance}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
-            <FormField etiqueta="Tipo de precio">
+            <FormField etiqueta={t('precios.tipo')}>
               {(campo) => (
                 <Select value={tipoPrecio} onValueChange={(v) => setTipoPrecio(v as TipoPrecio)}>
                   <SelectTrigger id={campo.id} className="h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="venta">Precio de venta</SelectItem>
-                    <SelectItem value="compra">Costo de compra</SelectItem>
-                    <SelectItem value="comparacion">Precio de comparación</SelectItem>
+                    <SelectItem value="venta">{t('tipos.venta')}</SelectItem>
+                    <SelectItem value="compra">{t('tipos.compra')}</SelectItem>
+                    <SelectItem value="comparacion">{t('tipos.comparacion')}</SelectItem>
                   </SelectContent>
                 </Select>
               )}
             </FormField>
-            <FormField etiqueta="Modo de ajuste">
+            <FormField etiqueta={t('precios.modo')}>
               {(campo) => (
                 <Select value={modoAjuste} onValueChange={(v) => setModoAjuste(v as ModoAjuste)}>
                   <SelectTrigger id={campo.id} className="h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="fijo">Establecer valor fijo</SelectItem>
-                    <SelectItem value="valor">Por valor ($)</SelectItem>
-                    <SelectItem value="porcentaje">Por porcentaje (%)</SelectItem>
+                    <SelectItem value="fijo">{t('precios.modos.fijo')}</SelectItem>
+                    <SelectItem value="valor">{t('precios.modos.valor')}</SelectItem>
+                    <SelectItem value="porcentaje">{t('precios.modos.porcentaje')}</SelectItem>
                   </SelectContent>
                 </Select>
               )}
             </FormField>
             {modoAjuste !== 'fijo' && (
-              <FormField etiqueta="Dirección">
+              <FormField etiqueta={t('precios.direccion')}>
                 {(campo) => (
                   <SegmentedControl
                     aria-labelledby={campo.idEtiqueta}
@@ -381,8 +385,8 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
                     valor={direccion}
                     onValorChange={setDireccion}
                     opciones={[
-                      { valor: 'aumentar', etiqueta: 'Aumentar', icono: TrendingUp },
-                      { valor: 'disminuir', etiqueta: 'Disminuir', icono: TrendingDown },
+                      { valor: 'aumentar', etiqueta: t('precios.aumentar'), icono: TrendingUp },
+                      { valor: 'disminuir', etiqueta: t('precios.disminuir'), icono: TrendingDown },
                     ]}
                   />
                 )}
@@ -391,10 +395,10 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
             <FormField
               etiqueta={
                 modoAjuste === 'fijo'
-                  ? 'Nuevo valor'
+                  ? t('precios.nuevoValor')
                   : modoAjuste === 'valor'
-                    ? direccion === 'aumentar' ? 'Cantidad a aumentar ($)' : 'Cantidad a disminuir ($)'
-                    : direccion === 'aumentar' ? 'Porcentaje a aumentar (%)' : 'Porcentaje a disminuir (%)'
+                    ? direccion === 'aumentar' ? t('precios.valorAumentar') : t('precios.valorDisminuir')
+                    : direccion === 'aumentar' ? t('precios.porcentajeAumentar') : t('precios.porcentajeDisminuir')
               }
             >
               <Input
@@ -403,21 +407,18 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
                 min="0"
                 value={cantidadPrecio}
                 onChange={(e) => setCantidadPrecio(e.target.value)}
-                placeholder={modoAjuste === 'porcentaje' ? 'Ej: 10' : 'Ej: 5000'}
+                placeholder={modoAjuste === 'porcentaje' ? t('precios.ejemploPorcentaje') : t('precios.ejemploValor')}
                 className="h-10"
               />
             </FormField>
             {tipoPrecio === 'compra' && modoAjuste === 'porcentaje' && (
               <div role="note" className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-subtle p-3 text-xs text-warning-text">
                 <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
-                <p>
-                  Los productos <strong>sin costo previo</strong> no serán afectados (0 × % = 0). Use el modo
-                  «Establecer valor fijo» para asignar un costo a productos que no tienen uno.
-                </p>
+                <p>{t.rich('precios.avisoCosto', { b: (c) => <strong>{c}</strong> })}</p>
               </div>
             )}
           </div>
-          {pieDialogo('Aplicar', handlePrecios)}
+          {pieDialogo(tk('comun.aplicar'), handlePrecios)}
         </DialogContent>
       </Dialog>
 
@@ -425,15 +426,15 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
       <Dialog open={activeDialog === 'stock'} onOpenChange={cerrar}>
         <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle>Actualización masiva de stock</DialogTitle>
+            <DialogTitle>{t('stock.titulo')}</DialogTitle>
             <DialogDescription>{alcance}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
-            <FormField etiqueta="Sucursal" obligatorio>
+            <FormField etiqueta={t('stock.sucursal')} obligatorio>
               {(campo) => (
                 <Select value={selectedBranch} onValueChange={setSelectedBranch}>
                   <SelectTrigger id={campo.id} aria-required className="h-10">
-                    <SelectValue placeholder="Seleccione sucursal" />
+                    <SelectValue placeholder={t('stock.seleccioneSucursal')} />
                   </SelectTrigger>
                   <SelectContent>
                     {branches.map((b) => (
@@ -445,31 +446,31 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
                 </Select>
               )}
             </FormField>
-            <FormField etiqueta="Modo">
+            <FormField etiqueta={t('stock.modo')}>
               {(campo) => (
                 <Select value={modoStock} onValueChange={(v) => setModoStock(v as ModoStock)}>
                   <SelectTrigger id={campo.id} className="h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="set">Establecer cantidad exacta</SelectItem>
-                    <SelectItem value="add">Sumar/restar a cantidad actual</SelectItem>
+                    <SelectItem value="set">{t('stock.modos.set')}</SelectItem>
+                    <SelectItem value="add">{t('stock.modos.add')}</SelectItem>
                   </SelectContent>
                 </Select>
               )}
             </FormField>
-            <FormField etiqueta="Cantidad" obligatorio>
+            <FormField etiqueta={t('stock.cantidad')} obligatorio>
               <Input
                 type="number"
                 inputMode="decimal"
                 value={cantidadStock}
                 onChange={(e) => setCantidadStock(e.target.value)}
-                placeholder={modoStock === 'add' ? 'Ej: 10 o -5' : 'Ej: 100'}
+                placeholder={modoStock === 'add' ? t('stock.ejemploSumar') : t('stock.ejemploExacto')}
                 className="h-10"
               />
             </FormField>
           </div>
-          {pieDialogo('Aplicar', handleStock)}
+          {pieDialogo(tk('comun.aplicar'), handleStock)}
         </DialogContent>
       </Dialog>
 
@@ -477,20 +478,20 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
       <Dialog open={activeDialog === 'categoria'} onOpenChange={cerrar}>
         <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle>Asignar categoría</DialogTitle>
+            <DialogTitle>{t('categoria.titulo')}</DialogTitle>
             <DialogDescription>
-              Se asignará a {n.toLocaleString('es-CO')} producto{n !== 1 ? 's' : ''}.
+              {t('categoria.alcance', { count: n, n: entero(n) })}
             </DialogDescription>
           </DialogHeader>
-          <FormField etiqueta="Categoría" obligatorio>
+          <FormField etiqueta={t('categoria.campo')} obligatorio>
             {() => (
               <SearchSelect
                 options={categorias.map((c) => ({ value: String(c.id), label: c.name }))}
                 value={selectedCategoria}
                 onValueChange={setSelectedCategoria}
-                placeholder="Seleccione categoría"
-                searchPlaceholder="Buscar categoría…"
-                emptyText="No se encontraron categorías"
+                placeholder={t('categoria.seleccione')}
+                searchPlaceholder={t('categoria.buscar')}
+                emptyText={t('categoria.vacio')}
                 className="h-10"
                 onCreate={(texto) => setNuevaCategoria(texto)}
                 createLabel={(texto) => tCat('crearCon', { nombre: texto })}
@@ -498,7 +499,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
               />
             )}
           </FormField>
-          {pieDialogo('Asignar', handleCategoria)}
+          {pieDialogo(t('categoria.asignar'), handleCategoria)}
         </DialogContent>
       </Dialog>
 
@@ -516,10 +517,10 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
       <Dialog open={activeDialog === 'estado'} onOpenChange={cerrar}>
         <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle>¿Cambiar el estado?</DialogTitle>
+            <DialogTitle>{t('estado.titulo')}</DialogTitle>
             <DialogDescription>{alcance}</DialogDescription>
           </DialogHeader>
-          <FormField etiqueta="Nuevo estado">
+          <FormField etiqueta={t('estado.nuevo')}>
             {(campo) => (
               <SegmentedControl
                 aria-labelledby={campo.idEtiqueta}
@@ -527,14 +528,14 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
                 valor={estadoNuevo}
                 onValorChange={setEstadoNuevo}
                 opciones={[
-                  { valor: 'active', etiqueta: 'Activo' },
-                  { valor: 'inactive', etiqueta: 'Inactivo' },
-                  { valor: 'discontinued', etiqueta: 'Descontinuado' },
+                  { valor: 'active', etiqueta: t('estado.active') },
+                  { valor: 'inactive', etiqueta: t('estado.inactive') },
+                  { valor: 'discontinued', etiqueta: t('estado.discontinued') },
                 ]}
               />
             )}
           </FormField>
-          {pieDialogo('Cambiar estado', () => handleEstado(estadoNuevo))}
+          {pieDialogo(t('estado.cambiar'), () => handleEstado(estadoNuevo))}
         </DialogContent>
       </Dialog>
 
@@ -542,28 +543,28 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
       <Dialog open={activeDialog === 'redondear'} onOpenChange={cerrar}>
         <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle>Redondear precios</DialogTitle>
+            <DialogTitle>{t('redondear.titulo')}</DialogTitle>
             <DialogDescription>
-              Se aplicará a {n.toLocaleString('es-CO')} producto{n !== 1 ? 's' : ''} (incluye padres e hijos).
+              {t('redondear.alcance', { count: n, n: entero(n) })}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
-            <FormField etiqueta="Precio a redondear">
+            <FormField etiqueta={t('redondear.precio')}>
               {(campo) => (
                 <Select value={tipoRedondeo} onValueChange={(v) => setTipoRedondeo(v as TipoPrecio)}>
                   <SelectTrigger id={campo.id} className="h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="venta">Precio de venta</SelectItem>
-                    <SelectItem value="compra">Costo de compra</SelectItem>
-                    <SelectItem value="comparacion">Precio de comparación</SelectItem>
+                    <SelectItem value="venta">{t('tipos.venta')}</SelectItem>
+                    <SelectItem value="compra">{t('tipos.compra')}</SelectItem>
+                    <SelectItem value="comparacion">{t('tipos.comparacion')}</SelectItem>
                   </SelectContent>
                 </Select>
               )}
             </FormField>
 
-            <FormField etiqueta="Modo de redondeo">
+            <FormField etiqueta={t('redondear.modo')}>
               {(campo) => (
                 <SegmentedControl
                   aria-labelledby={campo.idEtiqueta}
@@ -571,8 +572,8 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
                   valor={modoRedondeo}
                   onValorChange={setModoRedondeo}
                   opciones={[
-                    { valor: 'multiplo', etiqueta: 'A múltiplo de N' },
-                    { valor: 'digitos', etiqueta: 'Últimos dígitos' },
+                    { valor: 'multiplo', etiqueta: t('redondear.modoMultiplo') },
+                    { valor: 'digitos', etiqueta: t('redondear.modoDigitos') },
                   ]}
                 />
               )}
@@ -581,8 +582,8 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
             {modoRedondeo === 'multiplo' ? (
               <>
                 <FormField
-                  etiqueta="Redondear al múltiplo más cercano de"
-                  ayuda="Ej: $1.234 con múltiplo 100 → $1.200 · $1.267 con múltiplo 100 → $1.300"
+                  etiqueta={t('redondear.multiplo')}
+                  ayuda={t('redondear.multiploAyuda')}
                 >
                   {(campo) => (
                     <SegmentedControl
@@ -591,11 +592,11 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
                       tamano="sm"
                       valor={multiploRedondeo}
                       onValorChange={setMultiploRedondeo}
-                      opciones={MULTIPLOS.map((m) => ({ valor: m, etiqueta: Number(m).toLocaleString('es-CO') }))}
+                      opciones={MULTIPLOS.map((m) => ({ valor: m, etiqueta: entero(Number(m)) }))}
                     />
                   )}
                 </FormField>
-                <FormField etiqueta="O un múltiplo personalizado">
+                <FormField etiqueta={t('redondear.multiploPersonalizado')}>
                   <Input
                     type="number"
                     inputMode="numeric"
@@ -609,7 +610,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
             ) : (
               <>
                 <div className="grid grid-cols-2 gap-3">
-                  <FormField etiqueta="Dígitos a reemplazar">
+                  <FormField etiqueta={t('redondear.digitos')}>
                     {(campo) => (
                       <Select
                         value={digitosCount}
@@ -626,14 +627,14 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
                         <SelectContent>
                           {[1, 2, 3, 4, 5].map((d) => (
                             <SelectItem key={d} value={String(d)}>
-                              {d} dígito{d > 1 ? 's' : ''}
+                              {t('redondear.nDigitos', { count: d })}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     )}
                   </FormField>
-                  <FormField etiqueta="Valor a poner">
+                  <FormField etiqueta={t('redondear.valor')}>
                     <Input
                       type="text"
                       inputMode="numeric"
@@ -646,8 +647,8 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
                   </FormField>
                 </div>
                 <FormField
-                  etiqueta="Valores frecuentes"
-                  ayuda='Ej: $1.234 con los últimos 3 = "990" → $1.990 · $5.678 con los últimos 2 = "50" → $5.650'
+                  etiqueta={t('redondear.frecuentes')}
+                  ayuda={t('redondear.frecuentesAyuda')}
                 >
                   {(campo) => (
                     <SegmentedControl
@@ -662,7 +663,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
               </>
             )}
           </div>
-          {pieDialogo('Aplicar', handleRedondear)}
+          {pieDialogo(tk('comun.aplicar'), handleRedondear)}
         </DialogContent>
       </Dialog>
 
@@ -670,15 +671,15 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
       <Dialog open={activeDialog === 'copiarComparacion'} onOpenChange={cerrar}>
         <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle>Precio de venta → Precio de comparación</DialogTitle>
+            <DialogTitle>{t('comparacion.titulo')}</DialogTitle>
             <DialogDescription>{alcance}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
             <div className="rounded-lg border border-line-brand bg-brand-tint p-3 text-sm text-brand-deep">
-              <p className="mb-1 font-medium">Comportamiento por defecto:</p>
+              <p className="mb-1 font-medium">{t('comparacion.porDefecto')}</p>
               <ul className="list-inside list-disc space-y-0.5 text-xs">
-                <li>Productos <strong>sin</strong> precio de comparación: se copia el precio de venta.</li>
-                <li>Productos <strong>con</strong> precio de comparación: se dejan igual.</li>
+                <li>{t.rich('comparacion.sin', { b: (c) => <strong>{c}</strong> })}</li>
+                <li>{t.rich('comparacion.con', { b: (c) => <strong>{c}</strong> })}</li>
               </ul>
             </div>
             <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
@@ -687,10 +688,10 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
                 onCheckedChange={(v) => setSobrescribirComparacion(v === true)}
                 className="size-[18px] rounded"
               />
-              Sobrescribir también los que ya tienen precio de comparación
+              {t('comparacion.sobrescribir')}
             </label>
           </div>
-          {pieDialogo('Aplicar', handleCopiarComparacion)}
+          {pieDialogo(tk('comun.aplicar'), handleCopiarComparacion)}
         </DialogContent>
       </Dialog>
 
@@ -698,12 +699,12 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
       <Dialog open={activeDialog === 'eliminar'} onOpenChange={cerrar}>
         <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle>¿Eliminar {n === 1 ? 'el producto' : `${n.toLocaleString('es-CO')} productos`}?</DialogTitle>
+            <DialogTitle>{t('eliminar.titulo', { count: n, n: entero(n) })}</DialogTitle>
             <DialogDescription>
-              Se eliminarán {n.toLocaleString('es-CO')} producto{n !== 1 ? 's' : ''}. Esta acción no se puede deshacer.
+              {t('eliminar.descripcion', { count: n, n: entero(n) })}
             </DialogDescription>
           </DialogHeader>
-          {pieDialogo('Eliminar', handleEliminar, true)}
+          {pieDialogo(t('acciones.eliminar'), handleEliminar, true)}
         </DialogContent>
       </Dialog>
     </>

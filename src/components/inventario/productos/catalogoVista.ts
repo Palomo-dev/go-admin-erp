@@ -87,20 +87,56 @@ export interface ChipCatalogo {
   etiqueta: string;
 }
 
+/**
+ * Traductor de `productos.filtros` (el `t` de `useTranslations`). Sin él, los
+ * textos salen en español de las constantes de arriba (tests y respaldo).
+ */
+export type TraductorCatalogo = (clave: string, valores?: Record<string, string>) => string;
+
+const conocido = (opciones: readonly { valor: string }[], valor: string) => opciones.some((o) => o.valor === valor);
+
 /** Chips de los filtros activos, en el orden del panel. */
 export function chipsFiltros(
   filtros: Readonly<Record<string, string>>,
   nombreCategoria: (id: string) => string | undefined,
+  t?: TraductorCatalogo,
 ): ChipCatalogo[] {
+  // Traducción si hay `t` y la clave existe (valor conocido); si no, el español de siempre.
+  const texto = (clave: string, espanol: string, valores?: Record<string, string>, existe = true) =>
+    t && existe ? t(clave, valores) : espanol;
   const chips: ChipCatalogo[] = [];
   const f = filtros;
-  if (f.categoria) chips.push({ clave: 'categoria', etiqueta: `Categoría: ${nombreCategoria(f.categoria) ?? `#${f.categoria}`}` });
-  if (f.estado) chips.push({ clave: 'estado', etiqueta: `Estado: ${etiquetaDe(ESTADOS_PRODUCTO, f.estado)}` });
-  if (f.imagen) chips.push({ clave: 'imagen', etiqueta: etiquetaDe(OPCIONES_IMAGEN, f.imagen) });
-  if (f.tipo) chips.push({ clave: 'tipo', etiqueta: `Tipo: ${etiquetaDe(OPCIONES_TIPO, f.tipo)}` });
-  if (f.stock) chips.push({ clave: 'stock', etiqueta: etiquetaDe(OPCIONES_STOCK, f.stock).replace(/ \(.*\)$/, '') });
-  if (f.variantes) chips.push({ clave: 'variantes', etiqueta: 'Con variantes' });
-  if (f.modificadores) chips.push({ clave: 'modificadores', etiqueta: 'Con modificadores' });
+  if (f.categoria) {
+    const nombre = nombreCategoria(f.categoria) ?? `#${f.categoria}`;
+    chips.push({ clave: 'categoria', etiqueta: texto('chips.categoria', `Categoría: ${nombre}`, { nombre }) });
+  }
+  if (f.estado) {
+    const valor = texto(`estados.${f.estado}`, etiquetaDe(ESTADOS_PRODUCTO, f.estado), undefined, conocido(ESTADOS_PRODUCTO, f.estado));
+    chips.push({ clave: 'estado', etiqueta: texto('chips.estado', `Estado: ${valor}`, { valor }) });
+  }
+  if (f.imagen) {
+    chips.push({
+      clave: 'imagen',
+      etiqueta: texto(`imagen.${f.imagen}`, etiquetaDe(OPCIONES_IMAGEN, f.imagen), undefined, conocido(OPCIONES_IMAGEN, f.imagen)),
+    });
+  }
+  if (f.tipo) {
+    const valor = texto(`tipo.${f.tipo}`, etiquetaDe(OPCIONES_TIPO, f.tipo), undefined, conocido(OPCIONES_TIPO, f.tipo));
+    chips.push({ clave: 'tipo', etiqueta: texto('chips.tipo', `Tipo: ${valor}`, { valor }) });
+  }
+  if (f.stock) {
+    chips.push({
+      clave: 'stock',
+      etiqueta: texto(
+        `stockCorto.${f.stock}`,
+        etiquetaDe(OPCIONES_STOCK, f.stock).replace(/ \(.*\)$/, ''),
+        undefined,
+        conocido(OPCIONES_STOCK, f.stock),
+      ),
+    });
+  }
+  if (f.variantes) chips.push({ clave: 'variantes', etiqueta: texto('chips.variantes', 'Con variantes') });
+  if (f.modificadores) chips.push({ clave: 'modificadores', etiqueta: texto('chips.modificadores', 'Con modificadores') });
   return chips;
 }
 

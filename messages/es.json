@@ -6011,5 +6011,241 @@
         "otros": "Otros"
       }
     }
+  },
+  "productos": {
+    "filtros": {
+      "buscar": {
+        "placeholder": "Buscar por nombre, SKU o código de barras…",
+        "etiqueta": "Buscar productos por nombre, SKU o código de barras"
+      },
+      "verResultados": "{count, plural, one {Ver {n} producto} other {Ver {n} productos}}",
+      "nota": "Los cambios se aplican al instante · la sucursal se elige en el header",
+      "ordenarPor": "Ordenar por",
+      "orden": {
+        "nombre_asc": "Nombre (A-Z)",
+        "sku_asc": "Código (SKU)",
+        "precio_asc": "Precio: menor a mayor",
+        "precio_desc": "Precio: mayor a menor",
+        "stock_asc": "Stock: menor a mayor",
+        "creado_desc": "Más recientes"
+      },
+      "categoria": "Categoría",
+      "todas": "Todas",
+      "todos": "Todos",
+      "buscarCategoria": "Buscar categoría…",
+      "sinCategorias": "No se encontraron categorías",
+      "estado": "Estado",
+      "estadoAyuda": "Sin filtro se ocultan los eliminados.",
+      "estados": {
+        "active": "Activo",
+        "inactive": "Inactivo",
+        "discontinued": "Descontinuado",
+        "deleted": "Eliminado"
+      },
+      "imagen": {
+        "etiqueta": "Imagen",
+        "con": "Con imagen",
+        "sin": "Sin imagen"
+      },
+      "tipo": {
+        "etiqueta": "Tipo",
+        "producto": "Producto",
+        "servicio": "Servicio"
+      },
+      "stock": {
+        "etiqueta": "Stock",
+        "con": "Con stock",
+        "bajo": "Stock bajo (en el mínimo o por debajo)",
+        "sin": "Sin stock",
+        "sinSeguimiento": "Sin seguimiento"
+      },
+      "stockCorto": {
+        "con": "Con stock",
+        "bajo": "Stock bajo",
+        "sin": "Sin stock",
+        "sinSeguimiento": "Sin seguimiento"
+      },
+      "stockAyuda": "Según la sucursal elegida en el header.",
+      "chips": {
+        "categoria": "Categoría: {nombre}",
+        "estado": "Estado: {valor}",
+        "tipo": "Tipo: {valor}",
+        "variantes": "Con variantes",
+        "modificadores": "Con modificadores"
+      }
+    },
+    "cabecera": {
+      "titulo": "Catálogo de productos",
+      "migaInventario": "Inventario",
+      "migaProductos": "Productos",
+      "progreso": "Progreso de carga del catálogo",
+      "importar": "Importar",
+      "importarArchivo": "Desde un archivo",
+      "importarArchivoDescripcion": "CSV o Excel · plantilla de 26 columnas",
+      "importarWeb": "Desde una web",
+      "importarWebDescripcion": "Pega una URL y la IA extrae los productos",
+      "importarDesdeArchivo": "Importar desde un archivo",
+      "importarDesdeWeb": "Importar desde una web",
+      "exportarCsv": "Exportar a CSV",
+      "exportarFacebook": "Exportar a Facebook (CSV)",
+      "feedFacebook": "URL del feed para Facebook",
+      "ajustes": "Ajustes de inventario",
+      "nuevoProducto": "Nuevo producto",
+      "actualizar": "Actualizar catálogo",
+      "yaCargando": "Ya se está cargando",
+      "menuTitulo": "catálogo",
+      "accionesMovil": "Acciones del catálogo"
+    },
+    "masivas": {
+      "sustantivo": {
+        "singular": "producto",
+        "plural": "productos"
+      },
+      "alcance": "{count, plural, one {Se aplicará a {n} producto.} other {Se aplicará a {n} productos.}}",
+      "error": "Error",
+      "resultado": {
+        "ok": "{count, plural, one {{n} producto actualizado correctamente.} other {{n} productos actualizados correctamente.}}",
+        "parcialTitulo": "{accion} (parcial)",
+        "parcial": "{exitosos} exitosos, {fallidos} fallidos. {error}",
+        "precios": "Precios actualizados",
+        "stock": "Stock actualizado",
+        "estado": "Estado actualizado",
+        "categoria": "Categoría asignada",
+        "eliminados": "Productos eliminados",
+        "comparacion": "Precio de comparación actualizado",
+        "redondeados": "Precios redondeados"
+      },
+      "validacion": {
+        "cantidad": "Ingrese una cantidad válida (mayor o igual a 0).",
+        "campos": "Complete todos los campos.",
+        "categoria": "Seleccione una categoría.",
+        "multiplo": "El múltiplo debe ser mayor a 0",
+        "digitosRango": "Los dígitos a reemplazar deben estar entre 1 y 5",
+        "digitosValor": "{count, plural, one {El valor debe tener # dígito} other {El valor debe tener # dígitos}}"
+      },
+      "acciones": {
+        "precios": "Precios",
+        "stock": "Stock",
+        "categoria": "Categoría",
+        "estado": "Estado",
+        "eliminar": "Eliminar",
+        "comparacion": "Precio → Comparación",
+        "redondear": "Redondear precios"
+      },
+      "tipos": {
+        "venta": "Precio de venta",
+        "compra": "Costo de compra",
+        "comparacion": "Precio de comparación"
+      },
+      "precios": {
+        "titulo": "Edición masiva de precios",
+        "tipo": "Tipo de precio",
+        "modo": "Modo de ajuste",
+        "modos": {
+          "fijo": "Establecer valor fijo",
+          "valor": "Por valor ($)",
+          "porcentaje": "Por porcentaje (%)"
+        },
+        "direccion": "Dirección",
+        "aumentar": "Aumentar",
+        "disminuir": "Disminuir",
+        "nuevoValor": "Nuevo valor",
+        "valorAumentar": "Cantidad a aumentar ($)",
+        "valorDisminuir": "Cantidad a disminuir ($)",
+        "porcentajeAumentar": "Porcentaje a aumentar (%)",
+        "porcentajeDisminuir": "Porcentaje a disminuir (%)",
+        "ejemploPorcentaje": "Ej: 10",
+        "ejemploValor": "Ej: 5000",
+        "avisoCosto": "Los productos <b>sin costo previo</b> no serán afectados (0 × % = 0). Use el modo «Establecer valor fijo» para asignar un costo a productos que no tienen uno."
+      },
+      "stock": {
+        "titulo": "Actualización masiva de stock",
+        "sucursal": "Sucursal",
+        "seleccioneSucursal": "Seleccione sucursal",
+        "modo": "Modo",
+        "modos": {
+          "set": "Establecer cantidad exacta",
+          "add": "Sumar/restar a cantidad actual"
+        },
+        "cantidad": "Cantidad",
+        "ejemploSumar": "Ej: 10 o -5",
+        "ejemploExacto": "Ej: 100"
+      },
+      "categoria": {
+        "titulo": "Asignar categoría",
+        "alcance": "{count, plural, one {Se asignará a {n} producto.} other {Se asignará a {n} productos.}}",
+        "campo": "Categoría",
+        "seleccione": "Seleccione categoría",
+        "buscar": "Buscar categoría…",
+        "vacio": "No se encontraron categorías",
+        "asignar": "Asignar"
+      },
+      "estado": {
+        "titulo": "¿Cambiar el estado?",
+        "nuevo": "Nuevo estado",
+        "active": "Activo",
+        "inactive": "Inactivo",
+        "discontinued": "Descontinuado",
+        "cambiar": "Cambiar estado"
+      },
+      "redondear": {
+        "titulo": "Redondear precios",
+        "alcance": "{count, plural, one {Se aplicará a {n} producto (incluye padres e hijos).} other {Se aplicará a {n} productos (incluye padres e hijos).}}",
+        "precio": "Precio a redondear",
+        "modo": "Modo de redondeo",
+        "modoMultiplo": "A múltiplo de N",
+        "modoDigitos": "Últimos dígitos",
+        "multiplo": "Redondear al múltiplo más cercano de",
+        "multiploAyuda": "Ej: $1.234 con múltiplo 100 → $1.200 · $1.267 con múltiplo 100 → $1.300",
+        "multiploPersonalizado": "O un múltiplo personalizado",
+        "digitos": "Dígitos a reemplazar",
+        "nDigitos": "{count, plural, one {# dígito} other {# dígitos}}",
+        "valor": "Valor a poner",
+        "frecuentes": "Valores frecuentes",
+        "frecuentesAyuda": "Ej: $1.234 con los últimos 3 = \"990\" → $1.990 · $5.678 con los últimos 2 = \"50\" → $5.650"
+      },
+      "comparacion": {
+        "titulo": "Precio de venta → Precio de comparación",
+        "porDefecto": "Comportamiento por defecto:",
+        "sin": "Productos <b>sin</b> precio de comparación: se copia el precio de venta.",
+        "con": "Productos <b>con</b> precio de comparación: se dejan igual.",
+        "sobrescribir": "Sobrescribir también los que ya tienen precio de comparación"
+      },
+      "eliminar": {
+        "titulo": "{count, plural, one {¿Eliminar el producto?} other {¿Eliminar {n} productos?}}",
+        "descripcion": "{count, plural, one {Se eliminará {n} producto. Esta acción no se puede deshacer.} other {Se eliminarán {n} productos. Esta acción no se puede deshacer.}}"
+      }
+    },
+    "tabla": {
+      "etiqueta": "Catálogo de productos",
+      "columnas": {
+        "imagen": "Imagen",
+        "codigo": "Código",
+        "nombre": "Nombre",
+        "atributos": "Atributos",
+        "categoria": "Categoría",
+        "precio": "Precio",
+        "costo": "Costo",
+        "margen": "Margen",
+        "stock": "Stock",
+        "estado": "Estado"
+      },
+      "sinImagen": "Sin imagen",
+      "sinSeguimiento": "Sin seguimiento",
+      "total": "Total",
+      "stockTitulo": "{sucursal}: {count, plural, one {{n} unidad} other {{n} unidades}}{conMinimo, select, si { (mínimo {minimo})} other {}}{conVariantes, select, si { (producto y variantes)} other {}}",
+      "stockCorto": "{sucursal}: {n}",
+      "servicio": "Servicio",
+      "variantes": "{count, plural, one {{n} variante} other {{n} variantes}}",
+      "variantesCorto": "{n} var.",
+      "modificadores": "{count, plural, one {{n} grupo de modificadores} other {{n} grupos de modificadores}}",
+      "modificadoresCorto": "{n} modif.",
+      "precioAntes": "Antes {precio} · {descuento} % de descuento",
+      "sinResultados": "Prueba con otra búsqueda o quita algún filtro.",
+      "error": {
+        "titulo": "No se pudo cargar el catálogo",
+        "descripcion": "Revisa la conexión e inténtalo de nuevo."
+      }
+    }
   }
 }

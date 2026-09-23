@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google';
 import '@/styles/tokens.css';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
+import { SonnerToaster } from '@/components/ui/sonner-toaster';
 import SessionProvider from '@/lib/context/SessionContext';
 import { I18nProvider } from '@/i18n/provider';
 import { LanguageSync } from '@/i18n/LanguageSync';
@@ -90,6 +91,8 @@ export default function RootLayout({
                 {children}
                 {/* Se queda también en /pos-display: solo emite avisos de sesión y de acciones bajo /app; la pantalla del cliente no dispara toasts. */}
                 <Toaster />
+                {/* 95 archivos avisan con `toast` de sonner; sin este contenedor ninguno se veía. */}
+                <SonnerToaster />
               </SessionProvider>
             </I18nProvider>
           </SentryErrorBoundary>

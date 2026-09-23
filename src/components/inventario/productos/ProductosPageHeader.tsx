@@ -33,8 +33,8 @@ interface ProductosPageHeaderProps {
   totalProducts?: number;
   /** Indica que la carga completa en background está en progreso */
   backgroundLoading?: boolean;
-  /** Total de productos según el RPC (mientras carga el resto en background) */
-  fastTotalCount?: number | null;
+  /** Progreso de la carga por lotes: productos ya cargados de cuántos. */
+  progresoCarga?: { cargados: number; total: number } | null;
 }
 
 /**
@@ -51,7 +51,7 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
   isRefreshing = false,
   totalProducts,
   backgroundLoading = false,
-  fastTotalCount = null
+  progresoCarga = null
 }) => {
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -67,11 +67,11 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
             {totalProducts !== undefined ? (
               <>
-                {totalProducts} productos en el catálogo
-                {backgroundLoading && (
-                  <span className="ml-2 inline-flex items-center gap-1 text-blue-500 dark:text-blue-400">
-                    <RefreshCw className="h-3 w-3 animate-spin" />
-                    Cargando {fastTotalCount !== null ? `de ${fastTotalCount}` : 'resto'}...
+                {totalProducts.toLocaleString('es-CO')} productos en el catálogo
+                {backgroundLoading && progresoCarga && progresoCarga.cargados < progresoCarga.total && (
+                  <span className="ml-2 inline-flex items-center gap-1 text-brand-deep" aria-live="polite">
+                    <RefreshCw className="h-3 w-3 animate-spin" aria-hidden="true" />
+                    Cargando {progresoCarga.cargados.toLocaleString('es-CO')} de {progresoCarga.total.toLocaleString('es-CO')}
                   </span>
                 )}
               </>
@@ -79,6 +79,23 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
               <>Gestiona tu inventario de productos</>
             )}
           </p>
+          {/* Barra de progreso de la carga por lotes: se llena mientras llegan
+              los productos y desaparece al terminar. */}
+          {backgroundLoading && progresoCarga && progresoCarga.total > 0 && progresoCarga.cargados < progresoCarga.total && (
+            <div
+              className="mt-1.5 h-1 w-48 max-w-full overflow-hidden rounded-full bg-brand-tint"
+              role="progressbar"
+              aria-label="Progreso de carga del catálogo"
+              aria-valuemin={0}
+              aria-valuemax={progresoCarga.total}
+              aria-valuenow={progresoCarga.cargados}
+            >
+              <div
+                className="h-full rounded-full bg-brand-action transition-[width] duration-300 ease-out motion-reduce:transition-none"
+                style={{ width: `${Math.round((progresoCarga.cargados / progresoCarga.total) * 100)}%` }}
+              />
+            </div>
+          )}
         </div>
       </div>
       

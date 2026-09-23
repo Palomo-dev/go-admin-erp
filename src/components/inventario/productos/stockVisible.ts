@@ -21,8 +21,19 @@ export interface NivelStock {
 export interface ProductoConStock {
   track_stock?: boolean;
   stock_levels?: NivelStock[] | null;
+  /**
+   * Padre + variantes sumados por sucursal (lo arma `catalogoLotes.ts`).
+   * Si viene, manda sobre `stock_levels`, que solo tiene las filas del padre:
+   * un producto con variantes casi siempre tiene 0 propio y todo en ellas.
+   */
+  stock_sucursales?: NivelStock[] | null;
   /** Total precalculado por el cargador; solo se usa como último recurso. */
   stock?: number;
+}
+
+/** Niveles por sucursal que se pintan: los del producto completo si existen. */
+export function nivelesDe(p: ProductoConStock): NivelStock[] {
+  return p.stock_sucursales ?? p.stock_levels ?? [];
 }
 
 /**
@@ -36,7 +47,7 @@ export function stockVisibleDe(
 ): number | null {
   if (p.track_stock === false) return null;
 
-  const niveles = p.stock_levels ?? [];
+  const niveles = nivelesDe(p);
   const filtrados =
     branchFilter === null ? niveles : niveles.filter((sl) => sl.branch_id === branchFilter);
 

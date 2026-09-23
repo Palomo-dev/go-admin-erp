@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { Producto, FiltrosProductos, StockSucursal } from './types';
+import { cargarCatalogo, pedirLote, type ParametrosCatalogo } from './catalogoLotes';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -73,13 +74,14 @@ const CatalogoProductos: React.FC = () => {
   const [isFacebookFeedOpen, setIsFacebookFeedOpen] = useState<boolean>(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const lastFetchKey = useRef<string>('');
-  // Carga híbrida: primera página rápida vía RPC + carga completa en background
+  // Carga por lotes (catalogoLotes.ts): el primer lote pinta la tabla y quita
+  // el skeleton; el resto llega en lotes paralelos que se van sumando EN ORDEN,
+  // con el progreso visible en el encabezado.
   const [backgroundLoading, setBackgroundLoading] = useState<boolean>(false);
-  const [fastTotalCount, setFastTotalCount] = useState<number | null>(null);
+  const [progresoCarga, setProgresoCarga] = useState<{ cargados: number; total: number } | null>(null);
   // El abort token incluye una promesa que se resuelve al terminar la carga
-  // completa en background. Permite que handleExportar espere a que TODOS los
-  // productos estén cargados antes de exportar (sin esto, exportaría solo lo
-  // cargado hasta el momento del clic, ej. la primera página de 1000).
+  // completa. Permite que handleExportar espere a que TODOS los productos estén
+  // cargados antes de exportar (sin esto exportaría solo los primeros lotes).
   const backgroundAbortRef = useRef<{
     cancelled: boolean;
     donePromise?: Promise<void>;
@@ -91,496 +93,180 @@ const CatalogoProductos: React.FC = () => {
   const productosRef = useRef<Producto[]>([]);
   productosRef.current = productos;
 
+  // Filtros de la UI → parámetros de la RPC. La sucursal NO entra: el stock
+  // llega por sucursal y la tabla elige cuál pintar, así que cambiar de
+  // sucursal ya no recarga el catálogo.
+  const parametros = useCallback((): ParametrosCatalogo | null => {
+    if (!organization?.id) return null;
+    return {
+      organizationId: organization.id,
+      busqueda: filters.busqueda,
+      categoria: filters.categoria ? Number(filters.categoria) : null,
+      estado: filters.mostrarEliminados ? 'todos' : (filters.estado || null),
+      ordenarPor: filters.ordenarPor || 'name',
+    };
+  }, [organization?.id, filters]);
 
-  // Carga híbrida — Primera carga rápida vía RPC server-side
-  // Trae 50 productos ya calculados (precio/costo/stock vigentes) en 1 request.
-  // Mientras tanto, fetchProductos() corre en background para traer TODO.
-  const fetchProductosFast = useCallback(async () => {
-    if (!organization?.id) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Mapear filtros UI → parámetros RPC
-      const p_status = filters.mostrarEliminados
-        ? 'todos'
-        : (filters.estado && filters.estado !== 'todos' ? filters.estado : null);
-
-      // Retry explícito para 503/PGRST002 (PostgREST recargando schema cache)
-      let data: any = null;
-      let error: any = null;
-      const MAX_RPC_RETRIES = 3;
-      for (let attempt = 0; attempt <= MAX_RPC_RETRIES; attempt++) {
-        const result = await supabase.rpc('get_catalogo_productos', {
-          p_organization_id: organization.id,
-          p_page: 1,
-          p_page_size: 50,
-          p_search: filters.busqueda || null,
-          p_category_id: filters.categoria || null,
-          p_status,
-          p_branch_id: branchFilter,
-          p_sort_by: filters.ordenarPor || 'name',
-          p_sort_dir: 'asc',
-        });
-        data = result.data;
-        error = result.error;
-        if (!error) break;
-        if (attempt < MAX_RPC_RETRIES) {
-          const delay = 1000 * Math.pow(2, attempt);
-          console.warn(`[fetchProductosFast] RPC falló (intento ${attempt + 1}/${MAX_RPC_RETRIES + 1}), reintentando en ${delay}ms:`, error.message);
-          await new Promise((res) => setTimeout(res, delay));
-        }
-      }
-
-      if (error) {
-        console.error('Error en RPC get_catalogo_productos:', error);
-        // Si falla el RPC tras reintentos, caer al flujo completo
-        return false;
-      }
-
-      if (!data || !data.items || data.items.length === 0) {
-        setProductos([]);
-        setFastTotalCount(0);
-        setLoading(false);
-        return true;
-      }
-
-      // Mapear items del RPC al tipo Producto
-      const fastProducts: Producto[] = data.items.map((item: any) => ({
-        id: item.id,
-        uuid: item.uuid,
-        organization_id: item.organization_id,
-        sku: item.sku,
-        name: item.name,
-        description: item.description,
-        category_id: item.category_id,
-        category: item.category_id ? { id: item.category_id, name: item.category_name } : undefined,
-        unit_code: item.unit_code,
-        barcode: item.barcode,
-        status: item.status,
-        track_stock: item.track_stock,
-        parent_product_id: item.parent_product_id,
-        is_parent: item.is_parent,
-        product_type: item.product_type,
-        brand: item.brand,
-        reference: item.reference,
-        variant_data: item.variant_data,
-        station: item.station,
-        tax_id: item.tax_id,
-        is_composite: item.is_composite,
-        production_type: item.production_type,
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        price: Number(item.out_price) || 0,
-        compare_price: Number(item.out_compare_price) || 0,
-        cost: Number(item.out_cost) || 0,
-        stock: item.out_stock !== null ? Number(item.out_stock) : undefined,
-        stock_branch: item.out_stock_branch !== null ? Number(item.out_stock_branch) : undefined,
-        // Las relaciones detalladas se cargan en background
-        product_prices: [],
-        product_costs: [],
-        stock_levels: [],
-        product_images: [],
-        children: [],
-        variants: [],
-        modifier_groups_count: 0,
-      }));
-
-      setProductos(fastProducts);
-      setFastTotalCount(data.total || 0);
-      setLoading(false);
-      return true;
-    } catch (error: any) {
-      console.error('Error en fetchProductosFast:', error);
-      return false;
-    }
-  }, [organization?.id, branchFilter, filters]);
-
-  // Cargar productos desde Supabase con una sola consulta eficiente
-  // silent=true: no muestra skeleton (usado después de acciones masivas)
+  // silent=true: no muestra skeleton ni encoge la lista mientras recarga
+  // (tras acciones masivas); la lista se reemplaza al final.
   const fetchProductos = useCallback(async (silent: boolean = false) => {
-    if (!organization?.id) {
-      console.log('Esperando organization_id...');
+    const p = parametros();
+    if (!p) {
       setLoading(false);
       return;
     }
 
+    // Cancelar la carga anterior si sigue corriendo.
+    if (backgroundAbortRef.current) {
+      backgroundAbortRef.current.cancelled = true;
+      backgroundAbortRef.current.resolveDone?.();
+    }
+    let resolveDone: () => void = () => {};
+    const donePromise = new Promise<void>((resolve) => { resolveDone = resolve; });
+    const token = { cancelled: false, donePromise, resolveDone };
+    backgroundAbortRef.current = token;
+
+    if (!silent) setLoading(true);
+    setBackgroundLoading(true);
     try {
-      if (!silent) setLoading(true);
-        
-      const organizationId = organization.id;
-      const branchId = branchFilter;
-
-        // Consulta base: Productos principales con solo categories (ligero)
-        let mainProductsQuery = supabase
-          .from('products')
-          .select(`
-            id, uuid, organization_id, sku, name, description, category_id, unit_code,
-            barcode, status, track_stock, parent_product_id, is_parent,
-            product_type, brand, reference, variant_data, station,
-            tax_id, is_composite, production_type, created_at, updated_at,
-            categories(id, name)
-          `)
-          .eq('organization_id', organizationId)
-          .is('parent_product_id', null); // Solo productos principales
-
-          // Aplicar filtros
-        if (filters.busqueda) {
-          // Usar comillas dobles alrededor del valor para escapar comas en PostgREST
-          const searchTerm = filters.busqueda;
-          mainProductsQuery = mainProductsQuery.or(`name.ilike."%${searchTerm}%",sku.ilike."%${searchTerm}%",barcode.ilike."%${searchTerm}%"`);
-        }
-        
-        if (filters.categoria) {
-          mainProductsQuery = mainProductsQuery.eq('category_id', filters.categoria);
-        }
-        
-        // Filtrar por estado
-        if (filters.estado && filters.estado !== 'todos') {
-          mainProductsQuery = mainProductsQuery.eq('status', filters.estado);
-        } else if (filters.estado === 'todos') {
-          // Si se selecciona explícitamente "todos", mostrar todos los productos incluyendo eliminados
-        } else {
-          // Por defecto (sin filtro de estado), no mostrar productos eliminados
-          mainProductsQuery = mainProductsQuery.neq('status', 'deleted');
-        }
-        
-        // Ordenar resultados
-        mainProductsQuery = mainProductsQuery.order(filters.ordenarPor, { ascending: true });
-
-        // ── Streaming: paginar productos base y procesar cada página con sus relaciones ──
-        // En vez de traer TODOS los productos y luego TODAS las relaciones para hacer
-        // un único setProductos al final, traemos de a 1000 productos + sus relaciones
-        // y vamos actualizando la UI incrementalmente. El usuario ve productos antes.
-        const PAGE_SIZE = 1000;
-        const ROWS_PER_PAGE = 1000;
-        let accumulated: any[] = [];
-
-        // Helper: traer todas las filas relacionadas de una tabla para un batch de IDs
-        const fetchRelations = async (table: string, select: string, column: string, ids: number[]) => {
-          const allData: any[] = [];
-          for (let from = 0; ; from += ROWS_PER_PAGE) {
-            const to = from + ROWS_PER_PAGE - 1;
-            const { data, error } = await supabase
-              .from(table)
-              .select(select)
-              .in(column, ids)
-              .range(from, to);
-            if (error) throw error;
-            if (data && data.length > 0) allData.push(...data);
-            if (!data || data.length < ROWS_PER_PAGE) break; // última página
-          }
-          return allData;
-        };
-
-        for (let page = 0; ; page++) {
-          // Verificar si la carga fue cancelada (nueva búsqueda/filtro cambió)
-          if (backgroundAbortRef.current?.cancelled) return;
-
-          const desde = page * PAGE_SIZE;
-          const hasta = desde + PAGE_SIZE - 1;
-          const { data: pageData, error } = await mainProductsQuery.range(desde, hasta);
-
-          if (error) {
-            console.error('Error de Supabase al cargar productos:', {
-              message: error.message,
-              details: error.details,
-              hint: error.hint,
-              code: error.code,
-            });
-            throw new Error(`Supabase error: ${error.message || error.code || 'Unknown error'}`);
-          }
-
-          if (!pageData || pageData.length === 0) {
-            if (page === 0) setProductos([]);
-            break;
-          }
-
-          // IDs de esta página
-          const batchIds = pageData.map((p: any) => p.id);
-
-          // Traer relaciones para este batch en paralelo
-          const [pricesData, costsData, stockData, imagesData, childrenData, modifiersData] = await Promise.all([
-            fetchRelations('product_prices', 'id, product_id, price, compare_price, effective_from, effective_to', 'product_id', batchIds),
-            fetchRelations('product_costs', 'id, product_id, cost, effective_from, effective_to', 'product_id', batchIds),
-            fetchRelations('stock_levels', 'product_id, branch_id, qty_on_hand, qty_reserved, avg_cost', 'product_id', batchIds),
-            fetchRelations('product_images', 'id, product_id, storage_path, is_primary', 'product_id', batchIds),
-            fetchRelations('products', 'id, uuid, sku, name, parent_product_id, product_type, brand, reference, status, category_id, track_stock, categories(id, name), stock_levels(branch_id, qty_on_hand, qty_reserved)', 'parent_product_id', batchIds),
-            fetchRelations('product_modifier_groups', 'id, product_id', 'product_id', batchIds),
-          ]);
-
-          // Mapear relaciones por product_id
-          const pricesMap = new Map<number, any[]>();
-          pricesData.forEach((p: any) => {
-            if (!pricesMap.has(p.product_id)) pricesMap.set(p.product_id, []);
-            pricesMap.get(p.product_id)!.push(p);
-          });
-
-          const costsMap = new Map<number, any[]>();
-          costsData.forEach((c: any) => {
-            if (!costsMap.has(c.product_id)) costsMap.set(c.product_id, []);
-            costsMap.get(c.product_id)!.push(c);
-          });
-
-          const stockMap = new Map<number, any[]>();
-          stockData.forEach((s: any) => {
-            if (!stockMap.has(s.product_id)) stockMap.set(s.product_id, []);
-            stockMap.get(s.product_id)!.push(s);
-          });
-
-          const imagesMap = new Map<number, any[]>();
-          imagesData.forEach((img: any) => {
-            if (!imagesMap.has(img.product_id)) imagesMap.set(img.product_id, []);
-            imagesMap.get(img.product_id)!.push(img);
-          });
-
-          const childrenMap = new Map<number, any[]>();
-          childrenData.forEach((child: any) => {
-            const parentId = child.parent_product_id;
-            if (!childrenMap.has(parentId)) childrenMap.set(parentId, []);
-            childrenMap.get(parentId)!.push(child);
-          });
-
-          const modifiersCountMap = new Map<number, number>();
-          modifiersData.forEach((mg: any) => {
-            const pid = mg.product_id;
-            modifiersCountMap.set(pid, (modifiersCountMap.get(pid) ?? 0) + 1);
-          });
-
-          // Añadir relaciones a cada producto del batch
-          const batchWithRelations = pageData.map((product: any) => ({
-            ...product,
-            product_prices: pricesMap.get(product.id) || [],
-            product_costs: costsMap.get(product.id) || [],
-            stock_levels: stockMap.get(product.id) || [],
-            product_images: imagesMap.get(product.id) || [],
-            children: childrenMap.get(product.id) || [],
-            modifier_groups_count: modifiersCountMap.get(product.id) ?? 0,
-          }));
-
-          // Procesar y formatear los productos del batch
-          const processedBatch = batchWithRelations.map((product: any) => {
-            // Obtener el precio actual (el más reciente y vigente)
-            let currentPrice = 0;
-            let comparePrice = 0;
-          
-            if (product.product_prices && product.product_prices.length > 0) {
-              const validPrices = product.product_prices
-                .filter((pp: any) => !pp.effective_to || new Date(pp.effective_to) > new Date())
-                .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
-              
-              if (validPrices.length > 0) {
-                currentPrice = Number(validPrices[0].price) || 0;
-                comparePrice = Number(validPrices[0].compare_price) || 0;
-              }
-            }
-            
-            // Obtener el costo actual (el más reciente y vigente)
-            let currentCost = 0;
-            if (product.product_costs && product.product_costs.length > 0) {
-              const validCosts = product.product_costs
-                .filter((pc: any) => !pc.effective_to || new Date(pc.effective_to) > new Date())
-                .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
-              
-              if (validCosts.length > 0) {
-                currentCost = Number(validCosts[0].cost) || 0;
-              }
-            }
-            
-            // Calcular el stock disponible para la sucursal actual
-            let stockTotal: number | undefined = 0;
-            let stockBranch: number | undefined = 0;
-
-            // Si el producto no rastrea inventario, no mostrar stock
-            if (product.track_stock === false) {
-              stockTotal = undefined;
-              stockBranch = undefined;
-            } else if (product.stock_levels && product.stock_levels.length > 0) {
-              // Stock total en todas las sucursales
-              stockTotal = product.stock_levels.reduce((sum: number, sl: any) => {
-                return sum + (sl.qty_on_hand || 0) - (sl.qty_reserved || 0);
-              }, 0);
-              
-              // Stock en la sucursal actual (si se ha seleccionado una)
-              if (branchId) {
-                const branchStock = product.stock_levels.find((sl: any) => sl.branch_id === branchId);
-                if (branchStock) {
-                  stockBranch = (branchStock.qty_on_hand || 0) - (branchStock.qty_reserved || 0);
-                }
-              }
-            }
-            
-            // Para productos padre, sumar stock de variantes hijas
-            if (product.is_parent && product.children && product.children.length > 0 && stockTotal !== undefined) {
-              product.children.forEach((child: any) => {
-                if (child.stock_levels && child.stock_levels.length > 0) {
-                  stockTotal += child.stock_levels.reduce((sum: number, sl: any) => {
-                    return sum + (sl.qty_on_hand || 0) - (sl.qty_reserved || 0);
-                  }, 0);
-                  
-                  if (branchId && stockBranch !== undefined) {
-                    const childBranchStock = child.stock_levels.find((sl: any) => sl.branch_id === branchId);
-                    if (childBranchStock) {
-                      stockBranch += (childBranchStock.qty_on_hand || 0) - (childBranchStock.qty_reserved || 0);
-                    }
-                  }
-                }
-              });
-            }
-            
-            // Obtener la ruta de almacenamiento de la imagen principal si existe
-            let imagePath = null;
-            if (product.product_images && product.product_images.length > 0) {
-              const primaryImage = product.product_images.find((img: any) => img.is_primary);
-              if (primaryImage && primaryImage.storage_path) {
-                imagePath = primaryImage.storage_path;
-              }
-            }
-            
-            // Procesar variantes (productos hijos)
-            const variants = product.children ? product.children.map((child: any) => {
-              // Aplicar la misma lógica de procesamiento a cada variante
-              let childPrice = 0;
-              // Para las variantes, podríamos necesitar consultar sus precios por separado si no se incluyen
-              // en la consulta principal, pero por ahora usamos el valor de la variante directamente
-              
-              return {
-                ...child,
-                category: child.categories,
-                price: childPrice || 0,
-                cost: 0, // Similar a price, necesitaríamos consultar esto por separado
-                stock: 0  // Lo mismo para stock
-              };
-            }) : [];
-            
-            // Retornar el producto formateado con toda la información
-            return {
-              ...product,
-              category: product.categories,
-              price: currentPrice,
-              compare_price: comparePrice,
-              cost: currentCost,
-              stock: stockTotal,
-              stock_branch: stockBranch,
-              image_url: imagePath,
-              variants: variants,
-              modifier_groups_count: product.modifier_groups_count ?? 0,
-            };
-          });
-
-          // Acumular y actualizar UI (streaming incremental)
-          accumulated = [...accumulated, ...processedBatch];
-          setProductos([...accumulated]);
-
-          if (pageData.length < PAGE_SIZE) break; // última página
-        }
-        
-      } catch (error: any) {
-        console.error('Error al cargar productos:', {
-          message: error?.message,
-          name: error?.name,
-          stack: error?.stack,
-          raw: error,
-        });
+      const lista = await cargarCatalogo(p, {
+        cancelado: () => token.cancelled,
+        alPrimerLote: (prods, total) => {
+          setProgresoCarga({ cargados: prods.length, total });
+          if (silent) return;
+          setProductos(prods);
+          setLoading(false);
+        },
+        alAvanzar: (prods, total) => {
+          setProgresoCarga({ cargados: prods.length, total });
+          if (!silent) setProductos(prods);
+        },
+      });
+      if (lista && !token.cancelled) setProductos(lista);
+    } catch (error: any) {
+      if (!token.cancelled) {
+        console.error('Error al cargar productos:', error?.message ?? error);
         toast({
           variant: "destructive",
           title: "Error",
           description: "No se pudieron cargar los productos. Intente de nuevo más tarde."
         });
-      } finally {
-        if (!silent) setLoading(false);
       }
-    }, [organization?.id, branchFilter, filters]);
-
-  // Carga híbrida al montar y cuando cambian filtros/organización
-  // 1. fetchProductosFast() → 50 productos vía RPC en < 1s (quita skeleton)
-  // 2. fetchProductos(true) → carga completa en background (sin skeleton)
-  //    Cuando termina, reemplaza la lista y habilita filtros/acciones masivas
-  useEffect(() => {
-    // Evitar doble ejecución en React Strict Mode (desarrollo)
-    const fetchKey = JSON.stringify([organization?.id, branchFilter, filters, refreshKey]);
-    if (lastFetchKey.current === fetchKey) return;
-    lastFetchKey.current = fetchKey;
-
-    // Cancelar carga en background anterior si aún está corriendo
-    if (backgroundAbortRef.current) {
-      backgroundAbortRef.current.cancelled = true;
-      // Liberar a cualquier handler que esté esperando la carga anterior
-      backgroundAbortRef.current.resolveDone?.();
-    }
-    let resolveDone: () => void = () => {};
-    const donePromise = new Promise<void>((resolve) => { resolveDone = resolve; });
-    const abortToken = { cancelled: false, donePromise, resolveDone };
-    backgroundAbortRef.current = abortToken;
-
-    (async () => {
-      setLoading(true);
-      // Carga híbrida en paralelo:
-      // - fetchProductosFast() trae 50 productos vía RPC server-side (quita el skeleton)
-      // - fetchProductos(true) trae TODO en background con streaming (setProductos incremental)
-      // Ambas arrancan al mismo tiempo; el RPC quita el skeleton primero.
-      setBackgroundLoading(true);
-      const fastPromise = fetchProductosFast();
-      const fullPromise = fetchProductos(true);
-      await fastPromise;   // esperar al RPC para quitar skeleton
-      await fullPromise;   // esperar al background (ya corrió en paralelo)
-      if (!abortToken.cancelled) {
+    } finally {
+      if (!token.cancelled) {
+        setLoading(false);
         setBackgroundLoading(false);
-        setFastTotalCount(null); // ya tenemos todos, no necesitamos el total parcial
+        setProgresoCarga(null);
       }
       resolveDone(); // liberar a handleExportar si está esperando
-    })();
-  }, [organization?.id, branchFilter, filters, refreshKey, fetchProductosFast, fetchProductos]);
+    }
+  }, [parametros]);
 
-  // Suscripción en tiempo real a cambios en products, stock_levels, product_prices
-  // y product_costs para que la lista se actualice sin recargar manualmente.
-  // Se usa un debounce suave (1.5s) para agrupar ráfagas de cambios y evitar
-  // recargas múltiples cuando se editan varios campos a la vez.
+  // Refs para el canal de tiempo real (se suscribe una vez por organización).
+  const fetchProductosRef = useRef(fetchProductos);
+  fetchProductosRef.current = fetchProductos;
+  const parametrosRef = useRef(parametros);
+  parametrosRef.current = parametros;
+
+  // Cargar al montar y cuando cambian filtros, organización o «Actualizar».
+  useEffect(() => {
+    // Evitar doble ejecución en React Strict Mode (desarrollo)
+    const fetchKey = JSON.stringify([organization?.id, filters, refreshKey]);
+    if (lastFetchKey.current === fetchKey) return;
+    lastFetchKey.current = fetchKey;
+    fetchProductos(false);
+  }, [organization?.id, filters, refreshKey, fetchProductos]);
+
+  // Al salir de la página, cancelar la carga en curso.
+  useEffect(() => () => {
+    if (backgroundAbortRef.current) backgroundAbortRef.current.cancelled = true;
+  }, []);
+
+  // Tiempo real: cambios en products, stock_levels, product_prices y
+  // product_costs. Antes cualquier cambio (p. ej. cada venta del POS) recargaba
+  // el catálogo entero; ahora se juntan los productos tocados durante 1,5 s y
+  // se piden solo sus padres para reemplazar esas filas. Si el cambio no trae
+  // el producto (un borrado sin datos) o son demasiados, se recarga en silencio.
   useEffect(() => {
     if (!organization?.id) return;
     const orgId = organization.id;
+    const MAX_FILAS_EN_VIVO = 150;
 
+    const pendientes = new Set<number>();
+    let recargaCompleta = false;
     let reloadTimer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleReload = () => {
-      if (reloadTimer) clearTimeout(reloadTimer);
-      reloadTimer = setTimeout(() => {
-        reloadTimer = null;
-        // silent=true para no mostrar skeleton y mantener la UI estable
-        fetchProductos(true);
-      }, 1500);
+
+    const aplicar = async () => {
+      reloadTimer = null;
+      const ids = [...pendientes];
+      pendientes.clear();
+      const completa = recargaCompleta;
+      recargaCompleta = false;
+      if (completa || ids.length > MAX_FILAS_EN_VIVO) {
+        fetchProductosRef.current(true);
+        return;
+      }
+      const p = parametrosRef.current();
+      if (!p || ids.length === 0) return;
+
+      // Padres afectados según la lista actual (una variante → su padre).
+      const padreDe = new Map<number, number>();
+      for (const prod of productosRef.current) {
+        for (const h of prod.children ?? []) padreDe.set(Number(h.id), Number(prod.id));
+      }
+      const padres = new Set(ids.map((id) => padreDe.get(id) ?? id));
+
+      try {
+        const { productos: frescos } = await pedirLote(p, 0, MAX_FILAS_EN_VIVO, ids);
+        const porId = new Map(frescos.map((f) => [Number(f.id), f]));
+        setProductos((prev) => {
+          const vistos = new Set<number>();
+          const siguiente: Producto[] = [];
+          for (const prod of prev) {
+            const id = Number(prod.id);
+            const fresco = porId.get(id);
+            if (fresco) {
+              siguiente.push(fresco);
+              vistos.add(id);
+            } else if (!padres.has(id)) {
+              siguiente.push(prod);
+            }
+            // Si era un padre afectado y no volvió, ya no cumple los filtros
+            // (o se borró): sale de la lista.
+          }
+          for (const f of frescos) if (!vistos.has(Number(f.id))) siguiente.push(f);
+          return siguiente;
+        });
+      } catch {
+        fetchProductosRef.current(true);
+      }
     };
+
+    const anotar = (id: unknown) => {
+      const n = Number(id);
+      if (Number.isFinite(n) && n > 0) pendientes.add(n);
+      else recargaCompleta = true;
+      if (reloadTimer) clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(aplicar, 1500);
+    };
+    const porProducto = (payload: any) => anotar(payload.new?.product_id ?? payload.old?.product_id);
 
     const channel = supabase
       .channel('productos_catalogo_changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'products', filter: `organization_id=eq.${orgId}` },
-        scheduleReload
+        (payload: any) => anotar(payload.new?.id ?? payload.old?.id)
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'stock_levels' },
-        scheduleReload
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'product_prices' },
-        scheduleReload
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'product_costs' },
-        scheduleReload
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_levels' }, porProducto)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_prices' }, porProducto)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_costs' }, porProducto)
       .subscribe();
 
     return () => {
       if (reloadTimer) clearTimeout(reloadTimer);
       supabase.removeChannel(channel);
     };
-    // fetchProductos es estable por useCallback; organization.id cambia el canal
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization?.id]);
 
   // Función para obtener información de stock por sucursal para un producto específico
@@ -1101,9 +787,9 @@ const CatalogoProductos: React.FC = () => {
           setRefreshKey(k => k + 1);
         }}
         isRefreshing={loading || actionLoading || backgroundLoading}
-        totalProducts={productos.length}
+        totalProducts={progresoCarga?.total ?? productos.length}
         backgroundLoading={backgroundLoading}
-        fastTotalCount={fastTotalCount}
+        progresoCarga={progresoCarga}
       />
       
       {/* Filtros de búsqueda */}

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
   useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { claveOrdenStock } from './stockVisible';
+import { claveOrdenStock, nivelesDe } from './stockVisible';
 
 import { 
   Table,
@@ -720,10 +720,11 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                       <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />
                       Sin seguimiento
                     </span>
-                  ) : producto.stock_levels && producto.stock_levels.length > 0 ? (
+                  ) : nivelesDe(producto).length > 0 ? (
                     <div className="flex flex-wrap items-center justify-center gap-1">
                       {(() => {
-                        const filtered = producto.stock_levels!.filter(sl => branchFilter === null || sl.branch_id === branchFilter);
+                        // Padre + variantes sumados por sucursal (antes solo las filas del padre).
+                        const filtered = nivelesDe(producto).filter(sl => branchFilter === null || sl.branch_id === branchFilter);
                         // Si hay sucursal concreta seleccionada pero no hay stock_levels para esa sucursal,
                         // mostrar badge con 0 para indicar que no hay stock en esa sucursal
                         if (branchFilter !== null && filtered.length === 0) {
@@ -740,26 +741,27 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                           ];
                         }
                         return filtered.map((sl) => {
-                          const branchName = sl.branches?.name || branches.find(b => b.id === sl.branch_id)?.name || `#${sl.branch_id}`;
-                          const isLow = sl.qty_on_hand <= 0;
-                          const isWarn = sl.qty_on_hand > 0 && sl.qty_on_hand < 5;
+                          const branchName = branches.find(b => b.id === sl.branch_id)?.name || `#${sl.branch_id}`;
+                          const qty = Number(sl.qty_on_hand) || 0;
+                          const isLow = qty <= 0;
+                          const isWarn = qty > 0 && qty < 5;
                           return (
                             <span
                               key={sl.branch_id}
                               className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${isLow ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : isWarn ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'}`}
-                              title={`${branchName}: ${sl.qty_on_hand} unidades`}
+                              title={`${branchName}: ${qty} unidades${producto.children?.length ? ' (producto y variantes)' : ''}`}
                             >
                               <span className="truncate max-w-[60px]">{branchName}</span>
-                              <span className="font-bold">{sl.qty_on_hand}</span>
+                              <span className="font-bold">{qty}</span>
                             </span>
                           );
                         });
                       })()}
                     </div>
                   ) : branchFilter !== null ? (
-                    // No hay stock_levels cargados pero hay sucursal concreta: mostrar 0 con nombre
+                    // Sin existencias registradas y hay sucursal concreta: mostrar 0 con nombre
                     <div className="flex flex-col items-center gap-0.5">
-                      <span className="font-semibold text-red-500">{producto.stock_branch === branchFilter ? (producto.stock ?? 0) : 0}</span>
+                      <span className="font-semibold text-red-500">0</span>
                       <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[80px]">
                         {branches.find(b => b.id === branchFilter)?.name || `#${branchFilter}`}
                       </span>
@@ -767,11 +769,6 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                   ) : (
                     <div className="flex flex-col items-center gap-0.5">
                       <span className={`font-semibold ${producto.stock !== undefined && producto.stock <= 0 ? 'text-red-500' : 'dark:text-gray-200'}`}>{producto.stock ?? 0}</span>
-                      {producto.stock_branch && (
-                        <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[80px]">
-                          {branches.find(b => b.id === producto.stock_branch)?.name || `#${producto.stock_branch}`}
-                        </span>
-                      )}
                     </div>
                   )}
                 </TableCell>

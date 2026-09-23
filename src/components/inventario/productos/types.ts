@@ -31,7 +31,14 @@ export interface Producto {
   compare_price?: number; // Precio de comparación para mostrar descuento
   stock?: number; // Campo calculado de stock
   stock_branch?: number; // ID de la sucursal a la que pertenece el stock mostrado
-  
+  /**
+   * Stock por sucursal del producto completo (padre + variantes), sumado por
+   * sucursal. Lo pintan los badges de la columna Stock del catálogo.
+   */
+  stock_sucursales?: NivelSucursal[];
+  /** Ruta en Storage de la imagen principal (la resuelve la tabla). */
+  image_url?: string | null;
+
   // Relaciones optimizadas
   product_prices?: ProductoPrecio[];
   product_costs?: ProductoCosto[];
@@ -118,6 +125,13 @@ export interface ProductoCosto {
   effective_to: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+/** Existencia de un producto en una sucursal, con los lotes ya sumados. */
+export interface NivelSucursal {
+  branch_id: number;
+  qty_on_hand: number;
+  qty_reserved: number;
 }
 
 export interface StockLevel {

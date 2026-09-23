@@ -1,19 +1,16 @@
-import React from 'react';
+import { Suspense } from 'react';
 import CatalogoProveedores from '@/components/inventario/proveedores/CatalogoProveedores';
 
 /**
- * Página principal del catálogo de proveedores
- * 
- * Esta página permite la gestión completa de proveedores incluyendo:
- * - Listado de proveedores
- * - Creación, edición y eliminación de proveedores
- * - Visualización de historial de compras
- * - Seguimiento de condiciones de pago y cumplimiento
+ * Listado de proveedores. `Suspense` porque el listado lee su estado
+ * (búsqueda, filtros, orden y página) de la URL con `useSearchParams`.
  */
 export default function ProveedoresPage() {
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <CatalogoProveedores />
+    <div className="min-h-full bg-canvas p-4 sm:p-6">
+      <Suspense fallback={null}>
+        <CatalogoProveedores />
+      </Suspense>
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+// Los tokens van antes que globals.css: globals los usa en body.
+import '@/styles/tokens.css';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import SessionProvider from '@/lib/context/SessionContext';

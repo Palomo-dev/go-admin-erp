@@ -1,0 +1,124 @@
+/*
+ * ARCHIVO GENERADO — no se edita a mano.
+ * Origen: src/styles/figma-tokens.json (variables del archivo de Figma).
+ * Regenerar: node scripts/generar-tokens-css.mjs
+ *
+ * Tokens semánticos del sistema de diseño en modo claro (:root) y oscuro
+ * (.dark, que pone next-themes en <html>). Los componentes usan los nombres
+ * de Tailwind definidos en tailwind.config.js (bg-surface, text-fg, border-line…),
+ * nunca estas variables directamente ni clases dark: sueltas.
+ */
+
+:root {
+  --bg-canvas: 248 250 255;
+  --bg-surface: 255 255 255;
+  --bg-subtle: 241 245 249;
+  --bg-sidebar: 255 255 255;
+  --bg-hover: 241 245 249;
+  --bg-pressed: 226 232 240;
+  --bg-tooltip: 30 41 59;
+  --text-primary: 15 23 42;
+  --text-secondary: 71 85 105;
+  --text-muted: 148 163 184;
+  --text-on-brand: 255 255 255;
+  --text-link: 42 62 168;
+  --border-default: 226 232 240;
+  --border-strong: 203 213 225;
+  --border-brand: 185 197 249;
+  --border-success: 134 239 172;
+  --border-warning: 252 211 77;
+  --border-danger: 252 165 165;
+  --border-info: 125 211 252;
+  --brand-primary: 67 97 238;
+  --brand-action: 54 81 212;
+  --brand-action-hover: 42 62 168;
+  --brand-deep: 42 62 168;
+  --brand-tint: 238 241 254;
+  --brand-tint-hover: 220 226 252;
+  --state-success: 22 163 74;
+  --state-warning: 245 158 11;
+  --state-danger: 220 38 38;
+  --state-info: 14 165 233;
+  --state-success-subtle: 240 253 244;
+  --state-warning-subtle: 255 251 235;
+  --state-danger-subtle: 254 242 242;
+  --state-info-subtle: 240 249 255;
+  --state-success-text: 21 128 61;
+  --state-warning-text: 180 83 9;
+  --state-danger-text: 185 28 28;
+  --state-info-text: 3 105 161;
+  --state-danger-hover: 185 28 28;
+  --badge-solid-brand: 67 97 238;
+  --badge-solid-success: 21 128 61;
+  --badge-solid-warning: 245 158 11;
+  --badge-solid-danger: 220 38 38;
+  --badge-solid-info: 3 105 161;
+  --badge-solid-neutral: 71 85 105;
+  --badge-on-solid: 255 255 255;
+  --badge-on-solid-warning: 15 23 42;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 999px;
+
+  --size-icon-16: 16px;
+  --size-icon-20: 20px;
+  --size-icon-24: 24px;
+  --size-control-sm: 32px;
+  --size-control-md: 40px;
+  --size-control-lg: 48px;
+  --size-sidebar-expanded: 264px;
+  --size-sidebar-collapsed: 72px;
+  --size-popover-width: 320px;
+}
+
+.dark {
+  --bg-canvas: 15 23 42;
+  --bg-surface: 30 41 59;
+  --bg-subtle: 51 65 85;
+  --bg-sidebar: 15 23 42;
+  --bg-hover: 51 65 85;
+  --bg-pressed: 71 85 105;
+  --bg-tooltip: 51 65 85;
+  --text-primary: 248 250 252;
+  --text-secondary: 203 213 225;
+  --text-muted: 100 116 139;
+  --text-on-brand: 255 255 255;
+  --text-link: 143 163 245;
+  --border-default: 51 65 85;
+  --border-strong: 71 85 105;
+  --border-brand: 42 62 168;
+  --border-success: 21 128 61;
+  --border-warning: 180 83 9;
+  --border-danger: 185 28 28;
+  --border-info: 3 105 161;
+  --brand-primary: 67 97 238;
+  --brand-action: 67 97 238;
+  --brand-action-hover: 106 130 241;
+  --brand-deep: 143 163 245;
+  --brand-tint: 21 31 84;
+  --brand-tint-hover: 31 46 125;
+  --state-success: 34 197 94;
+  --state-warning: 245 158 11;
+  --state-danger: 239 68 68;
+  --state-info: 14 165 233;
+  --state-success-subtle: 21 128 61;
+  --state-warning-subtle: 180 83 9;
+  --state-danger-subtle: 185 28 28;
+  --state-info-subtle: 3 105 161;
+  --state-success-text: 134 239 172;
+  --state-warning-text: 252 211 77;
+  --state-danger-text: 252 165 165;
+  --state-info-text: 125 211 252;
+  --state-danger-hover: 239 68 68;
+  --badge-solid-brand: 67 97 238;
+  --badge-solid-success: 22 163 74;
+  --badge-solid-warning: 245 158 11;
+  --badge-solid-danger: 220 38 38;
+  --badge-solid-info: 3 105 161;
+  --badge-solid-neutral: 100 116 139;
+  --badge-on-solid: 255 255 255;
+  --badge-on-solid-warning: 15 23 42;
+}

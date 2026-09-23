@@ -1736,3 +1736,79 @@ describe('23. stock_movements.source: CHECK, lista de TS y código coinciden', (
     expect(esOrigenMovimientoValido('no_existe')).toBe(false);
   });
 });
+
+/**
+ * 24. Los colores salen de Figma, y solo de Figma.
+ *
+ * `src/styles/figma-tokens.json` es la instantánea de las variables de Figma y
+ * `src/styles/tokens.css` se genera de ella con `scripts/generar-tokens-css.mjs`.
+ * Este guardarraíl falla si el CSS se edita a mano, si el JSON cambia sin
+ * regenerar, si el tema de Tailwind apunta a una variable que no existe, o si la
+ * escala azul de Tailwind deja de coincidir con la de Figma (que es la que da el
+ * azul de marca a las ~12.000 clases `*-blue-*` ya existentes).
+ */
+describe('24. Tokens de diseño: Figma → tokens.css → Tailwind', () => {
+  const figma = JSON.parse(readFile(path.join(SRC_ROOT, 'styles', 'figma-tokens.json')));
+  const css = readFile(path.join(SRC_ROOT, 'styles', 'tokens.css'));
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const tema = require(path.join(SRC_ROOT, 'styles', 'tailwind-theme.js'));
+
+  test('tokens.css es exactamente lo que genera el script (no se edita a mano)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { execFileSync } = require('child_process');
+    const generado = execFileSync(
+      process.execPath,
+      [path.join(REPO_ROOT, 'scripts', 'generar-tokens-css.mjs'), '--stdout'],
+      { encoding: 'utf8' }
+    );
+    expect(css.replace(/\r\n/g, '\n')).toBe(generado);
+  });
+
+  test('cada token semántico de Figma existe en modo claro y oscuro', () => {
+    const [claro, oscuro] = css.split('.dark {');
+    for (const token of Object.keys(figma.semanticos)) {
+      const variable = `--${token.replace(/\//g, '-')}:`;
+      expect(claro).toContain(variable);
+      expect(oscuro).toContain(variable);
+    }
+  });
+
+  test('el tema de Tailwind solo referencia variables que tokens.css define', () => {
+    const definidas = new Set(Array.from(css.matchAll(/(--[a-z0-9-]+):/g)).map((m) => m[1]));
+    const usadas = new Set<string>();
+    const recorrer = (valor: unknown) => {
+      if (typeof valor === 'string') {
+        for (const m of valor.matchAll(/var\((--[a-z0-9-]+)\)/g)) usadas.add(m[1]);
+      } else if (valor && typeof valor === 'object') {
+        Object.values(valor as Record<string, unknown>).forEach(recorrer);
+      }
+    };
+    recorrer(tema);
+    const huerfanas = [...usadas].filter((v) => !definidas.has(v));
+    expect(usadas.size).toBeGreaterThan(40);
+    expect(huerfanas).toEqual([]);
+  });
+
+  test('la escala azul de Tailwind es la de Figma, tono por tono', () => {
+    for (const [token, hex] of Object.entries(figma.primitivos as Record<string, string>)) {
+      const m = token.match(/^blue\/(\d+)$/);
+      if (m) expect(tema.colors.blue[m[1]].toLowerCase()).toBe(hex.toLowerCase());
+    }
+    // La marca y la acción, explícitas: son las que más se ven.
+    expect(tema.colors.blue[500]).toBe('#4361ee');
+    expect(tema.colors.blue[600]).toBe('#3651d4');
+  });
+
+  test('los grises de Tailwind son los slate de Figma', () => {
+    for (const [token, hex] of Object.entries(figma.primitivos as Record<string, string>)) {
+      const m = token.match(/^slate\/(\d+)$/);
+      if (m) expect(tema.colors.gray[m[1]].toLowerCase()).toBe(hex.toLowerCase());
+    }
+  });
+
+  test('tailwind.config.js ya no declara colores sueltos: todo sale del tema', () => {
+    const config = readFile(path.join(REPO_ROOT, 'tailwind.config.js'));
+    expect(config).toContain("require('./src/styles/tailwind-theme')");
+    expect(config).not.toMatch(/#0070f3/i);
+  });
+});

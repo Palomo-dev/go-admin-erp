@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {Plus, Edit, Trash2, Package} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { FixedAssetService, FixedAsset, ASSET_TYPES, DEPRECIATION_METHODS } from './FixedAssetService';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
@@ -25,16 +26,28 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export function ActivosFijosPage() {
+  // `fixed_assets.acquisition_date` es `date` puro: hace falta el DIA de la
+  // organizacion, no el dia UTC. A las 20:00 en Bogota, `toISOString()` ya
+  // marca el dia siguiente y el activo se compraba «manana».
+  const { getToday } = useFormatDate();
+  const { isLoading: tzLoading } = useOrgTimezone();
   const [assets, setAssets] = useState<FixedAsset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState<FixedAsset | null>(null);
   const [formData, setFormData] = useState({
     code: '', name: '', description: '', asset_type: 'equipment',
-    acquisition_date: new Date().toISOString().split('T')[0],
+    acquisition_date: '',
     acquisition_cost: 0, salvage_value: 0, useful_life_months: 12,
     depreciation_method: 'straight_line',
   });
+
+  const fechaPuesta = useRef(false);
+  useEffect(() => {
+    if (tzLoading || fechaPuesta.current) return;
+    fechaPuesta.current = true;
+    setFormData((prev) => (prev.acquisition_date ? prev : { ...prev, acquisition_date: getToday() }));
+  }, [tzLoading, getToday]);
 
   useEffect(() => { load(); }, []);
 
@@ -82,7 +95,7 @@ export function ActivosFijosPage() {
             <p className="text-gray-500 dark:text-gray-400">Gestion y depreciacion de activos</p>
           </div>
         </div>
-        <Button onClick={() => { setEditing(null); setFormData({ code: '', name: '', description: '', asset_type: 'equipment', acquisition_date: new Date().toISOString().split('T')[0], acquisition_cost: 0, salvage_value: 0, useful_life_months: 12, depreciation_method: 'straight_line' }); setShowDialog(true); }} className="bg-blue-600 hover:bg-blue-700">
+        <Button onClick={() => { setEditing(null); setFormData({ code: '', name: '', description: '', asset_type: 'equipment', acquisition_date: getToday(), acquisition_cost: 0, salvage_value: 0, useful_life_months: 12, depreciation_method: 'straight_line' }); setShowDialog(true); }} className="bg-blue-600 hover:bg-blue-700">
           <Plus className="h-4 w-4 mr-2" /> Nuevo Activo
         </Button>
       </div>

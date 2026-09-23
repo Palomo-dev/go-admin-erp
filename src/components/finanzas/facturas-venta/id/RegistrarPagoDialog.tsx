@@ -28,6 +28,8 @@ import { CalendarIcon } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { instantForDayInTz, plainDayOfInstant } from '@/lib/services/businessInstant';
 
 interface RegistrarPagoDialogProps {
   open: boolean;
@@ -70,7 +72,13 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
   const [monto, setMonto] = useState<string>('');
   const [referencia, setReferencia] = useState<string>('');
   const [montoExcedido, setMontoExcedido] = useState(false);
-  const [fechaPago, setFechaPago] = useState<string>(new Date().toISOString().split('T')[0]);
+  // `payments.payment_date` e `invoice_sales.issue_date` son timestamptz. El
+  // formulario maneja el DIA de la sucursal dueña de la factura; el instante se
+  // compone al guardar con la hora de pared de esa misma zona.
+  const { getToday, timezone } = useFormatDate(factura?.branch_id);
+  const diaEmision = plainDayOfInstant(factura?.issue_date, timezone);
+
+  const [fechaPago, setFechaPago] = useState<string>('');
   const [fechaError, setFechaError] = useState(false);
 
   // Cargar métodos de pago disponibles
@@ -113,7 +121,7 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
       // Establecer monto predeterminado con el saldo pendiente
       setMonto(factura.balance?.toString() || '0');
       // Establecer fecha de pago predeterminada a hoy
-      setFechaPago(new Date().toISOString().split('T')[0]);
+      setFechaPago(getToday());
       setFechaError(false);
     }
   }, [open, organizationId]);
@@ -149,12 +157,9 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
     }
 
     // Validar que la fecha de pago no sea anterior a la fecha de emisión de la factura
-    if (factura.issue_date) {
-      const fechaEmision = new Date(factura.issue_date).toISOString().split('T')[0];
-      if (fechaPago < fechaEmision) {
-        toastError("Error de validación", `La fecha de pago no puede ser anterior a la fecha de emisión (${fechaEmision})`);
-        return;
-      }
+    if (diaEmision && fechaPago < diaEmision) {
+      toastError("Error de validación", `La fecha de pago no puede ser anterior a la fecha de emisión (${diaEmision})`);
+      return;
     }
 
     const montoNumerico = parseFloat(monto);
@@ -192,7 +197,7 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
           currency: factura.currency || 'COP',
           reference: referencia || null,
           status: 'completed',
-          payment_date: new Date(fechaPago + 'T' + new Date().toTimeString().split(' ')[0]).toISOString()
+          payment_date: instantForDayInTz(fechaPago, timezone)
         });
 
       if (paymentError) {
@@ -375,12 +380,11 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
               value={fechaPago}
               onChange={(e) => {
                 setFechaPago(e.target.value);
-                if (factura.issue_date) {
-                  const fechaEmision = new Date(factura.issue_date).toISOString().split('T')[0];
-                  setFechaError(e.target.value < fechaEmision);
+                if (diaEmision) {
+                  setFechaError(e.target.value < diaEmision);
                 }
               }}
-              max={new Date().toISOString().split('T')[0]}
+              max={getToday()}
               className={`text-sm dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 ${fechaError ? 'border-red-500 dark:border-red-500' : ''}`}
             />
             {fechaError && (

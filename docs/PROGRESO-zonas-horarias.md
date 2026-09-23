@@ -733,3 +733,102 @@ NO VERIFICADO: `npx tsc --noEmit` completo y `next build` siguen sin ejecutarse 
 encargo); `tsc` acotado a los archivos de la tanda da 0 errores propios (el unico que sale es
 `src/lib/utils/desktop.ts(237)`, de otra sesion). Tampoco se ha probado en navegador que el dia
 por defecto aparezca sin parpadeo mientras el contexto resuelve la zona.
+
+### 2026-09-23 - B2: cartera (cuentas por cobrar, por pagar y facturas)
+
+Tanda 2 del inventario de la Fase B (P0, marcada «ida y vuelta»). 10 archivos de produccion mas
+dos modulos nuevos. Escritura y presentacion en el mismo cambio, sin excepcion: aqui casi todas
+las columnas que el codigo trataba como dia son **timestamptz** (verificado por MCP en
+`information_schema.columns`), y los dos errores se cancelaban entre si.
+
+Los dos errores, para que quede escrito:
+
+- **Escritura.** `new Date(dia + 'T' + new Date().toTimeString().split(' ')[0]).toISOString()`
+  compone el instante con la hora Y la zona del NAVEGADOR. Desde Madrid, un abono de una tienda
+  de Bogota se guardaba siete horas antes de lo debido; en la franja de la noche, un dia entero.
+  Estaba copiado en cinco sitios.
+- **Lectura.** `new Date(valorDeBD).toISOString().split('T')[0]` se queda con el dia UTC del
+  instante. Los `min` de los `<input type="date">` y las comparaciones contra la fecha de emision
+  iban un dia corridas, y eso deshabilitaba el boton «Marcar pagada» de facturas legitimas.
+
+Tabla de decisiones (call-site -> tipo real -> arreglo):
+
+| Sitio | Columna - tipo | Arreglo |
+|---|---|---|
+| `CuentasPorCobrarService.aplicarAbono` | `payments.payment_date` - **timestamptz** | `resolveTimezone(org, branch)` + `instantForDayInTz` |
+| `CuentaPorCobrarDetailService.aplicarPago` | idem | idem |
+| `CuentaPorCobrarDetailService.pagarCuota` | `ar_installments.paid_at` - timestamptz | idem |
+| `CuentaPorCobrarDetailService.crearCuotas` | `ar_installments.due_date` - **date** | `toPlainDate(inicio, tz)` + `sumarMesesAlDia` |
+| `CuentasPorCobrarService.obtenerCuentasParaRecordatorio` | dia derivado | `todayInTz(tz)` + `sumarDiasAlDia` |
+| `AplicarAbonoModal` | formulario + `accounts_receivable.due_date` (lectura) | `getToday()` + `formatDate` |
+| `AccountActionsCard` | formulario, `min`/`max`, `due_date`, `last_reminder_date` | `getToday()`, `plainDayOfInstant`, `formatDate` |
+| `FacturasCompraService.registrarPago` | `payments.payment_date` - timestamptz | `resolveTimezone` + `instantForDayInTz` |
+| `RegistrarPagoModal` (compra) | formulario + `invoice_purchase.issue_date` | `getToday()` + `plainDayOfInstant` |
+| `RegistrarPagoDialog` (venta) | `payments.payment_date` + `invoice_sales.issue_date` | `instantForDayInTz` + `plainDayOfInstant`, zona de `factura.branch_id` |
+| `DetalleFactura` («marcar pagada») | idem | idem |
+| `ImportarCSVDialog` | `invoice_sales.issue_date` / `.due_date` - timestamptz | dia del CSV -> `plainDateToInstant`; defecto `getToday()` + `sumarDiasAlDia(.., 30)` |
+| `FacturasProximasVencer` | filtro sobre `invoice_sales.due_date` - timestamptz | `getDateRange(hoy, limite, tz)` + `diasEntreDias` |
+
+Modulos nuevos, los dos pequeños y con una sola responsabilidad:
+
+- `src/lib/services/businessInstant.ts` — `instantForDayInTz(dia, tz)` (dia elegido + hora de
+  pared de la organizacion -> instante con su offset real, DST incluido) y `plainDayOfInstant`
+  (dia de un timestamptz en esa zona, con `''` cuando el valor falta, para no romper un `min`).
+- Ampliado `src/lib/services/fiscalCalendar.ts` con `sumarMesesAlDia`, `sumarDiasAlDia` y
+  `diasEntreDias`.
+
+Dos correcciones de semantica que van mas alla de la zona horaria, y que merecen revision:
+
+1. **`sumarMesesAlDia` recorta al ultimo dia del mes.** `Date.setMonth` desborda: un plan de
+   cuotas que empieza el 31 de enero ponia la segunda cuota el 3 de marzo, es decir DOS cuotas en
+   marzo y ninguna en febrero. Ahora vence el 28 (o el 29). El test lo fija con un plan de 12.
+2. **`diasEntreDias` cuenta dias calendario, no bloques de 24 h.** `differenceInDays` sobre dos
+   instantes devuelve un dia de menos cuando el rango cruza un dia de 23 h.
+
+Limitacion conocida, anotada en el propio archivo: `AccountActionsCard` formatea con la zona de
+la ORGANIZACION y no con la de la sucursal, porque el RPC `get_account_receivable_detail` no
+devuelve `branch_id` (comprobado con `pg_get_function_result`) aunque la columna exista en
+`accounts_receivable`. Anadirlo al RPC es cambio de esquema y corresponde a la fase D. Mientras
+tanto la cascada cae en la organizacion, que es exactamente el comportamiento de hoy.
+
+Otro hallazgo de paso, para quien haga la tanda de nomina: `CuentasPorPagarService.crearCuotas`
+ya tiene un parametro `timezone: string = DEFAULT_TIMEZONE` **opcional** — justo la forma que el
+ADR-003 descarta. Ningun llamador lo rellena (los tres pasan por `CuentaPorPagarDetailService`),
+asi que hoy siempre resuelve Bogota. No se toca en esta tanda; queda apuntado.
+
+Red: `src/__tests__/timezone/carteraVencimientos.test.ts` (32 casos, verde en `TZ=UTC`,
+`TZ=America/Mexico_City` y `TZ=Europe/Madrid`). Incluye el caso que pedia el encargo: con reloj
+falso a las **23:30 de Madrid** el vencimiento guarda el dia de Madrid y su hora de pared (23:30),
+no la del reloj UTC (22:30); y el espejo, **23:30 en Bogota**, donde UTC ya esta en el dia
+siguiente. Ademas: el caso de las 00:30 de Madrid, donde el dia de la organizacion y el de UTC
+caen en **años distintos**; la ida y vuelta en cinco zonas incluida una hora de pared que no
+existe (29/03/2026 en Madrid); `plainDayOfInstant` con valores nulos e ilegibles; el plan de 12
+cuotas desde el 31 de enero; y guardas estaticas sobre los 10 archivos.
+
+14 mutaciones sobre los `.ts`/`.tsx` reales (instante compuesto con la hora y la zona del
+navegador, dia de un timestamptz por `toISOString().split`, hora de pared tomada en UTC, suma de
+meses que desborda, suma de dias en bloques de 24 h, todas las cuotas el mismo dia, y los seis
+puntos de escritura/lectura de pagos y facturas devueltos al dia suelto): **14 muertas, 0
+supervivientes**, md5 de los 9 archivos identico antes y despues. Scripts en el scratchpad de
+sesion (`.../scratchpad/tz-b012/mutaciones-tanda2.sh` y `mutar2.py`).
+
+La primera pasada dejo **una superviviente**: la guarda estatica comprobaba que
+`instantForDayInTz(` aparecia en `cuentas-por-cobrar/id/service.ts`, y ese archivo tiene DOS
+puntos de escritura; devolver uno de los dos al dia suelto pasaba desapercibido. La guarda ahora
+nombra los cuatro puntos uno por uno. Es la leccion de siempre: una guarda «contiene el helper»
+no prueba que el helper se use donde hace falta.
+
+Metrica 1 (escritura de dia en UTC): **281 antes / 256 despues**. En los archivos de la tanda:
+30 -> 0. La diferencia con el −30: el test nuevo reproduce el patron viejo a proposito 4 veces, y
+el arbol es compartido (otras sesiones movieron el contador en +1 durante la tanda).
+
+Quedan en estos modulos 3 ocurrencias, todas nombres de archivo de descarga (`AgingReport`,
+`CuentasPorCobrarFiltros`, `CuentaPorCobrarDetailPage`): son P3 y pertenecen a las tandas 12 y 13.
+
+NO VERIFICADO: `npx tsc --noEmit` completo y `next build` siguen sin ejecutarse (fuera del
+encargo); `tsc` acotado a los arboles de cartera y facturas da 0 errores propios (solo salen
+`src/lib/utils/desktop.ts(237)` y `src/lib/pos/display/desktopChannel.ts(49)`, de otras sesiones).
+ESLint: los archivos nuevos y los tests estan limpios; en los archivos tocados quedan errores
+**preexistentes** de `no-explicit-any` y de variables e importaciones sin usar
+(`DetalleFactura`, `RegistrarPagoDialog`, `ImportarCSVDialog`, los dos `service.ts` de cartera)
+que no se han limpiado en esta tanda. Nada se ha probado en navegador.

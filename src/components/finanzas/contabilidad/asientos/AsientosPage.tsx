@@ -1,24 +1,24 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { FileText, Plus, Loader2, Edit, Trash2, Copy, Check, ArrowLeft, Search, Filter, Eye } from 'lucide-react';
+import { FileText, Plus, Loader2, Trash2, Copy, Check, ArrowLeft, Search, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ContabilidadService, JournalEntry, ChartAccount } from '../ContabilidadService';
-import { formatCurrency, formatNumber } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CopyableId } from '@/components/common/CopyableId';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 interface JournalLineInput {
@@ -32,6 +32,14 @@ export function AsientosPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { branchFilter, selectedBranchId } = useBranch();
+  // `journal_entries.entry_date` es **timestamptz** (verificado en
+  // `information_schema.columns`). El formulario trabaja con el DIA calendario
+  // de la sucursal dueña del asiento; al guardar se convierte al instante que
+  // le corresponde en esa zona. Mandar `'2026-09-23'` a un timestamptz guarda
+  // las 19:00 del 22 en Bogota, y la lista lo mostraria un dia corrido.
+  const { formatDate } = useFormatDate();
+  const { getToday, toInstant } = useFormatDate(selectedBranchId);
+  const { isLoading: tzLoading } = useOrgTimezone();
   const [asientos, setAsientos] = useState<JournalEntry[]>([]);
   const [cuentas, setCuentas] = useState<ChartAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,13 +49,20 @@ export function AsientosPage() {
   const [filterSource, setFilterSource] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
-    entry_date: new Date().toISOString().split('T')[0],
+    entry_date: '',
     memo: '',
     lines: [
       { account_code: '', description: '', debit: '', credit: '' },
       { account_code: '', description: '', debit: '', credit: '' }
     ] as JournalLineInput[]
   });
+
+  const fechaPuesta = useRef(false);
+  useEffect(() => {
+    if (tzLoading || fechaPuesta.current) return;
+    fechaPuesta.current = true;
+    setFormData((prev) => (prev.entry_date ? prev : { ...prev, entry_date: getToday() }));
+  }, [tzLoading, getToday]);
 
   useEffect(() => {
     loadData();
@@ -76,7 +91,7 @@ export function AsientosPage() {
 
   const resetForm = () => {
     setFormData({
-      entry_date: new Date().toISOString().split('T')[0],
+      entry_date: getToday(),
       memo: '',
       lines: [
         { account_code: '', description: '', debit: '', credit: '' },
@@ -134,7 +149,8 @@ export function AsientosPage() {
         return;
       }
       await ContabilidadService.crearAsiento({
-        entry_date: formData.entry_date,
+        // Dia calendario de la sucursal -> instante con su offset real.
+        entry_date: toInstant(formData.entry_date),
         memo: formData.memo,
         lines: validLines.map(l => ({
           account_code: l.account_code,
@@ -160,7 +176,7 @@ export function AsientosPage() {
       await ContabilidadService.publicarAsiento(id);
       toast.success('Asiento publicado exitosamente');
       loadData();
-    } catch (error) {
+    } catch {
       toast.error('Error al publicar el asiento');
     }
   };
@@ -170,7 +186,7 @@ export function AsientosPage() {
       await ContabilidadService.duplicarAsiento(id);
       toast.success('Asiento duplicado exitosamente');
       loadData();
-    } catch (error) {
+    } catch {
       toast.error('Error al duplicar el asiento');
     }
   };
@@ -181,7 +197,7 @@ export function AsientosPage() {
       await ContabilidadService.eliminarAsiento(id);
       toast.success('Asiento eliminado exitosamente');
       loadData();
-    } catch (error) {
+    } catch {
       toast.error('Error al eliminar el asiento');
     }
   };
@@ -343,7 +359,7 @@ export function AsientosPage() {
                     />
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300">
-                    {new Date(asiento.entry_date).toLocaleDateString('es-CO')}
+                    {formatDate(asiento.entry_date)}
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300 break-words whitespace-normal min-w-0">
                     {asiento.memo || '-'}

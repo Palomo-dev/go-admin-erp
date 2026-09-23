@@ -1,5 +1,9 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { instantForDayInTz } from '@/lib/services/businessInstant';
+import { sumarMesesAlDia } from '@/lib/services/fiscalCalendar';
+import { toPlainDate } from '@/lib/utils/timezone';
 
 async function getBranchIdWithFallback(organizationId: number): Promise<number> {
   const branchId = getCurrentBranchId();
@@ -228,6 +232,9 @@ export class CuentaPorCobrarDetailService {
     const organizationId = this.getOrganizationId();
     const branchId = await getBranchIdWithFallback(organizationId);
     const createdBy = await getCurrentUserId();
+    // `payments.payment_date` es timestamptz: dia elegido + hora de pared de la
+    // sucursal dueña del pago (ADR-003), nunca la hora del navegador.
+    const timezone = await resolveTimezone(organizationId, branchId);
     
     console.log('💰 DEBUG aplicarPago:', { accountId, amount, method, organizationId, branchId, createdBy, paymentDate });
     
@@ -246,7 +253,9 @@ export class CuentaPorCobrarDetailService {
           reference: reference,
           status: 'completed',
           currency: 'COP',
-          payment_date: paymentDate ? new Date(paymentDate + 'T' + new Date().toTimeString().split(' ')[0]).toISOString() : new Date().toISOString()
+          payment_date: paymentDate
+            ? instantForDayInTz(paymentDate, timezone)
+            : new Date().toISOString()
         });
 
       if (paymentError) {
@@ -291,6 +300,14 @@ export class CuentaPorCobrarDetailService {
     numberOfInstallments: number,
     startDate: Date
   ): Promise<void> {
+    const organizationId = this.getOrganizationId();
+    const branchId = await getBranchIdWithFallback(organizationId);
+    // `ar_installments.due_date` es `date` puro: hace falta el DIA calendario
+    // de la organizacion, no el dia UTC del instante. Y los meses se suman en
+    // dias calendario, no con `Date.setMonth`, que desborda (31/01 + 1 mes
+    // daba el 3 de marzo: dos cuotas en marzo y ninguna en febrero).
+    const timezone = await resolveTimezone(organizationId, branchId);
+    const primerVencimiento = toPlainDate(startDate, timezone);
     try {
       // Primero eliminar cuotas existentes
       await supabase
@@ -302,8 +319,7 @@ export class CuentaPorCobrarDetailService {
       const installments = [];
 
       for (let i = 1; i <= numberOfInstallments; i++) {
-        const dueDate = new Date(startDate);
-        dueDate.setMonth(dueDate.getMonth() + (i - 1));
+        const dueDate = sumarMesesAlDia(primerVencimiento, i - 1);
 
         // Ajustar la última cuota para cubrir diferencias de redondeo
         const amount = i === numberOfInstallments 
@@ -313,7 +329,7 @@ export class CuentaPorCobrarDetailService {
         installments.push({
           account_receivable_id: accountId,
           installment_number: i,
-          due_date: dueDate.toISOString().split('T')[0],
+          due_date: dueDate,
           amount: amount,
           balance: amount,
           status: 'pending',
@@ -385,6 +401,10 @@ export class CuentaPorCobrarDetailService {
     reference?: string,
     paymentDate?: string
   ): Promise<void> {
+    const organizationId = this.getOrganizationId();
+    const branchId = await getBranchIdWithFallback(organizationId);
+    // `ar_installments.paid_at` es timestamptz: mismo criterio que el pago.
+    const timezoneCuota = await resolveTimezone(organizationId, branchId);
     try {
       // Obtener la cuota
       const { data: installment, error: installmentError } = await supabase
@@ -414,7 +434,9 @@ export class CuentaPorCobrarDetailService {
           paid_amount: newPaidAmount,
           balance: newBalance,
           status: newStatus,
-          paid_at: newStatus === 'paid' ? (paymentDate ? new Date(paymentDate + 'T' + new Date().toTimeString().split(' ')[0]).toISOString() : new Date().toISOString()) : null
+          paid_at: newStatus === 'paid'
+            ? (paymentDate ? instantForDayInTz(paymentDate, timezoneCuota) : new Date().toISOString())
+            : null
         })
         .eq('id', installmentId);
 

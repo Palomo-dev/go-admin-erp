@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import {
   Alert,
@@ -15,7 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CreditCard, DollarSign, User, Calendar, Loader2, AlertCircle } from 'lucide-react';
 import { CuentaPorCobrar } from './types';
 import { CuentasPorCobrarService } from './service';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
@@ -42,18 +43,31 @@ interface FormattedPaymentMethod {
 
 export function AplicarAbonoModal({ open, onOpenChange, cuenta, onSuccess }: AplicarAbonoModalProps) {
   const organizationId = getOrganizationId();
+  // `payments.payment_date` y `accounts_receivable.due_date` son timestamptz.
+  // El formulario maneja el DIA de la organizacion; el servicio lo convierte a
+  // instante. El dia por defecto se pone cuando el contexto ya sabe la zona:
+  // en el primer render todavia devuelve el fallback `America/Bogota`.
+  const { getToday, formatDate } = useFormatDate();
+  const { isLoading: tzLoading } = useOrgTimezone();
   
   const [formData, setFormData] = useState({
     amount: '',
     payment_method: '',
     reference: '',
     notes: '',
-    payment_date: new Date().toISOString().split('T')[0],
+    payment_date: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [metodosPago, setMetodosPago] = useState<FormattedPaymentMethod[]>([]);
   const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
   const [montoExcedido, setMontoExcedido] = useState(false);
+
+  const fechaPuesta = useRef(false);
+  useEffect(() => {
+    if (tzLoading || fechaPuesta.current) return;
+    fechaPuesta.current = true;
+    setFormData((prev) => (prev.payment_date ? prev : { ...prev, payment_date: getToday() }));
+  }, [tzLoading, getToday]);
 
   // Cargar métodos de pago disponibles
   useEffect(() => {
@@ -163,7 +177,7 @@ export function AplicarAbonoModal({ open, onOpenChange, cuenta, onSuccess }: Apl
       payment_method: '',
       reference: '',
       notes: '',
-      payment_date: new Date().toISOString().split('T')[0],
+      payment_date: getToday(),
     });
     // Reset estado de monto excedido
     setMontoExcedido(false);
@@ -248,7 +262,7 @@ export function AplicarAbonoModal({ open, onOpenChange, cuenta, onSuccess }: Apl
                 <div>
                   <Label className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Fecha Vencimiento</Label>
                   <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
-                    {parseLocalDate(cuenta.due_date).toLocaleDateString('es-ES')}
+                    {formatDate(cuenta.due_date)}
                   </p>
                 </div>
               </div>

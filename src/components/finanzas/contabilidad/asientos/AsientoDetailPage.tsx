@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import {FileText, Check, Copy, Trash2, ArrowLeft, Edit, Calendar, User, Link as LinkIcon} from 'lucide-react';
+import {FileText, Check, Copy, Trash2, ArrowLeft, Calendar, User, Link as LinkIcon} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { ContabilidadService, JournalEntry } from '../ContabilidadService';
 import { formatCurrency } from '@/utils/Utils';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
+import { useFormatDateFor } from '@/lib/context/OrganizationTimezoneContext';
 
 interface AsientoDetailPageProps {
   entryId: number;
@@ -23,6 +24,9 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
   const [asiento, setAsiento] = useState<JournalEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  // `entry_date` es timestamptz: se formatea en la zona de la SUCURSAL dueña
+  // del asiento (cascada sucursal -> organizacion), no en la del navegador.
+  const { formatDate } = useFormatDateFor(asiento?.branch_id);
 
   useEffect(() => {
     loadAsiento();
@@ -53,7 +57,7 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
       await ContabilidadService.publicarAsiento(asiento.id);
       toast.success('Asiento publicado exitosamente');
       loadAsiento();
-    } catch (error) {
+    } catch {
       toast.error('Error al publicar el asiento');
     } finally {
       setIsProcessing(false);
@@ -67,7 +71,7 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
       const newEntry = await ContabilidadService.duplicarAsiento(asiento.id);
       toast.success('Asiento duplicado exitosamente');
       router.push(`/app/finanzas/contabilidad/asientos/${newEntry.id}`);
-    } catch (error) {
+    } catch {
       toast.error('Error al duplicar el asiento');
     } finally {
       setIsProcessing(false);
@@ -82,7 +86,7 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
       await ContabilidadService.eliminarAsiento(asiento.id);
       toast.success('Asiento eliminado exitosamente');
       router.push('/app/finanzas/contabilidad/asientos');
-    } catch (error) {
+    } catch {
       toast.error('Error al eliminar el asiento');
     } finally {
       setIsProcessing(false);
@@ -158,11 +162,7 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Fecha</p>
                 <p className="font-semibold text-gray-900 dark:text-white">
-                  {new Date(asiento.entry_date).toLocaleDateString('es-CO', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
+                  {formatDate(asiento.entry_date)}
                 </p>
               </div>
             </div>

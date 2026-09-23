@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {Scale, Calendar, CheckCircle, AlertCircle} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ReportesContablesService, BalanceSheetRow } from '../ReportesContablesService';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 
@@ -34,19 +35,31 @@ function renderRow(row: BalanceSheetRow, level: number = 0): React.ReactNode {
 }
 
 export function BalanceGeneralPage() {
-  const today = new Date().toISOString().split('T')[0];
-  const [asOfDate, setAsOfDate] = useState(today);
+  // `entry_date` es timestamptz; el corte «a fecha de» se convierte al ultimo
+  // instante del dia DENTRO del servicio. Aqui basta el dia de la zona de la
+  // organizacion, y se pone cuando el contexto ya la sabe.
+  const { getToday } = useFormatDate();
+  const { isLoading: tzLoading } = useOrgTimezone();
+  const [asOfDate, setAsOfDate] = useState('');
   const [data, setData] = useState<{ assets: BalanceSheetRow[]; liabilities: BalanceSheetRow[]; equity: BalanceSheetRow[]; totalAssets: number; totalLiabilities: number; totalEquity: number; balanced: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const arrancado = useRef(false);
 
-  const loadData = async () => {
+  useEffect(() => {
+    if (tzLoading || arrancado.current) return;
+    arrancado.current = true;
+    const hoy = getToday();
+    setAsOfDate(hoy);
+    loadData(hoy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tzLoading, getToday]);
+
+  const loadData = async (corte: string = asOfDate) => {
+    if (!corte) return;
     try {
       setIsLoading(true);
-      const result = await ReportesContablesService.getBalanceSheet(asOfDate);
+      const result = await ReportesContablesService.getBalanceSheet(corte);
       setData(result);
     } catch (error) {
       console.error('Error cargando balance general:', error);
@@ -88,7 +101,7 @@ export function BalanceGeneralPage() {
               <Label className="text-gray-700 dark:text-gray-300">Fecha de Corte</Label>
               <Input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
             </div>
-            <Button onClick={loadData} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => loadData()} className="bg-blue-600 hover:bg-blue-700">
               <Calendar className="h-4 w-4 mr-2" />
               Consultar
             </Button>

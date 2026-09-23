@@ -2,6 +2,10 @@ import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { CuentaPorCobrar, FiltrosCuentasPorCobrar, AgingBucket, Recordatorio, Abono, EstadisticasCxC, ResultadoPaginado } from './types';
 import { parseLocalDate } from '@/utils/Utils';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { instantForDayInTz } from '@/lib/services/businessInstant';
+import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
+import { todayInTz } from '@/lib/utils/timezone';
 
 async function getBranchIdWithFallback(organizationId: number): Promise<number> {
   const branchId = getCurrentBranchId();
@@ -222,6 +226,10 @@ export class CuentasPorCobrarService {
     const organizationId = this.getOrganizationId();
     const today = new Date();
     const threeDaysAgo = new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000);
+    // El proximo recordatorio es un DIA calendario de la organizacion: tres
+    // dias despues de hoy alli, no tres veces 24 h contadas desde UTC.
+    const timezone = await resolveTimezone(organizationId);
+    const proximoRecordatorio = sumarDiasAlDia(todayInTz(timezone), 3);
     
     const { data, error } = await supabase
       .from('accounts_receivable')
@@ -252,7 +260,7 @@ export class CuentasPorCobrarService {
       due_date: item.due_date,
       days_overdue: item.days_overdue,
       last_reminder_date: item.last_reminder_date,
-      next_reminder_date: new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      next_reminder_date: proximoRecordatorio,
     })) || [];
   }
 
@@ -281,6 +289,10 @@ export class CuentasPorCobrarService {
     // Obtener branch_id y usuario actual desde el contexto del usuario
     const currentBranchId = await getBranchIdWithFallback(organizationId);
     const currentUserId = await getCurrentUserId();
+    // `payments.payment_date` es timestamptz: el dia que eligio el usuario se
+    // combina con la hora de pared de la SUCURSAL dueña del abono, no con la
+    // del navegador (ADR-003: el servicio recibe identidad y resuelve la zona).
+    const timezone = await resolveTimezone(organizationId, currentBranchId);
     
     // Crear el registro de pago
     const { error: paymentError } = await supabase
@@ -297,7 +309,9 @@ export class CuentasPorCobrarService {
         status: 'completed',
         created_by: currentUserId,
         created_at: new Date().toISOString(),
-        payment_date: abono.payment_date ? new Date(abono.payment_date + 'T' + new Date().toTimeString().split(' ')[0]).toISOString() : new Date().toISOString(),
+        payment_date: abono.payment_date
+          ? instantForDayInTz(abono.payment_date, timezone)
+          : new Date().toISOString(),
       });
 
     if (paymentError) {

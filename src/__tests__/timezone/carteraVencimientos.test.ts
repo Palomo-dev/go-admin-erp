@@ -234,6 +234,19 @@ describe('los archivos de la tanda 2 no vuelven al día UTC', () => {
       expect(fuente).toContain('resolveTimezone(');
       expect(fuente).toContain('instantForDayInTz(');
     }
+    // Los DOS puntos de escritura del detalle de cartera, uno por uno: el pago
+    // de la cuenta y el pago de una cuota. Comprobar solo que el helper aparece
+    // en el archivo dejaba pasar que uno de los dos volviera al día suelto.
+    const detalle = leer('src/components/finanzas/cuentas-por-cobrar/id/service.ts');
+    expect(detalle).toContain('instantForDayInTz(paymentDate, timezone)');
+    expect(detalle).toContain('instantForDayInTz(paymentDate, timezoneCuota)');
+    expect(leer('src/components/finanzas/cuentas-por-cobrar/service.ts')).toContain(
+      'instantForDayInTz(abono.payment_date, timezone)',
+    );
+    expect(leer('src/components/finanzas/facturas-compra/FacturasCompraService.ts')).toContain(
+      'instantForDayInTz(pagoData.payment_date, timezone)',
+    );
+
     // El dialogo de venta compone el instante en el cliente, con la zona de la
     // sucursal de la factura que ya tiene el contexto.
     const dialogo = leer('src/components/finanzas/facturas-venta/id/RegistrarPagoDialog.tsx');

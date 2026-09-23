@@ -1,5 +1,18 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { getDateRange, getDayRange } from '@/lib/utils/timezone';
+
+// ============================================================
+// `journal_entries.entry_date` es **timestamptz**, no `date` (verificado en
+// `information_schema.columns`). Comparar la columna contra un `'YYYY-MM-DD'`
+// hace que Postgres lo lea como medianoche UTC: en Bogota ese corte cae a las
+// 19:00 del dia anterior, y el balance de un dia se come cinco horas del
+// siguiente. Por eso cada filtro se convierte al par de INSTANTES que cubre el
+// dia en la zona de la organizacion (ADR-003: el servicio recibe identidad y
+// resuelve la zona; aqui la identidad es `organization_id` de la sesion).
+// ============================================================
+
 
 export interface TrialBalanceRow {
   account_code: string;
@@ -61,6 +74,36 @@ export interface ExchangeRateInfo {
   source: string;
 }
 
+
+// Formas crudas que devuelve PostgREST en este archivo. Estaban como `any`;
+// se nombran para que el compilador ayude en vez de mirar hacia otro lado.
+interface FilaCuenta {
+  account_code: string;
+  name: string;
+  type: string;
+  parent_code: string | null;
+}
+
+interface FilaAsiento {
+  id?: number;
+  entry_date?: string;
+  memo?: string | null;
+  source?: string | null;
+  posted?: boolean;
+}
+
+// Todos los campos opcionales: cada `select` trae un subconjunto distinto y
+// el cliente tipado de Supabase infiere una forma por consulta.
+interface FilaLinea {
+  id?: number;
+  account_code?: string;
+  debit: string;
+  credit: string;
+  description?: string | null;
+  journal_entry_id?: number;
+  journal_entries?: FilaAsiento | FilaAsiento[] | null;
+}
+
 export class ReportesContablesService {
   private static getOrganizationId(): number {
     const org = obtenerOrganizacionActiva();
@@ -104,7 +147,7 @@ export class ReportesContablesService {
 
     if (error || !data) return ['COP'];
 
-    const unique = [...new Set(data.map((d: any) => d.code))];
+    const unique = [...new Set(data.map((d: { code: string }) => d.code))];
     return unique;
   }
 
@@ -113,6 +156,8 @@ export class ReportesContablesService {
     endDate: string
   ): Promise<TrialBalanceRow[]> {
     const organizationId = this.getOrganizationId();
+    const timezone = await resolveTimezone(organizationId);
+    const { start, end } = getDateRange(startDate, endDate, timezone);
 
     const { data: accounts, error: accountsError } = await supabase
       .from('chart_of_accounts')
@@ -132,15 +177,15 @@ export class ReportesContablesService {
         journal_entries!inner(entry_date, posted)
       `)
       .eq('organization_id', organizationId)
-      .gte('journal_entries.entry_date', startDate)
-      .lte('journal_entries.entry_date', endDate)
+      .gte('journal_entries.entry_date', start)
+      .lte('journal_entries.entry_date', end)
       .eq('journal_entries.posted', true);
 
     if (linesError) throw linesError;
 
     const periodTotals = new Map<string, { debit: number; credit: number }>();
-    (lines || []).forEach((line: any) => {
-      const code = line.account_code;
+    (lines || []).forEach((line: FilaLinea) => {
+      const code = line.account_code ?? '';
       const current = periodTotals.get(code) || { debit: 0, credit: 0 };
       current.debit += parseFloat(line.debit) || 0;
       current.credit += parseFloat(line.credit) || 0;
@@ -156,21 +201,21 @@ export class ReportesContablesService {
         journal_entries!inner(entry_date, posted)
       `)
       .eq('organization_id', organizationId)
-      .lt('journal_entries.entry_date', startDate)
+      .lt('journal_entries.entry_date', start)
       .eq('journal_entries.posted', true);
 
     if (priorError) throw priorError;
 
     const initialTotals = new Map<string, { debit: number; credit: number }>();
-    (priorLines || []).forEach((line: any) => {
-      const code = line.account_code;
+    (priorLines || []).forEach((line: FilaLinea) => {
+      const code = line.account_code ?? '';
       const current = initialTotals.get(code) || { debit: 0, credit: 0 };
       current.debit += parseFloat(line.debit) || 0;
       current.credit += parseFloat(line.credit) || 0;
       initialTotals.set(code, current);
     });
 
-    return (accounts || []).map((acc: any) => {
+    return (accounts || []).map((acc: FilaCuenta) => {
       const initial = initialTotals.get(acc.account_code) || { debit: 0, credit: 0 };
       const period = periodTotals.get(acc.account_code) || { debit: 0, credit: 0 };
 
@@ -207,6 +252,8 @@ export class ReportesContablesService {
     endDate: string
   ): Promise<{ income: IncomeStatementRow[]; expenses: IncomeStatementRow[]; totalIncome: number; totalExpenses: number; netIncome: number }> {
     const organizationId = this.getOrganizationId();
+    const timezone = await resolveTimezone(organizationId);
+    const { start, end } = getDateRange(startDate, endDate, timezone);
 
     const { data: accounts, error: accountsError } = await supabase
       .from('chart_of_accounts')
@@ -227,16 +274,16 @@ export class ReportesContablesService {
         journal_entries!inner(entry_date, posted)
       `)
       .eq('organization_id', organizationId)
-      .gte('journal_entries.entry_date', startDate)
-      .lte('journal_entries.entry_date', endDate)
+      .gte('journal_entries.entry_date', start)
+      .lte('journal_entries.entry_date', end)
       .eq('journal_entries.posted', true);
 
     if (linesError) throw linesError;
 
     const totals = new Map<string, number>();
-    (lines || []).forEach((line: any) => {
-      const code = line.account_code;
-      const acc = (accounts || []).find((a: any) => a.account_code === code);
+    (lines || []).forEach((line: FilaLinea) => {
+      const code = line.account_code ?? '';
+      const acc = (accounts || []).find((a: FilaCuenta) => a.account_code === code);
       if (!acc) return;
 
       const current = totals.get(code) || 0;
@@ -248,11 +295,11 @@ export class ReportesContablesService {
     });
 
     const buildTree = (type: string): IncomeStatementRow[] => {
-      const typeAccounts = (accounts || []).filter((a: any) => a.type === type);
+      const typeAccounts = (accounts || []).filter((a: FilaCuenta) => a.type === type);
       const nodeMap = new Map<string, IncomeStatementRow>();
       const roots: IncomeStatementRow[] = [];
 
-      typeAccounts.forEach((acc: any) => {
+      typeAccounts.forEach((acc: FilaCuenta) => {
         nodeMap.set(acc.account_code, {
           account_code: acc.account_code,
           name: acc.name,
@@ -263,7 +310,7 @@ export class ReportesContablesService {
         });
       });
 
-      typeAccounts.forEach((acc: any) => {
+      typeAccounts.forEach((acc: FilaCuenta) => {
         const node = nodeMap.get(acc.account_code)!;
         if (acc.parent_code && nodeMap.has(acc.parent_code)) {
           nodeMap.get(acc.parent_code)!.children.push(node);
@@ -302,6 +349,9 @@ export class ReportesContablesService {
 
   static async getBalanceSheet(asOfDate: string): Promise<{ assets: BalanceSheetRow[]; liabilities: BalanceSheetRow[]; equity: BalanceSheetRow[]; totalAssets: number; totalLiabilities: number; totalEquity: number; balanced: boolean }> {
     const organizationId = this.getOrganizationId();
+    const timezone = await resolveTimezone(organizationId);
+    // Corte «a fecha de»: el ultimo instante de ese dia en la zona del negocio.
+    const { end: cierreDelDia } = getDayRange(asOfDate, timezone);
 
     const { data: accounts, error: accountsError } = await supabase
       .from('chart_of_accounts')
@@ -322,15 +372,15 @@ export class ReportesContablesService {
         journal_entries!inner(entry_date, posted)
       `)
       .eq('organization_id', organizationId)
-      .lte('journal_entries.entry_date', asOfDate)
+      .lte('journal_entries.entry_date', cierreDelDia)
       .eq('journal_entries.posted', true);
 
     if (linesError) throw linesError;
 
     const totals = new Map<string, number>();
-    (lines || []).forEach((line: any) => {
-      const code = line.account_code;
-      const acc = (accounts || []).find((a: any) => a.account_code === code);
+    (lines || []).forEach((line: FilaLinea) => {
+      const code = line.account_code ?? '';
+      const acc = (accounts || []).find((a: FilaCuenta) => a.account_code === code);
       if (!acc) return;
 
       const current = totals.get(code) || 0;
@@ -342,11 +392,11 @@ export class ReportesContablesService {
     });
 
     const buildTree = (type: string): BalanceSheetRow[] => {
-      const typeAccounts = (accounts || []).filter((a: any) => a.type === type);
+      const typeAccounts = (accounts || []).filter((a: FilaCuenta) => a.type === type);
       const nodeMap = new Map<string, BalanceSheetRow>();
       const roots: BalanceSheetRow[] = [];
 
-      typeAccounts.forEach((acc: any) => {
+      typeAccounts.forEach((acc: FilaCuenta) => {
         nodeMap.set(acc.account_code, {
           account_code: acc.account_code,
           name: acc.name,
@@ -357,7 +407,7 @@ export class ReportesContablesService {
         });
       });
 
-      typeAccounts.forEach((acc: any) => {
+      typeAccounts.forEach((acc: FilaCuenta) => {
         const node = nodeMap.get(acc.account_code)!;
         if (acc.parent_code && nodeMap.has(acc.parent_code)) {
           nodeMap.get(acc.parent_code)!.children.push(node);
@@ -402,6 +452,8 @@ export class ReportesContablesService {
     endDate: string
   ): Promise<LedgerAccount | null> {
     const organizationId = this.getOrganizationId();
+    const timezone = await resolveTimezone(organizationId);
+    const { start, end } = getDateRange(startDate, endDate, timezone);
 
     const { data: account, error: accountError } = await supabase
       .from('chart_of_accounts')
@@ -421,13 +473,13 @@ export class ReportesContablesService {
       `)
       .eq('organization_id', organizationId)
       .eq('account_code', accountCode)
-      .lt('journal_entries.entry_date', startDate)
+      .lt('journal_entries.entry_date', start)
       .eq('journal_entries.posted', true);
 
     if (priorError) throw priorError;
 
     let openingBalance = 0;
-    (priorLines || []).forEach((line: any) => {
+    (priorLines || []).forEach((line: FilaLinea) => {
       if (account.type === 'asset' || account.type === 'expense') {
         openingBalance += (parseFloat(line.debit) || 0) - (parseFloat(line.credit) || 0);
       } else {
@@ -447,15 +499,15 @@ export class ReportesContablesService {
       `)
       .eq('organization_id', organizationId)
       .eq('account_code', accountCode)
-      .gte('journal_entries.entry_date', startDate)
-      .lte('journal_entries.entry_date', endDate)
+      .gte('journal_entries.entry_date', start)
+      .lte('journal_entries.entry_date', end)
       .eq('journal_entries.posted', true)
       .order('journal_entries.entry_date');
 
     if (linesError) throw linesError;
 
     let runningBalance = openingBalance;
-    const entries: LedgerEntry[] = (lines || []).map((line: any) => {
+    const entries: LedgerEntry[] = (lines || []).map((line: FilaLinea) => {
       const debit = parseFloat(line.debit) || 0;
       const credit = parseFloat(line.credit) || 0;
 
@@ -468,7 +520,7 @@ export class ReportesContablesService {
       const je = Array.isArray(line.journal_entries) ? line.journal_entries[0] : line.journal_entries;
 
       return {
-        journal_entry_id: line.journal_entry_id,
+        journal_entry_id: line.journal_entry_id ?? 0,
         entry_date: je?.entry_date || '',
         memo: je?.memo || null,
         source: je?.source || null,

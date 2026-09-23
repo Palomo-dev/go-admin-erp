@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {BookOpen, Calendar, Search} from 'lucide-react';
+import {BookOpen, Search} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ReportesContablesService, LedgerAccount } from '../ReportesContablesService';
 import { ContabilidadService, ChartAccount } from '../ContabilidadService';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { primerDiaDelAnioDe } from '@/lib/services/fiscalCalendar';
 import { StatsSkeleton, TableSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 
@@ -26,16 +28,28 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export function MayorContablePage() {
-  const today = new Date().toISOString().split('T')[0];
-  const firstDay = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
+  // `journal_entries.entry_date` es timestamptz: los extremos del filtro se
+  // convierten a instantes DENTRO del servicio, con la zona de la organizacion.
+  // Aqui solo hace falta el dia calendario de esa misma zona, y por eso los
+  // valores por defecto se ponen cuando el contexto ya la sabe (`tzLoading`):
+  // calcularlos en el primer render daria el dia de Bogota para todos.
+  const { getToday, formatDate } = useFormatDate();
+  const { isLoading: tzLoading } = useOrgTimezone();
 
-  const [startDate, setStartDate] = useState(firstDay);
-  const [endDate, setEndDate] = useState(today);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
   const [accounts, setAccounts] = useState<ChartAccount[]>([]);
   const [ledger, setLedger] = useState<LedgerAccount | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
+  const [, setIsLoadingAccounts] = useState(true);
+
+  useEffect(() => {
+    if (tzLoading) return;
+    const hoy = getToday();
+    setStartDate((prev) => prev || primerDiaDelAnioDe(hoy));
+    setEndDate((prev) => prev || hoy);
+  }, [tzLoading, getToday]);
 
   useEffect(() => {
     loadAccounts();
@@ -56,7 +70,7 @@ export function MayorContablePage() {
   };
 
   const loadLedger = async () => {
-    if (!selectedAccount) return;
+    if (!selectedAccount || !startDate || !endDate) return;
     try {
       setIsLoading(true);
       const data = await ReportesContablesService.getLedger(selectedAccount, startDate, endDate);
@@ -68,11 +82,16 @@ export function MayorContablePage() {
     }
   };
 
+  // `fechasListas` solo cambia UNA vez (al resolverse la zona), asi que esto
+  // sigue cargando en el arranque y al cambiar de cuenta, no en cada tecla del
+  // selector de fechas: para eso esta el boton «Generar».
+  const fechasListas = startDate !== '' && endDate !== '';
   useEffect(() => {
-    if (selectedAccount) {
+    if (selectedAccount && fechasListas) {
       loadLedger();
     }
-  }, [selectedAccount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAccount, fechasListas]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -114,7 +133,7 @@ export function MayorContablePage() {
               <Label className="text-gray-700 dark:text-gray-300">Fecha Fin</Label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
             </div>
-            <Button onClick={loadLedger} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => loadLedger()} className="bg-blue-600 hover:bg-blue-700">
               <Search className="h-4 w-4 mr-2" />
               Consultar
             </Button>
@@ -189,7 +208,7 @@ export function MayorContablePage() {
                       </tr>
                       {ledger.entries.map((entry, idx) => (
                         <tr key={idx} className="border-b dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                          <td className="py-2 px-3 text-gray-600 dark:text-gray-400">{new Date(entry.entry_date).toLocaleDateString('es-CO')}</td>
+                          <td className="py-2 px-3 text-gray-600 dark:text-gray-400">{formatDate(entry.entry_date)}</td>
                           <td className="py-2 px-3 font-mono text-gray-500 dark:text-gray-500">#{entry.journal_entry_id}</td>
                           <td className="py-2 px-3 text-gray-900 dark:text-white">{entry.memo || '-'}</td>
                           <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{entry.source || '-'}</td>

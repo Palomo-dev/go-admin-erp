@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, CreditCard, CheckCircle, Edit, Send, DollarSign, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { CuentaPorCobrarDetalle, AccountActions } from './types';
 import { CuentaPorCobrarDetailService } from './service';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { plainDayOfInstant } from '@/lib/services/businessInstant';
 
 interface Installment {
   id: string;
@@ -31,6 +33,19 @@ interface AccountActionsCardProps {
 }
 
 export function AccountActionsCard({ account, actions, onUpdate }: AccountActionsCardProps) {
+  // Todo lo que se toca aqui es timestamptz: `payments.payment_date`,
+  // `accounts_receivable.due_date`, `.last_reminder_date` y el `invoice_date`
+  // que viene de `invoice_sales.issue_date`. Se formatea y se compara en la
+  // zona de la organizacion, nunca con `.toISOString()`.
+  //
+  // Zona de la ORGANIZACION y no de la sucursal a proposito: el RPC
+  // `get_account_receivable_detail` no devuelve `branch_id` (comprobado en
+  // `pg_get_function_result`), aunque `accounts_receivable.branch_id` exista.
+  // Anadirlo al RPC es un cambio de esquema y corresponde a la fase D; mientras
+  // tanto, la cascada cae en la organizacion, que es el comportamiento de hoy.
+  const { timezone, getToday, formatDate } = useFormatDate();
+  const { isLoading: tzLoading } = useOrgTimezone();
+  const diaEmision = plainDayOfInstant(account.invoice_date, timezone);
   const [isLoading, setIsLoading] = useState(false);
   const [reminderMessage, setReminderMessage] = useState('');
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
@@ -41,9 +56,16 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
     method: '',
     reference: '',
     installmentId: '',
-    paymentDate: new Date().toISOString().split('T')[0]
+    paymentDate: ''
   });
   const [fechaError, setFechaError] = useState(false);
+
+  const fechaPuesta = useRef(false);
+  useEffect(() => {
+    if (tzLoading || fechaPuesta.current) return;
+    fechaPuesta.current = true;
+    setPaymentData((prev) => (prev.paymentDate ? prev : { ...prev, paymentDate: getToday() }));
+  }, [tzLoading, getToday]);
 
   // Cargar métodos de pago e installments al abrir el diálogo
   const loadPaymentData = async () => {
@@ -148,7 +170,7 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
       }
       
       toast.success('Pago aplicado exitosamente');
-      setPaymentData({ amount: '', method: '', reference: '', installmentId: '', paymentDate: new Date().toISOString().split('T')[0] });
+      setPaymentData({ amount: '', method: '', reference: '', installmentId: '', paymentDate: getToday() });
       setFechaError(false);
       setShowPaymentDialog(false);
       onUpdate();
@@ -185,7 +207,7 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
 
 Le recordamos que tiene una cuenta pendiente por valor de ${formatCurrency(account.balance)} con ${account.days_overdue} días de atraso.
 
-Fecha de vencimiento: ${parseLocalDate(account.due_date).toLocaleDateString('es-CO')}
+Fecha de vencimiento: ${formatDate(account.due_date)}
 
 Le agradecemos realizar el pago lo antes posible.
 
@@ -403,13 +425,12 @@ Saludos cordiales.`;
                     value={paymentData.paymentDate}
                     onChange={(e) => {
                       setPaymentData({ ...paymentData, paymentDate: e.target.value });
-                      if (account.invoice_date) {
-                        const fechaEmision = new Date(account.invoice_date).toISOString().split('T')[0];
-                        setFechaError(e.target.value < fechaEmision);
+                      if (diaEmision) {
+                        setFechaError(e.target.value < diaEmision);
                       }
                     }}
-                    max={new Date().toISOString().split('T')[0]}
-                    min={account.invoice_date ? new Date(account.invoice_date).toISOString().split('T')[0] : undefined}
+                    max={getToday()}
+                    min={diaEmision || undefined}
                     className={`dark:bg-gray-900 dark:border-gray-600 ${fechaError ? 'border-red-500 dark:border-red-500' : ''}`}
                   />
                   {fechaError && (
@@ -536,7 +557,7 @@ Saludos cordiales.`;
               <div className="flex justify-between">
                 <span>Último recordatorio:</span>
                 <span className="font-medium">
-                  {parseLocalDate(account.last_reminder_date).toLocaleDateString('es-CO')}
+                  {formatDate(account.last_reminder_date)}
                 </span>
               </div>
             )}

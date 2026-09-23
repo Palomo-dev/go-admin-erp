@@ -28,6 +28,23 @@ import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
+import { plainDateToInstant } from '@/lib/utils/timezone';
+
+/** Un dia calendario exacto, no una fecha con hora ni un texto cualquiera. */
+const DIA_CALENDARIO = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * `invoice_sales.issue_date` y `.due_date` son **timestamptz**. Un dia suelto
+ * del CSV se guarda como medianoche UTC, que en Bogota son las 19:00 del dia
+ * anterior: la factura se fecha un dia antes. Se convierte al instante que le
+ * corresponde en la zona de la organizacion. Lo que no sea un dia calendario
+ * se deja pasar tal cual para que lo rechace la base, no este archivo.
+ */
+function diaDelCsvAInstante(valor: string, timezone: string): string {
+  return DIA_CALENDARIO.test(valor) ? plainDateToInstant(valor, timezone) : valor;
+}
 
 interface ImportarCSVDialogProps {
   isOpen: boolean;
@@ -73,6 +90,7 @@ interface ParsedInvoice {
 
 export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: ImportarCSVDialogProps) {
   const { selectedBranchId } = useBranch();
+  const { getToday, timezone } = useFormatDate(selectedBranchId);
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ParsedInvoice[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -116,8 +134,8 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
               invoiceMap.set(invoiceNumber, {
                 number: invoiceNumber,
                 customer_id: row.cliente_id?.trim() || undefined,
-                issue_date: row.fecha_emision || new Date().toISOString().split('T')[0],
-                due_date: row.fecha_vencimiento || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+                issue_date: row.fecha_emision || getToday(),
+                due_date: row.fecha_vencimiento || sumarDiasAlDia(getToday(), 30),
                 currency: row.moneda?.trim() || 'COP',
                 subtotal: parseFloat(row.subtotal) || 0,
                 tax_total: parseFloat(row.impuestos) || 0,
@@ -192,8 +210,8 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
             branch_id: branchId,
             customer_id: invoice.customer_id || null,
             number: invoice.number,
-            issue_date: invoice.issue_date,
-            due_date: invoice.due_date,
+            issue_date: diaDelCsvAInstante(invoice.issue_date, timezone),
+            due_date: diaDelCsvAInstante(invoice.due_date, timezone),
             currency: invoice.currency,
             subtotal: invoice.subtotal,
             tax_total: invoice.tax_total,

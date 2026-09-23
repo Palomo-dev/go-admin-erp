@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz, toPlainDate, plainDateToInstant } from '@/lib/utils/timezone';
 import { obtenerOrganizacionActiva, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 
 export interface JournalEntry {
@@ -263,6 +265,12 @@ export class ContabilidadService {
   }, branchId?: number | null): Promise<JournalEntry> {
     const organizationId = this.getOrganizationId();
     const effectiveBranchId = branchId !== undefined ? branchId : this.getBranchId();
+    // `journal_entries.entry_date` es timestamptz y aqui llega ya como
+    // instante. Para elegir la tasa del dia hace falta el DIA de ese instante
+    // en la zona de la sucursal dueña del asiento (ADR-003: identidad dentro,
+    // zona resuelta aqui), no su dia UTC.
+    const timezone = await resolveTimezone(organizationId, effectiveBranchId);
+    const diaDelAsiento = toPlainDate(new Date(asiento.entry_date), timezone);
 
     const currencyCode = asiento.currency_code || 'COP';
     const baseCurrency = asiento.base_currency_code || 'COP';
@@ -274,7 +282,7 @@ export class ContabilidadService {
         .from('currency_rates')
         .select('rate')
         .eq('code', currencyCode)
-        .lte('rate_date', asiento.entry_date.split('T')[0])
+        .lte('rate_date', diaDelAsiento)
         .order('rate_date', { ascending: false })
         .limit(1)
         .single();
@@ -367,8 +375,12 @@ export class ContabilidadService {
     const original = await this.obtenerAsiento(id);
     if (!original || !original.lines) throw new Error('Asiento no encontrado');
 
+    // «Hoy» es el dia del negocio, no el de UTC: a las 20:00 en Bogota el
+    // instante UTC ya es del dia siguiente.
+    const timezone = await resolveTimezone(this.getOrganizationId(), original.branch_id);
+
     return this.crearAsiento({
-      entry_date: new Date().toISOString(),
+      entry_date: plainDateToInstant(todayInTz(timezone), timezone),
       memo: `${original.memo || ''} (copia)`,
       lines: original.lines.map(l => ({
         account_code: l.account_code,

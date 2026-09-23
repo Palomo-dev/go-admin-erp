@@ -58,6 +58,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/utils/Utils';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { instantForDayInTz, plainDayOfInstant } from '@/lib/services/businessInstant';
 import { ItemsDetalle } from './ItemsDetalle';
 import { PagosDetalle } from './PagosDetalle';
 import { RegistrarPagoDialog } from './RegistrarPagoDialog';
@@ -128,7 +129,10 @@ interface OrganizationPDFData {
 
 export default function DetalleFactura({ factura }: { factura: any }) {
   const router = useRouter();
-  const { timezone, formatDate: formatDateInOrg, getToday } = useFormatDate();
+  // La factura tiene sucursal propia: su dia se calcula en la zona de ESA
+  // sucursal. `issue_date` y `payments.payment_date` son timestamptz.
+  const { timezone, formatDate: formatDateInOrg, getToday } = useFormatDate(factura?.branch_id);
+  const diaEmision = plainDayOfInstant(factura?.issue_date, timezone);
   const [isPaid, setIsPaid] = useState(factura.status === 'paid');
   const [dialogPagoOpen, setDialogPagoOpen] = useState(false);
   const [dialogNotaCreditoOpen, setDialogNotaCreditoOpen] = useState(false);
@@ -327,7 +331,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   // Función para marcar la factura como pagada totalmente
   const marcarComoPagada = async () => {
     try {
-      const fechaPagoISO = new Date(fechaMarcarPagada + 'T' + new Date().toTimeString().split(' ')[0]).toISOString();
+      const fechaPagoISO = instantForDayInTz(fechaMarcarPagada, timezone);
 
       // Obtener el usuario actual al inicio (necesario para sales.user_id y payments.created_by)
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -927,7 +931,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
               </Button>
               <Button 
                 onClick={() => {
-                  setFechaMarcarPagada(new Date().toISOString().split('T')[0]);
+                  setFechaMarcarPagada(getToday());
                   setDialogMarcarPagadaOpen(true);
                 }}
                 variant="outline"
@@ -1219,11 +1223,11 @@ export default function DetalleFactura({ factura }: { factura: any }) {
               type="date"
               value={fechaMarcarPagada}
               onChange={(e) => setFechaMarcarPagada(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
-              min={facturaActual.issue_date ? new Date(facturaActual.issue_date).toISOString().split('T')[0] : undefined}
+              max={getToday()}
+              min={diaEmision || undefined}
               className="dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
             />
-            {facturaActual.issue_date && fechaMarcarPagada < new Date(facturaActual.issue_date).toISOString().split('T')[0] && (
+            {diaEmision && fechaMarcarPagada < diaEmision && (
               <p className="text-xs text-red-500 dark:text-red-400">La fecha no puede ser anterior a la emisión de la factura</p>
             )}
           </div>
@@ -1236,7 +1240,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
                 setDialogMarcarPagadaOpen(false);
                 marcarComoPagada();
               }}
-              disabled={facturaActual.issue_date && fechaMarcarPagada < new Date(facturaActual.issue_date).toISOString().split('T')[0]}
+              disabled={Boolean(diaEmision) && fechaMarcarPagada < diaEmision}
               className="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
             >
               <CheckCircle className="h-4 w-4 mr-2" />

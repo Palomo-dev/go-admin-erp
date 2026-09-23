@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {FileText, Download, Calendar} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ReportesContablesService, TrialBalanceRow } from '../ReportesContablesService';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { primerDiaDelMesDe } from '@/lib/services/fiscalCalendar';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 
@@ -24,22 +26,37 @@ function formatCurrency(value: number): string {
 }
 
 export function BalanceComprobacionPage() {
-  const today = new Date().toISOString().split('T')[0];
-  const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+  // `journal_entries.entry_date` es timestamptz: los extremos del filtro se
+  // convierten a instantes DENTRO del servicio, con la zona de la organizacion.
+  // Aqui solo hace falta el dia calendario de esa misma zona, y por eso los
+  // valores por defecto se ponen cuando el contexto ya la sabe (`tzLoading`):
+  // calcularlos en el primer render daria el dia de Bogota para todos.
+  const { getToday } = useFormatDate();
+  const { isLoading: tzLoading } = useOrgTimezone();
 
-  const [startDate, setStartDate] = useState(firstDay);
-  const [endDate, setEndDate] = useState(today);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [rows, setRows] = useState<TrialBalanceRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const arrancado = useRef(false);
 
-  const loadData = async () => {
+  useEffect(() => {
+    if (tzLoading || arrancado.current) return;
+    arrancado.current = true;
+    const hoy = getToday();
+    const inicio = primerDiaDelMesDe(hoy);
+    setStartDate(inicio);
+    setEndDate(hoy);
+    loadData(inicio, hoy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tzLoading, getToday]);
+
+  const loadData = async (desde: string = startDate, hasta: string = endDate) => {
+    if (!desde || !hasta) return;
     try {
       setIsLoading(true);
-      const data = await ReportesContablesService.getTrialBalance(startDate, endDate);
+      const data = await ReportesContablesService.getTrialBalance(desde, hasta);
       setRows(data);
     } catch (error) {
       console.error('Error cargando balance:', error);
@@ -116,7 +133,7 @@ export function BalanceComprobacionPage() {
               <Label className="text-gray-700 dark:text-gray-300"> Fecha Fin</Label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
             </div>
-            <Button onClick={loadData} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => loadData()} className="bg-blue-600 hover:bg-blue-700">
               <Calendar className="h-4 w-4 mr-2" />
               Consultar
             </Button>

@@ -7,23 +7,11 @@
 // escribe un vencimiento con la zona de la organización y el trigger de la base
 // lo recalcula con la de la sucursal (o al revés). Es el bug de la ronda 2.
 //
-// Cómo se compara, y por qué así:
-//
-//   1. **Datos reales, leídos por MCP en solo lectura el 2026-09-23.** Son
-//      honestos pero NO discriminan: las 85 organizaciones y las 90 sucursales
-//      están en `America/Bogota` y ninguna sucursal tiene override, así que
-//      cualquier implementación rota —cascada invertida incluida— pasaría. Se
-//      conservan como ancla de regresión, y esta nota está aquí para que nadie
-//      confunda «verde» con «probado».
-//   2. **Matriz sintética contra un oráculo transcrito del `.sql` real.**
-//      `fnTimezoneForSQL` es la transcripción del cuerpo de `fn_timezone_for`
-//      (migración 20260923200000). Para que la transcripción no se quede vieja
-//      en silencio, el test LEE la migración y exige que sigan ahí los cuatro
-//      pasos en los que se apoya. Si alguien cambia el SQL, estos casos caen.
-//
-// La matriz mete a propósito zonas de signo contrario y con DST (Madrid,
-// Kiritimati, Mexico_City) para que el resultado no pueda acertar por
-// coincidir con el default colombiano.
+// Se compara con dos cosas, y `fnTimezoneForOracle.ts` explica ambas: los datos
+// reales leídos por MCP (ancla de regresión, hoy NO discriminan porque todo
+// está en Bogotá) y una matriz sintética contra la transcripción del `.sql`.
+// Para que la transcripción no envejezca en silencio, el primer `describe` LEE
+// la migración y exige que sigan ahí los pasos en los que se apoya.
 // ============================================================================
 
 import { readFileSync } from 'node:fs';
@@ -68,7 +56,15 @@ import {
   invalidateResolvedTimezone,
 } from '@/lib/services/timezoneResolver';
 
-const DEFECTO = 'America/Bogota';
+import {
+  DEFECTO,
+  MATRIZ,
+  REALES,
+  fnTimezoneForSQL,
+} from '@/__tests__/timezone/fnTimezoneForOracle';
+
+const MIGRACION_ZONA_ORG = '20260915235500_crm_v4_f00_44_organizations_timezone_valida.sql';
+
 const RAIZ = join(__dirname, '..', '..', '..');
 const SQL_CASCADA = readFileSync(
   join(RAIZ, 'supabase/migrations/20260923200000_zona_horaria_por_sucursal.sql'),
@@ -91,48 +87,6 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-// ---------------------------------------------------------------------------
-// Oráculo: transcripción del cuerpo de fn_timezone_for
-// ---------------------------------------------------------------------------
-
-function esZonaUsable(tz: string): boolean {
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone: tz });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Transcripción del cuerpo real de `fn_timezone_for`:
- *   1) sucursal (solo si pertenece a la organización pedida);
- *   2) `organizations.timezone` si la sucursal no aportó NADA;
- *   2bis) legado `organization_settings.key='calendar'`;
- *   3) `'America/Bogota'` si nadie aportó;
- *   4) lo aportado se descarta a favor del default si Postgres no lo reconoce.
- *
- * El matiz que se paga caro: un valor PRESENTE pero ilegible **corta** la
- * cascada (paso 4) en vez de bajar al nivel siguiente, porque el paso 2 solo
- * mira la organización cuando `v_tz is null or btrim(v_tz) = ''`.
- */
-export function fnTimezoneForSQL(entrada: {
-  branchTimezone?: string | null;
-  organizationTimezone?: string | null;
-  legacyTimezone?: string | null;
-}): string {
-  const vacio = (v: string | null | undefined): boolean =>
-    v === null || v === undefined || v.trim() === '';
-
-  let tz: string | null | undefined = entrada.branchTimezone;
-  if (vacio(tz)) tz = entrada.organizationTimezone;
-  if (vacio(tz)) tz = entrada.legacyTimezone;
-  if (vacio(tz)) return DEFECTO;
-
-  const valor = (tz as string).trim();
-  return esZonaUsable(valor) ? valor : DEFECTO;
-}
-
 describe('el oráculo sigue describiendo el SQL vigente', () => {
   it('la migración conserva los cuatro pasos que transcribe el oráculo', () => {
     expect(SQL_CASCADA).toContain('select b.timezone into v_tz');
@@ -150,7 +104,7 @@ describe('el oráculo sigue describiendo el SQL vigente', () => {
     // Por eso el oráculo puede tratar `organizations.timezone` como válido: la
     // escritura ya la valida un trigger (migración 20260915235500).
     const validacion = readFileSync(
-      join(RAIZ, 'supabase/migrations/20260915235500_crm_v4_f00_44_organizations_timezone_valida.sql'),
+      join(RAIZ, 'supabase/migrations', MIGRACION_ZONA_ORG),
       'utf8',
     );
     expect(validacion).toContain('create trigger trg_validate_org_timezone');
@@ -161,25 +115,8 @@ describe('el oráculo sigue describiendo el SQL vigente', () => {
 // Matriz sintética: resolutor vs. oráculo
 // ---------------------------------------------------------------------------
 
-interface Caso {
-  nombre: string;
-  branchTimezone: string | null;
-  organizationTimezone: string;
-}
-
 const ORG = 120;
 const SUCURSAL = 7;
-
-const MATRIZ: Caso[] = [
-  { nombre: 'sucursal sin override hereda', branchTimezone: null, organizationTimezone: 'Europe/Madrid' },
-  { nombre: 'override manda sobre la organización', branchTimezone: 'Pacific/Kiritimati', organizationTimezone: 'Europe/Madrid' },
-  { nombre: 'override con DST y signo contrario', branchTimezone: 'America/Mexico_City', organizationTimezone: 'Europe/Madrid' },
-  { nombre: 'cadena vacía = heredar', branchTimezone: '', organizationTimezone: 'Europe/Madrid' },
-  { nombre: 'solo espacios = heredar', branchTimezone: '   ', organizationTimezone: 'America/Mexico_City' },
-  { nombre: 'zona rota en la sucursal corta la cascada', branchTimezone: 'Marte/Olympus', organizationTimezone: 'Europe/Madrid' },
-  { nombre: 'organización y sucursal iguales', branchTimezone: 'Europe/Madrid', organizationTimezone: 'Europe/Madrid' },
-  { nombre: 'organización en el default, sucursal fuera', branchTimezone: 'Asia/Kathmandu', organizationTimezone: DEFECTO },
-];
 
 describe('resolveTimezone coincide con fn_timezone_for', () => {
   it.each(MATRIZ)('$nombre', async ({ branchTimezone, organizationTimezone }) => {
@@ -222,16 +159,6 @@ describe('resolveTimezone coincide con fn_timezone_for', () => {
 // ---------------------------------------------------------------------------
 // Datos reales leídos por MCP (solo lectura) el 2026-09-23
 // ---------------------------------------------------------------------------
-
-/** (organización, sucursal, `branches.timezone`, `fn_timezone_for`). */
-const REALES: Array<[number, number, string | null, string]> = [
-  [1, 47, null, DEFECTO],
-  [2, 2, null, DEFECTO],
-  [2, 21, null, DEFECTO],
-  [46, 16, null, DEFECTO],
-  [85, 59, null, DEFECTO],
-  [90, 64, null, DEFECTO],
-];
 
 describe('datos reales de la base (ancla de regresión, no discrimina)', () => {
   it.each(REALES)('org %s / sucursal %s', async (org, sucursal, override, esperado) => {

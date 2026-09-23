@@ -5,9 +5,10 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { format, differenceInDays } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { parseLocalDate } from '@/utils/Utils';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { getDateRange, todayInTz, toPlainDate } from '@/lib/utils/timezone';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
+import { diasEntreDias, sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
 import {AlertTriangle, CheckCircle, Clock} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -41,6 +42,11 @@ interface FacturaVencimiento {
 }
 
 export function FacturasProximasVencer({ diasLimite = 15 }) {
+  // `invoice_sales.due_date` es **timestamptz**. Comparar la columna contra un
+  // `'YYYY-MM-DD'` la lee como medianoche UTC: en Bogota, las 19:00 del dia
+  // anterior, y la lista se come las facturas que vencen hoy por la mañana.
+  const { timezone } = useFormatDate();
+  const { isLoading: tzLoading } = useOrgTimezone();
   const [facturas, setFacturas] = useState<FacturaVencimiento[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,10 +58,9 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
       
       try {
         const organizationId = getOrganizationId();
-        const hoy = new Date().toISOString().split('T')[0];
-        const limiteFuturo = new Date();
-        limiteFuturo.setDate(limiteFuturo.getDate() + diasLimite);
-        const fechaLimite = limiteFuturo.toISOString().split('T')[0];
+        const hoy = todayInTz(timezone);
+        const fechaLimite = sumarDiasAlDia(hoy, diasLimite);
+        const { start, end } = getDateRange(hoy, fechaLimite, timezone);
         
         // Consulta a Supabase para facturas próximas a vencer
         // Especificamos explícitamente el tipo de consulta
@@ -74,8 +79,8 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
           .eq('organization_id', organizationId)
           .eq('status', 'issued') // Solo facturas emitidas, no pagadas o en borrador
           .gt('balance', 0) // Con saldo pendiente
-          .gte('due_date', hoy) // No vencidas aún
-          .lte('due_date', fechaLimite) // Dentro del límite de días
+          .gte('due_date', start) // No vencidas aún
+          .lte('due_date', end) // Dentro del límite de días
           .order('due_date', { ascending: true });
           
         if (error) {
@@ -85,9 +90,9 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
         if (data) {
           // Procesar los datos para incluir días restantes
           const facturasConDiasRestantes = data.map((factura: any) => {
-            const dueDate = parseLocalDate(factura.due_date);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0); // Normalizar la hora actual
+            // Dias restantes contados en DIAS CALENDARIO de la organizacion:
+            // `due_date` es un instante y «hoy» es el dia de alli.
+            const diaVencimiento = toPlainDate(new Date(factura.due_date), timezone);
             
             // TypeScript no maneja bien la estructura anidada de Supabase
             // así que usamos una verificación segura
@@ -105,7 +110,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
               balance: factura.balance,
               payment_terms: factura.payment_terms,
               customer_name: customerName,
-              dias_restantes: differenceInDays(dueDate, today)
+              dias_restantes: diasEntreDias(hoy, diaVencimiento)
             };
           });
           
@@ -121,8 +126,10 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
       }
     };
     
-    obtenerFacturasProximasVencer();
-  }, [diasLimite]);
+    // Espera a que se conozca la zona: con el fallback se consultaria el rango
+    // de Bogota para todas las organizaciones.
+    if (!tzLoading) obtenerFacturasProximasVencer();
+  }, [diasLimite, timezone, tzLoading]);
   
   // Función para obtener color según días restantes (dark mode compatible)
   const obtenerColorPorDias = (dias: number): string => {
@@ -194,7 +201,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
                       {factura.customer_name}
                     </div>
                     <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-500 mt-1">
-                      Vence: {format(parseLocalDate(factura.due_date), "d 'de' MMM, yyyy", { locale: es })}
+                      Vence: {formatDateInTz(factura.due_date, timezone, { day: 'numeric', month: 'short', year: 'numeric' })}
                     </div>
                   </div>
                   

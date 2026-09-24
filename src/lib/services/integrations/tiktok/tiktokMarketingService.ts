@@ -4,11 +4,11 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabase/config';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import {
   TIKTOK_CREDENTIAL_PURPOSES,
   getTikTokApiUrl,
-  getTikTokOAuthRedirectUri,
   mapTikTokAvailability,
   formatTikTokPrice,
 } from './tiktokMarketingConfig';
@@ -31,9 +31,13 @@ class TikTokMarketingService {
   // Credenciales
   // ──────────────────────────────────────────────
 
-  /** Obtener credenciales de TikTok Marketing para una conexión */
-  async getCredentials(connectionId: string): Promise<TikTokMarketingCredentials | null> {
-    const { data, error } = await supabase
+  /**
+   * Obtener credenciales de TikTok Marketing para una conexión. En servidor,
+   * pasar `db` (service-role) SOLO después de validar que la conexión es de
+   * la organización de la sesión (`marketingConnectionInOrg`).
+   */
+  async getCredentials(connectionId: string, db: SupabaseClient = supabase): Promise<TikTokMarketingCredentials | null> {
+    const { data, error } = await db
       .from('integration_credentials')
       .select('purpose, secret_ref')
       .eq('connection_id', connectionId);
@@ -74,7 +78,8 @@ class TikTokMarketingService {
   /** Guardar credenciales de TikTok Marketing para una conexión */
   async saveCredentials(
     connectionId: string,
-    credentials: TikTokMarketingCredentials
+    credentials: TikTokMarketingCredentials,
+    db: SupabaseClient = supabase
   ): Promise<boolean> {
     const entries = [
       { purpose: TIKTOK_CREDENTIAL_PURPOSES.ACCESS_TOKEN, value: credentials.accessToken },
@@ -87,7 +92,7 @@ class TikTokMarketingService {
     for (const entry of entries) {
       if (!entry.value) continue;
 
-      const { data: existing } = await supabase
+      const { data: existing } = await db
         .from('integration_credentials')
         .select('id')
         .eq('connection_id', connectionId)
@@ -95,7 +100,7 @@ class TikTokMarketingService {
         .maybeSingle();
 
       if (existing) {
-        const { error } = await supabase
+        const { error } = await db
           .from('integration_credentials')
           .update({
             secret_ref: entry.value,
@@ -109,7 +114,7 @@ class TikTokMarketingService {
           return false;
         }
       } else {
-        const { error } = await supabase
+        const { error } = await db
           .from('integration_credentials')
           .insert({
             connection_id: connectionId,
@@ -302,7 +307,10 @@ class TikTokMarketingService {
     organizationId: number,
     organizationName: string,
     domain: string,
-    currency: string = 'COP'
+    currency: string = 'COP',
+    db: SupabaseClient = supabase,
+    /** Cliente para `integration_credentials` (service-role en servidor, tras validar la conexión). */
+    secretsDb: SupabaseClient = db
   ): Promise<TikTokSetupResult> {
     // 1. Buscar o crear pixel
     const existingPixels = await this.listPixels(accessToken, advertiserId);
@@ -345,10 +353,10 @@ class TikTokMarketingService {
       advertiserId,
       pixelCode: pixel.pixelCode,
       catalogId: catalog.catalogId,
-    });
+    }, secretsDb);
 
     // 4. Sincronizar productos al catálogo
-    const products = await this.getProductsForSync(organizationId, domain, currency);
+    const products = await this.getProductsForSync(organizationId, domain, currency, db);
     let productsSynced = 0;
     if (products.length > 0) {
       const syncResult = await this.syncCatalog(
@@ -378,9 +386,11 @@ class TikTokMarketingService {
   async getProductsForSync(
     organizationId: number,
     domain: string,
-    currency: string = 'COP'
+    /** Hoy no participa en la consulta (el precio se formatea en `syncCatalog`); se conserva la firma. */
+    currency?: string,
+    db: SupabaseClient = supabase
   ): Promise<GOAdminProduct[]> {
-    const { data: products, error } = await supabase
+    const { data: products, error } = await db
       .from('products')
       .select(`
         id, uuid, sku, name, description, status, barcode,
@@ -394,7 +404,7 @@ class TikTokMarketingService {
 
     if (error || !products) return [];
 
-    const { data: org } = await supabase
+    const { data: org } = await db
       .from('organizations')
       .select('name')
       .eq('id', organizationId)
@@ -474,7 +484,7 @@ class TikTokMarketingService {
     const batchSize = 20; // TikTok max 20 productos por request
 
     let created = 0;
-    let updated = 0;
+    const updated = 0;
     let errors = 0;
     const details: string[] = [];
 

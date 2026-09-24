@@ -1,33 +1,47 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
+import { getServiceClient } from '@/lib/supabase/server-service';
 import { tiktokMarketingService } from '@/lib/services/integrations/tiktok';
+import { CONNECTION_NOT_FOUND } from '@/lib/services/integrations/channelManagerAccess';
+import {
+  marketingConnectionInOrg,
+  requestedCurrency,
+  resolveOrgStoreDomain,
+} from '@/lib/services/integrations/marketingAccess';
+
+const ROUTE = 'integrations/tiktok/catalog-sync';
 
 /**
  * POST /api/integrations/tiktok/catalog-sync
  * Sincronización completa de todos los productos activos al catálogo de TikTok.
+ *
+ * Body: { connection_id: uuid, currency?: ISO 4217 }. La organización sale de
+ * la sesión (organización ajena en el body → 403 y registro); la conexión
+ * tiene que ser `tiktok_marketing` de esa organización (si no, 404). El
+ * dominio lo calcula el servidor. Requiere admin.
  */
-export async function POST(request: NextRequest) {
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const body = ((await readOrgBody(ctx, request, { route: ROUTE })) ?? {}) as {
+      connection_id?: unknown;
+      currency?: unknown;
+    };
 
-    if (!session) {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    if (!body.connection_id) {
+      return NextResponse.json({ error: 'Se requiere connection_id' }, { status: 400 });
+    }
+    const pedida = requestedCurrency(body.currency);
+    if (pedida === false) {
+      return NextResponse.json({ error: 'currency debe ser un código ISO 4217 (p. ej. USD)' }, { status: 400 });
     }
 
-    const { connection_id, organization_id, domain, currency } = await request.json();
-
-    if (!connection_id || !organization_id) {
-      return NextResponse.json(
-        { error: 'Se requieren connection_id y organization_id' },
-        { status: 400 }
-      );
+    if (!(await marketingConnectionInOrg(ctx, body.connection_id, 'tiktok_marketing', ROUTE))) {
+      return NextResponse.json(CONNECTION_NOT_FOUND, { status: 404 });
     }
+    const connectionId = body.connection_id as string;
 
-    const creds = await tiktokMarketingService.getCredentials(connection_id);
+    // Service-role SOLO para credenciales, con la conexión ya validada.
+    const creds = await tiktokMarketingService.getCredentials(connectionId, getServiceClient());
     if (!creds?.accessToken || !creds?.advertiserId || !creds?.catalogId) {
       return NextResponse.json(
         { error: 'Credenciales incompletas. Ejecuta el setup primero.' },
@@ -35,31 +49,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Obtener dominio si no se proporcionó
-    let finalDomain = domain;
-    if (!finalDomain) {
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('subdomain')
-        .eq('id', organization_id)
-        .single();
+    const domain = await resolveOrgStoreDomain(ctx.supabase, ctx.organizationId);
 
-      const { data: domainData } = await supabase
-        .from('organization_domains')
-        .select('host')
-        .eq('organization_id', organization_id)
-        .eq('is_primary', true)
-        .eq('is_active', true)
-        .maybeSingle();
+    const moneda = pedida || 'COP';
 
-      finalDomain = domainData?.host || `${orgData?.subdomain || 'shop'}.goadmin.io`;
-    }
-
-    const products = await tiktokMarketingService.getProductsForSync(
-      organization_id,
-      finalDomain,
-      currency || 'COP'
-    );
+    const products = await tiktokMarketingService.getProductsForSync(ctx.organizationId, domain, moneda, ctx.supabase);
 
     if (products.length === 0) {
       return NextResponse.json({
@@ -73,15 +67,16 @@ export async function POST(request: NextRequest) {
       creds.advertiserId,
       creds.catalogId,
       products,
-      currency || 'COP'
+      moneda
     );
 
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
+    if (error instanceof OrgContextError) throw error;
     console.error('Error in TikTok catalog sync:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Error en sincronización' },
       { status: 500 }
     );
   }
-}
+}, { admin: true });

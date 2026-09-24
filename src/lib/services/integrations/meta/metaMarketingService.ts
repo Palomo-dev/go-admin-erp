@@ -33,9 +33,13 @@ class MetaMarketingService {
   // Credenciales
   // ──────────────────────────────────────────────
 
-  /** Obtener credenciales de Meta Marketing para una conexión */
-  async getCredentials(connectionId: string): Promise<MetaMarketingCredentials | null> {
-    const { data, error } = await supabase
+  /**
+   * Obtener credenciales de Meta Marketing para una conexión. En servidor,
+   * pasar `db` (service-role) SOLO después de validar que la conexión es de
+   * la organización de la sesión (`marketingConnectionInOrg`).
+   */
+  async getCredentials(connectionId: string, db: SupabaseClient = supabase): Promise<MetaMarketingCredentials | null> {
+    const { data, error } = await db
       .from('integration_credentials')
       .select('purpose, secret_ref')
       .eq('connection_id', connectionId);
@@ -284,13 +288,16 @@ class MetaMarketingService {
   // Health Check – Debug Token
   // ──────────────────────────────────────────────
 
-  /** Verificar que el access_token es válido usando debug_token */
+  /**
+   * Verificar que el access_token es válido usando debug_token.
+   * `appSecret` se conserva en la firma (lo pasan las rutas y el asistente)
+   * aunque hoy no se usa: el token de System User se depura a sí mismo.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- firma pública estable; ver comentario
   async healthCheck(accessToken: string, appSecret: string): Promise<MetaHealthCheckResult> {
     try {
-      // Necesitamos app_id para construir el app token; extraer del debug response
-      // Usar el propio token para debuggearse a sí mismo
+      // Usar el propio token para debuggearse a sí mismo (System User tokens se pueden auto-debuggear)
       const apiUrl = getMetaApiUrl();
-      const appToken = accessToken; // System User tokens se pueden auto-debuggear
 
       const response = await fetch(
         `${apiUrl}/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(accessToken)}`
@@ -487,7 +494,9 @@ class MetaMarketingService {
     organizationName: string,
     domain: string,
     currency: string = 'COP',
-    db: SupabaseClient = supabase
+    db: SupabaseClient = supabase,
+    /** Cliente para `integration_credentials` (service-role en servidor, tras validar la conexión). */
+    secretsDb: SupabaseClient = db
   ): Promise<MetaSetupResult> {
     // 1. Buscar o crear catálogo (a nivel de Business Manager)
     const existingCatalogs = await this.listCatalogs(accessToken, businessId);
@@ -531,7 +540,7 @@ class MetaMarketingService {
       adAccountId,
       pixelId: pixel.id,
       catalogId: catalog.id,
-    }, db);
+    }, secretsDb);
 
     // 4. Sincronizar productos al catálogo
     const products = await this.getProductsForSync(organizationId, domain, currency, db);
@@ -568,7 +577,7 @@ class MetaMarketingService {
         pixelId: pixel.id,
         catalogId: catalog.id,
         productSetId: productSet.id,
-      }, db);
+      }, secretsDb);
     } catch (err) {
       console.error('Error creando product set (no crítico):', err);
     }
@@ -594,7 +603,8 @@ class MetaMarketingService {
   async getProductsForSync(
     organizationId: number,
     domain: string,
-    currency: string = 'COP',
+    /** Hoy no participa en la consulta (el precio se formatea en `syncCatalog`); se conserva la firma. */
+    currency?: string,
     db: SupabaseClient = supabase
   ): Promise<GOAdminProduct[]> {
     // Productos con precio activo e imagen principal
@@ -688,7 +698,7 @@ class MetaMarketingService {
     const batchSize = 4999; // Max 5000 por request
 
     let created = 0;
-    let updated = 0;
+    const updated = 0;
     let errors = 0;
     const details: string[] = [];
 
@@ -721,9 +731,9 @@ class MetaMarketingService {
           continue;
         }
 
-        const result = await response.json();
+        // Se consume el cuerpo: Facebook batch API retorna handles, no resultados inmediatos
+        await response.json();
 
-        // Facebook batch API retorna handles, no resultados inmediatos
         created += batch.length;
         details.push(
           `Batch ${Math.floor(i / batchSize) + 1}: ${batch.length} productos enviados`

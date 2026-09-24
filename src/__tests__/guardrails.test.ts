@@ -271,11 +271,8 @@ describe('F0 Guardarraíles', () => {
 
     const ALLOWLIST = new Set<string>([
       'app/api/categorias/reglas/route.ts',
-      'app/api/integrations/meta/setup/route.ts',
       'app/api/integrations/payfac/commission/route.ts', // verifyPlatformAdmin
       'app/api/integrations/payfac/payouts/route.ts', // verifyPlatformAdmin
-      'app/api/integrations/tiktok/product-sync/route.ts',
-      'app/api/integrations/tiktok/setup/route.ts',
       'app/api/integrations/whatsapp/oauth/callback/route.ts', // OAuth callback (org en `state` firmado por Meta)
       'app/api/factus/support-document/route.ts',
       'app/api/integrations/bancolombia/create-qr/route.ts',
@@ -284,8 +281,6 @@ describe('F0 Guardarraíles', () => {
       'app/api/integrations/bold/create-pos-payment/route.ts',
       'app/api/integrations/breb/create-qr/route.ts',
       'app/api/integrations/google-ads/oauth/authorize/route.ts',
-      'app/api/integrations/meta/catalog-sync/route.ts',
-      'app/api/integrations/meta/oauth/authorize/route.ts',
       'app/api/integrations/meta/product-sync/route.ts',
       'app/api/integrations/open-finance/consents/route.ts',
       'app/api/integrations/open-finance/links/route.ts',
@@ -294,8 +289,6 @@ describe('F0 Guardarraíles', () => {
       'app/api/integrations/payfac/payout-accounts/route.ts',
       'app/api/integrations/qr/auto-match/route.ts',
       'app/api/integrations/redeban/create-qr/route.ts',
-      'app/api/integrations/tiktok/catalog-sync/route.ts',
-      'app/api/integrations/tiktok/oauth/authorize/route.ts',
       'app/api/modules/audit/route.ts',
       'app/api/modules/pages/route.ts',
       'app/api/modules/route.ts',

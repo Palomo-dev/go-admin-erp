@@ -75,6 +75,41 @@ export function parametrosArqueo(
   };
 }
 
+export interface ParametrosCierre {
+  p_session_id: number;
+  p_efectivo_contado: number;
+  p_contado_por_metodo: Record<string, number>;
+  p_denominaciones: object | null;
+  p_notas: string | null;
+  p_cerrada_en: string | null;
+}
+
+/**
+ * Parámetros de `pos_caja_cerrar` (cierre en una transacción con el arqueo
+ * `closing`). Mismas reglas que el arqueo: solo lo contado, `cash` fuera del
+ * mapa por método; `cerradaEn` solo para el cierre hecho sin red.
+ */
+export function parametrosCierre(
+  sessionId: number,
+  datos: {
+    counted_amount: number;
+    counted_by_method?: Record<string, number>;
+    denominations?: object;
+    notes?: string;
+  },
+  cerradaEn?: string | null,
+): ParametrosCierre {
+  const a = parametrosArqueo(sessionId, { ...datos, count_type: 'closing' });
+  return {
+    p_session_id: a.p_session_id,
+    p_efectivo_contado: a.p_efectivo_contado,
+    p_contado_por_metodo: a.p_contado_por_metodo,
+    p_denominaciones: a.p_denominaciones,
+    p_notas: a.p_notas,
+    p_cerrada_en: cerradaEn ?? null,
+  };
+}
+
 /** Diferencia del efectivo: contado − esperado. Positiva = sobrante. */
 export function diferenciaEfectivo(contado: number, esperado: number): number {
   return Math.round((contado - esperado) * 100) / 100;

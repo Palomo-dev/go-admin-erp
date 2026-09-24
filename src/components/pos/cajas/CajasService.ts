@@ -650,6 +650,8 @@ export class CajasService {
           notes: data.notes || activeSession.notes || null,
           summary,
           summaryPartial: this.lastSummaryWasPartial,
+          countedByMethod: data.counted_by_method,
+          denominations: data.denominations,
         });
         console.log('Sesión de caja cerrada sin red (pendiente de sincronizar):', closed.id);
         return closed;
@@ -685,9 +687,10 @@ export class CajasService {
 
   /**
    * `POST /api/pos/cajas/[id]/cerrar`: el servidor decide si esta persona
-   * puede cerrarla (quien la abrió o permiso de administración, nunca el
-   * nombre del rol) y calcula el esperado (`pos_caja_esperado`) y la
-   * diferencia. El navegador solo manda lo contado.
+   * puede cerrarla (quien la abrió o `pos.cajas.cerrar_ajenas`, nunca el
+   * nombre del rol) y cierra en una transacción (`pos_caja_cerrar`): arqueo de
+   * cierre con el conteo por método, esperado y diferencia del servidor. El
+   * navegador solo manda lo contado.
    */
   private static async closeOnServer(sessionId: number, data: CloseCashSessionData): Promise<CashSession> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -697,7 +700,12 @@ export class CajasService {
       method: 'POST',
       credentials: 'same-origin',
       headers,
-      body: JSON.stringify({ final_amount: data.final_amount, notes: data.notes ?? null }),
+      body: JSON.stringify({
+        final_amount: data.final_amount,
+        notes: data.notes ?? null,
+        ...(data.counted_by_method ? { counted_by_method: data.counted_by_method } : {}),
+        ...(data.denominations ? { denominations: data.denominations } : {}),
+      }),
     });
     const body = (await response.json().catch(() => null)) as { session?: CashSession; error?: string; codigo?: string } | null;
     if (!response.ok || !body?.session) {

@@ -14,12 +14,24 @@ const SRC = path.resolve(__dirname, '..', '..');
 const leer = (rel: string) => fs.readFileSync(path.join(SRC, rel), 'utf8');
 
 describe('Guardarraíles del cierre y la apertura de caja', () => {
-  test('POST /api/pos/cajas/[id]/cerrar calcula la diferencia en el servidor', () => {
+  test('POST /api/pos/cajas/[id]/cerrar cierra en una transacción del servidor (pos_caja_cerrar)', () => {
     const src = leer('app/api/pos/cajas/[id]/cerrar/route.ts');
-    expect(src).toMatch(/rpc\('pos_caja_esperado'/);
-    expect(src).toMatch(/const difference = diferenciaEfectivo\(final_amount, esperadoEfectivo\)/);
+    // D6: el cierre guarda el conteo por método en la misma transacción; la
+    // diferencia la calcula la base.
+    expect(src).toMatch(/rpc\(\s*'pos_caja_cerrar'/);
+    expect(src).toMatch(/parametrosCierre\(sessionId/);
+    // Ya no hay UPDATE directo a cash_sessions desde la ruta.
+    expect(src).not.toMatch(/from\('cash_sessions'\)\s*\.update/);
     // La diferencia del body no se desestructura ni se escribe.
     expect(src).not.toMatch(/const \{[^}]*difference[^}]*\} = parsed\.data/);
+    expect(src).not.toMatch(/parsed\.data\.difference/);
+  });
+
+  test('el outbox del Desktop cierra con la misma RPC y sin la diferencia local', () => {
+    const src = leer('lib/offline/cashSync.ts');
+    expect(src).toMatch(/rpc\(\s*'pos_caja_cerrar'/);
+    expect(src).not.toMatch(/from\('cash_sessions'\)\s*\.update/);
+    expect(src).not.toMatch(/payload\.difference/);
   });
 
   test('el cierre con red (propio o ajeno) no manda la diferencia', () => {

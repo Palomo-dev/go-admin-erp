@@ -29,6 +29,10 @@ export interface CashMovement {
   cash_session_id: number;
   type: 'in' | 'out';
   concept: string;
+  /** Clave del catálogo único (`src/lib/pos/cajas/conceptos.ts`); NULL en movimientos anteriores. */
+  concept_code?: string | null;
+  /** Número de soporte (recibo, factura del gasto…). */
+  reference?: string | null;
   amount: number;
   user_id: string;
   notes?: string;
@@ -49,8 +53,9 @@ export interface CashCount {
   cash_session_id: number;
   count_type: 'opening' | 'partial' | 'closing';
   counted_amount: number;
-  expected_amount?: number;
-  difference?: number;
+  /** `null` = oculto por cierre ciego (el servidor no lo manda). */
+  expected_amount?: number | null;
+  difference?: number | null;
   denominations?: CashDenominations;
   counted_by: string;
   verified_by?: string;
@@ -75,7 +80,8 @@ export interface CashDenominations {
 // Datos para crear arqueo
 /** Una línea del arqueo por método: cada medio contra su propio esperado. */
 export interface CashCountMethodLine {
-  esperado: number;
+  /** `null` = oculto por cierre ciego. */
+  esperado: number | null;
   contado: number | null;
   diferencia: number | null;
 }
@@ -98,6 +104,8 @@ export interface CreateCashCountData {
 export interface CreateCashMovementData {
   type: 'in' | 'out';
   concept: string;
+  concept_code?: string | null;
+  reference?: string | null;
   amount: number;
   notes?: string;
 }
@@ -169,13 +177,19 @@ export interface OpenCashSessionData {
 }
 
 export interface CloseCashSessionData {
+  /** Efectivo contado. */
   final_amount: number;
   notes?: string;
+  /** Lo contado de cada otro método (el servidor lo guarda en el arqueo de cierre). */
+  counted_by_method?: Record<string, number>;
+  denominations?: CashDenominations;
 }
 
 export interface CashMovementData {
   type: 'in' | 'out';
   concept: string;
+  concept_code?: string | null;
+  reference?: string | null;
   amount: number;
   notes?: string;
 }

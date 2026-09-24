@@ -8,7 +8,9 @@
  * - root (inicio y la entrada de cada módulo): organización / sucursal + buscar.
  * - page (detalle, formulario): «← Volver» · título (+ subtítulo) · acción
  *   contextual. Sin selector de organización.
- * - pos: organización / sucursal + estado de la caja, mínimo.
+ * - pos: «←» (salir del POS; el carrito se conserva) · chip de la sucursal
+ *   activa · estado de la caja. Sin selector de organización: cambiarla con
+ *   un carrito abierto es riesgoso, y sigue en Inicio y en el menú.
  *
  * La barra inferior se ve en todo /app, salvo en formularios a pantalla
  * completa, en el POS con el carrito abierto o cobrando, y con el teclado

@@ -9,7 +9,8 @@
  * el perfil ya no están aquí: viven en el bloque de sesión del sidebar.
  *
  * Móvil, 56 px, en tres modos (cabeceraMovil.tsx): raíz con «Org / Sucursal»
- * y la lupa; página con «←», título y acción; POS con el estado de la caja.
+ * y la lupa; página con «←», título y acción; POS con «←», la sucursal y el
+ * estado de la caja.
  * La navegación baja a la barra inferior: Inicio · Ventas · GO Asistente ·
  * Alertas · Menú, que se oculta en formularios, en el POS al cobrar y con el
  * teclado abierto.
@@ -29,6 +30,7 @@ import { TrialBanner } from '@/components/app-layout/Header/TrialBanner';
 import { EmailVerificationBanner } from '@/components/app-layout/Header/EmailVerificationBanner';
 import { rutaActiva, type SeccionVisible } from '@/lib/navigation/filtrar';
 import { useNombresNav } from '@/lib/navigation/useNombresNav';
+import { BranchBadgeActiva } from '@/components/kit/BranchBadge';
 import { OrgSwitcher } from './OrgSwitcher';
 import { FeedbackButton, ReportarProblemaDialog } from './ReportarProblema';
 import { DetalleNotificacion, NotificationsBell, PanelNotificaciones, textoContador } from './Notificaciones';
@@ -154,6 +156,23 @@ function MobileHeader({
   const router = useRouter();
   const modo = pagina?.modo ?? modoPorRuta(pathname);
 
+  // «←» de los modos página y POS: atrás si hay historial; si no, a donde diga
+  // la página o a la página padre del menú (en el POS, /app/inicio).
+  const volver = () => {
+    if (window.history.length > 1) router.back();
+    else router.push(pagina?.volverA ?? rutaPadre(pathname));
+  };
+  const botonVolver = (
+    <button
+      type="button"
+      onClick={volver}
+      aria-label={t('back')}
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover"
+    >
+      <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+    </button>
+  );
+
   const buscar = (
     <button
       type="button"
@@ -170,20 +189,9 @@ function MobileHeader({
     const activa = rutaActiva(pathname);
     const titulo = pagina?.titulo ?? (activa?.pagina ? nombres.pagina(activa.pagina) : activa ? tNav(activa.modulo.etiqueta) : '');
     const subtitulo = pagina?.subtitulo ?? organizacionNombre;
-    const volver = () => {
-      if (window.history.length > 1) router.back();
-      else router.push(pagina?.volverA ?? rutaPadre(pathname));
-    };
     return (
       <div className="flex h-14 items-center gap-1 pl-1 pr-2 lg:hidden">
-        <button
-          type="button"
-          onClick={volver}
-          aria-label={t('back')}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover"
-        >
-          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-        </button>
+        {botonVolver}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* <p> y no <h1>: el título principal sigue siendo el de la página. */}
           <p className="truncate text-base font-semibold leading-[22px] text-fg">{titulo}</p>
@@ -194,25 +202,39 @@ function MobileHeader({
     );
   }
 
+  if (modo === 'pos') {
+    // «←» · sucursal · caja. Sin selector de organización: cambiar de
+    // organización con un carrito abierto es riesgoso (sigue en Inicio y en el
+    // menú). El carrito se conserva al salir, así que «←» no pide confirmación;
+    // mientras se cobra, el cobro cubre la pantalla y la cabecera no se alcanza.
+    // La sucursal trunca con «…» para que la fila quepa en 360 px.
+    const estado = pagina?.estadoPos;
+    return (
+      <div className="flex h-14 items-center gap-1.5 pl-1 pr-3 lg:hidden">
+        {botonVolver}
+        <BranchBadgeActiva className="min-w-0 shrink" />
+        {estado && (
+          <span
+            className={cn(
+              'ml-auto inline-flex h-6 max-w-[60%] shrink-0 items-center overflow-hidden rounded-full border px-2.5 text-xs font-semibold',
+              estado.tono === 'exito'
+                ? 'border-line-success bg-success-subtle text-success-text'
+                : 'border-line-warning bg-warning-subtle text-warning-text'
+            )}
+          >
+            <span className="truncate">{estado.texto}</span>
+          </span>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-14 items-center gap-2 px-4 lg:hidden">
       <div className="min-w-0 flex-1">
         <OrgSwitcher variante="movil" organizacionId={organizacionId} organizacionNombre={organizacionNombre} />
       </div>
-      {modo === 'pos' && pagina?.estadoPos ? (
-        <span
-          className={cn(
-            'shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold',
-            pagina.estadoPos.tono === 'exito'
-              ? 'border-line-success bg-success-subtle text-success-text'
-              : 'border-line-warning bg-warning-subtle text-warning-text'
-          )}
-        >
-          {pagina.estadoPos.texto}
-        </span>
-      ) : (
-        buscar
-      )}
+      {buscar}
     </div>
   );
 }

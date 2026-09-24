@@ -9276,5 +9276,20 @@
       "TIPO_INVALIDO": "Invalid charge type: use percentage or fixed amount.",
       "DESCONOCIDO": "The operation could not be completed. Please try again."
     }
+  },
+  "posDevoluciones": {
+    "errores": {
+      "efectivoSinCaja": "There is no open cash register to pay out the cash. Open the register or refund as store credit.",
+      "saldoAFavorSinCliente": "The sale has no customer: store credit needs a customer.",
+      "ventaNoPagada": "Only paid sales can be returned. For a sale with a balance due, record a payment or void the sale.",
+      "cantidadExcedeDisponible": "The quantity exceeds what is left to return on that line.",
+      "motivoInvalido": "The selected reason does not exist or is inactive.",
+      "motivoObligatorio": "Enter the general reason for the return.",
+      "serialesNoCoinciden": "The quantity to return must match the selected serial numbers.",
+      "serialInvalido": "One of the serial numbers does not belong to this sale or is no longer sold.",
+      "lineaNoPerteneceALaVenta": "One of the lines does not belong to this sale.",
+      "sinAccesoSucursal": "You do not have access to the branch of this sale.",
+      "generico": "Error processing the return"
+    }
   }
 }

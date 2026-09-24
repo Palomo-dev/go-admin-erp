@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft, Package, CreditCard, DollarSign, Calculator, AlertTriangle, Camera } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { DevolucionesService } from './devolucionesService';
 import { ReturnReasonsService } from './motivos/returnReasonsService';
 import { SaleForReturn, RefundData, ReturnReason, SoldSerialInfo } from './types';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { claveErrorDevolucion, codigoErrorDevolucion } from '@/lib/pos/devoluciones/procesarDevolucion';
 import { toast } from 'sonner';
 
 // Función para traducir métodos de pago
@@ -58,6 +60,10 @@ interface ReturnItemData {
 
 export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
   const { formatear } = useMonedaOrganizacion();
+  const tErrores = useTranslations('posDevoluciones.errores');
+  // Una clave por intento: si la red corta y se vuelve a enviar, el servidor
+  // devuelve la misma devolución en vez de duplicarla. Se renueva al terminar bien.
+  const claveIntento = useRef<string>(crypto.randomUUID());
   const [loading, setLoading] = useState(false);
   const [returnItems, setReturnItems] = useState<ReturnItemData[]>([]);
   const [refundMethod, setRefundMethod] = useState<'cash' | 'credit_note' | 'original_method'>('cash');
@@ -233,17 +239,19 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
         notes: notes.trim() || undefined
       };
 
-      await DevolucionesService.procesarDevolucion(sale.id, refundData);
-      
+      const resultado = await DevolucionesService.procesarDevolucion(sale.id, refundData, claveIntento.current);
+      claveIntento.current = crypto.randomUUID();
+
+      // El monto lo calcula el servidor con lo cobrado en la venta.
       toast.success(
-        `Devolución procesada exitosamente. Reembolso: ${formatear(totalRefund)}`
+        `Devolución procesada exitosamente. Reembolso: ${formatear(Number(resultado.total_refund ?? totalRefund))}`
       );
-      
+
       onSuccess();
-      
+
     } catch (error) {
       console.error('Error procesando devolución:', error);
-      toast.error('Error al procesar la devolución');
+      toast.error(tErrores(claveErrorDevolucion(codigoErrorDevolucion(error))));
     } finally {
       setLoading(false);
     }

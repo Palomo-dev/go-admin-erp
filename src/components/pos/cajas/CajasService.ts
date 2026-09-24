@@ -864,12 +864,16 @@ export class CajasService {
         .filter(p => PURCHASE_SOURCES.includes(p.source))
         .reduce((sum, payment) => sum + Number(payment.amount), 0);
 
-      // Consultar devoluciones procesadas en el período
+      // Devoluciones procesadas en el período, solo las heredadas (sin
+      // refund_method): las de procesar_devolucion en efectivo ya son una
+      // salida en cash_movements y las de saldo a favor no sacan efectivo.
+      // Misma regla que pos_caja_esperado en el servidor.
       let returnsQuery = supabase
         .from('returns')
         .select('total_refund')
         .eq('organization_id', this.organizationId)
         .eq('status', 'processed')
+        .is('refund_method', null)
         .gte('created_at', session.opened_at)
         .lte('created_at', session.closed_at || new Date().toISOString());
       if (session.branch_id) {

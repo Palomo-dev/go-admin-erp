@@ -9276,5 +9276,20 @@
       "TIPO_INVALIDO": "Tipo de cargo no válido: usa porcentaje o monto fijo.",
       "DESCONOCIDO": "No se pudo completar la operación. Inténtalo de nuevo."
     }
+  },
+  "posDevoluciones": {
+    "errores": {
+      "efectivoSinCaja": "No hay una caja abierta para entregar el efectivo. Abre la caja o reintegra como saldo a favor del cliente.",
+      "saldoAFavorSinCliente": "La venta no tiene cliente: el saldo a favor necesita un cliente.",
+      "ventaNoPagada": "Solo se pueden devolver ventas pagadas. Para una venta con saldo pendiente, abona la cartera o anula la venta.",
+      "cantidadExcedeDisponible": "La cantidad supera lo que queda por devolver de esa línea.",
+      "motivoInvalido": "El motivo elegido no existe o está inactivo.",
+      "motivoObligatorio": "Escribe el motivo general de la devolución.",
+      "serialesNoCoinciden": "La cantidad a devolver debe coincidir con los seriales seleccionados.",
+      "serialInvalido": "Uno de los seriales no corresponde a esta venta o ya no está vendido.",
+      "lineaNoPerteneceALaVenta": "Una de las líneas no pertenece a esta venta.",
+      "sinAccesoSucursal": "No tienes acceso a la sucursal de esta venta.",
+      "generico": "Error al procesar la devolución"
+    }
   }
 }

@@ -9171,5 +9171,20 @@
       "TIPO_INVALIDO": "Type de frais non valide : utilisez pourcentage ou montant fixe.",
       "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez."
     }
+  },
+  "posDevoluciones": {
+    "errores": {
+      "efectivoSinCaja": "Aucune caisse n'est ouverte pour rendre l'espèce. Ouvrez la caisse ou remboursez en avoir client.",
+      "saldoAFavorSinCliente": "La vente n'a pas de client : l'avoir nécessite un client.",
+      "ventaNoPagada": "Seules les ventes payées peuvent être retournées. Pour une vente avec un solde dû, enregistrez un paiement ou annulez la vente.",
+      "cantidadExcedeDisponible": "La quantité dépasse ce qui reste à retourner sur cette ligne.",
+      "motivoInvalido": "Le motif choisi n'existe pas ou est inactif.",
+      "motivoObligatorio": "Indiquez le motif général du retour.",
+      "serialesNoCoinciden": "La quantité à retourner doit correspondre aux numéros de série sélectionnés.",
+      "serialInvalido": "L'un des numéros de série n'appartient pas à cette vente ou n'est plus vendu.",
+      "lineaNoPerteneceALaVenta": "L'une des lignes n'appartient pas à cette vente.",
+      "sinAccesoSucursal": "Vous n'avez pas accès à la succursale de cette vente.",
+      "generico": "Erreur lors du traitement du retour"
+    }
   }
 }

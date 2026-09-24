@@ -9171,5 +9171,20 @@
       "TIPO_INVALIDO": "Tipo de taxa inválido: use porcentagem ou valor fixo.",
       "DESCONOCIDO": "Não foi possível concluir a operação. Tente novamente."
     }
+  },
+  "posDevoluciones": {
+    "errores": {
+      "efectivoSinCaja": "Não há caixa aberto para entregar o dinheiro. Abra o caixa ou reembolse como crédito do cliente.",
+      "saldoAFavorSinCliente": "A venda não tem cliente: o crédito precisa de um cliente.",
+      "ventaNoPagada": "Só é possível devolver vendas pagas. Para uma venda com saldo pendente, registre um pagamento ou anule a venda.",
+      "cantidadExcedeDisponible": "A quantidade supera o que resta a devolver nessa linha.",
+      "motivoInvalido": "O motivo escolhido não existe ou está inativo.",
+      "motivoObligatorio": "Informe o motivo geral da devolução.",
+      "serialesNoCoinciden": "A quantidade a devolver deve coincidir com os números de série selecionados.",
+      "serialInvalido": "Um dos números de série não pertence a esta venda ou já não está vendido.",
+      "lineaNoPerteneceALaVenta": "Uma das linhas não pertence a esta venda.",
+      "sinAccesoSucursal": "Você não tem acesso à filial desta venda.",
+      "generico": "Erro ao processar a devolução"
+    }
   }
 }

@@ -10447,6 +10447,133 @@
       "pagada": "Paid",
       "pago_parcial": "Partially paid",
       "pendiente_pago": "Payment pending"
+    },
+    "listado": {
+      "titulo": "Sales",
+      "subtitulo": "{count, plural, one {{n} sale} other {{n} sales}}",
+      "migas": {
+        "pos": "Point of sale"
+      },
+      "actualizar": "Refresh",
+      "nueva": "New sale",
+      "exportar": "Export CSV",
+      "exportando": "Exporting…",
+      "exportarError": "The sales could not be exported. Try again.",
+      "exportarTruncado": "The first {n} sales were exported. Narrow the period or the filters to export the rest.",
+      "avisoSinRed": "Offline: showing the sales stored on this device. Origin, status, method and amount filters, search and the figures return when the connection is back.",
+      "sinNumero": "No number",
+      "consumidorFinal": "Walk-in customer",
+      "cxc": "Receivable",
+      "notasCredito": "{count, plural, one {# credit note} other {# credit notes}}",
+      "saldo": "Balance {monto}",
+      "imprimirVenta": "Print sale {numero}",
+      "sustantivo": {
+        "singular": "sale",
+        "plural": "sales"
+      },
+      "columnas": {
+        "fecha": "Date",
+        "numero": "No.",
+        "origen": "Origin",
+        "cliente": "Customer",
+        "documentoCliente": "Customer ID",
+        "sucursal": "Branch",
+        "cajero": "Cashier",
+        "metodos": "Method",
+        "documentos": "Documents",
+        "total": "Total",
+        "saldo": "Balance",
+        "estado": "Status"
+      },
+      "origenes": {
+        "pos": "POS",
+        "mesa": "Table",
+        "web": "Web",
+        "factura": "Invoice"
+      },
+      "acciones": {
+        "ver": "View sale",
+        "verFactura": "View invoice",
+        "cobrar": "Record payment",
+        "devolver": "Create return",
+        "imprimir": "Print",
+        "duplicar": "Duplicate in the POS",
+        "anular": "Void sale"
+      },
+      "motivos": {
+        "sin_permiso": "You do not have permission for this action.",
+        "pendiente_sincronizar": "The sale has not been synced with the server yet.",
+        "pedido_web": "Web orders are voided from Online orders.",
+        "con_devoluciones": "The sale has returns: it cannot be voided.",
+        "saldo_pendiente": "The sale has an outstanding balance: record the payment first.",
+        "ya_devuelta": "The sale has already been fully returned.",
+        "sin_factura": "The sale has no invoice to print.",
+        "sin_documento_cobro": "The sale has no invoice or receivable to apply the payment to.",
+        "sin_red": "Available when the connection is back."
+      },
+      "buscar": {
+        "placeholder": "Search by number, customer or ID",
+        "etiqueta": "Search sales"
+      },
+      "filtros": {
+        "periodo": "Period",
+        "verN": "{count, plural, one {Show {n} sale} other {Show {n} sales}}",
+        "todos": "All",
+        "origen": "Origin",
+        "origenChip": "Origin: {origen}",
+        "estado": "Status",
+        "metodo": "Payment method",
+        "metodoChip": "Method: {metodo}",
+        "cliente": "Customer",
+        "clienteChip": "Filtered customer",
+        "clienteChipNombre": "Customer: {nombre}",
+        "cajeroChip": "Filtered cashier",
+        "min": "Minimum amount",
+        "max": "Maximum amount",
+        "minChip": "From {monto}",
+        "maxChip": "Up to {monto}"
+      },
+      "vacio": {
+        "titulo": "No sales in this period yet",
+        "descripcion": "Sales from the POS, tables, the web store and invoices show up here."
+      },
+      "sinResultados": "No sale matches the search or the filters.",
+      "errorCarga": "The sales could not be loaded",
+      "sinPermiso": {
+        "titulo": "No access to sales",
+        "descripcion": "Ask an administrator for permission to view POS sales."
+      }
+    },
+    "kpis": {
+      "etiqueta": "Figures for the period",
+      "cobrado": "Net collected",
+      "cobros": "Payments",
+      "ticket": "Average ticket",
+      "reintegros": "Refunds",
+      "facturado": "Invoiced: {monto}",
+      "ventasCobradas": "{count, plural, one {{n} sale collected} other {{n} sales collected}}",
+      "vsAnterior": "{pct}% vs. the previous period",
+      "sinAnterior": "No payments in the previous period"
+    },
+    "anular": {
+      "titulo": "Void sale",
+      "tituloNumero": "Void sale {numero}",
+      "descripcion": "Voiding cannot be undone. If the payments are in a cash session that is already closed, make a return instead.",
+      "confirmar": "Void sale",
+      "tituloRevierte": "What gets reversed",
+      "revierte": {
+        "pagos": "The sale's payments (their cash session must still be open)",
+        "inventario": "The stock of the products sold",
+        "notaCredito": "The invoice, with a credit note for the invoiced amount",
+        "comisiones": "The sale's tips and commissions",
+        "asientos": "The journal entries, with their reversal"
+      },
+      "motivos": {
+        "error": "Entry error",
+        "cliente": "Customer changed their mind",
+        "duplicada": "Duplicate sale"
+      },
+      "motivo": "Reason for voiding"
     }
   },
   "cartera": {

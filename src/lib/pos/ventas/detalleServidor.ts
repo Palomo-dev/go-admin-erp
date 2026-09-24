@@ -12,10 +12,10 @@
  * - La venta se lee con la organización de la sesión (antes sin filtro de organización).
  *
  * Con el cliente de la sesión: la RLS aplica. Los permisos de las acciones se
- * resuelven aquí (`pos.void`, `pos.refund`), nunca en el navegador.
+ * resuelven aquí (`resolverPermisosVentas`), nunca en el navegador.
  */
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
-import { hasOrgAdminOrPermission } from '@/lib/utils/orgContext';
+import { resolverPermisosVentas, type PermisosVentas } from './permisosVentas';
 import { estadoVenta, origenVenta, type EstadoVenta, type OrigenVenta } from './estadoVenta';
 import { facturaDeVenta, notasCreditoDeVenta, numeroVenta, pagosDeVenta, totalPagado, type NumeroVenta } from './documentosVenta';
 
@@ -126,7 +126,7 @@ export interface DetalleVenta {
   mesa: { nombre: string | null; mesero: string | null; comensales: number | null; abierta: string | null; cerrada: string | null } | null;
   pedido: { id: string; numero: string | null; entrega: string | null; direccion: string | null; cupon: string | null } | null;
   incluida_en_caja: boolean;
-  permisos: { anular: boolean; devolver: boolean };
+  permisos: PermisosVentas;
 }
 
 async function nombresPerfiles(ctx: Ctx, ids: Array<string | null | undefined>): Promise<Map<string, string>> {
@@ -161,7 +161,7 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
   if (!venta) throw new ErrorDetalleVenta('venta_no_encontrada', 404, 'La venta no existe');
   const s = venta as Record<string, unknown> & { id: string; branch_id: number; customer_id: string | null; user_id: string };
 
-  const [itemsRes, docsRes, devRes, mesaRes, pedidoRes, comRes, clienteRes, ramaRes, puedeAnular, puedeDevolver] = await Promise.all([
+  const [itemsRes, docsRes, devRes, mesaRes, pedidoRes, comRes, clienteRes, ramaRes, permisos] = await Promise.all([
     ctx.supabase
       .from('sale_items')
       .select('id, product_id, quantity, unit_price, total, tax_amount, tax_rate, discount_amount, notes, products(name, sku)')
@@ -188,8 +188,7 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
       ? ctx.supabase.from('customers').select('id, full_name, identification_number, doc_number, email, phone').eq('id', s.customer_id).maybeSingle()
       : Promise.resolve({ data: null }),
     ctx.supabase.from('branches').select('name').eq('id', s.branch_id).maybeSingle(),
-    hasOrgAdminOrPermission(ctx, 'pos.void'),
-    hasOrgAdminOrPermission(ctx, 'pos.refund'),
+    resolverPermisosVentas(ctx),
   ]);
   if (itemsRes.error) throw new ErrorDetalleVenta('lectura_fallida', 500, itemsRes.error.message);
   if (docsRes.error) throw new ErrorDetalleVenta('lectura_fallida', 500, docsRes.error.message);
@@ -331,6 +330,6 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
       ? { id: pedido.id, numero: pedido.order_number, entrega: pedido.delivery_type, direccion: direccionTexto(pedido.delivery_address), cupon: pedido.coupon_code }
       : null,
     incluida_en_caja: s.include_in_cash_register === true,
-    permisos: { anular: puedeAnular, devolver: puedeDevolver },
+    permisos,
   };
 }

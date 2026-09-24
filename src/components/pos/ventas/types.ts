@@ -105,18 +105,6 @@ export interface SaleWithDetails extends Sale {
   journal_entry?: JournalEntryInfo;
 }
 
-export interface SalesFilter {
-  search?: string;
-  status?: 'all' | 'pending' | 'completed' | 'cancelled';
-  payment_status?: 'all' | 'pending' | 'paid' | 'partial' | 'refunded';
-  date_from?: string;
-  date_to?: string;
-  customer_id?: string;
-  user_id?: string;
-  branch_id?: number;
-  source_type?: 'all' | 'pos' | 'web';
-}
-
 export interface DailySummary {
   total_sales: number;
   total_amount: number;

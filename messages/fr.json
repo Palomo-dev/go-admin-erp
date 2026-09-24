@@ -10342,6 +10342,133 @@
       "pagada": "Payée",
       "pago_parcial": "Paiement partiel",
       "pendiente_pago": "Paiement en attente"
+    },
+    "listado": {
+      "titulo": "Ventes",
+      "subtitulo": "{count, plural, one {{n} vente} other {{n} ventes}}",
+      "migas": {
+        "pos": "Point de vente"
+      },
+      "actualizar": "Actualiser",
+      "nueva": "Nouvelle vente",
+      "exportar": "Exporter en CSV",
+      "exportando": "Exportation…",
+      "exportarError": "Les ventes n'ont pas pu être exportées. Réessayez.",
+      "exportarTruncado": "Les {n} premières ventes ont été exportées. Réduisez la période ou les filtres pour exporter le reste.",
+      "avisoSinRed": "Hors ligne : les ventes enregistrées sur cet appareil sont affichées. Les filtres d'origine, d'état, de moyen et de montant, la recherche et les chiffres reviennent avec la connexion.",
+      "sinNumero": "Sans numéro",
+      "consumidorFinal": "Client de passage",
+      "cxc": "Créance",
+      "notasCredito": "{count, plural, one {# avoir} other {# avoirs}}",
+      "saldo": "Solde {monto}",
+      "imprimirVenta": "Imprimer la vente {numero}",
+      "sustantivo": {
+        "singular": "vente",
+        "plural": "ventes"
+      },
+      "columnas": {
+        "fecha": "Date",
+        "numero": "N°",
+        "origen": "Origine",
+        "cliente": "Client",
+        "documentoCliente": "Pièce d'identité du client",
+        "sucursal": "Succursale",
+        "cajero": "Caissier",
+        "metodos": "Moyen",
+        "documentos": "Documents",
+        "total": "Total",
+        "saldo": "Solde",
+        "estado": "État"
+      },
+      "origenes": {
+        "pos": "PDV",
+        "mesa": "Table",
+        "web": "Web",
+        "factura": "Facture"
+      },
+      "acciones": {
+        "ver": "Voir la vente",
+        "verFactura": "Voir la facture",
+        "cobrar": "Enregistrer un encaissement",
+        "devolver": "Créer un retour",
+        "imprimir": "Imprimer",
+        "duplicar": "Dupliquer dans le PDV",
+        "anular": "Annuler la vente"
+      },
+      "motivos": {
+        "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
+        "pendiente_sincronizar": "La vente n'est pas encore synchronisée avec le serveur.",
+        "pedido_web": "Les commandes web s'annulent depuis Commandes en ligne.",
+        "con_devoluciones": "La vente a des retours : elle ne peut pas être annulée.",
+        "saldo_pendiente": "La vente a un solde en attente : enregistrez d'abord l'encaissement.",
+        "ya_devuelta": "La vente a déjà été entièrement retournée.",
+        "sin_factura": "La vente n'a pas de facture à imprimer.",
+        "sin_documento_cobro": "La vente n'a ni facture ni créance sur laquelle imputer le paiement.",
+        "sin_red": "Disponible au retour de la connexion."
+      },
+      "buscar": {
+        "placeholder": "Rechercher par numéro, client ou pièce",
+        "etiqueta": "Rechercher des ventes"
+      },
+      "filtros": {
+        "periodo": "Période",
+        "verN": "{count, plural, one {Voir {n} vente} other {Voir {n} ventes}}",
+        "todos": "Tous",
+        "origen": "Origine",
+        "origenChip": "Origine : {origen}",
+        "estado": "État",
+        "metodo": "Moyen de paiement",
+        "metodoChip": "Moyen : {metodo}",
+        "cliente": "Client",
+        "clienteChip": "Client filtré",
+        "clienteChipNombre": "Client : {nombre}",
+        "cajeroChip": "Caissier filtré",
+        "min": "Montant minimum",
+        "max": "Montant maximum",
+        "minChip": "À partir de {monto}",
+        "maxChip": "Jusqu'à {monto}"
+      },
+      "vacio": {
+        "titulo": "Aucune vente sur cette période",
+        "descripcion": "Les ventes du PDV, des tables, de la boutique web et des factures apparaissent ici."
+      },
+      "sinResultados": "Aucune vente ne correspond à la recherche ou aux filtres.",
+      "errorCarga": "Les ventes n'ont pas pu être chargées",
+      "sinPermiso": {
+        "titulo": "Pas d'accès aux ventes",
+        "descripcion": "Demandez à un administrateur l'autorisation de voir les ventes du PDV."
+      }
+    },
+    "kpis": {
+      "etiqueta": "Chiffres de la période",
+      "cobrado": "Encaissé net",
+      "cobros": "Encaissements",
+      "ticket": "Panier moyen",
+      "reintegros": "Remboursements",
+      "facturado": "Facturé : {monto}",
+      "ventasCobradas": "{count, plural, one {{n} vente encaissée} other {{n} ventes encaissées}}",
+      "vsAnterior": "{pct} % par rapport à la période précédente",
+      "sinAnterior": "Aucun encaissement sur la période précédente"
+    },
+    "anular": {
+      "titulo": "Annuler la vente",
+      "tituloNumero": "Annuler la vente {numero}",
+      "descripcion": "L'annulation est irréversible. Si les paiements sont dans une caisse déjà clôturée, faites un retour.",
+      "confirmar": "Annuler la vente",
+      "tituloRevierte": "Ce qui est annulé",
+      "revierte": {
+        "pagos": "Les paiements de la vente (leur caisse doit rester ouverte)",
+        "inventario": "Le stock des produits vendus",
+        "notaCredito": "La facture, avec un avoir pour le montant facturé",
+        "comisiones": "Les pourboires et commissions de la vente",
+        "asientos": "Les écritures comptables, avec leur contrepassation"
+      },
+      "motivos": {
+        "error": "Erreur de saisie",
+        "cliente": "Le client a renoncé",
+        "duplicada": "Vente en double"
+      },
+      "motivo": "Motif de l'annulation"
     }
   },
   "cartera": {

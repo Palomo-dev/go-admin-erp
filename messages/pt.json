@@ -10342,6 +10342,133 @@
       "pagada": "Paga",
       "pago_parcial": "Pagamento parcial",
       "pendiente_pago": "Pagamento pendente"
+    },
+    "listado": {
+      "titulo": "Vendas",
+      "subtitulo": "{count, plural, one {{n} venda} other {{n} vendas}}",
+      "migas": {
+        "pos": "Ponto de venda"
+      },
+      "actualizar": "Atualizar",
+      "nueva": "Nova venda",
+      "exportar": "Exportar CSV",
+      "exportando": "Exportando…",
+      "exportarError": "Não foi possível exportar as vendas. Tente novamente.",
+      "exportarTruncado": "Foram exportadas as primeiras {n} vendas. Reduza o período ou os filtros para exportar o restante.",
+      "avisoSinRed": "Sem conexão: são mostradas as vendas salvas neste dispositivo. Os filtros de origem, status, forma e valor, a busca e os números voltam quando a conexão retornar.",
+      "sinNumero": "Sem número",
+      "consumidorFinal": "Consumidor final",
+      "cxc": "Conta a receber",
+      "notasCredito": "{count, plural, one {# nota de crédito} other {# notas de crédito}}",
+      "saldo": "Saldo {monto}",
+      "imprimirVenta": "Imprimir a venda {numero}",
+      "sustantivo": {
+        "singular": "venda",
+        "plural": "vendas"
+      },
+      "columnas": {
+        "fecha": "Data",
+        "numero": "N.º",
+        "origen": "Origem",
+        "cliente": "Cliente",
+        "documentoCliente": "Documento do cliente",
+        "sucursal": "Filial",
+        "cajero": "Caixa",
+        "metodos": "Forma",
+        "documentos": "Documentos",
+        "total": "Total",
+        "saldo": "Saldo",
+        "estado": "Status"
+      },
+      "origenes": {
+        "pos": "PDV",
+        "mesa": "Mesa",
+        "web": "Web",
+        "factura": "Fatura"
+      },
+      "acciones": {
+        "ver": "Ver venda",
+        "verFactura": "Ver fatura",
+        "cobrar": "Registrar recebimento",
+        "devolver": "Criar devolução",
+        "imprimir": "Imprimir",
+        "duplicar": "Duplicar no PDV",
+        "anular": "Cancelar venda"
+      },
+      "motivos": {
+        "sin_permiso": "Você não tem permissão para esta ação.",
+        "pendiente_sincronizar": "A venda ainda não foi sincronizada com o servidor.",
+        "pedido_web": "Os pedidos web são cancelados em Pedidos online.",
+        "con_devoluciones": "A venda tem devoluções: não pode ser cancelada.",
+        "saldo_pendiente": "A venda tem saldo pendente: registre o recebimento primeiro.",
+        "ya_devuelta": "A venda já foi totalmente devolvida.",
+        "sin_factura": "A venda não tem fatura para imprimir.",
+        "sin_documento_cobro": "A venda não tem fatura nem conta a receber para aplicar o pagamento.",
+        "sin_red": "Disponível quando a conexão voltar."
+      },
+      "buscar": {
+        "placeholder": "Buscar por número, cliente ou documento",
+        "etiqueta": "Buscar vendas"
+      },
+      "filtros": {
+        "periodo": "Período",
+        "verN": "{count, plural, one {Ver {n} venda} other {Ver {n} vendas}}",
+        "todos": "Todos",
+        "origen": "Origem",
+        "origenChip": "Origem: {origen}",
+        "estado": "Status",
+        "metodo": "Forma de pagamento",
+        "metodoChip": "Forma: {metodo}",
+        "cliente": "Cliente",
+        "clienteChip": "Cliente filtrado",
+        "clienteChipNombre": "Cliente: {nombre}",
+        "cajeroChip": "Caixa filtrado",
+        "min": "Valor mínimo",
+        "max": "Valor máximo",
+        "minChip": "A partir de {monto}",
+        "maxChip": "Até {monto}"
+      },
+      "vacio": {
+        "titulo": "Ainda não há vendas neste período",
+        "descripcion": "As vendas do PDV, das mesas, da loja web e das faturas aparecem aqui."
+      },
+      "sinResultados": "Nenhuma venda corresponde à busca ou aos filtros.",
+      "errorCarga": "Não foi possível carregar as vendas",
+      "sinPermiso": {
+        "titulo": "Sem acesso às vendas",
+        "descripcion": "Peça a um administrador a permissão para ver as vendas do PDV."
+      }
+    },
+    "kpis": {
+      "etiqueta": "Números do período",
+      "cobrado": "Recebido líquido",
+      "cobros": "Recebimentos",
+      "ticket": "Ticket médio",
+      "reintegros": "Reembolsos",
+      "facturado": "Faturado: {monto}",
+      "ventasCobradas": "{count, plural, one {{n} venda recebida} other {{n} vendas recebidas}}",
+      "vsAnterior": "{pct}% em relação ao período anterior",
+      "sinAnterior": "Sem recebimentos no período anterior"
+    },
+    "anular": {
+      "titulo": "Cancelar venda",
+      "tituloNumero": "Cancelar a venda {numero}",
+      "descripcion": "O cancelamento não pode ser desfeito. Se os pagamentos estão em um caixa já fechado, faça uma devolução.",
+      "confirmar": "Cancelar venda",
+      "tituloRevierte": "O que é revertido",
+      "revierte": {
+        "pagos": "Os pagamentos da venda (o caixa deles deve continuar aberto)",
+        "inventario": "O estoque dos produtos vendidos",
+        "notaCredito": "A fatura, com uma nota de crédito pelo valor faturado",
+        "comisiones": "As gorjetas e comissões da venda",
+        "asientos": "Os lançamentos contábeis, com seu estorno"
+      },
+      "motivos": {
+        "error": "Erro de registro",
+        "cliente": "O cliente desistiu",
+        "duplicada": "Venda duplicada"
+      },
+      "motivo": "Motivo do cancelamento"
     }
   },
   "cartera": {

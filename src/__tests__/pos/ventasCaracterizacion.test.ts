@@ -18,6 +18,8 @@ import { facturaDeVenta, notasCreditoDeVenta, numeroVenta, pagosDeVenta, totalPa
 import { filtrosVentas, limpiarBusqueda, parametrosListado } from '@/lib/pos/ventas/filtrosVentas';
 import { lineasDuplicadas } from '@/lib/pos/ventas/lineasDuplicadas';
 import { resolverEstado } from '@/components/kit/estadoTono';
+import { accionesDeVenta, destinoCobro, SIN_PERMISOS_VENTAS, type PermisosVentas, type VentaParaAcciones } from '@/lib/pos/ventas/accionesVenta';
+import { filaVentaLocal } from '@/lib/pos/ventas/ventaLocal';
 
 describe('V-c · un solo estado visible por venta', () => {
   test.each([
@@ -201,5 +203,97 @@ describe('Guardarraíles de fuente de ventas', () => {
       const src = fs.readFileSync(f, 'utf8');
       expect({ f, hit: /from\('(sales|sale_items|payments)'\)\s*\.(insert|upsert)/.test(src) }).toEqual({ f, hit: false });
     }
+  });
+});
+
+describe('Paso 15 · acciones de la venta con motivo', () => {
+  const TODOS: PermisosVentas = { anular: true, devolver: true, vender: true, exportar: true };
+  const base: VentaParaAcciones = { estado: 'pagada', origen: 'pos', saldo: 0, devuelto: 0, factura_id: 'f1', cxc_id: null };
+
+  test('venta POS pagada: todo habilitado salvo cobrar (sin saldo, oculta)', () => {
+    const a = accionesDeVenta(base, TODOS);
+    expect(a.cobrar.visible).toBe(false);
+    expect([a.devolver, a.imprimir, a.duplicar, a.anular].every((x) => x.habilitada)).toBe(true);
+  });
+
+  test('con saldo: se cobra (factura o CxC) y la devolución espera con motivo', () => {
+    const v = { ...base, estado: 'pago_parcial' as const, saldo: 50 };
+    const a = accionesDeVenta(v, TODOS);
+    expect(a.cobrar).toEqual({ visible: true, habilitada: true, motivo: null });
+    expect(a.devolver).toEqual({ visible: true, habilitada: false, motivo: 'saldo_pendiente' });
+    expect(destinoCobro(v)).toEqual({ tipo: 'factura', id: 'f1' });
+    expect(destinoCobro({ factura_id: null, cxc_id: 'c9' })).toEqual({ tipo: 'cuenta', id: 'c9' });
+    expect(accionesDeVenta({ ...v, factura_id: null }, TODOS).cobrar.motivo).toBe('sin_documento_cobro');
+  });
+
+  test('pedido web y venta con devoluciones no se anulan aquí (motivo, no oculto)', () => {
+    expect(accionesDeVenta({ ...base, origen: 'web' }, TODOS).anular).toEqual({ visible: true, habilitada: false, motivo: 'pedido_web' });
+    expect(accionesDeVenta({ ...base, estado: 'devuelta_parcial', devuelto: 10 }, TODOS).anular.motivo).toBe('con_devoluciones');
+  });
+
+  test('anulada: sin anular ni devolver; pendiente de sincronizar: todo con motivo', () => {
+    const anulada = accionesDeVenta({ ...base, estado: 'anulada' }, TODOS);
+    expect(anulada.anular.visible || anulada.devolver.visible).toBe(false);
+    const sinSync = accionesDeVenta({ ...base, estado: 'pendiente_sincronizar', factura_id: null }, TODOS);
+    expect([sinSync.devolver, sinSync.imprimir, sinSync.anular].map((x) => x.motivo)).toEqual(['pendiente_sincronizar', 'pendiente_sincronizar', 'pendiente_sincronizar']);
+  });
+
+  test('sin permisos del servidor: deshabilitadas con «sin_permiso»', () => {
+    const a = accionesDeVenta(base, SIN_PERMISOS_VENTAS);
+    expect([a.devolver.motivo, a.duplicar.motivo, a.anular.motivo]).toEqual(['sin_permiso', 'sin_permiso', 'sin_permiso']);
+    expect(a.imprimir.habilitada).toBe(true);
+  });
+
+  test('sin factura no se imprime (el comprobante sale del motor de documentos)', () => {
+    expect(accionesDeVenta({ ...base, factura_id: null }, TODOS).imprimir.motivo).toBe('sin_factura');
+  });
+});
+
+describe('Paso 15 · listado sin red (Desktop)', () => {
+  test('la venta del outbox se ve como pendiente de sincronizar', () => {
+    const f = filaVentaLocal(
+      {
+        id: 'v1', sale_date: '2026-09-20T15:00:00+00:00', created_at: null, total: '120', balance: 0, status: 'pending_sync',
+        payment_status: 'paid', source: 'pos', customer_id: 'c1', user_id: 'u1', branch_id: 7, pending_sync: true,
+      },
+      { nombre: 'Cliente de prueba', documento: '1' },
+    );
+    expect(f.estado).toBe('pendiente_sincronizar');
+    expect(f.total).toBe(120);
+    expect(f.cliente).toEqual({ id: 'c1', nombre: 'Cliente de prueba', documento: '1' });
+    expect(f.factura_id).toBeNull();
+  });
+
+  test('mesa y web conservan su origen', () => {
+    const comun = { id: 'x', sale_date: null, created_at: '2026-09-20T15:00:00+00:00', total: 1, balance: 0, status: 'paid', payment_status: 'paid', customer_id: null, user_id: null, branch_id: 1 };
+    expect(filaVentaLocal({ ...comun, source: 'pos', table_session_id: 't1' }).origen).toBe('mesa');
+    expect(filaVentaLocal({ ...comun, source: 'web' }).origen).toBe('web');
+  });
+});
+
+describe('Paso 15 · guardarraíles del listado', () => {
+  const SRC = path.resolve(__dirname, '..', '..');
+  const leer = (r: string) => fs.readFileSync(path.join(SRC, r), 'utf8');
+
+  test('el listado lee del servidor, no de web_orders ni con diálogos del navegador', () => {
+    const pagina = leer('components/pos/ventas/VentasPage.tsx');
+    expect(pagina).toMatch(/pedirVentas\(/);
+    expect(pagina).not.toMatch(/web_orders|VentasService\.getSales|confirm\(|prompt\(|alert\(/);
+    expect(leer('components/pos/ventas/VentasService.ts')).not.toMatch(/static async getSales\(/);
+  });
+
+  test('anular pasa por la RPC y nunca por un update directo de status', () => {
+    expect(leer('components/pos/ventas/AnularVentaDialog.tsx')).toMatch(/anularVentaEnServidor\(/);
+    const archivos = (d: string): string[] =>
+      fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? archivos(path.join(d, e.name)) : [path.join(d, e.name)]));
+    for (const f of archivos(path.join(SRC, 'components/pos/ventas')).filter((x) => /\.tsx?$/.test(x))) {
+      expect({ f, hit: /\.update\(\s*\{\s*status:\s*'void'/.test(fs.readFileSync(f, 'utf8')) }).toEqual({ f, hit: false });
+    }
+  });
+
+  test('los permisos del listado se resuelven en el servidor por código, nunca por nombre de rol', () => {
+    const permisos = leer('lib/pos/ventas/permisosVentas.ts');
+    for (const codigo of ['pos.void', 'pos.refund', 'pos.create', 'reports.sales']) expect(permisos).toContain(`'${codigo}'`);
+    expect(leer('components/pos/ventas/VentasPage.tsx')).not.toMatch(/role_name|roleName|'admin'|'owner'/);
   });
 });

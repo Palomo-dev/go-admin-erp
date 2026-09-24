@@ -10447,6 +10447,133 @@
       "pagada": "Pagada",
       "pago_parcial": "Pago parcial",
       "pendiente_pago": "Pendiente de pago"
+    },
+    "listado": {
+      "titulo": "Ventas",
+      "subtitulo": "{count, plural, one {{n} venta} other {{n} ventas}}",
+      "migas": {
+        "pos": "Punto de venta"
+      },
+      "actualizar": "Actualizar",
+      "nueva": "Nueva venta",
+      "exportar": "Exportar CSV",
+      "exportando": "Exportando…",
+      "exportarError": "No se pudieron exportar las ventas. Intente de nuevo.",
+      "exportarTruncado": "Se exportaron las primeras {n} ventas. Acote el periodo o los filtros para exportar el resto.",
+      "avisoSinRed": "Sin conexión: se muestran las ventas guardadas en este equipo. Los filtros de origen, estado, método e importe, la búsqueda y las cifras vuelven al recuperar la red.",
+      "sinNumero": "Sin número",
+      "consumidorFinal": "Consumidor final",
+      "cxc": "Cuenta por cobrar",
+      "notasCredito": "{count, plural, one {# nota crédito} other {# notas crédito}}",
+      "saldo": "Saldo {monto}",
+      "imprimirVenta": "Imprimir la venta {numero}",
+      "sustantivo": {
+        "singular": "venta",
+        "plural": "ventas"
+      },
+      "columnas": {
+        "fecha": "Fecha",
+        "numero": "N.º",
+        "origen": "Origen",
+        "cliente": "Cliente",
+        "documentoCliente": "Documento del cliente",
+        "sucursal": "Sucursal",
+        "cajero": "Cajero",
+        "metodos": "Método",
+        "documentos": "Documentos",
+        "total": "Total",
+        "saldo": "Saldo",
+        "estado": "Estado"
+      },
+      "origenes": {
+        "pos": "POS",
+        "mesa": "Mesa",
+        "web": "Web",
+        "factura": "Factura"
+      },
+      "acciones": {
+        "ver": "Ver venta",
+        "verFactura": "Ver factura",
+        "cobrar": "Registrar cobro",
+        "devolver": "Crear devolución",
+        "imprimir": "Imprimir",
+        "duplicar": "Duplicar en el POS",
+        "anular": "Anular venta"
+      },
+      "motivos": {
+        "sin_permiso": "No tiene permiso para esta acción.",
+        "pendiente_sincronizar": "La venta aún no se ha sincronizado con el servidor.",
+        "pedido_web": "Los pedidos web se anulan desde Pedidos online.",
+        "con_devoluciones": "La venta tiene devoluciones: no se puede anular.",
+        "saldo_pendiente": "La venta tiene saldo pendiente: primero registre el cobro.",
+        "ya_devuelta": "La venta ya se devolvió por completo.",
+        "sin_factura": "La venta no tiene factura para imprimir.",
+        "sin_documento_cobro": "La venta no tiene factura ni cuenta por cobrar a la cual aplicar el pago.",
+        "sin_red": "Disponible cuando vuelva la conexión."
+      },
+      "buscar": {
+        "placeholder": "Buscar por número, cliente o documento",
+        "etiqueta": "Buscar ventas"
+      },
+      "filtros": {
+        "periodo": "Periodo",
+        "verN": "{count, plural, one {Ver {n} venta} other {Ver {n} ventas}}",
+        "todos": "Todos",
+        "origen": "Origen",
+        "origenChip": "Origen: {origen}",
+        "estado": "Estado",
+        "metodo": "Método de pago",
+        "metodoChip": "Método: {metodo}",
+        "cliente": "Cliente",
+        "clienteChip": "Cliente filtrado",
+        "clienteChipNombre": "Cliente: {nombre}",
+        "cajeroChip": "Cajero filtrado",
+        "min": "Importe mínimo",
+        "max": "Importe máximo",
+        "minChip": "Desde {monto}",
+        "maxChip": "Hasta {monto}"
+      },
+      "vacio": {
+        "titulo": "Aún no hay ventas en este periodo",
+        "descripcion": "Las ventas del POS, las mesas, la tienda web y las facturas aparecen aquí."
+      },
+      "sinResultados": "Ninguna venta coincide con la búsqueda o los filtros.",
+      "errorCarga": "No se pudieron cargar las ventas",
+      "sinPermiso": {
+        "titulo": "Sin acceso a las ventas",
+        "descripcion": "Pida a un administrador el permiso para ver las ventas del POS."
+      }
+    },
+    "kpis": {
+      "etiqueta": "Cifras del periodo",
+      "cobrado": "Cobrado neto",
+      "cobros": "Cobros",
+      "ticket": "Ticket promedio",
+      "reintegros": "Reintegros",
+      "facturado": "Facturado: {monto}",
+      "ventasCobradas": "{count, plural, one {{n} venta cobrada} other {{n} ventas cobradas}}",
+      "vsAnterior": "{pct} % frente al periodo anterior",
+      "sinAnterior": "Sin cobros en el periodo anterior"
+    },
+    "anular": {
+      "titulo": "Anular venta",
+      "tituloNumero": "Anular la venta {numero}",
+      "descripcion": "La anulación no se puede deshacer. Si los pagos están en una caja ya cerrada, haga una devolución.",
+      "confirmar": "Anular venta",
+      "tituloRevierte": "Qué se revierte",
+      "revierte": {
+        "pagos": "Los pagos de la venta (su caja debe seguir abierta)",
+        "inventario": "El inventario de los productos vendidos",
+        "notaCredito": "La factura, con una nota crédito por lo facturado",
+        "comisiones": "Las propinas y comisiones de la venta",
+        "asientos": "Los asientos contables, con su reverso"
+      },
+      "motivos": {
+        "error": "Error al registrar",
+        "cliente": "El cliente desistió",
+        "duplicada": "Venta duplicada"
+      },
+      "motivo": "Motivo de la anulación"
     }
   },
   "cartera": {

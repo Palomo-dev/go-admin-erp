@@ -9248,5 +9248,23 @@
       "precio_no_coincide": "Le prix d’une ligne ne correspond pas au prix en vigueur. Retirez la ligne et ajoutez-la de nouveau. {detalle}",
       "linea_incoherente": "Les montants d’une ligne ne correspondent pas à son prix, sa remise et sa taxe. Rouvrez l’encaissement. {detalle}"
     }
+  },
+  "facturasCompra": {
+    "titulo": "Factures d'achat",
+    "recepcion": {
+      "por_recibir": "À réceptionner",
+      "recibido": "Réceptionné",
+      "no_aplica": "Sans objet"
+    },
+    "pago": {
+      "pendiente": "En attente",
+      "parcial": "Paiement partiel",
+      "pagada": "Payée",
+      "anulada": "Annulée",
+      "borrador": "Brouillon"
+    }
+  },
+  "cuentasPorPagar": {
+    "titulo": "Comptes fournisseurs"
   }
 }

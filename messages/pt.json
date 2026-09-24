@@ -9248,5 +9248,23 @@
       "precio_no_coincide": "O preço de uma linha não coincide com o preço vigente. Remova a linha e adicione de novo. {detalle}",
       "linea_incoherente": "Os valores de uma linha não batem com o preço, desconto e imposto. Abra o pagamento novamente. {detalle}"
     }
+  },
+  "facturasCompra": {
+    "titulo": "Faturas de compra",
+    "recepcion": {
+      "por_recibir": "A receber",
+      "recibido": "Recebido",
+      "no_aplica": "Não se aplica"
+    },
+    "pago": {
+      "pendiente": "Pendente",
+      "parcial": "Pagamento parcial",
+      "pagada": "Paga",
+      "anulada": "Anulada",
+      "borrador": "Rascunho"
+    }
+  },
+  "cuentasPorPagar": {
+    "titulo": "Contas a pagar"
   }
 }

@@ -9353,5 +9353,23 @@
       "precio_no_coincide": "A line's price does not match the current price. Remove the line and add it again. {detalle}",
       "linea_incoherente": "A line's amounts do not match its price, discount and tax. Reopen the checkout. {detalle}"
     }
+  },
+  "facturasCompra": {
+    "titulo": "Purchase invoices",
+    "recepcion": {
+      "por_recibir": "To receive",
+      "recibido": "Received",
+      "no_aplica": "Not applicable"
+    },
+    "pago": {
+      "pendiente": "Pending",
+      "parcial": "Partially paid",
+      "pagada": "Paid",
+      "anulada": "Voided",
+      "borrador": "Draft"
+    }
+  },
+  "cuentasPorPagar": {
+    "titulo": "Accounts payable"
   }
 }

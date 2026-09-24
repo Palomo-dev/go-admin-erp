@@ -90,14 +90,7 @@ export function CreateClaimDialog({
     }
   }, [open]);
 
-  // Cargar serial pre-seleccionado
-  useEffect(() => {
-    if (open && preselectedSerialId) {
-      loadSerialById(preselectedSerialId);
-    }
-  }, [open, preselectedSerialId]);
-
-  const loadSerialById = async (serialId: number) => {
+  const loadSerialById = useCallback(async (serialId: number) => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -106,7 +99,7 @@ export function CreateClaimDialog({
           id, serial, status, warranty_start, warranty_end, warranty_months,
           sale_date, sold_to_customer_id, product_id,
           products!fk_serial_product ( name, sku, brand ),
-          customers!serial_numbers_sold_to_customer_id_fkey ( id, full_name, phone, email )
+          customers!fk_serial_customer ( id, full_name, phone, email )
         `)
         .eq('id', serialId)
         .eq('organization_id', organizationId)
@@ -114,7 +107,7 @@ export function CreateClaimDialog({
 
       if (error) throw error;
       setSelectedSerial(data as unknown as SerialSearchResult);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error cargando serial:', err);
       toast({
         title: 'Error',
@@ -124,7 +117,14 @@ export function CreateClaimDialog({
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizationId, toast]);
+
+  // Cargar serial pre-seleccionado
+  useEffect(() => {
+    if (open && preselectedSerialId) {
+      void loadSerialById(preselectedSerialId);
+    }
+  }, [open, preselectedSerialId, loadSerialById]);
 
   // Búsqueda de seriales (debounced)
   useEffect(() => {
@@ -143,7 +143,7 @@ export function CreateClaimDialog({
             id, serial, status, warranty_start, warranty_end, warranty_months,
             sale_date, sold_to_customer_id, product_id,
             products!fk_serial_product ( name, sku, brand ),
-            customers!serial_numbers_sold_to_customer_id_fkey ( id, full_name, phone, email )
+            customers!fk_serial_customer ( id, full_name, phone, email )
           `)
           .eq('organization_id', organizationId)
           .or(`serial.ilike.%${searchTerm}%`)
@@ -151,7 +151,7 @@ export function CreateClaimDialog({
 
         if (error) throw error;
         setSearchResults((data || []) as unknown as SerialSearchResult[]);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error buscando seriales:', err);
       } finally {
         setSearching(false);
@@ -202,11 +202,11 @@ export function CreateClaimDialog({
 
       onOpenChange(false);
       onCreated?.();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creando reclamo:', err);
       toast({
         title: 'Error',
-        description: err?.message || 'No se pudo crear el reclamo',
+        description: (err as Error)?.message || 'No se pudo crear el reclamo',
         variant: 'destructive',
       });
     } finally {

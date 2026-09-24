@@ -6665,5 +6665,1605 @@
       "padreConVariantes": "Publicado por meio das variantes",
       "padreInactivo": "O produto pai está inativo"
     }
+  },
+  "productoDetalle": {
+    "comun": {
+      "guardar": "Salvar",
+      "guardando": "Salvando…",
+      "guardarCambios": "Salvar alterações",
+      "cancelar": "Cancelar",
+      "cerrar": "Fechar",
+      "eliminar": "Excluir",
+      "eliminando": "Excluindo…",
+      "editar": "Editar",
+      "reintentar": "Tentar novamente",
+      "exportar": "Exportar",
+      "buscar": "Buscar",
+      "sucursal": "Filial",
+      "todasSucursales": "Todas as filiais",
+      "sinDatos": "—",
+      "cargando": "Carregando…",
+      "nuevo": "Novo",
+      "si": "Sim",
+      "no": "Não",
+      "verMas": "Ver mais",
+      "verMenos": "Ver menos",
+      "errorCargar": "Não foi possível carregar as informações",
+      "sinPermiso": "Você não tem permissão para esta ação",
+      "acciones": "Ações",
+      "confirmar": "Confirmar",
+      "agregar": "Adicionar",
+      "crear": "Criar",
+      "opcional": "opcional",
+      "desconocido": "Desconhecido",
+      "usuarioDesconocido": "Usuário desconhecido",
+      "unidadesCortas": "{n} un."
+    },
+    "migas": {
+      "inventario": "Estoque",
+      "productos": "Produtos"
+    },
+    "pestanas": {
+      "etiqueta": "Seções do produto",
+      "etiquetaSub": "Subseções",
+      "resumen": "Resumo",
+      "inventario": "Estoque",
+      "precios": "Preços e custos",
+      "variantes": "Variantes e adicionais",
+      "imagenes": "Imagens",
+      "proveedores": "Fornecedores e etiquetas",
+      "notas": "Notas",
+      "historial": "Histórico",
+      "sub": {
+        "stock": "Estoque",
+        "lotes": "Lotes",
+        "kardex": "Kardex",
+        "seriales": "Números de série",
+        "variantes": "Variantes",
+        "modificadores": "Adicionais",
+        "proveedores": "Fornecedores",
+        "etiquetas": "Etiquetas"
+      }
+    },
+    "estado": {
+      "active": "Ativo",
+      "inactive": "Inativo",
+      "discontinued": "Descontinuado",
+      "deleted": "Excluído"
+    },
+    "acciones": {
+      "editar": "Editar",
+      "ajustarStock": "Ajustar estoque",
+      "duplicar": "Duplicar",
+      "transferir": "Transferir",
+      "imprimirEtiqueta": "Imprimir etiqueta",
+      "codigosBarras": "Códigos de barras",
+      "activar": "Ativar",
+      "desactivar": "Desativar",
+      "descontinuar": "Descontinuar",
+      "eliminar": "Excluir",
+      "masAcciones": "Mais ações",
+      "motivoEliminado": "O produto está excluído",
+      "motivoSinPermiso": "Você não tem permissão para esta ação",
+      "motivoSinInventario": "Este produto não controla estoque"
+    },
+    "eliminar": {
+      "titulo": "Excluir este produto?",
+      "descripcion": "Ele será marcado como excluído e deixará de aparecer no catálogo, no PDV e na loja on-line.",
+      "aviso": "Ele não é apagado do banco de dados: suas vendas, compras e movimentações são mantidas.",
+      "confirmar": "Excluir"
+    },
+    "toasts": {
+      "estadoActualizado": "Status atualizado",
+      "estadoDetalle": "O produto agora está {estado}.",
+      "errorEstado": "Não foi possível atualizar o status",
+      "eliminado": "Produto excluído",
+      "eliminadoDetalle": "O produto foi marcado como excluído.",
+      "errorEliminar": "Não foi possível excluir o produto"
+    },
+    "kpi": {
+      "etiqueta": "Números do produto",
+      "precio": "Preço de venda",
+      "precioAyuda": "Preço de venda ao público",
+      "sinPrecio": "Sem preço",
+      "comparacion": "De {valor} · −{descuento}%",
+      "costo": "Custo",
+      "costoAyuda": "Custo de aquisição",
+      "sinCosto": "Sem custo",
+      "margen": "Margem {valor}%",
+      "stock": "Estoque · {sucursal}",
+      "todasSucursales": "Todas as filiais",
+      "estaSucursal": "Esta filial",
+      "unidades": "{n} un.",
+      "reservadoDisponible": "Reservado {reservado} · Disponível {disponible}",
+      "sinSeguimiento": "Sem controle",
+      "sinSeguimientoAyuda": "Estoque sem controle"
+    },
+    "meta": {
+      "sku": "SKU",
+      "categoria": "Categoria",
+      "sinCategoria": "Sem categoria",
+      "unidad": "Unidade",
+      "tipo": "Tipo",
+      "producto": "Produto",
+      "servicio": "Serviço",
+      "marca": "Marca",
+      "referencia": "Ref.",
+      "proveedor": "Fornecedor",
+      "sinProveedor": "Sem fornecedor",
+      "impuestos": "Impostos",
+      "sinImpuestos": "Sem impostos"
+    },
+    "carga": {
+      "errorTitulo": "Não foi possível carregar o produto",
+      "noEncontrado": "Produto não encontrado",
+      "volver": "Voltar para produtos"
+    },
+    "galeria": {
+      "etiqueta": "Imagens do produto",
+      "sinImagenes": "Sem imagens",
+      "verImagen": "Ver imagem {n}",
+      "verMas": "Ver mais {n} imagens",
+      "verMenos": "Ver menos imagens"
+    },
+    "cabecera": {
+      "etiqueta": "Dados do produto"
+    },
+    "etiquetas": {
+      "titulo": "Etiquetas do produto",
+      "tituloConteo": "Etiquetas do produto ({n})",
+      "nueva": "Nova etiqueta",
+      "buscar": "Buscar etiquetas",
+      "buscarAyuda": "Escolha etiquetas existentes ou digite uma nova para criá-la.",
+      "placeholder": "Adicionar etiqueta…",
+      "placeholderBusqueda": "Buscar ou criar etiqueta…",
+      "sinResultados": "Nenhuma etiqueta com esse nome",
+      "crearCon": "Criar “{nombre}”",
+      "quitar": "Remover {nombre}",
+      "asignadas": "Etiquetas atribuídas",
+      "ayuda": {
+        "titulo": "Para que servem as etiquetas?",
+        "busqueda": "Facilitam a busca e a filtragem de produtos",
+        "agrupar": "Permitem agrupar produtos por características ou categorias adicionais",
+        "campanas": "São úteis para campanhas promocionais e marketing",
+        "reportes": "Podem ser usadas em relatórios personalizados"
+      },
+      "estados": {
+        "errorTitulo": "Não foi possível carregar as etiquetas",
+        "vacioTitulo": "Sem etiquetas",
+        "vacioDescripcion": "Este produto não tem etiquetas. Busque ou crie uma para classificá-lo."
+      },
+      "toasts": {
+        "agregada": "Etiqueta “{nombre}” adicionada",
+        "quitada": "Etiqueta “{nombre}” removida",
+        "actualizadas": "Etiquetas atualizadas",
+        "creada": "Etiqueta “{nombre}” criada",
+        "error": "Não foi possível atualizar as etiquetas"
+      },
+      "crear": {
+        "titulo": "Criar etiqueta",
+        "confirmar": "Criar etiqueta",
+        "nombre": "Nome",
+        "nombrePlaceholder": "Ex.: Novo, Oferta, Destaque",
+        "nombreRequerido": "Digite um nome",
+        "duplicada": "Já existe uma etiqueta com esse nome",
+        "error": "Não foi possível criar a etiqueta",
+        "color": "Cor",
+        "colorPersonalizado": "Cor personalizada",
+        "hex": "Cor em hexadecimal",
+        "vistaPrevia": "Pré-visualização:"
+      }
+    },
+    "historial": {
+      "titulo": "Histórico",
+      "tituloConteo": "{count, plural, one {Histórico (# evento)} other {Histórico (# eventos)}}",
+      "variante": "Variante: {nombre}",
+      "sustantivo": {
+        "singular": "evento",
+        "plural": "eventos"
+      },
+      "dias": {
+        "hoy": "Hoje",
+        "ayer": "Ontem"
+      },
+      "filtros": {
+        "tipos": "Filtrar por tipo",
+        "todos": "Todos",
+        "rango": "Período",
+        "todoElHistorial": "Ver todo o histórico",
+        "sinRango": "Mostrando todo o histórico"
+      },
+      "tipos": {
+        "auditoria": "Alterações",
+        "precio": "Preços",
+        "costo": "Custos",
+        "kardex": "Kardex",
+        "compra": "Compras",
+        "venta": "Vendas",
+        "nota": "Notas",
+        "serial": "Números de série",
+        "garantia": "Garantias"
+      },
+      "errorTitulo": "Não foi possível carregar o histórico",
+      "vacioTitulo": "Sem histórico",
+      "vacioDescripcion": "Ainda não há movimentações para este produto. As alterações futuras serão registradas aqui.",
+      "sinResultadosTitulo": "Nenhum evento com estes filtros",
+      "sinResultadosDescripcion": "Tente outros tipos ou outro período.",
+      "acerca": {
+        "titulo": "Sobre o histórico",
+        "texto": "Reúne em uma única linha do tempo as alterações do produto e de suas variantes: criação, edições e exclusão, preços e custos com sua vigência, movimentações de estoque, compras, vendas, notas, números de série e garantias, com quem as fez e quando (no fuso horário da organização)."
+      },
+      "valores": {
+        "producto": "Produto",
+        "servicio": "Serviço",
+        "textoCambiado": "(alterada)"
+      },
+      "campos": {
+        "name": "Nome",
+        "sku": "SKU",
+        "barcode": "Código de barras",
+        "status": "Status",
+        "category_id": "Categoria",
+        "description": "Descrição",
+        "brand": "Marca",
+        "reference": "Referência",
+        "track_stock": "Controla estoque",
+        "track_serial": "Exige número de série",
+        "warranty_months": "Meses de garantia",
+        "serial_pattern": "Padrão de número de série",
+        "auto_generate_serial": "Gerar números de série automaticamente",
+        "product_type": "Tipo",
+        "unit_code": "Unidade",
+        "station": "Estação",
+        "weight_kg": "Peso (kg)",
+        "length_cm": "Comprimento (cm)",
+        "width_cm": "Largura (cm)",
+        "height_cm": "Altura (cm)",
+        "is_parent": "Tem variantes"
+      },
+      "auditoria": {
+        "acciones": {
+          "create": "Criação",
+          "update": "Atualização",
+          "delete": "Exclusão"
+        },
+        "otra": "Ação: {accion}",
+        "creado": "Produto criado",
+        "eliminado": "Produto excluído",
+        "sinDetalles": "Sem detalhes",
+        "cambio": "{campo}: {antes} → {despues}",
+        "mas": "{count, plural, one {+# campo} other {+# campos}}"
+      },
+      "titulos": {
+        "precio": "Alteração de preço",
+        "costo": "Alteração de custo",
+        "nota": "Nota"
+      },
+      "precio": {
+        "inicial": "Valor inicial {ahora}",
+        "cambio": "{antes} → {ahora}",
+        "comparacion": "Comparação {valor}",
+        "proveedor": "Fornecedor: {proveedor}",
+        "vigenciaDesde": "Vigente desde {desde}",
+        "vigenciaHasta": "Vigente de {desde} até {hasta}",
+        "programado": "Programado",
+        "cancelado": "Cancelado"
+      },
+      "kardex": {
+        "entrada": "Entrada de {cantidad} un.",
+        "salida": "Saída de {cantidad} un.",
+        "origen": "Origem: {origen}",
+        "sucursal": "Filial: {sucursal}",
+        "costoUnitario": "Custo unitário: {costo}",
+        "documento": "Documento: {documento}",
+        "origenes": {
+          "adjustment": "Ajuste de estoque",
+          "initial": "Estoque inicial",
+          "purchase": "Compra",
+          "sale": "Venda PDV",
+          "mesa_sale": "Venda na mesa",
+          "web_sale": "Venda online",
+          "invoice_sale": "Fatura de venda",
+          "invoice_void": "Anulação de fatura",
+          "transfer": "Transferência",
+          "folio_item": "Lançamento em fólio",
+          "room_consumption": "Consumo no quarto",
+          "return": "Devolução",
+          "production": "Produção",
+          "conversion": "Conversão de unidades"
+        }
+      },
+      "documentos": {
+        "ordenCompra": "Pedido de compra {documento}",
+        "facturaCompra": "Fatura de compra {documento}",
+        "facturaVenta": "Fatura de venda {documento}",
+        "venta": "Venda {documento}",
+        "ver": "Ver documento",
+        "cantidad": "Quantidade: {cantidad}",
+        "cantidadRecibida": "Quantidade: {cantidad} · recebido {recibido}",
+        "total": "Total {total} (unitário {unitario})",
+        "proveedor": "Fornecedor: {nombre}",
+        "cliente": "Cliente: {nombre}"
+      },
+      "nota": {
+        "fijada": "Fixada"
+      },
+      "serial": {
+        "titulo": "Número de série {serial}",
+        "transicion": "{de} → {a}",
+        "eventos": {
+          "received": "Recebido",
+          "stock_in": "Entrada por compra",
+          "reserved": "Reservado",
+          "sold": "Vendido",
+          "returned": "Devolvido",
+          "transferred": "Transferido",
+          "damaged": "Marcado como danificado",
+          "rma_created": "Enviado para RMA",
+          "warranty_claim": "Reclamação de garantia",
+          "warranty_resolved": "Garantia resolvida",
+          "status_change": "Alteração de status"
+        },
+        "estados": {
+          "in_stock": "Em estoque",
+          "sold": "Vendido",
+          "reserved": "Reservado",
+          "returned": "Devolvido",
+          "in_transit": "Em trânsito",
+          "damaged": "Danificado",
+          "rma": "Em RMA",
+          "warranty": "Em garantia",
+          "warranty_claim": "Reclamação de garantia",
+          "repair": "Em reparo",
+          "defective": "Defeituoso"
+        }
+      },
+      "garantia": {
+        "titulo": "Reclamação de garantia · série {serial}",
+        "ver": "Ver reclamação",
+        "motivo": "Motivo: {motivo}",
+        "resolucion": "Resolução: {resolucion}",
+        "resoluciones": {
+          "repair": "Reparo",
+          "replacement": "Substituição",
+          "refund": "Reembolso",
+          "store_credit": "Crédito na loja",
+          "rejected": "Rejeitado"
+        }
+      }
+    },
+    "imagenes": {
+      "titulo": "Imagens do produto",
+      "tituloConteo": "Imagens do produto ({n})",
+      "principal": "Principal",
+      "sinImagen": "Sem imagem",
+      "imagenN": "Imagem {n}",
+      "nota": "A imagem principal é a exibida no catálogo, no PDV e na loja on-line.",
+      "subir": "Enviar imagens",
+      "subirCorto": "Enviar",
+      "subiendo": "Enviando…",
+      "tomarFoto": "Tirar foto",
+      "generarIA": "Gerar com IA",
+      "biblioteca": "Da biblioteca",
+      "zona": {
+        "titulo": "Arraste imagens ou toque para enviar",
+        "ayuda": "Até {max} imagens · máx. 5 MB · JPG, PNG, WebP ou GIF"
+      },
+      "limite": {
+        "ayuda": "Máx. {max} imagens · 5 MB cada · JPG, PNG, WebP ou GIF",
+        "lleno": "Até {max} imagens por produto",
+        "sobrantes": "{n, plural, one {# imagem não foi adicionada} other {# imagens não foram adicionadas}}: não há mais espaço."
+      },
+      "validacion": {
+        "tipo": "Formato não suportado. Use JPG, PNG, WebP ou GIF.",
+        "tamano": "A imagem ultrapassa 5 MB."
+      },
+      "acciones": {
+        "grupo": "Ações de {nombre}",
+        "ver": "Ver",
+        "verNombre": "Ver {nombre}",
+        "hacerPrincipal": "Definir como principal",
+        "esPrincipal": "É a imagem principal",
+        "antes": "Mover para antes",
+        "despues": "Mover para depois",
+        "arrastrar": "Arraste para reordenar",
+        "eliminar": "Excluir imagem",
+        "quitar": "Remover imagem"
+      },
+      "alt": {
+        "placeholder": "Texto alternativo (alt)",
+        "etiqueta": "Texto alternativo de {nombre}"
+      },
+      "vista": {
+        "titulo": "Pré-visualização",
+        "posicion": "{n} de {total}",
+        "cerrar": "Fechar pré-visualização",
+        "anterior": "Imagem anterior",
+        "siguiente": "Próxima imagem",
+        "altPorDefecto": "Imagem {n} do produto"
+      },
+      "insignias": {
+        "biblioteca": "Biblioteca"
+      },
+      "ia": {
+        "titulo": "Gerar imagem com IA",
+        "descripcion": "Cria uma foto de catálogo com fundo branco a partir do nome do produto.",
+        "nombre": "Nome do produto",
+        "detalles": "Detalhes para a imagem",
+        "detallesAyuda": "Opcional: cor, material, ângulo… Quanto mais específico, melhor.",
+        "costo": "Consome créditos de IA da organização.",
+        "generar": "Gerar",
+        "generando": "Gerando…",
+        "nombreRequerido": "Digite o nome do produto",
+        "sinCreditos": "Não há créditos de IA disponíveis para gerar imagens.",
+        "noDisponible": "A geração de imagens não está disponível no momento.",
+        "error": "Não foi possível gerar a imagem. Tente novamente."
+      },
+      "biblio": {
+        "titulo": "Biblioteca de imagens",
+        "descripcion": "Imagens da sua organização e públicas. Escolha as que deseja adicionar ao produto.",
+        "buscar": "Buscar por nome ou etiqueta",
+        "seleccion": "{n, plural, =0 {Nenhuma escolhida} one {# escolhida} other {# escolhidas}} · cabem {cupo}",
+        "agregar": "{n, plural, =0 {Adicionar imagens} one {Adicionar # imagem} other {Adicionar # imagens}}",
+        "eligeUna": "Escolha pelo menos uma imagem",
+        "error": "Não foi possível carregar a biblioteca",
+        "vacia": "A biblioteca está vazia",
+        "vaciaAyuda": "Envie imagens para a biblioteca para reutilizá-las em vários produtos.",
+        "irBiblioteca": "Ir para a biblioteca",
+        "yaUsada": "Este produto já usa esta imagem",
+        "enUso": "Em uso",
+        "publica": "Pública"
+      },
+      "toasts": {
+        "archivoRechazado": "“{nombre}” não foi adicionado",
+        "subidas": "{n, plural, one {# imagem enviada} other {# imagens enviadas}}",
+        "errorSubir": "Não foi possível adicionar as imagens",
+        "generada": "Imagem gerada com IA",
+        "desdeBiblioteca": "{n, plural, one {# imagem adicionada da biblioteca} other {# imagens adicionadas da biblioteca}}",
+        "ordenGuardado": "Ordem das imagens atualizada",
+        "principal": "Imagem principal atualizada",
+        "errorOrden": "Não foi possível alterar a ordem",
+        "altGuardado": "Texto alternativo salvo",
+        "errorAlt": "Não foi possível salvar o texto alternativo",
+        "eliminada": "Imagem excluída",
+        "errorEliminar": "Não foi possível excluir a imagem"
+      },
+      "estados": {
+        "errorTitulo": "Não foi possível carregar as imagens",
+        "vacioTitulo": "Sem imagens",
+        "vacioDescripcion": "Este produto não tem imagens. Envie fotos, gere uma com IA ou traga-a da biblioteca."
+      },
+      "eliminar": {
+        "titulo": "Excluir esta imagem?",
+        "descripcion": "Esta ação não pode ser desfeita. A imagem será removida deste produto.",
+        "biblioteca": "A imagem continuará disponível na biblioteca."
+      }
+    },
+    "inventario": {
+      "motivos": {
+        "eliminado": "O produto está excluído",
+        "unaSucursal": "São necessárias pelo menos duas filiais para transferir"
+      },
+      "estadosStock": {
+        "sin_registro": "Sem registro",
+        "agotado": "Esgotado",
+        "bajo_minimo": "Abaixo do mínimo",
+        "disponible": "Disponível"
+      },
+      "stock": {
+        "sinSeguimiento": {
+          "titulo": "Estoque sem controle",
+          "descripcion": "Este produto não exige controle de estoque. Vendas e compras não afetam o estoque.",
+          "servicio": "Serviços não têm estoque: as vendas não descontam quantidades.",
+          "editar": "Editar produto"
+        },
+        "cifras": "Números de estoque",
+        "total": "Estoque total",
+        "enTodas": "Em todas as filiais",
+        "enSeleccionada": "Na filial selecionada",
+        "reservado": "Reservado",
+        "reservadoAyuda": "Em vendas em andamento",
+        "disponible": "Disponível",
+        "disponibleAyuda": "Para venda",
+        "agotadas": "{count, plural, one {# filial esgotada} other {# filiais esgotadas}}",
+        "bajoMinimo": "{count, plural, one {# filial abaixo do mínimo} other {# filiais abaixo do mínimo}}",
+        "registrarEntrada": "Registrar entrada",
+        "registrarSalida": "Registrar saída",
+        "verHistorial": "Ver histórico",
+        "transferir": "Transferir",
+        "entrada": "Entrada",
+        "salida": "Saída",
+        "entradaEn": "Registrar entrada em {sucursal}",
+        "salidaEn": "Registrar saída em {sucursal}",
+        "transferirDesde": "Transferir de {sucursal}",
+        "principal": "Principal",
+        "inactiva": "Inativa",
+        "conLotes": "{count, plural, one {# lote} other {# lotes}}",
+        "columnas": {
+          "existencia": "Em estoque",
+          "reservado": "Reservado",
+          "disponible": "Disponível",
+          "minimo": "Mínimo",
+          "costoPromedio": "Custo médio",
+          "valor": "Valor",
+          "actualizado": "Atualizado",
+          "estado": "Status"
+        },
+        "avisoVariantes": "O estoque fica {count, plural, one {na variante} other {nas # variantes}}: a tabela soma todas e o detalhamento está abaixo.",
+        "tablaEtiqueta": "Estoque por filial",
+        "errorTitulo": "Não foi possível carregar as informações de estoque",
+        "sinSucursales": {
+          "titulo": "Não há filiais configuradas para mostrar estoque",
+          "descripcion": "Crie uma filial para registrar o estoque deste produto.",
+          "accion": "Ir para filiais"
+        },
+        "movil": {
+          "cifras": "Em estoque {existencia} · Reservado {reservado} · Disponível {disponible}",
+          "meta": "Mínimo {minimo} · {actualizado}"
+        },
+        "pie": "Valor do estoque: {valor} (quantidade × custo médio). Disponível = quantidade − reservado.",
+        "pieLotes": "Há estoque em lotes: veja na aba Lotes."
+      },
+      "desglose": {
+        "titulo": "Detalhamento por variante",
+        "descripcion": "Estoque {count, plural, one {da variante} other {das # variantes}} em cada filial. Ajustes e transferências são feitos por variante.",
+        "entradaDe": "Registrar entrada de {variante} em {sucursal}",
+        "salidaDe": "Registrar saída de {variante} em {sucursal}",
+        "transferirDe": "Transferir {variante} de {sucursal}",
+        "columnas": {
+          "variante": "Variante"
+        },
+        "error": "Não foi possível carregar o estoque das variantes",
+        "vacio": "Nenhuma filial para mostrar",
+        "vacioDescripcion": "As variantes ainda não têm estoque na filial selecionada."
+      },
+      "lotes": {
+        "titulo": "Lotes deste produto",
+        "descripcion": "Lotes com validade, fornecedor e estoque por filial.",
+        "resumen": "{count, plural, one {# lote com estoque} other {# lotes com estoque}} · {unidades} un. distribuídas em {sucursales, plural, one {# filial} other {# filiais}}",
+        "verTodos": "Ver todos os lotes",
+        "verKardex": "Ver o kardex",
+        "alertaPorVencer": "{unidades} un. vencem em {count, plural, one {# dia} other {# dias}} ou menos. O PDV vende primeiro a validade mais próxima.",
+        "alertaVencidos": "{unidades} un. estão em {count, plural, one {um lote vencido} other {# lotes vencidos}}. Retire-as com um ajuste.",
+        "filtroEtiqueta": "Lotes a mostrar",
+        "filtro": {
+          "conExistencia": "Com estoque",
+          "todos": "Todos"
+        },
+        "columnas": {
+          "lote": "Lote",
+          "variante": "Variante",
+          "sucursales": "Filiais",
+          "existencia": "Quantidade",
+          "reservado": "Reservado",
+          "vence": "Vence em",
+          "proveedor": "Fornecedor",
+          "creado": "Criado em",
+          "estado": "Status"
+        },
+        "estados": {
+          "vencido": "Vencido",
+          "por_vencer": "A vencer",
+          "vigente": "Válido",
+          "sin_vencimiento": "Sem validade"
+        },
+        "sinVencimiento": "Sem validade",
+        "venceHoy": "vence hoje",
+        "venceEn": "em {count, plural, one {# dia} other {# dias}}",
+        "vencioHace": "venceu há {count, plural, one {# dia} other {# dias}}",
+        "enSucursal": "{sucursal}: {cantidad}",
+        "error": "Não foi possível carregar os lotes",
+        "vacio": {
+          "titulo": "Este produto não tem lotes",
+          "descripcion": "Os lotes são registrados ao receber compras e ao lançar ajustes de estoque, com código e validade.",
+          "accion": "Ir para lotes"
+        },
+        "vacioFiltro": {
+          "titulo": "Nenhum lote com estoque",
+          "descripcion": "Os lotes deste produto não têm mais unidades na filial selecionada."
+        }
+      },
+      "kardex": {
+        "titulo": "Movimentações deste produto",
+        "descripcion": "{sucursal} · saldo acumulado por produto e filial",
+        "completo": "Ver kardex completo",
+        "fechas": "Datas da movimentação",
+        "direccion": "Direção",
+        "origen": "Origem",
+        "todas": "Todas",
+        "entradas": "Entradas",
+        "salidas": "Saídas",
+        "todosOrigenes": "Todas as origens",
+        "verMovimientos": "Ver {count, plural, one {# movimentação} other {# movimentações}}",
+        "chips": {
+          "fechas": "Datas: {rango}",
+          "direccion": "Direção: {valor}",
+          "origen": "Origem: {valor}"
+        },
+        "exportando": "Exportando…",
+        "exportado": "Kardex exportado",
+        "exportadoDetalle": "{count, plural, one {# movimentação} other {# movimentações}} no arquivo.",
+        "exportadoTope": "As {count} movimentações mais recentes de {total} foram exportadas. Restrinja as datas para o restante.",
+        "errorExportar": "Não foi possível exportar o kardex",
+        "sinNadaQueExportar": "Não há movimentações com estes filtros",
+        "error": "Não foi possível carregar o kardex",
+        "vacio": {
+          "titulo": "Nenhuma movimentação ainda",
+          "descripcion": "Compras, vendas, ajustes e transferências deste produto aparecerão aqui."
+        },
+        "sinResultados": {
+          "titulo": "Nenhuma movimentação com estes filtros",
+          "descripcion": "Altere a filial, as datas, a direção ou a origem."
+        },
+        "saldoCorto": "Saldo {saldo}",
+        "sustantivo": {
+          "singular": "movimentação",
+          "plural": "movimentações"
+        },
+        "columnas": {
+          "fecha": "Data e hora",
+          "documento": "Documento",
+          "origen": "Origem",
+          "variante": "Variante",
+          "sku": "SKU",
+          "entrada": "Entrada",
+          "salida": "Saída",
+          "costoUnitario": "Custo unit.",
+          "costoTotal": "Custo total",
+          "saldo": "Saldo",
+          "usuario": "Usuário",
+          "nota": "Nota"
+        },
+        "origenes": {
+          "purchase": "Compra",
+          "sale": "Venda",
+          "adjustment": "Ajuste",
+          "transfer": "Transferência",
+          "return": "Devolução",
+          "loss": "Perda",
+          "production": "Produção",
+          "initial": "Estoque inicial",
+          "web_sale": "Venda on-line",
+          "mesa_sale": "Venda na mesa",
+          "invoice_sale": "Fatura de venda",
+          "folio_item": "Lançamento no fólio",
+          "room_consumption": "Consumo no quarto",
+          "web_order": "Pedido on-line",
+          "purchase_order": "Recebimento de compra",
+          "purchase_invoice": "Fatura de compra",
+          "invoice_void": "Anulação de fatura",
+          "credit_note": "Nota de crédito",
+          "web_refund": "Reembolso on-line",
+          "folio_item_reversal": "Estorno de fólio",
+          "transfer_out": "Transferência enviada",
+          "transfer_in": "Transferência recebida"
+        }
+      }
+    },
+    "modificadores": {
+      "ayuda": "Os adicionais são extras opcionais que não mudam o produto (ex.: molhos, retirar ingredientes). Para variantes com preço e SKU próprios (tamanho, cor), use a aba “Variantes”.",
+      "vacio": {
+        "titulo": "Nenhum adicional",
+        "descripcion": "Crie um grupo (ex.: Molhos) e adicione suas opções."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar os adicionais",
+        "descripcion": "Verifique sua conexão e tente novamente."
+      },
+      "confirmar": {
+        "grupoTitulo": "Excluir o grupo “{nombre}”?",
+        "grupoDescripcion": "O grupo e todas as suas opções são excluídos. As vendas já registradas mantêm o que foi vendido.",
+        "opcionTitulo": "Excluir a opção “{nombre}”?",
+        "opcionDescripcion": "Deixará de ser oferecida no PDV e na loja. Para ocultá-la por um tempo, desative-a."
+      },
+      "toasts": {
+        "grupoCreado": "Grupo criado",
+        "errorGuardar": "Não foi possível salvar a alteração",
+        "errorOrden": "Não foi possível salvar a ordem",
+        "errorOpcion": "Não foi possível adicionar a opção",
+        "errorGrupo": "Não foi possível criar o grupo",
+        "errorEliminar": "Não foi possível excluir"
+      },
+      "editor": {
+        "grupoDe": "Grupo {nombre}",
+        "subirGrupo": "Mover grupo para cima",
+        "bajarGrupo": "Mover grupo para baixo",
+        "nombreGrupo": "Nome do grupo",
+        "nombreGrupoPlaceholder": "Ex.: Molhos",
+        "modo": "Modo de seleção",
+        "modoUnica": "Única (rádio)",
+        "modoMultiple": "Múltipla (caixa de seleção)",
+        "obligatorio": "Obrigatório",
+        "min": "Mín.",
+        "max": "Máx.",
+        "minSelecciones": "Mínimo de seleções",
+        "maxSelecciones": "Máximo de seleções (vazio = sem limite)",
+        "errorMinMax": "O máximo deve ser maior ou igual ao mínimo",
+        "guardando": "Salvando…",
+        "eliminarGrupo": "Excluir o grupo {nombre}",
+        "sinOpciones": "Ainda não há opções neste grupo",
+        "nombreOpcion": "Nome da opção",
+        "precioOpcion": "Preço extra de {nombre}",
+        "gratis": "Grátis",
+        "extra": "+{precio}",
+        "activa": "Ativa",
+        "inactiva": "Inativa",
+        "activaDe": "Opção {nombre} ativa",
+        "subir": "Mover para cima",
+        "bajar": "Mover para baixo",
+        "subirOpcion": "Mover {nombre} para cima",
+        "bajarOpcion": "Mover {nombre} para baixo",
+        "eliminarOpcion": "Excluir a opção {nombre}",
+        "sugerencias": "Valores usados em variantes, clique para reutilizar:",
+        "nuevaOpcion": "Nova opção (ex.: BBQ)",
+        "precioExtra": "Preço extra",
+        "anadir": "Adicionar",
+        "nuevoGrupo": "Novo grupo de adicionais",
+        "gruposExistentes": "Grupos existentes no seu catálogo, clique para reutilizar:",
+        "nombreNuevoGrupo": "Nome (ex.: Molhos)",
+        "agregarGrupo": "Adicionar"
+      }
+    },
+    "notas": {
+      "etiquetaNota": "Nota de {autor}",
+      "fijada": "Fixada",
+      "editada": "editada",
+      "fijar": "Fixar nota",
+      "desfijar": "Desafixar nota",
+      "editarNota": "Editar nota",
+      "eliminarNota": "Excluir nota",
+      "motivoEliminar": "Somente o autor ou quem pode editar produtos pode excluir esta nota",
+      "adjuntos": "Anexos",
+      "descargar": "Baixar {nombre}",
+      "errorDescarga": "Indisponível",
+      "roles": {
+        "superAdmin": "Super admin",
+        "adminOrganizacion": "Admin da organização",
+        "manager": "Gerente",
+        "empleado": "Funcionário",
+        "cliente": "Cliente"
+      },
+      "nueva": {
+        "titulo": "Nova nota",
+        "placeholder": "Escreva uma nota ou comentário sobre este produto…",
+        "seleccionados": "Arquivos selecionados",
+        "quitar": "Remover {nombre}",
+        "adjuntar": "Anexar arquivos",
+        "guardar": "Salvar nota",
+        "subiendo": "Enviando arquivos…"
+      },
+      "historial": {
+        "titulo": "Histórico de notas",
+        "tituloConteo": "Histórico de notas ({count})",
+        "fijadas": "{count, plural, one {# fixada} other {# fixadas}}",
+        "errorTitulo": "Não foi possível carregar as notas",
+        "vacioTitulo": "Sem notas",
+        "vacioDescripcion": "Este produto não tem notas nem documentos. Adicione uma nota ou anexe um arquivo para começar."
+      },
+      "eliminar": {
+        "titulo": "Excluir nota?",
+        "descripcion": "A nota será excluída permanentemente.",
+        "descripcionConArchivos": "{count, plural, one {A nota e seu anexo serão excluídos permanentemente.} other {A nota e seus # anexos serão excluídos permanentemente.}}"
+      },
+      "toasts": {
+        "guardada": "Nota salva",
+        "guardadaDetalle": "A nota foi adicionada ao produto.",
+        "errorGuardar": "Não foi possível salvar a nota",
+        "adjuntosFallidos": "A nota foi salva, mas alguns arquivos não foram enviados",
+        "archivoGrande": "Arquivo muito grande",
+        "archivoGrandeDetalle": "{nombres} excede o máximo de {maximo}.",
+        "fijada": "Nota fixada",
+        "desfijada": "Nota desafixada",
+        "errorFijar": "Não foi possível alterar a nota fixada",
+        "editada": "Nota atualizada",
+        "errorEditar": "Não foi possível atualizar a nota",
+        "eliminada": "Nota excluída",
+        "eliminadaDetalle": "A nota e seus arquivos foram excluídos.",
+        "errorEliminar": "Não foi possível excluir a nota"
+      }
+    },
+    "precios": {
+      "precioActual": "Preço atual",
+      "precioActualAyuda": "Último preço definido",
+      "sinPrecio": "Sem preço",
+      "costoActual": "Custo atual",
+      "costoActualAyuda": "Custo de aquisição vigente",
+      "sinCosto": "Sem custo",
+      "sinMargen": "Sem margem: falta preço ou custo",
+      "margen": "Margem {valor}%",
+      "descuento": "−{valor}%",
+      "porcentaje": "{valor}%",
+      "vigenteDesde": "Vigente desde {fecha}",
+      "actualizarPrecio": "Atualizar preço",
+      "actualizarCosto": "Atualizar custo",
+      "programado": {
+        "titulo": "Programado",
+        "ayuda": "Alterações que entrarão em vigor",
+        "precio": "preço a partir de {fecha}",
+        "costo": "custo a partir de {fecha}",
+        "nota": "Uma nova alteração cancela o que estiver programado depois da sua data."
+      },
+      "vigencias": {
+        "vigente": "Vigente",
+        "programado": "Programado",
+        "cancelado": "Cancelado"
+      },
+      "vigencia": {
+        "etiqueta": "Vigente a partir de",
+        "ahora": "Agora",
+        "programar": "Um dia futuro",
+        "dia": "Dia de início",
+        "ayudaProgramar": "Entra em vigor às 00:00 desse dia, no fuso horário da organização.",
+        "diaRequerido": "Escolha o dia de início",
+        "diaPasado": "O dia deve ser posterior a hoje"
+      },
+      "grafico": {
+        "titulo": "Evolução de preços",
+        "cambios": "{count, plural, one {# alteração} other {# alterações}}",
+        "insuficiente": "Ainda não há alterações suficientes para desenhar a evolução.",
+        "leyenda": "Legenda",
+        "precio": "Preço",
+        "costo": "Custo",
+        "hoy": "Hoje",
+        "descripcionAccesible": "Gráfico de linhas do preço e do custo ao longo do tempo com {cambios} alterações. A tabela abaixo tem os mesmos dados."
+      },
+      "tabla": {
+        "titulo": "Histórico de preços e custos",
+        "precios": "Preços",
+        "costos": "Custos",
+        "incluirVariantes": "Incluir variantes",
+        "desde": "Válido desde",
+        "hasta": "Válido até",
+        "producto": "Produto",
+        "productoPrincipal": "Produto principal",
+        "precio": "Preço",
+        "costo": "Custo",
+        "comparacion": "Comparação",
+        "descuento": "Desconto",
+        "proveedor": "Fornecedor",
+        "cambio": "Variação %",
+        "vacioPrecios": "Nenhuma alteração de preço registrada",
+        "vacioCostos": "Nenhuma alteração de custo registrada",
+        "vacioAyuda": "Cada alteração que você fizer ficará aqui com sua vigência."
+      },
+      "dialogoPrecio": {
+        "titulo": "Atualizar preço",
+        "descripcion": "Informe o novo preço de venda. A alteração ficará registrada no histórico.",
+        "precioActual": "Preço atual",
+        "nuevoPrecio": "Novo preço",
+        "comparacion": "Preço de comparação (opcional)",
+        "comparacionAyuda": "Se for maior que o preço de venda, será exibido como desconto.",
+        "comparacionDescuento": "Será exibido um desconto de −{descuento}%.",
+        "errorPrecioRequerido": "Informe o novo preço",
+        "errorPrecioNegativo": "O preço não pode ser negativo",
+        "errorComparacion": "O preço de comparação deve ser maior que o preço de venda",
+        "margenConCosto": "Margem com o custo atual ({costo})",
+        "margenSinCosto": "Sem custo registrado: não é possível calcular a margem",
+        "guardar": "Salvar preço",
+        "guardando": "Salvando…",
+        "toastActualizado": "Preço atualizado",
+        "toastActualizadoDetalle": "O preço agora é {precio}.",
+        "toastProgramado": "Preço programado",
+        "toastProgramadoDetalle": "{precio} entrará em vigor em {dia}.",
+        "toastSinCambios": "Sem alterações",
+        "toastSinCambiosDetalle": "O preço já era esse.",
+        "toastError": "Não foi possível atualizar o preço"
+      },
+      "dialogoCosto": {
+        "titulo": "Atualizar custo",
+        "descripcion": "Informe o novo custo de aquisição. A alteração ficará registrada no histórico.",
+        "costoActual": "Custo atual",
+        "nuevoCosto": "Novo custo",
+        "proveedor": "Fornecedor (opcional)",
+        "proveedorAyuda": "De qual fornecedor vem este custo.",
+        "proveedorVacio": "O produto não tem fornecedores. Adicione-os em “Fornecedores e etiquetas”.",
+        "sinProveedor": "Sem fornecedor",
+        "preferido": "preferido",
+        "errorCostoRequerido": "Informe o novo custo",
+        "errorCostoNegativo": "O custo não pode ser negativo",
+        "margenConPrecio": "Margem com o preço atual ({precio})",
+        "margenSinPrecio": "Sem preço registrado: não é possível calcular a margem",
+        "guardar": "Salvar custo",
+        "guardando": "Salvando…",
+        "toastActualizado": "Custo atualizado",
+        "toastActualizadoDetalle": "O custo agora é {costo}.",
+        "toastProgramado": "Custo programado",
+        "toastProgramadoDetalle": "{costo} entrará em vigor em {dia}.",
+        "toastSinCambios": "Sem alterações",
+        "toastSinCambiosDetalle": "O custo já era esse.",
+        "toastError": "Não foi possível atualizar o custo"
+      }
+    },
+    "proveedores": {
+      "titulo": "Fornecedores do produto",
+      "subtitulo": "Gerencie os fornecedores e suas condições comerciais",
+      "agregar": "Adicionar fornecedor",
+      "agregarPrimero": "Adicionar primeiro fornecedor",
+      "motivoSinLibres": "Todos os fornecedores da organização já estão atribuídos a este produto.",
+      "nit": "CNPJ/NIT: {nit}",
+      "sinNombre": "Fornecedor sem nome",
+      "dias": "{n, plural, one {# dia} other {# dias}}",
+      "minimoCorto": "Pedido mín.: {n}",
+      "ultimaCompra": "Última compra: {costo} · {fecha}",
+      "ultimaCompraTitulo": "Custo unitário da última compra deste fornecedor",
+      "columnas": {
+        "proveedor": "Fornecedor",
+        "costo": "Custo",
+        "diasEntrega": "Prazo de entrega",
+        "pedidoMinimo": "Pedido mínimo",
+        "sku": "SKU do fornecedor",
+        "preferido": "Preferido",
+        "notas": "Notas"
+      },
+      "acciones": {
+        "hacerPreferido": "Marcar como preferido",
+        "hacerPreferidoDe": "Marcar {nombre} como preferido",
+        "esPreferido": "{nombre} é o fornecedor preferido",
+        "esPreferidoCorto": "Fornecedor preferido"
+      },
+      "estados": {
+        "errorTitulo": "Não foi possível carregar os fornecedores",
+        "vacioTitulo": "Este produto não tem fornecedores atribuídos",
+        "vacioDescripcion": "Adicione um fornecedor com seu custo e prazo de entrega para agilizar as compras."
+      },
+      "dialogo": {
+        "tituloAgregar": "Adicionar fornecedor",
+        "tituloEditar": "Editar fornecedor",
+        "descripcionAgregar": "Selecione um fornecedor e defina as condições comerciais",
+        "descripcionEditar": "Altere as condições comerciais do fornecedor",
+        "proveedor": "Fornecedor",
+        "proveedorPlaceholder": "Selecionar fornecedor",
+        "proveedorBuscar": "Buscar por nome ou documento…",
+        "proveedorVacio": "Nenhum fornecedor disponível",
+        "proveedorRequerido": "Selecione um fornecedor",
+        "crear": "Criar fornecedor",
+        "crearCon": "Criar fornecedor “{nombre}”",
+        "costo": "Custo",
+        "diasEntrega": "Prazo de entrega",
+        "diasSufijo": "dias",
+        "pedidoMinimo": "Pedido mínimo",
+        "sku": "SKU do fornecedor",
+        "skuPlaceholder": "Opcional",
+        "notas": "Notas",
+        "notasPlaceholder": "Notas sobre este fornecedor…",
+        "preferido": "Fornecedor preferido",
+        "preferidoAyuda": "Só pode haver um: os demais deixam de ser.",
+        "negativo": "Não pode ser negativo"
+      },
+      "eliminar": {
+        "titulo": "Excluir fornecedor?",
+        "descripcion": "{nombre} será desvinculado deste produto."
+      },
+      "toasts": {
+        "agregado": "Fornecedor adicionado",
+        "agregadoDetalle": "O fornecedor foi atribuído ao produto",
+        "actualizado": "Fornecedor atualizado",
+        "actualizadoDetalle": "As condições do fornecedor foram atualizadas",
+        "preferido": "{nombre} agora é o fornecedor preferido",
+        "eliminado": "Fornecedor excluído",
+        "eliminadoDetalle": "O fornecedor foi desvinculado do produto",
+        "duplicado": "Este fornecedor já está atribuído ao produto",
+        "errorGuardar": "Não foi possível salvar o fornecedor",
+        "errorEliminar": "Não foi possível excluir o fornecedor"
+      },
+      "nuevo": {
+        "titulo": "Novo fornecedor",
+        "descripcion": "Crie o fornecedor e ele ficará selecionado para este produto."
+      },
+      "compras": {
+        "titulo": "Histórico de compras",
+        "subtitulo": "Pedidos e faturas de compra deste produto e suas variantes",
+        "limitado": "Exibindo as {n} mais recentes de {total}",
+        "filtro": "Filtrar por fornecedor",
+        "todos": "Todos os fornecedores",
+        "fecha": "Data",
+        "documento": "Documento",
+        "proveedor": "Fornecedor",
+        "cantidad": "Quantidade",
+        "costoUnitario": "Custo unitário",
+        "total": "Total",
+        "estado": "Status",
+        "tipoOrden": "Pedido {doc}",
+        "tipoFactura": "Fatura {doc}",
+        "cantidadPorCosto": "{cantidad} × {costo}",
+        "vacio": "Nenhuma compra registrada",
+        "vacioAyuda": "Quando você comprar este produto com um pedido ou fatura de compra, ele aparecerá aqui.",
+        "error": "Não foi possível carregar o histórico de compras"
+      }
+    },
+    "resumen": {
+      "verImagenes": "Ver imagens",
+      "informacion": {
+        "titulo": "Informações",
+        "nombre": "Nome",
+        "sku": "SKU",
+        "codigoBarras": "Código de barras",
+        "tipo": "Tipo",
+        "producto": "Produto",
+        "servicio": "Serviço",
+        "estado": "Status",
+        "unidad": "Unidade de medida",
+        "categoria": "Categoria principal",
+        "sinCategoria": "Sem categoria",
+        "estacion": "Estação de cozinha/bar",
+        "marca": "Marca",
+        "referencia": "Referência",
+        "categoriasAdicionales": "Categorias adicionais",
+        "sinAdicionales": "Sem categorias adicionais",
+        "porRegla": "por regra",
+        "porReglaAyuda": "Atribuída automaticamente por uma regra de categorias"
+      },
+      "estaciones": {
+        "hot_kitchen": "Cozinha quente",
+        "cold_kitchen": "Cozinha fria",
+        "bar": "Bar",
+        "cashier": "Caixa",
+        "all": "Todas as estações",
+        "heredada": "Herdada da categoria"
+      },
+      "descripcion": {
+        "titulo": "Descrição",
+        "vacia": "Este produto não tem descrição."
+      },
+      "impuestos": {
+        "titulo": "Impostos",
+        "vacio": "Nenhum imposto atribuído",
+        "chip": "{nombre} {tasa}%"
+      },
+      "proveedor": {
+        "titulo": "Fornecedor preferido",
+        "verTodos": "{count, plural, one {Ver # fornecedor} other {Ver # fornecedores}}",
+        "nombre": "Fornecedor",
+        "costo": "Custo do fornecedor",
+        "skuProveedor": "SKU do fornecedor",
+        "entrega": "Prazo de entrega",
+        "dias": "{count, plural, one {# dia} other {# dias}}",
+        "minimo": "Pedido mínimo",
+        "sinPreferido": "Tem fornecedores, mas nenhum está marcado como preferido.",
+        "vacio": "Sem fornecedor"
+      },
+      "inventario": {
+        "titulo": "Estoque",
+        "verStock": "Ver estoque",
+        "rastrea": "Controla estoque",
+        "servicio": "Não: serviços não têm estoque",
+        "stockTotal": "Estoque total",
+        "reservadoDisponible": "Reservado · disponível",
+        "reservadoDisponibleValor": "{reservado} · {disponible}",
+        "bajoMinimo": "Alertas por filial",
+        "sucursalesAlerta": "Abaixo do mínimo: {bajo} · Esgotadas: {agotadas}",
+        "sinAlertas": "Nenhuma filial abaixo do mínimo"
+      },
+      "trazabilidad": {
+        "titulo": "Rastreabilidade de números de série e garantia",
+        "verSeriales": "Ver números de série",
+        "requiereSerial": "Exige número de série",
+        "garantia": "Garantia",
+        "meses": "{count, plural, one {# mês} other {# meses}}",
+        "sinGarantia": "Sem garantia",
+        "autoGenerar": "Gerar números de série automaticamente",
+        "patron": "Padrão de geração"
+      },
+      "envio": {
+        "titulo": "Envio",
+        "peso": "Peso",
+        "volumen": "Volume",
+        "dimensiones": "Comprimento × largura × altura",
+        "dimensionesValor": "{largo} × {ancho} × {alto} cm"
+      },
+      "compuesto": {
+        "titulo": "Composto / receita",
+        "esCompuesto": "Produto composto",
+        "receta": "Receita",
+        "verRecetas": "Ver receitas"
+      },
+      "variantes": {
+        "titulo": "Variantes e adicionais",
+        "variantes": "Variantes",
+        "conteoVariantes": "{count, plural, =0 {Sem variantes} one {# variante ({activas} ativas)} other {# variantes ({activas} ativas)}}",
+        "modificadores": "Grupos de adicionais",
+        "conteoModificadores": "{count, plural, =0 {Sem adicionais} one {# grupo} other {# grupos}}"
+      },
+      "fechas": {
+        "titulo": "Registro",
+        "creado": "Criado",
+        "modificado": "Última modificação"
+      }
+    },
+    "seriales": {
+      "sinSeriales": {
+        "titulo": "Este produto não exige números de série",
+        "descripcion": "Para habilitar a rastreabilidade de números de série, edite o produto e ative a opção “Exige número de série” na seção Rastreabilidade.",
+        "editar": "Editar produto"
+      },
+      "resumen": {
+        "etiqueta": "Configuração de números de série",
+        "sku": "SKU: {sku}",
+        "precio": "Preço: {valor}",
+        "costo": "Custo: {valor}",
+        "variantes": "{count, plural, one {Inclui os números de série de # variante} other {Inclui os números de série de # variantes}}"
+      },
+      "badges": {
+        "trazabilidad": "Rastreabilidade ativa",
+        "autoGeneracion": "Geração automática",
+        "garantia": "{count, plural, one {# mês de garantia} other {# meses de garantia}}",
+        "patron": "Padrão: {patron}"
+      },
+      "stock": {
+        "total": "{count, plural, one {Estoque total: # unidade} other {Estoque total: # unidades}}",
+        "generados": "Números de série gerados: {valor}",
+        "sinSerial": "{count} sem número de série"
+      },
+      "inactivo": {
+        "aviso": "{count, plural, one {Este produto não exige mais número de série. O número registrado é mantido e pode ser consultado, mas não são gerados novos.} other {Este produto não exige mais número de série. Os # números registrados são mantidos e podem ser consultados, mas não são gerados novos.}}"
+      },
+      "stats": {
+        "etiqueta": "Números de série por status",
+        "total": "Total",
+        "enStock": "Em estoque",
+        "reservados": "Reservados",
+        "vendidos": "Vendidos",
+        "otros": "Outros status:"
+      },
+      "estados": {
+        "in_stock": "Em estoque",
+        "reserved": "Reservado",
+        "sold": "Vendido",
+        "returned": "Devolvido",
+        "in_transit": "Em trânsito",
+        "damaged": "Danificado",
+        "rma": "RMA",
+        "warranty_claim": "Reclamação de garantia",
+        "warranty": "Em garantia",
+        "repair": "Em reparo",
+        "defective": "Defeituoso"
+      },
+      "garantia": {
+        "rango": "{inicio} → {fin}",
+        "vigente": "{count, plural, one {Vigente · # dia} other {Vigente · # dias}}",
+        "vencida": "Vencida"
+      },
+      "garantias": {
+        "vigente": "Vigente",
+        "por_vencer": "A vencer (30 dias)",
+        "vencida": "Vencida",
+        "sin_garantia": "Sem garantia"
+      },
+      "filtros": {
+        "buscar": "Buscar por número de série...",
+        "buscarCorto": "Buscar série…",
+        "buscarEtiqueta": "Buscar série (Enter ou leitor abre a rastreabilidade)",
+        "escanear": "Escanear número de série",
+        "escanearAyuda": "Leia o código com o leitor: se o número existir, a rastreabilidade é aberta",
+        "estado": "Status",
+        "todosEstados": "Todos os status",
+        "sucursal": "Filial atual",
+        "todasSucursales": "Filial: todas",
+        "garantia": "Garantia",
+        "garantiaAyuda": "“A vencer” = vence nos próximos 30 dias.",
+        "todasGarantias": "Todas",
+        "variante": "Variante",
+        "todasVariantes": "Todas as variantes",
+        "verResultados": "{count, plural, =0 {Sem resultados} one {Ver # número de série} other {Ver # números de série}}"
+      },
+      "chips": {
+        "estado": "Status: {valor}",
+        "sucursal": "Filial: {valor}",
+        "garantia": "Garantia: {valor}",
+        "variante": "Variante: {valor}"
+      },
+      "columnas": {
+        "serial": "Série",
+        "variante": "Variante",
+        "estado": "Status",
+        "garantia": "Garantia",
+        "costo": "Custo de compra",
+        "precio": "Preço de venda",
+        "cliente": "Cliente",
+        "sucursal": "Filial",
+        "recepcion": "Data de recebimento"
+      },
+      "tabla": {
+        "etiqueta": "Números de série do produto",
+        "sinCliente": "N/D",
+        "productoBase": "Produto base",
+        "varianteN": "Variante #{id}",
+        "recibido": "Recebido {fecha}",
+        "garantiaNo": "Garantia —",
+        "costoMovil": "Custo {valor}"
+      },
+      "vacio": {
+        "titulo": "Ainda não há números de série",
+        "descripcion": "Ainda não há números de série registrados para este produto. Gere-os pelo padrão ou registre-os com o leitor."
+      },
+      "sinResultados": {
+        "titulo": "Nenhum número de série com esses filtros",
+        "descripcion": "Nenhum número de série encontrado com os filtros aplicados."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar os números de série"
+      },
+      "sustantivo": {
+        "singular": "número de série",
+        "plural": "números de série"
+      },
+      "acciones": {
+        "generar": "Gerar números de série",
+        "generarCorto": "Gerar",
+        "verTrazabilidad": "Ver rastreabilidade",
+        "cambiarEstado": "Alterar status",
+        "reclamo": "Reclamação de garantia",
+        "reclamoCorto": "Reclamação",
+        "abrirFicha": "Abrir ficha do número de série",
+        "copiar": "Copiar número de série",
+        "copiado": "Número de série copiado",
+        "copiarError": "Não foi possível copiar",
+        "exportar": "Exportar números de série (CSV)",
+        "exportarSeleccion": "Exportar",
+        "sinTransiciones": "Os números selecionados não compartilham uma alteração de status permitida."
+      },
+      "csv": {
+        "serial": "Número de série",
+        "variante": "Variante",
+        "estado": "Status",
+        "sucursal": "Filial",
+        "cliente": "Cliente",
+        "recepcion": "Data de recebimento",
+        "venta": "Data de venda",
+        "garantiaInicio": "Início da garantia",
+        "garantiaFin": "Fim da garantia",
+        "costo": "Custo de compra",
+        "precio": "Preço de venda",
+        "exportado": "{count, plural, one {# número de série exportado} other {# números de série exportados}}"
+      },
+      "generar": {
+        "titulo": "Gerar números de série em massa",
+        "descripcionPatron": "Gera números de série automaticamente usando o padrão:",
+        "descripcionLista": "Registre os números de série que as unidades já trazem (etiqueta do fabricante ou leitor).",
+        "modo": "Como registrar",
+        "modoPatron": "Por padrão",
+        "modoLista": "Lista ou leitor",
+        "variante": "Variante",
+        "varianteAyuda": "Cada número pertence a uma variante: o estoque e a cota são da variante escolhida.",
+        "variantePlaceholder": "Escolha a variante",
+        "sucursal": "Filial de destino",
+        "sucursalPlaceholder": "Selecione uma filial",
+        "sucursalAyuda": "A filial é obrigatória. Cada número é atribuído a uma unidade de estoque na filial selecionada.",
+        "sinSucursal": "Selecione uma filial para continuar",
+        "opcionSucursal": "{sucursal} (Estoque: {stock} · Faltam: {faltan})",
+        "stockSucursal": "Estoque na filial: {stock} · Números existentes: {existentes}",
+        "faltan": "{count, plural, one {Falta <b>#</b> número} other {Faltam <b>#</b> números}}",
+        "cantidad": "Quantidade de números a gerar",
+        "generarFaltantes": "{count, plural, one {Gerar o # número que falta} other {Gerar os # números que faltam}}",
+        "vistaPrevia": "Prévia:",
+        "vistaPreviaNota": "Se um número já existir, usa-se o próximo da sequência.",
+        "patronAyuda": "Defina o padrão na seção Rastreabilidade do produto.",
+        "lista": "Números de série",
+        "listaAyuda": "Um por linha. Também pode separá-los com vírgula, ponto e vírgula ou tabulação; o leitor digita um por linha.",
+        "listaPlaceholder": "SN-0001\nSN-0002\nSN-0003",
+        "listaContador": "{count, plural, =0 {Nenhum número} one {# número} other {# números}}",
+        "repetidos": "{count, plural, one {# número repetido na lista foi removido.} other {# números repetidos na lista foram removidos.}}",
+        "existentes": "{count, plural, one {# já existe neste produto e será ignorado:} other {# já existem neste produto e serão ignorados:}}",
+        "costo": "Custo de compra",
+        "costoAyuda": "Vazio = custo vigente do produto.",
+        "nota": "Nota",
+        "notaPlaceholder": "Ex.: lote do pedido de compra 118",
+        "avisoGarantia": "{count, plural, one {Cada número terá # mês de garantia a partir de hoje.} other {Cada número terá # meses de garantia a partir de hoje.}}",
+        "generarN": "{count, plural, one {Gerar # número} other {Gerar # números}}",
+        "registrarN": "{count, plural, one {Registrar # número} other {Registrar # números}}",
+        "generando": "Gerando…",
+        "motivoVariante": "Escolha a variante",
+        "motivoLista": "Digite ou escaneie pelo menos um número",
+        "motivoInactivo": "O produto não exige números de série",
+        "sinCupo": "Não há unidades sem número nesta filial: registre estoque primeiro.",
+        "resultadoTitulo": "Números de série registrados",
+        "resultadoCreados": "{count, plural, =0 {Nenhum número foi criado.} one {# número foi criado.} other {# números foram criados.}}",
+        "resultadoRango": "Números criados",
+        "resultadoOmitidos": "{count, plural, one {# ignorado} other {# ignorados}}",
+        "motivoDuplicado": "Já existe (o número é único)",
+        "toastOk": "{count, plural, =0 {Nenhum número criado} one {# número registrado} other {# números registrados}}",
+        "toastOmitidos": "{count, plural, one {# ignorado por repetido} other {# ignorados por repetidos}}",
+        "toastError": "Não foi possível gerar os números de série"
+      },
+      "estadoDialogo": {
+        "titulo": "Alterar status",
+        "descripcionUno": "Número {serial}",
+        "descripcionVarios": "{count, plural, one {# número selecionado} other {# números selecionados}}",
+        "estadoActual": "Status atual:",
+        "nuevoEstado": "Passar para",
+        "ayudas": {
+          "in_stock": "Volta a ficar disponível para venda na sua filial.",
+          "damaged": "Não pode ser vendido. O dano fica registrado no histórico.",
+          "rma": "É enviado ao fornecedor ou fabricante para análise ou troca.",
+          "returned": "O cliente devolveu a unidade. Verifique-a antes de voltar ao estoque.",
+          "sold": "Encerra a reclamação e o número volta a constar como vendido."
+        },
+        "nota": "Nota",
+        "notaAyuda": "Fica no histórico do número.",
+        "notaPlaceholder": "Motivo da alteração",
+        "aplicar": "Alterar status",
+        "motivoElegir": "Escolha o novo status",
+        "motivoNota": "Escreva uma nota para esta alteração",
+        "toastOk": "{count, plural, one {# número atualizado} other {# números atualizados}}",
+        "toastOkDetalle": "Novo status: {estado}",
+        "toastError": "Não foi possível alterar o status",
+        "rechazadosTitulo": "Alguns números não foram alterados",
+        "rechazadosDescripcion": "{count, plural, one {# número não permite essa alteração a partir do status atual:} other {# números não permitem essa alteração a partir do status atual:}}"
+      },
+      "traza": {
+        "titulo": "Rastreabilidade",
+        "descripcion": "Rastreabilidade do número de série",
+        "error": "Não foi possível carregar a rastreabilidade",
+        "sucursalN": "Filial #{id}",
+        "notas": "Notas",
+        "documentos": "Documentos",
+        "lineaTiempo": "Linha do tempo",
+        "sinEventos": "Nenhuma movimentação registrada.",
+        "por": "Por {usuario}",
+        "proveedor": "Fornecedor: {proveedor}",
+        "enSucursal": "Filial: {sucursal}",
+        "movimiento": "De {desde} para {hasta}",
+        "deA": "Status: {desde} → {hasta}",
+        "estado": "Status: {estado}",
+        "aCliente": "Cliente: {cliente}",
+        "motivoReclamo": "Motivo: {motivo}",
+        "resolucion": "Resolução: {resolucion}",
+        "reclamo": "Reclamação de garantia",
+        "reclamoEstado": "Reclamação de garantia · {estado}",
+        "hitos": {
+          "compra": "Compra"
+        },
+        "eventos": {
+          "received": "Recebido",
+          "stock_in": "Entrada no estoque",
+          "reserved": "Reservado",
+          "sold": "Vendido",
+          "returned": "Devolvido",
+          "transferred": "Transferido",
+          "damaged": "Marcado como danificado",
+          "rma_created": "Enviado para RMA",
+          "warranty_claim": "Reclamação de garantia",
+          "warranty_resolved": "Garantia resolvida",
+          "status_change": "Alteração de status",
+          "otro": "Movimentação: {tipo}"
+        },
+        "estadosReclamo": {
+          "pending": "Pendente",
+          "approved": "Aprovada",
+          "rejected": "Rejeitada",
+          "in_process": "Em andamento",
+          "resolved": "Resolvida",
+          "cancelled": "Cancelada"
+        },
+        "resoluciones": {
+          "repair": "Reparo",
+          "replacement": "Troca",
+          "refund": "Reembolso",
+          "store_credit": "Crédito na loja",
+          "rejected": "Rejeitada"
+        },
+        "canales": {
+          "in_stock": "Em estoque",
+          "pos": "Ponto de venda",
+          "web": "Loja virtual",
+          "invoice": "Fatura",
+          "table": "Mesa"
+        },
+        "docs": {
+          "ordenCompra": "Pedido de compra",
+          "facturaCompra": "Nota de compra",
+          "venta": "Venda",
+          "pedidoWeb": "Pedido online",
+          "facturaVenta": "Nota fiscal de venda",
+          "cliente": "Cliente",
+          "reclamo": "Ver reclamação"
+        },
+        "datos": {
+          "producto": "Produto / variante",
+          "sucursalActual": "Filial atual",
+          "sucursalOrigen": "Filial de entrada",
+          "proveedor": "Fornecedor",
+          "recepcion": "Data de recebimento",
+          "costo": "Custo de compra",
+          "cliente": "Cliente",
+          "venta": "Data de venda",
+          "precio": "Preço de venda",
+          "canal": "Canal de venda",
+          "garantia": "Garantia",
+          "meses": "Meses de garantia"
+        }
+      }
+    },
+    "variantes": {
+      "titulo": "Variantes do produto",
+      "nueva": "Nova variante",
+      "generar": "Gerar combinações",
+      "resumenAtributos": "Atributos das variantes",
+      "mostrarInactivas": "Mostrar inativas ({count})",
+      "sinSeguimiento": "Sem controle",
+      "columnas": {
+        "sku": "SKU",
+        "nombre": "Nome",
+        "atributos": "Atributos",
+        "precio": "Preço",
+        "costo": "Custo",
+        "margen": "Margem",
+        "stock": "Estoque",
+        "stockSucursal": "Estoque (filial)",
+        "codigo": "Código de barras",
+        "estado": "Status"
+      },
+      "acciones": {
+        "verFicha": "Ver ficha da variante",
+        "activar": "Ativar",
+        "desactivar": "Desativar",
+        "editarDe": "Editar {nombre}"
+      },
+      "movil": {
+        "costo": "Custo {costo}",
+        "stock": "Estoque {stock}"
+      },
+      "vacio": {
+        "titulo": "Este produto não tem variantes",
+        "descripcion": "Crie tamanhos, cores ou outras variações com SKU, preço e estoque próprios.",
+        "crearPrimera": "Criar a primeira variante",
+        "soloInactivas": "Todas as variantes estão inativas",
+        "verInactivas": "Mostrar inativas"
+      },
+      "error": {
+        "titulo": "Não foi possível carregar as variantes",
+        "descripcion": "Verifique sua conexão e tente novamente."
+      },
+      "esVariante": {
+        "titulo": "Este produto é uma variante",
+        "descripcion": "As variantes são gerenciadas pelo produto principal."
+      },
+      "eliminar": {
+        "titulo": "Excluir a variante “{nombre}”?",
+        "descripcion": "A variante é retirada e deixa de aparecer no PDV, na loja e no catálogo. O histórico de vendas, o kardex e os números de série são mantidos."
+      },
+      "toasts": {
+        "activada": "Variante ativada",
+        "desactivada": "Variante desativada",
+        "eliminada": "Variante excluída",
+        "errorEstado": "Não foi possível alterar o status",
+        "errorEliminar": "Não foi possível excluir a variante"
+      },
+      "dialogo": {
+        "tituloCrear": "Criar nova variante",
+        "tituloEditar": "Editar variante",
+        "descripcionCrear": "Preencha os dados para criar uma variante do produto",
+        "descripcionEditar": "Altere os dados da variante",
+        "sku": "SKU da variante",
+        "skuPlaceholder": "SKU único para esta variante",
+        "skuSugerido": "Sugerido a partir do SKU do produto e dos atributos",
+        "nombre": "Nome da variante",
+        "nombrePlaceholder": "Nome descritivo",
+        "precio": "Preço",
+        "comparacion": "Preço de comparação",
+        "comparacionAyuda": "Exibido riscado; deve ser maior que o preço",
+        "costo": "Custo",
+        "margen": "Margem {margen}%",
+        "atributos": "Atributos",
+        "stockSucursal": "Estoque por filial",
+        "sinSeguimiento": "Este produto não controla estoque",
+        "sinSucursales": "Nenhuma filial disponível",
+        "stockAyudaNueva": "Quantidade inicial por filial: entra no kardex com o custo da variante (obrigatório se houver quantidade).",
+        "stockAyudaAjuste": "Se você alterar a quantidade, a diferença é registrada como ajuste no kardex.",
+        "stockAyudaSinPermiso": "Você não tem permissão para ajustar o estoque: a quantidade é somente leitura.",
+        "sucursal": "Filial",
+        "cantidadInicial": "Quantidade inicial",
+        "cantidad": "Quantidade",
+        "minimo": "Mínimo",
+        "cantidadDe": "Quantidade em {sucursal}",
+        "minimoDe": "Mínimo em {sucursal}",
+        "ajusteDelta": "Ajuste {delta}",
+        "codigo": "Código de barras (opcional)",
+        "crear": "Criar variante",
+        "errores": {
+          "skuRequerido": "O SKU é obrigatório",
+          "skuRepetido": "Outra variante ou produto já usa este SKU",
+          "nombreRequerido": "O nome é obrigatório",
+          "precioNegativo": "O preço não pode ser negativo",
+          "comparacionMenor": "Deve ser maior que o preço",
+          "costoNegativo": "O custo não pode ser negativo",
+          "stockSinCosto": "Para registrar quantidade inicial, a variante precisa de um custo maior que 0",
+          "codigo": "Corrija o código de barras antes de salvar"
+        },
+        "toasts": {
+          "creada": "Variante criada",
+          "actualizada": "Variante atualizada",
+          "error": "Não foi possível salvar a variante",
+          "errorCatalogo": "Não foi possível salvar no catálogo",
+          "valorGuardado": "Valor salvo no catálogo",
+          "valorGuardadoDetalle": "“{valor}” adicionado a {tipo}"
+        }
+      },
+      "atributos": {
+        "sinAtributos": "Sem atributos. Adicione um (ex.: Tamanho, Cor).",
+        "guardarValor": "Salvar este valor no catálogo",
+        "guardarValorDe": "Salvar o valor de {tipo} no catálogo",
+        "valorEnCatalogo": "Este valor já está no catálogo",
+        "quitarAtributo": "Remover {tipo}",
+        "masValores": "{count, plural, one {+# mais (digite para buscar)} other {+# mais (digite para buscar)}}",
+        "agregar": "Adicionar atributo",
+        "tipoExistente": "Tipo existente…",
+        "nuevoTipo": "Novo tipo…",
+        "crearTipoCatalogo": "Criar tipo e salvá-lo no catálogo",
+        "crearTipo": "Adicionar tipo (salvo no catálogo ao salvar o produto)"
+      },
+      "generador": {
+        "titulo": "Gerar combinações",
+        "descripcion": "Escolha tipos e valores: são criadas as variantes que ainda não existem, com o preço e o custo do produto.",
+        "tipos": "Atributos",
+        "tiposPlaceholder": "Adicionar atributo…",
+        "tiposAyuda": "Ex.: Tamanho, Cor, Material. Os novos tipos e valores são salvos no catálogo.",
+        "sinTipos": "Nenhum tipo no catálogo",
+        "crearTipo": "Criar “{tipo}”",
+        "quitarTipo": "Remover {tipo}",
+        "seleccionados": "{count, plural, =0 {(nenhum selecionado)} one {(# selecionado)} other {(# selecionados)}}",
+        "sinValores": "Ainda não há valores: adicione um abaixo",
+        "nuevoValor": "Novo valor de {tipo}…",
+        "elegirValores": "Selecione pelo menos um valor para gerar variantes",
+        "conteo": "{total} combinações: {nuevas} novas e {existentes} já existentes",
+        "ayudaPrecios": "São criadas com o preço e o custo atuais do produto e sem estoque; ajuste depois em cada variante.",
+        "seGeneraran": "{count, plural, =0 {Nenhuma combinação nova} one {Será gerada # variante} other {Serão geradas # variantes}}",
+        "generar": "{count, plural, =0 {Gerar variantes} one {Gerar # variante} other {Gerar # variantes}}",
+        "creando": "Criando…",
+        "creandoDe": "Criando {hecho} de {total}…",
+        "resumenCreadas": "{count, plural, =0 {Nenhuma variante foi criada} one {# variante criada} other {# variantes criadas}}",
+        "resumenFallidas": "{count, plural, one {# não pôde ser criada:} other {# não puderam ser criadas:}}"
+      }
+    }
+  },
+  "productoForm": {
+    "errores": {
+      "desconocido": "Ocorreu um erro inesperado. Tente novamente.",
+      "sin_permiso": "Você não tem permissão para esta ação em produtos.",
+      "producto_no_encontrado": "O produto não existe ou não pertence à sua organização.",
+      "variante_no_encontrada": "A variante não existe.",
+      "sku_requerido": "O SKU é obrigatório.",
+      "sku_duplicado": "Já existe um produto com o SKU {detalle}.",
+      "sku_variante_repetido": "Duas variantes (ou uma variante e o produto) têm o mesmo SKU.",
+      "nombre_requerido": "O nome é obrigatório.",
+      "nombre_corto": "O nome deve ter pelo menos 2 caracteres.",
+      "precio_negativo": "O preço não pode ser negativo.",
+      "precio_requerido": "Informe o preço.",
+      "costo_negativo": "O custo não pode ser negativo.",
+      "costo_requerido": "Informe o custo.",
+      "comparacion_menor": "O preço de comparação deve ser maior que o preço de venda.",
+      "vigencia_pasada": "A vigência não pode começar no passado.",
+      "estado_invalido": "Status inválido.",
+      "tipo_invalido": "Tipo de produto inválido.",
+      "estacion_invalida": "Estação inválida.",
+      "categoria_invalida": "A categoria não pertence à sua organização.",
+      "impuesto_invalido": "Um dos impostos não pertence à sua organização.",
+      "etiqueta_invalida": "Uma das etiquetas não pertence à sua organização.",
+      "proveedor_invalido": "O fornecedor não pertence à sua organização.",
+      "sucursal_invalida": "A filial não pertence à sua organização.",
+      "stock_sin_costo": "O estoque inicial precisa de custo: sem ele o kardex e a contabilidade ficam incompletos.",
+      "cantidad_negativa": "As quantidades não podem ser negativas.",
+      "cantidad_invalida": "Informe uma quantidade maior que 0.",
+      "variantes_activas": "O produto tem variantes ativas: exclua-as antes de desativar as variantes.",
+      "grupo_sin_nombre": "Cada grupo de adicionais precisa de um nome.",
+      "modo_seleccion_invalido": "Modo de seleção inválido.",
+      "min_max_invalido": "O máximo de seleções não pode ser menor que o mínimo.",
+      "opcion_sin_nombre": "Cada opção precisa de um nome.",
+      "imagen_sin_ruta": "Uma imagem não terminou de ser enviada.",
+      "imagen_invalida": "A imagem não pertence a este produto.",
+      "producto_sin_seriales": "Este produto não exige número de série.",
+      "patron_requerido": "Informe o padrão de geração.",
+      "patron_sin_consecutivo": "O padrão precisa de um sequencial: '{SEQ}', '{####}', '{###}' ou '{##}'.",
+      "excede_stock": "Não há tantas unidades sem número de série na filial (restam {detalle}).",
+      "sin_seriales": "Não há números de série para registrar.",
+      "modo_invalido": "Operação inválida.",
+      "garantia_invalida": "Os meses de garantia devem ser um número inteiro maior ou igual a 0.",
+      "sin_variantes": "Adicione pelo menos uma variante ou desative “Tem variantes”.",
+      "variante_incompleta": "Cada variante precisa de SKU e nome.",
+      "combinacion_repetida": "Duas variantes têm a mesma combinação de atributos.",
+      "variante_stock_sin_costo": "Uma variante com estoque inicial precisa de custo.",
+      "demasiadas_imagenes": "Você pode enviar até 5 imagens.",
+      "dimension_negativa": "O peso e as medidas não podem ser negativos."
+    }
   }
 }

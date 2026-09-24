@@ -32,13 +32,15 @@ export interface TabBarProps<V extends string> {
   onValorChange: (valor: V) => void;
   /** Nombre accesible del grupo. */
   etiqueta: string;
+  /** `sm`: sub-pestañas dentro de una pestaña (32 px, texto 13). Por defecto `md`. */
+  tamano?: 'md' | 'sm';
   className?: string;
 }
 
 export const idPestana = (id: string, valor: string) => `${id}-tab-${valor}`;
 export const idPanel = (id: string, valor: string) => `${id}-panel-${valor}`;
 
-export function TabBar<V extends string>({ id, pestanas, valor, onValorChange, etiqueta, className }: TabBarProps<V>) {
+export function TabBar<V extends string>({ id, pestanas, valor, onValorChange, etiqueta, tamano = 'md', className }: TabBarProps<V>) {
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
   const deshabilitadas = pestanas.map((p) => !!p.deshabilitada);
 
@@ -77,7 +79,8 @@ export function TabBar<V extends string>({ id, pestanas, valor, onValorChange, e
             onClick={() => onValorChange(p.valor)}
             onKeyDown={(e) => alPulsar(e, i)}
             className={cn(
-              '-mb-px inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors',
+              '-mb-px inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 font-medium transition-colors',
+              tamano === 'sm' ? 'h-8 px-2.5 text-[13px]' : 'h-10 px-3 text-sm',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50',
               activa ? 'border-brand text-brand-deep' : 'border-transparent text-fg-secondary hover:text-fg',
             )}

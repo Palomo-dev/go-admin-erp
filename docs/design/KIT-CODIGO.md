@@ -498,3 +498,18 @@ Pedidos por el rediseño de «Importar productos» (Figma `09-importar`) y «Met
 <PanelAdaptable abierto={abierto} onAbiertoChange={setAbierto} titulo="Meta y canales" icono={Share2}
   debajoCabecera={<TabBar id="meta" … />} pie={<Button variant="outline">Cerrar</Button>}>…</PanelAdaptable>
 ```
+
+## Adenda 2026-09-24 — detalle y formulario de producto
+
+Pedidos por el detalle de producto (sub-pestañas) y el formulario único (impuestos,
+categorías adicionales, etiquetas y cifras con moneda). Aditivo: ningún contrato cambió.
+
+| Figma | Código | Qué hace |
+|---|---|---|
+| `MultiSelect` / `TaxMultiSelect` (`02 Componentes › Impuestos`) | `kit/MultiSelect.tsx` + `kit/multiSelectLogica.ts` | Chips con «×» en el disparador, panel con buscador sin tildes, casillas, «Crear “…”» opcional (`onCrear`), punto de color por opción. Teclado: ↑/↓, Enter, Escape, Retroceso quita el último chip. Textos por props (`placeholder`, `placeholderBusqueda`, `textoVacio`, `textoCrear`, `etiquetaQuitar`). Import directo: `@/components/kit/MultiSelect` |
+| `NumberInput` (prefijo `$` / sufijo `%`) | `kit/CampoNumero.tsx` + `kit/campoNumeroLogica.ts` | `valor` / `onValorChange(number \| null)` (vacío ≠ 0), coma o punto decimal, `decimales`, `minimo`, `maximo`, `prefijo` (símbolo de la moneda de la organización), `sufijo` («%», «días»), `tamano` sm 32 · md 40. Con `FormField` recibe `id` y `aria-*` |
+| `TabItem` en sub-pestañas | `kit/TabBar.tsx` | + `tamano="sm"` (32 px, texto 13) para las sub-pestañas dentro de una pestaña (Inventario › Stock · Lotes · Kardex · Seriales) |
+
+Pruebas: `src/components/inventario/productos/__tests__/productoLogica.test.ts` (filtro y
+alternancia del `MultiSelect`, conversión del `CampoNumero`).
+

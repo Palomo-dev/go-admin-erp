@@ -6770,5 +6770,1605 @@
       "padreConVariantes": "Published through its variants",
       "padreInactivo": "Its parent product is inactive"
     }
+  },
+  "productoDetalle": {
+    "comun": {
+      "guardar": "Save",
+      "guardando": "Saving…",
+      "guardarCambios": "Save changes",
+      "cancelar": "Cancel",
+      "cerrar": "Close",
+      "eliminar": "Delete",
+      "eliminando": "Deleting…",
+      "editar": "Edit",
+      "reintentar": "Retry",
+      "exportar": "Export",
+      "buscar": "Search",
+      "sucursal": "Branch",
+      "todasSucursales": "All branches",
+      "sinDatos": "—",
+      "cargando": "Loading…",
+      "nuevo": "New",
+      "si": "Yes",
+      "no": "No",
+      "verMas": "Show more",
+      "verMenos": "Show less",
+      "errorCargar": "The information could not be loaded",
+      "sinPermiso": "You don't have permission for this action",
+      "acciones": "Actions",
+      "confirmar": "Confirm",
+      "agregar": "Add",
+      "crear": "Create",
+      "opcional": "optional",
+      "desconocido": "Unknown",
+      "usuarioDesconocido": "Unknown user",
+      "unidadesCortas": "{n} units"
+    },
+    "migas": {
+      "inventario": "Inventory",
+      "productos": "Products"
+    },
+    "pestanas": {
+      "etiqueta": "Product sections",
+      "etiquetaSub": "Subsections",
+      "resumen": "Overview",
+      "inventario": "Inventory",
+      "precios": "Prices and costs",
+      "variantes": "Variants and modifiers",
+      "imagenes": "Images",
+      "proveedores": "Suppliers and tags",
+      "notas": "Notes",
+      "historial": "History",
+      "sub": {
+        "stock": "Stock",
+        "lotes": "Lots",
+        "kardex": "Stock ledger",
+        "seriales": "Serial numbers",
+        "variantes": "Variants",
+        "modificadores": "Modifiers",
+        "proveedores": "Suppliers",
+        "etiquetas": "Tags"
+      }
+    },
+    "estado": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "discontinued": "Discontinued",
+      "deleted": "Deleted"
+    },
+    "acciones": {
+      "editar": "Edit",
+      "ajustarStock": "Adjust stock",
+      "duplicar": "Duplicate",
+      "transferir": "Transfer",
+      "imprimirEtiqueta": "Print label",
+      "codigosBarras": "Barcodes",
+      "activar": "Activate",
+      "desactivar": "Deactivate",
+      "descontinuar": "Discontinue",
+      "eliminar": "Delete",
+      "masAcciones": "More actions",
+      "motivoEliminado": "The product is deleted",
+      "motivoSinPermiso": "You don't have permission for this action",
+      "motivoSinInventario": "This product doesn't track inventory"
+    },
+    "eliminar": {
+      "titulo": "Delete this product?",
+      "descripcion": "It will be marked as deleted and will no longer appear in the catalog, the POS or the online store.",
+      "aviso": "It isn't erased from the database: its sales, purchases and movements are kept.",
+      "confirmar": "Delete"
+    },
+    "toasts": {
+      "estadoActualizado": "Status updated",
+      "estadoDetalle": "The product is now {estado}.",
+      "errorEstado": "The status could not be updated",
+      "eliminado": "Product deleted",
+      "eliminadoDetalle": "The product was marked as deleted.",
+      "errorEliminar": "The product could not be deleted"
+    },
+    "kpi": {
+      "etiqueta": "Product figures",
+      "precio": "Selling price",
+      "precioAyuda": "Retail selling price",
+      "sinPrecio": "No price",
+      "comparacion": "Was {valor} · −{descuento}%",
+      "costo": "Cost",
+      "costoAyuda": "Purchase cost",
+      "sinCosto": "No cost",
+      "margen": "Margin {valor}%",
+      "stock": "Stock · {sucursal}",
+      "todasSucursales": "All branches",
+      "estaSucursal": "This branch",
+      "unidades": "{n} units",
+      "reservadoDisponible": "Reserved {reservado} · Available {disponible}",
+      "sinSeguimiento": "Not tracked",
+      "sinSeguimientoAyuda": "Inventory not tracked"
+    },
+    "meta": {
+      "sku": "SKU",
+      "categoria": "Category",
+      "sinCategoria": "No category",
+      "unidad": "Unit",
+      "tipo": "Type",
+      "producto": "Product",
+      "servicio": "Service",
+      "marca": "Brand",
+      "referencia": "Ref.",
+      "proveedor": "Supplier",
+      "sinProveedor": "No supplier",
+      "impuestos": "Taxes",
+      "sinImpuestos": "No taxes"
+    },
+    "carga": {
+      "errorTitulo": "The product could not be loaded",
+      "noEncontrado": "Product not found",
+      "volver": "Back to products"
+    },
+    "galeria": {
+      "etiqueta": "Product images",
+      "sinImagenes": "No images",
+      "verImagen": "View image {n}",
+      "verMas": "Show {n} more images",
+      "verMenos": "Show fewer images"
+    },
+    "cabecera": {
+      "etiqueta": "Product details"
+    },
+    "etiquetas": {
+      "titulo": "Product tags",
+      "tituloConteo": "Product tags ({n})",
+      "nueva": "New tag",
+      "buscar": "Search tags",
+      "buscarAyuda": "Pick existing tags or type a new one to create it.",
+      "placeholder": "Add tag…",
+      "placeholderBusqueda": "Search or create a tag…",
+      "sinResultados": "No tags with that name",
+      "crearCon": "Create “{nombre}”",
+      "quitar": "Remove {nombre}",
+      "asignadas": "Assigned tags",
+      "ayuda": {
+        "titulo": "What are tags for?",
+        "busqueda": "They make products easier to search and filter",
+        "agrupar": "They group products by features or additional categories",
+        "campanas": "They are useful for promotions and marketing",
+        "reportes": "They can be used in custom reports"
+      },
+      "estados": {
+        "errorTitulo": "The tags could not be loaded",
+        "vacioTitulo": "No tags",
+        "vacioDescripcion": "This product has no tags. Search for one or create one to classify it."
+      },
+      "toasts": {
+        "agregada": "Tag “{nombre}” added",
+        "quitada": "Tag “{nombre}” removed",
+        "actualizadas": "Tags updated",
+        "creada": "Tag “{nombre}” created",
+        "error": "The tags could not be updated"
+      },
+      "crear": {
+        "titulo": "Create tag",
+        "confirmar": "Create tag",
+        "nombre": "Name",
+        "nombrePlaceholder": "E.g.: New, Sale, Featured",
+        "nombreRequerido": "Enter a name",
+        "duplicada": "A tag with that name already exists",
+        "error": "The tag could not be created",
+        "color": "Color",
+        "colorPersonalizado": "Custom color",
+        "hex": "Hex color",
+        "vistaPrevia": "Preview:"
+      }
+    },
+    "historial": {
+      "titulo": "History",
+      "tituloConteo": "{count, plural, one {History (# event)} other {History (# events)}}",
+      "variante": "Variant: {nombre}",
+      "sustantivo": {
+        "singular": "event",
+        "plural": "events"
+      },
+      "dias": {
+        "hoy": "Today",
+        "ayer": "Yesterday"
+      },
+      "filtros": {
+        "tipos": "Filter by type",
+        "todos": "All",
+        "rango": "Date range",
+        "todoElHistorial": "View full history",
+        "sinRango": "Showing the full history"
+      },
+      "tipos": {
+        "auditoria": "Changes",
+        "precio": "Prices",
+        "costo": "Costs",
+        "kardex": "Stock ledger",
+        "compra": "Purchases",
+        "venta": "Sales",
+        "nota": "Notes",
+        "serial": "Serial numbers",
+        "garantia": "Warranties"
+      },
+      "errorTitulo": "The history could not be loaded",
+      "vacioTitulo": "No history",
+      "vacioDescripcion": "There is no activity for this product yet. Future changes will be recorded here.",
+      "sinResultadosTitulo": "No events match these filters",
+      "sinResultadosDescripcion": "Try other types or another date range.",
+      "acerca": {
+        "titulo": "About the history",
+        "texto": "Brings together in a single timeline the changes to the product and its variants: creation, edits and deletion, prices and costs with their validity, inventory movements, purchases, sales, notes, serial numbers and warranties, with who made them and when (in the organization’s time zone)."
+      },
+      "valores": {
+        "producto": "Product",
+        "servicio": "Service",
+        "textoCambiado": "(changed)"
+      },
+      "campos": {
+        "name": "Name",
+        "sku": "SKU",
+        "barcode": "Barcode",
+        "status": "Status",
+        "category_id": "Category",
+        "description": "Description",
+        "brand": "Brand",
+        "reference": "Reference",
+        "track_stock": "Tracks inventory",
+        "track_serial": "Requires serial number",
+        "warranty_months": "Warranty months",
+        "serial_pattern": "Serial pattern",
+        "auto_generate_serial": "Auto-generate serial numbers",
+        "product_type": "Type",
+        "unit_code": "Unit",
+        "station": "Station",
+        "weight_kg": "Weight (kg)",
+        "length_cm": "Length (cm)",
+        "width_cm": "Width (cm)",
+        "height_cm": "Height (cm)",
+        "is_parent": "Has variants"
+      },
+      "auditoria": {
+        "acciones": {
+          "create": "Created",
+          "update": "Updated",
+          "delete": "Deleted"
+        },
+        "otra": "Action: {accion}",
+        "creado": "Product created",
+        "eliminado": "Product deleted",
+        "sinDetalles": "No details",
+        "cambio": "{campo}: {antes} → {despues}",
+        "mas": "{count, plural, one {+# field} other {+# fields}}"
+      },
+      "titulos": {
+        "precio": "Price change",
+        "costo": "Cost change",
+        "nota": "Note"
+      },
+      "precio": {
+        "inicial": "Initial value {ahora}",
+        "cambio": "{antes} → {ahora}",
+        "comparacion": "Compare-at {valor}",
+        "proveedor": "Supplier: {proveedor}",
+        "vigenciaDesde": "Effective from {desde}",
+        "vigenciaHasta": "Effective from {desde} to {hasta}",
+        "programado": "Scheduled",
+        "cancelado": "Canceled"
+      },
+      "kardex": {
+        "entrada": "Stock in: {cantidad} units",
+        "salida": "Stock out: {cantidad} units",
+        "origen": "Source: {origen}",
+        "sucursal": "Branch: {sucursal}",
+        "costoUnitario": "Unit cost: {costo}",
+        "documento": "Document: {documento}",
+        "origenes": {
+          "adjustment": "Inventory adjustment",
+          "initial": "Initial stock",
+          "purchase": "Purchase",
+          "sale": "POS sale",
+          "mesa_sale": "Table sale",
+          "web_sale": "Online sale",
+          "invoice_sale": "Sales invoice",
+          "invoice_void": "Invoice void",
+          "transfer": "Transfer",
+          "folio_item": "Folio charge",
+          "room_consumption": "Room consumption",
+          "return": "Return",
+          "production": "Production",
+          "conversion": "Unit conversion"
+        }
+      },
+      "documentos": {
+        "ordenCompra": "Purchase order {documento}",
+        "facturaCompra": "Purchase invoice {documento}",
+        "facturaVenta": "Sales invoice {documento}",
+        "venta": "Sale {documento}",
+        "ver": "View document",
+        "cantidad": "Quantity: {cantidad}",
+        "cantidadRecibida": "Quantity: {cantidad} · received {recibido}",
+        "total": "Total {total} (unit {unitario})",
+        "proveedor": "Supplier: {nombre}",
+        "cliente": "Customer: {nombre}"
+      },
+      "nota": {
+        "fijada": "Pinned"
+      },
+      "serial": {
+        "titulo": "Serial number {serial}",
+        "transicion": "{de} → {a}",
+        "eventos": {
+          "received": "Received",
+          "stock_in": "Stock in from purchase",
+          "reserved": "Reserved",
+          "sold": "Sold",
+          "returned": "Returned",
+          "transferred": "Transferred",
+          "damaged": "Marked as damaged",
+          "rma_created": "Sent to RMA",
+          "warranty_claim": "Warranty claim",
+          "warranty_resolved": "Warranty resolved",
+          "status_change": "Status change"
+        },
+        "estados": {
+          "in_stock": "In stock",
+          "sold": "Sold",
+          "reserved": "Reserved",
+          "returned": "Returned",
+          "in_transit": "In transit",
+          "damaged": "Damaged",
+          "rma": "In RMA",
+          "warranty": "Under warranty",
+          "warranty_claim": "Warranty claim",
+          "repair": "In repair",
+          "defective": "Defective"
+        }
+      },
+      "garantia": {
+        "titulo": "Warranty claim · serial {serial}",
+        "ver": "View claim",
+        "motivo": "Reason: {motivo}",
+        "resolucion": "Resolution: {resolucion}",
+        "resoluciones": {
+          "repair": "Repair",
+          "replacement": "Replacement",
+          "refund": "Refund",
+          "store_credit": "Store credit",
+          "rejected": "Rejected"
+        }
+      }
+    },
+    "imagenes": {
+      "titulo": "Product images",
+      "tituloConteo": "Product images ({n})",
+      "principal": "Main",
+      "sinImagen": "No image",
+      "imagenN": "Image {n}",
+      "nota": "The main image is the one shown in the catalog, the POS and the online store.",
+      "subir": "Upload images",
+      "subirCorto": "Upload",
+      "subiendo": "Uploading…",
+      "tomarFoto": "Take photo",
+      "generarIA": "Generate with AI",
+      "biblioteca": "From the library",
+      "zona": {
+        "titulo": "Drag images here or tap to upload",
+        "ayuda": "Up to {max} images · max. 5 MB · JPG, PNG, WebP or GIF"
+      },
+      "limite": {
+        "ayuda": "Max. {max} images · 5 MB each · JPG, PNG, WebP or GIF",
+        "lleno": "Up to {max} images per product",
+        "sobrantes": "{n, plural, one {# image was not added} other {# images were not added}}: there is no room left."
+      },
+      "validacion": {
+        "tipo": "Unsupported format. Use JPG, PNG, WebP or GIF.",
+        "tamano": "The image is larger than 5 MB."
+      },
+      "acciones": {
+        "grupo": "Actions for {nombre}",
+        "ver": "View",
+        "verNombre": "View {nombre}",
+        "hacerPrincipal": "Set as main",
+        "esPrincipal": "This is the main image",
+        "antes": "Move earlier",
+        "despues": "Move later",
+        "arrastrar": "Drag to reorder",
+        "eliminar": "Delete image",
+        "quitar": "Remove image"
+      },
+      "alt": {
+        "placeholder": "Alternative text (alt)",
+        "etiqueta": "Alternative text for {nombre}"
+      },
+      "vista": {
+        "titulo": "Preview",
+        "posicion": "{n} of {total}",
+        "cerrar": "Close preview",
+        "anterior": "Previous image",
+        "siguiente": "Next image",
+        "altPorDefecto": "Product image {n}"
+      },
+      "insignias": {
+        "biblioteca": "Library"
+      },
+      "ia": {
+        "titulo": "Generate image with AI",
+        "descripcion": "Creates a white-background catalog photo from the product name.",
+        "nombre": "Product name",
+        "detalles": "Details for the image",
+        "detallesAyuda": "Optional: color, material, angle… The more specific, the better.",
+        "costo": "Uses the organization’s AI credits.",
+        "generar": "Generate",
+        "generando": "Generating…",
+        "nombreRequerido": "Enter the product name",
+        "sinCreditos": "There are no AI credits available to generate images.",
+        "noDisponible": "Image generation is not available right now.",
+        "error": "The image could not be generated. Please try again."
+      },
+      "biblio": {
+        "titulo": "Image library",
+        "descripcion": "Images from your organization and public ones. Choose the ones to add to the product.",
+        "buscar": "Search by name or tag",
+        "seleccion": "{n, plural, =0 {None selected} one {# selected} other {# selected}} · {cupo} slots left",
+        "agregar": "{n, plural, =0 {Add images} one {Add # image} other {Add # images}}",
+        "eligeUna": "Choose at least one image",
+        "error": "The library could not be loaded",
+        "vacia": "The library is empty",
+        "vaciaAyuda": "Upload images to the library to reuse them across products.",
+        "irBiblioteca": "Go to the library",
+        "yaUsada": "This product already uses this image",
+        "enUso": "In use",
+        "publica": "Public"
+      },
+      "toasts": {
+        "archivoRechazado": "“{nombre}” was not added",
+        "subidas": "{n, plural, one {# image uploaded} other {# images uploaded}}",
+        "errorSubir": "The images could not be added",
+        "generada": "Image generated with AI",
+        "desdeBiblioteca": "{n, plural, one {# image added from the library} other {# images added from the library}}",
+        "ordenGuardado": "Image order updated",
+        "principal": "Main image updated",
+        "errorOrden": "The order could not be changed",
+        "altGuardado": "Alternative text saved",
+        "errorAlt": "The alternative text could not be saved",
+        "eliminada": "Image deleted",
+        "errorEliminar": "The image could not be deleted"
+      },
+      "estados": {
+        "errorTitulo": "The images could not be loaded",
+        "vacioTitulo": "No images",
+        "vacioDescripcion": "This product has no images. Upload photos, generate one with AI or pick one from the library."
+      },
+      "eliminar": {
+        "titulo": "Delete this image?",
+        "descripcion": "This action cannot be undone. The image will be removed from this product.",
+        "biblioteca": "The image will remain available in the library."
+      }
+    },
+    "inventario": {
+      "motivos": {
+        "eliminado": "The product is deleted",
+        "unaSucursal": "At least two branches are needed to transfer"
+      },
+      "estadosStock": {
+        "sin_registro": "No record",
+        "agotado": "Out of stock",
+        "bajo_minimo": "Below minimum",
+        "disponible": "In stock"
+      },
+      "stock": {
+        "sinSeguimiento": {
+          "titulo": "Inventory not tracked",
+          "descripcion": "This product doesn't require inventory control. Sales and purchases don't affect stock.",
+          "servicio": "Services don't carry inventory: sales don't deduct stock.",
+          "editar": "Edit product"
+        },
+        "cifras": "Stock figures",
+        "total": "Total stock",
+        "enTodas": "Across all branches",
+        "enSeleccionada": "In the selected branch",
+        "reservado": "Reserved",
+        "reservadoAyuda": "In sales in progress",
+        "disponible": "Available",
+        "disponibleAyuda": "For sale",
+        "agotadas": "{count, plural, one {# branch out of stock} other {# branches out of stock}}",
+        "bajoMinimo": "{count, plural, one {# branch below minimum} other {# branches below minimum}}",
+        "registrarEntrada": "Record stock in",
+        "registrarSalida": "Record stock out",
+        "verHistorial": "View history",
+        "transferir": "Transfer",
+        "entrada": "Stock in",
+        "salida": "Stock out",
+        "entradaEn": "Record stock in at {sucursal}",
+        "salidaEn": "Record stock out at {sucursal}",
+        "transferirDesde": "Transfer from {sucursal}",
+        "principal": "Main",
+        "inactiva": "Inactive",
+        "conLotes": "{count, plural, one {# lot} other {# lots}}",
+        "columnas": {
+          "existencia": "On hand",
+          "reservado": "Reserved",
+          "disponible": "Available",
+          "minimo": "Minimum",
+          "costoPromedio": "Avg. cost",
+          "valor": "Value",
+          "actualizado": "Updated",
+          "estado": "Status"
+        },
+        "avisoVariantes": "Stock is held by {count, plural, one {the variant} other {the # variants}}: the table adds them up and the breakdown is below.",
+        "tablaEtiqueta": "Stock by branch",
+        "errorTitulo": "The inventory information could not be loaded",
+        "sinSucursales": {
+          "titulo": "There are no branches set up to show stock",
+          "descripcion": "Create a branch to record stock for this product.",
+          "accion": "Go to branches"
+        },
+        "movil": {
+          "cifras": "On hand {existencia} · Reserved {reservado} · Available {disponible}",
+          "meta": "Minimum {minimo} · {actualizado}"
+        },
+        "pie": "Inventory value: {valor} (on hand × average cost). Available = on hand − reserved.",
+        "pieLotes": "Some stock is held in lots: see the Lots tab."
+      },
+      "desglose": {
+        "titulo": "Breakdown by variant",
+        "descripcion": "Stock of {count, plural, one {the variant} other {the # variants}} in each branch. Adjustments and transfers are made per variant.",
+        "entradaDe": "Record stock in of {variante} at {sucursal}",
+        "salidaDe": "Record stock out of {variante} at {sucursal}",
+        "transferirDe": "Transfer {variante} from {sucursal}",
+        "columnas": {
+          "variante": "Variant"
+        },
+        "error": "The variants’ stock could not be loaded",
+        "vacio": "No branches to show",
+        "vacioDescripcion": "The variants have no stock in the selected branch yet."
+      },
+      "lotes": {
+        "titulo": "Lots of this product",
+        "descripcion": "Lots with their expiry date, supplier and stock by branch.",
+        "resumen": "{count, plural, one {# lot in stock} other {# lots in stock}} · {unidades} units across {sucursales, plural, one {# branch} other {# branches}}",
+        "verTodos": "View all lots",
+        "verKardex": "View stock ledger",
+        "alertaPorVencer": "{unidades} units expire in {count, plural, one {# day} other {# days}} or less. The POS sells the nearest expiry first.",
+        "alertaVencidos": "{unidades} units are in {count, plural, one {an expired lot} other {# expired lots}}. Remove them with an adjustment.",
+        "filtroEtiqueta": "Lots to show",
+        "filtro": {
+          "conExistencia": "In stock",
+          "todos": "All"
+        },
+        "columnas": {
+          "lote": "Lot",
+          "variante": "Variant",
+          "sucursales": "Branches",
+          "existencia": "On hand",
+          "reservado": "Reserved",
+          "vence": "Expires",
+          "proveedor": "Supplier",
+          "creado": "Created",
+          "estado": "Status"
+        },
+        "estados": {
+          "vencido": "Expired",
+          "por_vencer": "Expiring soon",
+          "vigente": "Valid",
+          "sin_vencimiento": "No expiry"
+        },
+        "sinVencimiento": "No expiry",
+        "venceHoy": "expires today",
+        "venceEn": "in {count, plural, one {# day} other {# days}}",
+        "vencioHace": "expired {count, plural, one {# day} other {# days}} ago",
+        "enSucursal": "{sucursal}: {cantidad}",
+        "error": "The lots could not be loaded",
+        "vacio": {
+          "titulo": "This product has no lots",
+          "descripcion": "Lots are captured when receiving purchases and recording inventory adjustments, with their code and expiry date.",
+          "accion": "Go to lots"
+        },
+        "vacioFiltro": {
+          "titulo": "No lots in stock",
+          "descripcion": "This product’s lots have no units left in the selected branch."
+        }
+      },
+      "kardex": {
+        "titulo": "Movements of this product",
+        "descripcion": "{sucursal} · running balance by product and branch",
+        "completo": "View full stock ledger",
+        "fechas": "Movement dates",
+        "direccion": "Direction",
+        "origen": "Source",
+        "todas": "All",
+        "entradas": "Stock in",
+        "salidas": "Stock out",
+        "todosOrigenes": "All sources",
+        "verMovimientos": "Show {count, plural, one {# movement} other {# movements}}",
+        "chips": {
+          "fechas": "Dates: {rango}",
+          "direccion": "Direction: {valor}",
+          "origen": "Source: {valor}"
+        },
+        "exportando": "Exporting…",
+        "exportado": "Stock ledger exported",
+        "exportadoDetalle": "{count, plural, one {# movement} other {# movements}} in the file.",
+        "exportadoTope": "The {count} most recent of {total} movements were exported. Narrow the dates for the rest.",
+        "errorExportar": "The stock ledger could not be exported",
+        "sinNadaQueExportar": "There are no movements with these filters",
+        "error": "The stock ledger could not be loaded",
+        "vacio": {
+          "titulo": "No movements yet",
+          "descripcion": "Purchases, sales, adjustments and transfers of this product will appear here."
+        },
+        "sinResultados": {
+          "titulo": "No movements with these filters",
+          "descripcion": "Change the branch, dates, direction or source."
+        },
+        "saldoCorto": "Balance {saldo}",
+        "sustantivo": {
+          "singular": "movement",
+          "plural": "movements"
+        },
+        "columnas": {
+          "fecha": "Date and time",
+          "documento": "Document",
+          "origen": "Source",
+          "variante": "Variant",
+          "sku": "SKU",
+          "entrada": "In",
+          "salida": "Out",
+          "costoUnitario": "Unit cost",
+          "costoTotal": "Total cost",
+          "saldo": "Balance",
+          "usuario": "User",
+          "nota": "Note"
+        },
+        "origenes": {
+          "purchase": "Purchase",
+          "sale": "Sale",
+          "adjustment": "Adjustment",
+          "transfer": "Transfer",
+          "return": "Return",
+          "loss": "Loss",
+          "production": "Production",
+          "initial": "Opening stock",
+          "web_sale": "Online sale",
+          "mesa_sale": "Table sale",
+          "invoice_sale": "Sales invoice",
+          "folio_item": "Folio charge",
+          "room_consumption": "Room consumption",
+          "web_order": "Online order",
+          "purchase_order": "Purchase receipt",
+          "purchase_invoice": "Purchase invoice",
+          "invoice_void": "Invoice void",
+          "credit_note": "Credit note",
+          "web_refund": "Online refund",
+          "folio_item_reversal": "Folio reversal",
+          "transfer_out": "Transfer out",
+          "transfer_in": "Transfer in"
+        }
+      }
+    },
+    "modificadores": {
+      "ayuda": "Modifiers are optional extras that don’t change the product (e.g. sauces, removing ingredients). For variants with their own price and SKU (size, color), use the “Variants” tab.",
+      "vacio": {
+        "titulo": "No modifiers",
+        "descripcion": "Create a group (e.g. Sauces) and add its options."
+      },
+      "error": {
+        "titulo": "Couldn’t load the modifiers",
+        "descripcion": "Check your connection and try again."
+      },
+      "confirmar": {
+        "grupoTitulo": "Delete the “{nombre}” group?",
+        "grupoDescripcion": "The group and all its options are deleted. Sales already recorded keep what was sold.",
+        "opcionTitulo": "Delete the “{nombre}” option?",
+        "opcionDescripcion": "It will no longer be offered in the POS and the store. To hide it for a while, deactivate it instead."
+      },
+      "toasts": {
+        "grupoCreado": "Group created",
+        "errorGuardar": "Couldn’t save the change",
+        "errorOrden": "Couldn’t save the order",
+        "errorOpcion": "Couldn’t add the option",
+        "errorGrupo": "Couldn’t create the group",
+        "errorEliminar": "Couldn’t delete it"
+      },
+      "editor": {
+        "grupoDe": "Group {nombre}",
+        "subirGrupo": "Move group up",
+        "bajarGrupo": "Move group down",
+        "nombreGrupo": "Group name",
+        "nombreGrupoPlaceholder": "E.g. Sauces",
+        "modo": "Selection mode",
+        "modoUnica": "Single (radio)",
+        "modoMultiple": "Multiple (checkbox)",
+        "obligatorio": "Required",
+        "min": "Min.",
+        "max": "Max.",
+        "minSelecciones": "Minimum selections",
+        "maxSelecciones": "Maximum selections (empty = no limit)",
+        "errorMinMax": "The maximum must be greater than or equal to the minimum",
+        "guardando": "Saving…",
+        "eliminarGrupo": "Delete group {nombre}",
+        "sinOpciones": "No options in this group yet",
+        "nombreOpcion": "Option name",
+        "precioOpcion": "Extra price for {nombre}",
+        "gratis": "Free",
+        "extra": "+{precio}",
+        "activa": "Active",
+        "inactiva": "Inactive",
+        "activaDe": "Option {nombre} active",
+        "subir": "Move up",
+        "bajar": "Move down",
+        "subirOpcion": "Move {nombre} up",
+        "bajarOpcion": "Move {nombre} down",
+        "eliminarOpcion": "Delete option {nombre}",
+        "sugerencias": "Values used in variants, click to reuse:",
+        "nuevaOpcion": "New option (e.g. BBQ)",
+        "precioExtra": "Extra price",
+        "anadir": "Add",
+        "nuevoGrupo": "New modifier group",
+        "gruposExistentes": "Existing groups in your catalog, click to reuse:",
+        "nombreNuevoGrupo": "Name (e.g. Sauces)",
+        "agregarGrupo": "Add"
+      }
+    },
+    "notas": {
+      "etiquetaNota": "Note by {autor}",
+      "fijada": "Pinned",
+      "editada": "edited",
+      "fijar": "Pin note",
+      "desfijar": "Unpin note",
+      "editarNota": "Edit note",
+      "eliminarNota": "Delete note",
+      "motivoEliminar": "Only the author or someone who can edit products can delete this note",
+      "adjuntos": "Attachments",
+      "descargar": "Download {nombre}",
+      "errorDescarga": "Not available",
+      "roles": {
+        "superAdmin": "Super admin",
+        "adminOrganizacion": "Organization admin",
+        "manager": "Manager",
+        "empleado": "Employee",
+        "cliente": "Customer"
+      },
+      "nueva": {
+        "titulo": "New note",
+        "placeholder": "Write a note or comment about this product…",
+        "seleccionados": "Selected files",
+        "quitar": "Remove {nombre}",
+        "adjuntar": "Attach files",
+        "guardar": "Save note",
+        "subiendo": "Uploading files…"
+      },
+      "historial": {
+        "titulo": "Notes history",
+        "tituloConteo": "Notes history ({count})",
+        "fijadas": "{count, plural, one {# pinned} other {# pinned}}",
+        "errorTitulo": "The notes could not be loaded",
+        "vacioTitulo": "No notes",
+        "vacioDescripcion": "This product has no notes or documents. Add a note or attach a file to get started."
+      },
+      "eliminar": {
+        "titulo": "Delete note?",
+        "descripcion": "The note will be permanently deleted.",
+        "descripcionConArchivos": "{count, plural, one {The note and its attachment will be permanently deleted.} other {The note and its # attachments will be permanently deleted.}}"
+      },
+      "toasts": {
+        "guardada": "Note saved",
+        "guardadaDetalle": "The note was added to the product.",
+        "errorGuardar": "The note could not be saved",
+        "adjuntosFallidos": "The note was saved, but some files were not uploaded",
+        "archivoGrande": "File too large",
+        "archivoGrandeDetalle": "{nombres} exceeds the {maximo} limit.",
+        "fijada": "Note pinned",
+        "desfijada": "Note unpinned",
+        "errorFijar": "The pinned note could not be changed",
+        "editada": "Note updated",
+        "errorEditar": "The note could not be updated",
+        "eliminada": "Note deleted",
+        "eliminadaDetalle": "The note and its files were deleted.",
+        "errorEliminar": "The note could not be deleted"
+      }
+    },
+    "precios": {
+      "precioActual": "Current price",
+      "precioActualAyuda": "Latest price set",
+      "sinPrecio": "No price",
+      "costoActual": "Current cost",
+      "costoActualAyuda": "Current acquisition cost",
+      "sinCosto": "No cost",
+      "sinMargen": "No margin: price or cost missing",
+      "margen": "Margin {valor}%",
+      "descuento": "−{valor}%",
+      "porcentaje": "{valor}%",
+      "vigenteDesde": "In effect since {fecha}",
+      "actualizarPrecio": "Update price",
+      "actualizarCosto": "Update cost",
+      "programado": {
+        "titulo": "Scheduled",
+        "ayuda": "Changes that will take effect",
+        "precio": "price from {fecha}",
+        "costo": "cost from {fecha}",
+        "nota": "A new change cancels anything scheduled after its date."
+      },
+      "vigencias": {
+        "vigente": "Current",
+        "programado": "Scheduled",
+        "cancelado": "Canceled"
+      },
+      "vigencia": {
+        "etiqueta": "Effective from",
+        "ahora": "Now",
+        "programar": "A future day",
+        "dia": "Start day",
+        "ayudaProgramar": "Takes effect at 00:00 on that day, in the organization’s time zone.",
+        "diaRequerido": "Choose the start day",
+        "diaPasado": "The day must be after today"
+      },
+      "grafico": {
+        "titulo": "Price history",
+        "cambios": "{count, plural, one {# change} other {# changes}}",
+        "insuficiente": "There are not enough changes yet to draw the trend.",
+        "leyenda": "Legend",
+        "precio": "Price",
+        "costo": "Cost",
+        "hoy": "Today",
+        "descripcionAccesible": "Line chart of price and cost over time with {cambios} changes. The table below has the same data."
+      },
+      "tabla": {
+        "titulo": "Price and cost history",
+        "precios": "Prices",
+        "costos": "Costs",
+        "incluirVariantes": "Include variants",
+        "desde": "Valid from",
+        "hasta": "Valid until",
+        "producto": "Product",
+        "productoPrincipal": "Main product",
+        "precio": "Price",
+        "costo": "Cost",
+        "comparacion": "Compare-at",
+        "descuento": "Discount",
+        "proveedor": "Supplier",
+        "cambio": "Change %",
+        "vacioPrecios": "No price changes recorded",
+        "vacioCostos": "No cost changes recorded",
+        "vacioAyuda": "Every change you make will be listed here with its validity period."
+      },
+      "dialogoPrecio": {
+        "titulo": "Update price",
+        "descripcion": "Enter the new selling price. The change will be recorded in the history.",
+        "precioActual": "Current price",
+        "nuevoPrecio": "New price",
+        "comparacion": "Compare-at price (optional)",
+        "comparacionAyuda": "If it is higher than the selling price, it will be shown as a discount.",
+        "comparacionDescuento": "A −{descuento}% discount will be shown.",
+        "errorPrecioRequerido": "Enter the new price",
+        "errorPrecioNegativo": "The price cannot be negative",
+        "errorComparacion": "The compare-at price must be higher than the selling price",
+        "margenConCosto": "Margin with the current cost ({costo})",
+        "margenSinCosto": "No cost recorded: margin cannot be calculated",
+        "guardar": "Save price",
+        "guardando": "Saving…",
+        "toastActualizado": "Price updated",
+        "toastActualizadoDetalle": "The price is now {precio}.",
+        "toastProgramado": "Price scheduled",
+        "toastProgramadoDetalle": "{precio} will take effect on {dia}.",
+        "toastSinCambios": "No changes",
+        "toastSinCambiosDetalle": "The price was already that.",
+        "toastError": "The price could not be updated"
+      },
+      "dialogoCosto": {
+        "titulo": "Update cost",
+        "descripcion": "Enter the new acquisition cost. The change will be recorded in the history.",
+        "costoActual": "Current cost",
+        "nuevoCosto": "New cost",
+        "proveedor": "Supplier (optional)",
+        "proveedorAyuda": "Which supplier this cost comes from.",
+        "proveedorVacio": "This product has no suppliers. Add them in “Suppliers and tags”.",
+        "sinProveedor": "No supplier",
+        "preferido": "preferred",
+        "errorCostoRequerido": "Enter the new cost",
+        "errorCostoNegativo": "The cost cannot be negative",
+        "margenConPrecio": "Margin with the current price ({precio})",
+        "margenSinPrecio": "No price recorded: margin cannot be calculated",
+        "guardar": "Save cost",
+        "guardando": "Saving…",
+        "toastActualizado": "Cost updated",
+        "toastActualizadoDetalle": "The cost is now {costo}.",
+        "toastProgramado": "Cost scheduled",
+        "toastProgramadoDetalle": "{costo} will take effect on {dia}.",
+        "toastSinCambios": "No changes",
+        "toastSinCambiosDetalle": "The cost was already that.",
+        "toastError": "The cost could not be updated"
+      }
+    },
+    "proveedores": {
+      "titulo": "Product suppliers",
+      "subtitulo": "Manage suppliers and their commercial terms",
+      "agregar": "Add supplier",
+      "agregarPrimero": "Add first supplier",
+      "motivoSinLibres": "All of the organization’s suppliers are already assigned to this product.",
+      "nit": "Tax ID: {nit}",
+      "sinNombre": "Unnamed supplier",
+      "dias": "{n, plural, one {# day} other {# days}}",
+      "minimoCorto": "Min. order: {n}",
+      "ultimaCompra": "Last purchase: {costo} · {fecha}",
+      "ultimaCompraTitulo": "Unit cost of the last purchase from this supplier",
+      "columnas": {
+        "proveedor": "Supplier",
+        "costo": "Cost",
+        "diasEntrega": "Lead time",
+        "pedidoMinimo": "Minimum order",
+        "sku": "Supplier SKU",
+        "preferido": "Preferred",
+        "notas": "Notes"
+      },
+      "acciones": {
+        "hacerPreferido": "Set as preferred",
+        "hacerPreferidoDe": "Set {nombre} as preferred",
+        "esPreferido": "{nombre} is the preferred supplier",
+        "esPreferidoCorto": "Preferred supplier"
+      },
+      "estados": {
+        "errorTitulo": "The suppliers could not be loaded",
+        "vacioTitulo": "This product has no assigned suppliers",
+        "vacioDescripcion": "Add a supplier with its cost and lead time to speed up purchasing."
+      },
+      "dialogo": {
+        "tituloAgregar": "Add supplier",
+        "tituloEditar": "Edit supplier",
+        "descripcionAgregar": "Select a supplier and set the commercial terms",
+        "descripcionEditar": "Change the supplier’s commercial terms",
+        "proveedor": "Supplier",
+        "proveedorPlaceholder": "Select supplier",
+        "proveedorBuscar": "Search by name or tax ID…",
+        "proveedorVacio": "No suppliers available",
+        "proveedorRequerido": "Select a supplier",
+        "crear": "Create supplier",
+        "crearCon": "Create supplier “{nombre}”",
+        "costo": "Cost",
+        "diasEntrega": "Lead time",
+        "diasSufijo": "days",
+        "pedidoMinimo": "Minimum order",
+        "sku": "Supplier SKU",
+        "skuPlaceholder": "Optional",
+        "notas": "Notes",
+        "notasPlaceholder": "Notes about this supplier…",
+        "preferido": "Preferred supplier",
+        "preferidoAyuda": "There can be only one: the others stop being preferred.",
+        "negativo": "It can’t be negative"
+      },
+      "eliminar": {
+        "titulo": "Delete supplier?",
+        "descripcion": "{nombre} will be unlinked from this product."
+      },
+      "toasts": {
+        "agregado": "Supplier added",
+        "agregadoDetalle": "The supplier was assigned to the product",
+        "actualizado": "Supplier updated",
+        "actualizadoDetalle": "The supplier terms were updated",
+        "preferido": "{nombre} is now the preferred supplier",
+        "eliminado": "Supplier deleted",
+        "eliminadoDetalle": "The supplier was unlinked from the product",
+        "duplicado": "This supplier is already assigned to the product",
+        "errorGuardar": "The supplier could not be saved",
+        "errorEliminar": "The supplier could not be deleted"
+      },
+      "nuevo": {
+        "titulo": "New supplier",
+        "descripcion": "Create the supplier and it will be selected for this product."
+      },
+      "compras": {
+        "titulo": "Purchase history",
+        "subtitulo": "Purchase orders and bills for this product and its variants",
+        "limitado": "Showing the {n} most recent of {total}",
+        "filtro": "Filter by supplier",
+        "todos": "All suppliers",
+        "fecha": "Date",
+        "documento": "Document",
+        "proveedor": "Supplier",
+        "cantidad": "Quantity",
+        "costoUnitario": "Unit cost",
+        "total": "Total",
+        "estado": "Status",
+        "tipoOrden": "PO {doc}",
+        "tipoFactura": "Bill {doc}",
+        "cantidadPorCosto": "{cantidad} × {costo}",
+        "vacio": "No purchases recorded",
+        "vacioAyuda": "When you buy this product with a purchase order or bill, it will show up here.",
+        "error": "The purchase history could not be loaded"
+      }
+    },
+    "resumen": {
+      "verImagenes": "View images",
+      "informacion": {
+        "titulo": "Information",
+        "nombre": "Name",
+        "sku": "SKU",
+        "codigoBarras": "Barcode",
+        "tipo": "Type",
+        "producto": "Product",
+        "servicio": "Service",
+        "estado": "Status",
+        "unidad": "Unit of measure",
+        "categoria": "Main category",
+        "sinCategoria": "No category",
+        "estacion": "Kitchen/bar station",
+        "marca": "Brand",
+        "referencia": "Reference",
+        "categoriasAdicionales": "Additional categories",
+        "sinAdicionales": "No additional categories",
+        "porRegla": "by rule",
+        "porReglaAyuda": "Assigned automatically by a category rule"
+      },
+      "estaciones": {
+        "hot_kitchen": "Hot kitchen",
+        "cold_kitchen": "Cold kitchen",
+        "bar": "Bar",
+        "cashier": "Cashier",
+        "all": "All stations",
+        "heredada": "Inherited from the category"
+      },
+      "descripcion": {
+        "titulo": "Description",
+        "vacia": "This product has no description."
+      },
+      "impuestos": {
+        "titulo": "Taxes",
+        "vacio": "No taxes assigned",
+        "chip": "{nombre} {tasa}%"
+      },
+      "proveedor": {
+        "titulo": "Preferred supplier",
+        "verTodos": "{count, plural, one {View # supplier} other {View # suppliers}}",
+        "nombre": "Supplier",
+        "costo": "Supplier cost",
+        "skuProveedor": "Supplier SKU",
+        "entrega": "Lead time",
+        "dias": "{count, plural, one {# day} other {# days}}",
+        "minimo": "Minimum order",
+        "sinPreferido": "It has suppliers, but none is marked as preferred.",
+        "vacio": "No supplier"
+      },
+      "inventario": {
+        "titulo": "Inventory",
+        "verStock": "View stock",
+        "rastrea": "Tracks inventory",
+        "servicio": "No: services have no inventory",
+        "stockTotal": "Total stock",
+        "reservadoDisponible": "Reserved · available",
+        "reservadoDisponibleValor": "{reservado} · {disponible}",
+        "bajoMinimo": "Branch alerts",
+        "sucursalesAlerta": "Below minimum: {bajo} · Out of stock: {agotadas}",
+        "sinAlertas": "No branch below minimum"
+      },
+      "trazabilidad": {
+        "titulo": "Serial number tracking and warranty",
+        "verSeriales": "View serial numbers",
+        "requiereSerial": "Requires serial number",
+        "garantia": "Warranty",
+        "meses": "{count, plural, one {# month} other {# months}}",
+        "sinGarantia": "No warranty",
+        "autoGenerar": "Auto-generate serial numbers",
+        "patron": "Generation pattern"
+      },
+      "envio": {
+        "titulo": "Shipping",
+        "peso": "Weight",
+        "volumen": "Volume",
+        "dimensiones": "Length × width × height",
+        "dimensionesValor": "{largo} × {ancho} × {alto} cm"
+      },
+      "compuesto": {
+        "titulo": "Composite / recipe",
+        "esCompuesto": "Composite product",
+        "receta": "Recipe",
+        "verRecetas": "View recipes"
+      },
+      "variantes": {
+        "titulo": "Variants and modifiers",
+        "variantes": "Variants",
+        "conteoVariantes": "{count, plural, =0 {No variants} one {# variant ({activas} active)} other {# variants ({activas} active)}}",
+        "modificadores": "Modifier groups",
+        "conteoModificadores": "{count, plural, =0 {No modifiers} one {# group} other {# groups}}"
+      },
+      "fechas": {
+        "titulo": "Record",
+        "creado": "Created",
+        "modificado": "Last modified"
+      }
+    },
+    "seriales": {
+      "sinSeriales": {
+        "titulo": "This product doesn't require serial numbers",
+        "descripcion": "To enable serial number tracking, edit the product and turn on “Requires serial number” in the Traceability section.",
+        "editar": "Edit product"
+      },
+      "resumen": {
+        "etiqueta": "Serial number settings",
+        "sku": "SKU: {sku}",
+        "precio": "Price: {valor}",
+        "costo": "Cost: {valor}",
+        "variantes": "{count, plural, one {Includes the serial numbers of # variant} other {Includes the serial numbers of # variants}}"
+      },
+      "badges": {
+        "trazabilidad": "Tracking on",
+        "autoGeneracion": "Auto-generation",
+        "garantia": "{count, plural, one {# month warranty} other {# months warranty}}",
+        "patron": "Pattern: {patron}"
+      },
+      "stock": {
+        "total": "{count, plural, one {Total stock: # unit} other {Total stock: # units}}",
+        "generados": "Serial numbers created: {valor}",
+        "sinSerial": "{count} without serial"
+      },
+      "inactivo": {
+        "aviso": "{count, plural, one {This product no longer requires a serial number. The registered serial is kept and can be viewed, but no new ones are created.} other {This product no longer requires a serial number. The # registered serials are kept and can be viewed, but no new ones are created.}}"
+      },
+      "stats": {
+        "etiqueta": "Serial numbers by status",
+        "total": "Total",
+        "enStock": "In stock",
+        "reservados": "Reserved",
+        "vendidos": "Sold",
+        "otros": "Other statuses:"
+      },
+      "estados": {
+        "in_stock": "In stock",
+        "reserved": "Reserved",
+        "sold": "Sold",
+        "returned": "Returned",
+        "in_transit": "In transit",
+        "damaged": "Damaged",
+        "rma": "RMA",
+        "warranty_claim": "Warranty claim",
+        "warranty": "Under warranty",
+        "repair": "In repair",
+        "defective": "Defective"
+      },
+      "garantia": {
+        "rango": "{inicio} → {fin}",
+        "vigente": "{count, plural, one {Active · # day} other {Active · # days}}",
+        "vencida": "Expired"
+      },
+      "garantias": {
+        "vigente": "Active",
+        "por_vencer": "Expiring (30 days)",
+        "vencida": "Expired",
+        "sin_garantia": "No warranty"
+      },
+      "filtros": {
+        "buscar": "Search by serial number...",
+        "buscarCorto": "Search serial…",
+        "buscarEtiqueta": "Search serial (Enter or scanner opens its history)",
+        "escanear": "Scan serial number",
+        "escanearAyuda": "Read the code with the scanner: if the serial exists, its history opens",
+        "estado": "Status",
+        "todosEstados": "All statuses",
+        "sucursal": "Current branch",
+        "todasSucursales": "Branch: all",
+        "garantia": "Warranty",
+        "garantiaAyuda": "“Expiring” = expires within the next 30 days.",
+        "todasGarantias": "All",
+        "variante": "Variant",
+        "todasVariantes": "All variants",
+        "verResultados": "{count, plural, =0 {No results} one {Show # serial number} other {Show # serial numbers}}"
+      },
+      "chips": {
+        "estado": "Status: {valor}",
+        "sucursal": "Branch: {valor}",
+        "garantia": "Warranty: {valor}",
+        "variante": "Variant: {valor}"
+      },
+      "columnas": {
+        "serial": "Serial",
+        "variante": "Variant",
+        "estado": "Status",
+        "garantia": "Warranty",
+        "costo": "Purchase cost",
+        "precio": "Sale price",
+        "cliente": "Customer",
+        "sucursal": "Branch",
+        "recepcion": "Received on"
+      },
+      "tabla": {
+        "etiqueta": "Product serial numbers",
+        "sinCliente": "N/A",
+        "productoBase": "Base product",
+        "varianteN": "Variant #{id}",
+        "recibido": "Received {fecha}",
+        "garantiaNo": "Warranty —",
+        "costoMovil": "Cost {valor}"
+      },
+      "vacio": {
+        "titulo": "No serial numbers yet",
+        "descripcion": "There are no serial numbers registered for this product yet. Create them from the pattern or register them with the scanner."
+      },
+      "sinResultados": {
+        "titulo": "No serial numbers match these filters",
+        "descripcion": "No serial numbers were found with the applied filters."
+      },
+      "error": {
+        "titulo": "The serial numbers could not be loaded"
+      },
+      "sustantivo": {
+        "singular": "serial number",
+        "plural": "serial numbers"
+      },
+      "acciones": {
+        "generar": "Create serial numbers",
+        "generarCorto": "Create",
+        "verTrazabilidad": "View history",
+        "cambiarEstado": "Change status",
+        "reclamo": "Warranty claim",
+        "reclamoCorto": "Claim",
+        "abrirFicha": "Open serial record",
+        "copiar": "Copy serial number",
+        "copiado": "Serial number copied",
+        "copiarError": "Could not copy",
+        "exportar": "Export serial numbers (CSV)",
+        "exportarSeleccion": "Export",
+        "sinTransiciones": "The selected serial numbers don't share an allowed status change."
+      },
+      "csv": {
+        "serial": "Serial number",
+        "variante": "Variant",
+        "estado": "Status",
+        "sucursal": "Branch",
+        "cliente": "Customer",
+        "recepcion": "Received on",
+        "venta": "Sold on",
+        "garantiaInicio": "Warranty start",
+        "garantiaFin": "Warranty end",
+        "costo": "Purchase cost",
+        "precio": "Sale price",
+        "exportado": "{count, plural, one {# serial number exported} other {# serial numbers exported}}"
+      },
+      "generar": {
+        "titulo": "Create serial numbers in bulk",
+        "descripcionPatron": "Creates serial numbers automatically using the pattern:",
+        "descripcionLista": "Register the serial numbers the units already carry (manufacturer label or barcode scanner).",
+        "modo": "How to register",
+        "modoPatron": "From pattern",
+        "modoLista": "List or scanner",
+        "variante": "Variant",
+        "varianteAyuda": "Each serial belongs to one variant: stock and available quota are the chosen variant’s.",
+        "variantePlaceholder": "Choose the variant",
+        "sucursal": "Destination branch",
+        "sucursalPlaceholder": "Select a branch",
+        "sucursalAyuda": "The branch is required. Each serial number is assigned to a stock unit at the selected branch.",
+        "sinSucursal": "Select a branch to continue",
+        "opcionSucursal": "{sucursal} (Stock: {stock} · Missing: {faltan})",
+        "stockSucursal": "Stock at branch: {stock} · Existing serials: {existentes}",
+        "faltan": "{count, plural, one {<b>#</b> serial missing} other {<b>#</b> serials missing}}",
+        "cantidad": "Number of serials to create",
+        "generarFaltantes": "{count, plural, one {Create the # missing serial} other {Create the # missing serials}}",
+        "vistaPrevia": "Preview:",
+        "vistaPreviaNota": "If a serial already exists, the next number in sequence is used.",
+        "patronAyuda": "Set the pattern in the product’s Traceability section.",
+        "lista": "Serial numbers",
+        "listaAyuda": "One per line. You can also separate them with commas, semicolons or tabs; the scanner types one per line.",
+        "listaPlaceholder": "SN-0001\nSN-0002\nSN-0003",
+        "listaContador": "{count, plural, =0 {No serials} one {# serial} other {# serials}}",
+        "repetidos": "{count, plural, one {# duplicate serial in the list was removed.} other {# duplicate serials in the list were removed.}}",
+        "existentes": "{count, plural, one {# already exists on this product and will be skipped:} other {# already exist on this product and will be skipped:}}",
+        "costo": "Purchase cost",
+        "costoAyuda": "Empty = the product’s current cost.",
+        "nota": "Note",
+        "notaPlaceholder": "E.g. batch from purchase order 118",
+        "avisoGarantia": "{count, plural, one {Each serial will have a # month warranty starting today.} other {Each serial will have a # months warranty starting today.}}",
+        "generarN": "{count, plural, one {Create # serial} other {Create # serials}}",
+        "registrarN": "{count, plural, one {Register # serial} other {Register # serials}}",
+        "generando": "Creating…",
+        "motivoVariante": "Choose the variant",
+        "motivoLista": "Type or scan at least one serial",
+        "motivoInactivo": "The product doesn't require serial numbers",
+        "sinCupo": "There are no units without a serial at this branch: add stock first.",
+        "resultadoTitulo": "Serial numbers registered",
+        "resultadoCreados": "{count, plural, =0 {No serial numbers were created.} one {# serial number was created.} other {# serial numbers were created.}}",
+        "resultadoRango": "Created serials",
+        "resultadoOmitidos": "{count, plural, one {# skipped} other {# skipped}}",
+        "motivoDuplicado": "Already exists (serials are unique)",
+        "toastOk": "{count, plural, =0 {No serial numbers created} one {# serial number registered} other {# serial numbers registered}}",
+        "toastOmitidos": "{count, plural, one {# skipped as duplicate} other {# skipped as duplicates}}",
+        "toastError": "The serial numbers could not be created"
+      },
+      "estadoDialogo": {
+        "titulo": "Change status",
+        "descripcionUno": "Serial {serial}",
+        "descripcionVarios": "{count, plural, one {# serial number selected} other {# serial numbers selected}}",
+        "estadoActual": "Current status:",
+        "nuevoEstado": "Move to",
+        "ayudas": {
+          "in_stock": "Becomes available for sale again at its branch.",
+          "damaged": "Can't be sold. The damage is recorded in its history.",
+          "rma": "Is sent to the supplier or manufacturer for inspection or replacement.",
+          "returned": "The customer returned the unit. Check it before putting it back in stock.",
+          "sold": "Closes the claim and the serial goes back to sold."
+        },
+        "nota": "Note",
+        "notaAyuda": "Saved in the serial’s history.",
+        "notaPlaceholder": "Reason for the change",
+        "aplicar": "Change status",
+        "motivoElegir": "Choose the new status",
+        "motivoNota": "Write a note for this change",
+        "toastOk": "{count, plural, one {# serial number updated} other {# serial numbers updated}}",
+        "toastOkDetalle": "New status: {estado}",
+        "toastError": "The status could not be changed",
+        "rechazadosTitulo": "Some serial numbers were not changed",
+        "rechazadosDescripcion": "{count, plural, one {# serial number doesn’t allow that change from its current status:} other {# serial numbers don’t allow that change from their current status:}}"
+      },
+      "traza": {
+        "titulo": "History",
+        "descripcion": "Serial number history",
+        "error": "The history could not be loaded",
+        "sucursalN": "Branch #{id}",
+        "notas": "Notes",
+        "documentos": "Documents",
+        "lineaTiempo": "Timeline",
+        "sinEventos": "No recorded activity.",
+        "por": "By {usuario}",
+        "proveedor": "Supplier: {proveedor}",
+        "enSucursal": "Branch: {sucursal}",
+        "movimiento": "From {desde} to {hasta}",
+        "deA": "Status: {desde} → {hasta}",
+        "estado": "Status: {estado}",
+        "aCliente": "Customer: {cliente}",
+        "motivoReclamo": "Reason: {motivo}",
+        "resolucion": "Resolution: {resolucion}",
+        "reclamo": "Warranty claim",
+        "reclamoEstado": "Warranty claim · {estado}",
+        "hitos": {
+          "compra": "Purchase"
+        },
+        "eventos": {
+          "received": "Received",
+          "stock_in": "Added to stock",
+          "reserved": "Reserved",
+          "sold": "Sold",
+          "returned": "Returned",
+          "transferred": "Transferred",
+          "damaged": "Marked as damaged",
+          "rma_created": "Sent to RMA",
+          "warranty_claim": "Warranty claim",
+          "warranty_resolved": "Warranty resolved",
+          "status_change": "Status change",
+          "otro": "Activity: {tipo}"
+        },
+        "estadosReclamo": {
+          "pending": "Pending",
+          "approved": "Approved",
+          "rejected": "Rejected",
+          "in_process": "In progress",
+          "resolved": "Resolved",
+          "cancelled": "Cancelled"
+        },
+        "resoluciones": {
+          "repair": "Repair",
+          "replacement": "Replacement",
+          "refund": "Refund",
+          "store_credit": "Store credit",
+          "rejected": "Rejected"
+        },
+        "canales": {
+          "in_stock": "In stock",
+          "pos": "Point of sale",
+          "web": "Online store",
+          "invoice": "Invoice",
+          "table": "Table"
+        },
+        "docs": {
+          "ordenCompra": "Purchase order",
+          "facturaCompra": "Purchase invoice",
+          "venta": "Sale",
+          "pedidoWeb": "Online order",
+          "facturaVenta": "Sales invoice",
+          "cliente": "Customer",
+          "reclamo": "View claim"
+        },
+        "datos": {
+          "producto": "Product / variant",
+          "sucursalActual": "Current branch",
+          "sucursalOrigen": "Receiving branch",
+          "proveedor": "Supplier",
+          "recepcion": "Received on",
+          "costo": "Purchase cost",
+          "cliente": "Customer",
+          "venta": "Sold on",
+          "precio": "Sale price",
+          "canal": "Sales channel",
+          "garantia": "Warranty",
+          "meses": "Warranty months"
+        }
+      }
+    },
+    "variantes": {
+      "titulo": "Product variants",
+      "nueva": "New variant",
+      "generar": "Generate combinations",
+      "resumenAtributos": "Variant attributes",
+      "mostrarInactivas": "Show inactive ({count})",
+      "sinSeguimiento": "Not tracked",
+      "columnas": {
+        "sku": "SKU",
+        "nombre": "Name",
+        "atributos": "Attributes",
+        "precio": "Price",
+        "costo": "Cost",
+        "margen": "Margin",
+        "stock": "Stock",
+        "stockSucursal": "Stock (branch)",
+        "codigo": "Barcode",
+        "estado": "Status"
+      },
+      "acciones": {
+        "verFicha": "View variant page",
+        "activar": "Activate",
+        "desactivar": "Deactivate",
+        "editarDe": "Edit {nombre}"
+      },
+      "movil": {
+        "costo": "Cost {costo}",
+        "stock": "Stock {stock}"
+      },
+      "vacio": {
+        "titulo": "This product has no variants",
+        "descripcion": "Create sizes, colors or other variations with their own SKU, price and stock.",
+        "crearPrimera": "Create first variant",
+        "soloInactivas": "All variants are inactive",
+        "verInactivas": "Show inactive"
+      },
+      "error": {
+        "titulo": "Couldn’t load the variants",
+        "descripcion": "Check your connection and try again."
+      },
+      "esVariante": {
+        "titulo": "This product is a variant",
+        "descripcion": "Variants are managed from the parent product."
+      },
+      "eliminar": {
+        "titulo": "Delete variant “{nombre}”?",
+        "descripcion": "The variant is retired and no longer appears in the POS, the store or the catalog. Its sales, stock ledger and serial number history is kept."
+      },
+      "toasts": {
+        "activada": "Variant activated",
+        "desactivada": "Variant deactivated",
+        "eliminada": "Variant deleted",
+        "errorEstado": "Couldn’t change the status",
+        "errorEliminar": "Couldn’t delete the variant"
+      },
+      "dialogo": {
+        "tituloCrear": "Create new variant",
+        "tituloEditar": "Edit variant",
+        "descripcionCrear": "Fill in the details to create a product variant",
+        "descripcionEditar": "Update the variant details",
+        "sku": "Variant SKU",
+        "skuPlaceholder": "Unique SKU for this variant",
+        "skuSugerido": "Suggested from the product SKU and the attributes",
+        "nombre": "Variant name",
+        "nombrePlaceholder": "Descriptive name",
+        "precio": "Price",
+        "comparacion": "Compare-at price",
+        "comparacionAyuda": "Shown struck through; must be higher than the price",
+        "costo": "Cost",
+        "margen": "Margin {margen}%",
+        "atributos": "Attributes",
+        "stockSucursal": "Stock by branch",
+        "sinSeguimiento": "This product doesn’t track inventory",
+        "sinSucursales": "No branches available",
+        "stockAyudaNueva": "Initial quantity per branch: it’s recorded in the stock ledger at the variant’s cost (required if there is a quantity).",
+        "stockAyudaAjuste": "If you change the quantity, the difference is recorded as an adjustment in the stock ledger.",
+        "stockAyudaSinPermiso": "You don’t have permission to adjust inventory: the quantity is read-only.",
+        "sucursal": "Branch",
+        "cantidadInicial": "Initial quantity",
+        "cantidad": "Quantity",
+        "minimo": "Minimum",
+        "cantidadDe": "Quantity at {sucursal}",
+        "minimoDe": "Minimum at {sucursal}",
+        "ajusteDelta": "Adjustment {delta}",
+        "codigo": "Barcode (optional)",
+        "crear": "Create variant",
+        "errores": {
+          "skuRequerido": "SKU is required",
+          "skuRepetido": "Another variant or product already uses this SKU",
+          "nombreRequerido": "Name is required",
+          "precioNegativo": "Price can’t be negative",
+          "comparacionMenor": "It must be higher than the price",
+          "costoNegativo": "Cost can’t be negative",
+          "stockSinCosto": "To record an initial quantity, the variant needs a cost greater than 0",
+          "codigo": "Fix the barcode before saving"
+        },
+        "toasts": {
+          "creada": "Variant created",
+          "actualizada": "Variant updated",
+          "error": "Couldn’t save the variant",
+          "errorCatalogo": "Couldn’t save to the catalog",
+          "valorGuardado": "Value saved to the catalog",
+          "valorGuardadoDetalle": "“{valor}” added to {tipo}"
+        }
+      },
+      "atributos": {
+        "sinAtributos": "No attributes. Add one (e.g. Size, Color).",
+        "guardarValor": "Save this value to the catalog",
+        "guardarValorDe": "Save the {tipo} value to the catalog",
+        "valorEnCatalogo": "This value is already in the catalog",
+        "quitarAtributo": "Remove {tipo}",
+        "masValores": "{count, plural, one {+# more (type to search)} other {+# more (type to search)}}",
+        "agregar": "Add attribute",
+        "tipoExistente": "Existing type…",
+        "nuevoTipo": "New type…",
+        "crearTipoCatalogo": "Create type and save it to the catalog",
+        "crearTipo": "Add type (saved to the catalog when you save the product)"
+      },
+      "generador": {
+        "titulo": "Generate combinations",
+        "descripcion": "Choose types and values: the variants that don’t exist yet are created with the product’s price and cost.",
+        "tipos": "Attributes",
+        "tiposPlaceholder": "Add attribute…",
+        "tiposAyuda": "E.g. Size, Color, Material. New types and values are saved to the catalog.",
+        "sinTipos": "No types in the catalog",
+        "crearTipo": "Create “{tipo}”",
+        "quitarTipo": "Remove {tipo}",
+        "seleccionados": "{count, plural, =0 {(none selected)} one {(# selected)} other {(# selected)}}",
+        "sinValores": "No values yet: add one below",
+        "nuevoValor": "New {tipo} value…",
+        "elegirValores": "Select at least one value to generate variants",
+        "conteo": "{total} combinations: {nuevas} new and {existentes} already existing",
+        "ayudaPrecios": "They’re created with the product’s current price and cost and no stock; adjust them later on each variant.",
+        "seGeneraran": "{count, plural, =0 {No new combinations} one {# variant will be generated} other {# variants will be generated}}",
+        "generar": "{count, plural, =0 {Generate variants} one {Generate # variant} other {Generate # variants}}",
+        "creando": "Creating…",
+        "creandoDe": "Creating {hecho} of {total}…",
+        "resumenCreadas": "{count, plural, =0 {No variants were created} one {# variant was created} other {# variants were created}}",
+        "resumenFallidas": "{count, plural, one {# couldn’t be created:} other {# couldn’t be created:}}"
+      }
+    }
+  },
+  "productoForm": {
+    "errores": {
+      "desconocido": "An unexpected error occurred. Please try again.",
+      "sin_permiso": "You don't have permission for this action on products.",
+      "producto_no_encontrado": "The product doesn't exist or doesn't belong to your organization.",
+      "variante_no_encontrada": "The variant doesn't exist.",
+      "sku_requerido": "SKU is required.",
+      "sku_duplicado": "A product with SKU {detalle} already exists.",
+      "sku_variante_repetido": "Two variants (or a variant and the product) have the same SKU.",
+      "nombre_requerido": "Name is required.",
+      "nombre_corto": "The name must have at least 2 characters.",
+      "precio_negativo": "The price can't be negative.",
+      "precio_requerido": "Enter the price.",
+      "costo_negativo": "The cost can't be negative.",
+      "costo_requerido": "Enter the cost.",
+      "comparacion_menor": "The compare-at price must be higher than the selling price.",
+      "vigencia_pasada": "The effective date can't be in the past.",
+      "estado_invalido": "Invalid status.",
+      "tipo_invalido": "Invalid product type.",
+      "estacion_invalida": "Invalid station.",
+      "categoria_invalida": "The category doesn't belong to your organization.",
+      "impuesto_invalido": "One of the taxes doesn't belong to your organization.",
+      "etiqueta_invalida": "One of the tags doesn't belong to your organization.",
+      "proveedor_invalido": "The supplier doesn't belong to your organization.",
+      "sucursal_invalida": "The branch doesn't belong to your organization.",
+      "stock_sin_costo": "Initial stock needs a cost: without it the stock ledger and accounting are incomplete.",
+      "cantidad_negativa": "Quantities can't be negative.",
+      "cantidad_invalida": "Enter a quantity greater than 0.",
+      "variantes_activas": "The product has active variants: delete them before turning variants off.",
+      "grupo_sin_nombre": "Each modifier group needs a name.",
+      "modo_seleccion_invalido": "Invalid selection mode.",
+      "min_max_invalido": "The maximum selections can't be lower than the minimum.",
+      "opcion_sin_nombre": "Each option needs a name.",
+      "imagen_sin_ruta": "An image didn't finish uploading.",
+      "imagen_invalida": "The image doesn't belong to this product.",
+      "producto_sin_seriales": "This product doesn't require a serial number.",
+      "patron_requerido": "Enter the generation pattern.",
+      "patron_sin_consecutivo": "The pattern needs a sequence: '{SEQ}', '{####}', '{###}' or '{##}'.",
+      "excede_stock": "There aren't that many units without a serial at the branch ({detalle} left).",
+      "sin_seriales": "There are no serial numbers to register.",
+      "modo_invalido": "Invalid operation.",
+      "garantia_invalida": "Warranty months must be a whole number of 0 or more.",
+      "sin_variantes": "Add at least one variant or turn off “Has variants”.",
+      "variante_incompleta": "Each variant needs a SKU and a name.",
+      "combinacion_repetida": "Two variants have the same attribute combination.",
+      "variante_stock_sin_costo": "A variant with initial stock needs a cost.",
+      "demasiadas_imagenes": "You can upload up to 5 images.",
+      "dimension_negativa": "Weight and dimensions can't be negative."
+    }
   }
 }

@@ -4,7 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Users, UserCheck } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { PassVsOccasional } from '@/lib/services/parkingReportService';
 
 interface PassVsOccasionalChartProps {
@@ -13,6 +13,7 @@ interface PassVsOccasionalChartProps {
 }
 
 export function PassVsOccasionalChart({ data, isLoading }: PassVsOccasionalChartProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const totalClients = data.subscribers + data.occasional;
   const totalRevenue = data.subscriber_revenue + data.occasional_revenue;
 

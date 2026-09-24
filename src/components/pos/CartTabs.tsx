@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Cart } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface CartTabsProps {
   carts: Cart[];
@@ -38,6 +38,7 @@ export function CartTabs({
   className 
 }: CartTabsProps) {
   const [isCreatingCart, setIsCreatingCart] = useState(false);
+  const { formatear } = useMonedaOrganizacion();
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
   const [scrollStartX, setScrollStartX] = useState(0);
@@ -221,7 +222,7 @@ export function CartTabs({
                         variant="secondary" 
                         className="text-xs px-1 py-0 h-5 dark:bg-gray-700 bg-gray-200"
                       >
-                        {formatCurrency(cart.total, 'COP').replace(/\$\s?/, '$').replace(/,\d{3}$/, 'k')}
+                        {formatear(cart.total).replace(/\$\s?/, '$')}
                       </Badge>
                     )}
 
@@ -258,7 +259,7 @@ export function CartTabs({
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            handleRemoveCart(cart.id, e as any);
+                            handleRemoveCart(cart.id, e as unknown as React.MouseEvent);
                           }
                         }}
                       >
@@ -307,7 +308,7 @@ export function CartTabs({
                     </div>
                     <div className="text-right">
                       <div className="font-semibold dark:text-blue-400 text-blue-600">
-                        {formatCurrency(cart.total)}
+                        {formatear(cart.total)}
                       </div>
                       <div className="text-xs dark:text-gray-400 text-gray-600">
                         {new Date(cart.updated_at).toLocaleTimeString()}
@@ -352,7 +353,7 @@ export function CartTabs({
               {cartToRemove && (() => {
                 const cart = carts.find(c => c.id === cartToRemove);
                 if (cart && cart.items.length > 0) {
-                  return ` Tiene ${cart.items.length} producto(s) por ${formatCurrency(cart.total)}.`;
+                  return ` Tiene ${cart.items.length} producto(s) por ${formatear(cart.total)}.`;
                 }
                 return '';
               })()}

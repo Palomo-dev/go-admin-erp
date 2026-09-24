@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Car } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface TopPlate {
   plate: string;
@@ -27,6 +27,7 @@ interface TopPlatesTableProps {
 }
 
 export function TopPlatesTable({ data, isLoading }: TopPlatesTableProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const getMedalColor = (index: number) => {
     switch (index) {
       case 0:

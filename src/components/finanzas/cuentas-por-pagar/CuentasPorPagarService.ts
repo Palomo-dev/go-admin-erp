@@ -8,20 +8,53 @@ import {
   FiltrosCuentasPorPagar,
   ProgramarPagoForm,
   RegistrarPagoForm,
-  BankFileRecord,
-  PaymentApproval
+  BankFileRecord
 } from './types';
+import type { APInstallment } from './id/types';
 import { SupplierBase, OrganizationPaymentMethod, OrganizationCurrency } from '../facturas-compra/types';
 import { DEFAULT_TIMEZONE, getToday, todayInTz } from '@/lib/utils/timezone';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { sumarMesesAlDia } from '@/lib/services/fiscalCalendar';
 import { plainDateToInstant, toPlainDate } from '@/lib/utils/dateDisplay';
 import { logError } from '@/lib/utils/errorMessage';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
+
+/** Cuenta bancaria desde la que se paga (columnas de `obtenerCuentasBancarias`). */
+export interface CuentaBancariaPago {
+  id: string;
+  name: string;
+  bank_name: string | null;
+  account_number: string | null;
+  account_type: string | null;
+  currency: string | null;
+  balance: number | null;
+  is_active: boolean;
+}
 
 /** Datos del creador de un pago, resueltos aparte del propio pago. */
 type CreadorPago = { id: string; email: string; first_name?: string; last_name?: string };
 
 export class CuentasPorPagarService {
+
+  /**
+   * Moneda de un pago a proveedor: la de la factura de compra de la cuenta
+   * (`accounts_payable.invoice_id` → `invoice_purchase.currency`) o, si la
+   * cuenta no tiene factura o la factura no trae moneda, la moneda base de la
+   * organización (`resolveOrgCurrency`). Antes se escribía 'COP' fijo.
+   */
+  private static async monedaDelPago(accountPayableId: string, organizationId: number): Promise<string> {
+    const { data } = await supabase
+      .from('accounts_payable')
+      .select('invoice_purchase:invoice_id(currency)')
+      .eq('id', accountPayableId)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    const factura = (data as { invoice_purchase?: { currency?: string | null } | null } | null)?.invoice_purchase;
+    const deLaFactura = normalizarCodigoMoneda(factura?.currency);
+    if (deLaFactura) return deLaFactura;
+    return (await resolveOrgCurrency(supabase, organizationId)).code;
+  }
 
   /**
    * Resuelve los perfiles de quienes crearon los pagos.
@@ -274,7 +307,7 @@ export class CuentasPorPagarService {
       }
 
       const suppliers_count = suppliersData
-        ? new Set(suppliersData.map((row: any) => row.supplier_id).filter(Boolean)).size
+        ? new Set((suppliersData as Array<{ supplier_id: number | null }>).map((row) => row.supplier_id).filter(Boolean)).size
         : 0;
 
       // Obtener próximo vencimiento
@@ -404,7 +437,7 @@ export class CuentasPorPagarService {
         source_id: pagoData.account_payable_id,
         method: pagoData.payment_method || 'transfer',
         amount: parseFloat(pagoData.amount.toString()),
-        currency: 'COP', // Por defecto
+        currency: await this.monedaDelPago(pagoData.account_payable_id, organizationId),
         reference: pagoData.reference || `Pago programado para ${pagoData.scheduled_date}`,
         status: 'pending' as const,
         created_by: userId
@@ -472,7 +505,7 @@ export class CuentasPorPagarService {
         source_id: pagoData.account_payable_id,
         method: pagoData.payment_method,
         amount: pagoData.amount,
-        currency: 'COP', // Por defecto, podríamos obtenerlo de la organización
+        currency: await this.monedaDelPago(pagoData.account_payable_id, organizationId),
         reference: pagoData.reference || null,
         status: 'completed' as const,
         created_by: userId
@@ -615,7 +648,7 @@ export class CuentasPorPagarService {
         throw new Error('Organization ID o User ID no disponibles');
       }
 
-      const updateData: any = {
+      const updateData: { status: string; updated_at: string; reference?: string } = {
         status: 'completed',
         updated_at: new Date().toISOString()
       };
@@ -671,7 +704,7 @@ export class CuentasPorPagarService {
         throw new Error('Organization ID o User ID no disponibles');
       }
 
-      const updateData: any = {
+      const updateData: { status: string; updated_at: string; reference?: string } = {
         status: 'cancelled',
         updated_at: new Date().toISOString()
       };
@@ -736,7 +769,7 @@ export class CuentasPorPagarService {
       // primera aparición de cada proveedor. La clave es supplier.id que es
       // de tipo number, por lo que el Map se tipa como Map<number, SupplierBase>.
       const uniqueSuppliers = new Map<number, SupplierBase>();
-      (data || []).forEach((supplier: any) => {
+      ((data || []) as SupplierBase[]).forEach((supplier) => {
         if (!uniqueSuppliers.has(supplier.id)) {
           uniqueSuppliers.set(supplier.id, supplier);
         }
@@ -892,7 +925,7 @@ export class CuentasPorPagarService {
   }
 
   // Obtener cuentas bancarias de la organización
-  static async obtenerCuentasBancarias(branchId?: number | null): Promise<any[]> {
+  static async obtenerCuentasBancarias(branchId?: number | null): Promise<CuentaBancariaPago[]> {
     try {
       const organizationId = getOrganizationId();
       if (!organizationId) throw new Error('Organization ID no disponible');
@@ -922,7 +955,7 @@ export class CuentasPorPagarService {
   }
 
   // Obtener cuotas de una cuenta por pagar
-  static async obtenerCuotas(accountId: string): Promise<any[]> {
+  static async obtenerCuotas(accountId: string): Promise<APInstallment[]> {
     try {
       const { data, error } = await supabase
         .from('ap_installments')

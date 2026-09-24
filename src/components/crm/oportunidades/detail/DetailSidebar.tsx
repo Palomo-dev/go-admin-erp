@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import type { OpportunityFull } from '@/components/crm/pipeline/hooks/useOpportunityData';
 import type { CustomerDetails } from '../types';
 import { OpportunityObjectionsBlock } from '@/components/crm/objeciones/OpportunityObjectionsBlock';
@@ -21,6 +22,9 @@ export interface DetailSidebarProps {
 }
 
 export function DetailSidebar({ opportunity, customer, totals, displayAmount, onEditCustomer }: DetailSidebarProps) {
+  // Importes en la moneda de la oportunidad; si no la trae, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatearDoc = (valor: number) => formatMoneda(valor, paraDocumento(opportunity.currency));
   const lineTotal = totals.products + totals.spaces + totals.custom;
   const cust = opportunity.customer;
   return (
@@ -28,13 +32,13 @@ export function DetailSidebar({ opportunity, customer, totals, displayAmount, on
       <Card className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-0 text-white">
         <CardContent className="pt-6">
           <p className="text-blue-100 text-xs font-medium uppercase tracking-wide">Valor total</p>
-          <p className="text-3xl font-bold mt-1">{formatCurrency(displayAmount)}</p>
+          <p className="text-3xl font-bold mt-1">{formatearDoc(displayAmount)}</p>
           {totals.items > 0 && <p className="text-blue-200 text-xs mt-2">{totals.items} {totals.items === 1 ? 'item' : 'items'} cotizados</p>}
           {lineTotal > 0 && (
             <div className="mt-4 space-y-1.5 text-xs text-blue-100">
-              {totals.products > 0 && <div className="flex justify-between"><span>Productos</span><span>{formatCurrency(totals.products)}</span></div>}
-              {totals.spaces > 0 && <div className="flex justify-between"><span>Espacios</span><span>{formatCurrency(totals.spaces)}</span></div>}
-              {totals.custom > 0 && <div className="flex justify-between"><span>Conceptos</span><span>{formatCurrency(totals.custom)}</span></div>}
+              {totals.products > 0 && <div className="flex justify-between"><span>Productos</span><span>{formatearDoc(totals.products)}</span></div>}
+              {totals.spaces > 0 && <div className="flex justify-between"><span>Espacios</span><span>{formatearDoc(totals.spaces)}</span></div>}
+              {totals.custom > 0 && <div className="flex justify-between"><span>Conceptos</span><span>{formatearDoc(totals.custom)}</span></div>}
             </div>
           )}
         </CardContent>
@@ -57,7 +61,7 @@ export function DetailSidebar({ opportunity, customer, totals, displayAmount, on
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Tasa</span><span className="font-semibold text-gray-900 dark:text-white">{opportunity.commission_rate}%</span></div>
-              <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Monto</span><span className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency((displayAmount * (opportunity.commission_rate || 0)) / 100)}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Monto</span><span className="font-semibold text-blue-600 dark:text-blue-400">{formatearDoc((displayAmount * (opportunity.commission_rate || 0)) / 100)}</span></div>
               {opportunity.status === 'won' && <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 pt-1"><CheckCircle className="h-3 w-3" />Comisión generada</p>}
               {opportunity.status === 'open' && <p className="text-xs text-blue-600 dark:text-blue-500 pt-1">Se generará al marcar como ganada</p>}
             </div>

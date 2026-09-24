@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import HRMConfigService from '@/lib/services/hrmConfigService';
 import type { CountryPayrollRules } from '@/lib/services/hrmConfigService';
 import { RulesTable, RuleDetailModal, RulesPagination } from '@/components/hrm/reglas-pais';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,7 +28,8 @@ import {
 
 export default function ReglasPaisPage() {
   const { toast } = useToast();
-  const service = new HRMConfigService();
+  const service = useMemo(() => new HRMConfigService(), []);
+  const { paraDocumento } = useMonedaOrganizacion();
 
   const [rules, setRules] = useState<CountryPayrollRules[]>([]);
   const [countriesList, setCountriesList] = useState<{ code: string; name: string; currency: string }[]>([]);
@@ -43,7 +45,7 @@ export default function ReglasPaisPage() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const filters: any = {};
+      const filters: { country_code?: string; year?: number } = {};
       if (countryFilter && countryFilter !== 'all') {
         // Convertir ISO-3 (COL) a ISO-2 (CO) para country_payroll_rules
         filters.country_code = service.convertToISO2(countryFilter);
@@ -58,7 +60,7 @@ export default function ReglasPaisPage() {
       ]);
       setRules(rulesData);
       setCountriesList(countriesData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading data:', error);
       toast({
         title: 'Error',
@@ -68,7 +70,7 @@ export default function ReglasPaisPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [countryFilter, yearFilter, toast]);
+  }, [countryFilter, yearFilter, toast, service]);
 
   useEffect(() => {
     loadData();
@@ -89,12 +91,9 @@ export default function ReglasPaisPage() {
 
   // Current Colombia rules for quick reference (soporta CO y COL)
   const currentCoRules = rules.find(r => (r.country_code === 'CO' || r.country_code === 'COL') && r.is_active && r.year === new Date().getFullYear());
-
-  // Helper para obtener nombre del país desde código ISO2 o ISO3
-  const getCountryName = (code: string): string => {
-    const country = countriesList.find(c => c.code === code || service.convertToISO2(c.code) === code);
-    return country?.name || code;
-  };
+  // Son reglas legales de un país: su moneda es la de la fila
+  // (`minimum_wage_currency`); si falta, la base de la organización.
+  const monedaReglasCo = paraDocumento(currentCoRules?.minimum_wage_currency);
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -154,7 +153,7 @@ export default function ReglasPaisPage() {
                 <div className="min-w-0">
                   <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">SMLV {currentCoRules.year}</p>
                   <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                    {formatCurrency(currentCoRules.minimum_wage || 0, 'COP')}
+                    {formatMoneda(currentCoRules.minimum_wage || 0, monedaReglasCo)}
                   </p>
                 </div>
               </div>
@@ -169,7 +168,7 @@ export default function ReglasPaisPage() {
                 <div className="min-w-0">
                   <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Aux. Transporte</p>
                   <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                    {formatCurrency(currentCoRules.transport_allowance || 0, 'COP')}
+                    {formatMoneda(currentCoRules.transport_allowance || 0, monedaReglasCo)}
                   </p>
                 </div>
               </div>

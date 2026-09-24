@@ -3,6 +3,7 @@
 import { FC, useState, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface SKU {
   id: string;
@@ -39,6 +40,7 @@ const TopSKUTable: FC<TopSKUTableProps> = ({
   // El dia del nombre de descarga sale del contexto de la organizacion
   // (identidad), no del reloj del navegador ni de UTC.
   const { getToday } = useFormatDate();
+  const { formatear } = useMonedaOrganizacion();
   // Estado para el criterio de ordenamiento
   const [criterioPrincipal, setCriterioPrincipal] = useState<OrdenamientoCriterio>('rotacion');
   
@@ -106,14 +108,6 @@ const TopSKUTable: FC<TopSKUTableProps> = ({
     link.click();
     document.body.removeChild(link);
   };
-  const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
-  };
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
@@ -178,7 +172,7 @@ const TopSKUTable: FC<TopSKUTableProps> = ({
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{sku.id}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sku.nombre}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sku.stock}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatCurrency(sku.valorUnitario)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatear(sku.valorUnitario)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center">
                       <span className="mr-2">{sku.rotacion}%</span>

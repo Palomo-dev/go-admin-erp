@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { tiktokMarketingService } from '@/lib/services/integrations/tiktok';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { INTEGRATION_CONNECTION_USABLE_STATUS } from '@/lib/integrations/connectionStatus';
 import { resolveOrgStoreDomain } from '@/lib/services/integrations/marketingAccess';
 import { acceptMarketingOAuthState, OAUTH_STATE_REJECTED_MESSAGE } from '@/lib/services/integrations/marketingOAuthCallback';
@@ -118,7 +119,7 @@ export async function GET(request: NextRequest) {
       state.org,
       orgData?.name || 'Mi Negocio',
       domain,
-      'COP',
+      (await resolveOrgCurrency(supabase, state.org)).code,
       supabase
     );
 

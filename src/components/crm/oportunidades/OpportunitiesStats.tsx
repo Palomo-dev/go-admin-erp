@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, DollarSign, Target, Users, Percent } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { OpportunityStats } from './types';
 
 interface OpportunitiesStatsProps {
@@ -11,6 +11,8 @@ interface OpportunitiesStatsProps {
 }
 
 export function OpportunitiesStats({ stats, isLoading }: OpportunitiesStatsProps) {
+  // Importes agregados: moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   const cards = [
     {
       title: 'Total Oportunidades',
@@ -21,14 +23,14 @@ export function OpportunitiesStats({ stats, isLoading }: OpportunitiesStatsProps
     },
     {
       title: 'Monto Total',
-      value: formatCurrency(stats.totalAmount),
+      value: formatear(stats.totalAmount),
       icon: DollarSign,
       color: 'text-green-600 dark:text-green-400',
       bgColor: 'bg-green-100 dark:bg-green-900/30',
     },
     {
       title: 'Monto Ponderado',
-      value: formatCurrency(stats.weightedAmount),
+      value: formatear(stats.weightedAmount),
       icon: Target,
       color: 'text-purple-600 dark:text-purple-400',
       bgColor: 'bg-purple-100 dark:bg-purple-900/30',
@@ -110,7 +112,7 @@ export function OpportunitiesStats({ stats, isLoading }: OpportunitiesStatsProps
             <div className="text-center">
               <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-gray-600 dark:text-gray-300">
                 <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="text-sm sm:text-2xl font-bold truncate">{formatCurrency(stats.avgDealSize)}</span>
+                <span className="text-sm sm:text-2xl font-bold truncate">{formatear(stats.avgDealSize)}</span>
               </div>
               <p className="text-[10px] sm:text-sm text-gray-500 dark:text-gray-400">Promedio</p>
             </div>

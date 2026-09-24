@@ -11,7 +11,7 @@ import {
   TrendingUp,
   TrendingDown
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { MovementStats as MovementStatsType } from '@/lib/services/stockService';
 
 interface MovimientosStatsProps {
@@ -20,6 +20,7 @@ interface MovimientosStatsProps {
 }
 
 export function MovimientosStats({ stats, isLoading }: MovimientosStatsProps) {
+  const { formatear } = useMonedaOrganizacion();
   const statCards = [
     {
       title: 'Total Movimientos',
@@ -44,14 +45,14 @@ export function MovimientosStats({ stats, isLoading }: MovimientosStatsProps) {
     },
     {
       title: 'Valor Entradas',
-      value: formatCurrency(stats.valueIn),
+      value: formatear(stats.valueIn),
       icon: TrendingUp,
       bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
       textColor: 'text-emerald-600 dark:text-emerald-400'
     },
     {
       title: 'Valor Salidas',
-      value: formatCurrency(stats.valueOut),
+      value: formatear(stats.valueOut),
       icon: TrendingDown,
       bgColor: 'bg-orange-100 dark:bg-orange-900/30',
       textColor: 'text-orange-600 dark:text-orange-400'

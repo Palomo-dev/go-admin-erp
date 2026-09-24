@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Customer } from "../types";
-import { formatCurrency } from "@/utils/Utils";
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import {
   Table,
   TableBody,
@@ -25,7 +25,6 @@ import {
   MoreHorizontal,
   Mail,
   Phone,
-  User,
 } from "lucide-react";
 import { CopyableId } from "@/components/common/CopyableId";
 
@@ -55,10 +54,10 @@ export default function CustomersTable({
   onViewHistory,
   onCreateOpportunity,
   onSort,
-  sortField,
-  sortDirection,
 }: CustomersTableProps) {
   const router = useRouter();
+  // Valor acumulado del cliente: moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-x-auto">
       <Table>
@@ -203,7 +202,7 @@ export default function CustomersTable({
                 </TableCell>
                 <TableCell className="p-2 sm:p-3">
                   <div className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
-                    {formatCurrency(customer.total_value)}
+                    {formatear(customer.total_value)}
                   </div>
                   {/* Mostrar oportunidades en móvil */}
                   <div className="md:hidden text-xs text-gray-600 dark:text-gray-400 mt-1">

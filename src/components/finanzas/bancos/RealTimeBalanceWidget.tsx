@@ -13,7 +13,8 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 /** Respuesta del endpoint de saldo en tiempo real */
 interface RealTimeBalanceData {
@@ -60,6 +61,7 @@ export function RealTimeBalanceWidget({
   localBalance,
 }: RealTimeBalanceWidgetProps) {
   const [data, setData] = useState<RealTimeBalanceData | null>(null);
+  const { paraDocumento } = useMonedaOrganizacion();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -174,7 +176,7 @@ export function RealTimeBalanceWidget({
             <span className="text-sm text-gray-600 dark:text-gray-400">Saldo ERP</span>
           </div>
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            {formatCurrency(localBalance, data.currency)}
+            {formatMoneda(localBalance, paraDocumento(data.currency))}
           </span>
         </div>
 
@@ -185,7 +187,7 @@ export function RealTimeBalanceWidget({
             <span className="text-sm text-gray-600 dark:text-gray-400">Saldo Banco</span>
           </div>
           <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">
-            {formatCurrency(data.realBalance, data.currency)}
+            {formatMoneda(data.realBalance, paraDocumento(data.currency))}
           </span>
         </div>
 
@@ -205,7 +207,7 @@ export function RealTimeBalanceWidget({
             ) : (
               <CheckCircle className="h-3 w-3 mr-1" />
             )}
-            {formatCurrency(data.difference, data.currency)}
+            {formatMoneda(data.difference, paraDocumento(data.currency))}
           </Badge>
         </div>
 

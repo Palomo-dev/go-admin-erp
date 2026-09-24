@@ -11,7 +11,6 @@ import {
   RotateCcw,
   FileText,
   User,
-  Calendar,
   CreditCard,
   Package,
   CheckCircle,
@@ -48,18 +47,26 @@ import { supabase } from '@/lib/supabase/config';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { VentasService } from './VentasService';
 import { SaleWithDetails } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
+import type { Payment, SaleItem } from '../types';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { cn } from '@/utils/Utils';
 import { PrintService } from '@/lib/services/printService';
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import { useToast } from '@/components/ui/use-toast';
-import { SendToFactusButton, FactusStatusBadge } from '@/components/finanzas/facturacion-electronica';
+import { FactusStatusBadge } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService, type EInvoiceStatus } from '@/lib/services/electronicInvoicingService';
 
 interface VentaDetalleProps {
   saleId: string;
 }
+
+/** Línea de venta tal como la trae `getSaleById`, con el producto embebido. */
+type LineaVenta = SaleItem & { products?: { name?: string | null; sku?: string | null } | null };
+
+/** Pago de la venta (`payments.*`): trae su propia moneda. */
+type PagoVenta = Payment & { currency?: string | null };
 
 export function VentaDetalle({ saleId }: VentaDetalleProps) {
   const router = useRouter();
@@ -67,6 +74,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
   const { toast } = useToast();
   const { formatDate, formatTime, formatPlain } = useFormatDate();
   const { timezone } = useOrgTimezone();
+  const { formatear, paraDocumento } = useMonedaOrganizacion();
   const [sale, setSale] = useState<SaleWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [eInvoiceStatus, setEInvoiceStatus] = useState<EInvoiceStatus | null>(null);
@@ -94,7 +102,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
           setEInvoiceCufe(job.cufe);
         }
       }
-    } catch (error) {
+    } catch {
       // No hay factura asociada, ignorar
     }
   };
@@ -122,8 +130,8 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
       business || { name: organization?.name || 'Mi Empresa', logoUrl: organization?.logo_url },
       sale.seller_name ? { name: sale.seller_name } : undefined,
       branch,
-      Array.isArray((sale as any).tax_breakdown) && (sale as any).tax_breakdown.length > 0
-        ? (sale as any).tax_breakdown
+      Array.isArray(sale.tax_breakdown) && sale.tax_breakdown.length > 0
+        ? sale.tax_breakdown
         : undefined,
       undefined,
       timezone,
@@ -140,7 +148,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
         customerName: sale.customer?.full_name,
         createdAt: sale.created_at,
         total: sale.total,
-        items: (sale.items || []).map((item: any) => ({
+        items: (sale.items || []).map((item: LineaVenta) => ({
           productName: item.products?.name || item.notes?.product_name || 'Producto',
           quantity: item.quantity,
           unitPrice: item.unit_price,
@@ -387,7 +395,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(sale.items || []).map((item: any) => (
+                  {(sale.items || []).map((item: LineaVenta) => (
                     <TableRow key={item.id} className="dark:border-gray-700">
                       <TableCell className="dark:text-gray-300 min-w-[180px]">
                         <div className="space-y-0.5">
@@ -403,10 +411,10 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                         {item.quantity}
                       </TableCell>
                       <TableCell className="text-right dark:text-gray-300">
-                        {formatCurrency(item.unit_price)}
+                        {formatear(item.unit_price)}
                       </TableCell>
                       <TableCell className="text-right font-medium dark:text-gray-300">
-                        {formatCurrency(item.total)}
+                        {formatear(item.total)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -427,7 +435,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {sale.payments.map((payment: any) => (
+                  {sale.payments.map((payment: PagoVenta) => (
                     <div 
                       key={payment.id}
                       className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50"
@@ -446,7 +454,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                         </div>
                       </div>
                       <p className="font-semibold text-gray-900 dark:text-white">
-                        {formatCurrency(payment.amount)}
+                        {formatMoneda(payment.amount, paraDocumento(payment.currency))}
                       </p>
                     </div>
                   ))}
@@ -505,50 +513,50 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
             <CardContent className="space-y-3">
               <div className="flex justify-between text-gray-600 dark:text-gray-400">
                 <span>Subtotal</span>
-                <span>{formatCurrency(sale.subtotal || 0)}</span>
+                <span>{formatear(sale.subtotal || 0)}</span>
               </div>
-              {Array.isArray((sale as any).tax_breakdown) && (sale as any).tax_breakdown.length > 0 ? (
-                (sale as any).tax_breakdown.map((tax: { name: string; amount: number }, idx: number) => (
+              {Array.isArray(sale.tax_breakdown) && sale.tax_breakdown.length > 0 ? (
+                sale.tax_breakdown.map((tax: { name: string; amount: number }, idx: number) => (
                   <div key={idx} className="flex justify-between text-gray-600 dark:text-gray-400">
-                    <span>{tax.name}{(sale as any).tax_included ? ' (incluido)' : ''}</span>
-                    <span>{formatCurrency(tax.amount || 0)}</span>
+                    <span>{tax.name}{sale.tax_included ? ' (incluido)' : ''}</span>
+                    <span>{formatear(tax.amount || 0)}</span>
                   </div>
                 ))
               ) : (
                 (sale.tax_total || 0) > 0 && (
                   <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                    <span>{(sale as any).tax_included ? 'Impuestos (incluidos)' : 'Impuestos'}</span>
-                    <span>{formatCurrency(sale.tax_total || 0)}</span>
+                    <span>{sale.tax_included ? 'Impuestos (incluidos)' : 'Impuestos'}</span>
+                    <span>{formatear(sale.tax_total || 0)}</span>
                   </div>
                 )
               )}
               {Number(sale.discount_total) > 0 && (
                 <div className="flex justify-between text-green-600 dark:text-green-400">
                   <span>Descuentos</span>
-                  <span>-{formatCurrency(sale.discount_total || 0)}</span>
+                  <span>-{formatear(sale.discount_total || 0)}</span>
                 </div>
               )}
               {Number(sale.delivery_fee) > 0 && (
                 <div className="flex justify-between text-gray-600 dark:text-gray-400">
                   <span className="flex items-center gap-1"><Truck className="h-3.5 w-3.5" /> Envío</span>
-                  <span>{formatCurrency(sale.delivery_fee || 0)}</span>
+                  <span>{formatear(sale.delivery_fee || 0)}</span>
                 </div>
               )}
               {Number(sale.tip_amount) > 0 && (
                 <div className="flex justify-between text-gray-600 dark:text-gray-400">
                   <span>Propina</span>
-                  <span>{formatCurrency(sale.tip_amount || 0)}</span>
+                  <span>{formatear(sale.tip_amount || 0)}</span>
                 </div>
               )}
               <Separator className="dark:bg-gray-700" />
               <div className="flex justify-between text-lg font-bold text-gray-900 dark:text-white">
                 <span>Total</span>
-                <span>{formatCurrency(sale.total)}</span>
+                <span>{formatear(sale.total)}</span>
               </div>
               {Number(sale.balance) > 0 && (
                 <div className="flex justify-between text-red-600 dark:text-red-400 font-medium">
                   <span>Saldo Pendiente</span>
-                  <span>{formatCurrency(sale.balance)}</span>
+                  <span>{formatear(sale.balance)}</span>
                 </div>
               )}
             </CardContent>
@@ -644,12 +652,12 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500 dark:text-gray-400">Total factura</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(sale.invoice.total)}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{formatear(sale.invoice.total)}</span>
                 </div>
                 {Number(sale.invoice.balance) > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500 dark:text-gray-400">Saldo</span>
-                    <span className="font-medium text-red-600 dark:text-red-400">{formatCurrency(sale.invoice.balance)}</span>
+                    <span className="font-medium text-red-600 dark:text-red-400">{formatear(sale.invoice.balance)}</span>
                   </div>
                 )}
                 <Link href={`/app/finanzas/facturas-venta/${sale.invoice.id}`}>
@@ -690,11 +698,11 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500 dark:text-gray-400">Monto total</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(sale.accounts_receivable.amount)}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{formatear(sale.accounts_receivable.amount)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500 dark:text-gray-400">Balance</span>
-                  <span className="font-medium text-red-600 dark:text-red-400">{formatCurrency(sale.accounts_receivable.balance)}</span>
+                  <span className="font-medium text-red-600 dark:text-red-400">{formatear(sale.accounts_receivable.balance)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500 dark:text-gray-400">Vencimiento</span>
@@ -759,10 +767,10 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                               )}
                             </TableCell>
                             <TableCell className="text-xs text-right py-1.5 dark:text-gray-300">
-                              {Number(line.debit) > 0 ? formatCurrency(line.debit) : '-'}
+                              {Number(line.debit) > 0 ? formatear(line.debit) : '-'}
                             </TableCell>
                             <TableCell className="text-xs text-right py-1.5 dark:text-gray-300">
-                              {Number(line.credit) > 0 ? formatCurrency(line.credit) : '-'}
+                              {Number(line.credit) > 0 ? formatear(line.credit) : '-'}
                             </TableCell>
                           </TableRow>
                         ))}

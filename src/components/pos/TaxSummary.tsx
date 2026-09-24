@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { POSService } from '@/lib/services/posService';
 import { cartLinesSignature } from '@/lib/pos/display/emitter';
 import { Cart } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { 
   calculateCartTaxes, 
   type OrganizationTax as TaxUtilOrganizationTax,
@@ -69,6 +69,7 @@ export function TaxSummary({
   onTotalsChange,
   className 
 }: TaxSummaryProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [organizationTaxes, setOrganizationTaxes] = useState<OrganizationTax[]>([]);
   const [taxBreakdown, setTaxBreakdown] = useState<TaxBreakdown[]>([]);
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({});
@@ -352,7 +353,7 @@ export function TaxSummary({
             <span className="dark:text-gray-400 text-gray-600 shrink-0">Subtotal:</span>
             <div className="text-right">
               <span className="dark:text-white text-gray-900 font-medium">
-                {formatCurrency(subtotal + (cart.discount_total || 0))}
+                {formatear(subtotal + (cart.discount_total || 0))}
               </span>
               {taxIncluded && (
                 <div className="text-xs dark:text-gray-500 text-gray-500">
@@ -458,7 +459,7 @@ export function TaxSummary({
                         )}
                       </div>
                       <span className="dark:text-white text-gray-900 font-medium shrink-0">
-                        {formatCurrency(tax.taxAmount)}
+                        {formatear(tax.taxAmount)}
                       </span>
                     </div>
                   ))}
@@ -474,7 +475,7 @@ export function TaxSummary({
               <div className="flex justify-between items-center gap-3 text-sm font-medium">
                 <span className="dark:text-gray-300 text-gray-700 shrink-0">Total Impuestos:</span>
                 <span className="dark:text-blue-400 text-blue-600">
-                  {formatCurrency(totalTaxAmount)}
+                  {formatear(totalTaxAmount)}
                 </span>
               </div>
             </>
@@ -487,7 +488,7 @@ export function TaxSummary({
               <div className="flex justify-between items-center gap-3 text-sm font-medium">
                 <span className="dark:text-red-400 text-red-600 shrink-0">Descuento:</span>
                 <span className="dark:text-red-400 text-red-600">
-                  -{formatCurrency(cart.discount_total)}
+                  -{formatear(cart.discount_total)}
                 </span>
               </div>
             </>
@@ -498,7 +499,7 @@ export function TaxSummary({
           <div className="flex justify-between items-center gap-3 text-sm sm:text-base font-semibold">
             <span className="dark:text-white text-gray-900 shrink-0">Total Final:</span>
             <span className="dark:text-green-400 text-green-600">
-              {formatCurrency(total)}
+              {formatear(total)}
             </span>
           </div>
 

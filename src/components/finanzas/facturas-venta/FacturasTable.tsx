@@ -4,19 +4,19 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MoreVertical, Eye, Printer, Mail, Send, AlertTriangle, ChevronDown, ChevronRight, CreditCard, FileText, Pencil, Hotel } from 'lucide-react';
+import { MoreVertical, Eye, Mail, Send, AlertTriangle, ChevronDown, ChevronRight, CreditCard, FileText, Pencil, Hotel } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toastError, toastInfo } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { getOrganizationId, getBranchFilter } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { useBranch } from '@/lib/context/BranchContext';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import DetalleFactura from './id/DetalleFactura';
 import { PagosFactura } from './PagosFactura';
 import { ElectronicInvoiceStatus } from '@/components/finanzas/facturacion-electronica';
 import { CopyableId } from '@/components/common/CopyableId';
@@ -29,7 +29,7 @@ const formatearFecha = (fechaStr: string | null): string => {
     const partes = fechaStr.split('T')[0].split('-');
     if (partes.length !== 3) return fechaStr;
     return `${partes[2]}/${partes[1]}/${partes[0]}`;
-  } catch (e) {
+  } catch {
     return fechaStr || 'N/A';
   }
 };
@@ -60,7 +60,8 @@ interface Factura {
   total: number;
   balance: number;
   status: 'draft' | 'issued' | 'paid' | 'partial' | 'void' | 'voided' | 'overdue';
-  currency: string;
+  /** Moneda propia de la factura; null = la base de la organización. */
+  currency: string | null;
   payment_method: string;
   payment_method_name: string; // Campo calculado para mostrar
   notes?: string;
@@ -112,11 +113,11 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
   // Sin sucursal: la lista mezcla facturas de varias sucursales (o de todas)
   // y el rango que teclea el usuario es uno solo, el de la organizacion.
   const { toDate } = useFormatDate();
+  // Cada factura se pinta en SU moneda (`invoice_sales.currency`); sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [facturaSeleccionadaId, setFacturaSeleccionadaId] = useState<string | null>(null);
-  const [mostrarDetalles, setMostrarDetalles] = useState(false);
   const [filasExpandidas, setFilasExpandidas] = useState<Set<string>>(new Set());
   
   // Estado para la paginación
@@ -347,7 +348,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
         // Mapa de ventas con reserva PMS (sale_id -> reservation_id)
         const pmsSalesMap = new Map<string, string>();
         if (salesResult.data) {
-          salesResult.data.forEach((sale: any) => {
+          salesResult.data.forEach((sale: { id: string; reservation_id: string | null }) => {
             if (sale.reservation_id) {
               pmsSalesMap.set(sale.id, sale.reservation_id);
             }
@@ -389,7 +390,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
             total: item.total,
             balance: item.balance,
             status: item.status,
-            currency: item.currency || 'COP',
+            currency: item.currency ?? null,
             payment_method: item.payment_method || 'cash',
             payment_method_name: paymentMethodName,
             notes: item.notes,
@@ -401,9 +402,9 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
         });
 
         setFacturas(facturasFormateadas);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error al cargar facturas:', err);
-        setError('Error al cargar las facturas: ' + err.message);
+        setError('Error al cargar las facturas: ' + (err as { message?: string }).message);
         
         toastError('Error', 'No se pudieron cargar las facturas');
       } finally {
@@ -560,10 +561,10 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
               <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm whitespace-nowrap">{formatearFecha(factura.issue_date)}</TableCell>
               <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm whitespace-nowrap">{formatearFecha(factura.due_date)}</TableCell>
               <TableCell className="text-right font-medium text-gray-900 dark:text-gray-100 text-xs sm:text-sm whitespace-nowrap">
-                {formatCurrency(factura.total, factura.currency)}
+                {formatMoneda(factura.total, paraDocumento(factura.currency))}
               </TableCell>
               <TableCell className="text-right font-medium text-gray-900 dark:text-gray-100 text-xs sm:text-sm whitespace-nowrap">
-                {formatCurrency(factura.balance, factura.currency)}
+                {formatMoneda(factura.balance, paraDocumento(factura.currency))}
               </TableCell>
               <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm">
                 <span className="break-words whitespace-normal min-w-0 inline-block">{factura.payment_method_name}</span>

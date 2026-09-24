@@ -44,7 +44,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Promotion, PROMOTION_TYPE_LABELS } from './types';
 import { PromotionsService } from './promotionsService';
-import { formatCurrency, cn } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
 
 interface PromotionsListProps {
@@ -54,6 +55,7 @@ interface PromotionsListProps {
 }
 
 export function PromotionsList({ promotions, loading, onRefresh }: PromotionsListProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -64,8 +66,8 @@ export function PromotionsList({ promotions, loading, onRefresh }: PromotionsLis
       await PromotionsService.delete(deleteId);
       toast.success('Promoción eliminada correctamente');
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al eliminar la promoción');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al eliminar la promoción');
     } finally {
       setDeleteId(null);
     }
@@ -76,8 +78,8 @@ export function PromotionsList({ promotions, loading, onRefresh }: PromotionsLis
       await PromotionsService.duplicate(promo.id);
       toast.success('Promoción duplicada correctamente');
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al duplicar la promoción');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al duplicar la promoción');
     }
   };
 
@@ -87,8 +89,8 @@ export function PromotionsList({ promotions, loading, onRefresh }: PromotionsLis
       await PromotionsService.toggleActive(promo.id);
       toast.success(promo.is_active ? 'Promoción desactivada' : 'Promoción activada');
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al cambiar estado');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al cambiar estado');
     } finally {
       setTogglingId(null);
     }
@@ -140,11 +142,11 @@ export function PromotionsList({ promotions, loading, onRefresh }: PromotionsLis
       case 'percentage':
         return `${promo.discount_value}%`;
       case 'fixed_amount':
-        return formatCurrency(promo.discount_value || 0);
+        return formatear(promo.discount_value || 0);
       case 'buy_x_get_y':
         return `${promo.buy_quantity}x${promo.get_quantity}`;
       case 'bundle':
-        return formatCurrency(promo.discount_value || 0);
+        return formatear(promo.discount_value || 0);
       default:
         return '-';
     }

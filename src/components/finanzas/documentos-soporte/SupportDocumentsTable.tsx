@@ -13,7 +13,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, FileCheck2 } from 'lucide-react';
-import { cn, formatCurrency, formatDate } from '@/utils/Utils';
+import { cn, formatDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { TableSkeleton } from '@/components/common/PageSkeletons';
 
 export interface SupportDocumentRow {
@@ -28,6 +30,8 @@ export interface SupportDocumentRow {
   validated_at: string | null;
   supplier_id: number | null;
   invoice_purchase_id: string | null;
+  /** Moneda del documento (si la consulta la trae); sin ella, la base de la organización. */
+  currency?: string | null;
   provider: {
     names?: string;
     identification?: string;
@@ -56,6 +60,7 @@ const statusConfig: Record<
 };
 
 export function SupportDocumentsTable({ documents, isLoading }: SupportDocumentsTableProps) {
+  const { paraDocumento } = useMonedaOrganizacion();
   if (isLoading) {
     return <TableSkeleton columns={6} rows={5} />;
   }
@@ -126,7 +131,7 @@ export function SupportDocumentsTable({ documents, isLoading }: SupportDocuments
                   {formatDate(doc.issue_date)}
                 </TableCell>
                 <TableCell className="text-right font-medium">
-                  {formatCurrency(doc.total || 0)}
+                  {formatMoneda(doc.total || 0, paraDocumento(doc.currency))}
                 </TableCell>
                 <TableCell>
                   <Badge className={cn('font-medium', status.className)}>

@@ -12,6 +12,8 @@ import {
   repartirTotalesPedidoWeb,
 } from './webOrderTotals';
 import { resolveLineTax } from './taxResolver';
+import { resolveOrgCurrency } from './monedaOrganizacion';
+import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
 
 /**
  * Sub-métodos de Wompi (pasarela de pago del website).
@@ -162,7 +164,7 @@ class WebOrderConfirmationService {
 
       // 8. Crear registro de pago (payments) asociado a la factura
       if (invoiceId) {
-        paymentId = await this.createPayment(order, invoiceId, userId);
+        paymentId = await this.createPayment(order, invoiceId, userId, invoiceResult.invoiceCurrency);
       }
 
       // 9. Crear cuenta por cobrar si hay cliente y balance pendiente
@@ -418,7 +420,7 @@ class WebOrderConfirmationService {
     order: WebOrder,
     saleId: string,
     userId: string
-  ): Promise<{ invoiceId: string; invoiceNumber: string }> {
+  ): Promise<{ invoiceId: string; invoiceNumber: string; invoiceCurrency: string | null }> {
     try {
       const invoiceNumber = await generateInvoiceNumber(order.organization_id, 'FACT');
       const now = new Date().toISOString();
@@ -441,7 +443,9 @@ class WebOrderConfirmationService {
           number: invoiceNumber,
           issue_date: now,
           due_date: now,
-          currency: 'COP',
+          // Sin moneda: el pedido web no la trae y el trigger
+          // trg_00_moneda_base_por_defecto pone la base de la organización.
+          currency: null,
           subtotal,
           tax_total: taxTotal,
           total,
@@ -455,12 +459,12 @@ class WebOrderConfirmationService {
           created_by: userId,
           notes: `Factura generada automáticamente desde pedido web ${order.order_number}`,
         })
-        .select('id, number')
+        .select('id, number, currency')
         .single();
 
       if (invoiceError) {
         console.error('Error creando invoice_sales:', invoiceError);
-        return { invoiceId: '', invoiceNumber: '' };
+        return { invoiceId: '', invoiceNumber: '', invoiceCurrency: null };
       }
 
       // Líneas de la factura. El trigger fn_recalc_invoice_totals pisa
@@ -481,10 +485,10 @@ class WebOrderConfirmationService {
       }
 
       console.log(`📄 Factura creada: ${invoice.number} para pedido web ${order.order_number}`);
-      return { invoiceId: invoice.id, invoiceNumber: invoice.number };
+      return { invoiceId: invoice.id, invoiceNumber: invoice.number, invoiceCurrency: invoice.currency ?? null };
     } catch (error) {
       console.error('Error en createInvoice:', error);
-      return { invoiceId: '', invoiceNumber: '' };
+      return { invoiceId: '', invoiceNumber: '', invoiceCurrency: null };
     }
   }
 
@@ -495,7 +499,8 @@ class WebOrderConfirmationService {
   private async createPayment(
     order: WebOrder,
     invoiceId: string,
-    userId: string
+    userId: string,
+    invoiceCurrency: string | null = null
   ): Promise<string> {
     try {
       // Verificar si ya existe un pago para este web_order (creado por webhook/website).
@@ -554,7 +559,11 @@ class WebOrderConfirmationService {
           source_id: invoiceId,
           amount: Number(order.total) || 0,
           method: mapWebPaymentMethodToInvoice(order.payment_method),
-          currency: 'COP',
+          // payments.currency es NOT NULL y no tiene trigger: la moneda de la
+          // factura que se paga y, si no la trae, la base de la organización.
+          currency:
+            normalizarCodigoMoneda(invoiceCurrency) ??
+            (await resolveOrgCurrency(supabase, order.organization_id)).code,
           status: 'completed',
           created_by: userId,
         })

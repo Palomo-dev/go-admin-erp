@@ -24,36 +24,31 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { CalendarIcon } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda, normalizarCodigoMoneda } from '@/lib/utils/moneda';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { instantForDayInTz, plainDayOfInstant } from '@/lib/services/businessInstant';
 
+/** Factura de venta a la que se registra el pago (campos que usa el diálogo). */
+interface FacturaPago {
+  id?: string | number;
+  number?: string | null;
+  branch_id?: number | null;
+  issue_date?: string | null;
+  currency?: string | null;
+  balance?: number | null;
+  total?: number | null;
+  status?: string | null;
+}
+
 interface RegistrarPagoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  factura: any;
+  factura: FacturaPago;
   onSuccess?: () => void;
-}
-
-// Interfaces para tipar correctamente los datos de Supabase
-interface PaymentMethod {
-  code: string;
-  name: string;
-  requires_reference?: boolean;
-}
-
-// Estructura de datos que devuelve Supabase al hacer el join
-interface OrganizationPaymentMethodData {
-  payment_method_code: string;
-  id: number;
-  organization_id: number;
-  is_active: boolean;
-  code: string;
-  name: string;
-  requires_reference?: boolean;
 }
 
 interface FormattedPaymentMethod {
@@ -64,6 +59,10 @@ interface FormattedPaymentMethod {
 
 export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: RegistrarPagoDialogProps) {
   const organizationId = getOrganizationId();
+  // El pago va en la moneda de la factura (la base si no la trae).
+  const { paraDocumento } = useMonedaOrganizacion();
+  const monedaPago = paraDocumento(factura?.currency);
+  const formatearMonto = (valor: number | null | undefined) => formatMoneda(valor, monedaPago);
 
   // Estados del formulario
   const [isLoading, setIsLoading] = useState(false);
@@ -111,7 +110,7 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
         if (metodosPagoFormateados.length > 0) {
           setMetodoPago(metodosPagoFormateados[0].code);
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error al cargar métodos de pago:', error);
       }
     };
@@ -136,7 +135,7 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
       // Validar que el monto no exceda el saldo pendiente
       if (value && factura.balance) {
         const montoNumerico = parseFloat(value);
-        const saldoPendiente = parseFloat(factura.balance);
+        const saldoPendiente = Number(factura.balance);
         
         if (montoNumerico > saldoPendiente) {
           setMontoExcedido(true);
@@ -173,8 +172,6 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
     try {
       // Convertir todos los UUIDs a string para evitar errores de tipo
       const facturaIdString = typeof factura.id === 'string' ? factura.id : factura.id?.toString() || '';
-      const customerIdString = typeof factura.customer_id === 'string' ? factura.customer_id : factura.customer_id?.toString() || '';
-      const saleIdString = typeof factura.sale_id === 'string' ? factura.sale_id : factura.sale_id?.toString() || '';
 
       console.log('Datos para registro de pago:', {
         organization_id: organizationId,
@@ -185,7 +182,7 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
       });
 
       // Insertar el registro de pago
-      const { data: paymentData, error: paymentError } = await supabase
+      const { error: paymentError } = await supabase
         .from('payments')
         .insert({
           organization_id: organizationId,
@@ -194,7 +191,10 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
           source_id: facturaIdString, // Conversión explícita de UUID a string
           method: metodoPago,
           amount: montoNumerico,
-          currency: factura.currency || 'COP',
+          // `payments.currency` es NOT NULL sin trigger: la de la factura o la base.
+          currency:
+            normalizarCodigoMoneda(factura.currency) ??
+            (await resolveOrgCurrency(supabase, Number(organizationId))).code,
           reference: referencia || null,
           status: 'completed',
           payment_date: instantForDayInTz(fechaPago, timezone)
@@ -206,8 +206,8 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
       }
 
       // Actualizar el saldo y estado de la factura
-      const nuevoSaldo = factura.balance - montoNumerico;
-      const nuevoEstado = nuevoSaldo <= 0 ? 'paid' : nuevoSaldo < factura.total ? 'partial' : factura.status;
+      const nuevoSaldo = Number(factura.balance) - montoNumerico;
+      const nuevoEstado = nuevoSaldo <= 0 ? 'paid' : nuevoSaldo < Number(factura.total) ? 'partial' : factura.status;
       
       console.log('Actualizando factura:', {
         id: facturaIdString,
@@ -259,15 +259,16 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
       // reflejado via el pago (payments) y su asiento automatico; registrar un
       // cash_movement adicional duplicaria el ingreso (trigger fn_auto_journal_cash_movement).
 
-      toastSuccess("Pago registrado", `Se ha registrado un pago por ${formatCurrency(montoNumerico)} exitosamente`);
+      toastSuccess("Pago registrado", `Se ha registrado un pago por ${formatearMonto(montoNumerico)} exitosamente`);
 
       // Cerrar el diálogo y llamar a onSuccess si está definido
       onOpenChange(false);
       if (onSuccess) onSuccess();
 
-    } catch (error: any) {
+    } catch (errorCapturado) {
       // Manejo detallado de errores para evitar el error vacío {}
-      console.error('Error al registrar pago:', error);
+      console.error('Error al registrar pago:', errorCapturado);
+      const error = errorCapturado as { code?: string; message?: string; details?: string; hint?: string } | null;
       
       let mensajeError = "Ocurrió un error inesperado";
       
@@ -310,7 +311,7 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
             <Label htmlFor="factura" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Factura</Label>
             <Input
               id="factura"
-              value={`${factura.number} - ${formatCurrency(factura.total)}`}
+              value={`${factura.number} - ${formatearMonto(factura.total)}`}
               disabled
               className="text-sm bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
             />
@@ -320,7 +321,7 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
             <Label htmlFor="saldo" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Saldo Pendiente</Label>
             <Input
               id="saldo"
-              value={formatCurrency(factura.balance)}
+              value={formatearMonto(factura.balance)}
               disabled
               className="text-sm font-semibold bg-gray-50 dark:bg-gray-800 text-red-600 dark:text-red-400 border-gray-300 dark:border-gray-600"
             />
@@ -365,7 +366,7 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
                 <div className="flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500 dark:text-red-400 mt-0.5" />
                   <AlertDescription className="text-xs sm:text-sm font-medium">
-                    El monto ingresado ({formatCurrency(parseFloat(monto) || 0)}) excede el saldo pendiente ({formatCurrency(factura.balance || 0)})
+                    El monto ingresado ({formatearMonto(parseFloat(monto) || 0)}) excede el saldo pendiente ({formatearMonto(factura.balance || 0)})
                   </AlertDescription>
                 </div>
               </Alert>

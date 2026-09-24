@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { DoorOpen, User, Mail, Phone, Calendar, Users, Tag } from 'lucide-react';
 import { type ReservationDetail } from '@/lib/services/reservationDetailService';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface OverviewTabProps {
   reservation: ReservationDetail;
@@ -16,13 +17,8 @@ export function OverviewTab({ reservation, nights }: OverviewTabProps) {
     return formatPlainDate(dateString, { day: '2-digit', month: 'long', year: 'numeric' });
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  // Moneda base de la organización (la reserva/abono no tiene moneda propia).
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -155,7 +151,7 @@ export function OverviewTab({ reservation, nights }: OverviewTabProps) {
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {reservation.metadata.extras.map((extra: any, index: number) => (
+            {(reservation.metadata.extras as Array<{ name: string; quantity: number; price: number }>).map((extra, index: number) => (
               <div
                 key={index}
                 className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"

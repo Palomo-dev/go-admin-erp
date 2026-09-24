@@ -2,7 +2,7 @@
 
 import type { HealthScoreResult } from '@/lib/services/crm/healthScoreService';
 import { bandForScore } from '@/lib/services/crm/healthBands';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { BAND_STYLES } from './healthBandStyles';
 
 /**
@@ -19,9 +19,14 @@ const MONEY_KEYS = new Set(['ltv', 'revenue_12m', 'avg_ticket', 'overdue_balance
 const DAY_KEYS = new Set(['recency', 'activity', 'days_since_last_invoice', 'days_since_last_activity']);
 const RATIO_KEYS = new Set(['receivables', 'overdue', 'overdue_ratio']);
 
-export function formatDimensionValue(key: string, value: number): string {
+export function formatDimensionValue(
+  key: string,
+  value: number,
+  /** Formateador en la moneda base de la organización (nunca 'COP' cableado). */
+  formatearImporte: (valor: number) => string,
+): string {
   if (value < 0) return 'Sin datos';
-  if (MONEY_KEYS.has(key)) return formatCurrency(value, 'COP');
+  if (MONEY_KEYS.has(key)) return formatearImporte(value);
   if (RATIO_KEYS.has(key)) return `${(value * 100).toFixed(1)} %`;
   if (DAY_KEYS.has(key)) return `${Math.round(value)} días`;
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
@@ -29,6 +34,7 @@ export function formatDimensionValue(key: string, value: number): string {
 
 export function HealthDimensions({ indicators, className = '' }: HealthDimensionsProps) {
   const weighted = indicators.some((i) => i.weight > 0);
+  const { formatear } = useMonedaOrganizacion();
   return (
     <ul className={`divide-y divide-gray-100 dark:divide-gray-700/60 ${className}`} aria-label="Dimensiones del health score">
       {indicators.map((ind) => {
@@ -40,7 +46,7 @@ export function HealthDimensions({ indicators, className = '' }: HealthDimension
                 {ind.label}
                 {weighted && <span className="text-gray-500 dark:text-gray-400"> · peso {ind.weight}</span>}
               </span>
-              <span className="text-xs font-medium text-gray-900 dark:text-gray-100 shrink-0 tabular-nums">{formatDimensionValue(ind.key, ind.value)}</span>
+              <span className="text-xs font-medium text-gray-900 dark:text-gray-100 shrink-0 tabular-nums">{formatDimensionValue(ind.key, ind.value, formatear)}</span>
             </div>
             {weighted && (
               <div className="mt-1 flex items-center gap-2">

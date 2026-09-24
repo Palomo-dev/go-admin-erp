@@ -5,16 +5,18 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, User, Percent, DollarSign, AlertCircle } from 'lucide-react';
 import { FacturasCompraService } from '../FacturasCompraService';
-import { parseLocalDate, toLocalDateString, formatCurrency } from '@/utils/Utils';
+import { parseLocalDate, toLocalDateString } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { 
   NuevaFacturaCompraForm, 
   InvoiceItemForm, 
   SupplierBase,
   OrganizationPaymentMethod,
   OrganizationCurrency,
-  InvoicePurchase 
+  InvoicePurchase,
+  InvoiceItem
 } from '../types';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toastError } from '@/components/ui/use-toast';
 import {
   AlertDialog,
@@ -32,22 +34,26 @@ import { ItemsListForm } from './ItemsListForm';
 import { ResumenFactura } from './ResumenFactura';
 import { FormActions } from './FormActions';
 import { ImpuestosFacturaCompra } from './ImpuestosFacturaCompra';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchSelect } from '@/components/ui/search-select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { 
-  calculateCartTaxes,
-  type TaxCalculationItem,
-  type TaxCalculationResult
-} from '@/lib/utils/taxCalculations';
+import { type TaxCalculationResult } from '@/lib/utils/taxCalculations';
+
+/** Lo que el formulario entrega a `onSubmit` en modo edición. */
+type DatosFacturaEnviada = NuevaFacturaCompraForm & {
+  appliedTaxes: { [key: string]: boolean };
+  _calculatedTotals: { subtotal: number; taxTotal: number; total: number };
+};
+
+type TipoComision = 'salesperson' | 'intermediation_purchase' | 'none';
+type MetodoComision = 'percentage' | 'fixed_amount';
 
 interface NuevaFacturaFormProps {
   facturaInicial?: InvoicePurchase | null;
-  onSubmit?: (datosFactura: any) => void;
+  onSubmit?: (datosFactura: DatosFacturaEnviada) => void | Promise<void>;
   saving?: boolean;
   esEdicion?: boolean;
 }
@@ -62,7 +68,9 @@ export function NuevaFacturaForm({
   const pathname = usePathname();
   const { selectedBranchId } = useBranch();
   const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
+  // Moneda base de la organización: respaldo cuando la factura no trae la suya.
+  const { code: monedaBase, resuelta: monedaResuelta, paraDocumento } = useMonedaOrganizacion();
 
   // Sincronizar branchId con la sucursal seleccionada en el contexto
   useEffect(() => {
@@ -104,11 +112,12 @@ export function NuevaFacturaForm({
         number_ext: facturaInicial.number_ext,
         issue_date: facturaInicial.issue_date ? facturaInicial.issue_date.split('T')[0] : toLocalDateString(new Date()),
         due_date: facturaInicial.due_date ? facturaInicial.due_date.split('T')[0] : '',
-        currency: facturaInicial.currency || 'COP',
+        // Sin moneda en la factura, se completa con la base al resolverse.
+        currency: facturaInicial.currency || '',
         payment_terms: facturaInicial.payment_terms || 30,
         tax_included: facturaInicial.tax_included || false,
         notes: facturaInicial.notes || '',
-        items: facturaInicial.items?.map((item: any) => ({
+        items: facturaInicial.items?.map((item: InvoiceItem) => ({
           product_id: item.product_id,
           description: item.description,
           qty: item.qty,
@@ -121,7 +130,7 @@ export function NuevaFacturaForm({
         salesperson_id: facturaInicial.salesperson_id || '',
         commission_rate: Number(facturaInicial.commission_rate) || 0,
         commission_type: facturaInicial.commission_type || 'salesperson',
-        commission_method: (facturaInicial as any).commission_method || 'percentage'
+        commission_method: facturaInicial.commission_method || 'percentage'
       };
     }
     
@@ -130,7 +139,8 @@ export function NuevaFacturaForm({
       number_ext: '',
       issue_date: toLocalDateString(new Date()),
       due_date: '',
-      currency: 'COP',
+      // La moneda base se pone cuando se resuelve (nunca COP supuesto).
+      currency: '',
       payment_terms: 30,
       tax_included: false,
       notes: '',
@@ -143,6 +153,16 @@ export function NuevaFacturaForm({
   };
 
   const [formData, setFormData] = useState<NuevaFacturaCompraForm>(obtenerDatosIniciales());
+
+  // Sin moneda elegida: la base de la organización, cuando ya se conoce.
+  useEffect(() => {
+    if (monedaResuelta && !formData.currency) {
+      setFormData(prev => (prev.currency ? prev : { ...prev, currency: monedaBase }));
+    }
+  }, [monedaResuelta, monedaBase, formData.currency]);
+
+  // Moneda con la que se pintan los importes del formulario.
+  const monedaFactura = formData.currency || monedaBase;
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -169,7 +189,7 @@ export function NuevaFacturaForm({
             .in('id', userIds);
 
           const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-          const formatted = members.map((m: any) => {
+          const formatted = members.map((m: { user_id: string }) => {
             const p = profileMap.get(m.user_id);
             return {
               id: m.user_id,
@@ -215,14 +235,14 @@ export function NuevaFacturaForm({
     }
   };
 
-  const handleInputChange = useCallback((field: keyof NuevaFacturaCompraForm, value: any) => {
+  const handleInputChange = useCallback((field: keyof NuevaFacturaCompraForm, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Sincronizar estados de comisión con formData
-    if (field === 'salesperson_id') setSalespersonId(value);
+    if (field === 'salesperson_id') setSalespersonId(value as string);
     if (field === 'commission_rate') setCommissionRate(Number(value) || 0);
-    if (field === 'commission_type') setCommissionType(value);
-    if (field === 'commission_method') setCommissionMethod(value);
+    if (field === 'commission_type') setCommissionType(value as TipoComision);
+    if (field === 'commission_method') setCommissionMethod(value as MetodoComision);
     
     // Limpiar error del campo si existe usando función que no depende de errors
     setErrors(prev => {
@@ -235,7 +255,7 @@ export function NuevaFacturaForm({
     });
   }, []);
 
-  const handleItemChange = useCallback((index: number, field: keyof InvoiceItemForm, value: any) => {
+  const handleItemChange = useCallback((index: number, field: keyof InvoiceItemForm, value: unknown) => {
     console.log('=== DEBUG handleItemChange ===');
     console.log('index:', index, 'field:', field, 'value:', value);
     console.log('formData.items.length:', formData.items.length);
@@ -525,12 +545,18 @@ export function NuevaFacturaForm({
       // Prioridad 1: impuestos guardados en invoice_purchase_applied_taxes
       if (facturaInicial.applied_taxes && facturaInicial.applied_taxes.length > 0) {
         return facturaInicial.applied_taxes
-          .filter((t: any) => t.is_applied)
-          .map((t: any) => t.tax_code);
+          .filter((t) => t.is_applied)
+          .map((t) => t.tax_code);
       }
       // Fallback para facturas viejas: usar tax_code de los items
       if (facturaInicial.items) {
-        const taxCodes = [...new Set(facturaInicial.items.map((item: any) => item.tax_code).filter(Boolean))];
+        const taxCodes = [
+          ...new Set(
+            facturaInicial.items
+              .map((item: InvoiceItem & { tax_code?: string | null }) => item.tax_code)
+              .filter((code): code is string => Boolean(code))
+          ),
+        ];
         if (taxCodes.length > 0) return taxCodes;
       }
     }
@@ -595,7 +621,7 @@ export function NuevaFacturaForm({
         {/* Items de la factura */}
         <ItemsListForm
           items={formData.items}
-          currency={formData.currency}
+          currency={monedaFactura}
           errors={errors}
           onItemChange={handleItemChange}
           onAgregarItem={agregarItem}
@@ -607,7 +633,7 @@ export function NuevaFacturaForm({
         {/* Configuración de impuestos */}
         <ImpuestosFacturaCompra
           items={taxCalculationItems}
-          currency={formData.currency}
+          currency={monedaFactura}
           taxIncluded={formData.tax_included}
           onTaxIncludedChange={handleTaxIncludedChange}
           onTaxCalculationChange={handleTaxCalculationChange}
@@ -715,11 +741,12 @@ export function NuevaFacturaForm({
             <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-blue-700 dark:text-blue-400">
-                  Comisión estimada ({commissionMethod === 'percentage' ? `${commissionRate}%` : formatCurrency(commissionRate)}):
+                  Comisión estimada ({commissionMethod === 'percentage' ? `${commissionRate}%` : formatMoneda(commissionRate, paraDocumento(monedaFactura))}):
                 </span>
                 <span className="font-semibold text-blue-700 dark:text-blue-400">
-                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: formData.currency || 'COP' }).format(
-                    commissionMethod === 'fixed_amount' ? commissionRate : (subtotal > 0 ? subtotal : total) * commissionRate / 100
+                  {formatMoneda(
+                    commissionMethod === 'fixed_amount' ? commissionRate : (subtotal > 0 ? subtotal : total) * commissionRate / 100,
+                    paraDocumento(monedaFactura)
                   )}
                 </span>
               </div>
@@ -732,7 +759,7 @@ export function NuevaFacturaForm({
           subtotal={subtotal}
           taxTotal={taxTotal}
           total={total}
-          currency={formData.currency}
+          currency={monedaFactura}
           taxIncluded={formData.tax_included}
           taxBreakdown={taxCalculation.taxBreakdown}
         />

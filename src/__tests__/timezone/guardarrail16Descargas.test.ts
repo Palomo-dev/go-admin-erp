@@ -423,7 +423,9 @@ describe('los dos import prohibidos de @/utils/Utils están fuera', () => {
     // debe) seguir NOMBRANDO el helper enterrado en un comentario que explique
     // por que lo esta.
     expect(texto).not.toMatch(/^\s*import .*parseLocalDate/m);
-    expect(texto).toContain("import { formatCurrency } from '@/utils/Utils'");
+    // Hasta el 2026-09-24 se exigía aquí que quedara `import { formatCurrency }
+    // from '@/utils/Utils'`. Ese import se retiró a propósito: suponía COP y la
+    // tabla pinta ahora cada factura en su moneda (guardarraíl 28b).
     // Y no queda ninguna LLAMADA al helper enterrado.
     expect(texto).not.toMatch(/[^a-zA-Z]parseLocalDate\(/);
   });

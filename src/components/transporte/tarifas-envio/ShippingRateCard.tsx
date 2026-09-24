@@ -27,11 +27,12 @@ import {
   Scale,
   Calendar,
   Percent,
-  DollarSign,
   Package,
   Globe,
 } from 'lucide-react';
 import type { ShippingRateWithCarrier } from '@/lib/services/shippingRatesService';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 
 interface ShippingRateCardProps {
   rate: ShippingRateWithCarrier;
@@ -63,13 +64,9 @@ export function ShippingRateCard({
   onDelete,
   onToggleActive,
 }: ShippingRateCardProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: rate.currency || 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  // En la moneda del documento; sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = crearFormateadorMoneda(paraDocumento(rate.currency));
 
   const isExpired = rate.valid_until && new Date(rate.valid_until) < new Date();
   const isUpcoming = rate.valid_from && new Date(rate.valid_from) > new Date();

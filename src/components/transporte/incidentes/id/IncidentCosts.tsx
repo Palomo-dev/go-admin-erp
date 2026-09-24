@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DollarSign, Edit2, Save, X } from 'lucide-react';
 import { IncidentWithDetails } from '@/lib/services/incidentsService';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 
 interface IncidentCostsProps {
   incident: IncidentWithDetails;
@@ -19,13 +21,9 @@ export function IncidentCosts({ incident, onUpdateCosts }: IncidentCostsProps) {
   const [estimatedCost, setEstimatedCost] = useState(incident.estimated_cost || 0);
   const [actualCost, setActualCost] = useState(incident.actual_cost || 0);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: incident.currency || 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  // En la moneda del documento; sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = crearFormateadorMoneda(paraDocumento(incident.currency));
 
   const handleSave = async () => {
     setIsSaving(true);

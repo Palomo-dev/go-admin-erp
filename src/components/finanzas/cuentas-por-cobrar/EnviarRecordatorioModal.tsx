@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,8 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Mail, User, Calendar, AlertTriangle, Clock } from 'lucide-react';
 import { CuentaPorCobrar } from './types';
-import { CuentasPorCobrarService } from './service';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { CuentasPorCobrarService, monedaDeCuentaPorCobrar } from './service';
+import { parseLocalDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { toast } from 'sonner';
 
 interface EnviarRecordatorioModalProps {
@@ -23,6 +26,27 @@ interface EnviarRecordatorioModalProps {
 export function EnviarRecordatorioModal({ open, onOpenChange, cuenta, onSuccess }: EnviarRecordatorioModalProps) {
   const [mensaje, setMensaje] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Moneda de la cuenta: la de su factura de venta; mientras se resuelve (o si
+  // la cuenta no tiene factura), la base de la organización.
+  const organizationId = getOrganizationId();
+  const { paraDocumento } = useMonedaOrganizacion();
+  const [monedaCuenta, setMonedaCuenta] = useState<string | null>(null);
+  const formatCurrency = (valor: number) => formatMoneda(valor, paraDocumento(monedaCuenta));
+
+  useEffect(() => {
+    if (!open || !organizationId) return;
+    let cancelado = false;
+    monedaDeCuentaPorCobrar(organizationId, cuenta.id, { invoice_id: cuenta.invoice_id, sale_id: cuenta.sale_id })
+      .then((moneda) => {
+        if (!cancelado) setMonedaCuenta(moneda);
+      })
+      .catch(() => {
+        /* se queda la moneda base */
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [open, organizationId, cuenta.id, cuenta.invoice_id, cuenta.sale_id]);
 
   const mensajePredeterminado = `Estimado(a) ${cuenta.customer_name},
 

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { TableSkeleton } from '@/components/common/PageSkeletons';
 import type { CheckoutReservation } from '@/lib/services/checkoutService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface DeparturesTableProps {
@@ -39,6 +39,7 @@ export function DeparturesTable({
   onCheckout,
   onViewFolio,
 }: DeparturesTableProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const formatDate = (dateString: string) => {
     return formatPlainDate(dateString, { weekday: 'short', day: 'numeric', month: 'short' });
   };
@@ -124,7 +125,7 @@ export function DeparturesTable({
 
               <TableCell>
                 <div className="flex flex-col gap-1">
-                  {departure.spaces.map((space, index) => (
+                  {departure.spaces.map((space) => (
                     <div
                       key={space.id}
                       className="flex flex-wrap items-center gap-2 text-sm"

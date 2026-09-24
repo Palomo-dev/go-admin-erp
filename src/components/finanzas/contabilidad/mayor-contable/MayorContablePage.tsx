@@ -13,10 +13,14 @@ import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezon
 import { primerDiaDelAnioDe } from '@/lib/services/fiscalCalendar';
 import { StatsSkeleton, TableSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 
-function formatCurrency(value: number): string {
-  if (Math.abs(value) < 0.01) return '-';
-  return new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
+// Cifra contable en la moneda base de la organizacion (los reportes contables
+// se llevan en moneda base): sin simbolo, con los decimales y el formato de esa
+// moneda; '-' cuando es cero.
+function crearFormatoCifra(moneda: ContextoMoneda): (value: number) => string {
+  return (value) => (Math.abs(value) < 0.01 ? '-' : formatNumeroMoneda(value, moneda));
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -28,6 +32,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export function MayorContablePage() {
+  const formatCifra = crearFormatoCifra(useMonedaOrganizacion());
   // `journal_entries.entry_date` es timestamptz: los extremos del filtro se
   // convierten a instantes DENTRO del servicio, con la zona de la organizacion.
   // Aqui solo hace falta el dia calendario de esa misma zona, y por eso los
@@ -152,25 +157,25 @@ export function MayorContablePage() {
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="py-3">
                 <div className="text-sm text-gray-600 dark:text-gray-400">Saldo Inicial</div>
-                <div className="text-xl font-bold font-mono text-gray-900 dark:text-white">{formatCurrency(ledger.opening_balance)}</div>
+                <div className="text-xl font-bold font-mono text-gray-900 dark:text-white">{formatCifra(ledger.opening_balance)}</div>
               </CardContent>
             </Card>
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="py-3">
                 <div className="text-sm text-gray-600 dark:text-gray-400">Total Debito</div>
-                <div className="text-xl font-bold font-mono text-green-600 dark:text-green-400">{formatCurrency(ledger.total_debit)}</div>
+                <div className="text-xl font-bold font-mono text-green-600 dark:text-green-400">{formatCifra(ledger.total_debit)}</div>
               </CardContent>
             </Card>
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="py-3">
                 <div className="text-sm text-gray-600 dark:text-gray-400">Total Credito</div>
-                <div className="text-xl font-bold font-mono text-red-600 dark:text-red-400">{formatCurrency(ledger.total_credit)}</div>
+                <div className="text-xl font-bold font-mono text-red-600 dark:text-red-400">{formatCifra(ledger.total_credit)}</div>
               </CardContent>
             </Card>
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="py-3">
                 <div className="text-sm text-gray-600 dark:text-gray-400">Saldo Final</div>
-                <div className="text-xl font-bold font-mono text-gray-900 dark:text-white">{formatCurrency(ledger.closing_balance)}</div>
+                <div className="text-xl font-bold font-mono text-gray-900 dark:text-white">{formatCifra(ledger.closing_balance)}</div>
               </CardContent>
             </Card>
           </div>
@@ -204,7 +209,7 @@ export function MayorContablePage() {
                     <tbody>
                       <tr className="border-b dark:border-gray-700/50 bg-gray-50 dark:bg-gray-700/20 font-medium">
                         <td colSpan={6} className="py-2 px-3 text-gray-600 dark:text-gray-400">Saldo Inicial</td>
-                        <td className="py-2 px-3 text-right font-mono text-gray-900 dark:text-white">{formatCurrency(ledger.opening_balance)}</td>
+                        <td className="py-2 px-3 text-right font-mono text-gray-900 dark:text-white">{formatCifra(ledger.opening_balance)}</td>
                       </tr>
                       {ledger.entries.map((entry, idx) => (
                         <tr key={idx} className="border-b dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
@@ -212,9 +217,9 @@ export function MayorContablePage() {
                           <td className="py-2 px-3 font-mono text-gray-500 dark:text-gray-500">#{entry.journal_entry_id}</td>
                           <td className="py-2 px-3 text-gray-900 dark:text-white">{entry.memo || '-'}</td>
                           <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{entry.source || '-'}</td>
-                          <td className="py-2 px-3 text-right font-mono text-green-600 dark:text-green-400">{formatCurrency(entry.debit)}</td>
-                          <td className="py-2 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCurrency(entry.credit)}</td>
-                          <td className="py-2 px-3 text-right font-mono font-medium text-gray-900 dark:text-white">{formatCurrency(entry.running_balance)}</td>
+                          <td className="py-2 px-3 text-right font-mono text-green-600 dark:text-green-400">{formatCifra(entry.debit)}</td>
+                          <td className="py-2 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCifra(entry.credit)}</td>
+                          <td className="py-2 px-3 text-right font-mono font-medium text-gray-900 dark:text-white">{formatCifra(entry.running_balance)}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -20,7 +20,8 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Wallet, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { parseLocalDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { saldosAFavorService, SaldoAFavor } from './saldosAFavorService';
 import { NuevoSaldoFavorDialog } from './NuevoSaldoFavorDialog';
@@ -37,6 +38,8 @@ const statusMap: Record<string, { label: string; className: string }> = {
 export function SaldosAFavorPage() {
   const [organizationId, setOrganizationId] = useState<number>(0);
   const { branchFilter } = useBranch();
+  // Los saldos a favor no traen moneda propia: se muestran en la moneda base de la organización.
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const [saldos, setSaldos] = useState<SaldoAFavor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogNuevoOpen, setDialogNuevoOpen] = useState(false);

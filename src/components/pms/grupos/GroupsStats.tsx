@@ -4,7 +4,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { Users, UserCheck, Moon, DollarSign } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface GroupsStatsProps {
   totalGroups: number;
@@ -46,6 +46,7 @@ export function GroupsStats({
   totalRevenue,
   isLoading = false,
 }: GroupsStatsProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   if (isLoading) {
     return <StatsSkeleton count={4} />;
   }

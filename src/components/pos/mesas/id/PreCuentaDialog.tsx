@@ -12,10 +12,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Printer, Receipt, Split, Truck } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
-import type { PreCuenta } from './types';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import type { PreCuenta, SaleItem } from './types';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
+
+/** Notas del ítem cuando vienen como objeto (modificadores, comensal, nota libre). */
+function notasObjeto(notes: SaleItem['notes']) {
+  return notes && typeof notes === 'object' ? notes : null;
+}
 
 interface PreCuentaDialogProps {
   open: boolean;
@@ -42,6 +47,7 @@ export function PreCuentaDialog({
   showEInvoiceOption = true,
   deliveryInfo,
 }: PreCuentaDialogProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [sendToFactus, setSendToFactus] = React.useState(false);
   const { alwaysEnabled: eInvoiceAlwaysEnabled } = useElectronicInvoicePreference();
 
@@ -87,7 +93,7 @@ export function PreCuentaDialog({
                       {item.product?.name || 'Producto'}
                     </p>
                     <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                      {item.quantity} × {formatCurrency(Number(item.unit_price))}
+                      {item.quantity} × {formatear(Number(item.unit_price))}
                     </p>
                     {item.product?.variant_data && Object.keys(item.product.variant_data).length > 0 && (
                       <div className="flex items-center gap-1 flex-wrap mt-1">
@@ -98,28 +104,28 @@ export function PreCuentaDialog({
                         ))}
                       </div>
                     )}
-                    {typeof item.notes === 'object' && (item.notes as any)?.modifiers?.length > 0 && (
+                    {(notasObjeto(item.notes)?.modifiers?.length ?? 0) > 0 && (
                       <div className="flex items-center gap-1 flex-wrap mt-1">
-                        {(item.notes as any).modifiers.map((mod: any) => (
+                        {(notasObjeto(item.notes)?.modifiers ?? []).map((mod) => (
                           <span key={mod.modifierId} className="text-[0.65rem] px-1.5 py-0.5 rounded-full border border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
-                            {mod.name}{mod.extraPrice > 0 ? ` (+${formatCurrency(mod.extraPrice)})` : ''}
+                            {mod.name}{mod.extraPrice > 0 ? ` (+${formatear(mod.extraPrice)})` : ''}
                           </span>
                         ))}
                       </div>
                     )}
-                    {typeof item.notes === 'object' && (item.notes as any)?.guest_number && (
+                    {notasObjeto(item.notes)?.guest_number && (
                       <p className="text-xs text-purple-700 dark:text-purple-400 mt-1">
-                        👤 Comensal {(item.notes as any).guest_number}
+                        👤 Comensal {notasObjeto(item.notes)?.guest_number}
                       </p>
                     )}
-                    {(typeof item.notes === 'object' ? (item.notes as any)?.extra : item.notes) && (
+                    {(typeof item.notes === 'object' ? notasObjeto(item.notes)?.extra : item.notes) && (
                       <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 break-words whitespace-normal">
-                        📝 {typeof item.notes === 'object' ? (item.notes as any)?.extra : item.notes}
+                        📝 {typeof item.notes === 'object' ? notasObjeto(item.notes)?.extra : item.notes}
                       </p>
                     )}
                   </div>
                   <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 shrink-0 text-right whitespace-nowrap">
-                    {formatCurrency(Number(item.total))}
+                    {formatear(Number(item.total))}
                   </p>
                 </div>
               </div>
@@ -133,7 +139,7 @@ export function PreCuentaDialog({
             <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
               <span>Subtotal:</span>
               <span className="font-medium">
-                {formatCurrency(preCuenta.subtotal)}
+                {formatear(preCuenta.subtotal)}
               </span>
             </div>
 
@@ -141,7 +147,7 @@ export function PreCuentaDialog({
               <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
                 <span>Descuentos:</span>
                 <span className="font-medium">
-                  -{formatCurrency(preCuenta.discount_total)}
+                  -{formatear(preCuenta.discount_total)}
                 </span>
               </div>
             )}
@@ -150,7 +156,7 @@ export function PreCuentaDialog({
               <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
                 <span>Impuestos:</span>
                 <span className="font-medium">
-                  {formatCurrency(preCuenta.tax_total)}
+                  {formatear(preCuenta.tax_total)}
                 </span>
               </div>
             )}
@@ -160,7 +166,7 @@ export function PreCuentaDialog({
             <div className="flex justify-between text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100">
               <span>Total:</span>
               <span className="text-blue-600 dark:text-blue-400">
-                {formatCurrency(preCuenta.total)}
+                {formatear(preCuenta.total)}
               </span>
             </div>
           </div>

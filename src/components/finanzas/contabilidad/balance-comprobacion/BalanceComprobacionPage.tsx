@@ -11,6 +11,8 @@ import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezon
 import { primerDiaDelMesDe } from '@/lib/services/fiscalCalendar';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 
 const TYPE_LABELS: Record<string, string> = {
   asset: 'Activo',
@@ -20,12 +22,15 @@ const TYPE_LABELS: Record<string, string> = {
   expense: 'Gasto',
 };
 
-function formatCurrency(value: number): string {
-  if (Math.abs(value) < 0.01) return '-';
-  return new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
+// Cifra contable en la moneda base de la organizacion (los reportes contables
+// se llevan en moneda base): sin simbolo, con los decimales y el formato de esa
+// moneda; '-' cuando es cero.
+function crearFormatoCifra(moneda: ContextoMoneda): (value: number) => string {
+  return (value) => (Math.abs(value) < 0.01 ? '-' : formatNumeroMoneda(value, moneda));
 }
 
 export function BalanceComprobacionPage() {
+  const formatCifra = crearFormatoCifra(useMonedaOrganizacion());
   // `journal_entries.entry_date` es timestamptz: los extremos del filtro se
   // convierten a instantes DENTRO del servicio, con la zona de la organizacion.
   // Aqui solo hace falta el dia calendario de esa misma zona, y por eso los
@@ -168,24 +173,24 @@ export function BalanceComprobacionPage() {
                     <td className="py-2 px-3 font-mono text-gray-600 dark:text-gray-400">{row.account_code}</td>
                     <td className="py-2 px-3 text-gray-900 dark:text-white">{row.name}</td>
                     <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{TYPE_LABELS[row.type] || row.type}</td>
-                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCurrency(row.initial_debit)}</td>
-                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCurrency(row.initial_credit)}</td>
-                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCurrency(row.period_debit)}</td>
-                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCurrency(row.period_credit)}</td>
-                    <td className="py-2 px-3 text-right font-mono font-medium text-gray-900 dark:text-white">{formatCurrency(row.final_debit)}</td>
-                    <td className="py-2 px-3 text-right font-mono font-medium text-gray-900 dark:text-white">{formatCurrency(row.final_credit)}</td>
+                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCifra(row.initial_debit)}</td>
+                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCifra(row.initial_credit)}</td>
+                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCifra(row.period_debit)}</td>
+                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCifra(row.period_credit)}</td>
+                    <td className="py-2 px-3 text-right font-mono font-medium text-gray-900 dark:text-white">{formatCifra(row.final_debit)}</td>
+                    <td className="py-2 px-3 text-right font-mono font-medium text-gray-900 dark:text-white">{formatCifra(row.final_credit)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 dark:border-gray-600 font-bold text-gray-900 dark:text-white">
                   <td colSpan={3} className="py-3 px-3">TOTALES</td>
-                  <td className="py-3 px-3 text-right font-mono">{formatCurrency(totals.initial_debit)}</td>
-                  <td className="py-3 px-3 text-right font-mono">{formatCurrency(totals.initial_credit)}</td>
-                  <td className="py-3 px-3 text-right font-mono">{formatCurrency(totals.period_debit)}</td>
-                  <td className="py-3 px-3 text-right font-mono">{formatCurrency(totals.period_credit)}</td>
-                  <td className="py-3 px-3 text-right font-mono">{formatCurrency(totals.final_debit)}</td>
-                  <td className="py-3 px-3 text-right font-mono">{formatCurrency(totals.final_credit)}</td>
+                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totals.initial_debit)}</td>
+                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totals.initial_credit)}</td>
+                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totals.period_debit)}</td>
+                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totals.period_credit)}</td>
+                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totals.final_debit)}</td>
+                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totals.final_credit)}</td>
                 </tr>
               </tfoot>
             </table>

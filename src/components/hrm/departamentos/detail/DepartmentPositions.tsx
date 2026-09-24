@@ -11,7 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Briefcase, Plus, ChevronRight, Users } from 'lucide-react';
 import Link from 'next/link';
 
@@ -61,6 +62,7 @@ export function DepartmentPositions({
   departmentId,
   isLoading,
 }: DepartmentPositionsProps) {
+  const { formatear } = useMonedaOrganizacion();
   if (isLoading) {
     return (
       <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
@@ -154,9 +156,9 @@ export function DepartmentPositions({
                       <TableCell>
                         {position.min_salary || position.max_salary ? (
                           <span className="text-gray-700 dark:text-gray-300 text-sm">
-                            {position.min_salary && formatCurrency(position.min_salary)}
+                            {position.min_salary && formatear(position.min_salary)}
                             {position.min_salary && position.max_salary && ' - '}
-                            {position.max_salary && formatCurrency(position.max_salary)}
+                            {position.max_salary && formatear(position.max_salary)}
                           </span>
                         ) : (
                           <span className="text-gray-400">-</span>

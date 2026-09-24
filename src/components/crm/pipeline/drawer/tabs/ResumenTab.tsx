@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { opportunitiesService } from '@/components/crm/oportunidades/opportunitiesService';
 import { ScoringSection } from '@/components/crm/oportunidades/ScoringSection';
 import { CustomerEditDialog } from '@/components/crm/shared/CustomerEditDialog';
@@ -32,7 +33,9 @@ export function ResumenTab({ opportunity, customer, data, active }: DrawerTabPro
   const [editCustomer, setEditCustomer] = useState(false);
   const [discoveryConfig, setDiscoveryConfig] = useState(false);
   const [lines, setLines] = useState<{ products: Line[]; spaces: Line[]; custom: Line[] } | null>(null);
-  const currency = opportunity.currency || 'COP';
+  // Moneda de la oportunidad; si no la trae, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const currency = paraDocumento(opportunity.currency);
 
   const loadLines = useCallback(async () => {
     const [p, s, c] = await Promise.allSettled([
@@ -64,7 +67,7 @@ export function ResumenTab({ opportunity, customer, data, active }: DrawerTabPro
           {items.map((l) => (
             <div key={l.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 text-sm">
               <span className="min-w-0 truncate text-gray-900 dark:text-gray-100">{l.label} <span className="text-xs text-gray-500">{l.qty}</span></span>
-              <span className="font-medium text-blue-600 dark:text-blue-400 shrink-0">{formatCurrency(l.total, currency)}</span>
+              <span className="font-medium text-blue-600 dark:text-blue-400 shrink-0">{formatMoneda(l.total, currency)}</span>
             </div>
           ))}
         </div>
@@ -82,10 +85,10 @@ export function ResumenTab({ opportunity, customer, data, active }: DrawerTabPro
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2"><CircleDot className="h-4 w-4 text-blue-500" />Información</h3>
         <Card className="p-4 bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div><span className="text-gray-500 dark:text-gray-400 text-xs block">Monto</span><span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1"><DollarSign className="h-3.5 w-3.5 text-blue-500" />{formatCurrency(Number(opportunity.amount ?? 0), currency)}</span></div>
+            <div><span className="text-gray-500 dark:text-gray-400 text-xs block">Monto</span><span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1"><DollarSign className="h-3.5 w-3.5 text-blue-500" />{formatMoneda(Number(opportunity.amount ?? 0), currency)}</span></div>
             <div><span className="text-gray-500 dark:text-gray-400 text-xs block">Cierre estimado</span><span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1"><Calendar className="h-3.5 w-3.5 text-blue-500" />{fmtDate(opportunity.expected_close_date)}</span></div>
             <div><span className="text-gray-500 dark:text-gray-400 text-xs block">Creada</span><span className="font-medium text-gray-900 dark:text-gray-100">{fmtDate(opportunity.created_at)}</span></div>
-            <div><span className="text-gray-500 dark:text-gray-400 text-xs block">Moneda</span><span className="font-medium text-gray-900 dark:text-gray-100">{currency}</span></div>
+            <div><span className="text-gray-500 dark:text-gray-400 text-xs block">Moneda</span><span className="font-medium text-gray-900 dark:text-gray-100">{currency.code}</span></div>
           </div>
         </Card>
       </section>
@@ -127,7 +130,7 @@ export function ResumenTab({ opportunity, customer, data, active }: DrawerTabPro
             <Card className="p-4 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-sm space-y-1.5">
               <div><span className="text-xs text-gray-500 block">Razón</span><span className="font-medium">{opportunity.loss_reason || opportunity.loss_reason_value || 'N/A'}</span></div>
               {opportunity.competitor_name && <div><span className="text-xs text-gray-500 block">Competidor</span>{opportunity.competitor_name}</div>}
-              {opportunity.competitor_price != null && <div><span className="text-xs text-gray-500 block">Precio competidor</span>{formatCurrency(Number(opportunity.competitor_price), currency)}</div>}
+              {opportunity.competitor_price != null && <div><span className="text-xs text-gray-500 block">Precio competidor</span>{formatMoneda(Number(opportunity.competitor_price), currency)}</div>}
               {opportunity.missing_features && opportunity.missing_features.length > 0 && <div><span className="text-xs text-gray-500 block">Funcionalidades faltantes</span><ul className="list-disc list-inside text-xs">{opportunity.missing_features.map((f, i) => <li key={i}>{f}</li>)}</ul></div>}
               {opportunity.recontact_at && <div><span className="text-xs text-gray-500 block">Recontactar</span>{fmtDate(opportunity.recontact_at)}</div>}
             </Card>

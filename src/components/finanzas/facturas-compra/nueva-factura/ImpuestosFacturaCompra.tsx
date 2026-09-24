@@ -7,8 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calculator, Settings, ChevronDown, Check } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { Calculator, Settings, ChevronDown } from 'lucide-react';
 import { 
   calculateCartTaxes,
   type OrganizationTax,
@@ -17,14 +16,6 @@ import {
 } from '@/lib/utils/taxCalculations';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-
-interface TaxBreakdown {
-  taxId: string;
-  name: string;
-  rate: number;
-  baseAmount: number;
-  taxAmount: number;
-}
 
 interface ImpuestosFacturaCompraProps {
   items: TaxCalculationItem[];
@@ -38,7 +29,6 @@ interface ImpuestosFacturaCompraProps {
 
 export function ImpuestosFacturaCompra({ 
   items, 
-  currency = 'COP',
   taxIncluded, 
   onTaxIncludedChange,
   onTaxCalculationChange,

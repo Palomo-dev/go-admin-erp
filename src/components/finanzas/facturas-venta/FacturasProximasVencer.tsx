@@ -13,6 +13,8 @@ import {AlertTriangle, CheckCircle, Clock} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 // Tipo para los datos que vienen de Supabase
 interface FacturaData {
@@ -23,6 +25,7 @@ interface FacturaData {
   total: number;
   balance: number;
   payment_terms: number;
+  currency: string | null;
   customers: {
     full_name: string;
   } | null;
@@ -38,6 +41,8 @@ interface FacturaVencimiento {
   total: number;
   balance: number;
   payment_terms: number;
+  /** Moneda propia de la factura; null = la base de la organización. */
+  currency: string | null;
   dias_restantes: number;
 }
 
@@ -47,6 +52,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
   // anterior, y la lista se come las facturas que vencen hoy por la mañana.
   const { timezone } = useFormatDate();
   const { isLoading: tzLoading } = useOrgTimezone();
+  const { paraDocumento } = useMonedaOrganizacion();
   const [facturas, setFacturas] = useState<FacturaVencimiento[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +80,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
             total,
             balance,
             payment_terms,
+            currency,
             customers:customer_id (full_name)
           `)
           .eq('organization_id', organizationId)
@@ -89,7 +96,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
         
         if (data) {
           // Procesar los datos para incluir días restantes
-          const facturasConDiasRestantes = data.map((factura: any) => {
+          const facturasConDiasRestantes = (data as unknown as FacturaData[]).map((factura) => {
             // Dias restantes contados en DIAS CALENDARIO de la organizacion:
             // `due_date` es un instante y «hoy» es el dia de alli.
             const diaVencimiento = toPlainDate(new Date(factura.due_date), timezone);
@@ -109,6 +116,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
               total: factura.total,
               balance: factura.balance,
               payment_terms: factura.payment_terms,
+              currency: factura.currency ?? null,
               customer_name: customerName,
               dias_restantes: diasEntreDias(hoy, diaVencimiento)
             };
@@ -208,12 +216,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
                   {/* Monto y acciones */}
                   <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 sm:space-y-2">
                     <div className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
-                      {new Intl.NumberFormat('es-CO', { 
-                        style: 'currency', 
-                        currency: 'COP',
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
-                      }).format(factura.balance)}
+                      {formatMoneda(factura.balance, paraDocumento(factura.currency))}
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge 

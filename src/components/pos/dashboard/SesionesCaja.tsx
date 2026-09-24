@@ -4,7 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Wallet, CircleDot } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { SesionCajaPos } from '@/lib/services/posDashboardService';
 
 interface SesionesCajaProps {
@@ -13,6 +13,7 @@ interface SesionesCajaProps {
 }
 
 export function SesionesCaja({ sesiones, isLoading }: SesionesCajaProps) {
+  const { formatear } = useMonedaOrganizacion();
   return (
     <Card className="dark:bg-gray-800/50">
       <CardHeader className="pb-2">
@@ -51,13 +52,13 @@ export function SesionesCaja({ sesiones, isLoading }: SesionesCajaProps) {
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500 dark:text-gray-400">Balance actual</span>
                     <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                      {formatCurrency(s.currentBalance, 'COP')}
+                      {formatear(s.currentBalance)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500 dark:text-gray-400">Monto apertura</span>
                     <span className="text-xs text-gray-700 dark:text-gray-300">
-                      {formatCurrency(s.openingAmount, 'COP')}
+                      {formatear(s.openingAmount)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">

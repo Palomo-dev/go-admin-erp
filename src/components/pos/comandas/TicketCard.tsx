@@ -1,11 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Clock, CheckCircle, ChefHat, AlertCircle, User, Check, Circle, Hash, Printer, Loader2 } from 'lucide-react';
+import { Clock, CheckCircle, ChefHat, AlertCircle, User, Check, Hash, Printer, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatCurrency } from '@/utils/Utils';
 import type { KitchenTicket, KitchenTicketItem, StationFilter } from '@/lib/services/kitchenService';
 
 interface TicketCardProps {
@@ -288,7 +287,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
 
                   {itemModifiers.length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap mb-1">
-                      {itemModifiers.map((mod: any, idx: number) => (
+                      {itemModifiers.map((mod: { name: string }, idx: number) => (
                         <Badge key={idx} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
                           {mod.name}
                         </Badge>
@@ -317,7 +316,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                   
                   {item.notes && (
                     <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 italic">
-                      📝 {typeof item.notes === 'object' ? (item.notes as any)?.extra : item.notes}
+                      📝 {typeof item.notes === 'object' ? (item.notes as { extra?: string } | null)?.extra : item.notes}
                     </p>
                   )}
                 </div>

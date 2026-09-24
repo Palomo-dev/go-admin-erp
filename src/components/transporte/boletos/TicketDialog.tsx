@@ -25,6 +25,8 @@ import { ticketsService, type TicketWithDetails, type TripSeat, type RouteStop, 
 import { cn } from '@/lib/utils';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 interface Trip {
   id: string;
@@ -82,6 +84,8 @@ export function TicketDialog({
   onSave,
   onSearchCustomer,
 }: TicketDialogProps) {
+  // Tarifa del viaje en la moneda del viaje; sin ella, la base.
+  const { paraDocumento } = useMonedaOrganizacion();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchingCustomer, setSearchingCustomer] = useState(false);
   const [customerResults, setCustomerResults] = useState<Customer[]>([]);
@@ -336,7 +340,7 @@ export function TicketDialog({
                 )}
                 {tripDetails?.base_fare && (
                   <p>
-                    <strong>Tarifa base:</strong> ${tripDetails.base_fare.toLocaleString('es-CO')} {tripDetails.currency || 'COP'}
+                    <strong>Tarifa base:</strong> {formatMoneda(tripDetails.base_fare, paraDocumento(tripDetails.currency))}
                   </p>
                 )}
               </div>

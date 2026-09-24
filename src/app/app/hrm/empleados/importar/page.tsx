@@ -2,8 +2,8 @@
 
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import EmploymentsService from '@/lib/services/employmentsService';
 import type { CreateEmploymentDTO } from '@/lib/services/employmentsService';
 import { EmployeeImporter } from '@/components/hrm/empleados/importar';
@@ -14,11 +14,11 @@ import { ArrowLeft, Upload } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ImportarEmpleadosPage() {
-  const router = useRouter();
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
+  const { code: monedaBase, resuelta } = useMonedaOrganizacion();
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
   // Servicio
   const getService = useCallback(() => {
@@ -62,7 +62,9 @@ export default function ImportarEmpleadosPage() {
       '', // branch_id
       '3000000', // base_salary
       'monthly', // salary_period
-      'COP', // currency_code
+      // Ejemplo con la moneda base de la organización; vacía = la pone la base
+      // (trigger `trg_00_moneda_base_por_defecto`).
+      resuelta ? monedaBase : '', // currency_code
       '48', // work_hours_per_week
       'Sura EPS', // eps_code
       'Porvenir', // afp_code

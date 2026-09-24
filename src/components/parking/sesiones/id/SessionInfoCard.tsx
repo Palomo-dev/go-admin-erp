@@ -14,7 +14,7 @@ import {
   Timer,
   DollarSign,
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface ParkingSession {
   id: string;
@@ -81,6 +81,7 @@ const calculateCurrentDuration = (entryAt: string) => {
 };
 
 export function SessionInfoCard({ session, isLoading }: SessionInfoCardProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   if (isLoading) {
     return (
       <Card>

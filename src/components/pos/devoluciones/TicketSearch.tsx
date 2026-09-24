@@ -7,13 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DevolucionesService } from './devolucionesService';
 import { SaleForReturn, SaleSearchFilters } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { cn } from '@/utils/Utils';
 
 interface TicketSearchProps {
@@ -22,6 +21,7 @@ interface TicketSearchProps {
 }
 
 export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [sales, setSales] = useState<SaleForReturn[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedSale, setSelectedSale] = useState<SaleForReturn | null>(null);
@@ -213,7 +213,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                         </TableCell>
                         <TableCell className="dark:text-gray-300">
                           <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                            {formatCurrency(sale.total)}
+                            {formatear(sale.total)}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -324,7 +324,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                           Subtotal
                         </div>
                         <div className="text-lg font-bold dark:text-gray-200">
-                          {formatCurrency(selectedSale.subtotal)}
+                          {formatear(selectedSale.subtotal)}
                         </div>
                       </CardContent>
                     </Card>
@@ -335,7 +335,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                           Total
                         </div>
                         <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                          {formatCurrency(selectedSale.total)}
+                          {formatear(selectedSale.total)}
                         </div>
                       </CardContent>
                     </Card>
@@ -365,7 +365,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                                   {payment.method}
                                 </span>
                                 <span className="text-sm font-bold dark:text-gray-200">
-                                  {formatCurrency(payment.amount)}
+                                  {formatear(payment.amount)}
                                 </span>
                               </div>
                               {payment.reference && (
@@ -426,10 +426,10 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                                   {item.quantity}
                                 </TableCell>
                                 <TableCell className="dark:text-gray-300 text-right font-medium">
-                                  {formatCurrency(item.unit_price)}
+                                  {formatear(item.unit_price)}
                                 </TableCell>
                                 <TableCell className="dark:text-gray-300 text-right font-semibold">
-                                  {formatCurrency(item.total)}
+                                  {formatear(item.total)}
                                 </TableCell>
                                 <TableCell className="text-center">
                                   <Badge 
@@ -473,7 +473,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
               <div className="flex justify-between items-center">
                 <div className="text-sm text-gray-600 dark:text-gray-400">
                   {selectedSale && (
-                    <span>{selectedSale.items.length} productos • Total: {formatCurrency(selectedSale.total)}</span>
+                    <span>{selectedSale.items.length} productos • Total: {formatear(selectedSale.total)}</span>
                   )}
                 </div>
                 <div className="flex space-x-3">

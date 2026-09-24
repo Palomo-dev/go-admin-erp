@@ -25,6 +25,7 @@ import type { Pipeline, Stage } from '@/components/crm/oportunidades/types';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { mensajeErrorTelefono } from '@/lib/utils/telefono';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { resolverClienteDeFila } from './bulkOpportunityCustomer';
 
 interface BulkCreateOpportunitiesDialogProps {
@@ -33,6 +34,12 @@ interface BulkCreateOpportunitiesDialogProps {
   pipelineId?: string;
   onSuccess?: () => void;
 }
+
+/**
+ * Monedas extra del selector. La base de la organización y la del formulario
+ * se añaden siempre; no se cablea ninguna moneda local.
+ */
+const MONEDAS_CATALOGO = ['USD', 'EUR'];
 
 interface BulkRow {
   name: string;
@@ -52,7 +59,13 @@ export default function BulkCreateOpportunitiesDialog({
   const [stages, setStages] = useState<Stage[]>([]);
   const [selectedPipelineId, setSelectedPipelineId] = useState(pipelineId || '');
   const [selectedStageId, setSelectedStageId] = useState('');
-  const [currency, setCurrency] = useState('COP');
+  // Vacía hasta que se resuelve la moneda base de la organización.
+  const [currency, setCurrency] = useState('');
+  const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
+  useEffect(() => {
+    if (monedaResuelta && !currency) setCurrency(monedaBase);
+  }, [monedaResuelta, monedaBase, currency]);
+  const opcionesMoneda = Array.from(new Set([monedaResuelta ? monedaBase : '', currency, ...MONEDAS_CATALOGO].filter(Boolean)));
   const [rows, setRows] = useState<BulkRow[]>([
     { name: '', amount: '', customerName: '', customerEmail: '', customerPhone: '' },
   ]);
@@ -177,7 +190,8 @@ export default function BulkCreateOpportunitiesDialog({
             customer_id: customerId,
             name: row.name.trim(),
             amount: parseFloat(row.amount) || 0,
-            currency,
+            // Sin moneda elegida, el servicio manda NULL y el trigger pone la base.
+            currency: currency || undefined,
           });
           created++;
         } catch (error) {
@@ -268,9 +282,9 @@ export default function BulkCreateOpportunitiesDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="COP">COP</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
+                  {opcionesMoneda.map((code) => (
+                    <SelectItem key={code} value={code}>{code}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

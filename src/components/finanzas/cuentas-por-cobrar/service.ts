@@ -6,6 +6,8 @@ import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { instantForDayInTz } from '@/lib/services/businessInstant';
 import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
 import { todayInTz } from '@/lib/utils/timezone';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
 
 async function getBranchIdWithFallback(organizationId: number): Promise<number> {
   const branchId = getCurrentBranchId();
@@ -25,6 +27,104 @@ async function getBranchIdWithFallback(organizationId: number): Promise<number> 
   }
 
   return data.id;
+}
+
+/** Fila de `get_accounts_receivable_paginated`. */
+interface FilaCxCRpc {
+  id: string;
+  organization_id: number;
+  customer_id: string;
+  invoice_id: string | null;
+  sale_id: string | null;
+  amount: string | number | null;
+  balance: string | number | null;
+  due_date: string;
+  status: CuentaPorCobrar['status'];
+  days_overdue: number | null;
+  last_reminder_date: string | null;
+  created_at: string;
+  updated_at: string;
+  customer_name: string | null;
+  customer_email: string | null;
+  customer_phone: string | null;
+}
+
+/** Respuesta de `get_accounts_receivable_paginated`. */
+interface PaginaCxCRpc {
+  data: FilaCxCRpc[];
+  total_count: number;
+  page_size: number;
+  page_number: number;
+  total_pages: number;
+}
+
+/** Cuenta vencida con su cliente (consulta de recordatorios). */
+interface FilaRecordatorioCxC {
+  id: string;
+  customer_id: string;
+  amount: string | number;
+  due_date: string;
+  days_overdue: number;
+  last_reminder_date: string | null;
+  customers: { full_name: string | null; email: string | null; phone: string | null } | null;
+}
+
+/** Fila de `get_accounts_receivable_for_customers`. */
+interface FilaBalanceClienteRpc {
+  customer_id: string;
+  balance: string | number | null;
+  days_overdue: number | null;
+  status: string;
+  due_date: string;
+}
+
+interface VinculoFacturaCxC {
+  invoice_id?: string | null;
+  sale_id?: string | null;
+}
+
+/**
+ * Moneda de un pago aplicado a una cuenta por cobrar: la de su factura de
+ * venta (por `invoice_id` o, si no lo tiene, por `sale_id`) y, si la cuenta no
+ * tiene factura, la moneda base de la organización. `payments.currency` es
+ * NOT NULL sin trigger de respaldo: hay que resolverla aquí, nunca suponer COP.
+ * Si no se pasa `cuenta`, se lee con la RPC de detalle (evita problemas de RLS).
+ */
+export async function monedaDeCuentaPorCobrar(
+  organizationId: number,
+  accountId: string,
+  cuenta?: VinculoFacturaCxC | null
+): Promise<string> {
+  let vinculo: VinculoFacturaCxC | null = cuenta ?? null;
+  if (!vinculo) {
+    const { data } = await supabase.rpc('get_account_receivable_detail', {
+      account_id: accountId,
+      org_id: organizationId,
+    });
+    vinculo = (Array.isArray(data) ? (data[0] as VinculoFacturaCxC | undefined) : null) ?? null;
+  }
+
+  let monedaFactura: string | null = null;
+  if (vinculo?.invoice_id) {
+    const { data } = await supabase
+      .from('invoice_sales')
+      .select('currency')
+      .eq('organization_id', organizationId)
+      .eq('id', vinculo.invoice_id)
+      .maybeSingle();
+    monedaFactura = normalizarCodigoMoneda((data as { currency: string | null } | null)?.currency);
+  } else if (vinculo?.sale_id) {
+    const { data } = await supabase
+      .from('invoice_sales')
+      .select('currency')
+      .eq('organization_id', organizationId)
+      .eq('sale_id', vinculo.sale_id)
+      .limit(1)
+      .maybeSingle();
+    monedaFactura = normalizarCodigoMoneda((data as { currency: string | null } | null)?.currency);
+  }
+  if (monedaFactura) return monedaFactura;
+  return (await resolveOrgCurrency(supabase, organizationId)).code;
 }
 
 export class CuentasPorCobrarService {
@@ -57,17 +157,17 @@ export class CuentasPorCobrarService {
         throw error;
       }
 
-      const result = data as any;
+      const result = data as PaginaCxCRpc;
       
       return {
-        data: result.data.map((item: any) => ({
+        data: result.data.map((item) => ({
           id: item.id,
           organization_id: item.organization_id,
           customer_id: item.customer_id,
           invoice_id: item.invoice_id,
           sale_id: item.sale_id,
-          amount: parseFloat(item.amount || 0),
-          balance: parseFloat(item.balance || 0),
+          amount: parseFloat(String(item.amount || 0)),
+          balance: parseFloat(String(item.balance || 0)),
           due_date: item.due_date,
           status: item.status,
           days_overdue: item.days_overdue || 0,
@@ -140,7 +240,7 @@ export class CuentasPorCobrarService {
       const pageSize = 100;
       let pageNumber = 1;
       let totalPages = 1;
-      const todas: any[] = [];
+      const todas: FilaCxCRpc[] = [];
 
       while (pageNumber <= totalPages) {
         const { data, error } = await supabase
@@ -162,7 +262,7 @@ export class CuentasPorCobrarService {
           throw error;
         }
 
-        const result = data as any;
+        const result = data as PaginaCxCRpc;
         const pageData = result.data || [];
         todas.push(...pageData);
         totalPages = result.total_pages || 1;
@@ -175,9 +275,9 @@ export class CuentasPorCobrarService {
       const customerMap = new Map<string, AgingBucket>();
       const today = new Date();
 
-      cuentas.forEach((item: any) => {
+      cuentas.forEach((item) => {
         const customerId = item.customer_id;
-        const balance = parseFloat(item.balance || 0);
+        const balance = parseFloat(String(item.balance || 0));
         
         // Solo procesar cuentas con saldo pendiente
         if (balance <= 0) return;
@@ -251,12 +351,12 @@ export class CuentasPorCobrarService {
       throw error;
     }
 
-    return data?.map((item: any) => ({
+    return (data as FilaRecordatorioCxC[] | null)?.map((item) => ({
       id: item.id,
       customer_id: item.customer_id,
       customer_name: item.customers?.full_name || 'N/A',
       customer_email: item.customers?.email || '',
-      amount: parseFloat(item.amount),
+      amount: parseFloat(String(item.amount)),
       due_date: item.due_date,
       days_overdue: item.days_overdue,
       last_reminder_date: item.last_reminder_date,
@@ -282,9 +382,7 @@ export class CuentasPorCobrarService {
 
     const account = accountData[0];
 
-    const currentBalance = parseFloat(account.balance);
     const abonoAmount = parseFloat(abono.amount.toString());
-    const newBalance = currentBalance - abonoAmount;
 
     // Obtener branch_id y usuario actual desde el contexto del usuario
     const currentBranchId = await getBranchIdWithFallback(organizationId);
@@ -293,6 +391,8 @@ export class CuentasPorCobrarService {
     // combina con la hora de pared de la SUCURSAL dueña del abono, no con la
     // del navegador (ADR-003: el servicio recibe identidad y resuelve la zona).
     const timezone = await resolveTimezone(organizationId, currentBranchId);
+    // Moneda del abono: la de la factura de la cuenta, si no la base.
+    const currency = await monedaDeCuentaPorCobrar(organizationId, accountId, account);
     
     // Crear el registro de pago
     const { error: paymentError } = await supabase
@@ -304,7 +404,7 @@ export class CuentasPorCobrarService {
         source_id: accountId,
         method: abono.payment_method,
         amount: abonoAmount,
-        currency: 'COP',
+        currency,
         reference: abono.reference,
         status: 'completed',
         created_by: currentUserId,
@@ -473,9 +573,9 @@ export class CuentasPorCobrarService {
         throw error;
       }
 
-      return data?.map((item: any) => ({
+      return (data as FilaBalanceClienteRpc[] | null)?.map((item) => ({
         customer_id: item.customer_id,
-        balance: parseFloat(item.balance || 0),
+        balance: parseFloat(String(item.balance || 0)),
         days_overdue: item.days_overdue || 0,
         status: item.status,
         due_date: item.due_date,

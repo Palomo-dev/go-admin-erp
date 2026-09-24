@@ -15,7 +15,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { InvoiceItem } from './NuevaFacturaForm';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { SerialSelectorDialog } from '@/components/pos/SerialSelectorDialog';
 import type { CartItem } from '@/components/pos/types';
 import { EtiquetaSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
@@ -30,9 +31,14 @@ type ItemsFacturaProps = {
   onSerialSelectionsChange: (selections: Record<number, number[]>) => void;
   /** Índices de las líneas que saldrán sin impuesto por falta de configuración. */
   lineasSinImpuesto?: Set<number>;
+  /** Moneda del documento; si no llega, la base de la organización. */
+  currency?: string | null;
 };
 
-export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branchId, organizationId, serialSelections, onSerialSelectionsChange, lineasSinImpuesto }: ItemsFacturaProps) {
+export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branchId, organizationId, serialSelections, onSerialSelectionsChange, lineasSinImpuesto, currency }: ItemsFacturaProps) {
+  // Importes en la moneda del documento (la base si no la trae).
+  const { paraDocumento } = useMonedaOrganizacion();
+  const monedaDocumento = paraDocumento(currency);
   const [showSerialSelector, setShowSerialSelector] = useState(false);
 
   // Items que requieren captura de seriales
@@ -141,7 +147,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
   };
 
   // Actualizar un ítem
-  const updateItem = (index: number, field: keyof InvoiceItem, value: any) => {
+  const updateItem = (index: number, field: keyof InvoiceItem, value: InvoiceItem[keyof InvoiceItem]) => {
     const updatedItems = [...items];
     updatedItems[index] = {
       ...updatedItems[index],
@@ -192,7 +198,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
       <div className="flex flex-col sm:flex-row gap-2 mb-3">
         <ProductSearchDialog
           mode="sale"
-          currency="COP"
+          currency={monedaDocumento.code}
           branchId={branchId}
           onProductSelect={handleProductSelect}
           selectedProductIds={selectedProductIds}
@@ -385,7 +391,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                     </div>
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {formatCurrency(item.total_line || 0, 'COP')}
+                    {formatMoneda(item.total_line || 0, monedaDocumento)}
                   </TableCell>
                   <TableCell>
                     <Button 

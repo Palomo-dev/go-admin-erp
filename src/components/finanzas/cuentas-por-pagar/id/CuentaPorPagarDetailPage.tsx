@@ -453,6 +453,7 @@ Fecha de Generación: ${formatDateInTz(new Date().toISOString(), timezone)}
           totalAmount={account.balance}
           organizationId={account.organization_id}
           branchId={account.branch_id ?? null}
+          currency={account.invoice_currency}
           onUpdate={handleRefresh}
         />
       </div>

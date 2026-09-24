@@ -5,7 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 interface Pago {
   id: string;
@@ -15,7 +16,7 @@ interface Pago {
   amount: number;
   currency: string;
   reference: string;
-  processor_response?: any;
+  processor_response?: unknown;
   status: string;
   created_at: string;
   created_by?: string;
@@ -26,6 +27,9 @@ interface PagosDetalleProps {
 }
 
 export function PagosDetalle({ pagos }: PagosDetalleProps) {
+  // Cada pago en su moneda (`payments.currency`); sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+
   if (!pagos || pagos.length === 0) {
     return (
       <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-gray-500 dark:text-gray-400">
@@ -98,7 +102,7 @@ export function PagosDetalle({ pagos }: PagosDetalleProps) {
                 </TableCell>
                 <TableCell className="text-right font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-100 py-2 sm:py-3">
                   <div className="flex flex-col items-end">
-                    {formatCurrency(pago.amount)}
+                    {formatMoneda(pago.amount, paraDocumento(pago.currency))}
                     <Badge className={`${estadoColors[pago.status] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'} sm:hidden text-[10px] px-1.5 py-0.5 mt-1 border`}>
                       {getEstadoText(pago.status)}
                     </Badge>

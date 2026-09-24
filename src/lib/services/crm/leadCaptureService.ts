@@ -172,7 +172,8 @@ class LeadCaptureService {
           customer_id: input.customerId,
           name: opportunityName,
           amount: input.amount || 0,
-          currency: 'COP',
+          // NULL: el trigger `trg_00_moneda_base_por_defecto` pone la moneda base.
+          currency: null,
           status: 'open',
           source: input.source || 'webhook',
           created_by: userData.user?.id || null,

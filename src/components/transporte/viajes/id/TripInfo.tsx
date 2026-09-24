@@ -4,12 +4,16 @@ import { Card } from '@/components/ui/card';
 import { Bus, MapPin, Clock, Users, DollarSign, User } from 'lucide-react';
 import { format } from 'date-fns';
 import type { TripWithDetails } from '@/lib/services/tripsService';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 interface TripInfoProps {
   trip: TripWithDetails;
 }
 
 export function TripInfo({ trip }: TripInfoProps) {
+  // Tarifa en la moneda del viaje; sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
   const occupancy = trip.total_seats - trip.available_seats;
   const occupancyPercent = trip.total_seats > 0
     ? Math.round((occupancy / trip.total_seats) * 100)
@@ -56,11 +60,7 @@ export function TripInfo({ trip }: TripInfoProps) {
     },
     {
       title: 'Tarifa Base',
-      value: new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: trip.currency || 'COP',
-        minimumFractionDigits: 0,
-      }).format(trip.base_fare || 0),
+      value: formatMoneda(trip.base_fare || 0, paraDocumento(trip.currency)),
       icon: <DollarSign className="h-5 w-5" />,
       color: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300',
     },

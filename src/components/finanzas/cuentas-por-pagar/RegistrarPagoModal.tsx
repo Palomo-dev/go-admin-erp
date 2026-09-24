@@ -36,9 +36,27 @@ import { useToast } from '@/components/ui/use-toast';
 import { CuentasPorPagarService } from './CuentasPorPagarService';
 import { AccountPayable, RegistrarPagoForm } from './types';
 import { OrganizationPaymentMethod } from '../facturas-compra/types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz } from '@/lib/utils/timezone';
+
+/** Mensaje de un error lanzado (Error o error de PostgREST, que trae `message`). */
+function mensajeDeError(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const { message } = error as { message: unknown };
+    return typeof message === 'string' ? message : '';
+  }
+  return '';
+}
+
+/** Columnas que esta pantalla usa de una cuenta bancaria de pago. */
+interface CuentaBancariaOpcion {
+  id: string | number;
+  name: string;
+  bank_name: string | null;
+  currency: string | null;
+}
 
 interface RegistrarPagoModalProps {
   cuenta: AccountPayable;
@@ -54,6 +72,9 @@ export function RegistrarPagoModal({
   onPagoRegistrado
 }: RegistrarPagoModalProps) {
   const { formatDate } = useFormatDate();
+  // Importes de la cuenta en la moneda de su factura de compra (base si no la trae).
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = crearFormateadorMoneda(paraDocumento(cuenta.invoice_purchase?.currency));
   const { timezone } = useOrgTimezone();
   // Estados del formulario
   const [formData, setFormData] = useState<RegistrarPagoForm>({
@@ -68,7 +89,7 @@ export function RegistrarPagoModal({
   // Estados de carga y datos
   const [loading, setLoading] = useState(false);
   const [metodosPago, setMetodosPago] = useState<OrganizationPaymentMethod[]>([]);
-  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<CuentaBancariaOpcion[]>([]);
   const [loadingMetodos, setLoadingMetodos] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedBankAccount, setSelectedBankAccount] = useState<string>('');
@@ -156,12 +177,12 @@ export function RegistrarPagoModal({
   };
 
   // Handlers
-  const handleInputChange = (field: keyof RegistrarPagoForm, value: any) => {
+  const handleInputChange = (field: keyof RegistrarPagoForm, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Validación en tiempo real para el monto
     if (field === 'amount') {
-      const monto = parseFloat(value) || 0;
+      const monto = (typeof value === 'number' ? value : parseFloat(value)) || 0;
       if (monto > cuenta.balance) {
         setErrors(prev => ({ 
           ...prev, 
@@ -202,21 +223,16 @@ export function RegistrarPagoModal({
       });
       
       onPagoRegistrado();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error registrando pago:', error);
       toast({
         title: "Error al registrar pago",
-        description: error.message || "Ocurrió un error inesperado",
+        description: mensajeDeError(error) || "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  };
-
-  const getMetodoNombre = (codigo: string) => {
-    const metodo = metodosPago.find(m => m.payment_method_code === codigo);
-    return metodo?.payment_methods?.name || codigo;
   };
 
   const requiereReferencia = (codigo: string) => {
@@ -443,7 +459,7 @@ export function RegistrarPagoModal({
                     >
                       <div className="flex items-center gap-2">
                         <span>{account.bank_name} - {account.name}</span>
-                        <span className="text-gray-500">({account.currency})</span>
+                        <span className="text-gray-500">({paraDocumento(account.currency).code})</span>
                       </div>
                     </SelectItem>
                   ))}

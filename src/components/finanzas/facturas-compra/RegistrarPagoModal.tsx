@@ -22,7 +22,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CreditCard, AlertCircle } from 'lucide-react';
 import { FacturasCompraService } from './FacturasCompraService';
 import { InvoicePurchase, OrganizationPaymentMethod } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { plainDayOfInstant } from '@/lib/services/businessInstant';
@@ -52,6 +53,9 @@ export function RegistrarPagoModal({
   const [loading, setLoading] = useState(false);
   const [metodosPago, setMetodosPago] = useState<OrganizationPaymentMethod[]>([]);
   const [montoExcedido, setMontoExcedido] = useState(false);
+  // Importes en la moneda de la factura de compra; sin ella, la base de la organización.
+  // El pago lo escribe `FacturasCompraService.registrarPago` con esa misma moneda.
+  const { paraDocumento } = useMonedaOrganizacion();
   
   // `payments.payment_date` e `invoice_purchase.issue_date` son timestamptz.
   // El formulario trabaja con el DIA de la sucursal dueña de la factura; el
@@ -197,9 +201,9 @@ export function RegistrarPagoModal({
       onPagoRegistrado();
       onOpenChange(false);
       resetForm();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error registrando pago:', error);
-      const mensaje = error?.message || 'Error al registrar el pago. Por favor, inténtelo de nuevo.';
+      const mensaje = (error as { message?: string } | null)?.message || 'Error al registrar el pago. Por favor, inténtelo de nuevo.';
       alert(mensaje);
     } finally {
       setLoading(false);
@@ -232,7 +236,7 @@ export function RegistrarPagoModal({
             <div className="flex justify-between text-xs sm:text-sm">
               <span className="text-blue-600 dark:text-blue-400">Balance pendiente:</span>
               <span className="font-semibold text-blue-800 dark:text-blue-300">
-                {formatCurrency(factura.balance, factura.currency)}
+                {formatMoneda(factura.balance, paraDocumento(factura.currency))}
               </span>
             </div>
           </div>
@@ -258,8 +262,8 @@ export function RegistrarPagoModal({
                 <div className="flex items-start gap-2">
                   <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                   <AlertDescription className="text-xs sm:text-sm text-red-800 dark:text-red-300">
-                    El monto ({formatCurrency(parseFloat(formData.amount), factura.currency)}) 
-                    excede el balance pendiente ({formatCurrency(factura.balance, factura.currency)})
+                    El monto ({formatMoneda(parseFloat(formData.amount), paraDocumento(factura.currency))}) 
+                    excede el balance pendiente ({formatMoneda(factura.balance, paraDocumento(factura.currency))})
                   </AlertDescription>
                 </div>
               </Alert>

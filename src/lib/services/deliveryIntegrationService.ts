@@ -902,7 +902,9 @@ class DeliveryIntegrationService {
       declared_value: params.total,
       total_cost: params.total + (params.shippingFee || 0),
       shipping_fee: params.shippingFee || 0,
-      currency: 'COP',
+      // La venta POS no trae moneda: null y el trigger
+      // trg_00_moneda_base_por_defecto pone la base de la organización.
+      currency: null,
       status: params.driverId ? 'assigned' as const : 'pending' as const,
       payment_status: params.paymentStatus || 'pending',
       notes: `Venta POS: ${params.saleId.slice(-8)}`,

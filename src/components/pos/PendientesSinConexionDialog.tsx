@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { isDesktop } from '@/lib/utils/desktop';
 import { toast } from 'sonner';
@@ -69,6 +69,9 @@ function downloadJson(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
+/** Formatea un importe en la moneda base de la organización (hook `useMonedaOrganizacion`). */
+type Formateador = (valor: number) => string;
+
 /** Fila homogénea para las tres bandejas. */
 interface TrayRow {
   key: string;
@@ -85,7 +88,7 @@ interface TrayRow {
   exportContent: string;
 }
 
-function saleRow(r: OutboxSaleRecord): TrayRow {
+function saleRow(r: OutboxSaleRecord, formatear: Formateador): TrayRow {
   const { envelope } = r;
   const itemCount = envelope.checkout.cart.items.length;
   return {
@@ -98,7 +101,7 @@ function saleRow(r: OutboxSaleRecord): TrayRow {
     createdAt: r.created_at,
     attempts: r.attempts,
     lastError: r.last_error,
-    details: [`${itemCount} ítem${itemCount !== 1 ? 's' : ''}`, envelope.checkout.payments.map((p) => `${p.method}: ${formatCurrency(p.amount)}`).join(' · ')],
+    details: [`${itemCount} ítem${itemCount !== 1 ? 's' : ''}`, envelope.checkout.payments.map((p) => `${p.method}: ${formatear(p.amount)}`).join(' · ')],
     exportName: `venta-offline-${r.receipt_number_local}-${r.id}.json`,
     exportContent: exportOutboxSale(r),
   };
@@ -123,12 +126,12 @@ function customerRow(r: OutboxCustomerRecord): TrayRow {
   };
 }
 
-function cashRow(r: CashOutboxRecord): TrayRow {
+function cashRow(r: CashOutboxRecord, formatear: Formateador): TrayRow {
   const amount = r.kind === 'open' ? r.payload.initial_amount : r.kind === 'close' ? r.payload.final_amount : r.payload.amount;
   const kindLabel = r.kind === 'open' ? 'Apertura de caja' : r.kind === 'close' ? 'Cierre de caja' : r.payload.type === 'in' ? 'Ingreso de efectivo' : 'Retiro de efectivo';
   const details = [
     r.kind === 'movement' ? r.payload.concept : '',
-    r.kind === 'close' ? `Esperado ${formatCurrency(r.payload.summary.expected_amount)} · diferencia ${formatCurrency(r.payload.difference)}` : '',
+    r.kind === 'close' ? `Esperado ${formatear(r.payload.summary.expected_amount)} · diferencia ${formatear(r.payload.difference)}` : '',
     r.kind === 'close' && r.payload.summary_partial ? 'Resumen parcial: sin réplica de pagos al cerrar' : '',
     r.session_local_id < 0 ? `Caja local #${r.session_local_id}` : `Caja #${r.session_local_id}`,
   ].filter(Boolean);
@@ -154,6 +157,7 @@ export function PendientesSinConexionDialog() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
   const { formatDateTime } = useFormatDate();
+  const { formatear } = useMonedaOrganizacion();
 
   const reload = useCallback(async () => {
     try {
@@ -162,11 +166,11 @@ export function PendientesSinConexionDialog() {
         listOutboxCustomers().catch(() => [] as OutboxCustomerRecord[]),
         listCashOutbox().catch(() => [] as CashOutboxRecord[]),
       ]);
-      setRows([...sales.map(saleRow), ...customers.map(customerRow), ...cash.map(cashRow)]);
+      setRows([...sales.map((r) => saleRow(r, formatear)), ...customers.map(customerRow), ...cash.map((r) => cashRow(r, formatear))]);
     } catch (err) {
       console.warn('[PendientesSinConexion] No se pudo leer el outbox:', err);
     }
-  }, []);
+  }, [formatear]);
 
   useEffect(() => {
     if (!isDesktop()) return;
@@ -247,7 +251,7 @@ export function PendientesSinConexionDialog() {
             <span className="font-semibold text-gray-900 dark:text-white truncate">{row.title}</span>
             <Badge variant={statusVariant(row.status)}>{STATUS_LABEL[row.status]}</Badge>
           </div>
-          {row.amount !== null && <span className="font-semibold text-gray-900 dark:text-white">{formatCurrency(row.amount)}</span>}
+          {row.amount !== null && <span className="font-semibold text-gray-900 dark:text-white">{formatear(row.amount)}</span>}
         </div>
         <div className="text-xs text-gray-600 dark:text-gray-400 flex flex-wrap gap-x-3 gap-y-1">
           <span>{formatDateTime(row.createdAt)}</span>

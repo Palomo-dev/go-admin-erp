@@ -24,6 +24,8 @@ import { AnalyticsTab } from './detail/AnalyticsTab';
 import { useStageFlow } from './detail/useStageFlow';
 import { ClosingTab } from './detail/ClosingTab';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 /**
  * OpportunityDetail (FASE-09 §5.1): header + embudo + QuickActionsBar; tabs
@@ -102,6 +104,9 @@ export function OpportunityDetail({ opportunityId }: { opportunityId: string }) 
   }, [products, spaces, customLines]);
   const lineTotal = totals.products + totals.spaces + totals.custom;
   const displayAmount = lineTotal > 0 ? lineTotal : Number(opportunity?.amount ?? 0);
+  // Líneas en la moneda de la oportunidad; si no la trae, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatearDoc = (valor: number) => formatMoneda(valor, paraDocumento(opportunity?.currency));
 
   const handleDuplicate = async () => {
     setBusy(true);
@@ -172,9 +177,9 @@ export function OpportunityDetail({ opportunityId }: { opportunityId: string }) 
             <TabsContent value="notes"><Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><CardContent className="pt-6"><NotasTab {...tabProps} active={tab === 'notes'} /></CardContent></Card></TabsContent>
             <TabsContent value="documents"><Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><CardContent className="pt-6"><OpportunityDocuments opportunityId={opportunity.id} organizationId={opportunity.organization_id} /></CardContent></Card></TabsContent>
             <TabsContent value="ia"><IATab {...tabProps} active={tab === 'ia'} /></TabsContent>
-            <TabsContent value="products"><LineItemsTab kind="products" items={toItems('products', products)} /></TabsContent>
-            <TabsContent value="spaces"><LineItemsTab kind="spaces" items={toItems('spaces', spaces)} /></TabsContent>
-            <TabsContent value="custom"><LineItemsTab kind="custom" items={toItems('custom', customLines)} /></TabsContent>
+            <TabsContent value="products"><LineItemsTab kind="products" items={toItems('products', products, formatearDoc)} formatear={formatearDoc} /></TabsContent>
+            <TabsContent value="spaces"><LineItemsTab kind="spaces" items={toItems('spaces', spaces, formatearDoc)} formatear={formatearDoc} /></TabsContent>
+            <TabsContent value="custom"><LineItemsTab kind="custom" items={toItems('custom', customLines, formatearDoc)} formatear={formatearDoc} /></TabsContent>
             <TabsContent value="analytics"><AnalyticsTab opportunity={opportunity} displayAmount={displayAmount} active={tab === 'analytics'} /></TabsContent>
             <TabsContent value="closing"><ClosingTab opportunity={opportunity} customer={customer} organizationName={organization?.name} active={tab === 'closing'} onActivity={() => setRefreshToken((n) => n + 1)} /></TabsContent>
           </Tabs>

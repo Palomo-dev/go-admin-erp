@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
-import { formatCurrency } from '@/utils/Utils';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { warrantyClaimsService } from '@/lib/services/warrantyClaimsService';
@@ -9,13 +10,41 @@ import {
   Return,
   SaleForReturn, 
   RefundData,
-  CreditNote,
   ReturnSearchFilters,
   SaleSearchFilters,
   PaginatedReturnResponse,
   PaginatedSaleResponse,
   SoldSerialInfo
 } from './types';
+
+/** Filas leídas de Supabase (cliente sin tipos generados): solo los campos que se usan. */
+interface ClienteFila {
+  id: string;
+  full_name: string;
+  email?: string;
+  phone?: string;
+}
+
+interface ProductoFila {
+  id: number;
+  name: string;
+  sku: string;
+  track_serial?: boolean | null;
+}
+
+interface VentaFila {
+  id: string;
+  customer_id: string | null;
+  total: number | string | null;
+  subtotal: number | string | null;
+  tax_total: number | string | null;
+}
+
+interface CarritoLocal {
+  id: string;
+  status?: string;
+  sale_id?: string;
+}
 
 // Función helper para obtener URL pública de imagen
 const getStorageImageUrl = (storagePath: string): string => {
@@ -45,7 +74,6 @@ export class DevolucionesService {
         search = '',
         dateFrom,
         dateTo,
-        status,
         customerId,
         branchId,
         limit = 20,
@@ -157,7 +185,7 @@ export class DevolucionesService {
       
       // Obtener customers
       const customerIds = availableSales.map(sale => sale.customer_id).filter(Boolean);
-      let customersData: any[] = [];
+      let customersData: ClienteFila[] = [];
       if (customerIds.length > 0) {
         const { data: customers, error: customersError } = await supabase
           .from('customers')
@@ -192,8 +220,8 @@ export class DevolucionesService {
 
       // Obtener productos para los items
       const productIds = (saleItemsData || []).map(item => item.product_id).filter(Boolean);
-      let productsData: any[] = [];
-      let productImages: Record<string | number, string> = {};
+      let productsData: ProductoFila[] = [];
+      const productImages: Record<string | number, string> = {};
       
       if (productIds.length > 0) {
         // Obtener datos básicos de productos
@@ -216,7 +244,7 @@ export class DevolucionesService {
           .eq('is_primary', true);
           
         if (!imagesError && images) {
-          images.forEach((img: any) => {
+          images.forEach((img) => {
             if (img.storage_path) {
               productImages[img.product_id] = img.storage_path;
             }
@@ -399,7 +427,7 @@ export class DevolucionesService {
       }
 
       // Obtener customer si existe
-      let customerData: any = null;
+      let customerData: ClienteFila | null = null;
       if (saleData.customer_id) {
         const { data: customer } = await supabase
           .from('customers')
@@ -422,8 +450,8 @@ export class DevolucionesService {
 
       // Obtener productos e imágenes
       const productIds = (saleItems || []).map(item => item.product_id).filter(Boolean);
-      let productsData: any[] = [];
-      let productImages: Record<string | number, string> = {};
+      let productsData: ProductoFila[] = [];
+      const productImages: Record<string | number, string> = {};
       
       if (productIds.length > 0) {
         // Obtener productos
@@ -441,7 +469,7 @@ export class DevolucionesService {
           .eq('is_primary', true);
           
         if (images) {
-          images.forEach((img: any) => {
+          images.forEach((img) => {
             if (img.storage_path) {
               productImages[img.product_id] = img.storage_path;
             }
@@ -482,7 +510,7 @@ export class DevolucionesService {
         payment_method: invoice?.payment_method || 'No especificado',
         invoice_number: invoice?.number || null,
         sale_date: saleData.sale_date,
-        items: (saleItems || []).map((item: any) => {
+        items: (saleItems || []).map((item) => {
           const product = productsData.find(p => p.id === item.product_id);
           return {
             id: item.id,
@@ -510,7 +538,7 @@ export class DevolucionesService {
             serials: [] as SoldSerialInfo[]
           };
         }),
-        payments: (payments || []).map((payment: any) => ({
+        payments: (payments || []).map((payment) => ({
           id: payment.id,
           method: payment.method,
           amount: Number(payment.amount),
@@ -709,6 +737,23 @@ export class DevolucionesService {
   }
 
   /**
+   * Moneda de la venta: la de su factura original; si no la trae, la base de
+   * la organización. La venta (`sales`) no tiene columna de moneda.
+   */
+  private static async monedaDeVenta(saleId: string): Promise<string> {
+    const { data } = await supabase
+      .from('invoice_sales')
+      .select('currency')
+      .eq('sale_id', saleId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const deFactura = normalizarCodigoMoneda((data as { currency: string | null } | null)?.currency);
+    if (deFactura) return deFactura;
+    return (await resolveOrgCurrency(supabase, this.getOrganizationId())).code;
+  }
+
+  /**
    * Registrar pago de reembolso
    */
   private static async registrarPagoReembolso(saleId: string, amount: number, method: string) {
@@ -724,6 +769,9 @@ export class DevolucionesService {
           source_id: saleId,
           method: method === 'original_method' ? 'cash' : method, // Simplificar por ahora
           amount: -amount, // Negativo para indicar reembolso
+          // payments.currency es NOT NULL y sin trigger: el reembolso va en la
+          // moneda de la factura de la venta o, si no la trae, en la base.
+          currency: await this.monedaDeVenta(saleId),
           reference: `Reembolso-${saleId.slice(-8)}`,
           status: 'completed',
           created_by: user?.id
@@ -904,7 +952,7 @@ export class DevolucionesService {
       // Buscar factura original
       const { data: originalInvoice } = await supabase
         .from('invoice_sales')
-        .select('id')
+        .select('id, currency')
         .eq('sale_id', saleId)
         .single();
       
@@ -917,7 +965,9 @@ export class DevolucionesService {
           customer_id: saleDetail.customer_id,
           number: `NC-${Date.now()}`,
           issue_date: new Date().toISOString(),
-          currency: 'COP',
+          // La nota va en la moneda de la factura original; si no la hay, null y
+          // el trigger trg_00_moneda_base_por_defecto pone la base.
+          currency: normalizarCodigoMoneda(originalInvoice?.currency),
           subtotal: totalRefund / 1.19, // Asumiendo 19% de IVA
           tax_total: totalRefund - (totalRefund / 1.19),
           total: totalRefund,
@@ -1073,11 +1123,9 @@ export class DevolucionesService {
       console.log('Obteniendo historial para organización:', organizationId);
       
       const {
-        search = '',
         dateFrom,
         dateTo,
         status,
-        refundMethod,
         branchId
       } = filters;
 
@@ -1128,8 +1176,8 @@ export class DevolucionesService {
 
       // Obtener información de ventas relacionadas con impuestos
       const saleIds = returnsData.map(ret => ret.sale_id).filter(Boolean);
-      let salesData: any[] = [];
-      let customersData: any[] = [];
+      let salesData: VentaFila[] = [];
+      let customersData: ClienteFila[] = [];
       
       if (saleIds.length > 0) {
         const { data: sales, error: salesError } = await supabase
@@ -1262,7 +1310,7 @@ export class DevolucionesService {
         const cartsData = localStorage.getItem(`pos_carts_${this.getOrganizationId()}`);
         if (cartsData) {
           const allCarts = JSON.parse(cartsData);
-          const cart = allCarts.find((c: any) => c.status === 'hold_with_debt' && c.sale_id === saleId);
+          const cart = allCarts.find((c: CarritoLocal) => c.status === 'hold_with_debt' && c.sale_id === saleId);
           
           if (cart) {
             console.log('📝 Usando POSService.cancelDebtWithCreditNote para carrito:', cart.id);
@@ -1340,12 +1388,13 @@ export class DevolucionesService {
     try {
       console.log('🔍 Buscando factura original para sale_id:', saleId);
       
-      let { data: originalInvoice, error: invoiceError } = await supabase
+      const { data: facturaEncontrada, error: invoiceError } = await supabase
         .from('invoice_sales')
         .select('*')
         .eq('sale_id', saleId)
         .eq('document_type', 'invoice')
         .single();
+      let originalInvoice = facturaEncontrada;
 
       // Si no se encuentra con document_type 'invoice', buscar con document_type null
       if (invoiceError || !originalInvoice) {

@@ -318,7 +318,8 @@ class ExpansionService {
           customer_id: customerId,
           name: oppName,
           amount: 0,
-          currency: 'COP',
+          // NULL: el trigger `trg_00_moneda_base_por_defecto` pone la moneda base.
+          currency: null,
           status: 'open',
           created_by: userData.user?.id || null,
           metadata: {

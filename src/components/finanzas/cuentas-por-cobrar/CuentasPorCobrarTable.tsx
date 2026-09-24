@@ -27,7 +27,6 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-  PaginationEllipsis,
 } from '@/components/ui/pagination';
 import { 
   MoreHorizontal, 
@@ -48,7 +47,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { CuentaPorCobrar, ResultadoPaginado } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { AplicarAbonoModal } from './AplicarAbonoModal';
 import { EnviarRecordatorioModal } from './EnviarRecordatorioModal';
@@ -66,6 +65,8 @@ interface CuentasPorCobrarTableProps {
 export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageChange, onPageSizeChange }: CuentasPorCobrarTableProps) {
   const router = useRouter();
   const { formatDate } = useFormatDate();
+  // La fila de cartera no trae moneda propia: se muestra en la moneda base.
+  const { formatear } = useMonedaOrganizacion();
   const [selectedAccount, setSelectedAccount] = useState<CuentaPorCobrar | null>(null);
   const [showAbonoModal, setShowAbonoModal] = useState(false);
   const [showRecordatorioModal, setShowRecordatorioModal] = useState(false);
@@ -229,14 +230,14 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
                         <span className="text-gray-500 dark:text-gray-400">Monto:</span>
-                        <p className="font-medium text-gray-900 dark:text-white">{formatCurrency(cuenta.amount)}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{formatear(cuenta.amount)}</p>
                       </div>
                       <div>
                         <span className="text-gray-500 dark:text-gray-400">Balance:</span>
                         <p className={cn(
                           "font-medium",
                           cuenta.balance > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
-                        )}>{formatCurrency(cuenta.balance)}</p>
+                        )}>{formatear(cuenta.balance)}</p>
                       </div>
                       <div>
                         <span className="text-gray-500 dark:text-gray-400">Vencimiento:</span>
@@ -354,7 +355,7 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
                         <span className="text-sm font-medium">
-                          {formatCurrency(cuenta.amount)}
+                          {formatear(cuenta.amount)}
                         </span>
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
@@ -362,7 +363,7 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
                           "text-sm font-medium",
                           cuenta.balance > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
                         )}>
-                          {formatCurrency(cuenta.balance)}
+                          {formatear(cuenta.balance)}
                         </span>
                       </TableCell>
                       <TableCell className="dark:text-gray-300">

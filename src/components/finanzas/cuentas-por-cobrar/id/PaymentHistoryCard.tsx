@@ -10,15 +10,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { PaymentRecord } from './types';
 import { CuentaPorCobrarDetailService } from './service';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 interface PaymentHistoryCardProps {
   accountId: string;
   organizationId: number;
+  /** Moneda de la cuenta (la de su factura); sin ella, la base de la organización. */
+  currency?: string | null;
   onUpdate: () => void;
 }
 
-export function PaymentHistoryCard({ accountId, organizationId, onUpdate }: PaymentHistoryCardProps) {
+export function PaymentHistoryCard({ accountId, organizationId, currency }: PaymentHistoryCardProps) {
+  // Pagos en la moneda de la cuenta o, en su defecto, en la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = (valor: number) => formatMoneda(valor, paraDocumento(currency));
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
@@ -195,7 +201,7 @@ export function PaymentHistoryCard({ accountId, organizationId, onUpdate }: Paym
           </div>
         ) : (
           <div className="space-y-4">
-            {payments.map((payment: PaymentRecord, index: number) => (
+            {payments.map((payment: PaymentRecord) => (
               <div key={payment.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                 <div className="flex items-center gap-4">
                   <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-full">

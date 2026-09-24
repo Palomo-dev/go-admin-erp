@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Package, CreditCard, DollarSign, MessageSquare, Calculator, AlertTriangle, Camera } from 'lucide-react';
+import { ArrowLeft, Package, CreditCard, DollarSign, Calculator, AlertTriangle, Camera } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,8 +15,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DevolucionesService } from './devolucionesService';
 import { ReturnReasonsService } from './motivos/returnReasonsService';
-import { SaleForReturn, RefundData, SaleItemForReturn, ReturnReason, SoldSerialInfo } from './types';
-import { formatCurrency, cn } from '@/utils/Utils';
+import { SaleForReturn, RefundData, ReturnReason, SoldSerialInfo } from './types';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
 
 // Función para traducir métodos de pago
@@ -57,6 +57,7 @@ interface ReturnItemData {
 }
 
 export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [loading, setLoading] = useState(false);
   const [returnItems, setReturnItems] = useState<ReturnItemData[]>([]);
   const [refundMethod, setRefundMethod] = useState<'cash' | 'credit_note' | 'original_method'>('cash');
@@ -235,7 +236,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
       await DevolucionesService.procesarDevolucion(sale.id, refundData);
       
       toast.success(
-        `Devolución procesada exitosamente. Reembolso: ${formatCurrency(totalRefund)}`
+        `Devolución procesada exitosamente. Reembolso: ${formatear(totalRefund)}`
       );
       
       onSuccess();
@@ -307,7 +308,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                 <div>
                   <Label className="text-sm text-gray-600 dark:text-gray-400">Total Original</Label>
                   <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {formatCurrency(sale.total)}
+                    {formatear(sale.total)}
                   </div>
                 </div>
                 <div>
@@ -368,7 +369,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                         </div>
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
-                        {formatCurrency(item.unit_price)}
+                        {formatear(item.unit_price)}
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
                         <Badge variant="outline" className="dark:border-blue-500 dark:text-blue-400">
@@ -405,7 +406,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
                         <div className="font-bold text-orange-600 dark:text-orange-400">
-                          {formatCurrency(item.refund_amount)}
+                          {formatear(item.refund_amount)}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -462,7 +463,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                 <div className="space-y-4">
                   <div>
                     <Label className="dark:text-gray-300">Método de Reembolso</Label>
-                    <Select value={refundMethod} onValueChange={(value: any) => setRefundMethod(value)}>
+                    <Select value={refundMethod} onValueChange={(value) => setRefundMethod(value as 'cash' | 'credit_note' | 'original_method')}>
                       <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600">
                         <SelectValue />
                       </SelectTrigger>
@@ -531,7 +532,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                       <div className="flex justify-between text-lg">
                         <span className="font-medium dark:text-white">Total Reembolso:</span>
                         <span className="font-bold text-red-600 dark:text-red-400">
-                          {formatCurrency(totalRefund)}
+                          {formatear(totalRefund)}
                         </span>
                       </div>
                     </CardContent>

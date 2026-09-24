@@ -30,7 +30,6 @@ export function SettingsForm({
   frequencies,
   overtimePolicies,
   onSubmit,
-  isLoading,
 }: SettingsFormProps) {
   const [formData, setFormData] = useState({
     country: settings.country || '',
@@ -211,7 +210,7 @@ export function SettingsForm({
               <div className="space-y-2">
                 <Label className="text-blue-700 dark:text-blue-300">Moneda Base</Label>
                 <Input
-                  value={settings.base_currency || 'COP'}
+                  value={settings.base_currency || ''}
                   disabled
                   className="bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700"
                 />

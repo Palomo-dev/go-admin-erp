@@ -43,9 +43,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Coupon, DISCOUNT_TYPE_LABELS } from './types';
+import { Coupon } from './types';
 import { CouponsService } from './couponsService';
-import { formatCurrency, cn } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
 
 interface CouponsListProps {
@@ -55,6 +56,7 @@ interface CouponsListProps {
 }
 
 export function CouponsList({ coupons, loading, onRefresh }: CouponsListProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -65,8 +67,8 @@ export function CouponsList({ coupons, loading, onRefresh }: CouponsListProps) {
       await CouponsService.delete(deleteId);
       toast.success('Cupón eliminado correctamente');
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al eliminar el cupón');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al eliminar el cupón');
     } finally {
       setDeleteId(null);
     }
@@ -77,8 +79,8 @@ export function CouponsList({ coupons, loading, onRefresh }: CouponsListProps) {
       await CouponsService.duplicate(coupon.id);
       toast.success('Cupón duplicado correctamente');
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al duplicar el cupón');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al duplicar el cupón');
     }
   };
 
@@ -88,8 +90,8 @@ export function CouponsList({ coupons, loading, onRefresh }: CouponsListProps) {
       await CouponsService.toggleActive(coupon.id);
       toast.success(coupon.is_active ? 'Cupón desactivado' : 'Cupón activado');
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al cambiar estado');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al cambiar estado');
     } finally {
       setTogglingId(null);
     }
@@ -132,7 +134,7 @@ export function CouponsList({ coupons, loading, onRefresh }: CouponsListProps) {
     if (coupon.discount_type === 'percentage') {
       return `${coupon.discount_value}%`;
     }
-    return formatCurrency(coupon.discount_value);
+    return formatear(coupon.discount_value);
   };
 
   if (loading) {

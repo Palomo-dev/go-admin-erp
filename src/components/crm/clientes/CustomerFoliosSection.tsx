@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Receipt,
   Banknote,
@@ -15,7 +14,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -47,10 +47,19 @@ interface InvoiceDebt {
   total: number;
   balance: number;
   status: string;
+  currency: string | null;
+}
+
+/** Reserva embebida en el folio (PostgREST puede devolver objeto o arreglo). */
+interface ReservaEmbebida {
+  code?: string;
+  spaces?: { label?: string } | null;
 }
 
 export function CustomerFoliosSection({ customerId }: CustomerFoliosSectionProps) {
   const { organization } = useOrganization();
+  // Totales en la moneda base; cada factura en la suya.
+  const { formatear, paraDocumento } = useMonedaOrganizacion();
   const [folios, setFolios] = useState<FolioWithDetails[]>([]);
   const [invoices, setInvoices] = useState<InvoiceDebt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,7 +97,7 @@ export function CustomerFoliosSection({ customerId }: CustomerFoliosSectionProps
           .order('created_at', { ascending: false }),
         supabase
           .from('invoice_sales')
-          .select('id, number, issue_date, due_date, total, balance, status')
+          .select('id, number, issue_date, due_date, total, balance, status, currency')
           .eq('customer_id', customerId)
           .eq('organization_id', organization.id)
           .gt('balance', 0)
@@ -113,7 +122,7 @@ export function CustomerFoliosSection({ customerId }: CustomerFoliosSectionProps
           .filter((i) => i.payment_status === 'paid')
           .reduce((sum, i) => sum + Number(i.amount), 0);
 
-        const reservationData = folio.reservations as any;
+        const reservationData = folio.reservations as unknown as ReservaEmbebida | null;
         foliosData.push({
           id: folio.id,
           status: folio.status,
@@ -180,7 +189,7 @@ export function CustomerFoliosSection({ customerId }: CustomerFoliosSectionProps
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Deuda Total</p>
               <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                {formatCurrency(totalDebt)}
+                {formatear(totalDebt)}
               </p>
             </div>
           </div>
@@ -193,7 +202,7 @@ export function CustomerFoliosSection({ customerId }: CustomerFoliosSectionProps
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Folios Pendientes</p>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {formatCurrency(totalFolioPending)}
+                {formatear(totalFolioPending)}
               </p>
             </div>
           </div>
@@ -206,7 +215,7 @@ export function CustomerFoliosSection({ customerId }: CustomerFoliosSectionProps
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Facturas por Cobrar</p>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                {formatCurrency(totalInvoiceDebt)}
+                {formatear(totalInvoiceDebt)}
               </p>
             </div>
           </div>
@@ -260,7 +269,7 @@ export function CustomerFoliosSection({ customerId }: CustomerFoliosSectionProps
                     <div className="text-right">
                       {folio.pending_total > 0 && (
                         <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
-                          {formatCurrency(folio.pending_total)}
+                          {formatear(folio.pending_total)}
                         </p>
                       )}
                       <p className="text-xs text-gray-500">
@@ -326,10 +335,10 @@ export function CustomerFoliosSection({ customerId }: CustomerFoliosSectionProps
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-red-600 dark:text-red-400">
-                      {formatCurrency(inv.balance)}
+                      {formatMoneda(inv.balance, paraDocumento(inv.currency))}
                     </p>
                     <p className="text-xs text-gray-500">
-                      de {formatCurrency(inv.total)}
+                      de {formatMoneda(inv.total, paraDocumento(inv.currency))}
                     </p>
                   </div>
                 </div>

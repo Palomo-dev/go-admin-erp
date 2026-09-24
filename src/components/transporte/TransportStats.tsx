@@ -7,13 +7,9 @@ import {
   Package, 
   Ticket, 
   AlertTriangle,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  TrendingUp
 } from 'lucide-react';
 import { TransportStats as Stats } from '@/lib/services/transportService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface TransportStatsProps {
   stats: Stats | null;
@@ -21,6 +17,7 @@ interface TransportStatsProps {
 }
 
 export function TransportStats({ stats, isLoading }: TransportStatsProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   if (isLoading) {
     return <StatsSkeleton count={4} />;
   }

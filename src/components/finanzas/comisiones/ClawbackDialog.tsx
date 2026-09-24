@@ -10,7 +10,8 @@ import { useCallback, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
 import type { CommissionRow } from '@/lib/services/crm/commissionAdminService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { ReasonDialog } from './ReasonDialog';
 
 interface Props {
@@ -25,6 +26,10 @@ interface Props {
 }
 
 export function ClawbackDialog({ open, onOpenChange, commission, currency, busy, onConfirm, focusFallback }: Props) {
+  // Cada importe en la moneda de su comisión (o la que llega por props), con
+  // el locale y los decimales de la organización. Nunca pesos fijos.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = (valor: number, moneda?: string | null) => formatMoneda(valor, paraDocumento(moneda));
   const [reason, setReason] = useState<string | null>(null);
   const reasonRef = useRef<string | null>(null);
   reasonRef.current = reason;

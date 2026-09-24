@@ -3,7 +3,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Landmark, CreditCard, DollarSign, AlertCircle } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { BankAccountStats } from './BancosService';
 
 interface BankStatsCardsProps {
@@ -12,6 +12,9 @@ interface BankStatsCardsProps {
 }
 
 export function BankStatsCards({ stats, isLoading }: BankStatsCardsProps) {
+  // Suma de varias cuentas: en la moneda base de la organizacion.
+  const { formatear } = useMonedaOrganizacion();
+
   if (isLoading || !stats) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -74,7 +77,7 @@ export function BankStatsCards({ stats, isLoading }: BankStatsCardsProps) {
               ? 'text-green-600 dark:text-green-400' 
               : 'text-red-600 dark:text-red-400'
           }`}>
-            {formatCurrency(stats.total_balance)}
+            {formatear(stats.total_balance)}
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400">
             En todas las cuentas activas

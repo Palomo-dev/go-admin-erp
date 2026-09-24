@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { saldosAFavorService, SaldoAFavor, FacturaPendiente } from './saldosAFavorService';
 
 interface AplicarSaldoFavorDialogProps {
@@ -40,6 +40,8 @@ export function AplicarSaldoFavorDialog({
   onSuccess,
 }: AplicarSaldoFavorDialogProps) {
   const { toast } = useToast();
+  // Saldos y facturas pendientes sin moneda propia en la consulta: moneda base de la organización.
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const [isLoading, setIsLoading] = useState(false);
   const [facturas, setFacturas] = useState<FacturaPendiente[]>([]);
   const [invoiceId, setInvoiceId] = useState('');
@@ -89,10 +91,10 @@ export function AplicarSaldoFavorDialog({
       toast({ title: 'Saldo aplicado', description: 'El saldo a favor se aplicó a la factura.' });
       onOpenChange(false);
       if (onSuccess) onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error?.message || 'No se pudo aplicar el saldo',
+        description: (error as { message?: string } | null)?.message || 'No se pudo aplicar el saldo',
         variant: 'destructive',
       });
     } finally {

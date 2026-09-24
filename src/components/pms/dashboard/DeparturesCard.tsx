@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LogOut, ChevronRight, User, DoorOpen, CreditCard } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface TodayDeparture {
   id: string;
@@ -26,6 +26,7 @@ interface DeparturesCardProps {
 }
 
 function DepartureItem({ departure, onCheckOut }: { departure: TodayDeparture; onCheckOut?: (id: string) => void }) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const hasBalance = departure.balance > 0;
 
   return (

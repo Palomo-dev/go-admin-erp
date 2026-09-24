@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Bell, Send, Calendar, AlertTriangle, RefreshCw, Mail, Phone } from 'lucide-react';
+import { Bell, Send, Calendar, AlertTriangle, RefreshCw, Mail } from 'lucide-react';
 import { Recordatorio } from './types';
 import { CuentasPorCobrarService } from './service';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { parseLocalDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
 
 interface RecordatoriosPanelProps {
@@ -19,6 +20,8 @@ export function RecordatoriosPanel({ onRefresh }: RecordatoriosPanelProps) {
   const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRecordatorios, setSelectedRecordatorios] = useState<Set<string>>(new Set());
+  // Los recordatorios no traen moneda propia: se muestran en la moneda base.
+  const { formatear } = useMonedaOrganizacion();
 
   useEffect(() => {
     loadRecordatorios();
@@ -191,7 +194,7 @@ export function RecordatoriosPanel({ onRefresh }: RecordatoriosPanelProps) {
               <div className="text-center">
                 <p className="text-[10px] sm:text-sm text-gray-600 dark:text-gray-400">Monto Total</p>
                 <p className="text-lg sm:text-2xl font-bold text-red-600 dark:text-red-400">
-                  {formatCurrency(recordatorios.reduce((sum, r) => sum + r.amount, 0))}
+                  {formatear(recordatorios.reduce((sum, r) => sum + r.amount, 0))}
                 </p>
               </div>
               <div className="text-center">
@@ -246,7 +249,7 @@ export function RecordatoriosPanel({ onRefresh }: RecordatoriosPanelProps) {
                           <div className="grid grid-cols-2 gap-1.5 mt-2 text-[10px]">
                             <div>
                               <span className="text-gray-500 dark:text-gray-400">Monto:</span>
-                              <p className="font-medium text-red-600 dark:text-red-400">{formatCurrency(recordatorio.amount)}</p>
+                              <p className="font-medium text-red-600 dark:text-red-400">{formatear(recordatorio.amount)}</p>
                             </div>
                             <div>
                               <span className="text-gray-500 dark:text-gray-400">Días vencidos:</span>
@@ -327,7 +330,7 @@ export function RecordatoriosPanel({ onRefresh }: RecordatoriosPanelProps) {
                         </TableCell>
                         <TableCell className="dark:text-gray-300">
                           <span className="text-sm font-medium text-red-600 dark:text-red-400">
-                            {formatCurrency(recordatorio.amount)}
+                            {formatear(recordatorio.amount)}
                           </span>
                         </TableCell>
                         <TableCell className="dark:text-gray-300">

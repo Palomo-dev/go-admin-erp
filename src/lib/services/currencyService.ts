@@ -313,7 +313,7 @@ class CurrencyService {
 
       if (baseError || targetError) {
         console.error('Error al obtener monedas:', baseError || targetError);
-        return ['USD', 'EUR', 'COP']; // Monedas por defecto
+        return await this.monedasPorDefecto(organizationId);
       }
 
       // Combinar y eliminar duplicados
@@ -330,8 +330,17 @@ class CurrencyService {
       return Array.from(currencies).sort();
     } catch (error) {
       console.error('Error al obtener monedas disponibles:', error);
-      return ['USD', 'EUR', 'COP']; // Monedas por defecto en caso de error
+      return await this.monedasPorDefecto(organizationId);
     }
+  }
+
+  /**
+   * Respaldo cuando no se pueden leer las tasas: la moneda base de la
+   * organización primero (nunca COP supuesto), más USD y EUR.
+   */
+  private async monedasPorDefecto(organizationId: number): Promise<string[]> {
+    const base = (await resolveOrgCurrency(supabase, organizationId)).code;
+    return [...new Set([base, 'USD', 'EUR'])];
   }
 
   /**

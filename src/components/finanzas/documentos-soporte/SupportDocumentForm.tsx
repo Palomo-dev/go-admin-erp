@@ -25,7 +25,9 @@ import {
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { ProviderSelector, type ProviderData } from './ProviderSelector';
 import { ItemsFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ItemsFactura';
 import { ImpuestosFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ImpuestosFactura';
@@ -95,6 +97,15 @@ interface OrganizationCurrency {
   };
 }
 
+/** Totales por impuesto que entrega `ImpuestosFactura`. */
+interface TotalImpuesto {
+  rate: number;
+  base: number;
+  amount: number;
+  name: string;
+  included: boolean;
+}
+
 interface InvoicePurchaseOption {
   id: string;
   number_ext: string;
@@ -120,7 +131,12 @@ export function SupportDocumentForm() {
   const [paymentForm, setPaymentForm] = useState('1');
   const [paymentMethodCode, setPaymentMethodCode] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [currency, setCurrency] = useState('COP');
+  // Moneda del documento: vacía hasta conocer la base (nunca COP supuesto).
+  const [currency, setCurrency] = useState('');
+  const { code: monedaBase, resuelta: monedaResuelta, paraDocumento } = useMonedaOrganizacion();
+  useEffect(() => {
+    if (monedaResuelta && !currency) setCurrency(monedaBase);
+  }, [monedaResuelta, monedaBase, currency]);
   const [invoicePurchaseId, setInvoicePurchaseId] = useState<string>('');
 
   // Proveedor
@@ -149,8 +165,8 @@ export function SupportDocumentForm() {
 
   // Impuestos (patrón de factura-venta)
   const [taxIncluded, setTaxIncluded] = useState<boolean>(false);
-  const [appliedTaxes, setAppliedTaxes] = useState<{ [key: string]: boolean }>({});
-  const [appliedTaxTotals, setAppliedTaxTotals] = useState<{ [key: string]: any }>({});
+  const [, setAppliedTaxes] = useState<{ [key: string]: boolean }>({});
+  const [, setAppliedTaxTotals] = useState<{ [key: string]: TotalImpuesto }>({});
   const [subtotal, setSubtotal] = useState<number>(0);
   const [taxTotal, setTaxTotal] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
@@ -190,7 +206,10 @@ export function SupportDocumentForm() {
       if (error) throw error;
 
       if (!orgCurrencies || orgCurrencies.length === 0) {
-        setOrgCurrencies([{ currency_code: 'COP', is_base: true, currencies: { code: 'COP', name: 'Peso Colombiano', symbol: '$' } }]);
+        // Sin monedas configuradas: la base resuelta de la organización.
+        const base = await resolveOrgCurrency(supabase, organizationId);
+        setOrgCurrencies([{ currency_code: base.code, is_base: true, currencies: { code: base.code, name: base.code, symbol: base.symbol || '$' } }]);
+        setCurrency((prev) => prev || base.code);
         return;
       }
 
@@ -211,7 +230,10 @@ export function SupportDocumentForm() {
       if (base) setCurrency(base.currency_code);
     } catch (err) {
       console.error('Error cargando monedas:', err);
-      setOrgCurrencies([{ currency_code: 'COP', is_base: true, currencies: { code: 'COP', name: 'Peso Colombiano', symbol: '$' } }]);
+      // La base resuelta de la organización (resolveOrgCurrency no lanza).
+      const base = await resolveOrgCurrency(supabase, organizationId);
+      setOrgCurrencies([{ currency_code: base.code, is_base: true, currencies: { code: base.code, name: base.code, symbol: base.symbol || '$' } }]);
+      setCurrency((prev) => prev || base.code);
     } finally {
       setLoadingCurrencies(false);
     }
@@ -254,9 +276,9 @@ export function SupportDocumentForm() {
       invoicePurchaseOptions.map((inv) => ({
         value: inv.id,
         label: `${inv.number_ext}${inv.supplier?.name ? ` — ${inv.supplier.name}` : ''}`,
-        sublabel: `${inv.issue_date ? new Date(inv.issue_date).toLocaleDateString() : 'S/F'} · ${formatCurrency(Number(inv.total || 0))} ${inv.currency || ''}`,
+        sublabel: `${inv.issue_date ? new Date(inv.issue_date).toLocaleDateString() : 'S/F'} · ${formatMoneda(Number(inv.total || 0), paraDocumento(inv.currency))}`,
       })),
-    [invoicePurchaseOptions]
+    [invoicePurchaseOptions, paraDocumento]
   );
 
   const handleItemsChange = useCallback((newItems: InvoiceItem[]) => {
@@ -324,7 +346,8 @@ export function SupportDocumentForm() {
           subtotal: safeSubtotal,
           tax_total: safeTaxTotal,
           total: safeTotal,
-          currency,
+          // Sin moneda elegida, la base la pone el trigger (`trg_00_moneda_base_por_defecto`).
+          currency: currency || null,
           tax_included: taxIncluded,
           status: 'draft',
           supplier_id: provider.supplier_id || null,
@@ -395,11 +418,11 @@ export function SupportDocumentForm() {
       }
 
       router.push(`/app/finanzas/documentos-soporte/${sd.id}`);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Error inesperado',
+        description: (error as { message?: string } | null)?.message || 'Error inesperado',
         variant: 'destructive',
       });
     } finally {
@@ -566,6 +589,7 @@ export function SupportDocumentForm() {
           organizationId={organizationId ? Number(organizationId) : undefined}
           serialSelections={serialSelections}
           onSerialSelectionsChange={setSerialSelections}
+          currency={currency || monedaBase}
         />
       </div>
 

@@ -28,6 +28,8 @@ import parkingFinanceService from '@/lib/services/parkingFinanceService';
 import parkingTicketService, { type EntryTicketData } from '@/lib/services/parkingTicketService';
 import type { ParkingZone } from '@/components/parking/espacios/types';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 interface ParkingSpace {
   id: string;
@@ -46,6 +48,7 @@ interface PassInfo {
 export default function ParkingOperacionPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { formatear } = useMonedaOrganizacion();
   const { branchFilter } = useBranch();
   // `parking_passes.end_date` es `date` y la tabla no tiene `branch_id`: el
   // abono vale hasta el final de su dia en la zona de la organizacion. Con el
@@ -444,7 +447,7 @@ export default function ParkingOperacionPage() {
 
         toast({
           title: 'Salida registrada a crédito',
-          description: `Vehículo ${session.vehicle_plate}. Cuenta por cobrar: $${data.amount.toLocaleString()}`,
+          description: `Vehículo ${session.vehicle_plate}. Cuenta por cobrar: ${formatear(data.amount)}`,
         });
       } 
       // Si hay que generar factura
@@ -462,7 +465,7 @@ export default function ParkingOperacionPage() {
 
         toast({
           title: 'Salida registrada con factura',
-          description: `Vehículo ${session.vehicle_plate}. Cobro: $${data.amount.toLocaleString()}`,
+          description: `Vehículo ${session.vehicle_plate}. Cobro: ${formatear(data.amount)}`,
         });
       }
       // Flujo normal sin factura
@@ -487,6 +490,8 @@ export default function ParkingOperacionPage() {
 
         // Registrar pago si hay monto
         if (data.amount > 0 && data.payment_method) {
+          // `payments.currency` es NOT NULL y no tiene trigger: moneda base.
+          const { code: currency } = await resolveOrgCurrency(supabase, organization.id);
           await supabase.from('payments').insert({
             organization_id: organization.id,
             branch_id: branchId,
@@ -494,7 +499,7 @@ export default function ParkingOperacionPage() {
             source_id: data.session_id,
             method: data.payment_method,
             amount: data.amount,
-            currency: 'COP',
+            currency,
             status: 'completed',
           });
         }
@@ -502,7 +507,7 @@ export default function ParkingOperacionPage() {
         toast({
           title: 'Salida registrada',
           description: `Vehículo ${session.vehicle_plate} salió. ${
-            data.amount > 0 ? `Cobro: $${data.amount.toLocaleString()}` : ''
+            data.amount > 0 ? `Cobro: ${formatear(data.amount)}` : ''
           }`,
         });
       }

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
   ShoppingCart,
   Receipt,
-  CreditCard,
   RotateCcw,
   Wallet,
   BarChart3,
@@ -15,18 +14,16 @@ import {
   AlertCircle,
   Plus,
   ChefHat,
-  Package,
   LockOpen,
   Lock
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { VentasService, DailySummary, CashSession } from './ventas';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { cn } from '@/utils/Utils';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
@@ -42,6 +39,7 @@ interface QuickAction {
 
 export function POSHome() {
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { formatear } = useMonedaOrganizacion();
   const { branchFilter } = useBranch();
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
@@ -226,7 +224,7 @@ export function POSHome() {
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Total Ventas</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(dailySummary?.total_amount || 0)}
+                  {formatear(dailySummary?.total_amount || 0)}
                 </p>
               </div>
               <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30">

@@ -10,7 +10,7 @@ import {
   Scale,
   DollarSign
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { KardexStats as KardexStatsType } from '@/lib/services/kardexService';
 
 interface KardexStatsProps {
@@ -19,6 +19,7 @@ interface KardexStatsProps {
 }
 
 export function KardexStats({ stats, isLoading }: KardexStatsProps) {
+  const { formatear } = useMonedaOrganizacion();
   const statCards = [
     {
       title: 'Total Entradas',
@@ -43,7 +44,7 @@ export function KardexStats({ stats, isLoading }: KardexStatsProps) {
     },
     {
       title: 'Valor Inventario',
-      value: formatCurrency(stats.valueIn - stats.valueOut),
+      value: formatear(stats.valueIn - stats.valueOut),
       icon: DollarSign,
       bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
       textColor: 'text-emerald-600 dark:text-emerald-400'

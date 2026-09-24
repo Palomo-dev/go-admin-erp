@@ -12,25 +12,15 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { 
   CheckCircle,
   XCircle,
   Clock,
   Calendar,
-  DollarSign,
   Building2,
   User,
   MessageSquare,
   Loader2,
-  AlertCircle,
   Eye,
   FileText
 } from 'lucide-react';
@@ -39,8 +29,18 @@ import { useToast } from '@/components/ui/use-toast';
 
 import { CuentasPorPagarService } from './CuentasPorPagarService';
 import { PaymentWithRelations } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+
+/** Mensaje de un error lanzado (Error o error de PostgREST, que trae `message`). */
+function mensajeDeError(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const { message } = error as { message: unknown };
+    return typeof message === 'string' ? message : '';
+  }
+  return '';
+}
 
 interface AprobacionPagosModalProps {
   isOpen: boolean;
@@ -54,6 +54,8 @@ export function AprobacionPagosModal({
   onPagoAprobado
 }: AprobacionPagosModalProps) {
   const { formatDate } = useFormatDate();
+  // Cada pago (`payments.currency`) se muestra en su propia moneda.
+  const { paraDocumento } = useMonedaOrganizacion();
   // Estados
   const [pagosPendientes, setPagosPendientes] = useState<PaymentWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,11 +108,11 @@ export function AprobacionPagosModal({
       // Recargar lista
       await cargarPagosPendientes();
       onPagoAprobado();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error aprobando pago:', error);
       toast({
         title: "Error al aprobar",
-        description: error.message || "Ocurrió un error inesperado",
+        description: mensajeDeError(error) || "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -142,11 +144,11 @@ export function AprobacionPagosModal({
       // Recargar lista
       await cargarPagosPendientes();
       onPagoAprobado();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error rechazando pago:', error);
       toast({
         title: "Error al rechazar",
-        description: error.message || "Ocurrió un error inesperado",
+        description: mensajeDeError(error) || "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {
@@ -314,7 +316,7 @@ export function AprobacionPagosModal({
                           <div>
                             <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Monto</p>
                             <p className="text-base sm:text-xl font-bold text-blue-600 dark:text-blue-400">
-                              {formatCurrency(pago.amount)}
+                              {formatMoneda(pago.amount, paraDocumento(pago.currency))}
                             </p>
                           </div>
                           <div className="flex items-start lg:justify-end">
@@ -427,7 +429,7 @@ export function AprobacionPagosModal({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
                     <div>
                       <span className="text-gray-600 dark:text-gray-400">Monto:</span>
-                      <p className="font-medium text-base sm:text-lg text-gray-900 dark:text-white">{formatCurrency(pagoSeleccionado.amount)}</p>
+                      <p className="font-medium text-base sm:text-lg text-gray-900 dark:text-white">{formatMoneda(pagoSeleccionado.amount, paraDocumento(pagoSeleccionado.currency))}</p>
                     </div>
                     <div>
                       <span className="text-gray-600 dark:text-gray-400">Fecha creado:</span>
@@ -436,7 +438,7 @@ export function AprobacionPagosModal({
                     <div>
                       <span className="text-gray-600 dark:text-gray-400">Monto del pago:</span>
                       <p className="font-medium text-gray-900 dark:text-white">
-                        {formatCurrency(pagoSeleccionado.amount || 0)}
+                        {formatMoneda(pagoSeleccionado.amount || 0, paraDocumento(pagoSeleccionado.currency))}
                       </p>
                     </div>
                     <div>

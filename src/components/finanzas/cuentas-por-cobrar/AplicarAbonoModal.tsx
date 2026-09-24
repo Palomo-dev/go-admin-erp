@@ -12,10 +12,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CreditCard, DollarSign, User, Calendar, Loader2, AlertCircle } from 'lucide-react';
+import { CreditCard, DollarSign, User, Loader2, AlertCircle } from 'lucide-react';
 import { CuentaPorCobrar } from './types';
-import { CuentasPorCobrarService } from './service';
-import { formatCurrency } from '@/utils/Utils';
+import { CuentasPorCobrarService, monedaDeCuentaPorCobrar } from './service';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
@@ -28,13 +29,7 @@ interface AplicarAbonoModalProps {
   onSuccess: () => void;
 }
 
-// Interfaces para tipar los métodos de pago
-interface PaymentMethod {
-  code: string;
-  name: string;
-  requires_reference?: boolean;
-}
-
+// Interfaz para tipar los métodos de pago
 interface FormattedPaymentMethod {
   code: string;
   name: string;
@@ -49,6 +44,27 @@ export function AplicarAbonoModal({ open, onOpenChange, cuenta, onSuccess }: Apl
   // en el primer render todavia devuelve el fallback `America/Bogota`.
   const { getToday, formatDate } = useFormatDate();
   const { isLoading: tzLoading } = useOrgTimezone();
+  // Moneda de la cuenta: la de su factura de venta; mientras se resuelve (o si
+  // la cuenta no tiene factura), la base de la organización. Es la misma con la
+  // que el servicio registra el pago.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const [monedaCuenta, setMonedaCuenta] = useState<string | null>(null);
+  const formatCurrency = (valor: number) => formatMoneda(valor, paraDocumento(monedaCuenta));
+
+  useEffect(() => {
+    if (!open || !organizationId) return;
+    let cancelado = false;
+    monedaDeCuentaPorCobrar(organizationId, cuenta.id, { invoice_id: cuenta.invoice_id, sale_id: cuenta.sale_id })
+      .then((moneda) => {
+        if (!cancelado) setMonedaCuenta(moneda);
+      })
+      .catch(() => {
+        /* se queda la moneda base */
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [open, organizationId, cuenta.id, cuenta.invoice_id, cuenta.sale_id]);
   
   const [formData, setFormData] = useState({
     amount: '',
@@ -104,7 +120,7 @@ export function AplicarAbonoModal({ open, onOpenChange, cuenta, onSuccess }: Apl
             payment_method: metodosPagoFormateados[0].code
           }));
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error al cargar métodos de pago:', error);
         toast.error('Error al cargar los métodos de pago');
       } finally {

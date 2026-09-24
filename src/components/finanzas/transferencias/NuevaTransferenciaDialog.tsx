@@ -23,7 +23,8 @@ import {
 import { Loader2, ArrowLeftRight, ArrowRight, Building2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { transferenciasService, BankAccount } from '@/lib/services/transferenciasService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
@@ -39,6 +40,9 @@ export function NuevaTransferenciaDialog({
   onSuccess,
 }: NuevaTransferenciaDialogProps) {
   const { selectedBranchId } = useBranch();
+  // La consulta de cuentas no trae su moneda: saldos en la moneda base.
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
+  const { getToday } = useFormatDate();
   const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   const [isLoading, setIsLoading] = useState(false);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -46,7 +50,7 @@ export function NuevaTransferenciaDialog({
     from_account_id: '',
     to_account_id: '',
     amount: '',
-    transfer_date: new Date().toISOString().split('T')[0],
+    transfer_date: getToday(),
     reference: '',
     notes: '',
   });
@@ -58,12 +62,12 @@ export function NuevaTransferenciaDialog({
         from_account_id: '',
         to_account_id: '',
         amount: '',
-        transfer_date: new Date().toISOString().split('T')[0],
+        transfer_date: getToday(),
         reference: '',
         notes: '',
       });
     }
-  }, [open]);
+  }, [open, getToday]);
 
   const loadBankAccounts = async () => {
     const accounts = await transferenciasService.getBankAccounts();
@@ -72,9 +76,6 @@ export function NuevaTransferenciaDialog({
 
   const selectedFromAccount = bankAccounts.find(
     a => a.id.toString() === formData.from_account_id
-  );
-  const selectedToAccount = bankAccounts.find(
-    a => a.id.toString() === formData.to_account_id
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -129,7 +130,7 @@ export function NuevaTransferenciaDialog({
       } else {
         toast({ title: 'Error', description: result.error, variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al realizar la transferencia', variant: 'destructive' });
     } finally {
       setIsLoading(false);

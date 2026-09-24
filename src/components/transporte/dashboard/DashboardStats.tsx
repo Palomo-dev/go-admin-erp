@@ -14,7 +14,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { TransportStats } from '@/lib/services/transportService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface DashboardStatsProps {
   stats: TransportStats | null;
@@ -22,6 +22,7 @@ interface DashboardStatsProps {
 }
 
 export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">

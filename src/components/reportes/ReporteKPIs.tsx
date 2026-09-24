@@ -4,12 +4,16 @@ import { useMemo } from 'react';
 
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { ReporteKPI } from '@/lib/services/reportes/types';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
-const formatValor = (valor: string | number, formato?: ReporteKPI['formato']): string => {
+/** `formatear`: importe en la moneda base de la organización (KPI agregado). */
+const formatValor = (
+  valor: string | number,
+  formatear: (v: number) => string,
+  formato?: ReporteKPI['formato']
+): string => {
   if (typeof valor === 'string') return valor;
-  if (formato === 'moneda') {
-    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(valor);
-  }
+  if (formato === 'moneda') return formatear(valor);
   if (formato === 'porcentaje') return `${valor}%`;
   return new Intl.NumberFormat('es-CO').format(valor);
 };
@@ -26,6 +30,7 @@ interface ReporteKPIsProps {
 }
 
 export function ReporteKPIs({ kpis, comparisonKpis }: ReporteKPIsProps) {
+  const { formatear } = useMonedaOrganizacion();
   const comparisonMap = useMemo(() => {
     if (!comparisonKpis) return null;
     const map = new Map<string, ReporteKPI>();
@@ -64,7 +69,7 @@ export function ReporteKPIs({ kpis, comparisonKpis }: ReporteKPIsProps) {
             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{kpi.titulo}</p>
             <div className="flex items-end justify-between mt-1 gap-2">
               <p className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
-                {formatValor(kpi.valor, kpi.formato)}
+                {formatValor(kpi.valor, formatear, kpi.formato)}
               </p>
               {delta !== null && delta !== undefined && (
                 <span
@@ -84,7 +89,7 @@ export function ReporteKPIs({ kpis, comparisonKpis }: ReporteKPIsProps) {
             </div>
             {prevKpi && (
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">
-                Ant: {formatValor(prevKpi.valor, prevKpi.formato)}
+                Ant: {formatValor(prevKpi.valor, formatear, prevKpi.formato)}
               </p>
             )}
           </div>

@@ -3,7 +3,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -184,7 +186,7 @@ export function TopChannelsList({ data, isLoading }: TopChannelsListProps) {
           </div>
         ) : (
           <div className="space-y-2 sm:space-y-3">
-            {data.map((channel, index) => (
+            {data.map((channel) => (
               <div
                 key={channel.channelId}
                 className="flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
@@ -219,6 +221,7 @@ export function TopChannelsList({ data, isLoading }: TopChannelsListProps) {
 }
 
 export function TopOpportunitiesList({ data, isLoading }: TopOpportunitiesListProps) {
+  const { paraDocumento } = useMonedaOrganizacion();
   if (isLoading) {
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -287,7 +290,7 @@ export function TopOpportunitiesList({ data, isLoading }: TopOpportunitiesListPr
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
-                    {formatCurrency(opportunity.amount, opportunity.currency)}
+                    {formatMoneda(opportunity.amount, paraDocumento(opportunity.currency))}
                   </p>
                   <Badge
                     variant="outline"

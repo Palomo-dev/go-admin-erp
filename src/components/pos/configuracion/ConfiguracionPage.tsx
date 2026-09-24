@@ -30,7 +30,8 @@ import {
   Users,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { formatCurrency, formatPercent } from '@/utils/Utils';
+import { formatPercent } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { SearchSelect } from '@/components/ui/search-select';
 import { cn } from '@/utils/Utils';
 import {
@@ -72,6 +73,7 @@ import {
 
 export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) {
   const { toast } = useToast();
+  const { formatear } = useMonedaOrganizacion();
   const { organization } = useOrganization();
   const { branchFilter } = useBranch();
   const [loading, setLoading] = useState(true);
@@ -942,7 +944,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       {charge.charge_type === 'percentage' 
                         ? formatPercent(Number(charge.charge_value))
-                        : formatCurrency(Number(charge.charge_value))
+                        : formatear(Number(charge.charge_value))
                       }
                       {charge.is_optional && ' • Opcional'}
                       {charge.is_taxable && ' • Gravable'}

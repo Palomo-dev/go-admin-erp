@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Upload, Download, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface ImportFaresDialogProps {
   open: boolean;
@@ -25,6 +26,10 @@ export function ImportFaresDialog({
   onImport,
   isLoading = false,
 }: ImportFaresDialogProps) {
+  // Moneda del ejemplo de la plantilla: la base de la organización (vacía
+  // mientras no se conoce; una fila sin moneda toma la base al importarse).
+  const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
+  const monedaEjemplo = monedaResuelta ? monedaBase : '';
   const [file, setFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<Array<Record<string, string>>>([]);
   const [result, setResult] = useState<{ success: number; errors: string[] } | null>(null);
@@ -104,7 +109,7 @@ export function ImportFaresDialog({
       'REG-001',
       'regular',
       '15000',
-      'COP',
+      monedaEjemplo,
       '0',
       '2025-01-01',
       '2025-12-31',

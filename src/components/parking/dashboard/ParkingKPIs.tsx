@@ -11,7 +11,9 @@ import {
   AlertTriangle,
   DollarSign,
 } from 'lucide-react';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import type { ParkingDashboardStats } from '@/lib/services/parkingDashboardService';
 
 interface ParkingKPIsProps {
@@ -74,8 +76,11 @@ function SkeletonCard() {
 export default function ParkingKPIs({
   data,
   isLoading = false,
-  currencyCode = 'COP',
+  currencyCode,
 }: ParkingKPIsProps) {
+  // Sin moneda del padre: la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const moneda = paraDocumento(currencyCode);
   if (isLoading || !data) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -113,7 +118,7 @@ export default function ParkingKPIs({
     },
     {
       label: 'Ingresos hoy',
-      value: formatCurrency(data.revenueToday, currencyCode),
+      value: formatMoneda(data.revenueToday, moneda),
       icon: <DollarSign className="h-5 w-5" />,
       color: 'green',
     },

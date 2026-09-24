@@ -34,6 +34,7 @@ import {
 
 // URL pública de una imagen de Storage (compartida con el replicador del catálogo, fase 4D).
 import { getStorageImageUrl } from '@/lib/utils/storageImageUrl';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export class POSService {
   /**
@@ -1395,7 +1396,7 @@ export class POSService {
         number: invoiceNumber,
         issue_date: new Date().toISOString(),
         due_date: dueDate.toISOString(),
-        currency: 'COP', // Debe existir en tabla currencies
+        currency: (await this.getBaseCurrency()).code, // Moneda base de la organización
         subtotal: taxCalculation.subtotal,
         tax_total: taxCalculation.totalTaxAmount,
         total: taxCalculation.finalTotal,
@@ -2141,9 +2142,7 @@ export class POSService {
       
       if (!data || data.length === 0) {
         console.warn('No currencies found, using fallback');
-        return [
-          { code: 'COP', name: 'Peso Colombiano', symbol: '$', decimals: 0, is_base: true, is_active: true }
-        ];
+        return [await this.monedaRespaldo()];
       }
       
       return (data as Array<{ code: string; name?: string | null; symbol?: string | null; decimals?: number | null; is_base?: boolean | null }>).map((curr) => ({
@@ -2156,22 +2155,45 @@ export class POSService {
       }));
     } catch (error) {
       console.error('Error getting organization currencies:', error);
-      // Fallback a peso colombiano
-      return [
-        { code: 'COP', name: 'Peso Colombiano', symbol: '$', decimals: 0, is_base: true, is_active: true }
-      ];
+      // Respaldo: la moneda base resuelta (cadena de resolveOrgCurrency).
+      return [await this.monedaRespaldo()];
     }
   }
 
+  /**
+   * Moneda base de la organización. Delega en `resolveOrgCurrency`
+   * (`src/lib/services/monedaOrganizacion.ts`, fuente única). Antes tenía su
+   * propia lista con respaldo 'COP': una organización mexicana sin monedas
+   * configuradas vendía en pesos colombianos.
+   *
+   * Sin red (escritorio) no se puede consultar la base: se usa la moneda
+   * marcada como base en el catálogo local, y si tampoco hay, la que resuelva
+   * `monedaRespaldo`.
+   */
   static async getBaseCurrency(): Promise<Currency> {
+    const orgId = this.organizationId;
+    if (orgId && !this.usesLocalCatalog()) {
+      const base = await resolveOrgCurrency(supabase, orgId);
+      if (base.source !== 'fallback') {
+        return { code: base.code, name: base.code, symbol: base.symbol || '$', decimals: base.decimals, is_base: true, is_active: true };
+      }
+    }
     try {
       const currencies = await this.getCurrencies();
-      return currencies.find(c => c.is_base) || currencies[0] || 
-        { code: 'COP', name: 'Peso Colombiano', symbol: '$', decimals: 0, is_base: true, is_active: true };
+      return currencies.find(c => c.is_base) || currencies[0] || (await this.monedaRespaldo());
     } catch (error) {
       console.error('Error getting base currency:', error);
-      return { code: 'COP', name: 'Peso Colombiano', symbol: '$', decimals: 0, is_base: true, is_active: true };
+      return this.monedaRespaldo();
     }
+  }
+
+  /** Respaldo cuando no hay monedas que listar: la cadena de `resolveOrgCurrency`, no 'COP'. */
+  private static async monedaRespaldo(): Promise<Currency> {
+    const orgId = this.organizationId;
+    const base = orgId
+      ? await resolveOrgCurrency(supabase, orgId)
+      : { code: 'USD', symbol: '$', decimals: 2 };
+    return { code: base.code, name: base.code, symbol: base.symbol || '$', decimals: base.decimals, is_base: true, is_active: true };
   }
 
   // ===============================

@@ -6,19 +6,14 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   FileText,
-  Calendar,
   User,
   Download,
   Loader2,
   XCircle,
   RefreshCw,
-  CheckCircle,
   Clock,
-  AlertCircle,
   Hash,
-  Building2,
   Mail,
-  Phone,
   FileCheck,
   ExternalLink,
 } from 'lucide-react';
@@ -29,7 +24,9 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ItemsDetalle } from '@/components/finanzas/facturas-venta/id/ItemsDetalle';
 import { toast } from '@/components/ui/use-toast';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import {
   notasCreditoService,
   NotaCredito,
@@ -38,6 +35,9 @@ import {
 } from '@/lib/services/notasCreditoService';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+
+/** La nota es una fila de `invoice_sales` (select *): trae su propia `currency`. */
+type NotaConMoneda = NotaCredito & { currency?: string | null };
 
 interface NotaCreditoDetalleProps {
   id: string;
@@ -90,6 +90,10 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
   const [isRetrying, setIsRetrying] = useState(false);
   const [isSendingDian, setIsSendingDian] = useState(false);
   const [organizationTaxes, setOrganizationTaxes] = useState<{ id: string; name: string; rate: number; is_default?: boolean }[]>([]);
+  // Importes en la moneda de la nota (la de su factura); sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const monedaNota = (nota as NotaConMoneda | null)?.currency ?? null;
+  const formatCurrency = crearFormateadorMoneda(paraDocumento(monedaNota));
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -146,7 +150,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
       } else {
         toast({ title: 'Error', description: result.error, variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
     }
   };
@@ -162,7 +166,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
       } else {
         toast({ title: 'Error', description: result.error, variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al reintentar', variant: 'destructive' });
     } finally {
       setIsRetrying(false);
@@ -189,8 +193,8 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
       } else {
         toast({ title: 'Error', description: result.error, variant: 'destructive' });
       }
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message || 'Error al enviar a DIAN', variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({ title: 'Error', description: (error as { message?: string }).message || 'Error al enviar a DIAN', variant: 'destructive' });
     } finally {
       setIsSendingDian(false);
     }
@@ -341,7 +345,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <ItemsDetalle items={nota.items || []} taxIncluded={nota.tax_included || false} organizationTaxes={organizationTaxes} />
+              <ItemsDetalle items={nota.items || []} taxIncluded={nota.tax_included || false} organizationTaxes={organizationTaxes} currency={monedaNota} />
 
               {/* Totals */}
               <div className="border-t dark:border-gray-700 p-4 space-y-2 mt-4">

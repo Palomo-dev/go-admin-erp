@@ -74,7 +74,8 @@ interface ParsedInvoice {
   customer_id?: string;
   issue_date: string;
   due_date: string;
-  currency: string;
+  // null = la moneda base de la organización (la pone el trigger al insertar).
+  currency: string | null;
   subtotal: number;
   tax_total: number;
   total: number;
@@ -115,14 +116,14 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
     setErrors([]);
     setParsedData([]);
 
-    Papa.parse(csvFile, {
+    Papa.parse<CSVRow>(csvFile, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
         const invoiceMap = new Map<string, ParsedInvoice>();
         const parseErrors: string[] = [];
 
-        results.data.forEach((row: any, index: number) => {
+        results.data.forEach((row: CSVRow, index: number) => {
           try {
             const invoiceNumber = row.numero_factura?.trim();
             if (!invoiceNumber) {
@@ -136,10 +137,11 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
                 customer_id: row.cliente_id?.trim() || undefined,
                 issue_date: row.fecha_emision || getToday(),
                 due_date: row.fecha_vencimiento || sumarDiasAlDia(getToday(), 30),
-                currency: row.moneda?.trim() || 'COP',
-                subtotal: parseFloat(row.subtotal) || 0,
-                tax_total: parseFloat(row.impuestos) || 0,
-                total: parseFloat(row.total) || 0,
+                // Sin columna de moneda: la base de la organización, nunca COP supuesto.
+                currency: row.moneda?.trim() || null,
+                subtotal: parseFloat(row.subtotal ?? '') || 0,
+                tax_total: parseFloat(row.impuestos ?? '') || 0,
+                total: parseFloat(row.total ?? '') || 0,
                 notes: row.notas?.trim(),
                 items: []
               });
@@ -148,9 +150,9 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
             // Agregar item si existe
             if (row.item_descripcion) {
               const invoice = invoiceMap.get(invoiceNumber)!;
-              const qty = parseFloat(row.item_cantidad) || 1;
-              const unitPrice = parseFloat(row.item_precio) || 0;
-              const taxRate = parseFloat(row.item_impuesto) || 0;
+              const qty = parseFloat(row.item_cantidad ?? '') || 1;
+              const unitPrice = parseFloat(row.item_precio ?? '') || 0;
+              const taxRate = parseFloat(row.item_impuesto ?? '') || 0;
               const totalLine = qty * unitPrice * (1 + taxRate / 100);
 
               invoice.items.push({
@@ -161,7 +163,7 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
                 total_line: totalLine
               });
             }
-          } catch (err) {
+          } catch {
             parseErrors.push(`Fila ${index + 2}: Error al procesar datos`);
           }
         });

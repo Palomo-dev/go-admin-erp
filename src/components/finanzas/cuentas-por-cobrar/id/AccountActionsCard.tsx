@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { CuentaPorCobrarDetalle, AccountActions } from './types';
 import { CuentaPorCobrarDetailService } from './service';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { plainDayOfInstant } from '@/lib/services/businessInstant';
 
@@ -26,16 +27,26 @@ interface Installment {
   due_date: string;
 }
 
+/** Fila de `organization_payment_methods` con su método (ver `obtenerMetodosPago`). */
+interface MetodoPagoOrganizacion {
+  id: number | string;
+  payment_method?: { code: string; name: string; requires_reference?: boolean } | null;
+}
+
 interface AccountActionsCardProps {
   account: CuentaPorCobrarDetalle;
   actions: AccountActions;
+  /** Moneda de la cuenta (la de su factura); sin ella, la base de la organización. */
+  currency?: string | null;
   onUpdate: () => void;
 }
 
-export function AccountActionsCard({ account, actions, onUpdate }: AccountActionsCardProps) {
-  // Montos en la moneda base de la organización (fuente única:
-  // monedaOrganizacion.ts), también en el documento exportado. Nunca pesos fijos.
-  const { formatear: formatCurrency } = useMonedaOrganizacion();
+export function AccountActionsCard({ account, actions, currency, onUpdate }: AccountActionsCardProps) {
+  // Montos en la moneda de la cuenta o, en su defecto, en la moneda base de la
+  // organización (fuente única: monedaOrganizacion.ts), también en el documento
+  // exportado. Nunca pesos fijos.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = (valor: number) => formatMoneda(valor, paraDocumento(currency));
   // Todo lo que se toca aqui es timestamptz: `payments.payment_date`,
   // `accounts_receivable.due_date`, `.last_reminder_date` y el `invoice_date`
   // que viene de `invoice_sales.issue_date`. Se formatea y se compara en la
@@ -51,7 +62,7 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
   const diaEmision = plainDayOfInstant(account.invoice_date, timezone);
   const [isLoading, setIsLoading] = useState(false);
   const [reminderMessage, setReminderMessage] = useState('');
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<MetodoPagoOrganizacion[]>([]);
   const [installments, setInstallments] = useState<Installment[]>([]);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentData, setPaymentData] = useState({

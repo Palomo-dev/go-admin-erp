@@ -41,8 +41,9 @@ import {
   DollarSign,
   AlertTriangle,
   ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { CopyableId } from '@/components/common/CopyableId';
 import { ShipmentPagination } from './ShipmentPagination';
 import { format } from 'date-fns';
@@ -120,6 +121,8 @@ export function ShipmentsList({
   onPageSizeChange,
 }: ShipmentsListProps) {
   const router = useRouter();
+  // Cada envío en su moneda; sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [showSelectMenu, setShowSelectMenu] = useState(false);
   const selected = selectedIds ?? internalSelected;
@@ -378,11 +381,7 @@ export function ShipmentsList({
                   {shipment.weight_kg ? `${shipment.weight_kg} kg` : '-'}
                 </TableCell>
                 <TableCell className="font-medium">
-                  {new Intl.NumberFormat('es-CO', {
-                    style: 'currency',
-                    currency: shipment.currency || 'COP',
-                    minimumFractionDigits: 0,
-                  }).format(shipment.total_cost || 0)}
+                  {formatMoneda(shipment.total_cost || 0, paraDocumento(shipment.currency))}
                 </TableCell>
                 <TableCell>
                   <Badge className={`${status.color} flex items-center gap-1 w-fit`}>

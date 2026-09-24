@@ -36,9 +36,19 @@ import { useToast } from '@/components/ui/use-toast';
 import { CuentasPorPagarService } from './CuentasPorPagarService';
 import { AccountPayable, ProgramarPagoForm } from './types';
 import { OrganizationPaymentMethod } from '../facturas-compra/types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz, getToday, plainDateToInstant } from '@/lib/utils/timezone';
+
+/** Mensaje de un error lanzado (Error o error de PostgREST, que trae `message`). */
+function mensajeDeError(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const { message } = error as { message: unknown };
+    return typeof message === 'string' ? message : '';
+  }
+  return '';
+}
 
 interface ProgramarPagoModalProps {
   cuenta: AccountPayable;
@@ -54,6 +64,9 @@ export function ProgramarPagoModal({
   onPagoProgramado
 }: ProgramarPagoModalProps) {
   const { formatDate } = useFormatDate();
+  // Importes de la cuenta en la moneda de su factura de compra (base si no la trae).
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = crearFormateadorMoneda(paraDocumento(cuenta.invoice_purchase?.currency));
   const { timezone } = useOrgTimezone();
   // Estados del formulario
   const [formData, setFormData] = useState<ProgramarPagoForm>({
@@ -147,12 +160,12 @@ export function ProgramarPagoModal({
   };
 
   // Handlers
-  const handleInputChange = (field: keyof ProgramarPagoForm, value: any) => {
+  const handleInputChange = (field: keyof ProgramarPagoForm, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Validación en tiempo real para el monto
     if (field === 'amount') {
-      const monto = parseFloat(value) || 0;
+      const monto = (typeof value === 'number' ? value : parseFloat(value)) || 0;
       if (monto > cuenta.balance) {
         setErrors(prev => ({ 
           ...prev, 
@@ -193,11 +206,11 @@ export function ProgramarPagoModal({
       });
       
       onPagoProgramado();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error programando pago:', error);
       toast({
         title: "Error al programar pago",
-        description: error.message || "Ocurrió un error inesperado",
+        description: mensajeDeError(error) || "Ocurrió un error inesperado",
         variant: "destructive",
       });
     } finally {

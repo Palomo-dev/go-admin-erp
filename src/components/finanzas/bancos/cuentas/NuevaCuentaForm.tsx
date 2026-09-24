@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BancosService } from '../BancosService';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 const ACCOUNT_TYPES = [
   { value: 'checking', label: 'Cuenta Corriente' },
@@ -45,9 +46,17 @@ export function NuevaCuentaForm() {
     bank_name: '',
     account_number: '',
     account_type: 'checking',
-    currency: 'COP',
+    // Vacía hasta conocer la moneda base de la organización (nunca COP supuesto).
+    currency: '',
     initial_balance: '',
   });
+  const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
+
+  useEffect(() => {
+    if (monedaResuelta && !formData.currency) {
+      setFormData((prev) => (prev.currency ? prev : { ...prev, currency: monedaBase }));
+    }
+  }, [monedaResuelta, monedaBase, formData.currency]);
 
   useEffect(() => {
     loadCurrencies();
@@ -82,7 +91,8 @@ export function NuevaCuentaForm() {
         bank_name: formData.bank_name,
         account_number: formData.account_number || null,
         account_type: formData.account_type,
-        currency: formData.currency,
+        // Sin moneda elegida, la base la pone el servicio/trigger.
+        currency: formData.currency || null,
         initial_balance: formData.initial_balance ? parseFloat(formData.initial_balance) : 0,
       });
 

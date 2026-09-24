@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { purchaseOrderService, type PurchaseOrderWithItems, type PurchaseOrderItemInput } from '@/lib/services/purchaseOrderService';
+import { purchaseOrderService, type PurchaseOrderItemInput } from '@/lib/services/purchaseOrderService';
 import { supplierService } from '@/lib/services/supplierService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +37,7 @@ import {
   Trash2,
   Package
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface EditarOrdenCompraFormProps {
@@ -51,8 +51,17 @@ interface OrderItem extends PurchaseOrderItemInput {
   image?: string | null;
 }
 
+/** Campos de imagen y variante que `getProducts` trae además de los tipados en el estado. */
+interface ProductoConVariante {
+  image?: string | null;
+  parent_image?: string | null;
+  parent_name?: string | null;
+  variant_data?: Record<string, string> | null;
+}
+
 export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps) {
   const router = useRouter();
+  const { formatear } = useMonedaOrganizacion();
 
   // Estados del formulario
   const [supplierId, setSupplierId] = useState<string>('');
@@ -118,7 +127,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
         product_id: item.product_id,
         productName: item.products?.name || 'Producto',
         sku: item.products?.sku || '',
-        image: (item.products as any)?.image || null,
+        image: (item.products as unknown as { image?: string | null } | undefined)?.image || null,
         quantity: item.quantity,
         unit_cost: item.unit_cost,
         notes: item.notes
@@ -128,9 +137,9 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
       setSuppliers(suppliersData);
       setBranches(branchesData);
       setProducts(productsData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error cargando datos:', error);
-      toastError('Error', error?.message || 'No se pudo cargar la orden');
+      toastError('Error', (error as { message?: string } | null)?.message || 'No se pudo cargar la orden');
       router.push('/app/inventario/ordenes-compra');
     } finally {
       setIsLoading(false);
@@ -176,13 +185,14 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
     const cost = parseFloat(itemCost) || 0;
 
     // Construir nombre con atributos de variante si aplica
+    const variante = product as unknown as ProductoConVariante;
     let displayName = product.name;
-    if ((product as any).parent_name && (product as any).variant_data) {
-      const entries = Object.entries((product as any).variant_data as Record<string, string>)
+    if (variante.parent_name && variante.variant_data) {
+      const entries = Object.entries(variante.variant_data)
         .filter(([, v]) => v && v.trim() !== '');
       if (entries.length > 0) {
         const attrs = entries.map(([k, v]) => `${k}: ${v}`).join(' · ');
-        displayName = `${(product as any).parent_name} · ${attrs}`;
+        displayName = `${variante.parent_name} · ${attrs}`;
       }
     }
 
@@ -191,7 +201,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
       product_id: product.id,
       productName: displayName,
       sku: product.sku,
-      image: (product as any).image || (product as any).parent_image || null,
+      image: variante.image || variante.parent_image || null,
       quantity,
       unit_cost: cost
     };
@@ -239,7 +249,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
       setIsSaving(true);
       const organizationId = getOrganizationId();
 
-      const { data, error } = await purchaseOrderService.updatePurchaseOrder(
+      const { error } = await purchaseOrderService.updatePurchaseOrder(
         orderUuid,
         organizationId,
         {
@@ -260,9 +270,9 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
       toastSuccess('Orden actualizada', 'Los cambios han sido guardados correctamente');
 
       router.push(`/app/inventario/ordenes-compra/${orderUuid}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error actualizando orden:', error);
-      toastError('Error', error?.message || 'No se pudo actualizar la orden');
+      toastError('Error', (error as { message?: string } | null)?.message || 'No se pudo actualizar la orden');
     } finally {
       setIsSaving(false);
     }
@@ -503,7 +513,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
                             />
                           </TableCell>
                           <TableCell className="text-right font-medium text-gray-900 dark:text-white">
-                            {formatCurrency(item.quantity * item.unit_cost)}
+                            {formatear(item.quantity * item.unit_cost)}
                           </TableCell>
                           <TableCell>
                             <Button
@@ -549,7 +559,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
               <div className="flex justify-between items-center py-2">
                 <span className="text-gray-600 dark:text-gray-400 font-medium">Total</span>
                 <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(total)}
+                  {formatear(total)}
                 </span>
               </div>
 

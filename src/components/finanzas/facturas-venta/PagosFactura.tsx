@@ -6,14 +6,23 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { PlusCircle, AlertCircle } from 'lucide-react';
 import { RegistrarPagoDialog } from '@/components/finanzas/facturas-venta/id/RegistrarPagoDialog';
 
+/** Lo que este componente lee de la factura (fila de `invoice_sales`). */
+interface FacturaPagos {
+  number?: string;
+  total: number;
+  balance: number;
+  currency?: string | null;
+}
+
 interface PagosFacturaProps {
   facturaId: string; // UUID
-  factura?: any; // Objeto de factura para determinar saldo
+  factura?: FacturaPagos; // Objeto de factura para determinar saldo
 }
 
 interface Pago {
@@ -32,9 +41,11 @@ export function PagosFactura({ facturaId, factura }: PagosFacturaProps) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalPagado, setTotalPagado] = useState(0);
-  const [moneda, setMoneda] = useState('COP');
+  // Moneda de la factura (`invoice_sales.currency`); null = la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const [moneda, setMoneda] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [facturaCompleta, setFacturaCompleta] = useState<any>(factura);
+  const [facturaCompleta, setFacturaCompleta] = useState<FacturaPagos | undefined>(factura);
 
   useEffect(() => {
     if (facturaId) {
@@ -59,7 +70,7 @@ export function PagosFactura({ facturaId, factura }: PagosFacturaProps) {
           .single();
         
         if (facturaError) throw facturaError;
-        setFacturaCompleta(facturaData);
+        setFacturaCompleta(facturaData as FacturaPagos);
         if (facturaData?.currency) {
           setMoneda(facturaData.currency);
         }
@@ -80,18 +91,19 @@ export function PagosFactura({ facturaId, factura }: PagosFacturaProps) {
 
     if (pagosError) throw pagosError;
 
-    setPagos(pagosData || []);
+    const listaPagos = (pagosData || []) as Pago[];
+    setPagos(listaPagos);
       
       // Calcular total pagado
-      if (pagosData?.length > 0) {
-        const total = pagosData
-          .filter((pago: any) => pago.status === 'completed')
-          .reduce((sum: number, pago: any) => sum + (pago.amount || 0), 0);
+      if (listaPagos.length > 0) {
+        const total = listaPagos
+          .filter((pago) => pago.status === 'completed')
+          .reduce((sum: number, pago) => sum + (pago.amount || 0), 0);
         setTotalPagado(total);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al cargar pagos de la factura:', err);
-      setError(`Error al cargar los pagos: ${err.message}`);
+      setError(`Error al cargar los pagos: ${(err as { message?: string }).message}`);
     } finally {
       setCargando(false);
     }
@@ -154,7 +166,7 @@ export function PagosFactura({ facturaId, factura }: PagosFacturaProps) {
         <div className="flex justify-between items-center">
           <span className="text-sm text-blue-700 dark:text-blue-300">Total Pagado:</span>
           <span className="text-lg font-semibold text-blue-700 dark:text-blue-300">
-            {formatCurrency(totalPagado, moneda)}
+            {formatMoneda(totalPagado, paraDocumento(moneda))}
           </span>
         </div>
       </Card>
@@ -201,7 +213,7 @@ export function PagosFactura({ facturaId, factura }: PagosFacturaProps) {
                   <td className="p-2 dark:text-gray-300">{formatDate(pago.created_at)}</td>
                   <td className="p-2 dark:text-gray-300">{getPaymentMethodName(pago.method)}</td>
                   <td className="p-2 dark:text-gray-300">{pago.reference || '-'}</td>
-                  <td className="p-2 text-right dark:text-gray-300">{formatCurrency(pago.amount, pago.currency || moneda)}</td>
+                  <td className="p-2 text-right dark:text-gray-300">{formatMoneda(pago.amount, paraDocumento(pago.currency || moneda))}</td>
                   <td className="p-2 text-center">{getStatusBadge(pago.status)}</td>
                 </tr>
               ))}

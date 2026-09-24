@@ -31,7 +31,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import {
   reportesFinancierosService,
   ReportSummary,
@@ -82,6 +83,8 @@ function getDateRange(option: RangeOption): DateRange {
 
 export function ReportesPage() {
   const { branchFilter } = useBranch();
+  // Informes agregados: en la moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   const [isLoading, setIsLoading] = useState(true);
   const [rangeOption, setRangeOption] = useState<RangeOption>('month');
   const [reports, setReports] = useState<ReportSummary | null>(null);
@@ -192,19 +195,19 @@ export function ReportesPage() {
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500 dark:text-gray-400">Ingresos</span>
               <span className="font-semibold text-green-600 dark:text-green-400">
-                {formatCurrency(reports?.pnl.ingresos || 0)}
+                {formatear(reports?.pnl.ingresos || 0)}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500 dark:text-gray-400">Costos</span>
               <span className="font-semibold text-red-600 dark:text-red-400">
-                {formatCurrency(reports?.pnl.costos || 0)}
+                {formatear(reports?.pnl.costos || 0)}
               </span>
             </div>
             <div className="border-t dark:border-gray-700 pt-2 flex justify-between items-center">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Utilidad Neta</span>
               <span className={`font-bold ${(reports?.pnl.utilidadNeta || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(reports?.pnl.utilidadNeta || 0)}
+                {formatear(reports?.pnl.utilidadNeta || 0)}
               </span>
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
@@ -239,7 +242,7 @@ export function ReportesPage() {
                 Ingresos
               </span>
               <span className="font-semibold text-green-600 dark:text-green-400">
-                {formatCurrency(reports?.cashFlow.ingresos || 0)}
+                {formatear(reports?.cashFlow.ingresos || 0)}
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -248,13 +251,13 @@ export function ReportesPage() {
                 Egresos
               </span>
               <span className="font-semibold text-red-600 dark:text-red-400">
-                {formatCurrency(reports?.cashFlow.egresos || 0)}
+                {formatear(reports?.cashFlow.egresos || 0)}
               </span>
             </div>
             <div className="border-t dark:border-gray-700 pt-2 flex justify-between items-center">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Saldo Final</span>
               <span className={`font-bold ${(reports?.cashFlow.saldoFinal || 0) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                {formatCurrency(reports?.cashFlow.saldoFinal || 0)}
+                {formatear(reports?.cashFlow.saldoFinal || 0)}
               </span>
             </div>
             <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
@@ -286,19 +289,19 @@ export function ReportesPage() {
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500 dark:text-gray-400">Por Cobrar</span>
               <span className="font-semibold text-green-600 dark:text-green-400">
-                {formatCurrency(reports?.cartera.totalPorCobrar || 0)}
+                {formatear(reports?.cartera.totalPorCobrar || 0)}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500 dark:text-gray-400">Por Pagar</span>
               <span className="font-semibold text-red-600 dark:text-red-400">
-                {formatCurrency(reports?.cartera.totalPorPagar || 0)}
+                {formatear(reports?.cartera.totalPorPagar || 0)}
               </span>
             </div>
             {(reports?.cartera.carteraVencida || 0) > 0 && (
               <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs text-red-600 dark:text-red-400">
                 <AlertTriangle className="h-3 w-3" />
-                Vencida: {formatCurrency(reports?.cartera.carteraVencida || 0)}
+                Vencida: {formatear(reports?.cartera.carteraVencida || 0)}
               </div>
             )}
             <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
@@ -330,19 +333,19 @@ export function ReportesPage() {
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500 dark:text-gray-400">IVA Recaudado</span>
               <span className="font-semibold text-purple-600 dark:text-purple-400">
-                {formatCurrency(reports?.taxes.ivaRecaudado || 0)}
+                {formatear(reports?.taxes.ivaRecaudado || 0)}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500 dark:text-gray-400">IVA Pagado</span>
               <span className="font-semibold text-gray-600 dark:text-gray-300">
-                {formatCurrency(reports?.taxes.ivaPagado || 0)}
+                {formatear(reports?.taxes.ivaPagado || 0)}
               </span>
             </div>
             <div className="border-t dark:border-gray-700 pt-2 flex justify-between items-center">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Saldo IVA</span>
               <span className={`font-bold ${(reports?.taxes.totalImpuestos || 0) >= 0 ? 'text-purple-600' : 'text-green-600'}`}>
-                {formatCurrency(reports?.taxes.totalImpuestos || 0)}
+                {formatear(reports?.taxes.totalImpuestos || 0)}
               </span>
             </div>
           </CardContent>
@@ -370,7 +373,7 @@ export function ReportesPage() {
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500 dark:text-gray-400">Total en Caja</span>
               <span className="font-bold text-emerald-600 dark:text-emerald-400 text-lg">
-                {formatCurrency(reports?.cash.totalEnCaja || 0)}
+                {formatear(reports?.cash.totalEnCaja || 0)}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -418,20 +421,20 @@ export function ReportesPage() {
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500 dark:text-gray-400">Saldo Total</span>
               <span className="font-bold text-indigo-600 dark:text-indigo-400 text-lg">
-                {formatCurrency(reports?.bank.saldoTotal || 0)}
+                {formatear(reports?.bank.saldoTotal || 0)}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center gap-1">
                 <ArrowUpRight className="h-3 w-3 text-green-500" />
                 <span className="text-gray-600 dark:text-gray-300">
-                  {formatCurrency(reports?.bank.depositos || 0)}
+                  {formatear(reports?.bank.depositos || 0)}
                 </span>
               </div>
               <div className="flex items-center gap-1">
                 <ArrowDownRight className="h-3 w-3 text-red-500" />
                 <span className="text-gray-600 dark:text-gray-300">
-                  {formatCurrency(reports?.bank.retiros || 0)}
+                  {formatear(reports?.bank.retiros || 0)}
                 </span>
               </div>
             </div>

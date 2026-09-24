@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import parkingPaymentService, {
   type OrganizationPaymentMethod,
   type CreatePaymentData,
@@ -99,6 +99,7 @@ export function PaymentFormDialog({
   paymentMethods,
   onSuccess,
 }: PaymentFormDialogProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingItems, setIsLoadingItems] = useState(false);

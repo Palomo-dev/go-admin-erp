@@ -15,6 +15,7 @@ import {
   ForecastData,
   OpportunityProduct,
   OpportunityCustomLine,
+  OpportunitySpace,
   OpportunityTask,
   OpportunityNote,
   CustomerDetails,
@@ -28,6 +29,30 @@ import {
 // Cerrar como ganada pasa por el MISMO PATCH del servidor que usan el detalle,
 // el drawer y el tablero. No hay una segunda implementación del cierre.
 import { requestStageChange } from '@/components/crm/pipeline/drawer/StageSelect';
+
+/** Fila de `organization_members` con el perfil embebido. */
+interface MiembroConPerfil {
+  user_id: string;
+  profiles: { first_name: string | null; last_name: string | null } | null;
+}
+
+/** Fila de `products` con precio e imagen embebidos (numeric llega como texto). */
+interface ProductoConPrecio {
+  id: number;
+  name: string;
+  sku: string | null;
+  product_prices: Array<{ price: number | string | null }> | null;
+  product_images: Array<{ storage_path: string | null }> | null;
+}
+
+/** Fila de `spaces` con su tipo embebido. */
+interface EspacioConTipo {
+  id: string;
+  label: string;
+  floor_zone?: string;
+  status: string;
+  space_types: { name: string; base_rate: number | string | null } | null;
+}
 
 class OpportunitiesService {
   private getOrganizationId(): number {
@@ -50,7 +75,7 @@ class OpportunitiesService {
         return [];
       }
       return data || [];
-    } catch (err) {
+    } catch {
       console.warn('Advertencia en getPipelines');
       return [];
     }
@@ -70,7 +95,7 @@ class OpportunitiesService {
         return [];
       }
       return data || [];
-    } catch (err) {
+    } catch {
       console.warn('Advertencia en getStages');
       return [];
     }
@@ -94,7 +119,7 @@ class OpportunitiesService {
         return [];
       }
       return data || [];
-    } catch (err) {
+    } catch {
       console.warn('Advertencia en getCustomers');
       return [];
     }
@@ -149,7 +174,7 @@ class OpportunitiesService {
       .eq('is_active', true);
 
     if (error) throw error;
-    return (data || []).map((m: any) => ({
+    return ((data || []) as unknown as MiembroConPerfil[]).map((m) => ({
       id: m.user_id,
       email: '',
       full_name: `${m.profiles?.first_name || ''} ${m.profiles?.last_name || ''}`.trim() || 'Usuario',
@@ -256,7 +281,9 @@ class OpportunitiesService {
         customer_id: input.customer_id || null,
         name: input.name,
         amount: input.amount,
-        currency: input.currency || 'COP',
+        // Sin moneda elegida, NULL: el trigger `trg_00_moneda_base_por_defecto`
+        // pone la moneda base de la organización.
+        currency: input.currency || null,
         expected_close_date: input.expected_close_date || null,
         status: 'open',
         created_by: userData.user?.id || null,
@@ -765,7 +792,7 @@ class OpportunitiesService {
     try {
       // Paginar porque Supabase devuelve máximo 1000 filas por defecto
       const PAGE_SIZE = 1000;
-      let allData: any[] = [];
+      let allData: ProductoConPrecio[] = [];
       let offset = 0;
       while (true) {
         const { data: pageData, error: pageError } = await supabase
@@ -791,19 +818,19 @@ class OpportunitiesService {
           break;
         }
         if (!pageData || pageData.length === 0) break;
-        allData = allData.concat(pageData);
+        allData = allData.concat(pageData as unknown as ProductoConPrecio[]);
         if (pageData.length < PAGE_SIZE) break;
         offset += PAGE_SIZE;
       }
       
-      return (allData || []).map((p: any) => ({
+      return (allData || []).map((p) => ({
         id: p.id,
         name: p.name,
         sku: p.sku || '',
-        price: parseFloat(p.product_prices?.[0]?.price) || 0,
+        price: parseFloat(String(p.product_prices?.[0]?.price ?? '')) || 0,
         image: p.product_images?.[0]?.storage_path || undefined,
       }));
-    } catch (err) {
+    } catch {
       console.warn('Advertencia en getProducts');
       return [];
     }
@@ -840,15 +867,15 @@ class OpportunitiesService {
         return [];
       }
       
-      return (data || []).map((s: any) => ({
+      return ((data || []) as unknown as EspacioConTipo[]).map((s) => ({
         id: s.id,
         label: s.label,
         floor_zone: s.floor_zone,
         status: s.status,
         type_name: s.space_types?.name,
-        base_rate: parseFloat(s.space_types?.base_rate) || 0,
+        base_rate: parseFloat(String(s.space_types?.base_rate ?? '')) || 0,
       }));
-    } catch (err) {
+    } catch {
       console.warn('Advertencia en getSpaces');
       return [];
     }
@@ -869,13 +896,13 @@ class OpportunitiesService {
         return [];
       }
       return (data || []).map(b => b.id);
-    } catch (err) {
+    } catch {
       console.warn('Advertencia en getBranchIds');
       return [];
     }
   }
 
-  async getOpportunitySpaces(opportunityId: string): Promise<any[]> {
+  async getOpportunitySpaces(opportunityId: string): Promise<OpportunitySpace[]> {
     const { data, error } = await supabase
       .from('opportunity_spaces')
       .select(`
@@ -885,7 +912,7 @@ class OpportunitiesService {
       .eq('opportunity_id', opportunityId);
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as OpportunitySpace[];
   }
 
   async addSpace(
@@ -893,7 +920,7 @@ class OpportunitiesService {
     spaceId: string,
     nights: number,
     unitPrice: number
-  ): Promise<any> {
+  ): Promise<OpportunitySpace> {
     const { data, error } = await supabase
       .from('opportunity_spaces')
       .insert({
@@ -906,7 +933,7 @@ class OpportunitiesService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as OpportunitySpace;
   }
 
   async removeSpace(spaceLineId: string): Promise<void> {

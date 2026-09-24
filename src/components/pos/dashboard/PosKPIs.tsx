@@ -9,7 +9,8 @@ import {
   Receipt,
   Wallet,
 } from 'lucide-react';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { PosKPIs } from '@/lib/services/posDashboardService';
 
 interface PosKPIsProps {
@@ -87,6 +88,7 @@ function KpiCard({ title, value, icon, color, isLoading }: KpiCardProps) {
 }
 
 export function PosKPIs({ kpis, isLoading }: PosKPIsProps) {
+  const { formatear } = useMonedaOrganizacion();
   const data = kpis ?? {
     totalVentasHoy: 0,
     totalVentasMes: 0,
@@ -98,13 +100,13 @@ export function PosKPIs({ kpis, isLoading }: PosKPIsProps) {
   const cards = [
     {
       title: 'Ventas hoy',
-      value: formatCurrency(data.totalVentasHoy, 'COP'),
+      value: formatear(data.totalVentasHoy),
       icon: <ShoppingCart className="h-6 w-6" />,
       color: 'blue' as const,
     },
     {
       title: 'Ventas del mes',
-      value: formatCurrency(data.totalVentasMes, 'COP'),
+      value: formatear(data.totalVentasMes),
       icon: <TrendingUp className="h-6 w-6" />,
       color: 'green' as const,
     },
@@ -116,7 +118,7 @@ export function PosKPIs({ kpis, isLoading }: PosKPIsProps) {
     },
     {
       title: 'Ticket promedio',
-      value: formatCurrency(data.ticketPromedio, 'COP'),
+      value: formatear(data.ticketPromedio),
       icon: <Wallet className="h-6 w-6" />,
       color: 'orange' as const,
     },

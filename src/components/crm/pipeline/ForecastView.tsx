@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/config";
 import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatCurrency } from "@/utils/Utils";
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { currencyService } from "@/lib/services/currencyService";
-import { BarChart3, Calendar, LineChart, Filter } from "lucide-react";
+import { BarChart3, Calendar, LineChart } from "lucide-react";
 import ForecastChart from "./ForecastChart";
 import GoalCompletionWidget from "./GoalCompletionWidget";
 import ForecastByStageChart from "./ForecastByStageChart";
@@ -45,6 +45,19 @@ interface Opportunity {
   status: string;
 }
 
+/** Fila de `opportunities` con la etapa y el cliente embebidos. */
+interface FilaOportunidad {
+  id: string;
+  name: string;
+  amount: number | string | null;
+  currency: string | null;
+  expected_close_date: string;
+  stage_id: string;
+  status: string;
+  stages?: { name?: string; probability?: number | string | null } | null;
+  customers?: { full_name?: string | null } | null;
+}
+
 interface ForecastViewProps {
   pipelineId: string;
 }
@@ -54,7 +67,9 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [forecastData, setForecastData] = useState<ForecastMonth[]>([]);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
-  const [baseCurrency, setBaseCurrency] = useState<string>('USD');
+  // Vacía hasta que llega la moneda base de la organización (nunca un código cableado).
+  const [baseCurrency, setBaseCurrency] = useState<string>('');
+  const { paraDocumento } = useMonedaOrganizacion();
   const [totalForecast, setTotalForecast] = useState({
     totalAmount: 0,
     weightedAmount: 0,
@@ -76,19 +91,13 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
       // Cargar la moneda base de la organización
       const loadBaseCurrency = async () => {
         try {
-          // Usamos un bloque try-catch más robusto
-          if (!orgIdNum) {
-            console.log("ID de organización no disponible, usando USD");
-            setBaseCurrency("USD");
-            return;
-          }
-          
           const baseCurrency = await currencyService.getBaseCurrency(orgIdNum);
           setBaseCurrency(baseCurrency);
           console.log(`Moneda base cargada: ${baseCurrency}`);
         } catch (error) {
           logError("[ForecastView] cargar la moneda base", error);
-          setBaseCurrency("USD"); // Valor por defecto si hay error
+          setLoading(false);
+          setLoadError(describeError(error));
         }
       };
       
@@ -139,7 +148,7 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
 
       // Procesar y agrupar oportunidades por mes (ahora es async)
       try {
-        const processedData = await processOpportunitiesByMonth(data);
+        const processedData = await processOpportunitiesByMonth(data as unknown as FilaOportunidad[]);
         setForecastData(processedData.monthData);
         setTotalForecast({
           totalAmount: processedData.totalAmount,
@@ -161,7 +170,8 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
 
   // Efecto para cargar datos iniciales y configurar suscripciones en tiempo real
   useEffect(() => {
-    if (!organizationId || !pipelineId) return;
+    // Sin moneda base todavía no se convierte nada: se espera a que llegue.
+    if (!organizationId || !pipelineId || !baseCurrency) return;
     
     // Inicializar el servicio de tiempo real
     forecastRealTimeService.initialize();
@@ -182,10 +192,12 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
     return () => {
       unsubscribe();
     };
-  }, [pipelineId, organizationId]);
+    // `loadOpportunities` se recrea en cada render: se recarga al cambiar pipeline, organización o moneda base.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pipelineId, organizationId, baseCurrency]);
 
   // Procesar y agrupar oportunidades por mes
-  const processOpportunitiesByMonth = async (data: any[]) => {
+  const processOpportunitiesByMonth = async (data: FilaOportunidad[]) => {
     const monthMap = new Map<string, ForecastMonth>();
     let totalAmount = 0;
     let weightedAmount = 0;
@@ -456,11 +468,11 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
                           <td className="p-2 sm:p-3 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden lg:table-cell">{opp.stage_name}</td>
                           <td className="p-2 sm:p-3 text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">
                             {opp.currency === baseCurrency ? 
-                              formatCurrency(opp.convertedAmount || opp.amount, baseCurrency) :
+                              formatMoneda(opp.convertedAmount || opp.amount, paraDocumento(baseCurrency)) :
                               <>
-                                <div>{formatCurrency(opp.amount, opp.currency)}</div>
+                                <div>{formatMoneda(opp.amount, paraDocumento(opp.currency))}</div>
                                 <div className="text-xs text-gray-600 dark:text-gray-400">
-                                  ({formatCurrency(opp.convertedAmount || opp.amount, baseCurrency)})
+                                  ({formatMoneda(opp.convertedAmount || opp.amount, paraDocumento(baseCurrency))})
                                 </div>
                               </>
                             }
@@ -481,7 +493,7 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
                         Total:
                       </td>
                       <td className="p-2 sm:p-3 text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100">
-                        {formatCurrency(totalForecast.totalAmount, baseCurrency)}
+                        {formatMoneda(totalForecast.totalAmount, paraDocumento(baseCurrency))}
                       </td>
                       <td className="p-2 sm:p-3 text-xs sm:text-sm"></td>
                     </tr>
@@ -493,7 +505,7 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
                         Total ponderado:
                       </td>
                       <td className="p-2 sm:p-3 text-xs sm:text-sm font-bold text-blue-600 dark:text-blue-400">
-                        {formatCurrency(totalForecast.weightedAmount, baseCurrency)}
+                        {formatMoneda(totalForecast.weightedAmount, paraDocumento(baseCurrency))}
                       </td>
                       <td className="p-2 sm:p-3 text-xs sm:text-sm"></td>
                     </tr>

@@ -13,7 +13,8 @@ import {
   Truck
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import type { KPIData } from './FinanzasDashboardService';
 
 interface KPICardsProps {
@@ -66,7 +67,12 @@ const colorClasses = {
   }
 };
 
-function KPICard({ title, value, icon, trend, trendValue, color, currencyCode = 'COP', isLoading }: KPICardProps) {
+function KPICard({ title, value, icon, trend, trendValue, color, currencyCode, isLoading }: KPICardProps) {
+  // Agregados del tablero: en la moneda que pasa el padre (la base) o, si no
+  // llega, en la moneda base de la organización. Nunca pesos fijos.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const monedaCtx = paraDocumento(currencyCode);
+  const formatear = crearFormateadorMoneda(monedaCtx);
   const colors = colorClasses[color];
   
   if (isLoading) {
@@ -94,7 +100,7 @@ function KPICard({ title, value, icon, trend, trendValue, color, currencyCode = 
           <div className="space-y-1">
             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
             <p className="text-xl font-bold text-gray-900 dark:text-white">
-              {formatCurrency(value, currencyCode)}
+              {formatear(value)}
             </p>
             {trend && trendValue && (
               <div className={cn(
@@ -120,7 +126,7 @@ function KPICard({ title, value, icon, trend, trendValue, color, currencyCode = 
   );
 }
 
-export function KPICards({ data, isLoading, currencyCode = 'COP' }: KPICardsProps) {
+export function KPICards({ data, isLoading, currencyCode }: KPICardsProps) {
   const kpis = [
     {
       title: 'Ingresos',

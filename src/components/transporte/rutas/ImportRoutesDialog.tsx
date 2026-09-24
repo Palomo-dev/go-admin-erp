@@ -29,6 +29,7 @@ import {
   X
 } from 'lucide-react';
 import { RouteInput, transportRoutesService } from '@/lib/services/transportRoutesService';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface ImportRoutesDialogProps {
   open: boolean;
@@ -61,6 +62,10 @@ export function ImportRoutesDialog({
   onImportComplete,
 }: ImportRoutesDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Moneda del ejemplo de la plantilla: la base de la organización (vacía
+  // mientras no se conoce; una fila sin moneda toma la base al importarse).
+  const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
+  const monedaEjemplo = monedaResuelta ? monedaBase : '';
   const [parsedRoutes, setParsedRoutes] = useState<ParsedRoute[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -103,7 +108,7 @@ export function ImportRoutesDialog({
       '480',
       '85000',
       '15000',
-      'COP'
+      monedaEjemplo
     ];
 
     const csvContent = [headers.join(','), exampleRow.join(',')].join('\n');
@@ -207,7 +212,8 @@ export function ImportRoutesDialog({
           estimated_duration_minutes: durationStr ? parseInt(durationStr, 10) : undefined,
           base_fare: fareStr ? parseFloat(fareStr) : undefined,
           base_shipping_fee: shippingStr ? parseFloat(shippingStr) : undefined,
-          currency: getValue('currency') || 'COP',
+          // Sin moneda en el CSV: la base la pone el trigger de la tabla.
+          currency: getValue('currency') || undefined,
           isValid: errors.length === 0,
           errors,
         };

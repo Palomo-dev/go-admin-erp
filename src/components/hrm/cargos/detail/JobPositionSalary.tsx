@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface JobPositionSalaryProps {
   minSalary: number | null;
@@ -10,6 +10,7 @@ interface JobPositionSalaryProps {
 }
 
 export function JobPositionSalary({ minSalary, maxSalary }: JobPositionSalaryProps) {
+  const { formatear } = useMonedaOrganizacion();
   const hasRange = minSalary !== null || maxSalary !== null;
   const midPoint = minSalary !== null && maxSalary !== null
     ? (minSalary + maxSalary) / 2
@@ -33,7 +34,7 @@ export function JobPositionSalary({ minSalary, maxSalary }: JobPositionSalaryPro
                   Mínimo
                 </div>
                 <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white break-all">
-                  {minSalary !== null ? formatCurrency(minSalary) : '-'}
+                  {minSalary !== null ? formatear(minSalary) : '-'}
                 </p>
               </div>
               <div className="p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50">
@@ -42,7 +43,7 @@ export function JobPositionSalary({ minSalary, maxSalary }: JobPositionSalaryPro
                   Máximo
                 </div>
                 <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white break-all">
-                  {maxSalary !== null ? formatCurrency(maxSalary) : '-'}
+                  {maxSalary !== null ? formatear(maxSalary) : '-'}
                 </p>
               </div>
             </div>
@@ -53,7 +54,7 @@ export function JobPositionSalary({ minSalary, maxSalary }: JobPositionSalaryPro
                     Punto medio
                   </span>
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    {formatCurrency(midPoint)}
+                    {formatear(midPoint)}
                   </span>
                 </div>
               </div>

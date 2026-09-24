@@ -27,7 +27,8 @@ import {
   ArrowRightLeft,
   ArrowLeft,
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
@@ -138,6 +139,12 @@ export function TesoreriaPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { getToday } = useFormatDate();
+  // La posicion viene agrupada por moneda de cada cuenta; el total principal,
+  // la proyeccion y la concentracion de pagos se muestran en la moneda base.
+  const { code, formatear, paraDocumento } = useMonedaOrganizacion();
+  const otrasMonedas = Object.entries(position?.totalByCurrency ?? {}).filter(
+    ([moneda]) => moneda !== code,
+  );
 
   // Carga todos los datos de tesoreria en paralelo
   const loadData = useCallback(async () => {
@@ -263,38 +270,49 @@ export function TesoreriaPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Total COP */}
+          {/* Total en la moneda base */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                Total COP
+                Total {code}
               </CardTitle>
               <Wallet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {formatCurrency(position?.totalByCurrency.COP ?? 0, 'COP')}
+                {formatear(position?.totalByCurrency[code] ?? 0)}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Saldo consolidado en pesos
+                Saldo consolidado en la moneda base
               </p>
             </CardContent>
           </Card>
 
-          {/* Total USD */}
+          {/* Totales en monedas distintas de la base (cada una en la suya) */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                Total USD
+                Otras monedas
               </CardTitle>
               <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {formatCurrency(position?.totalByCurrency.USD ?? 0, 'USD')}
-              </div>
+              {otrasMonedas.length > 0 ? (
+                otrasMonedas.map(([moneda, total]) => (
+                  <div
+                    key={moneda}
+                    className="text-2xl font-bold text-gray-900 dark:text-white"
+                  >
+                    {formatMoneda(total, paraDocumento(moneda))}
+                  </div>
+                ))
+              ) : (
+                <div className="text-2xl font-bold text-gray-400 dark:text-gray-500">
+                  -
+                </div>
+              )}
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Saldo consolidado en dolares
+                Saldo consolidado de cuentas en otras monedas
               </p>
             </CardContent>
           </Card>
@@ -319,11 +337,11 @@ export function TesoreriaPage() {
                     : 'text-red-600 dark:text-red-400'
                 }`}
               >
-                {formatCurrency(netFlow90, 'COP')}
+                {formatear(netFlow90)}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Entradas: {formatCurrency(projection?.totalInflow ?? 0, 'COP')} |
-                Salidas: {formatCurrency(projection?.totalOutflow ?? 0, 'COP')}
+                Entradas: {formatear(projection?.totalInflow ?? 0)} |
+                Salidas: {formatear(projection?.totalOutflow ?? 0)}
               </p>
             </CardContent>
           </Card>
@@ -374,11 +392,11 @@ export function TesoreriaPage() {
                       <Badge variant="outline">{account.currency}</Badge>
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(account.localBalance, account.currency)}
+                      {formatMoneda(account.localBalance, paraDocumento(account.currency))}
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {account.realBalance !== null
-                        ? formatCurrency(account.realBalance, account.currency)
+                        ? formatMoneda(account.realBalance, paraDocumento(account.currency))
                         : '-'}
                     </TableCell>
                     <TableCell
@@ -391,7 +409,7 @@ export function TesoreriaPage() {
                       }`}
                     >
                       {account.difference !== null
-                        ? formatCurrency(account.difference, account.currency)
+                        ? formatMoneda(account.difference, paraDocumento(account.currency))
                         : '-'}
                     </TableCell>
                     <TableCell className="text-center">
@@ -439,7 +457,7 @@ export function TesoreriaPage() {
                     <div
                       key={entry.date}
                       className="flex-1 flex flex-col items-center gap-1 group relative"
-                      title={`${entry.date}\nEntradas: ${formatCurrency(entry.inflow, 'COP')}\nSalidas: ${formatCurrency(entry.outflow, 'COP')}\nSaldo: ${formatCurrency(entry.projectedBalance, 'COP')}`}
+                      title={`${entry.date}\nEntradas: ${formatear(entry.inflow)}\nSalidas: ${formatear(entry.outflow)}\nSaldo: ${formatear(entry.projectedBalance)}`}
                     >
                       <div className="flex items-end gap-0.5 h-full">
                         {/* Barra de entradas (verde) */}
@@ -477,7 +495,7 @@ export function TesoreriaPage() {
                     Total Entradas
                   </p>
                   <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {formatCurrency(projection?.totalInflow ?? 0, 'COP')}
+                    {formatear(projection?.totalInflow ?? 0)}
                   </p>
                 </div>
                 <div>
@@ -485,7 +503,7 @@ export function TesoreriaPage() {
                     Total Salidas
                   </p>
                   <p className="text-lg font-bold text-red-600 dark:text-red-400">
-                    {formatCurrency(projection?.totalOutflow ?? 0, 'COP')}
+                    {formatear(projection?.totalOutflow ?? 0)}
                   </p>
                 </div>
                 <div>
@@ -499,7 +517,7 @@ export function TesoreriaPage() {
                         : 'text-red-600 dark:text-red-400'
                     }`}
                   >
-                    {formatCurrency(projection?.netFlow ?? 0, 'COP')}
+                    {formatear(projection?.netFlow ?? 0)}
                   </p>
                 </div>
               </div>
@@ -593,13 +611,13 @@ export function TesoreriaPage() {
                       {conc.supplierName}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(conc.totalAmount, 'COP')}
+                      {formatear(conc.totalAmount)}
                     </TableCell>
                     <TableCell className="text-center">
                       {conc.paymentCount}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(conc.averageAmount, 'COP')}
+                      {formatear(conc.averageAmount)}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

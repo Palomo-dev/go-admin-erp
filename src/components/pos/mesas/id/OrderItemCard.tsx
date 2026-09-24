@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Trash2, Edit2, Check, X, Package, ChefHat, Clock, CheckCircle } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import type { SaleItem } from './types';
 
@@ -34,6 +34,7 @@ export function OrderItemCard({
   onDelete,
   onTransfer,
 }: OrderItemCardProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [isEditing, setIsEditing] = useState(false);
   const [editQuantity, setEditQuantity] = useState(item.quantity);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -176,7 +177,7 @@ export function OrderItemCard({
             <div className="flex items-center gap-1 flex-wrap mt-1">
               {parsedNotes.modifiers.map((mod) => (
                 <Badge key={mod.modifierId} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
-                  {mod.name}{mod.extraPrice > 0 ? ` (+${formatCurrency(mod.extraPrice)})` : ''}
+                  {mod.name}{mod.extraPrice > 0 ? ` (+${formatear(mod.extraPrice)})` : ''}
                 </Badge>
               ))}
             </div>
@@ -195,7 +196,7 @@ export function OrderItemCard({
           
           {/* Precio unitario */}
           <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-            {formatCurrency(Number(item.unit_price))} c/u
+            {formatear(Number(item.unit_price))} c/u
           </p>
         </div>
 
@@ -203,7 +204,7 @@ export function OrderItemCard({
         <div className="flex flex-col items-end gap-2">
           {/* Total */}
           <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
-            {formatCurrency(Number(item.total))}
+            {formatear(Number(item.total))}
           </p>
 
           {/* Cantidad editable */}

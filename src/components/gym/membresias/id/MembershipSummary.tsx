@@ -12,7 +12,8 @@ import {
   DollarSign,
   Activity
 } from 'lucide-react';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { Membership, getDaysRemaining, getMembershipStatusColor, getMembershipStatusLabel } from '@/lib/services/gymService';
 
@@ -56,6 +57,7 @@ export function MembershipSummary({
   totalPayments = 0,
   isLoading 
 }: MembershipSummaryProps) {
+  const { formatear } = useMonedaOrganizacion();
   const { formatDate, timezone } = useFormatDate();
   const daysRemaining = getDaysRemaining(membership.end_date, timezone);
   const isExpired = daysRemaining < 0;
@@ -171,7 +173,7 @@ export function MembershipSummary({
                   Plan: {plan.name}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Duración: {plan.duration_days} días • Precio: {formatCurrency(plan.price)}
+                  Duración: {plan.duration_days} días • Precio: {formatear(plan.price)}
                 </p>
               </div>
               {membership.access_code && (

@@ -87,6 +87,50 @@ export interface PurchaseOrderStats {
   totalAmount: number;
 }
 
+/** Línea de la OC leída para generar su factura de compra. */
+interface ItemOrdenParaFactura {
+  id: string;
+  product_id: number | null;
+  quantity: number;
+  unit_cost: number;
+  subtotal: number | null;
+  serials_received: string[] | null;
+  products: { name: string | null } | null;
+}
+
+/** Fila de `products` que lee `getProducts`. */
+interface FilaProductoOrdenCompra {
+  id: number;
+  uuid: string;
+  sku: string;
+  name: string;
+  unit_code: string | null;
+  track_stock: boolean;
+  track_serial: boolean;
+  is_parent: boolean;
+  parent_product_id: number | null;
+  variant_data: Record<string, string> | null;
+  categories: { name: string } | null;
+}
+
+/** Producto para los selectores de órdenes de compra y recetas. */
+export interface ProductoParaOrdenCompra {
+  id: number;
+  uuid: string;
+  sku: string;
+  name: string;
+  unit_code?: string;
+  category?: string;
+  cost: number;
+  track_stock: boolean;
+  image: string | null;
+  is_parent: boolean;
+  parent_product_id: number | null;
+  variant_data: Record<string, string> | null;
+  parent_name: string | null;
+  parent_image: string | null;
+}
+
 class PurchaseOrderService {
   /**
    * Obtener lista de órdenes de compra con filtros
@@ -134,8 +178,8 @@ class PurchaseOrderService {
       if (error) throw error;
 
       return { data: data as PurchaseOrder[], error: null };
-    } catch (error: any) {
-      console.error('Error obteniendo órdenes de compra:', error?.message || error);
+    } catch (error) {
+      console.error('Error obteniendo órdenes de compra:', (error as { message?: string } | null)?.message || error);
       return { data: [], error: error as Error };
     }
   }
@@ -192,8 +236,8 @@ class PurchaseOrderService {
         },
         error: null
       };
-    } catch (error: any) {
-      console.error('Error obteniendo orden de compra:', error?.message || error);
+    } catch (error) {
+      console.error('Error obteniendo orden de compra:', (error as { message?: string } | null)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -255,8 +299,8 @@ class PurchaseOrderService {
       }
 
       return { data: order as PurchaseOrder, error: null };
-    } catch (error: any) {
-      console.error('Error creando orden de compra:', error?.message || error);
+    } catch (error) {
+      console.error('Error creando orden de compra:', (error as { message?: string } | null)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -325,8 +369,8 @@ class PurchaseOrderService {
       }
 
       return { data: order as PurchaseOrder, error: null };
-    } catch (error: any) {
-      console.error('Error actualizando orden de compra:', error?.message || error);
+    } catch (error) {
+      console.error('Error actualizando orden de compra:', (error as { message?: string } | null)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -356,8 +400,8 @@ class PurchaseOrderService {
       if (error) throw error;
 
       return { success: true, error: null };
-    } catch (error: any) {
-      console.error('Error actualizando estado:', error?.message || error);
+    } catch (error) {
+      console.error('Error actualizando estado:', (error as { message?: string } | null)?.message || error);
       return { success: false, error: error as Error };
     }
   }
@@ -429,8 +473,8 @@ class PurchaseOrderService {
       }
 
       return this.receiveItems(orderUuid, organizationId, pending);
-    } catch (error: any) {
-      console.error('Error recibiendo orden completa:', error?.message || error);
+    } catch (error) {
+      console.error('Error recibiendo orden completa:', (error as { message?: string } | null)?.message || error);
       return { success: false, error: error as Error };
     }
   }
@@ -464,8 +508,8 @@ class PurchaseOrderService {
       if (error) throw error;
 
       return { success: true, error: null };
-    } catch (error: any) {
-      console.error('Error eliminando orden:', error?.message || error);
+    } catch (error) {
+      console.error('Error eliminando orden:', (error as { message?: string } | null)?.message || error);
       return { success: false, error: error as Error };
     }
   }
@@ -506,8 +550,8 @@ class PurchaseOrderService {
       if (createError) throw createError;
 
       return { data: newOrder, error: null };
-    } catch (error: any) {
-      console.error('Error duplicando orden:', error?.message || error);
+    } catch (error) {
+      console.error('Error duplicando orden:', (error as { message?: string } | null)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -592,7 +636,7 @@ class PurchaseOrderService {
           }
           console.log(`📦 Stock incrementado (OC ${orderId}): ${stockItems.length - stockResult.skipped} items`);
         }
-      } catch (stockError: any) {
+      } catch (stockError) {
         // El stock no bloquea la recepcion, pero el fallo se devuelve para que la
         // UI pueda avisar en vez de dejarlo enterrado en la consola.
         console.warn('⚠️ Error sumando stock (no bloquea recepción):', stockError);
@@ -600,7 +644,7 @@ class PurchaseOrderService {
           success: false,
           skipped: 0,
           skippedItems: [],
-          errors: [stockError?.message || 'Error desconocido sumando stock'],
+          errors: [(stockError as { message?: string } | null)?.message || 'Error desconocido sumando stock'],
         };
       }
 
@@ -629,8 +673,8 @@ class PurchaseOrderService {
       }
 
       return { success: true, error: null, stock: stockResult };
-    } catch (error: any) {
-      console.error('Error recibiendo items:', error?.message || error);
+    } catch (error) {
+      console.error('Error recibiendo items:', (error as { message?: string } | null)?.message || error);
       return { success: false, error: error as Error };
     }
   }
@@ -713,13 +757,13 @@ class PurchaseOrderService {
             'purchase_order'
           );
         }
-      } catch (stockError: any) {
+      } catch (stockError) {
         console.warn('⚠️ Error sumando stock (no bloquea recepción):', stockError);
         stockResult = {
           success: false,
           skipped: 0,
           skippedItems: [],
-          errors: [stockError?.message || 'Error desconocido sumando stock'],
+          errors: [(stockError as { message?: string } | null)?.message || 'Error desconocido sumando stock'],
         };
       }
 
@@ -777,8 +821,8 @@ class PurchaseOrderService {
       }
 
       return { success: true, error: null, stock: stockResult };
-    } catch (error: any) {
-      console.error('Error recibiendo items con seriales:', error?.message || error);
+    } catch (error) {
+      console.error('Error recibiendo items con seriales:', (error as { message?: string } | null)?.message || error);
       return { success: false, error: error as Error };
     }
   }
@@ -851,7 +895,8 @@ class PurchaseOrderService {
     const numberExt = `COMP-${year}-${String(nextNum).padStart(4, '0')}`;
 
     // Calcular subtotal
-    const subtotal = items.reduce((sum: number, item: any) => sum + Number(item.subtotal || item.quantity * item.unit_cost), 0);
+    const filasOC = items as unknown as ItemOrdenParaFactura[];
+    const subtotal = filasOC.reduce((sum: number, item) => sum + Number(item.subtotal || item.quantity * item.unit_cost), 0);
 
     // Crear factura de compra
     const { data: factura, error: facturaError } = await supabase
@@ -863,7 +908,9 @@ class PurchaseOrderService {
         number_ext: numberExt,
         issue_date: today,
         due_date: dueDateStr,
-        currency: 'COP',
+        // La OC no tiene moneda: la base de la organización la pone el trigger
+        // `trg_00_moneda_base_por_defecto` (nunca COP supuesto).
+        currency: null,
         subtotal,
         tax_total: 0,
         total: subtotal,
@@ -881,7 +928,7 @@ class PurchaseOrderService {
     }
 
     // Crear items de la factura (incluyendo seriales recibidos en la OC)
-    const invoiceItems = items.map((item: any) => ({
+    const invoiceItems = filasOC.map((item) => ({
       invoice_id: factura.id,
       invoice_type: 'purchase',
       invoice_purchase_id: factura.id,
@@ -1013,12 +1060,12 @@ class PurchaseOrderService {
   /**
    * Obtener productos para selector
    */
-  async getProducts(organizationId: number): Promise<any[]> {
+  async getProducts(organizationId: number): Promise<ProductoParaOrdenCompra[]> {
     try {
       // Cargar todos los productos activos (incluyendo padres para mapeo)
       // Paginar porque Supabase devuelve máximo 1000 filas por defecto
       const PAGE_SIZE = 1000;
-      let allData: any[] = [];
+      let allData: FilaProductoOrdenCompra[] = [];
       let offset = 0;
       while (true) {
         const { data: pageData, error: pageError } = await supabase
@@ -1032,7 +1079,7 @@ class PurchaseOrderService {
 
         if (pageError) break;
         if (!pageData || pageData.length === 0) break;
-        allData = allData.concat(pageData);
+        allData = allData.concat(pageData as unknown as FilaProductoOrdenCompra[]);
         if (pageData.length < PAGE_SIZE) break;
         offset += PAGE_SIZE;
       }
@@ -1041,7 +1088,7 @@ class PurchaseOrderService {
 
       // Mapa de padres: id -> { name, sku }
       const parentMap = new Map<number, { name: string; sku: string }>();
-      allData.forEach((p: any) => {
+      allData.forEach((p) => {
         if (p.is_parent) {
           parentMap.set(p.id, { name: p.name, sku: p.sku });
         }
@@ -1049,17 +1096,17 @@ class PurchaseOrderService {
 
       // Mapa de SKU base -> nombre del padre (para variantes huérfanas sin parent_product_id)
       const skuToParent = new Map<string, string>();
-      allData.forEach((p: any) => {
+      allData.forEach((p) => {
         if (p.is_parent) {
           skuToParent.set(p.sku, p.name);
         }
       });
 
       // Filtrar: excluir padres y productos con variant_data vacío
-      const data = allData.filter((p: any) => {
+      const data = allData.filter((p) => {
         if (p.is_parent) return false;
         if (p.variant_data && typeof p.variant_data === 'object') {
-          const hasValues = Object.values(p.variant_data).some((v: any) => v && String(v).trim() !== '');
+          const hasValues = Object.values(p.variant_data).some((v: unknown) => v && String(v).trim() !== '');
           if (!hasValues && Object.keys(p.variant_data).length > 0) return false;
         }
         return true;
@@ -1090,7 +1137,7 @@ class PurchaseOrderService {
           .in('product_id', chunk)
           .eq('is_primary', true);
         if (imgData) {
-          imgData.forEach((img: any) => {
+          imgData.forEach((img: { product_id: number; storage_path: string | null; is_primary: boolean }) => {
             if (img.storage_path) {
               const bucket = (img.storage_path.startsWith('products/') || img.storage_path.startsWith('productos/')) ? 'product-images' : 'organization_images';
               const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(img.storage_path);
@@ -1100,7 +1147,7 @@ class PurchaseOrderService {
         }
       }
 
-      return data.map((p: any) => {
+      return data.map((p): ProductoParaOrdenCompra => {
         // Determinar parent_name: por parent_product_id o por prefijo de SKU
         let parentName: string | null = null;
         let parentImage: string | null = null;
@@ -1116,7 +1163,7 @@ class PurchaseOrderService {
             if (skuToParent.has(baseSku)) {
               parentName = skuToParent.get(baseSku)!;
               // Buscar imagen del padre
-              const parentEntry = allData.find((pp: any) => pp.sku === baseSku && pp.is_parent);
+              const parentEntry = allData.find((pp) => pp.sku === baseSku && pp.is_parent);
               if (parentEntry) {
                 parentImage = imageMap[parentEntry.id] || null;
               }
@@ -1129,7 +1176,7 @@ class PurchaseOrderService {
           uuid: p.uuid,
           sku: p.sku,
           name: p.name,
-          unit_code: p.unit_code,
+          unit_code: p.unit_code ?? undefined,
           category: p.categories?.name,
           cost: costMap.get(p.id) || 0,
           track_stock: p.track_stock,

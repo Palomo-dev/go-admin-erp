@@ -14,7 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toastError, toastSuccess, toastInfo } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
@@ -61,16 +62,48 @@ function descuentoProporcional(
   return Math.round((descuento * cantidad / qtyOriginal) * 100) / 100;
 }
 
+/** Factura de venta sobre la que se emite la nota (campos que usa el diálogo). */
+interface FacturaNotaCredito {
+  id: string;
+  number?: string | null;
+  branch_id?: number | null;
+  customer_id?: string | null;
+  currency?: string | null;
+  balance?: number | null;
+  total?: number | null;
+  subtotal?: number | string | null;
+  tax_total?: number | string | null;
+  tax_included?: boolean | null;
+  payment_method?: string | null;
+  status?: string | null;
+}
+
+/** Línea de la factura original que se puede devolver. */
+interface ItemNotaCredito {
+  id: string;
+  qty: number;
+  unit_price?: number | null;
+  description?: string | null;
+  product_id?: number | null;
+  tax_code?: string | null;
+  tax_rate?: number | string | null;
+  discount_amount?: number | string | null;
+}
+
 interface NotaCreditoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  factura: any;
-  items: any[];
+  factura: FacturaNotaCredito;
+  items: ItemNotaCredito[];
   onSuccess?: () => void;
 }
 
 export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSuccess }: NotaCreditoDialogProps) {
   const organizationId = getOrganizationId();
+  // Importes en la moneda de la factura (la base si no la trae).
+  const { paraDocumento } = useMonedaOrganizacion();
+  const monedaNota = paraDocumento(factura?.currency);
+  const formatearMonto = (valor: number) => formatMoneda(valor, monedaNota);
 
   // Estados del formulario
   const [isLoading, setIsLoading] = useState(false);
@@ -113,7 +146,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
         setUltimoNumero(data.number);
       }
       
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error al generar número de nota de crédito:', error);
       toastError('Error', 'No se pudo generar el número de nota de crédito');
     }
@@ -205,9 +238,9 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
     try {
       const r = await liquidarExcedenteNotaCredito(notaCreditoId, liquidacion, metodoDevolucion);
       if (r.modo === 'saldo_a_favor') {
-        toastInfo('Saldo a favor creado', `El cliente queda con ${formatCurrency(r.excedente ?? excedente)} a favor para su próxima compra.`);
+        toastInfo('Saldo a favor creado', `El cliente queda con ${formatearMonto(r.excedente ?? excedente)} a favor para su próxima compra.`);
       } else if (r.modo === 'devolucion') {
-        toastInfo('Devolución registrada', `Se registró la salida de ${formatCurrency(r.excedente ?? excedente)} por ${metodoDevolucion === 'cash' ? 'caja' : 'banco'}.`);
+        toastInfo('Devolución registrada', `Se registró la salida de ${formatearMonto(r.excedente ?? excedente)} por ${metodoDevolucion === 'cash' ? 'caja' : 'banco'}.`);
       }
     } catch (liqError: unknown) {
       const detalle = liqError instanceof Error ? liqError.message : (liqError as { message?: string })?.message;
@@ -312,7 +345,8 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
           number: notaNumero,
           issue_date: new Date().toISOString(),
           due_date: new Date().toISOString(),
-          currency: factura.currency || 'COP',
+          // La nota va en la moneda de la factura; sin ella, la base la pone el trigger.
+          currency: factura.currency || null,
           subtotal: -montoTotal,  // Se actualizará después con el desglose correcto
           tax_total: 0,  // Se calculará después
           total: -montoTotal,  // Negativo para nota de crédito
@@ -393,8 +427,8 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
           .eq('id', notaCreditoId);
 
         // Actualizar saldo de la factura original
-        const nuevoSaldoV = Math.max(0, factura.balance - monto);
-        const nuevoEstadoV = nuevoSaldoV <= 0 ? 'void' : nuevoSaldoV < factura.total ? 'partial' : factura.status;
+        const nuevoSaldoV = Math.max(0, Number(factura.balance) - monto);
+        const nuevoEstadoV = nuevoSaldoV <= 0 ? 'void' : nuevoSaldoV < Number(factura.total) ? 'partial' : factura.status;
         const { error: facturaVError } = await supabase
           .from('invoice_sales')
           .update({ balance: nuevoSaldoV, status: nuevoEstadoV })
@@ -417,7 +451,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
 
         await liquidarExcedente(notaCreditoId);
 
-        toastSuccess('Nota de crédito generada', `Se ha generado la nota de crédito ${notaNumero} por ${formatCurrency(monto)} exitosamente`);
+        toastSuccess('Nota de crédito generada', `Se ha generado la nota de crédito ${notaNumero} por ${formatearMonto(monto)} exitosamente`);
 
         // Enviar automáticamente a DIAN si la factura original fue aceptada
         try {
@@ -435,7 +469,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
               toastError('Envío a DIAN pendiente', `La nota de crédito se creó pero no se pudo enviar a DIAN: ${factusResult.error}. Puede reintentar desde el detalle.`);
             }
           }
-        } catch (dianError: any) {
+        } catch (dianError) {
           console.error('Error en envío automático a DIAN:', dianError);
           toastError('Envío a DIAN pendiente', 'La nota de crédito se creó pero el envío a DIAN falló. Puede reintentar desde el detalle.');
         }
@@ -560,8 +594,8 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
       }
       
       // 4. Actualizar saldo de la factura original
-      const nuevoSaldo = Math.max(0, factura.balance - (subtotal + taxTotal));
-      const nuevoEstado = nuevoSaldo <= 0 ? 'void' : nuevoSaldo < factura.total ? 'partial' : factura.status;
+      const nuevoSaldo = Math.max(0, Number(factura.balance) - (subtotal + taxTotal));
+      const nuevoEstado = nuevoSaldo <= 0 ? 'void' : nuevoSaldo < Number(factura.total) ? 'partial' : factura.status;
       
       const { error: facturaUpdateError } = await supabase
         .from('invoice_sales')
@@ -595,7 +629,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
 
       await liquidarExcedente(notaCreditoId);
 
-      toastSuccess("Nota de crédito generada", `Se ha generado la nota de crédito ${notaNumero} por ${formatCurrency(subtotal + taxTotal)} exitosamente`);
+      toastSuccess("Nota de crédito generada", `Se ha generado la nota de crédito ${notaNumero} por ${formatearMonto(subtotal + taxTotal)} exitosamente`);
 
       // Enviar automáticamente a DIAN si la factura original fue aceptada
       try {
@@ -613,7 +647,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
             toastError('Envío a DIAN pendiente', `La nota de crédito se creó pero no se pudo enviar a DIAN: ${factusResult.error}. Puede reintentar desde el detalle.`);
           }
         }
-      } catch (dianError: any) {
+      } catch (dianError) {
         console.error('Error en envío automático a DIAN:', dianError);
         toastError('Envío a DIAN pendiente', 'La nota de crédito se creó pero el envío a DIAN falló. Puede reintentar desde el detalle.');
       }
@@ -622,8 +656,9 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
       onOpenChange(false);
       if (onSuccess) onSuccess();
 
-    } catch (error: any) {
-      console.error('Error al generar nota de crédito:', error);
+    } catch (errorCapturado) {
+      console.error('Error al generar nota de crédito:', errorCapturado);
+      const error = errorCapturado as { code?: string; message?: string } | null;
       
       // Manejo de errores específicos
       let mensajeError = 'Error al generar nota de crédito';
@@ -772,12 +807,12 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
                           />
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(item.unit_price || 0)}
+                          {formatearMonto(item.unit_price || 0)}
                         </TableCell>
                         <TableCell className="text-right">
                           {itemsSeleccionados[item.id] 
-                            ? formatCurrency((cantidades[item.id] || 0) * (item.unit_price || 0)) 
-                            : formatCurrency(0)}
+                            ? formatearMonto((cantidades[item.id] || 0) * (item.unit_price || 0)) 
+                            : formatearMonto(0)}
                         </TableCell>
                       </TableRow>
                     ))
@@ -798,7 +833,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
             <div className="grid gap-3 rounded-md border p-3" role="group" aria-labelledby="excedente-titulo">
               <div>
                 <p id="excedente-titulo" className="text-sm font-medium">
-                  La nota supera lo que se debía: {formatCurrency(excedente)} ya pagados quedan a favor del cliente
+                  La nota supera lo que se debía: {formatearMonto(excedente)} ya pagados quedan a favor del cliente
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Elige qué pasa con ese dinero. Queda registrado en la contabilidad.
@@ -850,7 +885,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
 
           <div className="flex justify-end items-center gap-2 mt-2">
             <span className="text-sm font-medium">Total de Nota de Crédito:</span>
-            <span className="text-lg font-bold">{formatCurrency(montoTotal)}</span>
+            <span className="text-lg font-bold">{formatearMonto(montoTotal)}</span>
           </div>
         </div>
         <DialogFooter>

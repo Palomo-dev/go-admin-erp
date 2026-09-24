@@ -13,12 +13,13 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/use-toast';
 import { TableSkeleton } from '@/components/common/PageSkeletons';
-import { useOrgCurrency } from '@/lib/hooks/useOrgCurrency';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useOrgMembers } from '@/lib/hooks/useOrgMembers';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
 import { describeError } from '@/lib/utils/errorMessage';
 import type { CommissionRow } from '@/lib/services/crm/commissionAdminService';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
 import {
   ClawbackDialog,
   ComisionesFilters,
@@ -33,7 +34,8 @@ import { REFRESH_BUTTON_ID, commissionFocusFallback } from '@/components/finanza
 
 export default function ComisionesPage() {
   const state = useComisiones();
-  const currency = useOrgCurrency();
+  // Moneda base de la organización; cada comisión se muestra en la suya si la trae.
+  const { code: currency, paraDocumento } = useMonedaOrganizacion();
   const { members } = useOrgMembers();
   const [clawbackRow, setClawbackRow] = useState<CommissionRow | null>(null);
   const [payRow, setPayRow] = useState<CommissionRow | null>(null);
@@ -104,7 +106,7 @@ export default function ComisionesPage() {
         open={payRow !== null}
         onOpenChange={(o) => !o && setPayRow(null)}
         onCloseAutoFocus={onPayDialogClose}
-        title={payRow ? `¿Pagar ${formatCurrency(Number(payRow.commission_amount), payRow.currency || currency)} a ${payRow.payee_name || 'sin nombre'}?` : ''}
+        title={payRow ? `¿Pagar ${formatMoneda(Number(payRow.commission_amount), paraDocumento(payRow.currency || currency))} a ${payRow.payee_name || 'sin nombre'}?` : ''}
         description="La comisión pasará a pagada con la fecha de hoy. Solo se paga si sigue pendiente."
         confirmLabel="Sí, pagar"
         loading={state.busy}

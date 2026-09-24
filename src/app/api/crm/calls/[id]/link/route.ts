@@ -177,7 +177,9 @@ export async function POST(
           pipeline_id: body.create_opportunity.pipeline_id,
           stage_id: body.create_opportunity.stage_id,
           amount: body.create_opportunity.amount ?? null,
-          currency: body.create_opportunity.currency ?? 'COP',
+          // Sin moneda elegida, NULL: el trigger `trg_00_moneda_base_por_defecto`
+          // pone la moneda base de la organización.
+          currency: body.create_opportunity.currency ?? null,
         })
         .select('id')
         .single();

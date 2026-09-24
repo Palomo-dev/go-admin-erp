@@ -23,7 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz } from '@/lib/utils/timezone';
 import type { Group } from '@/lib/services/groupReservationsService';
@@ -49,6 +49,7 @@ function GroupCard({
   onDelete: () => void;
   formatDate: (value: string | Date | null | undefined) => string;
 }) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const { timezone } = useOrgTimezone();
   const today = todayInTz(timezone);
   const isActive = !group.releaseDate || group.releaseDate >= today;

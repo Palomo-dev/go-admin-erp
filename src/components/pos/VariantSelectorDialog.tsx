@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Package, Check, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { POSService } from '@/lib/services/posService';
 import { cn } from '@/lib/utils';
 import { ProductModifiersService, type ProductModifierGroup } from '@/lib/services/productModifiersService';
@@ -55,6 +55,7 @@ export function VariantSelectorDialog({
   product,
   onSelectVariant,
 }: VariantSelectorDialogProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [variants, setVariants] = useState<Variant[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
@@ -107,7 +108,7 @@ export function VariantSelectorDialog({
         // Producto simple sin variantes: se usa a sí mismo como "variante" para
         // permitir elegir únicamente sus modificadores (ej. salsas, extras).
         // Se preservan todos los campos originales del producto (station, categories, etc.)
-        setSelectedVariant({ ...(product as any), variant_data: {} });
+        setSelectedVariant({ ...product, variant_data: {} } as Variant);
       }
     } catch (error) {
       console.error('Error cargando variantes:', error);
@@ -257,10 +258,10 @@ export function VariantSelectorDialog({
               <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
               {variants.length === 0 && (
                 <p className="text-lg font-bold text-blue-600 mt-1">
-                  {formatCurrency((selectedVariant?.price || 0) + modifiersExtraTotal)}
+                  {formatear((selectedVariant?.price || 0) + modifiersExtraTotal)}
                   {modifiersExtraTotal > 0 && (
                     <span className="text-xs font-normal text-muted-foreground ml-1">
-                      ({formatCurrency(selectedVariant?.price || 0)} + {formatCurrency(modifiersExtraTotal)})
+                      ({formatear(selectedVariant?.price || 0)} + {formatear(modifiersExtraTotal)})
                     </span>
                   )}
                 </p>
@@ -316,11 +317,11 @@ export function VariantSelectorDialog({
                     {selectedVariant.price ? (
                       <>
                         <p className="text-lg font-bold text-blue-600">
-                          {formatCurrency(selectedVariant.price + modifiersExtraTotal)}
+                          {formatear(selectedVariant.price + modifiersExtraTotal)}
                         </p>
                         {modifiersExtraTotal > 0 && (
                           <p className="text-xs text-muted-foreground">
-                            {formatCurrency(selectedVariant.price)} + {formatCurrency(modifiersExtraTotal)} extras
+                            {formatear(selectedVariant.price)} + {formatear(modifiersExtraTotal)} extras
                           </p>
                         )}
                       </>
@@ -368,7 +369,7 @@ export function VariantSelectorDialog({
                               </div>
                               {modifier.extra_price > 0 && (
                                 <span className="text-xs text-muted-foreground">
-                                  +{formatCurrency(modifier.extra_price)}
+                                  +{formatear(modifier.extra_price)}
                                 </span>
                               )}
                             </div>
@@ -410,7 +411,7 @@ export function VariantSelectorDialog({
                         </p>
                       </div>
                       <p className="font-bold">
-                        {variant.price ? formatCurrency(variant.price) : '-'}
+                        {variant.price ? formatear(variant.price) : '-'}
                       </p>
                     </div>
                   </div>

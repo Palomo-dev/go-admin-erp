@@ -11,7 +11,7 @@ import {
   BarChart3,
   RotateCcw,
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { ReportSummary } from '@/lib/services/parkingReportService';
 
 interface ReportesSummaryProps {
@@ -20,6 +20,7 @@ interface ReportesSummaryProps {
 }
 
 export function ReportesSummary({ summary, isLoading }: ReportesSummaryProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const stats = [
     {
       label: 'Total Ingresos',

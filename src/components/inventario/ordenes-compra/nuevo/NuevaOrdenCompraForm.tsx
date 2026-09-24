@@ -41,7 +41,7 @@ import {
   Trash2,
   Package
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface OrderItem extends PurchaseOrderItemInput {
   id: string;
@@ -51,9 +51,18 @@ interface OrderItem extends PurchaseOrderItemInput {
   track_serial?: boolean;
 }
 
+/** Campos de variante y serial que `getProducts` trae además de los tipados en ProductOption. */
+interface ProductoConVariante {
+  parent_image?: string | null;
+  parent_name?: string | null;
+  variant_data?: Record<string, unknown> | null;
+  track_serial?: boolean | null;
+}
+
 export function NuevaOrdenCompraForm() {
   const router = useRouter();
   const { selectedBranchId } = useBranch();
+  const { formatear } = useMonedaOrganizacion();
 
   // Estados del formulario
   const [supplierId, setSupplierId] = useState<string>('');
@@ -67,7 +76,7 @@ export function NuevaOrdenCompraForm() {
 
   // Datos de selectores
   const [suppliers, setSuppliers] = useState<SearchSelectOption[]>([]);
-  const [branches, setBranches] = useState<SearchSelectOption[]>([]);
+  const [, setBranches] = useState<SearchSelectOption[]>([]);
   const [products, setProducts] = useState<ProductOption[]>([]);
 
   // Item temporal para agregar
@@ -152,13 +161,14 @@ export function NuevaOrdenCompraForm() {
     const cost = parseFloat(itemCost) || 0;
 
     // Construir nombre con atributos de variante si aplica
+    const variante = product as unknown as ProductoConVariante;
     let displayName = product.name;
-    if ((product as any).parent_name && (product as any).variant_data) {
-      const entries = Object.entries((product as any).variant_data)
+    if (variante.parent_name && variante.variant_data) {
+      const entries = Object.entries(variante.variant_data)
         .filter(([, v]) => v && String(v).trim() !== '');
       if (entries.length > 0) {
         const attrs = entries.map(([k, v]) => `${k}: ${v}`).join(' · ');
-        displayName = `${(product as any).parent_name} · ${attrs}`;
+        displayName = `${variante.parent_name} · ${attrs}`;
       }
     }
 
@@ -167,11 +177,11 @@ export function NuevaOrdenCompraForm() {
       product_id: product.id,
       productName: displayName,
       sku: product.sku,
-      image: product.image || (product as any).parent_image || null,
+      image: product.image || variante.parent_image || null,
       quantity,
       unit_cost: cost,
-      track_serial: (product as any).track_serial === true,
-      requires_serial: (product as any).track_serial === true,
+      track_serial: variante.track_serial === true,
+      requires_serial: variante.track_serial === true,
       serial_numbers: [],
     };
 
@@ -272,9 +282,9 @@ export function NuevaOrdenCompraForm() {
       } else {
         router.push('/app/inventario/ordenes-compra');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creando orden:', error);
-      toastError('Error', error?.message || 'No se pudo crear la orden de compra');
+      toastError('Error', (error as { message?: string } | null)?.message || 'No se pudo crear la orden de compra');
     } finally {
       setIsSaving(false);
     }
@@ -518,7 +528,7 @@ export function NuevaOrdenCompraForm() {
                             />
                           </TableCell>
                           <TableCell className="text-right font-medium text-gray-900 dark:text-white">
-                            {formatCurrency(item.quantity * item.unit_cost)}
+                            {formatear(item.quantity * item.unit_cost)}
                           </TableCell>
                           <TableCell>
                             <Button
@@ -582,7 +592,7 @@ export function NuevaOrdenCompraForm() {
               <div className="flex justify-between items-center py-2">
                 <span className="text-gray-600 dark:text-gray-400 font-medium">Total</span>
                 <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(total)}
+                  {formatear(total)}
                 </span>
               </div>
 

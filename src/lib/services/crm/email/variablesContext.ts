@@ -12,6 +12,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { RenderContext } from './variables';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export interface ContextRefs {
   customerId?: string | null;
@@ -37,6 +38,8 @@ export async function buildContext(orgId: number, refs: ContextRefs, supabase: S
   const ctx = emptyContext();
   ctx.custom = { ...(refs.custom ?? {}) };
   const base = appUrl();
+  // Moneda base de la organización: respaldo de oportunidad y cotización (nunca 'COP' cableado).
+  const monedaBase = (await resolveOrgCurrency(supabase, orgId)).code;
 
   const { data: org } = await supabase
     .from('organizations')
@@ -53,7 +56,7 @@ export async function buildContext(orgId: number, refs: ContextRefs, supabase: S
       phone: o.phone ?? '',
       website: o.website ?? '',
       email: o.email ?? '',
-      currency: 'COP',
+      currency: monedaBase,
       timezone: 'America/Bogota',
       primary_color: o.primary_color ?? '#2563eb',
     };
@@ -76,7 +79,7 @@ export async function buildContext(orgId: number, refs: ContextRefs, supabase: S
         id: String(o.id),
         name: (o.name as string) ?? '',
         amount: (o.amount as number) ?? null,
-        currency: (o.currency as string) || 'COP',
+        currency: (o.currency as string) || monedaBase,
         expected_close_date: (o.expected_close_date as string) ?? null,
         next_action: (o.next_action as string) ?? null,
         status: (o.status as string) ?? undefined,
@@ -152,7 +155,7 @@ export async function buildContext(orgId: number, refs: ContextRefs, supabase: S
         id: String(r.id),
         number: (r.number as string) ?? '',
         total: (r.total as number) ?? null,
-        currency: (r.currency as string) || ctx.opportunity?.currency || 'COP',
+        currency: (r.currency as string) || ctx.opportunity?.currency || monedaBase,
         valid_until: (r.valid_until as string) ?? null,
         url: `${base}/app/crm/cotizaciones/${String(r.id)}`,
         items,

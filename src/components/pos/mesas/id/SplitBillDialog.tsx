@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -21,11 +20,9 @@ import {
   DollarSign, 
   Calculator,
   CheckCircle,
-  X,
-  Percent,
   Receipt
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { SaleItem } from './types';
 
 interface SplitBillDialogProps {
@@ -55,6 +52,7 @@ export function SplitBillDialog({
   comensales,
   onConfirmSplit
 }: SplitBillDialogProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [splitMode, setSplitMode] = useState<'items' | 'equal' | 'custom'>('items');
   const [splits, setSplits] = useState<BillSplit[]>([]);
   const [currentSplit, setCurrentSplit] = useState(0);
@@ -80,7 +78,7 @@ export function SplitBillDialog({
     const updatedSplits = splits.map(split => ({
       ...split,
       items: Object.entries(selectedItems)
-        .filter(([_, splitQty]) => splitQty[split.id] > 0)
+        .filter(([, splitQty]) => splitQty[split.id] > 0)
         .map(([itemId, splitQty]) => {
           const item = items.find(i => i.id === itemId);
           return item ? {
@@ -90,7 +88,7 @@ export function SplitBillDialog({
         })
         .filter(Boolean) as Array<{item: SaleItem; quantity: number}>,
       total: Object.entries(selectedItems)
-        .filter(([_, splitQty]) => splitQty[split.id] > 0)
+        .filter(([, splitQty]) => splitQty[split.id] > 0)
         .reduce((sum, [itemId, splitQty]) => {
           const item = items.find(i => i.id === itemId);
           if (!item) return sum;
@@ -148,7 +146,7 @@ export function SplitBillDialog({
 
   const handleSplitEqually = () => {
     const perPerson = total / splits.length;
-    const equalSplits: BillSplit[] = splits.map((split, i) => ({
+    const equalSplits: BillSplit[] = splits.map((split) => ({
       ...split,
       items: [],
       total: perPerson
@@ -202,13 +200,13 @@ export function SplitBillDialog({
             <div>
               <span>Dividir Cuenta</span>
               <p className="text-sm font-normal text-gray-500 dark:text-gray-400 mt-0.5">
-                Total a dividir: <span className="font-bold text-base text-blue-600 dark:text-blue-400">{formatCurrency(total)}</span>
+                Total a dividir: <span className="font-bold text-base text-blue-600 dark:text-blue-400">{formatear(total)}</span>
               </p>
             </div>
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={splitMode} onValueChange={(v) => setSplitMode(v as any)}>
+        <Tabs value={splitMode} onValueChange={(v) => setSplitMode(v as 'items' | 'equal' | 'custom')}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="items">
               <Split className="h-4 w-4 mr-2" />
@@ -252,7 +250,7 @@ export function SplitBillDialog({
                             <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
                               <span>Cantidad: {item.quantity}</span>
                               <span>•</span>
-                              <span>{formatCurrency(Number(item.total))}</span>
+                              <span>{formatear(Number(item.total))}</span>
                             </div>
                             <div className="mt-2">
                               <div className="flex items-center gap-2">
@@ -342,7 +340,7 @@ export function SplitBillDialog({
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-lg">
-                            {formatCurrency(split.total)}
+                            {formatear(split.total)}
                           </p>
                         </div>
                       </div>
@@ -357,11 +355,11 @@ export function SplitBillDialog({
                       Total asignado
                     </span>
                     <span className="font-bold text-lg text-green-900 dark:text-green-100">
-                      {formatCurrency(getTotalAssigned())}
+                      {formatear(getTotalAssigned())}
                     </span>
                   </div>
                   <div className="mt-1 text-xs text-green-700 dark:text-green-300">
-                    Falta: {formatCurrency(total - getTotalAssigned())}
+                    Falta: {formatear(total - getTotalAssigned())}
                   </div>
                 </Card>
               </div>
@@ -390,7 +388,7 @@ export function SplitBillDialog({
                         <span className="font-medium">{split.name}</span>
                       </div>
                       <span className="text-xl font-bold text-blue-600">
-                        {formatCurrency(total / splits.length)}
+                        {formatear(total / splits.length)}
                       </span>
                     </div>
                   </Card>
@@ -460,7 +458,7 @@ export function SplitBillDialog({
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Suma asignada:</span>
                   <span className="font-bold text-lg">
-                    {formatCurrency(splits.reduce((s, sp) => s + sp.total, 0))}
+                    {formatear(splits.reduce((s, sp) => s + sp.total, 0))}
                   </span>
                 </div>
                 <div className="flex justify-between items-center mt-1 text-sm">
@@ -470,7 +468,7 @@ export function SplitBillDialog({
                       ? 'text-green-600 font-medium'
                       : 'text-orange-600 font-medium'
                   }>
-                    {formatCurrency(total - splits.reduce((s, sp) => s + sp.total, 0))}
+                    {formatear(total - splits.reduce((s, sp) => s + sp.total, 0))}
                   </span>
                 </div>
               </Card>
@@ -503,12 +501,12 @@ export function SplitBillDialog({
         <DialogFooter className="flex justify-between items-center">
           <div className="flex items-center gap-4">
             <div className="text-sm text-gray-500">
-              Total original: <span className="font-bold">{formatCurrency(total)}</span>
+              Total original: <span className="font-bold">{formatear(total)}</span>
             </div>
             {splitMode === 'items' && (
               <div className="text-sm">
                 <Badge variant={getTotalAssigned() === total ? "default" : "secondary"}>
-                  Asignado: {formatCurrency(getTotalAssigned())}
+                  Asignado: {formatear(getTotalAssigned())}
                 </Badge>
               </div>
             )}

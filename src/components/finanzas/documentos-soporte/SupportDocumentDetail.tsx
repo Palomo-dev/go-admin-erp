@@ -28,8 +28,21 @@ import {
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
-import { formatCurrency, formatDate, cn } from '@/utils/Utils';
+import { formatDate, cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { SendSupportDocumentButton } from '@/components/finanzas/documentos-soporte/SendSupportDocumentButton';
+
+/** Proveedor tal como se guarda en `support_documents.provider` (jsonb). */
+interface ProveedorSoporte {
+  names?: string;
+  identification?: string;
+  dv?: string;
+  address?: string;
+  email?: string;
+  phone?: string;
+  country_code?: string;
+}
 
 interface SupportDocumentDetailData {
   id: string;
@@ -38,8 +51,8 @@ interface SupportDocumentDetailData {
   issue_date: string;
   created_time: string | null;
   observation: string | null;
-  payment_details: any[];
-  provider: any;
+  payment_details: unknown[];
+  provider: ProveedorSoporte | null;
   subtotal: number;
   tax_total: number;
   total: number;
@@ -48,9 +61,11 @@ interface SupportDocumentDetailData {
   is_validated: boolean;
   validated_at: string | null;
   error_message: string | null;
-  factus_response: any;
+  factus_response: unknown;
   supplier_id: number | null;
   invoice_purchase_id: string | null;
+  /** Moneda del documento; null = la base de la organización. */
+  currency: string | null;
   created_at: string;
   items: Array<{
     id: string;
@@ -88,6 +103,7 @@ export function SupportDocumentDetail({ documentId }: SupportDocumentDetailProps
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState<'pdf' | 'xml' | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { paraDocumento } = useMonedaOrganizacion();
 
   useEffect(() => {
     const orgId = getOrganizationId();
@@ -157,10 +173,10 @@ export function SupportDocumentDetail({ documentId }: SupportDocumentDetailProps
       window.document.body.removeChild(link);
       URL.revokeObjectURL(url);
       toast({ title: 'Descarga completada', description: `Archivo ${type.toUpperCase()} descargado` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo descargar',
+        description: (error as { message?: string }).message || 'No se pudo descargar',
         variant: 'destructive',
       });
     } finally {
@@ -204,10 +220,10 @@ export function SupportDocumentDetail({ documentId }: SupportDocumentDetailProps
 
       toast({ title: 'Documento eliminado' });
       router.push('/app/finanzas/documentos-soporte');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo eliminar',
+        description: (error as { message?: string }).message || 'No se pudo eliminar',
         variant: 'destructive',
       });
     } finally {
@@ -229,7 +245,9 @@ export function SupportDocumentDetail({ documentId }: SupportDocumentDetailProps
   const canSendToDian = ['draft', 'failed', 'rejected'].includes(doc.status);
   const canDownload = doc.status === 'accepted' && doc.number;
   const canDelete = ['draft', 'failed', 'rejected'].includes(doc.status);
-  const provider = doc.provider || {};
+  const provider: ProveedorSoporte = doc.provider || {};
+  // Importes en la moneda del documento soporte; sin ella, la base de la organización.
+  const formatCurrency = crearFormateadorMoneda(paraDocumento(doc.currency));
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">

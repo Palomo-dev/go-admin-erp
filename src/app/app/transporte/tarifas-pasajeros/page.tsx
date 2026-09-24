@@ -363,7 +363,9 @@ export default function TarifasPasajerosPage() {
       fare_code: row.fare_code || row.codigo || undefined,
       fare_type: row.fare_type || row.tipo || 'regular',
       amount: parseFloat(row.amount || row.precio || row.monto || '0'),
-      currency: row.currency || row.moneda || 'COP',
+      // Sin moneda en el archivo: la pone `faresService.createFare` (moneda de
+      // la ruta o, si no hay, la base de la organización por trigger).
+      currency: row.currency || row.moneda || undefined,
       discount_percent: parseFloat(row.discount_percent || row.descuento_porcentaje || '0'),
       valid_from: row.valid_from || row.valido_desde || undefined,
       valid_until: row.valid_until || row.valido_hasta || undefined,

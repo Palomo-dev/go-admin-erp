@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebOrdersSecret, webhookErrorResponse } from '@/lib/security/webhookSignatures';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { generateInvoiceNumberWithClient } from '@/lib/utils/invoiceUtils';
 import { resolveLineTaxWith } from '@/lib/services/taxResolverCore';
 import type { WebOrder } from '@/lib/services/webOrdersService';
@@ -11,6 +11,7 @@ import {
   repartirTotalesPedidoWeb,
   type LineaFacturaOriginal,
 } from '@/lib/services/webOrderTotals';
+import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
 
 /**
  * POST /api/web-orders/[id]/refund
@@ -101,7 +102,7 @@ export async function POST(
     // 2. Buscar la factura original (invoice_sales con sale_id = order.sale_id)
     const { data: originalInvoice } = await supabase
       .from('invoice_sales')
-      .select('id, number, total, balance, status, tax_included')
+      .select('id, number, total, balance, status, tax_included, currency')
       .eq('sale_id', order.sale_id)
       .eq('document_type', 'invoice')
       .limit(1)
@@ -141,7 +142,9 @@ export async function POST(
           number: creditNoteNumber,
           issue_date: now,
           due_date: now,
-          currency: 'COP',
+          // La nota va en la moneda de la factura que revierte; sin factura,
+          // null y el trigger trg_00_moneda_base_por_defecto pone la base.
+          currency: normalizarCodigoMoneda(originalInvoice?.currency),
           subtotal: creditNoteSubtotal,
           tax_total: creditNoteTax,
           total: creditNoteTotal,
@@ -209,7 +212,7 @@ export async function POST(
     const stockErrors: string[] = [];
     const itemsToReturn = partialItems.length > 0
       ? partialItems
-      : (order.items || []).map((item: any) => ({
+      : (order.items || []).map((item: { product_id: number; quantity: number | string | null }) => ({
           product_id: item.product_id,
           quantity: Number(item.quantity) || 0,
         }));

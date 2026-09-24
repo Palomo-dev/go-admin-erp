@@ -1,6 +1,6 @@
 'use client';
 
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   Card,
@@ -37,6 +37,8 @@ import {
 } from 'lucide-react';
 import type { IncidentWithDetails } from '@/lib/services/incidentsService';
 import { INCIDENT_TYPES, SEVERITY_LEVELS, INCIDENT_STATUSES } from '@/lib/services/incidentsService';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 
 interface IncidentCardProps {
   incident: IncidentWithDetails;
@@ -87,13 +89,9 @@ export function IncidentCard({
   onAssign,
   onChangeStatus,
 }: IncidentCardProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: incident.currency || 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  // En la moneda del documento; sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = crearFormateadorMoneda(paraDocumento(incident.currency));
 
   const incidentTypeLabel = INCIDENT_TYPES.find(t => t.value === incident.incident_type)?.label || incident.incident_type;
   const severityLabel = SEVERITY_LEVELS.find(s => s.value === incident.severity)?.label || incident.severity;

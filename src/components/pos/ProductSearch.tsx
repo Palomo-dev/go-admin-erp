@@ -25,7 +25,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/use-toast';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { CachedProductImage } from './CachedProductImage';
 import { BarcodeScanner } from '@/components/ui/barcode-scanner';
 import { VariantSelectorDialog, type SelectedModifier } from './VariantSelectorDialog';
@@ -80,6 +81,7 @@ type SelectedVariant = {
 
 export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   const { branchFilter } = useBranch();
+  const { formatear } = useMonedaOrganizacion();
   const [productsData, setProductsData] = useState<PaginatedResponse<Product>>({
     data: [],
     total: 0,
@@ -797,14 +799,14 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                               "line-through text-gray-400 dark:text-gray-500",
                               gridSize === 'large' ? "text-[0.65rem] sm:text-xs" : "text-[0.6rem]"
                             )}>
-                              {formatCurrency(Number(product.compare_price))}
+                              {formatear(Number(product.compare_price))}
                             </span>
                           )}
                           <span className={cn(
                             "font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-1.5 sm:px-2 py-0.5 rounded",
                             gridSize === 'large' ? "text-xs sm:text-sm" : "text-[0.7rem] sm:text-xs"
                           )}>
-                            {formatCurrency(Number(product.price))}
+                            {formatear(Number(product.price))}
                           </span>
                         </div>
                       )}

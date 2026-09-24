@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Receipt, Send, Clock, Split, DollarSign, UserCircle, CheckCircle2, AlertCircle, LogOut } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { CustomerSelector, type OccupiedSpace } from '@/components/pos/CustomerSelector';
 import type { Customer } from '@/components/pos/types';
 import type { BillSplit } from '@/components/pos/mesas/id/SplitBillDialog';
@@ -49,7 +49,6 @@ export function MesaActionsSidebar({
   selectedRoom,
   onCustomerSelect,
   subtotal,
-  taxes,
   total,
   itemsCount,
   sessionStatus,
@@ -68,6 +67,7 @@ export function MesaActionsSidebar({
   onLiberarMesa,
   cashSessionActive = true,
 }: MesaActionsSidebarProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [comandaBadge, setComandaBadge] = useState<PrintBadge>(null);
   const [preCuentaBadge, setPreCuentaBadge] = useState<PrintBadge>(null);
   const comandaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,7 +134,7 @@ export function MesaActionsSidebar({
             <div className="flex justify-between text-sm">
               <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
               <span className="font-medium text-gray-900 dark:text-gray-100">
-                {formatCurrency(subtotal)}
+                {formatear(subtotal)}
               </span>
             </div>
             <MesaTaxBreakdown
@@ -145,7 +145,7 @@ export function MesaActionsSidebar({
             <div className="flex justify-between text-lg font-bold">
               <span className="text-gray-900 dark:text-gray-100">Total</span>
               <span className="text-blue-600 dark:text-blue-400">
-                {formatCurrency(total)}
+                {formatear(total)}
               </span>
             </div>
           </div>
@@ -250,7 +250,7 @@ export function MesaActionsSidebar({
                     .map((split) => (
                       <div key={split.id} className="flex justify-between text-sm py-1">
                         <span className="text-gray-700 dark:text-gray-300">{split.name}:</span>
-                        <span className="font-semibold text-blue-600">{formatCurrency(split.total)}</span>
+                        <span className="font-semibold text-blue-600">{formatear(split.total)}</span>
                       </div>
                     ))}
                 </div>
@@ -265,7 +265,7 @@ export function MesaActionsSidebar({
                           {unassignedItemsCount} producto(s) sin asignar
                         </p>
                         <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
-                          Total: {formatCurrency(unassignedItemsTotal)}
+                          Total: {formatear(unassignedItemsTotal)}
                         </p>
                         <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
                           Divide la cuenta nuevamente para incluirlos

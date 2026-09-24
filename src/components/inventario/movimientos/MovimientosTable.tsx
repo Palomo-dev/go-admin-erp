@@ -25,7 +25,7 @@ import {
   ArrowUpCircle,
   Package
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import type { StockMovement } from '@/lib/services/stockService';
@@ -81,12 +81,12 @@ function getSourceRoute(source: string, sourceId?: string): string | null {
 }
 
 export function MovimientosTable({ 
-  data, 
-  isLoading,
-  onViewSource
+  data,
+  isLoading
 }: MovimientosTableProps) {
   const { formatDate } = useFormatDate();
   const { timezone } = useOrgTimezone();
+  const { formatear } = useMonedaOrganizacion();
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -200,10 +200,10 @@ export function MovimientosTable({
                     {item.direction === 'in' ? '+' : '-'}{(item.qty || 0).toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right text-gray-600 dark:text-gray-400">
-                    {formatCurrency(item.unit_cost || 0)}
+                    {formatear(item.unit_cost || 0)}
                   </TableCell>
                   <TableCell className="text-right font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(totalValue)}
+                    {formatear(totalValue)}
                   </TableCell>
                   <TableCell>
                     <Badge className={getSourceColor(item.source)}>

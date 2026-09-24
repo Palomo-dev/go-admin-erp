@@ -3,7 +3,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import type { VentasComprasData } from './FinanzasDashboardService';
 import {
@@ -28,7 +29,14 @@ interface VentasComprasChartProps {
 /** Umbral de puntos a partir del cual las líneas son más claras que las barras */
 const LINE_THRESHOLD = 7;
 
-export function VentasComprasChart({ data, isLoading, currencyCode = 'COP' }: VentasComprasChartProps) {
+export function VentasComprasChart({ data, isLoading, currencyCode }: VentasComprasChartProps) {
+  // Agregados del tablero: en la moneda que pasa el padre (la base) o, si no
+  // llega, en la moneda base de la organización. Nunca pesos fijos.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const monedaCtx = paraDocumento(currencyCode);
+  const formatear = crearFormateadorMoneda(monedaCtx);
+  // Eje: sin decimales para que las etiquetas sean cortas.
+  const formatearEje = crearFormateadorMoneda(monedaCtx, { decimals: 0 });
   if (isLoading) {
     return (
       <Card className="dark:bg-gray-800/50">
@@ -104,7 +112,7 @@ export function VentasComprasChart({ data, isLoading, currencyCode = 'COP' }: Ve
             />
             <span className="text-gray-600 dark:text-gray-400 capitalize">{entry.dataKey}:</span>
             <span className="font-semibold text-gray-900 dark:text-white">
-              {formatCurrency(entry.value, currencyCode)}
+              {formatear(entry.value)}
             </span>
           </p>
         ))}
@@ -153,7 +161,7 @@ export function VentasComprasChart({ data, isLoading, currencyCode = 'COP' }: Ve
               <YAxis
                 tick={{ fontSize: 10, fill: '#9ca3af' }}
                 {...axisProps}
-                tickFormatter={(v) => formatCurrency(v, currencyCode).replace(/\.\d+$/, '').replace(/\s/g, '')}
+                tickFormatter={(v) => formatearEje(v).replace(/\s/g, '')}
                 width={70}
               />
               <Tooltip content={<CustomTooltip />} />
@@ -191,7 +199,7 @@ export function VentasComprasChart({ data, isLoading, currencyCode = 'COP' }: Ve
               <YAxis
                 tick={{ fontSize: 10, fill: '#9ca3af' }}
                 {...axisProps}
-                tickFormatter={(v) => formatCurrency(v, currencyCode).replace(/\.\d+$/, '').replace(/\s/g, '')}
+                tickFormatter={(v) => formatearEje(v).replace(/\s/g, '')}
                 width={70}
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(59,130,246,0.05)' }} />
@@ -207,13 +215,13 @@ export function VentasComprasChart({ data, isLoading, currencyCode = 'COP' }: Ve
           <div className="text-center">
             <p className="text-sm text-gray-500 dark:text-gray-400">Total Ventas</p>
             <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
-              {formatCurrency(totalVentas, currencyCode)}
+              {formatear(totalVentas)}
             </p>
           </div>
           <div className="text-center">
             <p className="text-sm text-gray-500 dark:text-gray-400">Total Compras</p>
             <p className="text-lg font-bold text-red-600 dark:text-red-400">
-              {formatCurrency(totalCompras, currencyCode)}
+              {formatear(totalCompras)}
             </p>
           </div>
         </div>

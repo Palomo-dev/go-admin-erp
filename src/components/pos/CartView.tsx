@@ -16,7 +16,8 @@ import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import KitchenService from '@/lib/services/kitchenService';
 import { supabase } from '@/lib/supabase/config';
 import { Cart, Sale, SaleItem, Customer, Product, Category, Payment } from './types';
-import { formatCurrency, cn } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { TaxSummary, type TaxSummaryTotals } from './TaxSummary';
 import { CachedProductImage } from './CachedProductImage';
 import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
@@ -105,6 +106,7 @@ interface CartViewProps {
 
 export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true }: CartViewProps) {
   const { timezone } = useOrgTimezone();
+  const { formatear } = useMonedaOrganizacion();
   const [showHoldDialog, setShowHoldDialog] = useState(false);
   const [holdReason, setHoldReason] = useState('');
   const [taxIncluded, setTaxIncluded] = useState(cart.tax_included ?? false);
@@ -397,12 +399,12 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         cartId: cart.id,
         reason: holdWithDebtReason || 'Sin motivo especificado',
         paymentTerms,
-        notes: `Total adeudado: ${formatCurrency(cart.total)}`
+        notes: `Total adeudado: ${formatear(cart.total)}`
       });
       
       // Mostrar información del resultado
       toast.success('¡Deuda registrada exitosamente!', {
-        description: `Factura ${result.invoice.number} por ${formatCurrency(result.invoice.total)}`
+        description: `Factura ${result.invoice.number} por ${formatear(result.invoice.total)}`
       });
 
       // Pantalla del cliente: la venta a crédito ya se facturó → «Gracias»
@@ -771,7 +773,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                               <div className="flex items-center gap-1 flex-wrap mt-1">
                                 {item.modifiers.map((mod) => (
                                   <Badge key={mod.modifierId} variant="outline" className="text-[0.6rem] sm:text-[0.65rem] px-1 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300 shrink-0">
-                                    {mod.name}{mod.extraPrice > 0 ? ` (+${formatCurrency(mod.extraPrice)})` : ''}
+                                    {mod.name}{mod.extraPrice > 0 ? ` (+${formatear(mod.extraPrice)})` : ''}
                                   </Badge>
                                 ))}
                               </div>
@@ -829,7 +831,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                                 {item.product.sku}
                               </Badge>
                               <span className="text-[0.65rem] sm:text-xs dark:text-gray-400 text-gray-600">
-                                {formatCurrency(item.unit_price)} / {item.product.unit_code}
+                                {formatear(item.unit_price)} / {item.product.unit_code}
                               </span>
                             </div>
 
@@ -841,7 +843,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                             ) : (
                               item.tax_amount != null && item.tax_amount > 0 && (
                                 <div className="text-[0.65rem] sm:text-xs dark:text-green-400 text-green-600 mt-0.5 sm:mt-1">
-                                  {item.tax_included ? '(inc. ' : '+'}{formatCurrency(item.tax_amount)} impuestos{item.tax_included ? ')' : ''}
+                                  {item.tax_included ? '(inc. ' : '+'}{formatear(item.tax_amount)} impuestos{item.tax_included ? ')' : ''}
                                 </div>
                               )
                             )}
@@ -854,7 +856,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                               >
                                 <Badge variant="outline" className="text-[0.6rem] sm:text-[0.65rem] px-1 py-0 border-red-300 text-red-700 dark:border-red-700 dark:text-red-300 shrink-0">
                                   <Tag className="h-2.5 w-2.5 mr-0.5" />
-                                  -{formatCurrency(item.discount_amount)}
+                                  -{formatear(item.discount_amount)}
                                 </Badge>
                               </div>
                             ) : editingDiscountItemId === item.id ? (
@@ -915,7 +917,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                                         className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.6rem] font-medium bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50 cursor-pointer"
                                         onClick={() => handleApplyDiscount(item.id, disc)}
                                       >
-                                        -{formatCurrency(disc)}
+                                        -{formatear(disc)}
                                       </button>
                                     ))}
                                   </div>
@@ -933,7 +935,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                                     className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.6rem] font-medium bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50 cursor-pointer"
                                     onClick={() => handleApplyDiscount(item.id, disc)}
                                   >
-                                    -{formatCurrency(disc)}
+                                    -{formatear(disc)}
                                   </button>
                                 ))}
                               </div>
@@ -944,11 +946,11 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                         {/* Total del item - visible en desktop */}
                         <div className="hidden md:block text-right min-w-[70px] sm:min-w-[80px]">
                           <div className="font-semibold text-xs sm:text-sm dark:text-gray-100 text-gray-900">
-                            {formatCurrency(item.total)}
+                            {formatear(item.total)}
                           </div>
                           {item.quantity > 1 && (
                             <div className="text-[0.65rem] sm:text-xs dark:text-gray-400 text-gray-600">
-                              {item.quantity} × {formatCurrency(item.unit_price)}
+                              {item.quantity} × {formatear(item.unit_price)}
                             </div>
                           )}
                         </div>
@@ -996,11 +998,11 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                         {/* Total del item - visible en móvil */}
                         <div className="md:hidden text-right flex-1 min-w-0">
                           <div className="font-semibold text-xs sm:text-sm dark:text-gray-100 text-gray-900">
-                            {formatCurrency(item.total)}
+                            {formatear(item.total)}
                           </div>
                           {item.quantity > 1 && (
                             <div className="text-[0.65rem] sm:text-xs dark:text-gray-400 text-gray-600 break-words whitespace-normal">
-                              {item.quantity} × {formatCurrency(item.unit_price)}
+                              {item.quantity} × {formatear(item.unit_price)}
                             </div>
                           )}
                         </div>
@@ -1276,7 +1278,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium dark:text-orange-300 text-orange-700">Total a adeudar:</span>
                 <span className="text-lg font-bold dark:text-orange-200 text-orange-800">
-                  {formatCurrency(cart.total)}
+                  {formatear(cart.total)}
                 </span>
               </div>
             </div>

@@ -30,7 +30,7 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { ParkingPassType } from '@/lib/services/parkingService';
 
 interface PlanesTableProps {
@@ -60,6 +60,7 @@ export function PlanesTable({
   onDuplicate,
   onToggleStatus,
 }: PlanesTableProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
       <Table>

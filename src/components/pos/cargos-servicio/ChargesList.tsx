@@ -6,8 +6,6 @@ import {
   Trash2, 
   MoreHorizontal, 
   Copy,
-  ToggleLeft,
-  ToggleRight,
   Percent,
   DollarSign,
   Users,
@@ -44,7 +42,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { ServiceCharge, CHARGE_TYPE_LABELS, APPLIES_TO_LABELS } from './types';
 import { CargosServicioService } from './cargosServicioService';
-import { formatCurrency, cn } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
 
 interface ChargesListProps {
@@ -60,6 +59,7 @@ export function ChargesList({
   onRefresh, 
   onEdit
 }: ChargesListProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
 
@@ -70,8 +70,8 @@ export function ChargesList({
       await CargosServicioService.delete(deleteId);
       toast.success('Cargo eliminado correctamente');
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al eliminar el cargo');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al eliminar el cargo');
     } finally {
       setDeleteId(null);
     }
@@ -85,8 +85,8 @@ export function ChargesList({
         charge.is_active ? 'Cargo desactivado' : 'Cargo activado'
       );
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al cambiar estado');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al cambiar estado');
     } finally {
       setTogglingId(null);
     }
@@ -97,8 +97,8 @@ export function ChargesList({
       await CargosServicioService.duplicate(charge.id);
       toast.success('Cargo duplicado correctamente');
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al duplicar el cargo');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al duplicar el cargo');
     }
   };
 
@@ -106,7 +106,7 @@ export function ChargesList({
     if (charge.charge_type === 'percentage') {
       return `${charge.charge_value}%`;
     }
-    return formatCurrency(charge.charge_value);
+    return formatear(charge.charge_value);
   };
 
   if (loading) {
@@ -194,7 +194,7 @@ export function ChargesList({
                   <div className="text-sm space-y-1">
                     {charge.min_amount && (
                       <p className="text-gray-600 dark:text-gray-400">
-                        Min: {formatCurrency(charge.min_amount)}
+                        Min: {formatear(charge.min_amount)}
                       </p>
                     )}
                     {charge.min_guests && (

@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { DollarSign, Info } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { InvoicePurchase } from '../types';
@@ -23,18 +24,13 @@ interface ResumenTotalesFacturaProps {
   className?: string;
 }
 
-interface OrganizationTax {
-  id: string;
-  name: string;
-  rate: number;
-  is_default: boolean;
-  is_active: boolean;
-}
-
 export function ResumenTotalesFactura({ 
   factura, 
   className = '' 
 }: ResumenTotalesFacturaProps) {
+  // Totales en la moneda de la factura de compra; sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = crearFormateadorMoneda(paraDocumento(factura?.currency));
   const [taxBreakdown, setTaxBreakdown] = useState<TaxBreakdown[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -132,7 +128,7 @@ export function ResumenTotalesFactura({
           <div className="flex justify-between items-center">
             <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-400">Subtotal:</span>
             <span className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
-              {formatCurrency(factura.subtotal, factura.currency)}
+              {formatCurrency(factura.subtotal)}
             </span>
           </div>
 
@@ -145,7 +141,7 @@ export function ResumenTotalesFactura({
                     {tax.name} ({tax.rate}%):
                   </span>
                   <span className="text-gray-600 dark:text-gray-400">
-                    {formatCurrency(tax.taxAmount, factura.currency)}
+                    {formatCurrency(tax.taxAmount)}
                   </span>
                 </div>
               ))}
@@ -154,7 +150,7 @@ export function ResumenTotalesFactura({
               <div className="flex justify-between items-center text-xs sm:text-sm pt-1 sm:pt-1.5 border-t border-gray-200 dark:border-gray-600">
                 <span className="text-gray-700 dark:text-gray-400">Total impuestos:</span>
                 <span className="font-medium text-gray-900 dark:text-white">
-                  {formatCurrency(factura.tax_total, factura.currency)}
+                  {formatCurrency(factura.tax_total)}
                 </span>
               </div>
             </>
@@ -165,7 +161,7 @@ export function ResumenTotalesFactura({
             <div className="flex justify-between items-center">
               <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-400">Impuestos:</span>
               <span className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
-                {formatCurrency(factura.tax_total, factura.currency)}
+                {formatCurrency(factura.tax_total)}
               </span>
             </div>
           )}
@@ -176,7 +172,7 @@ export function ResumenTotalesFactura({
           <div className="flex justify-between items-center text-base sm:text-lg">
             <span className="font-semibold text-gray-900 dark:text-white">Total:</span>
             <span className="font-bold text-gray-900 dark:text-white">
-              {formatCurrency(factura.total, factura.currency)}
+              {formatCurrency(factura.total)}
             </span>
           </div>
 
@@ -187,7 +183,7 @@ export function ResumenTotalesFactura({
               <div className="flex justify-between items-center text-base sm:text-lg">
                 <span className="font-semibold text-red-600 dark:text-red-400">Balance:</span>
                 <span className="font-bold text-red-600 dark:text-red-400">
-                  {formatCurrency(factura.balance, factura.currency)}
+                  {formatCurrency(factura.balance)}
                 </span>
               </div>
             </>

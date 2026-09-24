@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Calculator, ChevronDown, ChevronUp } from 'lucide-react';
-import { formatCurrency, cn } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useMesaTaxes, type MesaTaxItem } from '@/hooks/useMesaTaxes';
 
 interface MesaTaxBreakdownProps {
@@ -14,6 +15,7 @@ interface MesaTaxBreakdownProps {
 }
 
 export function MesaTaxBreakdown({ items, onTotalsChange, className }: MesaTaxBreakdownProps) {
+  const { formatear } = useMonedaOrganizacion();
   const {
     organizationTaxes,
     appliedTaxes,
@@ -121,7 +123,7 @@ export function MesaTaxBreakdown({ items, onTotalsChange, className }: MesaTaxBr
               Impuestos:
             </span>
             <span className="flex items-center gap-1 font-medium">
-              {formatCurrency(taxTotal)}
+              {formatear(taxTotal)}
               {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             </span>
           </button>
@@ -142,17 +144,17 @@ export function MesaTaxBreakdown({ items, onTotalsChange, className }: MesaTaxBr
                         </Badge>
                       )}
                     </span>
-                    <span className="font-medium">{formatCurrency(tax.taxAmount)}</span>
+                    <span className="font-medium">{formatear(tax.taxAmount)}</span>
                   </div>
                   <div className="text-[0.65rem] text-gray-400 dark:text-gray-500 pl-1">
-                    Base: {formatCurrency(tax.baseAmount)}
+                    Base: {formatear(tax.baseAmount)}
                   </div>
                 </div>
               ))}
               <Separator className="my-1" />
               <div className="flex justify-between text-xs font-medium text-gray-700 dark:text-gray-300">
                 <span>Total impuestos:</span>
-                <span>{formatCurrency(taxTotal)}</span>
+                <span>{formatear(taxTotal)}</span>
               </div>
             </div>
           )}
@@ -163,7 +165,7 @@ export function MesaTaxBreakdown({ items, onTotalsChange, className }: MesaTaxBr
       <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
         <span>Subtotal base:</span>
         <span>
-          {formatCurrency(subtotal)}
+          {formatear(subtotal)}
           {taxIncluded && (
             <span className="text-[0.6rem] ml-1">(imp. incluidos)</span>
           )}

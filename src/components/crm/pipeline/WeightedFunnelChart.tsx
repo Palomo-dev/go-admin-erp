@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Filter } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/common/LoadErrorState';
@@ -26,6 +26,8 @@ interface StageData {
 }
 
 const WeightedFunnelChart: React.FC<WeightedFunnelChartProps> = ({ pipelineId, className }) => {
+  // Importes agregados: moneda base de la organización (nunca 'COP' cableado).
+  const { formatear } = useMonedaOrganizacion();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [stageData, setStageData] = useState<StageData[]>([]);
@@ -181,16 +183,16 @@ const WeightedFunnelChart: React.FC<WeightedFunnelChartProps> = ({ pipelineId, c
           <ResponsiveContainer width="100%" height="100%">
             <FunnelChart>
               <Tooltip 
-                formatter={(value: number, name: string, props: any) => {
+                formatter={(value: number, name: string, props: { payload?: { amount?: number; count?: number; name?: string } }) => {
                   return [
                     <>
                       <div>
-                        <p><strong>Monto total:</strong> {formatCurrency(props.payload.amount)}</p>
-                        <p><strong>Monto ponderado:</strong> {formatCurrency(value)}</p>
-                        <p><strong>Oportunidades:</strong> {props.payload.count}</p>
+                        <p><strong>Monto total:</strong> {formatear(props.payload?.amount)}</p>
+                        <p><strong>Monto ponderado:</strong> {formatear(value)}</p>
+                        <p><strong>Oportunidades:</strong> {props.payload?.count}</p>
                       </div>
                     </>,
-                    props.payload.name
+                    props.payload?.name ?? name
                   ];
                 }}
               />
@@ -212,7 +214,7 @@ const WeightedFunnelChart: React.FC<WeightedFunnelChartProps> = ({ pipelineId, c
         </div>
         <div className="mt-2 text-center">
           <p className="text-sm text-muted-foreground">
-            Total ponderado: <span className="font-medium">{formatCurrency(totalWeightedAmount)}</span>
+            Total ponderado: <span className="font-medium">{formatear(totalWeightedAmount)}</span>
           </p>
         </div>
       </CardContent>

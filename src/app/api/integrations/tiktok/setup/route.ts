@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { tiktokMarketingService } from '@/lib/services/integrations/tiktok';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { CONNECTION_NOT_FOUND } from '@/lib/services/integrations/channelManagerAccess';
 import {
   marketingConnectionInOrg,
@@ -61,7 +62,9 @@ export const POST = withOrg(async (ctx, request) => {
     }
 
     // 2. Ejecutar setup completo
-    const moneda = pedida || 'COP';
+    // Moneda del catálogo: la pedida o, si no viene, la base de la organización
+    // (resolveOrgCurrency), no 'COP' fijo.
+    const moneda = pedida || (await resolveOrgCurrency(ctx.supabase, ctx.organizationId)).code;
     const domain = await resolveOrgStoreDomain(ctx.supabase, ctx.organizationId);
 
     // Productos con el cliente de sesión; credenciales con service-role, ya

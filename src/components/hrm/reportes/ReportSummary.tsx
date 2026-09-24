@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReportSummary as Summary } from '@/lib/services/hrmReportsService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Card, CardContent } from '@/components/ui/card';
 import { Clock, Calendar, DollarSign, Banknote, Users, TrendingUp, AlertTriangle } from 'lucide-react';
 
@@ -14,6 +14,10 @@ export function ReportSummary({
   reportType,
   summary,
 }: ReportSummaryProps) {
+  // Los totales del resumen van en la moneda base de la organización; cada
+  // fila del reporte (`ReportTable`) se pinta en su propia `currency_code`.
+  const { formatear } = useMonedaOrganizacion();
+
   // Attendance Summary
   if (reportType === 'attendance') {
     return (
@@ -163,7 +167,7 @@ export function ReportSummary({
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Total Bruto</p>
                 <p className="text-lg font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(summary.totalGross || 0, 'COP')}
+                  {formatear(summary.totalGross || 0)}
                 </p>
               </div>
             </div>
@@ -178,7 +182,7 @@ export function ReportSummary({
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Deducciones</p>
                 <p className="text-lg font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(summary.totalDeductions || 0, 'COP')}
+                  {formatear(summary.totalDeductions || 0)}
                 </p>
               </div>
             </div>
@@ -193,7 +197,7 @@ export function ReportSummary({
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Total Neto</p>
                 <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(summary.totalNet || 0, 'COP')}
+                  {formatear(summary.totalNet || 0)}
                 </p>
               </div>
             </div>
@@ -246,7 +250,7 @@ export function ReportSummary({
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Desembolsado</p>
                 <p className="text-lg font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(summary.totalDisbursed || 0, 'COP')}
+                  {formatear(summary.totalDisbursed || 0)}
                 </p>
               </div>
             </div>
@@ -261,7 +265,7 @@ export function ReportSummary({
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Saldo Pendiente</p>
                 <p className="text-lg font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(summary.totalBalance || 0, 'COP')}
+                  {formatear(summary.totalBalance || 0)}
                 </p>
               </div>
             </div>

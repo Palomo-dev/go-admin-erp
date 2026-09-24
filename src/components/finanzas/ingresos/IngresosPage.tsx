@@ -7,12 +7,9 @@ import {Plus,
   Download,
   Upload,
   Search,
-  Filter,
   RefreshCw,
   ArrowLeft,
   TrendingUp,
-  DollarSign,
-  Calendar,
   MoreVertical,
   Eye,
   Edit,
@@ -21,7 +18,6 @@ import {Plus,
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -37,15 +33,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { movimientosService, UnifiedMovement } from '@/lib/services/movimientosService';
 import { NuevoIngresoDialog } from './NuevoIngresoDialog';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
@@ -56,6 +46,9 @@ import { useBranch } from '@/lib/context/BranchContext';
 export function IngresosPage() {
   const router = useRouter();
   const { branchFilter } = useBranch();
+  // Los movimientos no traen moneda propia: importes y totales en la moneda base.
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
+  const { formatDate, getToday } = useFormatDate();
   const [movements, setMovements] = useState<UnifiedMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -101,7 +94,7 @@ export function IngresosPage() {
       } else {
         toast({ title: 'Error', description: result.error, variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al duplicar', variant: 'destructive' });
     }
   };
@@ -118,7 +111,7 @@ export function IngresosPage() {
       } else {
         toast({ title: 'Error', description: result.error, variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
     }
   };
@@ -135,7 +128,7 @@ export function IngresosPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ingresos_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `ingresos_${getToday()}.csv`;
     a.click();
   };
 

@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Eye, RotateCcw, Car, CreditCard, Banknote, Receipt } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { ParkingPayment } from '@/lib/services/parkingPaymentService';
 
 interface PagosTableProps {
@@ -65,6 +65,7 @@ const METHOD_LABELS: Record<string, string> = {
 };
 
 export function PagosTable({ payments, onViewDetails, onReverse }: PagosTableProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString('es-CO', {
       day: '2-digit',

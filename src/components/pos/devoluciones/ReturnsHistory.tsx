@@ -11,10 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { DevolucionesService } from './devolucionesService';
 import { Return, ReturnSearchFilters } from './types';
-import { formatCurrency, cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
 
 interface ReturnsHistoryProps {
@@ -23,6 +22,7 @@ interface ReturnsHistoryProps {
 }
 
 export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [returns, setReturns] = useState<Return[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedReturn, setSelectedReturn] = useState<Return | null>(null);
@@ -116,7 +116,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
       window.URL.revokeObjectURL(url);
       
       toast.success('Historial exportado exitosamente');
-    } catch (error) {
+    } catch {
       toast.error('Error al exportar el historial');
     }
   };
@@ -159,7 +159,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total Reembolsado</p>
-                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{formatCurrency(totalReembolsado)}</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{formatear(totalReembolsado)}</p>
               </div>
               <DollarSign className="h-8 w-8 text-red-600 dark:text-red-400" />
             </div>
@@ -305,12 +305,12 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                       <TableCell className="dark:text-gray-300">
                         <div className="space-y-1">
                           <div className="text-lg font-bold text-red-600 dark:text-red-400">
-                            {formatCurrency(returnItem.refund_total_with_tax)}
+                            {formatear(returnItem.refund_total_with_tax)}
                           </div>
                           {returnItem.refund_tax_amount > 0 && (
                             <div className="text-xs text-gray-500 dark:text-gray-400">
-                              Subtotal: {formatCurrency(returnItem.total_refund)} +
-                              Impuestos: {formatCurrency(returnItem.refund_tax_amount)}
+                              Subtotal: {formatear(returnItem.total_refund)} +
+                              Impuestos: {formatear(returnItem.refund_tax_amount)}
                             </div>
                           )}
                         </div>
@@ -375,12 +375,12 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                   <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Reembolso</div>
                   <div className="space-y-1">
                     <div className="text-lg font-bold text-red-600 dark:text-red-400">
-                      {formatCurrency(selectedReturn.refund_total_with_tax)}
+                      {formatear(selectedReturn.refund_total_with_tax)}
                     </div>
                     {selectedReturn.refund_tax_amount > 0 && (
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Subtotal: {formatCurrency(selectedReturn.total_refund)} +
-                        Impuestos: {formatCurrency(selectedReturn.refund_tax_amount)}
+                        Subtotal: {formatear(selectedReturn.total_refund)} +
+                        Impuestos: {formatear(selectedReturn.refund_tax_amount)}
                       </div>
                     )}
                   </div>
@@ -416,7 +416,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                           <div className="font-medium">{item.product_name}</div>
                         </TableCell>
                         <TableCell className="dark:text-gray-300">{item.return_quantity}</TableCell>
-                        <TableCell className="dark:text-gray-300">{formatCurrency(item.refund_amount)}</TableCell>
+                        <TableCell className="dark:text-gray-300">{formatear(item.refund_amount)}</TableCell>
                         <TableCell className="dark:text-gray-300">{item.reason}</TableCell>
                       </TableRow>
                     ))}

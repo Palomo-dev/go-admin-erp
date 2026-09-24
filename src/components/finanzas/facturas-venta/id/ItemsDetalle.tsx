@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 
 interface Item {
@@ -41,9 +42,14 @@ interface ItemsDetalleProps {
   items: Item[];
   taxIncluded?: boolean;
   organizationTaxes?: OrganizationTax[];
+  /** Moneda del documento (factura o nota); sin ella, la base de la organización. */
+  currency?: string | null;
 }
 
-export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [] }: ItemsDetalleProps) {
+export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [], currency }: ItemsDetalleProps) {
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = crearFormateadorMoneda(paraDocumento(currency));
+
   if (!items || items.length === 0) {
     return (
       <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-gray-500 dark:text-gray-400">

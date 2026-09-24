@@ -5,8 +5,9 @@
  */
 
 import { supabase } from "@/lib/supabase/config";
-import { Customer, Opportunity, Stage, Pipeline } from "@/types/crm";
+import { Opportunity, Stage, Pipeline } from "@/types/crm";
 import { currencyService } from "./currencyService";
+import { resolveOrgCurrency } from "./monedaOrganizacion";
 import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 
 /**
@@ -87,7 +88,7 @@ export const getDefaultPipeline = async (organizationId?: number): Promise<Pipel
     }
 
     return await getPipelineById(pipelineData.id);
-  } catch (err: any) {
+  } catch (err) {
     console.error("Error al obtener el pipeline predeterminado:", err);
     return null;
   }
@@ -171,7 +172,7 @@ export const getOpportunitiesByStage = async (stageId: string, organizationId: n
         } else {
           // Si es un objeto, lo usamos directamente
           const customerName = opp.customer && typeof opp.customer === 'object' ? 
-            (opp.customer as any).full_name || 'Cliente sin nombre' : 'Cliente sin nombre';
+            (opp.customer as { full_name?: string | null }).full_name || 'Cliente sin nombre' : 'Cliente sin nombre';
             
           customerObj = {
             id: opp.customer_id,
@@ -291,7 +292,7 @@ export const loadPipelineData = async (organizationId?: number): Promise<Pipelin
       ...defaultPipeline,
       stages: stagesWithOpportunities || []
     };
-  } catch (err: any) {
+  } catch (err) {
     console.error("Error al cargar datos del pipeline:", err);
     return null;
   }
@@ -316,11 +317,11 @@ export const updateOpportunityStage = async (
     if (error) throw error;
     
     return { success: true };
-  } catch (err: any) {
+  } catch (err) {
     console.error("Error al actualizar la etapa de la oportunidad:", err);
     return { 
       success: false, 
-      error: err.message || "Error al actualizar la etapa de la oportunidad"
+      error: (err instanceof Error && err.message) || "Error al actualizar la etapa de la oportunidad"
     };
   }
 };
@@ -332,15 +333,15 @@ export const updateOpportunityStage = async (
  * @returns Estadísticas calculadas para cada etapa
  */
 export const calculateStageStatistics = async (stages: Stage[], baseCurrency?: string, organizationId?: number) => {
-  // Usar COP como moneda base por defecto si no se especifica
-  const targetCurrency = baseCurrency || "COP";
-  
   // Obtener organizationId si no se proporciona
   const orgId = organizationId || getOrganizationId();
   if (!orgId) {
     console.error("No se pudo obtener el ID de organización para las estadísticas de etapa");
     return [];
   }
+
+  // Moneda de consolidación: la pedida o la base de la organización (nunca 'COP' cableado).
+  const targetCurrency = baseCurrency || (await resolveOrgCurrency(supabase, orgId)).code;
 
   // Procesar cada etapa de manera asíncrona
   const stagePromises = stages.map(async (stage) => {

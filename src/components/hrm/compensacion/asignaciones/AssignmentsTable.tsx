@@ -1,7 +1,8 @@
 'use client';
 
 import type { EmploymentCompensation } from '@/lib/services/employmentCompensationService';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz } from '@/lib/utils/timezone';
 import {
@@ -61,6 +62,8 @@ export function AssignmentsTable({
 }: AssignmentsTableProps) {
   const { formatDate } = useFormatDate();
   const { timezone } = useOrgTimezone();
+  // Moneda del paquete; si no llega, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
   const isActive = (assignment: EmploymentCompensation) => {
     const today = todayInTz(timezone);
     return (
@@ -131,14 +134,14 @@ export function AssignmentsTable({
               <TableCell>
                 <div className="text-gray-900 dark:text-white">
                   {assignment.salary_override
-                    ? formatCurrency(assignment.salary_override, assignment.currency_code || 'COP')
+                    ? formatMoneda(assignment.salary_override, paraDocumento(assignment.currency_code))
                     : assignment.package_base_salary
-                    ? formatCurrency(assignment.package_base_salary, assignment.currency_code || 'COP')
+                    ? formatMoneda(assignment.package_base_salary, paraDocumento(assignment.currency_code))
                     : '-'}
                 </div>
                 {assignment.salary_override && assignment.package_base_salary && (
                   <div className="text-xs text-gray-500 dark:text-gray-400">
-                    Override (base: {formatCurrency(assignment.package_base_salary, assignment.currency_code || 'COP')})
+                    Override (base: {formatMoneda(assignment.package_base_salary, paraDocumento(assignment.currency_code))})
                   </div>
                 )}
               </TableCell>

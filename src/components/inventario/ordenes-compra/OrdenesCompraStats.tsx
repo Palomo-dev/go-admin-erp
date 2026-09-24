@@ -9,10 +9,9 @@ import {
   Send,
   Clock,
   CheckCircle,
-  XCircle,
   DollarSign
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface OrdenesCompraStatsProps {
   stats: {
@@ -27,6 +26,7 @@ interface OrdenesCompraStatsProps {
 }
 
 export function OrdenesCompraStats({ stats }: OrdenesCompraStatsProps) {
+  const { formatear } = useMonedaOrganizacion();
   const statCards = [
     {
       title: 'Total Órdenes',
@@ -65,7 +65,7 @@ export function OrdenesCompraStats({ stats }: OrdenesCompraStatsProps) {
     },
     {
       title: 'Total Monto',
-      value: formatCurrency(stats.totalAmount),
+      value: formatear(stats.totalAmount),
       icon: DollarSign,
       color: 'text-emerald-600 dark:text-emerald-400',
       bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',

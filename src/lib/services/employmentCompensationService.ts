@@ -20,7 +20,7 @@ export interface EmploymentCompensation {
   effective_from: string;
   effective_to: string | null;
   salary_override: number | null;
-  custom_components: Record<string, any> | null;
+  custom_components: Record<string, unknown> | null;
   status: string | null;
   approved_by: string | null;
   approved_at: string | null;
@@ -29,9 +29,9 @@ export interface EmploymentCompensation {
   updated_at: string;
   // Joined fields
   employee_name?: string;
-  employee_code?: string;
+  employee_code?: string | null;
   package_name?: string;
-  package_base_salary?: number;
+  package_base_salary?: number | null;
   currency_code?: string;
 }
 
@@ -41,12 +41,39 @@ export interface CreateAssignmentDTO {
   effective_from: string;
   effective_to?: string;
   salary_override?: number;
-  custom_components?: Record<string, any>;
+  custom_components?: Record<string, unknown>;
   status?: string;
   notes?: string;
 }
 
-export interface UpdateAssignmentDTO extends Partial<CreateAssignmentDTO> {}
+export type UpdateAssignmentDTO = Partial<CreateAssignmentDTO>;
+
+/** Fila de `employment_compensation` con sus relaciones, tal como la trae el select. */
+interface FilaAsignacion extends Omit<EmploymentCompensation, 'employee_name' | 'employee_code' | 'package_name' | 'package_base_salary' | 'currency_code'> {
+  employments?: {
+    employee_code?: string | null;
+    organization_members?: {
+      organization_id?: number;
+      profiles?: { first_name: string | null; last_name: string | null } | null;
+    } | null;
+  } | null;
+  compensation_packages?: {
+    name?: string | null;
+    base_salary?: number | null;
+    currency_code?: string | null;
+    organization_id?: number;
+  } | null;
+}
+
+/** Fila de `employments` con su miembro, para el selector de empleados. */
+interface FilaEmpleoMiembro {
+  id: string;
+  employee_code: string | null;
+  organization_members?: {
+    organization_id?: number;
+    profiles?: { first_name: string | null; last_name: string | null } | null;
+  } | null;
+}
 
 export interface AssignmentFilters {
   employment_id?: string;
@@ -88,7 +115,7 @@ class EmploymentCompensationService {
     if (error) throw error;
 
     // Filter by organization
-    const filtered = (data || []).filter((item: any) => {
+    const filtered = ((data || []) as FilaAsignacion[]).filter((item) => {
       const empOrgId = item.employments?.organization_members?.organization_id;
       const pkgOrgId = item.compensation_packages?.organization_id;
       return empOrgId === this.organizationId || pkgOrgId === this.organizationId;
@@ -98,27 +125,27 @@ class EmploymentCompensationService {
     let result = filtered;
     
     if (filters?.employment_id) {
-      result = result.filter((item: any) => item.employment_id === filters.employment_id);
+      result = result.filter((item) => item.employment_id === filters.employment_id);
     }
     
     if (filters?.package_id) {
-      result = result.filter((item: any) => item.package_id === filters.package_id);
+      result = result.filter((item) => item.package_id === filters.package_id);
     }
     
     if (filters?.status) {
-      result = result.filter((item: any) => item.status === filters.status);
+      result = result.filter((item) => item.status === filters.status);
     }
     
     if (filters?.effective_date) {
       const date = filters.effective_date;
-      result = result.filter((item: any) => {
+      result = result.filter((item) => {
         const from = item.effective_from;
         const to = item.effective_to;
         return from <= date && (!to || to >= date);
       });
     }
 
-    return result.map((item: any) => this.mapAssignment(item));
+    return result.map((item) => this.mapAssignment(item));
   }
 
   async getById(id: string): Promise<EmploymentCompensation | null> {
@@ -265,11 +292,11 @@ class EmploymentCompensationService {
 
     if (error) throw error;
 
-    const filtered = (data || []).filter((emp: any) => 
+    const filtered = ((data || []) as FilaEmpleoMiembro[]).filter((emp) => 
       emp.organization_members?.organization_id === this.organizationId
     );
 
-    return filtered.map((emp: any) => {
+    return filtered.map((emp) => {
       const profile = emp.organization_members?.profiles;
       return {
         id: emp.id,
@@ -300,7 +327,7 @@ class EmploymentCompensationService {
     ];
   }
 
-  private mapAssignment(item: any): EmploymentCompensation {
+  private mapAssignment(item: FilaAsignacion): EmploymentCompensation {
     const profile = item.employments?.organization_members?.profiles;
     return {
       ...item,
@@ -310,7 +337,9 @@ class EmploymentCompensationService {
       employee_code: item.employments?.employee_code || null,
       package_name: item.compensation_packages?.name || 'Sin paquete',
       package_base_salary: item.compensation_packages?.base_salary || null,
-      currency_code: item.compensation_packages?.currency_code || 'COP',
+      // La moneda es la del paquete; si no llega, la pantalla usa la base de
+      // la organización (`useMonedaOrganizacion().paraDocumento`).
+      currency_code: item.compensation_packages?.currency_code || undefined,
     };
   }
 }

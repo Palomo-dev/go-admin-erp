@@ -1,25 +1,22 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   ShoppingCart,
   User,
-  Search,
   Plus,
   Minus,
   Trash2,
   CreditCard,
   Tag,
-  Percent,
   Save,
   X,
-  Barcode,
   Package
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -28,14 +25,14 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { POSService } from '@/lib/services/posService';
-import { Product, Cart, CartItem, CartItemModifier, Customer } from '@/components/pos/types';
+import { Product, Cart, CartItemModifier, Customer, Sale } from '@/components/pos/types';
 import { ProductSearch } from '@/components/pos/ProductSearch';
 import { CustomerSelector } from '@/components/pos/CustomerSelector';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
-import { formatCurrency } from '@/utils/Utils';
-import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 export function NuevaVentaPage() {
+  const { formatear } = useMonedaOrganizacion();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -163,9 +160,9 @@ export function NuevaVentaPage() {
     setShowCheckout(true);
   };
 
-  const handleCheckoutComplete = async (sale: any) => {
+  const handleCheckoutComplete = async (sale: Sale) => {
     setShowCheckout(false);
-    alert(`Venta completada: ${formatCurrency(sale.total)}`);
+    alert(`Venta completada: ${formatear(sale.total)}`);
     router.push(`/app/pos/ventas/${sale.id}`);
   };
 
@@ -323,13 +320,13 @@ export function NuevaVentaPage() {
                           {item.product?.name || 'Producto'}
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {formatCurrency(item.unit_price)} c/u
+                          {formatear(item.unit_price)} c/u
                         </p>
                         {item.modifiers && item.modifiers.length > 0 && (
                           <div className="flex items-center gap-1 flex-wrap mt-1">
                             {item.modifiers.map((mod) => (
                               <Badge key={mod.modifierId} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
-                                {mod.name}{mod.extraPrice > 0 ? ` (+${formatCurrency(mod.extraPrice)})` : ''}
+                                {mod.name}{mod.extraPrice > 0 ? ` (+${formatear(mod.extraPrice)})` : ''}
                               </Badge>
                             ))}
                           </div>
@@ -368,7 +365,7 @@ export function NuevaVentaPage() {
                         </Button>
                       </div>
                       <p className="font-semibold text-gray-900 dark:text-white">
-                        {formatCurrency(item.total)}
+                        {formatear(item.total)}
                       </p>
                     </div>
                   </div>
@@ -405,23 +402,23 @@ export function NuevaVentaPage() {
             <div className="space-y-2 mb-4">
               <div className="flex justify-between text-gray-600 dark:text-gray-400">
                 <span>Subtotal</span>
-                <span>{formatCurrency(cart?.subtotal || 0)}</span>
+                <span>{formatear(cart?.subtotal || 0)}</span>
               </div>
               <div className="flex justify-between text-gray-600 dark:text-gray-400">
                 <span>Impuestos</span>
-                <span>{formatCurrency(cart?.tax_total || 0)}</span>
+                <span>{formatear(cart?.tax_total || 0)}</span>
               </div>
               {Number(cart?.discount_total) > 0 && (
                 <div className="flex justify-between text-green-600 dark:text-green-400">
                   <span>Descuentos</span>
-                  <span>-{formatCurrency(cart?.discount_total || 0)}</span>
+                  <span>-{formatear(cart?.discount_total || 0)}</span>
                 </div>
               )}
             </div>
             <Separator className="dark:bg-gray-700 mb-4" />
             <div className="flex justify-between text-xl font-bold text-gray-900 dark:text-white mb-4">
               <span>Total</span>
-              <span>{formatCurrency(cart?.total || 0)}</span>
+              <span>{formatear(cart?.total || 0)}</span>
             </div>
             <Button
               className="w-full h-12 text-lg bg-blue-500 hover:bg-blue-600 text-white"
@@ -429,7 +426,7 @@ export function NuevaVentaPage() {
               disabled={!cart || cart.items.length === 0}
             >
               <CreditCard className="h-5 w-5 mr-2" />
-              Cobrar {formatCurrency(cart?.total || 0)}
+              Cobrar {formatear(cart?.total || 0)}
             </Button>
           </div>
         </div>

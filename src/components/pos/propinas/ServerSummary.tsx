@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { TipSummary } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface ServerSummaryProps {
   summaries: TipSummary[];
@@ -13,6 +13,7 @@ interface ServerSummaryProps {
 }
 
 export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
+  const { formatear } = useMonedaOrganizacion();
   if (loading) {
     return (
       <Card className="dark:bg-gray-800 dark:border-gray-700">
@@ -85,7 +86,7 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {formatCurrency(summary.total_tips)}
+                    {formatear(summary.total_tips)}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {percentage.toFixed(1)}% del total
@@ -113,21 +114,21 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
                       <Banknote className="h-3 w-3 text-green-500" />
                       Efectivo
                     </span>
-                    <span>{formatCurrency(summary.cash_tips)}</span>
+                    <span>{formatear(summary.cash_tips)}</span>
                   </div>
                   <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
                     <span className="flex items-center gap-1">
                       <CreditCard className="h-3 w-3 text-blue-500" />
                       Tarjeta
                     </span>
-                    <span>{formatCurrency(summary.card_tips)}</span>
+                    <span>{formatear(summary.card_tips)}</span>
                   </div>
                   <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
                     <span className="flex items-center gap-1">
                       <ArrowRightLeft className="h-3 w-3 text-purple-500" />
                       Transf.
                     </span>
-                    <span>{formatCurrency(summary.transfer_tips)}</span>
+                    <span>{formatear(summary.transfer_tips)}</span>
                   </div>
                   {summary.online_tips > 0 && (
                     <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
@@ -135,7 +136,7 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
                         <Globe className="h-3 w-3 text-cyan-500" />
                         Online
                       </span>
-                      <span>{formatCurrency(summary.online_tips)}</span>
+                      <span>{formatear(summary.online_tips)}</span>
                     </div>
                   )}
                 </div>
@@ -148,7 +149,7 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
                       Distrib.
                     </span>
                     <span className="text-green-600 dark:text-green-400">
-                      {formatCurrency(summary.distributed_amount)}
+                      {formatear(summary.distributed_amount)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
@@ -157,7 +158,7 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
                       Pendiente
                     </span>
                     <span className="text-yellow-600 dark:text-yellow-400">
-                      {formatCurrency(summary.pending_amount)}
+                      {formatear(summary.pending_amount)}
                     </span>
                   </div>
                 </div>

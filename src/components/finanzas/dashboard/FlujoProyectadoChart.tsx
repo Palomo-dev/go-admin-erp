@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/utils/Utils';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { FlujoProyectado } from './FinanzasDashboardService';
 import {
@@ -16,7 +17,6 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  Legend,
   ReferenceLine,
 } from 'recharts';
 
@@ -26,7 +26,14 @@ interface FlujoProyectadoChartProps {
   currencyCode?: string;
 }
 
-export function FlujoProyectadoChart({ data, isLoading, currencyCode = 'COP' }: FlujoProyectadoChartProps) {
+export function FlujoProyectadoChart({ data, isLoading, currencyCode }: FlujoProyectadoChartProps) {
+  // Agregados del tablero: en la moneda que pasa el padre (la base) o, si no
+  // llega, en la moneda base de la organización. Nunca pesos fijos.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const monedaCtx = paraDocumento(currencyCode);
+  const formatear = crearFormateadorMoneda(monedaCtx);
+  // Eje: sin decimales para que las etiquetas sean cortas.
+  const formatearEje = crearFormateadorMoneda(monedaCtx, { decimals: 0 });
   const [view, setView] = useState<'tabla' | 'grafico'>('grafico');
 
   if (isLoading) {
@@ -72,7 +79,11 @@ export function FlujoProyectadoChart({ data, isLoading, currencyCode = 'COP' }: 
   });
 
   // Tooltip personalizado
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: {
+    active?: boolean;
+    payload?: Array<{ payload?: FlujoProyectado & { acumulado: number } }>;
+    label?: string;
+  }) => {
     if (!active || !payload || !payload.length) return null;
     const item = payload[0]?.payload;
     if (!item) return null;
@@ -82,25 +93,25 @@ export function FlujoProyectadoChart({ data, isLoading, currencyCode = 'COP' }: 
         <p className="flex items-center justify-between gap-4">
           <span className="text-green-600 dark:text-green-400">Ingresos:</span>
           <span className="font-semibold text-gray-900 dark:text-white">
-            {formatCurrency(item.ingresos, currencyCode)}
+            {formatear(item.ingresos)}
           </span>
         </p>
         <p className="flex items-center justify-between gap-4">
           <span className="text-red-600 dark:text-red-400">Egresos:</span>
           <span className="font-semibold text-gray-900 dark:text-white">
-            {formatCurrency(item.egresos, currencyCode)}
+            {formatear(item.egresos)}
           </span>
         </p>
         <p className="flex items-center justify-between gap-4">
           <span className="text-blue-600 dark:text-blue-400">Saldo:</span>
           <span className="font-semibold text-gray-900 dark:text-white">
-            {formatCurrency(item.saldo, currencyCode)}
+            {formatear(item.saldo)}
           </span>
         </p>
         <p className="flex items-center justify-between gap-4 pt-1 border-t border-gray-200 dark:border-gray-700">
           <span className="text-gray-500 dark:text-gray-400">Acumulado:</span>
           <span className="font-bold text-gray-900 dark:text-white">
-            {formatCurrency(item.acumulado, currencyCode)}
+            {formatear(item.acumulado)}
           </span>
         </p>
       </div>
@@ -179,7 +190,7 @@ export function FlujoProyectadoChart({ data, isLoading, currencyCode = 'COP' }: 
                 tick={{ fontSize: 10, fill: '#9ca3af' }}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v) => formatCurrency(v, currencyCode).replace(/\.\d+$/, '').replace(/\s/g, '')}
+                tickFormatter={(v) => formatearEje(v).replace(/\s/g, '')}
                 width={70}
               />
               <Tooltip content={<CustomTooltip />} />
@@ -251,22 +262,22 @@ export function FlujoProyectadoChart({ data, isLoading, currencyCode = 'COP' }: 
                         {item.mes}
                       </td>
                       <td className="py-3 px-3 text-sm text-right text-green-600 dark:text-green-400">
-                        {formatCurrency(item.ingresos, currencyCode)}
+                        {formatear(item.ingresos)}
                       </td>
                       <td className="py-3 px-3 text-sm text-right text-red-600 dark:text-red-400">
-                        {formatCurrency(item.egresos, currencyCode)}
+                        {formatear(item.egresos)}
                       </td>
                       <td className={cn(
                         'py-3 px-3 text-sm text-right font-medium',
                         item.saldo >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'
                       )}>
-                        {formatCurrency(item.saldo, currencyCode)}
+                        {formatear(item.saldo)}
                       </td>
                       <td className={cn(
                         'py-3 px-3 text-sm text-right font-bold',
                         item.acumulado >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                       )}>
-                        {formatCurrency(item.acumulado, currencyCode)}
+                        {formatear(item.acumulado)}
                       </td>
                       <td className="py-3 px-3 text-center">
                         {tendencia === 'up' && <TrendingUp className="h-4 w-4 text-green-500 mx-auto" />}

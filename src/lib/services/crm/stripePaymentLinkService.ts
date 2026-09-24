@@ -22,6 +22,7 @@ import Stripe from 'stripe';
 import { resolveStripeReadiness, type StripeOrgCredentials, type StripeReadiness } from '@/lib/services/crm/providerReadiness';
 import { majorToMinor, parseStripeCheckoutEvent, toRegisterPaymentInput } from '@/lib/services/crm/paymentEvents';
 import { registerCrmPayment, type RegisterPaymentResult } from '@/lib/services/crm/paymentService';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export interface PaymentLinkRequest {
   amountMinor: number;
@@ -191,7 +192,12 @@ export async function createPaymentLinkForQuotation(orgId: number, quotationId: 
   if (!(balance > 0) || ['void', 'voided', 'paid'].includes(invoice.status)) {
     throw new Error('La factura no tiene saldo pendiente');
   }
-  const currency = (invoice.currency || q.currency || 'COP').toUpperCase();
+  // Moneda de la factura → de la cotización → base de la organización (nunca 'COP' cableado).
+  const currency = (
+    invoice.currency ||
+    q.currency ||
+    (await resolveOrgCurrency(userSupabase, orgId)).code
+  ).toUpperCase();
   // `numeric` llega como texto por PostgREST: se compara como número. Un enlace
   // heredado (url sin importe) no se puede validar y se regenera.
   const storedAmount = q.payment_link_amount == null ? null : Number(q.payment_link_amount);

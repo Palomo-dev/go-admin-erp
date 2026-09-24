@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, CreditCard, Car, Bike, Truck, Sparkles, Users } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import parkingService, { type ParkingPassType } from '@/lib/services/parkingService';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface PlanFormDialogProps {
   open: boolean;
@@ -39,6 +40,8 @@ export function PlanFormDialog({
   plan,
   onSuccess,
 }: PlanFormDialogProps) {
+  // Los planes de parking no tienen moneda propia: precio en la moneda base.
+  const { code: monedaBase } = useMonedaOrganizacion();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -193,7 +196,7 @@ export function PlanFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label className="dark:text-gray-200">Precio (COP) *</Label>
+              <Label className="dark:text-gray-200">Precio ({monedaBase}) *</Label>
               <Input
                 type="number"
                 min="0"

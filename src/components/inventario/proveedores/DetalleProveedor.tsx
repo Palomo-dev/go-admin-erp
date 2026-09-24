@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Proveedor, CompraProveedor } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import { supabase } from '@/lib/supabase/config';
@@ -35,6 +35,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
   onClose
 }) => {
   const { timezone } = useOrgTimezone();
+  const { formatear } = useMonedaOrganizacion();
 
   const [historialCompras, setHistorialCompras] = useState<CompraProveedor[]>([]);
   const [loadingHistorial, setLoadingHistorial] = useState(true);
@@ -275,7 +276,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
                       Límite de crédito
                     </p>
                     <p className="font-medium">
-                      {formatCurrency(proveedor.condiciones_pago.limite_credito)}
+                      {formatear(proveedor.condiciones_pago.limite_credito)}
                     </p>
                   </div>
                 </div>
@@ -403,7 +404,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
                         <td className="py-2 px-4">{compra.id}</td>
                         <td className="py-2 px-4">{formatFecha(compra.fecha)}</td>
                         <td className="py-2 px-4">{formatFecha(compra.fecha_entrega_esperada)}</td>
-                        <td className="py-2 px-4 font-medium">{formatCurrency(compra.total || 0)}</td>
+                        <td className="py-2 px-4 font-medium">{formatear(compra.total || 0)}</td>
                         <td className={`py-2 px-4 font-medium ${getColorEstado(compra.estado || '')}`}>
                           {traducirEstado(compra.estado || '')}
                         </td>

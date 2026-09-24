@@ -1,7 +1,7 @@
 "use client";
 
 import { Customer } from "../types";
-import { formatCurrency } from "@/utils/Utils";
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import {
   Card,
   CardContent,
@@ -16,6 +16,8 @@ interface CustomerStatsProps {
 }
 
 export default function CustomerStats({ customers }: CustomerStatsProps) {
+  // Valor acumulado del cliente: moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   // Cálculo de estadísticas resumidas
   const totalCustomers = customers.length;
   const activeOpportunities = customers.reduce((sum, c) => sum + c.active_opportunities, 0);
@@ -62,7 +64,7 @@ export default function CustomerStats({ customers }: CustomerStatsProps) {
         <CardHeader className="pb-2">
           <CardDescription className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Valor total</CardDescription>
           <CardTitle className="text-gray-900 dark:text-gray-100 text-xl sm:text-2xl">
-            {formatCurrency(totalValue)}
+            {formatear(totalValue)}
           </CardTitle>
         </CardHeader>
         <CardContent>

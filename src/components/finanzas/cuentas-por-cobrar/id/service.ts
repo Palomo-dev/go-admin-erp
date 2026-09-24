@@ -26,6 +26,43 @@ async function getBranchIdWithFallback(organizationId: number): Promise<number> 
 }
 import { CuentaPorCobrarDetalle, PaymentRecord, AgingInfo, AccountActions } from './types';
 import { NotificationService } from '@/lib/services/notificationService';
+import { monedaDeCuentaPorCobrar } from '../service';
+
+/** Fila de `get_payments_filtered`. */
+interface FilaPagoFiltrado {
+  id: string;
+  amount: number | string | null;
+  method: string | null;
+  reference: string | null;
+  status: string | null;
+  created_at: string;
+  invoice_number?: string;
+  total_count: number | string;
+}
+
+/** Cuota de una cuenta por cobrar (`ar_installments`). */
+export interface CuotaCuentaPorCobrar {
+  id: string;
+  account_receivable_id: string;
+  installment_number: number;
+  due_date: string;
+  amount: number;
+  principal?: number;
+  interest?: number;
+  balance: number;
+  status: string;
+  paid_amount: number;
+  paid_at?: string;
+  days_overdue?: number;
+  notes?: string;
+}
+
+/** Método de pago activo de la organización, con su definición. */
+export interface MetodoPagoCuentaPorCobrar {
+  id: number;
+  is_active: boolean;
+  payment_method: { code: string; name: string; requires_reference?: boolean } | null;
+}
 
 export class CuentaPorCobrarDetailService {
   private static getOrganizationId(): number {
@@ -205,7 +242,8 @@ export class CuentaPorCobrarDetailService {
         throw error;
       }
 
-      const payments: PaymentRecord[] = (data || []).map((payment: any) => ({
+      const filas = (data || []) as FilaPagoFiltrado[];
+      const payments: PaymentRecord[] = filas.map((payment) => ({
         id: payment.id,
         amount: typeof payment.amount === 'number' ? payment.amount : parseFloat(payment.amount || '0'),
         method: payment.method || 'N/A',
@@ -215,7 +253,7 @@ export class CuentaPorCobrarDetailService {
         invoice_number: payment.invoice_number
       }));
 
-      const totalCount = data && data.length > 0 ? data[0].total_count : 0;
+      const totalCount = filas.length > 0 ? filas[0].total_count : 0;
 
       return {
         payments,
@@ -235,6 +273,8 @@ export class CuentaPorCobrarDetailService {
     // `payments.payment_date` es timestamptz: dia elegido + hora de pared de la
     // sucursal dueña del pago (ADR-003), nunca la hora del navegador.
     const timezone = await resolveTimezone(organizationId, branchId);
+    // Moneda del pago: la de la factura de la cuenta, si no la base.
+    const currency = await monedaDeCuentaPorCobrar(organizationId, accountId);
     
     console.log('💰 DEBUG aplicarPago:', { accountId, amount, method, organizationId, branchId, createdBy, paymentDate });
     
@@ -252,7 +292,7 @@ export class CuentaPorCobrarDetailService {
           method: method,
           reference: reference,
           status: 'completed',
-          currency: 'COP',
+          currency,
           payment_date: paymentDate
             ? instantForDayInTz(paymentDate, timezone)
             : new Date().toISOString()
@@ -273,7 +313,7 @@ export class CuentaPorCobrarDetailService {
   }
 
   // Obtener cuotas de una cuenta por cobrar
-  static async obtenerCuotas(accountId: string): Promise<any[]> {
+  static async obtenerCuotas(accountId: string): Promise<CuotaCuentaPorCobrar[]> {
     try {
       const { data, error } = await supabase
         .from('ar_installments')
@@ -351,14 +391,14 @@ export class CuentaPorCobrarDetailService {
       }
       
       console.log('✅ Cuotas creadas exitosamente');
-    } catch (error: any) {
-      console.error('Error en crearCuotas:', error?.message || error);
+    } catch (error) {
+      console.error('Error en crearCuotas:', (error as { message?: string } | null)?.message || error);
       throw error;
     }
   }
 
   // Obtener métodos de pago de la organización
-  static async obtenerMetodosPago(): Promise<any[]> {
+  static async obtenerMetodosPago(): Promise<MetodoPagoCuentaPorCobrar[]> {
     try {
       const organizationId = this.getOrganizationId();
       
@@ -386,7 +426,9 @@ export class CuentaPorCobrarDetailService {
         return [];
       }
 
-      return data || [];
+      // PostgREST tipa el embebido por FK como arreglo; en tiempo de ejecución
+      // `payment_method_code` es muchos-a-uno y llega como objeto.
+      return (data || []) as unknown as MetodoPagoCuentaPorCobrar[];
     } catch (error) {
       console.error('Error en obtenerMetodosPago:', error);
       return [];

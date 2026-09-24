@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CalendarDays, Plus, Trash2, DollarSign, AlertTriangle, CheckCircle, CreditCard } from 'lucide-react';
+import { CalendarDays, Plus, Trash2, DollarSign, AlertTriangle, CheckCircle, CreditCard, type LucideIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,9 +13,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { CuentaPorPagarDetailService } from './service';
 import { APInstallment } from './types';
-import { formatCurrency } from '@/utils/Utils';
-import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { asPlainDate, formatPlainDate } from '@/lib/utils/dateDisplay';
+
+/** Forma de `CuentaPorPagarDetailService.obtenerMetodosPago`. */
+interface MetodoPagoOpcion {
+  id: number | string;
+  payment_method?: { code?: string; name?: string } | null;
+}
 
 interface InstallmentsCardProps {
   accountId: string;
@@ -24,10 +30,12 @@ interface InstallmentsCardProps {
   organizationId: number;
   /** Sucursal dueña de la cuenta, si la tiene. Manda sobre la organizacion. */
   branchId: number | null;
+  /** Moneda de la factura de compra de la cuenta; sin ella, la base de la organización. */
+  currency?: string | null;
   onUpdate?: () => void;
 }
 
-const statusConfig: Record<string, { label: string; className: string; icon: any }> = {
+const statusConfig: Record<string, { label: string; className: string; icon: LucideIcon }> = {
   pending: {
     label: 'Pendiente',
     className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -55,9 +63,11 @@ export function InstallmentsCard({
   totalAmount,
   organizationId,
   branchId,
+  currency,
   onUpdate,
 }: InstallmentsCardProps) {
-  const { timezone } = useOrgTimezone();
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = crearFormateadorMoneda(paraDocumento(currency));
   const [installments, setInstallments] = useState<APInstallment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -72,7 +82,7 @@ export function InstallmentsCard({
   const [showPayDialog, setShowPayDialog] = useState(false);
   const [selectedInstallment, setSelectedInstallment] = useState<APInstallment | null>(null);
   const [isPaying, setIsPaying] = useState(false);
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<MetodoPagoOpcion[]>([]);
   const [paymentData, setPaymentData] = useState({
     amount: '',
     method: '',

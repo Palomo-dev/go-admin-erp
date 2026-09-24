@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { metaMarketingService } from '@/lib/services/integrations/meta';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { INTEGRATION_CONNECTION_USABLE_STATUS } from '@/lib/integrations/connectionStatus';
 import { resolveOrgStoreDomain } from '@/lib/services/integrations/marketingAccess';
 import { acceptMarketingOAuthState, OAUTH_STATE_REJECTED_MESSAGE } from '@/lib/services/integrations/marketingOAuthCallback';
@@ -116,15 +117,9 @@ export async function GET(request: NextRequest) {
 
     const domain = await resolveOrgStoreDomain(supabase, state.org);
 
-    // Moneda base de la organización (organization_currencies, is_base = true)
-    const { data: currencyData } = await supabase
-      .from('organization_currencies')
-      .select('currency_code')
-      .eq('organization_id', state.org)
-      .eq('is_base', true)
-      .maybeSingle();
-
-    const orgCurrency = (currencyData?.currency_code || 'COP').trim();
+    // Moneda base de la organización: la cadena completa de resolveOrgCurrency
+    // (is_base → preferencia → USD → primera → país), no 'COP' si falta is_base.
+    const orgCurrency = (await resolveOrgCurrency(supabase, state.org)).code;
 
     // 4. Ejecutar fullSetup: crea catálogo + pixel + sincroniza productos
     const setupResult = await metaMarketingService.fullSetup(

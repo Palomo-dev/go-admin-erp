@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Users, Target, MapPin, TrendingUp, Award, UserCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase/config';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import Link from 'next/link';
 import { requireOrgId } from './useEquipoData';
 
@@ -17,6 +17,8 @@ export function EquipoSidebar() {
     pipelineValue: 0,
   });
   const [loading, setLoading] = useState(true);
+  // El valor del pipeline se muestra en la moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
 
   useEffect(() => {
     (async () => {
@@ -61,7 +63,7 @@ export function EquipoSidebar() {
       <Card className="bg-gradient-to-br from-rose-600 to-rose-700 dark:from-rose-700 dark:to-rose-800 border-0 text-white">
         <CardContent className="pt-6">
           <p className="text-rose-100 text-xs font-medium uppercase tracking-wide">Pipeline activo</p>
-          <p className="text-3xl font-bold mt-1">{formatCurrency(stats.pipelineValue, 'COP')}</p>
+          <p className="text-3xl font-bold mt-1">{formatear(stats.pipelineValue)}</p>
           <p className="text-rose-200 text-xs mt-2">{stats.openOpps} oportunidades abiertas</p>
         </CardContent>
       </Card>

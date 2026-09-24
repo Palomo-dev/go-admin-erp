@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/utils/orgId';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import {
   buildRenewalPlan,
   milestoneTaskTitle,
@@ -341,7 +342,9 @@ async function scheduleRenewalForParent(
       customer_id: parent.customer_id,
       name: `Renovación — ${customerName} — ${plan.expiryPlainDate}`,
       amount: parent.amount ?? 0,
-      currency: parent.currency || 'COP',
+      // Moneda del padre; sin ella, la columna no va y el trigger
+      // `trg_00_moneda_base_por_defecto` pone la base de la organización.
+      ...(parent.currency ? { currency: parent.currency } : {}),
       status: 'open',
       deal_type: 'renewal',
       parent_opportunity_id: parent.id,
@@ -491,6 +494,11 @@ export async function getUpcomingRenewalsServer(
     if (r.parent_opportunity_id) byParent.set(r.parent_opportunity_id, r);
   }
 
+  // Moneda base solo si alguna ganada no trae la suya (nunca 'COP' cableado).
+  const monedaBase = (wonOpps as Array<{ currency?: string | null }>).some((o) => !o.currency)
+    ? (await resolveOrgCurrency(sb, orgId)).code
+    : '';
+
   const results: UpcomingRenewal[] = [];
   for (const opp of wonOpps as unknown as Array<ParentRow & { customer: { id: string; full_name: string | null; email?: string | null; phone?: string | null } | null }>) {
     if (!opp.customer_id || !opp.closed_at) continue;
@@ -511,7 +519,7 @@ export async function getUpcomingRenewalsServer(
       customer_email: opp.customer?.email ?? null,
       customer_phone: opp.customer?.phone ?? null,
       original_amount: Number(opp.amount) || 0,
-      currency: opp.currency || 'COP',
+      currency: opp.currency || monedaBase,
       billing_cycle_months: Number(opp.billing_cycle_months),
       won_date: opp.closed_at,
       renewal_date: expiry.toISOString(),

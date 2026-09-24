@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { metaMarketingService } from '@/lib/services/integrations/meta';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { CONNECTION_NOT_FOUND } from '@/lib/services/integrations/channelManagerAccess';
 import {
   marketingConnectionInOrg,
@@ -78,7 +79,9 @@ export const POST = withOrg(async (ctx, request) => {
     }
 
     // 3. Ejecutar setup completo (crear catálogo + pixel + sync productos)
-    const moneda = pedida || 'COP';
+    // Moneda del catálogo: la pedida o, si no viene, la base de la organización
+    // (resolveOrgCurrency), no 'COP' fijo.
+    const moneda = pedida || (await resolveOrgCurrency(ctx.supabase, ctx.organizationId)).code;
     const domain = await resolveOrgStoreDomain(ctx.supabase, ctx.organizationId);
 
     // Productos con el cliente de sesión; credenciales con service-role, ya

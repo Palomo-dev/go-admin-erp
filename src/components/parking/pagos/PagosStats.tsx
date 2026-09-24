@@ -4,7 +4,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { DollarSign, Car, CreditCard, Clock, RotateCcw } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface PagosStatsProps {
   stats: {
@@ -19,6 +19,7 @@ interface PagosStatsProps {
 }
 
 export function PagosStats({ stats, isLoading }: PagosStatsProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const statItems = [
     {
       label: 'Total Recaudado',

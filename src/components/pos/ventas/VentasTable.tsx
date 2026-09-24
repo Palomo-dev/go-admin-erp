@@ -31,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SaleWithDetails } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { CopyableId } from '@/components/common/CopyableId';
 
@@ -54,6 +54,7 @@ export function VentasTable({
   onCreateReturn,
   isLoading
 }: VentasTableProps) {
+  const { formatear } = useMonedaOrganizacion();
   const { formatDate, formatTime } = useFormatDate();
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -249,7 +250,7 @@ export function VentasTable({
                 )}
               </TableCell>
               <TableCell className="text-right font-semibold dark:text-gray-300">
-                {formatCurrency(sale.total)}
+                {formatear(sale.total)}
               </TableCell>
               <TableCell>
                 {getStatusBadge(sale.status)}

@@ -12,7 +12,6 @@ import {
   CheckCircle,
   Truck,
   Navigation,
-  Search,
   Loader2,
   User,
   PackageCheck,
@@ -20,7 +19,8 @@ import {
   DollarSign,
   AlertTriangle,
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import type { DeliveryShipment } from '@/lib/services/deliveryIntegrationService';
 import { IncidentDialog } from '@/components/transporte/envios/id';
 import { DeliveryPhotoDialog } from './DeliveryPhotoDialog';
@@ -60,6 +60,8 @@ interface ShipmentCardProps {
 }
 
 export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid, onReportIncident, onDeliveryWithPhoto }: ShipmentCardProps) {
+  // Importes en la moneda del envío; sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
   const [showIncidentDialog, setShowIncidentDialog] = useState(false);
   const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
   const status = (shipment.status || 'pending') as string;
@@ -204,12 +206,12 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
           <div className="flex justify-between items-center border-t border-gray-100 dark:border-gray-800 pt-3 text-sm">
             {(shipment.cod_amount ?? 0) > 0 && (
               <span className="text-orange-600 dark:text-orange-400 font-medium">
-                COD: {formatCurrency(shipment.cod_amount ?? 0, shipment.currency)}
+                COD: {formatMoneda(shipment.cod_amount ?? 0, paraDocumento(shipment.currency))}
               </span>
             )}
             {(shipment.shipping_fee ?? 0) > 0 && (
               <span className="text-gray-500 dark:text-gray-400">
-                Envío: {formatCurrency(shipment.shipping_fee ?? 0, shipment.currency)}
+                Envío: {formatMoneda(shipment.shipping_fee ?? 0, paraDocumento(shipment.currency))}
               </span>
             )}
           </div>

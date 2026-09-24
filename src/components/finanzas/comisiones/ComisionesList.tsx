@@ -14,7 +14,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import type { CommissionRow } from '@/lib/services/crm/commissionAdminService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { ComisionesEmpty } from './ComisionesEmpty';
 import { COMMISSION_ROW_ATTR, SELECT_ALL_ATTR } from './comisionesFocus';
 import { SOURCE_LABELS, sourceHref, statusPresentation, type StatusTone } from './comisionesModel';
@@ -40,6 +41,10 @@ const TONE: Record<StatusTone, { icon: typeof Clock; className: string }> = {
 const th = 'p-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300';
 
 export function ComisionesList({ rows, currency, canManage, selected, onToggle, onToggleAll, onPayOne, onClawbackOne, hasActiveFilters }: Props) {
+  // Cada importe en la moneda de su comisión (o la que llega por props), con
+  // el locale y los decimales de la organización. Nunca pesos fijos.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = (valor: number, moneda?: string | null) => formatMoneda(valor, paraDocumento(moneda));
   const { formatDate } = useFormatDate();
 
   if (rows.length === 0) return <ComisionesEmpty filtered={hasActiveFilters} />;

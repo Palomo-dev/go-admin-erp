@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { User, Calendar, CreditCard, Hash, Phone, Mail } from 'lucide-react';
+import { User, Hash, Phone, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { Membership, getDaysRemaining, getMembershipStatusColor, getMembershipStatusLabel } from '@/lib/services/gymService';
 

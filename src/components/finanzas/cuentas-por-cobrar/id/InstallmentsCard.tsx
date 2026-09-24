@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, CreditCard, Plus, Loader2, Trash2, DollarSign } from 'lucide-react';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { parseLocalDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { CuentaPorCobrarDetailService } from './service';
 import {
   Dialog,
@@ -37,14 +39,25 @@ interface Installment {
   notes?: string;
 }
 
+/** Fila de `organization_payment_methods` con su método (ver `obtenerMetodosPago`). */
+interface MetodoPagoOrganizacion {
+  id: number | string;
+  payment_method?: { code: string; name: string; requires_reference?: boolean } | null;
+}
+
 interface InstallmentsCardProps {
   accountId: string;
   totalAmount: number;
   accountStatus?: string;
+  /** Moneda de la cuenta (la de su factura); sin ella, la base de la organización. */
+  currency?: string | null;
   onUpdate?: () => void;
 }
 
-export function InstallmentsCard({ accountId, totalAmount, accountStatus, onUpdate }: InstallmentsCardProps) {
+export function InstallmentsCard({ accountId, totalAmount, accountStatus, currency, onUpdate }: InstallmentsCardProps) {
+  // Cuotas en la moneda de la cuenta o, en su defecto, en la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = (valor: number) => formatMoneda(valor, paraDocumento(currency));
   const [installments, setInstallments] = useState<Installment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -57,7 +70,7 @@ export function InstallmentsCard({ accountId, totalAmount, accountStatus, onUpda
   const [showPayDialog, setShowPayDialog] = useState(false);
   const [selectedInstallment, setSelectedInstallment] = useState<Installment | null>(null);
   const [isPaying, setIsPaying] = useState(false);
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<MetodoPagoOrganizacion[]>([]);
   const [paymentData, setPaymentData] = useState({
     amount: '',
     method: '',

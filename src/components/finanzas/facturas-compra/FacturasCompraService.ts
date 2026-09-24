@@ -1,9 +1,11 @@
 import { supabase } from '@/lib/supabase/config';
-import { obtenerOrganizacionActiva, getOrganizationId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { stockMovementService, describeSkippedItems } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { instantForDayInTz } from '@/lib/services/businessInstant';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
 import { 
   InvoicePurchase, 
   SupplierBase, 
@@ -12,8 +14,46 @@ import {
   OrganizationPaymentMethod,
   OrganizationCurrency,
   CurrencyRate,
-  AccountPayable
+  AccountPayable,
+  InvoiceItem,
+  InvoiceItemForm
 } from './types';
+
+/** Fila de `payments` tal como la devuelve `select('*')`. */
+export interface PagoFacturaCompra {
+  id: string;
+  organization_id: number | null;
+  branch_id: number | null;
+  source: string | null;
+  source_id: string | null;
+  method: string | null;
+  amount: number | null;
+  currency: string;
+  reference: string | null;
+  processor_response: unknown;
+  status: string | null;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  payment_date: string | null;
+  discount_amount: number;
+  change_amount: number;
+  bank_account_id: number | null;
+}
+
+/** Línea de factura leída para recepcionar inventario. */
+interface ItemRecepcion {
+  id: string;
+  product_id: number | null;
+  description: string | null;
+  qty: number | string | null;
+  unit_price: number | string | null;
+}
+
+/** Cuenta por pagar de una factura de compra, con su proveedor. */
+export type CuentaPorPagarFacturaCompra = AccountPayable & {
+  supplier?: { id: number; name: string; nit?: string | null } | null;
+};
 
 export class FacturasCompraService {
   // Evaluación diferida: getOrganizationId() se invoca en cada acceso
@@ -248,7 +288,8 @@ export class FacturasCompraService {
           number_ext: formData.number_ext,
           issue_date: formData.issue_date,
           due_date: formData.due_date,
-          currency: formData.currency,
+          // Sin moneda elegida, la base la pone (`trg_00_moneda_base_por_defecto`).
+          currency: formData.currency || null,
           subtotal,
           tax_total: taxTotal,
           total,
@@ -261,8 +302,8 @@ export class FacturasCompraService {
           salesperson_id: formData.salesperson_id || null,
           commission_rate: formData.commission_rate || 0,
           commission_type: formData.salesperson_id && formData.commission_rate && formData.commission_rate > 0 ? formData.commission_type : 'none',
-          commission_method: (formData as any).commission_method || 'percentage',
-          commission_amount: (formData as any).commission_amount || 0
+          commission_method: formData.commission_method || 'percentage',
+          commission_amount: formData.commission_amount || 0
         })
         .select()
         .single();
@@ -274,8 +315,7 @@ export class FacturasCompraService {
 
       // Crear los items de la factura
       if (formData.items.length > 0) {
-        const lineSubtotal = (item: any) => item.qty * item.unit_price - (item.discount_amount || 0);
-        const lineTaxAmount = (item: any) => (lineSubtotal(item) * (item.tax_rate || 0)) / 100;
+        const lineSubtotal = (item: InvoiceItemForm) => item.qty * item.unit_price - (item.discount_amount || 0);
         
         const items = formData.items.map(item => ({
           // Campos requeridos para facturas de compra
@@ -394,7 +434,7 @@ export class FacturasCompraService {
           }
 
           const baseAmount = subtotal > 0 ? subtotal : total;
-          const commissionAmount = (formData as any).commission_amount || 0;
+          const commissionAmount = formData.commission_amount || 0;
 
           const { error: commissionInsertError } = await supabase
             .from('commissions')
@@ -410,11 +450,12 @@ export class FacturasCompraService {
               base_amount: baseAmount,
               commission_rate: formData.commission_rate,
               commission_amount: commissionAmount,
-              currency: formData.currency,
+              // La comisión va en la moneda de la factura.
+              currency: formData.currency || factura.currency || null,
               status: 'accrued',
               accrued_at: new Date().toISOString(),
               created_by: currentUserId,
-              metadata: { invoice_number: formData.number_ext, commission_method: (formData as any).commission_method || 'percentage' },
+              metadata: { invoice_number: formData.number_ext, commission_method: formData.commission_method || 'percentage' },
             });
           if (commissionInsertError) {
             console.error('Error al crear registro de comisión:', commissionInsertError);
@@ -500,7 +541,8 @@ export class FacturasCompraService {
           number_ext: formData.number_ext,
           issue_date: formData.issue_date,
           due_date: formData.due_date,
-          currency: formData.currency,
+          // Sin moneda elegida no se pisa la que ya tiene la factura.
+          ...(formData.currency ? { currency: formData.currency } : {}),
           subtotal: subtotal,
           tax_total: tax_total,
           total: total,
@@ -512,8 +554,8 @@ export class FacturasCompraService {
           salesperson_id: formData.salesperson_id || null,
           commission_rate: formData.commission_rate || 0,
           commission_type: formData.salesperson_id && formData.commission_rate && formData.commission_rate > 0 ? formData.commission_type : 'none',
-          commission_method: (formData as any).commission_method || 'percentage',
-          commission_amount: (formData as any).commission_amount || 0
+          commission_method: formData.commission_method || 'percentage',
+          commission_amount: formData.commission_amount || 0
         })
         .eq('id', facturaId)
         .select()
@@ -537,8 +579,7 @@ export class FacturasCompraService {
 
       // Crear nuevos items si existen
       if (formData.items.length > 0) {
-        const lineSubtotal = (item: any) => item.qty * item.unit_price - (item.discount_amount || 0);
-        const lineTaxAmount = (item: any) => (lineSubtotal(item) * (item.tax_rate || 0)) / 100;
+        const lineSubtotal = (item: InvoiceItemForm) => item.qty * item.unit_price - (item.discount_amount || 0);
         
         const items = formData.items.map(item => ({
           invoice_id: factura.id,
@@ -658,7 +699,7 @@ export class FacturasCompraService {
   /**
    * Obtiene la cuenta por pagar asociada a una factura de compra
    */
-  static async obtenerCuentaPorPagar(facturaId: string): Promise<any | null> {
+  static async obtenerCuentaPorPagar(facturaId: string): Promise<CuentaPorPagarFacturaCompra | null> {
     try {
       console.log('=== Obteniendo cuenta por pagar ===');
       console.log('Factura ID:', facturaId);
@@ -697,7 +738,7 @@ export class FacturasCompraService {
   /**
    * Obtiene todos los pagos asociados a una factura de compra
    */
-  static async obtenerPagosFactura(facturaId: string): Promise<any[]> {
+  static async obtenerPagosFactura(facturaId: string): Promise<PagoFacturaCompra[]> {
     try {
       console.log('=== Obteniendo pagos de factura ===');
       console.log('Factura ID:', facturaId);
@@ -783,7 +824,7 @@ export class FacturasCompraService {
   /**
    * Obtiene los métodos de pago activos de la organización
    */
-  static async obtenerMetodosPago(): Promise<any[]> {
+  static async obtenerMetodosPago(): Promise<OrganizationPaymentMethod[]> {
     try {
       console.log('=== Obteniendo métodos de pago ===');
       console.log('Organization ID:', this.organizationId);
@@ -820,7 +861,7 @@ export class FacturasCompraService {
     reference?: string;
     notes?: string;
     payment_date?: string;
-  }, branchId: number | null): Promise<any> {
+  }, branchId: number | null): Promise<PagoFacturaCompra> {
     try {
       console.log('=== Registrando pago ===');
       console.log('Factura ID:', facturaId);
@@ -851,7 +892,11 @@ export class FacturasCompraService {
           source_id: facturaId,
           method: pagoData.payment_method,
           amount: pagoData.amount,
-          currency: factura.currency || 'COP',
+          // Moneda del pago: la de la factura; si no la trae, la base de la
+          // organización (`payments.currency` es NOT NULL y no tiene trigger).
+          currency:
+            normalizarCodigoMoneda(factura.currency) ??
+            (await resolveOrgCurrency(supabase, this.organizationId)).code,
           reference: pagoData.reference || null,
           status: 'completed',
           payment_date: pagoData.payment_date
@@ -1169,7 +1214,7 @@ export class FacturasCompraService {
         console.log(`Factura ${id} cambió de 'draft' a 'received' - Actualizando inventario`);
         
         // Convertir items al formato esperado
-        const itemsParaInventario = facturaActual.items.map((item: any) => ({
+        const itemsParaInventario = facturaActual.items.map((item: InvoiceItem) => ({
           product_id: item.product_id,
           qty: item.qty,
           unit_price: item.unit_price,
@@ -1255,7 +1300,7 @@ export class FacturasCompraService {
       }
 
       const items = factura.items || [];
-      const itemsConProducto = items.filter((item: any) => item.product_id);
+      const itemsConProducto = items.filter((item: ItemRecepcion) => item.product_id);
 
       if (itemsConProducto.length === 0) {
         // Cambiar estado aunque no haya items con producto
@@ -1282,7 +1327,7 @@ export class FacturasCompraService {
         organizationId,
         factura.branch_id,
         facturaId,
-        itemsConProducto.map((item: any) => ({
+        itemsConProducto.map((item: ItemRecepcion) => ({
           product_id: item.product_id,
           quantity: Number(item.qty) || 0,
           unit_price: Number(item.unit_price) || 0,
@@ -1313,7 +1358,7 @@ export class FacturasCompraService {
         mensaje: [`Inventario recepcionado: ${itemsRecepcionados} producto(s) actualizados`, ...avisos].join('. ')
       };
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error en recepcionarInventario:', error);
       throw error;
     }

@@ -1,14 +1,18 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 
 interface RevenueByPlanProps {
   data: { plan_name: string; revenue: number; count: number }[];
+  /** Moneda de los importes; si no se pasa, la base de la organización. */
   currency?: string;
 }
 
-export function RevenueByPlan({ data, currency = 'COP' }: RevenueByPlanProps) {
+export function RevenueByPlan({ data, currency }: RevenueByPlanProps) {
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatear = crearFormateadorMoneda(paraDocumento(currency));
   const totalRevenue = data.reduce((sum, item) => sum + item.revenue, 0);
   const totalCount = data.reduce((sum, item) => sum + item.count, 0);
 
@@ -31,7 +35,7 @@ export function RevenueByPlan({ data, currency = 'COP' }: RevenueByPlanProps) {
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-700 dark:text-gray-300">{item.plan_name}</span>
                     <span className="font-medium text-gray-900 dark:text-white">
-                      {formatCurrency(item.revenue, currency)}
+                      {formatear(item.revenue)}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -54,7 +58,7 @@ export function RevenueByPlan({ data, currency = 'COP' }: RevenueByPlanProps) {
                 <span className="font-medium text-gray-900 dark:text-white">Total</span>
                 <div className="text-right">
                   <p className="font-bold text-gray-900 dark:text-white">
-                    {formatCurrency(totalRevenue, currency)}
+                    {formatear(totalRevenue)}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {totalCount} miembros activos

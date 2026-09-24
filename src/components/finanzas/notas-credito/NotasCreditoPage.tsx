@@ -52,7 +52,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { notasCreditoService, NotaCredito } from '@/lib/services/notasCreditoService';
 import { CopyableId } from '@/components/common/CopyableId';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
@@ -87,8 +89,13 @@ const statusIcons: Record<string, React.ReactNode> = {
   paid: <CheckCircle className="h-3 w-3" />,
 };
 
+/** Cada nota es una fila de `invoice_sales` (select *): trae su propia `currency`. */
+type NotaConMoneda = NotaCredito & { currency?: string | null };
+
 export function NotasCreditoPage() {
   const router = useRouter();
+  // KPIs que suman varias notas: moneda base. Cada nota: su propia moneda.
+  const { formatear, paraDocumento } = useMonedaOrganizacion();
   const [notas, setNotas] = useState<NotaCredito[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -146,7 +153,7 @@ export function NotasCreditoPage() {
       } else {
         toast({ title: 'Error', description: result.error, variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
     }
   };
@@ -232,7 +239,7 @@ export function NotasCreditoPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {formatCurrency(stats.total)}
+              {formatear(stats.total)}
             </div>
           </CardContent>
         </Card>
@@ -244,7 +251,7 @@ export function NotasCreditoPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {formatCurrency(stats.thisMonth)}
+              {formatear(stats.thisMonth)}
             </div>
           </CardContent>
         </Card>
@@ -372,7 +379,7 @@ export function NotasCreditoPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right font-semibold text-red-600 dark:text-red-400">
-                      {formatCurrency(Number(nota.total))}
+                      {formatMoneda(Number(nota.total), paraDocumento((nota as NotaConMoneda).currency))}
                     </TableCell>
                     <TableCell>
                       <Badge className={`${statusColors[nota.status]} flex items-center gap-1 w-fit`}>

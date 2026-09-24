@@ -19,13 +19,14 @@ import { BranchSelectorField } from '@/components/inventario/BranchSelectorField
 import { ItemsFactura } from './ItemsFactura';
 import { ImpuestosFactura } from './ImpuestosFactura';
 import { FormaPagoSelector } from './FormaPagoSelector';
-import { format } from 'date-fns';
-import { Save, FileCheck, ArrowLeft, RefreshCw, Coins, User, Percent, DollarSign, AlertCircle } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, Coins, User, Percent, DollarSign, AlertCircle } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { resolveLineTax } from '@/lib/services/taxResolver';
@@ -80,9 +81,54 @@ interface Invoice {
   created_by?: string; // ID del usuario que crea la factura
 };
 
+/** Línea de una factura guardada (lo que usa el formulario al editar). */
+interface ItemFacturaGuardada {
+  id?: string;
+  product_id?: number | null;
+  description?: string | null;
+  qty?: number | string | null;
+  unit_price?: number | string | null;
+  tax_code?: string | null;
+  tax_rate?: number | string | null;
+  tax_included?: boolean | null;
+  total_line?: number | string | null;
+  discount_amount?: number | string | null;
+}
+
+/** Factura que llega para editar (fila de `invoice_sales` con relaciones). */
+interface FacturaInicialVenta {
+  id?: string;
+  number?: string | null;
+  customer_id?: string | null;
+  currency?: string | null;
+  payment_terms?: number | null;
+  payment_method?: string | null;
+  notes?: string | null;
+  tax_included?: boolean | null;
+  branch_id?: number | null;
+  salesperson_id?: string | null;
+  commission_rate?: number | string | null;
+  commission_type?: 'salesperson' | 'intermediation_sale' | 'none' | null;
+  commission_method?: 'percentage' | 'fixed_amount' | null;
+  issue_date?: string | null;
+  due_date?: string | null;
+  items?: ItemFacturaGuardada[] | null;
+  applied_taxes?: { tax_code: string; is_applied: boolean }[] | null;
+}
+
+/** Totales por impuesto que entrega `ImpuestosFactura`. */
+interface TotalImpuesto {
+  rate: number;
+  base: number;
+  amount: number;
+  name: string;
+  included: boolean;
+}
+
 interface NuevaFacturaFormProps {
-  facturaInicial?: any;
-  onSubmit?: (datosFactura: any) => Promise<void>;
+  facturaInicial?: FacturaInicialVenta | null;
+  // Los datos de edición los arma este formulario (ver `datosFactura` en handleSubmit).
+  onSubmit?: (datosFactura: Record<string, unknown>) => Promise<void>;
   saving?: boolean;
   esEdicion?: boolean;
 }
@@ -113,7 +159,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   }, [selectedBranchId]);
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [isDuplicateNumber, setIsDuplicateNumber] = useState<boolean>(false);
-  const [isValidatingNumber, setIsValidatingNumber] = useState<boolean>(false);
+  const [, setIsValidatingNumber] = useState<boolean>(false);
   const [issueDate, setIssueDate] = useState<Date | undefined>(new Date());
   const [dueDate, setDueDate] = useState<Date | undefined>(() => {
     // Inicializar fecha de vencimiento basada en fecha actual + 30 días
@@ -140,7 +186,9 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   }, [eInvoiceAlwaysEnabled]);
 
   // Estados para moneda
-  const [currency, setCurrency] = useState<string>('COP');
+  // Moneda de la factura: vacía hasta conocer la de la organización (nunca COP supuesto).
+  const [currency, setCurrency] = useState<string>('');
+  const { code: monedaBase, resuelta: monedaResuelta, paraDocumento } = useMonedaOrganizacion();
   const [currencies, setCurrencies] = useState<{code: string; name: string; symbol: string}[]>([]);
   const [loadingCurrencies, setLoadingCurrencies] = useState<boolean>(false);
 
@@ -155,7 +203,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const [organizationMembers, setOrganizationMembers] = useState<{ id: string; name: string }[]>([]);
   const { resolveRate: resolveCommissionRate } = useCommissionRate();
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({}); // Indicador de impuestos aplicados
-  const [appliedTaxTotals, setAppliedTaxTotals] = useState<{[key: string]: any}>({}); // Totales de impuestos aplicados
+  const [appliedTaxTotals, setAppliedTaxTotals] = useState<{[key: string]: TotalImpuesto}>({}); // Totales de impuestos aplicados
 
   // Advertencia previa a emitir: líneas que el resolver dejaría en 0 por falta
   // de impuesto en el producto y de tarifa por defecto en la organización.
@@ -178,7 +226,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     docTaxRate,
   );
   const [subtotal, setSubtotal] = useState<number>(0);
-  const [taxTotal, setTaxTotal] = useState<number>(0);
+  const [, setTaxTotal] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
 
   // Estado para selector de oportunidad (opcional)
@@ -234,7 +282,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           
         if (currError) throw currError;
         
-        const currencyList = orgCurrencies.map((item: any) => {
+        const currencyList = orgCurrencies.map((item: { currency_code: string; is_base: boolean | null }) => {
           const details = currencyDetails?.find(c => c.code === item.currency_code);
           return {
             code: item.currency_code,
@@ -245,22 +293,25 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         setCurrencies(currencyList);
         
         // Establecer la moneda base como predeterminada
-        const baseCurrency = orgCurrencies.find((item: any) => item.is_base);
+        // (sin pisar la que ya trae la factura en edición o duplicación)
+        const baseCurrency = orgCurrencies.find((item: { is_base: boolean | null }) => item.is_base);
         if (baseCurrency) {
-          setCurrency(baseCurrency.currency_code);
+          setCurrency(prev => prev || baseCurrency.currency_code);
         } else if (currencyList.length > 0) {
-          setCurrency(currencyList[0].code);
+          setCurrency(prev => prev || currencyList[0].code);
         }
       } else {
-        // Si no hay monedas configuradas, usar COP por defecto
-        setCurrencies([{ code: 'COP', name: 'Peso Colombiano', symbol: '$' }]);
-        setCurrency('COP');
+        // Sin monedas configuradas: la moneda base resuelta de la organización.
+        const base = await resolveOrgCurrency(supabase, Number(organizationId));
+        setCurrencies([{ code: base.code, name: base.code, symbol: base.symbol || '$' }]);
+        setCurrency(prev => prev || base.code);
       }
     } catch (error) {
       console.error('Error al cargar monedas:', error);
-      // Si falla, usar COP por defecto
-      setCurrencies([{ code: 'COP', name: 'Peso Colombiano', symbol: '$' }]);
-      setCurrency('COP');
+      // Si falla, la moneda base resuelta de la organización (resolveOrgCurrency no lanza).
+      const base = await resolveOrgCurrency(supabase, Number(organizationId));
+      setCurrencies([{ code: base.code, name: base.code, symbol: base.symbol || '$' }]);
+      setCurrency(prev => prev || base.code);
     } finally {
       setLoadingCurrencies(false);
     }
@@ -270,6 +321,14 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   useEffect(() => {
     loadCurrencies();
   }, [loadCurrencies]);
+
+  // Respaldo: si aún no hay moneda elegida, la base de la organización.
+  useEffect(() => {
+    if (monedaResuelta && !currency) setCurrency(monedaBase);
+  }, [monedaResuelta, monedaBase, currency]);
+
+  // Moneda con la que se pintan los importes del formulario.
+  const monedaFactura = currency || monedaBase;
 
   // Cargar miembros de la organización para selector de vendedor
   useEffect(() => {
@@ -289,7 +348,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
             .in('id', userIds);
 
           const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-          const formatted = members.map((m: any) => {
+          const formatted = members.map((m: { user_id: string }) => {
             const p = profileMap.get(m.user_id);
             return {
               id: m.user_id,
@@ -340,15 +399,15 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       if (oppError || !oppProducts || oppProducts.length === 0) return;
 
       // Obtener nombres de productos
-      const productIds = oppProducts.map((op: any) => op.product_id);
+      const productIds = oppProducts.map((op: { product_id: number }) => op.product_id);
       const { data: products } = await supabase
         .from('products')
         .select('id, name')
         .in('id', productIds);
 
-      const productMap = new Map((products || []).map((p: any) => [p.id, p.name] as [number, string]));
+      const productMap = new Map((products || []).map((p: { id: number; name: string }) => [p.id, p.name] as [number, string]));
 
-      const newItems: InvoiceItem[] = oppProducts.map((op: any) => ({
+      const newItems: InvoiceItem[] = oppProducts.map((op: { product_id: number; quantity: number | string | null; unit_price: number | string | null; total_price: number | string | null }) => ({
         invoice_type: 'sale' as const,
         product_id: op.product_id,
         description: productMap.get(op.product_id) || '',
@@ -377,7 +436,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     if (esEdicion && facturaInicial) {
       setInvoiceNumber(facturaInicial.number || '');
       setSelectedCustomerId(facturaInicial.customer_id || null);
-      setCurrency(facturaInicial.currency || 'COP');
+      // Sin moneda en la factura, la base la completa el efecto de respaldo.
+      setCurrency(facturaInicial.currency || '');
       setPaymentTerms(facturaInicial.payment_terms || 30);
       setPaymentMethodCode(facturaInicial.payment_method || '');
       setNotes(facturaInicial.notes || '');
@@ -386,7 +446,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       setSalespersonId(facturaInicial.salesperson_id || '');
       setCommissionRate(Number(facturaInicial.commission_rate) || 0);
       setCommissionType(facturaInicial.commission_type || 'salesperson');
-      setCommissionMethod((facturaInicial as any).commission_method || 'percentage');
+      setCommissionMethod(facturaInicial.commission_method || 'percentage');
 
       if (facturaInicial.issue_date) {
         // Convertir timestamptz a dia calendario de la org, luego a Date para el DatePicker
@@ -400,7 +460,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
 
       // Cargar items de la factura
       if (facturaInicial.items && facturaInicial.items.length > 0) {
-        const itemsFormateados = facturaInicial.items.map((item: any) => ({
+        const itemsFormateados = facturaInicial.items.map((item: ItemFacturaGuardada) => ({
           id: item.id,
           product_id: item.product_id,
           description: item.description || '',
@@ -434,7 +494,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         if (itemsError) throw itemsError;
         
         if (itemsData && itemsData.length > 0) {
-          const itemsFormateados = itemsData.map((item: any) => ({
+          const itemsFormateados = itemsData.map((item: ItemFacturaGuardada & { description: string; qty: number; unit_price: number; total_line: number; tax_rate: number | null; discount_amount: number | null }) => ({
             id: undefined, // Nuevo ID al guardar
             product_id: item.product_id,
             description: item.description,
@@ -549,12 +609,18 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       // Prioridad 1: impuestos guardados en invoice_applied_taxes
       if (facturaInicial.applied_taxes && facturaInicial.applied_taxes.length > 0) {
         return facturaInicial.applied_taxes
-          .filter((t: any) => t.is_applied)
-          .map((t: any) => t.tax_code);
+          .filter((t) => t.is_applied)
+          .map((t) => t.tax_code);
       }
       // Fallback para facturas viejas: usar tax_code de los items
       if (facturaInicial.items) {
-        const taxCodes = [...new Set(facturaInicial.items.map((item: any) => item.tax_code).filter(Boolean))];
+        const taxCodes = [
+          ...new Set(
+            facturaInicial.items
+              .map((item) => item.tax_code)
+              .filter((code): code is string => Boolean(code))
+          ),
+        ];
         if (taxCodes.length > 0) return taxCodes;
       }
     }
@@ -740,7 +806,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         branch_id: branchId,
         issue_date: issueDate ? toInstant(toDate(issueDate)) : null,
         due_date: dueDate ? toInstant(toDate(dueDate)) : null,
-        currency,
+        currency: monedaFactura,
         payment_terms: paymentTerms,
         payment_method: paymentMethodCode || null,
         notes: notes || null,
@@ -870,7 +936,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         number: invoiceNumber,
         issue_date: issueDate ? toInstant(toDate(issueDate)) : null,
         due_date: dueDate ? toInstant(toDate(dueDate)) : null,
-        currency: currency, // Moneda seleccionada por el usuario
+        // Moneda elegida; si aún no hay, la base la pone (`trg_00_moneda_base_por_defecto`).
+        currency: currency || null,
         subtotal: safeSubtotal,
         tax_total: safeTaxTotal,
         total: safeTotal,
@@ -921,7 +988,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       // las filas ya son visibles entre sí.
       // Consultar los números de serial correspondientes a los IDs seleccionados
       // para guardarlos en invoice_items (para mostrar en detalle y PDF).
-      let serialNumbersMap: Record<number, string[]> = {};
+      const serialNumbersMap: Record<number, string[]> = {};
       const allSerialIds = items.flatMap(item =>
         item.product_id != null && item.track_serial === true
           ? (serialSelections[item.product_id] || [])
@@ -933,7 +1000,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           .select('id, serial_number')
           .in('id', allSerialIds);
         if (serialsData) {
-          serialsData.forEach((s: any) => {
+          serialsData.forEach((s: { id: number; serial_number: string }) => {
             if (!serialNumbersMap[s.id]) serialNumbersMap[s.id] = [];
             serialNumbersMap[s.id].push(s.serial_number);
           });
@@ -1037,7 +1104,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
               base_amount: baseAmount,
               commission_rate: commissionRate,
               commission_amount: commissionAmountCalc,
-              currency: currency,
+              // La comisión va en la moneda de la factura.
+              currency: invoiceData.currency || currency || null,
               status: 'accrued',
               accrued_at: new Date().toISOString(),
               created_by: currentUserId,
@@ -1062,7 +1130,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
 
         if (faltantes && faltantes.length > 0) {
           const detalle = faltantes
-            .map((f: any) => `${f.product_name}: necesita ${f.required}, hay ${f.available}`)
+            .map((f: { product_name: string; required: number; available: number }) => `${f.product_name}: necesita ${f.required}, hay ${f.available}`)
             .join(' | ');
 
           toastError('Guardada, pero sin existencias para emitir', `${detalle}. Repon el inventario antes de emitirla.`);
@@ -1305,6 +1373,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           serialSelections={serialSelections}
           onSerialSelectionsChange={setSerialSelections}
           lineasSinImpuesto={indicesSinImpuesto}
+          currency={monedaFactura}
         />
       </div>
       
@@ -1577,11 +1646,12 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <div className="flex justify-between items-center text-sm">
               <span className="text-blue-700 dark:text-blue-400">
-                Comisión estimada ({commissionMethod === 'percentage' ? `${commissionRate}%` : formatCurrency(commissionRate)}):
+                Comisión estimada ({commissionMethod === 'percentage' ? `${commissionRate}%` : formatMoneda(commissionRate, paraDocumento(monedaFactura))}):
               </span>
               <span className="font-semibold text-blue-700 dark:text-blue-400">
-                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: currency || 'COP' }).format(
-                  commissionMethod === 'fixed_amount' ? commissionRate : (itemsSubtotalForCommission > 0 ? itemsSubtotalForCommission : itemsTotalForCommission) * commissionRate / 100
+                {formatMoneda(
+                  commissionMethod === 'fixed_amount' ? commissionRate : (itemsSubtotalForCommission > 0 ? itemsSubtotalForCommission : itemsTotalForCommission) * commissionRate / 100,
+                  paraDocumento(monedaFactura)
                 )}
               </span>
             </div>

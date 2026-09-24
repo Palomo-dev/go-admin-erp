@@ -5,8 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -29,7 +27,6 @@ import {
   User,
   UserPlus,
   Briefcase,
-  Building2,
   DollarSign,
   Calendar as CalendarIcon,
   Shield,
@@ -161,7 +158,9 @@ export function EmployeeCreateForm({
     branch_id: null,
     base_salary: null,
     salary_period: 'monthly',
-    currency_code: 'COP',
+    // Vacía: el trigger `trg_00_moneda_base_por_defecto` pone la moneda base
+    // de la organización al crear el empleo (nunca COP fijo).
+    currency_code: '',
     work_hours_per_week: 48,
     eps_code: '',
     afp_code: '',
@@ -178,7 +177,6 @@ export function EmployeeCreateForm({
   const [codeStatus, setCodeStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [activeStep, setActiveStep] = useState(0);
 
   // Miembros disponibles (sin employment)
   const availableMembers = members.filter((m) => !m.has_employment);
@@ -211,7 +209,8 @@ export function EmployeeCreateForm({
             setErrors((prev) => ({ ...prev, employee_code: 'Este código ya está en uso' }));
           } else {
             setErrors((prev) => {
-              const { employee_code, ...rest } = prev;
+              const rest = { ...prev };
+              delete rest.employee_code;
               return rest;
             });
           }
@@ -253,8 +252,8 @@ export function EmployeeCreateForm({
     try {
       await onSubmit(formData);
       setSubmitSuccess(true);
-    } catch (error: any) {
-      setSubmitError(error.message || 'Error al crear el empleado');
+    } catch (error: unknown) {
+      setSubmitError((error as { message?: string } | null)?.message || 'Error al crear el empleado');
     } finally {
       setIsSubmitting(false);
     }
@@ -300,7 +299,7 @@ export function EmployeeCreateForm({
                     branch_id: null,
                     base_salary: null,
                     salary_period: 'monthly',
-                    currency_code: 'COP',
+                    currency_code: '',
                     work_hours_per_week: 48,
                     eps_code: '',
                     afp_code: '',

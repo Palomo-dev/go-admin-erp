@@ -7,6 +7,27 @@
 import { supabase } from "@/lib/supabase/config";
 import { getOrganizationId } from "./kanbanService";
 import { currencyService } from "./currencyService";
+import { resolveOrgCurrency } from "./monedaOrganizacion";
+
+/**
+ * Moneda en la que se consolida el pronóstico: la que pida el llamador o, si
+ * no pide ninguna, la base de la organización. Nunca 'COP' ni 'USD' cableados.
+ */
+const monedaDelPronostico = async (organizationId: number, pedida?: string): Promise<string> =>
+  pedida || (await resolveOrgCurrency(supabase, organizationId)).code;
+
+/** Fila de `opportunities` con la etapa y el cliente embebidos. */
+interface FilaOportunidadPronostico {
+  id: string;
+  name: string;
+  amount: number | string | null;
+  currency: string | null;
+  expected_close_date: string | null;
+  stage_id: string;
+  status: string;
+  stages?: { name?: string; probability?: number | string | null } | null;
+  customers?: { full_name?: string | null } | null;
+}
 
 // Tipos necesarios para el servicio
 export interface MonthlyForecast {
@@ -63,13 +84,10 @@ export const getMonthlyForecast = async (
   } = {}
 ): Promise<ForecastResult | null> => {
   try {
-    // Valores predeterminados
-    const baseCurrency = options.baseCurrency || "COP";
+    // Valores predeterminados. `startDate`/`endDate` se aceptan por contrato
+    // pero nunca se aplicaron al agrupar (el procesado no los leía).
     const includeWon = options.includeWon ?? true;
     const includeLost = options.includeLost ?? false;
-    const now = new Date();
-    const startDate = options.startDate || new Date(now.getFullYear(), now.getMonth(), 1);
-    const endDate = options.endDate || new Date(now.getFullYear() + 1, now.getMonth(), 0);
 
     // Obtener el ID de organización
     const organizationId = getOrganizationId();
@@ -77,6 +95,7 @@ export const getMonthlyForecast = async (
       console.error("No se encontró ID de organización para el pronóstico");
       return null;
     }
+    const baseCurrency = await monedaDelPronostico(organizationId, options.baseCurrency);
 
     // Construir filtro de estado
     const statusFilter = ["open"];
@@ -115,7 +134,11 @@ export const getMonthlyForecast = async (
     }
 
     // Procesar y agrupar oportunidades por mes
-    return await processOpportunitiesByMonth(data, baseCurrency, organizationId, { startDate, endDate });
+    return await processOpportunitiesByMonth(
+      data as unknown as FilaOportunidadPronostico[],
+      baseCurrency,
+      organizationId
+    );
   } catch (error) {
     console.error("Error en cálculo de pronóstico mensual:", error);
     return null;
@@ -126,14 +149,12 @@ export const getMonthlyForecast = async (
  * Procesa las oportunidades y las agrupa por mes para el pronóstico
  * @param data - Datos de oportunidades desde Supabase
  * @param baseCurrency - Moneda base para conversiones
- * @param options - Opciones adicionales
  * @returns Resultado del pronóstico procesado
  */
 const processOpportunitiesByMonth = async (
-  data: any[],
+  data: FilaOportunidadPronostico[],
   baseCurrency: string,
-  organizationId: number,
-  options: { startDate?: Date; endDate?: Date } = {}
+  organizationId: number
 ): Promise<ForecastResult> => {
   const monthMap = new Map<string, MonthlyForecast>();
   const currencyDistribution: Record<string, number> = {};
@@ -322,7 +343,6 @@ export const getForecastByStage = async (
 } | null> => {
   try {
     // Valores predeterminados
-    const baseCurrency = options.baseCurrency || "USD";
     const includeWon = options.includeWon ?? true;
     const includeLost = options.includeLost ?? false;
 
@@ -332,6 +352,7 @@ export const getForecastByStage = async (
       console.error("No se encontró ID de organización para el pronóstico por etapa");
       return null;
     }
+    const baseCurrency = await monedaDelPronostico(organizationId, options.baseCurrency);
 
     // Construir filtro de estado
     const statusFilter = ["open"];
@@ -359,7 +380,7 @@ export const getForecastByStage = async (
     let weightedAmount = 0;
 
     // Procesar oportunidades de forma asíncrona
-    const processPromises = data.map(async (opp: any) => {
+    const processPromises = (data as unknown as FilaOportunidadPronostico[]).map(async (opp) => {
       const amount = Number(opp.amount) || 0;
       const probability = opp.stages ? Number(opp.stages.probability) : 0;
       const currency = opp.currency || baseCurrency;
@@ -416,7 +437,7 @@ export const calculateStageForecasts = async (
     const organizationId = getOrganizationId();
     if (!organizationId) return null;
 
-    const baseCurrency = options.baseCurrency || "COP";
+    const baseCurrency = await monedaDelPronostico(organizationId, options.baseCurrency);
     const includeWon = options.includeWon ?? true;
     
     // Filtro de estado
@@ -445,7 +466,7 @@ export const calculateStageForecasts = async (
     let weightedAmount = 0;
 
     // Procesar oportunidades de forma asíncrona
-    const processPromises = data.map(async (opp: any) => {
+    const processPromises = (data as unknown as FilaOportunidadPronostico[]).map(async (opp) => {
       const amount = Number(opp.amount) || 0;
       const probability = opp.stages ? Number(opp.stages.probability) : 0;
       const currency = opp.currency || baseCurrency;
@@ -500,7 +521,7 @@ export const getStageForecasts = async (
     const organizationId = getOrganizationId();
     if (!organizationId) return null;
 
-    const baseCurrency = options.baseCurrency || "COP";
+    const baseCurrency = await monedaDelPronostico(organizationId, options.baseCurrency);
     const includeWon = options.includeWon ?? true;
     
     // Filtro de estado
@@ -528,7 +549,7 @@ export const getStageForecasts = async (
     let weightedAmount = 0;
 
     // Procesar oportunidades de forma asíncrona
-    const processPromises = data.map(async (opp: any) => {
+    const processPromises = (data as unknown as FilaOportunidadPronostico[]).map(async (opp) => {
       const amount = Number(opp.amount) || 0;
       const probability = opp.stages ? Number(opp.stages.probability) : 0;
       const currency = opp.currency || baseCurrency;

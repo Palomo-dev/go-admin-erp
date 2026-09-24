@@ -23,6 +23,7 @@ import {
   Timer,
 } from 'lucide-react';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 const PAGE_SIZE = 10;
 
@@ -88,10 +89,6 @@ interface WebCommerceObservabilityProps {
   withinMinutes?: number;
 }
 
-function formatCurrency(value: number): string {
-  return `$${value.toLocaleString('es-CO')}`;
-}
-
 function formatTimeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const hours = Math.floor(diff / 3600000);
@@ -104,6 +101,7 @@ export function WebCommerceObservability({
   organizationId,
   withinMinutes = 30,
 }: WebCommerceObservabilityProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [data, setData] = useState<ObservabilityData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
@@ -357,7 +355,7 @@ export function WebCommerceObservability({
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="tabular-nums text-muted-foreground">
-                              {formatCurrency(order.total)}
+                              {formatear(order.total)}
                             </span>
                             <Badge
                               variant={

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 import { readOrgBody } from '@/lib/security/organizationBody';
 /**
@@ -165,7 +166,8 @@ async function gatherDiscoveryContext(
       customer_name: customer?.full_name || 'N/A',
       stage_name: stage?.name || 'Sin etapa',
       amount: (oppData.amount as number) || 0,
-      currency: (oppData.currency as string) || 'COP',
+      // Moneda del documento; si no la trae, la base de la organización.
+      currency: (oppData.currency as string) || (await resolveOrgCurrency(supabase, organizationId)).code,
       activities: activityList.map((a) => ({
         type: (a.activity_type as string) || 'unknown',
         title: (a.title as string) || '',

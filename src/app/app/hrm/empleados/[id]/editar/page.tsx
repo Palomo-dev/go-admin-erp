@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import EmploymentsService from '@/lib/services/employmentsService';
 import type { Employment } from '@/lib/services/employmentsService';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -127,7 +127,8 @@ export default function EditarEmpleadoPage() {
     branch_id: null as number | null,
     base_salary: null as number | null,
     salary_period: 'monthly',
-    currency_code: 'COP',
+    // La del empleo al cargar; vacía = no se toca (nunca COP fijo).
+    currency_code: '',
     work_hours_per_week: 48,
     eps_code: '',
     afp_code: '',
@@ -185,7 +186,7 @@ export default function EditarEmpleadoPage() {
         branch_id: empData.branch_id,
         base_salary: empData.base_salary,
         salary_period: empData.salary_period,
-        currency_code: empData.currency_code,
+        currency_code: empData.currency_code || '',
         work_hours_per_week: empData.work_hours_per_week,
         eps_code: empData.eps_code || '',
         afp_code: empData.afp_code || '',
@@ -266,7 +267,7 @@ export default function EditarEmpleadoPage() {
         branch_id: formData.branch_id,
         base_salary: formData.base_salary,
         salary_period: formData.salary_period,
-        currency_code: formData.currency_code,
+        currency_code: formData.currency_code || undefined,
         work_hours_per_week: formData.work_hours_per_week,
         eps_code: formData.eps_code || null,
         afp_code: formData.afp_code || null,
@@ -284,8 +285,8 @@ export default function EditarEmpleadoPage() {
       });
 
       router.push(`/app/hrm/empleados/${employeeId}`);
-    } catch (error: any) {
-      setSubmitError(error.message || 'Error al guardar los cambios');
+    } catch (error: unknown) {
+      setSubmitError((error as { message?: string } | null)?.message || 'Error al guardar los cambios');
     } finally {
       setIsSubmitting(false);
     }

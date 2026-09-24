@@ -16,15 +16,22 @@ import { AccountActionsCard } from './AccountActionsCard';
 import { InstallmentsCard } from './InstallmentsCard';
 import { parseLocalDate } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { monedaDeCuentaPorCobrar } from '../service';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface CuentaPorCobrarDetailPageProps {
   accountId: string;
 }
 
 export function CuentaPorCobrarDetailPage({ accountId }: CuentaPorCobrarDetailPageProps) {
-  // Montos en la moneda base de la organización (fuente única:
-  // monedaOrganizacion.ts), también en el documento exportado. Nunca pesos fijos.
-  const { formatear: formatCurrency } = useMonedaOrganizacion();
+  // Montos en la moneda de la cuenta (la de su factura de venta) y, si no la
+  // tiene o mientras se resuelve, en la moneda base de la organización (fuente
+  // única: monedaOrganizacion.ts), también en el documento exportado. Nunca pesos fijos.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const [monedaCuenta, setMonedaCuenta] = useState<string | null>(null);
+  const formatCurrency = (valor: number) => formatMoneda(valor, paraDocumento(monedaCuenta));
+  const { getToday } = useFormatDate();
   const router = useRouter();
   const [account, setAccount] = useState<CuentaPorCobrarDetalle | null>(null);
   const [agingInfo, setAgingInfo] = useState<AgingInfo | null>(null);
@@ -35,6 +42,24 @@ export function CuentaPorCobrarDetailPage({ accountId }: CuentaPorCobrarDetailPa
   useEffect(() => {
     loadAccountDetails();
   }, [accountId]);
+
+  const organizacionCuenta = account?.organization_id;
+  const invoiceIdCuenta = account?.invoice_id ?? null;
+  const saleIdCuenta = account?.sale_id ?? null;
+  useEffect(() => {
+    if (!organizacionCuenta) return;
+    let cancelado = false;
+    monedaDeCuentaPorCobrar(organizacionCuenta, accountId, { invoice_id: invoiceIdCuenta, sale_id: saleIdCuenta })
+      .then((moneda) => {
+        if (!cancelado) setMonedaCuenta(moneda);
+      })
+      .catch(() => {
+        /* se queda la moneda base */
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [organizacionCuenta, accountId, invoiceIdCuenta, saleIdCuenta]);
 
   const loadAccountDetails = async () => {
     try {
@@ -102,7 +127,7 @@ Fecha de Generación: ${new Date().toLocaleDateString('es-CO')}
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `estado_cuenta_${account.customer_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+      a.download = `estado_cuenta_${account.customer_name.replace(/\s+/g, '_')}_${getToday()}.txt`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -431,6 +456,7 @@ Fecha de Generación: ${new Date().toLocaleDateString('es-CO')}
           <AccountActionsCard
             account={account}
             actions={accountActions}
+            currency={monedaCuenta}
             onUpdate={handleRefresh}
           />
         )}
@@ -442,6 +468,7 @@ Fecha de Generación: ${new Date().toLocaleDateString('es-CO')}
           accountId={account.id}
           totalAmount={account.balance}
           accountStatus={account.status}
+          currency={monedaCuenta}
           onUpdate={handleRefresh}
         />
       </div>
@@ -451,6 +478,7 @@ Fecha de Generación: ${new Date().toLocaleDateString('es-CO')}
         <PaymentHistoryCard
           accountId={account.id}
           organizationId={account.organization_id}
+          currency={monedaCuenta}
           onUpdate={handleRefresh}
         />
       </div>

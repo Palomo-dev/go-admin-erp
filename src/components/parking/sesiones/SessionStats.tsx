@@ -10,7 +10,7 @@ import {
   Car,
   TrendingUp
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface SessionStatsProps {
   totalSessions: number;
@@ -29,6 +29,7 @@ export function SessionStats({
   totalRevenue,
   avgDuration,
 }: SessionStatsProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const stats = [
     {
       label: 'Total Sesiones',

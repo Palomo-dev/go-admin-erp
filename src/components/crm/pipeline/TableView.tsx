@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase/config";
 import { useRouter } from "next/navigation";
-import { formatCurrency } from "@/utils/Utils";
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { formatPlainDate } from "@/lib/utils/dateDisplay";
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
 
@@ -48,12 +49,6 @@ interface Stage {
   position: number;
 }
 
-interface Customer {
-  id: string;
-  full_name: string;
-  email?: string;
-}
-
 interface Opportunity {
   id: string;
   name: string;
@@ -62,6 +57,7 @@ interface Opportunity {
   customer_id: string;
   customer_name?: string;
   amount: number;
+  currency: string | null;
   probability: number;
   expected_close_date?: string;
   status: string;
@@ -74,6 +70,7 @@ interface TableViewProps {
 
 const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const { paraDocumento } = useMonedaOrganizacion();
   const [stages, setStages] = useState<Stage[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
@@ -142,7 +139,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
               if (Array.isArray(opp.stages) && opp.stages.length > 0) {
                 stageName = opp.stages[0]?.name;
               } else if (typeof opp.stages === 'object' && opp.stages !== null) {
-                stageName = (opp.stages as any).name;
+                stageName = (opp.stages as { name?: string }).name;
               }
             }
             
@@ -152,7 +149,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
               if (Array.isArray(opp.customers) && opp.customers.length > 0) {
                 customerName = opp.customers[0]?.full_name;
               } else if (typeof opp.customers === 'object' && opp.customers !== null) {
-                customerName = (opp.customers as any).full_name;
+                customerName = (opp.customers as { full_name?: string }).full_name;
               }
             }
             
@@ -162,7 +159,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
               if (Array.isArray(opp.stages) && opp.stages.length > 0) {
                 probability = opp.stages[0]?.probability || 0;
               } else if (typeof opp.stages === 'object' && opp.stages !== null) {
-                probability = (opp.stages as any).probability || 0;
+                probability = (opp.stages as { probability?: number }).probability || 0;
               }
             }
             
@@ -174,6 +171,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
               customer_id: opp.customer_id,
               customer_name: customerName,
               amount: parseFloat(opp.amount) || 0,
+              currency: (opp.currency as string | null) ?? null,
               probability: probability,
               expected_close_date: opp.expected_close_date,
               status: opp.status,
@@ -533,7 +531,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
                     {opportunity.stage_name || "Sin etapa"}
                   </TableCell>
                   <TableCell className="text-right font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
-                    {formatCurrency(opportunity.amount)}
+                    {formatMoneda(opportunity.amount, paraDocumento(opportunity.currency))}
                   </TableCell>
                   <TableCell className="text-right hidden lg:table-cell text-gray-700 dark:text-gray-300 text-xs sm:text-sm">
                     {opportunity.expected_close_date 

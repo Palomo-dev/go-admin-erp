@@ -6,11 +6,12 @@ import { toast } from 'sonner';
 import {
   StatsSkeleton,
 } from '@/components/common/PageSkeletons';
-import { BookOpen, FileText, Calculator, Calendar, Settings, ArrowRight, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt } from 'lucide-react';
+import { BookOpen, FileText, Calculator, ArrowRight, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ContabilidadService, ContabilidadResumen } from './ContabilidadService';
-import { formatNumber, formatCurrency } from '@/utils/Utils';
+import { formatNumber } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -98,6 +99,8 @@ const MODULES = [
 
 export function ContabilidadHomePage() {
   const { branchFilter } = useBranch();
+  // Saldos de folios (sumas de varios documentos): en la moneda base.
+  const { formatear } = useMonedaOrganizacion();
   const [resumen, setResumen] = useState<ContabilidadResumen | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [foliosResumen, setFoliosResumen] = useState({
@@ -312,13 +315,13 @@ export function ContabilidadHomePage() {
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Items Pendientes</p>
                 <p className="text-xl font-bold text-amber-600 dark:text-amber-400">
-                  {formatCurrency(foliosResumen.itemsPendientes)}
+                  {formatear(foliosResumen.itemsPendientes)}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Saldo Total Pendiente</p>
                 <p className="text-xl font-bold text-red-600 dark:text-red-400">
-                  {formatCurrency(foliosResumen.saldoPendiente)}
+                  {formatear(foliosResumen.saldoPendiente)}
                 </p>
               </div>
             </div>

@@ -1,9 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { 
   Plus, 
-  Search, 
   Banknote,
   RefreshCw,
   Users,
@@ -21,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { TipFilters, TIP_TYPE_LABELS, TipType } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface TipsHeaderProps {
   filters: TipFilters;
@@ -51,6 +49,7 @@ export function TipsHeader({
   selectedCount = 0,
   onDistributeSelected
 }: TipsHeaderProps) {
+  const { formatear } = useMonedaOrganizacion();
   const handleServerChange = (value: string) => {
     onFiltersChange({ 
       ...filters, 
@@ -126,7 +125,7 @@ export function TipsHeader({
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total del Día</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(stats.total)}
+                  {formatear(stats.total)}
                 </p>
               </div>
               <Banknote className="h-8 w-8 text-green-600 dark:text-green-400" />
@@ -140,7 +139,7 @@ export function TipsHeader({
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Distribuidas</p>
                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {formatCurrency(stats.distributed)}
+                  {formatear(stats.distributed)}
                 </p>
               </div>
               <CheckCircle className="h-8 w-8 text-blue-600 dark:text-blue-400" />
@@ -154,7 +153,7 @@ export function TipsHeader({
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Pendientes</p>
                 <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                  {formatCurrency(stats.pending)}
+                  {formatear(stats.pending)}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />

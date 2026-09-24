@@ -19,7 +19,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { BancosService, BankAccount, BankTransaction } from '../BancosService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { supabase } from '@/lib/supabase/config';
 
 /** Informacion del link de Open Finance vinculado a la cuenta */
@@ -35,6 +36,8 @@ interface CuentaDetailPageProps {
 
 export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
   const router = useRouter();
+  // Saldos y movimientos de la cuenta: en la moneda de la cuenta.
+  const { paraDocumento } = useMonedaOrganizacion();
   const [account, setAccount] = useState<BankAccount | null>(null);
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -231,7 +234,7 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
                 ? 'text-green-600 dark:text-green-400' 
                 : 'text-red-600 dark:text-red-400'
             }`}>
-              {formatCurrency(account.balance, account.currency || 'COP')}
+              {formatMoneda(account.balance, paraDocumento(account.currency))}
             </div>
           </CardContent>
         </Card>
@@ -245,7 +248,7 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {formatCurrency(account.initial_balance || 0, account.currency || 'COP')}
+              {formatMoneda(account.initial_balance || 0, paraDocumento(account.currency))}
             </div>
           </CardContent>
         </Card>
@@ -273,7 +276,7 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {account.currency || 'COP'}
+              {paraDocumento(account.currency).code}
             </div>
           </CardContent>
         </Card>
@@ -440,7 +443,7 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
                           : 'text-red-600 dark:text-red-400'
                       }`}>
                         {tx.transaction_type === 'credit' ? '+' : '-'}
-                        {formatCurrency(Math.abs(tx.amount))}
+                        {formatMoneda(Math.abs(tx.amount), paraDocumento(account.currency))}
                       </p>
                       {tx.reference && (
                         <p className="text-xs text-gray-500 dark:text-gray-400">

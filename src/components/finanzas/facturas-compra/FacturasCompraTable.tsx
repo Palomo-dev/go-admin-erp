@@ -24,7 +24,9 @@ import {
 } from 'lucide-react';
 import { FacturasCompraService } from './FacturasCompraService';
 import { InvoicePurchase, FiltrosFacturasCompra } from './types';
-import { formatCurrency, formatDate, cn, parseLocalDate } from '@/utils/Utils';
+import { formatDate, cn, parseLocalDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { Pagination } from '@/components/ui/pagination';
 import { RegistrarPagoModal } from './RegistrarPagoModal';
 import { CopyableId } from '@/components/common/CopyableId';
@@ -40,6 +42,8 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { branchFilter } = useBranch();
+  // Cada factura en su moneda (`invoice_purchase.currency`); sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
   const [facturas, setFacturas] = useState<InvoicePurchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -278,20 +282,20 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
                     {factura.due_date ? formatDate(parseLocalDate(factura.due_date)) : '-'}
                   </TableCell>
                   <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3 text-right font-medium whitespace-nowrap">
-                    {formatCurrency(factura.total, factura.currency)}
+                    {formatMoneda(factura.total, paraDocumento(factura.currency))}
                   </TableCell>
                   <TableCell className="text-xs sm:text-sm py-2 sm:py-3 text-right font-semibold whitespace-nowrap hidden sm:table-cell">
                     <span className={cn(
                       factura.balance > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
                     )}>
-                      {formatCurrency(factura.balance, factura.currency)}
+                      {formatMoneda(factura.balance, paraDocumento(factura.currency))}
                     </span>
                   </TableCell>
                   <TableCell className="py-2 sm:py-3">
                     {getEstadoBadge(factura.status)}
                   </TableCell>
                   <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3 hidden xl:table-cell">
-                    {factura.currency}
+                    {paraDocumento(factura.currency).code}
                   </TableCell>
                   <TableCell className="text-right py-2 sm:py-3">
                     <div className="flex justify-end gap-0.5 sm:gap-1">

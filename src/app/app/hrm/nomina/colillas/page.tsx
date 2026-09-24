@@ -5,9 +5,9 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import PayrollService from '@/lib/services/payrollService';
-import type { PayrollSlip } from '@/lib/services/payrollService';
+import type { PayrollSlip, SlipFilters } from '@/lib/services/payrollService';
 import { SlipsListTable } from '@/components/hrm/nomina/colillas';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,6 @@ import {
   Search,
   CheckCircle,
   DollarSign,
-  Users,
   ArrowLeft,
   Download,
 } from 'lucide-react';
@@ -43,6 +42,8 @@ import {
 export default function ColillasPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
+  // Total de colillas: se pinta en la moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
 
   const [slips, setSlips] = useState<PayrollSlip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,7 +65,7 @@ export default function ColillasPage() {
 
     setIsLoading(true);
     try {
-      const filters: any = {};
+      const filters: SlipFilters = {};
       if (statusFilter && statusFilter !== 'all') {
         filters.status = statusFilter;
       }
@@ -83,7 +84,7 @@ export default function ColillasPage() {
       }
 
       setSlips(filtered);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading data:', error);
       toast({
         title: 'Error',
@@ -110,7 +111,7 @@ export default function ColillasPage() {
       await service.updateSlipStatus(slip.id, 'approved');
       toast({ title: 'Colilla aprobada' });
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo aprobar la colilla',
@@ -127,7 +128,7 @@ export default function ColillasPage() {
       await service.updateSlipStatus(slip.id, 'paid');
       toast({ title: 'Colilla marcada como pagada' });
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo marcar como pagada',
@@ -147,7 +148,7 @@ export default function ColillasPage() {
       setSelectedSlips([]);
       setApproveOpen(false);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudieron aprobar las colillas',
@@ -278,7 +279,7 @@ export default function ColillasPage() {
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Total Neto</p>
                 <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(totalNet, 'COP')}
+                  {formatear(totalNet)}
                 </p>
               </div>
             </div>

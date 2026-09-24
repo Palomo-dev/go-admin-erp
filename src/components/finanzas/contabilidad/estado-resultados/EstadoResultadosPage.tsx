@@ -11,13 +11,21 @@ import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezon
 import { primerDiaDelAnioDe } from '@/lib/services/fiscalCalendar';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 
-function formatCurrency(value: number): string {
-  if (Math.abs(value) < 0.01) return '-';
-  return new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
+// Cifra contable en la moneda base de la organizacion (los reportes contables
+// se llevan en moneda base): sin simbolo, con los decimales y el formato de esa
+// moneda; '-' cuando es cero.
+function crearFormatoCifra(moneda: ContextoMoneda): (value: number) => string {
+  return (value) => (Math.abs(value) < 0.01 ? '-' : formatNumeroMoneda(value, moneda));
 }
 
-function renderRow(row: IncomeStatementRow, level: number = 0): React.ReactNode {
+function renderRow(
+  row: IncomeStatementRow,
+  formatCifra: (value: number) => string,
+  level: number = 0,
+): React.ReactNode {
   const indent = level * 20;
   const isParent = row.children.length > 0;
 
@@ -28,14 +36,15 @@ function renderRow(row: IncomeStatementRow, level: number = 0): React.ReactNode 
           <span className={`font-mono text-xs text-gray-500 dark:text-gray-500 mr-2`}>{row.account_code}</span>
           <span className={`${isParent ? 'font-bold' : 'font-normal'} text-gray-900 dark:text-white`}>{row.name}</span>
         </td>
-        <td className="py-2 px-3 text-right font-mono text-gray-900 dark:text-white">{formatCurrency(row.amount)}</td>
+        <td className="py-2 px-3 text-right font-mono text-gray-900 dark:text-white">{formatCifra(row.amount)}</td>
       </tr>
-      {row.children.map(child => renderRow(child, level + 1))}
+      {row.children.map(child => renderRow(child, formatCifra, level + 1))}
     </React.Fragment>
   );
 }
 
 export function EstadoResultadosPage() {
+  const formatCifra = crearFormatoCifra(useMonedaOrganizacion());
   // `journal_entries.entry_date` es timestamptz: los extremos del filtro se
   // convierten a instantes DENTRO del servicio, con la zona de la organizacion.
   // Aqui solo hace falta el dia calendario de esa misma zona, y por eso los
@@ -127,15 +136,15 @@ export function EstadoResultadosPage() {
               <TrendingUp className="h-5 w-5 text-green-600" />
               Ingresos
             </CardTitle>
-            <CardDescription className="dark:text-gray-400">Total: {formatCurrency(data.totalIncome)}</CardDescription>
+            <CardDescription className="dark:text-gray-400">Total: {formatCifra(data.totalIncome)}</CardDescription>
           </CardHeader>
           <CardContent>
             <table className="w-full text-sm">
               <tbody>
-                {data.income.map(row => renderRow(row))}
+                {data.income.map(row => renderRow(row, formatCifra))}
                 <tr className="border-t-2 dark:border-gray-600 font-bold">
                   <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL INGRESOS</td>
-                  <td className="py-3 px-3 text-right font-mono text-green-600 dark:text-green-400">{formatCurrency(data.totalIncome)}</td>
+                  <td className="py-3 px-3 text-right font-mono text-green-600 dark:text-green-400">{formatCifra(data.totalIncome)}</td>
                 </tr>
               </tbody>
             </table>
@@ -148,15 +157,15 @@ export function EstadoResultadosPage() {
               <TrendingDown className="h-5 w-5 text-red-600" />
               Gastos
             </CardTitle>
-            <CardDescription className="dark:text-gray-400">Total: {formatCurrency(data.totalExpenses)}</CardDescription>
+            <CardDescription className="dark:text-gray-400">Total: {formatCifra(data.totalExpenses)}</CardDescription>
           </CardHeader>
           <CardContent>
             <table className="w-full text-sm">
               <tbody>
-                {data.expenses.map(row => renderRow(row))}
+                {data.expenses.map(row => renderRow(row, formatCifra))}
                 <tr className="border-t-2 dark:border-gray-600 font-bold">
                   <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL GASTOS</td>
-                  <td className="py-3 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCurrency(data.totalExpenses)}</td>
+                  <td className="py-3 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCifra(data.totalExpenses)}</td>
                 </tr>
               </tbody>
             </table>
@@ -181,7 +190,7 @@ export function EstadoResultadosPage() {
               </div>
             </div>
             <p className={`text-3xl font-bold font-mono ${data.netIncome >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-              {formatCurrency(Math.abs(data.netIncome))}
+              {formatCifra(Math.abs(data.netIncome))}
             </p>
           </div>
         </CardContent>

@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { loadTeamsWithMembers, requireOrgId } from '../useEquipoData';
 import { memberName, memberInitials } from '../types';
 import type { SalesTeam, SalesRole, Territory, OrgMember } from '../types';
@@ -30,7 +31,15 @@ export function EquiposTab() {
   const [teamToDelete, setTeamToDelete] = useState<SalesTeam | null>(null);
   const [saving, setSaving] = useState(false);
   const [teamForm, setTeamForm] = useState({ name: '', description: '', is_active: true, territory_id: '' });
-  const [memberForm, setMemberForm] = useState({ user_id: '', sales_role_id: '', quota_amount: '', quota_currency: 'COP', territory_id: '' });
+  // La moneda de la cuota queda vacía hasta que se resuelve la base de la organización.
+  const [memberForm, setMemberForm] = useState({ user_id: '', sales_role_id: '', quota_amount: '', quota_currency: '', territory_id: '' });
+  const { code: monedaBase, resuelta: monedaResuelta, paraDocumento } = useMonedaOrganizacion();
+
+  useEffect(() => {
+    if (monedaResuelta && !memberForm.quota_currency) {
+      setMemberForm((p) => ({ ...p, quota_currency: monedaBase }));
+    }
+  }, [monedaResuelta, monedaBase, memberForm.quota_currency]);
 
   const load = useCallback(async () => {
     setIsRefreshing(true);
@@ -99,7 +108,8 @@ export function EquiposTab() {
         sales_role_id: memberForm.sales_role_id || null,
         territory_id: memberForm.territory_id || null,
         quota_amount: memberForm.quota_amount ? Number(memberForm.quota_amount) : null,
-        quota_currency: memberForm.quota_currency,
+        // Sin moneda elegida, NULL: el trigger pone la moneda base.
+        quota_currency: memberForm.quota_currency || null,
         is_active: true,
         organization_id: orgId,
       });
@@ -213,7 +223,7 @@ export function EquiposTab() {
                         {team.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{team.description}</p>}
                         {teamQuota > 0 && (
                           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                            Cuota total: {formatCurrency(teamQuota, members[0]?.quota_currency || 'COP')}
+                            Cuota total: {formatMoneda(teamQuota, paraDocumento(members[0]?.quota_currency))}
                           </p>
                         )}
                       </div>
@@ -263,7 +273,7 @@ export function EquiposTab() {
                                     )}
                                     {m.quota_amount != null && (
                                       <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                                        Cuota: {formatCurrency(Number(m.quota_amount), m.quota_currency)}
+                                        Cuota: {formatMoneda(Number(m.quota_amount), paraDocumento(m.quota_currency))}
                                       </span>
                                     )}
                                   </div>
@@ -277,7 +287,7 @@ export function EquiposTab() {
                         </div>
                       )}
                       <Button variant="outline" size="sm" onClick={() => {
-                        setMemberForm({ user_id: '', sales_role_id: '', quota_amount: '', quota_currency: 'COP', territory_id: '' });
+                        setMemberForm({ user_id: '', sales_role_id: '', quota_amount: '', quota_currency: monedaResuelta ? monedaBase : '', territory_id: '' });
                         setMemberDialogOpen(true);
                       }}>
                         <Plus className="h-3 w-3 mr-1" /> Añadir miembro

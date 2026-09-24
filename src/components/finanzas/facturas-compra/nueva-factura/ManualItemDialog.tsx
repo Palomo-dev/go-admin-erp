@@ -15,7 +15,8 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, FileText } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 interface ManualItemDialogProps {
   currency: string;
@@ -30,6 +31,9 @@ interface ManualItemForm {
 }
 
 export function ManualItemDialog({ currency, onItemAdd }: ManualItemDialogProps) {
+  // Importes en la moneda de la factura (la base si no la trae).
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = (valor: number, moneda: string) => formatMoneda(valor, paraDocumento(moneda));
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState<ManualItemForm>({
     description: '',
@@ -81,7 +85,7 @@ export function ManualItemDialog({ currency, onItemAdd }: ManualItemDialogProps)
     setIsOpen(false);
   };
 
-  const handleInputChange = (field: keyof ManualItemForm, value: any) => {
+  const handleInputChange = (field: keyof ManualItemForm, value: ManualItemForm[keyof ManualItemForm]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Limpiar error del campo cuando el usuario empiece a corregir

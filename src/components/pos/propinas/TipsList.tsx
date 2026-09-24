@@ -43,7 +43,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tip, TIP_TYPE_LABELS } from './types';
 import { PropinasService } from './propinasService';
-import { formatCurrency, cn } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
 
 interface TipsListProps {
@@ -63,6 +64,7 @@ export function TipsList({
   selectedIds = [],
   onSelectionChange
 }: TipsListProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const handleDelete = async () => {
@@ -72,8 +74,8 @@ export function TipsList({
       await PropinasService.delete(deleteId);
       toast.success('Propina eliminada correctamente');
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al eliminar la propina');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al eliminar la propina');
     } finally {
       setDeleteId(null);
     }
@@ -84,8 +86,8 @@ export function TipsList({
       await PropinasService.markAsDistributed(tip.id);
       toast.success('Propina marcada como distribuida');
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al marcar como distribuida');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al marcar como distribuida');
     }
   };
 
@@ -224,7 +226,7 @@ export function TipsList({
                 </TableCell>
                 <TableCell className="text-right">
                   <span className="font-semibold text-green-600 dark:text-green-400">
-                    {formatCurrency(tip.amount)}
+                    {formatear(tip.amount)}
                   </span>
                 </TableCell>
                 <TableCell className="text-center">

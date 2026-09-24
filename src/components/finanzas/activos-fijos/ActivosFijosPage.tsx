@@ -13,10 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { FixedAssetService, FixedAsset, ASSET_TYPES, DEPRECIATION_METHODS } from './FixedAssetService';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
-}
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   active: { label: 'Activo', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
@@ -26,6 +23,8 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export function ActivosFijosPage() {
+  // Importes en la moneda base de la organización (con su locale y decimales).
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   // `fixed_assets.acquisition_date` es `date` puro: hace falta el DIA de la
   // organizacion, no el dia UTC. A las 20:00 en Bogota, `toISOString()` ya
   // marca el dia siguiente y el activo se compraba «manana».

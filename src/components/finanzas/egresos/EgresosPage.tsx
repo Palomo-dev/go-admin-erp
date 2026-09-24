@@ -34,7 +34,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/components/ui/use-toast';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { movimientosService, UnifiedMovement } from '@/lib/services/movimientosService';
 import { NuevoEgresoDialog } from './NuevoEgresoDialog';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
@@ -45,6 +46,9 @@ import { useBranch } from '@/lib/context/BranchContext';
 export function EgresosPage() {
   const router = useRouter();
   const { branchFilter } = useBranch();
+  // Los movimientos no traen moneda propia: importes y totales en la moneda base.
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
+  const { formatDate, getToday } = useFormatDate();
   const [movements, setMovements] = useState<UnifiedMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -90,7 +94,7 @@ export function EgresosPage() {
       } else {
         toast({ title: 'Error', description: result.error, variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al duplicar', variant: 'destructive' });
     }
   };
@@ -107,7 +111,7 @@ export function EgresosPage() {
       } else {
         toast({ title: 'Error', description: result.error, variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
     }
   };
@@ -124,7 +128,7 @@ export function EgresosPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `egresos_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `egresos_${getToday()}.csv`;
     a.click();
   };
 

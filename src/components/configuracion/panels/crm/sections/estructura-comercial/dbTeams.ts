@@ -100,7 +100,8 @@ export const teamsDb = {
         user_id: body.user_id,
         sales_role_id: body.sales_role_id ?? null,
         quota_amount: body.quota_amount ?? null,
-        quota_currency: body.quota_currency ?? 'COP',
+        // NULL: el trigger `trg_00_moneda_base_por_defecto` pone la moneda base.
+        quota_currency: body.quota_currency ?? null,
         is_active: body.is_active ?? true,
         territory_id: body.territory_id ?? null,
       })

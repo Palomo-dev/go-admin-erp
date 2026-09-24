@@ -16,10 +16,9 @@ import {
   Users, 
   CheckCircle, 
   Clock,
-  DollarSign,
-  X
+  DollarSign
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { BillSplit } from './SplitBillDialog';
 
 interface SplitPaymentSelectorProps {
@@ -39,6 +38,7 @@ export function SplitPaymentSelector({
   onSelectSplit,
   onFinishAndClose
 }: SplitPaymentSelectorProps) {
+  const { formatear } = useMonedaOrganizacion();
   // Filtrar splits válidos (permite división equitativa con items vacíos)
   const validSplits = splits.filter(s => s.total > 0);
   
@@ -94,7 +94,7 @@ export function SplitPaymentSelector({
               <div>
                 <p className="text-xs text-blue-700 dark:text-blue-300">Total Pagado</p>
                 <p className="font-bold text-blue-900 dark:text-blue-100 text-sm">
-                  {formatCurrency(totalPaid)}
+                  {formatear(totalPaid)}
                 </p>
               </div>
             </div>
@@ -141,7 +141,7 @@ export function SplitPaymentSelector({
                   <div className="text-right flex items-center gap-3">
                     <div>
                       <p className="text-xl font-bold text-blue-600">
-                        {formatCurrency(split.total)}
+                        {formatear(split.total)}
                       </p>
                       <Badge variant="secondary" className="text-xs">
                         Pendiente
@@ -204,7 +204,7 @@ export function SplitPaymentSelector({
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-gray-700 dark:text-gray-300">
-                        {formatCurrency(split.total)}
+                        {formatear(split.total)}
                       </p>
                       <Badge variant="default" className="text-xs bg-green-600">
                         Pagado
@@ -224,18 +224,18 @@ export function SplitPaymentSelector({
           <div className="flex justify-between text-sm">
             <span className="text-gray-600 dark:text-gray-400">Total pagado:</span>
             <span className="font-semibold text-green-600">
-              {formatCurrency(totalPaid)}
+              {formatear(totalPaid)}
             </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-600 dark:text-gray-400">Pendiente:</span>
             <span className="font-semibold text-orange-600">
-              {formatCurrency(totalPending)}
+              {formatear(totalPending)}
             </span>
           </div>
           <div className="flex justify-between text-base font-bold">
             <span>Total:</span>
-            <span className="text-blue-600">{formatCurrency(totalAmount)}</span>
+            <span className="text-blue-600">{formatear(totalAmount)}</span>
           </div>
         </div>
 

@@ -29,7 +29,8 @@ import { CustomerFoliosSection } from '@/components/crm/clientes/CustomerFoliosS
 import { ClientHealthCard } from '@/components/crm/health/ClientHealthCard';
 import { DocumentUploader } from '@/components/crm/documents/DocumentUploader';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { QuickActionsBar } from '@/components/crm/shared/QuickActionsBar';
 import { OpportunityTimeline } from '@/components/crm/timeline/OpportunityTimeline';
 import { applyBranchFilterInclusive } from '@/lib/services/branchFilterHelper';
@@ -53,6 +54,7 @@ interface OpportunitySummary {
   id: string;
   name: string;
   amount: number;
+  currency: string | null;
   status: string;
   stage_name: string | null;
   stage_color: string | null;
@@ -71,6 +73,7 @@ export default function ClienteDetailPage() {
   const router = useRouter();
   const { organization } = useOrganization();
   const { branchFilter } = useBranch();
+  const { paraDocumento } = useMonedaOrganizacion();
   const [customer, setCustomer] = useState<CustomerData | null>(null);
   const [opportunities, setOpportunities] = useState<OpportunitySummary[]>([]);
   const [activities, setActivities] = useState<ActivitySummary[]>([]);
@@ -94,7 +97,7 @@ export default function ClienteDetailPage() {
       let oppQuery = supabase
         .from('opportunities')
         .select(`
-          id, name, amount, status, expected_close_date,
+          id, name, amount, currency, status, expected_close_date,
           stage:stages(name, color)
         `)
         .eq('customer_id', customerId)
@@ -134,6 +137,7 @@ export default function ClienteDetailPage() {
             id: o.id as string,
             name: o.name as string,
             amount: Number(o.amount) || 0,
+            currency: (o.currency as string | null) ?? null,
             status: o.status as string,
             stage_name: stage?.name || null,
             stage_color: stage?.color || null,
@@ -441,7 +445,7 @@ export default function ClienteDetailPage() {
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-xs font-semibold text-gray-900 dark:text-white">
-                          {formatCurrency(opp.amount, 'COP')}
+                          {formatMoneda(opp.amount, paraDocumento(opp.currency))}
                         </p>
                         <Badge
                           variant="secondary"

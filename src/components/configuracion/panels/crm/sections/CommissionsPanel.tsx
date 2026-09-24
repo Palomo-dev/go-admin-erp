@@ -17,9 +17,11 @@ import {
 } from '@/components/ui/dialog';
 import { Save, RefreshCw, DollarSign, Calculator, User, Trash2 } from 'lucide-react';
 import { commissionService, type VendorCommissionRate } from '@/lib/services/crm/commissionService';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 export function CommissionsPanel() {
   const { toast } = useToast();
+  const { formatear: formatearMonedaBase } = useMonedaOrganizacion();
 
   const [generalRate, setGeneralRate] = useState<number>(0);
   const [vendorRates, setVendorRates] = useState<VendorCommissionRate[]>([]);
@@ -141,14 +143,8 @@ export function CommissionsPanel() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  // Simulación en la moneda base de la organización (nunca 'COP' cableado).
+  const formatCurrency = (amount: number) => formatearMonedaBase(amount);
 
   if (loading) {
     return (

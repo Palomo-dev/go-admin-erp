@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { FunnelData, PipelineStageData, Pipeline } from './types';
 
 interface CRMFunnelChartProps {
@@ -20,7 +20,15 @@ interface CRMFunnelChartProps {
   onPipelineChange: (pipelineId: string | null) => void;
 }
 
-function FunnelBar({ stage, maxCount, index }: { stage: PipelineStageData; maxCount: number; index: number }) {
+function FunnelBar({
+  stage,
+  maxCount,
+  formatear,
+}: {
+  stage: PipelineStageData;
+  maxCount: number;
+  formatear: (valor: number) => string;
+}) {
   const widthPercent = maxCount > 0 ? (stage.count / maxCount) * 100 : 0;
   // Ancho mínimo del 20% para visualización
   const displayWidth = Math.max(widthPercent, 20);
@@ -45,7 +53,7 @@ function FunnelBar({ stage, maxCount, index }: { stage: PipelineStageData; maxCo
             {stage.count}
           </span>
           <span className="text-white text-xs opacity-80">
-            {formatCurrency(stage.value, 'COP')}
+            {formatear(stage.value)}
           </span>
         </div>
         <div className="absolute -right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs px-2 py-1 rounded whitespace-nowrap z-10">
@@ -63,6 +71,8 @@ export function CRMFunnelChart({
   selectedPipelineId, 
   onPipelineChange 
 }: CRMFunnelChartProps) {
+  // Importes agregados del embudo: moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   const defaultPipeline = pipelines.find(p => p.isDefault);
   const currentPipelineId = selectedPipelineId || defaultPipeline?.id || '';
 
@@ -117,7 +127,7 @@ export function CRMFunnelChart({
           <div className="text-right">
             <p className="text-sm text-gray-500 dark:text-gray-400">Valor total</p>
             <p className="text-lg font-bold text-gray-900 dark:text-white">
-              {formatCurrency(data?.totalValue || 0, 'COP')}
+              {formatear(data?.totalValue || 0)}
             </p>
           </div>
         </div>
@@ -129,12 +139,12 @@ export function CRMFunnelChart({
           </div>
         ) : (
           <div className="space-y-3">
-            {stages.map((stage, index) => (
+            {stages.map((stage) => (
               <FunnelBar
                 key={stage.id}
                 stage={stage}
                 maxCount={maxCount}
-                index={index}
+                formatear={formatear}
               />
             ))}
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -143,7 +153,7 @@ export function CRMFunnelChart({
                   Valor ponderado (pronóstico)
                 </span>
                 <span className="text-lg font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(data?.weightedValue || 0, 'COP')}
+                  {formatear(data?.weightedValue || 0)}
                 </span>
               </div>
             </div>

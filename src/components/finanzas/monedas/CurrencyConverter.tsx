@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/utils/Utils';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { previousPlainDay } from '@/lib/utils/timezone';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 // ============================================================
 // Fase B, tanda 10. Este componente LEE el catalogo global `currency_rates`.
@@ -44,15 +45,11 @@ interface CurrencyRate {
   rate: string | number;
   rate_date: string;
   base_currency_code?: string;
-  api_data?: any;
-}
-
-interface RatesByDate {
-  [date: string]: CurrencyRate[];
+  api_data?: unknown;
 }
 
 interface CurrencyConverterProps {
-  rates?: any[];
+  rates?: CurrencyRate[];
   currencies?: Currency[];
   date?: Date;
   loadGlobalCurrencies?: boolean; // Si es true, carga las monedas globales directamente
@@ -70,14 +67,20 @@ declare global {
 // Componente mejorado con mejor diseño empresarial y completamente responsive
 export default function CurrencyConverter({ rates = [], currencies = [], date = new Date(), loadGlobalCurrencies = true }: CurrencyConverterProps) {
   const [fromCurrency, setFromCurrency] = useState<string>('USD');
-  const [toCurrency, setToCurrency] = useState<string>('COP');
+  // La moneda destino arranca en la moneda base de la organizacion, cuando
+  // ya se conoce (antes de eso `code` es solo un marcador).
+  const [toCurrency, setToCurrency] = useState<string>('');
+  const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
+  useEffect(() => {
+    if (monedaResuelta && !toCurrency) setToCurrency(monedaBase);
+  }, [monedaResuelta, monedaBase, toCurrency]);
   const [amount, setAmount] = useState<number>(1000);
   const [convertedAmount, setConvertedAmount] = useState<number | null>(null);
-  const [previousRate, setPreviousRate] = useState<number | null>(null);
+  const [, setPreviousRate] = useState<number | null>(null);
   const [rateDiff, setRateDiff] = useState<number | null>(null);
   // Añadir un key único para forzar re-renderizado
   const [updateKey, setUpdateKey] = useState<number>(Date.now());
-  const [localRates, setLocalRates] = useState<any[]>(rates);
+  const [localRates, setLocalRates] = useState<CurrencyRate[]>(rates);
   const [localCurrencies, setLocalCurrencies] = useState<Currency[]>(currencies);
   const [loading, setLoading] = useState<boolean>(loadGlobalCurrencies);
   const { getToday, toDate } = useFormatDate();

@@ -34,7 +34,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/components/ui/use-toast';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { transferenciasService, BankTransfer } from '@/lib/services/transferenciasService';
 import { NuevaTransferenciaDialog } from './NuevaTransferenciaDialog';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
@@ -57,6 +58,9 @@ const statusLabels: Record<string, string> = {
 export function TransferenciasPage() {
   const router = useRouter();
   const { branchFilter } = useBranch();
+  // Las transferencias no traen moneda propia: importes y totales en la moneda base.
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
+  const { formatDate, getToday } = useFormatDate();
   const [transfers, setTransfers] = useState<BankTransfer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -105,7 +109,7 @@ export function TransferenciasPage() {
       } else {
         toast({ title: 'Error', description: result.error, variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
     }
   };
@@ -130,7 +134,7 @@ export function TransferenciasPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `transferencias_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `transferencias_${getToday()}.csv`;
     a.click();
   };
 

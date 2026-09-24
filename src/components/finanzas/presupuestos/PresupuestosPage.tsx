@@ -15,10 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { BudgetService, Budget, BudgetLine } from './BudgetService';
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
-}
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
@@ -28,6 +25,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function PresupuestosPage() {
+  // Importes en la moneda base de la organización (con su locale y decimales).
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
   const [lines, setLines] = useState<BudgetLine[]>([]);

@@ -9,7 +9,7 @@ import {
   Download, Filter, Search, DollarSign, Calendar 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,7 +17,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BancosService, BankAccount, BankTransaction } from '../BancosService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 interface MovimientosPageProps {
   accountId: string;
@@ -25,6 +26,8 @@ interface MovimientosPageProps {
 
 export function MovimientosPage({ accountId }: MovimientosPageProps) {
   const router = useRouter();
+  // Saldo y movimientos de la cuenta: en la moneda de la cuenta.
+  const { paraDocumento } = useMonedaOrganizacion();
   const [account, setAccount] = useState<BankAccount | null>(null);
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -273,7 +276,7 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
                   ? 'text-green-600 dark:text-green-400' 
                   : 'text-red-600 dark:text-red-400'
               }`}>
-                {formatCurrency(account.balance, account.currency || 'COP')}
+                {formatMoneda(account.balance, paraDocumento(account.currency))}
               </p>
             </div>
             <div className="text-right">
@@ -382,7 +385,7 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
                         : 'text-red-600 dark:text-red-400'
                     }`}>
                       {tx.transaction_type === 'credit' ? '+' : '-'}
-                      {formatCurrency(Math.abs(tx.amount))}
+                      {formatMoneda(Math.abs(tx.amount), paraDocumento(account.currency))}
                     </p>
                   </div>
                 </div>

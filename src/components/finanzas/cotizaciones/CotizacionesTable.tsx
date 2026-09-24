@@ -7,11 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreVertical, Eye, Pencil, Copy, FileCheck2, Trash2 } from 'lucide-react';
+import { MoreVertical, Eye, Pencil, Copy, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { CotizacionesService, type Quotation, type QuotationFilters } from '@/lib/services/cotizacionesService';
 import { CopyableId } from '@/components/common/CopyableId';
 
@@ -61,6 +62,8 @@ export function CotizacionesTable({ filtros }: CotizacionesTableProps) {
   const [loading, setLoading] = useState(true);
   const organizationId = getOrganizationId();
   const { branchFilter } = useBranch();
+  // Cada cotización en su moneda (`quotations.currency`); sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
 
   const cargarCotizaciones = useCallback(async () => {
     if (!organizationId) return;
@@ -89,8 +92,8 @@ export function CotizacionesTable({ filtros }: CotizacionesTableProps) {
       const nueva = await CotizacionesService.duplicateQuotation(id);
       toast({ title: 'Cotización duplicada', description: `Nueva cotización ${nueva?.number}` });
       cargarCotizaciones();
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({ title: 'Error', description: (error as { message?: string }).message, variant: 'destructive' });
     }
   };
 
@@ -100,8 +103,8 @@ export function CotizacionesTable({ filtros }: CotizacionesTableProps) {
       await CotizacionesService.deleteQuotation(id);
       toast({ title: 'Cotización eliminada' });
       cargarCotizaciones();
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({ title: 'Error', description: (error as { message?: string }).message, variant: 'destructive' });
     }
   };
 
@@ -162,7 +165,7 @@ export function CotizacionesTable({ filtros }: CotizacionesTableProps) {
                 {formatearFecha(cot.valid_until)}
               </TableCell>
               <TableCell className="text-right font-medium text-gray-900 dark:text-gray-100">
-                {formatCurrency(cot.total)}
+                {formatMoneda(cot.total, paraDocumento(cot.currency))}
               </TableCell>
               <TableCell>
                 <Badge className={getStatusColor(cot.status)}>

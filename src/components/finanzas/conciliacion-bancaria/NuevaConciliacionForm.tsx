@@ -12,10 +12,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ConciliacionService } from './ConciliacionService';
 import { BankAccount } from '../bancos/BancosService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 export function NuevaConciliacionForm() {
   const router = useRouter();
+  const { paraDocumento } = useMonedaOrganizacion();
   const [isLoading, setIsLoading] = useState(false);
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
@@ -145,7 +147,7 @@ export function NuevaConciliacionForm() {
                     </span>
                   </div>
                   <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {formatCurrency(selectedAccount.balance, selectedAccount.currency || 'COP')}
+                    {formatMoneda(selectedAccount.balance, paraDocumento(selectedAccount.currency))}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     Este será el saldo de apertura de la conciliación

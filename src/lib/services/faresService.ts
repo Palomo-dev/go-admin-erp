@@ -142,11 +142,22 @@ class FaresService {
    * Crea una nueva tarifa
    */
   async createFare(data: CreateFareData): Promise<FareWithDetails> {
+    // Moneda: la elegida; si no, la de la ruta a la que pertenece; si no hay
+    // ruta, `null` y el trigger `trg_00_moneda_base_por_defecto` pone la base.
+    let currency: string | null = data.currency || null;
+    if (!currency && data.route_id) {
+      const { data: ruta } = await supabase
+        .from('transport_routes')
+        .select('currency')
+        .eq('id', data.route_id)
+        .maybeSingle();
+      currency = (ruta as { currency: string | null } | null)?.currency || null;
+    }
     const { data: fare, error } = await supabase
       .from('transport_fares')
       .insert({
         ...data,
-        currency: data.currency || 'COP',
+        currency,
         is_active: data.is_active ?? true,
         display_order: data.display_order || 0,
       })
@@ -204,7 +215,11 @@ class FaresService {
     const original = await this.getFareById(fareId);
     if (!original) throw new Error('Tarifa no encontrada');
 
-    const { id, created_at, updated_at, ...fareData } = original;
+    // Copia sin identidad ni marcas de tiempo: las pone la base.
+    const fareData: Omit<FareWithDetails, 'id'> & { id?: string } = { ...original };
+    delete fareData.id;
+    delete fareData.created_at;
+    delete fareData.updated_at;
     
     return this.createFare({
       ...fareData,
@@ -304,13 +319,17 @@ class FaresService {
 
     if (error) throw error;
     
-    return (data || []).map((rs: any) => ({
-      id: rs.transport_stops?.id,
-      name: rs.transport_stops?.name,
+    interface FilaParadaRuta {
+      sequence: number;
+      transport_stops: { id: string; name: string; code?: string; city?: string } | null;
+    }
+    return ((data || []) as unknown as FilaParadaRuta[]).map((rs) => ({
+      id: rs.transport_stops?.id as string,
+      name: rs.transport_stops?.name as string,
       code: rs.transport_stops?.code,
       city: rs.transport_stops?.city,
       sequence: rs.sequence,
-    })).filter((s: any) => s.id);
+    })).filter((s) => s.id);
   }
 
   /**

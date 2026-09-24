@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import parkingPaymentService, { type ParkingPayment } from '@/lib/services/parkingPaymentService';
 
 interface ReversePaymentDialogProps {
@@ -30,6 +30,7 @@ export function ReversePaymentDialog({
   payment,
   onSuccess,
 }: ReversePaymentDialogProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [reason, setReason] = useState('');

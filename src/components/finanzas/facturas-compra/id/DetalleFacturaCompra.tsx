@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { FacturasCompraService } from '../FacturasCompraService';
+import type { CuentaPorPagarFacturaCompra, PagoFacturaCompra } from '../FacturasCompraService';
 import { InvoicePurchase } from '../types';
 import { RegistrarPagoModal } from '../RegistrarPagoModal';
 import { AnularFacturaCompraDialog } from './AnularFacturaCompraDialog';
@@ -91,8 +92,8 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
   const [recepcionando, setRecepcionando] = useState(false);
 
   // Estados para cuentas por pagar y pagos
-  const [cuentaPorPagar, setCuentaPorPagar] = useState<any | null>(null);
-  const [pagos, setPagos] = useState<any[]>([]);
+  const [cuentaPorPagar, setCuentaPorPagar] = useState<CuentaPorPagarFacturaCompra | null>(null);
+  const [pagos, setPagos] = useState<PagoFacturaCompra[]>([]);
   const [loadingCuentaPorPagar, setLoadingCuentaPorPagar] = useState(false);
   const [loadingPagos, setLoadingPagos] = useState(false);
   const [organizationData, setOrganizationData] = useState<{ name: string; tax_id?: string; address?: string; phone?: string; email?: string; logo_url?: string; primary_color?: string; secondary_color?: string } | null>(null);
@@ -206,9 +207,9 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
       } else {
         toastError("Aviso", resultado.mensaje);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error recepcionando inventario:', error);
-      toastError("Error", error.message || "Error al recepcionar inventario");
+      toastError("Error", (error as { message?: string }).message || "Error al recepcionar inventario");
     } finally {
       setRecepcionando(false);
     }
@@ -244,7 +245,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
         tax_rate: item.tax_rate,
         total_line: item.total_line,
         sku: item.products?.sku,
-        serial_numbers: (item as any).serial_numbers || null
+        serial_numbers: (item as typeof item & { serial_numbers?: string[] | null }).serial_numbers || null
       }))
     };
     PDFService.printPurchaseInvoiceHTML(pdfData);
@@ -280,7 +281,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
         tax_rate: item.tax_rate,
         total_line: item.total_line,
         sku: item.products?.sku,
-        serial_numbers: (item as any).serial_numbers || null
+        serial_numbers: (item as typeof item & { serial_numbers?: string[] | null }).serial_numbers || null
       }))
     };
     PDFService.downloadPurchaseInvoicePDF(pdfData);
@@ -299,9 +300,9 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
       // Mostrar notificación de éxito
       console.log('Factura confirmada exitosamente');
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error al confirmar factura:', error);
-      alert('Error al confirmar la factura: ' + (error.message || 'Error desconocido'));
+      alert('Error al confirmar la factura: ' + ((error as { message?: string }).message || 'Error desconocido'));
     }
   };
 
@@ -583,7 +584,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
                   <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Moneda</p>
-                    <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">{factura.currency}</p>
+                    <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">{monedaOrg.paraDocumento(factura.currency).code}</p>
                   </div>
                 </div>
               </div>
@@ -623,7 +624,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
                       <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3">
                         {(() => {
                           const sku = item.products?.sku;
-                          const serials = (item as any).serial_numbers as string[] | null | undefined;
+                          const serials = (item as typeof item & { serial_numbers?: string[] | null }).serial_numbers;
                           return (
                             <div className="flex flex-col gap-1">
                               {sku ? (

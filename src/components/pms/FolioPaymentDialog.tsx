@@ -10,10 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -21,9 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CreditCard, Banknote, Wallet, ArrowLeftRight, Loader2, CheckCircle2, Plus, Trash2, Calculator, AlertCircle } from 'lucide-react';
+import { CreditCard, Loader2, CheckCircle2, Plus, Trash2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { formatCurrency, cn } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import foliosService, { type FolioItem } from '@/lib/services/foliosService';
 import { obtenerOrganizacionActiva, getOrganizationId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -72,6 +70,7 @@ export function FolioPaymentDialog({
   taxInfo,
   onPaymentComplete,
 }: FolioPaymentDialogProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const { branchFilter, selectedBranchId } = useBranch();
   const [pendingItems, setPendingItems] = useState<FolioItem[]>([]);
   const [totalPending, setTotalPending] = useState(0);
@@ -232,9 +231,9 @@ export function FolioPaymentDialog({
       setTimeout(() => {
         onOpenChange(false);
       }, 1500);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error procesando pago:', error);
-      const msg = error?.message?.includes('organization_id')
+      const msg = error instanceof Error && error.message.includes('organization_id')
         ? 'Error de configuración: falta el ID de la organización. Contacte al administrador.'
         : 'Error al procesar el pago. Intente nuevamente.';
       setErrorMsg(msg);

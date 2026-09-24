@@ -14,14 +14,35 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { supabase } from '@/lib/supabase/config';
 import { stockMovementService } from '@/lib/services/stockMovementService';
+
+/** Campos de la fila de `invoice_sales` que usa la anulación. */
+interface FacturaAnulable {
+  id: string;
+  number?: string | null;
+  total?: number | string | null;
+  balance?: number | string | null;
+  notes?: string | null;
+  sale_id?: string | number | null;
+  organization_id?: number | string | null;
+  branch_id?: number | string | null;
+  currency?: string | null;
+}
+
+/** Línea de `invoice_items` que se reingresa al inventario. */
+interface ItemFacturaStock {
+  product_id: number | null;
+  qty: number | string | null;
+  unit_price: number | string | null;
+}
 
 interface AnularFacturaDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  factura: any;
+  factura: FacturaAnulable;
   onSuccess?: () => void;
 }
 
@@ -37,6 +58,8 @@ interface AnularFacturaDialogProps {
 export function AnularFacturaDialog({ open, onOpenChange, factura, onSuccess }: AnularFacturaDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [motivo, setMotivo] = useState('');
+  // Los pagos aplicados se muestran en la moneda de la factura.
+  const { paraDocumento } = useMonedaOrganizacion();
 
   const total = Number(factura?.total) || 0;
   const balance = Number(factura?.balance) || 0;
@@ -109,14 +132,14 @@ export function AnularFacturaDialog({ open, onOpenChange, factura, onSuccess }: 
             .select('product_id, qty, unit_price')
             .eq('invoice_sales_id', factura.id);
 
-          const itemsConProducto = (itemsFactura || []).filter((item: any) => item.product_id);
+          const itemsConProducto = ((itemsFactura || []) as ItemFacturaStock[]).filter((item) => item.product_id);
 
           if (itemsConProducto.length > 0) {
             await stockMovementService.incrementOnPurchase(
               Number(factura.organization_id),
               Number(factura.branch_id),
               factura.id,
-              itemsConProducto.map((item: any) => ({
+              itemsConProducto.map((item) => ({
                 product_id: item.product_id,
                 quantity: Number(item.qty) || 0,
                 unit_price: Number(item.unit_price) || 0,
@@ -125,7 +148,7 @@ export function AnularFacturaDialog({ open, onOpenChange, factura, onSuccess }: 
             );
           }
         }
-      } catch (stockError: any) {
+      } catch (stockError: unknown) {
         console.error('Error al devolver stock tras anular la factura:', stockError);
       }
 
@@ -134,9 +157,9 @@ export function AnularFacturaDialog({ open, onOpenChange, factura, onSuccess }: 
       onOpenChange(false);
       setMotivo('');
       if (onSuccess) onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error al anular la factura:', error);
-      toastError('Error', `No se pudo anular la factura: ${error?.message || 'Error desconocido'}`);
+      toastError('Error', `No se pudo anular la factura: ${(error as { message?: string } | null)?.message || 'Error desconocido'}`);
     } finally {
       setIsLoading(false);
     }
@@ -158,7 +181,7 @@ export function AnularFacturaDialog({ open, onOpenChange, factura, onSuccess }: 
         <div className="grid gap-3 py-2">
           {tienePagos && (
             <div className="rounded-md border border-yellow-300 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900/30 p-3 text-sm text-yellow-800 dark:text-yellow-200">
-              La factura ya tiene pagos aplicados ({formatCurrency(total - balance)}). No puede anularse directamente; usa una Nota de Crédito.
+              La factura ya tiene pagos aplicados ({formatMoneda(total - balance, paraDocumento(factura?.currency))}). No puede anularse directamente; usa una Nota de Crédito.
             </div>
           )}
 

@@ -27,7 +27,7 @@ import {
 import { CostoRecetasService, type RecetaCostoEntry } from './CostoRecetasService';
 import { useToast } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function CostoRecetasPage() {
@@ -35,6 +35,7 @@ export function CostoRecetasPage() {
   // Dia de la organizacion para el nombre de descarga: el reporte se mira
   // completo (todas las sucursales), asi que no hay sucursal que pasar.
   const { getToday } = useFormatDate();
+  const { formatear } = useMonedaOrganizacion();
   const [data, setData] = useState<RecetaCostoEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
@@ -68,7 +69,7 @@ export function CostoRecetasPage() {
       link.click();
       URL.revokeObjectURL(url);
       toast({ title: 'CSV exportado', description: `${data.length} recetas exportadas` });
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'No se pudo exportar', variant: 'destructive' });
     }
   };
@@ -161,7 +162,7 @@ export function CostoRecetasPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {formatCurrency(totalCostoPromedio)}
+                {formatear(totalCostoPromedio)}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">Costo Promedio/Unidad</p>
             </div>
@@ -239,10 +240,10 @@ export function CostoRecetasPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right font-medium dark:text-white">
-                        {formatCurrency(receta.total_cost)}
+                        {formatear(receta.total_cost)}
                       </TableCell>
                       <TableCell className="text-right font-medium dark:text-white">
-                        {formatCurrency(receta.cost_per_unit)}
+                        {formatear(receta.cost_per_unit)}
                       </TableCell>
                     </TableRow>
                     {expandedRows.has(receta.recipe_id) && receta.ingredients.length > 0 && (
@@ -268,10 +269,10 @@ export function CostoRecetasPage() {
                                     <TableCell className="dark:text-gray-300">{ing.quantity}</TableCell>
                                     <TableCell className="dark:text-gray-300">{ing.unit_code}</TableCell>
                                     <TableCell className="text-right dark:text-gray-300">
-                                      {formatCurrency(ing.avg_cost)}
+                                      {formatear(ing.avg_cost)}
                                     </TableCell>
                                     <TableCell className="text-right font-medium dark:text-white">
-                                      {formatCurrency(ing.line_cost)}
+                                      {formatear(ing.line_cost)}
                                     </TableCell>
                                   </TableRow>
                                 ))}

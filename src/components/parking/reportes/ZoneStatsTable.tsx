@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { MapPin } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { ZoneStats } from '@/lib/services/parkingReportService';
 
 interface ZoneStatsTableProps {
@@ -22,6 +22,7 @@ interface ZoneStatsTableProps {
 }
 
 export function ZoneStatsTable({ data, isLoading }: ZoneStatsTableProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const getOccupancyColor = (rate: number) => {
     if (rate >= 80) return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
     if (rate >= 50) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';

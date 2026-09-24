@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export interface BankAccount {
   id: number;
@@ -168,7 +169,9 @@ export class BancosService {
           account_number: cuenta.account_number,
           bank_name: cuenta.bank_name,
           account_type: cuenta.account_type || 'checking',
-          currency: cuenta.currency || 'COP',
+          // Sin moneda elegida, la base de la organización la pone el trigger
+          // `trg_00_moneda_base_por_defecto` (nunca COP supuesto).
+          currency: cuenta.currency || null,
           balance: cuenta.initial_balance || 0,
           initial_balance: cuenta.initial_balance || 0,
           is_active: true,
@@ -345,7 +348,7 @@ export class BancosService {
         .from('bank_reconciliations')
         .select(`
           *,
-          bank_accounts:bank_account_id(id, name, bank_name, account_number)
+          bank_accounts:bank_account_id(id, name, bank_name, account_number, currency)
         `)
         .eq('organization_id', organizationId)
         .order('period_end', { ascending: false });
@@ -378,7 +381,7 @@ export class BancosService {
         .from('bank_reconciliations')
         .select(`
           *,
-          bank_accounts:bank_account_id(id, name, bank_name, account_number, balance)
+          bank_accounts:bank_account_id(id, name, bank_name, account_number, balance, currency)
         `)
         .eq('id', reconciliationId)
         .single();
@@ -621,6 +624,11 @@ export class BancosService {
 
   static async obtenerMonedasOrganizacion(): Promise<{ code: string; name: string; symbol: string }[]> {
     const organizationId = this.getOrganizationId();
+    // Respaldo: la moneda base resuelta de la organización (resolveOrgCurrency no lanza).
+    const soloLaBase = async () => {
+      const base = await resolveOrgCurrency(supabase, organizationId);
+      return [{ code: base.code, name: base.code, symbol: base.symbol || '$' }];
+    };
 
     try {
       const { data: orgCurrencies, error: orgError } = await supabase
@@ -631,7 +639,7 @@ export class BancosService {
       if (orgError) throw orgError;
 
       if (!orgCurrencies || orgCurrencies.length === 0) {
-        return [{ code: 'COP', name: 'Peso Colombiano', symbol: '$' }];
+        return await soloLaBase();
       }
 
       const codes = orgCurrencies.map(c => c.currency_code);
@@ -642,10 +650,10 @@ export class BancosService {
 
       if (currError) throw currError;
 
-      return currencies || [{ code: 'COP', name: 'Peso Colombiano', symbol: '$' }];
+      return currencies && currencies.length > 0 ? currencies : await soloLaBase();
     } catch (error) {
       console.error('Error obteniendo monedas:', error);
-      return [{ code: 'COP', name: 'Peso Colombiano', symbol: '$' }];
+      return await soloLaBase();
     }
   }
 }

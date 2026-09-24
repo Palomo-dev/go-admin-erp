@@ -373,7 +373,8 @@ export async function addTeamMember(
       user_id: data.user_id,
       sales_role_id: data.sales_role_id ?? null,
       quota_amount: data.quota_amount ?? null,
-      quota_currency: data.quota_currency ?? 'COP',
+      // NULL: el trigger `trg_00_moneda_base_por_defecto` pone la moneda base.
+      quota_currency: data.quota_currency ?? null,
       is_active: data.is_active ?? true,
       territory_id: data.territory_id ?? null,
     })

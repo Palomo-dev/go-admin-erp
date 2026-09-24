@@ -8,6 +8,8 @@ import {
   repartirTotalesPedidoWeb,
 } from './webOrderTotals';
 import { resolveLineTaxWith } from './taxResolverCore';
+import { resolveOrgCurrency } from './monedaOrganizacion';
+import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
 
 /**
  * Sub-métodos de Wompi (pasarela de pago del website).
@@ -582,6 +584,7 @@ export const webOrderServerConfirmation = {
     // ── 5. Crear factura de venta (invoice_sales + invoice_items) ──
     let invoiceId: string | undefined;
     let invoiceNumber: string | undefined;
+    let invoiceCurrency: string | null = null;
 
     try {
       invoiceNumber = await generateInvoiceNumberWithClient(supabase, order.organization_id, 'FACT');
@@ -596,7 +599,9 @@ export const webOrderServerConfirmation = {
           number: invoiceNumber,
           issue_date: saleDate,
           due_date: saleDate,
-          currency: 'COP',
+          // Sin moneda: el pedido web no la trae y el trigger
+          // trg_00_moneda_base_por_defecto pone la base de la organización.
+          currency: null,
           subtotal: Number(order.subtotal) || 0,
           tax_total: Number(order.tax_total) || 0,
           total: Number(order.total) || 0,
@@ -610,7 +615,7 @@ export const webOrderServerConfirmation = {
           created_by: userId,
           notes: `Factura generada automáticamente desde pedido web ${order.order_number}`,
         })
-        .select('id, number')
+        .select('id, number, currency')
         .single();
 
       if (invoiceError) {
@@ -618,6 +623,7 @@ export const webOrderServerConfirmation = {
       } else {
         invoiceId = invoice.id;
         invoiceNumber = invoice.number;
+        invoiceCurrency = invoice.currency ?? null;
 
         // Líneas de la factura. El trigger fn_recalc_invoice_totals pisa
         // invoice_sales.total con SUM(total_line), así que las líneas tienen que
@@ -735,7 +741,12 @@ export const webOrderServerConfirmation = {
               source_id: invoiceId,
               amount: Number(order.total) || 0,
               method: mapWebPaymentMethodToInvoice(order.payment_method),
-              currency: 'COP',
+              // payments.currency es NOT NULL y no tiene trigger: la moneda de
+              // la factura que se paga y, si no la trae, la base de la
+              // organización del pedido.
+              currency:
+                normalizarCodigoMoneda(invoiceCurrency) ??
+                (await resolveOrgCurrency(supabase, order.organization_id)).code,
               status: 'completed',
               created_by: userId,
             })

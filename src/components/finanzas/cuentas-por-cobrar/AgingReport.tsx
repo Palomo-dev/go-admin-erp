@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,7 +9,8 @@ import { TrendingDown, Download, RefreshCw, Phone, Mail } from 'lucide-react';
 import { AgingBucket } from './types';
 import { CuentasPorCobrarService } from './service';
 import { useBranch } from '@/lib/context/BranchContext';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { toast } from 'sonner';
 
 interface AgingReportProps {
@@ -20,12 +21,11 @@ export function AgingReport({ className }: AgingReportProps) {
   const [agingData, setAgingData] = useState<AgingBucket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { branchFilter } = useBranch();
+  // Cartera por edades: agregado de varias cuentas, en la moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
+  const { getToday } = useFormatDate();
 
-  useEffect(() => {
-    loadAgingData();
-  }, [branchFilter]);
-
-  const loadAgingData = async () => {
+  const loadAgingData = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await CuentasPorCobrarService.obtenerReporteAging(branchFilter);
@@ -36,7 +36,11 @@ export function AgingReport({ className }: AgingReportProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [branchFilter]);
+
+  useEffect(() => {
+    loadAgingData();
+  }, [loadAgingData]);
 
   const exportarAging = async () => {
     try {
@@ -69,7 +73,7 @@ export function AgingReport({ className }: AgingReportProps) {
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
-      link.setAttribute('download', `aging_report_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute('download', `aging_report_${getToday()}.csv`);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
@@ -183,31 +187,31 @@ export function AgingReport({ className }: AgingReportProps) {
               <div className="text-center">
                 <p className="text-[10px] sm:text-sm text-gray-600 dark:text-gray-400">0-30 días</p>
                 <p className="text-sm sm:text-lg font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(totales.current)}
+                  {formatear(totales.current)}
                 </p>
               </div>
               <div className="text-center">
                 <p className="text-[10px] sm:text-sm text-gray-600 dark:text-gray-400">31-60 días</p>
                 <p className="text-sm sm:text-lg font-bold text-amber-600 dark:text-amber-400">
-                  {formatCurrency(totales.days_31_60)}
+                  {formatear(totales.days_31_60)}
                 </p>
               </div>
               <div className="text-center">
                 <p className="text-[10px] sm:text-sm text-gray-600 dark:text-gray-400">61-90 días</p>
                 <p className="text-sm sm:text-lg font-bold text-orange-600 dark:text-orange-400">
-                  {formatCurrency(totales.days_61_90)}
+                  {formatear(totales.days_61_90)}
                 </p>
               </div>
               <div className="text-center">
                 <p className="text-[10px] sm:text-sm text-gray-600 dark:text-gray-400">+90 días</p>
                 <p className="text-sm sm:text-lg font-bold text-red-600 dark:text-red-400">
-                  {formatCurrency(totales.days_90_plus)}
+                  {formatear(totales.days_90_plus)}
                 </p>
               </div>
               <div className="text-center col-span-2 sm:col-span-1">
                 <p className="text-[10px] sm:text-sm text-gray-600 dark:text-gray-400">Total</p>
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(totales.total)}
+                  {formatear(totales.total)}
                 </p>
               </div>
             </div>
@@ -233,24 +237,24 @@ export function AgingReport({ className }: AgingReportProps) {
                       <div className="grid grid-cols-2 gap-1.5 text-[10px]">
                         <div>
                           <span className="text-gray-500 dark:text-gray-400">0-30:</span>
-                          <span className="ml-1 font-medium text-green-600 dark:text-green-400">{formatCurrency(bucket.current)}</span>
+                          <span className="ml-1 font-medium text-green-600 dark:text-green-400">{formatear(bucket.current)}</span>
                         </div>
                         <div>
                           <span className="text-gray-500 dark:text-gray-400">31-60:</span>
-                          <span className="ml-1 font-medium text-amber-600 dark:text-amber-400">{formatCurrency(bucket.days_31_60)}</span>
+                          <span className="ml-1 font-medium text-amber-600 dark:text-amber-400">{formatear(bucket.days_31_60)}</span>
                         </div>
                         <div>
                           <span className="text-gray-500 dark:text-gray-400">61-90:</span>
-                          <span className="ml-1 font-medium text-orange-600 dark:text-orange-400">{formatCurrency(bucket.days_61_90)}</span>
+                          <span className="ml-1 font-medium text-orange-600 dark:text-orange-400">{formatear(bucket.days_61_90)}</span>
                         </div>
                         <div>
                           <span className="text-gray-500 dark:text-gray-400">+90:</span>
-                          <span className="ml-1 font-medium text-red-600 dark:text-red-400">{formatCurrency(bucket.days_90_plus)}</span>
+                          <span className="ml-1 font-medium text-red-600 dark:text-red-400">{formatear(bucket.days_90_plus)}</span>
                         </div>
                       </div>
                       <div className="pt-1.5 border-t dark:border-gray-600">
                         <span className="text-[10px] text-gray-500 dark:text-gray-400">Total:</span>
-                        <span className="ml-1 text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(bucket.total)}</span>
+                        <span className="ml-1 text-sm font-bold text-gray-900 dark:text-white">{formatear(bucket.total)}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -296,19 +300,19 @@ export function AgingReport({ className }: AgingReportProps) {
                           </div>
                         </TableCell>
                         <TableCell className={`text-right text-sm font-medium ${getAgingColor(bucket.current, bucket.total)}`}>
-                          {formatCurrency(bucket.current)}
+                          {formatear(bucket.current)}
                         </TableCell>
                         <TableCell className={`text-right text-sm font-medium ${getAgingColor(bucket.days_31_60, bucket.total)}`}>
-                          {formatCurrency(bucket.days_31_60)}
+                          {formatear(bucket.days_31_60)}
                         </TableCell>
                         <TableCell className={`text-right text-sm font-medium ${getAgingColor(bucket.days_61_90, bucket.total)}`}>
-                          {formatCurrency(bucket.days_61_90)}
+                          {formatear(bucket.days_61_90)}
                         </TableCell>
                         <TableCell className={`text-right text-sm font-medium ${getAgingColor(bucket.days_90_plus, bucket.total)}`}>
-                          {formatCurrency(bucket.days_90_plus)}
+                          {formatear(bucket.days_90_plus)}
                         </TableCell>
                         <TableCell className="text-right text-sm font-bold dark:text-white">
-                          {formatCurrency(bucket.total)}
+                          {formatear(bucket.total)}
                         </TableCell>
                         <TableCell>
                           {getRiskBadge(bucket)}

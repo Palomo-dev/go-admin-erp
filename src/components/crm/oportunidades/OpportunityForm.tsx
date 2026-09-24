@@ -19,9 +19,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { toast } from '@/components/ui/use-toast';
 import { CalendarIcon, Plus, Trash2, Loader2, ArrowLeft, User, Percent } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { useOrgCurrency } from '@/lib/hooks/useOrgCurrency';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { diaCalendarioADate, dateADiaCalendario } from './formDates';
 import { opportunitiesService } from './opportunitiesService';
 import { Pipeline, Stage, Customer, CreateOpportunityInput, Opportunity } from './types';
@@ -42,6 +42,16 @@ interface OpportunityFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   hideHeader?: boolean;
+}
+
+/** Miembro de la organización con su perfil embebido (objeto o arreglo). */
+interface PerfilMiembro {
+  first_name: string | null;
+  last_name: string | null;
+}
+interface MiembroConPerfiles {
+  user_id: string;
+  profiles: PerfilMiembro | PerfilMiembro[] | null;
 }
 
 interface ProductLine {
@@ -85,11 +95,13 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
   const { formatPlain, toDate, toInstant } = useFormatDate();
   // Moneda base de la organización (`organization_currencies.is_base`), por el
   // mismo hook que ya usan comisiones, inventario y cuotas. Nunca un literal.
-  const monedaBase = useOrgCurrency();
+  // `resuelta` es false mientras `code` es el marcador inicial: hasta entonces
+  // el formulario no toma la moneda base como valor por defecto.
+  const { code: monedaBase, resuelta: monedaResuelta, paraDocumento } = useMonedaOrganizacion();
   const router = useRouter();
   const isEditing = !!opportunity;
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Data para selects
@@ -127,7 +139,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
   // Estados para comisión
   const [salespersonId, setSalespersonId] = useState<string>(opportunity?.salesperson_id || '');
   const [commissionRate, setCommissionRate] = useState<number>(Number(opportunity?.commission_rate) || 0);
-  const [commissionType, setCommissionType] = useState<'salesperson' | 'intermediation_sale' | 'none'>(opportunity?.commission_type || 'salesperson');
+  const [commissionType] = useState<'salesperson' | 'intermediation_sale' | 'none'>(opportunity?.commission_type || 'salesperson');
   const [organizationMembers, setOrganizationMembers] = useState<{ id: string; name: string }[]>([]);
   const [membersError, setMembersError] = useState<string | null>(null);
 
@@ -152,20 +164,24 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
 
   useEffect(() => {
     loadInitialData();
+    // Carga inicial única (comportamiento previo).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Moneda por defecto = moneda base de la organización. Solo se aplica al
   // crear y mientras el usuario no haya elegido otra.
   useEffect(() => {
     if (isEditing || monedaTocada) return;
-    if (monedaBase) setCurrency(monedaBase);
-  }, [monedaBase, isEditing, monedaTocada]);
+    if (monedaResuelta && monedaBase) setCurrency(monedaBase);
+  }, [monedaBase, monedaResuelta, isEditing, monedaTocada]);
 
   // La lista siempre contiene la moneda base y la de la oportunidad, aunque no
   // estén en el catálogo corto: si no, el selector se vería vacío.
   const monedasDisponibles = Array.from(
-    new Set([monedaBase, opportunity?.currency, currency, 'COP', 'USD', 'EUR'].filter(Boolean) as string[]),
+    new Set([monedaResuelta ? monedaBase : null, opportunity?.currency, currency, 'USD', 'EUR'].filter(Boolean) as string[]),
   );
+  /** Importes del formulario en la moneda elegida (o la base de la organización). */
+  const formatearDoc = (valor: number) => formatMoneda(valor, paraDocumento(currency));
 
   /**
    * Búsqueda de clientes CONTRA EL SERVIDOR con debounce. `getCustomers()`
@@ -248,7 +264,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
         if (error) throw error;
         setMembersError(null);
         // El embebido a-uno llega como objeto; el array se acepta por compatibilidad.
-        const formatted = (members || []).map((m: any) => {
+        const formatted = ((members || []) as unknown as MiembroConPerfiles[]).map((m) => {
           const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
           return {
             id: m.user_id,
@@ -269,12 +285,14 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
     if (pipelineId) {
       loadStages(pipelineId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pipelineId]);
 
   useEffect(() => {
     if (opportunity?.id) {
       loadOpportunityRelations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opportunity?.id]);
 
   const loadInitialData = async () => {
@@ -357,7 +375,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
       // Cargar espacios
       const spacesData = await opportunitiesService.getOpportunitySpaces(opportunity.id);
       setSpaceLines(
-        spacesData.map((s: any) => ({
+        spacesData.map((s) => ({
           id: s.id,
           space_id: s.space_id,
           space_name: s.space?.label || 'Espacio',
@@ -381,7 +399,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
     }
   };
 
-  const updateProductLine = (index: number, field: keyof ProductLine, value: any) => {
+  const updateProductLine = (index: number, field: keyof ProductLine, value: ProductLine[keyof ProductLine]) => {
     const updated = [...productLines];
     updated[index] = { ...updated[index], [field]: value };
 
@@ -427,7 +445,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
     ]);
   };
 
-  const updateSpaceLine = (index: number, field: keyof SpaceLine, value: any) => {
+  const updateSpaceLine = (index: number, field: keyof SpaceLine, value: SpaceLine[keyof SpaceLine]) => {
     const updated = [...spaceLines];
     updated[index] = { ...updated[index], [field]: value };
 
@@ -455,7 +473,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
     ]);
   };
 
-  const updateCustomLine = (index: number, field: keyof CustomLine, value: any) => {
+  const updateCustomLine = (index: number, field: keyof CustomLine, value: CustomLine[keyof CustomLine]) => {
     const updated = [...customLines];
     updated[index] = { ...updated[index], [field]: value };
     setCustomLines(updated);
@@ -898,7 +916,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                     Comisión estimada ({commissionRate}%):
                   </span>
                   <span className="font-semibold text-blue-700 dark:text-blue-400">
-                    {formatCurrency(
+                    {formatearDoc(
                       (productLines.length > 0 || spaceLines.length > 0 || customLines.length > 0
                         ? calculateTotal()
                         : parseFloat(amount) || 0) * commissionRate / 100
@@ -918,7 +936,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
               <CardTitle className="text-gray-900 dark:text-white text-sm">Productos</CardTitle>
               <ProductSearchDialog
                 mode="sale"
-                currency={currency}
+                currency={currency || monedaBase}
                 onProductSelect={handleProductSelect}
               />
             </CardHeader>
@@ -975,7 +993,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                       </div>
                     </div>
                     <div className="text-right text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Subtotal: {formatCurrency(line.quantity * line.unit_price)}
+                      Subtotal: {formatearDoc(line.quantity * line.unit_price)}
                     </div>
                   </div>
                 ))
@@ -1056,7 +1074,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                       </div>
                     </div>
                     <div className="text-right text-sm font-medium text-purple-700 dark:text-purple-300">
-                      Subtotal: {formatCurrency(line.nights * line.unit_price)}
+                      Subtotal: {formatearDoc(line.nights * line.unit_price)}
                     </div>
                   </div>
                 ))
@@ -1135,7 +1153,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                       </div>
                     </div>
                     <div className="text-right text-sm font-medium text-amber-700 dark:text-amber-300">
-                      Subtotal: {formatCurrency(line.quantity * line.unit_price)}
+                      Subtotal: {formatearDoc(line.quantity * line.unit_price)}
                     </div>
                   </div>
                 ))
@@ -1150,7 +1168,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                 <div className="flex justify-between items-center text-lg font-bold">
                   <span className="text-blue-700 dark:text-blue-300">Total General:</span>
                   <span className="text-blue-900 dark:text-blue-100">
-                    {formatCurrency(calculateTotal())}
+                    {formatearDoc(calculateTotal())}
                   </span>
                 </div>
               </CardContent>

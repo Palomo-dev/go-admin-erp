@@ -4,7 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Package, Crown } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { TopProductoPos } from '@/lib/services/posDashboardService';
 
 interface TopProductosProps {
@@ -13,6 +13,7 @@ interface TopProductosProps {
 }
 
 export function TopProductos({ productos, isLoading }: TopProductosProps) {
+  const { formatear } = useMonedaOrganizacion();
   const maxCantidad = productos.length > 0 ? Math.max(...productos.map((p) => p.cantidad)) : 0;
 
   return (
@@ -60,7 +61,7 @@ export function TopProductos({ productos, isLoading }: TopProductosProps) {
                         {producto.cantidad} u.
                       </span>
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {formatCurrency(producto.total, 'COP')}
+                        {formatear(producto.total)}
                       </span>
                     </div>
                   </div>

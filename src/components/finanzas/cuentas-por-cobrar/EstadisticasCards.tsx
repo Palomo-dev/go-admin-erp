@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, TrendingUp, Clock, AlertTriangle } from 'lucide-react';
 import { EstadisticasCxC } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface EstadisticasCardsProps {
   estadisticas: EstadisticasCxC;
@@ -13,10 +13,12 @@ interface EstadisticasCardsProps {
 }
 
 export function EstadisticasCards({ estadisticas, isLoading }: EstadisticasCardsProps) {
+  // Agregados de toda la cartera: en la moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   const cards = [
     {
       title: 'Total por Cobrar',
-      value: formatCurrency(estadisticas.total_balance),
+      value: formatear(estadisticas.total_balance),
       icon: DollarSign,
       color: 'text-blue-600 dark:text-blue-400',
       bgColor: 'bg-blue-50 dark:bg-blue-900/20',
@@ -24,7 +26,7 @@ export function EstadisticasCards({ estadisticas, isLoading }: EstadisticasCards
     },
     {
       title: 'Vigentes',
-      value: formatCurrency(estadisticas.current_amount),
+      value: formatear(estadisticas.current_amount),
       icon: TrendingUp,
       color: 'text-green-600 dark:text-green-400',
       bgColor: 'bg-green-50 dark:bg-green-900/20',
@@ -32,7 +34,7 @@ export function EstadisticasCards({ estadisticas, isLoading }: EstadisticasCards
     },
     {
       title: 'Vencidas',
-      value: formatCurrency(estadisticas.overdue_amount),
+      value: formatear(estadisticas.overdue_amount),
       icon: AlertTriangle,
       color: 'text-red-600 dark:text-red-400',
       bgColor: 'bg-red-50 dark:bg-red-900/20',
@@ -93,6 +95,7 @@ export function EstadisticasCards({ estadisticas, isLoading }: EstadisticasCards
 }
 
 export function EstadisticasDetalle({ estadisticas }: { estadisticas: EstadisticasCxC }) {
+  const { formatear } = useMonedaOrganizacion();
   const porcentajePagado = estadisticas.total_amount > 0 
     ? (estadisticas.paid_amount / estadisticas.total_amount) * 100 
     : 0;
@@ -114,19 +117,19 @@ export function EstadisticasDetalle({ estadisticas }: { estadisticas: Estadistic
             <div className="flex justify-between items-center">
               <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Total Facturado</span>
               <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
-                {formatCurrency(estadisticas.total_amount)}
+                {formatear(estadisticas.total_amount)}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Total Cobrado</span>
               <span className="text-xs sm:text-sm font-medium text-green-600 dark:text-green-400">
-                {formatCurrency(estadisticas.paid_amount)}
+                {formatear(estadisticas.paid_amount)}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Parcialmente Cobrado</span>
               <span className="text-xs sm:text-sm font-medium text-amber-600 dark:text-amber-400">
-                {formatCurrency(estadisticas.partial_amount)}
+                {formatear(estadisticas.partial_amount)}
               </span>
             </div>
           </div>

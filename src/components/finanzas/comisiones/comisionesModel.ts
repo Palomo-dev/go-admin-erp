@@ -5,7 +5,7 @@
  */
 
 import { cancellationKind } from '@/lib/services/crm/commissionTransitions';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 
 export interface ComisionesFiltersState {
   status: 'all' | 'accrued' | 'paid' | 'cancelled';
@@ -78,12 +78,19 @@ export interface SelectionSummary {
   payee: string;
 }
 
-/** Texto para los diálogos: «$250 de Beto» o «$150 de 2 vendedores». */
-export function describeSelection(rows: readonly { commission_amount: number | string | null; payee_name: string | null }[], currency: string): SelectionSummary {
+/**
+ * Texto para los diálogos: «$250 de Beto» o «$150 de 2 vendedores». `currency`
+ * es el código (o el contexto, con locale y decimales) de la moneda de la
+ * selección; nunca se supone COP.
+ */
+export function describeSelection(
+  rows: readonly { commission_amount: number | string | null; payee_name: string | null }[],
+  currency: string | ContextoMoneda
+): SelectionSummary {
   const total = rows.reduce((s, r) => s + (Number(r.commission_amount) || 0), 0);
   const names = Array.from(new Set(rows.map((r) => r.payee_name || 'Sin nombre')));
   const payee = names.length === 1 ? names[0] : `${names.length} vendedores`;
-  return { count: rows.length, total, totalLabel: formatCurrency(total, currency), payee };
+  return { count: rows.length, total, totalLabel: formatMoneda(total, currency), payee };
 }
 
 export type StatusTone = 'pending' | 'paid' | 'cancelled';

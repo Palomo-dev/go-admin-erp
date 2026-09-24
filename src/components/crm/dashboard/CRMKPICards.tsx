@@ -2,7 +2,8 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import {
   MessageSquare,
   Clock,
@@ -10,9 +11,6 @@ import {
   TrendingUp,
   Megaphone,
   UserPlus,
-  Users,
-  CheckCircle,
-  AlertCircle,
 } from 'lucide-react';
 import { KPIData } from './types';
 
@@ -88,6 +86,8 @@ function formatTime(seconds: number): string {
 }
 
 export function CRMKPICards({ data, isLoading }: CRMKPICardsProps) {
+  // Importes agregados: moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   const kpis = [
     {
       title: 'Conversaciones Abiertas',
@@ -106,13 +106,13 @@ export function CRMKPICards({ data, isLoading }: CRMKPICardsProps) {
     {
       title: 'Oportunidades Abiertas',
       value: data?.opportunitiesOpen || 0,
-      subtitle: formatCurrency(data?.opportunitiesValue || 0, 'COP'),
+      subtitle: formatear(data?.opportunitiesValue || 0),
       icon: <Target className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />,
       color: 'bg-green-100 dark:bg-green-900/40',
     },
     {
       title: 'Pronóstico del Mes',
-      value: formatCurrency(data?.monthForecast || 0, 'COP'),
+      value: formatear(data?.monthForecast || 0),
       subtitle: 'Valor ponderado',
       icon: <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />,
       color: 'bg-orange-100 dark:bg-orange-900/40',

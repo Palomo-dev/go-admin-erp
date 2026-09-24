@@ -42,13 +42,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { PageHeaderSkeleton, DetailSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { CouponsService, CouponForm } from '@/components/pos/cupones';
 import { Coupon, CouponRedemption, DISCOUNT_TYPE_LABELS } from '@/components/pos/cupones/types';
-import { formatCurrency, cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
 
 export default function CuponDetallePage() {
+  const { formatear } = useMonedaOrganizacion();
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -75,7 +76,7 @@ export default function CuponDetallePage() {
       ]);
       setCoupon(couponData);
       setRedemptions(redemptionsData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading coupon:', error);
       toast.error('Error al cargar el cupón');
     } finally {
@@ -92,8 +93,8 @@ export default function CuponDetallePage() {
       await CouponsService.delete(couponId);
       toast.success('Cupón eliminado correctamente');
       router.push('/app/pos/cupones');
-    } catch (error: any) {
-      toast.error(error.message || 'Error al eliminar el cupón');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al eliminar el cupón');
     }
   };
 
@@ -102,8 +103,8 @@ export default function CuponDetallePage() {
       await CouponsService.duplicate(couponId);
       toast.success('Cupón duplicado correctamente');
       router.push('/app/pos/cupones');
-    } catch (error: any) {
-      toast.error(error.message || 'Error al duplicar el cupón');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al duplicar el cupón');
     }
   };
 
@@ -114,8 +115,8 @@ export default function CuponDetallePage() {
       await CouponsService.toggleActive(couponId);
       toast.success(coupon.is_active ? 'Cupón desactivado' : 'Cupón activado');
       loadCoupon();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al cambiar estado');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al cambiar estado');
     } finally {
       setToggling(false);
     }
@@ -264,7 +265,7 @@ export default function CuponDetallePage() {
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Descuento</h4>
                   <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 flex items-center gap-2">
                     {coupon.discount_type === 'percentage' ? <Percent className="h-5 w-5" /> : <DollarSign className="h-5 w-5" />}
-                    {coupon.discount_type === 'percentage' ? `${coupon.discount_value}%` : formatCurrency(coupon.discount_value)}
+                    {coupon.discount_type === 'percentage' ? `${coupon.discount_value}%` : formatear(coupon.discount_value)}
                   </p>
                 </div>
                 <div>
@@ -299,13 +300,13 @@ export default function CuponDetallePage() {
                     {coupon.min_purchase_amount && (
                       <div>
                         <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Compra Mínima</h4>
-                        <p className="dark:text-white">{formatCurrency(coupon.min_purchase_amount)}</p>
+                        <p className="dark:text-white">{formatear(coupon.min_purchase_amount)}</p>
                       </div>
                     )}
                     {coupon.max_discount_amount && (
                       <div>
                         <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Descuento Máximo</h4>
-                        <p className="dark:text-white">{formatCurrency(coupon.max_discount_amount)}</p>
+                        <p className="dark:text-white">{formatear(coupon.max_discount_amount)}</p>
                       </div>
                     )}
                   </div>
@@ -359,7 +360,7 @@ export default function CuponDetallePage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500 dark:text-gray-400">Total Descontado</span>
-                  <span className="font-semibold text-purple-600 dark:text-purple-400">{formatCurrency(totalDiscountApplied)}</span>
+                  <span className="font-semibold text-purple-600 dark:text-purple-400">{formatear(totalDiscountApplied)}</span>
                 </div>
                 {coupon.applies_to_first_purchase && (
                   <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 w-full justify-center">
@@ -423,7 +424,7 @@ export default function CuponDetallePage() {
                       <TableCell className="dark:text-gray-300">{r.customer?.full_name || '-'}</TableCell>
                       <TableCell className="dark:text-gray-300">{r.sale?.branch?.name || '-'}</TableCell>
                       <TableCell className="text-right font-semibold text-purple-600 dark:text-purple-400">
-                        {formatCurrency(r.discount_applied)}
+                        {formatear(r.discount_applied)}
                       </TableCell>
                     </TableRow>
                   ))}

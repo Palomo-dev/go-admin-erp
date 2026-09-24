@@ -36,7 +36,7 @@ import {
   CheckCircle,
   ArrowLeft,
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 // Tipos espejo del servicio (para uso en cliente)
 interface DuplicateAlert {
@@ -122,6 +122,8 @@ function SeverityBadge({ severity }: { severity: 'high' | 'medium' | 'low' }) {
 }
 
 export function AnomalyPanel({ organizationId }: AnomalyPanelProps) {
+  // Las alertas no traen la moneda de la cuenta: se muestran en la moneda base.
+  const { formatear } = useMonedaOrganizacion();
   const [summary, setSummary] = useState<AnomalySummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -393,7 +395,7 @@ export function AnomalyPanel({ organizationId }: AnomalyPanelProps) {
                       <AlertDescription>
                         <div className="text-sm text-gray-600 dark:text-gray-300">
                           <span className="font-medium">Monto:</span>{' '}
-                          {formatCurrency(dup.amount, 'COP')}
+                          {formatear(dup.amount)}
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-300">
                           <span className="font-medium">Fecha:</span> {dup.date}
@@ -453,10 +455,10 @@ export function AnomalyPanel({ organizationId }: AnomalyPanelProps) {
                           alert.actualValue !== undefined && (
                             <div className="flex gap-4 mt-1 text-sm">
                               <span className="text-gray-500 dark:text-gray-400">
-                                Esperado: {formatCurrency(alert.expectedValue, 'COP')}
+                                Esperado: {formatear(alert.expectedValue)}
                               </span>
                               <span className="text-gray-900 dark:text-white font-medium">
-                                Actual: {formatCurrency(alert.actualValue, 'COP')}
+                                Actual: {formatear(alert.actualValue)}
                               </span>
                             </div>
                           )}
@@ -564,14 +566,14 @@ export function AnomalyPanel({ organizationId }: AnomalyPanelProps) {
                             {disc.bankAccountName}
                           </TableCell>
                           <TableCell className="text-right">
-                            {formatCurrency(disc.localBalance, 'COP')}
+                            {formatear(disc.localBalance)}
                           </TableCell>
                           <TableCell className="text-right">
-                            {formatCurrency(disc.calculatedBalance, 'COP')}
+                            {formatear(disc.calculatedBalance)}
                           </TableCell>
                           <TableCell className="text-right">
                             {disc.realBalance !== null
-                              ? formatCurrency(disc.realBalance, 'COP')
+                              ? formatear(disc.realBalance)
                               : '-'}
                           </TableCell>
                           <TableCell
@@ -581,7 +583,7 @@ export function AnomalyPanel({ organizationId }: AnomalyPanelProps) {
                                 : 'text-green-600 dark:text-green-400'
                             }`}
                           >
-                            {formatCurrency(disc.difference, 'COP')}
+                            {formatear(disc.difference)}
                           </TableCell>
                           <TableCell className="text-center">
                             <SeverityBadge severity={disc.severity} />

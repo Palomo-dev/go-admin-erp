@@ -4,7 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Store } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { VentaSucursalPos } from '@/lib/services/posDashboardService';
 
 interface VentasPorSucursalProps {
@@ -13,6 +13,7 @@ interface VentasPorSucursalProps {
 }
 
 export function VentasPorSucursal({ sucursales, isLoading }: VentasPorSucursalProps) {
+  const { formatear } = useMonedaOrganizacion();
   return (
     <Card className="dark:bg-gray-800/50">
       <CardHeader className="pb-2">
@@ -55,7 +56,7 @@ export function VentasPorSucursal({ sucursales, isLoading }: VentasPorSucursalPr
                       {s.numTransacciones}
                     </td>
                     <td className="py-2 pl-4 text-right font-medium text-gray-900 dark:text-white">
-                      {formatCurrency(s.totalVentas, 'COP')}
+                      {formatear(s.totalVentas)}
                     </td>
                   </tr>
                 ))}

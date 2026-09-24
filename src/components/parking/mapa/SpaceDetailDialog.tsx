@@ -48,6 +48,8 @@ import parkingPaymentService, {
   type OrganizationPaymentMethod,
 } from '@/lib/services/parkingPaymentService';
 import { supabase } from '@/lib/supabase/config';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 interface SpaceDetailDialogProps {
   open: boolean;
@@ -93,6 +95,8 @@ export function SpaceDetailDialog({
 }: SpaceDetailDialogProps) {
   const { toast } = useToast();
   const { organization } = useOrganization();
+  // Parking no tiene moneda propia: importes en la moneda base.
+  const { formatear } = useMonedaOrganizacion();
   const [isLoading, setIsLoading] = useState(false);
   const [vehiclePlate, setVehiclePlate] = useState('');
   const [vehicleType, setVehicleType] = useState('car');
@@ -280,7 +284,7 @@ export function SpaceDetailDialog({
 
         toast({
           title: 'Salida registrada a crédito',
-          description: `Vehículo ${space.active_session.vehicle_plate}. Cuenta por cobrar: $${calculatedFee.amount.toLocaleString()}`,
+          description: `Vehículo ${space.active_session.vehicle_plate}. Cuenta por cobrar: ${formatear(calculatedFee.amount)}`,
         });
       } else if (generateInvoice) {
         // Pago con factura
@@ -300,10 +304,12 @@ export function SpaceDetailDialog({
 
         toast({
           title: 'Pago registrado con factura',
-          description: `Vehículo ${space.active_session.vehicle_plate}. Cobro: $${calculatedFee.amount.toLocaleString()}`,
+          description: `Vehículo ${space.active_session.vehicle_plate}. Cobro: ${formatear(calculatedFee.amount)}`,
         });
       } else {
-        // Pago normal sin factura
+        // Pago normal sin factura. `payments.currency` es NOT NULL y no tiene
+        // trigger: moneda base de la organización.
+        const { code: currency } = await resolveOrgCurrency(supabase, organization.id);
         await supabase.from('payments').insert({
           organization_id: organization.id,
           branch_id: branchId,
@@ -311,7 +317,7 @@ export function SpaceDetailDialog({
           source_id: space.active_session.id,
           method: selectedPaymentMethod,
           amount: calculatedFee.amount,
-          currency: 'COP',
+          currency,
           status: 'completed',
         });
 
@@ -320,7 +326,7 @@ export function SpaceDetailDialog({
 
         toast({
           title: 'Pago registrado',
-          description: `Vehículo ${space.active_session.vehicle_plate}. Cobro: $${calculatedFee.amount.toLocaleString()}`,
+          description: `Vehículo ${space.active_session.vehicle_plate}. Cobro: ${formatear(calculatedFee.amount)}`,
         });
       }
 
@@ -450,7 +456,7 @@ export function SpaceDetailDialog({
                         Total a pagar:
                       </span>
                       <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                        ${calculatedFee.amount.toLocaleString()}
+                        {formatear(calculatedFee.amount)}
                       </span>
                     </div>
                     {calculatedFee.amount > 0 && !showPaymentForm && (
@@ -568,7 +574,7 @@ export function SpaceDetailDialog({
                             ) : isCredit ? (
                               'Registrar Crédito'
                             ) : (
-                              `Cobrar $${calculatedFee.amount.toLocaleString()}`
+                              `Cobrar ${formatear(calculatedFee.amount)}`
                             )}
                           </Button>
                         </div>

@@ -29,7 +29,7 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Search, User, Plus, X, Car, Mail, Phone } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
 import parkingService, {
@@ -73,6 +73,7 @@ export function PassFormDialog({
   onSuccess,
   onPlanCreated,
 }: PassFormDialogProps) {
+  const { formatear: formatCurrency, code: monedaBase } = useMonedaOrganizacion();
   const { toast } = useToast();
   const { timezone } = useOrgTimezone();
   const [isLoading, setIsLoading] = useState(false);
@@ -500,7 +501,7 @@ export function PassFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label className="dark:text-gray-200">Precio (COP) *</Label>
+              <Label className="dark:text-gray-200">Precio ({monedaBase}) *</Label>
               <Input
                 type="number"
                 value={price}

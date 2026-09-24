@@ -18,7 +18,8 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { Product, Customer, Cart, Category, CartItemModifier } from '@/components/pos/types';
-import { formatCurrency, cn } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { StatsSkeleton, CardListSkeleton, PageHeaderSkeleton } from '@/components/common/PageSkeletons';
 import { VentasService, DailySummary } from '@/components/pos/ventas';
 import { PrintJobsService } from '@/lib/services/printJobsService';
@@ -66,6 +67,7 @@ export default function POSPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isOrgAdmin, setIsOrgAdmin] = useState(false);
   const { showExpected } = useBlindCloseMode();
+  const { formatear } = useMonedaOrganizacion();
   const { timezone } = useOrgTimezone();
   const tHeader = useTranslations('header');
   // Shell móvil (Figma MobileHeader Mode=pos y MobileTabBar): la cabecera
@@ -254,8 +256,8 @@ export default function POSPage() {
     loadDashboardData();
     toast.success(session.pending_sync ? 'Caja abierta sin conexión' : 'Caja abierta exitosamente', {
       description: session.pending_sync
-        ? `Monto inicial: ${formatCurrency(session.initial_amount)} · pendiente de sincronizar`
-        : `Monto inicial: ${formatCurrency(session.initial_amount)}`
+        ? `Monto inicial: ${formatear(session.initial_amount)} · pendiente de sincronizar`
+        : `Monto inicial: ${formatear(session.initial_amount)}`
     });
   };
 
@@ -270,7 +272,7 @@ export default function POSPage() {
       });
     loadDashboardData();
     toast.success(session.pending_sync ? 'Caja cerrada sin conexión' : 'Caja cerrada exitosamente', {
-      description: (showExpected ? `Diferencia: ${formatCurrency(Math.abs(session.difference || 0))}` : 'Caja cerrada')
+      description: (showExpected ? `Diferencia: ${formatear(Math.abs(session.difference || 0))}` : 'Caja cerrada')
         + (session.pending_sync ? ' · pendiente de sincronizar' : '')
     });
   };
@@ -822,7 +824,7 @@ export default function POSPage() {
                 <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
                   {activeCart.items.reduce((sum, i) => sum + i.quantity, 0)}
                 </span>
-                <span>{formatCurrency(activeCart.total)}</span>
+                <span>{formatear(activeCart.total)}</span>
               </>
             ) : (
               <span>Carrito</span>

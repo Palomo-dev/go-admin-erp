@@ -2086,3 +2086,101 @@ describe('28. Generadores de documentos: sin moneda fija', () => {
     expect(infracciones).toEqual([]);
   });
 });
+
+/**
+ * 28b. Moneda fija en TODO el código, no solo en los generadores: una escritura
+ * `currency: 'COP'` (pago, factura, empleo…), un respaldo `x || 'COP'`, un
+ * `useState('COP')` de formulario o un `formatCurrency(x, 'COP')` de pantalla
+ * son el mismo bug que el caso 28 (2026-09-24). La moneda sale del documento o
+ * de la organización: `resolveOrgCurrency` / `useMonedaOrganizacion`, y en la
+ * base el trigger `trg_00_moneda_base_por_defecto` rellena la moneda de un
+ * documento creado sin ella.
+ *
+ * Cualquier literal 'COP' fuera de comentarios cuenta. Allow-list por archivo,
+ * cada uno con su motivo; una entrada que ya no tiene el literal hace fallar el
+ * segundo test (la lista no puede crecer en silencio ni quedarse vieja).
+ */
+describe('28b. Sin moneda fija en escrituras ni pantallas', () => {
+  const PERMITIDOS_COP_GLOBAL: Record<string, string> = {
+    // Fuente única y formateo: tablas de país → moneda y de decimales.
+    'lib/services/monedaOrganizacion.ts': 'MONEDA_POR_PAIS (CO → COP), espejo de la función SQL',
+    'lib/utils/moneda.ts': 'SIN_DECIMALES: cuántos decimales tiene la moneda, no cuál es',
+    'lib/hooks/useOrgCurrency.ts': 'marcador inicial mientras llega la respuesta (resuelta = false)',
+    'utils/Utils.ts': 'formatCurrency (deprecado de hecho) conserva su firma; sus usos se vigilan aparte',
+    'lib/services/mobileEscposAdapter.ts': 'MONEDAS_CON_PESO: monedas que se imprimen con «$» en CP437',
+    'lib/ai/agent/tools/documentos.ts': 'sinDecimales (tabla de decimales) y defaults de firma; ctx.currency llega siempre de resolveOrgCurrency',
+    'lib/ai/agent/systemPrompt.ts': 'default de firma; ctx.currency llega siempre de resolveOrgCurrency (ai-assistant/stream y execute-action)',
+
+    // Catálogos y datos de muestra: listan monedas, no eligen la del documento.
+    'lib/services/hrmConfigService.ts': 'catálogo de respaldo de países y monedas (getAvailableCountries/Currencies)',
+    'lib/services/pmsSettingsService.ts': 'catálogo de opciones del selector; el default sale de resolveOrgCurrency',
+    'lib/services/integrations/tripadvisor/tripadvisorConfig.ts': 'tabla de códigos ISO que acepta TripAdvisor',
+    'lib/services/crm/email/variables.ts': 'valor de EJEMPLO que ve el editor de plantillas',
+    'lib/services/crm/email/variablesContext.ts': 'contexto de MUESTRA para previsualizar plantillas',
+
+    // Rieles de pago que solo operan en pesos colombianos: la moneda es la del riel.
+    'app/api/integrations/bancolombia/wompi/create-qr/route.ts': 'Bancolombia/Wompi QR: solo COP',
+    'app/api/integrations/bold/create-link/route.ts': 'Bold: solo COP',
+    'app/api/integrations/bold/create-pos-payment/route.ts': 'Bold: solo COP',
+    'app/api/integrations/wompi/create-transaction/route.ts': 'Wompi: solo COP',
+    'lib/services/integrations/bold/boldTypes.ts': 'Bold: solo COP',
+    'lib/services/integrations/wompi/wompiTypes.ts': 'Wompi: solo COP',
+    'lib/services/integrations/redeban/redebanService.ts': 'Redeban: solo COP',
+    'lib/services/integrations/payfac/payoutService.ts': 'dispersiones payfac: solo COP',
+    'app/app/finanzas/payfac/dispersiones/page.tsx': 'dispersiones payfac: solo COP',
+    'app/app/finanzas/metodos-pago/qr-sessions/page.tsx': 'sesiones QR de rieles colombianos',
+    'components/shared/QrPaymentDialog.tsx': 'diálogo de cobro QR (Bold, Bancolombia, Redeban, Bre-B): solo COP',
+    'components/pms/checkout/CheckoutDialog.tsx': 'solo el cobro QR del folio (rieles COP); los importes van en la moneda base',
+    'lib/services/integrations/openFinance/paymentInitiationService.ts': 'open finance colombiano: iniciación de pagos en COP',
+    'lib/services/integrations/openFinance/openFinanceService.ts': 'moneda que reporta el agregador bancario',
+    'lib/services/integrations/openFinance/balanceService.ts': 'moneda que reporta el agregador bancario',
+    'lib/services/integrations/openFinance/treasuryService.ts': 'moneda de la cuenta del agregador bancario',
+    'app/api/me/plan/route.ts': 'precio del plan del SaaS, que se cobra en COP (price_cop_month/year)',
+
+    // DEUDA conocida (2026-09-24). Cada una con el motivo por el que no se
+    // corrigió en la ronda de moneda. Al corregirla, se borra de aquí (el
+    // segundo test obliga).
+    'components/finanzas/contabilidad/ContabilidadService.ts': 'DEUDA: respaldo COP del asiento; el archivo lo editaba otra sesión',
+    'components/finanzas/contabilidad/ReportesContablesService.ts': 'DEUDA: getExchangeRate trata COP como base; openFinanceYMonedas.test.ts fija ese contrato',
+    'components/pos/CheckoutDialog.tsx': 'DEUDA: respaldo COP del cobro QR/propina; 48 errores de lint previos sin tsc por archivo',
+    'app/api/pos/display/bootstrap/route.ts': 'DEUDA: pantalla del cliente; lee is_base sin la cadena de resolveOrgCurrency',
+    'components/pos-display/logic.ts': 'DEUDA: respaldo de la pantalla del cliente',
+    'lib/pos/display/emitter.ts': 'DEUDA: respaldo de la pantalla del cliente',
+    'lib/pos/display/posDisplay.ts': 'DEUDA: respaldo de la pantalla del cliente',
+    'lib/pos/display/projection.ts': 'DEUDA: respaldo de la pantalla del cliente',
+    'lib/services/integrations/booking/bookingContentService.ts': 'DEUDA: moneda del XML de Booking con respaldo COP',
+    'lib/services/integrations/meta/metaMarketingConfig.ts': 'DEUDA: default de firma; la ruta ya pasa la moneda resuelta',
+    'lib/services/integrations/meta/metaMarketingService.ts': 'DEUDA: defaults de firma; en edición por la sesión de integraciones Meta/TikTok',
+    'lib/services/integrations/tiktok/tiktokMarketingConfig.ts': 'DEUDA: default de firma; la ruta ya pasa la moneda resuelta',
+    'lib/services/integrations/tiktok/tiktokMarketingService.ts': 'DEUDA: defaults de firma; en edición por la sesión de integraciones Meta/TikTok',
+  };
+
+  function codigoSinComentarios(ruta: string): string[] {
+    return stripAllComments(readFile(ruta)).split('\n');
+  }
+
+  const fuentes = () =>
+    walkDir(SRC_ROOT)
+      // Filtro propio: testerR4 (caso 21) prohíbe el helper de exclusión aquí.
+      .filter((f) => !/__tests__|\.test\.|\.spec\./.test(f.replace(/\\/g, '/')));
+
+  test("ningún archivo cablea 'COP' (salvo la allow-list documentada)", () => {
+    const infracciones: string[] = [];
+    for (const f of fuentes()) {
+      const nombre = rel(f);
+      if (PERMITIDOS_COP_GLOBAL[nombre]) continue;
+      codigoSinComentarios(f).forEach((linea, i) => {
+        if (/['"`]COP['"`]/.test(linea)) infracciones.push(`${nombre}:${i + 1}: ${linea.trim().slice(0, 110)}`);
+      });
+    }
+    expect(infracciones).toEqual([]);
+  });
+
+  test('la allow-list no tiene entradas viejas', () => {
+    const viejas = Object.keys(PERMITIDOS_COP_GLOBAL).filter((nombre) => {
+      const ruta = path.join(SRC_ROOT, nombre);
+      return !fs.existsSync(ruta) || !codigoSinComentarios(ruta).some((l) => /['"`]COP['"`]/.test(l));
+    });
+    expect(viejas).toEqual([]);
+  });
+});

@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase/config';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { todayInTz } from '@/lib/utils/dateCore';
 import { sumarMesesAlDia } from '@/lib/services/fiscalCalendar';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { monedasDeLaOrganizacion } from '@/lib/services/compensationPackagesService';
 
 // Zona horaria de este servicio (Fase B, tanda 3).
 //
@@ -45,13 +47,33 @@ export interface EmployeeLoan {
   auto_deduct: boolean;
   max_deduction_pct: number | null;
   notes: string | null;
-  supporting_documents: Record<string, any> | null;
-  metadata: Record<string, any> | null;
+  supporting_documents: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   // Joined fields
   employee_name?: string;
-  employee_code?: string;
+  employee_code?: string | null;
+}
+
+/** Fila de `employee_loans` con el empleo embebido, tal como la trae el select. */
+type FilaPrestamo = Omit<EmployeeLoan, 'employee_name' | 'employee_code'> & {
+  employments?: {
+    employee_code?: string | null;
+    organization_members?: {
+      profiles?: { first_name: string | null; last_name: string | null } | null;
+    } | null;
+  } | null;
+};
+
+/** Fila de `employments` con su miembro, para el selector de empleados. */
+interface FilaEmpleoMiembro {
+  id: string;
+  employee_code: string | null;
+  organization_members?: {
+    organization_id?: number;
+    profiles?: { first_name: string | null; last_name: string | null } | null;
+  } | null;
 }
 
 export interface LoanInstallment {
@@ -128,7 +150,7 @@ class EmployeeLoansService {
 
     if (error) throw error;
 
-    let result = (data || []).map((item: any) => this.mapLoan(item));
+    let result = ((data || []) as FilaPrestamo[]).map((item) => this.mapLoan(item));
 
     if (filters?.status) {
       result = result.filter(l => l.status === filters.status);
@@ -174,6 +196,11 @@ class EmployeeLoansService {
     // Generate loan number
     const loanNumber = await this.generateLoanNumber();
 
+    // `employee_loans.currency_code` es NOT NULL y no tiene trigger de moneda
+    // base: sin moneda elegida, la base de la organización (nunca COP fijo).
+    const currencyCode =
+      dto.currency_code?.trim() || (await resolveOrgCurrency(supabase, this.organizationId)).code;
+
     const { data, error } = await supabase
       .from('employee_loans')
       .insert({
@@ -182,7 +209,7 @@ class EmployeeLoansService {
         loan_number: loanNumber,
         loan_type: dto.loan_type || 'general',
         description: dto.description,
-        currency_code: dto.currency_code,
+        currency_code: currencyCode,
         principal: dto.principal,
         interest_rate: interestRate,
         total_interest: totalInterest,
@@ -485,11 +512,11 @@ class EmployeeLoansService {
 
     if (error) throw error;
 
-    const filtered = (data || []).filter((emp: any) => 
+    const filtered = ((data || []) as FilaEmpleoMiembro[]).filter((emp) => 
       emp.organization_members?.organization_id === this.organizationId
     );
 
-    return filtered.map((emp: any) => {
+    return filtered.map((emp) => {
       const profile = emp.organization_members?.profiles;
       return {
         id: emp.id,
@@ -532,11 +559,15 @@ class EmployeeLoansService {
     ];
   }
 
-  getCurrencies(): string[] {
-    return ['COP', 'USD', 'EUR', 'MXN'];
+  /**
+   * Opciones de moneda del formulario: las monedas asignadas a la
+   * organización. El valor por defecto (la moneda base) lo pone el formulario.
+   */
+  getCurrencies(): Promise<string[]> {
+    return monedasDeLaOrganizacion(this.organizationId);
   }
 
-  private mapLoan(item: any): EmployeeLoan {
+  private mapLoan(item: FilaPrestamo): EmployeeLoan {
     const profile = item.employments?.organization_members?.profiles;
     return {
       ...item,

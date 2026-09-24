@@ -19,7 +19,8 @@ import {
 } from '@/components/ui/select';
 import { History, Users, DollarSign, Clock, ListChecks, RefreshCcw, ChevronDown, ChevronRight, Trash2, Unlock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import {
   MesasHistorialService,
   type HistorialSesion,
@@ -105,6 +106,7 @@ function rangeFromQuick(key: QuickRange): { from: Date; to: Date } {
 }
 
 export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialogProps) {
+  const { formatear } = useMonedaOrganizacion();
   const [quickRange, setQuickRange] = useState<QuickRange>('today');
   const [dateFrom, setDateFrom] = useState<Date>(() => rangeFromQuick('today').from);
   const [dateTo, setDateTo] = useState<Date>(() => rangeFromQuick('today').to);
@@ -262,7 +264,7 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
             <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
             <div>
               <p className="text-[11px] text-gray-500 dark:text-gray-400">Facturado</p>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">{formatCurrency(stats.totalFacturado)}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">{formatear(stats.totalFacturado)}</p>
             </div>
           </div>
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-2">
@@ -361,7 +363,7 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
                           <td className="px-3 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatDateTime(s.closedAt)}</td>
                           <td className="px-3 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap hidden md:table-cell">{formatDuration(s.durationMinutes)}</td>
                           <td className="px-3 py-2 text-right font-medium text-gray-900 dark:text-white whitespace-nowrap">
-                            {s.saleTotal !== null ? formatCurrency(s.saleTotal) : '—'}
+                            {s.saleTotal !== null ? formatear(s.saleTotal) : '—'}
                           </td>
                           <td className="px-3 py-2 text-center">
                             <div className="flex items-center justify-center gap-1 flex-wrap">
@@ -406,7 +408,7 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
                                       {ev.motivo && ` (${ev.motivo})`}
                                     </span>
                                     <span className="flex items-center gap-2 shrink-0">
-                                      <span className="text-gray-500 dark:text-gray-400">{formatCurrency(ev.total)}</span>
+                                      <span className="text-gray-500 dark:text-gray-400">{formatear(ev.total)}</span>
                                       <span className="text-gray-400 dark:text-gray-500">{formatDateTime(ev.createdAt)}</span>
                                     </span>
                                   </li>

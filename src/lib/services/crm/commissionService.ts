@@ -228,7 +228,9 @@ class CommissionService {
         .eq('id', opportunityId)
         .single();
 
-      const currency = (opp as { currency?: string } | null)?.currency || 'COP';
+      // Moneda de la oportunidad; sin ella, NULL y el trigger
+      // `trg_00_moneda_base_por_defecto` pone la base de la organización.
+      const currency = (opp as { currency?: string } | null)?.currency || null;
 
       const { data, error } = await supabase
         .from('commissions')

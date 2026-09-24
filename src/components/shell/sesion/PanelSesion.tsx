@@ -49,6 +49,7 @@ import { locales, localeNames, type Locale } from '@/i18n/config';
 import { isDesktop } from '@/lib/utils/desktop';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz } from '@/lib/utils/dateDisplay';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { abrirReportarProblema } from '../header/ReportarProblema';
@@ -114,7 +115,6 @@ function useFechaLarga() {
     formatDateInTz(valor, timezone, { day: 'numeric', month: 'short', year: 'numeric', locale });
 }
 
-const COP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 const ENTERO = new Intl.NumberFormat('es-CO');
 
 function Fila({
@@ -383,7 +383,8 @@ function TarjetaPlan({ datos, onCerrar }: { datos: PlanSesion['plan']; onCerrar:
       {datos.precio !== null && (
         <div className="flex flex-col gap-0.5">
           <span className="text-sm font-medium tabular-nums text-fg">
-            {COP.format(datos.precio)} / {datos.periodo === 'anual' ? t('year') : t('month')}
+            {/* El precio del plan va en la moneda que declara /api/me/plan, no en una fija. */}
+            {formatMoneda(datos.precio, datos.moneda)} / {datos.periodo === 'anual' ? t('year') : t('month')}
           </span>
           {datos.proximoCobro && (
             <span className="text-[13px] leading-[18px] text-fg-secondary">

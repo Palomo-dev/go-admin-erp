@@ -15,7 +15,7 @@ import {
   ArrowUpCircle,
   Package
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import type { KardexEntry } from '@/lib/services/kardexService';
@@ -73,6 +73,7 @@ export function KardexTable({
 }: KardexTableProps) {
   const { formatDate } = useFormatDate();
   const { timezone } = useOrgTimezone();
+  const { formatear } = useMonedaOrganizacion();
   if (isLoading) {
     return (
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -190,10 +191,10 @@ export function KardexTable({
                     {entry.direction === 'in' ? '+' : '-'}{entry.qty.toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right text-gray-600 dark:text-gray-400">
-                    {formatCurrency(entry.unit_cost)}
+                    {formatear(entry.unit_cost)}
                   </TableCell>
                   <TableCell className="text-right font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(entry.total_cost)}
+                    {formatear(entry.total_cost)}
                   </TableCell>
                   <TableCell className={`text-right font-bold ${getBalanceColor(entry.balance)}`}>
                     {entry.balance.toLocaleString()}

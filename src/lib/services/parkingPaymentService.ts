@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export interface ParkingSession {
   id: string;
@@ -278,11 +279,14 @@ class ParkingPaymentService {
    */
   async createPayment(data: CreatePaymentData): Promise<ParkingPayment> {
     try {
+      // `payments.currency` es NOT NULL y no tiene trigger: la que traiga el
+      // pago o, si no, la moneda base de la organización.
+      const currency = data.currency || (await resolveOrgCurrency(supabase, data.organization_id)).code;
       const { data: payment, error } = await supabase
         .from('payments')
         .insert({
           ...data,
-          currency: data.currency || 'COP',
+          currency,
           status: 'completed',
         })
         .select()

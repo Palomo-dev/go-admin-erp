@@ -3,7 +3,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Users, Clock, ChefHat, Receipt, UserCircle, Edit2 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface MesaStatsCardsProps {
   customers: number;
@@ -24,6 +24,7 @@ export function MesaStatsCards({
   onEditarComensales,
   onEditarMesero,
 }: MesaStatsCardsProps) {
+  const { formatear } = useMonedaOrganizacion();
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
       <Card
@@ -88,7 +89,7 @@ export function MesaStatsCards({
               Total
             </p>
             <p className="text-base sm:text-lg font-bold text-blue-900 dark:text-blue-100 break-words whitespace-normal">
-              {formatCurrency(total)}
+              {formatear(total)}
             </p>
           </div>
         </div>

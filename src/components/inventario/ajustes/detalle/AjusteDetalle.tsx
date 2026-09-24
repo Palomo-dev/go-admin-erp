@@ -40,10 +40,9 @@ import {
   FileText,
   AlertTriangle,
   TrendingUp,
-  TrendingDown,
-  Package
+  TrendingDown
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { 
   adjustmentService, 
@@ -56,6 +55,15 @@ import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkel
 
 interface AjusteDetalleProps {
   adjustmentId: number;
+}
+
+/** Movimiento de stock generado por el ajuste (fila de stock_movements con su producto). */
+interface MovimientoAjuste {
+  created_at: string;
+  direction: string;
+  qty: number;
+  unit_cost?: number | null;
+  products?: { name?: string | null } | null;
 }
 
 function getStatusBadge(status: string) {
@@ -88,11 +96,12 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { formatDate } = useFormatDate();
+  const { formatear } = useMonedaOrganizacion();
   const { organization, isLoading: loadingOrg } = useOrganization();
 
   // Estados
   const [adjustment, setAdjustment] = useState<InventoryAdjustment | null>(null);
-  const [movements, setMovements] = useState<any[]>([]);
+  const [movements, setMovements] = useState<MovimientoAjuste[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -165,7 +174,7 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
         return;
       }
 
-      const { success, error } = await adjustmentService.applyAdjustment(
+      const { error } = await adjustmentService.applyAdjustment(
         adjustment.id,
         organization.id,
         userId
@@ -179,12 +188,12 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
       });
 
       loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error aplicando ajuste:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: error.message || 'No se pudo aplicar el ajuste'
+        description: (error as { message?: string } | null)?.message || 'No se pudo aplicar el ajuste'
       });
     } finally {
       setIsProcessing(false);
@@ -199,7 +208,7 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
     try {
       setIsProcessing(true);
 
-      const { success, error } = await adjustmentService.cancelAdjustment(
+      const { error } = await adjustmentService.cancelAdjustment(
         adjustment.id,
         organization.id
       );
@@ -212,12 +221,12 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
       });
 
       loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error cancelando ajuste:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: error.message || 'No se pudo cancelar el ajuste'
+        description: (error as { message?: string } | null)?.message || 'No se pudo cancelar el ajuste'
       });
     } finally {
       setIsProcessing(false);
@@ -431,11 +440,11 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right dark:text-gray-300">
-                          {formatCurrency(item.unit_cost || 0)}
+                          {formatear(item.unit_cost || 0)}
                         </TableCell>
                         <TableCell className="text-right">
                           <span className={((item.difference || 0) * (item.unit_cost || 0)) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                            {formatCurrency((item.difference || 0) * (item.unit_cost || 0))}
+                            {formatear((item.difference || 0) * (item.unit_cost || 0))}
                           </span>
                         </TableCell>
                       </TableRow>
@@ -491,7 +500,7 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
                             {mov.direction === 'in' ? '+' : '-'}{mov.qty}
                           </TableCell>
                           <TableCell className="text-right dark:text-gray-300">
-                            {formatCurrency(mov.unit_cost || 0)}
+                            {formatear(mov.unit_cost || 0)}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -533,7 +542,7 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
               <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
                 <span className="text-gray-600 dark:text-gray-400">Impacto valorizado</span>
                 <span className={`font-medium ${totalValueDifference >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {formatCurrency(totalValueDifference)}
+                  {formatear(totalValueDifference)}
                 </span>
               </div>
 

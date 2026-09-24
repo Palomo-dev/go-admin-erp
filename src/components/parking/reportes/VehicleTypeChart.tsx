@@ -4,7 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Car, Bike, Truck } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { VehicleTypeStats } from '@/lib/services/parkingReportService';
 
 interface VehicleTypeChartProps {
@@ -33,6 +33,7 @@ const VEHICLE_COLORS: Record<string, string> = {
 };
 
 export function VehicleTypeChart({ data, isLoading }: VehicleTypeChartProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   return (
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">

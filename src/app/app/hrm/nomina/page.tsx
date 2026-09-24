@@ -6,10 +6,10 @@ import Link from 'next/link';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import PayrollService from '@/lib/services/payrollService';
 import PayrollCalculationService from '@/lib/services/payrollCalculationService';
-import type { PayrollPeriod } from '@/lib/services/payrollService';
+import type { PayrollPeriod, PeriodFilters } from '@/lib/services/payrollService';
 import { supabase } from '@/lib/supabase/config';
 import { PeriodsTable } from '@/components/hrm/nomina';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +50,8 @@ export default function NominaPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
   const { branchFilter } = useBranch();
+  // `payroll_periods` no tiene moneda: sus totales van en la moneda base.
+  const { formatear } = useMonedaOrganizacion();
 
   const [periods, setPeriods] = useState<PayrollPeriod[]>([]);
   const [stats, setStats] = useState({
@@ -92,7 +94,7 @@ export default function NominaPage() {
 
     setIsLoading(true);
     try {
-      const filters: any = {};
+      const filters: PeriodFilters = {};
       if (statusFilter && statusFilter !== 'all') {
         filters.status = statusFilter;
       }
@@ -116,7 +118,7 @@ export default function NominaPage() {
 
       setPeriods(filtered);
       setStats(statsData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading data:', error);
       toast({
         title: 'Error',
@@ -126,6 +128,8 @@ export default function NominaPage() {
     } finally {
       setIsLoading(false);
     }
+    // `branchFilter` recarga los periodos al cambiar de sucursal, a propósito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getService, searchTerm, statusFilter, frequencyFilter, toast, branchFilter]);
 
   useEffect(() => {
@@ -143,7 +147,7 @@ export default function NominaPage() {
       await service.changePeriodStatus(period.id, status);
       toast({ title: `Periodo ${status === 'approved' ? 'aprobado' : status === 'paid' ? 'marcado como pagado' : 'actualizado'}` });
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo actualizar el estado',
@@ -162,7 +166,7 @@ export default function NominaPage() {
       toast({ title: 'Periodo eliminado' });
       setDeleteId(null);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo eliminar el periodo',
@@ -182,16 +186,16 @@ export default function NominaPage() {
 
       toast({
         title: 'Cálculo completado',
-        description: `Colillas creadas: ${result.created}, Errores: ${result.errors}. Total neto: ${formatCurrency(result.totals.net_pay, 'COP')}`,
+        description: `Colillas creadas: ${result.created}, Errores: ${result.errors}. Total neto: ${formatear(result.totals.net_pay)}`,
       });
 
       setShowCalculateDialog(false);
       setSelectedPeriodId('');
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error en cálculo',
-        description: error.message || 'No se pudo calcular la nómina',
+        description: (error as { message?: string } | null)?.message || 'No se pudo calcular la nómina',
         variant: 'destructive',
       });
     } finally {
@@ -295,7 +299,7 @@ export default function NominaPage() {
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Total Bruto</p>
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                  {formatCurrency(stats.totalGross, 'COP')}
+                  {formatear(stats.totalGross)}
                 </p>
               </div>
             </div>
@@ -310,7 +314,7 @@ export default function NominaPage() {
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Total Neto</p>
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                  {formatCurrency(stats.totalNet, 'COP')}
+                  {formatear(stats.totalNet)}
                 </p>
               </div>
             </div>
@@ -325,7 +329,7 @@ export default function NominaPage() {
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Costo Empleador</p>
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                  {formatCurrency(stats.totalEmployerCost, 'COP')}
+                  {formatear(stats.totalEmployerCost)}
                 </p>
               </div>
             </div>

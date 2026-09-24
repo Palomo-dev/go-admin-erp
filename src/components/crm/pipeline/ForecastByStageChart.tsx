@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Filter } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from "@/components/ui/use-toast";
@@ -17,6 +17,14 @@ interface ForecastByStageChartProps {
   className?: string;
 }
 
+/** Fila de `opportunities` con su etapa embebida. */
+interface FilaOportunidadEtapa {
+  stage_id: string;
+  amount: number | string | null;
+  status: string;
+  stages: { name: string; color: string; probability: number } | null;
+}
+
 interface StageData {
   id: string;
   name: string;
@@ -28,6 +36,8 @@ interface StageData {
 }
 
 const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId, className }) => {
+  // Importes agregados: moneda base de la organización (nunca 'COP' cableado).
+  const { formatear } = useMonedaOrganizacion();
   const [loading, setLoading] = useState(true);
   const [stageData, setStageData] = useState<StageData[]>([]);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
@@ -79,7 +89,7 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
         let totalForecastAmount = 0;
 
         // Procesar cada oportunidad y agregarla a su etapa correspondiente
-        opportunitiesData?.forEach((item: any) => {
+        (opportunitiesData as unknown as FilaOportunidadEtapa[] | null)?.forEach((item) => {
           const stageId = item.stage_id;
           const amount = parseFloat(String(item.amount)) || 0;
           
@@ -90,7 +100,7 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
           
           if (!stagesMap.has(stageId)) {
             // Acceder correctamente a los datos de la etapa
-            const stageInfo = item.stages as { name: string; color: string; probability: number };
+            const stageInfo = item.stages;
             const stageName = stageInfo?.name || 'Sin etapa';
             const stageColor = stageInfo?.color || '#94a3b8'; // color predeterminado
             const probability = stageInfo?.probability || 0;
@@ -125,7 +135,7 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
         setStageData(sortedStages);
         setTotalForecast(totalForecastAmount);
 
-      } catch (error) {
+      } catch {
         toast({
           title: "Error",
           description: "Error al procesar datos de etapas",
@@ -157,10 +167,10 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
             Probabilidad: {Math.round(Number(data.probability))}%
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            Total: {formatCurrency(data.amount)}
+            Total: {formatear(data.amount)}
           </p>
           <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-            Pronóstico: {formatCurrency(data.forecastAmount)}
+            Pronóstico: {formatear(data.forecastAmount)}
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {data.percentage.toFixed(1)}% del pronóstico total
@@ -213,7 +223,7 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
           </h3>
         </div>
         <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
-          {formatCurrency(totalForecast)}
+          {formatear(totalForecast)}
         </div>
       </div>
 
@@ -276,7 +286,7 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
                   ></span>
                   {stage.name}
                 </td>
-                <td className="py-2 text-right">{formatCurrency(stage.forecastAmount)}</td>
+                <td className="py-2 text-right">{formatear(stage.forecastAmount)}</td>
                 <td className="py-2 text-right">{stage.percentage.toFixed(1)}%</td>
               </tr>
             ))}

@@ -10714,5 +10714,357 @@
       "estadoCuenta": "Adjuntamos tu estado de cuenta con {organizacion}.",
       "asuntoEstadoCuenta": "{organizacion}: estado de cuenta"
     }
+  },
+  "pagos": {
+    "sinNumero": "Sin número",
+    "sinCaja": "No hay una caja abierta en esta sucursal: el efectivo no se puede registrar.",
+    "abrirCaja": "Abrir caja",
+    "errorCarga": "No se pudo cargar el documento. Inténtalo de nuevo.",
+    "cuota": "Cuota",
+    "cuotaNinguna": "Abono sin cuota",
+    "cuotaOpcion": "Cuota {numero} · vence {fecha} · {saldo}",
+    "cuentaBancaria": "Cuenta de destino",
+    "cuentaBancariaNinguna": "Sin cuenta bancaria",
+    "cuentaBancariaAyuda": "Solo para pagos que no son en efectivo.",
+    "registrado": {
+      "titulo": "Pago registrado",
+      "descripcion": "Recibo {recibo} por {monto}.",
+      "conSaldoAFavor": "Recibo {recibo}. El sobrante de {anticipo} quedó como saldo a favor del cliente."
+    },
+    "reparto": {
+      "titulo": "Facturas a pagar",
+      "ayuda": "El pago se aplica de la factura más antigua a la más nueva.",
+      "todas": "Todas",
+      "sinFacturas": "El cliente no tiene facturas pendientes.",
+      "sinNumero": "Sin número",
+      "vence": "Vence {fecha}",
+      "sinVencimiento": "Sin vencimiento",
+      "totalSeleccion": "Saldo de lo seleccionado",
+      "sobrante": "Dejar el sobrante como saldo a favor",
+      "sobranteAyuda": "Si el pago supera el saldo, la diferencia queda a favor del cliente.",
+      "errores": {
+        "monto_invalido": "Escribe un monto mayor que cero.",
+        "sin_documentos": "Selecciona al menos una factura.",
+        "moneda_distinta": "Las facturas seleccionadas tienen monedas distintas.",
+        "excede": "El monto supera el saldo seleccionado. Marca «Dejar el sobrante como saldo a favor» o baja el monto."
+      }
+    },
+    "anular": {
+      "titulo": "Anular pago",
+      "descripcion": "El pago queda anulado y su saldo vuelve al documento.",
+      "descripcionMonto": "El pago de {monto} queda anulado y su saldo vuelve al documento.",
+      "confirmar": "Anular pago",
+      "hecho": "Pago anulado",
+      "hechoDescripcion": "El saldo volvió al documento y el asiento quedó revertido.",
+      "consecuenciasTitulo": "Al anular",
+      "consecuencias": {
+        "saldo": "El saldo vuelve a la factura y a la cuenta por cobrar.",
+        "asiento": "El asiento del pago se revierte con un contra-asiento.",
+        "caja": "Si fue en efectivo, deja de contar en la caja abierta.",
+        "cuota": "Si pagaba una cuota, la cuota vuelve a quedar pendiente."
+      },
+      "rapidos": {
+        "digitacion": "Error de digitación",
+        "devuelto": "Pago devuelto por el banco",
+        "duplicado": "Pago registrado dos veces"
+      }
+    },
+    "errores": {
+      "no_autenticado": "Tu sesión terminó. Vuelve a iniciar sesión.",
+      "sin_permiso": "No tienes permiso para esta acción.",
+      "organizacion_no_permitida": "La organización no coincide con tu sesión.",
+      "datos_invalidos": "Revisa los datos del pago.",
+      "direccion_invalida": "Tipo de pago no válido.",
+      "clave_idempotencia_invalida": "No se pudo identificar el intento de pago. Vuelve a abrir el diálogo.",
+      "sin_aplicaciones": "Selecciona al menos un documento.",
+      "demasiadas_aplicaciones": "Son demasiados documentos en un solo pago.",
+      "monto_invalido": "Escribe un monto mayor que cero.",
+      "anticipo_solo_cobro": "El saldo a favor solo aplica a cobros de clientes.",
+      "moneda_invalida": "La moneda no es válida.",
+      "fecha_invalida": "Escribe la fecha del pago.",
+      "metodo_invalido": "El método de pago no está disponible.",
+      "referencia_obligatoria": "Este método exige referencia.",
+      "documento_invalido": "El documento no admite pagos.",
+      "documento_no_encontrado": "No se encontró el documento.",
+      "documento_borrador": "La factura está en borrador: emítela antes de registrar pagos.",
+      "documento_anulado": "El documento está anulado.",
+      "cuenta_no_encontrada": "El documento no tiene cuenta abierta.",
+      "aplicacion_invalida": "Hay un documento con datos no válidos.",
+      "aplicacion_repetida": "Un documento aparece dos veces.",
+      "cuota_no_encontrada": "No se encontró la cuota.",
+      "cuota_pagada": "La cuota ya está pagada.",
+      "monto_excede_cuota": "El monto supera el saldo de la cuota.",
+      "sin_acceso_sucursal": "No tienes acceso a la sucursal del documento.",
+      "moneda_distinta": "La moneda del pago no coincide con la del documento.",
+      "monto_excede_saldo": "El monto supera el saldo pendiente ({saldo}).",
+      "terceros_distintos": "Los documentos son de clientes o proveedores distintos.",
+      "fecha_anterior_emision": "La fecha del pago no puede ser anterior a la emisión.",
+      "saldo_a_favor_sin_cliente": "Sin cliente no se puede dejar saldo a favor.",
+      "recibido_insuficiente": "El efectivo recibido no alcanza para el monto.",
+      "sin_caja_abierta": "No hay una caja abierta: abre la caja o usa otro método.",
+      "cuenta_bancaria_invalida": "La cuenta bancaria no es válida.",
+      "fecha_futura": "La fecha del pago no puede ser futura.",
+      "motivo_obligatorio": "Escribe el motivo.",
+      "pago_no_encontrado": "No se encontró el pago.",
+      "pago_no_anulable": "Este pago no se puede anular desde aquí.",
+      "pago_en_caja_cerrada": "El pago está en una caja ya cerrada: registra una nota crédito o una salida de caja.",
+      "error_desconocido": "No se pudo completar. Inténtalo de nuevo."
+    }
+  },
+  "facturasVenta": {
+    "migas": {
+      "finanzas": "Finanzas",
+      "facturacion": "Facturación",
+      "facturasVenta": "Facturas de venta"
+    },
+    "estados": {
+      "vencidaDias": "Vencida {dias} d",
+      "pendiente": "Pendiente"
+    },
+    "detalle": {
+      "titulo": "Factura {numero}",
+      "cargando": "Cargando factura…",
+      "sinNumero": "Sin número",
+      "sinCliente": "Sin cliente",
+      "noEncontrada": "No encontramos esta factura",
+      "noEncontradaDescripcion": "Puede que no exista o que sea de otra organización.",
+      "volverListado": "Volver a facturas de venta",
+      "sinPermiso": "No tienes acceso a las facturas de venta",
+      "sinPermisoDescripcion": "Pide a un administrador el permiso para ver Finanzas.",
+      "errorCarga": "No se pudo cargar la factura",
+      "impuesto": "Impuesto",
+      "ventaOrigen": "Venta del POS",
+      "cartera": "Cuenta por cobrar",
+      "pago": "Pago",
+      "cadena": "Documentos relacionados",
+      "lineas": "Líneas de la factura",
+      "notas": "Notas y términos",
+      "resumen": "Resumen",
+      "cliente": "Cliente",
+      "nombre": "Nombre",
+      "documento": "Documento",
+      "correo": "Correo",
+      "telefono": "Teléfono",
+      "direccion": "Dirección",
+      "datos": "Datos del documento",
+      "emision": "Emisión",
+      "vencimiento": "Vencimiento",
+      "sucursal": "Sucursal",
+      "vendedor": "Vendedor",
+      "moneda": "Moneda",
+      "asientos": "Asientos contables",
+      "claveAsiento": {
+        "accrual": "Venta",
+        "void": "Anulación",
+        "otro": "Asiento"
+      },
+      "revertido": "Revertido",
+      "asientoDescuadrado": "El asiento de la venta no cuadra con la factura (diferencia {diferencia}). Lo corrige contabilidad con un contra-asiento.",
+      "historial": "Historial"
+    },
+    "historial": {
+      "insert": "Creada",
+      "update": "Actualizada",
+      "delete": "Eliminada",
+      "void": "Anulada"
+    },
+    "acciones": {
+      "imprimir": "Imprimir",
+      "emitir": "Emitir factura",
+      "registrarPago": "Registrar pago",
+      "editar": "Editar",
+      "duplicar": "Duplicar",
+      "descargarPdf": "Descargar PDF",
+      "verPdf": "Ver PDF",
+      "notaCredito": "Nota crédito",
+      "anular": "Anular factura",
+      "enviar": "Enviar"
+    },
+    "pagos": {
+      "titulo": "Pagos aplicados",
+      "vacio": "Aún no hay pagos.",
+      "anuladoPor": "Anulado: {motivo}",
+      "verRecibo": "Ver recibo",
+      "anular": "Anular pago"
+    },
+    "pdf": {
+      "error": "No se pudo generar el PDF."
+    },
+    "dian": {
+      "titulo": "Facturación electrónica",
+      "estado": "Estado DIAN",
+      "sinFe": "Sin factura electrónica",
+      "numero": "Número DIAN",
+      "retenido": "Envío retenido: {motivo}",
+      "estados": {
+        "pending": "En cola",
+        "processing": "Procesando",
+        "sent": "Enviada",
+        "accepted": "Aceptada",
+        "rejected": "Rechazada",
+        "failed": "Error",
+        "cancelled": "Cancelada"
+      }
+    },
+    "emitir": {
+      "hecho": "Factura emitida",
+      "hechoDescripcion": "La factura {numero} quedó emitida.",
+      "error": "No se pudo emitir",
+      "emitiendo": "Emitiendo…",
+      "faltantesTitulo": "Falta inventario para emitir",
+      "faltantesDescripcion": "Emitir saca la mercancía del inventario y no hay existencias suficientes.",
+      "faltantesBloqueo": "Repón el inventario o ajusta las cantidades de la factura.",
+      "faltantesLista": "Productos sin existencias",
+      "faltante": "{producto}: necesita {requerido}, hay {disponible}",
+      "entendido": "Entendido"
+    },
+    "anular": {
+      "titulo": "Anular factura {numero}",
+      "descripcion": "La factura queda anulada. No se puede deshacer.",
+      "confirmar": "Anular factura",
+      "hecho": "Factura anulada",
+      "hechoDescripcion": "La factura {numero} quedó anulada.",
+      "consecuenciasTitulo": "Al anular",
+      "consecuencias": {
+        "cartera": "La cuenta por cobrar se cancela.",
+        "asiento": "La venta se revierte en contabilidad con un contra-asiento.",
+        "inventario": "La mercancía que salió vuelve al inventario."
+      },
+      "rapidos": {
+        "error": "Error en la factura",
+        "cliente": "El cliente desistió",
+        "duplicada": "Factura duplicada"
+      },
+      "bloqueos": {
+        "ya_anulada": "La factura ya está anulada.",
+        "con_pagos": "La factura tiene pagos: no se anula. Anula los pagos o emite una nota crédito.",
+        "nota_credito": "Una nota crédito no se anula desde aquí.",
+        "fe_aceptada": "La DIAN ya aceptó esta factura: se anula con una nota crédito."
+      }
+    },
+    "errores": {
+      "no_autenticado": "Tu sesión terminó. Vuelve a iniciar sesión.",
+      "sin_permiso": "No tienes permiso para esta acción.",
+      "factura_no_encontrada": "No se encontró la factura.",
+      "sin_acceso_sucursal": "No tienes acceso a la sucursal de la factura.",
+      "documento_invalido": "Este documento no admite la acción.",
+      "factura_no_borrador": "La factura ya no está en borrador.",
+      "factura_sin_lineas": "La factura no tiene líneas.",
+      "stock_insuficiente": "Falta inventario para emitir.",
+      "motivo_obligatorio": "Escribe el motivo.",
+      "ya_anulada": "La factura ya está anulada.",
+      "nota_credito": "Una nota crédito no se anula desde aquí.",
+      "con_pagos": "La factura tiene pagos: usa una nota crédito.",
+      "fe_aceptada": "La DIAN ya aceptó la factura: usa una nota crédito.",
+      "datos_invalidos": "Revisa los datos.",
+      "error_desconocido": "No se pudo completar. Inténtalo de nuevo."
+    },
+    "listado": {
+      "sustantivo": {
+        "singular": "factura",
+        "plural": "facturas"
+      },
+      "subtitulo": "{count, plural, one {{n} factura} other {{n} facturas}}",
+      "importar": "Importar CSV",
+      "nueva": "Nueva factura",
+      "exportar": "Exportar CSV",
+      "exportando": "Exportando…",
+      "exportarError": "No se pudo exportar.",
+      "kpis": {
+        "etiqueta": "Indicadores de facturación",
+        "facturado": "Facturado en el periodo",
+        "periodo": "Según el periodo elegido",
+        "porCobrar": "Por cobrar",
+        "vencido": "Vencido",
+        "vencidasDetalle": "{count, plural, one {{n} factura vencida} other {{n} facturas vencidas}}",
+        "vence15": "Vence en 15 días"
+      },
+      "buscar": {
+        "placeholder": "Buscar por número, cliente o documento",
+        "etiqueta": "Buscar facturas"
+      },
+      "filtros": {
+        "periodo": "Periodo de emisión",
+        "verN": "{count, plural, one {Ver {n} factura} other {Ver {n} facturas}}",
+        "documento": "Documento",
+        "todos": "Todos",
+        "doc": {
+          "borrador": "Borrador",
+          "emitida": "Emitida",
+          "anulada": "Anulada"
+        },
+        "pago": "Estado de pago",
+        "fe": "Factura electrónica",
+        "feChip": "DIAN: {estado}",
+        "clienteChip": "Un cliente",
+        "montoMin": "Total desde",
+        "montoMax": "Total hasta",
+        "montoMinChip": "Desde {monto}",
+        "montoMaxChip": "Hasta {monto}"
+      },
+      "estadoPago": {
+        "borrador": "Borrador",
+        "anulada": "Anulada",
+        "pagada": "Pagada",
+        "parcial": "Pago parcial",
+        "pendiente": "Pendiente",
+        "vencida": "Vencida",
+        "abiertas": "Con saldo"
+      },
+      "columnas": {
+        "numero": "Número",
+        "cliente": "Cliente",
+        "emision": "Emitida",
+        "vencimiento": "Vencimiento",
+        "moneda": "Moneda",
+        "total": "Total",
+        "saldo": "Saldo",
+        "estado": "Estado",
+        "sucursal": "Sucursal",
+        "fe": "Fact. electrónica"
+      },
+      "acciones": {
+        "ver": "Ver factura"
+      },
+      "pms": "Con reserva",
+      "pagarFactura": "Registrar pago de la factura {numero}",
+      "imprimirFactura": "Imprimir la factura {numero}",
+      "venceEl": "Vence {fecha}",
+      "vacio": {
+        "titulo": "Aún no hay facturas de venta",
+        "descripcion": "Crea la primera factura o impórtalas desde un CSV."
+      },
+      "sinResultados": "Prueba con otro periodo, otra búsqueda u otros filtros.",
+      "errorCarga": "No se pudieron cargar las facturas"
+    },
+    "enviar": {
+      "titulo": "Enviar la factura {numero}",
+      "descripcion": "Se envía por correo con el PDF de la factura adjunto.",
+      "para": "Para",
+      "mensaje": "Mensaje (opcional)",
+      "enviar": "Enviar",
+      "sinCorreo": "Escribe un correo.",
+      "enviado": "Factura enviada",
+      "enviadoA": "Se envió a {destino} con el PDF adjunto.",
+      "enviadoSinAdjunto": "Se envió a {destino}, sin el PDF: la generación de PDF no está disponible en este momento.",
+      "errores": {
+        "cliente_sin_correo": "El cliente no tiene correo: escribe uno.",
+        "factura_borrador": "Una factura en borrador no se envía: emítela primero.",
+        "factura_no_encontrada": "No se encontró la factura.",
+        "correo_no_configurado": "La organización aún no tiene configurado el envío de correos.",
+        "cliente_sin_consentimiento": "El cliente pidió no recibir correos.",
+        "correo_invalido": "El correo no es válido.",
+        "proveedor_correo": "El servicio de correo no respondió. Inténtalo más tarde.",
+        "sin_permiso": "No tienes permiso para esta acción.",
+        "datos_invalidos": "Revisa los datos.",
+        "error_desconocido": "No se pudo completar. Inténtalo de nuevo."
+      }
+    },
+    "correo": {
+      "saludo": "Hola {nombre}:",
+      "cuerpo": "Adjuntamos la factura {numero} de {organizacion} por {total}.",
+      "despedida": "Gracias, {organizacion}",
+      "asunto": "{organizacion}: factura {numero}"
+    }
   }
 }

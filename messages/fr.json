@@ -10609,5 +10609,357 @@
       "estadoCuenta": "Vous trouverez en pièce jointe votre relevé de compte chez {organizacion}.",
       "asuntoEstadoCuenta": "{organizacion} : relevé de compte"
     }
+  },
+  "pagos": {
+    "sinNumero": "Sans numéro",
+    "sinCaja": "Aucune caisse ouverte dans cette succursale : les espèces ne peuvent pas être enregistrées.",
+    "abrirCaja": "Ouvrir la caisse",
+    "errorCarga": "Le document n'a pas pu être chargé. Réessayez.",
+    "cuota": "Échéance",
+    "cuotaNinguna": "Acompte sans échéance",
+    "cuotaOpcion": "Échéance {numero} · au {fecha} · {saldo}",
+    "cuentaBancaria": "Compte de destination",
+    "cuentaBancariaNinguna": "Sans compte bancaire",
+    "cuentaBancariaAyuda": "Uniquement pour les paiements hors espèces.",
+    "registrado": {
+      "titulo": "Paiement enregistré",
+      "descripcion": "Reçu {recibo} pour {monto}.",
+      "conSaldoAFavor": "Reçu {recibo}. Le surplus de {anticipo} reste en avoir pour le client."
+    },
+    "reparto": {
+      "titulo": "Factures à payer",
+      "ayuda": "Le paiement s'applique de la facture la plus ancienne à la plus récente.",
+      "todas": "Toutes",
+      "sinFacturas": "Le client n'a pas de factures en attente.",
+      "sinNumero": "Sans numéro",
+      "vence": "Échéance {fecha}",
+      "sinVencimiento": "Sans échéance",
+      "totalSeleccion": "Solde de la sélection",
+      "sobrante": "Garder le surplus en avoir",
+      "sobranteAyuda": "Si le paiement dépasse le solde, la différence reste en faveur du client.",
+      "errores": {
+        "monto_invalido": "Saisissez un montant supérieur à zéro.",
+        "sin_documentos": "Sélectionnez au moins une facture.",
+        "moneda_distinta": "Les factures sélectionnées ont des devises différentes.",
+        "excede": "Le montant dépasse le solde sélectionné. Cochez « Garder le surplus en avoir » ou baissez le montant."
+      }
+    },
+    "anular": {
+      "titulo": "Annuler le paiement",
+      "descripcion": "Le paiement est annulé et son montant revient au document.",
+      "descripcionMonto": "Le paiement de {monto} est annulé et son montant revient au document.",
+      "confirmar": "Annuler le paiement",
+      "hecho": "Paiement annulé",
+      "hechoDescripcion": "Le solde est revenu au document et l'écriture a été contrepassée.",
+      "consecuenciasTitulo": "En annulant",
+      "consecuencias": {
+        "saldo": "Le solde revient à la facture et à la créance.",
+        "asiento": "L'écriture du paiement est contrepassée.",
+        "caja": "S'il était en espèces, il ne compte plus dans la caisse ouverte.",
+        "cuota": "S'il réglait une échéance, celle-ci redevient en attente."
+      },
+      "rapidos": {
+        "digitacion": "Erreur de saisie",
+        "devuelto": "Paiement rejeté par la banque",
+        "duplicado": "Paiement enregistré deux fois"
+      }
+    },
+    "errores": {
+      "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
+      "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
+      "organizacion_no_permitida": "L'organisation ne correspond pas à votre session.",
+      "datos_invalidos": "Vérifiez les données du paiement.",
+      "direccion_invalida": "Type de paiement non valide.",
+      "clave_idempotencia_invalida": "La tentative de paiement n'a pas pu être identifiée. Rouvrez la fenêtre.",
+      "sin_aplicaciones": "Sélectionnez au moins un document.",
+      "demasiadas_aplicaciones": "Trop de documents dans un seul paiement.",
+      "monto_invalido": "Saisissez un montant supérieur à zéro.",
+      "anticipo_solo_cobro": "L'avoir ne s'applique qu'aux encaissements clients.",
+      "moneda_invalida": "La devise n'est pas valide.",
+      "fecha_invalida": "Saisissez la date du paiement.",
+      "metodo_invalido": "Le moyen de paiement n'est pas disponible.",
+      "referencia_obligatoria": "Ce moyen exige une référence.",
+      "documento_invalido": "Le document n'accepte pas de paiements.",
+      "documento_no_encontrado": "Document introuvable.",
+      "documento_borrador": "La facture est un brouillon : émettez-la avant d'enregistrer des paiements.",
+      "documento_anulado": "Le document est annulé.",
+      "cuenta_no_encontrada": "Le document n'a pas de compte ouvert.",
+      "aplicacion_invalida": "Un document contient des données non valides.",
+      "aplicacion_repetida": "Un document apparaît deux fois.",
+      "cuota_no_encontrada": "Échéance introuvable.",
+      "cuota_pagada": "L'échéance est déjà payée.",
+      "monto_excede_cuota": "Le montant dépasse le solde de l'échéance.",
+      "sin_acceso_sucursal": "Vous n'avez pas accès à la succursale du document.",
+      "moneda_distinta": "La devise du paiement ne correspond pas à celle du document.",
+      "monto_excede_saldo": "Le montant dépasse le solde restant ({saldo}).",
+      "terceros_distintos": "Les documents appartiennent à des clients ou fournisseurs différents.",
+      "fecha_anterior_emision": "La date du paiement ne peut pas être antérieure à l'émission.",
+      "saldo_a_favor_sin_cliente": "Un avoir exige un client.",
+      "recibido_insuficiente": "Les espèces reçues ne couvrent pas le montant.",
+      "sin_caja_abierta": "Aucune caisse ouverte : ouvrez-la ou utilisez un autre moyen.",
+      "cuenta_bancaria_invalida": "Le compte bancaire n'est pas valide.",
+      "fecha_futura": "La date du paiement ne peut pas être future.",
+      "motivo_obligatorio": "Saisissez le motif.",
+      "pago_no_encontrado": "Paiement introuvable.",
+      "pago_no_anulable": "Ce paiement ne peut pas être annulé ici.",
+      "pago_en_caja_cerrada": "Le paiement appartient à une caisse clôturée : enregistrez un avoir ou une sortie de caisse.",
+      "error_desconocido": "L'opération n'a pas abouti. Réessayez."
+    }
+  },
+  "facturasVenta": {
+    "migas": {
+      "finanzas": "Finances",
+      "facturacion": "Facturation",
+      "facturasVenta": "Factures de vente"
+    },
+    "estados": {
+      "vencidaDias": "En retard {dias} j",
+      "pendiente": "En attente"
+    },
+    "detalle": {
+      "titulo": "Facture {numero}",
+      "cargando": "Chargement de la facture…",
+      "sinNumero": "Sans numéro",
+      "sinCliente": "Sans client",
+      "noEncontrada": "Facture introuvable",
+      "noEncontradaDescripcion": "Elle n'existe peut-être pas ou appartient à une autre organisation.",
+      "volverListado": "Retour aux factures de vente",
+      "sinPermiso": "Vous n'avez pas accès aux factures de vente",
+      "sinPermisoDescripcion": "Demandez à un administrateur l'autorisation de voir Finances.",
+      "errorCarga": "La facture n'a pas pu être chargée",
+      "impuesto": "Taxe",
+      "ventaOrigen": "Vente PDV",
+      "cartera": "Créance",
+      "pago": "Paiement",
+      "cadena": "Documents liés",
+      "lineas": "Lignes de la facture",
+      "notas": "Notes et conditions",
+      "resumen": "Résumé",
+      "cliente": "Client",
+      "nombre": "Nom",
+      "documento": "Identifiant",
+      "correo": "E-mail",
+      "telefono": "Téléphone",
+      "direccion": "Adresse",
+      "datos": "Données du document",
+      "emision": "Émission",
+      "vencimiento": "Échéance",
+      "sucursal": "Succursale",
+      "vendedor": "Vendeur",
+      "moneda": "Devise",
+      "asientos": "Écritures comptables",
+      "claveAsiento": {
+        "accrual": "Vente",
+        "void": "Annulation",
+        "otro": "Écriture"
+      },
+      "revertido": "Contrepassée",
+      "asientoDescuadrado": "L'écriture de vente ne correspond pas à la facture (écart {diferencia}). La comptabilité la corrige par contrepassation.",
+      "historial": "Historique"
+    },
+    "historial": {
+      "insert": "Créée",
+      "update": "Modifiée",
+      "delete": "Supprimée",
+      "void": "Annulée"
+    },
+    "acciones": {
+      "imprimir": "Imprimer",
+      "emitir": "Émettre la facture",
+      "registrarPago": "Enregistrer un paiement",
+      "editar": "Modifier",
+      "duplicar": "Dupliquer",
+      "descargarPdf": "Télécharger le PDF",
+      "verPdf": "Voir le PDF",
+      "notaCredito": "Avoir",
+      "anular": "Annuler la facture",
+      "enviar": "Envoyer"
+    },
+    "pagos": {
+      "titulo": "Paiements appliqués",
+      "vacio": "Aucun paiement pour l'instant.",
+      "anuladoPor": "Annulé : {motivo}",
+      "verRecibo": "Voir le reçu",
+      "anular": "Annuler le paiement"
+    },
+    "pdf": {
+      "error": "Le PDF n'a pas pu être généré."
+    },
+    "dian": {
+      "titulo": "Facturation électronique",
+      "estado": "Statut DIAN",
+      "sinFe": "Sans facture électronique",
+      "numero": "Numéro DIAN",
+      "retenido": "Envoi retenu : {motivo}",
+      "estados": {
+        "pending": "En file",
+        "processing": "En traitement",
+        "sent": "Envoyée",
+        "accepted": "Acceptée",
+        "rejected": "Rejetée",
+        "failed": "Erreur",
+        "cancelled": "Annulée"
+      }
+    },
+    "emitir": {
+      "hecho": "Facture émise",
+      "hechoDescripcion": "La facture {numero} a été émise.",
+      "error": "Émission impossible",
+      "emitiendo": "Émission…",
+      "faltantesTitulo": "Stock insuffisant pour émettre",
+      "faltantesDescripcion": "L'émission sort la marchandise du stock et il n'y en a pas assez.",
+      "faltantesBloqueo": "Réapprovisionnez ou ajustez les quantités de la facture.",
+      "faltantesLista": "Produits sans stock",
+      "faltante": "{producto} : besoin {requerido}, disponible {disponible}",
+      "entendido": "Compris"
+    },
+    "anular": {
+      "titulo": "Annuler la facture {numero}",
+      "descripcion": "La facture est annulée. Action irréversible.",
+      "confirmar": "Annuler la facture",
+      "hecho": "Facture annulée",
+      "hechoDescripcion": "La facture {numero} a été annulée.",
+      "consecuenciasTitulo": "En annulant",
+      "consecuencias": {
+        "cartera": "La créance est annulée.",
+        "asiento": "La vente est contrepassée en comptabilité.",
+        "inventario": "La marchandise sortie revient en stock."
+      },
+      "rapidos": {
+        "error": "Erreur sur la facture",
+        "cliente": "Le client a renoncé",
+        "duplicada": "Facture en double"
+      },
+      "bloqueos": {
+        "ya_anulada": "La facture est déjà annulée.",
+        "con_pagos": "La facture a des paiements : elle ne s'annule pas. Annulez les paiements ou émettez un avoir.",
+        "nota_credito": "Un avoir ne s'annule pas ici.",
+        "fe_aceptada": "La DIAN a déjà accepté cette facture : annulez-la par un avoir."
+      }
+    },
+    "errores": {
+      "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
+      "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
+      "factura_no_encontrada": "Facture introuvable.",
+      "sin_acceso_sucursal": "Vous n'avez pas accès à la succursale de la facture.",
+      "documento_invalido": "Ce document n'admet pas l'action.",
+      "factura_no_borrador": "La facture n'est plus un brouillon.",
+      "factura_sin_lineas": "La facture n'a pas de lignes.",
+      "stock_insuficiente": "Stock insuffisant pour émettre.",
+      "motivo_obligatorio": "Saisissez le motif.",
+      "ya_anulada": "La facture est déjà annulée.",
+      "nota_credito": "Un avoir ne s'annule pas ici.",
+      "con_pagos": "La facture a des paiements : utilisez un avoir.",
+      "fe_aceptada": "La DIAN a déjà accepté la facture : utilisez un avoir.",
+      "datos_invalidos": "Vérifiez les données.",
+      "error_desconocido": "L'opération n'a pas abouti. Réessayez."
+    },
+    "listado": {
+      "sustantivo": {
+        "singular": "facture",
+        "plural": "factures"
+      },
+      "subtitulo": "{count, plural, one {{n} facture} other {{n} factures}}",
+      "importar": "Importer un CSV",
+      "nueva": "Nouvelle facture",
+      "exportar": "Exporter en CSV",
+      "exportando": "Export en cours…",
+      "exportarError": "L'export a échoué.",
+      "kpis": {
+        "etiqueta": "Indicateurs de facturation",
+        "facturado": "Facturé sur la période",
+        "periodo": "Selon la période choisie",
+        "porCobrar": "À encaisser",
+        "vencido": "En retard",
+        "vencidasDetalle": "{count, plural, one {{n} facture en retard} other {{n} factures en retard}}",
+        "vence15": "Échéance sous 15 jours"
+      },
+      "buscar": {
+        "placeholder": "Rechercher par numéro, client ou identifiant",
+        "etiqueta": "Rechercher des factures"
+      },
+      "filtros": {
+        "periodo": "Période d'émission",
+        "verN": "{count, plural, one {Voir {n} facture} other {Voir {n} factures}}",
+        "documento": "Document",
+        "todos": "Tous",
+        "doc": {
+          "borrador": "Brouillon",
+          "emitida": "Émise",
+          "anulada": "Annulée"
+        },
+        "pago": "Statut du paiement",
+        "fe": "Facture électronique",
+        "feChip": "DIAN : {estado}",
+        "clienteChip": "Un client",
+        "montoMin": "Total à partir de",
+        "montoMax": "Total jusqu'à",
+        "montoMinChip": "À partir de {monto}",
+        "montoMaxChip": "Jusqu'à {monto}"
+      },
+      "estadoPago": {
+        "borrador": "Brouillon",
+        "anulada": "Annulée",
+        "pagada": "Payée",
+        "parcial": "Paiement partiel",
+        "pendiente": "En attente",
+        "vencida": "En retard",
+        "abiertas": "Avec solde"
+      },
+      "columnas": {
+        "numero": "Numéro",
+        "cliente": "Client",
+        "emision": "Émise",
+        "vencimiento": "Échéance",
+        "moneda": "Devise",
+        "total": "Total",
+        "saldo": "Solde",
+        "estado": "Statut",
+        "sucursal": "Succursale",
+        "fe": "Fact. électronique"
+      },
+      "acciones": {
+        "ver": "Voir la facture"
+      },
+      "pms": "Avec réservation",
+      "pagarFactura": "Enregistrer un paiement de la facture {numero}",
+      "imprimirFactura": "Imprimer la facture {numero}",
+      "venceEl": "Échéance {fecha}",
+      "vacio": {
+        "titulo": "Aucune facture de vente pour l'instant",
+        "descripcion": "Créez la première facture ou importez-les depuis un CSV."
+      },
+      "sinResultados": "Essayez une autre période, recherche ou d'autres filtres.",
+      "errorCarga": "Les factures n'ont pas pu être chargées"
+    },
+    "enviar": {
+      "titulo": "Envoyer la facture {numero}",
+      "descripcion": "Elle est envoyée par e-mail avec le PDF de la facture en pièce jointe.",
+      "para": "À",
+      "mensaje": "Message (facultatif)",
+      "enviar": "Envoyer",
+      "sinCorreo": "Saisissez un e-mail.",
+      "enviado": "Facture envoyée",
+      "enviadoA": "Envoyée à {destino} avec le PDF en pièce jointe.",
+      "enviadoSinAdjunto": "Envoyée à {destino} sans le PDF : la génération de PDF n'est pas disponible pour le moment.",
+      "errores": {
+        "cliente_sin_correo": "Le client n'a pas d'e-mail : saisissez-en un.",
+        "factura_borrador": "Une facture brouillon ne s'envoie pas : émettez-la d'abord.",
+        "factura_no_encontrada": "Facture introuvable.",
+        "correo_no_configurado": "L'organisation n'a pas encore configuré l'envoi d'e-mails.",
+        "cliente_sin_consentimiento": "Le client a demandé à ne pas recevoir d'e-mails.",
+        "correo_invalido": "L'e-mail n'est pas valide.",
+        "proveedor_correo": "Le service d'e-mail n'a pas répondu. Réessayez plus tard.",
+        "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
+        "datos_invalidos": "Vérifiez les données.",
+        "error_desconocido": "L'opération n'a pas abouti. Réessayez."
+      }
+    },
+    "correo": {
+      "saludo": "Bonjour {nombre},",
+      "cuerpo": "Veuillez trouver ci-joint la facture {numero} de {organizacion} d'un montant de {total}.",
+      "despedida": "Merci, {organizacion}",
+      "asunto": "{organizacion} : facture {numero}"
+    }
   }
 }

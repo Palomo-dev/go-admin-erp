@@ -10714,5 +10714,357 @@
       "estadoCuenta": "Your statement with {organizacion} is attached.",
       "asuntoEstadoCuenta": "{organizacion}: statement"
     }
+  },
+  "pagos": {
+    "sinNumero": "No number",
+    "sinCaja": "There is no open cash register at this branch: cash cannot be recorded.",
+    "abrirCaja": "Open register",
+    "errorCarga": "The document could not be loaded. Try again.",
+    "cuota": "Installment",
+    "cuotaNinguna": "Payment without installment",
+    "cuotaOpcion": "Installment {numero} · due {fecha} · {saldo}",
+    "cuentaBancaria": "Destination account",
+    "cuentaBancariaNinguna": "No bank account",
+    "cuentaBancariaAyuda": "Only for non-cash payments.",
+    "registrado": {
+      "titulo": "Payment recorded",
+      "descripcion": "Receipt {recibo} for {monto}.",
+      "conSaldoAFavor": "Receipt {recibo}. The remaining {anticipo} was left as customer credit."
+    },
+    "reparto": {
+      "titulo": "Invoices to pay",
+      "ayuda": "The payment is applied from the oldest invoice to the newest.",
+      "todas": "All",
+      "sinFacturas": "The customer has no pending invoices.",
+      "sinNumero": "No number",
+      "vence": "Due {fecha}",
+      "sinVencimiento": "No due date",
+      "totalSeleccion": "Balance of the selection",
+      "sobrante": "Keep the remainder as customer credit",
+      "sobranteAyuda": "If the payment exceeds the balance, the difference is credited to the customer.",
+      "errores": {
+        "monto_invalido": "Enter an amount greater than zero.",
+        "sin_documentos": "Select at least one invoice.",
+        "moneda_distinta": "The selected invoices have different currencies.",
+        "excede": "The amount exceeds the selected balance. Check «Keep the remainder as customer credit» or lower the amount."
+      }
+    },
+    "anular": {
+      "titulo": "Void payment",
+      "descripcion": "The payment is voided and its amount returns to the document.",
+      "descripcionMonto": "The payment of {monto} is voided and its amount returns to the document.",
+      "confirmar": "Void payment",
+      "hecho": "Payment voided",
+      "hechoDescripcion": "The balance returned to the document and the journal entry was reversed.",
+      "consecuenciasTitulo": "When voiding",
+      "consecuencias": {
+        "saldo": "The balance returns to the invoice and the receivable.",
+        "asiento": "The payment's journal entry is reversed with a counter-entry.",
+        "caja": "If it was cash, it stops counting in the open register.",
+        "cuota": "If it paid an installment, the installment becomes pending again."
+      },
+      "rapidos": {
+        "digitacion": "Typing error",
+        "devuelto": "Payment returned by the bank",
+        "duplicado": "Payment recorded twice"
+      }
+    },
+    "errores": {
+      "no_autenticado": "Your session ended. Sign in again.",
+      "sin_permiso": "You don't have permission for this action.",
+      "organizacion_no_permitida": "The organization doesn't match your session.",
+      "datos_invalidos": "Check the payment details.",
+      "direccion_invalida": "Invalid payment type.",
+      "clave_idempotencia_invalida": "The payment attempt could not be identified. Reopen the dialog.",
+      "sin_aplicaciones": "Select at least one document.",
+      "demasiadas_aplicaciones": "Too many documents in a single payment.",
+      "monto_invalido": "Enter an amount greater than zero.",
+      "anticipo_solo_cobro": "Customer credit only applies to customer collections.",
+      "moneda_invalida": "The currency is not valid.",
+      "fecha_invalida": "Enter the payment date.",
+      "metodo_invalido": "The payment method is not available.",
+      "referencia_obligatoria": "This method requires a reference.",
+      "documento_invalido": "The document doesn't accept payments.",
+      "documento_no_encontrado": "The document was not found.",
+      "documento_borrador": "The invoice is a draft: issue it before recording payments.",
+      "documento_anulado": "The document is void.",
+      "cuenta_no_encontrada": "The document has no open account.",
+      "aplicacion_invalida": "A document has invalid data.",
+      "aplicacion_repetida": "A document appears twice.",
+      "cuota_no_encontrada": "The installment was not found.",
+      "cuota_pagada": "The installment is already paid.",
+      "monto_excede_cuota": "The amount exceeds the installment balance.",
+      "sin_acceso_sucursal": "You don't have access to the document's branch.",
+      "moneda_distinta": "The payment currency doesn't match the document's.",
+      "monto_excede_saldo": "The amount exceeds the pending balance ({saldo}).",
+      "terceros_distintos": "The documents belong to different customers or suppliers.",
+      "fecha_anterior_emision": "The payment date cannot be earlier than the issue date.",
+      "saldo_a_favor_sin_cliente": "Customer credit requires a customer.",
+      "recibido_insuficiente": "The cash received doesn't cover the amount.",
+      "sin_caja_abierta": "There is no open register: open it or use another method.",
+      "cuenta_bancaria_invalida": "The bank account is not valid.",
+      "fecha_futura": "The payment date cannot be in the future.",
+      "motivo_obligatorio": "Enter the reason.",
+      "pago_no_encontrado": "The payment was not found.",
+      "pago_no_anulable": "This payment cannot be voided here.",
+      "pago_en_caja_cerrada": "The payment belongs to a closed register: record a credit note or a cash withdrawal.",
+      "error_desconocido": "It could not be completed. Try again."
+    }
+  },
+  "facturasVenta": {
+    "migas": {
+      "finanzas": "Finance",
+      "facturacion": "Invoicing",
+      "facturasVenta": "Sales invoices"
+    },
+    "estados": {
+      "vencidaDias": "Overdue {dias} d",
+      "pendiente": "Pending"
+    },
+    "detalle": {
+      "titulo": "Invoice {numero}",
+      "cargando": "Loading invoice…",
+      "sinNumero": "No number",
+      "sinCliente": "No customer",
+      "noEncontrada": "We couldn't find this invoice",
+      "noEncontradaDescripcion": "It may not exist or belong to another organization.",
+      "volverListado": "Back to sales invoices",
+      "sinPermiso": "You don't have access to sales invoices",
+      "sinPermisoDescripcion": "Ask an administrator for the permission to view Finance.",
+      "errorCarga": "The invoice could not be loaded",
+      "impuesto": "Tax",
+      "ventaOrigen": "POS sale",
+      "cartera": "Receivable",
+      "pago": "Payment",
+      "cadena": "Related documents",
+      "lineas": "Invoice lines",
+      "notas": "Notes and terms",
+      "resumen": "Summary",
+      "cliente": "Customer",
+      "nombre": "Name",
+      "documento": "ID",
+      "correo": "Email",
+      "telefono": "Phone",
+      "direccion": "Address",
+      "datos": "Document details",
+      "emision": "Issue date",
+      "vencimiento": "Due date",
+      "sucursal": "Branch",
+      "vendedor": "Salesperson",
+      "moneda": "Currency",
+      "asientos": "Journal entries",
+      "claveAsiento": {
+        "accrual": "Sale",
+        "void": "Void",
+        "otro": "Entry"
+      },
+      "revertido": "Reversed",
+      "asientoDescuadrado": "The sale entry doesn't match the invoice (difference {diferencia}). Accounting corrects it with a counter-entry.",
+      "historial": "History"
+    },
+    "historial": {
+      "insert": "Created",
+      "update": "Updated",
+      "delete": "Deleted",
+      "void": "Voided"
+    },
+    "acciones": {
+      "imprimir": "Print",
+      "emitir": "Issue invoice",
+      "registrarPago": "Record payment",
+      "editar": "Edit",
+      "duplicar": "Duplicate",
+      "descargarPdf": "Download PDF",
+      "verPdf": "View PDF",
+      "notaCredito": "Credit note",
+      "anular": "Void invoice",
+      "enviar": "Send"
+    },
+    "pagos": {
+      "titulo": "Applied payments",
+      "vacio": "No payments yet.",
+      "anuladoPor": "Voided: {motivo}",
+      "verRecibo": "View receipt",
+      "anular": "Void payment"
+    },
+    "pdf": {
+      "error": "The PDF could not be generated."
+    },
+    "dian": {
+      "titulo": "E-invoicing",
+      "estado": "DIAN status",
+      "sinFe": "No e-invoice",
+      "numero": "DIAN number",
+      "retenido": "Submission on hold: {motivo}",
+      "estados": {
+        "pending": "Queued",
+        "processing": "Processing",
+        "sent": "Sent",
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "failed": "Error",
+        "cancelled": "Cancelled"
+      }
+    },
+    "emitir": {
+      "hecho": "Invoice issued",
+      "hechoDescripcion": "Invoice {numero} was issued.",
+      "error": "It could not be issued",
+      "emitiendo": "Issuing…",
+      "faltantesTitulo": "Not enough stock to issue",
+      "faltantesDescripcion": "Issuing takes the goods out of inventory and there isn't enough stock.",
+      "faltantesBloqueo": "Restock or adjust the invoice quantities.",
+      "faltantesLista": "Products without stock",
+      "faltante": "{producto}: needs {requerido}, has {disponible}",
+      "entendido": "Got it"
+    },
+    "anular": {
+      "titulo": "Void invoice {numero}",
+      "descripcion": "The invoice is voided. This can't be undone.",
+      "confirmar": "Void invoice",
+      "hecho": "Invoice voided",
+      "hechoDescripcion": "Invoice {numero} was voided.",
+      "consecuenciasTitulo": "When voiding",
+      "consecuencias": {
+        "cartera": "The receivable is cancelled.",
+        "asiento": "The sale is reversed in accounting with a counter-entry.",
+        "inventario": "The goods that went out return to inventory."
+      },
+      "rapidos": {
+        "error": "Invoice error",
+        "cliente": "Customer cancelled",
+        "duplicada": "Duplicated invoice"
+      },
+      "bloqueos": {
+        "ya_anulada": "The invoice is already void.",
+        "con_pagos": "The invoice has payments: it can't be voided. Void the payments or issue a credit note.",
+        "nota_credito": "A credit note can't be voided here.",
+        "fe_aceptada": "DIAN already accepted this invoice: void it with a credit note."
+      }
+    },
+    "errores": {
+      "no_autenticado": "Your session ended. Sign in again.",
+      "sin_permiso": "You don't have permission for this action.",
+      "factura_no_encontrada": "The invoice was not found.",
+      "sin_acceso_sucursal": "You don't have access to the invoice's branch.",
+      "documento_invalido": "This document doesn't allow the action.",
+      "factura_no_borrador": "The invoice is no longer a draft.",
+      "factura_sin_lineas": "The invoice has no lines.",
+      "stock_insuficiente": "Not enough stock to issue.",
+      "motivo_obligatorio": "Enter the reason.",
+      "ya_anulada": "The invoice is already void.",
+      "nota_credito": "A credit note can't be voided here.",
+      "con_pagos": "The invoice has payments: use a credit note.",
+      "fe_aceptada": "DIAN already accepted the invoice: use a credit note.",
+      "datos_invalidos": "Check the data.",
+      "error_desconocido": "It could not be completed. Try again."
+    },
+    "listado": {
+      "sustantivo": {
+        "singular": "invoice",
+        "plural": "invoices"
+      },
+      "subtitulo": "{count, plural, one {{n} invoice} other {{n} invoices}}",
+      "importar": "Import CSV",
+      "nueva": "New invoice",
+      "exportar": "Export CSV",
+      "exportando": "Exporting…",
+      "exportarError": "The export failed.",
+      "kpis": {
+        "etiqueta": "Invoicing indicators",
+        "facturado": "Invoiced in the period",
+        "periodo": "For the selected period",
+        "porCobrar": "Receivable",
+        "vencido": "Overdue",
+        "vencidasDetalle": "{count, plural, one {{n} overdue invoice} other {{n} overdue invoices}}",
+        "vence15": "Due in 15 days"
+      },
+      "buscar": {
+        "placeholder": "Search by number, customer or ID",
+        "etiqueta": "Search invoices"
+      },
+      "filtros": {
+        "periodo": "Issue period",
+        "verN": "{count, plural, one {Show {n} invoice} other {Show {n} invoices}}",
+        "documento": "Document",
+        "todos": "All",
+        "doc": {
+          "borrador": "Draft",
+          "emitida": "Issued",
+          "anulada": "Void"
+        },
+        "pago": "Payment status",
+        "fe": "E-invoice",
+        "feChip": "DIAN: {estado}",
+        "clienteChip": "One customer",
+        "montoMin": "Total from",
+        "montoMax": "Total up to",
+        "montoMinChip": "From {monto}",
+        "montoMaxChip": "Up to {monto}"
+      },
+      "estadoPago": {
+        "borrador": "Draft",
+        "anulada": "Void",
+        "pagada": "Paid",
+        "parcial": "Partially paid",
+        "pendiente": "Pending",
+        "vencida": "Overdue",
+        "abiertas": "With balance"
+      },
+      "columnas": {
+        "numero": "Number",
+        "cliente": "Customer",
+        "emision": "Issued",
+        "vencimiento": "Due date",
+        "moneda": "Currency",
+        "total": "Total",
+        "saldo": "Balance",
+        "estado": "Status",
+        "sucursal": "Branch",
+        "fe": "E-invoice"
+      },
+      "acciones": {
+        "ver": "View invoice"
+      },
+      "pms": "With reservation",
+      "pagarFactura": "Record payment for invoice {numero}",
+      "imprimirFactura": "Print invoice {numero}",
+      "venceEl": "Due {fecha}",
+      "vacio": {
+        "titulo": "No sales invoices yet",
+        "descripcion": "Create the first invoice or import them from a CSV."
+      },
+      "sinResultados": "Try another period, search or filters.",
+      "errorCarga": "The invoices could not be loaded"
+    },
+    "enviar": {
+      "titulo": "Send invoice {numero}",
+      "descripcion": "It is sent by email with the invoice PDF attached.",
+      "para": "To",
+      "mensaje": "Message (optional)",
+      "enviar": "Send",
+      "sinCorreo": "Enter an email.",
+      "enviado": "Invoice sent",
+      "enviadoA": "Sent to {destino} with the PDF attached.",
+      "enviadoSinAdjunto": "Sent to {destino} without the PDF: PDF generation isn't available right now.",
+      "errores": {
+        "cliente_sin_correo": "The customer has no email: enter one.",
+        "factura_borrador": "A draft invoice can't be sent: issue it first.",
+        "factura_no_encontrada": "The invoice was not found.",
+        "correo_no_configurado": "The organization hasn't set up email sending yet.",
+        "cliente_sin_consentimiento": "The customer asked not to receive emails.",
+        "correo_invalido": "The email is not valid.",
+        "proveedor_correo": "The email service didn't respond. Try later.",
+        "sin_permiso": "You don't have permission for this action.",
+        "datos_invalidos": "Check the data.",
+        "error_desconocido": "It could not be completed. Try again."
+      }
+    },
+    "correo": {
+      "saludo": "Hello {nombre},",
+      "cuerpo": "Please find attached invoice {numero} from {organizacion} for {total}.",
+      "despedida": "Thank you, {organizacion}",
+      "asunto": "{organizacion}: invoice {numero}"
+    }
   }
 }

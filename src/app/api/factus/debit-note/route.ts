@@ -1,126 +1,26 @@
 /**
- * API Route: Crear/Enviar Nota Débito a Factus
+ * API Route: nota débito electrónica
  * POST /api/factus/debit-note
+ *
+ * DESHABILITADA (2026-09-23) hasta que exista la nota débito como documento.
+ * La versión anterior enviaba a Factus los `items` crudos del body, en el
+ * formato v1, con el CUFE vacío si faltaba, y guardaba el job contra la
+ * factura original: no había un documento de nota débito que numerar,
+ * contabilizar ni reenviar. Ninguna pantalla la llamaba y en la base hay 0
+ * notas débito. Cuando se modele (ver docs/design/FINANZAS-DOCUMENTOS-FIGMA.md
+ * §4.4), se envía por la cola (`colaFacturacion`) como la factura y la nota
+ * crédito, con las credenciales de la organización.
  */
 
 import { NextResponse } from 'next/server';
-import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
-import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
-import factusService, { mapPaymentMethod } from '@/lib/services/factusService';
+import { withOrg } from '@/lib/utils/orgContext';
 
-export const POST = withOrg(async (ctx, request) => {
-  try {
-    // La organización sale de la sesión (el middleware no cubre /api/factus/):
-    // un organizationId ajeno en el body o la query → 403.
-    const body = await readOrgBody(ctx, request, { route: 'factus/debit-note' });
-    const { invoiceId, reason, items } = body ?? {};
-    const organizationId = ctx.organizationId;
-
-    if (!invoiceId || !reason) {
-      return NextResponse.json(
-        { error: 'Se requieren invoiceId y reason' },
-        { status: 400 }
-      );
-    }
-
-    const credentials = getCredentials();
-    if (!credentials) {
-      return NextResponse.json({ error: 'Credenciales de Factus no configuradas' }, { status: 404 });
-    }
-
-    const accessToken = await getValidToken();
-    if (!accessToken) {
-      return NextResponse.json({ error: 'No se pudo obtener token de Factus' }, { status: 500 });
-    }
-
-    const supabase = ctx.supabase;
-
-    const { data: invoice, error: invoiceError } = await supabase
-      .from('invoice_sales')
-      .select('*')
-      .eq('id', invoiceId)
-      .eq('organization_id', organizationId)
-      .single();
-
-    if (invoiceError || !invoice) {
-      return NextResponse.json({ error: 'Factura no encontrada' }, { status: 404 });
-    }
-
-    const { data: job, error: jobError } = await supabase
-      .from('electronic_invoicing_jobs')
-      .insert({
-        organization_id: organizationId,
-        invoice_id: invoiceId,
-        document_type: 'debit_note',
-        provider: 'factus',
-        status: 'processing',
-        request_payload: {},
-      })
-      .select()
-      .single();
-
-    if (jobError) {
-      return NextResponse.json({ error: 'Error creando job' }, { status: 500 });
-    }
-
-    try {
-      const result = await factusService.createDebitNote(
-        credentials.environment,
-        accessToken,
-        {
-          reference_code: `ND-${invoiceId.substring(0, 8)}`,
-          billing_reference: {
-            number: invoice.number,
-            cufe: invoice.xml_uuid || '',
-            uuid: invoice.xml_uuid || '',
-          },
-          debit_note_reason: reason,
-          payment_method_code: invoice.payment_method_code || mapPaymentMethod(invoice.payment_method),
-          observation: body.observation || '',
-          send_email: body.send_email ?? true,
-          items: items || [],
-        }
-      );
-
-      await supabase
-        .from('electronic_invoicing_jobs')
-        .update({
-          status: result.data?.is_validated ? 'accepted' : 'sent',
-          response_payload: result,
-          cufe: result.data?.cufe,
-          processed_at: new Date().toISOString(),
-        })
-        .eq('id', job.id);
-
-      await supabase
-        .from('electronic_invoicing_events')
-        .insert({
-          job_id: job.id,
-          event_type: result.data?.is_validated ? 'validated' : 'sent',
-          event_code: '200',
-          event_message: result.message,
-          metadata: { number: result.data?.number, cufe: result.data?.cufe },
-        });
-
-      return NextResponse.json({ success: true, data: result.data, jobId: job.id });
-    } catch (error: any) {
-      await supabase
-        .from('electronic_invoicing_jobs')
-        .update({
-          status: 'failed',
-          error_message: error.message,
-          attempt_count: 1,
-        })
-        .eq('id', job.id);
-
-      await supabase
-        .from('electronic_invoicing_events')
-        .insert({ job_id: job.id, event_type: 'error', event_message: error.message });
-
-      return NextResponse.json({ error: error.message, jobId: job.id }, { status: 500 });
-    }
-  } catch (error: any) {
-    if (error instanceof OrgContextError) throw error;
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+export const POST = withOrg(async () => {
+  return NextResponse.json(
+    {
+      error: 'La nota débito electrónica todavía no está disponible.',
+      code: 'DEBIT_NOTE_NOT_AVAILABLE',
+    },
+    { status: 501 },
+  );
 });

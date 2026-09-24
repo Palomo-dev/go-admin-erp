@@ -7,22 +7,22 @@
  *
  * Rate limit: 80 req/min por usuario (gestionado por Factus).
  *
- * Variables de entorno (server-side, nunca expuestas al cliente):
- * - FACTUS_CLIENT_ID, FACTUS_CLIENT_SECRET, FACTUS_USERNAME, FACTUS_PASSWORD
- * - FACTUS_ENVIRONMENT: "sandbox" | "production"
+ * Credenciales: las de la cuenta de Factus de la organización (Vault, las carga
+ * la plataforma). Las `FACTUS_*` del entorno solo sirven en desarrollo.
  */
 
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { NextRequest, NextResponse } from 'next/server';
-import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
 import factusService from '@/lib/services/factusService';
+import { obtenerAccesoFactus, FacturacionNoActivadaError } from '@/lib/services/einvoicing/accesoFactus.server';
 
 export async function GET(request: NextRequest) {
   try {
     // /api/factus está fuera del middleware: sin esta guarda, cualquiera en
     // internet usaba la cuenta de Factus de la plataforma.
+    let ctx;
     try {
-      await getServerOrgContext(request);
+      ctx = await getServerOrgContext(request);
     } catch (err) {
       if (err instanceof OrgContextError) {
         return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
@@ -55,25 +55,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const credentials = getCredentials();
-    if (!credentials) {
-      return NextResponse.json(
-        { success: false, error: 'Credenciales de Factus no configuradas' },
-        { status: 500 }
-      );
-    }
-
-    const accessToken = await getValidToken();
-    if (!accessToken) {
-      return NextResponse.json(
-        { success: false, error: 'No se pudo obtener token de Factus' },
-        { status: 500 }
-      );
+    // Cuenta de Factus de la organización; la demo del entorno solo en desarrollo.
+    let acceso;
+    try {
+      acceso = await obtenerAccesoFactus(ctx.organizationId, { permitirDemoDesarrollo: true });
+    } catch (err) {
+      if (err instanceof FacturacionNoActivadaError) {
+        return NextResponse.json(
+          { success: false, error: 'La facturación electrónica no está activa para esta organización', code: err.code },
+          { status: 409 }
+        );
+      }
+      throw err;
     }
 
     const data = await factusService.getAcquirer(
-      credentials.environment,
-      accessToken,
+      acceso.environment,
+      acceso.accessToken,
       documentType,
       numeroLimpio
     );

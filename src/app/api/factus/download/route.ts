@@ -2,8 +2,8 @@
  * API Route: Descargar documentos de Factus (PDF/XML)
  * GET /api/factus/download?type=pdf|xml&invoiceId=<uuid de invoice_sales>
  *
- * Credenciales via variables de entorno (cuenta de Factus de la PLATAFORMA,
- * compartida por todas las organizaciones).
+ * Credenciales: la cuenta de Factus de la ORGANIZACIÓN (Vault; las carga la
+ * plataforma). Las `FACTUS_*` del entorno solo sirven en desarrollo.
  *
  * SEGURIDAD
  * - 2026-09-22: la ruta no pedía sesión ni comprobaba a quién pertenecía
@@ -26,15 +26,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, readOrgBody } from '@/lib/utils/orgContext';
 import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
-import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
 import factusService from '@/lib/services/factusService';
+import { obtenerAccesoFactus } from '@/lib/services/einvoicing/accesoFactus.server';
 
 const RUTA = 'factus/download';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** `reference_code` con que `/api/factus/invoice` envía la factura a Factus. */
-function referenciaFactusDeFactura(invoiceId: string): string {
-  return `INV-${invoiceId.substring(0, 8)}`;
+/**
+ * `reference_code` con que la cola envió la factura a Factus: el guardado en
+ * la factura (lo escribe la cola al enviarla) o, para las enviadas antes de
+ * la cola, `INV-` + 8 primeros hex del id.
+ */
+function referenciaFactusDeFactura(invoiceId: string, guardada: string | null | undefined): string {
+  return guardada && guardada.trim() !== '' ? guardada : `INV-${invoiceId.substring(0, 8)}`;
 }
 
 /** Número DIAN que devuelve Factus para una referencia (v2 lo anida en `bill`). */
@@ -77,7 +81,7 @@ export async function GET(request: NextRequest) {
     // 1. La factura es de la organización de la sesión (cliente de sesión + filtro explícito).
     const { data: factura, error: errorFactura } = await ctx.supabase
       .from('invoice_sales')
-      .select('id')
+      .select('id, reference_code')
       .eq('id', invoiceId)
       .eq('organization_id', ctx.organizationId)
       .maybeSingle();
@@ -88,26 +92,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Documento no encontrado' }, { status: 404 });
     }
 
-    const credentials = getCredentials();
-    if (!credentials) {
-      return NextResponse.json(
-        { error: 'Credenciales de Factus no configuradas' },
-        { status: 404 }
-      );
-    }
+    // Cuenta de Factus de la organización (la demo del entorno solo en desarrollo).
+    const { environment, accessToken } = await obtenerAccesoFactus(ctx.organizationId, { permitirDemoDesarrollo: true });
 
-    const accessToken = await getValidToken();
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'No se pudo obtener token de Factus' },
-        { status: 500 }
-      );
-    }
-
-    const environment = credentials.environment;
-
-    // 2. El número DIAN lo dice Factus para la referencia derivada en el servidor.
-    const referencia = referenciaFactusDeFactura(factura.id as string);
+    // 2. El número DIAN lo dice Factus para la referencia de la factura.
+    const referencia = referenciaFactusDeFactura(
+      factura.id as string,
+      (factura as { reference_code?: string | null }).reference_code,
+    );
     let invoiceNumber: string | null = null;
     try {
       const consulta = await factusService.getInvoiceByReference(environment, accessToken, referencia);

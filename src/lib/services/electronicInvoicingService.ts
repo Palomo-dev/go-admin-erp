@@ -31,8 +31,8 @@ export interface ElectronicInvoiceJob {
   attempt_count: number;
   max_attempts: number;
   next_retry_at: string | null;
-  request_payload: any;
-  response_payload: any;
+  request_payload: Record<string, unknown> | null;
+  response_payload: Record<string, unknown> | null;
   cufe: string | null;
   qr_code: string | null;
   error_code: string | null;
@@ -86,9 +86,9 @@ class ElectronicInvoicingService {
       if (error) throw error;
 
       return { success: true, jobId: data.id };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating e-invoice job:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
 
@@ -145,38 +145,32 @@ class ElectronicInvoicingService {
   }
 
   /**
-   * Enviar factura a DIAN (a través de la API)
+   * Enviar factura a DIAN (a través de la API).
+   *
+   * El job lo crea el servidor (uno por factura): antes se creaba aquí y otra
+   * vez en la ruta. `queued` = quedó en cola (servicio sin activar, reintento
+   * programado o ya en vuelo); `message` lo explica.
    */
-  async sendToFactus(invoiceId: string, organizationId: number): Promise<{ success: boolean; error?: string }> {
+  async sendToFactus(
+    invoiceId: string,
+    organizationId: number
+  ): Promise<{ success: boolean; error?: string; queued?: boolean; message?: string }> {
     try {
-      // Primero crear el job
-      const jobResult = await this.createJob({
-        organizationId,
-        invoiceId,
-        documentType: 'invoice',
-        provider: 'factus',
-      });
-
-      if (!jobResult.success) {
-        return { success: false, error: jobResult.error };
-      }
-
-      // Llamar a la API para procesar el job
       const response = await fetch('/api/factus/invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ invoiceId, organizationId }),
       });
 
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const errorData = await response.json();
-        return { success: false, error: errorData.error || 'Error al enviar a DIAN' };
+        return { success: false, error: data.error || 'Error al enviar a DIAN' };
       }
 
-      return { success: true };
-    } catch (error: any) {
+      return { success: true, queued: data.queued === true, message: data.message };
+    } catch (error: unknown) {
       console.error('Error sending to Factus:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
 
@@ -198,9 +192,9 @@ class ElectronicInvoicingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error retrying job:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
 
@@ -217,9 +211,9 @@ class ElectronicInvoicingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error cancelling job:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
 
@@ -347,8 +341,8 @@ class ElectronicInvoicingService {
       }
 
       return { valid: errors.length === 0, errors };
-    } catch (error: any) {
-      errors.push(`Error de validación: ${error.message}`);
+    } catch (error: unknown) {
+      errors.push(`Error de validación: ${error instanceof Error ? error.message : String(error)}`);
       return { valid: false, errors };
     }
   }

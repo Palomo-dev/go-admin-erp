@@ -9,11 +9,9 @@
  *
  *   1. `PDF_CHROMIUM_WS_ENDPOINT`: navegador remoto (browserless u otro
  *      servicio de render) por WebSocket — no pesa en la función.
- *   2. En serverless (Vercel/Lambda): `@sparticuz/chromium` si está instalado
- *      (se carga en tiempo de ejecución, sin empaquetarlo). Activarlo requiere
- *      `npm i @sparticuz/chromium@^138` (misma versión mayor de Chrome que
- *      puppeteer 24) y trazar su carpeta `bin` en `next.config.js`
- *      (`outputFileTracingIncludes`). Pendiente de aprobación del dueño.
+ *   2. En serverless (Vercel/Lambda): `puppeteer-core` + `@sparticuz/chromium`
+ *      138 (la misma versión de Chrome que puppeteer 24.15). La función lleva
+ *      ~65 MB de Chromium comprimido; en frío lo descomprime en /tmp.
  *   3. Local / servidor propio: `puppeteer` (o `PDF_CHROMIUM_EXECUTABLE_PATH`).
  *
  * Si no hay navegador, `ErrorPdfNoDisponible` → la ruta responde 503 y las
@@ -65,27 +63,51 @@ async function turno(): Promise<() => void> {
   };
 }
 
+/** Chromium empaquetado para serverless (`@sparticuz/chromium`, Chrome 138 como puppeteer 24). */
+interface ChromiumServerless {
+  args: string[];
+  executablePath(): Promise<string>;
+  setGraphicsMode?: boolean;
+}
+
 async function lanzar(): Promise<NavegadorMinimo> {
-  const puppeteer = (await import('puppeteer')).default;
   const remoto = process.env.PDF_CHROMIUM_WS_ENDPOINT;
-  if (remoto) {
-    return (await puppeteer.connect({ browserWSEndpoint: remoto })) as unknown as NavegadorMinimo;
-  }
   const serverless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-  if (serverless) {
-    let chromium: { args: string[]; executablePath(): Promise<string> } | null = null;
+
+  if (remoto || serverless) {
+    // `puppeteer-core` y `@sparticuz/chromium` van con import literal: el
+    // rastreo de archivos de Next los incluye en la función (los dos están en
+    // su lista de `serverExternalPackages`). La carpeta `bin` de Chromium, que
+    // no se requiere desde JS, la agrega `outputFileTracingIncludes`.
+    const core = (await import('puppeteer-core')).default;
+    if (remoto) {
+      return (await core.connect({ browserWSEndpoint: remoto })) as unknown as NavegadorMinimo;
+    }
+    let chromium: ChromiumServerless;
     try {
-      const paquete = '@sparticuz/chromium';
-      const modulo = await import(/* webpackIgnore: true */ paquete);
-      chromium = (modulo.default ?? modulo) as { args: string[]; executablePath(): Promise<string> };
+      const modulo = await import('@sparticuz/chromium');
+      chromium = (modulo.default ?? modulo) as unknown as ChromiumServerless;
+    } catch (err) {
+      throw new ErrorPdfNoDisponible(`No hay Chromium en la función serverless: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    // Sin WebGL: un documento no lo necesita y así no se descomprime swiftshader.
+    try {
+      chromium.setGraphicsMode = false;
     } catch {
-      chromium = null;
+      // versión sin el setter
     }
-    if (!chromium) {
-      throw new ErrorPdfNoDisponible('No hay Chromium en la función serverless (falta @sparticuz/chromium o PDF_CHROMIUM_WS_ENDPOINT)');
-    }
-    return (await puppeteer.launch({ args: chromium.args, executablePath: await chromium.executablePath(), headless: true })) as unknown as NavegadorMinimo;
+    return (await core.launch({
+      args: core.defaultArgs({ args: chromium.args, headless: 'shell' }),
+      executablePath: await chromium.executablePath(),
+      headless: 'shell',
+    })) as unknown as NavegadorMinimo;
   }
+
+  // Local / servidor propio: `puppeteer` completo, con su Chrome o el de
+  // PDF_CHROMIUM_EXECUTABLE_PATH. El nombre va en una variable para que el
+  // rastreo de Vercel no meta `puppeteer` en la función (allí no se usa).
+  const paquete = 'puppeteer';
+  const puppeteer = ((await import(/* webpackIgnore: true */ paquete)) as { default: typeof import('puppeteer-core').default }).default;
   return (await puppeteer.launch({
     headless: true,
     executablePath: process.env.PDF_CHROMIUM_EXECUTABLE_PATH || undefined,

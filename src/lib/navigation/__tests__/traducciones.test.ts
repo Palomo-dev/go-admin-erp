@@ -48,9 +48,9 @@ const paginas = [
   ...CATALOGO_NAV.flatMap((m) => m.paginas),
   // Las del CRM que aún no están activas también: activarlas no debe dejar
   // la entrada sin traducir.
-  ...CRM_NAV.map((p) => ({ href: p.href, nombre: p.name, grupo: undefined as string | undefined })),
+  ...CRM_NAV.map((p) => ({ href: p.href, nombre: p.name, grupo: p.grupo as string | undefined })),
 ];
-const grupos = Array.from(new Set(CATALOGO_NAV.flatMap((m) => m.paginas.map((p) => p.grupo)).filter((g): g is string => !!g)));
+const grupos = Array.from(new Set(paginas.map((p) => p.grupo).filter((g): g is string => !!g)));
 
 describe('claves i18n del catálogo', () => {
   test('clavePagina es determinística, sin puntos y sin el prefijo /app', () => {

@@ -220,8 +220,11 @@ export const CATALOGO_NAV: ModuloNav[] = [
     icono: Target,
     seccion: 'ventas',
     rutas: ['/app/crm'],
-    // Fuente del CRM: src/config/crmNav.ts (la usa también el propio módulo).
-    paginas: CRM_NAV_ENABLED.map((p) => ({ href: p.href, nombre: p.name, icono: p.icon })),
+    // Módulo propio del menú lateral (no una página de «Clientes»): se ve si la
+    // organización tiene `crm` en organization_modules, como cualquier otro.
+    // Fuente de sus páginas y grupos: src/config/crmNav.ts (la usa también el
+    // propio módulo). Con grupos, su panel de submenú va a dos columnas.
+    paginas: CRM_NAV_ENABLED.map((p) => ({ href: p.href, nombre: p.name, icono: p.icon, grupo: p.grupo })),
   },
   {
     codigo: 'chat',

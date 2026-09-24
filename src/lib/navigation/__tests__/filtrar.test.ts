@@ -1,3 +1,6 @@
+import { existsSync } from 'fs';
+import { join } from 'path';
+import { Target } from 'lucide-react';
 import { CATALOGO_NAV, moduloPorCodigo } from '../catalog';
 import { filtrarNavegacion, rutaActiva, type AccesoNav } from '../filtrar';
 
@@ -41,6 +44,53 @@ describe('catálogo de navegación', () => {
 
   test('el CRM trae todas sus páginas de crmNav (antes el panel tenía 10 y el sidebar 16)', () => {
     expect(moduloPorCodigo('crm')!.paginas.length).toBeGreaterThanOrEqual(16);
+  });
+});
+
+describe('CRM: módulo propio del menú lateral', () => {
+  const crm = moduloPorCodigo('crm')!;
+  const existe = (href: string) => existsSync(join(process.cwd(), 'src/app', href.replace(/^\//, ''), 'page.tsx'));
+
+  test('es un ítem propio de la sección Ventas, con su ícono, y no una página de Clientes', () => {
+    expect(crm).toMatchObject({ id: 'crm', etiqueta: 'crm', seccion: 'ventas', rutas: ['/app/crm'], icono: Target });
+    expect(moduloPorCodigo('clientes')!.paginas.some((p) => p.href.startsWith('/app/crm'))).toBe(false);
+  });
+
+  test('trae las páginas del CRM que existen en src/app/app/crm (pipeline, oportunidades, leads, actividades, clientes, identidades…)', () => {
+    const hrefs = crm.paginas.map((p) => p.href);
+    for (const seccion of ['pipeline', 'oportunidades', 'leads', 'actividades', 'clientes', 'identidades', 'llamadas', 'campanas']) {
+      expect(hrefs).toContain(`/app/crm/${seccion}`);
+    }
+    expect(hrefs.filter((h) => !existe(h))).toEqual([]);
+  });
+
+  test('toda página del CRM tiene grupo y los grupos van seguidos (el panel agrupa en orden)', () => {
+    expect(crm.paginas.filter((p) => !p.grupo).map((p) => p.href)).toEqual([]);
+    const orden = crm.paginas.map((p) => p.grupo);
+    const cerrados = new Set<string>();
+    const saltados = orden.filter((g, i) => {
+      if (i > 0 && orden[i - 1] !== g) cerrados.add(orden[i - 1]!);
+      return cerrados.has(g!);
+    });
+    expect(saltados).toEqual([]);
+    expect(new Set(orden).size).toBeGreaterThan(1);
+  });
+
+  test('se ve solo si la organización tiene el módulo crm (plan), y abre su panel de submenú', () => {
+    const sinCrm = modulosVisibles(acceso({ modulosActivos: todosLosModulos.filter((c) => c !== 'crm') }));
+    expect(sinCrm).not.toContain('crm');
+    expect(sinCrm).toContain('clientes');
+
+    const ventas = filtrarNavegacion(acceso()).find((s) => s.codigo === 'ventas')!;
+    const visible = ventas.modulos.find((m) => m.modulo.id === 'crm')!;
+    expect(visible.tieneSubmenu).toBe(true);
+    // El enlace del módulo sigue siendo su primera página (antes también «Clientes»).
+    expect(visible.href).toBe('/app/crm/clientes');
+  });
+
+  test('una ruta de detalle del CRM marca el módulo CRM, no Clientes', () => {
+    expect(rutaActiva('/app/crm/oportunidades/123')?.modulo.id).toBe('crm');
+    expect(rutaActiva('/app/crm/clientes/45')?.pagina?.href).toBe('/app/crm/clientes');
   });
 });
 

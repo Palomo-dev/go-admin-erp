@@ -2166,7 +2166,12 @@
       "configuracion": "Configurações",
       "personas": "Pessoas",
       "tiempo": "Jornada",
-      "pagos": "Pagamentos"
+      "pagos": "Pagamentos",
+      "base-de-clientes": "Base de clientes",
+      "comercial": "Comercial",
+      "actividad": "Atividade",
+      "marketing": "Marketing",
+      "automatizacion": "Automação"
     },
     "emailNotConfirmed": "E-mail não confirmado",
     "sending": "Enviando...",

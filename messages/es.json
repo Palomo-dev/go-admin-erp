@@ -2170,7 +2170,12 @@
       "configuracion": "Configuración",
       "personas": "Personas",
       "tiempo": "Tiempo",
-      "pagos": "Pagos"
+      "pagos": "Pagos",
+      "base-de-clientes": "Base de clientes",
+      "comercial": "Comercial",
+      "actividad": "Actividad",
+      "marketing": "Marketing",
+      "automatizacion": "Automatización"
     },
     "backToMenu": "Menú"
   },

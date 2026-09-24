@@ -2170,7 +2170,12 @@
       "configuracion": "Settings",
       "personas": "People",
       "tiempo": "Time",
-      "pagos": "Pay"
+      "pagos": "Pay",
+      "base-de-clientes": "Customer base",
+      "comercial": "Sales",
+      "actividad": "Activity",
+      "marketing": "Marketing",
+      "automatizacion": "Automation"
     },
     "backToMenu": "Menu"
   },

@@ -2166,7 +2166,12 @@
       "configuracion": "Paramètres",
       "personas": "Personnel",
       "tiempo": "Temps de travail",
-      "pagos": "Paie"
+      "pagos": "Paie",
+      "base-de-clientes": "Base clients",
+      "comercial": "Commercial",
+      "actividad": "Activité",
+      "marketing": "Marketing",
+      "automatizacion": "Automatisation"
     },
     "emailNotConfirmed": "E-mail non confirmé",
     "sending": "Envoi...",

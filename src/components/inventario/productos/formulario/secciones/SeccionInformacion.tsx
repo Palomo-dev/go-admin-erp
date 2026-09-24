@@ -72,24 +72,22 @@ export function SeccionInformacion({
     [catalogos.categorias, estado.category_id, nombrePorId],
   );
 
+  // La estación de cocina/bar NO se copia de la categoría: `station` vacío
+  // significa «hereda» y se resuelve al usarla (fn_estacion_efectiva), así un
+  // cambio de estación en la categoría llega a sus productos.
   const elegirCategoria = (id: number | null) => {
-    const categoria = id ? catalogos.categorias.find((c) => c.id === id) : undefined;
     actualizar({
       category_id: id,
       // La principal no se repite entre las adicionales.
       categorias_adicionales: estado.categorias_adicionales.filter((c) => c !== id),
-      // Hereda la estación de cocina/bar de la categoría si el producto no tiene una propia.
-      ...(!estado.station && categoria?.station ? { station: categoria.station } : {}),
     });
   };
 
   const categoriaCreada = (c: Category) => {
     agregarACatalogo('categorias', { id: c.id, name: c.name, parent_id: c.parent_id, station: c.station ?? null });
-    const station = c.station ?? null;
     actualizar({
       category_id: c.id,
       categorias_adicionales: estado.categorias_adicionales.filter((x) => x !== c.id),
-      ...(!estado.station && station ? { station } : {}),
     });
   };
 

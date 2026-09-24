@@ -310,12 +310,29 @@ class WebOrderConfirmationService {
       throw new Error(`Error al crear comanda: ${ticketError.message}`);
     }
 
+    // Estación efectiva de cada producto (propia → del padre → de la categoría).
+    // Si la consulta falla, la comanda sale igual sin estación (como antes).
+    const estacionPorProducto = new Map<number, string | null>();
+    const productIds = Array.from(new Set(saleItems.map(i => i.product_id).filter((id): id is number => id !== null)));
+    if (productIds.length > 0) {
+      const { data: estaciones, error: estacionesError } = await supabase.rpc('fn_estaciones_efectivas', {
+        p_organization_id: order.organization_id,
+        p_product_ids: productIds,
+      });
+      if (estacionesError) {
+        console.warn('No se pudo resolver la estación de cocina de los productos:', estacionesError);
+      }
+      for (const e of (estaciones ?? []) as Array<{ product_id: number; station: string | null }>) {
+        estacionPorProducto.set(Number(e.product_id), e.station || null);
+      }
+    }
+
     // Crear items del ticket
     const ticketItems = saleItems.map(item => ({
       organization_id: order.organization_id,
       kitchen_ticket_id: ticket.id,
       sale_item_id: item.id,
-      station: null,
+      station: item.product_id !== null ? estacionPorProducto.get(item.product_id) ?? null : null,
       notes: null,
       status: 'pending',
     }));

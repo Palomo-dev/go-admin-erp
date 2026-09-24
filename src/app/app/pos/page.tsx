@@ -14,6 +14,7 @@ import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
 import { CustomerDisplayIndicator } from '@/components/pos/display/CustomerDisplayIndicator';
 import { POSService } from '@/lib/services/posService';
 import { getPosDisplayEmitter, resolveDisplayCurrency, startPosDisplay, stopPosDisplay } from '@/lib/pos/display/posDisplay';
+import { estacionDeCategoria, estacionEfectiva } from '@/lib/pos/estacionEfectiva';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
@@ -468,12 +469,16 @@ export default function POSPage() {
     // Mapear items para el ticket de cocina
     const ticketItems = prepItems.map((item) => {
       const product = item.product as ProductWithCategory | undefined;
-      const cat = product?.category || product?.categories;
-      const station = Array.isArray(cat) ? cat[0]?.station : cat?.station;
+      // Estación propia del producto (en variantes ya viene resuelta con la del
+      // padre desde ProductSearch) y, si no tiene, la de su categoría.
+      const station = estacionEfectiva({
+        propia: product?.station,
+        categoria: estacionDeCategoria(product?.category || product?.categories),
+      });
       return {
         productName: item.product?.name || 'Producto',
         quantity: item.quantity,
-        station: station || product?.station || null,
+        station,
         notes: item.notes || null,
         variantData: (product?.variant_data as Record<string, string> | null | undefined) || null,
         modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,

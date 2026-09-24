@@ -31,6 +31,7 @@ import { CachedProductImage } from './CachedProductImage';
 import { BarcodeScanner } from '@/components/ui/barcode-scanner';
 import { VariantSelectorDialog, type SelectedModifier } from './VariantSelectorDialog';
 import { resolveVariantDisplayName } from '@/utils/variantUtils';
+import { estacionEfectiva } from '@/lib/pos/estacionEfectiva';
 import { CategoryFilterBar } from './CategoryFilterBar';
 import { ConfiguracionService, PosCategoriesDisplayConfig, defaultCategoriesDisplayConfig } from './configuracion/configuracionService';
 import {
@@ -271,7 +272,12 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     // Heredar categoría y datos de preparación del producto padre si la variante no los trae
     const parent = selectedParentProduct as PosGridProduct | null;
     const inheritedCategory = variant.categories || variant.category || parent?.categories || parent?.category || null;
-    const inheritedStation = variant.station || inheritedCategory?.station || parent?.station || null;
+    // Propia de la variante → propia del padre → la de la categoría (fn_estacion_efectiva).
+    const inheritedStation = estacionEfectiva({
+      propia: variant.station,
+      propiaPadre: parent?.station,
+      categoria: inheritedCategory?.station,
+    });
     // Construir nombre legible de la variante desde variant_data (ej: "iPhone 16 Pro Max (256 GB)")
     const displayName = resolveVariantDisplayName(variant.name, variant.variant_data, parent?.name);
     const enrichedVariant = {
@@ -348,7 +354,11 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
           ),
           category: inheritedCategory ?? undefined,
           categories: inheritedCategory,
-          station: variant.station || inheritedCategory?.station || parent.station || null,
+          station: estacionEfectiva({
+            propia: variant.station,
+            propiaPadre: parent.station,
+            categoria: inheritedCategory?.station,
+          }),
         } as Product);
         return;
       }

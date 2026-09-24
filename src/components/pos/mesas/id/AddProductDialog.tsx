@@ -14,6 +14,7 @@ import { formatCurrency, cn } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import type { Product, ProductToAdd, SelectedProductModifier } from './types';
 import { POSService } from '@/lib/services/posService';
+import { estacionEfectiva } from '@/lib/pos/estacionEfectiva';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { VariantSelectorDialog } from '@/components/pos/VariantSelectorDialog';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -158,8 +159,12 @@ export function AddProductDialog({
 
   // Manejar selección de variante (y sus modificadores) desde el diálogo
   const handleVariantSelect = (variant: any, modifiers: SelectedProductModifier[] = []) => {
-    // La variante hereda la estación del producto padre (o la categoría de este) si no tiene una propia
-    const inheritedStation = variant.station || selectedParentProduct?.station || selectedParentProduct?.categories?.station || null;
+    // Propia de la variante → propia del padre → la de la categoría (fn_estacion_efectiva).
+    const inheritedStation = estacionEfectiva({
+      propia: variant.station,
+      propiaPadre: selectedParentProduct?.station,
+      categoria: variant.categories?.station ?? selectedParentProduct?.categories?.station,
+    });
     const inheritedRequiresPreparation = selectedParentProduct?.categories?.requires_preparation ?? false;
     addToCart({ ...variant, station: inheritedStation, requires_preparation: inheritedRequiresPreparation, categories: selectedParentProduct?.categories }, modifiers);
     setShowVariantDialog(false);
@@ -257,7 +262,8 @@ export function AddProductDialog({
     if (existing) {
       existing.quantity += 1;
     } else {
-      const station = product.station || product.categories?.station || '';
+      // En variantes `station` ya llega resuelta (handleVariantSelect).
+      const station = estacionEfectiva({ propia: product.station, categoria: product.categories?.station }) ?? '';
       const requires_preparation = product.categories?.requires_preparation ?? false;
       newCart.set(product.id, {
         product_id: product.id,

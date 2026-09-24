@@ -723,35 +723,25 @@ export class PrintJobsService {
 
     const orgId = getOrganizationId();
 
-    // Consultar categorías de los productos para saber requires_preparation y station
-    const productIds = sale.items.map(i => i.productId);
-    const { data: products, error } = await supabase
-      .from('products')
-      .select('id, category_id, station, categories!left(id, requires_preparation, station)')
-      .in('id', productIds)
-      .eq('organization_id', orgId);
+    // Estación efectiva (propia → del padre → de la categoría) y requires_preparation
+    // de la categoría, resueltas en el servidor (fn_estaciones_efectivas).
+    const productIds = Array.from(new Set(sale.items.map(i => i.productId)));
+    const { data: estaciones, error } = await supabase.rpc('fn_estaciones_efectivas', {
+      p_organization_id: orgId,
+      p_product_ids: productIds,
+    });
 
-    if (error || !products) {
-      console.warn('No se pudo consultar categorías para comanda automática:', error);
+    if (error || !estaciones) {
+      console.warn('No se pudo consultar la estación de los productos para la comanda automática:', error);
       return { enqueued: 0, printedLocally: 0, skippedStations: [] };
     }
 
-    // Mapear product_id -> { requires_preparation, station }
     const productPrepMap = new Map<number, { requiresPreparation: boolean; station: string | null }>();
-    for (const p of products as any[]) {
-      const cat = p.categories;
-      if (cat) {
-        productPrepMap.set(p.id, {
-          requiresPreparation: cat.requires_preparation ?? false,
-          station: cat.station || p.station || null,
-        });
-      } else {
-        // Producto sin categoría: usar station del producto si existe
-        productPrepMap.set(p.id, {
-          requiresPreparation: false,
-          station: p.station || null,
-        });
-      }
+    for (const e of estaciones as Array<{ product_id: number; station: string | null; requires_preparation: boolean | null }>) {
+      productPrepMap.set(Number(e.product_id), {
+        requiresPreparation: e.requires_preparation === true,
+        station: e.station || null,
+      });
     }
 
     // Filtrar items que requieren preparación

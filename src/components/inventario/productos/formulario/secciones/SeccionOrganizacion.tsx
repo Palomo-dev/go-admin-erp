@@ -8,6 +8,7 @@ import { FormField } from '@/components/kit';
 import { CampoNumero } from '@/components/kit/CampoNumero';
 import { MultiSelect, type OpcionMulti } from '@/components/kit/MultiSelect';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { SearchSelect } from '@/components/ui/search-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,12 +18,7 @@ import { PROVEEDOR_VACIO, type ProveedorForm } from '../../logica/formularioProd
 import { HojaNuevoProveedor } from '../../detalle/proveedores/HojaNuevoProveedor';
 import { DialogoNuevaEtiqueta } from '../../detalle/proveedores/DialogoNuevaEtiqueta';
 import { hexEtiqueta } from '../../detalle/proveedores/colorEtiqueta';
-
-const ESTACIONES = ['hot_kitchen', 'cold_kitchen', 'bar', 'cashier', 'all'] as const;
-type Estacion = (typeof ESTACIONES)[number];
-const HEREDAR = 'heredar';
-
-const esEstacion = (v: string | null | undefined): v is Estacion => !!v && (ESTACIONES as readonly string[]).includes(v);
+import { ESTACIONES_COCINA, esEstacionCocina, type EstacionCocina } from '@/lib/pos/estacionEfectiva';
 
 /**
  * Sección «Organización y proveedor» del formulario único (Figma `Nuevo
@@ -53,11 +49,14 @@ export function SeccionOrganizacion({
 
   const categoria = catalogos.categorias.find((c) => c.id === estado.category_id) ?? null;
   const estacionDeCategoria = categoria?.station;
-  const estacionCategoria: Estacion | null = esEstacion(estacionDeCategoria) ? estacionDeCategoria : null;
-  const ayudaEstacion = estado.station
+  const estacionCategoria: EstacionCocina | null = esEstacionCocina(estacionDeCategoria) ? estacionDeCategoria : null;
+  // Estación: por defecto hereda la de la categoría (station NULL) y sigue sus
+  // cambios; «Usar estación propia» fija una solo para este producto.
+  const estacionPropia = !!estado.station;
+  const ayudaEstacion = estacionPropia
     ? t('estacion.ayudaPropia')
     : estacionCategoria
-      ? t('estacion.ayudaCategoria', { estacion: t(`estacion.opciones.${estacionCategoria}`) })
+      ? t('estacion.ayudaHereda')
       : t('estacion.ayudaNinguna');
 
   const opcionesUnidad = useMemo(
@@ -124,23 +123,40 @@ export function SeccionOrganizacion({
         </FormField>
         <FormField etiqueta={t('estacion.etiqueta')} ayuda={ayudaEstacion}>
           {(campo) => (
-            <Select value={estado.station ?? HEREDAR} onValueChange={(v) => cambiar('station', v === HEREDAR ? null : v)}>
-              <SelectTrigger id={campo.id} aria-labelledby={campo.idEtiqueta} aria-describedby={campo['aria-describedby']} className="h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={HEREDAR}>
+            <div className="flex flex-col gap-2">
+              {estacionPropia ? (
+                <Select value={estado.station ?? undefined} onValueChange={(v) => cambiar('station', v)}>
+                  <SelectTrigger id={campo.id} aria-labelledby={campo.idEtiqueta} aria-describedby={campo['aria-describedby']} className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ESTACIONES_COCINA.map((e) => (
+                      <SelectItem key={e} value={e}>
+                        {t(`estacion.opciones.${e}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p
+                  id={campo.id}
+                  aria-describedby={campo['aria-describedby']}
+                  className="flex h-10 items-center rounded-lg border border-line bg-subtle px-3 text-sm text-fg-secondary"
+                >
                   {estacionCategoria
-                    ? t('estacion.heredarDe', { estacion: t(`estacion.opciones.${estacionCategoria}`) })
-                    : t('estacion.heredar')}
-                </SelectItem>
-                {ESTACIONES.map((e) => (
-                  <SelectItem key={e} value={e}>
-                    {t(`estacion.opciones.${e}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                    ? t('estacion.heredaDe', { estacion: t(`estacion.opciones.${estacionCategoria}`) })
+                    : t('estacion.hereda')}
+                </p>
+              )}
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
+                <Checkbox
+                  checked={estacionPropia}
+                  onCheckedChange={(v) => cambiar('station', v === true ? (estacionCategoria ?? ESTACIONES_COCINA[0]) : null)}
+                  className="size-[18px] rounded"
+                />
+                {t('estacion.usarPropia')}
+              </label>
+            </div>
           )}
         </FormField>
       </div>

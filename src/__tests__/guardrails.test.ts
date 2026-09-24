@@ -1610,11 +1610,20 @@ describe('22. Asiento de venta: un solo hecho, clave natural y respaldo sin cond
  * CHECK, la lista de TypeScript y lo que el código escribe de verdad.
  */
 describe('23. stock_movements.source: CHECK, lista de TS y código coinciden', () => {
+  // La ÚLTIMA migración que redefine el CHECK manda. Antes se leía siempre
+  // 20260923100000; compras F1 (20260926130000) lo amplió con `purchase_void`,
+  // que `fn_void_purchase_invoice` escribía y el CHECK rechazaba (anular una
+  // compra recibida fallaba siempre). Una ampliación futura se hace igual: la
+  // migración nueva + `origenesMovimientoStock.ts`, en el mismo commit.
+  const DIR_MIGRACIONES = path.join(REPO_ROOT, 'supabase', 'migrations');
   const migracion = path.join(
-    REPO_ROOT,
-    'supabase',
-    'migrations',
-    '20260923100000_stock_movements_admite_los_origenes_que_el_codigo_escribe.sql'
+    DIR_MIGRACIONES,
+    fs
+      .readdirSync(DIR_MIGRACIONES)
+      .filter((f) => f.endsWith('.sql'))
+      .sort()
+      .filter((f) => /add\s+constraint\s+stock_movements_source_check/i.test(readFile(path.join(DIR_MIGRACIONES, f))))
+      .pop() ?? '20260923100000_stock_movements_admite_los_origenes_que_el_codigo_escribe.sql'
   );
 
   /** Valores del `check (source = any (array[...]))` de la migración. */
@@ -1855,13 +1864,19 @@ describe('26. Compras: un solo asiento por hecho, con la factura (ADR-CC-009)', 
     const cuerpo = ultima!.sql.slice(ultima!.sql.search(/function\s+public\.fn_auto_journal_stock_movement\s*\(/i));
     const exclusion = cuerpo.match(/IF\s+NEW\.source\s+IN\s*\(([^)]*)\)\s*THEN\s*RETURN\s+NEW/i);
     expect(exclusion).not.toBeNull();
-    for (const origen of ['purchase_order', 'purchase_invoice', 'transfer_out', 'transfer_in', 'purchase', 'transfer', 'initial']) {
+    // `purchase_void` (compras F1, R7): la anulación de una compra ya revierte el
+    // devengo con el contra-asiento espejo; un asiento de ajuste lo duplicaba.
+    for (const origen of ['purchase_order', 'purchase_invoice', 'purchase_void', 'transfer_out', 'transfer_in', 'purchase', 'transfer', 'initial']) {
       expect(exclusion![1]).toContain(`'${origen}'`);
     }
   });
 
   test('ningún servicio de compras escribe asientos por su cuenta', () => {
-    for (const archivo of ['lib/services/purchaseOrderService.ts', 'components/finanzas/facturas-compra/FacturasCompraService.ts']) {
+    // L7 del plan de compras: también los servicios y rutas nuevos de compras y CxP.
+    const nuevos = [
+      ...fs.readdirSync(path.join(SRC_ROOT, 'lib/services/compras')).filter((f) => f.endsWith('.ts')).map((f) => `lib/services/compras/${f}`),
+    ];
+    for (const archivo of ['lib/services/purchaseOrderService.ts', 'components/finanzas/facturas-compra/FacturasCompraService.ts', ...nuevos]) {
       const src = readFile(path.join(SRC_ROOT, archivo));
       expect(src).not.toMatch(/from\(\s*['"`]journal_(entries|lines)['"`]\s*\)\s*\.\s*(insert|upsert)/);
     }

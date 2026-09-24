@@ -41,6 +41,9 @@ export const ORIGENES_MOVIMIENTO_STOCK = [
   'folio_item_reversal',
   'transfer_out',
   'transfer_in',
+  // Compras F1 (20260926130000): la anulación de una factura de compra revierte
+  // su kardex con este origen; el CHECK lo rechazaba y anular fallaba siempre.
+  'purchase_void',
 ] as const;
 
 export type OrigenMovimientoStock = (typeof ORIGENES_MOVIMIENTO_STOCK)[number];

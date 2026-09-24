@@ -159,3 +159,16 @@ duplica el activo en toda venta de contado con pago → ADR-CC-001.
 - Código: los dos caminos llaman a `fn_confirmar_pedido_web`; tests nuevos.
 - F-68 abierto (recetas autorreferidas, org 144, anterior al cierre).
 - Última migración reconciliada: `20260923182400`.
+
+## 2026-09-23/24 · Fase aprobada: asientos inmutables (ADR-CC-012/013)
+
+- `20260923223116` asientos inmutables, permiso «Revertir asientos», asiento
+  manual y reversión por RPC; `assistant_void_purchase_invoice` a definer con guarda.
+- `20260923223400` periodos mensuales sin solape (F-70, 996 corregidos).
+- `20260923223946` comisión OTA 5235 → 2335 y pago neto (F-65, ADR-CC-013).
+- `20260923224359` F-68: recetas autorreferidas, 67 salidas compensadas.
+- `20260924030912` `fn_saldos_cuentas`: informes sin truncar (F-71).
+- Código: ContabilidadService por RPC, libro diario con chips y filtro, detalle
+  con «Revertir», informes corregidos, periodos sin `annual`/`locked`.
+- Abiertos: F-72 (compras), F-73 (anulación de ventas).
+- Última migración reconciliada: `20260924030912`.

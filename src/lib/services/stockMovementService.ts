@@ -60,6 +60,9 @@ async function getRecipeItemsForStock(
   const items: RecipeItemForStock[] = [];
 
   for (const ing of ingredients || []) {
+    // Un producto que figura como ingrediente de su propia receta ya sale
+    // abajo como compuesto; contarlo aquí lo descontaba dos veces (F-68).
+    if (ing.ingredient_product_id === productId) continue;
     const ingProd = (ing as { ingredient_product?: { track_stock?: boolean; unit_code?: string | null } }).ingredient_product;
     const trackStock = ingProd?.track_stock ?? true;
     if (!trackStock) continue;

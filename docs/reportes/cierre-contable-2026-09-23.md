@@ -366,3 +366,26 @@ Hallazgos laterales: F-68 (recetas autorreferidas en la org 144, desde el 17);
 las salidas de venta web se costean al precio de venta (la corrección
 `250aeec7` está en `main`, no en producción).
 
+---
+
+## 11. Fase aprobada: asientos inmutables, informes, F-68 y F-65 (2026-09-23/24)
+
+Aprobada por el dueño («Sí, apruebo la fase completa, puntos 1 a 4»), con F-68 y
+F-65 incluidos y la separación de ReteFuente/ICA fuera.
+
+| Punto | Qué se hizo | Evidencia |
+|---|---|---|
+| 1. Bloqueo | Sin escritura directa para `authenticated`/`anon`; disparador que impide editar o borrar asientos publicados a cualquier rol (ADR-CC-012) | autenticado: 8/8 `permission denied` (contra-asiento de hoy, contra-asiento F-01, automático, líneas); dueño de la base: `ASIENTO_PUBLICADO_INMUTABLE` |
+| 2. Manual y reversión | `fn_asiento_manual_crear/publicar/descartar`, `fn_revertir_asiento_manual` con permiso «Revertir asientos», motivo y fecha en periodo abierto | 17/17 casos en la org 149 |
+| 3. Libro diario | Chips «Revertido» / «Reversión de #N», filtro «Ocultar pares revertidos» apagado; «Revertir» con motivo en el detalle; aviso en automáticos | tests `asientosInmutables.test.ts` |
+| 4. Informes y periodos | `fn_saldos_cuentas`; padre con saldo propio; resultado del ejercicio en el balance general; mayor paginado; periodos sin solape; `annual`/`locked` fuera | F-70, F-71 |
+| F-68 | Recetas autorreferidas ignoradas y bloqueadas; 67 salidas compensadas por kardex (80 u., 186.500) | balance org 144 cuadrado |
+| F-65 | Comisión OTA 5235 → 2335; pago neto a bancos (ADR-CC-013) | ciclo completo en org 149 |
+
+Hallazgos nuevos: F-70 (periodos solapados, corregido), F-71 (informes truncados,
+corregido), F-72 (anulación de compra recibida falla; zona de compras), F-73
+(anular una venta no devuelve costo ni stock; pendiente de aprobación).
+
+Automático sigue funcionando: una factura y un pago creados por un empleado de
+la org 149 generaron devengo `1305/2405/4105` y cobro `1105/1305`.
+

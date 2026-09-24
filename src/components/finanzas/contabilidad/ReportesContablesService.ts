@@ -104,6 +104,45 @@ interface FilaLinea {
   journal_entries?: FilaAsiento | FilaAsiento[] | null;
 }
 
+interface SaldoCuenta {
+  account_code: string;
+  debito: number | string;
+  credito: number | string;
+}
+
+/**
+ * Débitos y créditos por cuenta de los asientos publicados en el rango,
+ * sumados en la base (`fn_saldos_cuentas`). Antes se traían las líneas sin
+ * paginar y PostgREST las cortaba en 1.000 filas: en cualquier organización con
+ * más movimiento los informes salían truncados sin avisar (ADR-CC-012).
+ */
+async function saldosPorCuenta(
+  organizationId: number,
+  desde: string | null,
+  hasta: string | null
+): Promise<Map<string, { debit: number; credit: number }>> {
+  const { data, error } = await supabase.rpc('fn_saldos_cuentas', {
+    p_organization_id: organizationId,
+    p_desde: desde,
+    p_hasta: hasta,
+  });
+  if (error) throw error;
+
+  const saldos = new Map<string, { debit: number; credit: number }>();
+  ((data as SaldoCuenta[] | null) || []).forEach((fila) => {
+    saldos.set(fila.account_code, {
+      debit: Number(fila.debito) || 0,
+      credit: Number(fila.credito) || 0,
+    });
+  });
+  return saldos;
+}
+
+/** Un instante antes del dado: el corte «antes del inicio» del saldo inicial. */
+function instanteAnterior(instante: string): string {
+  return new Date(new Date(instante).getTime() - 1).toISOString();
+}
+
 export class ReportesContablesService {
   private static getOrganizationId(): number {
     const org = obtenerOrganizacionActiva();
@@ -183,81 +222,32 @@ export class ReportesContablesService {
 
     if (accountsError) throw accountsError;
 
-    const { data: lines, error: linesError } = await supabase
-      .from('journal_lines')
-      .select(`
-        debit,
-        credit,
-        account_code,
-        journal_entries!inner(entry_date, posted)
-      `)
-      .eq('organization_id', organizationId)
-      .gte('journal_entries.entry_date', start)
-      .lte('journal_entries.entry_date', end)
-      .eq('journal_entries.posted', true);
-
-    if (linesError) throw linesError;
-
-    const periodTotals = new Map<string, { debit: number; credit: number }>();
-    (lines || []).forEach((line: FilaLinea) => {
-      const code = line.account_code ?? '';
-      const current = periodTotals.get(code) || { debit: 0, credit: 0 };
-      current.debit += parseFloat(line.debit) || 0;
-      current.credit += parseFloat(line.credit) || 0;
-      periodTotals.set(code, current);
-    });
-
-    const { data: priorLines, error: priorError } = await supabase
-      .from('journal_lines')
-      .select(`
-        debit,
-        credit,
-        account_code,
-        journal_entries!inner(entry_date, posted)
-      `)
-      .eq('organization_id', organizationId)
-      .lt('journal_entries.entry_date', start)
-      .eq('journal_entries.posted', true);
-
-    if (priorError) throw priorError;
-
-    const initialTotals = new Map<string, { debit: number; credit: number }>();
-    (priorLines || []).forEach((line: FilaLinea) => {
-      const code = line.account_code ?? '';
-      const current = initialTotals.get(code) || { debit: 0, credit: 0 };
-      current.debit += parseFloat(line.debit) || 0;
-      current.credit += parseFloat(line.credit) || 0;
-      initialTotals.set(code, current);
-    });
+    const [periodTotals, initialTotals] = await Promise.all([
+      saldosPorCuenta(organizationId, start, end),
+      saldosPorCuenta(organizationId, null, instanteAnterior(start)),
+    ]);
 
     return (accounts || []).map((acc: FilaCuenta) => {
       const initial = initialTotals.get(acc.account_code) || { debit: 0, credit: 0 };
       const period = periodTotals.get(acc.account_code) || { debit: 0, credit: 0 };
 
-      let initialDebit = initial.debit;
-      let initialCredit = initial.credit;
-      if (acc.type === 'asset' || acc.type === 'expense') {
-        initialDebit = initial.debit - initial.credit;
-        initialCredit = 0;
-      } else {
-        initialCredit = initial.credit - initial.debit;
-        initialDebit = 0;
-      }
-
-      const finalDebit = initialDebit + period.debit;
-      const finalCredit = initialCredit + period.credit;
+      // Saldo neto (débito − crédito) en la columna que le toca por su signo,
+      // sin importar la naturaleza de la cuenta: un 1305 con saldo acreedor se
+      // ve en «crédito», no como un débito negativo.
+      const inicialNeto = initial.debit - initial.credit;
+      const finalNeto = inicialNeto + period.debit - period.credit;
 
       return {
         account_code: acc.account_code,
         name: acc.name,
         type: acc.type,
         parent_code: acc.parent_code,
-        initial_debit: initialDebit,
-        initial_credit: initialCredit,
+        initial_debit: Math.max(0, inicialNeto),
+        initial_credit: Math.max(0, -inicialNeto),
         period_debit: period.debit,
         period_credit: period.credit,
-        final_debit: Math.max(0, finalDebit - finalCredit),
-        final_credit: Math.max(0, finalCredit - finalDebit),
+        final_debit: Math.max(0, finalNeto),
+        final_credit: Math.max(0, -finalNeto),
       };
     });
   }
@@ -280,33 +270,16 @@ export class ReportesContablesService {
 
     if (accountsError) throw accountsError;
 
-    const { data: lines, error: linesError } = await supabase
-      .from('journal_lines')
-      .select(`
-        debit,
-        credit,
-        account_code,
-        journal_entries!inner(entry_date, posted)
-      `)
-      .eq('organization_id', organizationId)
-      .gte('journal_entries.entry_date', start)
-      .lte('journal_entries.entry_date', end)
-      .eq('journal_entries.posted', true);
-
-    if (linesError) throw linesError;
+    const saldos = await saldosPorCuenta(organizationId, start, end);
 
     const totals = new Map<string, number>();
-    (lines || []).forEach((line: FilaLinea) => {
-      const code = line.account_code ?? '';
-      const acc = (accounts || []).find((a: FilaCuenta) => a.account_code === code);
-      if (!acc) return;
-
-      const current = totals.get(code) || 0;
-      if (acc.type === 'income') {
-        totals.set(code, current + (parseFloat(line.credit) || 0) - (parseFloat(line.debit) || 0));
-      } else {
-        totals.set(code, current + (parseFloat(line.debit) || 0) - (parseFloat(line.credit) || 0));
-      }
+    (accounts || []).forEach((acc: FilaCuenta) => {
+      const saldo = saldos.get(acc.account_code);
+      if (!saldo) return;
+      totals.set(
+        acc.account_code,
+        acc.type === 'income' ? saldo.credit - saldo.debit : saldo.debit - saldo.credit
+      );
     });
 
     const buildTree = (type: string): IncomeStatementRow[] => {
@@ -334,12 +307,11 @@ export class ReportesContablesService {
         }
       });
 
+      // Una cuenta padre también puede tener movimientos propios: su saldo es
+      // el propio más el de sus hijas (antes se descartaba el propio).
       const sumAmounts = (node: IncomeStatementRow): number => {
-        node.amount = (totals.get(node.account_code) || 0);
         const childrenSum = node.children.reduce((sum, child) => sum + sumAmounts(child), 0);
-        if (node.children.length > 0) {
-          node.amount = childrenSum;
-        }
+        node.amount = (totals.get(node.account_code) || 0) + childrenSum;
         return node.amount;
       };
 
@@ -378,33 +350,36 @@ export class ReportesContablesService {
 
     if (accountsError) throw accountsError;
 
-    const { data: lines, error: linesError } = await supabase
-      .from('journal_lines')
-      .select(`
-        debit,
-        credit,
-        account_code,
-        journal_entries!inner(entry_date, posted)
-      `)
-      .eq('organization_id', organizationId)
-      .lte('journal_entries.entry_date', cierreDelDia)
-      .eq('journal_entries.posted', true);
-
-    if (linesError) throw linesError;
+    const saldos = await saldosPorCuenta(organizationId, null, cierreDelDia);
 
     const totals = new Map<string, number>();
-    (lines || []).forEach((line: FilaLinea) => {
-      const code = line.account_code ?? '';
-      const acc = (accounts || []).find((a: FilaCuenta) => a.account_code === code);
-      if (!acc) return;
-
-      const current = totals.get(code) || 0;
-      if (acc.type === 'asset') {
-        totals.set(code, current + (parseFloat(line.debit) || 0) - (parseFloat(line.credit) || 0));
-      } else {
-        totals.set(code, current + (parseFloat(line.credit) || 0) - (parseFloat(line.debit) || 0));
-      }
+    (accounts || []).forEach((acc: FilaCuenta) => {
+      const saldo = saldos.get(acc.account_code);
+      if (!saldo) return;
+      totals.set(
+        acc.account_code,
+        acc.type === 'asset' ? saldo.debit - saldo.credit : saldo.credit - saldo.debit
+      );
     });
+
+    // Resultado acumulado no cerrado contra patrimonio: ingresos − gastos de
+    // todas las cuentas de resultado hasta la fecha de corte. Sin él, el
+    // balance general «descuadra» siempre por el importe de la utilidad.
+    const { data: cuentasResultado, error: cuentasResultadoError } = await supabase
+      .from('chart_of_accounts')
+      .select('account_code, type')
+      .eq('organization_id', organizationId)
+      .in('type', ['income', 'expense']);
+    if (cuentasResultadoError) throw cuentasResultadoError;
+    const resultadoEjercicio = (cuentasResultado || []).reduce(
+      (acumulado: number, cuenta: { account_code: string; type: string }) => {
+        const saldo = saldos.get(cuenta.account_code);
+        if (!saldo) return acumulado;
+        // Ingresos suman (crédito − débito) y gastos restan (débito − crédito): en ambos casos, crédito − débito.
+        return acumulado + saldo.credit - saldo.debit;
+      },
+      0
+    );
 
     const buildTree = (type: string): BalanceSheetRow[] => {
       const typeAccounts = (accounts || []).filter((a: FilaCuenta) => a.type === type);
@@ -431,10 +406,11 @@ export class ReportesContablesService {
         }
       });
 
+      // Saldo propio de la cuenta más el de sus hijas (antes el padre perdía el propio).
       const sumAmounts = (node: BalanceSheetRow): number => {
         const ownAmount = totals.get(node.account_code) || 0;
         const childrenSum = node.children.reduce((sum, child) => sum + sumAmounts(child), 0);
-        node.amount = node.children.length > 0 ? childrenSum : ownAmount;
+        node.amount = ownAmount + childrenSum;
         return node.amount;
       };
 
@@ -445,6 +421,16 @@ export class ReportesContablesService {
     const assets = buildTree('asset');
     const liabilities = buildTree('liability');
     const equity = buildTree('equity');
+    if (Math.abs(resultadoEjercicio) >= 0.005) {
+      equity.push({
+        account_code: 'RESULTADO',
+        name: 'Resultado del ejercicio (sin cerrar)',
+        type: 'equity',
+        parent_code: null,
+        amount: resultadoEjercicio,
+        children: [],
+      });
+    }
 
     const totalAssets = assets.reduce((sum, r) => sum + r.amount, 0);
     const totalLiabilities = liabilities.reduce((sum, r) => sum + r.amount, 0);
@@ -479,50 +465,55 @@ export class ReportesContablesService {
 
     if (accountError || !account) return null;
 
-    const { data: priorLines, error: priorError } = await supabase
-      .from('journal_lines')
-      .select(`
-        debit,
-        credit,
-        journal_entries!inner(entry_date, posted)
-      `)
-      .eq('organization_id', organizationId)
-      .eq('account_code', accountCode)
-      .lt('journal_entries.entry_date', start)
-      .eq('journal_entries.posted', true);
+    // Saldo inicial sumado en la base: antes se traían las líneas sin paginar
+    // y PostgREST las cortaba en 1.000 filas.
+    const saldoPrevio = (await saldosPorCuenta(organizationId, null, instanteAnterior(start))).get(accountCode)
+      ?? { debit: 0, credit: 0 };
+    const openingBalance = account.type === 'asset' || account.type === 'expense'
+      ? saldoPrevio.debit - saldoPrevio.credit
+      : saldoPrevio.credit - saldoPrevio.debit;
 
-    if (priorError) throw priorError;
+    // Movimientos del periodo en páginas de 1.000 (el tope de PostgREST).
+    const TAMANO_PAGINA = 1000;
+    const lines: FilaLinea[] = [];
+    for (let desde = 0; ; desde += TAMANO_PAGINA) {
+      const { data: pagina, error: linesError } = await supabase
+        .from('journal_lines')
+        .select(`
+          id,
+          debit,
+          credit,
+          description,
+          journal_entry_id,
+          journal_entries!inner(id, entry_date, memo, source, posted)
+        `)
+        .eq('organization_id', organizationId)
+        .eq('account_code', accountCode)
+        .gte('journal_entries.entry_date', start)
+        .lte('journal_entries.entry_date', end)
+        .eq('journal_entries.posted', true)
+        .order('id')
+        .range(desde, desde + TAMANO_PAGINA - 1);
 
-    let openingBalance = 0;
-    (priorLines || []).forEach((line: FilaLinea) => {
-      if (account.type === 'asset' || account.type === 'expense') {
-        openingBalance += (parseFloat(line.debit) || 0) - (parseFloat(line.credit) || 0);
-      } else {
-        openingBalance += (parseFloat(line.credit) || 0) - (parseFloat(line.debit) || 0);
-      }
+      if (linesError) throw linesError;
+      lines.push(...((pagina || []) as FilaLinea[]));
+      if (!pagina || pagina.length < TAMANO_PAGINA) break;
+    }
+
+    // El orden por la columna de la tabla relacionada no ordena las líneas:
+    // el saldo corrido exige ordenarlas aquí por fecha del asiento y luego id.
+    const fechaDe = (line: FilaLinea): string => {
+      const je = Array.isArray(line.journal_entries) ? line.journal_entries[0] : line.journal_entries;
+      return je?.entry_date || '';
+    };
+    lines.sort((a, b) => {
+      const fa = new Date(fechaDe(a)).getTime();
+      const fb = new Date(fechaDe(b)).getTime();
+      return fa !== fb ? fa - fb : (a.id ?? 0) - (b.id ?? 0);
     });
 
-    const { data: lines, error: linesError } = await supabase
-      .from('journal_lines')
-      .select(`
-        id,
-        debit,
-        credit,
-        description,
-        journal_entry_id,
-        journal_entries!inner(id, entry_date, memo, source, posted)
-      `)
-      .eq('organization_id', organizationId)
-      .eq('account_code', accountCode)
-      .gte('journal_entries.entry_date', start)
-      .lte('journal_entries.entry_date', end)
-      .eq('journal_entries.posted', true)
-      .order('journal_entries.entry_date');
-
-    if (linesError) throw linesError;
-
     let runningBalance = openingBalance;
-    const entries: LedgerEntry[] = (lines || []).map((line: FilaLinea) => {
+    const entries: LedgerEntry[] = lines.map((line: FilaLinea) => {
       const debit = parseFloat(line.debit) || 0;
       const credit = parseFloat(line.credit) || 0;
 

@@ -80,7 +80,11 @@ vive fuera del repo, en `docs/auditoria-finanzas/` (ignorado por `.gitignore`).
 | [F-65](F-65.md) | El asiento de comisión de OTA llama a `fn_create_journal_entry` con una firma que no existe | Alta | Abierto: la reordenación de argumentos es decisión contable | CRM / comisiones |
 | [F-66](F-66.md) | Los leads del formulario web caían en el embudo de onboarding | Alta | Corregido y verificado (2026-09-23) · 23 leads históricos sin tocar | CRM / captación web |
 | [F-67](F-67.md) | Un pedido web confirmado dos veces: dos ventas, facturas, pagos y salidas de stock | Alta | Corregido y verificado (2026-09-23, ADR-CC-011; migraciones con etiqueta `F-63`) | Cierre contable |
-| [F-68](F-68.md) | Tres productos de la org 144 son ingrediente de su propia receta y descuentan stock dos veces | Media | Abierto: decisión de la organización | Cierre contable |
+| [F-68](F-68.md) | Tres productos de la org 144 son ingrediente de su propia receta y descuentan stock dos veces | Media | Corregido y verificado (2026-09-23) · 67 salidas compensadas por kardex, nada borrado | Cierre contable |
+| [F-70](F-70.md) | Los periodos mensuales generados se solapaban (fin el 27 del mes siguiente) | Alta | Corregido y verificado (2026-09-23) · 996 periodos corregidos | Cierre contable |
+| [F-71](F-71.md) | Los informes contables salían truncados a 1.000 líneas; el padre perdía su saldo propio | Alta | Corregido (2026-09-24, ADR-CC-012) | Cierre contable |
+| [F-72](F-72.md) | Anular una factura de compra recibida falla siempre (`source = 'purchase_void'` fuera del CHECK) | Media | Abierto: zona de compras | Cierre contable |
+| [F-73](F-73.md) | Anular una venta no devuelve su costo ni su stock | Media | Abierto: pendiente de aprobación | Cierre contable |
 
 ## Notas
 

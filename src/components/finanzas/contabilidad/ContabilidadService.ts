@@ -15,7 +15,51 @@ export interface JournalEntry {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  fact_key?: string | null;
   lines?: JournalLine[];
+}
+
+export interface EstadoReversion {
+  /** Contra-asiento que revirtió este asiento. */
+  revertidoPor: number | null;
+  /** Asiento original, si este es un contra-asiento. */
+  reversionDe: number | null;
+}
+
+/** Original → contra-asiento, a partir de los asientos ya cargados. */
+export function mapaDeReversiones(asientos: Pick<JournalEntry, 'id' | 'source' | 'source_id'>[]): Map<number, number> {
+  const mapa = new Map<number, number>();
+  for (const a of asientos) {
+    if (a.source === 'reversal' && a.source_id) {
+      const original = Number(a.source_id);
+      if (Number.isFinite(original)) mapa.set(original, a.id);
+    }
+  }
+  return mapa;
+}
+
+const MENSAJES_ASIENTO: Record<string, string> = {
+  SIN_PERMISO: 'No tienes permiso para esta acción contable.',
+  MOTIVO_REQUERIDO: 'Escribe el motivo de la reversión (al menos 5 caracteres).',
+  ES_CONTRA_ASIENTO: 'Un contra-asiento no se revierte. Registra un asiento manual nuevo.',
+  AUTOMATICO_SE_REVIERTE_ANULANDO_DOCUMENTO: 'Este asiento es automático: se revierte anulando su documento de origen.',
+  ES_BORRADOR: 'Un borrador no se revierte: se descarta.',
+  ASIENTO_YA_REVERTIDO: 'Este asiento ya tiene su contra-asiento.',
+  PERIODO_CERRADO: 'El periodo contable está cerrado.',
+  ASIENTO_DESCUADRADO: 'Los débitos y los créditos no cuadran.',
+  CUENTA_INEXISTENTE: 'Una de las cuentas no existe en el plan de cuentas.',
+  CUENTA_NO_ES_DE_DETALLE: 'Una de las cuentas tiene subcuentas: usa una de ellas.',
+  LINEA_INVALIDA: 'Cada línea va al débito o al crédito, con un importe mayor que cero.',
+  LINEAS_INSUFICIENTES: 'Un asiento necesita al menos dos líneas.',
+  SUCURSAL_INVALIDA: 'Selecciona una sucursal de la organización.',
+  ASIENTO_PUBLICADO_INMUTABLE: 'Un asiento publicado no se edita ni se borra: se revierte.',
+};
+
+/** Traduce el código que devuelve la base a un mensaje para el usuario. */
+export function mensajeErrorAsiento(error: { message?: string } | null | undefined): string {
+  const texto = error?.message ?? '';
+  const codigo = texto.split(':')[0].trim();
+  return MENSAJES_ASIENTO[codigo] ?? (texto || 'No se pudo completar la operación contable.');
 }
 
 export interface JournalLine {
@@ -253,16 +297,20 @@ export class ContabilidadService {
     };
   }
 
+  /**
+   * Crea un asiento manual en una sola transacción de la base
+   * (`fn_asiento_manual_crear`): valida cuentas de detalle, partida doble,
+   * permiso y periodo abierto, y le pone su clave de hecho `manual:{uuid}`.
+   * Ver ADR-CC-012.
+   */
   static async crearAsiento(asiento: {
     entry_date: string;
     memo?: string;
-    source?: string;
-    source_id?: string;
     currency_code?: string;
     exchange_rate?: number;
     base_currency_code?: string;
     lines: { account_code: string; description?: string; debit: number; credit: number; cost_center_id?: string }[];
-  }, branchId?: number | null): Promise<JournalEntry> {
+  }, branchId?: number | null, publicar = false): Promise<JournalEntry> {
     const organizationId = this.getOrganizationId();
     const effectiveBranchId = branchId !== undefined ? branchId : this.getBranchId();
     // `journal_entries.entry_date` es timestamptz y aqui llega ya como
@@ -292,83 +340,92 @@ export class ContabilidadService {
       }
     }
 
-    // Crear entrada
-    const { data: entry, error: entryError } = await supabase
-      .from('journal_entries')
-      .insert({
-        organization_id: organizationId,
-        branch_id: effectiveBranchId,
-        entry_date: asiento.entry_date,
-        memo: asiento.memo,
-        source: asiento.source,
-        source_id: asiento.source_id,
-        posted: false,
-        currency_code: currencyCode,
-        exchange_rate: exchangeRate,
-        base_currency_code: baseCurrency,
-      })
-      .select()
-      .single();
-
-    if (entryError) {
-      console.error('Error creando asiento:', entryError);
-      throw entryError;
-    }
-
-    // Crear líneas con conversión a moneda base
-    const lines = asiento.lines.map(line => {
-      const debit = line.debit || 0;
-      const credit = line.credit || 0;
-      return {
-        journal_entry_id: entry.id,
+    const { data: entryId, error } = await supabase.rpc('fn_asiento_manual_crear', {
+      p_organization_id: organizationId,
+      p_branch_id: effectiveBranchId,
+      p_fecha: asiento.entry_date,
+      p_memo: asiento.memo ?? null,
+      p_lineas: asiento.lines.map(line => ({
         account_code: line.account_code,
-        description: line.description,
-        debit,
-        credit,
-        debit_base: debit * exchangeRate,
-        credit_base: credit * exchangeRate,
-        currency_code: currencyCode,
-        exchange_rate: exchangeRate,
+        description: line.description ?? null,
+        debit: line.debit || 0,
+        credit: line.credit || 0,
         cost_center_id: line.cost_center_id || null,
-        organization_id: organizationId,
-      };
+      })),
+      p_publicar: publicar,
+      p_currency_code: currencyCode,
+      p_exchange_rate: exchangeRate,
+      p_base_currency_code: baseCurrency,
     });
 
-    const { error: linesError } = await supabase
-      .from('journal_lines')
-      .insert(lines);
-
-    if (linesError) {
-      console.error('Error creando líneas:', linesError);
-      throw linesError;
+    if (error) {
+      console.error('Error creando asiento:', error);
+      throw new Error(mensajeErrorAsiento(error));
     }
 
+    const entry = await this.obtenerAsiento(entryId as number);
+    if (!entry) throw new Error('El asiento se creó pero no se pudo leer');
     return entry;
   }
 
   static async publicarAsiento(id: number): Promise<void> {
-    const { error } = await supabase
-      .from('journal_entries')
-      .update({ posted: true, updated_at: new Date().toISOString() })
-      .eq('id', id);
+    const { error } = await supabase.rpc('fn_asiento_manual_publicar', { p_entry_id: id });
 
     if (error) {
       console.error('Error publicando asiento:', error);
-      throw error;
+      throw new Error(mensajeErrorAsiento(error));
     }
   }
 
+  /** Descarta un borrador manual. Un asiento publicado no se borra: se revierte. */
   static async eliminarAsiento(id: number): Promise<void> {
-    // Primero eliminar líneas
-    await supabase.from('journal_lines').delete().eq('journal_entry_id', id);
-    
-    // Luego eliminar entrada
-    const { error } = await supabase.from('journal_entries').delete().eq('id', id);
+    const { error } = await supabase.rpc('fn_asiento_manual_descartar', { p_entry_id: id });
 
     if (error) {
-      console.error('Error eliminando asiento:', error);
-      throw error;
+      console.error('Error descartando asiento:', error);
+      throw new Error(mensajeErrorAsiento(error));
     }
+  }
+
+  /**
+   * Revierte un asiento manual publicado con un contra-asiento y un motivo.
+   * El permiso «Revertir asientos» y el periodo se resuelven en la base.
+   * Devuelve el id del contra-asiento.
+   */
+  static async revertirAsiento(id: number, motivo: string): Promise<number> {
+    const { data, error } = await supabase.rpc('fn_revertir_asiento_manual', {
+      p_entry_id: id,
+      p_motivo: motivo,
+    });
+
+    if (error) {
+      console.error('Error revirtiendo asiento:', error);
+      throw new Error(mensajeErrorAsiento(error));
+    }
+    return data as number;
+  }
+
+  /** Solo decide si se muestra el botón: la base vuelve a comprobarlo al revertir. */
+  static async puedeRevertir(): Promise<boolean> {
+    const { data, error } = await supabase.rpc('fn_tiene_permiso', {
+      p_organization_id: this.getOrganizationId(),
+      p_code: 'accounting.reverse',
+    });
+    return !error && data === true;
+  }
+
+  /** Enlace entre un asiento y su contra-asiento, en los dos sentidos. */
+  static async obtenerReversion(entry: JournalEntry): Promise<EstadoReversion> {
+    if (entry.source === 'reversal') {
+      return { revertidoPor: null, reversionDe: Number(entry.source_id) || null };
+    }
+    const { data } = await supabase
+      .from('journal_entries')
+      .select('id')
+      .eq('organization_id', entry.organization_id)
+      .eq('fact_key', `reversal:${entry.id}`)
+      .maybeSingle();
+    return { revertidoPor: data?.id ?? null, reversionDe: null };
   }
 
   static async duplicarAsiento(id: number): Promise<JournalEntry> {

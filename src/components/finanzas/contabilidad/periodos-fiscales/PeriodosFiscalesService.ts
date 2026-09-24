@@ -7,10 +7,12 @@ export interface FiscalPeriod {
   organization_id: number;
   year: number;
   month: number | null;
-  period_type: 'monthly' | 'quarterly' | 'annual';
+  // Valores del CHECK de la base (fiscal_periods_period_type_check).
+  period_type: 'monthly' | 'quarterly' | 'yearly';
   start_date: string;
   end_date: string;
-  status: 'open' | 'closed' | 'locked';
+  // Valores del CHECK de la base: cerrar un periodo es bloquearlo.
+  status: 'open' | 'closing' | 'closed';
   closed_by: string | null;
   closed_at: string | null;
   notes: string | null;
@@ -87,15 +89,6 @@ export class PeriodosFiscalesService {
     if (error) throw error;
   }
 
-  static async bloquearPeriodo(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('fiscal_periods')
-      .update({ status: 'locked' })
-      .eq('id', id);
-
-    if (error) throw error;
-  }
-
   static async generarPeriodosMensuales(year: number): Promise<void> {
     const orgId = this.getOrganizationId();
     if (!orgId) throw new Error('No hay organización activa');
@@ -136,7 +129,7 @@ export class PeriodosFiscalesService {
         organization_id: orgId,
         year,
         month: null,
-        period_type: 'annual',
+        period_type: 'yearly',
         start_date: `${year}-01-01`,
         end_date: `${year}-12-31`,
         status: 'open',

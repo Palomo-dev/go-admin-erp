@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -13,7 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ContabilidadService, JournalEntry, ChartAccount } from '../ContabilidadService';
+import { ContabilidadService, JournalEntry, ChartAccount, mapaDeReversiones, mensajeErrorAsiento } from '../ContabilidadService';
+import { Switch } from '@/components/ui/switch';
 import { formatCurrency } from '@/utils/Utils';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CopyableId } from '@/components/common/CopyableId';
@@ -48,6 +49,9 @@ export function AsientosPage() {
   const [filterPosted, setFilterPosted] = useState<string>('all');
   const [filterSource, setFilterSource] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  // Libro diario completo por defecto: los contra-asientos se ven siempre,
+  // enlazados a su original. El filtro solo oculta los pares ya revertidos.
+  const [ocultarRevertidos, setOcultarRevertidos] = useState(false);
   const [formData, setFormData] = useState({
     entry_date: '',
     memo: '',
@@ -165,7 +169,7 @@ export function AsientosPage() {
       loadData();
     } catch (error) {
       console.error('Error creando asiento:', error);
-      toast.error('Error al crear el asiento');
+      toast.error(error instanceof Error ? error.message : 'Error al crear el asiento');
     } finally {
       setIsProcessing(false);
     }
@@ -176,33 +180,36 @@ export function AsientosPage() {
       await ContabilidadService.publicarAsiento(id);
       toast.success('Asiento publicado exitosamente');
       loadData();
-    } catch {
-      toast.error('Error al publicar el asiento');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error al publicar el asiento');
     }
   };
 
   const handleDuplicate = async (id: number) => {
     try {
       await ContabilidadService.duplicarAsiento(id);
-      toast.success('Asiento duplicado exitosamente');
+      toast.success('Asiento duplicado como borrador');
       loadData();
-    } catch {
-      toast.error('Error al duplicar el asiento');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error al duplicar el asiento');
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('¿Estás seguro de eliminar este asiento?')) return;
+    if (!confirm('¿Descartar este borrador? Un borrador nunca se publicó y no deja rastro contable.')) return;
     try {
       await ContabilidadService.eliminarAsiento(id);
-      toast.success('Asiento eliminado exitosamente');
+      toast.success('Borrador descartado');
       loadData();
-    } catch {
-      toast.error('Error al eliminar el asiento');
+    } catch (error) {
+      toast.error(mensajeErrorAsiento(error instanceof Error ? error : null));
     }
   };
 
+  const reversiones = useMemo(() => mapaDeReversiones(asientos), [asientos]);
+
   const filteredAsientos = asientos.filter(a => {
+    if (ocultarRevertidos && (reversiones.has(a.id) || a.source === 'reversal')) return false;
     if (filterPosted === 'posted' && !a.posted) return false;
     if (filterPosted === 'draft' && a.posted) return false;
     if (filterSource !== 'all' && a.source !== filterSource) return false;
@@ -213,7 +220,7 @@ export function AsientosPage() {
     return true;
   });
 
-  const uniqueSources = Array.from(new Set(asientos.map(a => a.source).filter(Boolean)));
+  const uniqueSources = Array.from(new Set(asientos.map(a => a.source).filter(s => s && s !== 'manual')));
 
   if (isLoading) {
     return (
@@ -323,6 +330,10 @@ export function AsientosPage() {
                 ))}
               </SelectContent>
             </Select>
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+              <Switch checked={ocultarRevertidos} onCheckedChange={setOcultarRevertidos} />
+              Ocultar pares revertidos
+            </label>
           </div>
         </CardContent>
       </Card>
@@ -370,10 +381,26 @@ export function AsientosPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {asiento.posted 
-                      ? <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Publicado</Badge>
-                      : <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">Borrador</Badge>
-                    }
+                    <div className="flex flex-wrap gap-1">
+                      {asiento.posted
+                        ? <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Publicado</Badge>
+                        : <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">Borrador</Badge>
+                      }
+                      {reversiones.has(asiento.id) && (
+                        <Link href={`/app/finanzas/contabilidad/asientos/${reversiones.get(asiento.id)}`}>
+                          <Badge variant="outline" className="border-red-300 text-red-700 dark:border-red-700 dark:text-red-400">
+                            Revertido
+                          </Badge>
+                        </Link>
+                      )}
+                      {asiento.source === 'reversal' && asiento.source_id && (
+                        <Link href={`/app/finanzas/contabilidad/asientos/${asiento.source_id}`}>
+                          <Badge variant="outline" className="border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300">
+                            Reversión de #{asiento.source_id}
+                          </Badge>
+                        </Link>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">

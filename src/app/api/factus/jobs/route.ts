@@ -12,17 +12,47 @@
  * registro), permiso `finance.*` resuelto en el servidor y el job tiene que ser
  * de la organización (404 si no) y estar en un estado que admita la acción
  * (409 si no).
+ *
+ * ESCRITURA SOLO DEL SERVIDOR (GO-sec, 2026-09-24): la RLS de
+ * `electronic_invoicing_jobs`/`_events` es de solo lectura para el cliente
+ * (migración 20260925120000). Reintentar y cancelar pasan por
+ * `fn_einvoicing_accion_manual` (service_role), que en una transacción
+ * actualiza el job, registra el evento con el actor y vuelve a exigir
+ * pertenencia y estado. Un reintento no toca `hold_reason`: la retención solo
+ * la quita la liberación de `/api/factus/config`.
  */
 
 import { NextResponse } from 'next/server';
 import { withOrg, readOrgBody, OrgContextError, type ServerOrgContext } from '@/lib/utils/orgContext';
 import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
+import { getServiceClient } from '@/lib/supabase/server-service';
 
 const RUTA = 'factus/jobs';
 
-/** Estados desde los que tiene sentido reintentar o cancelar. */
+/** Estados desde los que tiene sentido reintentar o cancelar (los mismos que exige la función SQL). */
 const REINTENTABLES = ['failed', 'cancelled', 'rejected'];
 const CANCELABLES = ['pending', 'failed'];
+
+/**
+ * Reintento o cancelación en el servidor. La organización y el actor salen de
+ * la sesión (`ctx`), nunca del cliente.
+ */
+async function accionManual(ctx: ServerOrgContext, jobId: string, accion: 'retry' | 'cancel'): Promise<Record<string, unknown>> {
+  const { data, error } = await getServiceClient().rpc('fn_einvoicing_accion_manual', {
+    p_job_id: jobId,
+    p_organization_id: ctx.organizationId,
+    p_accion: accion,
+    p_actor: ctx.userId,
+  });
+  if (error) {
+    if (error.code === 'P0002') throw new OrgContextError('Job no encontrado', 404, 'NOT_FOUND');
+    if (error.code === '55000') throw new OrgContextError(error.message, 409, 'INVALID_STATE');
+    if (error.code === '42501') throw new OrgContextError('Sin acceso a la organización', 403, 'FORBIDDEN');
+    console.error(`[${RUTA}] fn_einvoicing_accion_manual (${accion}) falló:`, error.message);
+    throw new OrgContextError(accion === 'retry' ? 'Error actualizando job' : 'Error cancelando job', 500, 'INTERNAL');
+  }
+  return (data ?? {}) as Record<string, unknown>;
+}
 
 async function jobPropio(ctx: ServerOrgContext, jobId: string): Promise<{ id: string; status: string }> {
   const { data, error } = await ctx.supabase
@@ -113,35 +143,9 @@ export const POST = withOrg(async (ctx, request) => {
       );
     }
 
-    // Marcar job para reintento (filtro por organización y estado: sin carrera)
-    const { data, error } = await ctx.supabase
-      .from('electronic_invoicing_jobs')
-      .update({
-        status: 'pending',
-        next_retry_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', job.id)
-      .eq('organization_id', ctx.organizationId)
-      .in('status', REINTENTABLES)
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json(
-        { error: 'Error actualizando job' },
-        { status: 500 }
-      );
-    }
-
-    await ctx.supabase
-      .from('electronic_invoicing_events')
-      .insert({
-        job_id: job.id,
-        organization_id: ctx.organizationId,
-        event_type: 'retry_scheduled',
-        event_message: 'Reintento manual programado',
-      });
+    // Reintento en el servidor: job + evento en una transacción, con el mismo
+    // filtro de organización y estado (sin carrera).
+    const data = await accionManual(ctx, job.id, 'retry');
 
     return NextResponse.json({
       success: true,
@@ -176,33 +180,7 @@ export const DELETE = withOrg(async (ctx, request) => {
       );
     }
 
-    const { data, error } = await ctx.supabase
-      .from('electronic_invoicing_jobs')
-      .update({
-        status: 'cancelled',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', job.id)
-      .eq('organization_id', ctx.organizationId)
-      .in('status', CANCELABLES)
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json(
-        { error: 'Error cancelando job' },
-        { status: 500 }
-      );
-    }
-
-    await ctx.supabase
-      .from('electronic_invoicing_events')
-      .insert({
-        job_id: job.id,
-        organization_id: ctx.organizationId,
-        event_type: 'cancelled',
-        event_message: 'Job cancelado manualmente',
-      });
+    const data = await accionManual(ctx, job.id, 'cancel');
 
     return NextResponse.json({
       success: true,

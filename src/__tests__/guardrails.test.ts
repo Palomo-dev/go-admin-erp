@@ -2387,3 +2387,47 @@ describe('29. Sesión verificada: nada decodifica un JWT sin verificar en el mid
     expect(cuerpo).toMatch(/localhost/);
   });
 });
+
+/**
+ * 30. Cola de facturación electrónica: el navegador solo lee (GO-sec, 2026-09-24).
+ *
+ * La RLS de `electronic_invoicing_jobs`/`_events` dejaba escribir a cualquier
+ * miembro (crear jobs, cambiar estados, quitar una retención) y el navegador
+ * escribía ahí. Ahora es de solo lectura (migración 20260925120000) y las
+ * escrituras son del servidor: la cola (`colaFacturacion.server.ts`, service
+ * role), las funciones SECURITY DEFINER y `/api/factus/jobs`, que reintenta o
+ * cancela con `fn_einvoicing_accion_manual` tras `withOrg` + permiso.
+ */
+describe('30. Cola de facturación electrónica: nada fuera del servidor la escribe', () => {
+  const ESCRITURA_COLA_RE = /\.from\(\s*['"]electronic_invoicing_(?:jobs|events)['"]\s*\)\s*\.(?:insert|update|upsert|delete)\s*\(/;
+
+  test('ningún archivo de cliente (fuera de src/app/api y *.server.ts) escribe la cola', () => {
+    const infracciones = walkDir(SRC_ROOT)
+      .filter((f) => !f.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((f) => !f.includes(`${path.sep}app${path.sep}api${path.sep}`))
+      .filter((f) => !/\.server\.ts$/.test(f))
+      .filter((f) => ESCRITURA_COLA_RE.test(stripAllComments(readFile(f)).replace(/\s+/g, ' ')))
+      .map(rel);
+    expect(infracciones).toEqual([]);
+  });
+
+  test('/api/factus/jobs escribe solo con fn_einvoicing_accion_manual, no con la sesión del usuario', () => {
+    const src = stripAllComments(readFile(path.join(SRC_ROOT, 'app', 'api', 'factus', 'jobs', 'route.ts')));
+    expect(src.replace(/\s+/g, ' ')).not.toMatch(ESCRITURA_COLA_RE);
+    expect(src).toMatch(/rpc\(\s*'fn_einvoicing_accion_manual'/);
+    expect(src).toMatch(/p_organization_id:\s*ctx\.organizationId/);
+    expect(src).toMatch(/p_actor:\s*ctx\.userId/);
+  });
+
+  test('la migración deja la RLS de la cola en solo lectura y la función solo para service_role', () => {
+    const sql = readFile(path.join(REPO_ROOT, 'supabase', 'migrations', '20260925120000_einvoicing_cola_escritura_solo_servidor.sql'));
+    expect(sql).toMatch(/create policy electronic_invoicing_jobs_select_miembros[\s\S]*?for select[\s\S]*?to authenticated/);
+    expect(sql).toMatch(/create policy electronic_invoicing_events_select_miembros[\s\S]*?for select[\s\S]*?to authenticated/);
+    expect(sql).toMatch(/drop policy if exists electronic_invoicing_jobs_org_isolation/);
+    expect(sql).toMatch(/revoke insert, update, delete, truncate, references, trigger on public\.electronic_invoicing_jobs from anon, authenticated/);
+    expect(sql).toMatch(/revoke all on function public\.fn_einvoicing_accion_manual\(uuid, integer, text, uuid\) from public, anon, authenticated/);
+    // Ninguna sentencia de la migración quita una retención (los comentarios sí la mencionan).
+    expect(sql.replace(/--.*$/gm, '')).not.toMatch(/hold_reason\s*=\s*null/);
+    expect(fs.existsSync(path.join(REPO_ROOT, 'supabase', 'rollbacks', '20260925120000_einvoicing_cola_escritura_solo_servidor_rollback.sql'))).toBe(true);
+  });
+});

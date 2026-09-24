@@ -380,20 +380,23 @@ class NotasCreditoService {
       return { success: false, error: 'La nota de crédito ya fue aceptada por la DIAN' };
     }
 
-    // Actualizar estado a pending para reintento
-    const { error } = await supabase
-      .from('electronic_invoicing_jobs')
-      .update({
-        status: 'pending',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', job.id);
-
-    if (error) {
-      return { success: false, error: error.message };
+    // El reintento lo hace el servidor (GO-sec, 2026-09-24: la cola es de solo
+    // lectura para el navegador). Ahí se resuelven la organización de la
+    // sesión, el permiso y los estados que admiten reintento (409 si no).
+    try {
+      const response = await fetch('/api/factus/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: job.id, action: 'retry' }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        return { success: false, error: data.error || 'No se pudo programar el reintento' };
+      }
+      return { success: true };
+    } catch (error: unknown) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
-
-    return { success: true };
   }
 
   /**
@@ -403,8 +406,8 @@ class NotasCreditoService {
     invoiceId: string,
     organizationId: number,
     reason: string,
-    items?: any[]
-  ): Promise<{ success: boolean; error?: string; data?: any }> {
+    items?: Array<Record<string, unknown>>
+  ): Promise<{ success: boolean; error?: string; data?: { cufe?: string; [clave: string]: unknown } }> {
     try {
       const response = await fetch('/api/factus/credit-note', {
         method: 'POST',
@@ -424,9 +427,9 @@ class NotasCreditoService {
       }
 
       return { success: true, data: result.data };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error sending credit note to Factus:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
 

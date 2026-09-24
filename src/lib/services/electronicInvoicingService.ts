@@ -63,34 +63,35 @@ export interface InvoiceForEInvoicing {
   einvoice_qr?: string | null;
 }
 
-class ElectronicInvoicingService {
-  /**
-   * Crear un job de facturación electrónica para una factura
-   */
-  async createJob(params: CreateJobParams): Promise<{ success: boolean; jobId?: string; error?: string }> {
-    try {
-      const { data, error } = await supabase
-        .from('electronic_invoicing_jobs')
-        .insert({
-          organization_id: params.organizationId,
-          invoice_id: params.invoiceId,
-          document_type: params.documentType || 'invoice',
-          provider: params.provider || 'factus',
-          status: 'pending',
-          attempt_count: 0,
-          max_attempts: 5,
-        })
-        .select('id')
-        .single();
-
-      if (error) throw error;
-
-      return { success: true, jobId: data.id };
-    } catch (error: unknown) {
-      console.error('Error creating e-invoice job:', error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
-    }
+/**
+ * Reintentar o cancelar un job en el servidor (`/api/factus/jobs`): la cola es
+ * de solo lectura para el navegador (GO-sec, 2026-09-24). Ahí se resuelven la
+ * organización de la sesión, el permiso `finance.*` y el estado admitido.
+ */
+async function accionEnServidor(
+  jobId: string,
+  accion: 'retry' | 'cancel'
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response =
+      accion === 'retry'
+        ? await fetch('/api/factus/jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobId, action: 'retry' }),
+          })
+        : await fetch(`/api/factus/jobs?jobId=${encodeURIComponent(jobId)}`, { method: 'DELETE' });
+    const data = (await response.json().catch(() => ({}))) as { error?: string };
+    if (!response.ok) return { success: false, error: data.error || 'No se pudo actualizar el documento' };
+    return { success: true };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
+}
+
+class ElectronicInvoicingService {
+  // Crear un job ya no se hace desde el navegador: lo crea el servidor al
+  // enviar la factura (`sendToFactus` → /api/factus/invoice → encolarDocumento).
 
   /**
    * Obtener el estado de facturación electrónica de una factura
@@ -175,46 +176,17 @@ class ElectronicInvoicingService {
   }
 
   /**
-   * Reintentar envío de factura
+   * Reintentar envío de factura (en el servidor)
    */
   async retryJob(jobId: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { error } = await supabase
-        .from('electronic_invoicing_jobs')
-        .update({
-          status: 'pending',
-          next_retry_at: new Date().toISOString(),
-          error_code: null,
-          error_message: null,
-        })
-        .eq('id', jobId);
-
-      if (error) throw error;
-
-      return { success: true };
-    } catch (error: unknown) {
-      console.error('Error retrying job:', error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
-    }
+    return accionEnServidor(jobId, 'retry');
   }
 
   /**
-   * Cancelar job de facturación electrónica
+   * Cancelar job de facturación electrónica (en el servidor)
    */
   async cancelJob(jobId: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { error } = await supabase
-        .from('electronic_invoicing_jobs')
-        .update({ status: 'cancelled' })
-        .eq('id', jobId);
-
-      if (error) throw error;
-
-      return { success: true };
-    } catch (error: unknown) {
-      console.error('Error cancelling job:', error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
-    }
+    return accionEnServidor(jobId, 'cancel');
   }
 
   /**

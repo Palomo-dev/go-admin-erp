@@ -9813,5 +9813,271 @@
       "pago_parcial": "Pago parcial",
       "pendiente_pago": "Pendiente de pago"
     }
+  },
+  "cartera": {
+    "titulo": "Cuentas por cobrar",
+    "migas": {
+      "pos": "POS",
+      "finanzas": "Finanzas",
+      "cartera": "Cartera"
+    },
+    "estados": {
+      "vencidaDias": "Vencida {dias} d",
+      "current": "Al día",
+      "partial": "Pago parcial",
+      "overdue": "Vencida",
+      "paid": "Pagada",
+      "cancelled": "Anulada"
+    },
+    "antiguedad": {
+      "etiqueta": "Antigüedad de la cartera",
+      "filtrar": "Filtrar por antigüedad",
+      "tramos": {
+        "al_dia": "Al día",
+        "d1_30": "1-30 días",
+        "d31_60": "31-60 días",
+        "d61_90": "61-90 días",
+        "d90_mas": "Más de 90 días"
+      },
+      "cuentas": "{count, plural, one {# cuenta} other {# cuentas}}"
+    },
+    "listado": {
+      "sustantivo": {
+        "singular": "cuenta",
+        "plural": "cuentas"
+      },
+      "subtitulo": "{count, plural, one {{n} cuenta abierta} other {{n} cuentas abiertas}}",
+      "actualizar": "Actualizar",
+      "exportar": "Exportar CSV",
+      "exportando": "Exportando…",
+      "exportarError": "No se pudo exportar.",
+      "kpis": {
+        "etiqueta": "Indicadores de cartera",
+        "porCobrar": "Total por cobrar",
+        "alDia": "Al día",
+        "vencida": "Vencida",
+        "vencidasDetalle": "{count, plural, one {{n} cuenta vencida} other {{n} cuentas vencidas}}",
+        "promedioCobro": "Promedio de cobro",
+        "dias": "{dias} días",
+        "promedioDetalle": "Cuentas pagadas en los últimos 90 días"
+      },
+      "buscar": {
+        "placeholder": "Buscar por cliente, documento o factura",
+        "etiqueta": "Buscar cuentas por cobrar"
+      },
+      "filtros": {
+        "verN": "{count, plural, one {Ver {n} cuenta} other {Ver {n} cuentas}}",
+        "estado": "Estado",
+        "estados": {
+          "abiertas": "Con saldo",
+          "todos": "Todas",
+          "current": "Al día",
+          "partial": "Pago parcial",
+          "overdue": "Vencidas",
+          "paid": "Pagadas",
+          "cancelled": "Anuladas"
+        },
+        "recordatorio": "Recordatorio",
+        "todos": "Todos",
+        "sinRecordatorio": "Sin recordatorio en {dias} días",
+        "sinRecordatorioChip": "Sin recordatorio en {dias} d",
+        "clienteChip": "Un cliente"
+      },
+      "columnas": {
+        "cliente": "Cliente",
+        "documento": "Documento",
+        "vencimiento": "Vencimiento",
+        "moneda": "Moneda",
+        "monto": "Monto",
+        "saldo": "Saldo",
+        "dias": "Días vencida",
+        "estado": "Estado",
+        "sucursal": "Sucursal",
+        "cuotas": "Cuotas",
+        "antiguedad": "Antigüedad"
+      },
+      "sinCliente": "Sin cliente",
+      "origen": {
+        "pos": "Venta del POS",
+        "web": "Pedido web",
+        "factura": "Factura",
+        "otro": "Cuenta"
+      },
+      "vencidaHace": "Vencida hace {dias} d",
+      "cuotasDe": "{pendientes} de {total}",
+      "acciones": {
+        "ver": "Ver cuenta",
+        "registrarAbono": "Registrar abono",
+        "recordatorio": "Enviar recordatorio",
+        "carteraCliente": "Cartera del cliente"
+      },
+      "cobrarA": "Registrar abono de {cliente}",
+      "recordarA": "Enviar recordatorio a {cliente}",
+      "venceEl": "Vence {fecha}",
+      "vacio": {
+        "titulo": "No hay cuentas por cobrar",
+        "descripcion": "Las ventas a crédito y las facturas con saldo aparecen aquí."
+      },
+      "sinResultados": "Prueba con otra búsqueda u otros filtros.",
+      "errorCarga": "No se pudieron cargar las cuentas por cobrar",
+      "sinPermiso": "No tienes acceso a la cartera",
+      "sinPermisoDescripcion": "Pide a un administrador el permiso para ver la cartera."
+    },
+    "recordatorio": {
+      "enviados": "{count, plural, one {Recordatorio enviado} other {# recordatorios enviados}}",
+      "sinCorreo": "{count, plural, one {Un cliente no tiene correo} other {# clientes no tienen correo}}",
+      "ninguno": "No se envió ningún recordatorio",
+      "clienteSinCorreo": "El cliente no tiene correo",
+      "enviadoA": "Se envió a {destino}.",
+      "historial": "Recordatorios",
+      "estados": {
+        "enviado": "Enviado",
+        "fallido": "No se pudo enviar"
+      }
+    },
+    "detalle": {
+      "titulo": "Cuenta por cobrar · {numero}",
+      "cargando": "Cargando cuenta…",
+      "noEncontrada": "No encontramos esta cuenta por cobrar",
+      "noEncontradaDescripcion": "Puede que no exista o que sea de otra organización.",
+      "volver": "Volver a cuentas por cobrar",
+      "errorCarga": "No se pudo cargar la cuenta",
+      "sinFactura": "Sin factura",
+      "verFactura": "Ver factura",
+      "pdfFactura": "PDF de la factura",
+      "carteraCliente": "Cartera del cliente",
+      "cuenta": "Cuenta por cobrar",
+      "pago": "Pago",
+      "cadena": "Documentos relacionados",
+      "estadoCuenta": "Estado de cuenta",
+      "registrarPago": "Registrar pago",
+      "kpis": "Resumen de la cuenta",
+      "montoOriginal": "Monto original",
+      "pagado": "Pagado",
+      "saldo": "Saldo",
+      "proximaCuota": "Próxima cuota",
+      "sinCuotas": "Sin plan de cuotas",
+      "pagos": "Pagos recibidos",
+      "sinPagos": "Aún no hay pagos.",
+      "aplicadoACuota": "Cuota {numero}",
+      "anuladoPor": "Anulado: {motivo}",
+      "verRecibo": "Ver recibo",
+      "anularPago": "Anular pago",
+      "cliente": "Cliente",
+      "nombre": "Nombre",
+      "documento": "Documento",
+      "correo": "Correo",
+      "telefono": "Teléfono",
+      "carteraTotal": "Cartera total",
+      "datos": "Datos de la cuenta",
+      "vencimiento": "Vencimiento",
+      "creada": "Creada",
+      "sucursal": "Sucursal",
+      "ultimoRecordatorio": "Último recordatorio",
+      "nunca": "Nunca"
+    },
+    "cuotas": {
+      "titulo": "Plan de cuotas",
+      "vence": "Vence",
+      "valor": "Valor",
+      "pagado": "Pagado",
+      "saldo": "Saldo",
+      "estado": "Estado",
+      "acciones": "Acciones",
+      "vencidaDias": "Vencida {dias} d",
+      "pagarCuotaN": "Pagar la cuota {numero}",
+      "pagar": "Pagar cuota",
+      "crearTitulo": "Plan de cuotas",
+      "crearDescripcion": "Reparte el saldo de {saldo} en cuotas.",
+      "crear": "Guardar plan",
+      "sinPropuesta": "Revisa el número de cuotas y la primera fecha.",
+      "numero": "Número de cuotas",
+      "primera": "Primera cuota",
+      "frecuencia": "Frecuencia",
+      "frecuencias": {
+        "mensual": "Mensual",
+        "quincenal": "Quincenal",
+        "semanal": "Semanal"
+      },
+      "propuesta": "Cuotas propuestas",
+      "cuotaN": "Cuota {numero} · {fecha}",
+      "creado": "Plan de cuotas guardado",
+      "creadoDescripcion": "{count, plural, one {Una cuota} other {# cuotas}}.",
+      "reemplazar": "Cambiar plan de cuotas",
+      "crearPlan": "Crear plan de cuotas",
+      "eliminar": "Quitar plan de cuotas",
+      "eliminado": "Plan de cuotas quitado",
+      "noEliminado": "No se pudo quitar el plan",
+      "errores": {
+        "cuenta_no_encontrada": "No se encontró la cuenta.",
+        "sin_permiso": "No tienes permiso para esta acción.",
+        "sin_acceso_sucursal": "No tienes acceso a la sucursal de la cuenta.",
+        "cuenta_sin_saldo": "La cuenta no tiene saldo.",
+        "plan_con_abonos": "El plan ya tiene cuotas con abonos: no se cambia.",
+        "cuotas_invalidas": "Revisa las cuotas.",
+        "plan_no_cuadra": "Las cuotas no suman el saldo de la cuenta.",
+        "error_desconocido": "No se pudo completar. Inténtalo de nuevo."
+      }
+    },
+    "estadoCuenta": {
+      "titulo": "Estado de cuenta",
+      "ver": "Ver PDF",
+      "descargar": "Descargar",
+      "enviarCorreo": "Enviar por correo",
+      "sinCorreo": "Escribe un correo.",
+      "periodo": "Periodo",
+      "para": "Para",
+      "paraPlaceholder": "correo@cliente.com",
+      "mensaje": "Mensaje (opcional)",
+      "nota": "El estado de cuenta incluye las facturas, las notas crédito y los pagos del periodo, con la antigüedad a la fecha de corte.",
+      "noEnviado": "No se envió el estado de cuenta",
+      "enviado": "Estado de cuenta enviado",
+      "enviadoA": "Se envió a {destino} con el PDF adjunto.",
+      "enviadoSinAdjunto": "Se envió a {destino}, sin el PDF: la generación de PDF no está disponible en este momento.",
+      "errorPdf": "No se pudo generar el PDF.",
+      "errores": {
+        "cliente_sin_correo": "El cliente no tiene correo: escribe uno.",
+        "cliente_no_encontrado": "No se encontró el cliente.",
+        "correo_no_configurado": "La organización aún no tiene configurado el envío de correos.",
+        "cliente_sin_consentimiento": "El cliente pidió no recibir correos.",
+        "correo_invalido": "El correo no es válido.",
+        "proveedor_correo": "El servicio de correo no respondió. Inténtalo más tarde.",
+        "sin_permiso": "No tienes permiso para esta acción.",
+        "datos_invalidos": "Revisa los datos.",
+        "error_desconocido": "No se pudo completar. Inténtalo de nuevo."
+      }
+    },
+    "cliente": {
+      "titulo": "Cartera del cliente",
+      "noEncontrado": "No encontramos este cliente",
+      "kpis": "Resumen de la cartera del cliente",
+      "saldoTotal": "Saldo total",
+      "saldoAFavor": "Saldo a favor",
+      "pagaEnPromedio": "Paga en promedio",
+      "cuentasAbiertas": "Cuentas abiertas del cliente",
+      "sinCuentas": "El cliente no tiene cuentas abiertas",
+      "sinCuentasDescripcion": "Cuando tenga ventas a crédito o facturas con saldo, aparecerán aquí."
+    },
+    "errores": {
+      "cliente_sin_correo": "El cliente no tiene correo.",
+      "cuenta_sin_saldo": "La cuenta no tiene saldo.",
+      "correo_no_configurado": "La organización aún no tiene configurado el envío de correos.",
+      "cliente_sin_consentimiento": "El cliente pidió no recibir correos.",
+      "correo_invalido": "El correo del cliente no es válido.",
+      "proveedor_correo": "El servicio de correo no respondió. Inténtalo más tarde.",
+      "sin_permiso": "No tienes permiso para esta acción.",
+      "cuenta_no_encontrada": "No se encontró la cuenta.",
+      "datos_invalidos": "Revisa los datos.",
+      "error_desconocido": "No se pudo completar. Inténtalo de nuevo."
+    },
+    "correo": {
+      "saludo": "Hola {nombre}:",
+      "recordatorio": "Te recordamos que tienes un saldo pendiente con {organizacion} de {saldo} (documento {numero}), con vencimiento el {vence}.",
+      "adjunto": "Adjuntamos tu estado de cuenta. Si ya realizaste el pago, por favor ignora este mensaje.",
+      "despedida": "Gracias, {organizacion}",
+      "asuntoRecordatorio": "{organizacion}: recordatorio de pago {numero}",
+      "estadoCuenta": "Adjuntamos tu estado de cuenta con {organizacion}.",
+      "asuntoEstadoCuenta": "{organizacion}: estado de cuenta"
+    }
   }
 }

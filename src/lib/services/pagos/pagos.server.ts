@@ -14,7 +14,11 @@ import {
   type ErrorPago,
   type ResultadoPago,
   type SolicitudPago,
+  type ContextoPago,
+  type DocumentoAbiertoPago,
 } from '@/lib/finanzas/pagos/contrato';
+
+export type { ContextoPago, DocumentoAbiertoPago };
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'userId' | 'supabase'>;
 
@@ -89,32 +93,6 @@ export async function anularPago(ctx: Ctx, paymentId: string, motivo: string): P
 }
 
 // ─── Contexto del diálogo ────────────────────────────────────────────────────
-
-export interface DocumentoAbiertoPago {
-  documento: DocumentoPago;
-  /** id del documento con el que se abrió (factura o cuenta). */
-  id: string;
-  cuenta_id: string;
-  numero: string | null;
-  saldo: number;
-  total: number;
-  moneda: string;
-  vencimiento: string | null;
-  emision: string | null;
-  branch_id: number | null;
-  cuotas: { id: string; numero: number; vencimiento: string; saldo: number; estado: string }[];
-}
-
-export interface ContextoPago {
-  direccion: DireccionPago;
-  tercero: { id: string; nombre: string | null } | null;
-  documentos: DocumentoAbiertoPago[];
-  metodos: { code: string; name: string; requires_reference: boolean }[];
-  cuentasBancarias: { id: number; name: string; bank_name: string | null; ultimos: string | null; currency: string | null }[];
-  caja: { abierta: boolean; id: number | null };
-  hoy: string;
-  branch_id: number | null;
-}
 
 interface FilaCartera {
   id: string;

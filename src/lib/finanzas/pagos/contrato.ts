@@ -199,3 +199,31 @@ export function nuevaClaveIdempotencia(prefijo = 'pago'): string {
       : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   return `${prefijo}:${aleatorio}`;
 }
+
+// ─── Contexto del diálogo (GET /api/pagos/contexto) ─────────────────────────
+
+export interface DocumentoAbiertoPago {
+  documento: DocumentoPago;
+  /** id del documento con el que se abrió (factura o cuenta). */
+  id: string;
+  cuenta_id: string;
+  numero: string | null;
+  saldo: number;
+  total: number;
+  moneda: string;
+  vencimiento: string | null;
+  emision: string | null;
+  branch_id: number | null;
+  cuotas: { id: string; numero: number; vencimiento: string; saldo: number; estado: string }[];
+}
+
+export interface ContextoPago {
+  direccion: DireccionPago;
+  tercero: { id: string; nombre: string | null } | null;
+  documentos: DocumentoAbiertoPago[];
+  metodos: { code: string; name: string; requires_reference: boolean }[];
+  cuentasBancarias: { id: number; name: string; bank_name: string | null; ultimos: string | null; currency: string | null }[];
+  caja: { abierta: boolean; id: number | null };
+  hoy: string;
+  branch_id: number | null;
+}

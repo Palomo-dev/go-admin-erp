@@ -9813,5 +9813,271 @@
       "pago_parcial": "Partially paid",
       "pendiente_pago": "Payment pending"
     }
+  },
+  "cartera": {
+    "titulo": "Accounts receivable",
+    "migas": {
+      "pos": "POS",
+      "finanzas": "Finance",
+      "cartera": "Receivables"
+    },
+    "estados": {
+      "vencidaDias": "Overdue {dias} d",
+      "current": "Current",
+      "partial": "Partially paid",
+      "overdue": "Overdue",
+      "paid": "Paid",
+      "cancelled": "Void"
+    },
+    "antiguedad": {
+      "etiqueta": "Receivables aging",
+      "filtrar": "Filter by aging",
+      "tramos": {
+        "al_dia": "Current",
+        "d1_30": "1-30 days",
+        "d31_60": "31-60 days",
+        "d61_90": "61-90 days",
+        "d90_mas": "Over 90 days"
+      },
+      "cuentas": "{count, plural, one {# account} other {# accounts}}"
+    },
+    "listado": {
+      "sustantivo": {
+        "singular": "account",
+        "plural": "accounts"
+      },
+      "subtitulo": "{count, plural, one {{n} open account} other {{n} open accounts}}",
+      "actualizar": "Refresh",
+      "exportar": "Export CSV",
+      "exportando": "Exporting…",
+      "exportarError": "The export failed.",
+      "kpis": {
+        "etiqueta": "Receivables indicators",
+        "porCobrar": "Total receivable",
+        "alDia": "Current",
+        "vencida": "Overdue",
+        "vencidasDetalle": "{count, plural, one {{n} overdue account} other {{n} overdue accounts}}",
+        "promedioCobro": "Average collection",
+        "dias": "{dias} days",
+        "promedioDetalle": "Accounts paid in the last 90 days"
+      },
+      "buscar": {
+        "placeholder": "Search by customer, ID or invoice",
+        "etiqueta": "Search receivables"
+      },
+      "filtros": {
+        "verN": "{count, plural, one {Show {n} account} other {Show {n} accounts}}",
+        "estado": "Status",
+        "estados": {
+          "abiertas": "With balance",
+          "todos": "All",
+          "current": "Current",
+          "partial": "Partially paid",
+          "overdue": "Overdue",
+          "paid": "Paid",
+          "cancelled": "Void"
+        },
+        "recordatorio": "Reminder",
+        "todos": "All",
+        "sinRecordatorio": "No reminder in {dias} days",
+        "sinRecordatorioChip": "No reminder in {dias} d",
+        "clienteChip": "One customer"
+      },
+      "columnas": {
+        "cliente": "Customer",
+        "documento": "Document",
+        "vencimiento": "Due date",
+        "moneda": "Currency",
+        "monto": "Amount",
+        "saldo": "Balance",
+        "dias": "Days overdue",
+        "estado": "Status",
+        "sucursal": "Branch",
+        "cuotas": "Installments",
+        "antiguedad": "Aging"
+      },
+      "sinCliente": "No customer",
+      "origen": {
+        "pos": "POS sale",
+        "web": "Web order",
+        "factura": "Invoice",
+        "otro": "Account"
+      },
+      "vencidaHace": "Overdue {dias} d ago",
+      "cuotasDe": "{pendientes} of {total}",
+      "acciones": {
+        "ver": "View account",
+        "registrarAbono": "Record payment",
+        "recordatorio": "Send reminder",
+        "carteraCliente": "Customer receivables"
+      },
+      "cobrarA": "Record payment from {cliente}",
+      "recordarA": "Send reminder to {cliente}",
+      "venceEl": "Due {fecha}",
+      "vacio": {
+        "titulo": "No receivables",
+        "descripcion": "Credit sales and invoices with a balance appear here."
+      },
+      "sinResultados": "Try another search or filters.",
+      "errorCarga": "The receivables could not be loaded",
+      "sinPermiso": "You don't have access to receivables",
+      "sinPermisoDescripcion": "Ask an administrator for the permission to view receivables."
+    },
+    "recordatorio": {
+      "enviados": "{count, plural, one {Reminder sent} other {# reminders sent}}",
+      "sinCorreo": "{count, plural, one {One customer has no email} other {# customers have no email}}",
+      "ninguno": "No reminder was sent",
+      "clienteSinCorreo": "The customer has no email",
+      "enviadoA": "Sent to {destino}.",
+      "historial": "Reminders",
+      "estados": {
+        "enviado": "Sent",
+        "fallido": "Could not be sent"
+      }
+    },
+    "detalle": {
+      "titulo": "Receivable · {numero}",
+      "cargando": "Loading account…",
+      "noEncontrada": "We couldn't find this receivable",
+      "noEncontradaDescripcion": "It may not exist or belong to another organization.",
+      "volver": "Back to receivables",
+      "errorCarga": "The account could not be loaded",
+      "sinFactura": "No invoice",
+      "verFactura": "View invoice",
+      "pdfFactura": "Invoice PDF",
+      "carteraCliente": "Customer receivables",
+      "cuenta": "Receivable",
+      "pago": "Payment",
+      "cadena": "Related documents",
+      "estadoCuenta": "Statement",
+      "registrarPago": "Record payment",
+      "kpis": "Account summary",
+      "montoOriginal": "Original amount",
+      "pagado": "Paid",
+      "saldo": "Balance",
+      "proximaCuota": "Next installment",
+      "sinCuotas": "No installment plan",
+      "pagos": "Payments received",
+      "sinPagos": "No payments yet.",
+      "aplicadoACuota": "Installment {numero}",
+      "anuladoPor": "Voided: {motivo}",
+      "verRecibo": "View receipt",
+      "anularPago": "Void payment",
+      "cliente": "Customer",
+      "nombre": "Name",
+      "documento": "ID",
+      "correo": "Email",
+      "telefono": "Phone",
+      "carteraTotal": "Total receivable",
+      "datos": "Account details",
+      "vencimiento": "Due date",
+      "creada": "Created",
+      "sucursal": "Branch",
+      "ultimoRecordatorio": "Last reminder",
+      "nunca": "Never"
+    },
+    "cuotas": {
+      "titulo": "Installment plan",
+      "vence": "Due",
+      "valor": "Amount",
+      "pagado": "Paid",
+      "saldo": "Balance",
+      "estado": "Status",
+      "acciones": "Actions",
+      "vencidaDias": "Overdue {dias} d",
+      "pagarCuotaN": "Pay installment {numero}",
+      "pagar": "Pay installment",
+      "crearTitulo": "Installment plan",
+      "crearDescripcion": "Split the balance of {saldo} into installments.",
+      "crear": "Save plan",
+      "sinPropuesta": "Check the number of installments and the first date.",
+      "numero": "Number of installments",
+      "primera": "First installment",
+      "frecuencia": "Frequency",
+      "frecuencias": {
+        "mensual": "Monthly",
+        "quincenal": "Every 15 days",
+        "semanal": "Weekly"
+      },
+      "propuesta": "Proposed installments",
+      "cuotaN": "Installment {numero} · {fecha}",
+      "creado": "Installment plan saved",
+      "creadoDescripcion": "{count, plural, one {One installment} other {# installments}}.",
+      "reemplazar": "Change installment plan",
+      "crearPlan": "Create installment plan",
+      "eliminar": "Remove installment plan",
+      "eliminado": "Installment plan removed",
+      "noEliminado": "The plan could not be removed",
+      "errores": {
+        "cuenta_no_encontrada": "The account was not found.",
+        "sin_permiso": "You don't have permission for this action.",
+        "sin_acceso_sucursal": "You don't have access to the account's branch.",
+        "cuenta_sin_saldo": "The account has no balance.",
+        "plan_con_abonos": "The plan already has paid installments: it can't be changed.",
+        "cuotas_invalidas": "Check the installments.",
+        "plan_no_cuadra": "The installments don't add up to the account balance.",
+        "error_desconocido": "It could not be completed. Try again."
+      }
+    },
+    "estadoCuenta": {
+      "titulo": "Statement",
+      "ver": "View PDF",
+      "descargar": "Download",
+      "enviarCorreo": "Send by email",
+      "sinCorreo": "Enter an email.",
+      "periodo": "Period",
+      "para": "To",
+      "paraPlaceholder": "email@customer.com",
+      "mensaje": "Message (optional)",
+      "nota": "The statement includes the invoices, credit notes and payments of the period, with aging as of the cut-off date.",
+      "noEnviado": "The statement was not sent",
+      "enviado": "Statement sent",
+      "enviadoA": "Sent to {destino} with the PDF attached.",
+      "enviadoSinAdjunto": "Sent to {destino} without the PDF: PDF generation isn't available right now.",
+      "errorPdf": "The PDF could not be generated.",
+      "errores": {
+        "cliente_sin_correo": "The customer has no email: enter one.",
+        "cliente_no_encontrado": "The customer was not found.",
+        "correo_no_configurado": "The organization hasn't set up email sending yet.",
+        "cliente_sin_consentimiento": "The customer asked not to receive emails.",
+        "correo_invalido": "The email is not valid.",
+        "proveedor_correo": "The email service didn't respond. Try later.",
+        "sin_permiso": "You don't have permission for this action.",
+        "datos_invalidos": "Check the data.",
+        "error_desconocido": "It could not be completed. Try again."
+      }
+    },
+    "cliente": {
+      "titulo": "Customer receivables",
+      "noEncontrado": "We couldn't find this customer",
+      "kpis": "Customer receivables summary",
+      "saldoTotal": "Total balance",
+      "saldoAFavor": "Customer credit",
+      "pagaEnPromedio": "Pays on average in",
+      "cuentasAbiertas": "Customer's open accounts",
+      "sinCuentas": "The customer has no open accounts",
+      "sinCuentasDescripcion": "Credit sales or invoices with a balance will appear here."
+    },
+    "errores": {
+      "cliente_sin_correo": "The customer has no email.",
+      "cuenta_sin_saldo": "The account has no balance.",
+      "correo_no_configurado": "The organization hasn't set up email sending yet.",
+      "cliente_sin_consentimiento": "The customer asked not to receive emails.",
+      "correo_invalido": "The customer's email is not valid.",
+      "proveedor_correo": "The email service didn't respond. Try later.",
+      "sin_permiso": "You don't have permission for this action.",
+      "cuenta_no_encontrada": "The account was not found.",
+      "datos_invalidos": "Check the data.",
+      "error_desconocido": "It could not be completed. Try again."
+    },
+    "correo": {
+      "saludo": "Hello {nombre},",
+      "recordatorio": "This is a reminder that you have a pending balance with {organizacion} of {saldo} (document {numero}), due on {vence}.",
+      "adjunto": "Your statement is attached. If you already paid, please ignore this message.",
+      "despedida": "Thank you, {organizacion}",
+      "asuntoRecordatorio": "{organizacion}: payment reminder {numero}",
+      "estadoCuenta": "Your statement with {organizacion} is attached.",
+      "asuntoEstadoCuenta": "{organizacion}: statement"
+    }
   }
 }

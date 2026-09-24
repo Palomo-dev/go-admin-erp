@@ -9708,5 +9708,271 @@
       "pago_parcial": "Paiement partiel",
       "pendiente_pago": "Paiement en attente"
     }
+  },
+  "cartera": {
+    "titulo": "Comptes clients",
+    "migas": {
+      "pos": "PDV",
+      "finanzas": "Finances",
+      "cartera": "Créances"
+    },
+    "estados": {
+      "vencidaDias": "En retard {dias} j",
+      "current": "À jour",
+      "partial": "Paiement partiel",
+      "overdue": "En retard",
+      "paid": "Payée",
+      "cancelled": "Annulée"
+    },
+    "antiguedad": {
+      "etiqueta": "Ancienneté des créances",
+      "filtrar": "Filtrer par ancienneté",
+      "tramos": {
+        "al_dia": "À jour",
+        "d1_30": "1-30 jours",
+        "d31_60": "31-60 jours",
+        "d61_90": "61-90 jours",
+        "d90_mas": "Plus de 90 jours"
+      },
+      "cuentas": "{count, plural, one {# compte} other {# comptes}}"
+    },
+    "listado": {
+      "sustantivo": {
+        "singular": "compte",
+        "plural": "comptes"
+      },
+      "subtitulo": "{count, plural, one {{n} compte ouvert} other {{n} comptes ouverts}}",
+      "actualizar": "Actualiser",
+      "exportar": "Exporter en CSV",
+      "exportando": "Export en cours…",
+      "exportarError": "L'export a échoué.",
+      "kpis": {
+        "etiqueta": "Indicateurs des créances",
+        "porCobrar": "Total à encaisser",
+        "alDia": "À jour",
+        "vencida": "En retard",
+        "vencidasDetalle": "{count, plural, one {{n} compte en retard} other {{n} comptes en retard}}",
+        "promedioCobro": "Délai moyen d'encaissement",
+        "dias": "{dias} jours",
+        "promedioDetalle": "Comptes payés ces 90 derniers jours"
+      },
+      "buscar": {
+        "placeholder": "Rechercher par client, identifiant ou facture",
+        "etiqueta": "Rechercher des créances"
+      },
+      "filtros": {
+        "verN": "{count, plural, one {Voir {n} compte} other {Voir {n} comptes}}",
+        "estado": "Statut",
+        "estados": {
+          "abiertas": "Avec solde",
+          "todos": "Tous",
+          "current": "À jour",
+          "partial": "Paiement partiel",
+          "overdue": "En retard",
+          "paid": "Payés",
+          "cancelled": "Annulés"
+        },
+        "recordatorio": "Relance",
+        "todos": "Tous",
+        "sinRecordatorio": "Sans relance depuis {dias} jours",
+        "sinRecordatorioChip": "Sans relance {dias} j",
+        "clienteChip": "Un client"
+      },
+      "columnas": {
+        "cliente": "Client",
+        "documento": "Document",
+        "vencimiento": "Échéance",
+        "moneda": "Devise",
+        "monto": "Montant",
+        "saldo": "Solde",
+        "dias": "Jours de retard",
+        "estado": "Statut",
+        "sucursal": "Succursale",
+        "cuotas": "Échéances",
+        "antiguedad": "Ancienneté"
+      },
+      "sinCliente": "Sans client",
+      "origen": {
+        "pos": "Vente PDV",
+        "web": "Commande web",
+        "factura": "Facture",
+        "otro": "Compte"
+      },
+      "vencidaHace": "En retard depuis {dias} j",
+      "cuotasDe": "{pendientes} sur {total}",
+      "acciones": {
+        "ver": "Voir le compte",
+        "registrarAbono": "Enregistrer un acompte",
+        "recordatorio": "Envoyer une relance",
+        "carteraCliente": "Créances du client"
+      },
+      "cobrarA": "Enregistrer un acompte de {cliente}",
+      "recordarA": "Envoyer une relance à {cliente}",
+      "venceEl": "Échéance {fecha}",
+      "vacio": {
+        "titulo": "Aucune créance",
+        "descripcion": "Les ventes à crédit et les factures avec solde apparaissent ici."
+      },
+      "sinResultados": "Essayez une autre recherche ou d'autres filtres.",
+      "errorCarga": "Les créances n'ont pas pu être chargées",
+      "sinPermiso": "Vous n'avez pas accès aux créances",
+      "sinPermisoDescripcion": "Demandez à un administrateur l'autorisation de voir les créances."
+    },
+    "recordatorio": {
+      "enviados": "{count, plural, one {Relance envoyée} other {# relances envoyées}}",
+      "sinCorreo": "{count, plural, one {Un client n'a pas d'e-mail} other {# clients n'ont pas d'e-mail}}",
+      "ninguno": "Aucune relance n'a été envoyée",
+      "clienteSinCorreo": "Le client n'a pas d'e-mail",
+      "enviadoA": "Envoyée à {destino}.",
+      "historial": "Relances",
+      "estados": {
+        "enviado": "Envoyée",
+        "fallido": "Échec de l'envoi"
+      }
+    },
+    "detalle": {
+      "titulo": "Créance · {numero}",
+      "cargando": "Chargement du compte…",
+      "noEncontrada": "Créance introuvable",
+      "noEncontradaDescripcion": "Elle n'existe peut-être pas ou appartient à une autre organisation.",
+      "volver": "Retour aux comptes clients",
+      "errorCarga": "Le compte n'a pas pu être chargé",
+      "sinFactura": "Sans facture",
+      "verFactura": "Voir la facture",
+      "pdfFactura": "PDF de la facture",
+      "carteraCliente": "Créances du client",
+      "cuenta": "Créance",
+      "pago": "Paiement",
+      "cadena": "Documents liés",
+      "estadoCuenta": "Relevé de compte",
+      "registrarPago": "Enregistrer un paiement",
+      "kpis": "Résumé du compte",
+      "montoOriginal": "Montant initial",
+      "pagado": "Payé",
+      "saldo": "Solde",
+      "proximaCuota": "Prochaine échéance",
+      "sinCuotas": "Sans échéancier",
+      "pagos": "Paiements reçus",
+      "sinPagos": "Aucun paiement pour l'instant.",
+      "aplicadoACuota": "Échéance {numero}",
+      "anuladoPor": "Annulé : {motivo}",
+      "verRecibo": "Voir le reçu",
+      "anularPago": "Annuler le paiement",
+      "cliente": "Client",
+      "nombre": "Nom",
+      "documento": "Identifiant",
+      "correo": "E-mail",
+      "telefono": "Téléphone",
+      "carteraTotal": "Total des créances",
+      "datos": "Données du compte",
+      "vencimiento": "Échéance",
+      "creada": "Créé le",
+      "sucursal": "Succursale",
+      "ultimoRecordatorio": "Dernière relance",
+      "nunca": "Jamais"
+    },
+    "cuotas": {
+      "titulo": "Échéancier",
+      "vence": "Échéance",
+      "valor": "Montant",
+      "pagado": "Payé",
+      "saldo": "Solde",
+      "estado": "Statut",
+      "acciones": "Actions",
+      "vencidaDias": "En retard {dias} j",
+      "pagarCuotaN": "Payer l'échéance {numero}",
+      "pagar": "Payer l'échéance",
+      "crearTitulo": "Échéancier",
+      "crearDescripcion": "Répartir le solde de {saldo} en échéances.",
+      "crear": "Enregistrer l'échéancier",
+      "sinPropuesta": "Vérifiez le nombre d'échéances et la première date.",
+      "numero": "Nombre d'échéances",
+      "primera": "Première échéance",
+      "frecuencia": "Fréquence",
+      "frecuencias": {
+        "mensual": "Mensuelle",
+        "quincenal": "Tous les 15 jours",
+        "semanal": "Hebdomadaire"
+      },
+      "propuesta": "Échéances proposées",
+      "cuotaN": "Échéance {numero} · {fecha}",
+      "creado": "Échéancier enregistré",
+      "creadoDescripcion": "{count, plural, one {Une échéance} other {# échéances}}.",
+      "reemplazar": "Modifier l'échéancier",
+      "crearPlan": "Créer un échéancier",
+      "eliminar": "Supprimer l'échéancier",
+      "eliminado": "Échéancier supprimé",
+      "noEliminado": "L'échéancier n'a pas pu être supprimé",
+      "errores": {
+        "cuenta_no_encontrada": "Compte introuvable.",
+        "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
+        "sin_acceso_sucursal": "Vous n'avez pas accès à la succursale du compte.",
+        "cuenta_sin_saldo": "Le compte n'a pas de solde.",
+        "plan_con_abonos": "L'échéancier a déjà des échéances payées : il ne se modifie pas.",
+        "cuotas_invalidas": "Vérifiez les échéances.",
+        "plan_no_cuadra": "Les échéances ne correspondent pas au solde du compte.",
+        "error_desconocido": "L'opération n'a pas abouti. Réessayez."
+      }
+    },
+    "estadoCuenta": {
+      "titulo": "Relevé de compte",
+      "ver": "Voir le PDF",
+      "descargar": "Télécharger",
+      "enviarCorreo": "Envoyer par e-mail",
+      "sinCorreo": "Saisissez un e-mail.",
+      "periodo": "Période",
+      "para": "À",
+      "paraPlaceholder": "email@client.com",
+      "mensaje": "Message (facultatif)",
+      "nota": "Le relevé inclut les factures, les avoirs et les paiements de la période, avec l'ancienneté à la date d'arrêté.",
+      "noEnviado": "Le relevé n'a pas été envoyé",
+      "enviado": "Relevé envoyé",
+      "enviadoA": "Envoyé à {destino} avec le PDF en pièce jointe.",
+      "enviadoSinAdjunto": "Envoyé à {destino} sans le PDF : la génération de PDF n'est pas disponible pour le moment.",
+      "errorPdf": "Le PDF n'a pas pu être généré.",
+      "errores": {
+        "cliente_sin_correo": "Le client n'a pas d'e-mail : saisissez-en un.",
+        "cliente_no_encontrado": "Client introuvable.",
+        "correo_no_configurado": "L'organisation n'a pas encore configuré l'envoi d'e-mails.",
+        "cliente_sin_consentimiento": "Le client a demandé à ne pas recevoir d'e-mails.",
+        "correo_invalido": "L'e-mail n'est pas valide.",
+        "proveedor_correo": "Le service d'e-mail n'a pas répondu. Réessayez plus tard.",
+        "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
+        "datos_invalidos": "Vérifiez les données.",
+        "error_desconocido": "L'opération n'a pas abouti. Réessayez."
+      }
+    },
+    "cliente": {
+      "titulo": "Créances du client",
+      "noEncontrado": "Client introuvable",
+      "kpis": "Résumé des créances du client",
+      "saldoTotal": "Solde total",
+      "saldoAFavor": "Avoir disponible",
+      "pagaEnPromedio": "Paie en moyenne en",
+      "cuentasAbiertas": "Comptes ouverts du client",
+      "sinCuentas": "Le client n'a pas de comptes ouverts",
+      "sinCuentasDescripcion": "Les ventes à crédit ou les factures avec solde apparaîtront ici."
+    },
+    "errores": {
+      "cliente_sin_correo": "Le client n'a pas d'e-mail.",
+      "cuenta_sin_saldo": "Le compte n'a pas de solde.",
+      "correo_no_configurado": "L'organisation n'a pas encore configuré l'envoi d'e-mails.",
+      "cliente_sin_consentimiento": "Le client a demandé à ne pas recevoir d'e-mails.",
+      "correo_invalido": "L'e-mail du client n'est pas valide.",
+      "proveedor_correo": "Le service d'e-mail n'a pas répondu. Réessayez plus tard.",
+      "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
+      "cuenta_no_encontrada": "Compte introuvable.",
+      "datos_invalidos": "Vérifiez les données.",
+      "error_desconocido": "L'opération n'a pas abouti. Réessayez."
+    },
+    "correo": {
+      "saludo": "Bonjour {nombre},",
+      "recordatorio": "Nous vous rappelons que vous avez un solde en attente auprès de {organizacion} de {saldo} (document {numero}), échu le {vence}.",
+      "adjunto": "Vous trouverez votre relevé de compte en pièce jointe. Si vous avez déjà payé, merci d'ignorer ce message.",
+      "despedida": "Merci, {organizacion}",
+      "asuntoRecordatorio": "{organizacion} : relance de paiement {numero}",
+      "estadoCuenta": "Vous trouverez en pièce jointe votre relevé de compte chez {organizacion}.",
+      "asuntoEstadoCuenta": "{organizacion} : relevé de compte"
+    }
   }
 }

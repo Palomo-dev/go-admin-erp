@@ -7,6 +7,14 @@ import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
 import { resolveLineTax } from '@/lib/services/taxResolver';
 import {
+  itemsParaImprimir,
+  normalizarNota,
+  ticketRondaDesdeRegistro,
+  type RegistroComanda,
+  type TextosAjusteImpreso,
+} from '@/lib/pos/cocina/lineasCarrito';
+import { ajustarLineaMesa } from '@/components/pos/cocina/cocinaCliente';
+import {
   calculateItemTaxes,
   type OrganizationTax as TaxUtilOrganizationTax,
   type TaxCalculationItem,
@@ -17,7 +25,6 @@ import type {
   SaleItem,
   PreCuenta,
   KitchenTicket,
-  SelectedProductModifier,
 } from './types';
 
 export class PedidosService {
@@ -81,7 +88,7 @@ export class PedidosService {
                 display_order
               )
             ),
-            kitchen_ticket_items(id, status)
+            kitchen_ticket_items(id, status, cancelled_at, adjustment_kind)
           `)
           .in('sale_id', saleIds)
           .order('created_at', { ascending: true });
@@ -388,7 +395,9 @@ export class PedidosService {
           discount_amount: itemDiscount,
           notes: {
             product_name: p.product_name,
-            ...(p.notes ? { extra: p.notes } : {}),
+            // Texto plano (el editor de la mesa entrega HTML, N8).
+            ...(normalizarNota(p.notes) ? { extra: normalizarNota(p.notes) } : {}),
+            ...(normalizarNota(p.notes) && p.is_allergy ? { is_allergy: true } : {}),
             ...(p.guest_number ? { guest_number: p.guest_number } : {}),
             ...(p.modifiers && p.modifiers.length > 0 ? { modifiers: p.modifiers } : {}),
           },
@@ -415,6 +424,10 @@ export class PedidosService {
 
       // 4. Solo crear ticket de cocina si hay items que requieren preparación
       if (itemsRequiringPreparation.length > 0) {
+        const conAlergia = itemsRequiringPreparation.some((item) => {
+          const p = productos[insertedItems.indexOf(item)];
+          return !!p.is_allergy && !!normalizarNota(p.notes);
+        });
         const { data: ticket, error: ticketError } = await supabase
           .from('kitchen_tickets')
           .insert({
@@ -424,24 +437,37 @@ export class PedidosService {
             sale_id: saleId,
             status: 'new',
             priority: 0,
+            has_allergy: conAlergia,
           })
           .select()
           .single();
 
         if (ticketError) throw ticketError;
 
-        // 5. Crear items del ticket (solo los que requieren preparación)
+        // 5. Crear items del ticket (solo los que requieren preparación).
+        // Con copia de nombre, cantidad y modificadores (N11): si la línea de
+        // la cuenta cambia después, la comanda enviada no cambia en silencio;
+        // el cambio llega como comanda de ajuste (pos_cocina_ajustar_linea_mesa).
         const ticketItems = itemsRequiringPreparation.map((item) => {
           const index = insertedItems.indexOf(item);
+          const p = productos[index];
+          const nota = normalizarNota(p.notes);
           return {
             organization_id: organizationId,
             kitchen_ticket_id: ticket.id,
             sale_item_id: item.id,
-            station: productos[index].station || null,
-            notes: productos[index].guest_number
-              ? `Comensal ${productos[index].guest_number}${productos[index].notes ? ` - ${productos[index].notes}` : ''}`
-              : (productos[index].notes || null),
+            station: p.station || null,
+            notes: p.guest_number
+              ? `Comensal ${p.guest_number}${nota ? ` - ${nota}` : ''}`
+              : (nota || null),
             status: 'pending' as const,
+            product_name: p.product_name,
+            quantity: p.quantity,
+            variant_data: p.variant_data || null,
+            modifiers: p.modifiers && p.modifiers.length > 0
+              ? p.modifiers.map((m) => ({ name: m.name, extraPrice: m.extraPrice }))
+              : null,
+            is_allergy: !!p.is_allergy && !!nota,
           };
         });
 
@@ -507,58 +533,20 @@ export class PedidosService {
   /**
    * Eliminar item de la orden
    */
+  /**
+   * Eliminar item de la orden (anular la línea).
+   *
+   * Pasa por `pos_cocina_ajustar_linea_mesa` (vía /api/pos/cocina/mesa-linea):
+   * si el plato ya está en cocina NO se borra su ítem de comanda (N3): queda
+   * `cancelled` con el motivo y la cocina recibe una comanda de ajuste. La
+   * auditoría (`ops_audit_log`, misma forma de siempre) la escribe la RPC en
+   * la misma transacción. Anular algo ya enviado exige motivo.
+   */
   static async eliminarItem(saleItemId: string, motivo?: string): Promise<void> {
     try {
-      // Consulta simple sin joins para obtener datos básicos del item (sale_id para recalcular)
-      const { data: item } = await supabase
-        .from('sale_items')
-        .select('sale_id, product_id, quantity, unit_price, total, notes')
-        .eq('id', saleItemId)
-        .single();
-
-      const saleId = item?.sale_id;
-
-      // Auditoría best-effort: no bloquear la eliminación si falla
-      if (item) {
-        try {
-          // Consultar datos adicionales para auditoría con left joins (puede fallar si producto fue borrado)
-          const { data: fullItem } = await supabase
-            .from('sale_items')
-            .select(`
-              sale_id, product_id, quantity, unit_price, total, notes,
-              products!left(name),
-              sales!left(organization_id, branch_id, table_session_id)
-            `)
-            .eq('id', saleItemId)
-            .single();
-
-          if (fullItem) {
-            await this.registrarAuditoriaEliminacionItem(saleItemId, fullItem, motivo);
-          } else {
-            await this.registrarAuditoriaEliminacionItem(saleItemId, item, motivo);
-          }
-        } catch (auditErr) {
-          console.warn('Auditoría de eliminación falló (no bloquea):', auditErr);
-        }
-      }
-
-      // Eliminar items de kitchen_tickets relacionados
-      await supabase
-        .from('kitchen_ticket_items')
-        .delete()
-        .eq('sale_item_id', saleItemId);
-
-      // Eliminar item de venta
-      const { error } = await supabase
-        .from('sale_items')
-        .delete()
-        .eq('id', saleItemId);
-
-      if (error) throw error;
-
-      // Recalcular total
-      if (saleId) {
-        await this.recalcularTotalVenta(saleId);
+      const resultado = await ajustarLineaMesa(saleItemId, 0, motivo ?? null);
+      if (resultado.sale_id) {
+        await this.recalcularTotalVenta(resultado.sale_id);
       }
     } catch (error) {
       console.error('Error eliminando item:', error);
@@ -567,89 +555,24 @@ export class PedidosService {
   }
 
   /**
-   * Registra en ops_audit_log la eliminación de un item de venta, para poder
-   * mostrarlo luego en el historial de mesas (productos eliminados/cancelados).
-   * No lanza error si falla: la eliminación del item no debe bloquearse por esto.
-   */
-  private static async registrarAuditoriaEliminacionItem(
-    saleItemId: string,
-    item: {
-      sale_id: string;
-      product_id: number | null;
-      quantity: number;
-      unit_price: number;
-      total: number;
-      notes: any;
-      products?: { name: string }[] | null;
-      sales?: { organization_id: number; branch_id: number | null; table_session_id: string | null }[] | null;
-    },
-    motivo?: string
-  ): Promise<void> {
-    try {
-      const { data: authData } = await supabase.auth.getUser();
-      const sale = item.sales?.[0];
-      if (!sale) return;
-
-      await supabase.from('ops_audit_log').insert({
-        organization_id: sale.organization_id,
-        branch_id: sale.branch_id,
-        user_id: authData?.user?.id || null,
-        entity_type: 'sale_items',
-        entity_id: saleItemId,
-        action: 'DELETE',
-        previous_data: {
-          sale_id: item.sale_id,
-          product_id: item.product_id,
-          product_name: item.products?.[0]?.name || 'Producto',
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total: item.total,
-          notes: item.notes,
-        },
-        metadata: {
-          table_session_id: sale.table_session_id,
-          motivo: motivo || null,
-        },
-      });
-    } catch (auditError) {
-      console.error('No se pudo registrar auditoría de eliminación de item:', auditError);
-    }
-  }
-
-  /**
-   * Actualizar cantidad de un item
+   * Actualizar cantidad de un item.
+   *
+   * Misma fórmula de la línea que antes (impuesto por unidad × cantidad nueva,
+   * total = precio × cantidad + impuesto), ahora en la RPC para que el ajuste
+   * de cocina y la línea cambien en la misma transacción. Si el plato ya se
+   * envió, la comanda original no cambia en silencio: sale una de ajuste
+   * (+/−). Restar algo ya enviado exige motivo.
    */
   static async actualizarCantidadItem(
     saleItemId: string,
-    nuevaCantidad: number
+    nuevaCantidad: number,
+    motivo?: string
   ): Promise<void> {
     try {
-      const { data: item } = await supabase
-        .from('sale_items')
-        .select('unit_price, quantity, tax_amount, sale_id')
-        .eq('id', saleItemId)
-        .single();
-
-      if (!item) throw new Error('Item no encontrado');
-
-      const cantidadAnterior = Number(item.quantity) || 1;
-      const taxAmountAnterior = Number(item.tax_amount) || 0;
-      const taxPorUnidad = taxAmountAnterior / cantidadAnterior;
-      const nuevoTaxAmount = Math.round(taxPorUnidad * nuevaCantidad * 100) / 100;
-      const nuevoTotal = Number(item.unit_price) * nuevaCantidad + nuevoTaxAmount;
-
-      const { error } = await supabase
-        .from('sale_items')
-        .update({
-          quantity: nuevaCantidad,
-          total: nuevoTotal,
-          tax_amount: nuevoTaxAmount,
-        })
-        .eq('id', saleItemId);
-
-      if (error) throw error;
-
-      await this.recalcularTotalVenta(item.sale_id);
+      const resultado = await ajustarLineaMesa(saleItemId, nuevaCantidad, motivo ?? null);
+      if (resultado.sale_id) {
+        await this.recalcularTotalVenta(resultado.sale_id);
+      }
     } catch (error) {
       console.error('Error actualizando cantidad:', error);
       throw error;
@@ -740,18 +663,19 @@ export class PedidosService {
    * Devuelve el detalle de los tickets recién enviados (items + estación + producto)
    * para poder encolar la impresión física por estación (ver PrintJobsService).
    */
-  static async enviarComandaCocina(sessionId: string): Promise<Array<{
+  static async enviarComandaCocina(sessionId: string, textos?: TextosAjusteImpreso): Promise<Array<{
     ticketId: number;
     createdAt: string;
-    items: Array<{ productName: string; quantity: number; notes: string | null; station: string | null; variantData?: Record<string, string> | null; modifiers?: SelectedProductModifier[] | null }>;
+    items: Array<{ productName: string; quantity: number; notes: string | null; station: string | null; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
   }>> {
     try {
       const { data: pendientes, error: fetchError } = await supabase
         .from('kitchen_tickets')
         .select(`
-          id, created_at,
+          id, created_at, ticket_type, adjusts_ticket_id, has_allergy,
           kitchen_ticket_items(
-            station, notes,
+            id, station, notes, status, product_name, quantity, quantity_delta, adjustment_kind,
+            adjustment_reason, is_allergy, variant_data, modifiers,
             sale_items(quantity, notes, products(name, variant_data))
           )
         `)
@@ -768,22 +692,22 @@ export class PedidosService {
 
       if (error) throw error;
 
-      return pendientes.map((ticket: any) => ({
-        ticketId: ticket.id,
-        createdAt: ticket.created_at,
-        items: (ticket.kitchen_ticket_items || []).map((item: any) => {
-          const saleItemNotes = item.sale_items?.notes;
-          const modifiers = saleItemNotes && typeof saleItemNotes === 'object' ? saleItemNotes.modifiers || null : null;
-          return {
-            productName: item.sale_items?.products?.name || 'Producto',
-            quantity: item.sale_items?.quantity || 1,
-            notes: item.notes || null,
-            station: item.station || null,
-            variantData: item.sale_items?.products?.variant_data || null,
-            modifiers,
-          };
-        }),
-      }));
+      // La copia del ítem manda (nombre, cantidad) y un ajuste imprime qué
+      // cambió (+n, −n, ANULAR, NOTA); ver `itemsParaImprimir`.
+      return (pendientes as unknown as RegistroComanda[]).map((registro) => {
+        const ticket = ticketRondaDesdeRegistro(registro);
+        const items = textos
+          ? itemsParaImprimir(ticket, textos)
+          : ticket.items.map((it) => ({
+              productName: it.product_name || 'Producto',
+              quantity: it.quantity,
+              notes: it.notes,
+              station: it.station,
+              variantData: it.variant_data,
+              modifiers: (it.modifiers || []).map((m) => ({ name: m.name, extraPrice: Number(m.extraPrice) || 0 })),
+            }));
+        return { ticketId: ticket.id, createdAt: ticket.created_at, items };
+      });
     } catch (error) {
       console.error('Error enviando comanda:', error);
       throw error;

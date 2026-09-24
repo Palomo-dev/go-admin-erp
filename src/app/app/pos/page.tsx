@@ -45,6 +45,13 @@ import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import { useTranslations } from 'next-intl';
 
 /** Clave de localStorage con el ancho elegido para el panel de carrito/pago. */
+import {
+  itemsParaImprimir,
+  lineaParaRonda,
+  type RespuestaRonda,
+  type TextosAjusteImpreso,
+} from '@/lib/pos/cocina/lineasCarrito';
+import { CocinaError, enviarRondaCocina } from '@/components/pos/cocina/cocinaCliente';
 const POS_LAYOUT_ID = 'pos-layout-productos-carrito';
 
 export default function POSPage() {
@@ -73,6 +80,7 @@ export default function POSPage() {
   const tHeader = useTranslations('header');
   // Shell móvil (Figma MobileHeader Mode=pos y MobileTabBar): la cabecera
   // muestra el estado de la caja, y la barra inferior se oculta con el carrito
+  const tCocina = useTranslations('posCocina');
   // abierto o cobrando, donde manda la botonera «Cobrar».
   useCabeceraMovil({
     modo: 'pos',
@@ -449,8 +457,10 @@ export default function POSPage() {
       return requiresPrep === true;
     });
 
-    if (prepItems.length === 0) {
-      toast.info('No hay productos que requieran preparación en el carrito');
+    // Sin líneas de preparación y nada enviado antes: no hay qué mandar. Si ya
+    // se envió algo (hay comanda), la ronda sí va: anula lo que se quitó.
+    if (prepItems.length === 0 && !cart.kitchen_ticket_id) {
+      toast.info(tCocina('sinPreparacion'));
       return;
     }
 
@@ -466,8 +476,11 @@ export default function POSPage() {
       // fallback: usar 'POS'
     }
 
-    // Mapear items para el ticket de cocina
-    const ticketItems = prepItems.map((item) => {
+    // TODAS las líneas de preparación, con su id estable: la base decide qué
+    // es nuevo, qué cambió (cantidad, nota, alergia) y qué se quitó, y lo
+    // manda en una sola ronda transaccional (N2). Ya no se compara por
+    // nombre + cantidad ni se depende de la comanda guardada en pantalla.
+    const lines = prepItems.map((item) => {
       const product = item.product as ProductWithCategory | undefined;
       // Estación propia del producto (en variantes ya viene resuelta con la del
       // padre desde ProductSearch) y, si no tiene, la de su categoría.
@@ -475,92 +488,74 @@ export default function POSPage() {
         propia: product?.station,
         categoria: estacionDeCategoria(product?.category || product?.categories),
       });
-      return {
-        productName: item.product?.name || 'Producto',
-        quantity: item.quantity,
-        station,
-        notes: item.notes || null,
-        variantData: (product?.variant_data as Record<string, string> | null | undefined) || null,
-        modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
-      };
+      return lineaParaRonda(item, station, (product?.variant_data as Record<string, string> | null | undefined) || null);
     });
 
-    // Si ya existe un ticket, agregar solo items nuevos
-    if (cart.kitchen_ticket_id) {
-      const existingItems = await KitchenService.getTicketItems(cart.kitchen_ticket_id);
+    // La llave de la ronda se guarda ANTES de enviar: si la red falla y el
+    // cajero reintenta, es la misma ronda y la cocina no recibe dos comandas.
+    let roundKey = cart.kitchen_round_key;
+    if (!roundKey) {
+      roundKey = crypto.randomUUID();
+      updateCartInState(await POSService.setCartKitchenRoundKey(cart.id, roundKey));
+    }
 
-      // Identificar items nuevos comparando por productName + variantData
-      const existingKeys = new Set(
-        existingItems.map((ti) =>
-          `${ti.product_name}_${ti.quantity}_${JSON.stringify(ti.variant_data)}`
-        )
-      );
+    let respuesta: RespuestaRonda;
+    try {
+      respuesta = await enviarRondaCocina({
+        cart_id: cart.id,
+        branch_id: cart.branch_id,
+        round_key: roundKey,
+        server_name: serverName,
+        legacy_ticket_id: cart.kitchen_ticket_id ?? null,
+        lines,
+      });
+    } catch (err) {
+      const codigo = err instanceof CocinaError ? err.codigo : 'error_interno';
+      throw new Error(tCocina.has(`errores.${codigo}`) ? tCocina(`errores.${codigo}`) : tCocina('errores.error_interno'));
+    }
+    updateCartInState(await POSService.applyKitchenRound(cart.id, respuesta));
 
-      const newItems = ticketItems.filter(
-        (item) => !existingKeys.has(`${item.productName}_${item.quantity}_${JSON.stringify(item.variantData)}`)
-      );
-
-      if (newItems.length === 0) {
-        toast.info('No hay productos nuevos para enviar a cocina');
-        return;
-      }
-
-      // Agregar items nuevos al ticket existente
-      await KitchenService.addItemsToTicket(
-        cart.kitchen_ticket_id,
-        organization?.id || 0,
-        newItems
-      );
-
-      // Encolar impresión solo de los items nuevos
-      await PrintJobsService.enqueueKitchenTicket(
-        cart.branch_id,
-        {
-          ticketId: cart.kitchen_ticket_id,
-          tableName: 'POS',
-          serverName,
-          createdAt: new Date().toISOString(),
-          items: newItems,
-          businessName: organization?.name,
-          branchName: undefined,
-        }
-      );
-
-      toast.success(`Nuevos productos enviados a cocina (${newItems.length})`);
+    if (respuesta.tickets.length === 0) {
+      toast.info(tCocina('sinCambios'));
+      return;
+    }
+    // Reintento de una ronda que ya había entrado: la cocina ya la tiene y ya se imprimió.
+    if (respuesta.replayed) {
+      toast.info(tCocina('yaEnviada'));
       return;
     }
 
-    // 1. Crear kitchen_ticket en la BD (para que aparezca en /comandas)
-    const ticketResult = await KitchenService.createKitchenTicketFromPOS({
-      organizationId: organization?.id || 0,
-      branchId: cart.branch_id,
-      serverName,
-      items: ticketItems,
-    });
-
-    // Guardar ticketId en el carrito para追踪amiento
-    updateCartInState({ ...cart, kitchen_ticket_id: ticketResult.ticketId });
-
-    // 2. Encolar impresión física via print_jobs (para el print agent)
-    const { enqueued, skippedStations } = await PrintJobsService.enqueueKitchenTicket(
-      cart.branch_id,
-      {
-        ticketId: ticketResult.ticketId,
-        tableName: 'POS',
+    const textos: TextosAjusteImpreso = {
+      mesa: 'POS',
+      ajuste: (original) => tCocina('impreso.ajuste', { id: original ?? '' }),
+      mas: (n) => tCocina('impreso.mas', { cantidad: n }),
+      menos: (n) => tCocina('impreso.menos', { cantidad: n }),
+      anular: tCocina('impreso.anular'),
+      notaCambiada: tCocina('impreso.nota'),
+      alergia: tCocina('impreso.alergia'),
+    };
+    let enqueued = 0;
+    const skippedStations = new Set<string>();
+    for (const ticket of respuesta.tickets) {
+      const impresion = await PrintJobsService.enqueueKitchenTicket(cart.branch_id, {
+        ticketId: ticket.id,
+        tableName: ticket.ticket_type === 'adjustment' ? `${textos.mesa} · ${textos.ajuste(ticket.adjusts_ticket_id)}` : textos.mesa,
         serverName,
-        createdAt: ticketResult.createdAt,
-        items: ticketItems,
+        createdAt: ticket.created_at,
+        items: itemsParaImprimir(ticket, textos),
         businessName: organization?.name,
         branchName: undefined,
-      }
-    );
+      });
+      enqueued += impresion.enqueued;
+      impresion.skippedStations.forEach((s) => skippedStations.add(s));
+    }
 
-    if (enqueued > 0) {
-      toast.success(`Comanda enviada a cocina (${enqueued} impresora${enqueued > 1 ? 's' : ''})`);
-    } else if (skippedStations.length > 0) {
-      toast.info(`Ticket creado en /comandas. Sin impresoras para: ${skippedStations.join(', ')}`);
+    const nuevas = respuesta.tickets.filter((t) => t.ticket_type === 'order').reduce((n, t) => n + t.items.length, 0);
+    const ajustes = respuesta.tickets.filter((t) => t.ticket_type === 'adjustment').reduce((n, t) => n + t.items.length, 0);
+    if (enqueued === 0 && skippedStations.size > 0) {
+      toast.info(tCocina('sinImpresora', { estaciones: Array.from(skippedStations).join(', ') }));
     } else {
-      toast.success('Comanda enviada a cocina');
+      toast.success(tCocina('enviado', { nuevas, ajustes }));
     }
   };
 

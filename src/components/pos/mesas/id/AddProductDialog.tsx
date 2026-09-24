@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
@@ -57,6 +58,7 @@ export function AddProductDialog({
   selectedRoom,
   includedProductIds,
 }: AddProductDialogProps) {
+  const tNotas = useTranslations('posNotasLinea');
   const [searchTerm, setSearchTerm] = useState('');
   const [chargeType, setChargeType] = useState<'room_charge' | 'direct_payment'>('room_charge');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -310,6 +312,16 @@ export function AddProductDialog({
     const item = newCart.get(productId);
     if (item) {
       item.notes = notes;
+      setCart(newCart);
+    }
+  };
+
+  // Marcar la nota del item como alergia (la cocina debe confirmarla antes de empezar)
+  const updateCartAllergy = (productId: number, isAllergy: boolean) => {
+    const newCart = new Map(cart);
+    const item = newCart.get(productId);
+    if (item) {
+      item.is_allergy = isAllergy;
       setCart(newCart);
     }
   };
@@ -779,6 +791,15 @@ export function AddProductDialog({
                         minHeight={60}
                         className="text-xs"
                       />
+                      <label className="flex items-center gap-1 mt-1 text-xs text-red-700 dark:text-red-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={item.is_allergy === true}
+                          onChange={(e) => updateCartAllergy(item.product_id, e.target.checked)}
+                          className="h-3 w-3 rounded border-gray-300 dark:border-gray-600"
+                        />
+                        {tNotas('alergiaMesa')}
+                      </label>
                     </div>
                   ))}
                 </div>

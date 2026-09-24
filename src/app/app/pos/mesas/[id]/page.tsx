@@ -64,6 +64,7 @@ import { LiberacionMesaError, type ResultadoLiberacion } from '@/components/pos/
 
 export default function MesaDetallePage() {
   const tLiberar = useTranslations('posMesaLiberar');
+  const tCocina = useTranslations('posCocina');
   const avisoLiberacion = useAvisoLiberacion();
   const { timezone } = useOrgTimezone();
   const params = useParams();
@@ -437,9 +438,11 @@ export default function MesaDetallePage() {
     }
   };
 
-  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
+  const handleUpdateQuantity = async (itemId: string, newQuantity: number, motivo?: string) => {
     try {
-      await PedidosService.actualizarCantidadItem(itemId, newQuantity);
+      // Si el plato ya está en cocina, sale una comanda de ajuste (+/−) y la
+      // original no cambia; restar exige motivo.
+      await PedidosService.actualizarCantidadItem(itemId, newQuantity, motivo);
       await cargarDatos(true);
       
       // 🔗 INTEGRACIÓN POS → PMS: Sincronizar folio después de actualizar cantidad
@@ -462,9 +465,11 @@ export default function MesaDetallePage() {
     }
   };
 
-  const handleDeleteItem = async (itemId: string) => {
+  const handleDeleteItem = async (itemId: string, motivo?: string) => {
     try {
-      await PedidosService.eliminarItem(itemId);
+      // Un plato ya enviado no se borra de la comanda: se anula con motivo y
+      // la cocina recibe el ajuste.
+      await PedidosService.eliminarItem(itemId, motivo);
       
       // 🔗 INTEGRACIÓN POS → PMS: Sincronizar folio después de eliminar
       if (selectedRoom?.folio_id && session) {
@@ -684,7 +689,15 @@ export default function MesaDetallePage() {
     if (!session) return;
 
     try {
-      const ticketsEnviados = await PedidosService.enviarComandaCocina(session.id);
+      const ticketsEnviados = await PedidosService.enviarComandaCocina(session.id, {
+        mesa: '',
+        ajuste: (original) => tCocina('impreso.ajuste', { id: original ?? '' }),
+        mas: (n) => tCocina('impreso.mas', { cantidad: n }),
+        menos: (n) => tCocina('impreso.menos', { cantidad: n }),
+        anular: tCocina('impreso.anular'),
+        notaCambiada: tCocina('impreso.nota'),
+        alergia: tCocina('impreso.alergia'),
+      });
       toast({
         title: 'Comanda enviada',
         description: 'La comanda se ha enviado a cocina',

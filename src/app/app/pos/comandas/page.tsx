@@ -15,9 +15,15 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { playNotificationBeep } from '@/lib/utils/sound';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useTranslations } from 'next-intl';
+import { alergiaPendiente } from '@/components/pos/comandas/TicketCard';
+import { confirmarAlergia } from '@/components/pos/cocina/cocinaCliente';
+import { itemsParaImprimir, ticketRondaDesdeRegistro, type RegistroComanda } from '@/lib/pos/cocina/lineasCarrito';
 
 export default function ComandasPage() {
   const { toast } = useToast();
+  const tComandas = useTranslations('posComandas');
+  const tCocina = useTranslations('posCocina');
   const { organization } = useOrganization();
   const { branchFilter } = useBranch();
   
@@ -118,6 +124,13 @@ export default function ComandasPage() {
   // Cambiar estado de ticket (con actualización optimista)
   const handleStatusChange = async (ticketId: number, status: KitchenTicket['status']) => {
     const previousTickets = [...tickets];
+    // Comanda con alergia sin confirmar: no se empieza (la base también lo impide;
+    // esto evita el ida y vuelta al arrastrar la tarjeta).
+    const objetivo = tickets.find((tk) => tk.id === ticketId);
+    if (objetivo && alergiaPendiente(objetivo) && (status === 'preparing' || status === 'ready')) {
+      toast({ title: tComandas('alergiaPendiente'), variant: 'destructive' });
+      return;
+    }
     const itemStatusByTicketStatus: Record<KitchenTicket['status'], KitchenTicketItem['status']> = {
       new: 'pending',
       preparing: 'in_progress',
@@ -133,10 +146,9 @@ export default function ComandasPage() {
             ...ticket,
             status,
             ready_at: status === 'ready' ? nowIso : (status === 'delivered' ? ticket.ready_at : null),
-            kitchen_ticket_items: ticket.kitchen_ticket_items?.map((item) => ({
-              ...item,
-              status: itemStatusByTicketStatus[status],
-            })),
+            kitchen_ticket_items: ticket.kitchen_ticket_items?.map((item) => (
+              item.status === 'cancelled' ? item : { ...item, status: itemStatusByTicketStatus[status] }
+            )),
           }
         : ticket
     ));
@@ -234,10 +246,43 @@ export default function ComandasPage() {
     }
   };
 
+  // Confirmar la alergia de la comanda (queda quién y cuándo, en el servidor)
+  const handleConfirmAllergy = async (ticket: KitchenTicket) => {
+    try {
+      const r = await confirmarAlergia(ticket.id);
+      setTickets((prev) => prev.map((tk) => (
+        tk.id === ticket.id ? { ...tk, allergy_ack_at: r.allergy_ack_at, allergy_ack_by: r.allergy_ack_by } : tk
+      )));
+      toast({ title: tComandas('alergiaConfirmadaToast', { id: ticket.id }) });
+    } catch (error) {
+      console.error('Error confirmando la alergia:', error);
+      toast({ title: tComandas('errorConfirmarAlergia'), variant: 'destructive' });
+    }
+  };
+
   // Reimpresión física bajo demanda (best-effort, no bloquea la UI)
   const handleReprint = async (ticket: KitchenTicket) => {
     try {
-      const { enqueued, skippedStations } = await PrintJobsService.enqueueKitchenTicketByRecord(ticket);
+      // Con la copia del ítem y, en un ajuste, qué cambió (+n, −n, ANULAR, NOTA).
+      const ronda = ticketRondaDesdeRegistro(ticket as unknown as RegistroComanda);
+      const nombreMesa = ticket.table_sessions?.restaurant_tables?.name || (ticket.source === 'pos' ? 'POS' : '');
+      const { enqueued, skippedStations } = await PrintJobsService.enqueueKitchenTicket(ticket.branch_id, {
+        ticketId: ticket.id,
+        tableName: ronda.ticket_type === 'adjustment'
+          ? `${nombreMesa} · ${tCocina('impreso.ajuste', { id: ronda.adjusts_ticket_id ?? '' })}`
+          : nombreMesa,
+        serverName: ticket.table_sessions?.serverName || ticket.server_name || undefined,
+        createdAt: ticket.created_at,
+        items: itemsParaImprimir(ronda, {
+          mesa: nombreMesa,
+          ajuste: (original) => tCocina('impreso.ajuste', { id: original ?? '' }),
+          mas: (n) => tCocina('impreso.mas', { cantidad: n }),
+          menos: (n) => tCocina('impreso.menos', { cantidad: n }),
+          anular: tCocina('impreso.anular'),
+          notaCambiada: tCocina('impreso.nota'),
+          alergia: tCocina('impreso.alergia'),
+        }),
+      });
       if (enqueued > 0) {
         toast({ title: 'Reimpresión enviada', description: `Ticket #${ticket.id} enviado a impresión` });
       } else {
@@ -346,6 +391,7 @@ export default function ComandasPage() {
               onStatusChange={handleStatusChange}
               onItemStatusChange={handleItemStatusChange}
               onReprint={handleReprint}
+              onConfirmAllergy={handleConfirmAllergy}
               stationFilter={stationFilter}
             />
 

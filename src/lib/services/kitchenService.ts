@@ -15,6 +15,14 @@ export interface KitchenTicket {
   table_session_id: string | null;
   server_name?: string | null;
   source?: string | null;
+  /** order = comanda normal; adjustment = ajuste sobre platos ya enviados. */
+  ticket_type?: 'order' | 'adjustment';
+  adjusts_ticket_id?: number | null;
+  cart_id?: string | null;
+  has_allergy?: boolean;
+  allergy_ack_at?: string | null;
+  allergy_ack_by?: string | null;
+  cancelled_at?: string | null;
   table_sessions?: {
     id: string;
     restaurant_table_id: string | null;
@@ -35,7 +43,7 @@ export interface KitchenTicketItem {
   sale_item_id: string | null;
   station: 'hot_kitchen' | 'cold_kitchen' | 'bar' | null;
   notes: string | null;
-  status: 'pending' | 'in_progress' | 'ready' | 'delivered';
+  status: 'pending' | 'in_progress' | 'ready' | 'delivered' | 'cancelled';
   created_at: string;
   updated_at: string;
   preparation_time: number | null;
@@ -43,6 +51,13 @@ export interface KitchenTicketItem {
   quantity?: number | null;
   variant_data?: Record<string, string> | null;
   modifiers?: Array<{ name: string; extraPrice: number }> | null;
+  cart_line_id?: string | null;
+  is_allergy?: boolean;
+  adjustment_kind?: 'increase' | 'decrease' | 'void' | 'note' | null;
+  quantity_delta?: number | null;
+  adjustment_reason?: string | null;
+  cancelled_at?: string | null;
+  cancel_reason?: string | null;
   sale_items?: {
     quantity: number;
     product_id: number;
@@ -216,7 +231,9 @@ class KitchenService {
           status: itemStatusByTicketStatus[status],
           updated_at: new Date().toISOString(),
         })
-        .eq('kitchen_ticket_id', ticketId);
+        .eq('kitchen_ticket_id', ticketId)
+        // Un ítem anulado (comanda de ajuste) sigue anulado aunque la comanda avance.
+        .neq('status', 'cancelled');
 
       if (itemsError) throw itemsError;
 
@@ -405,7 +422,32 @@ class KitchenService {
       await supabase
         .from('kitchen_ticket_items')
         .update({ status: 'delivered', updated_at: now })
-        .eq('kitchen_ticket_id', ticketId);
+        .eq('kitchen_ticket_id', ticketId)
+        .neq('status', 'cancelled');
+
+      // Las demás comandas del mismo carrito (rondas y ajustes posteriores,
+      // `pos_cocina_enviar_ronda`) se cierran igual. Lo anulado sigue anulado.
+      const { data: ticket } = await supabase
+        .from('kitchen_tickets')
+        .select('cart_id')
+        .eq('id', ticketId)
+        .maybeSingle();
+      if (ticket?.cart_id) {
+        const { data: otras } = await supabase
+          .from('kitchen_tickets')
+          .update({ status: 'delivered', updated_at: now })
+          .eq('cart_id', ticket.cart_id)
+          .not('status', 'in', '(delivered,cancelled)')
+          .select('id');
+        const ids = (otras || []).map((t: { id: number }) => t.id);
+        if (ids.length > 0) {
+          await supabase
+            .from('kitchen_ticket_items')
+            .update({ status: 'delivered', updated_at: now })
+            .in('kitchen_ticket_id', ids)
+            .neq('status', 'cancelled');
+        }
+      }
     } catch (error) {
       console.error('Error marcando ticket como entregado:', error);
     }

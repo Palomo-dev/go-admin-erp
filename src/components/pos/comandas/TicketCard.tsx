@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Clock, CheckCircle, ChefHat, AlertCircle, User, Check, Hash, Printer, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { Clock, CheckCircle, ChefHat, AlertCircle, User, Check, Hash, Printer, Loader2, AlertTriangle, RefreshCcw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import type { KitchenTicket, KitchenTicketItem, StationFilter } from '@/lib/services/kitchenService';
 
 interface TicketCardProps {
@@ -12,7 +15,25 @@ interface TicketCardProps {
   onStatusChange: (ticketId: number, status: KitchenTicket['status']) => void;
   onItemStatusChange?: (itemId: number, status: KitchenTicketItem['status'], productName?: string) => void;
   onReprint?: (ticket: KitchenTicket) => Promise<void> | void;
+  /** Confirmar la alergia de la comanda: hasta entonces no se puede empezar. */
+  onConfirmAllergy?: (ticket: KitchenTicket) => Promise<void> | void;
   stationFilter?: StationFilter;
+}
+
+/** La comanda tiene alergia sin confirmar: no se empieza (la base también lo impide). */
+export function alergiaPendiente(ticket: Pick<KitchenTicket, 'has_allergy' | 'allergy_ack_at'>): boolean {
+  return ticket.has_allergy === true && !ticket.allergy_ack_at;
+}
+
+/**
+ * Cantidad que la cocina debe ver en el ítem. La copia del ítem manda cuando
+ * existe (`product_name`, mostrador y mesa desde 2026-09-23): así un cambio
+ * en la cuenta no altera en silencio la comanda ya enviada (N3). Las filas
+ * viejas de mesa no tienen copia y siguen leyendo la línea de la venta.
+ */
+export function cantidadComanda(item: Pick<KitchenTicketItem, 'product_name' | 'quantity' | 'sale_items'>): number {
+  if (item.product_name) return Number(item.quantity ?? 1);
+  return Number(item.sale_items?.quantity ?? item.quantity ?? 1);
 }
 
 const getStatusInfo = (status: KitchenTicket['status']) => {
@@ -78,9 +99,28 @@ const getItemStatusInfo = (status: string | undefined) => {
   }
 };
 
-export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onReprint, stationFilter = 'all' }: TicketCardProps) {
+export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onReprint, onConfirmAllergy, stationFilter = 'all' }: TicketCardProps) {
+  const t = useTranslations('posComandas');
+  const { timezone } = useOrgTimezone();
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
   const [isReprinting, setIsReprinting] = useState(false);
+  const [isConfirmingAllergy, setIsConfirmingAllergy] = useState(false);
+  const esAjuste = ticket.ticket_type === 'adjustment';
+  const bloqueadaPorAlergia = alergiaPendiente(ticket);
+  const notasAlergia = (ticket.kitchen_ticket_items || [])
+    .filter((i) => i.is_allergy && i.status !== 'cancelled' && i.notes)
+    .map((i) => `${i.product_name || i.sale_items?.products?.name || ''}: ${i.notes}`);
+
+  const handleConfirmAllergy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onConfirmAllergy || isConfirmingAllergy) return;
+    setIsConfirmingAllergy(true);
+    try {
+      await onConfirmAllergy(ticket);
+    } finally {
+      setIsConfirmingAllergy(false);
+    }
+  };
 
   const handleReprint = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -145,18 +185,26 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
   const nextStatus = getNextStatus();
 
   return (
-    <Card className={`overflow-hidden hover:shadow-lg transition-shadow ${cardUrgencyBorder[timeUrgency]}`}>
+    <Card className={`overflow-hidden hover:shadow-lg transition-shadow ${cardUrgencyBorder[timeUrgency]} ${bloqueadaPorAlergia ? 'ring-2 ring-red-500 dark:ring-red-500' : ''}`}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-3 sm:p-4 border-b border-blue-200 dark:border-blue-800">
+      <div className={esAjuste
+        ? 'bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 p-3 sm:p-4 border-b border-amber-300 dark:border-amber-700'
+        : 'bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-3 sm:p-4 border-b border-blue-200 dark:border-blue-800'}>
         <div className="flex items-start justify-between gap-2 flex-wrap">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
                 {tableName}
               </h3>
               {zoneName && (
                 <Badge variant="outline" className="text-xs">
                   {zoneName}
+                </Badge>
+              )}
+              {esAjuste && (
+                <Badge className="text-xs bg-amber-500 text-white hover:bg-amber-500 inline-flex items-center gap-1">
+                  <RefreshCcw className="h-3 w-3" />
+                  {ticket.adjusts_ticket_id ? t('ajusteDe', { id: ticket.adjusts_ticket_id }) : t('ajuste')}
                 </Badge>
               )}
             </div>
@@ -200,6 +248,36 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
         </div>
       </div>
 
+      {/* Alergia: aviso arriba y confirmación obligatoria antes de empezar */}
+      {ticket.has_allergy && (
+        <div
+          className={bloqueadaPorAlergia
+            ? 'bg-red-600 text-white p-3 sm:p-4 space-y-2'
+            : 'bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300 px-3 sm:px-4 py-2 text-xs'}
+          role={bloqueadaPorAlergia ? 'alert' : undefined}
+        >
+          <div className="flex items-center gap-2 font-bold">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>{bloqueadaPorAlergia ? t('alergiaPendiente') : t('alergiaConfirmada', { hora: formatTimeInTz(ticket.allergy_ack_at, timezone) })}</span>
+          </div>
+          {bloqueadaPorAlergia && notasAlergia.length > 0 && (
+            <ul className="text-sm list-disc pl-6">
+              {notasAlergia.map((n) => <li key={n} className="break-words">{n}</li>)}
+            </ul>
+          )}
+          {bloqueadaPorAlergia && onConfirmAllergy && (
+            <Button
+              onClick={handleConfirmAllergy}
+              disabled={isConfirmingAllergy}
+              className="w-full bg-white text-red-700 hover:bg-red-50"
+            >
+              {isConfirmingAllergy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+              {t('confirmarAlergia')}
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Items */}
       <div className="p-3 sm:p-4 space-y-3">
         {ticket.kitchen_ticket_items?.map((item) => {
@@ -207,10 +285,18 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
           const stationInfo = getStationInfo(item.station);
           const itemStatusInfo = getItemStatusInfo(item.status);
           const isItemReady = item.status === 'ready' || item.status === 'delivered';
+          const isCancelled = item.status === 'cancelled' || !!item.cancelled_at;
           const matchesStation = stationFilter === 'all' || item.station === stationFilter;
-          // Soporte para items desde POS (sin sale_items): usar product_name y quantity directos
-          const itemQuantity = item.sale_items?.quantity ?? item.quantity ?? 1;
-          const productName = product?.name || item.product_name || 'Producto';
+          // La copia del ítem (nombre, cantidad) manda sobre la línea de la venta.
+          const itemQuantity = cantidadComanda(item);
+          const productName = item.product_name || product?.name || 'Producto';
+          const delta = Math.abs(Number(item.quantity_delta) || 0);
+          const ajusteLabel = item.adjustment_kind === 'increase' ? t('mas', { cantidad: delta })
+            : item.adjustment_kind === 'decrease' ? t('menos', { cantidad: delta })
+            : item.adjustment_kind === 'void' ? t('anular')
+            : item.adjustment_kind === 'note' ? t('notaCambiada')
+            : null;
+          const itemClickable = !!onItemStatusChange && !isCancelled && !bloqueadaPorAlergia;
           const variantData = product?.variant_data || item.variant_data;
           const itemModifiers = (() => {
             const saleItemNotes = item.sale_items?.notes;
@@ -221,7 +307,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
           
           const handleItemClick = (e: React.MouseEvent) => {
             e.stopPropagation();
-            if (!onItemStatusChange || updatingItems.has(item.id)) return;
+            if (!onItemStatusChange || !itemClickable || updatingItems.has(item.id)) return;
             // Marcar como actualizando para evitar doble-click
             setUpdatingItems(prev => new Set(prev).add(item.id));
             // Ciclar entre estados: pending -> in_progress -> ready
@@ -243,11 +329,13 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
             <div
               key={item.id}
               className={`flex items-start justify-between p-3 rounded-lg border transition-all ${
-                isItemReady 
-                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+                isCancelled
+                  ? 'bg-red-50/60 dark:bg-red-900/10 border-red-200 dark:border-red-900'
+                  : isItemReady
+                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                   : 'bg-gray-50 dark:bg-gray-800/50 border-transparent hover:border-blue-300 dark:hover:border-blue-700'
-              } ${onItemStatusChange ? 'cursor-pointer' : ''} ${!matchesStation ? 'opacity-35' : ''}`}
-              onClick={onItemStatusChange ? (e) => handleItemClick(e) : undefined}
+              } ${itemClickable ? 'cursor-pointer' : ''} ${!matchesStation ? 'opacity-35' : ''}`}
+              onClick={itemClickable ? (e) => handleItemClick(e) : undefined}
             >
               <div className="flex items-start gap-3 flex-1">
                 {/* Indicador de estado del item */}
@@ -267,13 +355,28 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                 
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className={`font-semibold ${isItemReady ? 'text-green-700 dark:text-green-400 line-through' : 'text-gray-900 dark:text-gray-100'}`}>
+                    {ajusteLabel && (
+                      <Badge className={`text-xs ${item.adjustment_kind === 'void' || item.adjustment_kind === 'decrease' ? 'bg-red-600 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-500'} text-white`}>
+                        {ajusteLabel}
+                      </Badge>
+                    )}
+                    <span className={`font-semibold ${isCancelled ? 'text-red-700 dark:text-red-400 line-through' : isItemReady ? 'text-green-700 dark:text-green-400 line-through' : 'text-gray-900 dark:text-gray-100'}`}>
                       {itemQuantity}x
                     </span>
-                    <span className={`${isItemReady ? 'text-green-700 dark:text-green-400 line-through' : 'text-gray-900 dark:text-gray-100'} break-words`}>
+                    <span className={`${isCancelled ? 'text-red-700 dark:text-red-400 line-through' : isItemReady ? 'text-green-700 dark:text-green-400 line-through' : 'text-gray-900 dark:text-gray-100'} break-words`}>
                       {productName}
                     </span>
                   </div>
+                  {isCancelled && (
+                    <p className="text-xs font-semibold text-red-700 dark:text-red-400 mb-1">
+                      {item.cancel_reason ? t('anuladoMotivo', { motivo: item.cancel_reason }) : t('anulado')}
+                    </p>
+                  )}
+                  {item.adjustment_reason && !isCancelled && (
+                    <p className="text-xs text-amber-800 dark:text-amber-300 mb-1">
+                      {t('motivo', { motivo: item.adjustment_reason })}
+                    </p>
+                  )}
 
                   {variantData && Object.keys(variantData).length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap mb-1">
@@ -299,9 +402,11 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                     <Badge className={`${stationInfo.color} text-xs`}>
                       {stationInfo.label}
                     </Badge>
-                    <Badge className={`${itemStatusInfo.bgColor} ${itemStatusInfo.color} text-xs`}>
-                      {itemStatusInfo.label}
-                    </Badge>
+                    {!isCancelled && (
+                      <Badge className={`${itemStatusInfo.bgColor} ${itemStatusInfo.color} text-xs`}>
+                        {itemStatusInfo.label}
+                      </Badge>
+                    )}
                     {product?.categories?.name && (
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         {product.categories.name}
@@ -315,8 +420,12 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                   </div>
                   
                   {item.notes && (
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 italic">
-                      📝 {typeof item.notes === 'object' ? (item.notes as { extra?: string } | null)?.extra : item.notes}
+                    <p className={item.is_allergy
+                      ? 'mt-2 text-sm font-bold text-red-700 dark:text-red-400 flex items-start gap-1'
+                      : 'mt-2 text-sm text-gray-600 dark:text-gray-400 italic'}>
+                      {item.is_allergy ? <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /> : '📝 '}
+                      {item.is_allergy && <span className="uppercase">{t('alergia')}:</span>}
+                      {typeof item.notes === 'object' ? (item.notes as { extra?: string } | null)?.extra : item.notes}
                     </p>
                   )}
                 </div>
@@ -331,6 +440,8 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
         <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-700">
           <Button
             onClick={() => onStatusChange(ticket.id, nextStatus)}
+            disabled={bloqueadaPorAlergia && (nextStatus === 'preparing' || nextStatus === 'ready')}
+            title={bloqueadaPorAlergia ? t('alergiaPendiente') : undefined}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             {nextStatus === 'preparing' && '🔥 Comenzar Preparación'}

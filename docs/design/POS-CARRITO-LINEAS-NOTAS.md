@@ -297,3 +297,31 @@ Sus totales son los que se proyectan en la pantalla del cliente (`CartView.tsx:1
 4. `organization_taxes.tax_included` no tiene efecto en el POS de mostrador (§7.1).
 5. En el Resumen, una línea con C1 y descuento suma el precio **sin** descontar (7.3, última fila).
 6. La mesa tiene su propio `tax_excluded` en `useMesaTaxes.ts:100` (misma regla que el Resumen). Fuera de alcance.
+
+---
+
+## 8. Implementado (2026-09-24) — bugs N1, N2, N3, N5 y decisiones del dueño
+
+| Qué | Cómo | Dónde |
+|---|---|---|
+| **N1** Nota de la línea y «Excluir impuesto» persistidos | `POSService.updateCartItemNote` / `updateCartItemTaxExcluded` escriben en `pos_carts_<org>` (leen la lista completa: no borran carritos en deuda). «Excluir impuesto» conserva su semántica exacta: no recalcula y `calculateCartTotals` sigue sin leerlo (§7, tests que no cambiaron). | `posService.ts`, `CartView.tsx` |
+| Nota con destino | `CartItem.notes` = cocina (como siempre), `customer_note` = cliente, `is_allergy`. Editor actual con conmutador Cocina/Cliente, casilla «Alergia» y chips de notas rápidas (sin rediseño). Una línea con nota ya no absorbe unidades sin nota (N4, mostrador). | `lib/pos/cocina/lineasCarrito.ts`, `components/pos/cocina/ChipsNotasRapidas.tsx` |
+| **N2** Vínculo carrito ↔ comanda y envío por delta | `kitchen_tickets.cart_id` + `kitchen_ticket_items.cart_line_id` (id estable de la línea). «Enviar a cocina» manda TODAS las líneas de preparación a `pos_cocina_enviar_ronda` (ruta `POST /api/pos/cocina/ronda`), que en una transacción crea la comanda de lo nuevo y la de **ajuste** de lo cambiado (+/− unidades, nota o alergia cambiada) o quitado (anulación: el original queda `cancelled`, nunca se borra). Idempotente por `round_key`, que el carrito guarda **antes** de enviar: reintentar la misma ronda devuelve la comanda de la primera vez (`replayed`) y no imprime de nuevo. El carrito guarda lo enviado por línea («En cocina ×n» / «Cambio sin enviar»). Un carrito enviado antes de esta versión se adopta una vez (ítems asignados a líneas por nombre). | migración `20260925100000`, `app/app/pos/page.tsx` |
+| **N3** Mesa | Cambiar la cantidad o quitar un plato pasa por `pos_cocina_ajustar_linea_mesa` (ruta `POST /api/pos/cocina/mesa-linea`): si ya está en cocina crea la comanda de ajuste y conserva la original; al anular, los ítems vivos quedan `cancelled` con motivo, se desvinculan de la línea y la línea sale de la cuenta (auditoría en `ops_audit_log`, misma forma que antes, en la misma transacción). Restar o anular algo enviado **exige motivo** (diálogo en `OrderItemCard`). Si todo ya estaba entregado, restar/anular no molesta a la cocina; sumar siempre avisa. La fórmula de la línea es la de antes, movida a la RPC (impuesto por unidad; total = precio × cantidad + impuesto). Los ítems de comanda nuevos de mesa guardan copia de nombre, cantidad y modificadores (N11); el KDS usa la copia cuando existe. | `pedidosService.ts`, `OrderItemCard.tsx` |
+| Alergia | `is_allergy` en la línea y en el ítem; `kitchen_tickets.has_allergy`. En el KDS la comanda con alergia sin confirmar muestra el aviso en rojo y «Confirmar alergia»; «Empezar» queda deshabilitado. La base lo impone (disparadores en `kitchen_tickets` y `kitchen_ticket_items`): arrastrar la tarjeta o tocar el ítem tampoco lo salta. La confirmación queda con quién (usuario de la sesión) y cuándo (`pos_cocina_confirmar_alergia`). En mesa, casilla «La nota es una alergia» al agregar. | `TicketCard.tsx`, `app/app/pos/comandas/page.tsx` |
+| Notas rápidas | Tabla `pos_quick_notes` (organización, sucursal opcional, texto, tipo cocina/cliente/alergia, orden, activa) con RLS de lectura por pertenencia; se escribe por `/api/pos/notas-rapidas` con permiso `organization_settings`. Las más usadas salen de `sale_items.notes->>'extra'` (180 días). Configuración › POS › «Notas rápidas». | `NotasRapidasSection.tsx` |
+| **N5** Nota del cliente | Va a `sale_items.notes.customer_note`, a `invoice_items.note` (parche de `pos_checkout_v1`, migración `20260925100100`) y de ahí la cola de Factus ya la envía como `items[].note`; al ticket físico y al recibo (`note` en el ítem del ticket de venta). La nota de cocina ya no sale en la pre-cuenta ni en la pantalla del cliente (que ahora muestra solo `customer_note`). | `CheckoutDialog.tsx`, `printService.ts`, `print-agent/src/printing/*`, `PreCuentaDialog.tsx`, `lib/pos/display/projection.ts` |
+
+Verificado: las RPC se probaron en una transacción deshecha (ronda nueva, reintento idempotente, +1, nota
+cambiada, anulación por quitar la línea, ronda sin cambios, alergia que bloquea y se confirma, pertenencia,
+sucursal ajena, mesa +1/−2 con y sin motivo, anulación con auditoría) y `pos_checkout_v1` con la nota del cliente
+llegando a `invoice_items.note`.
+
+**Pendiente / para decidir:**
+1. «Excluir impuesto» en el cobro, la factura y la contabilidad (§7.5): decisión del dueño.
+2. En mostrador, quitar o restar una línea ya enviada no avisa a cocina hasta el siguiente «Enviar a cocina»
+   (la ronda sí genera el ajuste). Si se cobra sin reenviar, la comanda se marca entregada como antes.
+3. Restar o anular en mesa no exige permiso (como antes); ¿pedir `pos.void`?
+4. La nota del cliente en mesa aún no tiene editor (la mesa solo escribe la nota de cocina); la pre-cuenta ya
+   la mostraría.
+5. `kitchen_ticket_items` sigue fuera de la publicación de Realtime (§4, punto 8).

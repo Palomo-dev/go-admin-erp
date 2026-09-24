@@ -1,122 +1,79 @@
 // ============================================================
 // POST /api/integrations/breb/create-qr
 // Genera un QR de pago Bre-B via Mono (crea una collection)
-// y registra la sesion QR en BD
+// y registra la sesion QR en BD.
+//
+// SEGURIDAD (GO-sec, auditoria del POS 2026-09-24): la organizacion sale de
+// la sesion (`withOrg`; organizacion ajena en body o query → 403 y registro),
+// el permiso de cobro y la conexion de Mono se resuelven en el servidor
+// (`prepararCobroQr`) y la llave Bre-B —a donde llega el dinero— sale de la
+// conexion, nunca del body. Ver `qrShared/cobroQrServidor.ts`.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
+import { OrgContextError } from '@/lib/utils/orgContextError';
 import { monoService } from '@/lib/services/integrations/breb';
 import { createQrSession } from '@/lib/services/integrations/qrShared/qrSessionService';
+import { llaveBrebDeConexion, prepararCobroQr } from '@/lib/services/integrations/qrShared/cobroQrServidor';
 
-interface CreateQrBody {
-  connectionId: string;
-  amount: number;
-  currency: string;
-  reference: string;
-  description?: string;
-  source?: string;
-  sourceId?: string;
-  branchId?: number;
-  organizationId: number;
-  keyValue: string;
-  keyType?: string;
-  expiresInSeconds?: number;
-}
+const RUTA = '/api/integrations/breb/create-qr';
 
-export async function POST(request: NextRequest) {
+export const POST = withOrg(async (ctx, request) => {
   try {
-    // Verificar autenticacion
-    const supabase = createRouteHandlerClient({ cookies });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const body = await readOrgBody(ctx, request, { route: RUTA });
+    const cobro = await prepararCobroQr(ctx, body, 'breb_qr', RUTA);
+    const { keyValue, keyType } = llaveBrebDeConexion(cobro.conexion);
 
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const body: CreateQrBody = await request.json();
-
-    // Validaciones basicas
-    if (
-      !body.connectionId ||
-      !body.amount ||
-      !body.currency ||
-      !body.reference ||
-      !body.organizationId ||
-      !body.keyValue
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            'Faltan campos requeridos: connectionId, amount, currency, reference, organizationId, keyValue',
-        },
-        { status: 400 }
-      );
-    }
-
-    // 1. Crear collection en Mono
-    const keyType = (body.keyType || 'ALPHA') as 'PHONE' | 'EMAIL' | 'ID' | 'ALPHA' | 'BCODE';
-    const qrResponse = await monoService.createCollection(body.connectionId, {
-      amount: body.amount,
-      currency: body.currency,
+    // 1. Crear collection en Mono con la conexion de la organizacion
+    const qrResponse = await monoService.createCollection(cobro.conexion.id, {
+      amount: cobro.amount,
+      currency: cobro.currency,
       key_type: keyType,
-      key_value: body.keyValue as string,
-      description: body.description ?? body.reference,
-      expires_in: body.expiresInSeconds || 900,
+      key_value: keyValue,
+      description: cobro.description,
+      expires_in: cobro.expiresInSeconds,
       metadata: {
-        reference: body.reference,
-        source: body.source,
-        sourceId: body.sourceId,
-        organizationId: body.organizationId,
-        branchId: body.branchId,
+        reference: cobro.reference,
+        source: cobro.source,
+        sourceId: cobro.sourceId,
+        organizationId: cobro.organizationId,
+        branchId: cobro.branchId,
       },
     });
 
     if (!qrResponse) {
-      return NextResponse.json(
-        { error: 'Error al generar QR en Mono (Bre-B)' },
-        { status: 502 }
-      );
+      return NextResponse.json({ error: 'Error al generar QR en Mono (Bre-B)' }, { status: 502 });
     }
 
     // 2. Registrar sesion QR en BD
     const qrSession = await createQrSession({
-      organizationId: body.organizationId,
-      branchId: body.branchId,
+      organizationId: cobro.organizationId,
+      branchId: cobro.branchId,
       providerCode: 'breb',
       connectorCode: 'breb_mono',
-      integrationConnectionId: body.connectionId,
-      reference: body.reference,
+      integrationConnectionId: cobro.conexion.id,
+      reference: cobro.reference,
       externalQrId: qrResponse.id,
       qrData: qrResponse.qr,
       qrImageUrl: qrResponse.qr_image,
-      amount: body.amount,
-      currency: body.currency,
-      source: body.source,
-      sourceId: body.sourceId,
+      amount: cobro.amount,
+      currency: cobro.currency,
+      source: cobro.source,
+      sourceId: cobro.sourceId ?? undefined,
       expiresAt: qrResponse.expires_at,
+      createdBy: cobro.userId,
     });
 
     if (!qrSession) {
-      return NextResponse.json(
-        { error: 'QR generado pero fallo el registro de sesion QR' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'QR generado pero fallo el registro de sesion QR' }, { status: 500 });
     }
 
-    // 3. Retornar sesion y respuesta del proveedor
-    return NextResponse.json({
-      qrSession,
-      qr: qrResponse,
-    });
+    return NextResponse.json({ qrSession, qr: qrResponse });
   } catch (err) {
-    console.error('[API BreB CreateQR] Error:', err);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    );
+    if (err instanceof OrgContextError) throw err;
+    console.error('[API BreB CreateQR] Error:', err instanceof Error ? err.message : String(err));
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
-}
+});

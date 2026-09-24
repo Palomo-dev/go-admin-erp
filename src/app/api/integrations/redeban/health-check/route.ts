@@ -1,40 +1,39 @@
 // ============================================================
 // POST /api/integrations/redeban/health-check
-// Verifica que las credenciales de Redeban sean validas
+// Verifica que las credenciales de Redeban sean validas.
+//
+// SEGURIDAD (GO-sec, 2026-09-24): sesion + administracion de la organizacion
+// (`withOrg({ admin: true })`); organizacion ajena en body o query → 403 y
+// registro. La conexion debe ser de la organizacion de la sesion y de este
+// proveedor (404 si no): antes, cualquier sesion probaba las credenciales de
+// una conexion ajena con solo conocer su id.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
+import { OrgContextError } from '@/lib/utils/orgContextError';
+import { getServiceClient } from '@/lib/supabase/server-service';
 import { redebanService } from '@/lib/services/integrations/redeban';
+import { conexionDeLaOrganizacion } from '@/lib/services/integrations/qrShared/cobroQrServidor';
 
-export async function POST(request: NextRequest) {
+const RUTA = '/api/integrations/redeban/health-check';
+const CONECTORES = ['redeban_qr'] as const;
+
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const { connectionId } = await request.json();
+    const body = await readOrgBody<Record<string, unknown>>(ctx, request, { route: RUTA });
+    const connectionId = typeof body.connectionId === 'string' ? body.connectionId.trim() : '';
     if (!connectionId) {
-      return NextResponse.json(
-        { error: 'connectionId es requerido' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'connectionId es requerido' }, { status: 400 });
     }
 
-    const result = await redebanService.healthCheck(connectionId);
-
+    const conexion = await conexionDeLaOrganizacion(getServiceClient(), ctx.organizationId, connectionId, CONECTORES);
+    const result = await redebanService.healthCheck(conexion.id);
     return NextResponse.json(result);
   } catch (err) {
-    console.error('[API Redeban Health] Error:', err);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    );
+    if (err instanceof OrgContextError) throw err;
+    console.error('[API Redeban Health] Error:', err instanceof Error ? err.message : String(err));
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
-}
+}, { admin: true });

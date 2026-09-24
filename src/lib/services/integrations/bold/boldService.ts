@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getBoldIntegrationsBaseUrl, getBoldPaymentsBaseUrl } from './boldConfig';
 import { confirmQrPayment } from '../qrShared/paymentConfirmation';
-import { getQrSessionByReference } from '../qrShared/qrSessionService';
+import { getQrSessionForWebhook } from '../qrShared/qrSessionService';
 import type {
   BoldCredentials,
   BoldEnvironment,
@@ -341,8 +341,9 @@ class BoldService {
       }
 
       const organizationId = connection.organization_id as number;
-      const session = await getQrSessionByReference(organizationId, reference);
-      if (!session) {
+      // Sesion de ESTA conexion (la que firmo), no solo de su organizacion.
+      const session = await getQrSessionForWebhook(connectionId, reference);
+      if (!session || session.organization_id !== organizationId) {
         return {
           success: false,
           error: `Sesion QR no encontrada para reference: ${reference}`,

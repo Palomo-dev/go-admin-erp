@@ -1,155 +1,99 @@
 // ============================================================
 // POST /api/integrations/bold/create-pos-payment
 // Crea un pago POS en Bold (terminal fisica) y registra la sesion QR.
+//
+// SEGURIDAD (GO-sec, auditoria del POS 2026-09-24): la organizacion sale de
+// la sesion (`withOrg`; organizacion ajena en body o query → 403 y registro);
+// el permiso de cobro y la conexion de Bold se resuelven en el servidor
+// (`prepararCobroQr`). El datafono (serial y modelo) y el correo del operador
+// salen de la conexion y la sucursal (`datafonoBoldDeConexion`), no del body:
+// el POS nunca los mandaba y la ruta respondia 400 siempre.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
+import { OrgContextError } from '@/lib/utils/orgContextError';
 import { boldService, type BoldPaymentMethod } from '@/lib/services/integrations/bold';
 import { createQrSession } from '@/lib/services/integrations/qrShared/qrSessionService';
+import {
+  datafonoBoldDeConexion,
+  MONEDA_RIELES_QR,
+  prepararCobroQr,
+} from '@/lib/services/integrations/qrShared/cobroQrServidor';
 
-interface CreatePosPaymentBody {
-  connectionId: string;
-  amount: number;
-  currency: string;
-  reference: string;
-  payment_method: string;
-  terminal_model: string;
-  terminal_serial: string;
-  user_email: string;
-  description?: string;
-  source?: string;
-  sourceId?: string;
-  branchId?: number;
-  organizationId: number;
+const RUTA = '/api/integrations/bold/create-pos-payment';
+
+/** Metodos que tienen sentido en el datafono desde el cobro del POS. */
+const METODOS_DATAFONO: readonly BoldPaymentMethod[] = ['PAY_BY_QR_BOLD', 'POS'];
+
+function esMetodoDatafono(value: unknown): value is BoldPaymentMethod {
+  return typeof value === 'string' && (METODOS_DATAFONO as readonly string[]).includes(value);
 }
 
-const BOLD_PAYMENT_METHODS: readonly string[] = [
-  'CREDIT_CARD',
-  'PSE',
-  'BOTON_BANCOLOMBIA',
-  'NEQUI',
-  'POS',
-  'PAY_BY_LINK',
-  'PAY_BY_QR_BOLD',
-  'DAVIPLATA',
-];
-
-function isBoldPaymentMethod(value: string): value is BoldPaymentMethod {
-  return BOLD_PAYMENT_METHODS.includes(value);
-}
-
-export async function POST(request: NextRequest) {
+export const POST = withOrg(async (ctx, request) => {
   try {
-    // Verificar autenticacion
-    const supabase = createRouteHandlerClient({ cookies });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const body = await readOrgBody<Record<string, unknown>>(ctx, request, { route: RUTA });
+    const cobro = await prepararCobroQr(ctx, body, 'bold_qr', RUTA);
 
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const paymentMethod = body.payment_method ?? 'PAY_BY_QR_BOLD';
+    if (!esMetodoDatafono(paymentMethod)) {
+      return NextResponse.json({ error: 'Metodo de pago no soportado en el datafono de Bold' }, { status: 400 });
     }
+    const datafono = datafonoBoldDeConexion(cobro.conexion, cobro.branchId, cobro.userEmail);
 
-    const body: CreatePosPaymentBody = await request.json();
-
-    // Validaciones basicas
-    if (
-      !body.connectionId ||
-      !body.amount ||
-      !body.currency ||
-      !body.reference ||
-      !body.payment_method ||
-      !body.terminal_serial ||
-      !body.user_email ||
-      !body.organizationId
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            'Faltan campos requeridos: connectionId, amount, currency, reference, payment_method, terminal_serial, user_email, organizationId',
-        },
-        { status: 400 }
-      );
-    }
-
-    // Bold solo liquida en pesos colombianos
-    if (body.currency !== 'COP') {
-      return NextResponse.json(
-        { error: 'Bold solo admite pagos en COP' },
-        { status: 400 }
-      );
-    }
-
-    if (!isBoldPaymentMethod(body.payment_method)) {
-      return NextResponse.json(
-        { error: `Metodo de pago no soportado por Bold: ${body.payment_method}` },
-        { status: 400 }
-      );
-    }
-
-    // 1. Crear pago POS en Bold
-    const posResponse = await boldService.createPosPayment(
-      body.connectionId,
-      {
-        amount: body.amount,
-        currency: body.currency,
-        reference: body.reference,
-        payment_method: body.payment_method,
-        terminal_model: body.terminal_model,
-        terminal_serial: body.terminal_serial,
-        user_email: body.user_email,
-        description: body.description ?? body.reference,
-        metadata: {
-          source: body.source,
-          sourceId: body.sourceId,
-          organizationId: body.organizationId,
-          branchId: body.branchId,
-        },
-      }
-    );
+    // 1. Crear pago POS en Bold con la conexion de la organizacion
+    const posResponse = await boldService.createPosPayment(cobro.conexion.id, {
+      amount: cobro.amount,
+      currency: MONEDA_RIELES_QR,
+      reference: cobro.reference,
+      payment_method: paymentMethod,
+      terminal_model: datafono.terminalModel,
+      terminal_serial: datafono.terminalSerial,
+      user_email: datafono.userEmail,
+      description: cobro.description,
+      // `reference` en metadata: el webhook de Bold la lee de `data.metadata.reference`.
+      metadata: {
+        reference: cobro.reference,
+        source: cobro.source,
+        sourceId: cobro.sourceId,
+        organizationId: cobro.organizationId,
+        branchId: cobro.branchId,
+      },
+    });
 
     if (!posResponse) {
-      return NextResponse.json(
-        { error: 'Error al crear pago POS en Bold' },
-        { status: 502 }
-      );
+      return NextResponse.json({ error: 'Error al crear pago POS en Bold' }, { status: 502 });
     }
 
     // 2. Registrar sesion QR en BD
     const qrSession = await createQrSession({
-      organizationId: body.organizationId,
-      branchId: body.branchId,
+      organizationId: cobro.organizationId,
+      branchId: cobro.branchId,
       providerCode: 'bold_pos',
       connectorCode: 'bold',
-      integrationConnectionId: body.connectionId,
-      reference: body.reference,
+      integrationConnectionId: cobro.conexion.id,
+      reference: cobro.reference,
       externalQrId: posResponse.integration_id,
-      amount: body.amount,
-      currency: body.currency,
-      source: body.source,
-      sourceId: body.sourceId,
+      amount: cobro.amount,
+      currency: cobro.currency,
+      source: cobro.source,
+      sourceId: cobro.sourceId ?? undefined,
+      createdBy: cobro.userId,
     });
 
     if (!qrSession) {
-      return NextResponse.json(
-        { error: 'Pago POS creado pero fallo el registro de sesion QR' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Pago POS creado pero fallo el registro de sesion QR' }, { status: 500 });
     }
 
-    // 3. Retornar respuesta del proveedor y sesion
     return NextResponse.json({
       integration_id: posResponse.integration_id,
       qr_session_id: qrSession.id,
-      reference: body.reference,
+      reference: cobro.reference,
     });
   } catch (err) {
-    console.error('[API Bold CreatePosPayment] Error:', err);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    );
+    if (err instanceof OrgContextError) throw err;
+    console.error('[API Bold CreatePosPayment] Error:', err instanceof Error ? err.message : String(err));
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
-}
+});

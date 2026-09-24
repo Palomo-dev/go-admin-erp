@@ -616,7 +616,7 @@ export function CheckoutDialog({
       } else if (methodCode === 'breb_qr') {
         endpoint = '/api/integrations/breb/create-qr';
         providerLabel = 'Bre-B (Mono)';
-        extraBody = { keyValue: `@org${org.id}` };
+        // La llave Bre-B (a dónde llega el dinero) sale de la conexión, en el servidor.
       } else if (methodCode === 'bancolombia_qr_wompi') {
         endpoint = '/api/integrations/bancolombia/wompi/create-qr';
         providerLabel = 'Bancolombia QR (Wompi)';
@@ -648,7 +648,7 @@ export function CheckoutDialog({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          connectionId: '', // Se resuelve en el backend por organization
+          // La conexión de cobro la resuelve el servidor (organización de la sesión + sucursal).
           amount,
           currency: 'COP',
           reference,

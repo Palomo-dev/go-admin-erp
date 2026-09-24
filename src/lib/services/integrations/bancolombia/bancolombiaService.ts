@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getBancolombiaBaseUrl, BANCOLOMBIA_SCOPES, type BancolombiaEnvironment } from './bancolombiaConfig';
 import { confirmQrPayment } from '@/lib/services/integrations/qrShared/paymentConfirmation';
+import { getQrSessionForWebhook } from '@/lib/services/integrations/qrShared/qrSessionService';
 import type {
   BancolombiaCredentials,
   BancolombiaTokenResponse,
@@ -430,14 +431,11 @@ class BancolombiaService {
         };
       }
 
-      // Buscar sesion QR por reference
-      const { data: session, error: sessionError } = await supabase
-        .from('payment_qr_sessions')
-        .select('*')
-        .eq('reference', reference)
-        .maybeSingle();
+      // Sesion QR de ESTA conexion (la que firmo) y de su organizacion; nunca
+      // solo por referencia (GO-sec 2026-09-24).
+      const session = await getQrSessionForWebhook(connectionId, reference);
 
-      if (sessionError || !session) {
+      if (!session) {
         return {
           success: false,
           message: `Sesion QR no encontrada para referencia ${reference}`,

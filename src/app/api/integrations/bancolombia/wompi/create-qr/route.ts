@@ -1,115 +1,87 @@
 // ============================================================
 // POST /api/integrations/bancolombia/wompi/create-qr
-// Genera un QR Bancolombia via Wompi (BANCOLOMBIA_QR)
+// Genera un QR Bancolombia via Wompi (BANCOLOMBIA_QR).
+//
+// SEGURIDAD (GO-sec, auditoria del POS 2026-09-24): la organizacion sale de
+// la sesion (`withOrg`; organizacion ajena en body o query → 403 y registro);
+// el permiso de cobro y la conexion de Wompi se resuelven en el servidor
+// (`prepararCobroQr`), nunca con el `connectionId` del body. El correo del
+// pagador es el del body si es valido y, si no, el de la sesion.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
+import { OrgContextError } from '@/lib/utils/orgContextError';
 import { wompiService } from '@/lib/services/integrations/wompi';
 import { createQrSession } from '@/lib/services/integrations/qrShared/qrSessionService';
+import { MONEDA_RIELES_QR, prepararCobroQr } from '@/lib/services/integrations/qrShared/cobroQrServidor';
 import { normalizeQrImageSource } from '@/lib/pos/display/payment';
 
-interface CreateQrBody {
-  connectionId: string;
-  amount: number;
-  currency: string;
-  reference: string;
-  description: string;
-  customerEmail: string;
-  source: string;
-  sourceId: string;
-  branchId: number;
-  organizationId: number;
-  expiresInSeconds?: number;
-}
+const RUTA = '/api/integrations/bancolombia/wompi/create-qr';
+const CORREO_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 
-export async function POST(request: NextRequest) {
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const body = await readOrgBody<Record<string, unknown>>(ctx, request, { route: RUTA });
+    const cobro = await prepararCobroQr(ctx, body, 'bancolombia_qr_wompi', RUTA);
 
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const correoBody = typeof body.customerEmail === 'string' ? body.customerEmail.trim() : '';
+    const customerEmail = CORREO_RE.test(correoBody) ? correoBody : cobro.userEmail ?? '';
+    if (!customerEmail) {
+      return NextResponse.json({ error: 'Se requiere un correo del pagador para Wompi' }, { status: 400 });
     }
 
-    const body: CreateQrBody = await request.json();
-
-    if (
-      !body.connectionId ||
-      !body.amount ||
-      !body.currency ||
-      !body.reference ||
-      !body.organizationId ||
-      !body.customerEmail
-    ) {
-      return NextResponse.json(
-        { error: 'Faltan campos requeridos: connectionId, amount, currency, reference, organizationId, customerEmail' },
-        { status: 400 }
-      );
-    }
-
-    // 1. Obtener credenciales de Wompi
-    const credentials = await wompiService.getCredentials(body.connectionId);
+    // 1. Credenciales de la conexion de la organizacion
+    const credentials = await wompiService.getCredentials(cobro.conexion.id);
     if (!credentials) {
       return NextResponse.json(
-        { error: 'No se encontraron credenciales de Wompi para esta conexion' },
-        { status: 404 }
+        { error: 'La conexión de Wompi no tiene credenciales activas. Revísela en Integraciones → Conexiones.', code: 'CREDENCIALES_NO_CONFIGURADAS' },
+        { status: 412 },
       );
     }
 
-    // 2. Obtener tokens de aceptacion
+    // 2. Tokens de aceptacion
     const acceptanceTokens = await wompiService.getAcceptanceTokens(credentials);
     if (!acceptanceTokens) {
-      return NextResponse.json(
-        { error: 'No se pudieron obtener tokens de aceptacion de Wompi' },
-        { status: 502 }
-      );
+      return NextResponse.json({ error: 'No se pudieron obtener tokens de aceptacion de Wompi' }, { status: 502 });
     }
 
-    // 3. Calcular expiracion (default 15 min)
-    const expiresInSeconds = body.expiresInSeconds || 900;
-    const expiresAt = new Date();
-    expiresAt.setSeconds(expiresAt.getSeconds() + expiresInSeconds);
-    const expirationTime = expiresAt.toISOString();
+    // 3. Expiracion
+    const expirationTime = new Date(Date.now() + cobro.expiresInSeconds * 1000).toISOString();
 
-    // 4. Generar firma de integridad
-    const amountInCents = Math.round(body.amount * 100);
+    // 4. Firma de integridad
+    const amountInCents = Math.round(cobro.amount * 100);
     const signature = wompiService.generateIntegritySignature(
-      body.reference,
+      cobro.reference,
       amountInCents,
-      'COP',
+      MONEDA_RIELES_QR,
       credentials.integritySecret,
-      expirationTime
+      expirationTime,
     );
 
-    // 5. Crear transaccion BANCOLOMBIA_QR en Wompi
+    // 5. Transaccion BANCOLOMBIA_QR en Wompi
     const result = await wompiService.createTransaction(credentials, {
       acceptance_token: acceptanceTokens.acceptanceToken,
       accept_personal_auth: acceptanceTokens.acceptPersonalAuth,
       amount_in_cents: amountInCents,
-      currency: 'COP',
-      customer_email: body.customerEmail,
-      reference: body.reference,
+      currency: MONEDA_RIELES_QR,
+      customer_email: customerEmail,
+      reference: cobro.reference,
       signature,
       payment_method: {
         type: 'BANCOLOMBIA_QR',
-        payment_description: body.description ?? body.reference,
+        payment_description: cobro.description,
       },
       payment_method_type: 'BANCOLOMBIA_QR',
       expiration_time: expirationTime,
     });
 
     if (!result) {
-      return NextResponse.json(
-        { error: 'Error al crear transaccion BANCOLOMBIA_QR en Wompi' },
-        { status: 502 }
-      );
+      return NextResponse.json({ error: 'Error al crear transaccion BANCOLOMBIA_QR en Wompi' }, { status: 502 });
     }
 
-    // 6. Extraer QR de payment_method.extra
+    // 6. QR de payment_method.extra
     const extra = result.data.payment_method?.extra as Record<string, unknown> | undefined;
     // Wompi entrega `qr_image` como base64 CRUDO de un SVG (docs/integraciones/
     // bancolombia-breb-redeban-qr-pagos.md: «data:image/svg+xml;base64,{qr_image}»).
@@ -121,20 +93,21 @@ export async function POST(request: NextRequest) {
 
     // 7. Registrar sesion QR
     const qrSession = await createQrSession({
-      organizationId: body.organizationId,
-      branchId: body.branchId,
+      organizationId: cobro.organizationId,
+      branchId: cobro.branchId,
       providerCode: 'wompi',
       connectorCode: 'bancolombia_qr_wompi',
-      integrationConnectionId: body.connectionId,
-      reference: body.reference,
+      integrationConnectionId: cobro.conexion.id,
+      reference: cobro.reference,
       externalQrId: qrId || result.data.id,
       qrData: qrImage ?? undefined,
       qrImageUrl: qrImage ?? undefined,
-      amount: body.amount,
-      currency: body.currency,
-      source: body.source,
-      sourceId: body.sourceId,
-      expiresAt: expiresAt.toISOString(),
+      amount: cobro.amount,
+      currency: cobro.currency,
+      source: cobro.source,
+      sourceId: cobro.sourceId ?? undefined,
+      expiresAt: expirationTime,
+      createdBy: cobro.userId,
     });
 
     return NextResponse.json({
@@ -144,14 +117,12 @@ export async function POST(request: NextRequest) {
         qr_id: qrId,
         qr_image: qrImage,
         status: result.data.status,
-        reference: body.reference,
+        reference: cobro.reference,
       },
     });
   } catch (err) {
-    console.error('[API Bancolombia Wompi QR] Error:', err);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    );
+    if (err instanceof OrgContextError) throw err;
+    console.error('[API Bancolombia Wompi QR] Error:', err instanceof Error ? err.message : String(err));
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
-}
+});

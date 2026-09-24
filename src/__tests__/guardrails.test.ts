@@ -272,16 +272,13 @@ describe('F0 Guardarraíles', () => {
     const ALLOWLIST = new Set<string>([
       'app/api/categorias/reglas/route.ts',
       'app/api/integrations/whatsapp/oauth/callback/route.ts', // OAuth callback (org en `state` firmado por Meta)
-      'app/api/integrations/bancolombia/create-qr/route.ts',
-      'app/api/integrations/bancolombia/wompi/create-qr/route.ts',
-      'app/api/integrations/bold/create-link/route.ts',
-      'app/api/integrations/bold/create-pos-payment/route.ts',
-      'app/api/integrations/breb/create-qr/route.ts',
-      'app/api/integrations/qr/auto-match/route.ts',
-      'app/api/integrations/redeban/create-qr/route.ts',
-      'app/api/modules/audit/route.ts',
-      'app/api/modules/pages/route.ts',
-      'app/api/modules/route.ts',
+      // Cobros QR del POS (redeban, breb, bancolombia, bold) y qr/auto-match:
+      // migrados a withOrg + readOrgBody el 2026-09-24 (GO-sec); ver 27b.
+      // `modules`, `modules/pages` y `modules/audit`: migradas el 2026-09-24
+      // (F-76 + la parte pendiente de F-77). Las dos primeras a
+      // `withOrg` + `readOrgBody` (`{ admin: true }` en los POST) y la tercera
+      // a `withPlatformAdmin`. Ya NO están en esta allow-list: si alguien
+      // vuelve a leer la organización del body sin sesión, este caso lo caza.
       'app/api/organization/enterprise/route.ts',
       'app/api/organization/members/route.ts',
       'app/api/pms/ical/sync/route.ts',
@@ -2001,14 +1998,30 @@ describe('27. RLS del catálogo: filas globales de solo lectura y nada abierto a
  *     más reciente».
  * `/api/factus/**` está fuera del middleware: sin esto, un handler nuevo sin
  * guarda queda abierto a internet con la cuenta de la plataforma.
+ *
+ * Ampliado el 2026-09-24 (GO-sec, auditoría del POS) a los cobros QR del POS y
+ * del folio: `redeban`, `breb`, `bancolombia` (incluye `wompi/create-qr`),
+ * `bold` y `qr`. Ahí las rutas usaban `auth.getSession()`, la organización del
+ * body y el `connectionId` del body para leer credenciales con service role.
+ * Puertas adicionales de esos árboles: la firma de los webhooks
+ * (`verifyWebhookSignature`, `verifyJwtNotification`) y un handler SIN
+ * parámetros que responde 401 (webhook de Redeban cerrado hasta implementar
+ * su firma: no puede leer la petición). Además, las rutas de cobro resuelven
+ * la conexión en el servidor (`prepararCobroQr`) y nadie la toma del body.
  */
-describe('27b. Open Finance, PayFac y Factus: todo handler pasa por una puerta del servidor', () => {
+describe('27b. Open Finance, PayFac, Factus y cobros QR: todo handler pasa por una puerta del servidor', () => {
+  const RAICES_COBRO_QR = ['redeban', 'breb', 'bancolombia', 'bold', 'qr'].map((d) =>
+    path.join(SRC_ROOT, 'app', 'api', 'integrations', d),
+  );
   const RAICES = [
     path.join(SRC_ROOT, 'app', 'api', 'integrations', 'open-finance'),
     path.join(SRC_ROOT, 'app', 'api', 'integrations', 'payfac'),
     path.join(SRC_ROOT, 'app', 'api', 'factus'),
+    ...RAICES_COBRO_QR,
   ];
-  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withPlatformAdmin|requirePlatformAdmin|resolverAlcancePayfac|withCron|verifyCronSecret|verificarTokenWebhookPrometeo|safeEqual)\s*\(/;
+  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withPlatformAdmin|requirePlatformAdmin|resolverAlcancePayfac|withCron|verifyCronSecret|verificarTokenWebhookPrometeo|safeEqual|verifyWebhookSignature|verifyJwtNotification)\s*\(/;
+  /** `export async function POST() { … 401 … }`: sin parámetros no lee nada de la petición. */
+  const CERRADO_SIN_ENTRADA_RE = /^export\s+(?:async\s+)?function\s+(?:GET|POST|PUT|PATCH|DELETE)\s*\(\s*\)[\s\S]*status:\s*401\b/;
   const HANDLER_RE = /^export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE)\b/;
   const TOP_RE = /^(export\s|async function |function |const |let )/;
 
@@ -2052,7 +2065,7 @@ describe('27b. Open Finance, PayFac y Factus: todo handler pasa por una puerta d
         }
       }
       for (const h of todos.filter((b) => b.metodo)) {
-        const directo = PUERTA_RE.test(h.texto);
+        const directo = PUERTA_RE.test(h.texto) || CERRADO_SIN_ENTRADA_RE.test(h.texto);
         const porHelper = helpersConPuerta.some((n) => new RegExp(`\\b${n}\\b`).test(h.texto.replace(/^[^=({]*/, '')));
         if (!directo && !porHelper) sinPuerta.push(`${rel(file)} ${h.metodo}`);
       }
@@ -2075,6 +2088,49 @@ describe('27b. Open Finance, PayFac y Factus: todo handler pasa por una puerta d
       expect(src).toMatch(/flujoDeshabilitado\(/);
       expect(src).not.toMatch(/initiateTransfer|paySupplier|validateAccount\(/);
     }
+  });
+
+  test('cobros QR: la conexión, la organización y la llave de cobro salen del servidor, nunca del body', () => {
+    const COBROS = [
+      'redeban/create-qr',
+      'breb/create-qr',
+      'bancolombia/create-qr',
+      'bancolombia/wompi/create-qr',
+      'bold/create-link',
+      'bold/create-pos-payment',
+    ];
+    const fallos: string[] = [];
+    for (const ruta of COBROS) {
+      const src = stripAllComments(readFile(path.join(SRC_ROOT, 'app', 'api', 'integrations', ruta, 'route.ts')));
+      if (!/\bprepararCobroQr\s*\(/.test(src)) fallos.push(`${ruta}: no llama a prepararCobroQr`);
+      if (!/\breadOrgBody(?:<[^(]*>)?\s*\(\s*ctx\s*,\s*request\b/.test(src)) fallos.push(`${ruta}: no llama a readOrgBody(ctx, request)`);
+      if (/\b(body|payload)\??\.(connectionId|organizationId|organization_id|keyValue|terminal_serial)\b/.test(src)) {
+        fallos.push(`${ruta}: lee conexión, organización, llave o datáfono del body`);
+      }
+    }
+    // Los clientes ya no mandan una conexión que el servidor ignoraría.
+    for (const dialogo of ['components/pos/CheckoutDialog.tsx', 'components/pms/checkout/CheckoutDialog.tsx']) {
+      const src = stripAllComments(readFile(path.join(SRC_ROOT, dialogo)));
+      if (/\bconnectionId\s*:/.test(src)) fallos.push(`${dialogo}: manda connectionId`);
+      if (/\bkeyValue\s*:/.test(src)) fallos.push(`${dialogo}: manda la llave Bre-B`);
+    }
+    expect(fallos).toEqual([]);
+  });
+
+  test('webhooks de cobro QR: la sesión se busca por la conexión que firmó, no solo por referencia', () => {
+    const SERVICIOS = ['breb/monoService.ts', 'bancolombia/bancolombiaService.ts', 'redeban/redebanService.ts', 'bold/boldService.ts'];
+    const fallos: string[] = [];
+    for (const s of SERVICIOS) {
+      const src = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'services', 'integrations', s)));
+      const proceso = /async processWebhook\([\s\S]*?\n {2}\}\n/.exec(src)?.[0] ?? '';
+      if (!/\bgetQrSessionForWebhook\s*\(\s*connectionId\b/.test(proceso)) fallos.push(`${s}: processWebhook no usa getQrSessionForWebhook(connectionId, …)`);
+      if (/from\(\s*['"]payment_qr_sessions['"]\s*\)\s*\.select\(/.test(proceso)) fallos.push(`${s}: processWebhook lee payment_qr_sessions por su cuenta`);
+    }
+    const sesiones = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'services', 'integrations', 'qrShared', 'qrSessionService.ts')));
+    const helper = /export async function getQrSessionForWebhook[\s\S]*?\n\}\n/.exec(sesiones)?.[0] ?? '';
+    expect(helper).toMatch(/\.eq\(\s*'integration_connection_id'\s*,\s*connectionId\s*\)/);
+    expect(helper).toMatch(/\.eq\(\s*'organization_id'\s*,\s*connection\.organization_id\s*\)/);
+    expect(fallos).toEqual([]);
   });
 });
 
@@ -2214,9 +2270,7 @@ describe('28b. Sin moneda fija en escrituras ni pantallas', () => {
     'lib/services/crm/email/variablesContext.ts': 'contexto de MUESTRA para previsualizar plantillas',
 
     // Rieles de pago que solo operan en pesos colombianos: la moneda es la del riel.
-    'app/api/integrations/bancolombia/wompi/create-qr/route.ts': 'Bancolombia/Wompi QR: solo COP',
-    'app/api/integrations/bold/create-link/route.ts': 'Bold: solo COP',
-    'app/api/integrations/bold/create-pos-payment/route.ts': 'Bold: solo COP',
+    'lib/services/integrations/qrShared/cobroQrServidor.ts': 'MONEDA_RIELES_QR: Bre-B, Redeban, Bancolombia, Wompi QR y Bold solo cobran en COP (las rutas create-qr/create-link/create-pos-payment la importan)',
     'app/api/integrations/wompi/create-transaction/route.ts': 'Wompi: solo COP',
     'lib/services/integrations/bold/boldTypes.ts': 'Bold: solo COP',
     'lib/services/integrations/wompi/wompiTypes.ts': 'Wompi: solo COP',

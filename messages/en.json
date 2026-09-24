@@ -3281,6 +3281,115 @@
         "notaCredito": "Credit note",
         "notaDebito": "Debit note",
         "asiento": "Journal entry"
+      },
+      "lineas": {
+        "etiqueta": "Document lines",
+        "producto": "Product",
+        "sku": "SKU",
+        "seriales": "{n, plural, one {# serial} other {# serials}}",
+        "cantidad": "Quantity",
+        "precio": "Unit price",
+        "descuento": "Discount",
+        "impuestos": "Taxes",
+        "total": "Total",
+        "quitar": "Remove",
+        "quitarDe": "Remove {producto}",
+        "cantidadDe": "Quantity of {producto}",
+        "precioDe": "Unit price of {producto}",
+        "descuentoDe": "Discount on {producto}",
+        "recibidaDe": "Quantity received of {producto}, up to {maximo}",
+        "pedida": "Ordered",
+        "pendiente": "Pending",
+        "recibida": "Received",
+        "sinImpuesto": "No tax",
+        "incluido": "Included",
+        "adicional": "Added",
+        "vacio": "No lines",
+        "vacioDescripcion": "Add a product or a manual item."
+      },
+      "totales": {
+        "titulo": "Summary",
+        "pagado": "Paid",
+        "saldo": "Balance",
+        "netoPagar": "Net payable",
+        "netoCobrar": "Net receivable"
+      }
+    },
+    "teclas": {
+      "enter": "Enter",
+      "escape": "Esc",
+      "delete": "Del",
+      "backspace": "Backspace",
+      "tab": "Tab",
+      "space": "Space",
+      "shift": "Shift",
+      "inicio": "Home",
+      "fin": "End"
+    },
+    "resumen": {
+      "etiqueta": "Totals summary",
+      "subtotal": "Subtotal",
+      "total": "Total",
+      "neto": "Net payable",
+      "incluido": "Included in price",
+      "base": "Base {valor}",
+      "sinImpuestos": "No taxes configured"
+    },
+    "botonImporte": {
+      "procesando": "Processing…"
+    },
+    "pagos": {
+      "metodo": "Payment method",
+      "sinMetodos": "The organization has no active payment methods. Turn them on in Settings › Payments.",
+      "otro": "Other",
+      "otroElegido": "Other method: {metodo}",
+      "lista": "Added payments",
+      "vacio": "No payments yet. Choose a method and an amount.",
+      "resumen": "Payments summary",
+      "generarQr": "Generate QR",
+      "quitar": "Remove {metodo} payment of {monto}",
+      "estado": {
+        "qrPendiente": "QR not generated",
+        "qrProcesando": "Waiting for payment…",
+        "qrCubierto": "Payment received",
+        "error": "Couldn't process it"
+      }
+    },
+    "pago": {
+      "titulo": {
+        "factura": "Record payment",
+        "cuenta": "Record installment",
+        "tercero": "Record customer payment"
+      },
+      "registrar": "Record payment",
+      "documento": "Document being paid",
+      "cliente": "Customer",
+      "proveedor": "Supplier",
+      "total": "Total",
+      "vence": "Due",
+      "saldo": "Balance",
+      "monto": "Amount",
+      "montosRapidos": "Quick amounts",
+      "rapido": {
+        "saldo": "Full balance · {monto}",
+        "mitad": "50% · {monto}"
+      },
+      "metodo": "Payment method",
+      "recibido": "Cash received",
+      "cambio": "Change",
+      "fecha": "Payment date",
+      "referencia": "Reference",
+      "referenciaPlaceholder": "Transaction, voucher or check no.",
+      "notas": "Notes",
+      "errores": {
+        "montoVacio": "Enter the amount.",
+        "montoCero": "The amount must be greater than zero.",
+        "montoExcede": "The amount can't exceed the balance ({saldo}).",
+        "metodoVacio": "Choose the payment method.",
+        "fechaVacia": "Choose the payment date.",
+        "fechaFutura": "The date can't be later than today.",
+        "referenciaVacia": "This method requires a reference.",
+        "recibidoInsuficiente": "The cash received doesn't cover the amount."
       }
     }
   },

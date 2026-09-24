@@ -4,6 +4,8 @@ import * as React from 'react';
 import { Search, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { crearDebounce } from './debounce';
+import { Kbd } from './Kbd';
+import { ariaAtajo } from './teclas';
 import { useKitT } from './useIdiomaKit';
 
 /**
@@ -145,6 +147,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         placeholder={placeholder}
         aria-label={etiqueta ?? placeholder}
         aria-busy={cargando || undefined}
+        aria-keyshortcuts={atajo ? ariaAtajo(atajo) : undefined}
         onChange={(e) => cambiar(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
@@ -172,14 +175,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
             <X aria-hidden="true" className="size-4" strokeWidth={1.5} />
           </button>
         ) : (
-          atajo && (
-            <kbd
-              aria-hidden="true"
-              className="hidden h-5 min-w-5 items-center justify-center rounded border border-line bg-subtle px-1 font-sans text-[11px] leading-none text-fg-muted lg:flex"
-            >
-              {atajo}
-            </kbd>
-          )
+          atajo && <Kbd tecla={atajo} className="hidden lg:inline-flex" />
         )}
         {accesorio}
       </div>

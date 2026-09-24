@@ -31,6 +31,7 @@ import { EmailVerificationBanner } from '@/components/app-layout/Header/EmailVer
 import { rutaActiva, type SeccionVisible } from '@/lib/navigation/filtrar';
 import { useNombresNav } from '@/lib/navigation/useNombresNav';
 import { BranchBadgeActiva } from '@/components/kit/BranchBadge';
+import { Kbd } from '@/components/kit/Kbd';
 import { OrgSwitcher } from './OrgSwitcher';
 import { FeedbackButton, ReportarProblemaDialog } from './ReportarProblema';
 import { DetalleNotificacion, NotificationsBell, PanelNotificaciones, textoContador } from './Notificaciones';
@@ -91,7 +92,7 @@ export function AppHeader({
           >
             <Search className="h-4 w-4" aria-hidden="true" />
             {t('search')}
-            <kbd className="rounded border border-line bg-subtle px-1.5 py-0.5 font-sans text-xs font-medium text-fg-muted">Ctrl K</kbd>
+            <Kbd tecla="Ctrl+K" tamano="md" />
           </button>
           <FeedbackButton />
           <NotificationsBell datos={notificaciones} />

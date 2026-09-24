@@ -3176,6 +3176,115 @@
         "notaCredito": "Avoir",
         "notaDebito": "Note de débit",
         "asiento": "Écriture comptable"
+      },
+      "lineas": {
+        "etiqueta": "Lignes du document",
+        "producto": "Produit",
+        "sku": "SKU",
+        "seriales": "{n, plural, one {# numéro de série} other {# numéros de série}}",
+        "cantidad": "Quantité",
+        "precio": "Prix unitaire",
+        "descuento": "Remise",
+        "impuestos": "Taxes",
+        "total": "Total",
+        "quitar": "Retirer",
+        "quitarDe": "Retirer {producto}",
+        "cantidadDe": "Quantité de {producto}",
+        "precioDe": "Prix unitaire de {producto}",
+        "descuentoDe": "Remise sur {producto}",
+        "recibidaDe": "Quantité reçue de {producto}, jusqu’à {maximo}",
+        "pedida": "Commandée",
+        "pendiente": "En attente",
+        "recibida": "Reçue",
+        "sinImpuesto": "Sans taxe",
+        "incluido": "Incluse",
+        "adicional": "En sus",
+        "vacio": "Aucune ligne",
+        "vacioDescripcion": "Ajoutez un produit ou un article manuel."
+      },
+      "totales": {
+        "titulo": "Récapitulatif",
+        "pagado": "Payé",
+        "saldo": "Solde",
+        "netoPagar": "Net à payer",
+        "netoCobrar": "Net à encaisser"
+      }
+    },
+    "teclas": {
+      "enter": "Entrée",
+      "escape": "Échap",
+      "delete": "Suppr",
+      "backspace": "Retour",
+      "tab": "Tab",
+      "space": "Espace",
+      "shift": "Maj",
+      "inicio": "Début",
+      "fin": "Fin"
+    },
+    "resumen": {
+      "etiqueta": "Récapitulatif des totaux",
+      "subtotal": "Sous-total",
+      "total": "Total",
+      "neto": "Net à payer",
+      "incluido": "Inclus dans le prix",
+      "base": "Base {valor}",
+      "sinImpuestos": "Aucune taxe configurée"
+    },
+    "botonImporte": {
+      "procesando": "Traitement…"
+    },
+    "pagos": {
+      "metodo": "Moyen de paiement",
+      "sinMetodos": "L’organisation n’a aucun moyen de paiement actif. Activez-les dans Paramètres › Paiements.",
+      "otro": "Autre",
+      "otroElegido": "Autre moyen : {metodo}",
+      "lista": "Paiements ajoutés",
+      "vacio": "Aucun paiement pour l’instant. Choisissez un moyen et un montant.",
+      "resumen": "Récapitulatif des paiements",
+      "generarQr": "Générer le QR",
+      "quitar": "Retirer le paiement {metodo} de {monto}",
+      "estado": {
+        "qrPendiente": "QR non généré",
+        "qrProcesando": "En attente du paiement…",
+        "qrCubierto": "Paiement reçu",
+        "error": "Traitement impossible"
+      }
+    },
+    "pago": {
+      "titulo": {
+        "factura": "Enregistrer un paiement",
+        "cuenta": "Enregistrer un acompte",
+        "tercero": "Enregistrer un paiement client"
+      },
+      "registrar": "Enregistrer le paiement",
+      "documento": "Document réglé",
+      "cliente": "Client",
+      "proveedor": "Fournisseur",
+      "total": "Total",
+      "vence": "Échéance",
+      "saldo": "Solde",
+      "monto": "Montant",
+      "montosRapidos": "Montants rapides",
+      "rapido": {
+        "saldo": "Solde total · {monto}",
+        "mitad": "50 % · {monto}"
+      },
+      "metodo": "Moyen de paiement",
+      "recibido": "Espèces reçues",
+      "cambio": "Monnaie à rendre",
+      "fecha": "Date du paiement",
+      "referencia": "Référence",
+      "referenciaPlaceholder": "N° de transaction, de reçu ou de chèque",
+      "notas": "Notes",
+      "errores": {
+        "montoVacio": "Saisissez le montant.",
+        "montoCero": "Le montant doit être supérieur à zéro.",
+        "montoExcede": "Le montant ne peut pas dépasser le solde ({saldo}).",
+        "metodoVacio": "Choisissez le moyen de paiement.",
+        "fechaVacia": "Choisissez la date du paiement.",
+        "fechaFutura": "La date ne peut pas être postérieure à aujourd’hui.",
+        "referenciaVacia": "Ce moyen exige une référence.",
+        "recibidoInsuficiente": "Les espèces reçues ne couvrent pas le montant."
       }
     }
   },

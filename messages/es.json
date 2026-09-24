@@ -3281,6 +3281,115 @@
         "notaCredito": "Nota crédito",
         "notaDebito": "Nota débito",
         "asiento": "Asiento"
+      },
+      "lineas": {
+        "etiqueta": "Líneas del documento",
+        "producto": "Producto",
+        "sku": "SKU",
+        "seriales": "{n, plural, one {# serial} other {# seriales}}",
+        "cantidad": "Cantidad",
+        "precio": "Precio unitario",
+        "descuento": "Descuento",
+        "impuestos": "Impuestos",
+        "total": "Total",
+        "quitar": "Quitar",
+        "quitarDe": "Quitar {producto}",
+        "cantidadDe": "Cantidad de {producto}",
+        "precioDe": "Precio unitario de {producto}",
+        "descuentoDe": "Descuento de {producto}",
+        "recibidaDe": "Cantidad recibida de {producto}, hasta {maximo}",
+        "pedida": "Pedida",
+        "pendiente": "Pendiente",
+        "recibida": "Recibida",
+        "sinImpuesto": "Sin impuesto",
+        "incluido": "Incluido",
+        "adicional": "Adicional",
+        "vacio": "Sin líneas",
+        "vacioDescripcion": "Agrega un producto o un ítem manual."
+      },
+      "totales": {
+        "titulo": "Resumen",
+        "pagado": "Pagado",
+        "saldo": "Saldo",
+        "netoPagar": "Neto a pagar",
+        "netoCobrar": "Neto a cobrar"
+      }
+    },
+    "teclas": {
+      "enter": "Enter",
+      "escape": "Esc",
+      "delete": "Supr",
+      "backspace": "Retroceso",
+      "tab": "Tab",
+      "space": "Espacio",
+      "shift": "Mayús",
+      "inicio": "Inicio",
+      "fin": "Fin"
+    },
+    "resumen": {
+      "etiqueta": "Resumen de totales",
+      "subtotal": "Subtotal",
+      "total": "Total",
+      "neto": "Neto a pagar",
+      "incluido": "Incluido en el precio",
+      "base": "Base {valor}",
+      "sinImpuestos": "Sin impuestos configurados"
+    },
+    "botonImporte": {
+      "procesando": "Procesando…"
+    },
+    "pagos": {
+      "metodo": "Método de pago",
+      "sinMetodos": "La organización no tiene métodos de pago activos. Actívalos en Configuración › Pagos.",
+      "otro": "Otro",
+      "otroElegido": "Otro método: {metodo}",
+      "lista": "Pagos agregados",
+      "vacio": "Aún no hay pagos. Elige un método y un monto.",
+      "resumen": "Resumen de pagos",
+      "generarQr": "Generar QR",
+      "quitar": "Quitar pago {metodo} de {monto}",
+      "estado": {
+        "qrPendiente": "QR sin generar",
+        "qrProcesando": "Esperando el pago…",
+        "qrCubierto": "Pago recibido",
+        "error": "No se pudo procesar"
+      }
+    },
+    "pago": {
+      "titulo": {
+        "factura": "Registrar pago",
+        "cuenta": "Registrar abono",
+        "tercero": "Registrar pago del cliente"
+      },
+      "registrar": "Registrar pago",
+      "documento": "Documento que se paga",
+      "cliente": "Cliente",
+      "proveedor": "Proveedor",
+      "total": "Total",
+      "vence": "Vence",
+      "saldo": "Saldo",
+      "monto": "Monto",
+      "montosRapidos": "Montos rápidos",
+      "rapido": {
+        "saldo": "Saldo total · {monto}",
+        "mitad": "50 % · {monto}"
+      },
+      "metodo": "Método de pago",
+      "recibido": "Efectivo recibido",
+      "cambio": "Cambio",
+      "fecha": "Fecha del pago",
+      "referencia": "Referencia",
+      "referenciaPlaceholder": "N.º de transacción, voucher o cheque",
+      "notas": "Notas",
+      "errores": {
+        "montoVacio": "Escribe el monto.",
+        "montoCero": "El monto debe ser mayor que cero.",
+        "montoExcede": "El monto no puede pasar del saldo ({saldo}).",
+        "metodoVacio": "Elige el método de pago.",
+        "fechaVacia": "Elige la fecha del pago.",
+        "fechaFutura": "La fecha no puede ser posterior a hoy.",
+        "referenciaVacia": "Este método pide la referencia.",
+        "recibidoInsuficiente": "Lo recibido no cubre el monto."
       }
     }
   },

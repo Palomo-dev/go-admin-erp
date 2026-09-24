@@ -28,7 +28,8 @@ export interface PanelAdaptableProps {
   debajoCabecera?: ReactNode;
   children: ReactNode;
   pie?: ReactNode;
-  ancho?: 520 | 560 | 672 | 800;
+  /** 1120: cobro del POS (resumen a la izquierda, pagos a la derecha). */
+  ancho?: 520 | 560 | 672 | 800 | 1120;
   /** Bloquea el cierre (operación en curso). */
   ocupado?: boolean;
   className?: string;
@@ -39,6 +40,7 @@ const ANCHO: Record<NonNullable<PanelAdaptableProps['ancho']>, string> = {
   560: 'sm:max-w-[560px]',
   672: 'sm:max-w-[672px]',
   800: 'sm:max-w-[800px]',
+  1120: 'sm:max-w-[1120px]',
 };
 
 function Cabecera({ titulo, descripcion, icono: Icono, onCerrar, ocupado, escritorio }: { titulo: string; descripcion?: ReactNode; icono?: LucideIcon; onCerrar: () => void; ocupado?: boolean; escritorio: boolean }) {

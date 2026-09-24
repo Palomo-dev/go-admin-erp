@@ -545,3 +545,28 @@ salía gris en inglés), «Devuelta» / «Devuelta parcial» (`returned`, `parti
 «No aplica», «Castigada» (`written off`).
 
 Pruebas: `kit/__tests__/documentoYMotivo.test.ts`.
+
+### Totales, teclado, botón con importe y pagos
+
+| Figma | Código | Contrato |
+|---|---|---|
+| Resumen de totales (carrito, cobro) | `kit/ResumenTotales.tsx` + `kit/resumenTotalesLogica.ts` | `subtotal`, `impuestos: { nombre, tarifa?, base?, importe }[]` (se agrupan por nombre y tarifa: «IVA 19 %»), `descuentos` / `cargos: { etiqueta, importe }[]` (el cargo de servicio y el flete entran aquí), `total`, `retenciones`, `neto`, `impuestosIncluidos` (filas informativas), `mostrarBases`, `moneda`, `cabecera` (interruptor «Impuestos incluidos»), `extras` (Pagado · Falta · Cambio), `cargando`, `sinImpuestosConfigurados`. Signo «−» tipográfico. No suma nada: todo llega del servicio |
+| `Kbd` (light · dark · on-brand × Length) | `kit/Kbd.tsx` + `kit/teclas.ts` | `tecla` («F9», «Ctrl+N», «Alt+1», «Supr», «↑↓»), `tema` (`claro · oscuro · marca`), `tamano` (sm 20 · md 24). Decorativo (`aria-hidden`); nombres de tecla por idioma en `kit.teclas` («Supr» / «Del» / «Suppr»). Sustituye los `<kbd>` a mano de `SearchInput`, `AppHeader`, `GlobalSearch`, `chat/inbox/SearchPanel` y `SearchInConversation` (el de `pos/cajas/listado/CajasPage.tsx` queda para el agente de cajas) |
+| `KbdButton` (primary · outline · ghost · destructive × sm · md · lg) | `kit/KbdButton.tsx` + `kit/botonClases.ts` | props de `button` + `variante` (`primario · secundario · fantasma · destructivo · tinte`), `tamano`, `atajo`, `icono`, `cargando`, `anchoCompleto`, `atajoSiempreVisible`. Pone `aria-keyshortcuts`; el `Kbd` se oculta por debajo de `lg`. `clasesBoton()` es la escala de botones del kit |
+| — (registro de atajos) | `kit/useAtajos.ts` | `useAtajos(atajos, { activo, hayRafaga })` con `{ tecla, accion, descripcion, grupo?, cuando?, permitirEnCampo? }[]`: un `keydown` por ámbito; en un campo solo F1–F12, Esc y Alt/Ctrl; nada durante una ráfaga del lector de códigos. `agruparAtajos` alimenta el mapa F1 |
+| `CobrarButton` (default · sin-caja · falta · procesando · deshabilitado) | `kit/BotonImporte.tsx` + `botonImporteLogica.ts` | `etiqueta`, `importe` (formateado), `atajo`, `estado` (`listo · sinCaja · falta · procesando · deshabilitado`), `motivo` (visible bajo el botón y en `aria-describedby`), `onClick`, `icono`, `tamano` (md · lg), `anchoCompleto`. «Cobrar» del carrito, «Completar venta», «Registrar pago», «Pagar» |
+| Botones de método de pago | `kit/SelectorMetodoPago.tsx` + `metodosPago.ts` | `metodos: { codigo, nombre, icono?, deshabilitado?, motivo? }[]` (**los de la organización**), `valor`, `onValorChange`, `maxBotones` (4: si hay más, N−1 botones y «Otro ▾»), `atajos` (Alt+1…n por posición). `radiogroup` con flechas; icono de respaldo por código |
+| Lista de pagos del cobro | `kit/ListaPagos.tsx` | `pagos: { id, metodo, codigo?, monto, referencia?, estado? (listo · qrPendiente · qrProcesando · qrCubierto · error), detalle? }[]`, `moneda`, `onQuitar`, `onGenerarQr`, `accesorio`, `resumen` (Pagado · Falta · Cambio, calculados por la pantalla), `bloqueado` |
+
+`PanelAdaptable` gana `ancho={1120}` (cobro del POS). Aditivo.
+
+### Documento: cabecera, líneas, totales y diálogo único de pago (`kit/documento/`)
+
+| Figma | Código | Contrato |
+|---|---|---|
+| `DocumentHeader` (detalle · formulario) | `DocumentoCabecera.tsx` | `variante`, `tipo` (pone el icono del catálogo), `titulo`, `subtitulo`, `migas`, `estado` (`StatusBadge`), `insignias` (DIAN, DS, origen), `acciones`, `volverA`, `cargando`, `debajo` (cadena o pestañas), `movil`. Es un `PageHeader` |
+| `DocumentLinesTable` (lectura · edición · recepción × table · cards) | `DocumentoLineas.tsx` + `documentoLineasLogica.ts` | `lineas: { id, descripcion, sku?, variante?, nota?, seriales?, cantidad, unidad?, precioUnitario, descuento?, impuestos?: { nombre, tarifa?, incluido? }[], total, cantidadRecibida?, cantidadPendiente?, error? }[]`, `modo`, `moneda`, `onCambiar(id, { cantidad \| precioUnitario \| descuento \| cantidadRecibida })`, `onQuitar`, `accionesLinea`, `ocultar` (`sku · descuento · impuestos`), `estado`, `pie` («Buscar producto» · «Ítem manual»). Sobre `DataTable` (tarjetas < lg). **El total de la línea lo recalcula el servicio** |
+| `DocumentTotals` (venta · compra · cotización) | `DocumentoTotales.tsx` | lo de `ResumenTotales` + `variante` («Neto a cobrar» / «Neto a pagar»), `pagado`, `saldo`, `titulo`, `accion`, `sinTarjeta`. Bases por impuesto a la vista por defecto |
+| `RegistrarPagoDialog` (factura · cuenta · tercero) `730:20644`, P1…P9 `741:53717` | `RegistrarPagoDialog.tsx` + `pago.ts` | **Esqueleto sin negocio**: `destino`, `documento: { tipo, numero, tercero?, total?, saldo, vencimiento? }` o `saldo`, `moneda`, `metodos` (de la organización), `hoy` (día de la organización), `valorInicial`, `onConfirmar(ValorPago)`, `cargando`, `errores` / `error` del servidor, `permitirExcedente`, `codigosEfectivo` (pide «Recibido» y muestra el cambio), `codigosConReferencia`, `avisoCaja` (P6: efectivo sin caja → aviso y «Abrir caja»), `reparto` (FIFO + sobrante, lo arma la pantalla), `camposExtra` (cuota). Valida monto (> 0, ≤ saldo), método, fecha (no futura) y referencia; registrar es de la RPC (`fn_registrar_pago` / `POST /api/pagos`) |
+
+Pruebas: `kit/__tests__/teclado.test.ts`, `datosYTotales.test.ts`, `pagosYDocumento.test.ts`.

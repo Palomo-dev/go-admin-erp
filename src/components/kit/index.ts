@@ -126,5 +126,27 @@ export { Tarjeta, clasesTonoTarjeta, type TarjetaProps, type TonoTarjeta } from 
 export { KpiCompacto, type KpiCompactoProps, type CifraCompacta } from './KpiCompacto';
 export { DialogoMotivo, type DialogoMotivoProps } from './DialogoMotivo';
 export { validarMotivo, componerMotivo, limpiarMotivo, MOTIVO_MINIMO, MOTIVO_MAXIMO, type ResultadoMotivo, type ErrorMotivo } from './motivo';
-// Documentos (cadena, chips)
+// Totales, teclado, botón con importe y pagos
+export { ResumenTotales, type ResumenTotalesProps } from './ResumenTotales';
+export {
+  filasResumen,
+  agruparImpuestos,
+  formatearTarifa,
+  importeConSigno,
+  type EntradaResumen,
+  type ImpuestoResumen,
+  type AjusteResumen,
+  type FilaResumen,
+} from './resumenTotalesLogica';
+export { Kbd, useNombresTecla, type KbdProps } from './Kbd';
+export { KbdButton, type KbdButtonProps } from './KbdButton';
+export { clasesBoton, temaKbdDe, type VarianteBoton, type TamanoBoton, type TemaKbd } from './botonClases';
+export { partesAtajo, etiquetaAtajo, ariaAtajo, claveAtajo, claveDeEvento, type EventoTecla } from './teclas';
+export { useAtajos, resolverAtajo, agruparAtajos, type Atajo, type ContextoAtajo, type OpcionesAtajos } from './useAtajos';
+export { BotonImporte, type BotonImporteProps } from './BotonImporte';
+export { vistaBotonImporte, type EstadoBotonImporte } from './botonImporteLogica';
+export { SelectorMetodoPago, type SelectorMetodoPagoProps } from './SelectorMetodoPago';
+export { repartirMetodos, atajoMetodo, iconoMetodoPago, type MetodoPagoOpcion } from './metodosPago';
+export { ListaPagos, type ListaPagosProps, type PagoLista, type EstadoPagoLista } from './ListaPagos';
+// Documentos (cadena, chips, cabecera, líneas, totales, diálogo único de pago)
 export * from './documento';

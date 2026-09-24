@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { CommandDialog, CommandEmpty, CommandInput, CommandList } from '@/components/ui/command';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Kbd } from '@/components/kit/Kbd';
 import { useDebounce } from '../../../lib/hooks/useDebounce';
 import { getOrganizationId } from '../../../lib/hooks/useOrganization';
 
@@ -367,9 +368,7 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
           <div className="flex-grow truncate text-sm text-gray-500 dark:text-gray-400">
             {t('triggerPlaceholder')}
           </div>
-          <kbd className="ml-auto hidden lg:inline-flex h-5 select-none items-center gap-1 rounded border bg-gray-50 px-1.5 font-mono text-[10px] font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
-            Ctrl+K
-          </kbd>
+          <Kbd tecla="Ctrl+K" className="ml-auto hidden lg:inline-flex" />
         </div>
       </div>
       )}

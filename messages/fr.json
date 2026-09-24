@@ -6069,7 +6069,12 @@
         },
         "cantidad": "Quantité",
         "ejemploSumar": "Ex. : 10 ou -5",
-        "ejemploExacto": "Ex. : 100"
+        "ejemploExacto": "Ex. : 100",
+        "motivo": "Motif (facultatif)",
+        "motivoPlaceholder": "Ex. : inventaire physique de fin de mois",
+        "avisoKardex": "Chaque ajustement est enregistré dans le kardex et génère son écriture d’inventaire.",
+        "sinCosto": "{count, plural, one {{n} ajustement sans coût : il figure au kardex mais n’a pas généré d’écriture.} other {{n} ajustements sans coût : ils figurent au kardex mais n’ont pas généré d’écriture.}}",
+        "sinPermiso": "Vous n’avez pas l’autorisation d’ajuster l’inventaire."
       },
       "categoria": {
         "titulo": "Attribuer une catégorie",

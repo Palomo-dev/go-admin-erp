@@ -7,6 +7,7 @@ import {
   Copy,
   DollarSign,
   Hash,
+  Info,
   Loader2,
   Power,
   Printer,
@@ -20,6 +21,7 @@ import { BulkActionBar, FormField, SegmentedControl, type AccionFila, type Accio
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -114,6 +116,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   // Estados para stock
   const [modoStock, setModoStock] = useState<ModoStock>('set');
   const [cantidadStock, setCantidadStock] = useState<string>('');
+  const [motivoStock, setMotivoStock] = useState<string>('');
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
 
@@ -196,17 +199,23 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
 
   const handleStock = async () => {
     const cantidad = parseFloat(cantidadStock);
-    if (isNaN(cantidad) || !selectedBranch) {
+    if (isNaN(cantidad) || !selectedBranch || !organization?.id) {
       toast({ variant: 'destructive', title: t('error'), description: t('validacion.campos') });
       return;
     }
     setProcessing(true);
     try {
-      const r = await bulkUpdateStock(selectedIds, parseInt(selectedBranch), cantidad, modoStock);
-      mostrarResultado(t('resultado.stock'), r.exitosos, r.fallidos, r.errores);
+      // Por el kardex: cada producto genera su movimiento de ajuste y su asiento (en el servidor).
+      const r = await bulkUpdateStock(organization.id, selectedIds, parseInt(selectedBranch), cantidad, modoStock, motivoStock);
+      const errores = r.errores.map((e) => (e.includes('sin_permiso') ? t('stock.sinPermiso') : e));
+      mostrarResultado(t('resultado.stock'), r.exitosos, r.fallidos, errores);
+      if (r.resumen.sin_costo > 0) {
+        toast({ title: t('resultado.stock'), description: t('stock.sinCosto', { count: r.resumen.sin_costo, n: entero(r.resumen.sin_costo) }) });
+      }
     } finally {
       setProcessing(false);
       setCantidadStock('');
+      setMotivoStock('');
     }
   };
 
@@ -469,6 +478,19 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
                 className="h-10"
               />
             </FormField>
+            <FormField etiqueta={t('stock.motivo')}>
+              <Textarea
+                value={motivoStock}
+                onChange={(e) => setMotivoStock(e.target.value)}
+                placeholder={t('stock.motivoPlaceholder')}
+                maxLength={500}
+                rows={2}
+              />
+            </FormField>
+            <div role="note" className="flex items-start gap-2 rounded-lg border border-line-brand bg-brand-tint p-3 text-xs text-brand-deep">
+              <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+              <p>{t('stock.avisoKardex')}</p>
+            </div>
           </div>
           {pieDialogo(tk('comun.aplicar'), handleStock)}
         </DialogContent>

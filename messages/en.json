@@ -6174,7 +6174,12 @@
         },
         "cantidad": "Quantity",
         "ejemploSumar": "E.g. 10 or -5",
-        "ejemploExacto": "E.g. 100"
+        "ejemploExacto": "E.g. 100",
+        "motivo": "Reason (optional)",
+        "motivoPlaceholder": "E.g. month-end stock count",
+        "avisoKardex": "Every adjustment is recorded in the stock ledger and posts its inventory journal entry.",
+        "sinCosto": "{count, plural, one {{n} adjustment had no cost: it is in the stock ledger but posted no journal entry.} other {{n} adjustments had no cost: they are in the stock ledger but posted no journal entry.}}",
+        "sinPermiso": "You do not have permission to adjust inventory."
       },
       "categoria": {
         "titulo": "Assign category",

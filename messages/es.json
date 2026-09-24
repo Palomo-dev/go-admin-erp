@@ -6174,7 +6174,12 @@
         },
         "cantidad": "Cantidad",
         "ejemploSumar": "Ej: 10 o -5",
-        "ejemploExacto": "Ej: 100"
+        "ejemploExacto": "Ej: 100",
+        "motivo": "Motivo (opcional)",
+        "motivoPlaceholder": "Ej.: conteo físico de fin de mes",
+        "avisoKardex": "Cada ajuste queda en el kardex y genera su asiento de inventario.",
+        "sinCosto": "{count, plural, one {{n} ajuste quedó sin costo: está en el kardex pero no generó asiento.} other {{n} ajustes quedaron sin costo: están en el kardex pero no generaron asiento.}}",
+        "sinPermiso": "No tienes permiso para ajustar el inventario."
       },
       "categoria": {
         "titulo": "Asignar categoría",

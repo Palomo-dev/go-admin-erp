@@ -274,7 +274,6 @@ describe('F0 Guardarraíles', () => {
       'app/api/integrations/payfac/commission/route.ts', // verifyPlatformAdmin
       'app/api/integrations/payfac/payouts/route.ts', // verifyPlatformAdmin
       'app/api/integrations/whatsapp/oauth/callback/route.ts', // OAuth callback (org en `state` firmado por Meta)
-      'app/api/factus/support-document/route.ts',
       'app/api/integrations/bancolombia/create-qr/route.ts',
       'app/api/integrations/bancolombia/wompi/create-qr/route.ts',
       'app/api/integrations/bold/create-link/route.ts',

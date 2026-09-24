@@ -5,12 +5,29 @@
  * GET    /api/factus/support-document?ref=XXX  → Consultar por reference_code en Factus
  * DELETE /api/factus/support-document?ref=XXX  → Eliminar documento soporte no validado
  *
- * Credenciales via variables de entorno (factusTokenManager)
+ * Credenciales via variables de entorno (factusTokenManager): es la cuenta de
+ * Factus de la PLATAFORMA, compartida por todas las organizaciones.
+ *
+ * SEGURIDAD (GO-sec, 2026-09-23; auditoría de integraciones §3.4):
+ * - `/api/factus/**` está fuera del middleware: cada handler se defiende solo.
+ *   Antes, GET `?ref=` y DELETE no pedían NINGUNA autenticación: cualquiera en
+ *   internet consultaba o BORRABA en Factus, con el token de la plataforma, el
+ *   documento soporte de cualquier organización. POST tomaba la organización
+ *   del body.
+ * - Ahora los tres pasan por `withOrg` (sesión + organización de la sesión),
+ *   `readOrgBody` (body o query con otra organización → 403 y registro) y un
+ *   permiso `finance.*` resuelto en el servidor.
+ * - `?ref=`: el `reference_code` tiene que ser de un documento soporte de la
+ *   organización de la sesión (404 si no) Y no puede estar repetido en otra
+ *   organización (409): los `DS-000N` son únicos solo por organización y la
+ *   cuenta de Factus es compartida, así que un código repetido podría señalar
+ *   en Factus el documento de otro cliente.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody, OrgContextError, type ServerOrgContext } from '@/lib/utils/orgContext';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
 import factusService, {
   FactusSupportDocumentRequest,
@@ -19,21 +36,67 @@ import factusService, {
   mapTaxCode,
 } from '@/lib/services/factusService';
 
+const RUTA = 'factus/support-document';
+
+interface DocumentoPropio {
+  id: string;
+  is_validated: boolean | null;
+}
+
+/**
+ * El documento soporte con `ref` de la organización de la sesión, o 404. Si
+ * otra organización usa el mismo `reference_code`, 409: en la cuenta
+ * compartida de Factus el código no identifica a un único cliente.
+ *
+ * El service role se usa SOLO para contar (sin devolver filas) y después de
+ * haber comprobado que el documento es de la organización de la sesión.
+ */
+async function documentoPropio(ctx: ServerOrgContext, ref: string): Promise<DocumentoPropio> {
+  const { data, error } = await ctx.supabase
+    .from('support_documents')
+    .select('id, is_validated')
+    .eq('organization_id', ctx.organizationId)
+    .eq('reference_code', ref)
+    .maybeSingle();
+  if (error || !data) {
+    throw new OrgContextError('Documento soporte no encontrado', 404, 'NOT_FOUND');
+  }
+
+  const { count, error: errorConteo } = await getServiceClient()
+    .from('support_documents')
+    .select('id', { count: 'exact', head: true })
+    .eq('reference_code', ref);
+  if (errorConteo || count === null || count !== 1) {
+    console.warn(`[${RUTA}] reference_code repetido entre organizaciones: no se consulta Factus`, {
+      organizationId: ctx.organizationId,
+      coincidencias: count ?? null,
+    });
+    throw new OrgContextError(
+      'El código de referencia no es único en la cuenta de facturación; no se puede consultar',
+      409,
+      'REFERENCE_AMBIGUOUS',
+    );
+  }
+  return data as DocumentoPropio;
+}
+
 /**
  * POST /api/factus/support-document
- * Body: { organizationId, supportDocumentId, branchId?, invoicePurchaseId? }
+ * Body: { supportDocumentId, branchId? } — la organización sale de la sesión.
  *
  * Toma un documento soporte ya guardado en BD (estado draft/pending),
  * lo mapea al formato de Factus y lo envía a validar.
  */
-export async function POST(request: NextRequest) {
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const body = await request.json();
-    const { organizationId, supportDocumentId, branchId } = body;
+    const body = await readOrgBody<{ supportDocumentId?: string; branchId?: number | string }>(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.CREAR, RUTA);
+    const organizationId = ctx.organizationId;
+    const { supportDocumentId, branchId } = body;
 
-    if (!organizationId || !supportDocumentId) {
+    if (!supportDocumentId) {
       return NextResponse.json(
-        { error: 'Se requieren organizationId y supportDocumentId' },
+        { error: 'Se requiere supportDocumentId' },
         { status: 400 }
       );
     }
@@ -54,10 +117,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = ctx.supabase;
     const environment = credentials.environment;
 
-    // 1. Obtener el documento soporte desde BD
+    // 1. Obtener el documento soporte desde BD (de la organización de la sesión)
     const { data: sd, error: sdError } = await supabase
       .from('support_documents')
       .select('*')
@@ -100,13 +163,14 @@ export async function POST(request: NextRequest) {
       numberingRangeId = sequence?.factus_numbering_range_id;
     }
 
-    // 4. Resolver municipio del establecimiento (sucursal u organización)
+    // 4. Resolver municipio del establecimiento (sucursal de la organización)
     let establishmentMunicipalityCode = '05001';
     if (branchId) {
       const { data: branch } = await supabase
         .from('branches')
         .select('municipality_id, address, phone, email, name')
         .eq('id', branchId)
+        .eq('organization_id', organizationId)
         .maybeSingle();
 
       if (branch?.municipality_id) {
@@ -154,6 +218,7 @@ export async function POST(request: NextRequest) {
         ...(provider.phone ? { phone: provider.phone } : {}),
         ...(provider.legal_organization_code ? { legal_organization_code: provider.legal_organization_code } : {}),
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- filas de invoice_items sin tipo generado
       items: (items || []).map((item: any, idx: number) => {
         let itemTaxCode = item.tax_code;
         if (!itemTaxCode && item.tax_rate !== null && item.tax_rate !== undefined) {
@@ -165,6 +230,7 @@ export async function POST(request: NextRequest) {
           itemCodeRef = item.product_id ? `PROD-${item.product_id}` : `ITEM-${idx + 1}`;
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ítem del payload de Factus
         const itemData: any = {
           code_reference: itemCodeRef,
           name: (item.description || 'Producto').substring(0, 250),
@@ -181,6 +247,7 @@ export async function POST(request: NextRequest) {
           ],
           ...(item.withholding_taxes && item.withholding_taxes.length > 0
             ? {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- retenciones en JSON libre
                 withholding_taxes: item.withholding_taxes.map((wt: any) => ({
                   code: wt.code || '',
                   rate: Number(wt.rate || wt.withholding_tax_rate || 0).toFixed(2),
@@ -230,11 +297,13 @@ export async function POST(request: NextRequest) {
         numbering_range_id: numberingRangeId,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', supportDocumentId);
+      .eq('id', supportDocumentId)
+      .eq('organization_id', organizationId);
 
     try {
-      // 8. Enviar a Factus
-      console.log('[Factus] Enviando documento soporte:', JSON.stringify(factusRequest, null, 2));
+      // 8. Enviar a Factus. Solo identificadores al log: el payload lleva
+      // datos personales del proveedor (documento, correo, teléfono).
+      console.log('[Factus] Enviando documento soporte', { organizationId, reference_code: sd.reference_code, jobId: job.id });
       const result = await factusService.createSupportDocument(
         environment as 'sandbox' | 'production',
         accessToken,
@@ -265,7 +334,8 @@ export async function POST(request: NextRequest) {
           factus_response: result,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', supportDocumentId);
+        .eq('id', supportDocumentId)
+        .eq('organization_id', organizationId);
 
       // 11. Registrar evento
       await supabase
@@ -289,13 +359,14 @@ export async function POST(request: NextRequest) {
         data: result.data,
         jobId: job.id,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const mensaje = error instanceof Error ? error.message : 'Error enviando a Factus';
       // Actualizar job con error
       await supabase
         .from('electronic_invoicing_jobs')
         .update({
           status: 'failed',
-          error_message: error.message,
+          error_message: mensaje,
           attempt_count: (job.attempt_count || 0) + 1,
           next_retry_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
           updated_at: new Date().toISOString(),
@@ -307,10 +378,11 @@ export async function POST(request: NextRequest) {
         .from('support_documents')
         .update({
           status: 'failed',
-          error_message: error.message,
+          error_message: mensaje,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', supportDocumentId);
+        .eq('id', supportDocumentId)
+        .eq('organization_id', organizationId);
 
       // Registrar evento de error
       await supabase
@@ -319,42 +391,40 @@ export async function POST(request: NextRequest) {
           job_id: job.id,
           organization_id: organizationId,
           event_type: 'error',
-          event_message: error.message,
+          event_message: mensaje,
         });
 
       return NextResponse.json(
-        { error: error.message, jobId: job.id },
+        { error: mensaje, jobId: job.id },
         { status: 500 }
       );
     }
-  } catch (error: any) {
-    console.error('Error en envío de documento soporte a Factus:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error interno del servidor' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return routeErrorResponse('Factus support-document POST', error);
   }
-}
+});
 
 /**
  * GET /api/factus/support-document
- * Sin query params → lista documentos soporte desde BD local
- * ?ref=XXX → consulta por reference_code en Factus
- * ?organizationId=XXX requerido para listar
+ * Sin `ref` → lista documentos soporte de la organización de la sesión (BD local)
+ * ?ref=XXX → consulta por reference_code en Factus (solo un documento propio)
  */
-export async function GET(request: NextRequest) {
+export const GET = withOrg(async (ctx, request) => {
   try {
+    // `?organizationId=` ajeno → 403 y registro (se ignora si es el propio).
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
+
     const { searchParams } = new URL(request.url);
     const ref = searchParams.get('ref');
-    const organizationId = searchParams.get('organizationId');
     const status = searchParams.get('status');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10) || 20));
 
-    const supabase = createRouteHandlerClient({ cookies });
-
-    // Si hay ref, consultar en Factus
+    // Si hay ref, consultar en Factus (antes de llamar: que sea propio y único)
     if (ref) {
+      await documentoPropio(ctx, ref);
+
       const credentials = getCredentials();
       if (!credentials) {
         return NextResponse.json(
@@ -380,15 +450,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(result);
     }
 
-    // Listar desde BD local
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: 'Se requiere organizationId' },
-        { status: 400 }
-      );
-    }
-
-    let query = supabase
+    let query = ctx.supabase
       .from('support_documents')
       .select(
         `id, reference_code, number, issue_date, total, status, cufe, is_validated, validated_at,
@@ -396,7 +458,7 @@ export async function GET(request: NextRequest) {
          supplier:suppliers(id, name, nit)`,
         { count: 'exact' }
       )
-      .eq('organization_id', Number(organizationId))
+      .eq('organization_id', ctx.organizationId)
       .order('created_at', { ascending: false })
       .range((page - 1) * limit, page * limit - 1);
 
@@ -419,29 +481,35 @@ export async function GET(request: NextRequest) {
       page,
       limit,
     });
-  } catch (error: any) {
-    console.error('Error en GET documento soporte:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error interno del servidor' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return routeErrorResponse('Factus support-document GET', error);
   }
-}
+});
 
 /**
  * DELETE /api/factus/support-document?ref=XXX
- * Elimina un documento soporte no validado en Factus
+ * Elimina en Factus un documento soporte NO validado de la organización de la sesión.
  */
-export async function DELETE(request: NextRequest) {
+export const DELETE = withOrg(async (ctx, request) => {
   try {
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.ANULAR, RUTA);
+
     const { searchParams } = new URL(request.url);
     const ref = searchParams.get('ref');
-    const organizationId = searchParams.get('organizationId');
 
     if (!ref) {
       return NextResponse.json(
         { error: 'Se requiere ref (reference_code)' },
         { status: 400 }
+      );
+    }
+
+    const documento = await documentoPropio(ctx, ref);
+    if (documento.is_validated) {
+      return NextResponse.json(
+        { error: 'Un documento soporte validado por la DIAN no se puede eliminar' },
+        { status: 409 }
       );
     }
 
@@ -467,25 +535,18 @@ export async function DELETE(request: NextRequest) {
       ref
     );
 
-    // Actualizar estado en BD local si aplica
-    if (organizationId) {
-      const supabase = createRouteHandlerClient({ cookies });
-      await supabase
-        .from('support_documents')
-        .update({
-          status: 'cancelled',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('reference_code', ref)
-        .eq('organization_id', Number(organizationId));
-    }
+    // Actualizar estado en BD local (solo el documento propio)
+    await ctx.supabase
+      .from('support_documents')
+      .update({
+        status: 'cancelled',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', documento.id)
+      .eq('organization_id', ctx.organizationId);
 
     return NextResponse.json(result);
-  } catch (error: any) {
-    console.error('Error eliminando documento soporte:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error eliminando documento soporte' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return routeErrorResponse('Factus support-document DELETE', error);
   }
-}
+});

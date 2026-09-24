@@ -837,7 +837,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
                 size="sm"
                 onClick={async () => {
                   try {
-                    const blob = await electronicInvoicingService.downloadPDF(eInvoiceFactusNumber || facturaActual.number);
+                    const blob = await electronicInvoicingService.downloadPDF(String(facturaActual.id));
                     if (blob) {
                       const url = URL.createObjectURL(blob);
                       const a = window.document.createElement('a');
@@ -861,7 +861,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
                 size="sm"
                 onClick={async () => {
                   try {
-                    const xml = await electronicInvoicingService.downloadXML(eInvoiceFactusNumber || facturaActual.number);
+                    const xml = await electronicInvoicingService.downloadXML(String(facturaActual.id));
                     if (xml) {
                       const blob = new Blob([xml], { type: 'application/xml' });
                       const url = URL.createObjectURL(blob);

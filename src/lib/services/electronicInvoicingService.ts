@@ -397,11 +397,13 @@ class ElectronicInvoicingService {
   }
 
   /**
-   * Descargar PDF de factura electrónica
+   * Descargar PDF de factura electrónica.
+   * Recibe el id de la factura (`invoice_sales.id`): el servidor comprueba que
+   * es de la organización de la sesión y pregunta a Factus su número DIAN.
    */
-  async downloadPDF(invoiceNumber: string): Promise<Blob | null> {
+  async downloadPDF(invoiceId: string): Promise<Blob | null> {
     try {
-      const response = await fetch(`/api/factus/download?type=pdf&invoiceNumber=${invoiceNumber}`);
+      const response = await fetch(`/api/factus/download?type=pdf&invoiceId=${encodeURIComponent(invoiceId)}`);
       if (!response.ok) throw new Error('Error descargando PDF');
       return await response.blob();
     } catch (error) {
@@ -411,11 +413,11 @@ class ElectronicInvoicingService {
   }
 
   /**
-   * Descargar XML de factura electrónica
+   * Descargar XML de factura electrónica (por id de factura, ver `downloadPDF`).
    */
-  async downloadXML(invoiceNumber: string): Promise<string | null> {
+  async downloadXML(invoiceId: string): Promise<string | null> {
     try {
-      const response = await fetch(`/api/factus/download?type=xml&invoiceNumber=${invoiceNumber}`);
+      const response = await fetch(`/api/factus/download?type=xml&invoiceId=${encodeURIComponent(invoiceId)}`);
       if (!response.ok) throw new Error('Error descargando XML');
       return await response.text();
     } catch (error) {

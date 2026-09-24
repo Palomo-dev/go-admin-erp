@@ -159,7 +159,7 @@ export default function FacturacionElectronicaPage() {
  
       loadJobs();
       loadStats();
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo programar el reintento',
@@ -183,7 +183,7 @@ export default function FacturacionElectronicaPage() {
  
       loadJobs();
       loadStats();
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo cancelar el job',
@@ -201,12 +201,15 @@ export default function FacturacionElectronicaPage() {
     try {
       const factusNumber = job.response_payload?.data?.number;
       const invoiceNumber = factusNumber || job.invoice?.number;
-      if (!invoiceNumber) {
-        throw new Error('No hay número de factura disponible');
+      // El servidor resuelve el número DIAN a partir de la factura (GO-sec):
+      // se envía el id de la factura, nunca un número.
+      const invoiceId = job.invoice_id || job.invoice?.id;
+      if (!invoiceId) {
+        throw new Error('No hay factura asociada a este documento');
       }
- 
+
       const response = await fetch(
-        `/api/factus/download?type=${type}&invoiceNumber=${invoiceNumber}`
+        `/api/factus/download?type=${type}&invoiceId=${encodeURIComponent(invoiceId)}`
       );
  
       if (!response.ok) throw new Error(`Error descargando ${type.toUpperCase()}`);
@@ -225,10 +228,10 @@ export default function FacturacionElectronicaPage() {
         title: 'Descarga completada',
         description: `El archivo ${type.toUpperCase()} se ha descargado`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message || `No se pudo descargar el ${type.toUpperCase()}`,
+        description: (error instanceof Error && error.message) || `No se pudo descargar el ${type.toUpperCase()}`,
         variant: 'destructive',
       });
     }

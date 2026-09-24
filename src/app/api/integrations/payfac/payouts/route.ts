@@ -1,85 +1,59 @@
 // ============================================================
 // /api/integrations/payfac/payouts
-// Gestiona dispersiones de fondos a organizaciones (admin + organizacion)
-// GET  - lista payouts (query: ?organizationId=xxx&status=xxx&limit=100)
-// POST - crea payout
+// Dispersiones de fondos a organizaciones
+// GET  - lista payouts: la plataforma, todos (o ?organizationId=);
+//        una organizacion, solo los suyos (query: ?status=xxx&limit=100)
+// POST - crea payout: SOLO administradores de plataforma
+//
+// SEGURIDAD (GO-sec, 2026-09-23; auditoria de integraciones §2.4):
+// - POST no verificaba NINGUN rol y tomaba la organizacion del body: cualquier
+//   usuario con sesion creaba payouts de cualquier organizacion. Crear una
+//   dispersion es una operacion de la plataforma (Modelo B): ahora exige admin
+//   de plataforma verificado con `fn_is_platform_admin()` (antes se consultaba
+//   `platform_admins` con el cliente del usuario, que por RLS sin politicas
+//   nunca devolvia filas). La organizacion del body es la DESTINATARIA que
+//   elige la plataforma, no la del usuario.
+// - GET con `?organizationId=` leia payouts ajenos: ahora ver `alcance.ts`.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { withPlatformAdmin } from '@/lib/security/platformAdmin';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
 import { payoutService } from '@/lib/services/integrations/payfac';
 import type { PayoutStatus } from '@/lib/services/integrations/payfac';
+import type { PayoutMethod } from '@/lib/services/integrations/payfac/payoutService';
+import { organizacionDelAlcance, resolverAlcancePayfac } from '@/lib/services/integrations/payfac/alcance';
 
-// Verifica que el usuario sea administrador de plataforma
-async function verifyPlatformAdmin(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('platform_admins')
-    .select('id, role, status')
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .single();
-
-  if (error || !data) return false;
-  return data.role === 'super_admin' || data.role === 'admin';
-}
+const RUTA = 'payfac/payouts';
+const ESTADOS: PayoutStatus[] = ['pending', 'processing', 'completed', 'failed', 'cancelled'];
+const METODOS: PayoutMethod[] = ['breb', 'ach', 'manual', 'mono_turbo'];
 
 // GET - lista payouts con filtros opcionales
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+    const alcance = await resolverAlcancePayfac(request, RUTA);
 
     const { searchParams } = new URL(request.url);
-    const organizationId = searchParams.get('organizationId');
-    const orgIdNum = organizationId ? Number(organizationId) : undefined;
-    const status = (searchParams.get('status') ?? undefined) as PayoutStatus | undefined;
-    const limit = parseInt(searchParams.get('limit') ?? '100', 10);
+    const statusParam = searchParams.get('status') ?? undefined;
+    const status = statusParam && ESTADOS.includes(statusParam as PayoutStatus) ? (statusParam as PayoutStatus) : undefined;
+    const limit = Math.min(500, Math.max(1, parseInt(searchParams.get('limit') ?? '100', 10) || 100));
 
-    // Si no se especifica organizationId, requiere permisos de admin
-    if (!orgIdNum) {
-      const isAdmin = await verifyPlatformAdmin(supabase, session.user.id);
-      if (!isAdmin) {
-        return NextResponse.json(
-          { error: 'Se requiere organizationId o permisos de administrador' },
-          { status: 403 },
-        );
-      }
-    }
-
-    const payouts = await payoutService.list(supabase, {
-      organizationId: orgIdNum,
+    const payouts = await payoutService.list(null, {
+      organizationId: organizacionDelAlcance(alcance),
       status,
       limit,
     });
 
     return NextResponse.json({ success: true, data: payouts });
   } catch (error) {
-    console.error('[PayFac Payouts GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('PayFac Payouts GET', error);
   }
 }
 
-// POST - crea un payout para una organizacion
-export async function POST(request: NextRequest) {
+// POST - crea un payout para una organizacion (solo plataforma)
+export const POST = withPlatformAdmin(async (admin, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const body = await request.json();
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const {
       organizationId,
       providerCode,
@@ -89,7 +63,6 @@ export async function POST(request: NextRequest) {
       bankAccountId,
     } = body;
 
-    // Validar campos requeridos
     if (!organizationId || !providerCode || !periodStart || !periodEnd) {
       return NextResponse.json(
         { error: 'organizationId, providerCode, periodStart y periodEnd son requeridos' },
@@ -97,26 +70,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convertir organizationId a numero (viene como string desde el body)
     const orgIdNum = Number(organizationId);
+    if (!Number.isInteger(orgIdNum) || orgIdNum <= 0) {
+      return NextResponse.json({ error: 'organizationId no valido' }, { status: 400 });
+    }
+
+    const metodo = typeof payoutMethod === 'string' && METODOS.includes(payoutMethod as PayoutMethod)
+      ? (payoutMethod as PayoutMethod)
+      : undefined;
+    const cuenta = bankAccountId === undefined || bankAccountId === null || bankAccountId === ''
+      ? undefined
+      : Number(bankAccountId);
+    if (cuenta !== undefined && (!Number.isInteger(cuenta) || cuenta <= 0)) {
+      return NextResponse.json({ error: 'bankAccountId no valido' }, { status: 400 });
+    }
+
+    console.info(`[${RUTA}] payout solicitado por la plataforma`, { adminUserId: admin.userId, organizationId: orgIdNum });
 
     const payout = await payoutService.create(
-      supabase,
+      null,
       {
         organizationId: orgIdNum,
-        providerCode,
-        periodStart,
-        periodEnd,
-        payoutMethod,
-        bankAccountId,
+        providerCode: String(providerCode),
+        periodStart: String(periodStart),
+        periodEnd: String(periodEnd),
+        payoutMethod: metodo,
+        bankAccountId: cuenta,
       },
-      session.user.id,
+      admin.userId,
     );
+
+    if (!payout.success) {
+      return NextResponse.json({ error: payout.error ?? 'No se pudo crear el payout' }, { status: 400 });
+    }
 
     return NextResponse.json({ success: true, data: payout }, { status: 201 });
   } catch (error) {
-    console.error('[PayFac Payouts POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('PayFac Payouts POST', error);
   }
-}
+});

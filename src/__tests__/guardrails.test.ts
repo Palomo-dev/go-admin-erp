@@ -271,15 +271,12 @@ describe('F0 Guardarraíles', () => {
 
     const ALLOWLIST = new Set<string>([
       'app/api/categorias/reglas/route.ts',
-      'app/api/integrations/payfac/commission/route.ts', // verifyPlatformAdmin
-      'app/api/integrations/payfac/payouts/route.ts', // verifyPlatformAdmin
       'app/api/integrations/whatsapp/oauth/callback/route.ts', // OAuth callback (org en `state` firmado por Meta)
       'app/api/integrations/bancolombia/create-qr/route.ts',
       'app/api/integrations/bancolombia/wompi/create-qr/route.ts',
       'app/api/integrations/bold/create-link/route.ts',
       'app/api/integrations/bold/create-pos-payment/route.ts',
       'app/api/integrations/breb/create-qr/route.ts',
-      'app/api/integrations/payfac/payout-accounts/route.ts',
       'app/api/integrations/qr/auto-match/route.ts',
       'app/api/integrations/redeban/create-qr/route.ts',
       'app/api/modules/audit/route.ts',
@@ -305,7 +302,11 @@ describe('F0 Guardarraíles', () => {
       /\{[^}]*\b(organizationId|organization_id|orgId)\b[^}]*\}\s*=\s*(await\s+)?(request|req)\.json\(\)/,
       /\{[^}]*\b(organizationId|organization_id|orgId)\b[^}]*\}\s*=\s*body\b/,
     ];
-    const SESSION_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withWhatsAppRoute)\s*\(/;
+    // `withPlatformAdmin` (GO-sec 2026-09-23): sesión + admin de PLATAFORMA
+    // verificado con `fn_is_platform_admin()`. Ahí la organización del body es
+    // la organización cliente que la plataforma elige como destino (tarifa,
+    // payout), no la del usuario: rutas `payfac/commission` y `payfac/payouts`.
+    const SESSION_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withWhatsAppRoute|withPlatformAdmin)\s*\(/;
     // verifyWebOrdersSecret: /api/web-orders/** (tienda web → ERP), fail-closed.
     const CRON_RE = /\b(withCron|verifyCronSecret|verifyWebOrdersSecret)\s*\(/;
     // Solo verificaciones de FIRMA. `isPlaceholderCredential` no lo es: mencionarla

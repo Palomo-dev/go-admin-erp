@@ -1,83 +1,44 @@
 // ============================================================
 // /api/integrations/payfac/commission
-// Gestiona comisiones de organizaciones por proveedor (admin)
-// GET  - lista comisiones (query: ?organizationId=xxx)
-// POST - crea o actualiza comision
+// Comisiones de organizaciones por proveedor — SOLO plataforma
+// GET  - lista comisiones (query: ?organizationId=xxx opcional)
+// POST - crea o actualiza comision de una organizacion
+//
+// SEGURIDAD (GO-sec, 2026-09-23; auditoria §2.4): la verificacion de admin
+// consultaba `platform_admins` con el cliente del usuario; con RLS activa y sin
+// politicas nunca devolvia filas (403 para todos, incluso la plataforma).
+// Ahora `withPlatformAdmin` → `fn_is_platform_admin()` (SECURITY DEFINER,
+// `auth.uid()` de la sesion). La organizacion del body es la organizacion
+// cliente a la que la plataforma le fija la tarifa, no la del usuario.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { withPlatformAdmin } from '@/lib/security/platformAdmin';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
 import { commissionService } from '@/lib/services/integrations/payfac';
 
-// Verifica que el usuario sea administrador de plataforma
-async function verifyPlatformAdmin(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('platform_admins')
-    .select('id, role, status')
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .single();
-
-  if (error || !data) return false;
-  return data.role === 'super_admin' || data.role === 'admin';
-}
+const TIPOS = ['percentage', 'fixed_amount'] as const;
+type TipoComision = (typeof TIPOS)[number];
 
 // GET - lista comisiones, opcionalmente filtradas por organizacion
-export async function GET(request: NextRequest) {
+export const GET = withPlatformAdmin(async (_admin, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const isAdmin = await verifyPlatformAdmin(supabase, session.user.id);
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: 'Acceso restringido a administradores de plataforma' },
-        { status: 403 },
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const organizationId = searchParams.get('organizationId');
     const orgIdNum = organizationId ? Number(organizationId) : undefined;
 
-    const commissions = await commissionService.list(supabase, orgIdNum);
+    const commissions = await commissionService.list(null, orgIdNum && orgIdNum > 0 ? orgIdNum : undefined);
 
     return NextResponse.json({ success: true, data: commissions });
   } catch (error) {
-    console.error('[PayFac Commission GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('PayFac Commission GET', error);
   }
-}
+});
 
 // POST - crea o actualiza comision de una organizacion
-export async function POST(request: NextRequest) {
+export const POST = withPlatformAdmin(async (admin, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const isAdmin = await verifyPlatformAdmin(supabase, session.user.id);
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: 'Acceso restringido a administradores de plataforma' },
-        { status: 403 },
-      );
-    }
-
-    const body = await request.json();
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const {
       organizationId,
       providerCode,
@@ -86,7 +47,6 @@ export async function POST(request: NextRequest) {
       minCommissionAmount,
     } = body;
 
-    // Validar campos requeridos
     if (!organizationId || !providerCode || !commissionType || commissionValue === undefined) {
       return NextResponse.json(
         { error: 'organizationId, providerCode, commissionType y commissionValue son requeridos' },
@@ -94,21 +54,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convertir organizationId a numero (viene como string desde el body)
     const orgIdNum = Number(organizationId);
+    const valor = Number(commissionValue);
+    const minimo = minCommissionAmount === undefined || minCommissionAmount === null ? undefined : Number(minCommissionAmount);
+    if (!Number.isInteger(orgIdNum) || orgIdNum <= 0
+      || !TIPOS.includes(commissionType as TipoComision)
+      || !Number.isFinite(valor) || valor < 0
+      || (minimo !== undefined && (!Number.isFinite(minimo) || minimo < 0))) {
+      return NextResponse.json({ error: 'Datos de comision no validos' }, { status: 400 });
+    }
 
-    const commission = await commissionService.upsert(supabase, {
+    console.info('[payfac/commission] tarifa fijada por la plataforma', { adminUserId: admin.userId, organizationId: orgIdNum });
+
+    const commission = await commissionService.upsert(null, {
       organizationId: orgIdNum,
-      providerCode,
-      commissionType,
-      commissionValue,
-      minCommissionAmount,
+      providerCode: String(providerCode),
+      commissionType: commissionType as TipoComision,
+      commissionValue: valor,
+      minCommissionAmount: minimo,
     });
 
     return NextResponse.json({ success: true, data: commission });
   } catch (error) {
-    console.error('[PayFac Commission POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('PayFac Commission POST', error);
   }
-}
+});

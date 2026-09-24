@@ -1,83 +1,60 @@
 // ============================================================
 // /api/integrations/payfac/payout-accounts
-// Gestiona cuentas de dispersion de la organizacion actual
-// GET  - lista cuentas de dispersion
+// Cuentas de dispersion de la organizacion de la sesion
+// GET  - lista cuentas de dispersion (datos bancarios enmascarados)
 // POST - crea cuenta de dispersion
+//
+// SEGURIDAD (GO-sec, 2026-09-23; auditoria de integraciones §2.4): antes la
+// organizacion salia de `?organizationId=` / del body, sin permiso y con
+// service role: cualquiera con sesion leia numero de cuenta y documento del
+// titular de otra organizacion, o REGISTRABA SU PROPIA CUENTA como destino de
+// dispersion de otra. Ahora: `withOrg` (organizacion de la sesion),
+// `readOrgBody` (organizacion ajena en body o query → 403 y registro), permiso
+// `finance.view` / `finance.approve` resuelto en el servidor, y la cuenta
+// contable vinculada tiene que ser de la organizacion (404 si no).
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { assertRecordOfOrg, PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { payoutService } from '@/lib/services/integrations/payfac';
+import { enmascararCuentaDispersion } from '@/lib/services/integrations/payfac/enmascarar';
 
-// Obtiene el organizationId activo del usuario desde la sesion
-async function getActiveOrganizationId(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<number | null> {
-  const { data, error } = await supabase
-    .from('organization_members')
-    .select('organization_id')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
+const RUTA = 'payfac/payout-accounts';
 
-  if (error || !data) return null;
-  return Number(data.organization_id);
-}
-
-// GET - lista cuentas de dispersion de la organizacion actual
-export async function GET(request: NextRequest) {
+// GET - lista cuentas de dispersion de la organizacion de la sesion
+export const GET = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+    const accounts = await payoutService.listAccounts(ctx.supabase, ctx.organizationId);
 
-    // organizationId puede venir por query o deducirse de la sesion
-    const { searchParams } = new URL(request.url);
-    const orgIdQuery = searchParams.get('organizationId');
-    let organizationId = orgIdQuery ? Number(orgIdQuery) : undefined;
-
-    if (!organizationId) {
-      organizationId = await getActiveOrganizationId(supabase, session.user.id) ?? undefined;
-    }
-
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: 'No se pudo determinar la organizacion activa' },
-        { status: 400 },
-      );
-    }
-
-    const accounts = await payoutService.listAccounts(supabase, organizationId);
-
-    return NextResponse.json({ success: true, data: accounts });
+    return NextResponse.json({ success: true, data: accounts.map(enmascararCuentaDispersion) });
   } catch (error) {
-    console.error('[PayFac Payout Accounts GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('PayFac Payout Accounts GET', error);
   }
+});
+
+interface CuentaDispersionBody {
+  bankName?: string;
+  accountType?: string;
+  accountNumber?: string;
+  accountHolderName?: string;
+  accountHolderId?: string;
+  accountHolderIdType?: string;
+  brebKeyValue?: string;
+  bankAccountId?: number | string;
 }
 
-// POST - crea cuenta de dispersion
-export async function POST(request: NextRequest) {
+// POST - crea cuenta de dispersion de la organizacion de la sesion
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const body = await readOrgBody<CuentaDispersionBody>(ctx, request, { route: RUTA });
+    // Registrar el destino del dinero de la organizacion: permiso de aprobacion.
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.APROBAR, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const body = await request.json();
     const {
-      organizationId,
       bankName,
       accountType,
       accountNumber,
@@ -87,19 +64,6 @@ export async function POST(request: NextRequest) {
       brebKeyValue,
       bankAccountId,
     } = body;
-
-    // organizationId puede venir en el body o deducirse de la sesion
-    let orgId = organizationId ? Number(organizationId) : undefined;
-    if (!orgId) {
-      orgId = await getActiveOrganizationId(supabase, session.user.id) ?? undefined;
-    }
-
-    if (!orgId) {
-      return NextResponse.json(
-        { error: 'No se pudo determinar la organizacion activa' },
-        { status: 400 },
-      );
-    }
 
     // Validar campos requeridos
     if (!bankName || !accountType || !accountNumber || !accountHolderName
@@ -112,8 +76,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Vinculacion opcional con una cuenta contable: tiene que ser de la organizacion.
+    const bankAccountIdNum = bankAccountId ? Number(bankAccountId) : undefined;
+    if (bankAccountId !== undefined && bankAccountId !== null && bankAccountId !== '') {
+      if (!Number.isInteger(bankAccountIdNum) || (bankAccountIdNum as number) <= 0) {
+        return NextResponse.json({ error: 'bankAccountId no valido' }, { status: 400 });
+      }
+      await assertRecordOfOrg(ctx, 'bank_accounts', bankAccountIdNum as number, 'Cuenta bancaria no encontrada');
+    }
+
     const account = await payoutService.createAccount(
-      supabase,
+      ctx.supabase,
       {
         bankName,
         accountType,
@@ -122,16 +95,18 @@ export async function POST(request: NextRequest) {
         accountHolderId,
         accountHolderIdType,
         brebKeyValue,
-        // Vinculacion opcional con cuenta contable existente
-        bankAccountId: bankAccountId ? Number(bankAccountId) : undefined,
+        bankAccountId: bankAccountIdNum,
       },
-      orgId,
+      ctx.organizationId,
     );
 
-    return NextResponse.json({ success: true, data: account }, { status: 201 });
+    if (account.error || !account.id) {
+      console.error(`[${RUTA}] No se pudo crear la cuenta de dispersion`, { organizationId: ctx.organizationId });
+      return NextResponse.json({ error: 'No se pudo crear la cuenta de dispersion' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, data: { id: account.id } }, { status: 201 });
   } catch (error) {
-    console.error('[PayFac Payout Accounts POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('PayFac Payout Accounts POST', error);
   }
-}
+});

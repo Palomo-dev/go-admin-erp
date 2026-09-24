@@ -1,56 +1,22 @@
 // ============================================================
 // /api/integrations/payfac/commission/summary
-// Resume comisiones por organizacion con totales recaudados (admin)
+// Resume comisiones por organizacion con totales recaudados — SOLO plataforma
 // GET - lista organizaciones con comisiones y totales
+//
+// SEGURIDAD (GO-sec, 2026-09-23): admin de plataforma verificado con
+// `fn_is_platform_admin()` (ver `@/lib/security/platformAdmin`).
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { withPlatformAdmin } from '@/lib/security/platformAdmin';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
 import { commissionService } from '@/lib/services/integrations/payfac';
 
-// Verifica que el usuario sea administrador de plataforma
-async function verifyPlatformAdmin(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('platform_admins')
-    .select('id, role, status')
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .single();
-
-  if (error || !data) return false;
-  return data.role === 'super_admin' || data.role === 'admin';
-}
-
-// GET - lista organizaciones con comisiones y totales recaudados
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function GET(_request: NextRequest) {
+export const GET = withPlatformAdmin(async () => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const isAdmin = await verifyPlatformAdmin(supabase, session.user.id);
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: 'Acceso restringido a administradores de plataforma' },
-        { status: 403 },
-      );
-    }
-
-    const summary = await commissionService.getSummary(supabase);
-
+    const summary = await commissionService.getSummary(null);
     return NextResponse.json({ success: true, data: summary });
   } catch (error) {
-    console.error('[PayFac Commission Summary GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('PayFac Commission Summary GET', error);
   }
-}
+});

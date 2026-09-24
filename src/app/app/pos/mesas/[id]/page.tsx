@@ -26,16 +26,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { SearchSelect } from '@/components/ui/search-select';
 import { formatCurrency } from '@/utils/Utils';
 import { AddProductDialog } from '@/components/pos/mesas/id/AddProductDialog';
@@ -68,8 +58,13 @@ import type {
 import type { Cart, Customer, Sale, CheckoutData } from '@/components/pos/types';
 import type { TableWithSession } from '@/components/pos/mesas/types';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useTranslations } from 'next-intl';
+import { LiberarMesaDialog, useAvisoLiberacion } from '@/components/pos/mesas/LiberarMesaDialog';
+import { LiberacionMesaError, type ResultadoLiberacion } from '@/components/pos/mesas/liberacionMesaCliente';
 
 export default function MesaDetallePage() {
+  const tLiberar = useTranslations('posMesaLiberar');
+  const avisoLiberacion = useAvisoLiberacion();
   const { timezone } = useOrgTimezone();
   const params = useParams();
   const router = useRouter();
@@ -106,11 +101,22 @@ export default function MesaDetallePage() {
   const [showHistorial, setShowHistorial] = useState(false);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [showLiberarConfirm, setShowLiberarConfirm] = useState(false);
+  const [cajaVerificada, setCajaVerificada] = useState(false);
+  // «Cobrar ahora» desde el plano llega con ?cobrar=1: se abre el cobro una vez.
+  const [cobroPendiente, setCobroPendiente] = useState(false);
 
   useEffect(() => {
     cargarDatos();
     loadCashSession();
   }, [tableId, branchFilter]);
+
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get('cobrar') === '1') setCobroPendiente(true);
+    } catch {
+      /* sin query: nada que hacer */
+    }
+  }, []);
 
   // Suscripción realtime para kitchen_ticket_items (actualizar estados de cocina)
   useEffect(() => {
@@ -194,6 +200,8 @@ export default function MesaDetallePage() {
       setCashSession(session);
     } catch (error) {
       console.error('Error loading cash session:', error);
+    } finally {
+      setCajaVerificada(true);
     }
   };
 
@@ -906,24 +914,28 @@ export default function MesaDetallePage() {
     }
   };
 
-  // Liberar mesa desde el detalle (igual que desde la lista)
-  const handleLiberarMesa = async () => {
+  // La mesa quedó libre desde el diálogo «Liberar mesa» (con o sin saldo).
+  const handleMesaLiberada = (resultado: ResultadoLiberacion) => {
+    toast(avisoLiberacion(resultado, mesaNombre));
+    setBillSplits(null);
+    setPaidSplitIds([]);
+    setCurrentSplitIndex(0);
+    router.push('/app/pos/mesas');
+  };
+
+  // Liberar tras cobrar: si el servidor dice que aún hay saldo, se pide
+  // resolverlo en el diálogo en vez de soltar la mesa con la cuenta abierta.
+  const liberarTrasCobro = async (): Promise<boolean> => {
     try {
       await MesasService.liberarMesa(tableId);
-      toast({
-        title: 'Mesa liberada',
-        description: `Mesa ${mesaNombre} liberada exitosamente`,
-      });
-      setShowLiberarConfirm(false);
-      router.push('/app/pos/mesas');
-    } catch (error: any) {
-      console.error('Error liberando mesa:', error);
-      toast({
-        title: 'Error al liberar mesa',
-        description: error?.message || 'No se pudo liberar la mesa',
-        variant: 'destructive',
-      });
-      setShowLiberarConfirm(false);
+      return true;
+    } catch (error) {
+      if (error instanceof LiberacionMesaError && error.codigo === 'saldo_pendiente') {
+        await cargarDatos(true);
+        setShowLiberarConfirm(true);
+        return false;
+      }
+      throw error;
     }
   };
 
@@ -1078,6 +1090,23 @@ export default function MesaDetallePage() {
       setShowCheckout(true);
     }
   };
+
+  // «Cobrar ahora» desde el plano (?cobrar=1): abrir el cobro cuando la mesa y
+  // la caja estén cargadas; sin caja no se abre (el botón del cobro exige caja).
+  useEffect(() => {
+    if (!cobroPendiente || isLoading || !cajaVerificada || !session) return;
+    setCobroPendiente(false);
+    try {
+      window.history.replaceState(null, '', window.location.pathname);
+    } catch {
+      /* sin historial: no pasa nada */
+    }
+    if (cashSession) handleCheckout();
+    else toast({ title: tLiberar('motivos.sin_caja'), variant: 'destructive' });
+    // Se dispara una sola vez (cobroPendiente se apaga arriba); handleCheckout y
+    // toast se recrean en cada render y no deben volver a dispararlo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cobroPendiente, isLoading, cajaVerificada, session, cashSession]);
 
   // Convertir un split a formato Cart
   const convertSplitToCart = (split: BillSplit): Cart => {
@@ -1246,34 +1275,10 @@ export default function MesaDetallePage() {
         return;
       }
 
-      const pendingSplits = billSplits.filter(s => !paidSplitIds.includes(s.id));
-      const totalPaid = billSplits
-        .filter(s => paidSplitIds.includes(s.id))
-        .reduce((sum, s) => sum + s.total, 0);
-
-      if (pendingSplits.length > 0) {
-        const confirmed = confirm(
-          `Quedan ${pendingSplits.length} pago(s) pendiente(s) por un total de ${formatCurrency(
-            pendingSplits.reduce((sum, s) => sum + s.total, 0)
-          )}.\n\n¿Deseas cerrar la mesa de todas formas?`
-        );
-
-        if (!confirmed) return;
-      }
-
-      // Liberar la mesa
-      await MesasService.liberarMesa(tableId);
-
-      toast({
-        title: 'Mesa liberada',
-        description: `Total pagado: ${formatCurrency(totalPaid)}. ${paidSplitIds.length} de ${billSplits.length} pagos procesados.`,
-      });
-
-      // Limpiar estados y volver
-      setBillSplits(null);
-      setPaidSplitIds([]);
-      setCurrentSplitIndex(0);
-      router.push('/app/pos/mesas');
+      // Con pagos pendientes, el diálogo «Liberar mesa» muestra el saldo y pide
+      // resolverlo (cobrar, cartera o anular); sin saldo es una confirmación.
+      setShowSplitSelector(false);
+      setShowLiberarConfirm(true);
     } catch (error: any) {
       console.error('Error liberando mesa:', error);
       toast({
@@ -1343,9 +1348,22 @@ export default function MesaDetallePage() {
 
           // Todos los splits pagados y sin items pendientes, liberar mesa
           setTimeout(async () => {
-            // MesasService.liberarMesa marca las comandas pendientes como entregadas
-            await MesasService.liberarMesa(tableId);
-            
+            try {
+              // Solo se suelta si el servidor confirma saldo 0; si no, abre el diálogo.
+              if (!(await liberarTrasCobro())) return;
+            } catch (error: unknown) {
+              console.error('Error liberando mesa:', error);
+              toast({
+                title: tLiberar('toast.errorTitulo'),
+                description:
+                  error instanceof LiberacionMesaError && tLiberar.has(`errores.${error.codigo}`)
+                    ? tLiberar(`errores.${error.codigo}`)
+                    : tLiberar('errores.error_interno'),
+                variant: 'destructive',
+              });
+              return;
+            }
+
             toast({
               title: '¡Todos los pagos completados!',
               description: `${billSplits.length} pagos procesados. Mesa liberada.`,
@@ -1364,9 +1382,10 @@ export default function MesaDetallePage() {
           }, 1000);
         }
       } else {
-        // Pago único sin división
-        // MesasService.liberarMesa marca las comandas pendientes como entregadas
-        await MesasService.liberarMesa(tableId);
+        // Pago único sin división: se libera solo si el servidor confirma saldo 0
+        // (un cobro parcial abre el diálogo «Liberar mesa» para resolver el resto).
+        setShowCheckout(false);
+        if (!(await liberarTrasCobro())) return;
 
         toast({
           title: 'Venta completada',
@@ -1958,27 +1977,16 @@ export default function MesaDetallePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Confirmar Liberar Mesa */}
-      <AlertDialog open={showLiberarConfirm} onOpenChange={setShowLiberarConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Liberar mesa {mesaNombre}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción cerrará la sesión activa de la mesa y marcará las comandas
-              pendientes como entregadas. ¿Deseas continuar?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleLiberarMesa}
-              className="bg-orange-600 hover:bg-orange-700"
-            >
-              Sí, liberar mesa
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Liberar mesa: con saldo pide resolverlo (cobrar, cartera o anular) */}
+      <LiberarMesaDialog
+        abierto={showLiberarConfirm}
+        onAbiertoChange={setShowLiberarConfirm}
+        tableId={tableId}
+        mesaNombre={mesaNombre}
+        cajaAbierta={!!cashSession}
+        onCobrar={handleCheckout}
+        onLiberada={handleMesaLiberada}
+      />
     </div>
   );
 }

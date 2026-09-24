@@ -8841,5 +8841,106 @@
     "reintentando": "Retrying…",
     "reintentarAhora": "Retry now",
     "iniciarSesionDeNuevo": "Sign in again"
+  },
+  "posMesaLiberar": {
+    "titulo": "Release table {mesa}?",
+    "tituloConSaldo": "Table {mesa} has a balance due",
+    "descripcion": "The table bill will be closed and the table will be free.",
+    "descripcionConSaldo": "Before releasing it, decide what happens with the unpaid amount.",
+    "cargando": "Loading the table bill…",
+    "sinDato": "—",
+    "sinCliente": "No customer",
+    "sinSaldo": "The bill has no balance due. Anything the kitchen has ready is marked as delivered; anything not cooked keeps its status.",
+    "queHacer": "What should happen with the balance?",
+    "motivoRequerido": "Enter the reason (at least {min} characters).",
+    "campos": {
+      "mesa": "Table",
+      "mesero": "Server",
+      "tiempo": "Time open",
+      "cliente": "Customer",
+      "total": "Total",
+      "pagado": "Paid",
+      "saldo": "Balance"
+    },
+    "tiempo": {
+      "minutos": "{m} min",
+      "horasMinutos": "{h} h {m} min"
+    },
+    "cocina": {
+      "titulo": "Pending in the kitchen ({n})",
+      "alLiberar": "Anything ready is marked as delivered; anything not cooked keeps its status.",
+      "alAnular": "When voiding, anything not delivered is cancelled in the kitchen with the reason.",
+      "estados": {
+        "pending": "To prepare",
+        "in_progress": "Preparing",
+        "ready": "Ready"
+      }
+    },
+    "opciones": {
+      "cobrar": {
+        "titulo": "Charge now",
+        "descripcion": "Opens the POS checkout with this table’s bill."
+      },
+      "cartera": {
+        "titulo": "Leave it as the customer’s receivable",
+        "descripcion": "It is invoiced on credit to the customer, inventory is deducted and the balance goes to their receivables.",
+        "existente": "The invoice is already in the customer’s receivables: the table is just released."
+      },
+      "anular": {
+        "titulo": "Void the sale",
+        "descripcion": "The sale is voided with the reason and pending kitchen orders are cancelled. Requires permission."
+      }
+    },
+    "motivo": {
+      "anular": "Reason for voiding",
+      "cartera": "Note (optional)",
+      "placeholderAnular": "E.g.: the customer left without paying",
+      "placeholderCartera": "E.g.: pays on Friday"
+    },
+    "acciones": {
+      "liberar": "Release table",
+      "cobrar": "Go to checkout",
+      "cartera": "Leave on account and release",
+      "anular": "Void sale and release",
+      "elegir": "Choose an option"
+    },
+    "motivos": {
+      "sin_caja": "Open a cash register to charge.",
+      "sin_cliente": "The bill has no customer: assign one on the table to leave it on account.",
+      "venta_con_pagos": "The bill already has payments: charge the rest in the POS or void it with a refund.",
+      "venta_con_factura": "The bill is already invoiced without a customer or for another balance: charge the rest in the POS.",
+      "sin_permiso": "You do not have permission to void sales.",
+      "sin_saldo": "The bill has no balance due.",
+      "saldo_pendiente": "The bill has a balance due.",
+      "varias_ventas_con_saldo": "The table has two open bills with a balance. Settle them one by one from the table detail."
+    },
+    "errores": {
+      "sin_caja": "Open a cash register to charge.",
+      "sin_cliente": "The bill has no customer: assign one on the table to leave it on account.",
+      "venta_con_pagos": "The bill already has payments: charge the rest in the POS or void it with a refund.",
+      "venta_con_factura": "The bill is already invoiced without a customer or for another balance: charge the rest in the POS.",
+      "sin_permiso": "You do not have permission to void sales.",
+      "sin_saldo": "The bill has no balance due.",
+      "saldo_pendiente": "The bill has a balance due.",
+      "varias_ventas_con_saldo": "The table has two open bills with a balance. Settle them one by one from the table detail.",
+      "mesa_invalida": "The table is not valid.",
+      "mesa_no_encontrada": "The table does not exist in this organization.",
+      "datos_invalidos": "The data sent is not valid.",
+      "motivo_requerido": "Enter the reason for voiding.",
+      "motivo_invalido": "The reason is too long.",
+      "cartera_fallida": "The balance could not be moved to the customer’s receivables. Nothing was changed.",
+      "sin_membresia": "You do not belong to this organization.",
+      "venta_de_otra_organizacion": "The table bill does not belong to this organization.",
+      "accion_invalida": "Invalid action.",
+      "error_interno": "The operation could not be completed. Try again."
+    },
+    "toast": {
+      "liberada": "Table {mesa} released",
+      "cartera": "Balance of {saldo} added to the customer’s receivables (invoice {factura}).",
+      "carteraExistente": "The balance was already in the customer’s receivables.",
+      "anulada": "Sale voided. Kitchen items cancelled: {n}.",
+      "sinCocinar": "Still in the kitchen, not cooked: {n}.",
+      "errorTitulo": "The table could not be released"
+    }
   }
 }

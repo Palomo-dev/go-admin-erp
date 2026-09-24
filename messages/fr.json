@@ -8736,5 +8736,106 @@
     "reintentando": "Nouvelle tentative…",
     "reintentarAhora": "Réessayer maintenant",
     "iniciarSesionDeNuevo": "Se reconnecter"
+  },
+  "posMesaLiberar": {
+    "titulo": "Libérer la table {mesa} ?",
+    "tituloConSaldo": "La table {mesa} a un solde dû",
+    "descripcion": "L’addition de la table sera clôturée et la table sera libre.",
+    "descripcionConSaldo": "Avant de la libérer, décidez quoi faire du montant restant.",
+    "cargando": "Chargement de l’addition…",
+    "sinDato": "—",
+    "sinCliente": "Sans client",
+    "sinSaldo": "L’addition n’a pas de solde dû. Ce que la cuisine a de prêt est marqué comme servi ; ce qui n’a pas été cuisiné garde son statut.",
+    "queHacer": "Que faire du solde ?",
+    "motivoRequerido": "Saisissez le motif (au moins {min} caractères).",
+    "campos": {
+      "mesa": "Table",
+      "mesero": "Serveur",
+      "tiempo": "Temps d’ouverture",
+      "cliente": "Client",
+      "total": "Total",
+      "pagado": "Payé",
+      "saldo": "Solde"
+    },
+    "tiempo": {
+      "minutos": "{m} min",
+      "horasMinutos": "{h} h {m} min"
+    },
+    "cocina": {
+      "titulo": "En attente en cuisine ({n})",
+      "alLiberar": "Ce qui est prêt est marqué comme servi ; ce qui n’a pas été cuisiné garde son statut.",
+      "alAnular": "En annulant, ce qui n’a pas été servi est annulé en cuisine avec le motif.",
+      "estados": {
+        "pending": "À préparer",
+        "in_progress": "En préparation",
+        "ready": "Prêt"
+      }
+    },
+    "opciones": {
+      "cobrar": {
+        "titulo": "Encaisser maintenant",
+        "descripcion": "Ouvre l’encaissement du POS avec l’addition de cette table."
+      },
+      "cartera": {
+        "titulo": "Laisser en compte client",
+        "descripcion": "La vente est facturée à crédit au client, le stock est déduit et le solde passe dans ses créances.",
+        "existente": "La facture est déjà dans les créances du client : la table est seulement libérée."
+      },
+      "anular": {
+        "titulo": "Annuler la vente",
+        "descripcion": "La vente est annulée avec le motif et les commandes en cuisine sont annulées. Nécessite une autorisation."
+      }
+    },
+    "motivo": {
+      "anular": "Motif de l’annulation",
+      "cartera": "Note (facultative)",
+      "placeholderAnular": "Ex. : le client est parti sans payer",
+      "placeholderCartera": "Ex. : paie vendredi"
+    },
+    "acciones": {
+      "liberar": "Libérer la table",
+      "cobrar": "Aller à l’encaissement",
+      "cartera": "Mettre en compte et libérer",
+      "anular": "Annuler la vente et libérer",
+      "elegir": "Choisissez une option"
+    },
+    "motivos": {
+      "sin_caja": "Ouvrez une caisse pour encaisser.",
+      "sin_cliente": "L’addition n’a pas de client : attribuez-en un sur la table pour la mettre en compte client.",
+      "venta_con_pagos": "L’addition a déjà des paiements : encaissez le reste au POS ou annulez-la par un remboursement.",
+      "venta_con_factura": "L’addition est déjà facturée sans client ou pour un autre solde : encaissez le reste au POS.",
+      "sin_permiso": "Vous n’avez pas l’autorisation d’annuler des ventes.",
+      "sin_saldo": "L’addition n’a pas de solde dû.",
+      "saldo_pendiente": "L’addition a un solde dû.",
+      "varias_ventas_con_saldo": "La table a deux additions ouvertes avec un solde. Réglez-les une par une depuis le détail de la table."
+    },
+    "errores": {
+      "sin_caja": "Ouvrez une caisse pour encaisser.",
+      "sin_cliente": "L’addition n’a pas de client : attribuez-en un sur la table pour la mettre en compte client.",
+      "venta_con_pagos": "L’addition a déjà des paiements : encaissez le reste au POS ou annulez-la par un remboursement.",
+      "venta_con_factura": "L’addition est déjà facturée sans client ou pour un autre solde : encaissez le reste au POS.",
+      "sin_permiso": "Vous n’avez pas l’autorisation d’annuler des ventes.",
+      "sin_saldo": "L’addition n’a pas de solde dû.",
+      "saldo_pendiente": "L’addition a un solde dû.",
+      "varias_ventas_con_saldo": "La table a deux additions ouvertes avec un solde. Réglez-les une par une depuis le détail de la table.",
+      "mesa_invalida": "La table n’est pas valide.",
+      "mesa_no_encontrada": "La table n’existe pas dans cette organisation.",
+      "datos_invalidos": "Les données envoyées ne sont pas valides.",
+      "motivo_requerido": "Saisissez le motif de l’annulation.",
+      "motivo_invalido": "Le motif est trop long.",
+      "cartera_fallida": "Le solde n’a pas pu être passé en compte client. Rien n’a été modifié.",
+      "sin_membresia": "Vous n’appartenez pas à cette organisation.",
+      "venta_de_otra_organizacion": "L’addition de la table n’appartient pas à cette organisation.",
+      "accion_invalida": "Action non valide.",
+      "error_interno": "L’opération n’a pas pu aboutir. Réessayez."
+    },
+    "toast": {
+      "liberada": "Table {mesa} libérée",
+      "cartera": "Solde de {saldo} ajouté aux créances du client (facture {factura}).",
+      "carteraExistente": "Le solde était déjà dans les créances du client.",
+      "anulada": "Vente annulée. Articles de cuisine annulés : {n}.",
+      "sinCocinar": "Toujours en cuisine, non cuisinés : {n}.",
+      "errorTitulo": "La table n’a pas pu être libérée"
+    }
   }
 }

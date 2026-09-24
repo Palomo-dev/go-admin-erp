@@ -8841,5 +8841,106 @@
     "reintentando": "Reintentando…",
     "reintentarAhora": "Reintentar ahora",
     "iniciarSesionDeNuevo": "Iniciar sesión de nuevo"
+  },
+  "posMesaLiberar": {
+    "titulo": "¿Liberar la mesa {mesa}?",
+    "tituloConSaldo": "La mesa {mesa} tiene saldo pendiente",
+    "descripcion": "Se cerrará la cuenta de la mesa y quedará libre.",
+    "descripcionConSaldo": "Antes de liberarla, decide qué pasa con lo que falta por cobrar.",
+    "cargando": "Cargando la cuenta de la mesa…",
+    "sinDato": "—",
+    "sinCliente": "Sin cliente",
+    "sinSaldo": "La cuenta no tiene saldo pendiente. Lo que la cocina tenga listo se marca como entregado; lo que no se ha cocinado conserva su estado.",
+    "queHacer": "¿Qué hacer con el saldo?",
+    "motivoRequerido": "Escribe el motivo (mínimo {min} caracteres).",
+    "campos": {
+      "mesa": "Mesa",
+      "mesero": "Mesero",
+      "tiempo": "Tiempo abierta",
+      "cliente": "Cliente",
+      "total": "Total",
+      "pagado": "Pagado",
+      "saldo": "Saldo"
+    },
+    "tiempo": {
+      "minutos": "{m} min",
+      "horasMinutos": "{h} h {m} min"
+    },
+    "cocina": {
+      "titulo": "Pendiente en cocina ({n})",
+      "alLiberar": "Lo que ya está listo se marca como entregado; lo que no se ha cocinado conserva su estado.",
+      "alAnular": "Al anular, lo que no se entregó se cancela en cocina con el motivo.",
+      "estados": {
+        "pending": "Por preparar",
+        "in_progress": "Preparando",
+        "ready": "Listo"
+      }
+    },
+    "opciones": {
+      "cobrar": {
+        "titulo": "Cobrar ahora",
+        "descripcion": "Abre el cobro del POS con la cuenta de esta mesa."
+      },
+      "cartera": {
+        "titulo": "Dejar como cuenta por cobrar del cliente",
+        "descripcion": "Se factura a crédito al cliente, se descuenta el inventario y el saldo pasa a su cartera.",
+        "existente": "La factura ya está en la cartera del cliente: solo se libera la mesa."
+      },
+      "anular": {
+        "titulo": "Anular la venta",
+        "descripcion": "La venta queda anulada con el motivo y la cocina pendiente se cancela. Requiere permiso."
+      }
+    },
+    "motivo": {
+      "anular": "Motivo de la anulación",
+      "cartera": "Nota (opcional)",
+      "placeholderAnular": "Ej.: el cliente se fue sin pagar",
+      "placeholderCartera": "Ej.: paga el viernes"
+    },
+    "acciones": {
+      "liberar": "Liberar mesa",
+      "cobrar": "Ir a cobrar",
+      "cartera": "Dejar en cartera y liberar",
+      "anular": "Anular venta y liberar",
+      "elegir": "Elige una opción"
+    },
+    "motivos": {
+      "sin_caja": "Abre una caja para poder cobrar.",
+      "sin_cliente": "La cuenta no tiene cliente: asígnalo en la mesa para dejarla en cartera.",
+      "venta_con_pagos": "La cuenta ya tiene pagos: cobra el resto en el POS o anúlala con una devolución.",
+      "venta_con_factura": "La cuenta ya está facturada sin cliente o por otro saldo: cobra el resto en el POS.",
+      "sin_permiso": "No tienes permiso para anular ventas.",
+      "sin_saldo": "La cuenta no tiene saldo pendiente.",
+      "saldo_pendiente": "La cuenta tiene saldo pendiente.",
+      "varias_ventas_con_saldo": "La mesa tiene dos cuentas abiertas con saldo. Resuélvelas una por una desde el detalle de la mesa."
+    },
+    "errores": {
+      "sin_caja": "Abre una caja para poder cobrar.",
+      "sin_cliente": "La cuenta no tiene cliente: asígnalo en la mesa para dejarla en cartera.",
+      "venta_con_pagos": "La cuenta ya tiene pagos: cobra el resto en el POS o anúlala con una devolución.",
+      "venta_con_factura": "La cuenta ya está facturada sin cliente o por otro saldo: cobra el resto en el POS.",
+      "sin_permiso": "No tienes permiso para anular ventas.",
+      "sin_saldo": "La cuenta no tiene saldo pendiente.",
+      "saldo_pendiente": "La cuenta tiene saldo pendiente.",
+      "varias_ventas_con_saldo": "La mesa tiene dos cuentas abiertas con saldo. Resuélvelas una por una desde el detalle de la mesa.",
+      "mesa_invalida": "La mesa no es válida.",
+      "mesa_no_encontrada": "La mesa no existe en esta organización.",
+      "datos_invalidos": "Los datos enviados no son válidos.",
+      "motivo_requerido": "Escribe el motivo de la anulación.",
+      "motivo_invalido": "El motivo es demasiado largo.",
+      "cartera_fallida": "No se pudo dejar el saldo en la cartera del cliente. No se cambió nada.",
+      "sin_membresia": "No perteneces a esta organización.",
+      "venta_de_otra_organizacion": "La cuenta de la mesa no pertenece a esta organización.",
+      "accion_invalida": "Acción no válida.",
+      "error_interno": "No se pudo completar la operación. Inténtalo de nuevo."
+    },
+    "toast": {
+      "liberada": "Mesa {mesa} liberada",
+      "cartera": "Saldo de {saldo} en la cartera del cliente (factura {factura}).",
+      "carteraExistente": "El saldo ya estaba en la cartera del cliente.",
+      "anulada": "Venta anulada. Ítems de cocina cancelados: {n}.",
+      "sinCocinar": "Siguen en cocina sin cocinar: {n}.",
+      "errorTitulo": "No se pudo liberar la mesa"
+    }
   }
 }

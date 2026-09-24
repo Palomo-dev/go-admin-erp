@@ -32,6 +32,7 @@ import type {
   CashHistoryFilters
 } from './types';
 import { nombreContieneTodas, numeroDeCaja, sanitizarBusqueda } from './historialCajas';
+import { parametrosArqueo } from '@/lib/pos/cajas/arqueo';
 
 /**
  * Error de cajas que la UI muestra. `message` sigue en español (lo leen logs y
@@ -1234,7 +1235,12 @@ export class CajasService {
   }
 
   /**
-   * Crea un arqueo de caja
+   * Crea un arqueo de caja.
+   *
+   * Va por `pos_caja_registrar_arqueo`: el esperado lo calcula el servidor y
+   * `difference` la calcula Postgres (columna GENERATED; mandarla en el insert
+   * daba 428C9 y ningún arqueo se había podido guardar). Efectivo contra
+   * efectivo; cada otro método contra su esperado en `method_breakdown`.
    */
   static async createCashCount(sessionId: number, data: CreateCashCountData): Promise<CashCount> {
     try {
@@ -1243,29 +1249,14 @@ export class CajasService {
         throw new ErrorCaja('no_autenticado', 'Usuario no autenticado');
       }
 
-      // Obtener monto esperado
-      const summary = await this.getCashSummary(sessionId);
-
-      const { data: count, error } = await supabase
-        .from('cash_counts')
-        .insert({
-          organization_id: this.organizationId,
-          cash_session_id: sessionId,
-          count_type: data.count_type,
-          counted_amount: data.counted_amount,
-          expected_amount: data.expected_amount || summary.expected_amount,
-          difference: data.counted_amount - (data.expected_amount || summary.expected_amount),
-          denominations: data.denominations,
-          counted_by: userId,
-          notes: data.notes
-        })
-        .select()
-        .single();
+      const { data: count, error } = await supabase.rpc(
+        'pos_caja_registrar_arqueo',
+        parametrosArqueo(sessionId, data),
+      );
 
       if (error) throw error;
 
-      console.log('Arqueo registrado:', count.id);
-      return count;
+      return count as CashCount;
     } catch (error) {
       console.error('Error creating cash count:', error);
       throw error;

@@ -56,6 +56,11 @@ export interface CashCount {
   verified_by?: string;
   notes?: string;
   created_at: string;
+  /**
+   * Arqueo por método calculado en el servidor (`pos_caja_registrar_arqueo`).
+   * `counted_amount`, `expected_amount` y `difference` son solo del efectivo.
+   */
+  method_breakdown?: Record<string, CashCountMethodLine> | null;
   // Campos adicionales para UI
   counted_by_name?: string;
   verified_by_name?: string;
@@ -68,10 +73,23 @@ export interface CashDenominations {
 }
 
 // Datos para crear arqueo
+/** Una línea del arqueo por método: cada medio contra su propio esperado. */
+export interface CashCountMethodLine {
+  esperado: number;
+  contado: number | null;
+  diferencia: number | null;
+}
+
+/**
+ * Lo que manda el navegador al guardar un arqueo. El esperado NO viaja: lo
+ * calcula el servidor (`pos_caja_registrar_arqueo` → `pos_caja_esperado`).
+ */
 export interface CreateCashCountData {
   count_type: 'opening' | 'partial' | 'closing';
+  /** Solo el efectivo contado (billetes + monedas). */
   counted_amount: number;
-  expected_amount?: number;
+  /** Lo contado de cada otro método (tarjeta, transferencia…), por código. */
+  counted_by_method?: Record<string, number>;
   denominations?: CashDenominations;
   notes?: string;
 }

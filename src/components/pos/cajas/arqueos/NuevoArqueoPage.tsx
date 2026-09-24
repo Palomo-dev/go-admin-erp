@@ -35,6 +35,7 @@ import {
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { CajasService } from '../CajasService';
+import { diferenciaEfectivo } from '@/lib/pos/cajas/arqueo';
 import { ConfiguracionService } from '@/components/pos/configuracion/configuracionService';
 import { useBlindCloseMode } from '../useBlindCloseMode';
 import type { CashSession, CashSummary, CashDenominations, CreateCashCountData } from '../types';
@@ -135,8 +136,10 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
 
   const countedAmount = calculateCashTotal() + calculateMethodTotal();
   const cashTotal = calculateCashTotal();
+  // El esperado del resumen es SOLO efectivo: la diferencia es efectivo contra
+  // efectivo (antes restaba el esperado de efectivo a efectivo + tarjeta + …).
   const expectedAmount = summary?.expected_amount || 0;
-  const difference = countedAmount - expectedAmount;
+  const difference = diferenciaEfectivo(cashTotal, expectedAmount);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,19 +166,21 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
         denominations.coins = filteredCoins;
       }
 
+      // Solo lo contado: el esperado y la diferencia los calcula el servidor.
       const data: CreateCashCountData = {
         count_type: countType,
-        counted_amount: countedAmount,
-        expected_amount: expectedAmount,
+        counted_amount: cashTotal,
+        counted_by_method: methodCounts,
         denominations: Object.keys(denominations).length > 0 ? denominations : undefined,
         notes: notes || undefined
       };
 
-      await CajasService.createCashCountByUuid(sessionUuid, data);
+      const guardado = await CajasService.createCashCountByUuid(sessionUuid, data);
+      const diferenciaServidor = guardado.difference != null ? Number(guardado.difference) : difference;
       
       toast.success(t('arqueo.toastExito'), {
         description: showExpected
-          ? t('arqueo.toastDiferencia', { monto: formatCurrency(difference) })
+          ? t('arqueo.toastDiferencia', { monto: formatCurrency(diferenciaServidor) })
           : t('arqueo.toastRegistrado')
       });
       

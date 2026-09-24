@@ -169,3 +169,37 @@ export {
   type ClientePicker,
   type ProveedorPicker,
 } from './selectorEntidadLogica';
+// ── POS: piezas de venta (inicio)
+// CartTag, CartLine, ProductCard, CategoryBar (POS-PLAN §3.3; adenda en KIT-CODIGO.md).
+export { CartTag, type CartTagProps } from './CartTag';
+export { vistaCartTag, clasesTonoCartTag, type TonoCartTag, type OrigenDescuento } from './cartTagLogica';
+export { CartLine, type CartLineProps, type LineaCarrito } from './CartLine';
+export {
+  textoImpuestoLinea,
+  controlesDeshabilitados,
+  mostrarAgregarDescuento,
+  cantidadDesdeTexto,
+  ATAJOS_LINEA,
+  type ModoImpuestoLinea,
+  type ImpuestoLinea,
+  type AccionLinea,
+} from './cartLineLogica';
+export { ProductCard, MarcadorSinFoto, type ProductCardProps } from './ProductCard';
+export {
+  UMBRAL_STOCK_BAJO,
+  nivelStock,
+  esAgotado,
+  sinPrecio,
+  eleccion,
+  porcentajeDescuento,
+  esTop,
+  insigniasTarjeta,
+  partesMeta,
+  type ProductoTarjeta,
+  type VarianteTarjeta,
+  type StockTarjeta,
+  type NivelStock,
+} from './productCardLogica';
+export { CategoryBar, type CategoryBarProps } from './CategoryBar';
+export { opcionesBarra, esTopCategoria, type CategoriaBarra, type ValorCategoria, type IdCategoria } from './categoryBarLogica';
+// ── POS: piezas de venta (fin)

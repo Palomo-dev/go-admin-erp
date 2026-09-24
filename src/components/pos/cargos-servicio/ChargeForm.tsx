@@ -29,6 +29,8 @@ import {
   APPLIES_TO_LABELS 
 } from './types';
 import { CargosServicioService } from './cargosServicioService';
+import { codigoErrorCargo } from './cargosLogica';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/Utils';
 import { toast } from 'sonner';
 
@@ -47,17 +49,18 @@ export function ChargeForm({
   branches,
   onSuccess 
 }: ChargeFormProps) {
+  const t = useTranslations('posCargosServicio');
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<CreateServiceChargeData>({
     name: '',
     charge_type: 'percentage',
     charge_value: 10,
-    min_amount: undefined,
-    min_guests: undefined,
+    min_amount: null,
+    min_guests: null,
     applies_to: 'all',
     is_taxable: false,
     is_optional: false,
-    branch_id: undefined
+    branch_id: null
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -70,24 +73,24 @@ export function ChargeForm({
           name: charge.name,
           charge_type: charge.charge_type,
           charge_value: charge.charge_value,
-          min_amount: charge.min_amount || undefined,
-          min_guests: charge.min_guests || undefined,
+          min_amount: charge.min_amount ?? null,
+          min_guests: charge.min_guests ?? null,
           applies_to: charge.applies_to,
           is_taxable: charge.is_taxable,
           is_optional: charge.is_optional,
-          branch_id: charge.branch_id || undefined
+          branch_id: charge.branch_id ?? null
         });
       } else {
         setFormData({
           name: '',
           charge_type: 'percentage',
           charge_value: 10,
-          min_amount: undefined,
-          min_guests: undefined,
+          min_amount: null,
+          min_guests: null,
           applies_to: 'all',
           is_taxable: false,
           is_optional: false,
-          branch_id: undefined
+          branch_id: null
         });
       }
       setErrors({});
@@ -129,14 +132,14 @@ export function ChargeForm({
       }
       onSuccess();
       onOpenChange(false);
-    } catch (error: any) {
-      toast.error(error.message || 'Error al guardar el cargo');
+    } catch (error: unknown) {
+      toast.error(t(`errores.${codigoErrorCargo(error)}`));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (field: keyof CreateServiceChargeData, value: any) => {
+  const handleChange = <K extends keyof CreateServiceChargeData>(field: K, value: CreateServiceChargeData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -254,7 +257,7 @@ export function ChargeForm({
                 <Input
                   type="number"
                   value={formData.min_amount || ''}
-                  onChange={(e) => handleChange('min_amount', e.target.value ? parseFloat(e.target.value) : undefined)}
+                  onChange={(e) => handleChange('min_amount', e.target.value ? parseFloat(e.target.value) : null)}
                   min={0}
                   step={1000}
                   placeholder="0"
@@ -268,7 +271,7 @@ export function ChargeForm({
               <Input
                 type="number"
                 value={formData.min_guests || ''}
-                onChange={(e) => handleChange('min_guests', e.target.value ? parseInt(e.target.value) : undefined)}
+                onChange={(e) => handleChange('min_guests', e.target.value ? parseInt(e.target.value, 10) : null)}
                 min={0}
                 placeholder="0"
                 className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -300,7 +303,7 @@ export function ChargeForm({
             <Label className="dark:text-gray-200">Sucursal (opcional)</Label>
             <Select
               value={formData.branch_id?.toString() || 'global'}
-              onValueChange={(value) => handleChange('branch_id', value === 'global' ? undefined : parseInt(value))}
+              onValueChange={(value) => handleChange('branch_id', value === 'global' ? null : parseInt(value, 10))}
             >
               <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 <SelectValue placeholder="Global (todas)" />

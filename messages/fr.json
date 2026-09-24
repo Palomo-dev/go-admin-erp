@@ -8987,5 +8987,81 @@
         "verDetalle": "Voir la résolution, les plages et les envois"
       }
     }
+  },
+  "posPropinas": {
+    "sinNombre": "Sans nom",
+    "tipos": {
+      "cash": "Espèces",
+      "card": "Carte",
+      "transfer": "Virement",
+      "online": "En ligne",
+      "split": "Partagé",
+      "pooled": "Cagnotte commune"
+    },
+    "kpi": {
+      "total": "Total",
+      "cantidad": "Pourboires"
+    },
+    "acciones": {
+      "anular": "Annuler"
+    },
+    "anular": {
+      "titulo": "Annuler le pourboire ?",
+      "descripcion": "Le pourboire ne compte plus dans les totaux et, s'il a une écriture comptable, une contre-passation datée d'aujourd'hui est enregistrée. Action irréversible.",
+      "confirmar": "Annuler le pourboire",
+      "anulando": "Annulation…",
+      "cancelar": "Retour"
+    },
+    "distribuir": {
+      "titulo": "{count, plural, one {Marquer # pourboire comme distribué ?} other {Marquer # pourboires comme distribués ?}}",
+      "descripcion": "Un pourboire distribué ne peut plus être modifié ni annulé.",
+      "confirmar": "Distribuer",
+      "distribuyendo": "Distribution…",
+      "cancelar": "Retour"
+    },
+    "toast": {
+      "anulada": "Pourboire annulé",
+      "anuladaConReverso": "Pourboire annulé et écriture comptable contre-passée",
+      "distribuidas": "{count, plural, one {# pourboire marqué comme distribué} other {# pourboires marqués comme distribués}}",
+      "ningunaDistribuida": "Aucun pourboire en attente à distribuer : ils étaient déjà distribués ou annulés."
+    },
+    "errores": {
+      "SIN_PERMISO": "Vous n'avez pas l'autorisation pour cette action.",
+      "PROPINA_DISTRIBUIDA": "Le pourboire a déjà été distribué : il ne peut être ni modifié ni annulé.",
+      "PROPINA_ANULADA": "Le pourboire est annulé et ne peut pas être modifié.",
+      "PROPINA_CON_ASIENTO": "Le pourboire a déjà une écriture comptable : pour changer le montant, annulez-le et enregistrez-en un nouveau.",
+      "PROPINA_INEXISTENTE": "Le pourboire n'existe pas dans cette organisation.",
+      "PERIODO_CERRADO": "La période comptable d'aujourd'hui est clôturée : la contre-passation ne peut pas être enregistrée.",
+      "SIN_SUCURSAL": "Sélectionnez une succursale pour enregistrer le pourboire.",
+      "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez."
+    }
+  },
+  "posCargosServicio": {
+    "copiaSufijo": " (copie)",
+    "csvAyuda": {
+      "tipoCargo": "charge_type : percentage ou fixed_amount (fixed est aussi accepté)",
+      "aplicaA": "applies_to : all, dine_in, delivery, takeout"
+    },
+    "importar": {
+      "resultado": "Importés : {importados}. Erreurs : {errores}",
+      "exito": "{count, plural, one {# frais importé avec succès} other {# frais importés avec succès}}",
+      "fila": "Ligne {fila} : {error}",
+      "columnasFaltantes": "Colonnes obligatoires manquantes : {columnas}",
+      "errores": {
+        "CAMPOS_FALTANTES": "des champs obligatoires manquent",
+        "TIPO_INVALIDO": "type de frais « {valor} » non valide (utilisez percentage ou fixed_amount)",
+        "VALOR_INVALIDO": "valeur « {valor} » non valide",
+        "APLICA_A_INVALIDO": "« {valor} » n’est pas une valeur valide pour applies_to",
+        "SIN_PERMISO": "pas d’autorisation pour créer des frais",
+        "NO_ENCONTRADO": "introuvable",
+        "DESCONOCIDO": "enregistrement impossible"
+      }
+    },
+    "errores": {
+      "SIN_PERMISO": "Vous n'avez pas l'autorisation de gérer les frais de service.",
+      "NO_ENCONTRADO": "Les frais n'existent pas dans cette organisation.",
+      "TIPO_INVALIDO": "Type de frais non valide : utilisez pourcentage ou montant fixe.",
+      "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez."
+    }
   }
 }

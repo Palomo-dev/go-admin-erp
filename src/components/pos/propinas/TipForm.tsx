@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, X, Banknote, CreditCard, ArrowRightLeft, Globe } from 'lucide-react';
+import { Save, X, Banknote, CreditCard, ArrowRightLeft, Globe, Split, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,15 +20,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tip, CreateTipData, TipType, TIP_TYPE_LABELS } from './types';
+import { Tip, CreateTipData, TipType, TIP_TYPES_FORMULARIO } from './types';
 import { PropinasService } from './propinasService';
+import { codigoErrorPropina } from './propinasLogica';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 interface TipFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tip?: Tip | null;
+  /** Miembros con acceso a la sucursal donde se registra la propina. */
   servers: { id: string; name: string; email: string }[];
   onSuccess: () => void;
 }
@@ -40,6 +43,7 @@ export function TipForm({
   servers,
   onSuccess 
 }: TipFormProps) {
+  const t = useTranslations('posPropinas');
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<CreateTipData>({
     server_id: '',
@@ -50,6 +54,12 @@ export function TipForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const isEditing = !!tip;
+
+  // Los cuatro tipos de registro manual; al editar una propina 'split' o
+  // 'pooled' (que nacen en otros flujos) su tipo también se muestra.
+  const tiposVisibles: TipType[] = tip && !TIP_TYPES_FORMULARIO.includes(tip.tip_type)
+    ? [...TIP_TYPES_FORMULARIO, tip.tip_type]
+    : [...TIP_TYPES_FORMULARIO];
 
   useEffect(() => {
     if (open) {
@@ -95,7 +105,12 @@ export function TipForm({
     setLoading(true);
     try {
       if (isEditing && tip) {
-        await PropinasService.update(tip.id, formData);
+        await PropinasService.update(tip.id, {
+          server_id: formData.server_id,
+          amount: formData.amount,
+          tip_type: formData.tip_type,
+          notes: formData.notes,
+        });
         toast.success('Propina actualizada correctamente');
       } else {
         await PropinasService.create(formData);
@@ -103,14 +118,14 @@ export function TipForm({
       }
       onSuccess();
       onOpenChange(false);
-    } catch (error: any) {
-      toast.error(error.message || 'Error al guardar la propina');
+    } catch (error: unknown) {
+      toast.error(t(`errores.${codigoErrorPropina(error)}`));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (field: keyof CreateTipData, value: any) => {
+  const handleChange = <K extends keyof CreateTipData>(field: K, value: CreateTipData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -123,6 +138,8 @@ export function TipForm({
       case 'card': return <CreditCard className="h-5 w-5" />;
       case 'transfer': return <ArrowRightLeft className="h-5 w-5" />;
       case 'online': return <Globe className="h-5 w-5" />;
+      case 'split': return <Split className="h-5 w-5" />;
+      case 'pooled': return <Users className="h-5 w-5" />;
     }
   };
 
@@ -193,7 +210,7 @@ export function TipForm({
           <div className="space-y-2">
             <Label className="dark:text-gray-200">Tipo de Propina</Label>
             <div className="grid grid-cols-4 gap-2">
-              {(Object.entries(TIP_TYPE_LABELS) as [TipType, string][]).map(([type, label]) => (
+              {tiposVisibles.map((type) => (
                 <button
                   key={type}
                   type="button"
@@ -218,7 +235,7 @@ export function TipForm({
                       ? "text-green-600 dark:text-green-400"
                       : "text-gray-600 dark:text-gray-300"
                   )}>
-                    {label}
+                    {t(`tipos.${type}`)}
                   </span>
                 </button>
               ))}

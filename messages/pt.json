@@ -8987,5 +8987,81 @@
         "verDetalle": "Ver resolução, faixas e envios"
       }
     }
+  },
+  "posPropinas": {
+    "sinNombre": "Sem nome",
+    "tipos": {
+      "cash": "Dinheiro",
+      "card": "Cartão",
+      "transfer": "Transferência",
+      "online": "Online",
+      "split": "Dividida",
+      "pooled": "Fundo comum"
+    },
+    "kpi": {
+      "total": "Total",
+      "cantidad": "Gorjetas"
+    },
+    "acciones": {
+      "anular": "Anular"
+    },
+    "anular": {
+      "titulo": "Anular gorjeta?",
+      "descripcion": "A gorjeta deixa de contar nos totais e, se tiver lançamento contábil, é registrado o estorno com a data de hoje. Não é possível desfazer.",
+      "confirmar": "Anular",
+      "anulando": "Anulando…",
+      "cancelar": "Cancelar"
+    },
+    "distribuir": {
+      "titulo": "{count, plural, one {Marcar # gorjeta como distribuída?} other {Marcar # gorjetas como distribuídas?}}",
+      "descripcion": "Uma gorjeta distribuída não pode mais ser editada nem anulada.",
+      "confirmar": "Distribuir",
+      "distribuyendo": "Distribuindo…",
+      "cancelar": "Cancelar"
+    },
+    "toast": {
+      "anulada": "Gorjeta anulada",
+      "anuladaConReverso": "Gorjeta anulada e lançamento contábil estornado",
+      "distribuidas": "{count, plural, one {# gorjeta marcada como distribuída} other {# gorjetas marcadas como distribuídas}}",
+      "ningunaDistribuida": "Não havia gorjetas pendentes para distribuir: já estavam distribuídas ou anuladas."
+    },
+    "errores": {
+      "SIN_PERMISO": "Você não tem permissão para esta ação.",
+      "PROPINA_DISTRIBUIDA": "A gorjeta já foi distribuída: não pode ser editada nem anulada.",
+      "PROPINA_ANULADA": "A gorjeta está anulada e não pode ser alterada.",
+      "PROPINA_CON_ASIENTO": "A gorjeta já tem lançamento contábil: para mudar o valor, anule-a e registre uma nova.",
+      "PROPINA_INEXISTENTE": "A gorjeta não existe nesta organização.",
+      "PERIODO_CERRADO": "O período contábil de hoje está fechado: não é possível registrar o estorno.",
+      "SIN_SUCURSAL": "Selecione uma filial para registrar a gorjeta.",
+      "DESCONOCIDO": "Não foi possível concluir a operação. Tente novamente."
+    }
+  },
+  "posCargosServicio": {
+    "copiaSufijo": " (cópia)",
+    "csvAyuda": {
+      "tipoCargo": "charge_type: percentage ou fixed_amount (fixed também é aceito)",
+      "aplicaA": "applies_to: all, dine_in, delivery, takeout"
+    },
+    "importar": {
+      "resultado": "Importadas: {importados}. Erros: {errores}",
+      "exito": "{count, plural, one {# taxa importada com sucesso} other {# taxas importadas com sucesso}}",
+      "fila": "Linha {fila}: {error}",
+      "columnasFaltantes": "Faltam colunas obrigatórias: {columnas}",
+      "errores": {
+        "CAMPOS_FALTANTES": "faltam campos obrigatórios",
+        "TIPO_INVALIDO": "tipo de taxa \"{valor}\" inválido (use percentage ou fixed_amount)",
+        "VALOR_INVALIDO": "valor \"{valor}\" inválido",
+        "APLICA_A_INVALIDO": "\"{valor}\" não é um valor válido de applies_to",
+        "SIN_PERMISO": "sem permissão para criar taxas",
+        "NO_ENCONTRADO": "não encontrada",
+        "DESCONOCIDO": "não foi possível salvar"
+      }
+    },
+    "errores": {
+      "SIN_PERMISO": "Você não tem permissão para gerenciar taxas de serviço.",
+      "NO_ENCONTRADO": "A taxa não existe nesta organização.",
+      "TIPO_INVALIDO": "Tipo de taxa inválido: use porcentagem ou valor fixo.",
+      "DESCONOCIDO": "Não foi possível concluir a operação. Tente novamente."
+    }
   }
 }

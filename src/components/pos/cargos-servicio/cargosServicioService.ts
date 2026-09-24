@@ -1,302 +1,225 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
-import { 
-  ServiceCharge, 
-  CreateServiceChargeData, 
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import {
+  ServiceCharge,
+  CreateServiceChargeData,
   UpdateServiceChargeData,
   ServiceChargeFilters
 } from './types';
+import {
+  CargoServicioError,
+  cambiosParaActualizar,
+  errorCargo,
+  filaParaInsertar,
+  filtroSucursalConGlobales,
+  parsearCsvCargos,
+  type ErrorFilaCsv,
+} from './cargosLogica';
 
+/**
+ * Cargos de servicio. Toda lectura y escritura va acotada a la organización de
+ * la sesión. Escribir exige el permiso `billing_management` (RLS, migración
+ * 20260925110000). Los errores salen como `CargoServicioError` con un código
+ * que la pantalla traduce.
+ */
 export class CargosServicioService {
   /**
-   * Obtener todos los cargos de servicio
+   * Cargos de la organización. Con sucursal, los de esa sucursal y los
+   * globales, que también aplican en ella.
    */
   static async getAll(filters: ServiceChargeFilters = {}): Promise<ServiceCharge[]> {
-    try {
-      const organizationId = getOrganizationId();
-      
-      let query = supabase
-        .from('service_charges')
-        .select(`
-          *,
-          branch:branches (
-            id,
-            name
-          )
-        `)
-        .eq('organization_id', organizationId)
-        .order('name', { ascending: true });
+    const organizationId = getOrganizationId();
 
-      if (filters.is_active !== undefined) {
-        query = query.eq('is_active', filters.is_active);
-      }
+    let query = supabase
+      .from('service_charges')
+      .select(`
+        *,
+        branch:branches (
+          id,
+          name
+        )
+      `)
+      .eq('organization_id', organizationId)
+      .order('name', { ascending: true });
 
-      if (filters.branch_id) {
-        query = query.eq('branch_id', filters.branch_id);
-      }
+    if (filters.is_active !== undefined) query = query.eq('is_active', filters.is_active);
+    if (filters.branch_id) query = query.or(filtroSucursalConGlobales(filters.branch_id));
+    if (filters.applies_to) query = query.eq('applies_to', filters.applies_to);
 
-      if (filters.applies_to) {
-        query = query.eq('applies_to', filters.applies_to);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching service charges:', error);
-        throw new Error(`Error al obtener cargos de servicio: ${error.message}`);
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error('Error in getAll:', error);
-      throw error;
+    const { data, error } = await query;
+    if (error) {
+      console.error('Error fetching service charges:', error);
+      throw errorCargo(error);
     }
+    return (data || []) as ServiceCharge[];
   }
 
-  /**
-   * Obtener cargos activos
-   */
+  /** Cargos activos */
   static async getActive(): Promise<ServiceCharge[]> {
     return this.getAll({ is_active: true });
   }
 
-  /**
-   * Obtener un cargo por ID
-   */
+  /** Un cargo de la organización de la sesión, o null. */
   static async getById(id: number): Promise<ServiceCharge | null> {
-    try {
-      const { data, error } = await supabase
-        .from('service_charges')
-        .select(`
-          *,
-          branch:branches (
-            id,
-            name
-          )
-        `)
-        .eq('id', id)
-        .single();
+    const { data, error } = await supabase
+      .from('service_charges')
+      .select(`
+        *,
+        branch:branches (
+          id,
+          name
+        )
+      `)
+      .eq('id', id)
+      .eq('organization_id', getOrganizationId())
+      .maybeSingle();
 
-      if (error) {
-        if (error.code === 'PGRST116') return null;
-        throw new Error(`Error al obtener cargo: ${error.message}`);
-      }
-
-      return data;
-    } catch (error) {
+    if (error) {
       console.error('Error in getById:', error);
-      throw error;
+      throw errorCargo(error);
     }
+    return (data as ServiceCharge | null) ?? null;
   }
 
-  /**
-   * Crear cargo de servicio
-   */
+  /** Crear cargo de servicio */
   static async create(data: CreateServiceChargeData): Promise<ServiceCharge> {
-    try {
-      const organizationId = getOrganizationId();
+    const { data: result, error } = await supabase
+      .from('service_charges')
+      .insert([{
+        organization_id: getOrganizationId(),
+        ...filaParaInsertar(data),
+        is_active: true,
+      }])
+      .select()
+      .single();
 
-      const { data: result, error } = await supabase
-        .from('service_charges')
-        .insert([{
-          organization_id: organizationId,
-          name: data.name,
-          charge_type: data.charge_type,
-          charge_value: data.charge_value,
-          min_amount: data.min_amount || null,
-          min_guests: data.min_guests || null,
-          applies_to: data.applies_to,
-          is_taxable: data.is_taxable,
-          is_optional: data.is_optional,
-          branch_id: data.branch_id || null,
-          is_active: true
-        }])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating service charge:', error);
-        throw new Error(`Error al crear cargo: ${error.message}`);
-      }
-
-      return result;
-    } catch (error) {
-      console.error('Error in create:', error);
-      throw error;
+    if (error) {
+      console.error('Error creating service charge:', error);
+      throw errorCargo(error);
     }
+    return result as ServiceCharge;
   }
 
   /**
-   * Actualizar cargo de servicio
+   * Actualizar cargo. Los opcionales presentes y vacíos viajan como null
+   * (volver a «Global», quitar mínimos). `updated_at` lo pone el trigger.
    */
   static async update(id: number, data: UpdateServiceChargeData): Promise<ServiceCharge> {
-    try {
-      const updateData: any = { 
-        ...data,
-        updated_at: new Date().toISOString()
-      };
+    // `.select()` porque un UPDATE que la RLS bloquea no da error: afecta 0 filas.
+    const { data: filas, error } = await supabase
+      .from('service_charges')
+      .update(cambiosParaActualizar(data))
+      .eq('id', id)
+      .eq('organization_id', getOrganizationId())
+      .select();
 
-      const { data: result, error } = await supabase
-        .from('service_charges')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating service charge:', error);
-        throw new Error(`Error al actualizar cargo: ${error.message}`);
-      }
-
-      return result;
-    } catch (error) {
-      console.error('Error in update:', error);
-      throw error;
+    if (error) {
+      console.error('Error updating service charge:', error);
+      throw errorCargo(error);
     }
+    if (!filas || filas.length === 0) throw new CargoServicioError('SIN_PERMISO');
+    return filas[0] as ServiceCharge;
   }
 
-  /**
-   * Eliminar cargo de servicio
-   */
+  /** Eliminar cargo de servicio */
   static async delete(id: number): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('service_charges')
-        .delete()
-        .eq('id', id);
+    const { data: filas, error } = await supabase
+      .from('service_charges')
+      .delete()
+      .eq('id', id)
+      .eq('organization_id', getOrganizationId())
+      .select('id');
 
-      if (error) {
-        console.error('Error deleting service charge:', error);
-        throw new Error(`Error al eliminar cargo: ${error.message}`);
-      }
-    } catch (error) {
-      console.error('Error in delete:', error);
-      throw error;
+    if (error) {
+      console.error('Error deleting service charge:', error);
+      throw errorCargo(error);
     }
+    if (!filas || filas.length === 0) throw new CargoServicioError('SIN_PERMISO');
   }
 
-  /**
-   * Activar/Desactivar cargo
-   */
+  /** Activar/Desactivar cargo */
   static async toggleActive(id: number, isActive: boolean): Promise<ServiceCharge> {
     return this.update(id, { is_active: isActive });
   }
 
   /**
-   * Duplicar cargo de servicio
+   * Duplicar cargo. `sufijo` es el texto traducido que se añade al nombre.
    */
-  static async duplicate(id: number): Promise<ServiceCharge> {
-    try {
-      const original = await this.getById(id);
-      if (!original) {
-        throw new Error('Cargo no encontrado');
-      }
+  static async duplicate(id: number, sufijo = ' (copia)'): Promise<ServiceCharge> {
+    const original = await this.getById(id);
+    if (!original) throw new CargoServicioError('NO_ENCONTRADO');
 
-      return this.create({
-        name: `${original.name} (copia)`,
-        charge_type: original.charge_type,
-        charge_value: original.charge_value,
-        min_amount: original.min_amount,
-        min_guests: original.min_guests,
-        applies_to: original.applies_to,
-        is_taxable: original.is_taxable,
-        is_optional: original.is_optional,
-        branch_id: original.branch_id
-      });
-    } catch (error) {
-      console.error('Error in duplicate:', error);
-      throw error;
-    }
+    return this.create({
+      name: `${original.name}${sufijo}`,
+      charge_type: original.charge_type,
+      charge_value: original.charge_value,
+      min_amount: original.min_amount ?? null,
+      min_guests: original.min_guests ?? null,
+      applies_to: original.applies_to,
+      is_taxable: original.is_taxable,
+      is_optional: original.is_optional,
+      branch_id: original.branch_id ?? null,
+    });
   }
 
-  /**
-   * Obtener sucursales disponibles
-   */
+  /** Obtener sucursales disponibles */
   static async getBranches(): Promise<{ id: number; name: string }[]> {
-    try {
-      const organizationId = getOrganizationId();
+    const { data, error } = await supabase
+      .from('branches')
+      .select('id, name')
+      .eq('organization_id', getOrganizationId())
+      .eq('is_active', true)
+      .order('name');
 
-      const { data, error } = await supabase
-        .from('branches')
-        .select('id, name')
-        .eq('organization_id', organizationId)
-        .eq('is_active', true)
-        .order('name');
-
-      if (error) {
-        console.error('Error fetching branches:', error);
-        throw new Error(`Error al obtener sucursales: ${error.message}`);
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error('Error in getBranches:', error);
-      throw error;
+    if (error) {
+      console.error('Error fetching branches:', error);
+      throw errorCargo(error);
     }
+    return data || [];
   }
 
   /**
-   * Importar cargos desde CSV
+   * Importar cargos desde CSV. `charge_type` admite percentage y fixed_amount
+   * (y 'fixed' como alias). Devuelve cuántos se importaron, los errores por
+   * fila y las columnas obligatorias que falten.
    */
-  static async importFromCSV(csvData: string): Promise<{ imported: number; errors: string[] }> {
-    const errors: string[] = [];
+  static async importFromCSV(csvData: string): Promise<{
+    imported: number;
+    errors: ErrorFilaCsv[];
+    columnasFaltantes: string[];
+  }> {
+    const { filas, errores, columnasFaltantes } = parsearCsvCargos(csvData);
+    if (columnasFaltantes.length > 0) return { imported: 0, errors: [], columnasFaltantes };
+
     let imported = 0;
-
-    try {
-      const lines = csvData.trim().split('\n');
-      const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
-      
-      // Validar headers
-      const requiredHeaders = ['name', 'charge_type', 'charge_value'];
-      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-      
-      if (missingHeaders.length > 0) {
-        throw new Error(`Headers faltantes: ${missingHeaders.join(', ')}`);
+    const errors: ErrorFilaCsv[] = [...errores];
+    for (const { fila, datos } of filas) {
+      try {
+        await this.create(datos);
+        imported++;
+      } catch (e) {
+        errors.push({ fila, codigo: errorCargo(e).codigo });
       }
-
-      for (let i = 1; i < lines.length; i++) {
-        try {
-          const values = lines[i].split(',').map(v => v.trim());
-          const row: Record<string, string> = {};
-          
-          headers.forEach((header, index) => {
-            row[header] = values[index] || '';
-          });
-
-          if (!row.name || !row.charge_type || !row.charge_value) {
-            errors.push(`Fila ${i + 1}: Campos requeridos faltantes`);
-            continue;
-          }
-
-          await this.create({
-            name: row.name,
-            charge_type: row.charge_type as 'percentage' | 'fixed',
-            charge_value: parseFloat(row.charge_value),
-            min_amount: row.min_amount ? parseFloat(row.min_amount) : undefined,
-            min_guests: row.min_guests ? parseInt(row.min_guests) : undefined,
-            applies_to: (row.applies_to as any) || 'all',
-            is_taxable: row.is_taxable?.toLowerCase() === 'true',
-            is_optional: row.is_optional?.toLowerCase() === 'true'
-          });
-
-          imported++;
-        } catch (rowError: any) {
-          errors.push(`Fila ${i + 1}: ${rowError.message}`);
-        }
-      }
-
-      return { imported, errors };
-    } catch (error: any) {
-      throw new Error(`Error al importar: ${error.message}`);
     }
+    errors.sort((a, b) => a.fila - b.fila);
+    return { imported, errors, columnasFaltantes: [] };
+  }
+
+  /** Solo decide qué botones se muestran: la RLS vuelve a comprobarlo al escribir. */
+  static async puedeGestionar(): Promise<boolean> {
+    const { data, error } = await supabase.rpc('fn_tiene_permiso', {
+      p_organization_id: getOrganizationId(),
+      p_code: 'billing_management',
+    });
+    return !error && data === true;
   }
 
   /**
    * Calcular cargo aplicable
    */
   static calculateCharge(
-    charge: ServiceCharge, 
-    subtotal: number, 
+    charge: ServiceCharge,
+    subtotal: number,
     guests: number = 1
   ): number {
     // Verificar condiciones mínimas

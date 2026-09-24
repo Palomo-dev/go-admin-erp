@@ -9092,5 +9092,81 @@
         "verDetalle": "See resolution, ranges and submissions"
       }
     }
+  },
+  "posPropinas": {
+    "sinNombre": "No name",
+    "tipos": {
+      "cash": "Cash",
+      "card": "Card",
+      "transfer": "Transfer",
+      "online": "Online",
+      "split": "Split",
+      "pooled": "Pooled"
+    },
+    "kpi": {
+      "total": "Total",
+      "cantidad": "Tips"
+    },
+    "acciones": {
+      "anular": "Void"
+    },
+    "anular": {
+      "titulo": "Void tip?",
+      "descripcion": "The tip no longer counts in the totals and, if it has a journal entry, a reversal dated today is posted. This cannot be undone.",
+      "confirmar": "Void",
+      "anulando": "Voiding…",
+      "cancelar": "Cancel"
+    },
+    "distribuir": {
+      "titulo": "{count, plural, one {Mark # tip as distributed?} other {Mark # tips as distributed?}}",
+      "descripcion": "A distributed tip can no longer be edited or voided.",
+      "confirmar": "Distribute",
+      "distribuyendo": "Distributing…",
+      "cancelar": "Cancel"
+    },
+    "toast": {
+      "anulada": "Tip voided",
+      "anuladaConReverso": "Tip voided and its journal entry reversed",
+      "distribuidas": "{count, plural, one {# tip marked as distributed} other {# tips marked as distributed}}",
+      "ningunaDistribuida": "There were no pending tips to distribute: they were already distributed or voided."
+    },
+    "errores": {
+      "SIN_PERMISO": "You do not have permission for this action.",
+      "PROPINA_DISTRIBUIDA": "The tip has already been distributed: it cannot be edited or voided.",
+      "PROPINA_ANULADA": "The tip is voided and cannot be changed.",
+      "PROPINA_CON_ASIENTO": "The tip already has a journal entry: to change the amount, void it and record a new one.",
+      "PROPINA_INEXISTENTE": "The tip does not exist in this organization.",
+      "PERIODO_CERRADO": "Today's accounting period is closed: the reversal cannot be posted.",
+      "SIN_SUCURSAL": "Select a branch to record the tip.",
+      "DESCONOCIDO": "The operation could not be completed. Please try again."
+    }
+  },
+  "posCargosServicio": {
+    "copiaSufijo": " (copy)",
+    "csvAyuda": {
+      "tipoCargo": "charge_type: percentage or fixed_amount (fixed is also accepted)",
+      "aplicaA": "applies_to: all, dine_in, delivery, takeout"
+    },
+    "importar": {
+      "resultado": "Imported: {importados}. Errors: {errores}",
+      "exito": "{count, plural, one {# charge imported successfully} other {# charges imported successfully}}",
+      "fila": "Row {fila}: {error}",
+      "columnasFaltantes": "Missing required columns: {columnas}",
+      "errores": {
+        "CAMPOS_FALTANTES": "required fields are missing",
+        "TIPO_INVALIDO": "invalid charge type \"{valor}\" (use percentage or fixed_amount)",
+        "VALOR_INVALIDO": "invalid value \"{valor}\"",
+        "APLICA_A_INVALIDO": "\"{valor}\" is not a valid applies_to value",
+        "SIN_PERMISO": "no permission to create charges",
+        "NO_ENCONTRADO": "not found",
+        "DESCONOCIDO": "could not be saved"
+      }
+    },
+    "errores": {
+      "SIN_PERMISO": "You do not have permission to manage service charges.",
+      "NO_ENCONTRADO": "The charge does not exist in this organization.",
+      "TIPO_INVALIDO": "Invalid charge type: use percentage or fixed amount.",
+      "DESCONOCIDO": "The operation could not be completed. Please try again."
+    }
   }
 }

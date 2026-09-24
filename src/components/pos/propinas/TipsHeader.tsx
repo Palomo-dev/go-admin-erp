@@ -18,14 +18,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { TipFilters, TIP_TYPE_LABELS, TipType } from './types';
+import { TipFilters, TIP_TYPES, TipType } from './types';
+import { esTipoPropina } from './propinasLogica';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useTranslations } from 'next-intl';
 
 interface TipsHeaderProps {
   filters: TipFilters;
   onFiltersChange: (filters: TipFilters) => void;
   onRefresh: () => void;
-  onNewTip: () => void;
+  /** Sin permiso de registrar (pos.create) no se muestra «Nueva propina». */
+  onNewTip?: () => void;
   servers: { id: string; name: string; email: string }[];
   stats: {
     total: number;
@@ -36,6 +39,8 @@ interface TipsHeaderProps {
   loading: boolean;
   selectedCount?: number;
   onDistributeSelected?: () => void;
+  /** Mientras se distribuye, el botón queda deshabilitado (sin doble clic). */
+  distributing?: boolean;
 }
 
 export function TipsHeader({
@@ -47,8 +52,10 @@ export function TipsHeader({
   stats,
   loading,
   selectedCount = 0,
-  onDistributeSelected
+  onDistributeSelected,
+  distributing = false
 }: TipsHeaderProps) {
+  const t = useTranslations('posPropinas');
   const { formatear } = useMonedaOrganizacion();
   const handleServerChange = (value: string) => {
     onFiltersChange({ 
@@ -67,7 +74,7 @@ export function TipsHeader({
   const handleTypeChange = (value: string) => {
     onFiltersChange({ 
       ...filters, 
-      tip_type: value === 'all' ? undefined : value as TipType 
+      tip_type: value !== 'all' && esTipoPropina(value) ? (value as TipType) : undefined
     });
   };
 
@@ -99,19 +106,22 @@ export function TipsHeader({
               {selectedCount > 0 && onDistributeSelected && (
                 <Button 
                   onClick={onDistributeSelected}
+                  disabled={distributing}
                   className="bg-green-600 hover:bg-green-700"
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Distribuir ({selectedCount})
                 </Button>
               )}
-              <Button 
+              {onNewTip && (
+              <Button
                 onClick={onNewTip}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Nueva Propina
               </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -123,7 +133,7 @@ export function TipsHeader({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total del Día</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('kpi.total')}</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {formatear(stats.total)}
                 </p>
@@ -165,7 +175,7 @@ export function TipsHeader({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Propinas Hoy</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('kpi.cantidad')}</p>
                 <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                   {stats.count}
                 </p>
@@ -220,8 +230,8 @@ export function TipsHeader({
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                 <SelectItem value="all">Todos</SelectItem>
-                {Object.entries(TIP_TYPE_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                {TIP_TYPES.map((tipo) => (
+                  <SelectItem key={tipo} value={tipo}>{t(`tipos.${tipo}`)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

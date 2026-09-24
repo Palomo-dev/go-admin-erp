@@ -9092,5 +9092,81 @@
         "verDetalle": "Ver resolución, rangos y envíos"
       }
     }
+  },
+  "posPropinas": {
+    "sinNombre": "Sin nombre",
+    "tipos": {
+      "cash": "Efectivo",
+      "card": "Tarjeta",
+      "transfer": "Transferencia",
+      "online": "Online",
+      "split": "Dividida",
+      "pooled": "Pozo común"
+    },
+    "kpi": {
+      "total": "Total",
+      "cantidad": "Propinas"
+    },
+    "acciones": {
+      "anular": "Anular"
+    },
+    "anular": {
+      "titulo": "¿Anular propina?",
+      "descripcion": "La propina deja de contar en los totales y, si tiene asiento contable, se registra su reverso con fecha de hoy. No se puede deshacer.",
+      "confirmar": "Anular",
+      "anulando": "Anulando…",
+      "cancelar": "Cancelar"
+    },
+    "distribuir": {
+      "titulo": "{count, plural, one {¿Marcar # propina como distribuida?} other {¿Marcar # propinas como distribuidas?}}",
+      "descripcion": "Una propina distribuida ya no se puede editar ni anular.",
+      "confirmar": "Distribuir",
+      "distribuyendo": "Distribuyendo…",
+      "cancelar": "Cancelar"
+    },
+    "toast": {
+      "anulada": "Propina anulada",
+      "anuladaConReverso": "Propina anulada y su asiento contable revertido",
+      "distribuidas": "{count, plural, one {# propina marcada como distribuida} other {# propinas marcadas como distribuidas}}",
+      "ningunaDistribuida": "No había propinas pendientes para distribuir: ya estaban distribuidas o anuladas."
+    },
+    "errores": {
+      "SIN_PERMISO": "No tienes permiso para esta acción.",
+      "PROPINA_DISTRIBUIDA": "La propina ya se distribuyó: no se puede editar ni anular.",
+      "PROPINA_ANULADA": "La propina está anulada y no se puede cambiar.",
+      "PROPINA_CON_ASIENTO": "La propina ya tiene asiento contable: para cambiar el monto, anúlala y registra una nueva.",
+      "PROPINA_INEXISTENTE": "La propina no existe en esta organización.",
+      "PERIODO_CERRADO": "El periodo contable de hoy está cerrado: no se puede registrar el reverso.",
+      "SIN_SUCURSAL": "Selecciona una sucursal para registrar la propina.",
+      "DESCONOCIDO": "No se pudo completar la operación. Inténtalo de nuevo."
+    }
+  },
+  "posCargosServicio": {
+    "copiaSufijo": " (copia)",
+    "csvAyuda": {
+      "tipoCargo": "charge_type: percentage o fixed_amount (también se acepta fixed)",
+      "aplicaA": "applies_to: all, dine_in, delivery, takeout"
+    },
+    "importar": {
+      "resultado": "Importados: {importados}. Errores: {errores}",
+      "exito": "{count, plural, one {# cargo importado correctamente} other {# cargos importados correctamente}}",
+      "fila": "Fila {fila}: {error}",
+      "columnasFaltantes": "Faltan columnas obligatorias: {columnas}",
+      "errores": {
+        "CAMPOS_FALTANTES": "faltan campos obligatorios",
+        "TIPO_INVALIDO": "tipo de cargo «{valor}» no válido (usa percentage o fixed_amount)",
+        "VALOR_INVALIDO": "valor «{valor}» no válido",
+        "APLICA_A_INVALIDO": "«{valor}» no es un valor válido de applies_to",
+        "SIN_PERMISO": "sin permiso para crear cargos",
+        "NO_ENCONTRADO": "no encontrado",
+        "DESCONOCIDO": "no se pudo guardar"
+      }
+    },
+    "errores": {
+      "SIN_PERMISO": "No tienes permiso para gestionar cargos de servicio.",
+      "NO_ENCONTRADO": "El cargo no existe en esta organización.",
+      "TIPO_INVALIDO": "Tipo de cargo no válido: usa porcentaje o monto fijo.",
+      "DESCONOCIDO": "No se pudo completar la operación. Inténtalo de nuevo."
+    }
   }
 }

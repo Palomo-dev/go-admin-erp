@@ -704,26 +704,32 @@ class WebOrderConfirmationService {
         .eq('branch_id', order.branch_id)
         .eq('tip_type', 'online')
         .ilike('notes', `%${order.order_number}%`)
-        .single();
+        .is('voided_at', null)
+        .limit(1)
+        .maybeSingle();
 
       if (existingTip) {
         // UPDATE: completar con sale_id y server_id reales
-        await supabase
+        const { error: updateError } = await supabase
           .from('tips')
           .update({ sale_id: saleId, server_id: userId })
-          .eq('id', existingTip.id);
+          .eq('id', existingTip.id)
+          .eq('organization_id', order.organization_id);
+        if (updateError) throw updateError;
 
         console.log(`✅ Tip online actualizado con sale_id: ${saleId}, server_id: ${userId}`);
         return existingTip.id;
       }
 
-      // FALLBACK: website no creó tip → crear nuevo
+      // FALLBACK: website no creó tip → crear nuevo, en la sucursal del
+      // pedido (no en la sucursal activa de quien confirma).
       const tip = await PropinasService.create({
         sale_id: saleId,
         server_id: userId,
         amount: order.tip_amount,
         tip_type: 'online',
         notes: `Propina online - Pedido ${order.order_number}`,
+        branch_id: order.branch_id,
       });
       return tip.id;
     } catch (error) {

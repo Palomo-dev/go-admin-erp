@@ -41,7 +41,7 @@ export interface ServiceCharge {
   organization_id: number;
   branch_id?: number;
   name: string;
-  charge_type: 'percentage' | 'fixed';
+  charge_type: 'percentage' | 'fixed_amount';
   charge_value: number;
   min_amount?: number;
   min_guests?: number;
@@ -246,13 +246,19 @@ export class ConfiguracionService {
   }
 
   // Activar/desactivar cargo de servicio
+  // Acotado a la organización de la sesión; escribir cargos exige el permiso
+  // `billing_management` (RLS). Un UPDATE bloqueado por RLS afecta 0 filas sin
+  // error: por eso el `.select()`.
   static async toggleServiceCharge(id: number, isActive: boolean): Promise<void> {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('service_charges')
-      .update({ is_active: isActive, updated_at: new Date().toISOString() })
-      .eq('id', id);
+      .update({ is_active: isActive })
+      .eq('id', id)
+      .eq('organization_id', getOrganizationId())
+      .select('id');
 
     if (error) throw error;
+    if (!data || data.length === 0) throw new Error('SIN_PERMISO');
   }
 
   // Obtener secuencias de facturación

@@ -10,7 +10,9 @@ import {
   CreditCard,
   ArrowRightLeft,
   Globe,
-  User
+  User,
+  Split,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,53 +43,60 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tip, TIP_TYPE_LABELS } from './types';
+import { Tip } from './types';
 import { PropinasService } from './propinasService';
+import { codigoErrorPropina, esTipoPropina } from './propinasLogica';
 import { cn } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 interface TipsListProps {
   tips: Tip[];
   loading: boolean;
   onRefresh: () => void;
+  /** Sin permiso de registrar (pos.create) no se ofrece editar. */
   onEdit?: (tip: Tip) => void;
+  /** Sin permiso de liquidar no se ofrece; la confirmación la pide el contenedor. */
+  onMarkDistributed?: (tip: Tip) => void;
+  /** Permiso pos.void: anular con reverso contable. */
+  puedeAnular?: boolean;
   selectedIds?: string[];
   onSelectionChange?: (ids: string[]) => void;
 }
 
-export function TipsList({ 
-  tips, 
-  loading, 
-  onRefresh, 
+export function TipsList({
+  tips,
+  loading,
+  onRefresh,
   onEdit,
+  onMarkDistributed,
+  puedeAnular = false,
   selectedIds = [],
   onSelectionChange
 }: TipsListProps) {
+  const t = useTranslations('posPropinas');
   const { formatear } = useMonedaOrganizacion();
+  const { formatDateTime } = useFormatDate();
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [anulando, setAnulando] = useState(false);
 
+  // «Eliminar» ya no borra: anula la propina y revierte su asiento en una
+  // transacción (fn_propina_anular). Una distribuida no se anula.
   const handleDelete = async () => {
-    if (!deleteId) return;
-    
-    try {
-      await PropinasService.delete(deleteId);
-      toast.success('Propina eliminada correctamente');
-      onRefresh();
-    } catch (error: unknown) {
-      toast.error((error as { message?: string } | null)?.message || 'Error al eliminar la propina');
-    } finally {
-      setDeleteId(null);
-    }
-  };
+    if (!deleteId || anulando) return;
 
-  const handleMarkDistributed = async (tip: Tip) => {
+    setAnulando(true);
     try {
-      await PropinasService.markAsDistributed(tip.id);
-      toast.success('Propina marcada como distribuida');
+      const { asientosRevertidos } = await PropinasService.anular(deleteId);
+      toast.success(asientosRevertidos > 0 ? t('toast.anuladaConReverso') : t('toast.anulada'));
       onRefresh();
     } catch (error: unknown) {
-      toast.error((error as { message?: string } | null)?.message || 'Error al marcar como distribuida');
+      toast.error(t(`errores.${codigoErrorPropina(error)}`));
+    } finally {
+      setAnulando(false);
+      setDeleteId(null);
     }
   };
 
@@ -118,17 +127,10 @@ export function TipsList({
       case 'card': return <CreditCard className="h-4 w-4 text-blue-500" />;
       case 'transfer': return <ArrowRightLeft className="h-4 w-4 text-purple-500" />;
       case 'online': return <Globe className="h-4 w-4 text-cyan-500" />;
+      case 'split': return <Split className="h-4 w-4 text-orange-500" />;
+      case 'pooled': return <Users className="h-4 w-4 text-pink-500" />;
       default: return null;
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('es-CO', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   const getServerName = (tip: Tip) => {
@@ -208,7 +210,7 @@ export function TipsList({
                   </TableCell>
                 )}
                 <TableCell className="text-sm dark:text-gray-300">
-                  {formatDate(tip.created_at)}
+                  {formatDateTime(tip.created_at)}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -220,7 +222,7 @@ export function TipsList({
                   <div className="flex items-center gap-2">
                     {getTypeIcon(tip.tip_type)}
                     <span className="text-sm dark:text-gray-300">
-                      {TIP_TYPE_LABELS[tip.tip_type]}
+                      {esTipoPropina(tip.tip_type) ? t(`tipos.${tip.tip_type}`) : tip.tip_type}
                     </span>
                   </div>
                 </TableCell>
@@ -241,6 +243,8 @@ export function TipsList({
                   )}
                 </TableCell>
                 <TableCell className="text-right">
+                  {/* Una propina distribuida no se edita ni se anula. */}
+                  {!tip.is_distributed && (onEdit || onMarkDistributed || puedeAnular) && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -249,7 +253,7 @@ export function TipsList({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="dark:bg-gray-800 dark:border-gray-700">
                       {onEdit && (
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           onClick={() => onEdit(tip)}
                           className="dark:hover:bg-gray-700"
                         >
@@ -257,25 +261,30 @@ export function TipsList({
                           Editar
                         </DropdownMenuItem>
                       )}
-                      {!tip.is_distributed && (
-                        <DropdownMenuItem 
-                          onClick={() => handleMarkDistributed(tip)}
+                      {onMarkDistributed && (
+                        <DropdownMenuItem
+                          onClick={() => onMarkDistributed(tip)}
                           className="dark:hover:bg-gray-700"
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Marcar Distribuida
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuSeparator className="dark:bg-gray-700" />
-                      <DropdownMenuItem 
-                        onClick={() => setDeleteId(tip.id)}
-                        className="text-red-600 dark:text-red-400 dark:hover:bg-gray-700"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Eliminar
-                      </DropdownMenuItem>
+                      {puedeAnular && (
+                        <>
+                          <DropdownMenuSeparator className="dark:bg-gray-700" />
+                          <DropdownMenuItem
+                            onClick={() => setDeleteId(tip.id)}
+                            className="text-red-600 dark:text-red-400 dark:hover:bg-gray-700"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            {t('acciones.anular')}
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -283,25 +292,29 @@ export function TipsList({
         </Table>
       </div>
 
-      <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
+      <AlertDialog open={deleteId !== null} onOpenChange={(open) => { if (!open && !anulando) setDeleteId(null); }}>
         <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
           <AlertDialogHeader>
             <AlertDialogTitle className="dark:text-white">
-              ¿Eliminar propina?
+              {t('anular.titulo')}
             </AlertDialogTitle>
             <AlertDialogDescription className="dark:text-gray-400">
-              Esta acción no se puede deshacer.
+              {t('anular.descripcion')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
-              Cancelar
+            <AlertDialogCancel
+              disabled={anulando}
+              className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+            >
+              {t('anular.cancelar')}
             </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete}
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); void handleDelete(); }}
+              disabled={anulando}
               className="bg-red-600 hover:bg-red-700"
             >
-              Eliminar
+              {anulando ? t('anular.anulando') : t('anular.confirmar')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

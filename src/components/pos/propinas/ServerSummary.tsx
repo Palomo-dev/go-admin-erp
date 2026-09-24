@@ -1,6 +1,7 @@
 'use client';
 
-import { User, Banknote, CreditCard, ArrowRightLeft, Globe, CheckCircle, Clock } from 'lucide-react';
+import { User, Banknote, CreditCard, ArrowRightLeft, Globe, CheckCircle, Clock, Split, Users } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -13,6 +14,7 @@ interface ServerSummaryProps {
 }
 
 export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
+  const t = useTranslations('posPropinas');
   const { formatear } = useMonedaOrganizacion();
   if (loading) {
     return (
@@ -137,6 +139,24 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
                         Online
                       </span>
                       <span>{formatear(summary.online_tips)}</span>
+                    </div>
+                  )}
+                  {summary.split_tips > 0 && (
+                    <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
+                      <span className="flex items-center gap-1">
+                        <Split className="h-3 w-3 text-orange-500" />
+                        {t('tipos.split')}
+                      </span>
+                      <span>{formatear(summary.split_tips)}</span>
+                    </div>
+                  )}
+                  {summary.pooled_tips > 0 && (
+                    <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
+                      <span className="flex items-center gap-1">
+                        <Users className="h-3 w-3 text-pink-500" />
+                        {t('tipos.pooled')}
+                      </span>
+                      <span>{formatear(summary.pooled_tips)}</span>
                     </div>
                   )}
                 </div>

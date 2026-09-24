@@ -45,20 +45,26 @@ import { CargosServicioService } from './cargosServicioService';
 import { cn } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
+import { codigoErrorCargo } from './cargosLogica';
 
 interface ChargesListProps {
   charges: ServiceCharge[];
   loading: boolean;
   onRefresh: () => void;
   onEdit?: (charge: ServiceCharge) => void;
+  /** billing_management: sin él no se ofrece editar, duplicar, activar ni eliminar. */
+  puedeGestionar?: boolean;
 }
 
 export function ChargesList({ 
   charges, 
   loading, 
   onRefresh, 
-  onEdit
+  onEdit,
+  puedeGestionar = false
 }: ChargesListProps) {
+  const t = useTranslations('posCargosServicio');
   const { formatear } = useMonedaOrganizacion();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
@@ -71,7 +77,7 @@ export function ChargesList({
       toast.success('Cargo eliminado correctamente');
       onRefresh();
     } catch (error: unknown) {
-      toast.error((error as { message?: string } | null)?.message || 'Error al eliminar el cargo');
+      toast.error(t(`errores.${codigoErrorCargo(error)}`));
     } finally {
       setDeleteId(null);
     }
@@ -86,7 +92,7 @@ export function ChargesList({
       );
       onRefresh();
     } catch (error: unknown) {
-      toast.error((error as { message?: string } | null)?.message || 'Error al cambiar estado');
+      toast.error(t(`errores.${codigoErrorCargo(error)}`));
     } finally {
       setTogglingId(null);
     }
@@ -94,11 +100,11 @@ export function ChargesList({
 
   const handleDuplicate = async (charge: ServiceCharge) => {
     try {
-      await CargosServicioService.duplicate(charge.id);
+      await CargosServicioService.duplicate(charge.id, t('copiaSufijo'));
       toast.success('Cargo duplicado correctamente');
       onRefresh();
     } catch (error: unknown) {
-      toast.error((error as { message?: string } | null)?.message || 'Error al duplicar el cargo');
+      toast.error(t(`errores.${codigoErrorCargo(error)}`));
     }
   };
 
@@ -223,7 +229,7 @@ export function ChargesList({
                     <Switch
                       checked={charge.is_active}
                       onCheckedChange={() => handleToggleActive(charge)}
-                      disabled={togglingId === charge.id}
+                      disabled={!puedeGestionar || togglingId === charge.id}
                     />
                     <div className="flex gap-1">
                       {charge.is_taxable && (
@@ -240,6 +246,7 @@ export function ChargesList({
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
+                  {puedeGestionar && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -273,6 +280,7 @@ export function ChargesList({
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

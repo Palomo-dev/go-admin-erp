@@ -29,6 +29,7 @@ import {
   purgeLegacyStoredPassword,
 } from '@/lib/services/biometricService';
 import { supabase } from '@/lib/supabase/config';
+import { destinoInternoSeguro, registrarIntentoRecuperacion } from '@/lib/auth/recuperacionSesion';
 import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
 import { Firma, Isotipo } from '@/components/shell/marca/Firma';
 
@@ -126,6 +127,33 @@ function LoginContent() {
       }, 1000)
     }
   }, [searchParams, userOrganizations, t]);
+
+  // Sesión vencida (GO-sec 2026-09-24): el middleware verifica la firma del
+  // JWT y ya no deja pasar un access token vencido; manda aquí con
+  // reason=expired. getSession() refresca con el refresh token del dispositivo
+  // y escribe la cookie nueva; si hay sesión se vuelve a redirectTo con una
+  // navegación completa (para que el middleware lea la cookie nueva). Un
+  // intento por pestaña cada 30 s: sin bucles si el refresco no llega a la cookie.
+  useEffect(() => {
+    if (!searchParams || searchParams.get('reason') !== 'expired') return;
+    if (searchParams.get('addAccount') === '1') return;
+    const storage = typeof window !== 'undefined' ? window.sessionStorage : null;
+    if (!registrarIntentoRecuperacion(storage)) return;
+    const destino = destinoInternoSeguro(searchParams.get('redirectTo'));
+    // Sin cancelación en el cleanup a propósito: el intento ya quedó
+    // registrado y en modo estricto el segundo montaje no lo repite.
+    setLoading(true);
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (data.session) {
+          window.location.replace(destino);
+          return;
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [searchParams]);
 
   // Procesar resultado de OAuth via deep link (móvil Capacitor)
   useEffect(() => {

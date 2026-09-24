@@ -2279,3 +2279,57 @@ describe('28b. Sin moneda fija en escrituras ni pantallas', () => {
     expect(viejas).toEqual([]);
   });
 });
+
+/**
+ * 29. Sesión verificada (GO-sec, auditoría 2026-09-24).
+ *
+ * El middleware aceptaba la cookie de sesión con el JWT DECODIFICADO sin
+ * verificar la firma (`decodeJwt` de jose): una cookie inventada con cualquier
+ * `sub` pasaba la protección de rutas. Ahora la sesión se verifica en
+ * `src/lib/auth/verificarTokenAcceso.ts` (secreto local, JWKS o Auth) y este
+ * guardarraíl impide volver atrás:
+ *  - ni el middleware ni ninguna ruta (`src/app/**`) decodifica un JWT sin
+ *    verificar (`decodeJwt`, `jwt-decode`, `jwtDecode`, `split('.')[1]`);
+ *  - el middleware no importa nada de `jose`: verifica con `verificarTokenAcceso`;
+ *  - dentro del verificador, la lectura sin verificar está en UN solo helper y
+ *    se usa en los DOS sitios documentados (tras confirmar con Auth y la
+ *    excepción del escritorio). Una tercera llamada es una regresión.
+ */
+describe('29. Sesión verificada: nada decodifica un JWT sin verificar en el middleware ni en rutas', () => {
+  const DECODIFICAR_SIN_VERIFICAR_RE = /\bdecodeJwt\s*\(|\bjwtDecode\b|['"]jwt-decode['"]|\.split\(\s*['"]\.['"]\s*\)\s*\[\s*1\s*\]/;
+  const MIDDLEWARE = path.join(SRC_ROOT, 'middleware.ts');
+  const VERIFICADOR = path.join(SRC_ROOT, 'lib', 'auth', 'verificarTokenAcceso.ts');
+
+  test('el middleware verifica con verificarTokenAcceso y no importa jose', () => {
+    const src = stripAllComments(readFile(MIDDLEWARE));
+    expect(src).not.toMatch(DECODIFICAR_SIN_VERIFICAR_RE);
+    expect(src).not.toMatch(/from\s+['"]jose['"]/);
+    expect(src).toMatch(/from\s+['"]@\/lib\/auth\/verificarTokenAcceso['"]/);
+    expect(src).toMatch(/await\s+verificarTokenAcceso\s*\(/);
+  });
+
+  test('ninguna ruta ni página de src/app decodifica un JWT sin verificar', () => {
+    const infracciones = walkDir(path.join(SRC_ROOT, 'app'))
+      .filter((f) => !f.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((f) => DECODIFICAR_SIN_VERIFICAR_RE.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(infracciones).toEqual([]);
+  });
+
+  test('en el verificador, la lectura sin verificar vive en un helper y solo en sus dos usos documentados', () => {
+    const src = stripAllComments(readFile(VERIFICADOR));
+    expect((src.match(/\bdecodeJwt\s*\(/g) ?? []).length).toBe(1);
+    expect(src).toMatch(/function leerPayloadSinVerificar\([^)]*\)[^{]*\{\s*try\s*\{\s*return decodeJwt\(/);
+    // 1 definición + 2 usos: verificarConServidorAuth y sesionHeredadaSoloEscritorio.
+    expect((src.match(/\bleerPayloadSinVerificar\s*\(/g) ?? []).length).toBe(3);
+    // La verificación local exige el algoritmo: nada de aceptar el `alg` que traiga el token.
+    expect(src).toMatch(/algorithms:\s*\[\s*'HS256'\s*\]/);
+  });
+
+  test('la excepción del escritorio exige la marca del servidor embebido y localhost', () => {
+    const src = stripAllComments(readFile(VERIFICADOR));
+    const cuerpo = /export function esServidorEmbebidoEscritorio[\s\S]*?\n\}/.exec(src)?.[0] ?? '';
+    expect(cuerpo).toMatch(/GOADMIN_DESKTOP_EMBEDDED\s*!==\s*'1'/);
+    expect(cuerpo).toMatch(/localhost/);
+  });
+});

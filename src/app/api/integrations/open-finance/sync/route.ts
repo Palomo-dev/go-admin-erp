@@ -1,63 +1,47 @@
 // ============================================================
 // /api/integrations/open-finance/sync
-// Sincronizacion manual de transacciones Open Finance
-// POST - sincroniza un link especifico o todos los links activos
-// Body: { linkId?: string; organizationId?: number; dateFrom?: string; dateTo?: string }
+// Sincronizacion manual de transacciones Open Finance de la organizacion
+// POST - sincroniza un link de la organizacion o todos sus links activos
+// Body: { linkId?: string; dateFrom?: string; dateTo?: string }
+//
+// SEGURIDAD (GO-sec, 2026-09-23; auditoria §1.4): sin `linkId` ni
+// `organizationId` sincronizaba TODOS los tenants, y con `linkId` cualquier
+// link. Ahora: organizacion de la sesion (`withOrg`), organizacion ajena en el
+// body → 403 (`readOrgBody`), `finance.create`, el link tiene que ser de la
+// organizacion (404) y «todos» significa todos los de ESTA organizacion. La
+// sincronizacion de todos los tenants queda solo para el cron.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { transactionSyncService } from '@/lib/services/integrations/openFinance/transactionSyncService';
+import { linkDeLaOrganizacion } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-/** Cuerpo de la peticion POST de sincronizacion */
+const RUTA = 'open-finance/sync';
+
 interface SyncRequestBody {
   linkId?: string;
-  organizationId?: number;
   dateFrom?: string;
   dateTo?: string;
 }
 
-// POST - sincroniza transacciones de un link o todos los links
-export async function POST(request: NextRequest) {
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const body = await readOrgBody<SyncRequestBody>(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.CREAR, RUTA);
+    const { linkId, dateFrom, dateTo } = body;
 
-    // Verificar sesion
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const body = await request.json() as SyncRequestBody;
-    const { linkId, organizationId, dateFrom, dateTo } = body;
-
-    // Si se especifica linkId, sincroniza ese link
     if (linkId) {
-      const stats = await transactionSyncService.syncTransactions(
-        linkId,
-        undefined,
-        dateFrom,
-        dateTo,
-      );
-      return NextResponse.json({
-        success: true,
-        mode: 'single',
-        linkId,
-        stats,
-      });
+      await linkDeLaOrganizacion(ctx, linkId);
+      const stats = await transactionSyncService.syncTransactions(linkId, undefined, dateFrom, dateTo);
+      return NextResponse.json({ success: true, mode: 'single', linkId, stats });
     }
 
-    // Si no hay linkId, sincroniza todos los links activos
-    const stats = await transactionSyncService.syncAllLinks(organizationId);
-    return NextResponse.json({
-      success: true,
-      mode: 'all',
-      stats,
-    });
+    // Todos los links activos de la organizacion de la sesion (nunca de todas).
+    const stats = await transactionSyncService.syncAllLinks(ctx.organizationId);
+    return NextResponse.json({ success: true, mode: 'all', stats });
   } catch (error) {
-    console.error('[Open Finance Sync POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Sync POST', error);
   }
-}
+});

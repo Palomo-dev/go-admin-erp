@@ -1,42 +1,34 @@
 // ============================================================
 // /api/integrations/open-finance/sync-status
-// Estado de sincronizacion de un link Open Finance
-// GET - retorna estado de sincronizacion
-// Query: ?linkId=xxx
+// Estado de sincronizacion de un link de la organizacion
+// GET - (query: ?linkId=xxx)
+//
+// SEGURIDAD (GO-sec, 2026-09-23): el link tiene que ser de la organizacion
+// de la sesion (404 si no); ver `openFinance/seguridadRutas.ts`.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { transactionSyncService } from '@/lib/services/integrations/openFinance/transactionSyncService';
+import { linkDeLaOrganizacion } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-// GET - retorna estado de sincronizacion de un link
-export async function GET(request: NextRequest) {
+const RUTA = 'open-finance/sync-status';
+
+export const GET = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
 
-    // Verificar sesion
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const linkId = searchParams.get('linkId');
-
+    const linkId = new URL(request.url).searchParams.get('linkId');
     if (!linkId) {
-      return NextResponse.json(
-        { error: 'linkId es requerido' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'linkId es requerido' }, { status: 400 });
     }
+    await linkDeLaOrganizacion(ctx, linkId);
 
     const status = await transactionSyncService.getSyncStatus(linkId);
-
     return NextResponse.json({ success: true, data: status });
   } catch (error) {
-    console.error('[Open Finance Sync Status GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Sync Status GET', error);
   }
-}
+});

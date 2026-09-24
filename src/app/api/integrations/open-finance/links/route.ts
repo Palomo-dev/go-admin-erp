@@ -1,128 +1,80 @@
 // ============================================================
 // /api/integrations/open-finance/links
-// Gestiona conexiones (links) bancarios de la organizacion
-// GET  - lista links de la organizacion (query: ?organizationId=xxx)
+// Conexiones (links) bancarias de la organizacion de la sesion
+// GET  - lista links (SIN la clave de sesion bancaria)
 // POST - crea un nuevo link bancario
+//
+// SEGURIDAD (GO-sec, 2026-09-23; auditoria §1.4): GET devolvia `select *` de
+// cualquier organizacion (`?organizationId=`), `session_key` incluida en texto
+// plano. Ahora: organizacion de la sesion (`withOrg`), organizacion ajena en
+// body o query → 403 (`readOrgBody`), permiso `finance.*` resuelto en el
+// servidor, y `session_key` NUNCA sale al cliente (`sinSecretosDeLink`).
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { openFinanceService } from '@/lib/services/integrations/openFinance/openFinanceService';
+import { consentimientoDeLaOrganizacion, sinSecretosDeLink } from '@/lib/services/integrations/openFinance/seguridadRutas';
+import type { OpenFinanceProvider } from '@/lib/services/integrations/openFinance/openFinanceTypes';
 
-// Obtiene el organizationId activo del usuario desde la sesion
-async function getActiveOrganizationId(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<number | null> {
-  const { data, error } = await supabase
-    .from('organization_members')
-    .select('organization_id')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
+const RUTA = 'open-finance/links';
+const PROVEEDORES: OpenFinanceProvider[] = ['prometeo', 'belvo'];
 
-  if (error || !data) return null;
-  return Number(data.organization_id);
-}
-
-// GET - lista links de la organizacion actual
-export async function GET(request: NextRequest) {
+// GET - lista links de la organizacion de la sesion
+export const GET = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    // organizationId puede venir por query o deducirse de la sesion
-    const { searchParams } = new URL(request.url);
-    const orgIdQuery = searchParams.get('organizationId');
-    let organizationId = orgIdQuery ? Number(orgIdQuery) : undefined;
-
-    if (!organizationId) {
-      organizationId = await getActiveOrganizationId(supabase, session.user.id) ?? undefined;
-    }
-
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: 'No se pudo determinar la organizacion activa' },
-        { status: 400 },
-      );
-    }
-
-    const links = await openFinanceService.getLinks(supabase, organizationId);
-
-    return NextResponse.json({ success: true, data: links });
+    const links = await openFinanceService.getLinks(null, ctx.organizationId);
+    return NextResponse.json({ success: true, data: links.map(sinSecretosDeLink) });
   } catch (error) {
-    console.error('[Open Finance Links GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Links GET', error);
   }
+});
+
+interface LinkBody {
+  provider?: string;
+  institutionCode?: string;
+  institutionName?: string;
+  consentId?: string;
+  metadata?: Record<string, unknown>;
 }
 
-// POST - crea un nuevo link bancario
-export async function POST(request: NextRequest) {
+// POST - crea un nuevo link bancario de la organizacion de la sesion
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const body = await readOrgBody<LinkBody>(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.CREAR, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const {
-      organizationId,
-      provider,
-      institutionCode,
-      institutionName,
-      consentId,
-      metadata,
-    } = body;
-
-    // organizationId puede venir en el body o deducirse de la sesion
-    let orgId = organizationId ? Number(organizationId) : undefined;
-    if (!orgId) {
-      orgId = await getActiveOrganizationId(supabase, session.user.id) ?? undefined;
-    }
-
-    if (!orgId) {
-      return NextResponse.json(
-        { error: 'No se pudo determinar la organizacion activa' },
-        { status: 400 },
-      );
-    }
-
-    // Validar campos requeridos
+    const { provider, institutionCode, institutionName, consentId, metadata } = body;
     if (!provider || !institutionCode || !institutionName) {
       return NextResponse.json(
         { error: 'provider, institutionCode e institutionName son requeridos' },
         { status: 400 },
       );
     }
+    if (!PROVEEDORES.includes(provider as OpenFinanceProvider)) {
+      return NextResponse.json({ error: 'provider no valido' }, { status: 400 });
+    }
+    if (consentId) await consentimientoDeLaOrganizacion(ctx, consentId);
 
     const link = await openFinanceService.createLink(
-      supabase,
+      null,
       {
-        organizationId: orgId,
-        provider,
+        organizationId: ctx.organizationId,
+        provider: provider as OpenFinanceProvider,
         institutionCode,
         institutionName,
         consentId,
         metadata,
       },
-      session.user.id,
+      ctx.userId,
     );
 
     return NextResponse.json({ success: true, data: link }, { status: 201 });
   } catch (error) {
-    console.error('[Open Finance Links POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Links POST', error);
   }
-}
+});

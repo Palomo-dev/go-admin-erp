@@ -1,49 +1,32 @@
 // ============================================================
 // /api/integrations/open-finance/pay-supplier
-// Paga una cuenta por pagar a un proveedor via Open Finance
-// POST - paga cuenta por pagar (body: { accountPayableId, bankAccountId })
+// POST - pagar una cuenta por pagar via Open Finance — DESHABILITADO (501)
+//
+// SEGURIDAD (GO-sec, 2026-09-23; auditoria §1.4): recibia `accountPayableId` y
+// `bankAccountId` del body sin organizacion (IDOR sobre dinero), iniciaba la
+// transferencia con la llave de la plataforma, sin idempotencia, marcaba la
+// cuenta por pagar `paid` con la transferencia `pending` y escribia
+// `accounts_payable` a mano fuera de una RPC (regla 7). No puede asegurarse sin
+// el rediseno del producto de pagos: responde 501 despues de exigir sesion,
+// organizacion y `finance.approve`, y nunca llama al proveedor ni escribe nada.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { paymentInitiationService } from '@/lib/services/integrations/openFinance/paymentInitiationService';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { flujoDeshabilitado, PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
+import { MOTIVO_PAGOS_DESHABILITADOS } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-// POST - paga una cuenta por pagar a un proveedor
-export async function POST(request: NextRequest) {
+const RUTA = 'open-finance/pay-supplier';
+
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { accountPayableId, bankAccountId } = body;
-
-    // Validar campos requeridos
-    if (!accountPayableId || !bankAccountId) {
-      return NextResponse.json(
-        { error: 'accountPayableId y bankAccountId son requeridos' },
-        { status: 400 },
-      );
-    }
-
-    const result = await paymentInitiationService.paySupplier(
-      Number(accountPayableId),
-      Number(bankAccountId),
-      session.user.id,
-    );
-
-    if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 400 });
-    }
-
-    return NextResponse.json({ success: true, data: result }, { status: 201 });
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.APROBAR, RUTA);
+    console.warn(`[${RUTA}] intento de pago rechazado (flujo deshabilitado)`, {
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+    });
+    return flujoDeshabilitado(MOTIVO_PAGOS_DESHABILITADOS);
   } catch (error) {
-    console.error('[Open Finance Pay Supplier POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Pay Supplier POST', error);
   }
-}
+});

@@ -1,68 +1,33 @@
 // ============================================================
 // /api/integrations/open-finance/transfer
-// Inicia una transferencia bancaria
-// POST - inicia transferencia (body: { accountNumber, bankCode, accountType, documentNumber, documentType, amount, currency, description, reference })
+// POST - iniciar transferencia bancaria — DESHABILITADO (501, fail-closed)
+//
+// SEGURIDAD (GO-sec, 2026-09-23; auditoria de integraciones §1.4, hallazgo 1):
+// cualquier usuario con sesion iniciaba una transferencia con la LLAVE DE LA
+// PLATAFORMA (`POST /payout/` en el host banking de Prometeo), sin cuenta de
+// origen de la organizacion, sin sesion bancaria del cliente, sin idempotencia
+// y sin registro. El flujo no puede asegurarse sin redisenar el producto de
+// pagos (preprocess/confirm con OTP del cliente desde SU cuenta), asi que la
+// ruta responde 501 despues de exigir sesion, organizacion y `finance.approve`,
+// y NUNCA llama al proveedor.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { openFinanceService } from '@/lib/services/integrations/openFinance/openFinanceService';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { flujoDeshabilitado, PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
+import { MOTIVO_PAGOS_DESHABILITADOS } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-// POST - inicia transferencia bancaria
-export async function POST(request: NextRequest) {
+const RUTA = 'open-finance/transfer';
+
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const {
-      accountNumber,
-      bankCode,
-      accountType,
-      documentNumber,
-      documentType,
-      amount,
-      currency,
-      description,
-      reference,
-    } = body;
-
-    // Validar campos requeridos
-    if (!accountNumber || !bankCode || !accountType || !documentNumber
-      || !documentType || !amount || !currency) {
-      return NextResponse.json(
-        {
-          error: 'accountNumber, bankCode, accountType, documentNumber, documentType, amount y currency son requeridos',
-        },
-        { status: 400 },
-      );
-    }
-
-    const result = await openFinanceService.initiateTransfer(
-      supabase,
-      {
-        account_number: accountNumber,
-        bank_code: bankCode,
-        account_type: accountType,
-        document_number: documentNumber,
-        document_type: documentType,
-        amount: Number(amount),
-        currency,
-        description,
-        reference,
-      },
-      session.user.id,
-    );
-
-    return NextResponse.json({ success: true, data: result }, { status: 201 });
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.APROBAR, RUTA);
+    console.warn(`[${RUTA}] intento de transferencia rechazado (flujo deshabilitado)`, {
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+    });
+    return flujoDeshabilitado(MOTIVO_PAGOS_DESHABILITADOS);
   } catch (error) {
-    console.error('[Open Finance Transfer POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Transfer POST', error);
   }
-}
+});

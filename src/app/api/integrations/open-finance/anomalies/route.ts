@@ -1,48 +1,28 @@
 // ============================================================
 // /api/integrations/open-finance/anomalies
-// Deteccion de anomalias en transacciones bancarias
-// GET - retorna todas las anomalias (query: ?organizationId=xxx)
+// Deteccion de anomalias en transacciones bancarias de la organizacion
+// GET - retorna todas las anomalias de la organizacion de la sesion
+//
+// SEGURIDAD (GO-sec, 2026-09-23): la organizacion salia de `?organizationId=`
+// (lectura cruzada con service role). Ahora sale de la sesion; un
+// `?organizationId=` ajeno responde 403 y queda registrado.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { anomalyDetectionService } from '@/lib/services/integrations/openFinance/anomalyDetectionService';
 
-// GET - obtiene todas las anomalias de una organizacion
-export async function GET(request: NextRequest) {
+const RUTA = 'open-finance/anomalies';
+
+export const GET = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const organizationIdParam = searchParams.get('organizationId');
-
-    if (!organizationIdParam) {
-      return NextResponse.json(
-        { error: 'organizationId es requerido' },
-        { status: 400 },
-      );
-    }
-
-    const organizationId = Number(organizationIdParam);
-    if (Number.isNaN(organizationId)) {
-      return NextResponse.json(
-        { error: 'organizationId debe ser un numero valido' },
-        { status: 400 },
-      );
-    }
-
-    const summary = await anomalyDetectionService.getAllAnomalies(organizationId);
-
+    const summary = await anomalyDetectionService.getAllAnomalies(ctx.organizationId);
     return NextResponse.json({ success: true, data: summary });
   } catch (error) {
-    console.error('[Open Finance Anomalies GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Anomalies GET', error);
   }
-}
+});

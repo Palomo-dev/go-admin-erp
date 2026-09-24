@@ -155,6 +155,8 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/factus/', // <-- Excluir APIs de Factus (usan credenciales de entorno, no requieren sesión)
     '/api/facebook-feed', // <-- Excluir feed de Facebook (autenticación propia via token en query param)
     '/api/cron/', // <-- Excluir cron jobs de Vercel (autenticación propia via Authorization: Bearer CRON_SECRET)
+    '/api/integrations/open-finance/cron/', // <-- GO-sec: crons de Open Finance (withCron: Bearer CRON_SECRET fail-closed; hoy no-op «deshabilitado»)
+    '/api/integrations/open-finance/webhook', // <-- GO-sec: webhook de Prometeo (verify_token fail-closed en tiempo constante; 401 sin token)
     '/api/crm/jobs/run', // <-- Runner de la cola CRM (pg_cron / Vercel Cron; fail-closed via Authorization: Bearer CRON_SECRET)
     '/api/email/webhook', // <-- F7: webhook de Resend (firma svix fail-closed)
     '/api/crm/webhooks/', // <-- F4: webhook de ElevenLabs Scribe (firma ElevenLabs-Signature fail-closed via constructEvent)

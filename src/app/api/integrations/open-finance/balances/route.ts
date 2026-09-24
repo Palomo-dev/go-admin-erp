@@ -1,41 +1,36 @@
 // ============================================================
 // /api/integrations/open-finance/balances
-// Obtiene saldos de cuentas bancarias
+// Saldos de las cuentas de un link de la organizacion
 // GET - obtiene saldos (query: ?linkId=xxx&accountId=xxx)
+//
+// SEGURIDAD (GO-sec, 2026-09-23): el link tiene que ser de la organizacion
+// de la sesion (404 si no); ver `openFinance/seguridadRutas.ts`.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { openFinanceService } from '@/lib/services/integrations/openFinance/openFinanceService';
+import { linkDeLaOrganizacion } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-// GET - obtiene saldos de una cuenta
-export async function GET(request: NextRequest) {
+const RUTA = 'open-finance/balances';
+
+export const GET = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
 
     const { searchParams } = new URL(request.url);
     const linkId = searchParams.get('linkId');
     const accountId = searchParams.get('accountId') ?? undefined;
-
     if (!linkId) {
-      return NextResponse.json(
-        { error: 'linkId es requerido' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'linkId es requerido' }, { status: 400 });
     }
+    await linkDeLaOrganizacion(ctx, linkId);
 
-    const balances = await openFinanceService.getBalances(supabase, linkId, accountId);
-
+    const balances = await openFinanceService.getBalances(null, linkId, accountId);
     return NextResponse.json({ success: true, data: balances });
   } catch (error) {
-    console.error('[Open Finance Balances GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Balances GET', error);
   }
-}
+});

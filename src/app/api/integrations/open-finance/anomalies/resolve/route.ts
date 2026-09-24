@@ -2,44 +2,36 @@
 // /api/integrations/open-finance/anomalies/resolve
 // Marca una anomalia como resuelta
 // POST - body: { anomalyId, resolution }
+//
+// SEGURIDAD (GO-sec, 2026-09-23): sesion + organizacion de la sesion,
+// `readOrgBody` (organizacion ajena → 403) y `finance.create`. El servicio hoy
+// no persiste nada (auditoria §1.2); la guarda queda puesta para cuando lo haga.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { anomalyDetectionService } from '@/lib/services/integrations/openFinance/anomalyDetectionService';
 
-// POST - marca una anomalia como resuelta
-export async function POST(request: NextRequest) {
+const RUTA = 'open-finance/anomalies/resolve';
+
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const body = await readOrgBody<{ anomalyId?: string | number; resolution?: string }>(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.CREAR, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const body = await request.json();
     const { anomalyId, resolution } = body;
-
-    // Validar campos requeridos
     if (!anomalyId || !resolution) {
-      return NextResponse.json(
-        { error: 'anomalyId y resolution son requeridos' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'anomalyId y resolution son requeridos' }, { status: 400 });
     }
 
     const result = await anomalyDetectionService.markAnomalyResolved(
       String(anomalyId),
       String(resolution),
-      session.user.id,
+      ctx.userId,
     );
-
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
-    console.error('[Open Finance Anomalies Resolve POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Anomalies Resolve POST', error);
   }
-}
+});

@@ -1,56 +1,34 @@
 // ============================================================
 // /api/integrations/open-finance/suggest-matches/[transactionId]
-// Sugerencias de matching con IA para una transaccion especifica.
-// GET - retorna sugerencias para la transaccion indicada en el path
+// Sugerencias de matching para una transaccion especifica.
+// GET - sugerencias para la transaccion indicada en el path
+//
+// SEGURIDAD (GO-sec, 2026-09-23): organizacion de la sesion (`withOrg`) en
+// lugar de «la membresia activa mas reciente»; `finance.view`. El servicio
+// comprueba que la transaccion sea de la organizacion.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { aiMatchingService } from '@/lib/services/integrations/openFinance/aiMatchingService';
-import { getActiveOrganizationId } from '@/lib/services/integrations/openFinance/authHelpers';
 
-// GET - sugerencias de matching para una transaccion especifica
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ transactionId: string }> },
-) {
+const RUTA = 'open-finance/suggest-matches/[transactionId]';
+
+export const GET = withOrg(async (ctx, request, routeParams) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    // Resolver la organizacion activa del usuario
-    const organizationId = await getActiveOrganizationId(supabase, session.user.id);
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: 'No se pudo determinar la organizacion activa' },
-        { status: 400 },
-      );
-    }
-
-    const { transactionId: transactionIdParam } = await params;
-    const transactionId = Number(transactionIdParam);
+    const params = routeParams ? await routeParams.params : {};
+    const transactionId = Number(params.transactionId);
     if (!Number.isInteger(transactionId) || transactionId <= 0) {
-      return NextResponse.json(
-        { error: 'transactionId debe ser un entero valido' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'transactionId debe ser un entero valido' }, { status: 400 });
     }
 
-    // El servicio verifica que la transaccion pertenezca a organizationId
-    const suggestions = await aiMatchingService.suggestMatchesForTransaction(
-      transactionId,
-      organizationId,
-    );
-
+    const suggestions = await aiMatchingService.suggestMatchesForTransaction(transactionId, ctx.organizationId);
     return NextResponse.json({ success: true, data: suggestions });
   } catch (error) {
-    console.error('[Open Finance Suggest-Matches Transaction GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Suggest-Matches Transaction GET', error);
   }
-}
+});

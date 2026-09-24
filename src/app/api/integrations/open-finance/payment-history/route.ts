@@ -1,45 +1,34 @@
 // ============================================================
 // /api/integrations/open-finance/payment-history
-// Obtiene el historial de pagos a un proveedor via Open Finance
-// GET - retorna historial (query: ?supplierId=xxx&organizationId=xxx)
+// Historial de pagos a un proveedor de la organizacion via Open Finance
+// GET - (query: ?supplierId=xxx)
+//
+// SEGURIDAD (GO-sec, 2026-09-23): la organizacion salia de `?organizationId=`.
+// Ahora sale de la sesion (ajena → 403) y el proveedor tiene que ser de ella.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { paymentInitiationService } from '@/lib/services/integrations/openFinance/paymentInitiationService';
+import { proveedorDeLaOrganizacion } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-// GET - historial de pagos a un proveedor via Open Finance
-export async function GET(request: NextRequest) {
+const RUTA = 'open-finance/payment-history';
+
+export const GET = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const supplierId = Number(new URL(request.url).searchParams.get('supplierId'));
+    if (!Number.isInteger(supplierId) || supplierId <= 0) {
+      return NextResponse.json({ error: 'supplierId es requerido' }, { status: 400 });
     }
+    await proveedorDeLaOrganizacion(ctx, supplierId);
 
-    const { searchParams } = new URL(request.url);
-    const supplierId = searchParams.get('supplierId');
-    const organizationId = searchParams.get('organizationId');
-
-    // Validar parametros requeridos
-    if (!supplierId || !organizationId) {
-      return NextResponse.json(
-        { error: 'supplierId y organizationId son requeridos' },
-        { status: 400 },
-      );
-    }
-
-    const history = await paymentInitiationService.getPaymentHistory(
-      Number(supplierId),
-      Number(organizationId),
-    );
-
+    const history = await paymentInitiationService.getPaymentHistory(supplierId, ctx.organizationId);
     return NextResponse.json({ success: true, data: history });
   } catch (error) {
-    console.error('[Open Finance Payment History GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Payment History GET', error);
   }
-}
+});

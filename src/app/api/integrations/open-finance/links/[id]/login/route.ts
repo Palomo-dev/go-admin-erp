@@ -1,67 +1,62 @@
 // ============================================================
 // /api/integrations/open-finance/links/[id]/login
-// Realiza login al banco con credenciales del usuario
+// Login al banco de un link de la organizacion de la sesion
 // POST - login bancario (body: { username, password, documentNumber?, type? })
+//
+// SEGURIDAD (GO-sec, 2026-09-23): sesion + organizacion de la sesion
+// (`withOrg`), organizacion ajena en el body → 403 (`readOrgBody`),
+// `finance.create`, el link tiene que ser de la organizacion (404) y la
+// respuesta NUNCA incluye la clave de sesion bancaria: el servicio la guarda en
+// el link y al cliente solo le llega si hubo sesion. Las credenciales del banco
+// no se registran en ningun log.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { openFinanceService } from '@/lib/services/integrations/openFinance/openFinanceService';
+import { linkDeLaOrganizacion, sinSecretosDeLink } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-// POST - login al banco con credenciales del usuario
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+const RUTA = 'open-finance/links/[id]/login';
+
+interface LoginBody {
+  username?: string;
+  password?: string;
+  documentNumber?: string;
+  type?: string;
+}
+
+export const POST = withOrg(async (ctx, request, routeParams) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const body = await readOrgBody<LoginBody>(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.CREAR, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+    const params = routeParams ? await routeParams.params : {};
+    const id = typeof params.id === 'string' ? params.id : '';
+    await linkDeLaOrganizacion(ctx, id);
 
-    const { id } = await params;
-    if (!id) {
-      return NextResponse.json(
-        { error: 'ID de link requerido' },
-        { status: 400 },
-      );
-    }
-
-    const body = await request.json();
     const { username, password, documentNumber, type } = body;
-
-    // Validar campos requeridos
     if (!username || !password) {
-      return NextResponse.json(
-        { error: 'username y password son requeridos' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'username y password son requeridos' }, { status: 400 });
     }
 
-    // Obtener provider e institution_code del link
-    const { data: link } = await supabase
+    // Proveedor e institucion del link (cliente de la sesion + filtro de organizacion)
+    const { data: link } = await ctx.supabase
       .from('open_finance_links')
       .select('provider, institution_code')
       .eq('id', id)
-      .single();
-
+      .eq('organization_id', ctx.organizationId)
+      .maybeSingle();
     if (!link) {
-      return NextResponse.json(
-        { error: 'Link no encontrado' },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: 'Link no encontrado' }, { status: 404 });
     }
 
-    // Ejecutar login contra el banco via proveedor
     const result = await openFinanceService.loginToBank(
-      supabase,
+      null,
       id,
-      link.provider,
+      link.provider as string,
       {
-        provider: link.institution_code,
+        provider: link.institution_code as string,
         username,
         password,
         document_number: documentNumber,
@@ -69,11 +64,9 @@ export async function POST(
       },
     );
 
-    // El servicio guarda session_key en el link internamente
-    return NextResponse.json({ success: true, data: result });
+    const { session_key: sesion, ...resto } = (result ?? {}) as unknown as Record<string, unknown>;
+    return NextResponse.json({ success: true, data: { ...sinSecretosDeLink(resto), sesionActiva: Boolean(sesion) } });
   } catch (error) {
-    console.error('[Open Finance Login POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Login POST', error);
   }
-}
+});

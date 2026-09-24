@@ -1,40 +1,38 @@
 // ============================================================
 // /api/integrations/open-finance/validate-balance
-// Valida el saldo real del banco contra el saldo del extracto de una conciliacion
-// POST - body: { reconciliationId: number }
+// Valida el saldo real del banco contra el extracto de una conciliacion
+// POST - body: { reconciliationId }
+//
+// SEGURIDAD (GO-sec, 2026-09-23): aceptaba cualquier conciliacion. Ahora
+// tiene que ser de la organizacion de la sesion (404) y la organizacion ajena
+// en el body responde 403.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { balanceService } from '@/lib/services/integrations/openFinance/balanceService';
+import { conciliacionDeLaOrganizacion } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-// POST - valida saldo de una conciliacion
-export async function POST(request: NextRequest) {
+const RUTA = 'open-finance/validate-balance';
+
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const body = await readOrgBody<{ reconciliationId?: number }>(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const body = await request.json() as { reconciliationId?: number };
     const { reconciliationId } = body;
-
     if (!reconciliationId || typeof reconciliationId !== 'number') {
       return NextResponse.json(
         { error: 'reconciliationId es requerido y debe ser un numero' },
         { status: 400 },
       );
     }
+    await conciliacionDeLaOrganizacion(ctx, reconciliationId);
 
     const validation = await balanceService.validateBalance(reconciliationId);
-
     return NextResponse.json({ success: true, data: validation });
   } catch (error) {
-    console.error('[Open Finance Validate Balance POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Validate Balance POST', error);
   }
-}
+});

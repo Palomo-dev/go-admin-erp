@@ -1,48 +1,27 @@
 // ============================================================
 // /api/integrations/open-finance/treasury
-// Posicion consolidada de tesoreria multi-banco
-// GET - obtiene posicion consolidada (query: ?organizationId=xxx)
+// Posicion consolidada de tesoreria multi-banco de la organizacion
+// GET - posicion consolidada de la organizacion de la sesion
+//
+// SEGURIDAD (GO-sec, 2026-09-23): la organizacion salia de `?organizationId=`.
+// Ahora sale de la sesion; un `?organizationId=` ajeno responde 403.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { treasuryService } from '@/lib/services/integrations/openFinance/treasuryService';
 
-// GET - posicion consolidada de tesoreria
-export async function GET(request: NextRequest) {
+const RUTA = 'open-finance/treasury';
+
+export const GET = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const organizationIdParam = searchParams.get('organizationId');
-
-    if (!organizationIdParam) {
-      return NextResponse.json(
-        { error: 'organizationId es requerido' },
-        { status: 400 },
-      );
-    }
-
-    const organizationId = Number(organizationIdParam);
-    if (Number.isNaN(organizationId)) {
-      return NextResponse.json(
-        { error: 'organizationId debe ser un numero valido' },
-        { status: 400 },
-      );
-    }
-
-    const position = await treasuryService.getConsolidatedPosition(organizationId);
-
+    const position = await treasuryService.getConsolidatedPosition(ctx.organizationId);
     return NextResponse.json({ success: true, data: position });
   } catch (error) {
-    console.error('[Treasury Position GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Treasury Position GET', error);
   }
-}
+});

@@ -2249,7 +2249,20 @@ describe('28. Generadores de documentos: sin moneda fija', () => {
   const GENERADORES = [
     'lib/services/pdfService.ts',
     'app/api/facturas-venta/[id]/pdf/route.ts',
-    'app/api/pdf/invoice/route.ts',
+    // Motor único de documentos (fase 2). `app/api/pdf/invoice` se borró: HTML
+    // armado con el body y ningún llamador.
+    'app/api/documentos/[tipo]/[id]/route.ts',
+    'lib/documents/formato.ts',
+    'lib/documents/render/carta.ts',
+    'lib/documents/render/comun.ts',
+    'lib/documents/render/termico.ts',
+    'lib/documents/server/base.ts',
+    'lib/documents/server/cargadores/ventas.ts',
+    'lib/documents/server/cargadores/cotizacion.ts',
+    'lib/documents/server/cargadores/compras.ts',
+    'lib/documents/server/cargadores/pagos.ts',
+    'lib/documents/server/cargadores/estadoCuenta.ts',
+    'lib/documents/server/cargadores/cajas.ts',
     'lib/services/reportes/pdfExportService.ts',
     'lib/services/inicio/dashboardSectionExport.ts',
     'lib/services/printService.ts',

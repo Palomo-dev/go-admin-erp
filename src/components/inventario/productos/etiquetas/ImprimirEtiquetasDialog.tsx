@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { formatMonedaSinDecimales, useOrgCurrency } from '@/lib/hooks/useOrgCurrency';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { cargarProductosEtiquetables, type ProductoEtiquetable } from '@/lib/services/etiquetasProductoService';
 import { claveErrorCodigos, generarCodigosFaltantes, type CodigoAsignado } from '@/lib/services/codigosBarrasService';
 import { PrintJobsService } from '@/lib/services/printJobsService';
@@ -71,7 +71,9 @@ export function ImprimirEtiquetasDialog({ abierto, onAbiertoChange, productIds, 
   const { organization } = useOrganization();
   const orgId = organization?.id ?? null;
   const { branchFilter, branches, selectedBranchId } = useBranch();
-  const moneda = useOrgCurrency();
+  // Precios con la moneda base de la organización, sus decimales y el locale de su
+  // país (antes: siempre sin decimales y con locale es-CO, así 12,99 US$ salía 13).
+  const { formatear: formatearPrecio } = useMonedaOrganizacion();
 
   const [estado, setEstado] = useState<Estado>('cargando');
   const [filas, setFilas] = useState<ProductoEtiquetable[]>([]);
@@ -137,12 +139,12 @@ export function ImprimirEtiquetasDialog({ abierto, onAbiertoChange, productIds, 
       productId: f.productId,
       nombre: f.nombre,
       variante: f.variante,
-      precio: f.precio !== null ? formatMonedaSinDecimales(f.precio, moneda) : null,
-      precioComparacion: f.precioComparacion !== null ? formatMonedaSinDecimales(f.precioComparacion, moneda) : null,
+      precio: f.precio !== null ? formatearPrecio(f.precio) : null,
+      precioComparacion: f.precioComparacion !== null ? formatearPrecio(f.precioComparacion) : null,
       sku: f.sku,
       codigo: f.codigo,
     }),
-    [moneda],
+    [formatearPrecio],
   );
 
   const primeraHoja = useMemo((): (DatosEtiqueta | null)[] => {

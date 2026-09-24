@@ -31,6 +31,8 @@ import { useTranslations } from 'next-intl';
 import { mensajeErrorCobro } from '@/lib/pos/erroresCobro';
 import { aplicarNotaALinea, estadoCocinaLinea, NOTA_MAX, type CambioNotaLinea } from '@/lib/pos/cocina/lineasCarrito';
 import { ChipsNotasRapidas, type DestinoNota } from '@/components/pos/cocina/ChipsNotasRapidas';
+import { lineasParaAviso } from '@/lib/pos/venta/lineasSinImpuesto';
+import { estadoBotonCobrar, puedeConfirmarDeuda, puedeRegistrarDeuda } from '@/lib/pos/venta/requisitosCarrito';
 
 type KitchenTicketStatus = KitchenTicket['status'];
 
@@ -159,16 +161,9 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   // firma), en vez de mostrarlos durante los cientos de ms del recálculo.
   // Líneas que se cobrarán sin IVA porque ni el producto ni la organización
   // tienen impuesto configurado (misma regla que resolveLineTax en el cobro).
-  const lineasParaAviso = useMemo(
-    () => cart.items.map((it) => ({
-      nombre: it.product?.name ?? '',
-      productId: it.product_id ?? null,
-      taxRate: it.tax_rate ?? null,
-      taxExcluded: it.tax_excluded ?? null,
-    })),
-    [cart.items],
-  );
-  const { indices: indicesSinImpuesto } = useLineasSinImpuesto(cart.organization_id, lineasParaAviso);
+  // (L30: la forma de las líneas vive en src/lib/pos/venta/lineasSinImpuesto.ts.)
+  const lineasAviso = useMemo(() => lineasParaAviso(cart.items), [cart.items]);
+  const { indices: indicesSinImpuesto } = useLineasSinImpuesto(cart.organization_id, lineasAviso);
 
   const cartId = cart.id;
   const cartDiscountTotal = cart.discount_total;
@@ -1283,7 +1278,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                         variant="outline"
                         size="sm"
                         onClick={() => setShowHoldWithDebtDialog(true)}
-                        disabled={isOnHold || isOnHoldWithDebt || !hasCustomer}
+                        disabled={!puedeRegistrarDeuda(cart)}
                         className="h-8 sm:h-9 dark:border-orange-600 dark:text-orange-400 dark:hover:bg-orange-500/20 dark:bg-orange-500/10 border-orange-500 text-orange-700 hover:bg-orange-50 bg-orange-50/50 text-xs"
                         title={!hasCustomer ? 'Necesita cliente asignado' : 'Poner en espera con deuda registrada'}
                       >
@@ -1311,7 +1306,8 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
 
                     <Button
                       onClick={() => onCheckout(cart)}
-                      disabled={isOnHold || isOnHoldWithDebt || !cashSessionActive}
+                      // L35: sin caja se deshabilita SIEMPRE (src/lib/pos/venta/requisitosCarrito.ts).
+                      disabled={estadoBotonCobrar({ caja: cashSessionActive, carrito: cart }) !== 'listo'}
                       className="w-full h-10 sm:h-11 lg:h-10 dark:bg-blue-600 dark:hover:bg-blue-700 bg-blue-600 hover:bg-blue-700 text-sm sm:text-base font-semibold shadow-lg"
                     >
                       <CreditCard className="h-4 w-4 sm:mr-2" />
@@ -1468,7 +1464,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
             </Button>
             <Button
               onClick={handleHoldWithDebt}
-              disabled={isProcessingHoldWithDebt || !holdWithDebtReason.trim() || !hasCustomer}
+              disabled={isProcessingHoldWithDebt || !puedeConfirmarDeuda(cart, holdWithDebtReason)}
               className="dark:bg-orange-600 dark:hover:bg-orange-700 bg-orange-600 hover:bg-orange-700"
             >
               {isProcessingHoldWithDebt ? (

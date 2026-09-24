@@ -7,21 +7,9 @@ import { SearchSelect } from '@/components/ui/search-select';
 import { cn } from '@/utils/Utils';
 import type { PosCategoryDisplayMode, PosCategoryOrderBy } from '@/components/pos/configuracion/configuracionService';
 import { useDragScroll } from '@/hooks/useDragScroll';
+import { colorDeCategoria as getCategoryColor, esCategoriaTop, ordenarCategorias as sortCategories } from '@/lib/pos/venta/categorias';
 
-// Paleta usada como respaldo únicamente cuando la categoría no tiene color asignado,
-// para que se distingan visualmente entre sí sin inventar un significado.
-const FALLBACK_COLORS = ['#3B82F6', '#F97316', '#10B981', '#EC4899', '#8B5CF6', '#EAB308', '#EF4444', '#06B6D4', '#84CC16', '#F43F5E'];
-
-function hashId(id: number): number {
-  return Math.abs(id * 2654435761) % 2147483647;
-}
-
-function getCategoryColor(cat: CategoryFilterItem): string {
-  // Respeta siempre el color real configurado en la categoría (Inventario → Categorías).
-  // Solo se usa un color de respaldo determinístico si la categoría no tiene color asignado.
-  if (cat.color) return cat.color;
-  return FALLBACK_COLORS[hashId(cat.id) % FALLBACK_COLORS.length];
-}
+// Orden, color de respaldo y «Top» de cada categoría: src/lib/pos/venta/categorias.ts (L21, L23).
 
 function getCategoryIcon(cat: CategoryFilterItem) {
   // Solo se usa el icono configurado en la categoría. Sin icono configurado,
@@ -55,26 +43,6 @@ interface CategoryFilterBarProps {
   /** Si se pasa, cada chip muestra una estrella para marcar/desmarcar favorita. */
   onToggleFavorite?: (categoryId: number) => void;
   className?: string;
-}
-
-function sortCategories(categories: CategoryFilterItem[], orderBy: PosCategoryOrderBy = 'display_order') {
-  const sorted = [...categories];
-  if (orderBy === 'favorites') {
-    // Favoritas primero, luego las más vendidas (90 días), luego el orden manual.
-    // Mismo criterio que el ranking de productos del POS.
-    sorted.sort((a, b) =>
-      Number(b.is_favorite ?? false) - Number(a.is_favorite ?? false) ||
-      (b.sales_count_90d ?? 0) - (a.sales_count_90d ?? 0) ||
-      (a.display_order ?? 0) - (b.display_order ?? 0)
-    );
-  } else if (orderBy === 'name') {
-    sorted.sort((a, b) => a.name.localeCompare(b.name));
-  } else if (orderBy === 'rank') {
-    sorted.sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
-  } else {
-    sorted.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0) || (a.rank ?? 0) - (b.rank ?? 0));
-  }
-  return sorted;
 }
 
 export function CategoryFilterBar({
@@ -205,7 +173,7 @@ export function CategoryFilterBar({
         const IconComp = getCategoryIcon(cat);
         const isSelected = selectedCategory === cat.id.toString();
         const color = getCategoryColor(cat);
-        const esTop = (cat.sales_count_90d ?? 0) > 0;
+        const esTop = esCategoriaTop(cat);
         return (
           // Envoltorio: un <button> no puede contener otro <button>, así que la
           // estrella de favorito va como hermano del chip, no dentro.

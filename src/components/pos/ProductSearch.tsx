@@ -30,8 +30,17 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { CachedProductImage } from './CachedProductImage';
 import { BarcodeScanner } from '@/components/ui/barcode-scanner';
 import { VariantSelectorDialog, type SelectedModifier } from './VariantSelectorDialog';
-import { resolveVariantDisplayName } from '@/utils/variantUtils';
-import { estacionEfectiva } from '@/lib/pos/estacionEfectiva';
+import {
+  alternarFavorito,
+  conFavorito,
+  decidirAccionProducto,
+  enriquecerVariante,
+  insigniasDe,
+  programarBusqueda,
+  resolverCodigo,
+  type PosGridProduct,
+  type SelectedVariant,
+} from '@/lib/pos/venta/catalogo';
 import { CategoryFilterBar } from './CategoryFilterBar';
 import { ConfiguracionService, PosCategoriesDisplayConfig, defaultCategoriesDisplayConfig } from './configuracion/configuracionService';
 import {
@@ -52,33 +61,9 @@ interface ProductSearchProps {
   selectedProducts?: Product[];
 }
 
-/** Producto tal como lo devuelve `POSService.getProductsPaginated` para el grid. */
-type PosGridProduct = Product & {
-  has_variants?: boolean;
-  variant_count?: number;
-  has_modifiers?: boolean;
-  compare_price?: number | null;
-  categories?: Category | null;
-  station?: string | null;
-  variant_data?: unknown;
-};
-
-/**
- * Variante elegida en `VariantSelectorDialog`: el diálogo la tipa con lo
- * mínimo (id, sku, nombre, precio, variant_data) pero la fila trae todos
- * los campos del producto, que se preservan al enviarla al carrito.
- */
-type SelectedVariant = {
-  id: number;
-  sku: string;
-  name: string;
-  price: number | null;
-  variant_data: Record<string, string>;
-  image?: string | null;
-  categories?: Category | null;
-  category?: Category | null;
-  station?: string | null;
-};
+// `PosGridProduct`, `SelectedVariant` y las decisiones del catálogo (tarjeta,
+// variante, escáner, insignias, espera de la búsqueda, favorito) viven en
+// src/lib/pos/venta/catalogo.ts (L14-L23 de docs/implementacion/POS-PLAN.md).
 
 export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   const { branchFilter } = useBranch();
@@ -178,13 +163,13 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   // instante y se revierte si la escritura falla.
   const handleToggleCategoryFavorite = useCallback(async (categoryId: number) => {
     const antes = categories.find((c) => c.id === categoryId)?.is_favorite ?? false;
-    setCategories((prev) => prev.map((c) => (c.id === categoryId ? { ...c, is_favorite: !antes } : c)));
-    try {
-      const ahora = await POSService.toggleCategoryFavorite(categoryId);
-      setCategories((prev) => prev.map((c) => (c.id === categoryId ? { ...c, is_favorite: ahora } : c)));
-    } catch (error) {
-      console.error('Error al cambiar favorita de categoría:', error);
-      setCategories((prev) => prev.map((c) => (c.id === categoryId ? { ...c, is_favorite: antes } : c)));
+    const resultado = await alternarFavorito({
+      antes,
+      aplicar: (valor) => setCategories((prev) => conFavorito(prev, categoryId, valor)),
+      alternar: () => POSService.toggleCategoryFavorite(categoryId),
+    });
+    if (!resultado.ok) {
+      console.error('Error al cambiar favorita de categoría:', resultado.error);
     }
   }, [categories]);
 
@@ -195,18 +180,12 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       .catch((error) => console.error('Error loading categories display config:', error));
   }, [loadCategories]);
 
-  useEffect(() => {
-    // Reset page to 1 when search or filter changes
-    if (productsData.page !== 1) {
-      setProductsData(prev => ({ ...prev, page: 1 }));
-    }
-
-    const timeoutId = setTimeout(() => {
-      loadProducts(1);
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm, selectedCategory, branchFilter]);
+  // L14: vuelve a la página 1 y consulta a los 300 ms (src/lib/pos/venta/catalogo.ts).
+  useEffect(() => programarBusqueda({
+    paginaActual: productsData.page,
+    volverAPaginaUno: () => setProductsData(prev => ({ ...prev, page: 1 })),
+    cargarPaginaUno: () => loadProducts(1),
+  }), [searchTerm, selectedCategory, branchFilter]);
 
   useEffect(() => {
     loadProducts();
@@ -248,8 +227,9 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
   // Manejar selección de producto (con o sin variantes)
   const handleProductClick = (product: PosGridProduct) => {
+    const accion = decidirAccionProducto(product);
     // Si el producto está agotado, no permitir agregarlo
-    if (product.is_out_of_stock) {
+    if (accion === 'agotado') {
       toast({
         title: 'Producto agotado',
         description: `${product.name} no tiene stock disponible.`,
@@ -258,7 +238,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       return;
     }
     // Si el producto tiene variantes o modificadores configurados, abrir el selector
-    if ((product.has_variants && (product.variant_count ?? 0) > 0) || product.has_modifiers) {
+    if (accion === 'dialogo') {
       setSelectedParentProduct(product);
       setShowVariantDialog(true);
     } else {
@@ -269,24 +249,8 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
   // Manejar selección de variante (y sus modificadores) desde el diálogo
   const handleVariantSelect = (variant: SelectedVariant, modifiers: SelectedModifier[] = []) => {
-    // Heredar categoría y datos de preparación del producto padre si la variante no los trae
-    const parent = selectedParentProduct as PosGridProduct | null;
-    const inheritedCategory = variant.categories || variant.category || parent?.categories || parent?.category || null;
-    // Propia de la variante → propia del padre → la de la categoría (fn_estacion_efectiva).
-    const inheritedStation = estacionEfectiva({
-      propia: variant.station,
-      propiaPadre: parent?.station,
-      categoria: inheritedCategory?.station,
-    });
-    // Construir nombre legible de la variante desde variant_data (ej: "iPhone 16 Pro Max (256 GB)")
-    const displayName = resolveVariantDisplayName(variant.name, variant.variant_data, parent?.name);
-    const enrichedVariant = {
-      ...variant,
-      name: displayName,
-      category: inheritedCategory ?? undefined,
-      categories: inheritedCategory,
-      station: inheritedStation,
-    };
+    // Hereda categoría y estación del padre y toma su nombre legible (L17).
+    const enrichedVariant = enriquecerVariante(variant, selectedParentProduct as PosGridProduct | null);
     // La variante lleva la fila completa del producto (ver SelectedVariant).
     onProductSelect(enrichedVariant as unknown as Product, modifiers);
     setShowVariantDialog(false);
@@ -314,10 +278,9 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
           branchFilter,
         }),
       ]);
-      const grid = page.data as PosGridProduct[];
-      const parentId = row ? (row.parent_product_id ?? row.id) : null;
-      const parent = parentId !== null ? grid.find((p) => p.id === parentId) : undefined;
-      if (!row || !parent) {
+      // L18: la decisión vive en src/lib/pos/venta/catalogo.ts (resolverCodigo).
+      const decision = resolverCodigo(row, page.data as PosGridProduct[]);
+      if (decision.tipo === 'no_encontrado') {
         toast({
           title: 'Código no encontrado',
           description: `Ningún producto activo tiene el código ${code}.`,
@@ -326,44 +289,28 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
         });
         return;
       }
-      if (parent.is_out_of_stock) {
+      if (decision.tipo === 'agotado') {
         toast({
           title: 'Producto agotado',
-          description: `${parent.name} no tiene stock disponible.`,
+          description: `${decision.producto.name} no tiene stock disponible.`,
           variant: 'destructive',
           duration: 3000,
         });
         return;
       }
-      if (row.parent_product_id) {
-        // El código identifica una variante concreta: no hay nada que elegir,
-        // salvo que el producto lleve modificadores.
-        if (parent.has_modifiers) {
-          setSelectedParentProduct(parent);
-          setShowVariantDialog(true);
-          return;
-        }
-        const variant = row as PosGridProduct;
-        const inheritedCategory = variant.categories || variant.category || parent.categories || parent.category || null;
-        onProductSelect({
-          ...variant,
-          name: resolveVariantDisplayName(
-            variant.name,
-            (variant.variant_data ?? null) as Record<string, string> | null,
-            parent.name
-          ),
-          category: inheritedCategory ?? undefined,
-          categories: inheritedCategory,
-          station: estacionEfectiva({
-            propia: variant.station,
-            propiaPadre: parent.station,
-            categoria: inheritedCategory?.station,
-          }),
-        } as Product);
+      if (decision.tipo === 'dialogo_padre') {
+        // El código identifica una variante concreta, pero el producto lleva
+        // modificadores: se elige en el diálogo del padre.
+        setSelectedParentProduct(decision.padre);
+        setShowVariantDialog(true);
+        return;
+      }
+      if (decision.tipo === 'agregar_variante') {
+        onProductSelect(decision.producto);
         return;
       }
       // Simple: al carrito. Padre con variantes o modificadores: el diálogo.
-      handleProductClick(parent);
+      handleProductClick(decision.producto);
     } catch (error) {
       console.error('Error al resolver el código escaneado:', error);
       toast({
@@ -405,47 +352,35 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     e.stopPropagation();
     if (togglingFavorites.has(productId)) return;
 
-    // Optimistic: invertir is_favorite en el estado local
+    // Optimistic: invertir is_favorite en el estado local; se sincroniza con
+    // el valor real del servicio o se revierte si falla (L21, alternarFavorito).
     const prevData = productsData.data;
     const product = prevData.find((p: Product) => p.id === productId);
     const wasFavorite = product?.is_favorite ?? false;
-    setProductsData(prev => ({
-      ...prev,
-      data: prev.data.map((p: Product) =>
-        p.id === productId ? { ...p, is_favorite: !wasFavorite } : p
-      ),
-    }));
     setTogglingFavorites(prev => new Set(prev).add(productId));
 
     try {
-      const isNowFavorite = await POSService.toggleProductFavorite(productId);
-      // Sincronizar con el valor real devuelto por el service (por si hubo race condition)
-      setProductsData(prev => ({
-        ...prev,
-        data: prev.data.map((p: Product) =>
-          p.id === productId ? { ...p, is_favorite: isNowFavorite } : p
-        ),
-      }));
-      toast({
-        title: isNowFavorite ? 'Agregado a favoritos' : 'Quitado de favoritos',
-        description: isNowFavorite
-          ? 'El producto aparecerá primero en el POS.'
-          : 'El producto ya no se priorizará.',
-        duration: 1800,
+      const resultado = await alternarFavorito({
+        antes: wasFavorite,
+        aplicar: (valor) => setProductsData(prev => ({ ...prev, data: conFavorito(prev.data, productId, valor) })),
+        alternar: () => POSService.toggleProductFavorite(productId),
       });
-    } catch {
-      // Revertir optimistic update
-      setProductsData(prev => ({
-        ...prev,
-        data: prev.data.map((p: Product) =>
-          p.id === productId ? { ...p, is_favorite: wasFavorite } : p
-        ),
-      }));
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el favorito.',
-        variant: 'destructive',
-      });
+      if (resultado.ok) {
+        const isNowFavorite = resultado.valor;
+        toast({
+          title: isNowFavorite ? 'Agregado a favoritos' : 'Quitado de favoritos',
+          description: isNowFavorite
+            ? 'El producto aparecerá primero en el POS.'
+            : 'El producto ya no se priorizará.',
+          duration: 1800,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'No se pudo actualizar el favorito.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setTogglingFavorites(prev => {
         const next = new Set(prev);
@@ -712,8 +647,8 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                         </Badge>
                       )}
 
-                      {/* Badge de agotado */}
-                      {product.is_out_of_stock && (
+                      {/* Badge de agotado (insignias: src/lib/pos/venta/catalogo.ts, L23) */}
+                      {insigniasDe(product).agotado && (
                         <Badge 
                           className="absolute inset-0 m-auto w-fit h-fit bg-red-600 text-white hover:bg-red-700 text-xs sm:text-sm z-20 pointer-events-none"
                         >
@@ -722,30 +657,31 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       )}
 
                       {/* Badge de descuento % sobre la imagen (esquina derecha) */}
-                      {product.compare_price && Number(product.compare_price) > Number(product.price) && (
+                      {/* `product.compare_price &&` se conserva: con 0 React pinta «0» y la UI no cambia en este paso. */}
+                      {product.compare_price && insigniasDe(product).descuento !== null && (
                         <Badge className="absolute top-2 right-2 bg-red-500 text-white hover:bg-red-600 text-[0.65rem] sm:text-xs px-1.5 py-0.5 rounded-full z-10">
-                          -{Math.round((1 - Number(product.price) / Number(product.compare_price)) * 100)}%
+                          -{insigniasDe(product).descuento}%
                         </Badge>
                       )}
-                      
+
                       {/* Badge de variantes (debajo del descuento si existe) */}
-                      {product.has_variants && (product.variant_count ?? 0) > 0 && (
-                        <Badge 
+                      {insigniasDe(product).variantes !== null && (
+                        <Badge
                           className={cn(
                             "absolute right-2 bg-purple-600 text-white hover:bg-purple-700 text-[0.6rem] sm:text-xs z-10",
-                            product.compare_price && Number(product.compare_price) > Number(product.price) ? "top-8 sm:top-9" : "top-2"
+                            insigniasDe(product).descuento !== null ? "top-8 sm:top-9" : "top-2"
                           )}
                         >
-                          {product.variant_count ?? 0} var.
+                          {insigniasDe(product).variantes} var.
                         </Badge>
                       )}
 
                       {/* Badge de personalización (producto simple con modificadores) */}
-                      {(!product.has_variants || (product.variant_count ?? 0) === 0) && product.has_modifiers && (
+                      {insigniasDe(product).personalizable && (
                         <Badge
                           className={cn(
                             "absolute right-2 bg-amber-600 text-white hover:bg-amber-700 text-[0.6rem] sm:text-xs z-10",
-                            product.compare_price && Number(product.compare_price) > Number(product.price) ? "top-8 sm:top-9" : "top-2"
+                            insigniasDe(product).descuento !== null ? "top-8 sm:top-9" : "top-2"
                           )}
                         >
                           Personalizable
@@ -753,10 +689,10 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       )}
 
                       {/* Badge Top: más vendidos en los últimos 90 días (bottom-left) */}
-                      {Number(product.sales_count_90d) > 0 && (
+                      {insigniasDe(product).top !== null && (
                         <Badge
                           className="absolute bottom-2 left-2 bg-orange-500 text-white hover:bg-orange-600 text-[0.6rem] sm:text-xs px-1.5 py-0.5 rounded-full z-10 flex items-center gap-0.5"
-                          title={`${Math.round(Number(product.sales_count_90d))} unidades vendidas en los últimos 90 días`}
+                          title={`${insigniasDe(product).top} unidades vendidas en los últimos 90 días`}
                         >
                           <Flame className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                           Top
@@ -804,7 +740,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       {/* Precios: compare_price tachado al lado del precio actual */}
                       {product.price && (
                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                          {product.compare_price && Number(product.compare_price) > Number(product.price) && (
+                          {product.compare_price && insigniasDe(product).descuento !== null && (
                             <span className={cn(
                               "line-through text-gray-400 dark:text-gray-500",
                               gridSize === 'large' ? "text-[0.65rem] sm:text-xs" : "text-[0.6rem]"
@@ -825,7 +761,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                         <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded truncate">
                           {product.sku}
                         </span>
-                        {product.has_recipe && product.recipe_id && (
+                        {insigniasDe(product).receta && (
                           <button
                             type="button"
                             onClick={(e) => handleViewRecipe(product, e)}
@@ -842,7 +778,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                         size="sm" 
                         className={cn(
                           "w-full text-white h-7 sm:h-8 text-xs sm:text-sm",
-                          product.has_variants && (product.variant_count ?? 0) > 0
+                          insigniasDe(product).variantes !== null
                             ? "bg-purple-600 hover:bg-purple-700"
                             : product.has_modifiers
                             ? "bg-amber-600 hover:bg-amber-700"
@@ -859,7 +795,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                           gridSize === 'large' ? "h-3 w-3 sm:h-4 sm:w-4" : "h-3 w-3"
                         )} />
                         <span className="hidden xs:inline">
-                          {(product.has_variants && (product.variant_count ?? 0) > 0) || product.has_modifiers ? 'Elegir' : 'Agregar'}
+                          {insigniasDe(product).elegir ? 'Elegir' : 'Agregar'}
                         </span>
                         <span className="inline xs:hidden">+</span>
                       </Button>

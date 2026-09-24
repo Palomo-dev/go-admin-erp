@@ -14,11 +14,10 @@ import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
 import { CustomerDisplayIndicator } from '@/components/pos/display/CustomerDisplayIndicator';
 import { POSService } from '@/lib/services/posService';
 import { getPosDisplayEmitter, resolveDisplayCurrency, startPosDisplay, stopPosDisplay } from '@/lib/pos/display/posDisplay';
-import { estacionDeCategoria, estacionEfectiva } from '@/lib/pos/estacionEfectiva';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
-import { Product, Customer, Cart, Category, CartItemModifier } from '@/components/pos/types';
+import { Product, Customer, Cart, CartItemModifier } from '@/components/pos/types';
 import { cn } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { StatsSkeleton, CardListSkeleton, PageHeaderSkeleton } from '@/components/common/PageSkeletons';
@@ -45,14 +44,16 @@ import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import { useTranslations } from 'next-intl';
-import {
-  itemsParaImprimir,
-  lineaParaRonda,
-  type RespuestaRonda,
-  type TextosAjusteImpreso,
-} from '@/lib/pos/cocina/lineasCarrito';
-import { CocinaError, enviarRondaCocina } from '@/components/pos/cocina/cocinaCliente';
+import { enviarRondaCocina } from '@/components/pos/cocina/cocinaCliente';
 import { ProductoSinPrecioError } from '@/lib/pos/precioVigente';
+import {
+  asignarClienteAlCarrito,
+  cerrarCarrito,
+  completarCobro,
+  crearCarrito,
+  inicializarCarritos,
+} from '@/lib/pos/venta/carritos';
+import { enviarACocina } from '@/lib/pos/venta/enviarCocina';
 
 /** Clave de localStorage con el ancho elegido para el panel de carrito/pago. */
 const POS_LAYOUT_ID = 'pos-layout-productos-carrito';
@@ -277,84 +278,56 @@ export default function POSPage() {
     });
   };
 
-  const initializePOS = async () => {
-    // Dos inicializaciones solapadas (StrictMode, cambio de sucursal mientras
-    // carga) con el almacenamiento vacío creaban un carrito cada una.
-    if (isInitializingRef.current) return;
-    isInitializingRef.current = true;
-    if (isFirstLoadRef.current) {
-      setIsLoading(true);
-    }
-    setIsRefreshing(true);
-    try {
-      // Cargar carritos existentes
-      // Solo los carritos de ESTA sucursal (pos_carts_<org> guarda los de todas).
-      const existingCarts = await POSService.getActiveCarts(selectedBranchId);
-      
-      if (existingCarts.length > 0) {
+  // Carritos (L1-L4 de docs/implementacion/POS-PLAN.md): la lógica vive en
+  // src/lib/pos/venta/carritos.ts; aquí solo se conecta con el estado.
+  const initializePOS = () =>
+    inicializarCarritos({
+      servicio: POSService,
+      branchId: selectedBranchId,
+      cerrojo: isInitializingRef,
+      empezar: () => {
+        if (isFirstLoadRef.current) {
+          setIsLoading(true);
+        }
+        setIsRefreshing(true);
+      },
+      terminar: () => {
+        isFirstLoadRef.current = false;
+        setIsLoading(false);
+        setIsRefreshing(false);
+      },
+      mostrar: (existingCarts) => {
         setCarts(existingCarts);
         setActiveCartId(existingCarts[0].id);
-      } else {
-        // Crear primer carrito
-        await createNewCart();
-      }
-    } catch (error) {
-      console.error('Error initializing POS:', error);
-      // Crear carrito por defecto en caso de error
-      await createNewCart();
-    } finally {
-      isInitializingRef.current = false;
-      isFirstLoadRef.current = false;
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+      },
+      crearCarrito: createNewCart,
+    });
 
-  const createNewCart = async () => {
-    try {
-      // Usar branch_id actual seleccionado por el usuario
-      if (!selectedBranchId) {
-        toast.error('Seleccione una sucursal antes de crear un carrito');
-        return;
-      }
-      const newCart = await POSService.createCart(selectedBranchId);
-      
-      setCarts(prevCarts => [...prevCarts, newCart]);
-      setActiveCartId(newCart.id);
-      setSelectedCustomer(undefined);
-      setLastUpdate(new Date());
-    } catch (error) {
-      console.error('Error creating new cart:', error);
-      alert('Error al crear nuevo carrito');
-    }
-  };
+  const createNewCart = () =>
+    crearCarrito({
+      servicio: POSService,
+      branchId: selectedBranchId,
+      avisarSinSucursal: () => toast.error('Seleccione una sucursal antes de crear un carrito'),
+      agregar: (newCart) => {
+        setCarts(prevCarts => [...prevCarts, newCart]);
+        setActiveCartId(newCart.id);
+        setSelectedCustomer(undefined);
+        setLastUpdate(new Date());
+      },
+      avisarError: () => alert('Error al crear nuevo carrito'),
+    });
 
-  const removeCart = async (cartId: string) => {
-    try {
-      // Marcar kitchen_ticket como entregado si el carrito tenía uno
-      const cartToRemove = carts.find(c => c.id === cartId);
-      if (cartToRemove?.kitchen_ticket_id) {
-        await KitchenService.markTicketAsDelivered(cartToRemove.kitchen_ticket_id);
-      }
-
-      // Borrarlo también de localStorage: si solo sale del estado, vuelve
-      // (con sus productos) en cuanto se navega y se regresa al POS.
-      await POSService.removeCart(cartId);
-
-      const updatedCarts = carts.filter(cart => cart.id !== cartId);
-      setCarts(updatedCarts);
-      
-      // Si el carrito activo fue eliminado, cambiar a otro
-      if (cartId === activeCartId && updatedCarts.length > 0) {
-        setActiveCartId(updatedCarts[0].id);
-      } else if (updatedCarts.length === 0) {
-        // Crear nuevo carrito si no quedan
-        await createNewCart();
-      }
-    } catch (error) {
-      console.error('Error removing cart:', error);
-    }
-  };
+  const removeCart = (cartId: string) =>
+    cerrarCarrito({
+      cartId,
+      carts,
+      activeCartId,
+      servicio: POSService,
+      cocina: KitchenService,
+      setCarts,
+      activar: setActiveCartId,
+      crearCarrito: createNewCart,
+    });
 
   const handleProductSelect = async (product: Product, modifiers?: CartItemModifier[]) => {
     if (!activeCartId) {
@@ -374,18 +347,18 @@ export default function POSPage() {
     }
   };
 
-  const handleCustomerSelect = async (customer?: Customer) => {
-    if (!activeCartId) return;
-
-    try {
-      const updatedCart = await POSService.setCartCustomer(activeCartId, customer?.id);
-      updateCartInState(updatedCart);
-      setSelectedCustomer(customer);
-    } catch (error) {
-      console.error('Error setting cart customer:', error);
-      alert('Error al asignar cliente al carrito');
-    }
-  };
+  // L34: la habitación que pueda mandar CustomerSelector se ignora.
+  const handleCustomerSelect = (customer?: Customer) =>
+    asignarClienteAlCarrito({
+      servicio: POSService,
+      activeCartId,
+      customer,
+      actualizar: (updatedCart) => {
+        updateCartInState(updatedCart);
+        setSelectedCustomer(customer);
+      },
+      avisarError: () => alert('Error al asignar cliente al carrito'),
+    });
 
   const updateCartInState = (updatedCart: Cart) => {
     setCarts(prevCarts => 
@@ -405,154 +378,41 @@ export default function POSPage() {
     setShowCheckout(true);
   };
 
-  const handleCheckoutComplete = async () => {
-    try {
-      // Marcar kitchen_ticket como entregado si existe
-      if (checkoutCart?.kitchen_ticket_id) {
-        await KitchenService.markTicketAsDelivered(checkoutCart.kitchen_ticket_id);
-      }
-
-      // Remover el carrito completado
-      if (checkoutCart) {
-        const updatedCarts = carts.filter(cart => cart.id !== checkoutCart.id);
-        setCarts(updatedCarts);
-        
-        // Crear nuevo carrito si era el único
-        if (updatedCarts.length === 0) {
-          await createNewCart();
-        } else {
-          setActiveCartId(updatedCarts[0].id);
-        }
-      }
-
-      // El recibo se muestra automáticamente en el CheckoutDialog
-      // Cerrar el dialog después de procesar
-      setCheckoutCart(null);
-      setShowCheckout(false);
-    } catch (error) {
-      console.error('Error completing checkout:', error);
-    }
-  };
+  const handleCheckoutComplete = () =>
+    completarCobro({
+      checkoutCart,
+      carts,
+      cocina: KitchenService,
+      setCarts,
+      activar: setActiveCartId,
+      crearCarrito: createNewCart,
+      cerrarDialogo: () => {
+        setCheckoutCart(null);
+        setShowCheckout(false);
+      },
+    });
 
   const handleHoldCart = (cart: Cart, reason?: string) => {
     updateCartInState(cart);
     alert(`Carrito puesto en espera${reason ? ': ' + reason : ''}`);
   };
 
-  const handleSendComanda = async (cart: Cart) => {
-    if (!cart.branch_id) return;
-
-    // Filtrar solo items que requieren preparación
-    // La categoría llega como `category` (tipo del POS) o `categories` (embed de PostgREST).
-    type ProductWithCategory = Product & { categories?: Category | Category[] | null; variant_data?: unknown; station?: string | null };
-    const prepItems = cart.items.filter((item) => {
-      const product = item.product as ProductWithCategory | undefined;
-      const cat = product?.category || product?.categories;
-      const requiresPrep = Array.isArray(cat) ? cat[0]?.requires_preparation : cat?.requires_preparation;
-      return requiresPrep === true;
+  // L58: la lógica de «Enviar a cocina» vive en src/lib/pos/venta/enviarCocina.ts.
+  const handleSendComanda = (cart: Cart) =>
+    enviarACocina(cart, {
+      servicio: POSService,
+      enviarRonda: enviarRondaCocina,
+      encolarImpresion: (branchId, comanda) => PrintJobsService.enqueueKitchenTicket(branchId, comanda),
+      nombreCajero: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        return user ? getUserName(user.id) : null;
+      },
+      nuevaLlave: () => crypto.randomUUID(),
+      actualizarCarrito: updateCartInState,
+      t: tCocina,
+      avisar: toast,
+      nombreNegocio: organization?.name,
     });
-
-    // Sin líneas de preparación y nada enviado antes: no hay qué mandar. Si ya
-    // se envió algo (hay comanda), la ronda sí va: anula lo que se quitó.
-    if (prepItems.length === 0 && !cart.kitchen_ticket_id) {
-      toast.info(tCocina('sinPreparacion'));
-      return;
-    }
-
-    // Obtener nombre del usuario actual
-    let serverName = 'POS';
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const name = await getUserName(user.id);
-        if (name) serverName = name;
-      }
-    } catch {
-      // fallback: usar 'POS'
-    }
-
-    // TODAS las líneas de preparación, con su id estable: la base decide qué
-    // es nuevo, qué cambió (cantidad, nota, alergia) y qué se quitó, y lo
-    // manda en una sola ronda transaccional (N2). Ya no se compara por
-    // nombre + cantidad ni se depende de la comanda guardada en pantalla.
-    const lines = prepItems.map((item) => {
-      const product = item.product as ProductWithCategory | undefined;
-      // Estación propia del producto (en variantes ya viene resuelta con la del
-      // padre desde ProductSearch) y, si no tiene, la de su categoría.
-      const station = estacionEfectiva({
-        propia: product?.station,
-        categoria: estacionDeCategoria(product?.category || product?.categories),
-      });
-      return lineaParaRonda(item, station, (product?.variant_data as Record<string, string> | null | undefined) || null);
-    });
-
-    // La llave de la ronda se guarda ANTES de enviar: si la red falla y el
-    // cajero reintenta, es la misma ronda y la cocina no recibe dos comandas.
-    let roundKey = cart.kitchen_round_key;
-    if (!roundKey) {
-      roundKey = crypto.randomUUID();
-      updateCartInState(await POSService.setCartKitchenRoundKey(cart.id, roundKey));
-    }
-
-    let respuesta: RespuestaRonda;
-    try {
-      respuesta = await enviarRondaCocina({
-        cart_id: cart.id,
-        branch_id: cart.branch_id,
-        round_key: roundKey,
-        server_name: serverName,
-        legacy_ticket_id: cart.kitchen_ticket_id ?? null,
-        lines,
-      });
-    } catch (err) {
-      const codigo = err instanceof CocinaError ? err.codigo : 'error_interno';
-      throw new Error(tCocina.has(`errores.${codigo}`) ? tCocina(`errores.${codigo}`) : tCocina('errores.error_interno'));
-    }
-    updateCartInState(await POSService.applyKitchenRound(cart.id, respuesta));
-
-    if (respuesta.tickets.length === 0) {
-      toast.info(tCocina('sinCambios'));
-      return;
-    }
-    // Reintento de una ronda que ya había entrado: la cocina ya la tiene y ya se imprimió.
-    if (respuesta.replayed) {
-      toast.info(tCocina('yaEnviada'));
-      return;
-    }
-
-    const textos: TextosAjusteImpreso = {
-      mesa: 'POS',
-      ajuste: (original) => tCocina('impreso.ajuste', { id: original ?? '' }),
-      mas: (n) => tCocina('impreso.mas', { cantidad: n }),
-      menos: (n) => tCocina('impreso.menos', { cantidad: n }),
-      anular: tCocina('impreso.anular'),
-      notaCambiada: tCocina('impreso.nota'),
-      alergia: tCocina('impreso.alergia'),
-    };
-    let enqueued = 0;
-    const skippedStations = new Set<string>();
-    for (const ticket of respuesta.tickets) {
-      const impresion = await PrintJobsService.enqueueKitchenTicket(cart.branch_id, {
-        ticketId: ticket.id,
-        tableName: ticket.ticket_type === 'adjustment' ? `${textos.mesa} · ${textos.ajuste(ticket.adjusts_ticket_id)}` : textos.mesa,
-        serverName,
-        createdAt: ticket.created_at,
-        items: itemsParaImprimir(ticket, textos),
-        businessName: organization?.name,
-        branchName: undefined,
-      });
-      enqueued += impresion.enqueued;
-      impresion.skippedStations.forEach((s) => skippedStations.add(s));
-    }
-
-    const nuevas = respuesta.tickets.filter((t) => t.ticket_type === 'order').reduce((n, t) => n + t.items.length, 0);
-    const ajustes = respuesta.tickets.filter((t) => t.ticket_type === 'adjustment').reduce((n, t) => n + t.items.length, 0);
-    if (enqueued === 0 && skippedStations.size > 0) {
-      toast.info(tCocina('sinImpresora', { estaciones: Array.from(skippedStations).join(', ') }));
-    } else {
-      toast.success(tCocina('enviado', { nuevas, ajustes }));
-    }
-  };
 
   // Obtener carrito activo
   const activeCart = carts.find(cart => cart.id === activeCartId);

@@ -57,6 +57,16 @@ import { useTranslations } from 'next-intl';
 import { codigoErrorCobro, detalleErrorCobro } from '@/lib/pos/erroresCobro';
 import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
 import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
+// Lógica pura del cobro extraída LITERAL (POS-PLAN §2.6 L41–L52, paso 1):
+import { cuentasDelCobro } from '@/lib/pos/venta/cobro/cuentasCobro';
+import { actualizarEntradaPago, entradaDePagoNueva, pagosDelSobre, pagosParaImpresion, puedeQuitarPagos, quitarEntradaPago } from '@/lib/pos/venta/cobro/pagosCobro';
+import { generateQuickAmounts, muestraMontosRapidos } from '@/lib/pos/venta/cobro/montosRapidos';
+import { PORCENTAJES_PROPINA, meserosDesdeMiembros } from '@/lib/pos/venta/cobro/propinaCobro';
+import { camposComisionDelSobre, comisionDeTasaResuelta, esPersonaAsignada, montoComision } from '@/lib/pos/venta/cobro/comisionCobro';
+import { camposEntregaDelSobre, fleteDeTarifaElegida, opcionesDeTarifa, tarifaPorDefecto, tarifasVisiblesEnPos } from '@/lib/pos/venta/cobro/entregaCobro';
+import { lineasConSerial, seleccionSerialesCompleta } from '@/lib/pos/venta/cobro/serialesCobro';
+import { comprobarStockReceta, debeConfirmarStock } from '@/lib/pos/venta/cobro/stockRecetaCobro';
+import { lanzarTicketYCajon, planPostVenta } from '@/lib/pos/venta/cobro/postVentaCobro';
 
 interface CheckoutDialogProps {
   cart: Cart;
@@ -226,24 +236,26 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [addressResults, setAddressResults] = useState<Array<{ id: string; name: string; address: string; city?: string; phone?: string }>>([]);
   const [showAddressDropdown, setShowAddressDropdown] = useState<boolean>(false);
 
-  // Comisión calculada
-  const commissionAmount = commissionRate > 0 && salespersonId && salespersonId !== '__none__'
-    ? commissionMethod === 'fixed_amount'
-      ? commissionRate
-      : Math.round((calculatedTotals.subtotal || cart.subtotal) * commissionRate / 100 * 100) / 100
-    : 0;
-  
+  // Comisión calculada (L45: montoComision, src/lib/pos/venta/cobro/comisionCobro.ts)
+  const commissionAmount = montoComision({
+    commissionRate,
+    salespersonId,
+    commissionMethod,
+    subtotal: calculatedTotals.subtotal || cart.subtotal,
+  });
+
   // Calculados - usar totales con impuestos + propina
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
-  // Si el dialog calculó impuestos, usar su finalTotal. 
-  // Si no calculó impuestos pero el carrito ya los tiene (ej. desde mesa con useMesaTaxes), usar cart.total.
-  const baseTotal = (calculatedTotals.totalTaxAmount === 0 && cart.tax_total > 0)
-    ? cart.total
-    : (calculatedTotals.finalTotal > 0 ? calculatedTotals.finalTotal : cart.total);
-  const cartTotal = baseTotal + tipAmount + shippingFee;
+  // Base, total, cambio y «se puede completar»: cuentasDelCobro (L41,
+  // src/lib/pos/venta/cobro/cuentasCobro.ts). `totalPaid` y `remaining` siguen
+  // escritos aquí porque las pruebas de __tests__/pos-display leen esas dos
+  // líneas del fuente; son la misma cuenta que devuelve cuentasDelCobro.
+  const cuentasCobro = cuentasDelCobro({ calculatedTotals, cart, tipAmount, shippingFee, totalPaid });
+  const baseTotal = cuentasCobro.baseTotal;
+  const cartTotal = cuentasCobro.cartTotal;
   const remaining = Math.max(0, cartTotal - totalPaid);
-  const change = Math.max(0, totalPaid - cartTotal);
-  const canComplete = totalPaid >= cartTotal;
+  const change = cuentasCobro.change;
+  const canComplete = cuentasCobro.canComplete;
 
   // Advertencia (no bloquea el cobro): líneas que se cobrarán sin IVA porque ni
   // el producto ni la organización tienen impuesto configurado.
@@ -563,7 +575,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         const rates = await shippingRatesService.getShippingRates(cart.organization_id, {
           is_active: true,
         });
-        const posRates = rates.filter(r => r.show_on_pos);
+        const posRates = tarifasVisiblesEnPos(rates);
 
         if (posRates.length === 0) {
           setShippingRates([]);
@@ -580,20 +592,13 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           declared_value: subtotal,
         });
 
-        const rateOptions = simulated
-          .filter(s => posRates.some(pr => pr.id === s.rate.id))
-          .map(s => ({
-            id: s.rate.id,
-            rate_name: s.rate.rate_name,
-            total_cost: s.total_cost,
-            currency: s.rate.currency,
-          }));
+        const rateOptions = opcionesDeTarifa(simulated, posRates);
 
         setShippingRates(rateOptions);
 
         // Auto-seleccionar la más económica
-        if (rateOptions.length > 0) {
-          const cheapest = rateOptions[0];
+        const cheapest = tarifaPorDefecto(rateOptions);
+        if (cheapest) {
           setSelectedRateId(cheapest.id);
           setShippingFee(cheapest.total_cost);
         }
@@ -608,12 +613,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
   // Actualizar shippingFee cuando cambia selectedRateId
   useEffect(() => {
-    if (selectedRateId && shippingRates.length > 0) {
-      const rate = shippingRates.find(r => r.id === selectedRateId);
-      setShippingFee(rate?.total_cost || 0);
-    } else if (!selectedRateId) {
-      setShippingFee(0);
-    }
+    const flete = fleteDeTarifaElegida(selectedRateId, shippingRates);
+    if (flete !== null) setShippingFee(flete);
   }, [selectedRateId, shippingRates]);
 
   // Calcular totales con impuestos cuando cambie el carrito o configuración de impuestos
@@ -705,12 +706,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const loadServers = async () => {
     try {
       const members = await POSService.getOrganizationMembers();
-      setServers(members.map(m => ({
-        id: m.user_id,
-        name: m.users?.raw_user_meta_data?.full_name || 
-              m.users?.raw_user_meta_data?.name || 
-              m.users?.email || 'Sin nombre'
-      })));
+      setServers(meserosDesdeMiembros(members));
     } catch (error) {
       console.error('Error loading servers:', error);
     }
@@ -1014,48 +1010,41 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     );
   };
 
+  // Pagos (L42): reductores puros en src/lib/pos/venta/cobro/pagosCobro.ts.
   const addPayment = () => {
-    const newPayment: PaymentEntry = {
+    // Entrada nueva en efectivo por lo que falta (la primera, por el total).
+    const newPayment: PaymentEntry = entradaDePagoNueva({
       id: crypto.randomUUID(),
-      method: 'cash',
       amount: remaining
-    };
+    });
     setPayments([...payments, newPayment]);
   };
 
   const updatePayment = (id: string, field: 'method' | 'amount', value: string | number) => {
     // A partir de aquí la pantalla del cliente muestra recibido y cambio en vivo para ESTA entrada.
     if (field === 'amount') setTouchedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
-    setPayments(payments.map(payment =>
-      payment.id === id
-        ? { ...payment, [field]: field === 'amount' ? Number(value) || 0 : value }
-        : payment
-    ));
+    setPayments(actualizarEntradaPago(payments, id, field, value));
   };
 
   const removePayment = (id: string) => {
-    if (payments.length > 1) {
-      setPayments(payments.filter(payment => payment.id !== id));
-    }
+    // Con una sola entrada devuelve la misma lista: React no re-renderiza.
+    setPayments(quitarEntradaPago(payments, id));
   };
 
-  const serializedItems = cart.items.filter(
-    (item) => item.product?.track_serial === true
-  );
+  // Seriales obligatorios (L48): src/lib/pos/venta/cobro/serialesCobro.ts.
+  const serializedItems = lineasConSerial(cart.items);
   const hasSerialItems = serializedItems.length > 0;
-  const serialSelectionsComplete = serializedItems.every(
-    (item) => (serialSelections[item.product_id]?.length ?? 0) === item.quantity
-  );
+  const serialSelectionsComplete = seleccionSerialesCompleta(serializedItems, serialSelections);
 
   // Handler que pre-llena la tasa de comisión desde vendor_commission_rates
   // al seleccionar un vendedor. El usuario puede override después.
   const handleSalespersonChange = async (value: string) => {
     setSalespersonId(value);
-    if (value && value !== '__none__') {
-      const rate = await resolveCommissionRate(value);
-      if (rate > 0) {
-        setCommissionRate(rate);
-        setCommissionMethod('percentage');
+    if (esPersonaAsignada(value)) {
+      const cambio = comisionDeTasaResuelta(await resolveCommissionRate(value));
+      if (cambio) {
+        setCommissionRate(cambio.commissionRate);
+        setCommissionMethod(cambio.commissionMethod);
       }
     } else {
       setCommissionRate(0);
@@ -1094,25 +1083,18 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // Validar stock de ingredientes para productos compuestos
       const branchId = cart.branch_id;
       if (branchId && cart.items.length > 0) {
-        let stockCheck: Awaited<ReturnType<typeof validateCompositeStock>>;
-        try {
-          stockCheck = await validateCompositeStock(
-            cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity })),
-            branchId
-          );
-        } catch (stockCheckError) {
-          // Desktop sin red (fase 4B): la receta puede no estar en caché. La
-          // comprobación es previa y orientativa; no debe impedir la venta.
-          // En navegador se conserva el comportamiento de siempre.
-          if (!isDesktop()) throw stockCheckError;
-          console.warn('[checkout] No se pudo validar stock de ingredientes (sin red):', stockCheckError);
-          stockCheck = { ok: true };
-        }
-        if (!stockCheck.ok && stockCheck.message) {
+        // L49 (src/lib/pos/venta/cobro/stockRecetaCobro.ts): Desktop sin red
+        // no bloquea la venta; en el navegador un fallo corta como siempre.
+        const stockCheck = await comprobarStockReceta(
+          cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity })),
+          branchId,
+          { validar: validateCompositeStock, esDesktop: isDesktop },
+        );
+        if (debeConfirmarStock(stockCheck)) {
           // Reemplazo de window.confirm por AlertDialog controlado.
           // Se pausa el flujo con una promesa que se resuelve al confirmar/cancelar.
           const proceed = await new Promise<boolean>((resolve) => {
-            setStockConfirm({ message: stockCheck.message!, resolve });
+            setStockConfirm({ message: stockCheck.message, resolve });
           });
           if (!proceed) {
             setIsProcessing(false);
@@ -1155,28 +1137,26 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
       const checkoutData: CheckoutData = {
         cart: updatedCart,
-        payments: payments.map(p => ({ method: p.method, amount: p.amount })),
+        payments: pagosDelSobre(payments),
         change,
         total_paid: totalPaid,
         tax_included: taxIncluded,
         tip_amount: tipAmount,
-        tip_server_id: serverId && serverId !== '__none__' ? serverId : undefined,
+        tip_server_id: esPersonaAsignada(serverId) ? serverId : undefined,
         tax_breakdown: taxBreakdown.length > 0 ? taxBreakdown : undefined,
-        salesperson_id: salespersonId && salespersonId !== '__none__' ? salespersonId : undefined,
-        commission_rate: commissionRate > 0 ? commissionRate : undefined,
-        commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
-        commission_method: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionMethod : undefined,
-        commission_amount: commissionAmount > 0 ? commissionAmount : undefined,
-        delivery_type: deliveryType,
-        delivery_info: deliveryType !== 'pickup' ? {
-          address: deliveryAddress,
-          city: deliveryCity,
-          contact_name: deliveryContactName,
-          contact_phone: deliveryContactPhone,
-          instructions: deliveryInstructions,
-        } : undefined,
-        driver_id: deliveryType === 'delivery_own' ? (selectedDriverId || undefined) : undefined,
-        shipping_fee: shippingFee > 0 ? shippingFee : undefined,
+        // L45: salesperson_id, commission_rate, commission_type, commission_method, commission_amount.
+        ...camposComisionDelSobre({ salespersonId, commissionRate, commissionType, commissionMethod, commissionAmount }),
+        // L46: delivery_type, delivery_info, driver_id, shipping_fee.
+        ...camposEntregaDelSobre({
+          deliveryType,
+          deliveryAddress,
+          deliveryCity,
+          deliveryContactName,
+          deliveryContactPhone,
+          deliveryInstructions,
+          selectedDriverId,
+          shippingFee,
+        }),
         serial_selections: hasSerialItems && serialSelectionsComplete ? serialSelections : undefined,
         // Id y fecha del intento de cobro, generados una vez y reutilizados en
         // los reintentos (navegador y escritorio). Con red la venta se inserta
@@ -1190,7 +1170,17 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       const sale = onProcessPayment
         ? await onProcessPayment(checkoutData)
         : await POSService.checkout(checkoutData);
-      const isPendingSync = sale.pending_sync === true;
+      // L51/L52 (src/lib/pos/venta/cobro/postVentaCobro.ts): qué se hace tras
+      // la venta en cada caso; el orden sigue siendo el de este bloque.
+      const postVenta = planPostVenta({
+        sale,
+        branchId: cart.branch_id,
+        payments,
+        deliveryType,
+        deliveryAddress,
+        sendToFactus,
+      });
+      const isPendingSync = postVenta.pendienteSincronizar;
       if (isPendingSync) {
         toast.warning(`Sin conexión: venta ${sale.receipt_number_local} guardada en este equipo. Se sincronizará al volver la red.`);
       }
@@ -1203,22 +1193,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // hay fila en `sales`, y `pos_display_feedback.sale_id` es una FK: el
       // insert fallaría con 23503 y la calificación se perdería. Va como
       // anónima, que es un caso ya contemplado (ventana de 2 minutos).
-      getPosDisplayEmitter().setMode('thanks', { total: cartTotal, saleId: isPendingSync ? null : sale.id });
+      getPosDisplayEmitter().setMode('thanks', { total: cartTotal, saleId: postVenta.saleIdPantalla });
 
       // Haptic feedback de venta exitosa (no-op en web)
       hapticNotification('success');
       hapticImpact('medium');
 
-      // Impresión física automática del ticket de venta (best-effort):
-      // sale por la(s) impresora(s) con estación 'Caja'. Si no hay impresora
-      // o falla, no bloquea el flujo; queda el botón "Imprimir Recibo" (PDF).
-      if (cart.branch_id) {
-        const paymentsList = payments.filter(p => p.amount > 0).map(p => ({
-          method: p.method,
-          methodName: paymentMethods.find(pm => pm.code === p.method)?.name || p.method,
-          amount: p.amount,
-        }));
-        PrintJobsService.enqueueSaleTicket(cart.branch_id, {
+      // Ticket físico automático (sin impresora de caja: aviso) y cajón con
+      // efectivo, en ese orden y best-effort: lanzarTicketYCajon.
+      lanzarTicketYCajon(postVenta, {
+        encolarTicket: () => PrintJobsService.enqueueSaleTicket(cart.branch_id, {
           saleId: sale.id,
           // Offline: número local + «Pendiente de sincronizar» en el papel.
           saleNumber: ticketSaleNumber(sale),
@@ -1246,7 +1230,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             // Solo la nota PARA EL CLIENTE; la de cocina (`notes`) nunca va al ticket.
             note: item.customer_note || null,
           })),
-          payments: paymentsList,
+          payments: pagosParaImpresion(payments, paymentMethods),
           businessName: organization?.name,
           businessNit: organization?.nit || organization?.tax_id,
           businessPhone: organization?.phone,
@@ -1273,31 +1257,18 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             city: deliveryCity || undefined,
             instructions: deliveryInstructions || undefined,
           } : undefined,
-        }).then(({ enqueued }) => {
-          if (enqueued === 0) {
-            toast.warning('No hay impresora de caja configurada para esta sucursal. El recibo quedó disponible para impresión manual.');
-          }
-        }).catch((err) => {
-          toast.error('No se pudo encolar la impresión física del recibo: ' + (err.message || err));
-        });
-      } else {
-        toast.warning('Esta venta no tiene sucursal asignada. No se encoló impresión física.');
-      }
-
-      // Abrir cajón de dinero si hay pagos en efectivo (best-effort, no bloquea)
-      const hasCashPayment = payments.some(p => p.amount > 0 && p.method === 'cash');
-      if (hasCashPayment && cart.branch_id) {
-        CashDrawerService.open(cart.branch_id).catch((err) => {
-          console.warn('[cashDrawer] No se pudo abrir el cajón:', err.message || err);
-        });
-      }
+        }),
+        abrirCajon: () => CashDrawerService.open(cart.branch_id),
+        avisarAdvertencia: (mensaje) => toast.warning(mensaje),
+        avisarError: (mensaje) => toast.error(mensaje),
+      });
 
       // Crear shipment si es delivery propio
       // Sin red no hay venta en la BD todavía: el envío no puede crearse.
-      if (deliveryType === 'delivery_own' && deliveryAddress && isPendingSync) {
+      if (postVenta.envio === 'avisar_sin_red') {
         toast.warning('Sin conexión: el envío a domicilio debe crearse manualmente cuando la venta se sincronice.');
       }
-      if (deliveryType === 'delivery_own' && deliveryAddress && !isPendingSync) {
+      if (postVenta.envio === 'hacer') {
         try {
           const { deliveryIntegrationService } = await import('@/lib/services/deliveryIntegrationService');
           await deliveryIntegrationService.createShipmentFromPOSSale({
@@ -1366,10 +1337,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       }
 
       // Enviar a Factus (factura electrónica) si el toggle está activado
-      if (sendToFactus && isPendingSync) {
+      if (postVenta.factura === 'avisar_sin_red') {
         toast.warning('Sin conexión: la factura electrónica se podrá enviar a DIAN desde Facturación cuando la venta se sincronice.');
       }
-      if (sendToFactus && !isPendingSync) {
+      if (postVenta.factura === 'hacer') {
         try {
           // Buscar la invoice_sales creada durante el checkout
           const { data: invoiceSale } = await supabase
@@ -1441,11 +1412,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                         modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
                         note: item.customer_note || null,
                       })),
-                      payments: payments.filter(p => p.amount > 0).map(p => ({
-                        method: p.method,
-                        methodName: paymentMethods.find(pm => pm.code === p.method)?.name || p.method,
-                        amount: p.amount,
-                      })),
+                      payments: pagosParaImpresion(payments, paymentMethods),
                       customerName: customerData?.full_name,
                       customerDocType: customerData?.doc_type,
                       customerDocNumber: customerData?.doc_number,
@@ -1647,59 +1614,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     setCommissionMethod('percentage');
   };
 
-  // Generar botones de monto rápido dinámicos según el total a pagar
-  const generateQuickAmounts = (amount: number): { label: string; value: number }[] => {
-    if (amount <= 0) return [{ label: 'Exacto', value: 0 }];
-
-    const buttons: { label: string; value: number }[] = [];
-    const seen = new Set<number>();
-
-    // Determinar la magnitud para redondeos inteligentes
-    const magnitude = Math.pow(10, Math.floor(Math.log10(Math.max(amount, 1))));
-    const roundUp = (val: number, step: number) => Math.ceil(val / step) * step;
-
-    // 1. Monto exacto
-    buttons.push({ label: 'Exacto', value: Math.round(amount) });
-    seen.add(Math.round(amount));
-
-    // 2. Redondeo al millar superior más cercano
-    const roundSteps = magnitude >= 100000 ? [100000, 50000] 
-                     : magnitude >= 10000 ? [10000, 5000] 
-                     : magnitude >= 1000 ? [1000, 500] 
-                     : [100, 50];
-
-    for (const step of roundSteps) {
-      const rounded = roundUp(amount, step);
-      if (!seen.has(rounded) && rounded > amount) {
-        buttons.push({ label: formatQuickLabel(rounded), value: rounded });
-        seen.add(rounded);
-      }
-    }
-
-    // 3. Agregar múltiplos útiles por encima del monto
-    const baseStep = roundSteps[0];
-    for (let mult = 2; mult <= 4; mult++) {
-      const val = roundUp(amount, baseStep) + baseStep * (mult - 1);
-      if (!seen.has(val) && buttons.length < 6) {
-        buttons.push({ label: formatQuickLabel(val), value: val });
-        seen.add(val);
-      }
-    }
-
-    // Ordenar: Exacto primero, luego ascendente
-    return buttons.sort((a, b) => {
-      if (a.label === 'Exacto') return -1;
-      if (b.label === 'Exacto') return 1;
-      return a.value - b.value;
-    }).slice(0, 6);
-  };
-
-  const formatQuickLabel = (value: number): string => {
-    if (value >= 1000000) return `${(value / 1000000).toFixed(value % 1000000 === 0 ? 0 : 1)}M`;
-    if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
-    return value.toString();
-  };
-
+  // «Exacto» y billetes rápidos (L43): HOY sobre el total del cobro, no sobre
+  // lo que falta en la entrada (src/lib/pos/venta/cobro/montosRapidos.ts).
   const quickAmountButtons = generateQuickAmounts(cartTotal);
 
   if (!open || typeof document === 'undefined') return null;
@@ -1801,11 +1717,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                           taxTotal: calculatedTotals.totalTaxAmount,
                           taxIncluded: taxIncluded,
                           taxLines: taxBreakdown.length > 0 ? taxBreakdown : null,
-                          payments: payments.filter(p => p.amount > 0).map(p => ({
-                            method: p.method,
-                            methodName: paymentMethods.find(pm => pm.code === p.method)?.name || p.method,
-                            amount: p.amount,
-                          })),
+                          payments: pagosParaImpresion(payments, paymentMethods),
                           businessName: organization?.name,
                           businessNit: organization?.nit || organization?.tax_id,
                           businessPhone: organization?.phone,
@@ -2236,7 +2148,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                           <DollarSign className="h-3.5 w-3.5 text-green-500" />
                           Pago {index + 1}
                         </Label>
-                        {payments.length > 1 && (
+                        {puedeQuitarPagos(payments) && (
                           <Button
                             size="sm"
                             variant="ghost"
@@ -2293,7 +2205,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                       </div>
 
                       {/* Botones de montos rápidos solo para efectivo - RESPONSIVE */}
-                      {payment.method === 'cash' && (
+                      {muestraMontosRapidos(payment.method) && (
                         <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-1 sm:gap-2">
                           {quickAmountButtons.map((button) => (
                             <Button
@@ -2382,7 +2294,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
                     {/* Botones de porcentaje */}
                     <div className="grid grid-cols-4 gap-2 mb-3">
-                      {[5, 10, 15, 20].map((pct) => (
+                      {PORCENTAJES_PROPINA.map((pct) => (
                         <Button
                           key={pct}
                           type="button"

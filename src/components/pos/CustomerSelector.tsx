@@ -19,6 +19,7 @@ import { ClienteFormDialog } from '@/components/shared/form-dialogs';
 import { OfflineCustomerDialog } from './OfflineCustomerDialog';
 import { Customer, CustomerFilter } from './types';
 import { supabase } from '@/lib/supabase/config';
+import { clienteDesdeHabitacion } from '@/lib/pos/venta/cliente';
 
 export interface OccupiedSpace {
   space_id: string;
@@ -236,23 +237,8 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
 
   // Seleccionar espacio ocupado
   const handleSelectRoom = (room: OccupiedSpace) => {
-    // Crear objeto Customer desde los datos del room
-    const customer: Customer = {
-      id: room.customer_id,
-      organization_id: 0,
-      full_name: room.customer_name,
-      email: room.customer_email || '',
-      phone: room.customer_phone || '',
-      doc_type: 'CC',
-      doc_number: '',
-      address: '',
-      country: 'Colombia',
-      roles: [],
-      tags: [],
-      preferences: {},
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    // Crear objeto Customer desde los datos del room (src/lib/pos/venta/cliente.ts, L34)
+    const customer: Customer = clienteDesdeHabitacion(room);
 
     onCustomerSelect(customer, room);
     setShowCustomerList(false);

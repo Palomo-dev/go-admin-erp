@@ -33,9 +33,12 @@ function stripFromActiveInput(code: string): void {
   el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-/** Con un diálogo abierto (variantes, cobro, caja) el escaneo no debe colarse en el carrito. */
-function dialogOpen(): boolean {
-  return !!document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]');
+/**
+ * Con un diálogo abierto (variantes, cobro, caja) el escaneo no debe colarse en el carrito.
+ * Exportada (L19 de docs/implementacion/POS-PLAN.md) para probarla con un documento simulado.
+ */
+export function dialogOpen(doc: Pick<Document, 'querySelector'> = document): boolean {
+  return !!doc.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]');
 }
 
 /**

@@ -6,7 +6,7 @@ const config = {
   testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
   // Fijar TZ=UTC por defecto (igual que Vercel producción).
   // Para validar con America/Bogota usar: npm run test:tz-bogota
-  setupFiles: ['<rootDir>/jest.setup.tz.ts'],
+  setupFiles: ['<rootDir>/jest.setup.tz.ts', '<rootDir>/jest.setup.jsdom.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     // Tipos y helpers de impresión compartidos con el print-agent (tsconfig `paths`).

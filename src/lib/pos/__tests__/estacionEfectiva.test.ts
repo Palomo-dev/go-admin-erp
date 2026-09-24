@@ -79,13 +79,29 @@ describe('lectores de la estación', () => {
     expect(fuente).not.toMatch(/\{\s*station\s*\}/);
   });
 
+  // Reapuntado en el paso 1 del rediseño del POS (docs/implementacion/POS-PLAN.md):
+  // la estación de la comanda (antes en page.tsx, handleSendComanda) pasó a
+  // src/lib/pos/venta/enviarCocina.ts y la de la variante elegida o escaneada
+  // (antes en ProductSearch.tsx) a src/lib/pos/venta/catalogo.ts. Se exige el
+  // import en los archivos que ahora resuelven, y page.tsx y ProductSearch.tsx
+  // siguen sin poder volver a «categoría primero» (abajo).
   it.each([
-    'src/app/app/pos/page.tsx',
-    'src/components/pos/ProductSearch.tsx',
+    'src/lib/pos/venta/enviarCocina.ts',
+    'src/lib/pos/venta/catalogo.ts',
     'src/components/pos/mesas/id/AddProductDialog.tsx',
   ])('%s resuelve con estacionEfectiva (sin «categoría primero»)', (ruta) => {
     const fuente = leer(ruta);
     expect(fuente).toContain("from '@/lib/pos/estacionEfectiva'");
+    expect(fuente).not.toMatch(/station\s*\|\|\s*product\?\.station/);
+    expect(fuente).not.toMatch(/inheritedCategory\?\.station\s*\|\|/);
+  });
+
+  it.each([
+    'src/app/app/pos/page.tsx',
+    'src/components/pos/ProductSearch.tsx',
+  ])('%s delega la estación en src/lib/pos/venta y no la resuelve con «categoría primero»', (ruta) => {
+    const fuente = leer(ruta);
+    expect(fuente).toContain("from '@/lib/pos/venta/");
     expect(fuente).not.toMatch(/station\s*\|\|\s*product\?\.station/);
     expect(fuente).not.toMatch(/inheritedCategory\?\.station\s*\|\|/);
   });

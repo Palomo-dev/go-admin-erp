@@ -18,6 +18,16 @@ import { POSService } from '@/lib/services/posService';
 import { cn } from '@/lib/utils';
 import { ProductModifiersService, type ProductModifierGroup } from '@/lib/services/productModifiersService';
 import { resolveVariantDisplayName } from '@/utils/variantUtils';
+import {
+  agruparAtributos,
+  alternarModificador,
+  buscarVariante,
+  extraDeModificadores,
+  modificadoresElegidos,
+  puedeConfirmarVariante,
+  reglaDeSeleccion,
+  validarModificadores,
+} from '@/lib/pos/venta/modificadores';
 
 interface Variant {
   id: number;
@@ -82,23 +92,8 @@ export function VariantSelectorDialog({
       const data = await POSService.getProductVariants(product.id);
       setVariants(data);
       
-      // Extraer atributos únicos de todas las variantes
-      const groups: Record<string, Set<string>> = {};
-      data.forEach((variant: Variant) => {
-        if (variant.variant_data) {
-          Object.entries(variant.variant_data).forEach(([key, value]) => {
-            if (!groups[key]) groups[key] = new Set();
-            groups[key].add(value);
-          });
-        }
-      });
-      
-      // Convertir Sets a Arrays
-      const groupsArray: Record<string, string[]> = {};
-      Object.entries(groups).forEach(([key, values]) => {
-        groupsArray[key] = Array.from(values).sort();
-      });
-      setAttributeGroups(groupsArray);
+      // Extraer atributos únicos de todas las variantes (src/lib/pos/venta/modificadores.ts)
+      setAttributeGroups(agruparAtributos(data as Variant[]));
       
       // Pre-seleccionar primera variante si existe
       if (data.length > 0) {
@@ -131,66 +126,25 @@ export function VariantSelectorDialog({
 
   const toggleModifier = (group: ProductModifierGroup, modifierId: number) => {
     setModifierError(null);
-    setSelectedModifierIds((prev) => {
-      const current = new Set(prev[group.id] || []);
-      if (group.selection_mode === 'single') {
-        // Selección única: si ya estaba marcada, se puede desmarcar (a menos que sea obligatoria)
-        if (current.has(modifierId)) {
-          if (!group.required) current.clear();
-        } else {
-          current.clear();
-          current.add(modifierId);
-        }
-      } else {
-        if (current.has(modifierId)) {
-          current.delete(modifierId);
-        } else {
-          if (group.max_selections && current.size >= group.max_selections) {
-            return prev;
-          }
-          current.add(modifierId);
-        }
-      }
-      return { ...prev, [group.id]: current };
-    });
+    // Reglas de selección (única/múltiple, obligatoria, máximo): src/lib/pos/venta/modificadores.ts (L20).
+    setSelectedModifierIds((prev) => alternarModificador(prev, group, modifierId));
   };
 
-  const selectedModifiers: SelectedModifier[] = modifierGroups.flatMap((group) => {
-    const ids = selectedModifierIds[group.id] || new Set();
-    return (group.product_modifiers || [])
-      .filter((m) => ids.has(m.id))
-      .map((m) => ({
-        groupId: group.id,
-        groupName: group.name,
-        modifierId: m.id,
-        name: m.name,
-        extraPrice: m.extra_price,
-      }));
-  });
+  const selectedModifiers: SelectedModifier[] = modificadoresElegidos(modifierGroups, selectedModifierIds);
 
-  const modifiersExtraTotal = selectedModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0);
+  const modifiersExtraTotal = extraDeModificadores(selectedModifiers);
 
   const validateModifiers = (): boolean => {
-    for (const group of modifierGroups) {
-      const count = (selectedModifierIds[group.id] || new Set()).size;
-      const minRequired = group.required ? Math.max(group.min_selections, 1) : group.min_selections;
-      if (count < minRequired) {
-        setModifierError(`Selecciona ${minRequired > 1 ? `al menos ${minRequired} opciones` : 'una opción'} en "${group.name}"`);
-        return false;
-      }
+    const error = validarModificadores(modifierGroups, selectedModifierIds);
+    if (error) {
+      setModifierError(error);
+      return false;
     }
     return true;
   };
 
   // Encontrar variante que coincida con los atributos seleccionados
-  const findMatchingVariant = (attrs: Record<string, string>) => {
-    return variants.find(v => {
-      if (!v.variant_data) return false;
-      return Object.entries(attrs).every(([key, value]) => 
-        v.variant_data[key] === value
-      );
-    });
-  };
+  const findMatchingVariant = (attrs: Record<string, string>) => buscarVariante(variants, attrs);
 
   const handleAttributeSelect = (attrName: string, value: string) => {
     const newAttrs = { ...selectedAttributes, [attrName]: value };
@@ -346,7 +300,10 @@ export function VariantSelectorDialog({
                           {group.required && <span className="text-red-500 ml-1">*</span>}
                         </label>
                         <span className="text-xs text-muted-foreground">
-                          {group.selection_mode === 'single' ? 'Elige 1' : group.max_selections ? `Hasta ${group.max_selections}` : 'Elige varias'}
+                          {(() => {
+                            const regla = reglaDeSeleccion(group);
+                            return regla.tipo === 'uno' ? 'Elige 1' : regla.tipo === 'hasta' ? `Hasta ${regla.maximo}` : 'Elige varias';
+                          })()}
                         </span>
                       </div>
                       <div className="space-y-1.5">
@@ -432,7 +389,7 @@ export function VariantSelectorDialog({
               </Button>
               <Button
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
-                disabled={!selectedVariant || !selectedVariant.price}
+                disabled={!puedeConfirmarVariante(selectedVariant)}
                 onClick={handleConfirm}
               >
                 Agregar al Carrito

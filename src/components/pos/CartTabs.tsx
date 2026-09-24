@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Cart } from './types';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { etiquetaPestana, puedeCerrarPestana } from '@/lib/pos/venta/pestanaCarrito';
 
 interface CartTabsProps {
   carts: Cart[];
@@ -152,7 +153,7 @@ export function CartTabs({
     e.stopPropagation();
     e.preventDefault();
     // Solo mostrar confirmación si hay más de 1 carrito
-    if (carts.length > 1) {
+    if (puedeCerrarPestana(carts.length)) {
       setCartToRemove(cartId);
     }
   };
@@ -164,12 +165,10 @@ export function CartTabs({
     setCartToRemove(null);
   };
 
+  // Nombre, total y líneas de la pestaña: src/lib/pos/venta/pestanaCarrito.ts (L12).
   const getCartDisplayName = (cart: Cart, index: number) => {
-    if (cart.customer) {
-      const firstName = cart.customer.full_name.split(' ')[0];
-      return firstName.length > 8 ? firstName.substring(0, 8) + '...' : firstName;
-    }
-    return `Carrito ${index + 1}`;
+    const etiqueta = etiquetaPestana(cart, index);
+    return etiqueta.cliente ?? `Carrito ${etiqueta.numero}`;
   };
 
   const getCartIcon = (cart: Cart) => {
@@ -217,7 +216,7 @@ export function CartTabs({
                     </span>
                     
                     {/* Badge con total */}
-                    {cart.total > 0 && (
+                    {etiquetaPestana(cart, index).mostrarTotal && (
                       <Badge 
                         variant="secondary" 
                         className="text-xs px-1 py-0 h-5 dark:bg-gray-700 bg-gray-200"
@@ -243,7 +242,7 @@ export function CartTabs({
                     )}
 
                     {/* Botón para cerrar carrito */}
-                    {carts.length > 1 && (
+                    {puedeCerrarPestana(carts.length) && (
                       <div
                         role="button"
                         tabIndex={0}

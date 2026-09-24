@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { POSService } from '@/lib/services/posService';
 import { cartLinesSignature } from '@/lib/pos/display/emitter';
 import { Cart } from './types';
+import { etiquetaSelectorImpuestos, impuestosAplicadosIniciales, resumenImpuestos } from '@/lib/pos/venta/resumenImpuestos';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { 
   calculateCartTaxes, 
@@ -98,18 +99,12 @@ export function TaxSummary({
         setOrganizationTaxes(taxes);
         
         // Inicializar impuestos aplicados: usar los del carrito si existen, sino los predeterminados
-        const initialAppliedTaxes: {[key: string]: boolean} = {};
-        const cartTaxIds = cart.applied_tax_ids;
-        taxes.forEach((tax: OrganizationTax) => {
-          initialAppliedTaxes[tax.id] = cartTaxIds && cartTaxIds.length >= 0
-            ? cartTaxIds.includes(tax.id)
-            : tax.is_default;
-        });
-        setAppliedTaxes(initialAppliedTaxes);
+        // (src/lib/pos/venta/resumenImpuestos.ts).
+        const { aplicados, predeterminadosAGuardar } = impuestosAplicadosIniciales(taxes as OrganizationTax[], cart.applied_tax_ids);
+        setAppliedTaxes(aplicados);
         // Si el carrito aún no tiene selección, persistir los predeterminados
-        if (!cartTaxIds) {
-          const defaultIds = taxes.filter((t: OrganizationTax) => t.is_default).map((t: OrganizationTax) => t.id);
-          onAppliedTaxesChange?.(defaultIds);
+        if (predeterminadosAGuardar) {
+          onAppliedTaxesChange?.(predeterminadosAGuardar);
         }
         
       } catch (error) {
@@ -271,7 +266,9 @@ export function TaxSummary({
   // Usar los totales calculados correctamente
   // calculateCartTaxes ya resta el descuento en lineTotal, NO restarlo de nuevo
   const { subtotal, totalTaxAmount, finalTotal } = calculatedTotals;
-  const total = finalTotal;
+  // Filas del Resumen (solo presentación de lo ya calculado): L27, src/lib/pos/venta/resumenImpuestos.ts.
+  const resumen = resumenImpuestos({ subtotal, totalTaxAmount, finalTotal, discountTotal: cart.discount_total, taxBreakdown });
+  const total = resumen.total;
 
   if (loading) {
     return (
@@ -353,7 +350,7 @@ export function TaxSummary({
             <span className="dark:text-gray-400 text-gray-600 shrink-0">Subtotal:</span>
             <div className="text-right">
               <span className="dark:text-white text-gray-900 font-medium">
-                {formatear(subtotal + (cart.discount_total || 0))}
+                {formatear(resumen.subtotalBruto)}
               </span>
               {taxIncluded && (
                 <div className="text-xs dark:text-gray-500 text-gray-500">
@@ -380,17 +377,16 @@ export function TaxSummary({
                       className="w-full justify-between h-8 text-xs dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-700 bg-white"
                     >
                       {(() => {
-                        const selectedCount = Object.values(appliedTaxes).filter(Boolean).length;
-                        const selectedTaxes = organizationTaxes.filter(tax => appliedTaxes[tax.id]);
-                        
-                        if (selectedCount === 0) {
+                        const etiqueta = etiquetaSelectorImpuestos(appliedTaxes, organizationTaxes);
+
+                        if (etiqueta.tipo === 'ninguno') {
                           return "Ningún impuesto seleccionado";
-                        } else if (selectedCount === 1) {
-                          return `${selectedTaxes[0].name} (${selectedTaxes[0].rate}%)`;
+                        } else if (etiqueta.tipo === 'uno') {
+                          return `${etiqueta.nombre} (${etiqueta.tasa}%)`;
                         } else {
-                          return `${selectedCount} impuestos seleccionados`;
+                          return `${etiqueta.cantidad} impuestos seleccionados`;
                         }
-                      })()} 
+                      })()}
                       <ChevronDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
@@ -438,7 +434,7 @@ export function TaxSummary({
           )}
 
           {/* Desglose de impuestos */}
-          {taxBreakdown.length > 0 && (
+          {!resumen.sinImpuestosConfigurados && (
             <>
               <Separator className="dark:bg-gray-700 bg-gray-200" />
               <div className="space-y-2">
@@ -446,11 +442,11 @@ export function TaxSummary({
                   Impuestos aplicados:
                 </div>
                 <div className="space-y-1">
-                  {taxBreakdown.map((tax) => (
+                  {resumen.impuestos.map((tax) => (
                     <div key={tax.taxId} className="flex justify-between items-start gap-2 text-xs">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0 flex-1">
-                        <span className="dark:text-gray-400 text-gray-600 break-words whitespace-normal" title={`${tax.name} (${tax.rate}%)`}>
-                          {tax.name} ({tax.rate}%)
+                        <span className="dark:text-gray-400 text-gray-600 break-words whitespace-normal" title={tax.etiqueta}>
+                          {tax.etiqueta}
                         </span>
                         {taxIncluded && (
                           <Badge variant="outline" className="text-xs py-0 px-1 w-fit shrink-0">
@@ -459,7 +455,7 @@ export function TaxSummary({
                         )}
                       </div>
                       <span className="dark:text-white text-gray-900 font-medium shrink-0">
-                        {formatear(tax.taxAmount)}
+                        {formatear(tax.importe)}
                       </span>
                     </div>
                   ))}
@@ -469,26 +465,26 @@ export function TaxSummary({
           )}
 
           {/* Total de impuestos */}
-          {totalTaxAmount > 0 && (
+          {resumen.mostrarTotalImpuestos && (
             <>
               <Separator className="dark:bg-gray-700 bg-gray-200" />
               <div className="flex justify-between items-center gap-3 text-sm font-medium">
                 <span className="dark:text-gray-300 text-gray-700 shrink-0">Total Impuestos:</span>
                 <span className="dark:text-blue-400 text-blue-600">
-                  {formatear(totalTaxAmount)}
+                  {formatear(resumen.totalImpuestos)}
                 </span>
               </div>
             </>
           )}
 
           {/* Descuento total */}
-          {cart.discount_total > 0 && (
+          {resumen.mostrarDescuento && (
             <>
               <Separator className="dark:bg-gray-700 bg-gray-200" />
               <div className="flex justify-between items-center gap-3 text-sm font-medium">
                 <span className="dark:text-red-400 text-red-600 shrink-0">Descuento:</span>
                 <span className="dark:text-red-400 text-red-600">
-                  -{formatear(cart.discount_total)}
+                  -{formatear(resumen.descuento)}
                 </span>
               </div>
             </>
@@ -504,7 +500,7 @@ export function TaxSummary({
           </div>
 
           {/* Información adicional */}
-          {taxBreakdown.length === 0 && (
+          {resumen.sinImpuestosConfigurados && (
             <div className="text-xs dark:text-gray-500 text-gray-500 text-center mt-2 px-2">
               No hay impuestos configurados para estos productos
             </div>

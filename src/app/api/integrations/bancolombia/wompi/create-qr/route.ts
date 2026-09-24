@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { withOrg } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { OrgContextError } from '@/lib/utils/orgContextError';
+import { getServiceClient } from '@/lib/supabase/server-service';
 import { wompiService } from '@/lib/services/integrations/wompi';
 import { createQrSession } from '@/lib/services/integrations/qrShared/qrSessionService';
 import { MONEDA_RIELES_QR, prepararCobroQr } from '@/lib/services/integrations/qrShared/cobroQrServidor';
@@ -32,8 +33,11 @@ export const POST = withOrg(async (ctx, request) => {
       return NextResponse.json({ error: 'Se requiere un correo del pagador para Wompi' }, { status: 400 });
     }
 
-    // 1. Credenciales de la conexion de la organizacion
-    const credentials = await wompiService.getCredentials(cobro.conexion.id);
+    // 1. Credenciales de la conexion de la organizacion (service role: la
+    //    conexion ya la resolvio el servidor para ESTA organizacion; con el
+    //    cliente de navegador, anonimo en el servidor, RLS no dejaba leerlas
+    //    y la ruta respondia 412 siempre).
+    const credentials = await wompiService.getCredentials(cobro.conexion.id, getServiceClient());
     if (!credentials) {
       return NextResponse.json(
         { error: 'La conexión de Wompi no tiene credenciales activas. Revísela en Integraciones → Conexiones.', code: 'CREDENCIALES_NO_CONFIGURADAS' },

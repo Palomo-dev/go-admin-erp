@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { withOrg } from '@/lib/utils/orgContext';
 import { tripadvisorContentService } from '@/lib/services/integrations/tripadvisor';
 import type { TripAdvisorSearchCategory, TripAdvisorRadiusUnit } from '@/lib/services/integrations/tripadvisor';
 
@@ -7,7 +8,14 @@ import type { TripAdvisorSearchCategory, TripAdvisorRadiusUnit } from '@/lib/ser
  * Buscar ubicaciones cercanas por coordenadas (proxy server-side).
  * Query params: latLong (requerido), category, radius, radiusUnit, language
  */
-export async function GET(request: NextRequest) {
+/*
+ * SEGURIDAD (GO-sec, 2026-09-24): proxy con la API Key de TripAdvisor de la
+ * PLATAFORMA (entorno). Antes el handler no comprobaba nada (solo el
+ * middleware): ahora exige sesión validada y organización activa
+ * (`withOrg`), para que la cuota de la llave no la gaste cualquiera. El
+ * contenido es público y no depende de la organización.
+ */
+export const GET = withOrg(async (_ctx, request) => {
   try {
     const { searchParams } = new URL(request.url);
     const latLong = searchParams.get('latLong');
@@ -42,4 +50,4 @@ export async function GET(request: NextRequest) {
     console.error('[API TripAdvisor Nearby] Error:', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

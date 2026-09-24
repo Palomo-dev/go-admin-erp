@@ -55,7 +55,9 @@ describe('Stripe webhook: busca la conexión por el estado real del CHECK', () =
 
     const res = await POST(req());
 
-    expect(await res.json()).toEqual({ received: true, verified: false });
+    // GO-sec 2026-09-24: sin conexión que verifique la firma → 401 (fail-closed).
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: 'webhook_unauthorized' });
     expect(getCredentials).not.toHaveBeenCalled();
     expect(mockAdmin.inserts).toEqual([]);
   });

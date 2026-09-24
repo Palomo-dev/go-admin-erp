@@ -808,7 +808,11 @@ class MetaMarketingService {
       'sha256=' +
       crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
 
-    return expectedSig === signature;
+    // Tiempo constante y sin secreto → falso (GO-sec 2026-09-24).
+    if (!appSecret || !signature) return false;
+    const a = Buffer.from(expectedSig, 'utf8');
+    const b = Buffer.from(signature, 'utf8');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
   }
 }
 

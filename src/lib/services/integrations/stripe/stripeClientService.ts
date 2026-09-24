@@ -4,6 +4,7 @@
 // Cada cliente usa SUS PROPIAS credenciales de Stripe
 // ============================================================
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import Stripe from 'stripe';
 import { STRIPE_CLIENT_CREDENTIAL_PURPOSES } from './stripeClientConfig';
@@ -26,8 +27,11 @@ class StripeClientService {
   // ──────────────────────────────────────────────
 
   /** Obtener credenciales de Stripe para una conexión */
-  async getCredentials(connectionId: string): Promise<StripeClientCredentials | null> {
-    const { data, error } = await supabase
+  // GO-sec (2026-09-24): en el SERVIDOR, `supabase` (config) es anónimo y RLS no le
+  // deja leer `integration_credentials`; las rutas pasan `getServiceClient()` DESPUÉS de
+  // verificar que la conexión es de la organización de la sesión.
+  async getCredentials(connectionId: string, db: SupabaseClient = supabase): Promise<StripeClientCredentials | null> {
+    const { data, error } = await db
       .from('integration_credentials')
       .select('purpose, secret_ref')
       .eq('connection_id', connectionId);
@@ -299,8 +303,8 @@ class StripeClientService {
     try {
       const stripe = this.createStripeInstance(secretKey);
 
-      // Intentar listar 1 balance transaction para verificar la llave
-      const balance = await stripe.balance.retrieve();
+      // Consultar el balance verifica la llave (lanza si no es válida)
+      await stripe.balance.retrieve();
 
       const isLive = !secretKey.startsWith('sk_test_');
 

@@ -271,7 +271,10 @@ describe('F0 Guardarraíles', () => {
 
     const ALLOWLIST = new Set<string>([
       'app/api/categorias/reglas/route.ts',
-      'app/api/integrations/whatsapp/oauth/callback/route.ts', // OAuth callback (org en `state` firmado por Meta)
+      // `integrations/whatsapp/oauth/callback`: salió el 2026-09-24 (GO-sec). El
+      // motivo que tenía aquí («org en `state` firmado por Meta») no era cierto:
+      // no había `state` ni sesión y la organización salía del body. Ahora es
+      // `withOrg({ admin: true })` + `readOrgBody`; ver 27b.
       // Cobros QR del POS (redeban, breb, bancolombia, bold) y qr/auto-match:
       // migrados a withOrg + readOrgBody el 2026-09-24 (GO-sec); ver 27b.
       // `modules`, `modules/pages` y `modules/audit`: migradas el 2026-09-24
@@ -2008,18 +2011,32 @@ describe('27. RLS del catálogo: filas globales de solo lectura y nada abierto a
  * parámetros que responde 401 (webhook de Redeban cerrado hasta implementar
  * su firma: no puede leer la petición). Además, las rutas de cobro resuelven
  * la conexión en el servidor (`prepararCobroQr`) y nadie la toma del body.
+ *
+ * Ampliado otra vez el 2026-09-24 (GO-sec) a TODO `src/app/api/integrations/**`.
+ * Quedaban ~40 handlers con `auth.getSession()` o sin guarda (MercadoPago,
+ * PayU, PayPal, Stripe, Wompi, SendGrid, Meta, TikTok, Google Ads,
+ * TripAdvisor, webhook-health, credential-rotation, OAuth de WhatsApp) que
+ * tomaban el `connection_id` o la organización del body/query. Puertas
+ * adicionales, todas fail-closed:
+ *   - firmas de webhook de proveedor: `verifyWebhook` (HMAC de MercadoPago),
+ *     `verifyWebhookEvent` (`constructEvent` de Stripe),
+ *     `verificarChecksumWompi`, `verifyTwilioWebhook`, `verifyMetaSignature`;
+ *   - `verificarSuscripcionWebhook`: el GET de suscripción (token de entorno,
+ *     403 sin él) de Meta, WhatsApp Cloud y TikTok;
+ *   - `acceptMarketingOAuthState`: callbacks OAuth con `state` firmado
+ *     (`src/lib/security/oauthState.ts`);
+ *   - `requireOwnedChannel`: `whatsapp/qr/_shared.ts` (sesión +
+ *     `getServerOrgContext` + canal de la organización).
+ * `SIN_PUERTA_PERMITIDA` es la allow-list documentada para un handler que de
+ * verdad no la necesite; hoy está vacía.
  */
-describe('27b. Open Finance, PayFac, Factus y cobros QR: todo handler pasa por una puerta del servidor', () => {
-  const RAICES_COBRO_QR = ['redeban', 'breb', 'bancolombia', 'bold', 'qr'].map((d) =>
-    path.join(SRC_ROOT, 'app', 'api', 'integrations', d),
-  );
-  const RAICES = [
-    path.join(SRC_ROOT, 'app', 'api', 'integrations', 'open-finance'),
-    path.join(SRC_ROOT, 'app', 'api', 'integrations', 'payfac'),
-    path.join(SRC_ROOT, 'app', 'api', 'factus'),
-    ...RAICES_COBRO_QR,
-  ];
-  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withPlatformAdmin|requirePlatformAdmin|resolverAlcancePayfac|withCron|verifyCronSecret|verificarTokenWebhookPrometeo|safeEqual|verifyWebhookSignature|verifyJwtNotification)\s*\(/;
+describe('27b. Integraciones y Factus: todo handler pasa por una puerta del servidor', () => {
+  const INTEGRACIONES = path.join(SRC_ROOT, 'app', 'api', 'integrations');
+  const OPEN_FINANCE = path.join(INTEGRACIONES, 'open-finance');
+  const RAICES = [INTEGRACIONES, path.join(SRC_ROOT, 'app', 'api', 'factus')];
+  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withPlatformAdmin|requirePlatformAdmin|resolverAlcancePayfac|withCron|verifyCronSecret|verificarTokenWebhookPrometeo|safeEqual|verifyWebhookSignature|verifyJwtNotification|verifyWebhook|verifyWebhookEvent|verificarChecksumWompi|verifyTwilioWebhook|verifyMetaSignature|verificarSuscripcionWebhook|acceptMarketingOAuthState|requireOwnedChannel)\s*\(/;
+  /** `ruta MÉTODO` → motivo. Solo para lo que de verdad no aplique; vacía. */
+  const SIN_PUERTA_PERMITIDA = new Map<string, string>([]);
   /** `export async function POST() { … 401 … }`: sin parámetros no lee nada de la petición. */
   const CERRADO_SIN_ENTRADA_RE = /^export\s+(?:async\s+)?function\s+(?:GET|POST|PUT|PATCH|DELETE)\s*\(\s*\)[\s\S]*status:\s*401\b/;
   const HANDLER_RE = /^export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE)\b/;
@@ -2067,7 +2084,8 @@ describe('27b. Open Finance, PayFac, Factus y cobros QR: todo handler pasa por u
       for (const h of todos.filter((b) => b.metodo)) {
         const directo = PUERTA_RE.test(h.texto) || CERRADO_SIN_ENTRADA_RE.test(h.texto);
         const porHelper = helpersConPuerta.some((n) => new RegExp(`\\b${n}\\b`).test(h.texto.replace(/^[^=({]*/, '')));
-        if (!directo && !porHelper) sinPuerta.push(`${rel(file)} ${h.metodo}`);
+        const clave = `${rel(file)} ${h.metodo}`;
+        if (!directo && !porHelper && !SIN_PUERTA_PERMITIDA.has(clave)) sinPuerta.push(clave);
       }
     }
     expect(sinPuerta).toEqual([]);
@@ -2081,10 +2099,10 @@ describe('27b. Open Finance, PayFac, Factus y cobros QR: todo handler pasa por u
   });
 
   test('Open Finance no devuelve la clave de sesión bancaria y transfer/pay-supplier no llaman al proveedor', () => {
-    const links = stripAllComments(readFile(path.join(RAICES[0], 'links', 'route.ts')));
+    const links = stripAllComments(readFile(path.join(OPEN_FINANCE, 'links', 'route.ts')));
     expect(links).toMatch(/sinSecretosDeLink/);
     for (const ruta of ['transfer', 'pay-supplier', 'validate-account']) {
-      const src = stripAllComments(readFile(path.join(RAICES[0], ruta, 'route.ts')));
+      const src = stripAllComments(readFile(path.join(OPEN_FINANCE, ruta, 'route.ts')));
       expect(src).toMatch(/flujoDeshabilitado\(/);
       expect(src).not.toMatch(/initiateTransfer|paySupplier|validateAccount\(/);
     }
@@ -2131,6 +2149,92 @@ describe('27b. Open Finance, PayFac, Factus y cobros QR: todo handler pasa por u
     expect(helper).toMatch(/\.eq\(\s*'integration_connection_id'\s*,\s*connectionId\s*\)/);
     expect(helper).toMatch(/\.eq\(\s*'organization_id'\s*,\s*connection\.organization_id\s*\)/);
     expect(fallos).toEqual([]);
+  });
+
+  test('credenciales de la organización: permiso y conexión resueltos en el servidor, nunca llaves del body', () => {
+    // ruta → permiso exigido (`admin` = `withOrg({ admin: true })`).
+    const RUTAS: Record<string, 'COBRO' | 'EDITAR' | 'VER' | 'admin'> = {
+      'mercadopago/create-payment': 'COBRO',
+      'mercadopago/payment-methods': 'COBRO',
+      'payu/create-payment': 'COBRO',
+      'payu/banks': 'COBRO',
+      'payu/payment-methods': 'COBRO',
+      'paypal/create-order': 'COBRO',
+      'paypal/capture-order': 'COBRO',
+      'stripe/create-payment': 'COBRO',
+      'stripe/checkout-session': 'COBRO',
+      'wompi/create-transaction': 'COBRO',
+      'wompi/institutions': 'COBRO',
+      'meta/send-event': 'EDITAR',
+      'tiktok/send-event': 'EDITAR',
+      'google-ads/upload-audience': 'EDITAR',
+      'google-ads/upload-conversion': 'EDITAR',
+      'google-ads/campaigns': 'VER',
+      'sendgrid/bounces': 'VER',
+      'sendgrid/stats': 'VER',
+      'sendgrid/templates': 'VER',
+      'mercadopago/health-check': 'admin',
+      'payu/health-check': 'admin',
+      'paypal/health-check': 'admin',
+      'stripe/health-check': 'admin',
+      'wompi/health-check': 'admin',
+      'sendgrid/health-check': 'admin',
+      'meta/health-check': 'admin',
+      'tiktok/health-check': 'admin',
+      'google-ads/health-check': 'admin',
+      'tripadvisor/health-check': 'admin',
+      'webhook-health': 'admin',
+      'credential-rotation': 'admin',
+      'whatsapp/oauth/callback': 'admin',
+    };
+    const fallos: string[] = [];
+    for (const [ruta, permiso] of Object.entries(RUTAS)) {
+      const src = stripAllComments(readFile(path.join(INTEGRACIONES, ruta, 'route.ts')));
+      if (!/\breadOrgBody(?:<[^(]*>)?\s*\(\s*ctx\s*,\s*request\b/.test(src)) fallos.push(`${ruta}: no llama a readOrgBody(ctx, request)`);
+      if (permiso === 'admin') {
+        if (!/\}\s*,\s*\{\s*admin:\s*true\s*\}\s*\)\s*;/.test(src)) fallos.push(`${ruta}: no exige administración`);
+      } else if (!new RegExp(`\\bexigirPermiso\\(\\s*ctx\\s*,\\s*PERMISO_(?:INTEGRACIONES_)?${permiso}\\b`).test(src)) {
+        fallos.push(`${ruta}: no exige el permiso ${permiso}`);
+      }
+      // Si la ruta recibe una conexión, la verifica contra la organización.
+      if (/connection_?[iI]d/.test(src) && ruta !== 'webhook-health' && ruta !== 'credential-rotation' && ruta !== 'whatsapp/oauth/callback') {
+        if (!/\bconexionDelProveedor\s*\(/.test(src)) fallos.push(`${ruta}: no verifica la conexión con conexionDelProveedor`);
+      }
+      // Llaves del body: solo en la prueba de credenciales SIN guardar de un health-check.
+      if (permiso !== 'admin' && /\b(body|payload)\??\.(secret_key|access_token|api_key|api_login|client_id|client_secret|apiKey|is_sandbox|is_test|organization_id|organizationId)\b/.test(src)) {
+        fallos.push(`${ruta}: lee llaves, ambiente u organización del body`);
+      }
+      // Las credenciales se leen con el cliente de servidor, no con el de navegador (anónimo en el servidor).
+      if (/\.getCredentials\(\s*[\w.]+\s*\)/.test(src)) fallos.push(`${ruta}: getCredentials sin cliente de servidor`);
+    }
+    expect(fallos).toEqual([]);
+  });
+
+  test('webhooks de proveedores: fail-closed (401) y sin token de suscripción por defecto', () => {
+    const WEBHOOKS = ['mercadopago', 'payu', 'paypal', 'stripe', 'wompi', 'meta', 'tiktok', 'bold', 'breb', 'bancolombia', 'redeban'];
+    const fallos: string[] = [];
+    for (const w of WEBHOOKS) {
+      const src = stripAllComments(readFile(path.join(INTEGRACIONES, w, 'webhook', 'route.ts')));
+      if (!/status:\s*401\b/.test(src)) fallos.push(`${w}: no responde 401 sin firma válida`);
+    }
+    for (const file of rutas()) {
+      const src = stripAllComments(readFile(file));
+      if (/process\.env\.\w*VERIFY_TOKEN\w*\s*\|\|\s*['"`]/.test(src)) fallos.push(`${rel(file)}: token de verificación por defecto`);
+    }
+    const inbound = stripAllComments(readFile(path.join(INTEGRACIONES, 'whatsapp', 'qr', 'inbound', 'route.ts')));
+    if (/if\s*\(\s*expectedKey\s*\)/.test(inbound)) fallos.push('whatsapp/qr/inbound: la apikey de Evolution vuelve a ser opcional');
+    expect(fallos).toEqual([]);
+  });
+
+  test('webhook de Wompi: conexión por la firma, sesión QR por conexión + referencia y columnas reales', () => {
+    const src = stripAllComments(readFile(path.join(INTEGRACIONES, 'wompi', 'webhook', 'route.ts')));
+    expect(src).toMatch(/\bverificarChecksumWompi\s*\(/);
+    expect(src).toMatch(/\bgetQrSessionForWebhook\s*\(\s*f\.id\s*,\s*reference\s*\)/);
+    expect(src).toMatch(/\bconfirmQrPayment\s*\(/);
+    // `payment_qr_sessions.external_payment_id`, `payments.external_id` y `payments.metadata` no existen.
+    expect(src).not.toMatch(/external_payment_id|\bexternal_id\s*:|\bmetadata\s*:/);
+    // La organización no se deduce de la referencia (`GO-<org>-…`; las del POS son `POS-<ts>-<org>`).
+    expect(src).not.toMatch(/reference\w*\.split\(/i);
   });
 });
 

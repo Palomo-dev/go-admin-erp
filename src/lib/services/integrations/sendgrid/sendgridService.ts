@@ -2,6 +2,7 @@
 // SendGrid Email — Servicio principal
 // ============================================================
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import crypto from 'crypto';
 import { SENDGRID_BASE_URL, SENDGRID_CREDENTIAL_PURPOSES } from './sendgridConfig';
@@ -25,9 +26,14 @@ class SendGridService {
   /**
    * Obtiene las credenciales de SendGrid para una conexión.
    * Lee de integration_credentials vinculadas al connection_id.
+   *
+   * GO-sec (2026-09-24): en el SERVIDOR, `supabase` (config) es anónimo y RLS
+   * no le deja leer `integration_credentials`; las rutas pasan
+   * `getServiceClient()` DESPUÉS de verificar que la conexión es de la
+   * organización de la sesión.
    */
-  async getCredentials(connectionId: string): Promise<SendGridCredentials | null> {
-    const { data: creds, error } = await supabase
+  async getCredentials(connectionId: string, db: SupabaseClient = supabase): Promise<SendGridCredentials | null> {
+    const { data: creds, error } = await db
       .from('integration_credentials')
       .select('purpose, secret_ref, status')
       .eq('connection_id', connectionId)
@@ -354,12 +360,12 @@ class SendGridService {
    * Verifica que las credenciales de SendGrid sean válidas
    * consultando el endpoint de scopes.
    */
-  async healthCheck(connectionId: string): Promise<{
+  async healthCheck(connectionId: string, db: SupabaseClient = supabase): Promise<{
     ok: boolean;
     message: string;
     scopes?: string[];
   }> {
-    const credentials = await this.getCredentials(connectionId);
+    const credentials = await this.getCredentials(connectionId, db);
     if (!credentials) {
       return { ok: false, message: 'No se encontraron credenciales' };
     }
@@ -372,7 +378,7 @@ class SendGridService {
       const verification = await this.verifyApiKey(credentials.apiKey);
 
       if (!verification.valid) {
-        await supabase
+        await db
           .from('integration_connections')
           .update({
             last_health_check_at: new Date().toISOString(),
@@ -387,7 +393,7 @@ class SendGridService {
       }
 
       // Actualizar health check exitoso
-      await supabase
+      await db
         .from('integration_connections')
         .update({
           last_health_check_at: new Date().toISOString(),
@@ -405,7 +411,7 @@ class SendGridService {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Error de conexión';
 
-      await supabase
+      await db
         .from('integration_connections')
         .update({
           last_health_check_at: new Date().toISOString(),
@@ -469,11 +475,11 @@ class SendGridService {
    * Obtiene las credenciales de SendGrid a partir de una organización.
    * Busca la conexión activa del conector sendgrid_email.
    */
-  async getCredentialsByOrganization(organizationId: number): Promise<{
+  async getCredentialsByOrganization(organizationId: number, db: SupabaseClient = supabase): Promise<{
     credentials: SendGridCredentials | null;
     connectionId: string | null;
   }> {
-    const { data: connection, error } = await supabase
+    const { data: connection, error } = await db
       .from('integration_connections')
       .select(`
         id,
@@ -488,7 +494,7 @@ class SendGridService {
       return { credentials: null, connectionId: null };
     }
 
-    const credentials = await this.getCredentials(connection.id);
+    const credentials = await this.getCredentials(connection.id, db);
     return { credentials, connectionId: connection.id };
   }
 }

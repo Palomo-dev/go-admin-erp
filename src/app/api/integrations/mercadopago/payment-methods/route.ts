@@ -1,40 +1,49 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+// ============================================================
+// GET /api/integrations/mercadopago/payment-methods?connection_id=
+// Métodos de pago disponibles en la cuenta de MercadoPago de la organización.
+//
+// SEGURIDAD (GO-sec, 2026-09-24): antes bastaba `auth.getSession()` y leía
+// las credenciales de cualquier `connection_id`. Ahora sesión validada
+// (`withOrg`), organización ajena en la query → 403 y registro, permiso de
+// cobro y la conexión tiene que ser de la organización (404 si no).
+// ============================================================
+
+import { NextResponse } from 'next/server';
+import { withOrg } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
+import { OrgContextError } from '@/lib/utils/orgContextError';
+import { getServiceClient } from '@/lib/supabase/server-service';
 import { mercadopagoService } from '@/lib/services/integrations/mercadopago';
+import {
+  CONECTORES,
+  conexionDelProveedor,
+  exigirPermiso,
+  PERMISO_COBRO,
+  registrarError,
+} from '@/lib/services/integrations/accesoIntegraciones';
 
-export async function GET(request: NextRequest) {
+const RUTA = '/api/integrations/mercadopago/payment-methods';
+
+export const GET = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    await readOrgBody(ctx, request, { route: RUTA });
+    await exigirPermiso(ctx, PERMISO_COBRO, RUTA);
 
-    if (!session) {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-    }
-
-    const connectionId = request.nextUrl.searchParams.get('connection_id');
-    if (!connectionId) {
-      return NextResponse.json({ error: 'connection_id es requerido' }, { status: 400 });
-    }
-
-    const credentials = await mercadopagoService.getCredentials(connectionId);
+    const connectionId = new URL(request.url).searchParams.get('connection_id');
+    const conexion = await conexionDelProveedor(ctx, connectionId, CONECTORES.mercadopago, RUTA);
+    const credentials = await mercadopagoService.getCredentials(conexion.id, getServiceClient());
     if (!credentials?.accessToken) {
       return NextResponse.json(
-        { error: 'No se encontraron credenciales de MercadoPago' },
-        { status: 404 }
+        { error: 'La conexión de MercadoPago no tiene credenciales activas', code: 'CREDENCIALES_NO_CONFIGURADAS' },
+        { status: 412 },
       );
     }
 
     const methods = await mercadopagoService.getPaymentMethods(credentials.accessToken);
-
     return NextResponse.json({ success: true, data: methods });
-  } catch (error) {
-    console.error('Error fetching MercadoPago payment methods:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Error al obtener métodos de pago' },
-      { status: 500 }
-    );
+  } catch (err) {
+    if (err instanceof OrgContextError) throw err;
+    registrarError(RUTA, err);
+    return NextResponse.json({ error: 'Error al obtener métodos de pago' }, { status: 500 });
   }
-}
+});

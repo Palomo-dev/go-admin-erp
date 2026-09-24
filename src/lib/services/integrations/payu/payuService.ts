@@ -3,6 +3,7 @@
 // Encapsula la lógica de API, credenciales, pagos y webhooks
 // ============================================================
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import { PAYU_API_URLS, PAYU_CREDENTIAL_PURPOSES } from './payuConfig';
 import type {
@@ -24,8 +25,11 @@ class PayUService {
   // ──────────────────────────────────────────────
 
   /** Obtener credenciales de PayU para una conexión */
-  async getCredentials(connectionId: string): Promise<PayUCredentials | null> {
-    const { data, error } = await supabase
+  // GO-sec (2026-09-24): en el SERVIDOR, `supabase` (config) es anónimo y RLS no le
+  // deja leer `integration_credentials`; las rutas pasan `getServiceClient()` DESPUÉS de
+  // verificar que la conexión es de la organización de la sesión.
+  async getCredentials(connectionId: string, db: SupabaseClient = supabase): Promise<PayUCredentials | null> {
+    const { data, error } = await db
       .from('integration_credentials')
       .select('purpose, secret_ref')
       .eq('connection_id', connectionId);
@@ -337,7 +341,10 @@ class PayUService {
       const raw = `${apiKey}~${merchantId}~${reference_sale}~${roundedValue}~${currency}~${state_pol}`;
       const calculated = crypto.createHash('md5').update(raw).digest('hex');
 
-      return calculated === sign;
+      // Tiempo constante (GO-sec 2026-09-24).
+      const a = Buffer.from(calculated, 'utf8');
+      const b = Buffer.from(String(sign).toLowerCase(), 'utf8');
+      return a.length === b.length && crypto.timingSafeEqual(a, b);
     } catch {
       return false;
     }

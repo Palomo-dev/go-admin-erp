@@ -1,54 +1,57 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+// ============================================================
+// POST /api/integrations/mercadopago/create-payment
+// Crea un pago en MercadoPago con la conexión de la organización.
+//
+// SEGURIDAD (GO-sec, 2026-09-24): antes solo comprobaba `auth.getSession()`
+// y cobraba con el `connection_id` del body: cualquier sesión usaba la cuenta
+// de MercadoPago de otra organización. Ahora: sesión validada (`withOrg`),
+// organización ajena en body o query → 403 y registro (`readOrgBody`),
+// permiso de cobro resuelto en el servidor y la conexión tiene que ser de la
+// organización y de MercadoPago (404 si no). Las credenciales salen de la
+// conexión, nunca del body. Ver `accesoIntegraciones.ts`.
+// ============================================================
+
+import { NextResponse } from 'next/server';
+import { withOrg } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
+import { OrgContextError } from '@/lib/utils/orgContextError';
+import { getServiceClient } from '@/lib/supabase/server-service';
 import { mercadopagoService } from '@/lib/services/integrations/mercadopago';
 import type { CreatePaymentRequest } from '@/lib/services/integrations/mercadopago';
+import {
+  CONECTORES,
+  conexionDelProveedor,
+  exigirPermiso,
+  PERMISO_COBRO,
+  registrarError,
+} from '@/lib/services/integrations/accesoIntegraciones';
 
-export async function POST(request: NextRequest) {
+const RUTA = '/api/integrations/mercadopago/create-payment';
+
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const body = await readOrgBody<Record<string, unknown>>(ctx, request, { route: RUTA });
+    await exigirPermiso(ctx, PERMISO_COBRO, RUTA);
 
-    if (!session) {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    const paymentData = body.payment_data;
+    if (!paymentData || typeof paymentData !== 'object' || Array.isArray(paymentData)) {
+      return NextResponse.json({ error: 'payment_data es requerido' }, { status: 400 });
     }
 
-    const body = await request.json();
-    const { connection_id, payment_data } = body as {
-      connection_id: string;
-      payment_data: CreatePaymentRequest;
-    };
-
-    if (!connection_id || !payment_data) {
-      return NextResponse.json(
-        { error: 'connection_id y payment_data son requeridos' },
-        { status: 400 }
-      );
-    }
-
-    // Obtener credenciales
-    const credentials = await mercadopagoService.getCredentials(connection_id);
+    const conexion = await conexionDelProveedor(ctx, body.connection_id, CONECTORES.mercadopago, RUTA);
+    const credentials = await mercadopagoService.getCredentials(conexion.id, getServiceClient());
     if (!credentials?.accessToken) {
       return NextResponse.json(
-        { error: 'No se encontraron credenciales de MercadoPago para esta conexión' },
-        { status: 404 }
+        { error: 'La conexión de MercadoPago no tiene credenciales activas', code: 'CREDENCIALES_NO_CONFIGURADAS' },
+        { status: 412 },
       );
     }
 
-    // Crear pago
-    const payment = await mercadopagoService.createPayment(
-      credentials.accessToken,
-      payment_data
-    );
-
+    const payment = await mercadopagoService.createPayment(credentials.accessToken, paymentData as CreatePaymentRequest);
     return NextResponse.json({ success: true, data: payment });
-  } catch (error) {
-    console.error('Error creating MercadoPago payment:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Error al crear el pago' },
-      { status: 500 }
-    );
+  } catch (err) {
+    if (err instanceof OrgContextError) throw err;
+    registrarError(RUTA, err);
+    return NextResponse.json({ error: 'Error al crear el pago' }, { status: 500 });
   }
-}
+});

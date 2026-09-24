@@ -1,19 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { whatsappQrService } from '@/lib/services/integrations/whatsapp/whatsappQrService';
 import type { QrInboundPayload } from '@/lib/services/integrations/whatsapp/whatsappQrService';
+import { safeEqual } from '@/lib/security/webhookSignatures';
 
 // POST: Webhook de Evolution API
 // Este endpoint NO requiere auth de usuario: lo llama Evolution API.
-// Opcionalmente valida apikey si EVOLUTION_API_KEY está configurada.
+//
+// Credencial del proveedor: la API key global de Evolution
+// (`EVOLUTION_API_KEY`, la misma con la que el ERP le habla), en la cabecera
+// `apikey` (o `x-qr-server-secret`, servidor QR legado).
+// SEGURIDAD (GO-sec, 2026-09-24): antes la validación era OPCIONAL: sin
+// `EVOLUTION_API_KEY` cualquiera inyectaba mensajes entrantes en las
+// conversaciones. Ahora fail-closed (sin la variable → 401) y comparación en
+// tiempo constante.
 export async function POST(request: NextRequest) {
   try {
-    // Validación opcional de apikey (Evolution API envía header apikey)
     const expectedKey = process.env.EVOLUTION_API_KEY || '';
-    if (expectedKey) {
-      const apiKey = request.headers.get('apikey') || request.headers.get('x-qr-server-secret');
-      if (apiKey !== expectedKey) {
-        return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-      }
+    const apiKey = request.headers.get('apikey') || request.headers.get('x-qr-server-secret') || '';
+    if (!expectedKey || !apiKey || !safeEqual(apiKey, expectedKey)) {
+      console.warn('[WhatsApp QR inbound] rechazado (fail-closed): sin EVOLUTION_API_KEY o apikey inválida');
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
 
     const rawText = await request.text();
@@ -21,8 +27,8 @@ export async function POST(request: NextRequest) {
       // Body vacío (Evolution a veces envía pings vacíos)
       return NextResponse.json({ received: true, skipped: true }, { status: 200 });
     }
+    // El cuerpo (mensajes de terceros) ya no va a los logs.
     const body = JSON.parse(rawText);
-    console.log('[WhatsApp QR inbound] Raw webhook:', JSON.stringify(body).substring(0, 500));
 
     // Mapear formato Evolution API → QrInboundPayload interno
     const payload = mapEvolutionWebhook(body);
@@ -31,7 +37,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, skipped: true }, { status: 200 });
     }
 
-    console.log('[WhatsApp QR inbound] Event:', payload.event, 'from:', payload.from);
+    console.log('[WhatsApp QR inbound] Event:', payload.event);
 
     try {
       await whatsappQrService.processInboundCallback(payload);

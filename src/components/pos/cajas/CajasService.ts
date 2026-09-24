@@ -586,6 +586,10 @@ export class CajasService {
         .select()
         .single();
 
+      // 23505: la base ya tiene una caja abierta en este alcance (índice
+      // `ux_cash_sessions_abierta_por_alcance`, por modo). Pasa cuando otra
+      // pestaña u otro cajero abrió entre la comprobación y el insert.
+      if (error && (error as { code?: string }).code === '23505') throw alreadyOpen;
       if (error) throw error;
 
       console.log('Sesión de caja abierta:', session.id);
@@ -599,12 +603,11 @@ export class CajasService {
   /**
    * Cierra una sesión de caja.
    *
-   * - Sin `target`, o con `target` = la caja activa de quien cierra: el
-   *   camino de siempre (incluido el cierre sin red del Desktop).
-   * - Con otra caja (la de otro cajero desde «Cajas abiertas» o el detalle):
-   *   el cierre pasa por `POST /api/pos/cajas/[id]/cerrar`, que decide en el
-   *   servidor si esta persona puede cerrarla (quien la abrió o permiso de
-   *   administración). Necesita red: la caja ajena no está en el outbox local.
+   * - Con red, siempre por `POST /api/pos/cajas/[id]/cerrar` (la propia y la
+   *   de otro cajero): el servidor decide el permiso y calcula la diferencia.
+   * - Sin red (Desktop), solo la caja activa de quien cierra: va al outbox con
+   *   el esperado calculado en local, que es lo único que ve las ventas sin
+   *   sincronizar.
    */
   static async closeSession(data: CloseCashSessionData, target?: Pick<CashSession, 'id' | 'uuid'>): Promise<CashSession> {
     try {
@@ -621,11 +624,11 @@ export class CajasService {
         throw new ErrorCaja('sin_caja_abierta', 'No hay sesión de caja abierta');
       }
 
-      // Calcular la diferencia
-      const summary = await this.getCashSummary(activeSession.id);
-      const difference = data.final_amount - summary.expected_amount;
-
       if (shouldOperateCashOffline()) {
+        // Calcular la diferencia en local: sin red el servidor no ve las
+        // ventas del outbox. Al sincronizar se guarda este cálculo.
+        const summary = await this.getCashSummary(activeSession.id);
+        const difference = data.final_amount - summary.expected_amount;
         // Fase 4F: cierre sin red → outbox con el resumen calculado sobre
         // réplica + ventas/movimientos locales; la sesión queda cerrada en local.
         const closed = await enqueueCashSessionClose({
@@ -641,21 +644,9 @@ export class CajasService {
         return closed;
       }
 
-      const { data: session, error } = await supabase
-        .from('cash_sessions')
-        .update({
-          closed_at: new Date().toISOString(),
-          closed_by: userId,
-          final_amount: data.final_amount,
-          difference: difference,
-          notes: data.notes || activeSession.notes,
-          status: 'closed'
-        })
-        .eq('id', activeSession.id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      // Con red, también la caja propia se cierra en el servidor: allí se
+      // calcula el esperado y la diferencia (antes los mandaba el navegador).
+      const session = await this.closeOnServer(activeSession.id, data);
 
       // Si esta sesión nació sin red, su estado local ya sobra.
       if (isDesktop() && activeSession.uuid) {
@@ -671,16 +662,23 @@ export class CajasService {
   }
 
   /**
-   * Cierre de una caja que no es la activa de quien cierra. El esperado se
-   * calcula con el mismo `getCashSummary` de siempre; el permiso y la escritura
-   * los hace el servidor.
+   * Cierre de una caja que no es la activa de quien cierra: necesita red (la
+   * caja ajena no está en el outbox local).
    */
   private static async closeOtherSession(sessionId: number, data: CloseCashSessionData): Promise<CashSession> {
     if (sessionId < 0 || shouldOperateCashOffline()) {
       throw new ErrorCaja('cierre_ajeno_sin_red', 'Sin conexión solo puedes cerrar tu propia caja. Vuelve a intentarlo cuando haya red.');
     }
-    const summary = await this.getCashSummary(sessionId);
-    const difference = data.final_amount - summary.expected_amount;
+    return this.closeOnServer(sessionId, data);
+  }
+
+  /**
+   * `POST /api/pos/cajas/[id]/cerrar`: el servidor decide si esta persona
+   * puede cerrarla (quien la abrió o permiso de administración, nunca el
+   * nombre del rol) y calcula el esperado (`pos_caja_esperado`) y la
+   * diferencia. El navegador solo manda lo contado.
+   */
+  private static async closeOnServer(sessionId: number, data: CloseCashSessionData): Promise<CashSession> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.organizationId) headers['x-organization-id'] = String(this.organizationId);
 
@@ -688,7 +686,7 @@ export class CajasService {
       method: 'POST',
       credentials: 'same-origin',
       headers,
-      body: JSON.stringify({ final_amount: data.final_amount, difference, notes: data.notes ?? null }),
+      body: JSON.stringify({ final_amount: data.final_amount, notes: data.notes ?? null }),
     });
     const body = (await response.json().catch(() => null)) as { session?: CashSession; error?: string; codigo?: string } | null;
     if (!response.ok || !body?.session) {

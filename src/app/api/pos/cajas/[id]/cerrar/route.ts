@@ -1,6 +1,6 @@
 /**
- * POST /api/pos/cajas/[id]/cerrar — cierra una caja que NO es la activa de
- * quien cierra: la de otro cajero, desde «Cajas abiertas» o el detalle.
+ * POST /api/pos/cajas/[id]/cerrar — cierra una caja con red: la propia o la
+ * de otro cajero (desde «Cajas abiertas» o el detalle).
  *
  * - La organización sale de la sesión (`getServerOrgContext`); si el body o la
  *   query declaran otra → 403 `FOREIGN_ORGANIZATION` y registro (`readOrgBody`).
@@ -11,8 +11,12 @@
  * - La escritura va con el cliente de sesión (`ctx.supabase`): la RLS de
  *   `cash_sessions` (pertenencia + acceso a la sucursal) sigue aplicando.
  *
- * El esperado lo calcula `CajasService.getCashSummary` en el navegador, igual
- * que en el cierre de la caja propia: aquí llegan el contado y la diferencia.
+ * El esperado lo calcula el servidor (`pos_caja_esperado`, mismas reglas que
+ * `CajasService.getCashSummary`) y la diferencia = contado − esperado se
+ * calcula aquí. Si el body trae `difference` (clientes anteriores) se ignora:
+ * hasta 2026-09-23 se guardaba tal cual la mandaba el navegador.
+ * `CajasService.closeSession` usa esta ruta también para la caja propia cuando
+ * hay red; sin red (Desktop) el cierre va al outbox con el cálculo local.
  */
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -20,6 +24,7 @@ import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { ORG_BODY_KEYS, readOrgBody } from '@/lib/security/organizationBody';
 import { resolverPermisosCaja } from '@/lib/pos/cajas/permisosCaja';
 import { MOTIVO_NO_PUEDE_CERRAR, puedeCerrarCaja } from '@/lib/pos/cajas/reglasCierre';
+import { diferenciaEfectivo } from '@/lib/pos/cajas/arqueo';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +50,8 @@ function codigoDeContexto(code: string | undefined): string {
 const bodySchema = z
   .object({
     final_amount: z.number().finite().min(0).max(IMPORTE_MAXIMO),
-    difference: z.number().finite().min(-IMPORTE_MAXIMO).max(IMPORTE_MAXIMO),
+    // Aceptada por compatibilidad y descartada: la diferencia es del servidor.
+    difference: z.number().finite().min(-IMPORTE_MAXIMO).max(IMPORTE_MAXIMO).optional(),
     notes: z.string().max(5000).nullable().optional(),
   })
   .strict();
@@ -98,7 +104,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: MOTIVO_NO_PUEDE_CERRAR, code: 'CLOSE_FORBIDDEN', codigo: 'sin_permiso' }, { status: 403 });
     }
 
-    const { final_amount, difference, notes } = parsed.data;
+    const { final_amount, notes } = parsed.data;
+    const { data: esperado, error: errorEsperado } = await ctx.supabase.rpc('pos_caja_esperado', { p_session_id: sessionId });
+    const esperadoEfectivo = Number((esperado as { efectivo_esperado?: unknown } | null)?.efectivo_esperado);
+    if (errorEsperado || !Number.isFinite(esperadoEfectivo)) {
+      console.error('[pos/cajas/cerrar] esperado', { sessionId, organizationId: ctx.organizationId, message: errorEsperado?.message });
+      return NextResponse.json({ error: 'No se pudo calcular el esperado de la caja', codigo: 'cierre_fallido' }, { status: 500 });
+    }
+    const difference = diferenciaEfectivo(final_amount, esperadoEfectivo);
+
     const { data: cerrada, error } = await ctx.supabase
       .from('cash_sessions')
       .update({

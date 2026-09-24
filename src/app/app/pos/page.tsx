@@ -37,6 +37,8 @@ import { CASH_OUTBOX_CHANGED_EVENT } from '@/lib/offline/cashOutbox';
 import { isDesktop } from '@/lib/utils/desktop';
 import { CajasService } from '@/components/pos/cajas/CajasService';
 import { useBlindCloseMode } from '@/components/pos/cajas/useBlindCloseMode';
+import { usePermisosCaja } from '@/components/pos/cajas/usePermisosCaja';
+import { puedeCerrarCaja } from '@/lib/pos/cajas/reglasCierre';
 import type { CashSession } from '@/components/pos/cajas/types';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
@@ -73,7 +75,7 @@ export default function POSPage() {
   const [, setDailySummary] = useState<DailySummary | null>(null);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [isOrgAdmin, setIsOrgAdmin] = useState(false);
+  const permisosCaja = usePermisosCaja();
   const { showExpected } = useBlindCloseMode();
   const { formatear } = useMonedaOrganizacion();
   const { timezone } = useOrgTimezone();
@@ -112,21 +114,8 @@ export default function POSPage() {
               if (name) getPosDisplayEmitter().setSession({ cashier: { name } });
             })
             .catch(() => undefined);
-          const { data: memberData } = await supabase
-            .from('organization_members')
-            .select('is_super_admin, role_id, roles(name)')
-            .eq('user_id', user.id)
-            .eq('organization_id', organization?.id || 0)
-            .eq('is_active', true)
-            .single();
-          if (memberData) {
-            const roleName = (memberData.roles as { name?: string } | null)?.name?.toLowerCase() || ''
-            const isAdmin = memberData.is_super_admin ||
-              roleName.includes('admin') ||
-              roleName.includes('owner') ||
-              memberData.role_id === 2;
-            setIsOrgAdmin(isAdmin);
-          }
+          // Quién puede cerrar una caja ajena lo decide el servidor
+          // (`usePermisosCaja`), nunca el nombre del rol (regla dura 6).
         }
       } catch (err) {
         console.warn('Error loading user info:', err);
@@ -628,7 +617,7 @@ export default function POSPage() {
                 {/* Botones de Caja - Abrir/Cerrar */}
                 {cashSession ? (
                   (() => {
-                    const canClose = isOrgAdmin || cashSession.opened_by === currentUserId;
+                    const canClose = puedeCerrarCaja(cashSession, permisosCaja.userId ?? currentUserId, permisosCaja.cerrarCajasAjenas);
                     if (!canClose) {
                       return (
                         <Button

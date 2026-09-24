@@ -1,48 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
 import { cancelSubscription, reactivateSubscription } from '@/lib/stripe/subscriptionService';
+import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
 
+/**
+ * GO-sec (2026-09-24): sesión verificada (`auth.getUser`, no `getSession`),
+ * membresía activa y permiso de facturación resuelto en el servidor
+ * (`contextoDeFacturacion`: admin o `billing_management`), en lugar de
+ * `role_id !== 2`, que dejaba fuera al rol 1 y a los cargos con permiso.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    let body: { organizationId?: unknown; immediate?: unknown; action?: unknown };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
     }
 
-    const { organizationId, immediate = false, action = 'cancel' } = await request.json();
-
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: 'organizationId es requerido' },
-        { status: 400 }
-      );
-    }
-
-    // Verificar permisos
-    const { data: memberData, error: memberError } = await supabase
-      .from('organization_members')
-      .select('role_id, is_super_admin')
-      .eq('organization_id', organizationId)
-      .eq('user_id', session.user.id)
-      .eq('is_active', true)
-      .single();
-
-    if (memberError || !memberData) {
-      return NextResponse.json(
-        { error: 'No tienes permisos para modificar esta organización' },
-        { status: 403 }
-      );
-    }
-
-    if (memberData.role_id !== 2 && !memberData.is_super_admin) {
-      return NextResponse.json(
-        { error: 'Solo los administradores pueden gestionar la suscripción' },
-        { status: 403 }
-      );
-    }
+    const ctx = await contextoDeFacturacion(body.organizationId, 'subscriptions/cancel');
+    const supabase = ctx.supabase;
+    const organizationId = ctx.organizationId;
+    const immediate = body.immediate === true;
+    const action = body.action === 'reactivate' ? 'reactivate' : 'cancel';
 
     // Obtener suscripción actual (incluir past_due para permitir reactivar/cancelar)
     const { data: subscription, error: subError } = await supabase
@@ -137,11 +117,7 @@ export async function POST(request: NextRequest) {
       action
     });
 
-  } catch (error: any) {
-    console.error('Error en cancel/reactivate subscription:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error interno del servidor' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return routeErrorResponse('subscriptions/cancel', error);
   }
 }

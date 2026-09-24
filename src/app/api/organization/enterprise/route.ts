@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -47,17 +49,27 @@ function calculateEnterprisePrice(config: EnterpriseConfig): { monthly: number; 
   return { monthly, yearly };
 }
 
+/**
+ * GO-sec (2026-09-24): antes la organización salía del body sin comprobar
+ * pertenencia y se escribía con service role (y se creaban productos en
+ * Stripe) para cualquier organización. Ahora `contextoDeFacturacion`: sesión,
+ * membresía activa y admin o `billing_management` en ESA organización.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { organizationId, config } = body as {
-      organizationId: number;
-      config: EnterpriseConfig;
-    };
+    let body: { organizationId?: unknown; config?: EnterpriseConfig };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
+    }
+    const ctx = await contextoDeFacturacion(body.organizationId, 'organization/enterprise');
+    const organizationId = ctx.organizationId;
+    const config = body.config;
 
-    if (!organizationId || !config) {
+    if (!config) {
       return NextResponse.json(
-        { error: 'organizationId y config requeridos' },
+        { error: 'config requerido' },
         { status: 400 }
       );
     }
@@ -148,26 +160,16 @@ export async function POST(request: NextRequest) {
       stripe_product_id: product.id,
       stripe_price_id: stripePrice.id,
     });
-  } catch (error: any) {
-    console.error('Error creating enterprise config:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error interno' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return routeErrorResponse('organization/enterprise', error);
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const organizationId = searchParams.get('organizationId');
-
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: 'organizationId requerido' },
-        { status: 400 }
-      );
-    }
+    const ctx = await contextoDeFacturacion(searchParams.get('organizationId'), 'organization/enterprise');
+    const organizationId = ctx.organizationId;
 
     const supabase = getSupabase();
 
@@ -199,11 +201,7 @@ export async function GET(request: NextRequest) {
       calculated_price_yearly: subscription.metadata?.calculated_price_yearly || null,
       stripe_price_id: subscription.metadata?.stripe_price_id || null,
     });
-  } catch (error: any) {
-    console.error('Error getting enterprise config:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error interno' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return routeErrorResponse('organization/enterprise', error);
   }
 }

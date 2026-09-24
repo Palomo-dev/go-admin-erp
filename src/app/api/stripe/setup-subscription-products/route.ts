@@ -6,15 +6,23 @@
  * para las suscripciones del sistema.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe/server'
+import { withPlatformAdmin } from '@/lib/security/platformAdmin'
 
 /**
  * POST /api/stripe/setup-subscription-products
- * 
+ *
  * Crea productos y precios de suscripción en Stripe
+ *
+ * GO-sec (2026-09-24): utilidad interna de la plataforma. Antes era pública
+ * (`/api/stripe/` está fuera del middleware): cualquiera creaba productos y
+ * precios en la cuenta Stripe de GO Admin. Ahora exige sesión + administrador
+ * de plataforma (`fn_is_platform_admin`) → 401/403. Sin llamadores en el código;
+ * se usa a mano (docs/STRIPE_SUBSCRIPTIONS_SETUP.md), ahora con la sesión de
+ * un administrador de plataforma.
  */
-export async function POST(request: NextRequest) {
+export const POST = withPlatformAdmin(async (_ctx, request) => {
   try {
     if (!stripe) {
       return NextResponse.json(
@@ -135,24 +143,10 @@ export async function POST(request: NextRequest) {
         },
       },
     })
-  } catch (error: any) {
-    console.error('❌ Error creando productos:', error)
-    return NextResponse.json(
-      {
-        error: error.message || 'Error creando productos',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      },
-      { status: 500 }
-    )
+  } catch (error: unknown) {
+    console.error('❌ Error creando productos:', error instanceof Error ? error.message : String(error))
+    return NextResponse.json({ error: 'Error creando productos' }, { status: 500 })
   }
-}
+})
 
-/**
- * GET - No permitido
- */
-export async function GET() {
-  return NextResponse.json(
-    { error: 'Método no permitido' },
-    { status: 405 }
-  )
-}
+// Sin GET: Next responde 405 por sí solo a los métodos no exportados.

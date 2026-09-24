@@ -203,7 +203,15 @@ describe('middleware · webhooks y crons que se autentican solos llegan sin cook
     '/api/integrations/sendgrid/webhook',
     '/api/crm/contracts/webhook',
     '/api/crm/voice-agents/campaigns/run',
+    // GO-sec 2026-09-24, tras 6f7c97e7: fail-closed (401) y nada se escribe antes de verificar.
+    '/api/integrations/mercadopago/webhook',
+    '/api/integrations/payu/webhook',
+    '/api/integrations/paypal/webhook',
+    '/api/integrations/stripe/webhook',
+    '/api/integrations/meta/webhook',
+    '/api/integrations/tiktok/webhook',
     // Ya excluidas antes (se comprueba que siguen):
+    '/api/stripe/webhook',
     '/api/cron/reconcile-web-orders',
     '/api/crm/jobs/run',
     '/api/factus/process-pending',
@@ -222,14 +230,31 @@ describe('middleware · webhooks y crons que se autentican solos llegan sin cook
     const src = fs.readFileSync(path.join(process.cwd(), 'src', 'middleware.ts'), 'utf8');
     const matcher = /matcher:\s*\[[\s\S]*?'([^']+)'/.exec(src)?.[1] ?? '';
     const re = new RegExp(`^/${matcher.replace(/^\/\((.*)\)$/, '$1')}$`);
-    for (const ruta of EXCLUIDAS.slice(0, 8)) expect(re.test(ruta)).toBe(false);
-    for (const ruta of ['/app/inicio', '/app/pos', '/api/organization/members', '/api/integrations/mercadopago/webhook', '/api/webhooks/facebook/1']) {
+    for (const ruta of EXCLUIDAS.slice(0, 15)) expect(re.test(ruta)).toBe(false);
+    for (const ruta of [
+      '/app/inicio',
+      '/app/pos',
+      '/api/organization/members',
+      '/api/integrations/mercadopago/create-payment',
+      '/api/webhooks/facebook/1',
+      // GO-sec 2026-09-24: ya no se excluyen (rutas borradas o que ahora exigen sesión).
+      '/api/super-admin-cleanup',
+      '/api/sessions',
+      '/api/test-geolocation',
+    ]) {
       expect(re.test(ruta)).toBe(true);
     }
   });
 
-  it('los webhooks que NO son fail-closed siguen pasando por el middleware (no se excluyen)', async () => {
-    for (const ruta of ['/api/integrations/mercadopago/webhook', '/api/integrations/tiktok/webhook', '/api/webhooks/instagram/9']) {
+  it('super-admin-cleanup y las rutas borradas pasan por el middleware: sin cookie → 401 JSON', async () => {
+    for (const ruta of ['/api/super-admin-cleanup', '/api/sessions', '/api/sessions/activity', '/api/test-geolocation']) {
+      const res = await middleware(peticion(ruta, { method: 'POST' }), evento);
+      expect(res.status).toBe(401);
+    }
+  });
+
+  it('los webhooks que NO se han revisado como fail-closed siguen pasando por el middleware (no se excluyen)', async () => {
+    for (const ruta of ['/api/webhooks/instagram/9', '/api/integrations/mercadopago/create-payment']) {
       const res = await middleware(peticion(ruta, { method: 'POST' }), evento);
       expect(res.status).toBe(401);
     }

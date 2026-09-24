@@ -1,83 +1,88 @@
 /**
  * API para crear Setup Intent de Stripe
  * Permite agregar método de pago durante el registro
+ *
+ * Ruta PÚBLICA a propósito: el paso de tarjeta del alta (/auth/signup y el
+ * asistente de nueva organización) ocurre antes de que exista la cuenta, así
+ * que no hay sesión que exigir. GO-sec (auditoría 2026-09-24) la deja
+ * inofensiva en lugar de abierta:
+ *
+ * POST
+ *  - Antes buscaba el cliente de Stripe EXISTENTE por correo (o aceptaba un
+ *    `tempCustomerId` cualquiera) y devolvía su id y un SetupIntent sobre él:
+ *    con el correo de otra persona se le colgaba una tarjeta a su cliente.
+ *    Ahora SIEMPRE crea un cliente nuevo de alta (`clienteDeAlta.ts`); nunca
+ *    lista clientes por correo ni acepta un id del cliente.
+ *  - Límite por IP (crear objetos en Stripe cuesta y no debe poder
+ *    automatizarse sin freno).
+ *
+ * GET ?setupIntentId=seti_…
+ *  - Solo actúa sobre SetupIntents del alta (`metadata.source = signup_flow`)
+ *    cuyo cliente sigue siendo un cliente de alta pendiente; si no, 404 sin
+ *    tocar nada. Antes fijaba la tarjeta como predeterminada de CUALQUIER
+ *    cliente dueño del SetupIntent.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe/server'
+import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit'
+import { ESTADO_PENDIENTE, ORIGEN_ALTA, esClienteDeAltaPendiente, recuperarCliente } from '@/lib/stripe/clienteDeAlta'
+
+export const dynamic = 'force-dynamic'
+
+const LIMITE_POST_IP = { limit: 10, windowMs: 15 * 60 * 1000 }
+const LIMITE_GET_IP = { limit: 30, windowMs: 15 * 60 * 1000 }
+const CORREO_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/
+
+function demasiadas() {
+  return NextResponse.json({ success: false, error: 'Demasiadas solicitudes. Intenta en unos minutos.' }, { status: 429 })
+}
 
 export async function POST(request: NextRequest) {
   try {
     if (!stripe) {
-      return NextResponse.json(
-        { error: 'Stripe no está configurado. Verifica STRIPE_SECRET_KEY.' },
-        { status: 500 }
-      )
+      return NextResponse.json({ success: false, error: 'Stripe no está configurado' }, { status: 503 })
     }
 
-    const body = await request.json()
-    const { email, name, tempCustomerId } = body
+    const ip = getClientIp(request)
+    const rl = await checkRateLimits([{ key: `stripe:setup-intent:post:ip:${ip}`, opts: LIMITE_POST_IP }])
+    if (!rl.allowed) return demasiadas()
 
-    if (!email) {
-      return NextResponse.json(
-        { success: false, error: 'Email es requerido' },
-        { status: 400 }
-      )
+    let body: { email?: unknown; name?: unknown }
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ success: false, error: 'JSON inválido' }, { status: 400 })
+    }
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+    const name = typeof body.name === 'string' ? body.name.trim().slice(0, 200) : ''
+
+    if (!CORREO_RE.test(email)) {
+      return NextResponse.json({ success: false, error: 'Email es requerido' }, { status: 400 })
     }
 
-    let customerId = tempCustomerId
-
-    // Si no hay customer temporal, crear uno nuevo o buscar existente
-    if (!customerId) {
-      // Buscar si ya existe un customer con este email
-      const existingCustomers = await stripe.customers.list({
-        email: email,
-        limit: 1,
-      })
-
-      if (existingCustomers.data.length > 0) {
-        customerId = existingCustomers.data[0].id
-        console.log('✅ Customer existente encontrado:', customerId)
-      } else {
-        // Crear customer temporal
-        const customer = await stripe.customers.create({
-          email: email,
-          name: name || undefined,
-          metadata: {
-            source: 'signup_flow',
-            status: 'pending_verification',
-          },
-        })
-        customerId = customer.id
-        console.log('✅ Customer temporal creado:', customerId)
-      }
-    }
-
-    // Crear Setup Intent para verificar el método de pago
-    const setupIntent = await stripe.setupIntents.create({
-      customer: customerId,
-      payment_method_types: ['card'],
-      usage: 'off_session', // Para cobros futuros
-      metadata: {
-        source: 'signup_flow',
-      },
+    const customer = await stripe.customers.create({
+      email,
+      name: name || undefined,
+      metadata: { source: ORIGEN_ALTA, status: ESTADO_PENDIENTE },
     })
 
-    console.log('✅ Setup Intent creado:', setupIntent.id)
+    const setupIntent = await stripe.setupIntents.create({
+      customer: customer.id,
+      payment_method_types: ['card'],
+      usage: 'off_session', // Para cobros futuros
+      metadata: { source: ORIGEN_ALTA },
+    })
 
     return NextResponse.json({
       success: true,
       clientSecret: setupIntent.client_secret,
-      customerId: customerId,
+      customerId: customer.id,
       setupIntentId: setupIntent.id,
     })
-
-  } catch (error: any) {
-    console.error('❌ Error creando Setup Intent:', error)
-    return NextResponse.json(
-      { success: false, error: error.message || 'Error interno del servidor' },
-      { status: 500 }
-    )
+  } catch (error: unknown) {
+    console.error('[stripe/setup-intent] Error creando Setup Intent:', error instanceof Error ? error.message : String(error))
+    return NextResponse.json({ success: false, error: 'Error interno del servidor' }, { status: 500 })
   }
 }
 
@@ -87,31 +92,36 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     if (!stripe) {
-      return NextResponse.json(
-        { error: 'Stripe no está configurado. Verifica STRIPE_SECRET_KEY.' },
-        { status: 500 }
-      )
+      return NextResponse.json({ success: false, error: 'Stripe no está configurado' }, { status: 503 })
     }
 
-    const { searchParams } = new URL(request.url)
-    const setupIntentId = searchParams.get('setupIntentId')
+    const ip = getClientIp(request)
+    const rl = await checkRateLimits([{ key: `stripe:setup-intent:get:ip:${ip}`, opts: LIMITE_GET_IP }])
+    if (!rl.allowed) return demasiadas()
 
-    if (!setupIntentId) {
-      return NextResponse.json(
-        { success: false, error: 'Setup Intent ID es requerido' },
-        { status: 400 }
-      )
+    const setupIntentId = request.nextUrl.searchParams.get('setupIntentId') ?? ''
+    if (!/^seti_[A-Za-z0-9]{6,64}$/.test(setupIntentId)) {
+      return NextResponse.json({ success: false, error: 'Setup Intent ID es requerido' }, { status: 400 })
     }
 
-    const setupIntent = await stripe.setupIntents.retrieve(setupIntentId)
+    const noEncontrado = NextResponse.json({ success: false, error: 'Setup Intent no encontrado' }, { status: 404 })
 
-    // Obtener información del método de pago si está confirmado
+    let setupIntent
+    try {
+      setupIntent = await stripe.setupIntents.retrieve(setupIntentId)
+    } catch {
+      return noEncontrado
+    }
+    const customerId = typeof setupIntent.customer === 'string' ? setupIntent.customer : setupIntent.customer?.id
+    if (setupIntent.metadata?.source !== ORIGEN_ALTA || !customerId) return noEncontrado
+    if (!esClienteDeAltaPendiente(await recuperarCliente(stripe, customerId))) return noEncontrado
+
     let paymentMethodDetails = null
     if (setupIntent.status === 'succeeded' && setupIntent.payment_method) {
-      const paymentMethod = await stripe.paymentMethods.retrieve(
-        setupIntent.payment_method as string
-      )
-      
+      const paymentMethodId =
+        typeof setupIntent.payment_method === 'string' ? setupIntent.payment_method : setupIntent.payment_method.id
+      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId)
+
       paymentMethodDetails = {
         id: paymentMethod.id,
         brand: paymentMethod.card?.brand,
@@ -120,29 +130,20 @@ export async function GET(request: NextRequest) {
         expYear: paymentMethod.card?.exp_year,
       }
 
-      // Establecer como método de pago por defecto del customer
-      if (setupIntent.customer) {
-        await stripe.customers.update(setupIntent.customer as string, {
-          invoice_settings: {
-            default_payment_method: paymentMethod.id,
-          },
-        })
-        console.log('✅ Método de pago establecido como default')
-      }
+      // Predeterminada SOLO del cliente de alta que creó este mismo flujo.
+      await stripe.customers.update(customerId, {
+        invoice_settings: { default_payment_method: paymentMethod.id },
+      })
     }
 
     return NextResponse.json({
       success: true,
       status: setupIntent.status,
       paymentMethod: paymentMethodDetails,
-      customerId: setupIntent.customer,
+      customerId,
     })
-
-  } catch (error: any) {
-    console.error('❌ Error verificando Setup Intent:', error)
-    return NextResponse.json(
-      { success: false, error: error.message || 'Error interno del servidor' },
-      { status: 500 }
-    )
+  } catch (error: unknown) {
+    console.error('[stripe/setup-intent] Error verificando Setup Intent:', error instanceof Error ? error.message : String(error))
+    return NextResponse.json({ success: false, error: 'Error interno del servidor' }, { status: 500 })
   }
 }

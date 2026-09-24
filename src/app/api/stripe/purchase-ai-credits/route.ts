@@ -10,6 +10,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe/server';
+import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -34,24 +36,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const cookieHeader = request.headers.get('cookie') || '';
-    let userId = null;
-
-    const userIdMatch = cookieHeader.match(/sb-user-id=([^;]+)/);
-    if (userIdMatch) {
-      try {
-        userId = decodeURIComponent(userIdMatch[1]);
-      } catch (e) {
-        userId = userIdMatch[1];
-      }
+    let body: { organizationId?: unknown; creditsAmount?: unknown };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
     }
 
-    const effectiveUserId = userId || '00000000-0000-0000-0000-000000000000';
+    // GO-sec (2026-09-24): sesión + membresía + permiso de facturación. Antes
+    // no había autenticación (`/api/stripe/` está fuera del middleware) y el
+    // usuario salía de una cookie `sb-user-id` que controla el navegador.
+    const ctx = await contextoDeFacturacion(body.organizationId, 'stripe/purchase-ai-credits');
+    const organizationId = ctx.organizationId;
+    const effectiveUserId = ctx.userId;
+    const creditsAmount = Number(body.creditsAmount);
+
+    // Service role SOLO después de la comprobación.
     const supabase = createSupabaseClient();
 
-    const { organizationId, creditsAmount } = await request.json();
-
-    if (!organizationId || !creditsAmount || creditsAmount < 100) {
+    if (!Number.isInteger(creditsAmount) || creditsAmount < 100) {
       return NextResponse.json(
         { error: 'Parámetros inválidos: organizationId y creditsAmount (min 100) son requeridos' },
         { status: 400 }
@@ -107,8 +110,8 @@ export async function POST(request: NextRequest) {
     if (customerId) {
       try {
         await stripe.customers.retrieve(customerId);
-      } catch (retrieveErr: any) {
-        console.warn('⚠️ Stripe customer no encontrado, creando uno nuevo:', retrieveErr.message);
+      } catch (retrieveErr: unknown) {
+        console.warn('⚠️ Stripe customer no encontrado, creando uno nuevo:', retrieveErr instanceof Error ? retrieveErr.message : String(retrieveErr));
         customerId = undefined;
       }
     }
@@ -190,11 +193,7 @@ export async function POST(request: NextRequest) {
       sessionId: session.id,
       url: session.url,
     });
-  } catch (error: any) {
-    console.error('❌ Error creando checkout session para créditos IA:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error interno del servidor' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return routeErrorResponse('stripe/purchase-ai-credits', error);
   }
 }

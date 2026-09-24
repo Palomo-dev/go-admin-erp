@@ -1,200 +1,88 @@
 /**
- * API Endpoint: Confirmar cambio de plan después de checkout
- * GO Admin ERP - Endpoint para actualizar plan sin depender del webhook
- * 
- * Este endpoint se llama desde el frontend después de un checkout exitoso
- * para actualizar inmediatamente el plan en la base de datos.
- * 
- * POST /api/stripe/confirm-plan-change
+ * POST /api/stripe/confirm-plan-change — confirma en la base un cambio de plan
+ * pagado con Stripe Checkout, sin esperar al webhook.
+ *
+ * GO-sec (auditoría 2026-09-24). Antes no tenía autenticación (y
+ * `/api/stripe/` está fuera del middleware), usaba service role y tomaba la
+ * organización del BODY por encima de la metadata del Checkout
+ * (`organizationId || metadata.organizationId`): con un Checkout pagado propio
+ * cualquiera cambiaba el plan de otra organización.
+ *
+ * Ahora, en este orden:
+ *  1. Sesión y organización activa (`getServerOrgContext`) → 401/403.
+ *  2. Permiso de facturación en ESA organización (admin o
+ *     `billing_management`, resuelto en el servidor) → 403.
+ *  3. Una organización en el body o la query distinta de la de la sesión →
+ *     403 + registro (`readOrgBody`). El body ya no decide nada.
+ *  4. El Checkout se lee de Stripe y su `metadata.organizationId` (puesta por
+ *     el servidor en `create-checkout-session`) debe ser la organización de la
+ *     sesión → si no, 403 + registro.
+ *  5. Solo Checkouts de plan (`mode: subscription`, no addons) y completados.
+ *  6. `aplicarCheckoutDePlan` (el mismo que usa el webhook), idempotente:
+ *     repetir la llamada o que llegue también el webhook no escribe dos veces.
+ *
+ * Llamadores: ninguno en este repositorio ni en go-admin-super ni en
+ * go-admin-sellers (verificado 2026-09-24); el webhook `checkout.session.
+ * completed` hace el mismo trabajo. Se conserva endurecida porque el retorno
+ * del Checkout (`?checkout=success&session_id=…`) puede usarla.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { stripe } from '@/lib/stripe/server'
+import { NextResponse } from 'next/server';
+import { stripe } from '@/lib/stripe/server';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { getServerOrgContext, OrgContextError, readOrgBody } from '@/lib/utils/orgContext';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
+import { exigirPermisoDeFacturacion } from '@/lib/stripe/contextoFacturacion';
+import { aplicarCheckoutDePlan, organizacionDelCheckout } from '@/lib/stripe/aplicarCheckoutDePlan';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const RUTA = 'stripe/confirm-plan-change';
 
-function createSupabaseClient() {
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
+    const ctx = await getServerOrgContext(request);
+    await exigirPermisoDeFacturacion(ctx, RUTA);
+
+    const body = (await readOrgBody<Record<string, unknown> | null>(ctx, request)) ?? {};
+
+    const sessionId = typeof body.sessionId === 'string' ? body.sessionId.trim() : '';
+    if (!/^cs_[A-Za-z0-9_]{8,255}$/.test(sessionId)) {
+      return NextResponse.json({ error: 'sessionId inválido' }, { status: 400 });
+    }
     if (!stripe) {
-      return NextResponse.json(
-        { error: 'Stripe no está configurado. Verifica STRIPE_SECRET_KEY.' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Stripe no está configurado' }, { status: 503 });
     }
 
-    const { sessionId, organizationId } = await request.json();
+    const checkout = await stripe.checkout.sessions.retrieve(sessionId);
 
-    if (!sessionId) {
-      return NextResponse.json(
-        { error: 'sessionId es requerido' },
-        { status: 400 }
-      );
+    const orgDelCheckout = organizacionDelCheckout(checkout);
+    if (orgDelCheckout !== ctx.organizationId) {
+      console.warn('[stripe/confirm-plan-change] el Checkout es de otra organización → 403', {
+        organizationId: ctx.organizationId,
+        userId: ctx.userId,
+        checkoutOrganizationId: orgDelCheckout || null,
+      });
+      throw new OrgContextError('Ese pago no es de tu organización', 403, 'FOREIGN_ORGANIZATION');
     }
 
-    const supabase = createSupabaseClient();
-
-    // Obtener la sesión de checkout de Stripe
-    const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId);
-    
-    if (!checkoutSession) {
-      return NextResponse.json(
-        { error: 'Checkout session no encontrado' },
-        { status: 404 }
-      );
+    if (checkout.mode !== 'subscription' || checkout.metadata?.type === 'addon_subscription') {
+      return NextResponse.json({ error: 'El Checkout no es un cambio de plan' }, { status: 400 });
+    }
+    if (checkout.status !== 'complete') {
+      return NextResponse.json({ error: 'Checkout no completado', status: checkout.status }, { status: 409 });
     }
 
-    // Verificar que el pago fue exitoso
-    if (checkoutSession.payment_status !== 'paid' && checkoutSession.status !== 'complete') {
-      return NextResponse.json(
-        { error: 'Checkout no completado', status: checkoutSession.status },
-        { status: 400 }
-      );
+    const resultado = await aplicarCheckoutDePlan(getServiceClient(), stripe, checkout);
+    if (resultado.estado === 'invalido') {
+      return NextResponse.json({ error: resultado.motivo }, { status: 422 });
     }
-
-    const metadata = checkoutSession.metadata || {};
-    const orgId = organizationId || parseInt(metadata.organizationId || '0');
-    const planCode = metadata.planCode;
-    const billingPeriod = metadata.billingPeriod;
-    const subscriptionId = checkoutSession.subscription as string;
-    const customerId = checkoutSession.customer as string;
-
-    if (!orgId || !planCode) {
-      return NextResponse.json(
-        { error: 'Falta metadata necesaria', metadata },
-        { status: 400 }
-      );
-    }
-
-    // Obtener el plan de la base de datos
-    const { data: plan, error: planError } = await supabase
-      .from('plans')
-      .select('id, code, name, max_modules, max_branches')
-      .eq('code', planCode)
-      .single();
-
-    if (planError || !plan) {
-      return NextResponse.json(
-        { error: 'Plan no encontrado', planCode },
-        { status: 404 }
-      );
-    }
-
-    // Obtener detalles de la suscripción de Stripe
-    let stripeSubscription: any = null;
-    if (subscriptionId) {
-      stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
-    }
-
-    // Buscar suscripción existente
-    const { data: existingSub } = await supabase
-      .from('subscriptions')
-      .select('id, metadata')
-      .eq('organization_id', orgId)
-      .single();
-
-    // Preparar datos de actualización
-    const updateData: any = {
-      plan_id: plan.id,
-      stripe_subscription_id: subscriptionId,
-      stripe_customer_id: customerId,
-      status: stripeSubscription?.status || 'active',
-      billing_period: billingPeriod,
-      current_period_start: stripeSubscription 
-        ? new Date(stripeSubscription.current_period_start * 1000).toISOString()
-        : new Date().toISOString(),
-      current_period_end: stripeSubscription
-        ? new Date(stripeSubscription.current_period_end * 1000).toISOString()
-        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      trial_start: stripeSubscription?.trial_start 
-        ? new Date(stripeSubscription.trial_start * 1000).toISOString()
-        : null,
-      trial_end: stripeSubscription?.trial_end
-        ? new Date(stripeSubscription.trial_end * 1000).toISOString()
-        : null,
-      cancel_at_period_end: false,
-      updated_at: new Date().toISOString(),
-    };
-
-    // Si hay configuración Enterprise en metadata, preservarla
-    if (metadata.enterpriseConfig) {
-      try {
-        const enterpriseConfig = JSON.parse(metadata.enterpriseConfig);
-        updateData.metadata = {
-          ...(existingSub?.metadata || {}),
-          custom_config: {
-            ...enterpriseConfig,
-            billing_period: billingPeriod
-          },
-          is_enterprise_custom: true
-        };
-      } catch (e) {
-        console.warn('Error parsing enterpriseConfig:', e);
-      }
-    }
-
-    // Actualizar o crear suscripción
-    let result;
-    if (existingSub) {
-      result = await supabase
-        .from('subscriptions')
-        .update(updateData)
-        .eq('id', existingSub.id)
-        .select();
-    } else {
-      result = await supabase
-        .from('subscriptions')
-        .insert({
-          ...updateData,
-          organization_id: orgId,
-          created_at: new Date().toISOString(),
-        })
-        .select();
-    }
-
-    if (result.error) {
-      return NextResponse.json(
-        { error: 'Error actualizando suscripción', details: result.error },
-        { status: 500 }
-      );
-    }
-
-    // Actualizar plan_id en la organización
-    await supabase
-      .from('organizations')
-      .update({
-        plan_id: plan.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', orgId);
 
     return NextResponse.json({
       success: true,
-      message: 'Plan actualizado exitosamente',
-      plan: {
-        id: plan.id,
-        code: plan.code,
-        name: plan.name
-      },
-      subscription: result.data?.[0]
+      alreadyApplied: resultado.estado === 'ya_aplicado',
+      plan: resultado.plan,
     });
-
-  } catch (error: any) {
-    console.error('Error en confirm-plan-change:', error);
-    return NextResponse.json(
-      { error: 'Error interno', message: error.message },
-      { status: 500 }
-    );
+  } catch (err) {
+    return routeErrorResponse(RUTA, err);
   }
 }
 

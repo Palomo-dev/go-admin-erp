@@ -13,7 +13,21 @@ import { constructWebhookEvent } from '@/lib/stripe/server'
 import { processSuccessfulPayment } from '@/lib/stripe/paymentService'
 import { StripeEventType } from '@/lib/stripe/types'
 import { createClient } from '@supabase/supabase-js'
+import { getServiceClient } from '@/lib/supabase/server-service'
+import { aplicarCheckoutDePlan } from '@/lib/stripe/aplicarCheckoutDePlan'
 import type Stripe from 'stripe'
+
+/** Campos de la factura de Stripe que se leen (en las versiones nuevas de la API ya no están todos tipados). */
+type FacturaStripe = {
+  id: string
+  subscription?: string | null
+  total_paid_amount?: number
+  amount_paid?: number
+  total?: number
+}
+
+/** Periodo de la suscripción (en «basil» y posteriores vive en los ítems; aquí se lee donde esté). */
+type PeriodoSuscripcion = { current_period_start: number; current_period_end: number }
 
 /**
  * POST /api/stripe/webhook
@@ -40,8 +54,8 @@ export async function POST(request: NextRequest) {
     try {
       event = constructWebhookEvent(body, signature)
       console.log('✅ Webhook verificado:', event.type, '- ID:', event.id)
-    } catch (error: any) {
-      console.error('❌ Error verificando webhook:', error.message)
+    } catch (error: unknown) {
+      console.error('❌ Error verificando webhook:', error instanceof Error ? error.message : String(error))
       return NextResponse.json(
         { error: 'Webhook signature verification failed' },
         { status: 400 }
@@ -57,7 +71,7 @@ export async function POST(request: NextRequest) {
         try {
           await processSuccessfulPayment(paymentIntent.id)
           console.log('✅ Pago procesado y guardado en BD')
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('❌ Error procesando pago exitoso:', error)
           // No retornar error a Stripe para evitar reintentos infinitos
           // El pago ya se procesó en Stripe, solo falló guardar en nuestra BD
@@ -111,7 +125,7 @@ export async function POST(request: NextRequest) {
 
       // Checkout Session completada (nuevo upgrade de plan)
       case 'checkout.session.completed': {
-        const checkoutSession = event.data.object as any
+        const checkoutSession = event.data.object as Stripe.Checkout.Session
         console.log('🎉 Checkout Session completada:', checkoutSession.id)
         
         if (checkoutSession.mode === 'subscription') {
@@ -156,7 +170,7 @@ export async function POST(request: NextRequest) {
       }
 
       case 'invoice.payment_succeeded': {
-        const invoice = event.data.object as any
+        const invoice = event.data.object as FacturaStripe
         console.log('✅ Pago de factura exitoso:', invoice.id)
         if (invoice.subscription) {
           console.log('   Para suscripción:', invoice.subscription)
@@ -166,7 +180,7 @@ export async function POST(request: NextRequest) {
       }
 
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as any
+        const invoice = event.data.object as FacturaStripe
         console.log('❌ Pago de factura fallido:', invoice.id)
         if (invoice.subscription) {
           console.log('   Para suscripción:', invoice.subscription)
@@ -185,14 +199,14 @@ export async function POST(request: NextRequest) {
       eventId: event.id,
       eventType: event.type,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error en webhook de Stripe:', error)
 
     // Retornar 500 para que Stripe reintente
     return NextResponse.json(
       {
         error: 'Error procesando webhook',
-        message: error.message,
+        message: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
     )
@@ -200,146 +214,26 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Manejar checkout session completada
- * Actualiza la suscripción en Supabase y el plan de la organización
+ * Manejar checkout session completada (cambio de plan).
+ * Delega en `aplicarCheckoutDePlan`, el mismo punto que usa
+ * `/api/stripe/confirm-plan-change` (regla dura 7): idempotente, organización
+ * y plan desde la metadata que puso el servidor al crear el Checkout.
  */
-async function handleCheckoutSessionCompleted(checkoutSession: any) {
+async function handleCheckoutSessionCompleted(checkoutSession: Stripe.Checkout.Session) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
-
-    const organizationId = parseInt(checkoutSession.metadata?.organizationId || '0')
-    const planCode = checkoutSession.metadata?.planCode
-    const billingPeriod = checkoutSession.metadata?.billingPeriod
-    const subscriptionId = checkoutSession.subscription
-    const customerId = checkoutSession.customer
-
-    if (!organizationId || !planCode) {
-      console.error('❌ Checkout session sin metadata necesaria:', checkoutSession.id)
-      return
-    }
-
-    console.log(`📦 Procesando upgrade para org ${organizationId} a plan ${planCode}`)
-
-    // Obtener el plan de la base de datos
-    const { data: plan, error: planError } = await supabase
-      .from('plans')
-      .select('id, code, name, max_modules, max_branches')
-      .eq('code', planCode)
-      .single()
-
-    if (planError || !plan) {
-      console.error('❌ Plan no encontrado:', planCode)
-      return
-    }
-
-    // Obtener detalles de la suscripción de Stripe
     const { stripe } = await import('@/lib/stripe/server')
     if (!stripe) {
       console.error('❌ Stripe no está configurado')
       return
     }
-    const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId) as any
-
-    // Buscar suscripción existente de la organización
-    const { data: existingSub } = await supabase
-      .from('subscriptions')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .single()
-
-    // Crear o actualizar suscripción
-    const subscriptionData = {
-      organization_id: organizationId,
-      plan_id: plan.id,
-      stripe_subscription_id: subscriptionId,
-      stripe_customer_id: customerId,
-      status: stripeSubscription.status,
-      billing_period: billingPeriod,
-      current_period_start: new Date(stripeSubscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
-      trial_start: stripeSubscription.trial_start ? new Date(stripeSubscription.trial_start * 1000).toISOString() : null,
-      trial_end: stripeSubscription.trial_end ? new Date(stripeSubscription.trial_end * 1000).toISOString() : null,
-      cancel_at_period_end: false,
-      updated_at: new Date().toISOString(),
-    }
-
-    if (existingSub) {
-      // Actualizar suscripción existente
-      const { error: updateError } = await supabase
-        .from('subscriptions')
-        .update(subscriptionData)
-        .eq('id', existingSub.id)
-
-      if (updateError) {
-        console.error('❌ Error actualizando suscripción:', updateError)
-      } else {
-        console.log('✅ Suscripción actualizada en BD')
-      }
+    const resultado = await aplicarCheckoutDePlan(getServiceClient(), stripe, checkoutSession)
+    if (resultado.estado === 'invalido') {
+      console.error('❌ Checkout de plan no aplicable:', checkoutSession.id, resultado.motivo)
     } else {
-      // Crear nueva suscripción
-      const { error: insertError } = await supabase
-        .from('subscriptions')
-        .insert({
-          ...subscriptionData,
-          created_at: new Date().toISOString(),
-        })
-
-      if (insertError) {
-        console.error('❌ Error creando suscripción:', insertError)
-      } else {
-        console.log('✅ Nueva suscripción creada en BD')
-      }
+      console.log(`✅ Checkout de plan ${resultado.estado}: org ${resultado.organizationId} → ${resultado.plan.code}`)
     }
-
-    // Actualizar plan_id en la organización
-    const { error: orgError } = await supabase
-      .from('organizations')
-      .update({
-        plan_id: plan.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', organizationId)
-
-    if (orgError) {
-      console.error('❌ Error actualizando organización:', orgError)
-    } else {
-      console.log('✅ Organización actualizada con nuevo plan')
-    }
-
-    // Activar módulos core para la organización si no existen
-    const { data: coreModules } = await supabase
-      .from('modules')
-      .select('code')
-      .eq('is_core', true)
-
-    if (coreModules) {
-      for (const coreModule of coreModules) {
-        await supabase
-          .from('organization_modules')
-          .upsert({
-            organization_id: organizationId,
-            module_code: coreModule.code,
-            is_active: true,
-            enabled_at: new Date().toISOString(),
-          }, {
-            onConflict: 'organization_id,module_code'
-          })
-      }
-      console.log('✅ Módulos core activados')
-    }
-
-    console.log(`🎉 Upgrade completado: Org ${organizationId} ahora tiene ${plan.name}`)
-
-  } catch (error: any) {
-    console.error('❌ Error en handleCheckoutSessionCompleted:', error)
+  } catch (error: unknown) {
+    console.error('❌ Error en handleCheckoutSessionCompleted:', error instanceof Error ? error.message : String(error))
   }
 }
 
@@ -417,8 +311,8 @@ async function updateSubscriptionInDatabase(
         plan_id: planId,
         status: subscription.status,
         trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-        current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
-        current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+        current_period_start: new Date((subscription as unknown as PeriodoSuscripcion).current_period_start * 1000).toISOString(),
+        current_period_end: new Date((subscription as unknown as PeriodoSuscripcion).current_period_end * 1000).toISOString(),
         cancel_at_period_end: subscription.cancel_at_period_end,
         cancel_at: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
         updated_at: new Date().toISOString(),
@@ -463,7 +357,7 @@ async function updateSubscriptionInDatabase(
         }
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error en updateSubscriptionInDatabase:', error)
   }
 }
@@ -508,10 +402,10 @@ async function notifyPaymentFailed(stripeSubscriptionId: string, invoiceId: stri
     }
 
     // Crear notificación para cada admin
-    const notifications = admins.map((admin: any) => ({
+    const notifications = admins.map((admin: { user_id: string; profiles: { email: string | null } | { email: string | null }[] | null }) => ({
       organization_id: orgId,
       recipient_user_id: admin.user_id,
-      recipient_email: admin.profiles?.email || null,
+      recipient_email: (Array.isArray(admin.profiles) ? admin.profiles[0]?.email : admin.profiles?.email) || null,
       channel: 'push',
       payload: {
         type: 'payment_failed',
@@ -553,7 +447,7 @@ async function deactivateNonCoreModules(organizationId: number) {
       .select('code')
       .eq('is_core', true)
 
-    const coreCodes = (coreModules || []).map((m: any) => m.code)
+    const coreCodes = (coreModules || []).map((m: { code: string }) => m.code)
 
     // Desactivar módulos no-core de la organización
     const { data: deactivated, error } = await supabase
@@ -573,7 +467,7 @@ async function deactivateNonCoreModules(organizationId: number) {
     } else {
       const count = deactivated?.length || 0
       if (count > 0) {
-        console.log(`✅ ${count} módulo(s) no-core desactivados para org ${organizationId}:`, deactivated?.map((m: any) => m.module_code))
+        console.log(`✅ ${count} módulo(s) no-core desactivados para org ${organizationId}:`, deactivated?.map((m: { module_code: string }) => m.module_code))
       } else {
         console.log('ℹ️ No había módulos no-core activos para desactivar en org', organizationId)
       }
@@ -587,7 +481,7 @@ async function deactivateNonCoreModules(organizationId: number) {
  * Procesar comisión de vendedor cuando se cobra una factura
  * Busca la suscripción en DB, luego el referral del vendedor, y crea el registro de comisión
  */
-async function processSellerCommission(invoice: any, eventId: string) {
+async function processSellerCommission(invoice: FacturaStripe, eventId: string) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -686,7 +580,7 @@ async function processSellerCommission(invoice: any, eventId: string) {
  * Manejar compra de créditos IA completada
  * Suma los créditos comprados al saldo de la organización
  */
-async function handleAiCreditPurchaseCompleted(checkoutSession: any) {
+async function handleAiCreditPurchaseCompleted(checkoutSession: Stripe.Checkout.Session) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -701,7 +595,7 @@ async function handleAiCreditPurchaseCompleted(checkoutSession: any) {
     const organizationId = parseInt(checkoutSession.metadata?.organizationId || '0', 10);
     const creditsAmount = parseInt(checkoutSession.metadata?.creditsAmount || '0', 10);
     const sessionId = checkoutSession.id;
-    const paymentIntentId = checkoutSession.payment_intent as string;
+    const paymentIntentId = typeof checkoutSession.payment_intent === 'string' ? checkoutSession.payment_intent : checkoutSession.payment_intent?.id ?? null;
 
     if (!organizationId || !creditsAmount) {
       console.error('❌ Metadata faltante en checkout session de créditos IA:', checkoutSession.id);
@@ -711,7 +605,7 @@ async function handleAiCreditPurchaseCompleted(checkoutSession: any) {
     console.log(`🤖 Procesando compra de ${creditsAmount} créditos IA para org ${organizationId}`);
 
     // 1. Actualizar el registro de compra a completed
-    const { data: purchase, error: purchaseError } = await supabase
+    const { error: purchaseError } = await supabase
       .from('ai_credit_purchases')
       .update({
         status: 'completed',
@@ -765,7 +659,7 @@ async function handleAiCreditPurchaseCompleted(checkoutSession: any) {
     }
 
     console.log(`✅ ${creditsAmount} créditos IA sumados a org ${organizationId}`);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error en handleAiCreditPurchaseCompleted:', error);
   }
 }
@@ -774,7 +668,7 @@ async function handleAiCreditPurchaseCompleted(checkoutSession: any) {
  * Manejar suscripción de addon completada (usuarios/sucursales extra)
  * Activa el addon en subscription_addons
  */
-async function handleAddonSubscriptionCompleted(checkoutSession: any) {
+async function handleAddonSubscriptionCompleted(checkoutSession: Stripe.Checkout.Session) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -790,7 +684,7 @@ async function handleAddonSubscriptionCompleted(checkoutSession: any) {
     const addonType = checkoutSession.metadata?.addonType;
     const quantity = parseInt(checkoutSession.metadata?.quantity || '0', 10);
     const sessionId = checkoutSession.id;
-    const subscriptionId = checkoutSession.subscription as string;
+    const subscriptionId = typeof checkoutSession.subscription === 'string' ? checkoutSession.subscription : checkoutSession.subscription?.id ?? null;
 
     if (!organizationId || !addonType || !quantity) {
       console.error('❌ Metadata faltante en checkout session de addon:', checkoutSession.id);
@@ -806,11 +700,11 @@ async function handleAddonSubscriptionCompleted(checkoutSession: any) {
     const { stripe } = await import('@/lib/stripe/server');
     if (subscriptionId && stripe) {
       try {
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId) as unknown as PeriodoSuscripcion;
         currentPeriodStart = new Date(subscription.current_period_start * 1000).toISOString();
         currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      } catch (retrieveErr: any) {
-        console.warn('⚠️ No se pudo obtener la suscripción de Stripe:', retrieveErr.message);
+      } catch (retrieveErr: unknown) {
+        console.warn('⚠️ No se pudo obtener la suscripción de Stripe:', retrieveErr instanceof Error ? retrieveErr.message : String(retrieveErr));
       }
     }
 
@@ -832,23 +726,12 @@ async function handleAddonSubscriptionCompleted(checkoutSession: any) {
     } else {
       console.log(`✅ Addon ${addonType} x${quantity} activado para org ${organizationId}`);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error en handleAddonSubscriptionCompleted:', error);
   }
 }
 
-/**
- * GET - No permitido
- */
-export async function GET() {
-  return NextResponse.json(
-    {
-      error: 'Método no permitido',
-      message: 'Este endpoint solo acepta POST requests de Stripe',
-    },
-    { status: 405 }
-  )
-}
+// Sin GET: Next responde 405 por sí solo a los métodos no exportados.
 
 /**
  * Configuración de Next.js para deshabilitar el parsing del body

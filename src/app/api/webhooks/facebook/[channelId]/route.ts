@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { safeEqual } from '@/lib/security/webhookSignatures';
 import { metaMessagingService } from '@/lib/services/integrations/meta-messaging/metaMessagingService';
 
 /**
@@ -21,10 +22,11 @@ export async function GET(
   const challenge = searchParams.get('hub.challenge');
 
   const channel = await metaMessagingService.getChannelInfo(channelId);
-  const expectedToken =
-    channel?.credentials.verifyToken || process.env.META_WEBHOOK_VERIFY_TOKEN || 'go_admin_meta_verify';
+  // GO-sec (2026-09-24): sin token por defecto. Antes, sin token del canal ni
+  // META_WEBHOOK_VERIFY_TOKEN, valía el literal público 'go_admin_meta_verify'.
+  const expectedToken = channel?.credentials.verifyToken || process.env.META_WEBHOOK_VERIFY_TOKEN || '';
 
-  if (mode === 'subscribe' && token === expectedToken) {
+  if (mode === 'subscribe' && expectedToken && token && safeEqual(token, expectedToken)) {
     return new NextResponse(challenge, { status: 200 });
   }
 
@@ -48,12 +50,14 @@ export async function POST(
       return NextResponse.json({ received: true, error: 'Canal no encontrado' }, { status: 200 });
     }
 
-    // Verificar firma si hay app_secret configurado
-    if (channel.credentials.appSecret) {
-      const valid = metaMessagingService.verifySignature(rawBody, signature, channel.credentials.appSecret);
-      if (!valid) {
-        return NextResponse.json({ received: true, error: 'Firma inválida' }, { status: 200 });
-      }
+    // Firma X-Hub-Signature-256 OBLIGATORIA (GO-sec 2026-09-24). Antes solo
+    // se verificaba si el canal tenía app_secret: sin él, cualquiera inyectaba
+    // mensajes en las conversaciones de la organización del canal. Sin secreto
+    // o con firma mala → 401 y no se procesa nada.
+    const appSecret = channel.credentials.appSecret;
+    if (!appSecret || !signature || !metaMessagingService.verifySignature(rawBody, signature, appSecret)) {
+      console.warn('[Facebook Webhook] firma ausente o inválida → 401', { channelId });
+      return NextResponse.json({ error: 'Firma inválida' }, { status: 401 });
     }
 
     const payload = JSON.parse(rawBody);

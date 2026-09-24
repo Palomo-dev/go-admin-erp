@@ -159,16 +159,18 @@ function shouldSkipRoute(pathname: string): boolean {
     '/_next/',
     '/favicon.ico',
     '/public/',
-    '/api/test',
-    '/api/stripe/',  // <-- Excluir APIs de Stripe
-    '/api/sessions/', // <-- Excluir APIs de sesiones
+    // GO-sec (2026-09-24): '/api/test' y '/api/sessions/' ya no se excluyen —
+    // sus rutas (test-geolocation, sessions) eran código muerto y se borraron;
+    // el prefijo dejaba fuera del middleware cualquier ruta futura que empezara así.
+    '/api/stripe/',  // <-- Webhook de Stripe (constructEvent fail-closed) y setup-intent del alta (sin cuenta aún). Las demás rutas de /api/stripe/ exigen sesión en el handler (contextoDeFacturacion / getServerOrgContext / withPlatformAdmin)
     '/api/integrations/twilio/', // <-- Excluir webhooks de Twilio (autenticación propia via firma)
     '/api/integrations/whatsapp/webhook', // <-- Excluir webhook de WhatsApp Cloud API (verificación Meta)
     '/api/integrations/whatsapp/qr/inbound', // <-- Excluir callback del microservicio Baileys (autenticación propia via shared secret)
     '/api/integrations/whatsapp/qr/dispatch-pending', // <-- F0: despacho QR invocado por cron (fail-closed via Authorization: Bearer CRON_SECRET)
     '/api/voice/', // <-- F0: webhooks Twilio de voz (firma X-Twilio-Signature fail-closed) y rutas de sesión (getServerOrgContext → 401 JSON, no redirect)
     '/api/super-admin-access', // <-- Excluir canje de token de super admin (autenticación propia via token BD)
-    '/api/super-admin-cleanup', // <-- Excluir cleanup de super admin (autenticación propia via body)
+    // '/api/super-admin-cleanup' ya NO se excluye (GO-sec 2026-09-24): no tenía
+    // «autenticación propia via body»; ahora exige la sesión del usuario.
     '/api/factus/', // <-- Excluir APIs de Factus (usan credenciales de entorno, no requieren sesión)
     '/api/facebook-feed', // <-- Excluir feed de Facebook (autenticación propia via token en query param)
     '/api/cron/', // <-- Excluir cron jobs de Vercel (autenticación propia via Authorization: Bearer CRON_SECRET)
@@ -192,6 +194,16 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/integrations/wompi/webhook', // <-- checksum SHA-256 con events_secret de la conexión (tiempo constante); 401 sin secreto o checksum malo
     '/api/integrations/redeban/webhook', // <-- siempre 401 hasta implementar la firma del proveedor (inocuo)
     '/api/integrations/sendgrid/webhook', // <-- ECDSA con SENDGRID_WEBHOOK_VERIFICATION_KEY; 403 sin clave, sin cabeceras o firma mala
+    // GO-sec (2026-09-24, tras 6f7c97e7): webhooks de proveedores con
+    // credenciales de la organización, revisados uno por uno: sin firma, sin
+    // secreto o con firma que ninguna conexión valida → 401 y NADA se escribe
+    // antes de verificar (el evento se registra en la conexión que firmó).
+    '/api/integrations/mercadopago/webhook', // <-- HMAC x-signature (id;request-id;ts) con webhookSecret de la conexión; 401 sin firma o si ninguna conexión la valida
+    '/api/integrations/payu/webhook', // <-- firma MD5 `sign` con ApiKey + merchant_id de la conexión (tiempo constante); 401 si ninguna conexión la valida
+    '/api/integrations/paypal/webhook', // <-- verify-webhook-signature de PayPal con client_id/secret/webhook_id de la conexión; 401 sin cabeceras o si ninguna verifica
+    '/api/integrations/stripe/webhook', // <-- constructEvent con el whsec_ de la conexión; 401 sin stripe-signature o si ningún secreto verifica
+    '/api/integrations/meta/webhook', // <-- POST: HMAC x-hub-signature-256 con appSecret de la conexión (401); GET: META_WEBHOOK_VERIFY_TOKEN (403 sin él)
+    '/api/integrations/tiktok/webhook', // <-- POST siempre 401 hasta implementar la firma (inocuo); GET: TIKTOK_WEBHOOK_VERIFY_TOKEN (403 sin él)
     '/api/crm/contracts/webhook', // <-- re-exporta el POST de /api/crm/webhooks/documenso (firma Documenso fail-closed)
     '/api/crm/voice-agents/campaigns/run', // <-- withCron → verifyCronSecret (Bearer CRON_SECRET real, fail-closed)
     '/api/auth/invite/resend', // <-- Reenvío de magic link para invitaciones (usuario no autenticado, valida contra tabla invitations)
@@ -1025,9 +1037,10 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - api/test (test endpoints - no auth required)
-     * - api/stripe (Stripe API endpoints - handle their own auth)
-     * - api/sessions (Session API endpoints - handle their own auth)
+     * - api/stripe (webhook firmado y setup-intent del alta; el resto exige sesión en el handler)
+     *
+     * GO-sec (2026-09-24): salen del matcher `api/test`, `api/sessions` (rutas
+     * muertas, borradas) y `api/super-admin-cleanup` (ahora exige sesión).
      *
      * NOTA sobre los assets de public/: Next los sirve en la RAIZ (/sw.js),
      * no bajo /public/, asi que el token "public" de este matcher nunca los
@@ -1041,6 +1054,6 @@ export const config = {
      * está también en shouldSkipRoute con el motivo por el que es fail-closed.
      * Solo se añade aquí lo que verifica firma o CRON_SECRET por sí mismo.
      */
-    '/((?!_next/static|_next/image|favicon.ico|favicon-16x16.png|favicon-32x32.png|apple-touch-icon.png|icon.svg|icon-192x192.png|icon-512x512.png|icon-maskable-192x192.png|icon-maskable-512x512.png|badge-96x96.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/test|api/stripe|api/sessions|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/super-admin-cleanup|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/pos/display/|api/web-orders|api/auth|api/integrations/bancolombia/webhook|api/integrations/bold/webhook|api/integrations/breb/webhook|api/integrations/wompi/webhook|api/integrations/redeban/webhook|api/integrations/sendgrid/webhook|api/crm/contracts/webhook|api/crm/voice-agents/campaigns/run).*)',
+    '/((?!_next/static|_next/image|favicon.ico|favicon-16x16.png|favicon-32x32.png|apple-touch-icon.png|icon.svg|icon-192x192.png|icon-512x512.png|icon-maskable-192x192.png|icon-maskable-512x512.png|badge-96x96.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/stripe|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/pos/display/|api/web-orders|api/auth|api/integrations/bancolombia/webhook|api/integrations/bold/webhook|api/integrations/breb/webhook|api/integrations/wompi/webhook|api/integrations/redeban/webhook|api/integrations/sendgrid/webhook|api/integrations/mercadopago/webhook|api/integrations/payu/webhook|api/integrations/paypal/webhook|api/integrations/stripe/webhook|api/integrations/meta/webhook|api/integrations/tiktok/webhook|api/crm/contracts/webhook|api/crm/voice-agents/campaigns/run).*)',
   ],
 };

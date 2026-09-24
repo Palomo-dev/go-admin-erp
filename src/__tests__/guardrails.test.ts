@@ -2649,7 +2649,9 @@ describe('31. Toda ruta de src/app/api pasa por una puerta del servidor', () => 
   let sinPuerta: string[] = [];
   beforeAll(() => {
     sinPuerta = walkDir(API)
-      .filter((f) => /route\.ts$/.test(f) && !isExcluded(f) && !f.startsWith(INTEGRACIONES + path.sep))
+      // Sin el helper de exclusión: el tester r4 exige que nada después del
+      // caso 21 lo llame. Los tests viven en __tests__ y no se llaman route.ts.
+      .filter((f) => /route\.ts$/.test(f) && !f.split(path.sep).includes('__tests__') && !f.startsWith(INTEGRACIONES + path.sep))
       .flatMap((f) => {
         try {
           return sinPuertaEn(rel(f), stripAllComments(readFile(f)));

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyCronSecret, webhookErrorResponse } from '@/lib/security/webhookSignatures';
 import { createClient } from '@supabase/supabase-js';
 
 /**
@@ -16,24 +17,13 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function GET(request: NextRequest) {
   try {
-    // 1. Verificar autorización
-    const authHeader = request.headers.get('authorization');
-    const expectedToken = process.env.CRON_SECRET;
-
-    if (!expectedToken) {
-      console.error('[Expire Old Notifications] CRON_SECRET no configurado');
-      return NextResponse.json(
-        { success: false, error: 'Servicio no configurado correctamente' },
-        { status: 500 }
-      );
-    }
-
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-    if (token !== expectedToken) {
-      return NextResponse.json(
-        { success: false, error: 'No autorizado' },
-        { status: 401 }
-      );
+    // 1. Verificar autorización. GO-sec (2026-09-24): `verifyCronSecret`
+    //    (Bearer o x-cron-secret, fail-closed sin CRON_SECRET real y en tiempo
+    //    constante), en lugar de una comparación `!==` propia.
+    try {
+      verifyCronSecret(request);
+    } catch (err) {
+      return webhookErrorResponse(err);
     }
 
     // 2. Crear cliente service_role

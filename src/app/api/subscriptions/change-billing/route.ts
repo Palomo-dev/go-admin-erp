@@ -1,72 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
 
+/**
+ * GO-sec (2026-09-24): la puerta es `contextoDeFacturacion` (sesión
+ * verificada, membresía activa y admin o `billing_management` resuelto en la
+ * base), no `role_id !== 2`, que dejaba fuera al rol 1 y a los cargos con
+ * permiso. El cliente sigue mandando el Bearer; la sesión es la de las
+ * cookies, que el middleware ya exige en esta ruta.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseAdmin();
-
-    // Obtener token de auth desde el header Authorization
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'No autorizado - Token no proporcionado' },
-        { status: 401 }
-      );
+    let body: { organizationId?: unknown; billingPeriod?: unknown };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-
-    if (authError || !user?.id) {
-      return NextResponse.json(
-        { error: 'No autorizado - Token inválido' },
-        { status: 401 }
-      );
-    }
-
-    const userId = user.id;
-
-    const { organizationId, billingPeriod } = await request.json();
-
-    // Validar parámetros requeridos
-    if (!organizationId || !billingPeriod) {
-      return NextResponse.json(
-        { error: 'Parámetros faltantes: organizationId y billingPeriod son requeridos' },
-        { status: 400 }
-      );
-    }
+    const ctx = await contextoDeFacturacion(body.organizationId, 'subscriptions/change-billing');
+    const organizationId = ctx.organizationId;
+    const billingPeriod = body.billingPeriod;
 
     // Validar billingPeriod
-    if (!['monthly', 'yearly'].includes(billingPeriod)) {
+    if (billingPeriod !== 'monthly' && billingPeriod !== 'yearly') {
       return NextResponse.json(
         { error: 'billingPeriod debe ser "monthly" o "yearly"' },
         { status: 400 }
       );
     }
 
-    // Verificar permisos
-    const { data: memberData, error: memberError } = await supabase
-      .from('organization_members')
-      .select('role_id, is_super_admin')
-      .eq('organization_id', organizationId)
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .single();
-
-    if (memberError || !memberData) {
-      return NextResponse.json(
-        { error: 'No tienes permisos para modificar esta organización' },
-        { status: 403 }
-      );
-    }
-
-    if (memberData.role_id !== 2 && !memberData.is_super_admin) {
-      return NextResponse.json(
-        { error: 'Solo los administradores pueden cambiar el ciclo de facturación' },
-        { status: 403 }
-      );
-    }
+    // Service role solo tras validar la organización.
+    const supabase = getSupabaseAdmin();
 
     // Obtener suscripción actual (incluir trialing ya que cuentas nuevas están en período de prueba)
     const { data: currentSubscription, error: subError } = await supabase
@@ -154,11 +120,7 @@ export async function POST(request: NextRequest) {
       billingPeriod
     });
 
-  } catch (error: any) {
-    console.error('Error changing billing cycle:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error interno del servidor' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return routeErrorResponse('subscriptions/change-billing', error);
   }
 }

@@ -9,7 +9,7 @@ const todosLosModulos = CATALOGO_NAV.map((m) => m.codigo).filter((c): c is strin
 function acceso(parcial: Partial<AccesoNav> = {}): AccesoNav {
   return {
     modulosActivos: todosLosModulos,
-    paginasActivas: {},
+    paginasOcultas: {},
     modulosCargo: null,
     paginasCargo: null,
     capacidades: new Set(),
@@ -111,9 +111,12 @@ describe('filtrarNavegacion', () => {
     expect(visibles).not.toContain('inventario');
   });
 
-  test('las páginas se filtran por las activas de la organización', () => {
+  test('solo las páginas marcadas is_active = false se ocultan', () => {
+    // La lista dice qué se ESCONDE, no qué se ve: se apagan todas menos dos.
+    const todasLasDePos = moduloPorCodigo('pos')!.paginas.map((p) => p.href);
+    const ocultas = todasLasDePos.filter((h) => h !== '/app/pos' && h !== '/app/pos/cajas');
     const [ventas] = filtrarNavegacion(
-      acceso({ modulosActivos: ['pos'], paginasActivas: { pos: ['/app/pos', '/app/pos/cajas'] } })
+      acceso({ modulosActivos: ['pos'], paginasOcultas: { pos: ocultas } })
     ).filter((s) => s.codigo === 'ventas');
     const pos = ventas.modulos.find((m) => m.modulo.id === 'pos')!;
     expect(pos.paginas.map((p) => p.href)).toEqual(['/app/pos', '/app/pos/cajas']);
@@ -121,8 +124,11 @@ describe('filtrarNavegacion', () => {
   });
 
   test('con una sola página visible el módulo es un enlace directo a esa página', () => {
+    const ocultas = moduloPorCodigo('inventory')!
+      .paginas.map((p) => p.href)
+      .filter((h) => h !== '/app/inventario/stock');
     const secciones = filtrarNavegacion(
-      acceso({ modulosActivos: ['inventory'], paginasActivas: { inventory: ['/app/inventario/stock'] } })
+      acceso({ modulosActivos: ['inventory'], paginasOcultas: { inventory: ocultas } })
     );
     const inv = secciones.flatMap((s) => s.modulos).find((m) => m.modulo.id === 'inventario')!;
     expect(inv.tieneSubmenu).toBe(false);
@@ -131,7 +137,7 @@ describe('filtrarNavegacion', () => {
 
   test('los módulos de una sola página no se filtran por página (como el sidebar viejo)', () => {
     const visibles = modulosVisibles(
-      acceso({ paginasCargo: ['/app/pos'], paginasActivas: { clientes: [] } })
+      acceso({ paginasCargo: ['/app/pos'], paginasOcultas: { clientes: ['/app/clientes'] } })
     );
     expect(visibles).toEqual(expect.arrayContaining(['clientes', 'reportes', 'configuracion']));
   });
@@ -143,7 +149,10 @@ describe('filtrarNavegacion', () => {
   });
 
   test('un módulo sin ninguna página visible desaparece', () => {
-    const visibles = modulosVisibles(acceso({ modulosActivos: ['finance'], paginasActivas: { finance: [] } }));
+    const todasLasDeFinanzas = moduloPorCodigo('finance')!.paginas.map((p) => p.href);
+    const visibles = modulosVisibles(
+      acceso({ modulosActivos: ['finance'], paginasOcultas: { finance: todasLasDeFinanzas } })
+    );
     expect(visibles).not.toContain('finanzas');
   });
 

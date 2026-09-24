@@ -77,14 +77,19 @@ vive fuera del repo, en `docs/auditoria-finanzas/` (ignorado por `.gitignore`).
 | [F-62](F-62.md) | Notas crédito históricas con excedente pendientes de decisión | Media | Abierto: decisión con cada cliente | Cierre contable |
 | [F-63](F-63.md) | Nadie podía crear turnos: el trigger buscaba la organización en una columna inexistente de `employments` | Crítica | Corregido y verificado (2026-09-23) | Hallazgo propio (visto durante la fase D) |
 | [F-64](F-64.md) | La comisión de una oportunidad ganada se cargaba a «la sucursal 1», la de quien fuera | Crítica | Corregido y verificado (2026-09-23) · 18 filas históricas sin tocar | CRM / comisiones |
-| [F-65](F-65.md) | El asiento de comisión de OTA llama a `fn_create_journal_entry` con una firma que no existe | Alta | Abierto: la reordenación de argumentos es decisión contable | CRM / comisiones |
+| [F-65](F-65.md) | El asiento de comisión de OTA llama a `fn_create_journal_entry` con una firma que no existe | Alta | Corregido y verificado (2026-09-23; forma de la llamada) + decisión contable en ADR-CC-013 · 0 filas afectadas: nunca llegó a ejecutarse con datos reales | CRM / comisiones |
 | [F-66](F-66.md) | Los leads del formulario web caían en el embudo de onboarding | Alta | Corregido y verificado (2026-09-23) · 23 leads históricos sin tocar | CRM / captación web |
 | [F-67](F-67.md) | Un pedido web confirmado dos veces: dos ventas, facturas, pagos y salidas de stock | Alta | Corregido y verificado (2026-09-23, ADR-CC-011; migraciones con etiqueta `F-63`) | Cierre contable |
 | [F-68](F-68.md) | Tres productos de la org 144 son ingrediente de su propia receta y descuentan stock dos veces | Media | Corregido y verificado (2026-09-23) · 67 salidas compensadas por kardex, nada borrado | Cierre contable |
+| [F-69](F-69.md) | La exportación a banca online no descargaba nada, y la conciliación decía haber conciliado sin escribir una fila | Crítica | Corregido y verificado (2026-09-24) · conciliación real pendiente de diseño | Cuentas por pagar |
 | [F-70](F-70.md) | Los periodos mensuales generados se solapaban (fin el 27 del mes siguiente) | Alta | Corregido y verificado (2026-09-23) · 996 periodos corregidos | Cierre contable |
 | [F-71](F-71.md) | Los informes contables salían truncados a 1.000 líneas; el padre perdía su saldo propio | Alta | Corregido (2026-09-24, ADR-CC-012) | Cierre contable |
 | [F-72](F-72.md) | Anular una factura de compra recibida falla siempre (`source = 'purchase_void'` fuera del CHECK) | Media | Abierto: zona de compras | Cierre contable |
 | [F-73](F-73.md) | Anular una venta no devuelve su costo ni su stock | Media | Abierto: pendiente de aprobación | Cierre contable |
+| [F-74](F-74.md) | Una organización nueva nacía sin embudo de ventas (causa raíz de F-66) | Alta | Corregido y verificado (2026-09-24) para las nuevas · siembra retroactiva de 43 organizaciones propuesta, NO ejecutada | CRM / aprovisionamiento |
+| [F-75](F-75.md) | El formulario web escribe en el CRM aunque el módulo esté apagado (19 contactos de una organización solo en `notes`) | Media-alta | Abierto: decisión de producto (3 salidas propuestas) | CRM / captación web |
+| [F-76](F-76.md) | `POST /api/modules` activa y desactiva módulos de la organización que venga en el body, con `service_role` y sin comprobar pertenencia | Crítica | Abierto: corrección propuesta y acotada, no aplicada | Seguridad / multi-tenant |
+| [F-77](F-77.md) | Cada página nueva del catálogo nacía invisible para siempre en las organizaciones con lista (escritor y lector daban a la fila ausente significados opuestos) | Alta | Corregido y verificado (2026-09-23) · semántica unificada en un helper + 31 filas añadidas a las orgs 130, 134 y 138 | Navegación / módulos |
 
 ## Notas
 

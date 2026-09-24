@@ -3391,6 +3391,43 @@
         "referenciaVacia": "Este método pide la referencia.",
         "recibidoInsuficiente": "Lo recibido no cubre el monto."
       }
+    },
+    "vista": {
+      "etiqueta": "Vista",
+      "tarjetas": "Tarjetas",
+      "lista": "Lista",
+      "verComo": "Ver como {vista}"
+    },
+    "resultado": {
+      "cifras": "Detalle de la operación"
+    },
+    "picker": {
+      "placeholder": "Seleccionar…",
+      "buscar": "Buscar…",
+      "vacio": "Escribe para buscar.",
+      "sinResultados": "Sin resultados.",
+      "error": "No pudimos buscar. Revisa tu conexión.",
+      "crear": "Crear «{texto}»",
+      "cambiar": "Cambiar",
+      "quitar": "Quitar",
+      "ver": "Ver",
+      "editar": "Editar",
+      "pendienteSync": "Pendiente de sincronizar",
+      "cliente": {
+        "etiqueta": "Cliente",
+        "placeholder": "Agregar cliente",
+        "buscar": "Buscar por nombre, documento o teléfono",
+        "vacio": "Escribe el nombre, el documento o el teléfono del cliente.",
+        "crear": "Crear cliente «{texto}»"
+      },
+      "proveedor": {
+        "etiqueta": "Proveedor",
+        "placeholder": "Seleccionar proveedor",
+        "buscar": "Buscar por nombre o NIT",
+        "vacio": "Escribe el nombre o el NIT del proveedor.",
+        "crear": "Crear proveedor «{texto}»",
+        "saldo": "Por pagar {saldo}"
+      }
     }
   },
   "inventarioEtiquetas": {

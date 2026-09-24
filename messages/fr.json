@@ -3286,6 +3286,43 @@
         "referenciaVacia": "Ce moyen exige une référence.",
         "recibidoInsuficiente": "Les espèces reçues ne couvrent pas le montant."
       }
+    },
+    "vista": {
+      "etiqueta": "Affichage",
+      "tarjetas": "Cartes",
+      "lista": "Liste",
+      "verComo": "Afficher en {vista}"
+    },
+    "resultado": {
+      "cifras": "Détail de l’opération"
+    },
+    "picker": {
+      "placeholder": "Sélectionner…",
+      "buscar": "Rechercher…",
+      "vacio": "Tapez pour rechercher.",
+      "sinResultados": "Aucun résultat.",
+      "error": "Recherche impossible. Vérifiez votre connexion.",
+      "crear": "Créer « {texto} »",
+      "cambiar": "Changer",
+      "quitar": "Retirer",
+      "ver": "Voir",
+      "editar": "Modifier",
+      "pendienteSync": "En attente de synchronisation",
+      "cliente": {
+        "etiqueta": "Client",
+        "placeholder": "Ajouter un client",
+        "buscar": "Rechercher par nom, pièce d’identité ou téléphone",
+        "vacio": "Saisissez le nom, la pièce d’identité ou le téléphone du client.",
+        "crear": "Créer le client « {texto} »"
+      },
+      "proveedor": {
+        "etiqueta": "Fournisseur",
+        "placeholder": "Sélectionner un fournisseur",
+        "buscar": "Rechercher par nom ou n° fiscal",
+        "vacio": "Saisissez le nom ou le n° fiscal du fournisseur.",
+        "crear": "Créer le fournisseur « {texto} »",
+        "saldo": "À payer {saldo}"
+      }
     }
   },
   "inventarioEtiquetas": {

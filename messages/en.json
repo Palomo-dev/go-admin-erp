@@ -3391,6 +3391,43 @@
         "referenciaVacia": "This method requires a reference.",
         "recibidoInsuficiente": "The cash received doesn't cover the amount."
       }
+    },
+    "vista": {
+      "etiqueta": "View",
+      "tarjetas": "Cards",
+      "lista": "List",
+      "verComo": "View as {vista}"
+    },
+    "resultado": {
+      "cifras": "Operation details"
+    },
+    "picker": {
+      "placeholder": "Select…",
+      "buscar": "Search…",
+      "vacio": "Type to search.",
+      "sinResultados": "No results.",
+      "error": "We couldn't search. Check your connection.",
+      "crear": "Create “{texto}”",
+      "cambiar": "Change",
+      "quitar": "Remove",
+      "ver": "View",
+      "editar": "Edit",
+      "pendienteSync": "Pending sync",
+      "cliente": {
+        "etiqueta": "Customer",
+        "placeholder": "Add customer",
+        "buscar": "Search by name, ID or phone",
+        "vacio": "Type the customer's name, ID or phone.",
+        "crear": "Create customer “{texto}”"
+      },
+      "proveedor": {
+        "etiqueta": "Supplier",
+        "placeholder": "Select supplier",
+        "buscar": "Search by name or tax ID",
+        "vacio": "Type the supplier's name or tax ID.",
+        "crear": "Create supplier “{texto}”",
+        "saldo": "Payable {saldo}"
+      }
     }
   },
   "inventarioEtiquetas": {

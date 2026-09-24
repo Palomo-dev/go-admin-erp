@@ -150,3 +150,21 @@ export { repartirMetodos, atajoMetodo, iconoMetodoPago, type MetodoPagoOpcion } 
 export { ListaPagos, type ListaPagosProps, type PagoLista, type EstadoPagoLista } from './ListaPagos';
 // Documentos (cadena, chips, cabecera, líneas, totales, diálogo único de pago)
 export * from './documento';
+// Cobro y post-venta, vista y selectores de tercero
+export { SeccionPlegable, type SeccionPlegableProps } from './SeccionPlegable';
+export { ViewToggle, otraVista, type ViewToggleProps, type OpcionVista } from './ViewToggle';
+export { ResultadoOperacion, type ResultadoOperacionProps, type AccionResultado, type TonoResultado } from './ResultadoOperacion';
+export { SelectorEntidad, type SelectorEntidadProps, type TextosSelectorEntidad } from './SelectorEntidad';
+export { CustomerPicker, type CustomerPickerProps } from './CustomerPicker';
+export { SupplierPicker, type SupplierPickerProps } from './SupplierPicker';
+export {
+  estadoListaEntidad,
+  ofrecerCrear,
+  lineaSecundaria,
+  opcionCliente,
+  opcionProveedor,
+  type OpcionEntidad,
+  type EstadoListaEntidad,
+  type ClientePicker,
+  type ProveedorPicker,
+} from './selectorEntidadLogica';

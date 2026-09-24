@@ -570,3 +570,21 @@ Pruebas: `kit/__tests__/documentoYMotivo.test.ts`.
 | `RegistrarPagoDialog` (factura · cuenta · tercero) `730:20644`, P1…P9 `741:53717` | `RegistrarPagoDialog.tsx` + `pago.ts` | **Esqueleto sin negocio**: `destino`, `documento: { tipo, numero, tercero?, total?, saldo, vencimiento? }` o `saldo`, `moneda`, `metodos` (de la organización), `hoy` (día de la organización), `valorInicial`, `onConfirmar(ValorPago)`, `cargando`, `errores` / `error` del servidor, `permitirExcedente`, `codigosEfectivo` (pide «Recibido» y muestra el cambio), `codigosConReferencia`, `avisoCaja` (P6: efectivo sin caja → aviso y «Abrir caja»), `reparto` (FIFO + sobrante, lo arma la pantalla), `camposExtra` (cuota). Valida monto (> 0, ≤ saldo), método, fecha (no futura) y referencia; registrar es de la RPC (`fn_registrar_pago` / `POST /api/pagos`) |
 
 Pruebas: `kit/__tests__/teclado.test.ts`, `datosYTotales.test.ts`, `pagosYDocumento.test.ts`.
+
+### Cobro y post-venta, vista y selectores de tercero
+
+| Figma | Código | Contrato |
+|---|---|---|
+| `CheckoutAccordion` (closed · open) | `kit/SeccionPlegable.tsx` | `titulo`, `resumen` (lo elegido: «Domicilio · $ 5.000»), `icono`, `atajo` («Alt+D»), `abierta` + `onAbiertaChange` o `abiertaPorDefecto`, `deshabilitada` + `motivo` («Factura electrónica no configurada»). Contenido montado aunque esté plegada. `FormSection colapsable` sigue para formularios sin resumen ni atajo |
+| `ViewToggle` `103:3095` (POS-UX-V2 §7.5, decisión final) | `kit/ViewToggle.tsx` + `vistaLogica.ts` | `valor`, `onValorChange`, `opciones` (dos; por defecto Tarjetas `LayoutGrid` \| Lista `Rows3`), `etiqueta`, `corte` (`md`: desde tableta, dos iconos en `radiogroup`; debajo, **un botón que alterna** «Ver como lista» / «Ver como tarjetas»), `modoMovil` (`alternar` · `segmentos`), `tamano`. Mesas: Plano \| Cuadrícula con las mismas props. Sin «Compacta» ni menú |
+| Post-venta `247:74846`, sin conexión `247:75030`, móvil `250:83088` | `kit/ResultadoOperacion.tsx` | `tono` (`exito · advertencia · peligro`), `titulo`, `descripcion`, `icono`, `referencia` («V-2144», «OFF-3F2A»), `cifras` (`FilaDato`), `aviso` (recibo enviado, sin impresora), `primaria` / `secundarias` (`{ etiqueta, onClick, atajo?, icono?, deshabilitada?, motivo?, cargando? }`), `onCerrar` (+ `atajoCerrar`, «Esc»). La primaria recibe el foco |
+| `CustomerPicker` (10 variantes `849:558484…`) · `SupplierPicker` (`02 › Finanzas`) | `kit/SelectorEntidad.tsx` (base) + `CustomerPicker.tsx` + `SupplierPicker.tsx` + `selectorEntidadLogica.ts` | Base genérica `SelectorEntidad<T>`: `valor`, `aOpcion`, `buscar(texto, AbortSignal)` (**la pantalla busca en el servidor con su servicio**; la búsqueda anterior se cancela), `onCambiar`, `onQuitar`, `onCrear(texto)` («Crear “…”» si nadie se llama así), `onVer`, `onEditar`, `layout` (`fila`: avatar, nombre, documento y «Cambiar · F2» · Ver · Editar · «×» · `campo`: tipo select para filtros y formularios), `atajo`, `grupoExtra` («Espacios ocupados» del PMS), `insigniaValor`, `abierto` / `onAbiertoChange`, `textos`. Popover de 360 en escritorio, hoja inferior en móvil; `listbox` con ↑/↓, Enter y Esc. `CustomerPicker` recibe `cliente: { id, nombre, documento?, correo?, telefono?, pendienteSync? }` (icono `Users`); `SupplierPicker`, `proveedor: { id, nombre, nit?, contacto?, telefono?, saldoPorPagar? }` (icono `Truck`, chip «Por pagar …») |
+
+Pruebas: `kit/__tests__/selectoresYVista.test.ts`.
+
+### Sin pruebas de render (todavía)
+
+El repo corre jest en `node` y no tiene `@testing-library/react` ni `jest-environment-jsdom`: las
+pruebas cubren la lógica de presentación (archivos `*Logica.ts` y afines, sin React). La
+recomendación D9 de POS-PLAN (añadirlas solo para los archivos que lo pidan con docblock) sigue
+pendiente de la decisión del dueño; no se instaló nada.

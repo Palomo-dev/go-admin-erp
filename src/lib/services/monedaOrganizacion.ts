@@ -46,8 +46,16 @@ export interface OrgCurrency {
 
 const FALLBACK: OrgCurrency = { code: 'USD', symbol: '$', decimals: 2, source: 'fallback' };
 
-/** Moneda de curso legal por país (alfa-2). Solo se usa como paso 5. */
-const MONEDA_POR_PAIS: Record<string, string> = {
+/**
+ * Moneda de curso legal por país (alfa-2). Solo se usa como paso 5.
+ *
+ * ESPEJO EN SQL: `public.fn_moneda_base_organizacion` (migración
+ * `20260924163000_moneda_base_por_defecto.sql`) replica esta cadena para el
+ * trigger que pone la moneda base a los documentos creados sin moneda. Si
+ * cambia la cadena o esta tabla, cambia también la función SQL: el test
+ * `src/__tests__/services/monedaBaseSql.test.ts` falla si divergen.
+ */
+export const MONEDA_POR_PAIS: Readonly<Record<string, string>> = {
   CO: 'COP', MX: 'MXN', US: 'USD', CA: 'CAD', AR: 'ARS', BO: 'BOB', BR: 'BRL', CL: 'CLP',
   CR: 'CRC', CU: 'CUP', DO: 'DOP', EC: 'USD', SV: 'USD', GT: 'GTQ', HN: 'HNL', NI: 'NIO',
   PA: 'USD', PY: 'PYG', PE: 'PEN', PR: 'USD', UY: 'UYU', VE: 'VES', ES: 'EUR', PT: 'EUR',

@@ -8719,5 +8719,17 @@
       "continuar": "Continuar",
       "guardarProducto": "Salvar produto"
     }
+  },
+  "arranque": {
+    "comprobando": "Verificando sua sessão",
+    "entrando": "Entrando na sua organização",
+    "hola": "Olá, {nombre}",
+    "sinConexionTitulo": "Não conseguimos verificar sua sessão",
+    "sinConexionMensaje": "Não há conexão com o servidor no momento. Verifique sua conexão com a internet.",
+    "reintentoAutomatico": "Tentaremos de novo automaticamente em {segundos} segundos.",
+    "reintentoEn": "Tentando de novo em {segundos} s",
+    "reintentando": "Tentando de novo…",
+    "reintentarAhora": "Tentar agora",
+    "iniciarSesionDeNuevo": "Entrar novamente"
   }
 }

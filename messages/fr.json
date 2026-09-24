@@ -8719,5 +8719,17 @@
       "continuar": "Continuer",
       "guardarProducto": "Enregistrer le produit"
     }
+  },
+  "arranque": {
+    "comprobando": "Vérification de votre session",
+    "entrando": "Accès à votre organisation",
+    "hola": "Bonjour, {nombre}",
+    "sinConexionTitulo": "Nous n’avons pas pu vérifier votre session",
+    "sinConexionMensaje": "Impossible de joindre le serveur pour le moment. Vérifiez votre connexion internet.",
+    "reintentoAutomatico": "Nous réessaierons automatiquement dans {segundos} secondes.",
+    "reintentoEn": "Nouvelle tentative dans {segundos} s",
+    "reintentando": "Nouvelle tentative…",
+    "reintentarAhora": "Réessayer maintenant",
+    "iniciarSesionDeNuevo": "Se reconnecter"
   }
 }

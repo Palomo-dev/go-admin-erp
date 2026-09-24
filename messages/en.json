@@ -8824,5 +8824,17 @@
       "continuar": "Continue",
       "guardarProducto": "Save product"
     }
+  },
+  "arranque": {
+    "comprobando": "Checking your session",
+    "entrando": "Entering your organization",
+    "hola": "Hi, {nombre}",
+    "sinConexionTitulo": "We couldn’t check your session",
+    "sinConexionMensaje": "We can’t reach the server right now. Check your internet connection.",
+    "reintentoAutomatico": "We’ll try again automatically in {segundos} seconds.",
+    "reintentoEn": "Retrying in {segundos} s",
+    "reintentando": "Retrying…",
+    "reintentarAhora": "Retry now",
+    "iniciarSesionDeNuevo": "Sign in again"
   }
 }

@@ -15,7 +15,8 @@ import { CATALOGO_NAV, claveGrupo, clavePagina } from '../catalog';
 import { CRM_NAV } from '@/config/crmNav';
 
 const IDIOMAS = ['es', 'en', 'fr', 'pt'] as const;
-const NAMESPACES_SHELL = ['nav', 'header', 'session'] as const;
+// `arranque`: pantalla de arranque de «/» y de AuthGuard (components/shell/arranque).
+const NAMESPACES_SHELL = ['nav', 'header', 'session', 'arranque'] as const;
 
 type Arbol = { [clave: string]: string | Arbol };
 

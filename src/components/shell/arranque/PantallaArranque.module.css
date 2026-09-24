@@ -1,0 +1,52 @@
+/*
+ * Movimiento de la pantalla de arranque. Aparte del tailwind.config para no
+ * tocar la configuración compartida por una animación de una sola pantalla.
+ */
+
+/* Barra indeterminada: un tramo del 40 % recorre el carril. */
+.tramo {
+  width: 40%;
+  animation: recorrido 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes recorrido {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+/*
+ * Aparece con 150 ms de retraso: si la sesión se confirma enseguida (lo normal,
+ * sale de la caché), la pantalla ni se llega a ver y no hay parpadeo.
+ */
+.aparece {
+  animation: aparecer 0.24s ease-out 0.15s both;
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Sin recorrido: el carril queda lleno y atenuado, sin moverse. */
+  .tramo {
+    width: 100%;
+    opacity: 0.45;
+    animation: none;
+    transform: none;
+  }
+
+  .aparece {
+    animation: none;
+  }
+}

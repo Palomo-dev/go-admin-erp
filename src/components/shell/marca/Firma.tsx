@@ -9,12 +9,16 @@
  */
 import { cn } from '@/lib/utils';
 
-type TamanoIsotipo = 24 | 32 | 40;
+type TamanoIsotipo = 16 | 24 | 32 | 40 | 64;
 
 const ISOTIPO: Record<TamanoIsotipo, { lado: string; radio: string; texto: string }> = {
+  // 16: sello sobre el avatar de la organización en la pantalla de arranque.
+  16: { lado: 'h-4 w-4', radio: 'rounded-[5px]', texto: 'text-[5.5px] tracking-[-0.01em]' },
   24: { lado: 'h-6 w-6', radio: 'rounded-[7px]', texto: 'text-[8px] tracking-[-0.01em]' },
   32: { lado: 'h-8 w-8', radio: 'rounded-[9px]', texto: 'text-[10.5px] tracking-[-0.01em]' },
   40: { lado: 'h-10 w-10', radio: 'rounded-[12px]', texto: 'text-[13px] tracking-[-0.01em]' },
+  // 64 (Isotipo Size=64 de Figma): pantalla de arranque («Comprobando tu sesión»).
+  64: { lado: 'h-16 w-16', radio: 'rounded-[18.5px]', texto: 'text-[21px] tracking-[-0.01em]' },
 };
 
 export function Isotipo({

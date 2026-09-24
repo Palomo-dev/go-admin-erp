@@ -58,8 +58,15 @@ export interface CheckoutEnvelopeItem {
   total: number;
   tax_included: boolean;
   notes: Record<string, unknown>;
-  modifiers: Array<{ name: string }>;
+  /** Modificadores con su id: pos_checkout_v1 suma sus extras configurados al validar el precio. */
+  modifiers: Array<{ name: string; modifier_id: number | null }>;
   serial_ids: number[];
+  /**
+   * Momento en que la línea entró al carrito (`CartItem.created_at`): el
+   * servidor acepta el precio vigente entonces (últimos 30 días) además del
+   * vigente ahora, para no rechazar un carrito armado antes de un cambio de precio.
+   */
+  priced_at: string | null;
 }
 
 /** Sobre que recibe `pos_checkout_v1` (ver contrato en la migración). */
@@ -147,8 +154,9 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
       total: calc ? calc.total : fallbackNet,
       tax_included: calc ? calc.taxIncluded : (item.tax_included ?? (checkout.tax_included || false)),
       notes,
-      modifiers: (item.modifiers ?? []).map((m) => ({ name: m.name })),
+      modifiers: (item.modifiers ?? []).map((m) => ({ name: m.name, modifier_id: m.modifierId ?? null })),
       serial_ids: serialIds,
+      priced_at: item.created_at ?? null,
     };
   });
 

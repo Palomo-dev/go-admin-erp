@@ -53,6 +53,8 @@ import { TipFromDisplayNotice } from '@/components/pos/display/TipFromDisplayNot
 import { applyTipToPrefilledPayment } from '@/components/pos/display/tipNotice';
 import { isDesktop } from '@/lib/utils/desktop';
 import { newSaleId, ticketSaleNumber } from '@/lib/offline/salesOutbox';
+import { useTranslations } from 'next-intl';
+import { codigoErrorCobro, detalleErrorCobro } from '@/lib/pos/erroresCobro';
 import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
 import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 
@@ -282,6 +284,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // ya creada en vez de crear otra. Antes el navegador lo generaba dentro de
   // POSService.checkout en cada clic (y el escritorio, en cada clic también).
   const intentoCobroRef = useRef<{ id: string; creadoEn: string } | null>(null);
+  const tCobro = useTranslations('posCobroServidor');
   const [touchedIds, setTouchedIds] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     if (!open || showReceipt) return;
@@ -1497,7 +1500,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // Haptic feedback de error (no-op en web)
       hapticNotification('error');
       hapticImpact('heavy');
-      const errorMsg = error?.message || error?.details || (typeof error === 'string' ? error : 'Error desconocido');
+      // Rechazos del servidor con código estable (precio, descuento, línea…)
+      // se muestran traducidos; el resto, como llegan.
+      const codigo = codigoErrorCobro(error);
+      const errorMsg = codigo
+        ? tCobro(`errores.${codigo}`, { detalle: detalleErrorCobro(error) })
+        : error?.message || error?.details || (typeof error === 'string' ? error : 'Error desconocido');
       alert('Error al procesar el pago: ' + errorMsg);
     } finally {
       setIsProcessing(false);

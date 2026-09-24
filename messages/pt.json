@@ -9190,6 +9190,14 @@
   },
   "posCobroServidor": {
     "productoSinPrecio": "“{producto}” não foi adicionado: não tem preço vigente. Configure o preço em Estoque.",
-    "precioNoConsultado": "“{producto}” não foi adicionado: não foi possível consultar o preço. Verifique a conexão e tente novamente."
+    "precioNoConsultado": "“{producto}” não foi adicionado: não foi possível consultar o preço. Verifique a conexão e tente novamente.",
+    "errores": {
+      "producto_invalido": "Uma linha tem um produto que não pertence a esta organização. Remova-a e adicione de novo. {detalle}",
+      "descuento_excede_linea": "O desconto de uma linha é maior que o seu valor. Corrija o desconto. {detalle}",
+      "modificador_invalido": "Um modificador da linha não está mais configurado para o produto. Remova a linha e adicione de novo. {detalle}",
+      "precio_no_vigente": "Um produto não tem preço vigente: configure o preço em Estoque. {detalle}",
+      "precio_no_coincide": "O preço de uma linha não coincide com o preço vigente. Remova a linha e adicione de novo. {detalle}",
+      "linea_incoherente": "Os valores de uma linha não batem com o preço, desconto e imposto. Abra o pagamento novamente. {detalle}"
+    }
   }
 }

@@ -9295,6 +9295,14 @@
   },
   "posCobroServidor": {
     "productoSinPrecio": "No se agregó «{producto}»: no tiene un precio vigente. Configure su precio en Inventario.",
-    "precioNoConsultado": "No se agregó «{producto}»: no se pudo consultar su precio. Revise la conexión e intente de nuevo."
+    "precioNoConsultado": "No se agregó «{producto}»: no se pudo consultar su precio. Revise la conexión e intente de nuevo.",
+    "errores": {
+      "producto_invalido": "Una línea tiene un producto que no es de esta organización. Quítela y vuelva a agregarla. {detalle}",
+      "descuento_excede_linea": "El descuento de una línea es mayor que su valor. Corrija el descuento. {detalle}",
+      "modificador_invalido": "Un modificador de la línea ya no está configurado para el producto. Quite la línea y agréguela de nuevo. {detalle}",
+      "precio_no_vigente": "Un producto no tiene precio vigente: configure su precio en Inventario. {detalle}",
+      "precio_no_coincide": "El precio de una línea no coincide con el precio vigente. Quite la línea y agréguela de nuevo. {detalle}",
+      "linea_incoherente": "Los importes de una línea no cuadran con su precio, descuento e impuesto. Vuelva a abrir el cobro. {detalle}"
+    }
   }
 }

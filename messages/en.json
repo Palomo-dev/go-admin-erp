@@ -9295,6 +9295,14 @@
   },
   "posCobroServidor": {
     "productoSinPrecio": "“{producto}” was not added: it has no current price. Set its price in Inventory.",
-    "precioNoConsultado": "“{producto}” was not added: its price could not be loaded. Check the connection and try again."
+    "precioNoConsultado": "“{producto}” was not added: its price could not be loaded. Check the connection and try again.",
+    "errores": {
+      "producto_invalido": "A line has a product that does not belong to this organization. Remove it and add it again. {detalle}",
+      "descuento_excede_linea": "A line's discount is greater than its value. Fix the discount. {detalle}",
+      "modificador_invalido": "A modifier on the line is no longer set up for the product. Remove the line and add it again. {detalle}",
+      "precio_no_vigente": "A product has no current price: set its price in Inventory. {detalle}",
+      "precio_no_coincide": "A line's price does not match the current price. Remove the line and add it again. {detalle}",
+      "linea_incoherente": "A line's amounts do not match its price, discount and tax. Reopen the checkout. {detalle}"
+    }
   }
 }

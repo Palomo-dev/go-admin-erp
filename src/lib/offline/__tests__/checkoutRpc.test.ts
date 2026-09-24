@@ -225,7 +225,7 @@ describe('checkout atómico por RPC (pos_checkout_v1)', () => {
     expect(env.promotion_ids).toEqual(['promo-1']);
     expect(env.items).toHaveLength(2);
     expect(env.items[0]).toMatchObject({ product_id: 1001, product_name: 'A', quantity: 2, unit_price: 5000, discount_amount: 1000, tax_rate: 19, tax_included: true, serial_ids: [] });
-    expect(env.items[0].modifiers).toEqual([{ name: 'Queso' }]);
+    expect(env.items[0].modifiers).toEqual([{ name: 'Queso', modifier_id: 5 }]);
     expect(env.items[1]).toMatchObject({ product_id: 1002, quantity: 1, unit_price: 3000, tax_rate: 0, serial_ids: [501] });
     // Totales calculados en el cliente: 9000 (10000-1000, IVA incluido) + 3000 + propina 500.
     expect(env.totals.total).toBe(12500);

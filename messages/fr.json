@@ -9190,6 +9190,14 @@
   },
   "posCobroServidor": {
     "productoSinPrecio": "« {producto} » n’a pas été ajouté : il n’a pas de prix en vigueur. Définissez son prix dans Inventaire.",
-    "precioNoConsultado": "« {producto} » n’a pas été ajouté : son prix n’a pas pu être consulté. Vérifiez la connexion et réessayez."
+    "precioNoConsultado": "« {producto} » n’a pas été ajouté : son prix n’a pas pu être consulté. Vérifiez la connexion et réessayez.",
+    "errores": {
+      "producto_invalido": "Une ligne contient un produit qui n’appartient pas à cette organisation. Retirez-la et ajoutez-la de nouveau. {detalle}",
+      "descuento_excede_linea": "La remise d’une ligne dépasse sa valeur. Corrigez la remise. {detalle}",
+      "modificador_invalido": "Un modificateur de la ligne n’est plus configuré pour le produit. Retirez la ligne et ajoutez-la de nouveau. {detalle}",
+      "precio_no_vigente": "Un produit n’a pas de prix en vigueur : définissez son prix dans Inventaire. {detalle}",
+      "precio_no_coincide": "Le prix d’une ligne ne correspond pas au prix en vigueur. Retirez la ligne et ajoutez-la de nouveau. {detalle}",
+      "linea_incoherente": "Les montants d’une ligne ne correspondent pas à son prix, sa remise et sa taxe. Rouvrez l’encaissement. {detalle}"
+    }
   }
 }
